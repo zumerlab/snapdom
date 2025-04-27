@@ -13,7 +13,7 @@ It converts any HTML element into a scalable SVG image, preserving styles, fonts
 
 ## Installation
 
-You can use **snapDOM** by including it via **CDN**, **script tag**, or by **importing it as a module**.
+You can use **snapDOM** by including it via **NPM**, **CDN**, **script tag**, or by **importing it as a module**.
 
 ### NPM / Yarn
 
