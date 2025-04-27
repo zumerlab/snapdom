@@ -11,10 +11,6 @@ It converts any HTML element into a scalable SVG image, preserving styles, fonts
 - 📦 100% based on standard Web APIs
 
 ---
-¡Obvio, Martín! 🔥  
-Acá te integro la parte de **Installation** agregando también la opción **CDN**, de manera prolija y siguiendo tu estilo:
-
----
 
 ## Installation
 
