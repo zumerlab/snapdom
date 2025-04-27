@@ -19,7 +19,7 @@ You can use **snapDOM** by including it via **CDN**, **script tag**, or by **imp
 ### CDN
 
 ```html
-<script src="https://unpkg.com/@zumer/snapdom@latest/snapdom.min.js"></script>
+<script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.js"></script>
 ```
 
 ---
@@ -42,9 +42,9 @@ import { snapdom } from './snapdom.mjs';
 
 ### Script Tag (Type Module)
 
-```
+```javascript
 <script type="module">
-  import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/snapdom.mjs';
+  import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 </script>
 ```
 
