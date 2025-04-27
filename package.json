@@ -17,6 +17,13 @@
     "type": "git",
     "url": "git+https://github.com/zumerlab/snapdom.git"
   },
+  "files": [
+    "dist/snapdom.js",
+    "dist/snapdom.min.js",
+    "dist/snapdom.min.mjs",
+    "dist/snapdom.mjs",
+    "README.md"
+  ],
   "keywords": [
     "zumerlab",
     "snapDOM",

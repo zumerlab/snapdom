@@ -11,28 +11,48 @@ It converts any HTML element into a scalable SVG image, preserving styles, fonts
 - 📦 100% based on standard Web APIs
 
 ---
+¡Obvio, Martín! 🔥  
+Acá te integro la parte de **Installation** agregando también la opción **CDN**, de manera prolija y siguiendo tu estilo:
+
+---
 
 ## Installation
 
-You can use **snapDOM** either by including it as a script or importing it as a module.
+You can use **snapDOM** by including it via **CDN**, **script tag**, or by **importing it as a module**.
 
-### Script tag
+### CDN
+
+```html
+<script src="https://unpkg.com/@zumer/snapdom@latest/snapdom.min.js"></script>
+```
+
+---
+
+### Script tag (local)
 
 ```html
 <script src="snapdom.js"></script>
 ```
 
-The global object `captureAs` will be available.
+The global object `snapdom` will be available.
 
 ---
 
 ### ES Module
 
 ```javascript
-import { captureAs } from './snapdom.esm.js';
+import { snapdom } from './snapdom.mjs';
 ```
 
-Now you can call `captureAs.dataURL()`, `captureAs.png()`, etc., directly in your JavaScript.
+### Script Tag (Type Module)
+
+```
+<script type="module">
+  import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/snapdom.mjs';
+</script>
+```
+
+Now you can call `snapdom(el)`, `snapdom.toPng(el)`, etc., directly in your JavaScript.
 
 ---
 
@@ -40,7 +60,7 @@ Now you can call `captureAs.dataURL()`, `captureAs.png()`, etc., directly in you
 
 ```javascript
 // Capture an element as SVG Data URL
-const svgDataUrl = await captureAs.dataURL(document.querySelector("#myElement"));
+const svgDataUrl = await snapdom(document.querySelector("#myElement"));
 
 // Insert the captured image into the page
 const img = new Image();
@@ -52,17 +72,17 @@ document.body.appendChild(img);
 
 ## API
 
-The main API is exposed as `captureAs` and offers multiple capture methods:
+The main API is exposed as `snapdom` and offers multiple capture methods:
 
 | Method | Description | Returns |
 |:-------|:------------|:--------|
-| `captureAs.dataURL(el, scale?)` | Captures as SVG Data URL | `Promise<string>` |
-| `captureAs.img(el, scale?)` | Captures as `HTMLImageElement` (SVG) | `Promise<HTMLImageElement>` |
-| `captureAs.canvas(el, scale?)` | Captures as `HTMLCanvasElement` | `Promise<HTMLCanvasElement>` |
-| `captureAs.png(el, scale?)` | Captures as PNG image (`Image`) | `Promise<HTMLImageElement>` |
-| `captureAs.jpg(el, scale?, quality?)` | Captures as JPG image (`Image`) | `Promise<HTMLImageElement>` |
-| `captureAs.webp(el, scale?, quality?)` | Captures as WebP image (`Image`) | `Promise<HTMLImageElement>` |
-| `captureAs.blob(el, scale?)` | Captures as SVG `Blob` | `Promise<Blob>` |
+| `snapdom(el, scale?)` | Captures as SVG Data URL | `Promise<string>` |
+| `snapdom.toImg(el, scale?)` | Captures as `HTMLImageElement` (SVG) | `Promise<HTMLImageElement>` |
+| `snapdom.toCanvas(el, scale?)` | Captures as `HTMLCanvasElement` | `Promise<HTMLCanvasElement>` |
+| `snapdom.toPng(el, scale?)` | Captures as PNG image (`Image`) | `Promise<HTMLImageElement>` |
+| `snapdom.toJpg(el, scale?, quality?)` | Captures as JPG image (`Image`) | `Promise<HTMLImageElement>` |
+| `snapdom.toWebp(el, scale?, quality?)` | Captures as WebP image (`Image`) | `Promise<HTMLImageElement>` |
+| `snapdom.toBlob(el, scale?)` | Captures as SVG `Blob` | `Promise<Blob>` |
 
 **Parameters:**
 - `el`: DOM element to capture.
@@ -92,12 +112,12 @@ The main API is exposed as `captureAs` and offers multiple capture methods:
 </div>
 
 <script type="module">
-  import { captureAs } from './snapdom.esm.js';
+  import { snapdom } from './snapdom.esm.js';
 
   const button = document.createElement('button');
   button.textContent = "Capture";
   button.onclick = async () => {
-    const img = await captureAs.png(document.getElementById('captureMe'), 2);
+    const img = await snapdom.toPng(document.getElementById('captureMe'), 2);
     document.body.appendChild(img);
   };
   document.body.appendChild(button);
@@ -110,7 +130,31 @@ The main API is exposed as `captureAs` and offers multiple capture methods:
 
 - External images must be CORS-accessible.
 - Fonts must be fully loaded before capturing (`document.fonts.ready` is automatically awaited).
-- Very dynamic or complex layouts might require manual style adjustments.
+- Iframes are not captured.
+
+---
+
+## Benchmark
+
+`snapDOM` is not only highly accurate — it's also **extremely fast** at capturing large or complex DOM structures.
+
+In benchmark tests against popular libraries:
+
+| Element Size | Winner | Compared to `modern-screenshot` | Compared to `html2canvas` |
+|:------------:|:------:|:-------------------------------:|:-------------------------:|
+| 200×100 (Small) | `modern-screenshot` | 1.18× faster | 4.46× faster |
+| 400×300 (Modal) | `snapDOM` | 1.04× faster | 4.07× faster |
+| 1200×800 (Page view) | `snapDOM` | 2.43× faster | 5.74× faster |
+| 2000×1500 (Large scroll area) | `snapDOM` | 5.02× faster | 9.35× faster |
+| 4000×2000 (Very large) | `snapDOM` | 11.35× faster | 15.98× faster |
+
+✅ **Key insight**:  
+While `modern-screenshot` is yet slightly faster for very small elements, **snapDOM dramatically outperforms all others as the DOM size grows**.
+
+✅ **Perfect for:**  
+- Capturing full-page views
+- Capturing modal windows
+- Complex layouts with custom fonts, backgrounds, or shadow DOM
 
 ---
 
