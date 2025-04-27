@@ -10,7 +10,6 @@ It converts any HTML element into a scalable SVG image, preserving styles, fonts
 - ⚡ Lightweight, no dependencies
 - 📦 100% based on standard Web APIs
 
----
 
 ## Installation
 
@@ -22,7 +21,6 @@ You can use **snapDOM** by including it via **CDN**, **script tag**, or by **imp
 <script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.js"></script>
 ```
 
----
 
 ### Script tag (local)
 
@@ -32,7 +30,6 @@ You can use **snapDOM** by including it via **CDN**, **script tag**, or by **imp
 
 The global object `snapdom` will be available.
 
----
 
 ### ES Module
 
@@ -50,7 +47,6 @@ import { snapdom } from './snapdom.mjs';
 
 Now you can call `snapdom(el)`, `snapdom.toPng(el)`, etc., directly in your JavaScript.
 
----
 
 ## Basic usage
 
@@ -64,7 +60,6 @@ img.src = svgDataUrl;
 document.body.appendChild(img);
 ```
 
----
 
 ## API
 
@@ -85,7 +80,6 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 - `scale`: Scale factor (default is `1`).
 - `quality`: Compression quality for JPG/WebP (range `0`–`1`).
 
----
 
 ## Special features
 
@@ -97,7 +91,6 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
   - `data-capture="exclude"`: Skips an element while preserving layout space.
   - `data-capture="placeholder"` + `data-placeholder-text="Text"`: Replaces an element with decorative placeholder text.
 
----
 
 ## Full example
 
@@ -120,7 +113,6 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 </script>
 ```
 
----
 
 ## Limitations
 
@@ -128,7 +120,6 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 - Fonts must be fully loaded before capturing (`document.fonts.ready` is automatically awaited).
 - Iframes are not captured.
 
----
 
 ## Benchmark
 
@@ -152,7 +143,6 @@ While `modern-screenshot` is yet slightly faster for very small elements, **snap
 - Capturing modal windows
 - Complex layouts with custom fonts, backgrounds, or shadow DOM
 
----
 
 ## License
 
