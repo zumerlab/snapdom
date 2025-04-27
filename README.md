@@ -15,6 +15,16 @@ It converts any HTML element into a scalable SVG image, preserving styles, fonts
 
 You can use **snapDOM** by including it via **CDN**, **script tag**, or by **importing it as a module**.
 
+### NPM / Yarn
+
+```sh
+npm i @zumer/snapdom
+```
+
+```sh
+yarn add @zumer/snapdom
+```
+
 ### CDN
 
 ```html
