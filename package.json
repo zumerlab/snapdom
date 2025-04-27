@@ -1,0 +1,53 @@
+{
+  "name": "@zumer/snapdom",
+  "version": "0.9.0",
+  "description": "snapDOM captures DOM elements as images with exceptional speed and minimal overhead. Designed to avoid bottlenecks and long tasks.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "npx vitest run --browser.headless --reporter=verbose",
+    "test:benchmark": "npx vitest bench --browser.headless --watch=false",
+    "compile-browser": "npx @zumerbox/build -n snapdom -j src/index.js",
+    "compile-esm": "npx @zumerbox/build -n snapdom -j src/index.js -p neutral -x",
+    "compile": "npm run compile-browser && npm run compile-esm",
+    "build": "npm run compile && npm pack",
+    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
+    "prebuild": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zumerlab/snapdom.git"
+  },
+  "keywords": [
+    "zumerlab",
+    "snapDOM",
+    "screenshot",
+    "engine",
+    "html capture",
+    "dom capture",
+    "html to image",
+    "dom to image",
+    "html screenshot",
+    "capture element",
+    "html snapshot",
+    "element screenshot",
+    "web capture",
+    "snapshot tool",
+    "render html",
+    "capture dom",
+    "web snapshot",
+    "html export",
+    "dom snapshot",
+    "html to png",
+    "html to svg"
+  ],
+  "author": "Juan Martin Muda",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zumerlab/snapdom/issues"
+  },
+  "homepage": "https://github.com/zumerlab/snapdom#readme",
+  "devDependencies": {
+    "@vitest/browser": "^3.1.2",
+    "playwright": "^1.52.0"
+  }
+}
