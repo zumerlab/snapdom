@@ -134,7 +134,7 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 
 ## Benchmark
 
-`snapDOM` is not only highly accurate — it's also **extremely fast** at capturing large or complex DOM structures.
+`snapDOM` is not only highly accurate — it's also **extremely fast** at capturing large DOM nodes.
 
 In benchmark tests against popular libraries:
 
