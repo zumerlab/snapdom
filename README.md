@@ -129,6 +129,7 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 - External images must be CORS-accessible.
 - Fonts must be fully loaded before capturing (`document.fonts.ready` is automatically awaited).
 - Iframes are not captured.
+- Capturing very dynamic or complex layouts might be slow and not acccurate. Working on that
 
 
 ## Benchmark
