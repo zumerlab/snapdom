@@ -146,13 +146,6 @@ In benchmark tests against popular libraries:
 | 2000×1500 (Large scroll area) | `snapDOM` | 5.02× faster | 9.35× faster |
 | 4000×2000 (Very large) | `snapDOM` | 11.35× faster | 15.98× faster |
 
-✅ **Key insight**:  
-While `modern-screenshot` is yet slightly faster for very small elements, **snapDOM dramatically outperforms all others as the DOM size grows**.
-
-✅ **Perfect for:**  
-- Capturing full-page views
-- Capturing modal windows
-- Complex layouts with custom fonts, backgrounds, or shadow DOM
 
 
 ## License
