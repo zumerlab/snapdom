@@ -111,7 +111,7 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 </div>
 
 <script type="module">
-  import { snapdom } from './snapdom.esm.js';
+  import { snapdom } from './snapdom.mjs';
 
   const button = document.createElement('button');
   button.textContent = "Capture";
@@ -129,12 +129,12 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 - External images must be CORS-accessible.
 - Fonts must be fully loaded before capturing (`document.fonts.ready` is automatically awaited).
 - Iframes are not captured.
-- Capturing very dynamic or complex layouts might be slow and not acccurate. Working on that
+- Capturing complex layouts might be slow and not acccurate. **Working on that**
 
 
 ## Benchmark
 
-`snapDOM` is not only highly accurate — it's also **extremely fast** at capturing large DOM nodes.
+`snapDOM` is not only highly accurate — it's also **extremely fast** at capturing large simple DOM nodes.
 
 In benchmark tests against popular libraries:
 
@@ -150,4 +150,4 @@ In benchmark tests against popular libraries:
 
 ## License
 
-MIT © Juan Martín Muda - Zumerlab
+MIT © Zumerlab
