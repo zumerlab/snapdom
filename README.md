@@ -73,6 +73,8 @@ document.body.appendChild(img);
 
 ## API
 
+### Until snapDOM reaches v.1.0.0, API may change!
+
 The main API is exposed as `snapdom` and offers multiple capture methods:
 
 | Method | Description | Returns |
