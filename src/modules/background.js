@@ -31,6 +31,6 @@ export async function inlineBackgroundImages(source, clone, styleCache) {
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
       queue.push([sChildren[i], cChildren[i]]);
     }
-    await delay(1);  // Small delay to keep the browser responsive
+    // await delay(1);  // Small delay to keep the browser responsive
   }
 }
