@@ -10,67 +10,61 @@ import { applyFontClasses } from '../modules/fonts.js';
  * @param {Element} element - Element to clone
  * @returns {Promise<Object>} Object containing the clone, CSS, and style cache
  */
+
 export async function prepareClone(element) {
-  const styleMap = new Map();
-  const styleCache = new WeakMap();
-  const nodeMap = new WeakMap();
+  const styleMap = /* @__PURE__ */ new Map();
+  const styleCache = /* @__PURE__ */ new WeakMap();
+  const nodeMap = /* @__PURE__ */ new WeakMap();
   let defaults;
+  // TO-DO option to use default styles. Meanwhile, getDefaultStyles() is disabled;
   try {
-    defaults = getDefaultStyles();
+    defaults = {} // getDefaultStyles();
   } catch (e) {
-    console.warn('getDefaultStyles failed:', e);
+    console.warn("getDefaultStyles failed:", e);
     defaults = {};
   }
-
   let clone;
   try {
     clone = deepCloneWithShadow(element, styleMap, defaults, styleCache, nodeMap);
   } catch (e) {
-    console.warn('deepCloneWithShadow failed:', e);
+    console.warn("deepCloneWithShadow failed:", e);
     throw e;
   }
-
   try {
     await inlineImages(clone);
   } catch (e) {
-    console.warn('inlineImages failed:', e);
+    console.warn("inlineImages failed:", e);
   }
-
   try {
     await inlineBackgroundImages(element, clone, styleCache);
   } catch (e) {
-    console.warn('inlineBackgroundImages failed:', e);
+    console.warn("inlineBackgroundImages failed:", e);
   }
-
   try {
     await inlinePseudoElements(element, clone);
   } catch (e) {
-    console.warn('inlinePseudoElements failed:', e);
-  }
-
+    console.warn("inlinePseudoElements failed:", e);
+  }  
   // Generate optimized CSS classes from the collected styles
   const keyToClass = generateReusableCSSClasses(styleMap);
-  const classCSS = Array.from(keyToClass.entries()).map(([key, className]) => `.${className}{${key}}`).join('');
-
+  const classCSS = Array.from(keyToClass.entries()).map(([key, className]) => `.${className}{${key}}`).join("");
   // Apply classes to elements and remove inline styles
   for (const [node, key] of styleMap.entries()) {
-    if (node.tagName === 'STYLE') continue;
-
+    if (node.tagName === "STYLE") continue;
     const className = keyToClass.get(key);
     if (className) {
       node.classList.add(className);
       try {
         applyFontClasses(node, nodeMap.get(node), styleCache);
       } catch (e) {
-        console.warn('applyFontClasses failed for node:', node, e);
+        console.warn("applyFontClasses failed for node:", node, e);
       }
     }
 
     // Preserve background images while removing other inline styles
     const bgImage = node.style?.backgroundImage;
-    node.removeAttribute('style');
-    if (bgImage && bgImage !== 'none') node.style.backgroundImage = bgImage;
+    node.removeAttribute("style");
+    if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
   }
-
   return { clone, classCSS, styleCache };
 }
