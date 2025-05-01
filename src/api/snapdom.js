@@ -5,59 +5,87 @@ import { capture } from '../core/capture';
  * and provides additional export formats.
  *
  * @param {Element} el - DOM element to capture
- * @param {number} [scale=1] - Scale factor for the output image
+ * @param {Object} [options={}] - Capture options
+ * @param {number} [options.scale=1] - Scale factor for the output image
  * @returns {Promise<string>} Promise that resolves to SVG data URL
  */
-async function snapdom(el, scale = 1) {
-  return await capture(el, scale);
+
+async function snapdom(element, options = {}) {
+  return await capture(element, options);
 }
 
-snapdom.toImg = async function (el, scale = 1) {
-  const dataURL = await snapdom(el, scale);
+
+/* 
+snapdom.toSvg = async (el, opt = {}) => {
+  const dataUrl = await capture(el, opt);
+  const svgEncoded = dataUrl.split(',')[1];
+  return decodeURIComponent(svgEncoded);
+}; 
+*/
+
+snapdom.toImg = async (el, opt = {}) => {
+  const url = await snapdom(el, opt);
   const img = new Image();
-  img.src = dataURL;
+  img.src = url;
   await img.decode();
   return img;
 };
 
-snapdom.toCanvas = async function (el, scale = 1) {
-  const img = await snapdom.toImg(el, scale);
-  const canvas = document.createElement('canvas');
+snapdom.toCanvas = async (el, opt = {}) => {
+  const img = await snapdom.toImg(el, opt);
+  const canvas = document.createElement("canvas");
   canvas.width = img.width;
   canvas.height = img.height;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0);
+  canvas.getContext("2d").drawImage(img, 0, 0);
   return canvas;
 };
 
-snapdom.toPng = async function (el, scale = 1) {
-  const canvas = await snapdom.toCanvas(el, scale);
+snapdom.toPng = async (el, opt = {}) => {
+  const canvas = await snapdom.toCanvas(el, opt);
   const img = new Image();
-  img.src = canvas.toDataURL('image/png');
+  img.src = canvas.toDataURL("image/png");
   await img.decode();
   return img;
 };
 
-snapdom.toJpg = async function (el, scale = 1, quality = 0.92) {
-  const canvas = await snapdom.toCanvas(el, scale);
+snapdom.toJpg = async (el, opt = {}) => {
+  const { backgroundColor = "#fff", quality = 0.92 } = opt;
+  const canvas = await snapdom.toCanvas(el, opt);
+  const temp = document.createElement("canvas");
+  temp.width = canvas.width;
+  temp.height = canvas.height;
+  const ctx = temp.getContext("2d");
+  ctx.fillStyle = backgroundColor;
+  ctx.fillRect(0, 0, temp.width, temp.height);
+  ctx.drawImage(canvas, 0, 0);
   const img = new Image();
-  img.src = canvas.toDataURL('image/jpeg', quality);
+  img.src = temp.toDataURL("image/jpeg", quality);
   await img.decode();
   return img;
 };
 
-snapdom.toWebp = async function (el, scale = 1, quality = 0.92) {
-  const canvas = await snapdom.toCanvas(el, scale);
+snapdom.toWebp = async (el, opt = {}) => {
+  const { backgroundColor = "#fff", quality = 0.92 } = opt;
+  const canvas = await snapdom.toCanvas(el, opt);
+  const temp = document.createElement("canvas");
+  temp.width = canvas.width;
+  temp.height = canvas.height;
+  const ctx = temp.getContext("2d");
+  ctx.fillStyle = backgroundColor;
+  ctx.fillRect(0, 0, temp.width, temp.height);
+  ctx.drawImage(canvas, 0, 0);
   const img = new Image();
-  img.src = canvas.toDataURL('image/webp', quality);
+  img.src = temp.toDataURL("image/webp", quality);
   await img.decode();
   return img;
 };
 
-snapdom.toBlob = async function (el, scale = 1) {
-  const dataURL = await snapdom(el, scale);
-  const svgXml = decodeURIComponent(dataURL.split(",")[1]);
-  return new Blob([svgXml], { type: "image/svg+xml" });
+snapdom.toBlob = async (el, opt = {}) => {
+  const dataUrl = await snapdom(el, opt);
+  const svgText = decodeURIComponent(dataUrl.split(',')[1]);
+  return new Blob([svgText], { type: "image/svg+xml" });
 };
 
-export { snapdom };
+export {
+  snapdom
+};
