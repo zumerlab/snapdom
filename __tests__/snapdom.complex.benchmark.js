@@ -27,27 +27,10 @@ const sizes = [
 ];
 
 for (const size of sizes) {
-  describe(`Benchmark simple node at ${size.label}`, () => {
+  describe(`Benchmark complex node at ${size.label}`, () => {
     let container;
 
-    async function setupContainer() { 
-      if (container && document.body.contains(container)) {
-        return;
-      }
-      container = document.createElement('div');
-      container.style.width = `${size.width}px`;
-      container.style.height = `${size.height}px`;
-      container.style.background = 'linear-gradient(to right, red, blue)';
-      container.style.fontFamily = 'Arial, sans-serif';
-      container.style.display = 'flex';
-      container.style.alignItems = 'center';
-      container.style.justifyContent = 'center';
-      container.style.fontSize = '24px';
-      container.innerHTML = `<h1>${size.label}</h1>`;
-      document.body.appendChild(container);
-    } 
-
-    /*   async function setupContainer() {
+  async function setupContainer() {
         if (container && document.body.contains(container)) return;
       
         container = document.createElement('div');
@@ -102,7 +85,7 @@ for (const size of sizes) {
         container.appendChild(grid);
         document.body.appendChild(container);
       }
-       */
+      
     afterEach(() => {
       if (container) {
         container.remove();

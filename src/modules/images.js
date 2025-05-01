@@ -27,6 +27,6 @@ export async function inlineImages(clone) {
   for (let i = 0; i < imgs.length; i += 4) {
     const group = imgs.slice(i, i + 4).map(processImg);
     await Promise.allSettled(group);
-    await delay(1);  // Small delay to keep the browser responsive
+    // await delay(1);  // Small delay to keep the browser responsive
   }
 }
