@@ -17,8 +17,8 @@ describe('snapdom advanced tests', () => {
   });
 
   it('should generate different SVGs for different scales', async () => {
-    const svg1 = await snapdom(testElement, 1);
-    const svg2 = await snapdom(testElement, 2);
+    const svg1 = await snapdom(testElement, { scale: 1});
+    const svg2 = await snapdom(testElement, { scale: 2});
     expect(svg1).not.toBe(svg2);
   });
 
