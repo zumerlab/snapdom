@@ -149,6 +149,7 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 - Fonts must be fully loaded before capturing (`document.fonts.ready` is automatically awaited).
 - Iframes are not captured.
 
+### Please if you find a bug **open an issue**.
 
 ## Benchmarks
 
