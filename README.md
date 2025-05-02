@@ -2,7 +2,7 @@
 
 **snapDOM** is a DOM capture tool developed for **Zumly**, a framework that enables zoom-based view transitions, with precision and speed.  
 
-It seamlessly converts HTML elements into **scalable SVG images**, faithfully preserving styles, fonts, backgrounds, shadow DOM content, pseudo-elements, and more.It converts any HTML element into a scalable SVG image, preserving styles, fonts, backgrounds, shadow DOM content, pseudo-elements, and more.
+It converts any HTML element into a scalable SVG image, preserving styles, fonts, backgrounds, shadow DOM content, pseudo-elements, and more.
 
 - 📸 Full DOM capture
 - 🎨 Embedded styles, pseudo-elements, and fonts
