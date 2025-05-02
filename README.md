@@ -1,8 +1,21 @@
+<p align="center">
+  <a href="http://zumerlab.github.io/orbit-docs">
+    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/hero.png" width="80%">
+  </a>
+</p>
+
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@zumer/snapdom"><img src="https://img.shields.io/github/package-json/v/zumerlab/snapdom"></a>
+</p>
+
+
 # snapDOM
 
 **snapDOM** is a fast and accurate DOM capture tool to images developed for **Zumly**, a framework that enables zoom-based view transitions.  
 
 It converts any HTML element into a scalable SVG image, preserving styles, fonts, backgrounds, shadow DOM content, pseudo-elements, and more.
+
 
 - 📸 Full DOM capture
 - 🎨 Embedded styles, pseudo-elements, and fonts
