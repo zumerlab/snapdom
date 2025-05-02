@@ -1,6 +1,6 @@
 # snapDOM
 
-**snapDOM** is a DOM capture tool developed for **Zumly**, a framework that enables zoom-based view transitions, with precision and speed.  
+**snapDOM** is a fast and accurate DOM capture tool to images developed for **Zumly**, a framework that enables zoom-based view transitions.  
 
 It converts any HTML element into a scalable SVG image, preserving styles, fonts, backgrounds, shadow DOM content, pseudo-elements, and more.
 
