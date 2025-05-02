@@ -1,3 +1,6 @@
+# snapDOM
+
+
 <p align="center">
   <a href="http://zumerlab.github.io/orbit-docs">
     <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/hero.png" width="80%">
@@ -10,7 +13,6 @@
 </p>
 
 
-# snapDOM
 
 **snapDOM** is a fast and accurate DOM capture tool to images developed for **Zumly**, a framework that enables zoom-based view transitions.  
 
