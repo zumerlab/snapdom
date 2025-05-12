@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snapdom Demo Gallery</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous"> <!-- Add Font Awesome -->
+
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs';
+    window.snapdom = snapdom;
+  </script>
+  <style>
+ body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(to bottom right, #eef2f3, #c9d6ff);
+  color: #222;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  color: white;
+  padding: 1em 2em;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+header h1 {
+  margin: 0 0 0.2em 0;
+  font-size: 1.5em;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+}
+
+nav a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+  border-bottom: 2px solid transparent;
+  transition: border 0.3s;
+}
+
+nav a:hover {
+  border-bottom: 2px solid #fff;
+}
+
+section {
+  padding: 3em 2em;
+}
+
+h2 {
+  font-size: 1.4em;
+  margin-bottom: 0.5em;
+}
+
+.card {
+  background: linear-gradient(to bottom right, #ffffff, #f0f0ff);
+  padding: 1.5em;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  margin-bottom: 2em;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: scale(1.01);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+button {
+  background: linear-gradient(90deg, #6a11cb, #2575fc);
+  color: white;
+  border: none;
+  padding: 0.6em 1.2em;
+  border-radius: 8px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-top: 1em;
+}
+
+button:hover {
+  background: linear-gradient(90deg, #5a0eb1, #1f65f2);
+}
+
+.output {
+  margin-top: 1em;
+  border: 1px dashed #bbb;
+  padding: 0;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+canvas {
+  border-radius: 8px;
+}
+
+#basic-box {
+  background: #fff3f3;
+  border-left: 5px solid #ff7f7f;
+}
+
+#shadow-host {
+  background: #e0f7fa;
+  border-left: 5px solid #4dd0e1;
+  min-height: 60px;
+}
+
+#export-box {
+  background: #fff8e1;
+  border-left: 5px solid #ffd54f;
+}
+
+#pseudo-box {
+  background: #f3e5f5;
+  border-left: 5px solid #ba68c8;
+}
+
+#export-box {
+  background: linear-gradient(135deg, #ffe29f, #ffa99f);
+  border-left: 5px solid #ff7043;
+  color: #4e342e;
+  text-align: center;
+  font-size: 1.2em;
+  padding: 2em;
+  transition: background 0.4s ease;
+}
+
+#export-box:hover {
+  background: linear-gradient(135deg, #ffd194, #ffb199);
+}
+
+.export-text {
+  font-family: "Segoe UI", sans-serif;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.export-format {
+  font-weight: bold;
+  color: #bf360c;
+  text-shadow: 1px 1px rgba(255,255,255,0.3);
+}
+@keyframes pulseMove {
+  0% {
+    background: linear-gradient(to right, #43cea2, #185a9d);
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    background: linear-gradient(to right, #185a9d, #43cea2);
+    transform: rotate(2deg) scale(1.05);
+  }
+  100% {
+    background: linear-gradient(to right, #43cea2, #185a9d);
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.transition-box {
+  background: linear-gradient(to right, #43cea2, #185a9d);
+  color: white;
+  text-align: center;
+  font-size: 1.2em;
+  padding: 2em;
+  border-radius: 16px;
+  animation: pulseMove 3s infinite ease-in-out;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+header {
+      position: sticky;
+      top: 0;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      color: white;
+      padding: 1em 2em;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between; /* This aligns items to both sides */
+      align-items: center;
+    }
+    
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      border-bottom: 2px solid transparent;
+      transition: border 0.3s;
+    }
+
+    nav a:hover {
+      border-bottom: 2px solid #fff;
+    }
+
+    .github-link {
+      font-size: 1.5em; /* Adjust icon size */
+      color: white;
+      text-decoration: none;
+    }
+
+    .github-link:hover {
+      color: #333;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>SnapDOM Demo Gallery</h1>
+  <nav>
+    <a href="#basic">Basic</a>
+    <a href="#shadow">Shadow DOM</a>
+    <a href="#canvas">Canvas</a>
+    <a href="#export">Export</a>
+    <a href="#transition">Transition Animation</a>
+    <a href="#pseudo">Pseudo</a>
+  </nav>
+  <a href="https://github.com/zumerlab/snapdom" target="_blank" class="github-link">
+    <i class="fab fa-github"></i> <!-- GitHub icon -->
+  </a>
+</header>
+
+<main>
+
+  <section id="basic">
+    <h2>📦 Basic Capture</h2>
+    <div class="card" id="basic-box">
+      <h3>Hello Snapdom</h3>
+      <p>This is a <strong>simple box</strong> with some styled content to test capture.</p>
+    </div>
+    <button onclick="captureDemo('basic-box', 'basic-output', this)">Capture</button>
+    <div class="output" id="basic-output"></div>
+  </section>
+
+  <section id="shadow">
+    <h2>🧱 Shadow DOM</h2>
+    <div class="card" id="shadow-host"></div>
+    <button onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
+    <div class="output" id="shadow-output"></div>
+    <script>
+      const host = document.getElementById('shadow-host');
+      const shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = `<div style="padding: 1em; background: lightblue; border-radius: 8px;">Inside <strong>Shadow DOM</strong></div>`;
+    </script>
+  </section>
+
+  <section id="canvas">
+    <h2>🎨 Canvas</h2>
+    <div class="card">
+      <canvas id="myCanvas" width="160" height="160" style="border:1px solid #000;"></canvas>
+    </div>
+    <button onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
+    <div class="output" id="canvas-output"></div>
+    <script>
+      const ctx = document.getElementById('myCanvas').getContext('2d');
+      ctx.fillStyle = "green";
+      ctx.fillRect(20, 20, 100, 100);
+    </script>
+  </section>
+
+  <section id="export">
+    <h2>📁 Export Formats</h2>
+    <div class="card" id="export-box">
+  <div class="export-text">
+    <strong>📤 This box will be exported as</strong><br />
+    <span class="export-format">PNG</span>, 
+    <span class="export-format">JPG</span> & 
+    <span class="export-format">WebP</span>.
+  </div>
+</div>
+
+    <button onclick="exportFormats('export-box')">Export</button>
+    <div class="output" id="export-output"></div>
+  </section>
+<section id="transition">
+  <h2>🚀 Transition Animation</h2>
+  <div class="card transition-box" id="transition-box">
+    <p>I'm dancing!</p>
+  </div>
+  <button onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
+  <div class="output" id="transition-output"></div>
+</section>
+
+  <section id="pseudo">
+    <h2>✨ Pseudo Elements</h2>
+    <style>
+      .pseudo-box::before {
+        content: "★ ";
+        color: gold;
+        font-size: 1.2em;
+      }
+      .pseudo-box::after {
+        content: " ✨";
+        color: violet;
+        font-size: 1.2em;
+      }
+    </style>
+    <div class="card pseudo-box" id="pseudo-box">
+      This element has pseudo-elements.
+    </div>
+    <button onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
+    <div class="output" id="pseudo-output"></div>
+  </section>
+
+
+</main>
+
+<script>
+  async function captureDemo(inputId, outputId, button) {
+    const el = document.getElementById(inputId);
+    const output = document.getElementById(outputId);
+    if (!el || !output) {
+      console.error(`Missing element or output: ${inputId}, ${outputId}`);
+      return;
+    }
+    button.disabled = true;
+    const img = await snapdom.toImg(el);
+    output.innerHTML = '';
+    output.appendChild(img);
+    button.disabled = false;
+  }
+
+  async function exportFormats(id) {
+    const el = document.getElementById(id);
+    const output = document.getElementById('export-output');
+    output.innerHTML = '';
+    const [png, jpg, webp] = await Promise.all([
+      snapdom.toPng(el),
+      snapdom.toJpg(el),
+      snapdom.toWebp(el),
+    ]);
+    output.append('PNG:', png, document.createElement('br'));
+    output.append('JPG:', jpg, document.createElement('br'));
+    output.append('WebP:', webp);
+  }
+</script>
+
+</body>
+</html>
+

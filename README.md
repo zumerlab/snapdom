@@ -1,19 +1,34 @@
 # snapDOM
 
-**snapDOM** is a high-fidelity DOM capture tool, developed as part of the animation engine I'm developing for Zumly — a framework for creating smooth zoom-based view transitions.
+
+<p align="center">
+  <a href="http://zumerlab.github.io/orbit-docs">
+    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/hero.png" width="80%">
+  </a>
+</p>
+
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@zumer/snapdom"><img src="https://img.shields.io/github/package-json/v/zumerlab/snapdom"></a>
+</p>
+
+
+
+**snapDOM** is a fast and accurate DOM capture tool to images developed for **Zumly**, a framework that enables zoom-based view transitions.  
 
 It converts any HTML element into a scalable SVG image, preserving styles, fonts, backgrounds, shadow DOM content, pseudo-elements, and more.
+
 
 - 📸 Full DOM capture
 - 🎨 Embedded styles, pseudo-elements, and fonts
 - 🖼️ Export to SVG, PNG, JPG, WebP, or `canvas`
-- ⚡ Lightweight, no dependencies
+- ⚡ Ultra fast, no dependencies
 - 📦 100% based on standard Web APIs
 
 
 ## Installation
 
-You can use **snapDOM** by including it via **NPM**, **CDN**, **script tag**, or by **importing it as a module**.
+You can use **snapDOM** via **NPM**, **CDN**, **script tag**, or by **importing as a module**.
 
 ### NPM / Yarn
 
@@ -31,7 +46,6 @@ yarn add @zumer/snapdom
 <script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.js"></script>
 ```
 
-
 ### Script tag (local)
 
 ```html
@@ -39,7 +53,6 @@ yarn add @zumer/snapdom
 ```
 
 The global object `snapdom` will be available.
-
 
 ### ES Module
 
@@ -73,34 +86,39 @@ document.body.appendChild(img);
 
 ## API
 
+### Note: API may evolve until v1.0.0!
+
 The main API is exposed as `snapdom` and offers multiple capture methods:
 
-| Method | Description | Returns |
-|:-------|:------------|:--------|
-| `snapdom(el, scale?)` | Captures as SVG Data URL | `Promise<string>` |
-| `snapdom.toImg(el, scale?)` | Captures as `HTMLImageElement` (SVG) | `Promise<HTMLImageElement>` |
-| `snapdom.toCanvas(el, scale?)` | Captures as `HTMLCanvasElement` | `Promise<HTMLCanvasElement>` |
-| `snapdom.toPng(el, scale?)` | Captures as PNG image (`Image`) | `Promise<HTMLImageElement>` |
-| `snapdom.toJpg(el, scale?, quality?)` | Captures as JPG image (`Image`) | `Promise<HTMLImageElement>` |
-| `snapdom.toWebp(el, scale?, quality?)` | Captures as WebP image (`Image`) | `Promise<HTMLImageElement>` |
-| `snapdom.toBlob(el, scale?)` | Captures as SVG `Blob` | `Promise<Blob>` |
+| Method                | Description                            | Returns                  |
+|:----------------------|:---------------------------------------|:-------------------------|
+| `snapdom(el, options?)` | Captures as SVG Data URL                | `Promise<string>`        |
+| `snapdom.toImg(el, options?)` | Captures as `HTMLImageElement` (SVG)     | `Promise<HTMLImageElement>` |
+| `snapdom.toCanvas(el, options?)` | Captures as `HTMLCanvasElement`        | `Promise<HTMLCanvasElement>` |
+| `snapdom.toPng(el, options?)` | Captures as PNG image (`Image`)      | `Promise<HTMLImageElement>` |
+| `snapdom.toJpg(el, options?)` | Captures as JPG image (`Image`)      | `Promise<HTMLImageElement>` |
+| `snapdom.toWebp(el, options?)` | Captures as WebP image (`Image`)     | `Promise<HTMLImageElement>` |
+| `snapdom.toBlob(el, options?)` | Captures as SVG `Blob`               | `Promise<Blob>`           |
 
-**Parameters:**
-- `el`: DOM element to capture.
-- `scale`: Scale factor (default is `1`).
-- `quality`: Compression quality for JPG/WebP (range `0`–`1`).
+**Options:**
+- `scale` *(number)*: Scale factor (default is `1`)
+- `quality` *(number)*: Compression quality for JPG/WebP (0–1)
+- `backgroundColor` *(string)*: Background fill for JPG/WebP exports
 
+---
 
 ## Special features
 
 - **Shadow DOM**: Captures content inside Web Components and `shadowRoot`.
 - **Pseudo-elements**: Captures `::before` and `::after`, including background images.
 - **Backgrounds and images**: Inlines external images as Data URLs.
-- **Fonts**: Replicates applied font families without needing external font files.
+- **Fonts**: Replicates applied font families without requiring external font files.
+- **Icon fonts**: Captures icon fonts like **Font Awesome** and **Material Icons**.
 - **Placeholder and Exclusion**:
   - `data-capture="exclude"`: Skips an element while preserving layout space.
-  - `data-capture="placeholder"` + `data-placeholder-text="Text"`: Replaces an element with decorative placeholder text.
+  - `data-capture="placeholder"` + `data-placeholder-text="Text"`: Replaces an element with placeholder text.
 
+**Now with improved fidelity and even faster performance.**
 
 ## Full example
 
@@ -110,16 +128,17 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
   <p>This content will be captured.</p>
 </div>
 
-<script type="module">
-  import { snapdom } from './snapdom.esm.js';
+<button id="captureBtn">Capture as img</button>
 
-  const button = document.createElement('button');
-  button.textContent = "Capture";
-  button.onclick = async () => {
-    const img = await snapdom.toPng(document.getElementById('captureMe'), 2);
+<script type="module">
+  import { snapdom } from './snapdom.mjs';
+
+  const button = document.getElementById('captureBtn');
+  button.addEventListener('click', async () => {
+    const target = document.getElementById('captureMe');
+    const img = await snapdom.toImg(target);
     document.body.appendChild(img);
-  };
-  document.body.appendChild(button);
+  });
 </script>
 ```
 
@@ -129,25 +148,40 @@ The main API is exposed as `snapdom` and offers multiple capture methods:
 - External images must be CORS-accessible.
 - Fonts must be fully loaded before capturing (`document.fonts.ready` is automatically awaited).
 - Iframes are not captured.
-- Capturing very dynamic or complex layouts might be slow and not acccurate. Working on that
 
+### Please if you find a bug **open an issue**.
 
-## Benchmark
+## Benchmarks
 
-`snapDOM` is not only highly accurate — it's also **extremely fast** at capturing large DOM nodes.
+`snapDOM` is not only highly accurate — it’s **extremely fast**, especially for large elements.
 
-In benchmark tests against popular libraries:
+Latest benchmarks show **major speed improvements** over existing libraries:
 
-| Element Size | Winner | Compared to `modern-screenshot` | Compared to `html2canvas` |
-|:------------:|:------:|:-------------------------------:|:-------------------------:|
-| 200×100 (Small) | `modern-screenshot` | 1.18× faster | 4.46× faster |
-| 400×300 (Modal) | `snapDOM` | 1.04× faster | 4.07× faster |
-| 1200×800 (Page view) | `snapDOM` | 2.43× faster | 5.74× faster |
-| 2000×1500 (Large scroll area) | `snapDOM` | 5.02× faster | 9.35× faster |
-| 4000×2000 (Very large) | `snapDOM` | 11.35× faster | 15.98× faster |
+| Element Size             | vs. `modern-screenshot` | vs. `html2canvas` |
+|:------------------------:|:-----------------------:|:-----------------:|
+| **Small (200×100)**      | 9.84× faster            | 33.19× faster     |
+| **Modal (400×300)**      | 11.72× faster           | 36.03× faster     |
+| **Page view (1200×800)** | 24.40× faster           | 55.65× faster     |
+| **Large (2000×1500)**    | 49.85× faster           | 90.74× faster     |
+| **Very large (4000×2000)** | 138.93× faster         | 148.41× faster    |
 
+✅ **snapDOM** also improved fidelity, even on complex layouts:
+- Up to **7.82× faster** for complex modal captures.
+- Still faster even at very large sizes.
+
+### Run the benchmarks
+To run these benchmarks yourself:
+
+```sh
+git clone https://github.com/zumerlab/snapdom.git
+cd snapdom
+npm install
+npm run test:benchmark
+```
+
+They execute in **headless Chromium** using real DOM nodes.
 
 
 ## License
 
-MIT © Juan Martín Muda - Zumerlab
+MIT © Zumerlab
