@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Snapdom Demo Gallery</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous"> <!-- Add Font Awesome -->
 
@@ -225,7 +225,7 @@ header {
     <a href="#basic">Basic</a>
     <a href="#shadow">Shadow DOM</a>
     <a href="#canvas">Canvas</a>
-    <a href="#export">Export</a>
+    
     <a href="#transition">Transition Animation</a>
     <a href="#pseudo">Pseudo</a>
   </nav>
@@ -272,20 +272,7 @@ header {
     </script>
   </section>
 
-  <section id="export">
-    <h2>📁 Export Formats</h2>
-    <div class="card" id="export-box">
-  <div class="export-text">
-    <strong>📤 This box will be exported as</strong><br />
-    <span class="export-format">PNG</span>, 
-    <span class="export-format">JPG</span> & 
-    <span class="export-format">WebP</span>.
-  </div>
-</div>
 
-    <button onclick="exportFormats('export-box')">Export</button>
-    <div class="output" id="export-output"></div>
-  </section>
 <section id="transition">
   <h2>🚀 Transition Animation</h2>
   <div class="card transition-box" id="transition-box">
