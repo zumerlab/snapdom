@@ -20,7 +20,7 @@ export async function captureDOM(element, options = {}) {
   let clone, classCSS, styleCache;
   let fontsCSS = '';
   let baseCSS = '';
-  let dataBlob;
+  let dataURL;
   let svgString;
 
   // 1. Clonación + pseudo
@@ -102,11 +102,9 @@ export async function captureDOM(element, options = {}) {
       const svgHeader = `<svg xmlns="${svgNS}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
       const svgFooter = '</svg>';
       svgString = svgHeader + foString + svgFooter;
-
-      // Crear blob y object URL para evitar serializar todo el DOM
-      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-      dataBlob = URL.createObjectURL(blob);
-
+      
+      dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+      
       resolve();
     }, { fast });
   });
@@ -115,13 +113,5 @@ export async function captureDOM(element, options = {}) {
   const sandbox = document.getElementById('snapdom-sandbox');
   if (sandbox && sandbox.style.position === 'absolute') sandbox.remove();
 
-  if (options.dataURL) {
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
-    
-  } else {
-   return dataBlob;
-    
-  }
-
- // return dataURL;
+  return dataURL;
 }
