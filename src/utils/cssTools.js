@@ -91,19 +91,18 @@ export function getStyleKey(snapshot, tagName, compress = false) {
  */
 export function collectUsedTagNames(root) {
   const tagSet = new Set();
-
-  // Agregamos el tagName del root
+  if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+    return [];
+  }
   if (root.tagName) {
     tagSet.add(root.tagName.toLowerCase());
   }
-
-  // Recorremos todos los hijos
-  root.querySelectorAll('*').forEach(el => {
-    tagSet.add(el.tagName.toLowerCase());
-  });
-
+  if (typeof root.querySelectorAll === 'function') {
+    root.querySelectorAll("*").forEach(el => tagSet.add(el.tagName.toLowerCase()));
+  }
   return Array.from(tagSet);
 }
+
 /**
  *
  *
