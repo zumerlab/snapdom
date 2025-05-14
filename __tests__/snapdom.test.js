@@ -8,16 +8,16 @@ describe('snapdom API', () => {
     testElement = document.createElement('div');
     testElement.style.width = '100px';
     testElement.style.height = '50px';
-    document.body.appendChild(testElement, {dataURL: true});
+    document.body.appendChild(testElement );
   });
 
   afterEach(() => {
-    document.body.removeChild(testElement, {dataURL: true});
+    document.body.removeChild(testElement );
   });
 
   describe('snapdom', () => {
     it('should return a SVG data URL', async () => {
-      const result = await snapdom(testElement, {dataURL: true});
+      const result = await snapdom(testElement );
       expect(result).toMatch(/^data:image\/svg\+xml/);
     });
   });
@@ -25,7 +25,7 @@ describe('snapdom API', () => {
   describe('snapdom', () => {
     it('toImg should return an HTMLImageElement', async () => {
     
-      const img = await snapdom.toImg(testElement, {dataURL: true});
+      const img = await snapdom.toImg(testElement );
       expect(img).toBeInstanceOf(HTMLImageElement);
       expect(img.src).toMatch(/^data:image\/svg\+xml/);
     
@@ -33,14 +33,14 @@ describe('snapdom API', () => {
 
     it('toCanvas should return a HTMLCanvasElement', async () => {
      // const decodeMock = vi.spyOn(window.Image.prototype, 'decode').mockResolvedValue();
-      const canvas = await snapdom.toCanvas(testElement, {dataURL: true});
+      const canvas = await snapdom.toCanvas(testElement );
       expect(canvas).toBeInstanceOf(HTMLCanvasElement);
     //  decodeMock.mockRestore();
     });
 
     it('toPng should return an HTMLImageElement with PNG data URL', async () => {
     //  const decodeMock = vi.spyOn(window.Image.prototype, 'decode').mockResolvedValue();
-      const img = await snapdom.toPng(testElement, {dataURL: true});
+      const img = await snapdom.toPng(testElement );
       expect(img).toBeInstanceOf(HTMLImageElement);
       expect(img.src).toMatch(/^data:image\/png/);
     //  decodeMock.mockRestore();
@@ -48,7 +48,7 @@ describe('snapdom API', () => {
 
     it('toJpg should return an HTMLImageElement with JPEG data URL', async () => {
      // const decodeMock = vi.spyOn(window.Image.prototype, 'decode').mockResolvedValue();
-      const img = await snapdom.toJpg(testElement, {dataURL: true});
+      const img = await snapdom.toJpg(testElement );
       expect(img).toBeInstanceOf(HTMLImageElement);
       expect(img.src).toMatch(/^data:image\/jpeg/);
      // decodeMock.mockRestore();
@@ -56,14 +56,14 @@ describe('snapdom API', () => {
 
     it('toWebp should return an HTMLImageElement with WebP data URL', async () => {
     //  const decodeMock = vi.spyOn(window.Image.prototype, 'decode').mockResolvedValue();
-      const img = await snapdom.toWebp(testElement, {dataURL: true});
+      const img = await snapdom.toWebp(testElement );
       expect(img).toBeInstanceOf(HTMLImageElement);
       expect(img.src).toMatch(/^data:image\/webp/);
     //  decodeMock.mockRestore();
     });
 
     it('toBlob should return a Blob of type image/svg+xml', async () => {
-      const blob = await snapdom.toBlob(testElement, {dataURL: true});
+      const blob = await snapdom.toBlob(testElement );
       expect(blob).toBeInstanceOf(Blob);
       expect(blob.type).toBe('image/svg+xml');
     });

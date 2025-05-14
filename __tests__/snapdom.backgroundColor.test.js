@@ -13,7 +13,7 @@ describe('snapdom.toJpg backgroundColor option', () => {
   });
 
   it('applies white background by default', async () => {
-    const img = await snapdom.toJpg(container, {dataURL: true});
+    const img = await snapdom.toJpg(container );
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
