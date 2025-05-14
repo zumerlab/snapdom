@@ -9,21 +9,21 @@ describe('snapdom advanced tests', () => {
     testElement.style.width = '100px';
     testElement.style.height = '50px';
     testElement.innerHTML = '<h1>Hello World</h1>';
-    document.body.appendChild(testElement);
+    document.body.appendChild(testElement, {dataURL: true});
   });
 
   afterEach(() => {
-    document.body.removeChild(testElement);
+    document.body.removeChild(testElement, {dataURL: true});
   });
 
   it('should generate different SVGs for different scales', async () => {
-    const svg1 = await snapdom(testElement, { scale: 1});
-    const svg2 = await snapdom(testElement, { scale: 2});
+    const svg1 = await snapdom(testElement, { scale: 1, dataURL: true});
+    const svg2 = await snapdom(testElement, { scale: 2, dataURL: true});
     expect(svg1).not.toBe(svg2);
   });
 
   it('captured SVG should contain inner text content', async () => {
-    const svgDataUrl = await snapdom(testElement);
+    const svgDataUrl = await snapdom(testElement, {dataURL: true});
     const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
     expect(svgText).toContain('Hello World');
   });
@@ -33,7 +33,7 @@ describe('snapdom advanced tests', () => {
   });
 
   it('should generate SVG with correct attributes', async () => {
-    const svgDataUrl = await snapdom(testElement);
+    const svgDataUrl = await snapdom(testElement, {dataURL: true});
     const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgText, 'image/svg+xml');
@@ -46,7 +46,7 @@ describe('snapdom advanced tests', () => {
   });
 
   it('snapdom.toBlob should contain valid SVG content', async () => {
-    const blob = await snapdom.toBlob(testElement);
+    const blob = await snapdom.toBlob(testElement, {dataURL: true});
     const text = await blob.text();
     expect(text).toContain('<svg');
     expect(text).toContain('</svg>');
@@ -58,7 +58,7 @@ describe('snapdom advanced tests', () => {
     iframe.style.height = '100px';
     testElement.appendChild(iframe);
   
-    const svgDataUrl = await snapdom(testElement);
+    const svgDataUrl = await snapdom(testElement, {dataURL: true});
     const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
   
     // Parseamos el SVG generado

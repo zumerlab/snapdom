@@ -41,7 +41,7 @@ describe('Output file size snapdom vs html2canvas (cdn with averaging)', () => {
   it('snapdom output file size should be smaller than html2canvas', async () => {
    
     // SnapDOM capture
-    const snapdomDataURL = await snapdom(container);
+    const snapdomDataURL = await snapdom(container, {compress: true});
     const snapdomSizeKB = (snapdomDataURL.length * 3 / 4) / 1024; // Base64 to bytes approx
   
     // html2canvas capture

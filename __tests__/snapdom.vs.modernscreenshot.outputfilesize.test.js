@@ -8,7 +8,6 @@ describe('Output file size snapdom vs modern-screeenshot (cdn with averaging)', 
 
   let report;
 
-
   beforeEach(async () => {
     container = document.createElement('div');
     container.style.width = '400px';
@@ -28,9 +27,8 @@ describe('Output file size snapdom vs modern-screeenshot (cdn with averaging)', 
 
   it('snapdom output file size should be smaller than modern-screenshot', async () => {
    
-  
     // SnapDOM capture
-    const snapdomDataURL = await snapdom(container);
+    const snapdomDataURL = await snapdom(container, {compress: true});
     const snapdomSizeKB = (snapdomDataURL.length * 3 / 4) / 1024; // Base64 to bytes approx
   
     // domToDataUrl capture

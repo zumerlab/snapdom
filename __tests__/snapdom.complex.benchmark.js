@@ -84,13 +84,16 @@ for (const size of sizes) {
       
         container.appendChild(grid);
         document.body.appendChild(container);
+        
       }
       
-    afterEach(() => {
+    afterEach (async () => {
       if (container) {
         container.remove();
         container = null;
       }
+     
+       document.body.innerHTML = ''
     });
 
     bench('snapDOM capture', async () => {

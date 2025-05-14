@@ -34,7 +34,7 @@ describe('snapdom capture attributes', () => {
     placeholder.textContent = 'Original text';
     container.appendChild(placeholder);
 
-    const svgDataUrl = await snapdom(container);
+    const svgDataUrl = await snapdom(container, {dataURL: true});
     const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
     
     expect(svgText).toContain('Placeholder here');

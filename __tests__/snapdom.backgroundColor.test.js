@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { snapdom } from  '../src/index';
 
-
 describe('snapdom.toJpg backgroundColor option', () => {
   let container;
 
@@ -14,7 +13,7 @@ describe('snapdom.toJpg backgroundColor option', () => {
   });
 
   it('applies white background by default', async () => {
-    const img = await snapdom.toJpg(container);
+    const img = await snapdom.toJpg(container, {dataURL: true});
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
@@ -28,7 +27,7 @@ describe('snapdom.toJpg backgroundColor option', () => {
   });
 
   it('applies custom background color', async () => {
-    const img = await snapdom.toJpg(container, { backgroundColor: '#00ff00' });
+    const img = await snapdom.toJpg(container, { backgroundColor: '#00ff00', dataURL: true });
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
