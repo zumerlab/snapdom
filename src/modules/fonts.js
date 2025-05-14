@@ -1,92 +1,106 @@
-import { normalizeFontName, normalizeVariation } from '../utils/normalize.js';
+import { isIconFont } from "../utils/helpers"
+import { resourceCache } from "../core/cache"
 
 /**
- * Collects and generates CSS for fonts used in the document
- * @param {WeakMap} [styleCache=new WeakMap()] - Cache of computed styles
- * @returns {Promise<string>} Promise that resolves to CSS for fonts
+ * Convert icon fonts into canvas
+ *
+ * @export
+ * @param {*} unicodeChar
+ * @param {*} fontFamily
+ * @param {*} fontWeight
+ * @param {number} [fontSize=32]
+ * @param {string} [color="#000"]
+ * @return {*} 
  */
-export async function inlineFonts(styleCache = new WeakMap()) {
+export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = "#000") {
+  fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, "");
   await document.fonts.ready;
-  
-  // Collect @font-face rules
-  const fontFaceRules = [];
-  Array.from(document.styleSheets).forEach(sheet => {
+  await document.fonts.load(`${fontSize}px "${fontFamily}"`);
+  const canvas = document.createElement("canvas");
+  canvas.width = fontSize;
+  canvas.height = fontSize;
+  const ctx = canvas.getContext("2d");
+  ctx.font = fontWeight ? `${fontWeight} ${fontSize}px "${fontFamily}"` : ` ${fontSize}px "${fontFamily}"`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = color;
+  ctx.fillText(unicodeChar, canvas.width / 2, canvas.height / 2);
+  return canvas.toDataURL();
+}
+/**
+ * Embed custom fonts
+ *
+ * @export
+ * @param {*} { ignoreIconFonts = true, preCached = false }
+ * @return {*} 
+ */
+export async function embedCustomFonts({ ignoreIconFonts = true, preCached = false }) {
+  const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(link => link.href);
+  let finalCSS = '';
+
+  for (const link of links) {
     try {
-      Array.from(sheet.cssRules).forEach(rule => {
-        if (rule instanceof CSSFontFaceRule) {
-          fontFaceRules.push(rule.cssText);
+      const res = await fetch(link.href);
+      const cssText = await res.text();
+
+      if (ignoreIconFonts && (isIconFont(link.href) || isIconFont(cssText))) {
+        console.log('⏭️ Ignorando icon font CSS:', link.href);
+        continue;
+      }
+
+      const urlRegex = /url\(([^)]+)\)/g;
+      const inlinedCSS = await Promise.all(
+        Array.from(cssText.matchAll(urlRegex)).map(async match => {
+          let url = match[1].replace(/["']/g, '');
+          if (!url.startsWith('http')) {
+            url = new URL(url, link.href).href;
+          }
+
+          if (ignoreIconFonts && isIconFont(url)) {
+            console.log('⏭️ Ignorando icon font URL:', url);
+            return null;
+          }
+
+          if (resourceCache.has(url)) {
+            return { original: match[0], inlined: `url(${resourceCache.get(url)})` };
+          }
+
+          try {
+            const fontRes = await fetch(url);
+            const blob = await fontRes.blob();
+            const b64 = await new Promise(resolve => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+            resourceCache.set(url, b64);
+            return { original: match[0], inlined: `url(${b64})` };
+          } catch (err) {
+            console.warn('❌ No pude fetch font', url);
+            return null;
+          }
+        })
+      );
+
+      let cssFinal = cssText;
+      for (const r of inlinedCSS) {
+        if (r) {
+          cssFinal = cssFinal.replace(r.original, r.inlined);
         }
-      });
+      }
+
+      finalCSS += cssFinal + '\n';
     } catch (e) {
-      console.warn('Could not access stylesheet rules:', e);
-    }
-  });
-
-  // Detect font families and variations used
-  const fontData = new Map();
-  const elements = document.querySelectorAll('*');
-  
-  elements.forEach(el => {
-    const style = styleCache.get(el) || window.getComputedStyle(el);
-    if (!styleCache.has(el)) styleCache.set(el, style);
-    
-    const family = style.fontFamily?.split(',')[0]?.trim().replace(/["']/g, '');
-    if (!family) return;
-    
-    const weight = normalizeVariation(style.fontWeight || '400');
-    const styleAttr = normalizeVariation(style.fontStyle || 'normal');
-    const stretch = normalizeVariation(style.fontStretch || 'normal');
-    
-    if (!fontData.has(family)) {
-      fontData.set(family, new Set());
-    }
-    
-    fontData.get(family).add(`${weight}_${styleAttr}_${stretch}`);
-  });
-
-  // Generate CSS classes
-  const cssClasses = [...fontFaceRules];
-  
-  for (const [family, variations] of fontData) {
-    const safeFamily = normalizeFontName(family);
-    
-    for (const variation of variations) {
-      const [weight, styleAttr, stretch] = variation.split('_');
-      const variationClass = `fg-f-${safeFamily}-w${weight}-${styleAttr}-s${stretch}`;
-      
-      const cssProps = [
-        `font-family:"${family}",sans-serif`,
-        `font-weight:${weight}`,
-        `font-style:${styleAttr}`,
-        `font-stretch:${stretch}%`
-      ].filter(Boolean).join(';');
-      
-      cssClasses.push(`.${variationClass}{${cssProps}}`);
+      console.warn('❌ No pude fetch CSS', link.href);
     }
   }
 
-  //Inheritance rule
-  cssClasses.push('*{font-family:inherit;font-weight:inherit;font-style:inherit;}');
-  
-  return cssClasses.join('');
-}
+  if (finalCSS && preCached) {
+    const style = document.createElement('style');
+    style.setAttribute('data-snapdom', 'embedFonts');
+    style.textContent = finalCSS;
+    document.head.appendChild(style);
+  }
 
-/**
- * Applies font classes to cloned elements
- * @param {Element} clone - Cloned element
- * @param {Element} original - Original element
- * @param {WeakMap} styleCache - Cache of computed styles
- */
-export function applyFontClasses(clone, original, styleCache) {
-  const style = styleCache.get(original) || window.getComputedStyle(original);
-  const family = style.fontFamily?.split(',')[0]?.trim().replace(/["']/g, '');
-  
-  if (!family) return;
-  
-  const weight = normalizeVariation(style.fontWeight || '400');
-  const styleAttr = normalizeVariation(style.fontStyle || 'normal');
-  const stretch = normalizeVariation(style.fontStretch || 'normal');
-  const safeFamily = normalizeFontName(family);
-  
-  clone.classList.add(`fg-f-${safeFamily}-w${weight}-${styleAttr}-s${stretch}`);
+  return finalCSS;
 }
