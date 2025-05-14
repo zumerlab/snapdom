@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <meta name="viewport"
+        content="width=device-width, initial-scale=1.0,
+                 maximum-scale=1.0, user-scalable=no" />
   <title>Snapdom Demo Gallery</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous"> <!-- Add Font Awesome -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap" rel="stylesheet">
 
   <script type="module">
     import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs';
@@ -17,7 +22,12 @@
   background: linear-gradient(to bottom right, #eef2f3, #c9d6ff);
   color: #222;
 }
-
+html, body {
+      touch-action: manipulation;
+    }
+    button, a {
+      touch-action: manipulation;
+    }
 header {
   position: sticky;
   top: 0;
@@ -214,6 +224,18 @@ header {
     .github-link:hover {
       color: #333;
     }
+
+    #fonts-demo .card {
+      font-family: 'Unbounded', cursive;
+      font-size: 1.2em;
+      line-height: 1.5;
+      text-align: center;
+    }
+    #fonts-demo h3 {
+      font-family: 'Mansalva', cursive;
+      font-size: 2em;
+      margin-bottom: 0.5em;
+    }
   </style>
 </head>
 
@@ -223,10 +245,14 @@ header {
   <h1>SnapDOM Demo Gallery</h1>
   <nav>
     <a href="#basic">Basic</a>
+     <a href="#transition">Transition Animation</a>
+      <a href="fonts-demo">Fonts</a>
     <a href="#shadow">Shadow DOM</a>
-    <a href="#canvas">Canvas</a>
     
-    <a href="#transition">Transition Animation</a>
+     
+    <a href="#canvas">Canvas</a>
+    <a href="#export">Export</a>
+   
     <a href="#pseudo">Pseudo</a>
   </nav>
   <a href="https://github.com/zumerlab/snapdom" target="_blank" class="github-link">
@@ -245,7 +271,25 @@ header {
     <button onclick="captureDemo('basic-box', 'basic-output', this)">Capture</button>
     <div class="output" id="basic-output"></div>
   </section>
-
+<section id="transition">
+  <h2>🚀 Transition Animation</h2>
+  <div class="card transition-box" id="transition-box">
+    <p>I'm dancing!</p>
+  </div>
+  <button onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
+  <div class="output" id="transition-output"></div>
+</section>
+  <section id="fonts-demo">
+  <h2>🔤 Google Fonts</h2>
+  <div class="card" id="fonts-box">
+    <h3>Unique Typography!</h3>
+    <p>This demo uses fonts loaded from Google Fonts and exports with <code>embedFonts: true</code>.</p>
+  </div>
+  <button onclick="captureFontsDemo('fonts-box', 'fonts-output', this)">
+    Capture
+  </button>
+  <div class="output" id="fonts-output"></div>
+</section>
   <section id="shadow">
     <h2>🧱 Shadow DOM</h2>
     <div class="card" id="shadow-host"></div>
@@ -257,6 +301,8 @@ header {
       shadow.innerHTML = `<div style="padding: 1em; background: lightblue; border-radius: 8px;">Inside <strong>Shadow DOM</strong></div>`;
     </script>
   </section>
+
+
 
   <section id="canvas">
     <h2>🎨 Canvas</h2>
@@ -272,15 +318,21 @@ header {
     </script>
   </section>
 
-
-<section id="transition">
-  <h2>🚀 Transition Animation</h2>
-  <div class="card transition-box" id="transition-box">
-    <p>I'm dancing!</p>
+  <section id="export">
+    <h2>📁 Export Formats</h2>
+    <div class="card" id="export-box">
+  <div class="export-text">
+    <strong>📤 This box will be exported as</strong><br />
+    <span class="export-format">PNG</span>, 
+    <span class="export-format">JPG</span> & 
+    <span class="export-format">WebP</span>.
   </div>
-  <button onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
-  <div class="output" id="transition-output"></div>
-</section>
+</div>
+
+    <button onclick="exportFormats('export-box')">Export</button>
+    <div class="output" id="export-output"></div>
+  </section>
+
 
   <section id="pseudo">
     <h2>✨ Pseudo Elements</h2>
@@ -321,6 +373,22 @@ header {
     button.disabled = false;
   }
 
+  async function captureFontsDemo(inputId, outputId, button) {
+      const el = document.getElementById(inputId);
+      const output = document.getElementById(outputId);
+      if (!el || !output) {
+        console.error(`Missing element or output: ${inputId}, ${outputId}`);
+        return;
+      }
+      button.disabled = true;
+      // Pasamos embedFonts: true para inlining de las Google Fonts
+      const img = await snapdom.toImg(el, { embedFonts: true });
+      output.innerHTML = '';
+      output.appendChild(img);
+      button.disabled = false;
+    }
+
+  
   async function exportFormats(id) {
     const el = document.getElementById(id);
     const output = document.getElementById('export-output');
