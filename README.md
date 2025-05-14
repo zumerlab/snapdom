@@ -25,6 +25,9 @@ It converts any HTML element into a scalable SVG image, preserving styles, fonts
 - ⚡ Ultra fast, no dependencies
 - 📦 100% based on standard Web APIs
 
+## Demo
+
+https://zumerlab.github.io/snapdom/
 
 ## Installation
 
