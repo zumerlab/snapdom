@@ -1,59 +1,127 @@
 import { prepareClone } from './prepare.js';
-import { inlineFonts } from '../modules/fonts.js';
-import { minifySVG } from '../utils/minifySVG.js';
+import { inlineImages } from '../modules/images.js';
+import { inlineBackgroundImages } from '../modules/background.js';
+import { idle } from '../utils/helpers.js';
+import { collectUsedTagNames, generateDedupedBaseCSS } from '../utils/cssTools.js';
+import { embedCustomFonts } from '../modules/fonts.js';
+import { baseCSSCache } from '../core/cache.js'
 
 /**
  * Captures an HTML element as an SVG data URL
  * @param {Element} element - DOM element to capture
  * @param {Object} [options={}] - Capture options
- * @param {number} [options.scale=1] - Scale factor for the output image
- * @returns {Promise<string>} Promise that resolves to SVG data URL
+ * @returns {Promise<string>} Promise that resolves to SVG Blob
  */
 
-export async function capture(element, options = {}) {
-  const { scale = 1} = options;
+export async function captureDOM(element, options = {}) {
+  if (!element) throw new Error('Element cannot be null or undefined');
+
+  const { compress = true, embedFonts = false, fast = true, scale = 1 } = options;
   let clone, classCSS, styleCache;
-  try {
-    ({ clone, classCSS, styleCache } = await prepareClone(element));
-  } catch (e) {
-    console.error("prepareClone failed:", e);
-    throw e;
+  let fontsCSS = '';
+  let baseCSS = '';
+  let dataBlob;
+  let svgString;
+
+  // 1. Clonación + pseudo
+  ({ clone, classCSS, styleCache } = await prepareClone(element, compress));
+
+  // 2. Inline images (una sola vez)
+  await new Promise(resolve => {
+    idle(async () => {
+      await inlineImages(clone);
+      resolve();
+    }, { fast });
+  });
+
+  // 3. Inline background images (una sola vez)
+  await new Promise(resolve => {
+    idle(async () => {
+      await inlineBackgroundImages(element, clone, styleCache);
+      resolve();
+    }, { fast });
+  });
+
+  // 4. Embed fonts si aplica
+  if (embedFonts) {
+    await new Promise(resolve => {
+      idle(async () => {
+        fontsCSS = await embedCustomFonts({ ignoreIconFonts: true });
+        resolve();
+      }, { fast });
+    });
   }
-  const rect = element.getBoundingClientRect();
-  const w = rect.width * scale;
-  const h = rect.height * scale;
-  let fonts = "";
-  try {
-    fonts = await inlineFonts(styleCache);
-  } catch (e) {
-    console.warn("inlineFonts failed:", e);
+
+  // 5. Generar baseCSS para compresión si aplica, con caché de tags
+  if (compress) {
+    const usedTags = collectUsedTagNames(clone).sort();
+    const tagKey = usedTags.join(',');
+    if (baseCSSCache.has(tagKey)) {
+      baseCSS = baseCSSCache.get(tagKey);
+    } else {
+      await new Promise(resolve => {
+        idle(() => {
+          baseCSS = generateDedupedBaseCSS(usedTags);
+          baseCSSCache.set(tagKey, baseCSS);
+          resolve();
+        }, { fast });
+      });
+    }
   }
-   // Create SVG container
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", w);
-  svg.setAttribute("height", h);
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  // Create foreignObject to contain HTML content
-  const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-  fo.setAttribute("width", "100%");
-  fo.setAttribute("height", "100%");
-  // Create container for HTML content
-  const div = document.createElement("div");
-  div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-  div.setAttribute("style", `width:${w}px;height:${h}px;`);
-  // Add style and content to the container
-  const styleTag = document.createElement("style");
-  styleTag.textContent = fonts + "svg{overflow:visible}" + classCSS;
-  div.appendChild(styleTag);
-  div.appendChild(clone);
-  fo.appendChild(div);
-  svg.appendChild(fo);
-  try {
-     // Serialize and encode SVG
-    const svgStr = new XMLSerializer().serializeToString(svg);
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(minifySVG(svgStr))}`;
-  } catch (e) {
-    console.error("SVG serialization failed:", e);
-    throw e;
+
+  // 6. Montaje del SVG final con serialización de sólo <foreignObject>
+  await new Promise(resolve => {
+    idle(() => {
+      const rect = element.getBoundingClientRect();
+      const w = rect.width * scale;
+      const h = rect.height * scale;
+
+      // Ajuste de escala si aplica
+      if (scale !== 1) {
+        clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+        clone.style.transform = `scale(${scale})`;
+        clone.style.transformOrigin = 'top left';
+        clone.style.width = `${rect.width}px`;
+        clone.style.height = `${rect.height}px`;
+      }
+
+      // Preparar svg y foreignObject
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const fo = document.createElementNS(svgNS, 'foreignObject');
+      fo.setAttribute('width', '100%');
+      fo.setAttribute('height', '100%');
+
+      const styleTag = document.createElement('style');
+      styleTag.textContent = baseCSS + fontsCSS + 'svg{overflow:visible;}' + classCSS;
+      fo.appendChild(styleTag);
+      fo.appendChild(clone);
+
+      // Serializar sólo el foreignObject
+      const serializer = new XMLSerializer();
+      const foString = serializer.serializeToString(fo);
+      const svgHeader = `<svg xmlns="${svgNS}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+      const svgFooter = '</svg>';
+      svgString = svgHeader + foString + svgFooter;
+
+      // Crear blob y object URL para evitar serializar todo el DOM
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      dataBlob = URL.createObjectURL(blob);
+
+      resolve();
+    }, { fast });
+  });
+
+  // 7. Limpieza del sandbox si existe
+  const sandbox = document.getElementById('snapdom-sandbox');
+  if (sandbox && sandbox.style.position === 'absolute') sandbox.remove();
+
+  if (options.dataURL) {
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+    
+  } else {
+   return dataBlob;
+    
   }
+
+ // return dataURL;
 }
