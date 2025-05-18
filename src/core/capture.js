@@ -1,7 +1,7 @@
 import { prepareClone } from './prepare.js';
 import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
-import { idle } from '../utils/helpers.js';
+import { idle, isSafari } from '../utils/helpers.js';
 import { collectUsedTagNames, generateDedupedBaseCSS } from '../utils/cssTools.js';
 import { embedCustomFonts } from '../modules/fonts.js';
 import { baseCSSCache } from '../core/cache.js'
@@ -88,7 +88,4 @@ export async function captureDOM(element, options = {}) {
   const sandbox = document.getElementById("snapdom-sandbox");
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();
   return dataURL;
-}
-function isSafari() {
-  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 }

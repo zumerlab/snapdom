@@ -155,3 +155,7 @@ export function snapshotComputedStyle(style) {
   }
   return snap;
 }
+
+export function isSafari() {
+  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+}

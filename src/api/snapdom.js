@@ -1,4 +1,5 @@
 import { captureDOM } from '../core/capture';
+import { isSafari } from '../utils/helpers.js';
 
 /**
  * Captures an HTML element as an SVG data URL
@@ -73,7 +74,7 @@ import { captureDOM } from '../core/capture';
   return temp;
 }
 
- async function toRasterImg(url, { dpr = 1, scale = 1, backgroundColor, quality }, format = "png") {
+ async function toRasterImg(url, { dpr = 1, scale = 1, backgroundColor =  "#fff", quality }, format = "png") {
   const canvas = await createBackground(url, { dpr, scale }, backgroundColor);
   const img = new Image();
   img.src = canvas.toDataURL(`image/${format}`, quality);
@@ -85,7 +86,7 @@ import { captureDOM } from '../core/capture';
   return img;
 }
 
- async function download(url,{ dpr = 1, scale = 1, backgroundColor, format = "png", filename = "capture"} = {}) {
+ async function download(url,{ dpr = 1, scale = 1, backgroundColor =  "#fff", format = "png", filename = "capture"} = {}) {
   if (format === "svg") {
     const blob = await toBlob(url);
     const objectURL = URL.createObjectURL(blob);
@@ -130,17 +131,19 @@ snapdom.capture = async (el, options = {}) => {
   return {
     url,
     options,
+    toRaw: () => url,
     toImg: () => toImg(url, { dpr, scale }),
     toCanvas: () => toCanvas(url, { dpr, scale }),
     toBlob: () => toBlob(url),
     toPng: () => toRasterImg(url, { dpr, scale }, "png"),
-    toJpg: (opts) => toRasterImg(url, { dpr, scale, ...opts }, "jpeg"),
-    toWebp: (opts) => toRasterImg(url, { dpr, scale, ...opts }, "webp"),
+    toJpg: (options) => toRasterImg(url, { dpr, scale, ...options }, "jpeg"),
+    toWebp: (options) => toRasterImg(url, { dpr, scale, ...options }, "webp"),
     download: ({ format = "png", filename = "capture", backgroundColor } = {}) => download(url, { dpr, scale, backgroundColor, format, filename})
   };
 };
 
 // Compatibilidad
+snapdom.toRaw = async (el, options) => (await snapdom.capture(el, options)).toRaw();
 snapdom.toImg = async (el, options) => (await snapdom.capture(el, options)).toImg();
 snapdom.toCanvas = async (el, options) => (await snapdom.capture(el, options)).toCanvas();
 snapdom.toBlob = async (el, options) => (await snapdom.capture(el, options)).toBlob();
