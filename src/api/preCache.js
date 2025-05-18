@@ -64,26 +64,4 @@ export async function preCache(root = document, options = {}) {
   }
 
   await Promise.all(promises);
-
-  // Warming de CSS base para compress
-  if (preWarm) {
-    const usedTags = collectUsedTagNames(root).sort();
-    const tagKey = usedTags.join(',');
-    if (!baseCSSCache.has(tagKey)) {
-      const css = generateDedupedBaseCSS(usedTags);
-      baseCSSCache.set(tagKey, css);
-    }
-
-     const clone = root.cloneNode(false);
-    // mapa vacío solo para calentar iconToImage, etc.
-    await inlinePseudoElements(root, clone, new Map(), new WeakMap(), /* compress */ false);
-  }
-
-  if (preWarm) {
-    try {
-      // ejecuta una clonación para que deepClone/prepareClone se JIT-compile
-      await prepareClone(root, /* compress: */ options.preWarm);
-    } catch (e) {
-    }
-  }
 }
