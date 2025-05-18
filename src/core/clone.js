@@ -38,6 +38,9 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress) {
     img.src = dataURL;
     img.width = node.width;
     img.height = node.height;
+    img.style.display = "inline-block";
+    img.style.width = `${node.width}px`;
+    img.style.height = `${node.height}px`;
     return img;
   }
   if (node.nodeType === Node.TEXT_NODE) {
