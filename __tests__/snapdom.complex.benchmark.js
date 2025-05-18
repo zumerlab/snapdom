@@ -98,7 +98,7 @@ for (const size of sizes) {
 
     bench('snapDOM capture', async () => {
       await setupContainer();
-      await snapdom(container);
+      await snapdom.toRaw(container, {compress: true, fast: true});
     });
 
     bench('html2canvas capture', async () => {

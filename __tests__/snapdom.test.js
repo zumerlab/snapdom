@@ -15,9 +15,9 @@ describe('snapdom API', () => {
     document.body.removeChild(testElement );
   });
 
-  describe('snapdom', () => {
+  describe('snapdom.toRaw', () => {
     it('should return a SVG data URL', async () => {
-      const result = await snapdom(testElement );
+      const result = await snapdom.toRaw(testElement );
       expect(result).toMatch(/^data:image\/svg\+xml/);
     });
   });

@@ -98,7 +98,7 @@ for (const size of sizes) {
       await waitForNextFrame();
 
       const start = performance.now();
-      await snapdom(container, { compress: true });
+      await snapdom.toRaw(container, { compress: true });
       const end = performance.now();
 
        let log = `[${size.label}] WITHOUT preCache: capture ${(end - start).toFixed(2)}ms`;
@@ -117,7 +117,7 @@ for (const size of sizes) {
       const endPre = performance.now();
       
       const startCap = performance.now();
-      await snapdom(container, { compress: true });
+      await snapdom.toRaw(container, { compress: true });
       const endCap = performance.now();
     
       const precacheTime = (endPre - startPre).toFixed(2);

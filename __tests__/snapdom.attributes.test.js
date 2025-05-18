@@ -21,7 +21,7 @@ describe('snapdom capture attributes', () => {
     excluded.textContent = 'Should be excluded';
     container.appendChild(excluded);
 
-    const svgDataUrl = await snapdom(container);
+    const svgDataUrl = await snapdom.toRaw(container);
     const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
     
     expect(svgText).not.toContain('Should be excluded');
@@ -34,7 +34,7 @@ describe('snapdom capture attributes', () => {
     placeholder.textContent = 'Original text';
     container.appendChild(placeholder);
 
-    const svgDataUrl = await snapdom(container);
+    const svgDataUrl = await snapdom.toRaw(container);
     const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
     
     expect(svgText).toContain('Placeholder here');

@@ -112,7 +112,7 @@ for (const size of sizes) {
 
     bench('snapDOM capture', async () => {
       await setupContainer();
-      await snapdom(container);
+      await snapdom.toRaw(container);
     });
 
     bench('html2canvas capture', async () => {

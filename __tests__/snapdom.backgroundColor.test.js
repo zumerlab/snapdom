@@ -27,7 +27,7 @@ describe('snapdom.toJpg backgroundColor option', () => {
   });
 
   it('applies custom background color', async () => {
-    const img = await snapdom.toJpg(container, { backgroundColor: '#00ff00', dataURL: true });
+    const img = await snapdom.toJpg(container, { backgroundColor: '#00ff00'  });
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
