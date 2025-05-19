@@ -141,6 +141,31 @@ All capture methods accept an `options` object:
 }
 ```
 
+
+### `preCache()` – Optional helper
+
+The `preCache()` function can be used to load external resources (like images and fonts) in advance. It is specially useful when the element to capure is big and complex.
+
+```js
+import { preCache } from '@zumer/snapdom';
+
+await preCache(document.body);
+```
+
+```js
+import { snapdom, preCache } from './snapdom.mjs';
+    window.addEventListener('load', async () => {
+    await preCache();
+    console.log('📦 Resources preloaded');
+    });
+```
+
+**Options for `preCache()`:**
+
+* `embedFonts` *(boolean, default: true)* — Inlines non-icon fonts during preload.
+* `reset` *(boolean, default: false)* — Clears all existing internal caches.
+
+
 ## Features
 
 * Captures **shadow DOM** and Web Components
