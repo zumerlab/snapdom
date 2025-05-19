@@ -1,11 +1,18 @@
+/**
+ * Prepares a deep clone of an element, inlining pseudo-elements and generating CSS classes.
+ * @module prepare
+ */
+
 import { generateCSSClasses} from '../utils/cssTools.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
 
 /**
- * Prepares a clone of an element
+ * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
+ *
  * @param {Element} element - Element to clone
- * @returns {Promise<Object>} Object containing the clone, CSS, and style cache
+ * @param {boolean} [compress=false] - Whether to compress style keys
+ * @returns {Promise<Object>} Object containing the clone, generated CSS, and style cache
  */
 
 export async function prepareClone(element, compress = false) {

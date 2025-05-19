@@ -1,3 +1,7 @@
+/**
+ * Caches for images, backgrounds, resources, and computed styles used during DOM capture.
+ * @module cache
+ */
 
 export const imageCache = new Map();
 export const bgCache = new Map();

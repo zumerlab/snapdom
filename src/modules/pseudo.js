@@ -1,3 +1,8 @@
+/**
+ * Utilities for inlining ::before and ::after pseudo-elements.
+ * @module pseudo
+ */
+
 import { fetchImage, getStyle} from '../utils/helpers.js';
 import { snapshotComputedStyle } from '../utils/helpers.js';
 import { parseContent } from '../utils/helpers.js';
@@ -5,9 +10,13 @@ import { getStyleKey } from '../utils/cssTools.js';
 import { iconToImage } from '../modules/fonts.js';
 
 /**
- * Creates elements to represent ::before and ::after pseudo-elements
+ * Creates elements to represent ::before and ::after pseudo-elements, inlining their styles and content.
+ *
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
+ * @param {Map} styleMap - Map to store element-to-style-key mappings
+ * @param {WeakMap} styleCache - Cache of computed styles
+ * @param {boolean} compress - Whether to compress style keys
  * @returns {Promise<void>} Promise that resolves when all pseudo-elements are processed
  */
 export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress) {

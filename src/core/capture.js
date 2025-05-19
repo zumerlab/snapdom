@@ -1,3 +1,8 @@
+/**
+ * Core logic for capturing DOM elements as SVG data URLs.
+ * @module capture
+ */
+
 import { prepareClone } from './prepare.js';
 import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
@@ -7,10 +12,15 @@ import { embedCustomFonts } from '../modules/fonts.js';
 import { baseCSSCache } from '../core/cache.js'
 
 /**
- * Captures an HTML element as an SVG data URL
+ * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
+ *
  * @param {Element} element - DOM element to capture
  * @param {Object} [options={}] - Capture options
- * @returns {Promise<string>} Promise that resolves to SVG Blob
+ * @param {boolean} [options.compress=true] - Whether to compress style keys
+ * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
+ * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
+ * @param {number} [options.scale=1] - Output scale multiplier
+ * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 
 export async function captureDOM(element, options = {}) {

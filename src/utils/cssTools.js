@@ -1,3 +1,8 @@
+/**
+ * Utilities for working with CSS styles, defaults, and class generation.
+ * @module cssTools
+ */
+
 import { defaultStylesCache } from "../core/cache"
 
 const commonTags = [
@@ -13,7 +18,9 @@ export function precacheCommonTags() {
   }
 }
 /**
- * Retrieves default CSS property values from a temporary element
+ * Retrieves default CSS property values from a temporary element.
+ *
+ * @param {string} tagName - The tag name to get default styles for
  * @returns {Object} Object containing default values for all CSS properties
  */
 export function getDefaultStyleForTag(tagName) {
@@ -57,9 +64,11 @@ export function getDefaultStyleForTag(tagName) {
 }
 
 /**
- * Creates a unique key from an element's computed style that differs from defaults
- * @param {CSSStyleDeclaration} style - Computed style of an element
- * @param {Object} defaults - Default CSS property values
+ * Creates a unique key from an element's computed style that differs from defaults.
+ *
+ * @param {Object} snapshot - Computed style snapshot
+ * @param {string} tagName - The tag name of the element
+ * @param {boolean} [compress=false] - Whether to compress style keys
  * @returns {string} Semi-colon separated list of non-default properties
  */
 
@@ -83,11 +92,10 @@ export function getStyleKey(snapshot, tagName, compress = false) {
 }
 
 /**
+ * Collects all unique tag names used in the DOM tree rooted at the given node.
  *
- *
- * @export
- * @param {*} root
- * @return {*} 
+ * @param {Node} root - The root node to search
+ * @returns {string[]} Array of unique tag names
  */
 export function collectUsedTagNames(root) {
   const tagSet = new Set();
@@ -104,11 +112,10 @@ export function collectUsedTagNames(root) {
 }
 
 /**
+ * Generates deduplicated base CSS for the given tag names.
  *
- *
- * @export
- * @param {*} usedTagNames
- * @return {*} 
+ * @param {string[]} usedTagNames - Array of tag names
+ * @returns {string} CSS string
  */
 export function generateDedupedBaseCSS(usedTagNames) {
   const groups = new Map();
@@ -139,11 +146,10 @@ export function generateDedupedBaseCSS(usedTagNames) {
   return css;
 }
 /**
+ * Generates CSS classes from a style map.
  *
- *
- * @export
- * @param {*} styleMap
- * @return {*} 
+ * @param {Map} styleMap - Map of elements to style keys
+ * @returns {Map} Map of style keys to class names
  */
 export function generateCSSClasses(styleMap) {
   const keySet = new Set(styleMap.values());

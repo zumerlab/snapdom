@@ -1,8 +1,14 @@
+/**
+ * Utilities for inlining background images as data URLs.
+ * @module background
+ */
+
 import { fetchImage, getStyle } from '../utils/helpers.js';
 import { bgCache } from '../core/cache.js'
 
 /**
- * Converts background images to data URLs
+ * Converts all background images in the cloned element tree to data URLs.
+ *
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
  * @param {WeakMap} styleCache - Cache of computed styles

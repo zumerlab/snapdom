@@ -1,7 +1,13 @@
+/**
+ * Utilities for inlining <img> elements as data URLs or placeholders.
+ * @module images
+ */
+
 import { fetchImage } from '../utils/helpers.js';
 
 /**
- * Converts images to data URLs or replaces them with placeholders
+ * Converts all <img> elements in the clone to data URLs or replaces them with placeholders if loading fails.
+ *
  * @param {Element} clone - Clone of the original element
  * @returns {Promise<void>} Promise that resolves when all images are processed
  */

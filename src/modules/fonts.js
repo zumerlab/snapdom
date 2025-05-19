@@ -1,16 +1,21 @@
+/**
+ * Utilities for handling and embedding web fonts and icon fonts.
+ * @module fonts
+ */
+
 import { isIconFont } from "../utils/helpers"
 import { resourceCache } from "../core/cache"
 
 /**
- * Convert icon fonts into canvas
+ * Converts a unicode character from an icon font into a data URL image.
  *
  * @export
- * @param {*} unicodeChar
- * @param {*} fontFamily
- * @param {*} fontWeight
- * @param {number} [fontSize=32]
- * @param {string} [color="#000"]
- * @return {*} 
+ * @param {string} unicodeChar - The unicode character to render
+ * @param {string} fontFamily - The font family name
+ * @param {string|number} fontWeight - The font weight
+ * @param {number} [fontSize=32] - The font size in pixels
+ * @param {string} [color="#000"] - The color to use
+ * @returns {Promise<string>} Data URL of the rendered icon
  */
 export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = "#000") {
   fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, "");
@@ -28,11 +33,13 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   return canvas.toDataURL();
 }
 /**
- * Embed custom fonts
+ * Embeds custom fonts found in the document as data URLs in CSS.
  *
  * @export
- * @param {*} { ignoreIconFonts = true, preCached = false }
- * @return {*} 
+ * @param {Object} options
+ * @param {boolean} [options.ignoreIconFonts=true] - Whether to skip icon fonts
+ * @param {boolean} [options.preCached=false] - Whether to use pre-cached resources
+ * @returns {Promise<string>} The inlined CSS for custom fonts
  */
 export async function embedCustomFonts({ ignoreIconFonts = true, preCached = false }) {
   const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(link => link.href);

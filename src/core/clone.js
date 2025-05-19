@@ -1,13 +1,19 @@
+/**
+ * Deep cloning utilities for DOM elements, including styles and shadow DOM.
+ * @module clone
+ */
+
 import { inlineAllStyles } from '../modules/styles.js';
 
 /**
- * Creates a deep clone of an element with all its styles and shadow DOM content
+ * Creates a deep clone of a DOM node, including styles, shadow DOM, and special handling for excluded/placeholder/canvas nodes.
+ *
  * @param {Node} node - Node to clone
  * @param {Map} styleMap - Map to store element-to-style-key mappings
- * @param {Object} defaults - Default CSS property values
  * @param {WeakMap} styleCache - Cache of computed styles
  * @param {WeakMap} nodeMap - Map to track original-to-clone node relationships
- * @returns {Node} Cloned node with styles and shadow DOM content
+ * @param {boolean} compress - Whether to compress style keys
+ * @returns {Node|null} Cloned node with styles and shadow DOM content, or null for empty text nodes
  */
 export function deepClone(node, styleMap, styleCache, nodeMap, compress) {
   if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute("data-capture") === "exclude") {

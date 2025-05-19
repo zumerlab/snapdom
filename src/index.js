@@ -1,5 +1,7 @@
 /**
- * @file snapdom.js
+ * Entry point for snapDOM library exports.
+ *
+ * @file index.js
  */
 
 export { snapdom } from './api/snapdom.js';

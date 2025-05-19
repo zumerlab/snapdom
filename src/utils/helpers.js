@@ -1,3 +1,8 @@
+/**
+ * General helper utilities for DOM, style, and resource handling.
+ * @module helpers
+ */
+
 import { imageCache, computedStyleCache } from "../core/cache";
 
 /**
@@ -15,12 +20,11 @@ export function idle(fn, { fast = false } = {}) {
   }
 }
 /**
+ * Gets the computed style for an element or pseudo-element, with caching.
  *
- *
- * @export
- * @param {*} el
- * @param {*} [pseudo=null]
- * @return {*} 
+ * @param {Element} el - The element
+ * @param {string|null} [pseudo=null] - The pseudo-element
+ * @returns {CSSStyleDeclaration} The computed style
  */
 export function getStyle(el, pseudo = null) {
   if (!(el instanceof Element)) {
@@ -41,11 +45,10 @@ export function getStyle(el, pseudo = null) {
   return map.get(pseudo);
 }
 /**
+ * Parses the CSS content property value, handling unicode escapes.
  *
- *
- * @export
- * @param {*} content
- * @return {*} 
+ * @param {string} content - The CSS content value
+ * @returns {string} The parsed content
  */
 export function parseContent(content) {
   let clean = content.replace(/^['"]|['"]$/g, "");
@@ -59,22 +62,20 @@ export function parseContent(content) {
   return clean;
 }
 /**
+ * Extracts a URL from a CSS value like background-image.
  *
- *
- * @export
- * @param {*} cssValue
- * @return {*} 
+ * @param {string} cssValue - The CSS value
+ * @returns {string|null} The extracted URL or null
  */
 export function extractUrl(cssValue) {
   const m = cssValue.match(/url\(["']?([^"')]+)["']?\)/);
   return m ? m[1] : null;
 }
 /**
+ * Determines if a font family or URL is an icon font.
  *
- *
- * @export
- * @param {*} familyOrUrl
- * @return {*} 
+ * @param {string} familyOrUrl - The font family or URL
+ * @returns {boolean} True if it is an icon font
  */
 export function isIconFont(familyOrUrl) {
   const iconFontPatterns = [
