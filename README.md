@@ -181,6 +181,41 @@ import { snapdom, preCache } from './snapdom.mjs';
 * Iframes are not supported
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 
+## Benchmarks
+
+`snapDOM` is not only highly accurate — it’s **extremely fast**.
+
+
+Latest benchmarks show significant performance improvements against other libraries:
+
+| Scenario                         | vs. `modern-screenshot` | vs. `html2canvas` |
+| -------------------------------- | :---------------------: | :---------------: |
+| Small element (200×100)          |       6.46× faster      |   32.27× faster   |
+| Modal size (400×300)             |       7.28× faster      |   32.66× faster   |
+| Page view (1200×800)             |      13.17× faster      |   35.29× faster   |
+| Large scroll area (2000×1500)    |      38.23× faster      |   68.85× faster   |
+| Very large element (4000×2000)   |      93.31× faster      |   133.12× faster  |
+| Complex small element (200×100)  |       3.97× faster      |   15.23× faster   |
+| Complex modal (400×300)          |       2.32× faster      |    5.33× faster   |
+| Complex page (1200×800)          |       1.62× faster      |    1.65× faster   |
+| Complex large scroll (2000×1500) |       1.66× faster      |    1.24× faster   |
+| Complex very large (4000×2000)   |       1.52× faster      |    1.28× faster   |
+
+
+### Run the benchmarks
+
+To run these benchmarks yourself:
+
+```sh
+git clone https://github.com/zumerlab/snapdom.git
+cd snapdom
+npm install
+npm run test:benchmark
+```
+
+They execute in **headless Chromium** using real DOM nodes.
+
+
 ## License
 
 MIT © Zumerlab
