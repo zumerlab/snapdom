@@ -1,481 +1,491 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SnapDOM Demo Gallery</title>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css"
-      crossorigin="anonymous"/>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      crossorigin="anonymous"/>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap"
-      rel="stylesheet"
-    />
 
-    <style>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapDOM Demo Gallery</title>
+  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    crossorigin="anonymous" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      padding: 2rem;
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      color: #1a2233;
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 8px #e0e7ef;
+    }
+
+    button#capture {
+      background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%);
+      color: white;
+      border: none;
+      border-radius: 24px;
+      padding: 0.6rem 1.6rem;
+      font-size: 1.1rem;
+      font-weight: bold;
+      box-shadow: 0 2px 8px #e52e7133;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+      margin: 0 0.5em 1.5em 0;
+    }
+
+    button#capture:hover {
+      background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%);
+      transform: scale(1.04);
+    }
+
+    nav {
+      margin-bottom: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      justify-content: center;
+    }
+
+    nav a {
+      color: #1a2233;
+      text-decoration: none;
+      font-weight: bold;
+      border-bottom: 2px solid transparent;
+      transition: border 0.3s;
+      font-size: 1.1em;
+    }
+
+    nav a:hover {
+      border-bottom: 2px solid #4facfe;
+    }
+
+    section a {
+      color: #576c99;
+      text-decoration: none;
+      font-weight: bold;
+      border-bottom: 2px solid transparent;
+      transition: border 0.3s;
+      font-size: 1.1em;
+    }
+
+    section a:hover {
+      border-bottom: 2px solid #4facfe;
+    }
+
+    main {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    section {
+      margin-bottom: 3rem;
+      padding: 1.5rem;
+      border-radius: 12px;
+      background: rgb(39 71 208 / 11%);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .card {
+      background: linear-gradient(145deg, #ffffff, #e3f0ff);
+      padding: 1.5em;
+      border-left: 5px solid #ff7043;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2em;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card.black {
+      background: black;
+      padding: 1.5em;
+      border-left: 5px solid #ff7043;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2em;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
+    }
+
+    .transition-box {
+      background: linear-gradient(to right, #43cea2, #185a9d);
+      color: rgb(30, 27, 27);
+      text-align: center;
+      font-size: 1.2em;
+      padding: 2em;
+      border-radius: 16px;
+      animation: bounceColor 5s infinite ease-in-out;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    @keyframes bounceColor {
+      0% {
+        transform: rotate(0deg) scale(1) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+        filter: brightness(1);
+      }
+
+      20% {
+        transform: rotate(-1deg) scale(1.08) translateY(4px);
+        background: radial-gradient(circle at 40% 60%, #fa709a, #fee140);
+        filter: brightness(1.12) hue-rotate(20deg);
+      }
+
+      50% {
+        transform: rotate(2deg) scale(0.9) translateY(-6px);
+        background: radial-gradient(circle at 70% 30%, #30cfd0, #330867);
+        filter: brightness(1.1) hue-rotate(-20deg);
+      }
+
+      70% {
+        transform: rotate(-3deg) scale(1) translateY(6px);
+        background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751);
+        filter: brightness(1.15) saturate(1.2);
+      }
+
+      100% {
+        transform: rotate(0deg) scale(0.95) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+        filter: brightness(1);
+      }
+    }
+
+    .export-text {
+      font-size: 1.1rem;
+      color: #2d3a4b;
+      text-align: center;
+    }
+
+    .export-format {
+      font-weight: bold;
+      padding: 0.2rem 0.4rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      margin: 0 0.2rem;
+    }
+
+    .pseudo-box::before {
+      content: '★ ';
+      color: gold;
+      font-size: 1.2em;
+    }
+
+    .pseudo-box::after {
+      content: ' ✨';
+      color: violet;
+      font-size: 1.2em;
+    }
+
+    .clip-card {
+      clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
+      background: linear-gradient(120deg, #b6eaff 0%, #6dd5ed 100%);
+      color: #1a2233;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .blend-card {
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center;
+      background-size: cover;
+      background-blend-mode: multiply;
+      background-color: red;
+
+      color: white;
+      padding: 3em;
+      font-weight: bold;
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .dancers {
+      display: inline-block;
+      font-size: 2.2rem;
+      animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      will-change: transform, filter;
+    }
+
+    @keyframes dance-move {
+      0% {
+        transform: rotate(-10deg) scale(1) translateY(0);
+        filter: brightness(1) drop-shadow(0 0 0 #fff0);
+      }
+
+      10% {
+        transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg);
+        filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988);
+      }
+
+      20% {
+        transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg);
+        filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66);
+      }
+
+      30% {
+        transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg);
+        filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66);
+      }
+
+      40% {
+        transform: rotate(-8deg) scale(1.02, 1.02) translateY(2px) skewY(6deg);
+        filter: brightness(1.08) drop-shadow(0 2px 4px #38f9d766);
+      }
+
+      50% {
+        transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg);
+        filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066);
+      }
+
+      60% {
+        transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px) skewY(10deg);
+        filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066);
+      }
+
+      70% {
+        transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg);
+        filter: brightness(1.12) drop-shadow(0 2px 4px #33086766);
+      }
+
+      80% {
+        transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg);
+        filter: brightness(1.05) drop-shadow(0 0 0 #fff0);
+      }
+
+      100% {
+        transform: rotate(-10deg) scale(1) translateY(0);
+        filter: brightness(1) drop-shadow(0 0 0 #fff0);
+      }
+    }
+
+    .output {
+      margin-top: 1.3rem;
+    }
+
+    #orbit-box {
+      font-family: sans-serif;
+      font-optical-sizing: auto;
+      background-color: rgb(16, 16, 16) !important;
+      color: rgba(255, 255, 255, 0.451);
+    }
+
+    .dashed {
+      border-style: dashed;
+    }
+
+    .bold {
+      border-width: 2.5px;
+    }
+
+    .text {
+      width: 400px;
+      font-size: 5px;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .text1 {
+      width: 100px;
+      font-size: 5px;
+      flex-direction: column;
+      text-align: center;
+      color: black;
+    }
+
+    .plantet {
+      background-color: rgba(255, 255, 255, 0.579);
+    }
+
+    .orbit,
+    [class*='orbit-'] {
+      border: 0.1px solid rgba(255, 255, 255, 0.422) !important;
+    }
+
+    .invisible {
+      border: none !important;
+    }
+
+    .vector {
+      background-color: rgba(255, 255, 255, 0.259);
+      height: 0.1px;
+    }
+
+    .visible {
+      background-color: white;
+      border: none;
+    }
+
+    .rotate-orbit {
+      animation-name: rotation;
+      animation-iteration-count: 10;
+      animation-timing-function: linear;
+    }
+
+    .rotate-time-1 {
+      animation-duration: 40s;
+    }
+
+    .rotate-time-2 {
+      animation-duration: 30s;
+    }
+
+    .rotate-time-3 {
+      animation-duration: 20s;
+    }
+
+    .rotate-time-4 {
+      animation-duration: 10s;
+    }
+
+    .rotate-time-5 {
+      animation-duration: 5s;
+    }
+
+    .invert {
+      animation-direction: reverse;
+    }
+
+    @keyframes rotation {
+      0% {
+        rotate: 360deg;
+      }
+
+      100% {
+        rotate: 0deg;
+      }
+    }
+
+    @media (max-width: 600px) {
       body {
-        font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
-        padding: 2rem;
-        background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        padding: 0.5rem;
       }
 
       h1 {
-        color: #1a2233;
-        font-size: 2.5rem;
-        margin-bottom: 1.5rem;
-        letter-spacing: 1px;
-        text-shadow: 0 2px 8px #e0e7ef;
-      }
-
-      button#capture {
-        background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%);
-        color: white;
-        border: none;
-        border-radius: 24px;
-        padding: 0.6rem 1.6rem;
-        font-size: 1.1rem;
-        font-weight: bold;
-        box-shadow: 0 2px 8px #e52e7133;
-        cursor: pointer;
-        transition: background 0.2s, transform 0.2s;
-        margin: 0 0.5em 1.5em 0;
-      }
-
-      button#capture:hover {
-        background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%);
-        transform: scale(1.04);
-      }
-
-      nav {
-        margin-bottom: 2rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1em;
-        justify-content: center;
-      }
-
-      nav a {
-        color: #1a2233;
-        text-decoration: none;
-        font-weight: bold;
-        border-bottom: 2px solid transparent;
-        transition: border 0.3s;
-        font-size: 1.1em;
-      }
-
-      nav a:hover {
-        border-bottom: 2px solid #4facfe;
-      }
-
-      section a {
-        color: #576c99;
-        text-decoration: none;
-        font-weight: bold;
-        border-bottom: 2px solid transparent;
-        transition: border 0.3s;
-        font-size: 1.1em;
-      }
-
-      section a:hover {
-        border-bottom: 2px solid #4facfe;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
       }
 
       main {
-        width: 100%;
-        max-width: 700px;
+        max-width: 100vw;
+        width: 100vw;
+        padding: 0;
       }
 
       section {
-        margin-bottom: 3rem;
-        padding: 1.5rem;
-        border-radius: 12px;
-        background: rgb(39 71 208 / 11%);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        padding: 0.7rem;
+        margin-bottom: 1.2rem;
       }
 
-      .card {
-        background: linear-gradient(145deg, #ffffff, #e3f0ff);
-        padding: 1.5em;
-        border-left: 5px solid #ff7043;
-        border-radius: 16px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-        margin-bottom: 2em;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      }
+      .card,
       .card.black {
-        background: black;
-        padding: 1.5em;
-        border-left: 5px solid #ff7043;
-        border-radius: 16px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-        margin-bottom: 2em;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        padding: 0.7em;
+        font-size: 0.98em;
+        border-radius: 10px;
       }
 
-      .card:hover {
-        transform: scale(1.02);
-        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
+      nav {
+        flex-direction: column;
+        gap: 0.5em;
+        font-size: 1em;
+        margin-bottom: 1em;
       }
 
-      .transition-box {
-        background: linear-gradient(to right, #43cea2, #185a9d);
-        color: rgb(30, 27, 27);
-        text-align: center;
-        font-size: 1.2em;
-        padding: 2em;
-        border-radius: 16px;
-        animation: bounceColor 5s infinite ease-in-out;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-      }
-
-      @keyframes bounceColor {
-        0% {
-          transform: rotate(0deg) scale(1) translateY(0);
-          background: radial-gradient(circle at center, #4facfe, #00f2fe);
-          filter: brightness(1);
-        }
-
-        20% {
-          transform: rotate(-1deg) scale(1.08) translateY(4px);
-          background: radial-gradient(circle at 40% 60%, #fa709a, #fee140);
-          filter: brightness(1.12) hue-rotate(20deg);
-        }
-
-        50% {
-          transform: rotate(2deg) scale(0.9) translateY(-6px);
-          background: radial-gradient(circle at 70% 30%, #30cfd0, #330867);
-          filter: brightness(1.1) hue-rotate(-20deg);
-        }
-
-        70% {
-          transform: rotate(-3deg) scale(1) translateY(6px);
-          background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751);
-          filter: brightness(1.15) saturate(1.2);
-        }
-
-        100% {
-          transform: rotate(0deg) scale(0.95) translateY(0);
-          background: radial-gradient(circle at center, #4facfe, #00f2fe);
-          filter: brightness(1);
-        }
-      }
-
-      .export-text {
-        font-size: 1.1rem;
-        color: #2d3a4b;
-        text-align: center;
-      }
-
-      .export-format {
-        font-weight: bold;
-        padding: 0.2rem 0.4rem;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.7);
-        margin: 0 0.2rem;
-      }
-
-      .pseudo-box::before {
-        content: '★ ';
-        color: gold;
-        font-size: 1.2em;
-      }
-
-      .pseudo-box::after {
-        content: ' ✨';
-        color: violet;
-        font-size: 1.2em;
-      }
-
-      .clip-card {
-        clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
-        background: linear-gradient(120deg, #b6eaff 0%, #6dd5ed 100%);
-        color: #1a2233;
-        font-weight: bold;
-        text-align: center;
-      }
-
-      .blend-card {
-        background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg')
-          no-repeat center;
-        background-size: cover;
-        background-blend-mode: multiply;
-        background-color: red;
-
-        color: white;
-        padding: 3em;
-        font-weight: bold;
-        border-radius: 16px;
-        text-align: center;
-      }
-
-      .dancers {
-        display: inline-block;
-        font-size: 2.2rem;
-        animation: dance-move 1.2s infinite
-          cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        will-change: transform, filter;
-      }
-
-      @keyframes dance-move {
-        0% {
-          transform: rotate(-10deg) scale(1) translateY(0);
-          filter: brightness(1) drop-shadow(0 0 0 #fff0);
-        }
-
-        10% {
-          transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px)
-            skewY(-6deg);
-          filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988);
-        }
-
-        20% {
-          transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px)
-            skewY(8deg);
-          filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66);
-        }
-
-        30% {
-          transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px)
-            skewY(-8deg);
-          filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66);
-        }
-
-        40% {
-          transform: rotate(-8deg) scale(1.02, 1.02) translateY(2px) skewY(6deg);
-          filter: brightness(1.08) drop-shadow(0 2px 4px #38f9d766);
-        }
-
-        50% {
-          transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px)
-            skewY(-10deg);
-          filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066);
-        }
-
-        60% {
-          transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px)
-            skewY(10deg);
-          filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066);
-        }
-
-        70% {
-          transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px)
-            skewY(-6deg);
-          filter: brightness(1.12) drop-shadow(0 2px 4px #33086766);
-        }
-
-        80% {
-          transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg);
-          filter: brightness(1.05) drop-shadow(0 0 0 #fff0);
-        }
-
-        100% {
-          transform: rotate(-10deg) scale(1) translateY(0);
-          filter: brightness(1) drop-shadow(0 0 0 #fff0);
-        }
+      nav a {
+        font-size: 1em;
+        padding: 0.3em 0;
       }
 
       .output {
-        margin-top: 1.3rem;
+        margin-top: 0.7rem;
       }
+
+      .blend-card {
+        padding: 1em;
+        font-size: 1em;
+      }
+
+      .transition-box {
+        padding: 1em;
+        font-size: 1em;
+      }
+
+      .dancers {
+        font-size: 1.3rem;
+      }
+
+      #github-badge {
+        flex-direction: column;
+        gap: 0.2em;
+        font-size: 0.95em;
+        margin-bottom: 1em;
+      }
+
+      #github-badge span {
+        font-size: 1em;
+      }
+
+      #repo-link {
+        display: none;
+      }
+
+      button#capture,
+      button {
+        font-size: 1em;
+        padding: 0.5em 1em;
+        margin-bottom: 0.7em;
+      }
+
+      .export-text {
+        font-size: 1em;
+      }
+
+      .clip-card {
+        font-size: 1em;
+      }
+
+      .pseudo-box {
+        font-size: 1em;
+      }
+
       #orbit-box {
-        font-family: sans-serif;
-        font-optical-sizing: auto;
-        background-color: rgb(16, 16, 16) !important;
-        color: rgba(255, 255, 255, 0.451);
+        height: 220px !important;
+        min-width: 0;
+        font-size: 0.8em;
       }
-      .dashed {
-        border-style: dashed;
-      }
-      .bold {
-        border-width: 2.5px;
-      }
-      .text {
-        width: 400px;
-        font-size: 5px;
-        flex-direction: column;
-        text-align: center;
-      }
+
+      .text,
       .text1 {
-        width: 100px;
-        font-size: 5px;
-        flex-direction: column;
-        text-align: center;
-        color: black;
+        width: 90vw;
+        font-size: 0.8em;
       }
-      .plantet {
-        background-color: rgba(255, 255, 255, 0.579);
-      }
-      .orbit,
-      [class*='orbit-'] {
-        border: 0.1px solid rgba(255, 255, 255, 0.422) !important;
-      }
+    }
+  </style>
+</head>
 
-      .invisible {
-        border: none !important;
-      }
-
-      .vector {
-        background-color: rgba(255, 255, 255, 0.259);
-        height: 0.1px;
-      }
-
-      .visible {
-        background-color: white;
-        border: none;
-      }
-
-      .rotate-orbit {
-        animation-name: rotation;
-        animation-iteration-count: 10;
-        animation-timing-function: linear;
-      }
-
-      .rotate-time-1 {
-        animation-duration: 40s;
-      }
-
-      .rotate-time-2 {
-        animation-duration: 30s;
-      }
-
-      .rotate-time-3 {
-        animation-duration: 20s;
-      }
-
-      .rotate-time-4 {
-        animation-duration: 10s;
-      }
-
-      .rotate-time-5 {
-        animation-duration: 5s;
-      }
-
-      .invert {
-        animation-direction: reverse;
-      }
-
-      @keyframes rotation {
-        0% {
-          rotate: 360deg;
-        }
-
-        100% {
-          rotate: 0deg;
-        }
-      }
-
-      @media (max-width: 600px) {
-        body {
-          padding: 0.5rem;
-        }
-        h1 {
-          font-size: 1.5rem;
-          margin-bottom: 1rem;
-        }
-        main {
-          max-width: 100vw;
-          width: 100vw;
-          padding: 0;
-        }
-        section {
-          padding: 0.7rem;
-          margin-bottom: 1.2rem;
-        }
-        .card,
-        .card.black {
-          padding: 0.7em;
-          font-size: 0.98em;
-          border-radius: 10px;
-        }
-        nav {
-          flex-direction: column;
-          gap: 0.5em;
-          font-size: 1em;
-          margin-bottom: 1em;
-        }
-        nav a {
-          font-size: 1em;
-          padding: 0.3em 0;
-        }
-        .output {
-          margin-top: 0.7rem;
-        }
-        .blend-card {
-          padding: 1em;
-          font-size: 1em;
-        }
-        .transition-box {
-          padding: 1em;
-          font-size: 1em;
-        }
-        .dancers {
-          font-size: 1.3rem;
-        }
-        #github-badge {
-          flex-direction: column;
-          gap: 0.2em;
-          font-size: 0.95em;
-          margin-bottom: 1em;
-        }
-        #github-badge span {
-          font-size: 1em;
-        }
-        button#capture,
-        button {
-          font-size: 1em;
-          padding: 0.5em 1em;
-          margin-bottom: 0.7em;
-        }
-        .export-text {
-          font-size: 1em;
-        }
-        .clip-card {
-          font-size: 1em;
-        }
-        .pseudo-box {
-          font-size: 1em;
-        }
-        #orbit-box {
-          height: 220px !important;
-          min-width: 0;
-          font-size: 0.8em;
-        }
-        .text,
-        .text1 {
-          width: 90vw;
-          font-size: 0.8em;
-        }
-      }
-    </style>
-  </head>
-
-  <body>
-    <div
-      id="github-badge"
-      style="
+<body>
+  <div id="github-badge" style="
         display: flex;
         align-items: center;
         gap: 0.5em;
         justify-content: center;
         margin-bottom: 1.5em;
-      "
-    >
-      <a
-        href="https://github.com/zumerlab/snapdom"
-        target="_blank"
-        rel="noopener"
-        style="
+      ">
+    <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" style="
           display: flex;
           align-items: center;
           text-decoration: none;
@@ -483,14 +493,11 @@
           font-weight: bold;
           font-size: 1.1em;
           gap: 0.4em;
-        "
-      >
-        <i class="fab fa-github" style="font-size: 1.6em"></i>
-        <span>zumerlab/snapdom</span>
+        ">
+      <i class="fab fa-github" style="font-size: 1.6em"></i>
+      <span id="repo-link">zumerlab/snapdom</span>
 
-        <span
-          id="github-stars"
-          style="
+      <span id="github-stars" style="
             display: flex;
             align-items: center;
             background: #fff;
@@ -500,201 +507,183 @@
             box-shadow: 0 2px 8px #e0e7ef;
             font-size: 1em;
             gap: 0.3em;
-          "
-        >
-          <i class="fas fa-star" style="color: #f7b500"></i>
-          <span id="star-count">...</span>
-        </span>
-      </a>
-    </div>
+          ">
+        <i class="fas fa-star" style="color: #f7b500"></i>
+        <span id="star-count">...</span>
+      </span>
+    </a>
+  </div>
 
-    <h1>SnapDOM demo gallery</h1>
-    <nav
-      style="
+  <h1>SnapDOM demo gallery</h1>
+  <nav style="
         margin-bottom: 2rem;
         display: flex;
         flex-wrap: wrap;
         gap: 1em;
         justify-content: center;
-      "
-    >
-      <a href="#basic">Basic</a>
-      <a href="#transition">Transition</a>
-      <a href="#orbit">Orbit</a>
-      <a href="#fonts-demo">Fonts</a>
-      <a href="#shadow">Shadow DOM</a>
-      <a href="#canvas">Canvas</a>
-      <a href="#export">Export</a>
-      <a href="#pseudo">Pseudo</a>
-      <a href="#clip">Clip-Path</a>
-      <a href="#blend">Blend</a>
-      <a href="#fullbody">Full Page</a>
-    </nav>
-    <main style="width: 100%; max-width: 700px">
-      <section id="basic">
-        <h2>📦 Basic</h2>
-        <div class="card" id="basic-box">
-          <h3>Hello SnapDOM!</h3>
-        </div>
-        <button onclick="captureDemo('basic-box', 'basic-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('basic-box')">Download</button>
-        <div class="output" id="basic-output"></div>
-      </section>
-      <section id="transition">
-        <h2>🚀 Fun Transition</h2>
-        <div class="card transition-box" id="transition-box">
-          <div class="dancers">🕺💃</div>
-          <p style="margin: 0; font-weight: bold">
-            I'm dancing and changing color!
-          </p>
-        </div>
-        <button
-          onclick="captureDemo('transition-box', 'transition-output', this)"
-        >
-          Capture
-        </button>
-        <button onclick="downloadDemo('transition-box')">Download</button>
-        <div class="output" id="transition-output"></div>
-      </section>
-      <section id="orbit">
-        <h2>
-          📦 Orbit CSS framework -
-          <a
-            href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
-            target="_blank"
-            >repo</a
-          >
-        </h2>
-        <div
-          class="card black"
-          id="orbit-box"
-          style="
+      ">
+    <a href="#basic">Basic</a>
+    <a href="#transition">Transition</a>
+    <a href="#orbit">Orbit</a>
+    <a href="#fonts-demo">Fonts</a>
+    <a href="#shadow">Shadow DOM</a>
+    <a href="#canvas">Canvas</a>
+    <a href="#export">Export</a>
+    <a href="#pseudo">Pseudo</a>
+    <a href="#clip">Clip-Path</a>
+    <a href="#blend">Blend</a>
+    <a href="#fullbody">Full Page</a>
+  </nav>
+  <main style="width: 100%; max-width: 700px">
+    <section id="basic">
+      <h2>📦 Basic</h2>
+      <div class="card" id="basic-box">
+        <h3>Hello SnapDOM!</h3>
+      </div>
+      <button onclick="captureDemo('basic-box', 'basic-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('basic-box')">Download</button>
+      <div class="output" id="basic-output"></div>
+    </section>
+    <section id="transition">
+      <h2>🚀 Fun Transition</h2>
+      <div class="card transition-box" id="transition-box">
+        <div class="dancers">🕺💃</div>
+        <p style="margin: 0; font-weight: bold">
+          I'm dancing and changing color!
+        </p>
+      </div>
+      <button onclick="captureDemo('transition-box', 'transition-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('transition-box')">Download</button>
+      <div class="output" id="transition-output"></div>
+    </section>
+    <section id="orbit">
+      <h2>
+        📦 Orbit CSS framework -
+        <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom" target="_blank">repo</a>
+      </h2>
+      <div class="card black" id="orbit-box" style="
             height: 400px;
             overflow: hidden;
             background-color: black !important;
-          "
-        >
-          <div class="bigbang">
-            <div class="gravity-spot" style="--o-force: 1000px">
-              <div class="orbit-3 invisible">
-                <div class="vector grow-4x"></div>
-                <div class="vector grow-1.9x inner-orbit"></div>
-                <div class="vector grow-3x angle-60"></div>
-                <div class="vector grow-3x angle-90"></div>
-                <div class="vector grow-4x"></div>
-                <div class="vector grow-3x"></div>
-                <div class="vector grow-1.9x inner-orbit"></div>
-                <div class="vector grow-3x angle-240"></div>
-                <div class="vector grow-5x"></div>
-                <div class="vector grow-3x"></div>
+          ">
+        <div class="bigbang">
+          <div class="gravity-spot" style="--o-force: 1000px">
+            <div class="orbit-3 invisible">
+              <div class="vector grow-4x"></div>
+              <div class="vector grow-1.9x inner-orbit"></div>
+              <div class="vector grow-3x angle-60"></div>
+              <div class="vector grow-3x angle-90"></div>
+              <div class="vector grow-4x"></div>
+              <div class="vector grow-3x"></div>
+              <div class="vector grow-1.9x inner-orbit"></div>
+              <div class="vector grow-3x angle-240"></div>
+              <div class="vector grow-5x"></div>
+              <div class="vector grow-3x"></div>
+            </div>
+          </div>
+          <div class="gravity-spot" style="--o-force: 90px">
+            <div class="orbit dashed"></div>
+            <div class="orbit rotate-orbit rotate-time-4">
+              <div class="satellite visible shrink-50 angle-320"></div>
+            </div>
+            <div class="orbit rotate-orbit rotate-time-5">
+              <div class="satellite visible shrink-50 angle-20"></div>
+            </div>
+            <div class="orbit dashed"></div>
+            <div class="orbit rotate-orbit rotate-time-3">
+              <div class="satellite visible shrink-50 angle-120"></div>
+            </div>
+            <div class="orbit dashed"></div>
+          </div>
+          <div class="gravity-spot uncentered" style="--o-force: 350px">
+            <div class="orbit-1 invisible">
+              <div class="satellite angle-270 invisible">
+                <div class="gravity-spot uncentered" style="--o-force: 150px">
+                  <div class="orbit-6"></div>
+                </div>
               </div>
             </div>
-            <div class="gravity-spot" style="--o-force: 90px">
-              <div class="orbit dashed"></div>
-              <div class="orbit rotate-orbit rotate-time-4">
-                <div class="satellite visible shrink-50 angle-320"></div>
+            <div class="orbit-2 shrink-60 invisible">
+              <div class="satellite angle-270 invisible">
+                <div class="gravity-spot uncentered" style="--o-force: 150px">
+                  <div class="orbit-10">
+                    <div class="satellite angle-270 invisible rotate-orbit rotate-time-2 invert">
+                      <div class="capsule rotate-orbit rotate-time-2 text">
+                        Orbit<br />
+                        THIRD EXTERNAL ORBITAL PATH<br />
+                        MERIDIAN SYSTEM
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="orbit rotate-orbit rotate-time-5">
-                <div class="satellite visible shrink-50 angle-20"></div>
-              </div>
-              <div class="orbit dashed"></div>
-              <div class="orbit rotate-orbit rotate-time-3">
-                <div class="satellite visible shrink-50 angle-120"></div>
-              </div>
-              <div class="orbit dashed"></div>
             </div>
-            <div class="gravity-spot uncentered" style="--o-force: 350px">
-              <div class="orbit-1 invisible">
-                <div class="satellite angle-270 invisible">
-                  <div class="gravity-spot uncentered" style="--o-force: 150px">
-                    <div class="orbit-6"></div>
+            <div class="orbit-4 shrink-40 invisible">
+              <div class="satellite angle-270 invisible">
+                <div class="gravity-spot uncentered" style="--o-force: 220px">
+                  <div class="orbit-12 rotate-orbit rotate-time-2">
+                    <div class="satellite visible shrink-50 angle-20"></div>
+                    <div class="satellite visible shrink-20 angle-135"></div>
+                    <div class="satellite visible shrink-60 angle-210"></div>
                   </div>
                 </div>
               </div>
-              <div class="orbit-2 shrink-60 invisible">
-                <div class="satellite angle-270 invisible">
-                  <div class="gravity-spot uncentered" style="--o-force: 150px">
-                    <div class="orbit-10">
-                      <div
-                        class="satellite angle-270 invisible rotate-orbit rotate-time-2 invert"
-                      >
-                        <div class="capsule rotate-orbit rotate-time-2 text">
-                          Orbit<br />
-                          THIRD EXTERNAL ORBITAL PATH<br />
-                          MERIDIAN SYSTEM
-                        </div>
+            </div>
+            <div class="orbit-12 rotate-orbit rotate-time-3">
+              <div class="satellite angle-60">
+                <div class="gravity-spot from-2x" style="--o-force: 90px">
+                  <div class="orbit-1 planet">
+                    <div class="satellite at-center rotate-orbit rotate-time-3 invert">
+                      <div class="capsule text1">PLANET</div>
+                    </div>
+                  </div>
+                  <div class="orbit dashed"></div>
+                  <div class="orbit-4 dashed"></div>
+                  <div class="orbit-5 rotate-orbit rotate-time-3">
+                    <div class="satellite visible shrink-50 angle-20"></div>
+                    <div class="satellite visible shrink-50"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="satellite angle-145">
+                <div class="gravity-spot" style="--o-force: 90px">
+                  <div class="orbit bold" style="border-width: 2.5px"></div>
+                  <div class="orbit dashed"></div>
+                  <div class="orbit dashed"></div>
+                  <div class="orbit dashed"></div>
+                  <div class="orbit dashed"></div>
+                  <div class="orbit rotate-orbit rotate-time-5 invert">
+                    <div class="satellite visible shrink-50"></div>
+                    <div class="satellite visible shrink-50"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="orbit-18 invisible rotate-orbit rotate-time-1">
+              <div class="satellite angle-270">
+                <div class="gravity-spot from-6x" style="--o-force: 90px">
+                  <div class="orbit-12 rotate-orbit rotate-time-4 invert">
+                    <div class="satellite visible grow-1x angle-120"></div>
+                  </div>
+                  <div class="orbit-22 rotate-orbit rotate-time-1 invert">
+                    <div class="satellite angle-90 invisible">
+                      <div class="capsule text">
+                        Orbit<br />
+                        SECOND EXTERNAL SYSTEM <br />
+                        MERIDIAN SYSTEM
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div class="orbit-4 shrink-40 invisible">
-                <div class="satellite angle-270 invisible">
-                  <div class="gravity-spot uncentered" style="--o-force: 220px">
-                    <div class="orbit-12 rotate-orbit rotate-time-2">
-                      <div class="satellite visible shrink-50 angle-20"></div>
-                      <div class="satellite visible shrink-20 angle-135"></div>
-                      <div class="satellite visible shrink-60 angle-210"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="orbit-12 rotate-orbit rotate-time-3">
-                <div class="satellite angle-60">
-                  <div class="gravity-spot from-2x" style="--o-force: 90px">
-                    <div class="orbit-1 planet">
-                      <div
-                        class="satellite at-center rotate-orbit rotate-time-3 invert"
-                      >
-                        <div class="capsule text1">PLANET</div>
-                      </div>
-                    </div>
-                    <div class="orbit dashed"></div>
-                    <div class="orbit-4 dashed"></div>
-                    <div class="orbit-5 rotate-orbit rotate-time-3">
-                      <div class="satellite visible shrink-50 angle-20"></div>
-                      <div class="satellite visible shrink-50"></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="satellite angle-145">
-                  <div class="gravity-spot" style="--o-force: 90px">
-                    <div class="orbit bold" style="border-width: 2.5px"></div>
-                    <div class="orbit dashed"></div>
-                    <div class="orbit dashed"></div>
-                    <div class="orbit dashed"></div>
-                    <div class="orbit dashed"></div>
-                    <div class="orbit rotate-orbit rotate-time-5 invert">
-                      <div class="satellite visible shrink-50"></div>
-                      <div class="satellite visible shrink-50"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="orbit-18 invisible rotate-orbit rotate-time-1">
-                <div class="satellite angle-270">
-                  <div class="gravity-spot from-6x" style="--o-force: 90px">
-                    <div class="orbit-12 rotate-orbit rotate-time-4 invert">
-                      <div class="satellite visible grow-1x angle-120"></div>
-                    </div>
-                    <div class="orbit-22 rotate-orbit rotate-time-1 invert">
-                      <div class="satellite angle-90 invisible">
-                        <div class="capsule text">
-                          Orbit<br />
-                          SECOND EXTERNAL SYSTEM <br />
-                          MERIDIAN SYSTEM
-                        </div>
-                      </div>
-                    </div>
-                    <div class="orbit">
-                      <div class="satellite visible grow-1x angle-120">
-                        <div class="gravity-spot" style="--o-force: 300px">
-                          <div class="orbit rotate-orbit rotate-time-4 invert">
-                            <div class="satellite visible shrink-80"></div>
-                            <div class="satellite visible shrink-80"></div>
-                          </div>
+                  <div class="orbit">
+                    <div class="satellite visible grow-1x angle-120">
+                      <div class="gravity-spot" style="--o-force: 300px">
+                        <div class="orbit rotate-orbit rotate-time-4 invert">
+                          <div class="satellite visible shrink-80"></div>
+                          <div class="satellite visible shrink-80"></div>
                         </div>
                       </div>
                     </div>
@@ -704,116 +693,112 @@
             </div>
           </div>
         </div>
-        <button onclick="captureDemo('orbit-box', 'orbit-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('orbit-box')">Download</button>
-        <div class="output" id="orbit-output"></div>
-      </section>
-      <section id="fonts-demo">
-        <h2>🔤 Google Fonts</h2>
-        <div class="card" id="fonts-box">
-          <h3 style="font-family: 'Mansalva', cursive">Unique Typography!</h3>
-          <p style="font-family: 'Unbounded', cursive">
-            Google Fonts with <code>embedFonts: true</code>.
-          </p>
-        </div>
-        <button onclick="captureDemo('fonts-box', 'fonts-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('fonts-box')">Download</button>
-        <div class="output" id="fonts-output"></div>
-      </section>
+      </div>
+      <button onclick="captureDemo('orbit-box', 'orbit-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('orbit-box')">Download</button>
+      <div class="output" id="orbit-output"></div>
+    </section>
+    <section id="fonts-demo">
+      <h2>🔤 Google Fonts</h2>
+      <div class="card" id="fonts-box">
+        <h3 style="font-family: 'Mansalva', cursive">Unique Typography!</h3>
+        <p style="font-family: 'Unbounded', cursive">
+          Google Fonts with <code>embedFonts: true</code>.
+        </p>
+      </div>
+      <button onclick="captureDemo('fonts-box', 'fonts-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('fonts-box')">Download</button>
+      <div class="output" id="fonts-output"></div>
+    </section>
 
-      <section id="shadow">
-        <h2>🧱 Shadow DOM</h2>
-        <div class="card" id="shadow-host"></div>
-        <button onclick="captureDemo('shadow-host', 'shadow-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('shadow-host')">Download</button>
-        <div class="output" id="shadow-output"></div>
-      </section>
-      <section id="canvas">
-        <h2>🎨 Canvas</h2>
-        <div class="card">
-          <canvas
-            id="myCanvas"
-            width="160"
-            height="160"
-            style="border: 1px solid #000"
-          ></canvas>
+    <section id="shadow">
+      <h2>🧱 Shadow DOM</h2>
+      <div class="card" id="shadow-host"></div>
+      <button onclick="captureDemo('shadow-host', 'shadow-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('shadow-host')">Download</button>
+      <div class="output" id="shadow-output"></div>
+    </section>
+    <section id="canvas">
+      <h2>🎨 Canvas</h2>
+      <div class="card">
+        <canvas id="myCanvas" width="160" height="160" style="border: 1px solid #000"></canvas>
+      </div>
+      <button onclick="captureDemo('myCanvas', 'canvas-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('myCanvas')">Download</button>
+      <div class="output" id="canvas-output"></div>
+    </section>
+    <section id="export">
+      <h2>📁 Export Formats</h2>
+      <div class="card" id="export-box">
+        <div class="export-text">
+          <strong>📤 Export as</strong><br />
+          <span class="export-format">PNG</span>,
+          <span class="export-format">JPG</span> &
+          <span class="export-format">WebP</span>.
         </div>
-        <button onclick="captureDemo('myCanvas', 'canvas-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('myCanvas')">Download</button>
-        <div class="output" id="canvas-output"></div>
-      </section>
-      <section id="export">
-        <h2>📁 Export Formats</h2>
-        <div class="card" id="export-box">
-          <div class="export-text">
-            <strong>📤 Export as</strong><br />
-            <span class="export-format">PNG</span>,
-            <span class="export-format">JPG</span> &
-            <span class="export-format">WebP</span>.
-          </div>
-        </div>
-        <button onclick="exportFormats('export-box')">Export</button>
-        <div class="output" id="export-output"></div>
-      </section>
-      <section id="pseudo">
-        <h2>✨ Pseudo Elements</h2>
-        <div class="card pseudo-box" id="pseudo-box">
-          This element has pseudo-elements.
-        </div>
-        <button onclick="captureDemo('pseudo-box', 'pseudo-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('pseudo-box')">Download</button>
-        <div class="output" id="pseudo-output"></div>
-      </section>
-      <section id="clip">
-        <h2>✂️ Clip-Path Demo</h2>
-        <div class="card clip-card" id="clip-box">
-          This shape uses clip-path
-        </div>
-        <button onclick="captureDemo('clip-box', 'clip-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('clip-box')">Download</button>
-        <div class="output" id="clip-output"></div>
-      </section>
-      <section id="blend">
-        <h2>🌀 Mix Blend Mode</h2>
-        <div class="card blend-card" id="blend-box">Blended content</div>
-        <button onclick="captureDemo('blend-box', 'blend-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('blend-box')">Download</button>
-        <div class="output" id="blend-output"></div>
-      </section>
-      <section id="fullbody">
-        <h2>🧾 Full Page Capture</h2>
-        <button onclick="captureDemo('body', 'fullbody-output', this)">
-          Capture
-        </button>
-        <button onclick="downloadDemo('body')">Download</button>
-        <div class="output" id="fullbody-output"></div>
-      </section>
-    </main>
+      </div>
+      <button onclick="exportFormats('export-box')">Export</button>
+      <div class="output" id="export-output"></div>
+    </section>
+    <section id="pseudo">
+      <h2>✨ Pseudo Elements</h2>
+      <div class="card pseudo-box" id="pseudo-box">
+        This element has pseudo-elements.
+      </div>
+      <button onclick="captureDemo('pseudo-box', 'pseudo-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('pseudo-box')">Download</button>
+      <div class="output" id="pseudo-output"></div>
+    </section>
+    <section id="clip">
+      <h2>✂️ Clip-Path Demo</h2>
+      <div class="card clip-card" id="clip-box">
+        This shape uses clip-path
+      </div>
+      <button onclick="captureDemo('clip-box', 'clip-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('clip-box')">Download</button>
+      <div class="output" id="clip-output"></div>
+    </section>
+    <section id="blend">
+      <h2>🌀 Mix Blend Mode</h2>
+      <div class="card blend-card" id="blend-box">Blended content</div>
+      <button onclick="captureDemo('blend-box', 'blend-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('blend-box')">Download</button>
+      <div class="output" id="blend-output"></div>
+    </section>
+    <section id="fullbody">
+      <h2>🧾 Full Page Capture</h2>
+      <button onclick="captureDemo('body', 'fullbody-output', this)">
+        Capture
+      </button>
+      <button onclick="downloadDemo('body')">Download</button>
+      <div class="output" id="fullbody-output"></div>
+    </section>
+  </main>
 
-    <script>
-      // Crear componente con shadow DOM
-      class MyBox extends HTMLElement {
-        constructor() {
-          super()
-          const shadow = this.attachShadow({
-            mode: 'open',
-          })
-          const container = document.createElement('section')
-          container.innerHTML = `
+  <script>
+    // Crear componente con shadow DOM
+    class MyBox extends HTMLElement {
+      constructor() {
+        super()
+        const shadow = this.attachShadow({
+          mode: 'open',
+        })
+        const container = document.createElement('section')
+        container.innerHTML = `
           <style>
             .fun-box {
               display: flex;
@@ -848,123 +833,121 @@
             <div class="msg">¡Shadow DOM mágico y divertido!<br>¡Haz una captura y comparte la magia!</div>
           </div>
         `
-          shadow.appendChild(container)
-        }
+        shadow.appendChild(container)
       }
+    }
 
-      customElements.define('my-box', MyBox)
+    customElements.define('my-box', MyBox)
 
-      document.addEventListener('DOMContentLoaded', async () => {
-        // Shadow DOM ejemplo
-        const host = document.getElementById('shadow-host')
-        if (host && !host.shadowRoot) {
-          const shadow = host.attachShadow({
-            mode: 'open',
-          })
-          shadow.innerHTML = `<div style='padding: 1em; background: #b2f0ff; border-radius: 8px; font-weight:bold; text-align:center;'>¡Dentro del <strong>Shadow DOM</strong>! 🎩✨</div>`
-        }
-        await preCache()
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Shadow DOM ejemplo
+      const host = document.getElementById('shadow-host')
+      if (host && !host.shadowRoot) {
+        const shadow = host.attachShadow({
+          mode: 'open',
+        })
+        shadow.innerHTML = `<div style='padding: 1em; background: #b2f0ff; border-radius: 8px; font-weight:bold; text-align:center;'>¡Dentro del <strong>Shadow DOM</strong>! 🎩✨</div>`
+      }
+      await preCache()
+    })
+
+    // Canvas ejemplo
+    const canvas = document.getElementById('myCanvas')
+    if (canvas) {
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#43e97b'
+      ctx.fillRect(20, 20, 100, 100)
+      ctx.strokeStyle = '#e52e71'
+      ctx.lineWidth = 4
+      ctx.strokeRect(20, 20, 100, 100)
+      ctx.font = 'bold 20px sans-serif'
+      ctx.fillStyle = '#fff'
+      ctx.fillText('🎨', 60, 80)
+    }
+
+    async function captureDemo(id, outputId, btn) {
+      const el = id === 'body' ? document.body : document.getElementById(id)
+
+      const output = document.getElementById(outputId)
+      if (!el || !output) return
+      if (btn) btn.disabled = true
+
+      const img = await snapdom.toImg(el, {
+        embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
+        scale: id === 'body' ? 0.4 : 1,
       })
+      output.innerHTML = ''
+      output.appendChild(img)
 
-      // Canvas ejemplo
-      const canvas = document.getElementById('myCanvas')
-      if (canvas) {
-        const ctx = canvas.getContext('2d')
-        ctx.fillStyle = '#43e97b'
-        ctx.fillRect(20, 20, 100, 100)
-        ctx.strokeStyle = '#e52e71'
-        ctx.lineWidth = 4
-        ctx.strokeRect(20, 20, 100, 100)
-        ctx.font = 'bold 20px sans-serif'
-        ctx.fillStyle = '#fff'
-        ctx.fillText('🎨', 60, 80)
-      }
+      if (btn) btn.disabled = false
+    }
+    async function downloadDemo(id) {
+      const el = id === 'body' ? document.body : document.getElementById(id)
+      if (!el) return
+      await snapdom.download(el, {
+        format: 'png',
+        name: id,
+        scale: id === 'body' ? 0.5 : 1,
+        quality: 1,
+        embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
+      })
+    }
+    async function exportFormats(id) {
+      const el = document.getElementById(id)
+      const output = document.getElementById('export-output')
+      output.innerHTML = ''
+      const [png, jpg, webp] = await Promise.all([
+        snapdom.toPng(el),
+        snapdom.toJpg(el),
+        snapdom.toWebp(el),
+      ])
+      output.append('PNG:', png, document.createElement('br'))
+      output.append('JPG:', jpg, document.createElement('br'))
+      output.append('WebP:', webp)
+    }
 
-      async function captureDemo(id, outputId, btn) {
-        const el = id === 'body' ? document.body : document.getElementById(id)
+    async function updateGitHubStars() {
+      try {
+        const res = await fetch(
+          'https://api.github.com/repos/zumerlab/snapdom'
+        )
+        if (!res.ok) throw new Error('No stars')
+        const data = await res.json()
+        const stars = data.stargazers_count
+        document.getElementById('star-count').textContent = stars
+      } catch (e) {
+        document.getElementById('star-count').textContent = '?'
+      }
+    }
+    updateGitHubStars()
+    setInterval(updateGitHubStars, 60000) // Actualiza cada 60s
+  </script>
+  <script type="module">
+    import {
+      snapdom,
+      preCache,
+    } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs'
+    window.snapdom = snapdom
+    window.preCache = preCache
+  </script>
+  <script>
+    async function updateGitHubStars() {
+      try {
+        const res = await fetch(
+          'https://api.github.com/repos/zumerlab/snapdom'
+        )
+        if (!res.ok) throw new Error('No stars')
+        const data = await res.json()
+        const stars = data.stargazers_count
+        document.getElementById('star-count').textContent = stars
+      } catch (e) {
+        document.getElementById('star-count').textContent = '?'
+      }
+    }
+    updateGitHubStars()
+    setInterval(updateGitHubStars, 60000)
+  </script>
+  <script crossorigin src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js"></script>
+</body>
 
-        const output = document.getElementById(outputId)
-        if (!el || !output) return
-        if (btn) btn.disabled = true
-
-        const img = await snapdom.toImg(el, {
-          embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
-          scale: id === 'body' ? 0.4 : 1,
-        })
-        output.innerHTML = ''
-        output.appendChild(img)
-
-        if (btn) btn.disabled = false
-      }
-      async function downloadDemo(id) {
-        const el = id === 'body' ? document.body : document.getElementById(id)
-        if (!el) return
-        await snapdom.download(el, {
-          format: 'png',
-          name: id,
-          scale: id === 'body' ? 0.5 : 1,
-          quality: 1,
-          embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
-        })
-      }
-      async function exportFormats(id) {
-        const el = document.getElementById(id)
-        const output = document.getElementById('export-output')
-        output.innerHTML = ''
-        const [png, jpg, webp] = await Promise.all([
-          snapdom.toPng(el),
-          snapdom.toJpg(el),
-          snapdom.toWebp(el),
-        ])
-        output.append('PNG:', png, document.createElement('br'))
-        output.append('JPG:', jpg, document.createElement('br'))
-        output.append('WebP:', webp)
-      }
-
-      async function updateGitHubStars() {
-        try {
-          const res = await fetch(
-            'https://api.github.com/repos/zumerlab/snapdom'
-          )
-          if (!res.ok) throw new Error('No stars')
-          const data = await res.json()
-          const stars = data.stargazers_count
-          document.getElementById('star-count').textContent = stars
-        } catch (e) {
-          document.getElementById('star-count').textContent = '?'
-        }
-      }
-      updateGitHubStars()
-      setInterval(updateGitHubStars, 60000) // Actualiza cada 60s
-    </script>
-    <script type="module">
-      import {
-        snapdom,
-        preCache,
-      } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs'
-      window.snapdom = snapdom
-      window.preCache = preCache
-    </script>
-    <script>
-      async function updateGitHubStars() {
-        try {
-          const res = await fetch(
-            'https://api.github.com/repos/zumerlab/snapdom'
-          )
-          if (!res.ok) throw new Error('No stars')
-          const data = await res.json()
-          const stars = data.stargazers_count
-          document.getElementById('star-count').textContent = stars
-        } catch (e) {
-          document.getElementById('star-count').textContent = '?'
-        }
-      }
-      updateGitHubStars()
-      setInterval(updateGitHubStars, 60000)
-    </script>
-    <script
-      crossorigin
-      src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js"
-    ></script>
-  </body>
 </html>
