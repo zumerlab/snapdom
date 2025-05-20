@@ -64,7 +64,7 @@ import { snapdom } from './snapdom.mjs';
 
 ## Basic usage
 
-### Reusable result (recommended)
+### Reusable capture
 
 ```js
 const el = document.querySelector('#target');
