@@ -883,6 +883,8 @@
       const img = await snapdom.toImg(el, {
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
         scale: id === 'body' ? 0.4 : 1,
+        fast: id !== 'fonts-box' ? true : false,
+        compress: id !== 'fonts-box' ? true : false
       })
       output.innerHTML = ''
       output.appendChild(img)
