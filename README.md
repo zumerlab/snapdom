@@ -1,7 +1,7 @@
 # snapDOM
 
 <p align="center">
-  <a href="http://zumerlab.github.io/orbit-docs">
+  <a href="http://zumerlab.github.io/snapdom">
     <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/hero.png" width="80%">
   </a>
 </p>
