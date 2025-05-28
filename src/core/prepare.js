@@ -18,7 +18,7 @@ import { inlinePseudoElements } from '../modules/pseudo.js';
 export async function prepareClone(element, compress = false) {
   const styleMap = new Map();
   const styleCache = new WeakMap();
-  const nodeMap = new WeakMap();
+  const nodeMap = new Map();
   let clone;
 
   try {
@@ -47,7 +47,34 @@ export async function prepareClone(element, compress = false) {
     const bgImage = node.style?.backgroundImage;
     node.removeAttribute("style");
     if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
+
   }
+  // Simulate scroll with transform if requested
+  
+    for (const [cloneNode, originalNode] of nodeMap.entries()) {
+      const scrollX = originalNode.scrollLeft;
+      const scrollY = originalNode.scrollTop;
+      const hasScroll = scrollX || scrollY;
+
+      if (hasScroll && cloneNode instanceof HTMLElement) {
+        // Hide scrollbars
+        cloneNode.style.overflow = "hidden";
+        cloneNode.style.scrollbarWidth = "none"; // Firefox
+        cloneNode.style.msOverflowStyle = "none"; // IE10+
+
+        // Wrap content in inner div with translate
+        const inner = document.createElement("div");
+        inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`;
+        inner.style.willChange = "transform";
+        inner.style.display = "inline-block";
+        inner.style.width = "100%";
+
+        while (cloneNode.firstChild) {
+          inner.appendChild(cloneNode.firstChild);
+        }
+        cloneNode.appendChild(inner);
+      }
+    }
 
   return { clone, classCSS, styleCache };
 }
