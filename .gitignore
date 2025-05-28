@@ -138,3 +138,6 @@ dist
 package-lock.json
 
 drafts/
+
+__tests__/__screenshots__
+
