@@ -50,8 +50,6 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress) {
     return img;
   }
   if (node.nodeType === Node.TEXT_NODE) {
-    const trimmed = node.textContent.trim();
-    if (!trimmed) return null;
     if (node.parentElement?.shadowRoot) {
       const tag = node.parentElement.tagName.toLowerCase();
       if (customElements.get(tag)) return null;
