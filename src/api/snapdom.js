@@ -202,7 +202,7 @@ snapdom.capture = async (el, options = {}) => {
     toImg: () => toImg(url, { dpr, scale }),
     toCanvas: () => toCanvas(url, { dpr, scale }),
     toBlob: () => toBlob(url),
-    toPng: () => toRasterImg(url, { dpr, scale }, "png"),
+    toPng: (options) => toRasterImg(url, { dpr, scale, ...options  }, "png"),
     toJpg: (options) => toRasterImg(url, { dpr, scale, ...options }, "jpeg"),
     toWebp: (options) => toRasterImg(url, { dpr, scale, ...options }, "webp"),
     download: ({ format = "png", filename = "capture", backgroundColor } = {}) => download(url, { dpr, scale, backgroundColor, format, filename})
