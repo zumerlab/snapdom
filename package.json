@@ -11,6 +11,7 @@
     "compile-esm": "npx @zumerbox/build -n snapdom -j src/index.js -p neutral -x",
     "compile": "npm run compile-browser && npm run compile-esm",
     "build": "npm run compile && npm pack",
+    "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
     "prebuild": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
   },
