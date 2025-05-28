@@ -4,12 +4,6 @@
   "description": "snapDOM captures DOM elements as images with exceptional speed and minimal overhead. Designed to avoid bottlenecks and long tasks.",
   "main": "dist/snapdom.js",
   "module": "dist/snapdom.mjs",
-  "exports": {
-    ".": {
-      "import": "./dist/snapdom.mjs",
-      "require": "./dist/snapdom.js"
-    }
-  },
   "scripts": {
     "test": "npx vitest run --browser.headless --reporter=verbose",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
@@ -24,11 +18,19 @@
     "type": "git",
     "url": "git+https://github.com/zumerlab/snapdom.git"
   },
+  "types": "types/snapdom.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/snapdom.mjs",
+      "require": "./dist/snapdom.js"
+    }
+  },
   "files": [
     "dist/snapdom.js",
     "dist/snapdom.min.js",
     "dist/snapdom.min.mjs",
     "dist/snapdom.mjs",
+    "types/snapdom.d.ts",
     "README.md"
   ],
   "keywords": [
