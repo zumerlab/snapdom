@@ -29,8 +29,6 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
       if (!style) continue; 
       const content = style.getPropertyValue("content");
       const bg = style.getPropertyValue("background-image");
-
-      // ¿Este pseudo existe realmente?
       const hasContent = content && content !== "none" && content !== '""' && content !== "''";
       const hasBg = bg && bg.startsWith("url(");
 
@@ -43,15 +41,12 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         const pseudoEl = document.createElement("span");
         pseudoEl.dataset.snapdomPseudo = pseudo;
 
-        // ⚠️ Ahora usamos tu sistema moderno:
         const snapshot = snapshotComputedStyle(style);
         const key = getStyleKey(snapshot, "span", compress);
         styleMap.set(pseudoEl, key);
 
-        // ¿Es un icon font?
         const isIconFont = fontFamily && /font.*awesome|material|bootstrap|glyphicons|ionicons|remixicon|simple-line-icons|octicons|feather|typicons|weathericons/i.test(fontFamily);
 
-        // ⬇️ Inlinear contenido
         let cleanContent = parseContent(content);
         if (isIconFont && cleanContent.length === 1) {
           const imgEl = document.createElement("img");
@@ -75,7 +70,6 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
           pseudoEl.textContent = cleanContent;
         }
 
-        // ✅ Insertamos como before o after
         if (pseudo === "::before") {
           clone.insertBefore(pseudoEl, clone.firstChild);
         } else {
@@ -87,7 +81,6 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
     }
   }
 
-  // ⬇️ Recursivo sobre hijos reales (excluyendo pseudos ya inyectados)
   const sChildren = Array.from(source.children);
   const cChildren = Array.from(clone.children).filter(
     child => !child.dataset.snapdomPseudo
