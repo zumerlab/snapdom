@@ -34,20 +34,26 @@ export async function prepareClone(element, compress = false) {
     console.warn("inlinePseudoElements failed:", e);
   }
 
-  const keyToClass = generateCSSClasses(styleMap);
-  const classCSS = Array.from(keyToClass.entries())
-    .map(([key, className]) => `.${className}{${key}}`)
-    .join("");
+    let classCSS = "";
 
-  for (const [node, key] of styleMap.entries()) {
-    if (node.tagName === "STYLE") continue;
-    const className = keyToClass.get(key);
-    if (className) node.classList.add(className);
-
-    const bgImage = node.style?.backgroundImage;
-    node.removeAttribute("style");
-    if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
-
+  if (compress) {
+    const keyToClass = generateCSSClasses(styleMap);
+    classCSS = Array.from(keyToClass.entries())
+      .map(([key, className]) => `.${className}{${key}}`)
+      .join("");
+    for (const [node, key] of styleMap.entries()) {
+      if (node.tagName === "STYLE") continue;
+      const className = keyToClass.get(key);
+      if (className) node.classList.add(className);
+      const bgImage = node.style?.backgroundImage;
+      node.removeAttribute("style");
+      if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
+    }
+  } else {
+    for (const [node, key] of styleMap.entries()) {
+      if (node.tagName === "STYLE") continue;
+      node.setAttribute("style", key.replace(/;/g, "; "));
+    }
   }
   // Simulate scroll with transform if requested
   
