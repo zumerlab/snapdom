@@ -70,8 +70,9 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
       const res = await fetch(link.href);
       const cssText = await res.text();
 
+      // ⏭️ Skip icon font CSS if instructed
       if (ignoreIconFonts && (isIconFont(link.href) || isIconFont(cssText))) {
-        console.log('⏭️ Ignorando icon font CSS:', link.href);
+        // console.log('⏭️ Skipping icon font CSS:', link.href);
         continue;
       }
 
@@ -83,8 +84,9 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
             url = new URL(url, link.href).href;
           }
 
+          // ⏭️ Skip icon font URL if instructed
           if (ignoreIconFonts && isIconFont(url)) {
-            console.log('⏭️ Ignorando icon font URL:', url);
+            // console.log('⏭️ Skipping icon font URL:', url);
             return null;
           }
 
@@ -103,7 +105,7 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
             resourceCache.set(url, b64);
             return { original: match[0], inlined: `url(${b64})` };
           } catch (err) {
-            console.warn('❌ No pude fetch font', url);
+            console.warn('❌ Failed to fetch font:', url);
             return null;
           }
         })
@@ -118,10 +120,11 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
 
       finalCSS += cssFinal + '\n';
     } catch (e) {
-      console.warn('❌ No pude fetch CSS', link.href);
+      console.warn('❌ Failed to fetch CSS:', link.href);
     }
   }
 
+  // 🧠 Optionally inject pre-cached fonts into the document
   if (finalCSS && preCached) {
     const style = document.createElement('style');
     style.setAttribute('data-snapdom', 'embedFonts');
