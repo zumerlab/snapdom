@@ -17,21 +17,41 @@ import { resourceCache } from "../core/cache"
  * @param {string} [color="#000"] - The color to use
  * @returns {Promise<string>} Data URL of the rendered icon
  */
+
 export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = "#000") {
   fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, "");
-  await document.fonts.ready;
-  await document.fonts.load(`${fontSize}px "${fontFamily}"`);
+  const dpr = window.devicePixelRatio || 1;
+
+  // Create temporary context to measure
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.font = fontWeight
+    ? `${fontWeight} ${fontSize}px "${fontFamily}"`
+    : `${fontSize}px "${fontFamily}"`;
+
+  const metrics = tempCtx.measureText(unicodeChar);
+  const ascent = metrics.actualBoundingBoxAscent || fontSize * 0.8;
+  const descent = metrics.actualBoundingBoxDescent || fontSize * 0.2;
+  const height = ascent + descent;
+  const width = metrics.width;
+
   const canvas = document.createElement("canvas");
-  canvas.width = fontSize;
-  canvas.height = fontSize;
+  canvas.width = Math.ceil(width * dpr);
+  canvas.height = Math.ceil(height * dpr);
+
   const ctx = canvas.getContext("2d");
-  ctx.font = fontWeight ? `${fontWeight} ${fontSize}px "${fontFamily}"` : ` ${fontSize}px "${fontFamily}"`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.scale(dpr, dpr);
+  ctx.font = tempCtx.font;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic"; // aligns with baseline
   ctx.fillStyle = color;
-  ctx.fillText(unicodeChar, canvas.width / 2, canvas.height / 2);
+
+  // Draw at (0, ascent) so the full glyph fits vertically
+  ctx.fillText(unicodeChar, 0, ascent);
+
   return canvas.toDataURL();
 }
+
 /**
  * Embeds custom fonts found in the document as data URLs in CSS.
  *
