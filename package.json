@@ -7,7 +7,7 @@
   "scripts": {
     "test": "npx vitest run --browser.headless --reporter=verbose",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
-    "compile-browser": "npx @zumerbox/build -n snapdom -j src/index.js",
+    "compile-browser": "npx @zumerbox/build -n snapdom -j src/index.browser.js",
     "compile-esm": "npx @zumerbox/build -n snapdom -j src/index.js -p neutral -x",
     "compile": "npm run compile-browser && npm run compile-esm",
     "build": "npm run compile && npm pack",
