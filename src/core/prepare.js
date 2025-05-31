@@ -15,7 +15,7 @@ import { inlinePseudoElements } from '../modules/pseudo.js';
  * @returns {Promise<Object>} Object containing the clone, generated CSS, and style cache
  */
 
-export async function prepareClone(element, compress = false) {
+export async function prepareClone(element, compress = false, embedFonts = false) {
   const styleMap = new Map();
   const styleCache = new WeakMap();
   const nodeMap = new Map();
@@ -29,7 +29,7 @@ export async function prepareClone(element, compress = false) {
   }
 
   try {
-    await inlinePseudoElements(element, clone, styleMap, styleCache, compress);
+    await inlinePseudoElements(element, clone, styleMap, styleCache, compress, embedFonts);
   } catch (e) {
     console.warn("inlinePseudoElements failed:", e);
   }

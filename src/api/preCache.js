@@ -65,7 +65,7 @@ export async function preCache(root = document, options = {}) {
   }
 
   if (embedFonts) {
-    await embedCustomFonts({ ignoreIconFonts: true, preCached: true });
+    await embedCustomFonts({ ignoreIconFonts: !embedFonts,  preCached: true });
   }
 
   await Promise.all(promises);

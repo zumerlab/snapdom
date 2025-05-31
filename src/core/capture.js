@@ -31,7 +31,7 @@ export async function captureDOM(element, options = {}) {
   let baseCSS = "";
   let dataURL;
   let svgString;
-  ({ clone, classCSS, styleCache } = await prepareClone(element, compress));
+  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts));
   await new Promise((resolve) => {
     idle(async () => {
       await inlineImages(clone);
@@ -47,7 +47,7 @@ export async function captureDOM(element, options = {}) {
   if (embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
-        fontsCSS = await embedCustomFonts({ ignoreIconFonts: true });
+        fontsCSS = await embedCustomFonts({ ignoreIconFonts: !embedFonts });
         resolve();
       }, { fast });
     });
