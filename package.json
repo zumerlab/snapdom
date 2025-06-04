@@ -22,6 +22,7 @@
   "types": "types/snapdom.d.ts",
   "exports": {
     ".": {
+      "types": "./types/snapdom.d.ts",
       "import": "./dist/snapdom.mjs",
       "require": "./dist/snapdom.js"
     }
