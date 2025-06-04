@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.2.2](https://github.com/zumerlab/snapdom/compare/v1.2.1...v1.2.2)
+
+> 4 June 2025
+
+- Patch: type script definitions, closes #23 [`#23`](https://github.com/zumerlab/snapdom/issues/23)
+
 #### [v1.2.1](https://github.com/zumerlab/snapdom/compare/v1.1.0...v1.2.1)
 
 > 31 May 2025
@@ -10,7 +16,10 @@ All notable changes to this project will be documented in this file.
 - Fix expose snapdom and preCache on browser compilation, closes #26 [`#26`](https://github.com/zumerlab/snapdom/issues/26)
 - Improve icon-font conversion [`7bac4ee`](https://github.com/zumerlab/snapdom/commit/7bac4ee3b152d6364c218aaa6d2bed4ad9997943)
 - Fix compress mode [`652cfe9`](https://github.com/zumerlab/snapdom/commit/652cfe9a8947029e31db6b089829fe8da87c0b42)
-
+- Bumped version [`0cd7973`](https://github.com/zumerlab/snapdom/commit/0cd797320b92310d86df0ce6296706d1f7f0ad5d)
+- Remove some logs [`4348b39`](https://github.com/zumerlab/snapdom/commit/4348b390ab8bb88c59ba9b0d24adbe58051b277a)
+- Chore: delete old comments [`ff81a40`](https://github.com/zumerlab/snapdom/commit/ff81a40e8a1b4baa8bacca2ed2ec59124df40b6e)
+- Chore: add dry bump script [`5c421c7`](https://github.com/zumerlab/snapdom/commit/5c421c75a1775a3b8c1fbd6a688fcfe409f676af)
 
 #### [v1.1.0](https://github.com/zumerlab/snapdom/compare/v1.0.0...v1.1.0)
 
