@@ -3,11 +3,11 @@
  * @module pseudo
  */
 
-import { fetchImage, getStyle, extractURL} from '../utils/helpers.js';
-import { snapshotComputedStyle } from '../utils/helpers.js';
-import { parseContent } from '../utils/helpers.js';
-import { getStyleKey } from '../utils/cssTools.js';
-import { iconToImage } from '../modules/fonts.js';
+import { fetchImage, getStyle, extractURL } from '../utils/helpers.js'
+import { snapshotComputedStyle } from '../utils/helpers.js'
+import { parseContent } from '../utils/helpers.js'
+import { getStyleKey } from '../utils/cssTools.js'
+import { iconToImage } from '../modules/fonts.js'
 
 /**
  * Creates elements to represent ::before and ::after pseudo-elements, inlining their styles and content.
@@ -20,74 +20,105 @@ import { iconToImage } from '../modules/fonts.js';
  * @returns {Promise<void>} Promise that resolves when all pseudo-elements are processed
  */
 
-export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress, embedFonts = false) {
-
-  if (!(source instanceof Element) || !(clone instanceof Element)) return;
-
-  for (const pseudo of ["::before", "::after"]) {
+export async function inlinePseudoElements(
+  source,
+  clone,
+  styleMap,
+  styleCache,
+  compress,
+  embedFonts = false
+) {
+  if (!(source instanceof Element) || !(clone instanceof Element)) return
+  for (const pseudo of ['::before', '::after']) {
     try {
-      const style = getStyle(source, pseudo);
-      if (!style) continue; 
-      const content = style.getPropertyValue("content");
-      const bg = style.getPropertyValue("background-image");
-      const hasContent = content && content !== "none" && content !== '""' && content !== "''";
-      const hasBg = bg && bg.startsWith("url(");
-
+      const style = getStyle(source, pseudo)
+      if (!style) continue
+      const content = style.getPropertyValue('content')
+      const bg = style.getPropertyValue('background-image')
+      const hasContent =
+        content && content !== 'none' && content !== '""' && content !== "''"
+      const hasBg = bg && bg.startsWith('url(')
       if (hasContent || hasBg) {
-        const fontFamily = style.getPropertyValue("font-family");
-        const fontSize = parseInt(style.getPropertyValue("font-size")) || 32;
-        const fontWeight = parseInt(style.getPropertyValue("font-weight")) || false;
-        const color = style.getPropertyValue("color") || "#000";
-
-        const pseudoEl = document.createElement("span");
-        pseudoEl.dataset.snapdomPseudo = pseudo;
-
-        const snapshot = snapshotComputedStyle(style);
-        const key = getStyleKey(snapshot, "span", compress);
-        styleMap.set(pseudoEl, key);
-
-        const isIconFont = fontFamily && /font.*awesome|material|bootstrap|glyphicons|ionicons|remixicon|simple-line-icons|octicons|feather|typicons|weathericons/i.test(fontFamily);
-
-        let cleanContent = parseContent(content);
-        if (!embedFonts && isIconFont && cleanContent.length === 1) {
-          const imgEl = document.createElement("img");
-          imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
-          imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
-          pseudoEl.appendChild(imgEl);
-        } else if (cleanContent.startsWith("url(")) {
-          const rawUrl = extractURL(cleanContent);
+        const fontFamily = style.getPropertyValue('font-family')
+        const fontSize = parseInt(style.getPropertyValue('font-size')) || 32
+        const fontWeight =
+          parseInt(style.getPropertyValue('font-weight')) || false
+        const color = style.getPropertyValue('color') || '#000'
+        const pseudoEl = document.createElement('span')
+        pseudoEl.dataset.snapdomPseudo = pseudo
+        const snapshot = snapshotComputedStyle(style)
+        const key = getStyleKey(snapshot, 'span', compress)
+        styleMap.set(pseudoEl, key)
+        const isIconFont2 =
+          fontFamily &&
+          /font.*awesome|material|bootstrap|glyphicons|ionicons|remixicon|simple-line-icons|octicons|feather|typicons|weathericons/i.test(
+            fontFamily
+          )
+        let cleanContent = parseContent(content)
+        if (!embedFonts && isIconFont2 && cleanContent.length === 1) {
+          // solo si NO embebemos fuentes y es un ícono: lo rasterizamos
+          const imgEl = document.createElement('img')
+          imgEl.src = await iconToImage(
+            cleanContent,
+            fontFamily,
+            fontWeight,
+            fontSize,
+            color
+          )
+          imgEl.style =
+            'display:block;width:100%;height:100%;object-fit:contain;'
+          pseudoEl.appendChild(imgEl)
+        } else if (cleanContent.startsWith('url(')) {
+          // imagen de fondo
+          const rawUrl = extractURL(cleanContent)
           if (rawUrl) {
             try {
-              const imgEl = document.createElement("img");
-              const dataUrl = await fetchImage(encodeURI(rawUrl));
-
-              imgEl.src = dataUrl;
-              imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
-              pseudoEl.appendChild(imgEl);
+              const imgEl = document.createElement('img')
+              const dataUrl = await fetchImage(encodeURI(rawUrl))
+              imgEl.src = dataUrl
+              imgEl.style =
+                'display:block;width:100%;height:100%;object-fit:contain;'
+              pseudoEl.appendChild(imgEl)
             } catch (e) {
-              console.error(`[snapdom] Error in pseudo ${pseudo} for`, source, e);
+              console.error(
+                `[snapdom] Error in pseudo ${pseudo} for`,
+                source,
+                e
+              )
             }
           }
-        } else if (cleanContent && cleanContent !== "none") {
-          pseudoEl.textContent = cleanContent;
+        } else if (!isIconFont2 && cleanContent && cleanContent !== 'none') {
+          // solo insertamos texto si NO es ícono
+          pseudoEl.textContent = cleanContent
         }
 
-        if (pseudo === "::before") {
-          clone.insertBefore(pseudoEl, clone.firstChild);
+        const hasContent =
+          pseudoEl.childNodes.length > 0 ||
+          (pseudoEl.textContent && pseudoEl.textContent.trim() !== '')
+        if (!hasContent) continue
+
+        if (pseudo === '::before') {
+          clone.insertBefore(pseudoEl, clone.firstChild)
         } else {
-          clone.appendChild(pseudoEl);
+          clone.appendChild(pseudoEl)
         }
       }
     } catch (e) {
-      console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e);
+      console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e)
     }
   }
-
-  const sChildren = Array.from(source.children);
+  const sChildren = Array.from(source.children)
   const cChildren = Array.from(clone.children).filter(
-    child => !child.dataset.snapdomPseudo
-  );
+    (child) => !child.dataset.snapdomPseudo
+  )
   for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-    await inlinePseudoElements(sChildren[i], cChildren[i], styleMap, styleCache, compress, embedFonts);
+    await inlinePseudoElements(
+      sChildren[i],
+      cChildren[i],
+      styleMap,
+      styleCache,
+      compress,
+      embedFonts
+    )
   }
 }
