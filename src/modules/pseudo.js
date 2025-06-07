@@ -3,7 +3,7 @@
  * @module pseudo
  */
 
-import { fetchImage, getStyle} from '../utils/helpers.js';
+import { fetchImage, getStyle, extractURL} from '../utils/helpers.js';
 import { snapshotComputedStyle } from '../utils/helpers.js';
 import { parseContent } from '../utils/helpers.js';
 import { getStyleKey } from '../utils/cssTools.js';
@@ -19,6 +19,7 @@ import { iconToImage } from '../modules/fonts.js';
  * @param {boolean} compress - Whether to compress style keys
  * @returns {Promise<void>} Promise that resolves when all pseudo-elements are processed
  */
+
 export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress, embedFonts = false) {
 
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
@@ -54,11 +55,12 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
           imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
           pseudoEl.appendChild(imgEl);
         } else if (cleanContent.startsWith("url(")) {
-          const match = cleanContent.match(/url\(["']?([^"')]+)["']?\)/);
-          if (match?.[1]) {
+          const rawUrl = extractURL(cleanContent);
+          if (rawUrl) {
             try {
               const imgEl = document.createElement("img");
-              const dataUrl = await fetchImage(match[1]);
+              const dataUrl = await fetchImage(encodeURI(rawUrl));
+
               imgEl.src = dataUrl;
               imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
               pseudoEl.appendChild(imgEl);

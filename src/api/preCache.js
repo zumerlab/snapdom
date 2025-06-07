@@ -1,6 +1,6 @@
 import { precacheCommonTags } from "../utils/cssTools";
 import { fetchImage } from "../utils/helpers";
-import { extractUrl } from "../utils/helpers";
+import { extractURL } from "../utils/helpers";
 import { embedCustomFonts } from "../modules/fonts";
 import { imageCache, bgCache, resourceCache, baseCSSCache, computedStyleCache } from "../core/cache";
 
@@ -54,7 +54,7 @@ export async function preCache(root = document, options = {}) {
   }
   for (const el of allEls) {
     const bg = getComputedStyle(el).backgroundImage;
-    const url = extractUrl(bg);
+    const url = extractURL(bg);
     if (url && !bgCache.has(url)) {
       promises.push(
         fetchImage(url)

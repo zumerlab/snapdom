@@ -64,13 +64,21 @@ export function parseContent(content) {
 /**
  * Extracts a URL from a CSS value like background-image.
  *
- * @param {string} cssValue - The CSS value
+ * @param {string} value - The CSS value
  * @returns {string|null} The extracted URL or null
  */
-export function extractUrl(cssValue) {
-  const m = cssValue.match(/url\(["']?([^"')]+)["']?\)/);
-  return m ? m[1] : null;
+
+export function extractURL(value) {
+  const urlStart = value.indexOf("url(");
+  if (urlStart === -1) return null;
+  let url = value.slice(urlStart + 4).trim(); // Remove "url("
+  if (url.endsWith(")")) url = url.slice(0, -1).trim(); // Remove trailing ")"
+  if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+    url = url.slice(1, -1);
+  }
+  return url;
 }
+
 /**
  * Determines if a font family or URL is an icon font.
  *

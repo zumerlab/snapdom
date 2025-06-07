@@ -3,7 +3,7 @@
  * @module background
  */
 
-import { fetchImage, getStyle } from '../utils/helpers.js';
+import { fetchImage, getStyle, extractURL } from '../utils/helpers.js';
 import { bgCache } from '../core/cache.js'
 
 /**
@@ -21,24 +21,23 @@ export async function inlineBackgroundImages(source, clone, styleCache) {
     const style = styleCache.get(srcNode) || getStyle(srcNode);
     if (!styleCache.has(srcNode)) styleCache.set(srcNode, style);
     const bg = style.getPropertyValue("background-image");
-    if (bg && bg.includes("url(")) {
-      const match = bg.match(/url\(["']?([^"')]+)["']?\)/);
-      if (match?.[1]) {
-        try {
-          const bgUrl = match[1];
-          let dataUrl;
-          if (bgCache.has(bgUrl)) {
-            dataUrl = bgCache.get(bgUrl);
-          } else {
-            dataUrl = await fetchImage(bgUrl);
-            bgCache.set(bgUrl, dataUrl);
-          }
-          cloneNode.style.backgroundImage = `url(${dataUrl})`;
-        } catch {
-          cloneNode.style.backgroundImage = "none";
+    const rawUrl = extractURL(bg);
+    if (rawUrl) {
+      try {
+        let bgUrl = encodeURI(rawUrl);
+        let dataUrl;
+        if (bgCache.has(bgUrl)) {
+          dataUrl = bgCache.get(bgUrl);
+        } else {
+          dataUrl = await fetchImage(bgUrl);
+          bgCache.set(bgUrl, dataUrl);
         }
+        cloneNode.style.backgroundImage = `url(${dataUrl})`;
+      } catch {
+        cloneNode.style.backgroundImage = "none";
       }
     }
+
     const sChildren = Array.from(srcNode.children);
     const cChildren = Array.from(cloneNode.children);
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {

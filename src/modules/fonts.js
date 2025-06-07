@@ -3,7 +3,7 @@
  * @module fonts
  */
 
-import { isIconFont } from "../utils/helpers"
+import { isIconFont, extractURL} from "../utils/helpers"
 import { resourceCache } from "../core/cache"
 
 /**
@@ -79,10 +79,18 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
       const urlRegex = /url\(([^)]+)\)/g;
       const inlinedCSS = await Promise.all(
         Array.from(cssText.matchAll(urlRegex)).map(async match => {
-          let url = match[1].replace(/["']/g, '');
-          if (!url.startsWith('http')) {
+          let rawUrl = extractURL(match[0]);
+          if (!rawUrl) return null;
+          let url = rawUrl;
+          if (!url.startsWith("http")) {
             url = new URL(url, link.href).href;
           }
+          try {
+            url = encodeURI(url);
+          } catch (e) {
+            console.warn('[snapdom] Failed to encode font URL:', url);
+          }
+
 
           // ⏭️ Skip icon font URL if instructed
           if (ignoreIconFonts && isIconFont(url)) {
