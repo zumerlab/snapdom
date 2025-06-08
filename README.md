@@ -39,7 +39,7 @@ yarn add @zumer/snapdom
 ### CDN
 
 ```html
-<script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.min.js"></script>
 ```
 
 ### Script tag (local)
@@ -58,7 +58,7 @@ import { snapdom } from './snapdom.mjs';
 
 ```html
 <script type="module">
-  import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
+  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.mjs';
 </script>
 ```
 
