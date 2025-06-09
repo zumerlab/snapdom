@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.2.5](https://github.com/zumerlab/snapdom/compare/v1.2.2...v1.2.5)
+
+> 9 June 2025
+
+- Fix duplicated font-icon when embedFonts is true, closes #30 [`#30`](https://github.com/zumerlab/snapdom/issues/30)
+- Fix url with encode url, closes #29 [`#29`](https://github.com/zumerlab/snapdom/issues/29)
+- Fix .toCanvas() scale [`fb47284`](https://github.com/zumerlab/snapdom/commit/fb4728463a65620bd4f4f8f50cd8b2263ba7bbe7)
+
+
 #### [v1.2.2](https://github.com/zumerlab/snapdom/compare/v1.2.1...v1.2.2)
 
 > 4 June 2025
 
 - Patch: type script definitions, closes #23 [`#23`](https://github.com/zumerlab/snapdom/issues/23)
+- Bumped version [`548d7f3`](https://github.com/zumerlab/snapdom/commit/548d7f30a889d34ae4dac28a8dedc43262089325)
 
 #### [v1.2.1](https://github.com/zumerlab/snapdom/compare/v1.1.0...v1.2.1)
 
