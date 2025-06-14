@@ -2,14 +2,26 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.3.0](https://github.com/zumerlab/snapdom/compare/v1.2.5...v1.3.0)
+
+> 14 June 2025
+
+- Fix: double scaled images, thanks @jswhisperer  [`#38`](https://github.com/zumerlab/snapdom/pull/38)
+- Fix: background img &  img base64 in pseudo elements, closes [`#36`](https://github.com/zumerlab/snapdom/issues/36)
+- Feat: captures input values, closes [`#35`](https://github.com/zumerlab/snapdom/issues/35)
+- Improve: Device Pixel Ratio handling, thanks @jswhisperer [`1a14f69`](https://github.com/zumerlab/snapdom/commit/1a14f69d340e935126b5388febe5d711c4b94e14)
+
+
 #### [v1.2.5](https://github.com/zumerlab/snapdom/compare/v1.2.2...v1.2.5)
 
 > 9 June 2025
 
 - Fix duplicated font-icon when embedFonts is true, closes #30 [`#30`](https://github.com/zumerlab/snapdom/issues/30)
 - Fix url with encode url, closes #29 [`#29`](https://github.com/zumerlab/snapdom/issues/29)
-- Fix .toCanvas() scale [`fb47284`](https://github.com/zumerlab/snapdom/commit/fb4728463a65620bd4f4f8f50cd8b2263ba7bbe7)
-
+- Fix .toCanvas scale [`fb47284`](https://github.com/zumerlab/snapdom/commit/fb4728463a65620bd4f4f8f50cd8b2263ba7bbe7)
+- Bumped version [`75b917a`](https://github.com/zumerlab/snapdom/commit/75b917a4fefc5fa9b55da3c028c43955f0656087)
+- Update cdn [`37533a2`](https://github.com/zumerlab/snapdom/commit/37533a2c2a858000e93d8d33009241a4be5f8726)
+- add homepage [`aa85c5d`](https://github.com/zumerlab/snapdom/commit/aa85c5d9f1777c437b07e624d874f7f1a0fac6a9)
 
 #### [v1.2.2](https://github.com/zumerlab/snapdom/compare/v1.2.1...v1.2.2)
 
