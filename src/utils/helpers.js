@@ -128,7 +128,7 @@ export function fetchImage(src, timeout = 3000) {
         canvas.width = image.width;
         canvas.height = image.height;
         const ctx = canvas.getContext("2d");
-        ctx.drawImage(image, 0, 0);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
         try {
           const dataURL = canvas.toDataURL("image/png");
           // Guarda en cache para futuras llamadas
