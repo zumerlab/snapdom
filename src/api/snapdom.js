@@ -42,23 +42,22 @@ import { isSafari } from '../utils/helpers.js';
  * @returns {Promise<HTMLCanvasElement>} The resulting canvas
  */
 
- async function toCanvas(url, { dpr = 1, scale = 1 }) {
+async function toCanvas(url, { dpr = 1, scale = 1 } = {}) {
     const img = new Image();
-  img.src = url;
-  await img.decode();
-  const canvas = document.createElement("canvas");
-  const width = img.width * scale * dpr;
-  const height = img.height * scale * dpr;
-  canvas.width = Math.ceil(width);
-  canvas.height = Math.ceil(height);
-  const ctx = canvas.getContext("2d");
-  ctx.scale(scale * dpr, scale * dpr);
-  ctx.drawImage(img, 0, 0);
-   
-  canvas.style.width = `${canvas.width / dpr}px`;
-  canvas.style.height = `${canvas.height / dpr}px`;
-
-  return canvas
+    img.src = url;
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    const width = img.width * scale;
+    const height = img.height * scale;
+    canvas.width = Math.ceil(width * dpr);
+    canvas.height = Math.ceil(height * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    ctx.drawImage(img, 0, 0, width, height);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    
+    return canvas;
 }
 
 /**
