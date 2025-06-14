@@ -59,6 +59,29 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress) {
   if (node.nodeType !== Node.ELEMENT_NODE) return node.cloneNode(true);
   const clone = node.cloneNode(false);
   nodeMap.set(clone, node);
+  if (node instanceof HTMLInputElement) {
+    clone.value = node.value;
+    clone.setAttribute("value", node.value);
+    if (node.checked !== undefined) {
+      clone.checked = node.checked;
+      if (node.checked) clone.setAttribute("checked", "");
+    }
+  }
+  else if (node instanceof HTMLTextAreaElement) {
+    clone.value = node.value;
+    clone.textContent = node.value;  // Necesario porque textarea renderiza el textContent en el HTML
+  }
+  else if (node instanceof HTMLSelectElement) {
+    clone.value = node.value;
+    Array.from(clone.options).forEach(opt => {
+      if (opt.value === node.value) {
+        opt.setAttribute("selected", "");
+      } else {
+        opt.removeAttribute("selected");
+      }
+    });
+  }
+
   inlineAllStyles(node, clone, styleMap, styleCache, compress);
   const frag = document.createDocumentFragment();
   node.childNodes.forEach((child) => {
