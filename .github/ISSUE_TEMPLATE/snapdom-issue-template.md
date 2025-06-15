@@ -1,5 +1,5 @@
 ---
-name: Basic issue template
+name: SnapDOM issue template
 about: Basic issue template
 title: ''
 labels: ''
