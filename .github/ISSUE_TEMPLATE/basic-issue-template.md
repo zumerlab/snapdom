@@ -7,10 +7,6 @@ assignees: ''
 
 ---
 
-# Hey there! 👋
-
-Thanks for contributing! Let's make this as smooth as possible.
-
 ### What's this about?
 (Check what fits best)
 - [ ] I found a bug
