@@ -507,6 +507,19 @@
         width: 90vw;
         font-size: 0.8em;
       }
+        .benchmark-output {
+        height: 200px;
+      }
+
+      .benchmark-container {
+        gap: 1rem;
+        /* Menor gap en móviles */
+      }
+
+      .benchmark-column {
+        max-width: 100%;
+        /* Ocupa todo el ancho en móviles */
+      }
     }
 
     .comparison-row {
@@ -613,22 +626,7 @@
       display: block;
     }
 
-    @media (max-width: 768px) {
-
-      .benchmark-output {
-        height: 200px;
-      }
-
-      .benchmark-container {
-        gap: 1rem;
-        /* Menor gap en móviles */
-      }
-
-      .benchmark-column {
-        max-width: 100%;
-        /* Ocupa todo el ancho en móviles */
-      }
-    }
+   
 
     @keyframes glow {
       from {
