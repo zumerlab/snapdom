@@ -2,26 +2,31 @@
 <html lang="en">
 
 <head>
+  <title>
+    snapDOM – HTML to SVG/Image capture with superior fidelity and speed
+  </title>
+  <meta name="description"
+    content="snapdom is a powerful alternative to html2canvas and other tools that captures DOM elements with extreme precision, including pseudo-elements, web fonts, and shadow DOM." />
+  <meta name="keywords"
+    content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity" />
 
-<title>snapDOM – HTML to SVG/Image capture with superior fidelity and speed</title>
-<meta name="description" content="snapdom is a powerful alternative to html2canvas and other tools that captures DOM elements with extreme precision, including pseudo-elements, web fonts, and shadow DOM.">
-<meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity">
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="snapDOM – serious alternative to html2canvas" />
+  <meta property="og:description"
+    content="Capture any web UI with high accuracy and speed, including details that html2canvas misses. Try the demo and see the difference." />
+  <meta property="og:url" content="https://zumerlab.github.io/snapdom/" />
+  <meta property="og:image" content="https://zumerlab.github.io/snapdom/assets/hero.png" />
 
-<meta property="og:type" content="website">
-<meta property="og:title" content="snapDOM – serious alternative to html2canvas">
-<meta property="og:description" content="Capture any web UI with high accuracy and speed, including details that html2canvas misses. Try the demo and see the difference.">
-<meta property="og:url" content="https://zumerlab.github.io/snapdom/">
-<meta property="og:image" content="https://zumerlab.github.io/snapdom/assets/hero.png">
-
-<!-- Twitter Card -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="snapdom – HTML capture reinvented">
-<meta name="twitter:description" content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support.">
-<meta name="twitter:image" content="https://zumerlab.github.io/snapdom/assets/hero.png">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="snapdom – HTML capture reinvented" />
+  <meta name="twitter:description"
+    content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support." />
+  <meta name="twitter:image" content="https://zumerlab.github.io/snapdom/assets/hero.png" />
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <!-- Canonical link -->
-<link rel="canonical" href="https://zumerlab.github.io/snapdom/">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Canonical link -->
+  <link rel="canonical" href="https://zumerlab.github.io/snapdom/" />
   <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     crossorigin="anonymous" />
@@ -33,11 +38,13 @@
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1"></script>
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
+    window.dataLayer = window.dataLayer || []
+    function gtag() {
+      dataLayer.push(arguments)
+    }
+    gtag('js', new Date())
 
-    gtag('config', 'G-4G88ZHG7S1');
+    gtag('config', 'G-4G88ZHG7S1')
   </script>
   <style>
     body {
@@ -519,7 +526,7 @@
           font-weight: bold;
           font-size: 1.1em;
           gap: 0.4em;
-        " data-umami-event="SnapDOM repo" >
+        " data-umami-event="SnapDOM repo">
       <i class="fab fa-github" style="font-size: 1.6em"></i>
       <span id="repo-link">zumerlab/snapdom</span>
 
@@ -541,6 +548,10 @@
   </div>
 
   <h1>SnapDOM demo gallery</h1>
+  <p style="text-align:center; max-width: 700px; margin: 0 auto 2rem; font-size: 1.1rem; color: #333;">
+    SnapDOM captures HTML elements to images with exceptional speed and accuracy, supporting pseudo-elements, shadow
+    DOM, web fonts, and more.
+  </p>
   <nav style="
         margin-bottom: 2rem;
         display: flex;
@@ -548,17 +559,17 @@
         gap: 1em;
         justify-content: center;
       ">
-    <a data-umami-event="To basic" href="#basic">Basic</a>
-    <a data-umami-event="To transition" href="#transition">Transition</a>
-    <a data-umami-event="To orbit" href="#orbit">Orbit</a>
-    <a data-umami-event="To fonts" href="#fonts-demo">Fonts</a>
-    <a data-umami-event="To shadow" href="#shadow">Shadow DOM</a>
-    <a data-umami-event="To canvas" href="#canvas">Canvas</a>
-    <a data-umami-event="To export" href="#export">Export</a>
-    <a data-umami-event="To pseudo" href="#pseudo">Pseudo</a>
-    <a data-umami-event="To clippath" href="#clip">Clip-Path</a>
-    <a data-umami-event="To blend" href="#blend">Blend</a>
-    <a data-umami-event="To fullpage" href="#fullbody">Full Page</a>
+    <a href="#basic">Basic</a>
+    <a href="#transition">Transition</a>
+    <a href="#orbit">Orbit</a>
+    <a href="#fonts-demo">Fonts</a>
+    <a href="#shadow">Shadow DOM</a>
+    <a href="#canvas">Canvas</a>
+    <a href="#export">Export</a>
+    <a href="#pseudo">Pseudo</a>
+    <a href="#clip">Clip-Path</a>
+    <a href="#blend">Blend</a>
+    <a href="#fullbody">Full Page</a>
   </nav>
   <main style="width: 100%; max-width: 700px">
     <section id="basic">
@@ -569,7 +580,9 @@
       <button data-umami-event="Capture basic" onclick="captureDemo('basic-box', 'basic-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download basic" onclick="downloadDemo('basic-box')">Download</button>
+      <button data-umami-event="Download basic" onclick="downloadDemo('basic-box')">
+        Download
+      </button>
       <div class="output" id="basic-output"></div>
     </section>
     <section id="transition">
@@ -583,13 +596,16 @@
       <button data-umami-event="Capture transition" onclick="captureDemo('transition-box', 'transition-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download transition" onclick="downloadDemo('transition-box')">Download</button>
+      <button data-umami-event="Download transition" onclick="downloadDemo('transition-box')">
+        Download
+      </button>
       <div class="output" id="transition-output"></div>
     </section>
     <section id="orbit">
       <h2>
         📦 Orbit CSS framework -
-        <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"  data-umami-event="To orbit repo" target="_blank">repo</a>
+        <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom" data-umami-event="To orbit repo"
+          target="_blank">repo</a>
       </h2>
       <div class="card black" id="orbit-box" style="
             height: 400px;
@@ -723,7 +739,9 @@
       <button data-umami-event="Capture orbit" onclick="captureDemo('orbit-box', 'orbit-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
+      <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">
+        Download
+      </button>
       <div class="output" id="orbit-output"></div>
     </section>
     <section id="fonts-demo">
@@ -737,7 +755,9 @@
       <button data-umami-event="Capture fonts" onclick="captureDemo('fonts-box', 'fonts-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download fonts" onclick="downloadDemo('fonts-box')">Download</button>
+      <button data-umami-event="Download fonts" onclick="downloadDemo('fonts-box')">
+        Download
+      </button>
       <div class="output" id="fonts-output"></div>
     </section>
 
@@ -747,7 +767,9 @@
       <button data-umami-event="Capture shadow" onclick="captureDemo('shadow-host', 'shadow-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download shadow" onclick="downloadDemo('shadow-host')">Download</button>
+      <button data-umami-event="Download shadow" onclick="downloadDemo('shadow-host')">
+        Download
+      </button>
       <div class="output" id="shadow-output"></div>
     </section>
     <section id="canvas">
@@ -758,7 +780,9 @@
       <button data-umami-event="Capture canvas" onclick="captureDemo('myCanvas', 'canvas-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download canvas" onclick="downloadDemo('myCanvas')">Download</button>
+      <button data-umami-event="Download canvas" onclick="downloadDemo('myCanvas')">
+        Download
+      </button>
       <div class="output" id="canvas-output"></div>
     </section>
     <section id="export">
@@ -771,7 +795,9 @@
           <span class="export-format">WebP</span>.
         </div>
       </div>
-      <button data-umami-event="Export formats "onclick="exportFormats('export-box')">Export</button>
+      <button data-umami-event="Export formats " onclick="exportFormats('export-box')">
+        Export
+      </button>
       <div class="output" id="export-output"></div>
     </section>
     <section id="pseudo">
@@ -782,7 +808,9 @@
       <button data-umami-event="Capture pseudo" onclick="captureDemo('pseudo-box', 'pseudo-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download pseudo" onclick="downloadDemo('pseudo-box')">Download</button>
+      <button data-umami-event="Download pseudo" onclick="downloadDemo('pseudo-box')">
+        Download
+      </button>
       <div class="output" id="pseudo-output"></div>
     </section>
     <section id="clip">
@@ -793,7 +821,9 @@
       <button data-umami-event="Capture clip path" onclick="captureDemo('clip-box', 'clip-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download clip path" onclick="downloadDemo('clip-box')">Download</button>
+      <button data-umami-event="Download clip path" onclick="downloadDemo('clip-box')">
+        Download
+      </button>
       <div class="output" id="clip-output"></div>
     </section>
     <section id="blend">
@@ -802,7 +832,9 @@
       <button data-umami-event="Capture blend" onclick="captureDemo('blend-box', 'blend-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download blend" onclick="downloadDemo('blend-box')">Download</button>
+      <button data-umami-event="Download blend" onclick="downloadDemo('blend-box')">
+        Download
+      </button>
       <div class="output" id="blend-output"></div>
     </section>
     <section id="fullbody">
@@ -810,7 +842,9 @@
       <button data-umami-event="Capture full" onclick="captureDemo('body', 'fullbody-output', this)">
         Capture
       </button>
-      <button data-umami-event="Download full" onclick="downloadDemo('body')">Download</button>
+      <button data-umami-event="Download full" onclick="downloadDemo('body')">
+        Download
+      </button>
       <div class="output" id="fullbody-output"></div>
     </section>
   </main>
@@ -902,7 +936,7 @@
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
         scale: id === 'body' ? 0.4 : 1,
         fast: id !== 'fonts-box' ? true : false,
-        compress: id !== 'fonts-box' ? true : false
+        compress: id !== 'fonts-box' ? true : false,
       })
       output.innerHTML = ''
       output.appendChild(img)
