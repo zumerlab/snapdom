@@ -507,6 +507,128 @@
         font-size: 0.8em;
       }
     }
+
+ .comparison-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  margin-top: 1rem;
+  flex-direction: row; /* Asegura que es fila, no columna */
+}
+
+.comparison-row > div {
+  flex: 1; /* Hace que ambos divs ocupen espacio igual */
+  min-width: 300px; /* Ancho mínimo para evitar que se compriman demasiado */
+  text-align: center;
+}
+
+.label {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+.winner-glow {
+  animation: glow 1.2s infinite alternate ease-in-out;
+  border-radius: 20px;
+}
+.progress-message {
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  color: #555;
+  font-weight: bold;
+}
+
+.result-message {
+  margin-top: 0.5rem;
+  font-weight: bold;
+  background: rgba(0,0,0,0.05);
+  padding: 0.3rem;
+  border-radius: 4px;
+}
+
+
+.winner-message {
+  font-size: 1.4rem;
+  margin: 1rem 0;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ffffff, #f3f8ff);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  display: inline-block;
+}
+
+.winner-message .speed-badge {
+  display: inline-block;
+  background: #4facfe;
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.benchmark-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem; /* Ajusta este valor para más/menos espacio */
+  width: 100%;
+}
+
+.benchmark-column {
+  flex: 1;
+  min-width: 300px;
+  max-width: calc(50% - 1rem); /* Resta la mitad del gap para evitar desbordamiento */
+}
+
+.benchmark-output {
+  width: 100%;
+  height: 250px;
+  overflow: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px;
+  background: #292e3d24;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.benchmark-output img, 
+.benchmark-output canvas {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  margin: 0 auto;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  
+  .benchmark-output {
+    height: 200px;
+  }
+   .benchmark-container {
+    gap: 1rem; /* Menor gap en móviles */
+  }
+  .benchmark-column {
+    max-width: 100%; /* Ocupa todo el ancho en móviles */
+  }
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 8px 2px rgba(0, 255, 0, 0.4);
+    transform: scale(1.01);
+  }
+  to {
+    box-shadow: 0 0 14px 4px rgba(0, 255, 0, 0.6);
+    transform: scale(1.02);
+  }
+}
+
   </style>
 </head>
 
@@ -559,6 +681,7 @@
         gap: 1em;
         justify-content: center;
       ">
+    <a href="#benchmark">Benchmark</a>
     <a href="#basic">Basic</a>
     <a href="#transition">Transition</a>
     <a href="#orbit">Orbit</a>
@@ -572,6 +695,41 @@
     <a href="#fullbody">Full Page</a>
   </nav>
   <main style="width: 100%; max-width: 700px">
+  
+    <section id="benchmark" style="margin-top:3rem;">
+  <h2>🏁 Benchmark: snapDOM vs html2canvas</h2>
+  <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
+    Each library will capture the same DOM element to canvas 5 times. We'll calculate average speed and show the winner.
+  </p>
+
+  <div style="display: flex; justify-content: center; margin: 2rem 0;  margin: 0 auto; ">
+    <div class="card pseudo-box" id="benchmark-box" style="text-align: center; max-width: 300px;padding: 1rem;">
+      This is the benchmark test element to be captured by both libraries.
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-bottom: 2rem;">
+    <button id="run-benchmark" onclick="runBenchmark()">Run Benchmark</button>
+  </div>
+  
+  <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;"></div>
+  
+  <div class="benchmark-container">
+    <div class="benchmark-column">
+      <div class="label">snapDOM</div>
+      <div id="snapdom-benchmark-output" class="benchmark-output">
+        <div class="progress-message">Waiting to start...</div>
+      </div>
+    </div>
+    <div class="benchmark-column">
+      <div class="label">html2canvas</div>
+      <div id="h2c-benchmark-output" class="benchmark-output">
+        <div class="progress-message">Waiting to start...</div>
+      </div>
+    </div>
+  </div>
+</section>
+
     <section id="basic">
       <h2>📦 Basic</h2>
       <div class="card" id="basic-box">
@@ -847,6 +1005,7 @@
       </button>
       <div class="output" id="fullbody-output"></div>
     </section>
+
   </main>
 
   <script>
@@ -908,7 +1067,7 @@
         })
         shadow.innerHTML = `<div style='padding: 1em; background: #b2f0ff; border-radius: 8px; font-weight:bold; text-align:center;'>¡Dentro del <strong>Shadow DOM</strong>! 🎩✨</div>`
       }
-      await preCache()
+     // await preCache()
     })
 
     // Canvas ejemplo
@@ -983,15 +1142,128 @@
     }
     updateGitHubStars()
     setInterval(updateGitHubStars, 60000) // Actualiza cada 60s
+
+  const shadowTarget = document.getElementById("compare-shadow-host");
+if (shadowTarget && !shadowTarget.shadowRoot) {
+  const shadow = shadowTarget.attachShadow({ mode: 'open' });
+  shadow.innerHTML = `
+    <div style="padding:1em; background:#b2f0ff; border-radius:8px; font-weight:bold; text-align:center;">
+      Hello from <strong>Shadow DOM</strong>! 🎩✨
+    </div>`;
+}
+
+
   </script>
   <script type="module">
     import {
       snapdom,
       preCache,
-    } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs'
+    } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs';
+
+    import html2canvas from 'https://cdn.skypack.dev/html2canvas';
+
     window.snapdom = snapdom
     window.preCache = preCache
-  </script>
+
+    window.runBenchmark = async function () {
+  const el = document.getElementById("benchmark-box");
+  const snapContainer = document.getElementById("snapdom-benchmark-output");
+  const h2cContainer = document.getElementById("h2c-benchmark-output");
+  const resultText = document.getElementById("benchmark-result");
+  
+  // Limpiar y preparar UI
+  snapContainer.innerHTML = '<div class="progress-message">Starting snapDOM test...</div>';
+  h2cContainer.innerHTML = '<div class="progress-message">Starting html2canvas test...</div>';
+  resultText.textContent = "";
+  
+  const benchmarkBtn = document.getElementById("run-benchmark");
+  benchmarkBtn.disabled = true;
+  benchmarkBtn.textContent = "Running benchmark...";
+
+  // Función auxiliar para forzar renderizado
+  const forceRender = async () => {
+    await new Promise(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
+  };
+
+  // Benchmark snapDOM
+  let snapTotal = 0;
+  let snapCanvas;
+  for (let i = 0; i < 5; i++) {
+    // Actualizar progreso
+    snapContainer.innerHTML = `<div class="progress-message">Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}.</div>`;
+    await forceRender(); // Forzar renderizado del mensaje
+    
+    const t0 = performance.now();
+    snapCanvas = await snapdom.toCanvas(el, {
+      embedFonts: false,
+      fast: true,
+      compress: true
+    });
+    snapTotal += performance.now() - t0;
+    
+    // Mostrar resultado parcial
+    snapContainer.innerHTML = '';
+    snapContainer.appendChild(snapCanvas);
+    snapContainer.insertAdjacentHTML('beforeend', 
+      `<div class="progress-message">snapDOM: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`);
+    
+    await forceRender(); // Permitir que se vea el resultado
+  }
+
+  // Benchmark html2canvas
+  let h2cTotal = 0;
+  let h2cCanvas;
+  for (let i = 0; i < 5; i++) {
+    // Actualizar progreso
+    h2cContainer.innerHTML = `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`;
+    await forceRender(); // Forzar renderizado del mensaje
+    
+    const t0 = performance.now();
+    h2cCanvas = await html2canvas(el, { useCORS: true, logging: false });
+    h2cTotal += performance.now() - t0;
+    
+    // Mostrar resultado parcial
+    h2cContainer.innerHTML = '';
+    h2cContainer.appendChild(h2cCanvas);
+    h2cContainer.insertAdjacentHTML('beforeend', 
+      `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'} </div>`);
+    
+    await forceRender(); // Permitir que se vea el resultado
+  }
+
+  // Mostrar resultados finales
+  const snapAvg = snapTotal / 5;
+  const h2cAvg = h2cTotal / 5;
+  
+  snapContainer.insertAdjacentHTML("beforeend", 
+    `<div class="result-message">⏱ Average: ${snapAvg.toFixed(1)} ms</div>`);
+  h2cContainer.insertAdjacentHTML("beforeend", 
+    `<div class="result-message">⏱ Average: ${h2cAvg.toFixed(1)} ms</div>`);
+
+  // Determinar ganador
+ 
+
+  const speedRatio = h2cAvg / snapAvg;
+const winnerMessage = snapAvg < h2cAvg 
+  ? `🏆 snapDOM wins! (${speedRatio.toFixed(1)}x faster)` 
+  : `🏆 html2canvas wins! (${(snapAvg/h2cAvg).toFixed(1)}x faster)`;
+
+resultText.innerHTML = `<div class="winner-message">${winnerMessage}</div>`;
+
+  // Aplicar efectos visuales
+  snapContainer.classList.toggle("winner-glow", snapAvg < h2cAvg);
+  h2cContainer.classList.toggle("winner-glow", h2cAvg < snapAvg);
+
+  // Restaurar botón
+  benchmarkBtn.disabled = false;
+  benchmarkBtn.textContent = "Run Benchmark Again";
+};
+
+</script>
   <script>
     async function updateGitHubStars() {
       try {
