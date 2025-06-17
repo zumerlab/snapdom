@@ -720,7 +720,7 @@
       </div>
 
       <div style="text-align:center; margin-bottom: 2rem;">
-        <button data-umami-event="Run benchmarks" id="run-benchmark" onclick="runBenchmark()">Run Benchmark</button>
+        <button data-umami-event="Run benchmarks" class="run-benchmark-button" onclick="runBenchmark()">Run Benchmark</button>
       </div>
 
       <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;">
@@ -1162,7 +1162,7 @@
       h2cContainer.innerHTML = '<div class="progress-message">Starting html2canvas test...</div>';
       resultText.textContent = "";
 
-      const benchmarkBtn = document.getElementById("run-benchmark");
+      const benchmarkBtn = document.querySelector(".run-benchmark-button");
       benchmarkBtn.disabled = true;
       benchmarkBtn.textContent = "Running benchmark...";
 
