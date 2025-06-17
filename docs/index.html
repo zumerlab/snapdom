@@ -1260,7 +1260,7 @@
         const stars = data.stargazers_count
         document.getElementById('star-count').textContent = stars
       } catch (e) {
-        document.getElementById('star-count').textContent = '?'
+        document.getElementById('star-count').textContent = ''
       }
     }
     updateGitHubStars()
