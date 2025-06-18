@@ -9,6 +9,7 @@ declare module "@zumer/snapdom" {
     filename?: string;
     dpr?: number;
     quality?: number;
+    crossOrigin?: (url: string) => "anonymous" | "use-credentials";
   }
 
   export interface SnapResult {
@@ -51,6 +52,7 @@ declare module "@zumer/snapdom" {
     root?: Document | HTMLElement,
     options?: {
       embedFonts?: boolean;
+      crossOrigin?: (url: string) => "anonymous" | "use-credentials";
     }
   ): Promise<void>;
 }

@@ -106,7 +106,7 @@ export function isIconFont(familyOrUrl) {
  * @param {number} [timeout=3000]
  * @return {*} 
  */
-export function fetchImage(src, timeout = 3000) {
+export function fetchImage(src, timeout = 3000, crossOrigin = "anonymous") {
 
   if (imageCache.has(src)) {
     return Promise.resolve(imageCache.get(src));
@@ -118,7 +118,7 @@ export function fetchImage(src, timeout = 3000) {
     }, timeout);
 
     const image = new Image();
-    image.crossOrigin = "anonymous";
+    image.crossOrigin = crossOrigin;
 
     image.onload = async () => {
       clearTimeout(timeoutId);

@@ -18,11 +18,12 @@ import { imageCache, bgCache, resourceCache, baseCSSCache, computedStyleCache } 
  * @param {boolean} [options.embedFonts=true] - Whether to embed custom fonts
  * @param {boolean} [options.reset=false] - Whether to clear all caches before pre-caching
  * @param {boolean} [options.preWarm=true] - Whether to pre-cache common tag styles
+ * @param {Function} [options.crossOrigin] - Function that returns CORS mode for each image URL
  * @returns {Promise<void>} Resolves when all resources are pre-cached
  */
 
 export async function preCache(root = document, options = {}) {
-  const { embedFonts = true, reset = false, preWarm = true } = options;
+  const { embedFonts = true, reset = false, crossOrigin: crossOriginFn } = options;
   if (reset) {
     imageCache.clear();
     bgCache.clear();
@@ -45,8 +46,9 @@ export async function preCache(root = document, options = {}) {
   for (const img of imgEls) {
     const src = img.src;
     if (!imageCache.has(src)) {
+      const crossOrigin = crossOriginFn ? crossOriginFn(src) : "anonymous";
       promises.push(
-        fetchImage(src)
+        fetchImage(src, 3000, crossOrigin)
           .then(dataURL => imageCache.set(src, dataURL))
           .catch(() => {})
       );
@@ -56,8 +58,9 @@ export async function preCache(root = document, options = {}) {
     const bg = getComputedStyle(el).backgroundImage;
     const url = extractURL(bg);
     if (url && !bgCache.has(url)) {
+      const crossOrigin = crossOriginFn ? crossOriginFn(url) : "anonymous";
       promises.push(
-        fetchImage(url)
+        fetchImage(url, 3000, crossOrigin)
           .then(dataURL => bgCache.set(url, dataURL))
           .catch(() => {})
       );

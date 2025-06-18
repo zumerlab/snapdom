@@ -12,9 +12,10 @@ import { bgCache } from '../core/cache.js'
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
  * @param {WeakMap} styleCache - Cache of computed styles
+ * @param {Object} [options={}] - Options for image processing
  * @returns {Promise<void>} Promise that resolves when all background images are processed
  */
-export async function inlineBackgroundImages(source, clone, styleCache) {
+export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
   const queue = [[source, clone]];
   while (queue.length) {
     const [srcNode, cloneNode] = queue.shift();
@@ -29,7 +30,8 @@ export async function inlineBackgroundImages(source, clone, styleCache) {
         if (bgCache.has(bgUrl)) {
           dataUrl = bgCache.get(bgUrl);
         } else {
-          dataUrl = await fetchImage(bgUrl);
+          const crossOrigin = options.crossOrigin ? options.crossOrigin(bgUrl) : "anonymous";
+          dataUrl = await fetchImage(bgUrl, 3000, crossOrigin);
           bgCache.set(bgUrl, dataUrl);
         }
         cloneNode.style.backgroundImage = `url(${dataUrl})`;

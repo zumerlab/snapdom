@@ -34,13 +34,13 @@ export async function captureDOM(element, options = {}) {
   ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts));
   await new Promise((resolve) => {
     idle(async () => {
-      await inlineImages(clone);
+      await inlineImages(clone, options);
       resolve();
     }, { fast });
   });
   await new Promise((resolve) => {
     idle(async () => {
-      await inlineBackgroundImages(element, clone, styleCache);
+      await inlineBackgroundImages(element, clone, styleCache, options);
       resolve();
     }, { fast });
   });

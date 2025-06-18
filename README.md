@@ -122,14 +122,34 @@ Returns an object with reusable export methods:
 
 All capture methods accept an `options` object:
 
-| Option            | Type    | Default  | Description                                |
-| ----------------- | ------- | -------- | ------------------------------------------ |
-| `compress`        | boolean | `true`   | Removes redundant styles                   |
-| `fast`            | boolean | `true`   | Skips idle delay for faster results        |
-| `embedFonts`      | boolean | `false`  | Inlines fonts (icon fonts always embedded) |
-| `scale`           | number  | `1`      | Output scale multiplier                    |
-| `backgroundColor` | string  | `"#fff"` | Fallback color for JPG/WebP                |
-| `quality`         | number  | `1`      | Quality for JPG/WebP (0 to 1)              |
+| Option            | Type     | Default  | Description                                |
+| ----------------- | -------- | -------- | ------------------------------------------ |
+| `compress`        | boolean  | `true`   | Removes redundant styles                   |
+| `fast`            | boolean  | `true`   | Skips idle delay for faster results        |
+| `embedFonts`      | boolean  | `false`  | Inlines fonts (icon fonts always embedded) |
+| `scale`           | number   | `1`      | Output scale multiplier                    |
+| `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                |
+| `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)              |
+| `crossOrigin`     | function | -        | Function to determine CORS mode per image URL |
+
+### Cross-Origin Images
+
+By default, snapDOM loads images with `crossOrigin="anonymous"`. You can customize this behavior using the `crossOrigin` option:
+
+```js
+const result = await snapdom(element, {
+  crossOrigin: (url) => {
+    // Use credentials for same-origin images
+    if (url.startsWith(window.location.origin)) {
+      return "use-credentials";
+    }
+    // Use anonymous for cross-origin images
+    return "anonymous";
+  }
+});
+```
+
+This is useful when your images require authentication or when dealing with credentialed requests.
 
 ### Download options
 
@@ -164,6 +184,7 @@ import { snapdom, preCache } from './snapdom.mjs';
 
 * `embedFonts` *(boolean, default: true)* — Inlines non-icon fonts during preload.
 * `reset` *(boolean, default: false)* — Clears all existing internal caches.
+* `crossOrigin` *(function)* — Function to determine CORS mode per image URL during preload.
 
 
 ## Features
@@ -177,7 +198,7 @@ import { snapdom, preCache } from './snapdom.mjs';
 
 ## Limitations
 
-* External images must be CORS-accessible
+* External images must be CORS-accessible (use `crossOrigin` option for credentialed requests)
 * Iframes are not supported
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 
