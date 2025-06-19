@@ -9,14 +9,16 @@ import { fetchImage } from '../utils/helpers.js';
  * Converts all <img> elements in the clone to data URLs or replaces them with placeholders if loading fails.
  *
  * @param {Element} clone - Clone of the original element
+ * @param {Object} [options={}] - Options for image processing
  * @returns {Promise<void>} Promise that resolves when all images are processed
  */
-export async function inlineImages(clone) {
+export async function inlineImages(clone, options = {}) {
   const imgs = Array.from(clone.querySelectorAll("img"));
   const processImg = async (img) => {
     const src = img.src;
     try {
-      const dataUrl = await fetchImage(src);
+      const crossOrigin = options.crossOrigin ? options.crossOrigin(src) : "anonymous";
+      const dataUrl = await fetchImage(src, 3000, crossOrigin);
       img.src = dataUrl;
       if (!img.width) img.width = img.naturalWidth || 100;
       if (!img.height) img.height = img.naturalHeight || 100;
