@@ -43,7 +43,7 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
         }
       }
     }
-    if(bgSplits.length > 0) {
+   if (bgSplits.some(s => s.includes("url("))) {
       cloneNode.style.backgroundImage = bgSplits.join(",");
     }
     const sChildren = Array.from(srcNode.children);
