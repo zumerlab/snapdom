@@ -2,15 +2,26 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.7.1](https://github.com/zumerlab/snapdom/compare/v1.3.0...v1.7.1)
+
+> 19 June 2025
+
+- Improve inlineBackgroundImages() to support multiple background-image values. Thanks @jhbae200!  [`95a5490`](https://github.com/zumerlab/snapdom/commit/95a5490f2de5a139f39c0286111eb4e84990fd00)
+- Add @font-face / FontFace() deteccion, closes #43 [`#43`](https://github.com/zumerlab/snapdom/issues/43)
+- Add options.crossOrigin.  Thanks @elliots! [`49f8ac6`](https://github.com/zumerlab/snapdom/commit/49f8ac6524e3f54e67505d048a4ad34c529ab6c9)
+- Fix prevent erasing non url background [`0d626cb`](https://github.com/zumerlab/snapdom/commit/0d626cb32b8958afd7e7fd6f96d5a71c6795113b)
+
+
 #### [v1.3.0](https://github.com/zumerlab/snapdom/compare/v1.2.5...v1.3.0)
 
 > 14 June 2025
 
-- Fix: double scaled images, thanks @jswhisperer  [`#38`](https://github.com/zumerlab/snapdom/pull/38)
-- Fix: background img &  img base64 in pseudo elements, closes [`#36`](https://github.com/zumerlab/snapdom/issues/36)
-- Feat: captures input values, closes [`#35`](https://github.com/zumerlab/snapdom/issues/35)
+- fix: double scaled images [`#38`](https://github.com/zumerlab/snapdom/pull/38)
+- Fix: background img &  img base64 in pseudo elements, closes #36 [`#36`](https://github.com/zumerlab/snapdom/issues/36)
+- Feat: captures input values, closes #35 [`#35`](https://github.com/zumerlab/snapdom/issues/35)
 - Improve: Device Pixel Ratio handling, thanks @jswhisperer [`1a14f69`](https://github.com/zumerlab/snapdom/commit/1a14f69d340e935126b5388febe5d711c4b94e14)
-
+- Bumped version [`489be08`](https://github.com/zumerlab/snapdom/commit/489be081e6c7e50f1e4ba08d932d79c0ae242d45)
+- Update description [`4db784b`](https://github.com/zumerlab/snapdom/commit/4db784b4250b6eac6da8932e651872147fbc8bc1)
 
 #### [v1.2.5](https://github.com/zumerlab/snapdom/compare/v1.2.2...v1.2.5)
 
