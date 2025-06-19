@@ -61,40 +61,37 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
  * @param {boolean} [options.preCached=false] - Whether to use pre-cached resources
  * @returns {Promise<string>} The inlined CSS for custom fonts
  */
-export async function embedCustomFonts({ ignoreIconFonts = true, preCached = false }) {
-  const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(link => link.href);
-  let finalCSS = '';
+export async function embedCustomFonts({ ignoreIconFonts = true, preCached = false } = {}) {
+  const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter((link) => link.href);
+  let finalCSS = "";
 
+  // Procesar <link rel="stylesheet">
   for (const link of links) {
     try {
       const res = await fetch(link.href);
       const cssText = await res.text();
-
-      // ⏭️ Skip icon font CSS if instructed
       if (ignoreIconFonts && (isIconFont(link.href) || isIconFont(cssText))) {
-        // console.log('⏭️ Skipping icon font CSS:', link.href);
         continue;
       }
 
       const urlRegex = /url\(([^)]+)\)/g;
       const inlinedCSS = await Promise.all(
-        Array.from(cssText.matchAll(urlRegex)).map(async match => {
+        Array.from(cssText.matchAll(urlRegex)).map(async (match) => {
           let rawUrl = extractURL(match[0]);
           if (!rawUrl) return null;
+
           let url = rawUrl;
           if (!url.startsWith("http")) {
             url = new URL(url, link.href).href;
           }
+
           try {
             url = encodeURI(url);
           } catch (e) {
-            console.warn('[snapdom] Failed to encode font URL:', url);
+            console.warn("[snapdom] Failed to encode font URL:", url);
           }
 
-
-          // ⏭️ Skip icon font URL if instructed
           if (ignoreIconFonts && isIconFont(url)) {
-            // console.log('⏭️ Skipping icon font URL:', url);
             return null;
           }
 
@@ -105,7 +102,7 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
           try {
             const fontRes = await fetch(url);
             const blob = await fontRes.blob();
-            const b64 = await new Promise(resolve => {
+            const b64 = await new Promise((resolve) => {
               const reader = new FileReader();
               reader.onload = () => resolve(reader.result);
               reader.readAsDataURL(blob);
@@ -113,7 +110,7 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
             resourceCache.set(url, b64);
             return { original: match[0], inlined: `url(${b64})` };
           } catch (err) {
-            console.warn('❌ Failed to fetch font:', url);
+            console.warn("[snapdom] Failed to fetch font:", url);
             return null;
           }
         })
@@ -126,16 +123,108 @@ export async function embedCustomFonts({ ignoreIconFonts = true, preCached = fal
         }
       }
 
-      finalCSS += cssFinal + '\n';
+      finalCSS += cssFinal + "\n";
     } catch (e) {
-      console.warn('❌ Failed to fetch CSS:', link.href);
+      console.warn("[snapdom] Failed to fetch CSS:", link.href);
     }
   }
 
-  // 🧠 Optionally inject pre-cached fonts into the document
+  // Procesar @font-face en styleSheets accesibles
+  for (const sheet of document.styleSheets) {
+    try {
+      if (!sheet.href || links.every(link => link.href !== sheet.href)) {
+        for (const rule of sheet.cssRules) {
+          if (rule.type === CSSRule.FONT_FACE_RULE) {
+            const src = rule.style.getPropertyValue("src");
+            if (!src) continue;
+
+            const urlRegex = /url\(([^)]+)\)/g;
+            let inlinedSrc = src;
+
+            const matches = Array.from(src.matchAll(urlRegex));
+            for (const match of matches) {
+              let rawUrl = match[1].trim().replace(/^["']|["']$/g, "");
+              if (!rawUrl) continue;
+
+              let url = rawUrl;
+              if (!url.startsWith("http") && !url.startsWith("data:")) {
+                url = new URL(url, sheet.href || location.href).href;
+              }
+
+              if (ignoreIconFonts && isIconFont(url)) {
+                continue;
+              }
+
+              if (resourceCache.has(url)) {
+                inlinedSrc = inlinedSrc.replace(match[0], `url(${resourceCache.get(url)})`);
+                continue;
+              }
+
+              try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const b64 = await new Promise(resolve => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                resourceCache.set(url, b64);
+                inlinedSrc = inlinedSrc.replace(match[0], `url(${b64})`);
+              } catch (e) {
+                console.warn("[snapdom] Failed to fetch font URL:", url);
+              }
+            }
+
+            finalCSS += `@font-face {
+  font-family: ${rule.style.getPropertyValue("font-family")};
+  src: ${inlinedSrc};
+  font-style: ${rule.style.getPropertyValue("font-style") || "normal"};
+  font-weight: ${rule.style.getPropertyValue("font-weight") || "normal"};
+}\n`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[snapdom] Cannot access stylesheet", sheet.href, e);
+    }
+  }
+
+  // Procesar FontFace dinámicos con _snapdomSrc
+  for (const font of document.fonts) {
+    if (font.family && font.status === "loaded" && font._snapdomSrc) {
+      let b64 = font._snapdomSrc;
+      if (!b64.startsWith("data:")) {
+        if (resourceCache.has(font._snapdomSrc)) {
+          b64 = resourceCache.get(font._snapdomSrc);
+        } else {
+          try {
+            const res = await fetch(font._snapdomSrc);
+            const blob = await res.blob();
+            b64 = await new Promise(resolve => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+            resourceCache.set(font._snapdomSrc, b64);
+          } catch (e) {
+            console.warn("[snapdom] Failed to fetch dynamic font src:", font._snapdomSrc);
+            continue;
+          }
+        }
+      }
+
+      finalCSS += `@font-face {
+  font-family: '${font.family}';
+  src: url(${b64});
+  font-style: ${font.style || 'normal'};
+  font-weight: ${font.weight || 'normal'};
+}\n`;
+    }
+  }
+
   if (finalCSS && preCached) {
-    const style = document.createElement('style');
-    style.setAttribute('data-snapdom', 'embedFonts');
+    const style = document.createElement("style");
+    style.setAttribute("data-snapdom", "embedFonts");
     style.textContent = finalCSS;
     document.head.appendChild(style);
   }
