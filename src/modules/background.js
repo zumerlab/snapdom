@@ -22,24 +22,29 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     const style = styleCache.get(srcNode) || getStyle(srcNode);
     if (!styleCache.has(srcNode)) styleCache.set(srcNode, style);
     const bg = style.getPropertyValue("background-image");
-    const rawUrl = extractURL(bg);
-    if (rawUrl) {
-      try {
-        let bgUrl = encodeURI(rawUrl);
-        let dataUrl;
-        if (bgCache.has(bgUrl)) {
-          dataUrl = bgCache.get(bgUrl);
-        } else {
-          const crossOrigin = options.crossOrigin ? options.crossOrigin(bgUrl) : "anonymous";
-          dataUrl = await fetchImage(bgUrl, 3000, crossOrigin);
-          bgCache.set(bgUrl, dataUrl);
+    const bgSplits = bg.split(",");
+    for (let i = 0; i < bgSplits.length; i++) {
+      const rawUrl = extractURL(bgSplits[i]);
+      if(rawUrl) {
+        try {
+          let bgUrl = encodeURI(rawUrl);
+          let dataUrl;
+          if (bgCache.has(bgUrl)) {
+            dataUrl = bgCache.get(bgUrl);
+          } else {
+            const crossOrigin = options.crossOrigin ? options.crossOrigin(bgUrl) : "anonymous";
+            dataUrl = await fetchImage(bgUrl, 3000, crossOrigin);
+            bgCache.set(bgUrl, dataUrl);
+          }
+          bgSplits[i] = `url(${dataUrl})`;
+        } catch {
+          bgSplits[i] = "none";
         }
-        cloneNode.style.backgroundImage = `url(${dataUrl})`;
-      } catch {
-        cloneNode.style.backgroundImage = "none";
       }
     }
-
+    if(bgSplits.length > 0) {
+      cloneNode.style.backgroundImage = bgSplits.join(",");
+    }
     const sChildren = Array.from(srcNode.children);
     const cChildren = Array.from(cloneNode.children);
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
