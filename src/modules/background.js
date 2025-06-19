@@ -15,6 +15,7 @@ import { bgCache } from '../core/cache.js'
  * @param {Object} [options={}] - Options for image processing
  * @returns {Promise<void>} Promise that resolves when all background images are processed
  */
+
 export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
   const queue = [[source, clone]];
   while (queue.length) {
