@@ -42,7 +42,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         const key = getStyleKey(snapshot, "span", compress);
         styleMap.set(pseudoEl, key);
 
-        const isIconFont2 = fontFamily && /font.*awesome|material|bootstrap|glyphicons|ionicons|remixicon|simple-line-icons|octicons|feather|typicons|weathericons/i.test(
+        const isIconFont2 = fontFamily && /font.*awesome|material|bootstrap|glyphicons|ionicons|remixicon|simple-line-icons|octicons|feather|typicons|weathericons|lucide/i.test(
           fontFamily
         );
         let cleanContent = parseContent(content);
