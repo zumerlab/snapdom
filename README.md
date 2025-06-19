@@ -201,6 +201,7 @@ import { snapdom, preCache } from './snapdom.mjs';
 * External images must be CORS-accessible (use `crossOrigin` option for credentialed requests)
 * Iframes are not supported
 * When WebP format is used on Safari, it will fallback to PNG rendering.
+* `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
 
 ## Benchmarks
 
@@ -236,6 +237,11 @@ npm run test:benchmark
 
 They execute in **headless Chromium** using real DOM nodes.
 
+## Contributors 🙌
+
+<a href="https://github.com/zumerlab/snapdom/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=zumerlab/snapdom" />
+</a>
 
 ## License
 
