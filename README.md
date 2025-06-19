@@ -243,6 +243,7 @@ They execute in **headless Chromium** using real DOM nodes.
   <img src="https://contrib.rocks/image?repo=zumerlab/snapdom" />
 </a>
 
+
 ## License
 
 MIT © Zumerlab
