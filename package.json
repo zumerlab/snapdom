@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom",
-  "version": "1.3.0",
+  "version": "1.7.1",
   "description": "snapDOM captures HTML elements to images with exceptional speed and accuracy.",
   "main": "dist/snapdom.js",
   "module": "dist/snapdom.mjs",
