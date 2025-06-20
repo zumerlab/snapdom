@@ -52,7 +52,8 @@ function updateReadme(contributorHTML) {
 
 fetchContributors()
   .then(contributors => {
-    const html = buildHTML(contributors);
+    const filtered = contributors.filter(c => c.type !== 'Bot' && c.login !== 'github-actions[bot]');
+    const html = buildHTML(filtered);
     updateReadme(html);
   })
   .catch(err => {
