@@ -245,6 +245,13 @@ They execute in **headless Chromium** using real DOM nodes.
 
 
 <!-- CONTRIBUTORS:START -->
+<p align="center">
+<a href="https://github.com/tinchox5" title="tinchox5"><img src="https://avatars.githubusercontent.com/u/11557901?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="tinchox5"/></a>
+<a href="https://github.com/domialex" title="domialex"><img src="https://avatars.githubusercontent.com/u/4694217?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="domialex"/></a>
+<a href="https://github.com/elliots" title="elliots"><img src="https://avatars.githubusercontent.com/u/622455?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="elliots"/></a>
+<a href="https://github.com/jswhisperer" title="jswhisperer"><img src="https://avatars.githubusercontent.com/u/1177690?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="jswhisperer"/></a>
+<a href="https://github.com/jhbae200" title="jhbae200"><img src="https://avatars.githubusercontent.com/u/20170610?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="jhbae200"/></a>
+</p>
 <!-- CONTRIBUTORS:END -->
 
 ## License
