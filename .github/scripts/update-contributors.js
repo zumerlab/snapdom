@@ -2,7 +2,7 @@
 import { writeFileSync, readFileSync } from 'fs';
 import https from 'https';
 
-const repo = 'zumerlab/snapdom'; // ⚠️ tu repo
+const repo = 'zumerlab/snapdom';
 const readmePath = 'README.md';
 
 function fetchContributors() {
@@ -29,16 +29,17 @@ function fetchContributors() {
 
 function buildHTML(contributors) {
   return (
-    '\n<p align="center">\n' +
+    '\n<p>\n' +
     contributors
       .map(c => {
-        const avatar = `<a href="${c.html_url}" title="${c.login}"><img src="${c.avatar_url}&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="${c.login}"/></a>`;
+        const avatar = `<a href="${c.html_url}" title="${c.login}"><img src="${c.avatar_url}&s=100" style="border-radius:50%; width:60px; height:60px; object-fit:cover; margin:5px;" alt="${c.login}"/></a>`;
         return avatar;
       })
       .join('\n') +
     '\n</p>\n'
   );
 }
+
 
 function updateReadme(contributorHTML) {
   const content = readFileSync(readmePath, 'utf8');
