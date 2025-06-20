@@ -240,9 +240,8 @@ They execute in **headless Chromium** using real DOM nodes.
 ## Contributors 🙌
 
 <a href="https://github.com/zumerlab/snapdom/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=zumerlab/snapdom" />
+  <img  alt="contributors" src="https://contrib.rocks/image?repo=zumerlab/snapdom" />
 </a>
-
 
 ## License
 
