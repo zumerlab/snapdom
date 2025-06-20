@@ -7,7 +7,21 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zumer/snapdom"><img src="https://img.shields.io/github/package-json/v/zumerlab/snapdom"></a>
+ <a href="https://www.npmjs.com/package/@zumer/snapdom">
+    <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=Version">
+  </a>
+  <a href="https://github.com/zumerlab/snapdom/graphs/contributors">
+    <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/zumerlab/snapdom?style=flat-square&label=Contributors">
+  </a>
+  <a href="https://github.com/zumerlab/snapdom/stargazers">
+    <img alt="GitHub stars" src="https://img.shields.io/github/stars/zumerlab/snapdom?style=flat-square&label=Stars">
+  </a>
+  <a href="https://github.com/zumerlab/snapdom/network/members">
+    <img alt="GitHub forks" src="https://img.shields.io/github/forks/zumerlab/snapdom?style=flat-square&label=Forks">
+  </a>
+  <a href="https://github.com/zumerlab/snapdom/blob/main/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/zumerlab/snapdom?style=flat-square">
+  </a>
 </p>
 
 **snapDOM** is a fast and accurate DOM-to-image capture tool built for **Zumly**, a zoom-based view transition framework.
