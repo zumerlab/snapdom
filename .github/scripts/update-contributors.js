@@ -32,19 +32,7 @@ function buildHTML(contributors) {
     '\n<p align="">\n' +
     contributors
       .map(c => {
-        const avatar = `<a href="${c.html_url}" title="${c.login}" style="display:inline-block;width:60px;height:60px;margin:5px;">
-  <span style="
-    display:inline-block;
-    width:60px;
-    height:60px;
-    border-radius:50%;
-    background-image:url('${c.avatar_url}&s=100');
-    background-size:cover;
-    background-position:center;
-    background-repeat:no-repeat;
-    display:inline-block;
-  "></span>
-</a>`;
+        const avatar = <a href="${c.html_url}" title="${c.login}"><img src="${c.avatar_url}&s=100" style="border-radius: 10px;width:60px; height:60px; object-fit:cover; margin:5px;" alt="${c.login}"/></a>;
         return avatar;
       })
       .join('\n') +
