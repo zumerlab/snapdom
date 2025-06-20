@@ -250,6 +250,7 @@ They execute in **headless Chromium** using real DOM nodes.
 <a href="https://github.com/domialex" title="domialex"><img src="https://avatars.githubusercontent.com/u/4694217?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="domialex"/></a>
 <a href="https://github.com/elliots" title="elliots"><img src="https://avatars.githubusercontent.com/u/622455?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="elliots"/></a>
 <a href="https://github.com/jswhisperer" title="jswhisperer"><img src="https://avatars.githubusercontent.com/u/1177690?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="jswhisperer"/></a>
+<a href="https://github.com/apps/github-actions" title="github-actions[bot]"><img src="https://avatars.githubusercontent.com/in/15368?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="github-actions[bot]"/></a>
 <a href="https://github.com/jhbae200" title="jhbae200"><img src="https://avatars.githubusercontent.com/u/20170610?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="jhbae200"/></a>
 </p>
 <!-- CONTRIBUTORS:END -->
