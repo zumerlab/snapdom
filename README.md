@@ -239,11 +239,6 @@ They execute in **headless Chromium** using real DOM nodes.
 
 ## Contributors 🙌
 
-<a href="https://github.com/zumerlab/snapdom/graphs/contributors">
-  <img  alt="contributors" src="https://contrib.rocks/image?repo=zumerlab/snapdom" />
-</a>
-
-
 <!-- CONTRIBUTORS:START -->
 <p align="center">
 <a href="https://github.com/tinchox5" title="tinchox5"><img src="https://avatars.githubusercontent.com/u/11557901?v=4&s=100" width="60" height="60" style="border-radius: 50%; margin: 5px;" alt="tinchox5"/></a>
