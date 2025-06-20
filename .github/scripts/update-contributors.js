@@ -29,17 +29,16 @@ function fetchContributors() {
 
 function buildHTML(contributors) {
   return (
-    '\n<p align="">\n' +
+    '\n<p>\n' +
     contributors
       .map(c => {
-        const avatar = <a href="${c.html_url}" title="${c.login}"><img src="${c.avatar_url}&s=100" style="border-radius: 10px;width:60px; height:60px; object-fit:cover; margin:5px;" alt="${c.login}"/></a>;
+        const avatar = `<a href="${c.html_url}" title="${c.login}"><img src="${c.avatar_url}&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="${c.login}"/></a>`;
         return avatar;
       })
       .join('\n') +
     '\n</p>\n'
   );
 }
-
 
 function updateReadme(contributorHTML) {
   const content = readFileSync(readmePath, 'utf8');
