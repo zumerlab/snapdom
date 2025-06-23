@@ -53,27 +53,28 @@ describe('snapdom advanced tests', () => {
   });
 
   it('should replace iframes with fallback visuals', async () => {
-    const iframe = document.createElement('iframe');
-    iframe.style.width = '200px';
-    iframe.style.height = '100px';
-    testElement.appendChild(iframe);
-  
-    const svgDataUrl = await snapdom.toRaw(testElement);
-    const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
-  
-    // Parseamos el SVG generado
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgText, 'image/svg+xml');
-    
-    // Verificamos que NO haya un iframe adentro
-    const iframesInSvg = doc.querySelectorAll('iframe');
-    expect(iframesInSvg.length).toBe(0);
-  
-    // Y opcionalmente chequeamos que haya un div de fallback
-    const fallbackDivs = Array.from(doc.querySelectorAll('div'))
-      .filter(div => div.style && div.style.background?.includes('repeating-linear-gradient'));
-  
-    expect(fallbackDivs.length).toBeGreaterThan(0);
+  const iframe = document.createElement('iframe');
+  iframe.style.width = '200px';
+  iframe.style.height = '100px';
+  testElement.appendChild(iframe);
+
+  const svgDataUrl = await snapdom.toRaw(testElement);
+  const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgText, 'image/svg+xml');
+
+  // No debe haber iframes en el SVG
+  expect(doc.querySelectorAll('iframe').length).toBe(0);
+
+  // Buscamos divs con estilo inline que contengan repeating-linear-gradient
+  const fallbackDivs = Array.from(doc.querySelectorAll('div')).filter(div => {
+    const styleAttr = div.getAttribute('style') || '';
+    return styleAttr.includes('repeating-linear-gradient');
   });
+
+  expect(fallbackDivs.length).toBeGreaterThan(0);
+});
+
   
 });

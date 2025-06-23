@@ -25,7 +25,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress) {
   if (node.tagName === "IFRAME") {
     const fallback = document.createElement("div");
     fallback.textContent = "";
-    fallback.style.cssText = `width: ${node.offsetWidth}px; height: ${node.offsetHeight}px; background: repeating-linear-gradient(45deg, #ddd, #ddd 5px, #f9f9f9 5px, #f9f9f9 10px);display: flex;align-items: center;justify-content: center;font-size: 12px;color: #555; border: 1px solid #aaa;`;
+    fallback.style.cssText = `width: ${node.offsetWidth}px; height: ${node.offsetHeight}px; background-image: repeating-linear-gradient(45deg, #ddd, #ddd 5px, #f9f9f9 5px, #f9f9f9 10px);display: flex;align-items: center;justify-content: center;font-size: 12px;color: #555; border: 1px solid #aaa;`;
     return fallback;
   }
   if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute("data-capture") === "placeholder") {

@@ -18,34 +18,82 @@ import { bgCache } from '../core/cache.js'
 
 export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
   const queue = [[source, clone]];
+
   while (queue.length) {
     const [srcNode, cloneNode] = queue.shift();
+
     const style = styleCache.get(srcNode) || getStyle(srcNode);
     if (!styleCache.has(srcNode)) styleCache.set(srcNode, style);
+
     const bg = style.getPropertyValue("background-image");
-    const bgSplits = bg.split(",");
-    for (let i = 0; i < bgSplits.length; i++) {
-      const rawUrl = extractURL(bgSplits[i]);
-      if(rawUrl) {
-        try {
-          let bgUrl = encodeURI(rawUrl);
-          let dataUrl;
-          if (bgCache.has(bgUrl)) {
-            dataUrl = bgCache.get(bgUrl);
-          } else {
-            const crossOrigin = options.crossOrigin ? options.crossOrigin(bgUrl) : "anonymous";
-            dataUrl = await fetchImage(bgUrl, 3000, crossOrigin);
-            bgCache.set(bgUrl, dataUrl);
-          }
-          bgSplits[i] = `url(${dataUrl})`;
-        } catch {
-          bgSplits[i] = "none";
-        }
+    const bgColor = style.getPropertyValue("background-color");
+
+    // Evitamos continuar si no hay background-image significativo
+    if (!bg || bg === "none") {
+      const sChildren = Array.from(srcNode.children);
+      const cChildren = Array.from(cloneNode.children);
+      for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
+        queue.push([sChildren[i], cChildren[i]]);
       }
+      continue;
     }
-   if (bgSplits.some(s => s.includes("url("))) {
-      cloneNode.style.backgroundImage = bgSplits.join(",");
+
+    const bgSplits = bg
+      .split(/,(?=(?:[^()]*\([^()]*\))*[^()]*$)/)
+      .map(s => s.trim());
+
+    const newBgParts = await Promise.all(
+      bgSplits.map(async (entry) => {
+        const isUrl = entry.startsWith("url(");
+        const isGradient = /^((repeating-)?(linear|radial|conic)-gradient)\(/i.test(entry);
+
+        if (isUrl) {
+          const rawUrl = extractURL(entry);
+          if (!rawUrl) return entry;
+
+          try {
+            const encodedUrl = encodeURI(rawUrl);
+            if (bgCache.has(encodedUrl)) {
+              return `url(${bgCache.get(encodedUrl)})`;
+            } else {
+              const crossOrigin = options.crossOrigin ? options.crossOrigin(encodedUrl) : "anonymous";
+              const dataUrl = await fetchImage(encodedUrl, 3000, crossOrigin);
+              bgCache.set(encodedUrl, dataUrl);
+              return `url(${dataUrl})`;
+            }
+          } catch (err) {
+            console.warn(`[snapdom] Failed to inline background-image:`, rawUrl, err);
+            return entry;
+          }
+        }
+
+        // Conservar gradientes (incluso repeating) y "none" tal como están
+        if (isGradient || entry === "none") {
+          return entry;
+        }
+
+        // No se reconoce, devolver tal cual
+        return entry;
+      })
+    );
+
+    // Solo aplicar si hay alguna parte útil (no sólo "none")
+    const hasRealBg = newBgParts.some(p =>
+      p && p !== "none" && !/^url\(undefined\)/.test(p)
+    );
+
+    if (hasRealBg) {
+      cloneNode.style.backgroundImage = newBgParts.join(", ");
     }
+
+    if (
+      bgColor &&
+      bgColor !== "transparent" &&
+      bgColor !== "rgba(0, 0, 0, 0)"
+    ) {
+      cloneNode.style.backgroundColor = bgColor;
+    }
+
     const sChildren = Array.from(srcNode.children);
     const cChildren = Array.from(cloneNode.children);
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
