@@ -3,7 +3,7 @@
  * @module background
  */
 
-import { fetchImage, getStyle, extractURL } from '../utils/helpers.js';
+import { fetchImage, getStyle, extractURL, safeEncodeURI } from '../utils/helpers.js';
 import { bgCache } from '../core/cache.js'
 
 /**
@@ -52,7 +52,7 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
           if (!rawUrl) return entry;
 
           try {
-            const encodedUrl = encodeURI(rawUrl);
+            const encodedUrl = safeEncodeURI(rawUrl);
             if (bgCache.has(encodedUrl)) {
               return `url(${bgCache.get(encodedUrl)})`;
             } else {

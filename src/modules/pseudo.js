@@ -3,7 +3,7 @@
  * @module pseudo
  */
 
-import { fetchImage, getStyle, extractURL } from '../utils/helpers.js'
+import { fetchImage, getStyle, extractURL, safeEncodeURI } from '../utils/helpers.js'
 import { snapshotComputedStyle } from '../utils/helpers.js'
 import { parseContent } from '../utils/helpers.js'
 import { getStyleKey } from '../utils/cssTools.js'
@@ -104,7 +104,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
           if (rawUrl && rawUrl.trim() !== "") {
             try {
               const imgEl = document.createElement("img");
-              const dataUrl = await fetchImage(encodeURI(rawUrl));
+              const dataUrl = await fetchImage(safeEncodeURI(rawUrl));
               imgEl.src = dataUrl;
               imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
               pseudoEl.appendChild(imgEl);
@@ -125,7 +125,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
               if (rawUrl.startsWith("data:")) {
                 dataUrl = rawUrl; // no fetch necesario
               } else {
-                dataUrl = await fetchImage(encodeURI(rawUrl));
+                dataUrl = await fetchImage(safeEncodeURI(rawUrl));
               }
               pseudoEl.style.backgroundImage = `url(${dataUrl})`;
             } catch (e) {

@@ -193,3 +193,12 @@ export function stripTranslate(transform) {
 
   return cleaned.trim().replace(/\s{2,}/g, ' ');
 }
+
+export function safeEncodeURI(uri) {
+  try {
+    const newURI = decodeURI(uri);
+    return encodeURI(newURI);
+  } catch {
+    return uri;
+  }
+}
