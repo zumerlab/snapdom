@@ -4,6 +4,7 @@
  */
 
 import { generateCSSClasses} from '../utils/cssTools.js';
+import { stripTranslate} from '../utils/helpers.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
 
@@ -20,7 +21,8 @@ export async function prepareClone(element, compress = false, embedFonts = false
   const styleCache = new WeakMap();
   const nodeMap = new Map();
   let clone;
-
+  
+   
   try {
     clone = deepClone(element, styleMap, styleCache, nodeMap, compress);
   } catch (e) {
@@ -82,5 +84,21 @@ export async function prepareClone(element, compress = false, embedFonts = false
       }
     }
 
+ if (element === nodeMap.get(clone)) {
+    const computed = styleCache.get(element) || window.getComputedStyle(element);
+    styleCache.set(element, computed);
+    const transform = stripTranslate(computed.transform);
+
+    clone.style.margin = '0';
+    clone.style.position = 'static';
+    clone.style.top = 'auto';
+    clone.style.left = 'auto';
+    clone.style.right = 'auto';
+    clone.style.bottom = 'auto';
+    clone.style.zIndex = 'auto';
+    clone.style.float = 'none';
+    clone.style.clear = 'none';
+    clone.style.transform = transform || 'none';
+  }
   return { clone, classCSS, styleCache };
 }
