@@ -98,7 +98,7 @@ export async function prepareClone(element, compress = false, embedFonts = false
     clone.style.zIndex = 'auto';
     clone.style.float = 'none';
     clone.style.clear = 'none';
-    clone.style.transform = transform || 'none';
+    clone.style.transform = transform || "";
   }
   return { clone, classCSS, styleCache };
 }
