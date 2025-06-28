@@ -1,24 +1,13 @@
-import { precacheCommonTags } from "../utils/cssTools";
-import { fetchImage } from "../utils/helpers";
-import { extractURL } from "../utils/helpers";
-import { embedCustomFonts } from "../modules/fonts";
-import { imageCache, bgCache, resourceCache, baseCSSCache, computedStyleCache } from "../core/cache";
+import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage } from '../utils/helpers.js';
+import { embedCustomFonts } from '../modules/fonts.js';
+import { precacheCommonTags } from '../utils/cssTools.js';
+import { imageCache, bgCache, resourceCache, baseCSSCache } from '../core/cache.js';
 
 /**
  * Preloads images, background images, and optionally fonts into cache before DOM capture.
- * This helps avoid delays or missing resources during the capture process.
  *
- * - If `reset` is true, all caches are cleared and the function returns immediately.
- * - If `embedFonts` is true, custom fonts are embedded (icon fonts are always embedded).
- * - If `preWarm` is true, common tag styles are pre-cached.
- *
- * @export
- * @param {Document|Element} [root=document] - The root node to search for resources (defaults to the whole document)
+ * @param {Document|Element} [root=document] - The root node to search for resources
  * @param {Object} [options={}] - Pre-caching options
- * @param {boolean} [options.embedFonts=true] - Whether to embed custom fonts
- * @param {boolean} [options.reset=false] - Whether to clear all caches before pre-caching
- * @param {boolean} [options.preWarm=true] - Whether to pre-cache common tag styles
- * @param {Function} [options.crossOrigin] - Function that returns CORS mode for each image URL
  * @returns {Promise<void>} Resolves when all resources are pre-cached
  */
 
@@ -29,7 +18,7 @@ export async function preCache(root = document, options = {}) {
     bgCache.clear();
     resourceCache.clear();
     baseCSSCache.clear();
-    computedStyleCache.clear();
+    // computedStyleCache.clear(); Not necessary to clear
     return;
   }
 
@@ -55,15 +44,18 @@ export async function preCache(root = document, options = {}) {
     }
   }
   for (const el of allEls) {
-    const bg = getComputedStyle(el).backgroundImage;
-    const url = extractURL(bg);
-    if (url && !bgCache.has(url)) {
-      const crossOrigin = crossOriginFn ? crossOriginFn(url) : "anonymous";
-      promises.push(
-        fetchImage(url, 3000, crossOrigin)
-          .then(dataURL => bgCache.set(url, dataURL))
-          .catch(() => {})
-      );
+    const bg = getStyle(el).backgroundImage;
+    if (bg && bg !== "none") {
+      const bgSplits = splitBackgroundImage(bg);
+      for (const entry of bgSplits) {
+        const isUrl = entry.startsWith("url(");
+        if (isUrl) {
+          promises.push(
+            inlineSingleBackgroundEntry(entry, { crossOrigin: crossOriginFn, skipInline: true })
+              .catch(() => {})
+          );
+        }
+      }
     }
   }
 

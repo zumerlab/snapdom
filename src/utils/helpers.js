@@ -238,3 +238,21 @@ export function safeEncodeURI(uri) {
     return uri;
   }
 }
+
+export function splitBackgroundImage(bg) {
+  const parts = [];
+  let depth = 0;
+  let lastIndex = 0;
+  for (let i = 0; i < bg.length; i++) {
+    const char = bg[i];
+    if (char === '(') depth++;
+    if (char === ')') depth--;
+    if (char === ',' && depth === 0) {
+      parts.push(bg.slice(lastIndex, i).trim());
+      lastIndex = i + 1;
+    }
+  }
+  parts.push(bg.slice(lastIndex).trim());
+  return parts;
+}
+

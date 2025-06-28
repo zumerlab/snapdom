@@ -3,11 +3,9 @@
  * @module pseudo
  */
 
-
-import { getStyle, snapshotComputedStyle, parseContent, extractURL, safeEncodeURI, fetchImage, inlineSingleBackgroundEntry } from '../utils/helpers.js';
+import { getStyle, snapshotComputedStyle, parseContent, extractURL, safeEncodeURI, fetchImage, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils/helpers.js';
 import { getStyleKey } from '../utils/cssTools.js';
 import { iconToImage } from '../modules/fonts.js';
-
 
 /**
  * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
@@ -18,8 +16,9 @@ import { iconToImage } from '../modules/fonts.js';
  * @param {WeakMap} styleCache - Cache of computed styles
  * @param {boolean} compress - Whether to compress style keys
  * @param {boolean} embedFonts - Whether to embed icon fonts as images
- * @returns {Promise<void>} Promise that resolves when all pseudo-elements are processed
+ * @returns {Promise} Promise that resolves when all pseudo-elements are processed
  */
+
 export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress, embedFonts = false) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
   for (const pseudo of ["::before", "::after", "::first-letter"]) {
@@ -109,7 +108,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
 
         if (hasBg) {
           try {
-            const bgSplits = bg.split(/,(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map(s => s.trim());
+            const bgSplits = splitBackgroundImage(bg);
             const newBgParts = await Promise.all(
               bgSplits.map(entry => inlineSingleBackgroundEntry(entry))
             );
@@ -119,19 +118,12 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
           }
         }
 
-        if (hasBgColor) {
-          pseudoEl.style.backgroundColor = bgColor;
-        }
+        if (hasBgColor) pseudoEl.style.backgroundColor = bgColor;
 
         const hasContent2 = pseudoEl.childNodes.length > 0 || (pseudoEl.textContent && pseudoEl.textContent.trim() !== "");
         const hasVisibleBox = hasContent2 || hasBg || hasBgColor;
         if (!hasVisibleBox) continue;
-
-        if (pseudo === "::before") {
-          clone.insertBefore(pseudoEl, clone.firstChild);
-        } else {
-          clone.appendChild(pseudoEl);
-        }
+        pseudo === "::before" ? clone.insertBefore(pseudoEl, clone.firstChild) : clone.appendChild(pseudoEl);
       }
     } catch (e) {
       console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e);

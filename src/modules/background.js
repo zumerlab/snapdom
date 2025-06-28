@@ -3,7 +3,7 @@
  * @module background
  */
 
-import { getStyle, inlineSingleBackgroundEntry } from '../utils/helpers.js';
+import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils/helpers.js';
 
 /**
  * Converts all background images in the cloned element tree to data URLs.
@@ -34,9 +34,7 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       continue;
     }
 
-    const bgSplits = bg
-      .split(/,(?=(?:[^()]*\([^()]*\))*[^()]*$)/)
-      .map(s => s.trim());
+    const bgSplits = splitBackgroundImage(bg);
 
     const newBgParts = await Promise.all(
       bgSplits.map(entry => inlineSingleBackgroundEntry(entry, options))
