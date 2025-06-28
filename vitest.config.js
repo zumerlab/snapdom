@@ -10,5 +10,11 @@ export default defineConfig({
         { browser: 'chromium' },
       ],
     },
+    coverage: {
+      provider: 'v8', // o 'istanbul'
+      include: [
+        'src/**/*.js',      // Solo archivos JS dentro de src/
+      ],
+    },
   },
 })
