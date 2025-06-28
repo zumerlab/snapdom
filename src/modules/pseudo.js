@@ -26,7 +26,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
   for (const pseudo of ["::before", "::after", "::first-letter"]) {
     try {
       const style = getStyle(source, pseudo);
-      if (!style) continue;
+      if (!style || typeof style[Symbol.iterator] !== 'function') continue;
 
       if (pseudo === "::first-letter") {
         const normal = getComputedStyle(source);
