@@ -3,7 +3,43 @@
  * @module helpers
  */
 
-import { imageCache, computedStyleCache } from "../core/cache";
+import { imageCache, computedStyleCache, bgCache } from "../core/cache";
+
+/**
+ * Fetches and inlines a single background-image entry to a data URL (with caching).
+ * - If entry is a gradient or "none", returns unchanged.
+ * - If entry is a url(...), fetches the image as data URL and caches it.
+ *
+ * @param {string} entry - Single background-image entry (e.g., "url(...)").
+ * @param {Object} [options={}] - Options like crossOrigin.
+ * @param {boolean} [options.skipInline=false] - If true, only fetches & caches, doesn't return a replacement.
+ * @returns {Promise<string|void>} - The processed entry (unless skipInline is true).
+ */
+export async function inlineSingleBackgroundEntry(entry, options = {}) {
+  const isUrl = entry.startsWith("url(");
+  const isGradient = /^((repeating-)?(linear|radial|conic)-gradient)\(/i.test(entry);
+
+  if (isUrl) {
+    const rawUrl = extractURL(entry);
+    if (!rawUrl) return entry;
+
+    const encodedUrl = safeEncodeURI(rawUrl);
+    if (bgCache.has(encodedUrl)) {
+      return options.skipInline ? undefined : `url(${bgCache.get(encodedUrl)})`;
+    } else {
+      const crossOrigin = options.crossOrigin ? options.crossOrigin(encodedUrl) : "anonymous";
+      const dataUrl = await fetchImage(encodedUrl, 3000, crossOrigin);
+      bgCache.set(encodedUrl, dataUrl);
+      return options.skipInline ? undefined : `url(${dataUrl})`;
+    }
+  }
+
+  if (isGradient || entry === "none") {
+    return entry;
+  }
+
+  return entry;
+}
 
 /**
  * Creates a promise that resolves after the specified delay

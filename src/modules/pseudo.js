@@ -3,24 +3,23 @@
  * @module pseudo
  */
 
-import { fetchImage, getStyle, extractURL, safeEncodeURI } from '../utils/helpers.js'
-import { snapshotComputedStyle } from '../utils/helpers.js'
-import { parseContent } from '../utils/helpers.js'
-import { getStyleKey } from '../utils/cssTools.js'
-import { iconToImage } from '../modules/fonts.js'
+
+import { getStyle, snapshotComputedStyle, parseContent, extractURL, safeEncodeURI, fetchImage, inlineSingleBackgroundEntry } from '../utils/helpers.js';
+import { getStyleKey } from '../utils/cssTools.js';
+import { iconToImage } from '../modules/fonts.js';
 
 
 /**
- * Creates elements to represent ::before and ::after pseudo-elements, inlining their styles and content.
+ * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
  *
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
  * @param {Map} styleMap - Map to store element-to-style-key mappings
  * @param {WeakMap} styleCache - Cache of computed styles
  * @param {boolean} compress - Whether to compress style keys
+ * @param {boolean} embedFonts - Whether to embed icon fonts as images
  * @returns {Promise<void>} Promise that resolves when all pseudo-elements are processed
  */
-
 export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress, embedFonts = false) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
   for (const pseudo of ["::before", "::after", "::first-letter"]) {
@@ -70,8 +69,6 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
       const hasBg = bg && bg !== "none";
       const hasBgColor = bgColor && bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)";
 
-      const isBgUrl = typeof bg === 'string' && bg.trim().startsWith("url(");
-
       if (hasContent || hasBg || hasBgColor) {
         const fontFamily = style.getPropertyValue("font-family");
         const fontSize = parseInt(style.getPropertyValue("font-size")) || 32;
@@ -90,13 +87,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
 
         if (!embedFonts && isIconFont2 && cleanContent.length === 1) {
           const imgEl = document.createElement("img");
-          imgEl.src = await iconToImage(
-            cleanContent,
-            fontFamily,
-            fontWeight,
-            fontSize,
-            color
-          );
+          imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
           imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
           pseudoEl.appendChild(imgEl);
         } else if (cleanContent.startsWith("url(")) {
@@ -116,24 +107,21 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
           pseudoEl.textContent = cleanContent;
         }
 
-        // Inline background-image as dataURL if it is a valid URL
-        if (isBgUrl) {
-          const rawUrl = extractURL(bg);
-          if (rawUrl && rawUrl.trim() !== "") {
-            try {
-              let dataUrl;
-              if (rawUrl.startsWith("data:")) {
-                dataUrl = rawUrl; // no fetch necesario
-              } else {
-                dataUrl = await fetchImage(safeEncodeURI(rawUrl));
-              }
-              pseudoEl.style.backgroundImage = `url(${dataUrl})`;
-            } catch (e) {
-              console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e);
-            }
+        if (hasBg) {
+          try {
+            const bgSplits = bg.split(/,(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map(s => s.trim());
+            const newBgParts = await Promise.all(
+              bgSplits.map(entry => inlineSingleBackgroundEntry(entry))
+            );
+            pseudoEl.style.backgroundImage = newBgParts.join(", ");
+          } catch (e) {
+            console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e);
           }
         }
 
+        if (hasBgColor) {
+          pseudoEl.style.backgroundColor = bgColor;
+        }
 
         const hasContent2 = pseudoEl.childNodes.length > 0 || (pseudoEl.textContent && pseudoEl.textContent.trim() !== "");
         const hasVisibleBox = hasContent2 || hasBg || hasBgColor;
