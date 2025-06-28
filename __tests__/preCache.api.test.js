@@ -41,4 +41,24 @@ describe('preCache', () => {
     document.body.removeChild(el);
   });
 
+  it('limpia los caches y retorna si reset=true', async () => {
+    // Prellenar los caches
+    imageCache.set('foo', 'bar');
+    bgCache.set('foo', 'bar');
+    resourceCache.set('foo', 'bar');
+    await preCache(document, { reset: true });
+    expect(imageCache.size).toBe(0);
+    expect(bgCache.size).toBe(0);
+    expect(resourceCache.size).toBe(0);
+  });
+
+  it('procesa múltiples backgrounds en un solo elemento', async () => {
+    const el = document.createElement('div');
+    el.style.backgroundImage = 'url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==), url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==)';
+    document.body.appendChild(el);
+    await preCache(el);
+    // No assertion estricta porque depende de helpers, pero no debe lanzar error
+    document.body.removeChild(el);
+  });
+
 });
