@@ -221,7 +221,6 @@ import { snapdom, preCache } from './snapdom.mjs';
 
 `snapDOM` is not only highly accurate — it’s **extremely fast**.
 
-
 Latest benchmarks show significant performance improvements against other libraries:
 
 | Scenario                         | vs. `modern-screenshot` | vs. `html2canvas` |
@@ -250,6 +249,33 @@ npm run test:benchmark
 ```
 
 They execute in **headless Chromium** using real DOM nodes.
+
+## Development
+
+To contribute or build snapDOM locally:
+
+```sh
+# Clone the repository
+git clone https://github.com/zumerlab/snapdom.git
+cd snapdom
+
+# Install dependencies
+npm install
+
+# Compile the library (ESM, CJS, and minified versions)
+npm run compile
+
+# Run tests
+npm test
+
+# Run Benchmarks
+npm run test:benchmark
+```
+
+The main entry point is in `src/`, and output bundles are generated in the `dist/` folder.
+
+For detailed contribution guidelines, please see [CONTRIBUTING](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING.md).
+
 
 ## Contributors 🙌
 
