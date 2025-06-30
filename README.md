@@ -154,7 +154,7 @@ Use the `width` and `height` options to generate an image with specific dimensio
 
 **Examples:**
 
-**1. Fixed width (proportional Hhight)**
+**1. Fixed width (proportional height)**
 Sets a specific width while maintaining the aspect ratio. Height adjusts proportionally.
 
 ```js
@@ -244,7 +244,7 @@ import { snapdom, preCache } from './snapdom.mjs';
 ## Features
 
 * Captures **shadow DOM** and Web Components
-* Supports `::before` and `::after` pseudo-elements
+* Supports `::before`, `::after` and `::first-letter` pseudo-elements
 * Inlines background images and fonts
 * Handles **Font Awesome**, **Material Icons**, and more
 * `data-capture="exclude"` to ignore an element
