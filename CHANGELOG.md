@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.8.0](https://github.com/zumerlab/snapdom/compare/v1.7.1...v1.8.0)
+
+> 30 June 2025
+
+- Fix: encode same uri multiple times.  Thanks @pedrocate! [`#65`](https://github.com/zumerlab/snapdom/pull/65)
+- Avoid background-image logic duplication, closes #66 [`#66`](https://github.com/zumerlab/snapdom/issues/66)
+- Improve split multiple backgrounds [`0e67a9b`](https://github.com/zumerlab/snapdom/commit/0e67a9b72fb1ea7ea4a625d5f6dc2eb40438d7cd)
+- Fix background image handling, closes #57 [`#57`](https://github.com/zumerlab/snapdom/issues/57)
+- Feat: sanitize rootElement to avoid CSS layout conflicts. Fixes #56, fixes #24 [`#56`](https://github.com/zumerlab/snapdom/issues/56) [`#24`](https://github.com/zumerlab/snapdom/issues/24)
+- Clean transform RootElement prop [`f293e5b`](https://github.com/zumerlab/snapdom/commit/f293e5be0e3ca6a97d43467976d80175d988916d)
+- Fix: canvas style props, closes #63 [`#63`](https://github.com/zumerlab/snapdom/issues/63)
+- Feat: handling @import and optimice cache, closes #61 [`#61`](https://github.com/zumerlab/snapdom/issues/61)
+- Compile .js to es2015, closes #58 [`#58`](https://github.com/zumerlab/snapdom/issues/58)
+- Improve inlinePseudoElements() to handle decorative properties, closes #55 [`#55`](https://github.com/zumerlab/snapdom/issues/55)
+- Add ::first-letter detection, closes #52 [`#52`](https://github.com/zumerlab/snapdom/issues/52)
+- Add Lucide to icon font detection. Thanks @domialex! [`#50`](https://github.com/zumerlab/snapdom/pull/50)
+
+
 #### [v1.7.1](https://github.com/zumerlab/snapdom/compare/v1.3.0...v1.7.1)
 
 > 19 June 2025
