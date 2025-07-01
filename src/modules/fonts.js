@@ -3,7 +3,7 @@
  * @module fonts
  */
 
-import { isIconFont, extractURL} from "../utils/helpers"
+import { isIconFont, extractURL, createHiDPICanvas } from "../utils/helpers"
 import { resourceCache, processedFontURLs } from "../core/cache"
 
 /**
@@ -23,8 +23,14 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   const dpr = window.devicePixelRatio || 1;
 
   // Create temporary context to measure
-  const tempCanvas = document.createElement("canvas");
-  const tempCtx = tempCanvas.getContext("2d");
+  let tempCanvas, tempCtx;
+  if (typeof OffscreenCanvas !== 'undefined') {
+    tempCanvas = new OffscreenCanvas(1, 1);
+    tempCtx = tempCanvas.getContext("2d");
+  } else {
+    tempCanvas = document.createElement("canvas");
+    tempCtx = tempCanvas.getContext("2d");
+  }
   tempCtx.font = fontWeight
     ? `${fontWeight} ${fontSize}px "${fontFamily}"`
     : `${fontSize}px "${fontFamily}"`;
@@ -35,12 +41,8 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   const height = ascent + descent;
   const width = metrics.width;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(width * dpr);
-  canvas.height = Math.ceil(height * dpr);
-
-  const ctx = canvas.getContext("2d");
-  ctx.scale(dpr, dpr);
+  // Usar función centralizada para canvas HiDPI
+  const { canvas, ctx } = createHiDPICanvas(width, height, { dpr });
   ctx.font = tempCtx.font;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic"; // aligns with baseline
@@ -49,7 +51,16 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   // Draw at (0, ascent) so the full glyph fits vertically
   ctx.fillText(unicodeChar, 0, ascent);
 
-  return canvas.toDataURL();
+  if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) {
+    const blob = await canvas.convertToBlob();
+    return await new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } else {
+    return canvas.toDataURL();
+  }
 }
 
 

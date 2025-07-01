@@ -5,7 +5,7 @@
  */
 
 import { captureDOM } from '../core/capture';
-import { isSafari } from '../utils/helpers.js';
+import { isSafari, createHiDPICanvas } from '../utils/helpers.js';
 
 /**
  * Converts an SVG data URL to an HTMLImageElement.
@@ -46,17 +46,25 @@ async function toCanvas(url, { dpr = 1, scale = 1 } = {}) {
     const img = new Image();
     img.src = url;
     await img.decode();
-    const canvas = document.createElement("canvas");
     const width = img.width * scale;
     const height = img.height * scale;
-    canvas.width = Math.ceil(width * dpr);
-    canvas.height = Math.ceil(height * dpr);
-    const ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr);
+    const { canvas, ctx } = createHiDPICanvas(width, height, { dpr });
     ctx.drawImage(img, 0, 0, width, height);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    
+    if (canvas.style) {
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    }
+    // Si es OffscreenCanvas, transferir a HTMLCanvasElement
+    if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) {
+      const transfer = document.createElement('canvas');
+      transfer.width = canvas.width;
+      transfer.height = canvas.height;
+      const tctx = transfer.getContext('2d');
+      tctx.drawImage(canvas, 0, 0);
+      transfer.style.width = `${width}px`;
+      transfer.style.height = `${height}px`;
+      return transfer;
+    }
     return canvas;
 }
 

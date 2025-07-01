@@ -1,26 +1,35 @@
 /**
  * Core logic for capturing DOM elements as SVG data URLs.
+ * Orquesta el flujo de preparación, inlining y renderizado.
  * @module capture
  */
 
 import { prepareClone } from './prepare.js';
 import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
-import { idle, isSafari } from '../utils/helpers.js';
+import { idle } from '../utils/helpers.js';
 import { collectUsedTagNames, generateDedupedBaseCSS } from '../utils/cssTools.js';
 import { embedCustomFonts } from '../modules/fonts.js';
-import { baseCSSCache } from '../core/cache.js'
+import { baseCSSCache } from '../core/cache.js';
+import { renderClone } from './render.js';
 
 /**
- * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
+ * @typedef {Object} CaptureOptions
+ * @property {boolean} [compress=true] - Si se debe comprimir el CSS
+ * @property {boolean} [embedFonts=false] - Si se deben inlinar fuentes
+ * @property {boolean} [fast=true] - Si se debe usar modo rápido (idle)
+ * @property {number} [scale=1] - Escala de salida
+ * @property {number} [width] - Ancho forzado
+ * @property {number} [height] - Alto forzado
+ */
+
+/**
+ * Captura un elemento HTML como dataURL SVG, inlinando estilos, imágenes, backgrounds y fuentes.
+ * Orquesta el flujo de preparación, inlining y renderizado.
  *
- * @param {Element} element - DOM element to capture
- * @param {Object} [options={}] - Capture options
- * @param {boolean} [options.compress=true] - Whether to compress style keys
- * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
- * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
- * @param {number} [options.scale=1] - Output scale multiplier
- * @returns {Promise<string>} Promise that resolves to an SVG data URL
+ * @param {Element} element - Elemento DOM a capturar
+ * @param {CaptureOptions} [options={}] - Opciones de captura
+ * @returns {Promise<string>} DataURL SVG serializado
  */
 
 export async function captureDOM(element, options = {}) {
@@ -31,8 +40,6 @@ export async function captureDOM(element, options = {}) {
   let clone, classCSS, styleCache;
   let fontsCSS = "";
   let baseCSS = "";
-  let dataURL;
-  let svgString;
 
   ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts));
 
@@ -75,73 +82,18 @@ export async function captureDOM(element, options = {}) {
     }
   }
 
-  await new Promise((resolve) => {
-    idle(() => {
-      const rect = element.getBoundingClientRect();
-      let w = rect.width;
-      let h = rect.height;
-
-      const hasW = Number.isFinite(options.width);
-      const hasH = Number.isFinite(options.height);
-      const hasScale = typeof scale === "number" && scale !== 1;
-
-      if (!hasScale) {
-        const aspect = rect.width / rect.height;
-
-        if (hasW && hasH) {
-          w = options.width;
-          h = options.height;
-        } else if (hasW) {
-          w = options.width;
-          h = w / aspect;
-        } else if (hasH) {
-          h = options.height;
-          w = h * aspect;
-        }
-      }
-
-      w = Math.ceil(w);
-      h = Math.ceil(h);
-
-      clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-      clone.style.transformOrigin = "top left";
-
-      if (!hasScale && (hasW || hasH)) {
-        // Solo aplicar escala CSS si no estamos usando scale para escalar
-        const originalW = rect.width;
-        const originalH = rect.height;
-
-        const scaleX = w / originalW;
-        const scaleY = h / originalH;
-
-        const existingTransform = clone.style.transform || '';
-        const scaleTransform = `scale(${scaleX}, ${scaleY})`;
-        clone.style.transform = `${scaleTransform} ${existingTransform}`.trim();
-      } else if (hasScale && isSafari()) {
-        // En Safari se puede usar style.scale para un escalado más directo
-        clone.style.scale = `${scale}`;
-      }
-
-      const svgNS = "http://www.w3.org/2000/svg";
-      const fo = document.createElementNS(svgNS, "foreignObject");
-      fo.setAttribute("width", "100%");
-      fo.setAttribute("height", "100%");
-      const styleTag = document.createElement("style");
-      styleTag.textContent = baseCSS + fontsCSS + "svg{overflow:visible;}" + classCSS;
-      fo.appendChild(styleTag);
-      fo.appendChild(clone);
-
-      const serializer = new XMLSerializer();
-      const foString = serializer.serializeToString(fo);
-
-      const svgHeader = `<svg xmlns="${svgNS}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
-      const svgFooter = "</svg>";
-      svgString = svgHeader + foString + svgFooter;
-
-      dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
-      resolve();
-    }, { fast });
+  // --- Renderizado extraído ---
+  const { dataURL } = renderClone(clone, element, {
+    baseCSS,
+    fontsCSS,
+    classCSS,
+    scale,
+    width: options.width,
+    height: options.height,
+    fast,
+    options
   });
+  // --- Fin renderizado extraído ---
 
   const sandbox = document.getElementById("snapdom-sandbox");
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();

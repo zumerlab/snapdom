@@ -25,12 +25,17 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
 
     const encodedUrl = safeEncodeURI(rawUrl);
     if (bgCache.has(encodedUrl)) {
-      return options.skipInline ? undefined : `url(${bgCache.get(encodedUrl)})`;
+      return options.skipInline ? undefined : `url("${bgCache.get(encodedUrl)}")`;
     } else {
       const crossOrigin = options.crossOrigin ? options.crossOrigin(encodedUrl) : "anonymous";
-      const dataUrl = await fetchImage(encodedUrl, 3000, crossOrigin);
-      bgCache.set(encodedUrl, dataUrl);
-      return options.skipInline ? undefined : `url(${dataUrl})`;
+      try {
+        const dataUrl = await fetchImage(encodedUrl, 3000, crossOrigin);
+        bgCache.set(encodedUrl, dataUrl);
+        return options.skipInline ? undefined : `url("${dataUrl}")`;
+      } catch (e) {
+        // Si hay error (CORS, timeout, etc), devolvemos 'none' para evitar uncaught error
+        return options.skipInline ? undefined : 'none';
+      }
     }
   }
 
@@ -143,8 +148,8 @@ export function isIconFont(familyOrUrl) {
  * @param {number} [timeout=3000]
  * @return {*} 
  */
-export function fetchImage(src, timeout = 3000, crossOrigin = "anonymous") {
 
+export function fetchImage(src, timeout = 3000, crossOrigin = "anonymous") {
   if (imageCache.has(src)) {
     return Promise.resolve(imageCache.get(src));
   }
@@ -158,26 +163,39 @@ export function fetchImage(src, timeout = 3000, crossOrigin = "anonymous") {
     image.crossOrigin = crossOrigin;
 
     image.onload = async () => {
-      clearTimeout(timeoutId);
-      try {
-        await image.decode();
-        const canvas = document.createElement("canvas");
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        try {
-          const dataURL = canvas.toDataURL("image/png");
-          // Guarda en cache para futuras llamadas
-          imageCache.set(src, dataURL);
-          resolve(dataURL);
-        } catch (e) {
-          reject(new Error("CORS restrictions prevented image capture"));
-        }
-      } catch (e) {
-        reject(e);
-      }
-    };
+  clearTimeout(timeoutId);
+  try {
+    await image.decode(); // ← si esto falla, debe lanzar su error real
+
+    const width = image.width;
+    const height = image.height;
+    const dpr = window.devicePixelRatio || 1;
+
+    const { canvas, ctx } = createHiDPICanvas(width, height, {
+      dpr,
+      offscreenPreferred: false,
+    });
+
+    ctx.drawImage(image, 0, 0, width, height);
+
+    let dataURL;
+    try {
+      dataURL = canvas.toDataURL("image/png");
+    } catch (e) {
+      // Este sí puede ser reemplazado
+      return reject(new Error("CORS restrictions prevented image capture"));
+    }
+
+    imageCache.set(src, dataURL);
+    resolve(dataURL);
+
+  } catch (e) {
+    // Este es el error de decode o cualquier otra cosa previa
+    reject(e);
+  }
+};
+
+    
 
     image.onerror = (e) => {
       clearTimeout(timeoutId);
@@ -187,6 +205,9 @@ export function fetchImage(src, timeout = 3000, crossOrigin = "anonymous") {
     image.src = src;
   });
 }
+
+
+
 /**
  *
  *
@@ -254,5 +275,35 @@ export function splitBackgroundImage(bg) {
   }
   parts.push(bg.slice(lastIndex).trim());
   return parts;
+}
+
+/**
+ * Crea un canvas (OffscreenCanvas o clásico) con soporte para dpr y devuelve {canvas, ctx, dprUsado}.
+ * @param {number} width - Ancho lógico (sin dpr)
+ * @param {number} height - Alto lógico (sin dpr)
+ * @param {object} [options] - Opciones
+ * @param {number} [options.dpr] - Device pixel ratio a usar (por defecto window.devicePixelRatio)
+ * @param {boolean} [options.offscreenPreferred=true] - Si se prefiere OffscreenCanvas si está disponible
+ * @param {boolean} [options.autoScale=true] - Si debe escalar el contexto automáticamente por dpr
+ * @returns {{canvas: HTMLCanvasElement|OffscreenCanvas, ctx: CanvasRenderingContext2D, dpr: number}}
+ */
+export function createHiDPICanvas(width, height, options = {}) {
+  const dpr = options.dpr || (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+  const offscreenPreferred = options.offscreenPreferred !== false;
+  const autoScale = options.autoScale !== false;
+  let canvas, ctx;
+  if (offscreenPreferred && typeof OffscreenCanvas !== 'undefined') {
+    canvas = new OffscreenCanvas(Math.ceil(width * dpr), Math.ceil(height * dpr));
+    ctx = canvas.getContext('2d');
+  } else {
+    canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(width * dpr);
+    canvas.height = Math.ceil(height * dpr);
+    ctx = canvas.getContext('2d');
+  }
+  if (autoScale && dpr !== 1) {
+    ctx.scale(dpr, dpr);
+  }
+  return { canvas, ctx, dpr };
 }
 
