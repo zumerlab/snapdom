@@ -34,17 +34,12 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       continue;
     }
 
+    // SOLO reemplazar la URL por el dataURL, sin modificar tamaño ni posición
     const bgSplits = splitBackgroundImage(bg);
-
     const newBgParts = await Promise.all(
       bgSplits.map(entry => inlineSingleBackgroundEntry(entry, options))
     );
-
-    const hasRealBg = newBgParts.some(p =>
-      p && p !== "none" && !/^url\(undefined\)/.test(p)
-    );
-
-    if (hasRealBg) {
+    if (newBgParts.some(p => p && p !== "none" && !/^url\(undefined\)/.test(p))) {
       cloneNode.style.backgroundImage = newBgParts.join(", ");
     }
 
