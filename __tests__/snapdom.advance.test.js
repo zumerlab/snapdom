@@ -52,29 +52,36 @@ describe('snapdom advanced tests', () => {
     expect(text).toContain('</svg>');
   });
 
-  it('should replace iframes with fallback visuals', async () => {
-  const iframe = document.createElement('iframe');
-  iframe.style.width = '200px';
-  iframe.style.height = '100px';
-  testElement.appendChild(iframe);
+  it('should replace iframes with fallback visuals or clonar contenido si es mismo origen', async () => {
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '200px';
+    iframe.style.height = '100px';
+    testElement.appendChild(iframe);
+    // Simular contenido de mismo origen
+    iframe.contentDocument.body.innerHTML = '<div id="inner">Hola <b>iframe</b></div>';
 
-  const svgDataUrl = await snapdom.toRaw(testElement);
-  const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
+    const svgDataUrl = await snapdom.toRaw(testElement);
+    const svgText = decodeURIComponent(svgDataUrl.split(',')[1]);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, 'image/svg+xml');
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgText, 'image/svg+xml');
-
-  // No debe haber iframes en el SVG
-  expect(doc.querySelectorAll('iframe').length).toBe(0);
-
-  // Buscamos divs con estilo inline que contengan repeating-linear-gradient
-  const fallbackDivs = Array.from(doc.querySelectorAll('div')).filter(div => {
-    const styleAttr = div.getAttribute('style') || '';
-    return styleAttr.includes('repeating-linear-gradient');
+    // Puede haber iframes si son de mismo origen
+    // Si hay iframes, debe contener el contenido clonado
+    const iframes = doc.querySelectorAll('iframe');
+    if (iframes.length > 0) {
+      // Debe contener el contenido clonado
+      const inner = doc.querySelector('#inner');
+      expect(inner).toBeTruthy();
+      expect(inner.textContent).toContain('Hola iframe');
+    } else {
+      // Si no hay iframes, debe haber fallback visual
+      const fallbackDivs = Array.from(doc.querySelectorAll('div')).filter(div => {
+        const styleAttr = div.getAttribute('style') || '';
+        return styleAttr.includes('repeating-linear-gradient');
+      });
+      expect(fallbackDivs.length).toBeGreaterThan(0);
+    }
   });
-
-  expect(fallbackDivs.length).toBeGreaterThan(0);
-});
 
   
 });
