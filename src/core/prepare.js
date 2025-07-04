@@ -7,6 +7,7 @@ import { generateCSSClasses} from '../utils/cssTools.js';
 import { stripTranslate} from '../utils/helpers.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
+import { inlineExternalDef } from '../modules/svgDefs.js';
 
 /**
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
@@ -34,6 +35,12 @@ export async function prepareClone(element, compress = false, embedFonts = false
     await inlinePseudoElements(element, clone, styleMap, styleCache, compress, embedFonts);
   } catch (e) {
     console.warn("inlinePseudoElements failed:", e);
+  }
+
+  try {
+    inlineExternalDef(clone);
+  } catch (e) {
+    console.warn("inlineExternalDef failed:", e);
   }
 
     let classCSS = "";
@@ -100,5 +107,6 @@ export async function prepareClone(element, compress = false, embedFonts = false
     clone.style.clear = 'none';
     clone.style.transform = transform || "";
   }
+
   return { clone, classCSS, styleCache };
 }
