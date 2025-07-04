@@ -108,5 +108,12 @@ export async function prepareClone(element, compress = false, embedFonts = false
     clone.style.transform = transform || "";
   }
 
+  for (const [cloneNode, originalNode] of nodeMap.entries()) { 
+    if (originalNode.tagName === "PRE") {
+      cloneNode.style.marginTop = "0";
+      cloneNode.style.marginBlockStart = "0";
+    }
+  }
+
   return { clone, classCSS, styleCache };
 }
