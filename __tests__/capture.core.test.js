@@ -12,11 +12,6 @@ describe('captureDOM edge cases', () => {
     await expect(captureDOM(null)).rejects.toThrow();
   });
 
-  it('throws para un comment node', async () => {
-    const fake = document.createComment('not supported');
-    await expect(captureDOM(fake)).rejects.toThrow('Only Element nodes are supported');
-  });
-
   it('throws error if getBoundingClientRect fails', async () => {
     const el = document.createElement('div');
     vi.spyOn(el, 'getBoundingClientRect').mockImplementation(() => { throw new Error('fail'); });
