@@ -77,4 +77,58 @@ describe('snapdom API (direct)', () => {
     document.body.removeChild(a);
     document.body.removeChild(el);
   });
+
+  it('snapdom.toBlob supports type options ', async () => {
+  const el = document.createElement('div');
+  el.style.width = '50px';
+  el.style.height = '30px';
+  document.body.appendChild(el);
+
+  const result = await snapdom.capture(el);
+
+  const pngBlob = await result.toBlob({ type: 'png' });
+  expect(pngBlob).toBeInstanceOf(Blob);
+  expect(pngBlob.type).toBe('image/png');
+
+  const jpgBlob = await result.toBlob({ type: 'jpeg', quality: 0.8 });
+  expect(jpgBlob).toBeInstanceOf(Blob);
+  expect(jpgBlob.type).toBe('image/jpeg');
+
+  const webpBlob = await result.toBlob({ type: 'webp', quality: 0.9 });
+  expect(webpBlob).toBeInstanceOf(Blob);
+  expect(webpBlob.type).toBe('image/webp');
+
+  // default fallback
+  const svgBlob = await result.toBlob();
+  expect(svgBlob).toBeInstanceOf(Blob);
+  expect(svgBlob.type).toBe('image/svg+xml');
+
+  document.body.removeChild(el);
+});
+
+it('toPng, toJpg, toWebp return HTMLImageElement with  URLs', async () => {
+  const el = document.createElement('div');
+  el.style.width = '60px';
+  el.style.height = '40px';
+  document.body.appendChild(el);
+  const snap = await snapdom.capture(el);
+
+  const pngImg = await snap.toPng();
+  expect(pngImg).toBeInstanceOf(HTMLImageElement);
+  expect(typeof pngImg.src).toBe('string');
+expect(pngImg.src.startsWith('data:image/png')).toBe(true);
+
+  const jpgImg = await snap.toJpg();
+  expect(jpgImg).toBeInstanceOf(HTMLImageElement);
+  expect(typeof jpgImg.src).toBe('string');
+expect(jpgImg.src.startsWith('data:image/jpeg')).toBe(true);
+
+  const webpImg = await snap.toWebp();
+  expect(webpImg).toBeInstanceOf(HTMLImageElement);
+  expect(typeof webpImg.src).toBe('string');
+expect(webpImg.src.startsWith('data:image/webp')).toBe(true);
+  document.body.removeChild(el);
+});
+
+
 });

@@ -60,17 +60,44 @@ async function toCanvas(url, { dpr = 1, scale = 1 } = {}) {
     return canvas;
 }
 
+
 /**
- * Converts an SVG data URL to a Blob.
+ * Converts a DOM snapshot (SVG data URL) into a Blob of the specified format.
  *
  * @param {string} url - SVG data URL
- * @returns {Promise<Blob>} The resulting SVG Blob
+ * @param {Object} [options]
+ * @param {string} [options.format="svg"] - Output format: "svg", "png", "jpeg", "webp"
+ * @param {number} [options.dpr=1] - Device pixel ratio
+ * @param {number} [options.scale=1] - Scale multiplier
+ * @param {string} [options.backgroundColor="#fff"] - Background for raster formats
+ * @param {number} [options.quality] - JPEG/WebP quality (0–1)
+ * @returns {Promise<Blob>} The resulting Blob
  */
+async function toBlob(url, {
+  type = "svg",
+  scale = 1,
+  backgroundColor = "#fff",
+  quality
+} = {}) {
+  const mime = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+  }[type] || "image/png";
 
- async function toBlob(url) {
-  const svgText = decodeURIComponent(url.split(",")[1]);
-  return new Blob([svgText], { type: "image/svg+xml" });
+  if (type === "svg") {
+    const svgText = decodeURIComponent(url.split(",")[1]);
+    return new Blob([svgText], { type: "image/svg+xml" });
+  }
+
+  const canvas = await createBackground(url, { dpr: 1, scale }, backgroundColor);
+  return new Promise((resolve) => {
+    canvas.toBlob(blob => resolve(blob), `${mime}`, quality);
+  });
 }
+
+
 
 /**
  * Creates a canvas with a background color from an SVG data URL.
@@ -201,7 +228,7 @@ snapdom.capture = async (el, options = {}) => {
     toRaw: () => url,
     toImg: () => toImg(url, { dpr, scale }),
     toCanvas: () => toCanvas(url, { dpr, scale }),
-    toBlob: () => toBlob(url),
+    toBlob: (options) => toBlob(url, { dpr, scale, ...options }),
     toPng: (options) => toRasterImg(url, { dpr, scale, ...options  }, "png"),
     toJpg: (options) => toRasterImg(url, { dpr, scale, ...options }, "jpeg"),
     toWebp: (options) => toRasterImg(url, { dpr, scale, ...options }, "webp"),
@@ -213,7 +240,7 @@ snapdom.capture = async (el, options = {}) => {
 snapdom.toRaw = async (el, options) => (await snapdom.capture(el, options)).toRaw();
 snapdom.toImg = async (el, options) => (await snapdom.capture(el, options)).toImg();
 snapdom.toCanvas = async (el, options) => (await snapdom.capture(el, options)).toCanvas();
-snapdom.toBlob = async (el, options) => (await snapdom.capture(el, options)).toBlob();
+snapdom.toBlob = async (el, options) => (await snapdom.capture(el, options)).toBlob(options);
 snapdom.toPng = async (el, options) => (await snapdom.capture(el, options)).toPng(options);
 snapdom.toJpg = async (el, options) => (await snapdom.capture(el, options)).toJpg(options);
 snapdom.toWebp = async (el, options) => (await snapdom.capture(el, options)).toWebp(options);
