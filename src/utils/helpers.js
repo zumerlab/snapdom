@@ -131,6 +131,7 @@ export function isIconFont(familyOrUrl) {
     /bootstrap\s*icons/i,
     /remix\s*icons/i,
     /heroicons/i,
+    /layui/i,
     /lucide/i
   ];
   return iconFontPatterns.some(rx => rx.test(familyOrUrl));
