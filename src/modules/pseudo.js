@@ -69,7 +69,6 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         const isIconFont2 = isIconFont(fontFamily);
         const cleanContent = parseContent(content);
         if (isIconFont2 && cleanContent.length === 1) {
-          console.log(cleanContent, fontFamily, fontWeight, fontSize, color);
           const imgEl = document.createElement("img");
           imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
           imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
