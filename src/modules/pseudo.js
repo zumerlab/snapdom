@@ -6,6 +6,7 @@
 import { getStyle, snapshotComputedStyle, parseContent, extractURL, safeEncodeURI, fetchImage, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils/helpers.js';
 import { getStyleKey } from '../utils/cssTools.js';
 import { iconToImage } from '../modules/fonts.js';
+import { isIconFont } from '../modules/iconFonts.js';
 
 /**
  * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
@@ -24,50 +25,37 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
   for (const pseudo of ["::before", "::after", "::first-letter"]) {
     try {
       const style = getStyle(source, pseudo);
-      if (!style || typeof style[Symbol.iterator] !== 'function') continue;
-
+      if (!style || typeof style[Symbol.iterator] !== "function") continue;
       if (pseudo === "::first-letter") {
         const normal = getComputedStyle(source);
-        const isMeaningful = (
-          style.color !== normal.color ||
-          style.fontSize !== normal.fontSize ||
-          style.fontWeight !== normal.fontWeight
-        );
+        const isMeaningful = style.color !== normal.color || style.fontSize !== normal.fontSize || style.fontWeight !== normal.fontWeight;
         if (!isMeaningful) continue;
-
         const textNode = Array.from(clone.childNodes).find(
-          n => n.nodeType === Node.TEXT_NODE && n.textContent && n.textContent.trim().length > 0
+          (n) => n.nodeType === Node.TEXT_NODE && n.textContent && n.textContent.trim().length > 0
         );
         if (!textNode) continue;
-
         const text = textNode.textContent;
         const match = text.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u);
         const first = match?.[0];
         const rest = text.slice(first?.length || 0);
-
         if (!first || /[\uD800-\uDFFF]/.test(first)) continue;
-
-        const span = document.createElement('span');
+        const span = document.createElement("span");
         span.textContent = first;
-        span.dataset.snapdomPseudo = '::first-letter';
+        span.dataset.snapdomPseudo = "::first-letter";
         const snapshot = snapshotComputedStyle(style);
         const key = getStyleKey(snapshot, "span", compress);
         styleMap.set(span, key);
-
         const restNode = document.createTextNode(rest);
         clone.replaceChild(restNode, textNode);
         clone.insertBefore(span, restNode);
         continue;
       }
-
       const content = style.getPropertyValue("content");
       const bg = style.getPropertyValue("background-image");
       const bgColor = style.getPropertyValue("background-color");
-
       const hasContent = content !== "none";
       const hasBg = bg && bg !== "none";
       const hasBgColor = bgColor && bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)";
-
       if (hasContent || hasBg || hasBgColor) {
         const fontFamily = style.getPropertyValue("font-family");
         const fontSize = parseInt(style.getPropertyValue("font-size")) || 32;
@@ -78,16 +66,13 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         const snapshot = snapshotComputedStyle(style);
         const key = getStyleKey(snapshot, "span", compress);
         styleMap.set(pseudoEl, key);
-
-        const isIconFont2 = fontFamily && /font.*awesome|material|bootstrap|glyphicons|ionicons|remixicon|simple-line-icons|octicons|feather|typicons|weathericons|layui|lucide/i.test(
-          fontFamily
-        );
+        const isIconFont2 = isIconFont(fontFamily);
         const cleanContent = parseContent(content);
-
-        if (!embedFonts && isIconFont2 && cleanContent.length === 1) {
+        if (isIconFont2 && cleanContent.length === 1) {
+          console.log(cleanContent, fontFamily, fontWeight, fontSize, color);
           const imgEl = document.createElement("img");
           imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
-          imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
+          imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
           pseudoEl.appendChild(imgEl);
         } else if (cleanContent.startsWith("url(")) {
           const rawUrl = extractURL(cleanContent);
@@ -96,7 +81,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
               const imgEl = document.createElement("img");
               const dataUrl = await fetchImage(safeEncodeURI(rawUrl));
               imgEl.src = dataUrl;
-              imgEl.style = "display:block;width:100%;height:100%;object-fit:contain;";
+               imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
               pseudoEl.appendChild(imgEl);
             } catch (e) {
               console.error(`[snapdom] Error in pseudo ${pseudo} for`, source, e);
@@ -105,22 +90,19 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         } else if (!isIconFont2 && cleanContent && cleanContent !== "none") {
           pseudoEl.textContent = cleanContent;
         }
-
         if (hasBg) {
           try {
             const bgSplits = splitBackgroundImage(bg);
             const newBgParts = await Promise.all(
-              bgSplits.map(entry => inlineSingleBackgroundEntry(entry))
+              bgSplits.map((entry) => inlineSingleBackgroundEntry(entry))
             );
             pseudoEl.style.backgroundImage = newBgParts.join(", ");
           } catch (e) {
             console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e);
           }
         }
-
         if (hasBgColor) pseudoEl.style.backgroundColor = bgColor;
-
-        const hasContent2 = pseudoEl.childNodes.length > 0 || (pseudoEl.textContent && pseudoEl.textContent.trim() !== "");
+        const hasContent2 = pseudoEl.childNodes.length > 0 || pseudoEl.textContent && pseudoEl.textContent.trim() !== "";
         const hasVisibleBox = hasContent2 || hasBg || hasBgColor;
         if (!hasVisibleBox) continue;
         pseudo === "::before" ? clone.insertBefore(pseudoEl, clone.firstChild) : clone.appendChild(pseudoEl);
@@ -129,9 +111,8 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
       console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e);
     }
   }
-
   const sChildren = Array.from(source.children);
-  const cChildren = Array.from(clone.children).filter(child => !child.dataset.snapdomPseudo);
+  const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo);
   for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
     await inlinePseudoElements(
       sChildren[i],

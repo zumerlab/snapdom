@@ -52,7 +52,7 @@ export async function captureDOM(element, options = {}) {
   if (embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
-        fontsCSS = await embedCustomFonts({ ignoreIconFonts: !embedFonts });
+        fontsCSS = await embedCustomFonts();
         resolve();
       }, { fast });
     });

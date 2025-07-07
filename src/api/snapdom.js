@@ -6,6 +6,7 @@
 
 import { captureDOM } from '../core/capture';
 import { isSafari } from '../utils/helpers.js';
+import { extendIconFonts } from '../modules/iconFonts.js';
 
 /**
  * Converts an SVG data URL to an HTMLImageElement.
@@ -206,6 +207,9 @@ async function toBlob(url, {
 export async function snapdom(element, options = {}) {
   options = { scale: 1, ...options };
   if (!element) throw new Error("Element cannot be null or undefined");
+  if (options.iconFonts) {
+    extendIconFonts(options.iconFonts);
+  }
   return await snapdom.capture(element, options);
 }
 
