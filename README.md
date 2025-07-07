@@ -19,6 +19,10 @@
   <a href="https://github.com/zumerlab/snapdom/network/members">
     <img alt="GitHub forks" src="https://img.shields.io/github/forks/zumerlab/snapdom?style=flat-square&label=Forks">
   </a>
+  <a href="https://github.com/sponsors/tinchox5">
+    <img alt="Sponsor tinchox5" src="https://img.shields.io/github/sponsors/tinchox5?style=flat-square&label=Sponsor">
+  </a>
+
   <a href="https://github.com/zumerlab/snapdom/blob/main/LICENSE">
     <img alt="License" src="https://img.shields.io/github/license/zumerlab/snapdom?style=flat-square">
   </a>
@@ -330,6 +334,12 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 <a href="https://github.com/jhbae200" title="jhbae200"><img src="https://avatars.githubusercontent.com/u/20170610?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jhbae200"/></a>
 </p>
 <!-- CONTRIBUTORS:END -->
+
+## 💖 Sponsors
+
+Special thanks to [@megaphonecolin](https://github.com/megaphonecolin) for supporting this project!  
+
+If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 
 ## License
 
