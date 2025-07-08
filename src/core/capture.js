@@ -20,6 +20,8 @@ import { baseCSSCache } from '../core/cache.js'
  * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
  * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
  * @param {number} [options.scale=1] - Output scale multiplier
+ * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
+ * @param {Function} [options.filter] - Custom filter function 
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 
@@ -33,7 +35,7 @@ export async function captureDOM(element, options = {}) {
   let dataURL;
   let svgString;
 
-  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts));
+  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts, options));
 
   await new Promise((resolve) => {
     idle(async () => {

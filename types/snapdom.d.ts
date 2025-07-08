@@ -10,6 +10,8 @@ declare module "@zumer/snapdom" {
     dpr?: number;
     quality?: number;
     crossOrigin?: (url: string) => "anonymous" | "use-credentials";
+    exclude?: string[];
+    filter?: (element: Element, originalElement: Element) => boolean;
   }
 
   export interface SnapResult {
