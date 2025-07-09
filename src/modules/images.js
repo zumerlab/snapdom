@@ -17,8 +17,7 @@ export async function inlineImages(clone, options = {}) {
   const processImg = async (img) => {
     const src = img.src;
     try {
-      const crossOrigin = options.crossOrigin ? options.crossOrigin(src) : "anonymous";
-      const dataUrl = await fetchImage(src, 3000, crossOrigin);
+      const dataUrl = await fetchImage(src, { useProxy: options.useProxy });
       img.src = dataUrl;
       if (!img.width) img.width = img.naturalWidth || 100;
       if (!img.height) img.height = img.naturalHeight || 100;

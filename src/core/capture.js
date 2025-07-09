@@ -25,30 +25,25 @@ import { baseCSSCache } from '../core/cache.js'
 
 export async function captureDOM(element, options = {}) {
   if (!element) throw new Error("Element cannot be null or undefined");
-
-  const { compress = true, embedFonts = false, fast = true, scale = 1 } = options;
+  const { compress = true, embedFonts = false, fast = true, scale = 1, useProxy = ''} = options;
   let clone, classCSS, styleCache;
   let fontsCSS = "";
   let baseCSS = "";
   let dataURL;
   let svgString;
-
-  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts));
-
+  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts, useProxy));
   await new Promise((resolve) => {
     idle(async () => {
       await inlineImages(clone, options);
       resolve();
     }, { fast });
   });
-
   await new Promise((resolve) => {
     idle(async () => {
       await inlineBackgroundImages(element, clone, styleCache, options);
       resolve();
     }, { fast });
   });
-
   if (embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
@@ -57,7 +52,6 @@ export async function captureDOM(element, options = {}) {
       }, { fast });
     });
   }
-
   if (compress) {
     const usedTags = collectUsedTagNames(clone).sort();
     const tagKey = usedTags.join(",");
@@ -73,20 +67,16 @@ export async function captureDOM(element, options = {}) {
       });
     }
   }
-
   await new Promise((resolve) => {
     idle(() => {
       const rect = element.getBoundingClientRect();
       let w = rect.width;
       let h = rect.height;
-
       const hasW = Number.isFinite(options.width);
       const hasH = Number.isFinite(options.height);
       const hasScale = typeof scale === "number" && scale !== 1;
-
       if (!hasScale) {
         const aspect = rect.width / rect.height;
-
         if (hasW && hasH) {
           w = options.width;
           h = options.height;
@@ -98,29 +88,21 @@ export async function captureDOM(element, options = {}) {
           w = h * aspect;
         }
       }
-
       w = Math.ceil(w);
       h = Math.ceil(h);
-
       clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
       clone.style.transformOrigin = "top left";
-
       if (!hasScale && (hasW || hasH)) {
-        // Solo aplicar escala CSS si no estamos usando scale para escalar
         const originalW = rect.width;
         const originalH = rect.height;
-
         const scaleX = w / originalW;
         const scaleY = h / originalH;
-
-        const existingTransform = clone.style.transform || '';
+        const existingTransform = clone.style.transform || "";
         const scaleTransform = `scale(${scaleX}, ${scaleY})`;
         clone.style.transform = `${scaleTransform} ${existingTransform}`.trim();
       } else if (hasScale && isSafari()) {
-        // En Safari se puede usar style.scale para un escalado más directo
         clone.style.scale = `${scale}`;
       }
-
       const svgNS = "http://www.w3.org/2000/svg";
       const fo = document.createElementNS(svgNS, "foreignObject");
       fo.setAttribute("width", "100%");
@@ -129,21 +111,17 @@ export async function captureDOM(element, options = {}) {
       styleTag.textContent = baseCSS + fontsCSS + "svg{overflow:visible;}" + classCSS;
       fo.appendChild(styleTag);
       fo.appendChild(clone);
-
       const serializer = new XMLSerializer();
       const foString = serializer.serializeToString(fo);
-
       const svgHeader = `<svg xmlns="${svgNS}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
       const svgFooter = "</svg>";
       svgString = svgHeader + foString + svgFooter;
-
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
       resolve();
     }, { fast });
   });
-
   const sandbox = document.getElementById("snapdom-sandbox");
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();
-
   return dataURL;
 }
+

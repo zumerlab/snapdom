@@ -20,7 +20,7 @@ import { isIconFont } from '../modules/iconFonts.js';
  * @returns {Promise} Promise that resolves when all pseudo-elements are processed
  */
 
-export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress, embedFonts = false) {
+export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress, embedFonts = false, useProxy) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
   for (const pseudo of ["::before", "::after", "::first-letter"]) {
     try {
@@ -78,9 +78,9 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
           if (rawUrl && rawUrl.trim() !== "") {
             try {
               const imgEl = document.createElement("img");
-              const dataUrl = await fetchImage(safeEncodeURI(rawUrl));
+              const dataUrl = await fetchImage(safeEncodeURI(rawUrl, {useProxy: useProxy}));
               imgEl.src = dataUrl;
-               imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
+              imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
               pseudoEl.appendChild(imgEl);
             } catch (e) {
               console.error(`[snapdom] Error in pseudo ${pseudo} for`, source, e);
@@ -119,8 +119,8 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
       styleMap,
       styleCache,
       compress,
-      embedFonts
+      embedFonts,
+      useProxy
     );
   }
 }
-
