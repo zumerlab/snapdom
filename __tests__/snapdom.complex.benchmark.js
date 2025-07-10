@@ -102,7 +102,7 @@ for (const size of sizes) {
       await setupContainer();
       await snapdom.toRaw(container, {compress: true, fast: true});
     });
-/* 
+
      bench('snapDOM V1.8.0', async () => {
       await setupContainer();
       await sd.toRaw(container);
@@ -117,7 +117,7 @@ for (const size of sizes) {
     bench('modern-screenshot capture', async () => {
       await setupContainer();
       await domToDataUrl(container);
-    }); */
+    });
     bench('html-to-image capture', async () => {
       await setupContainer();
       await htmlToImage.toSvg(container);
