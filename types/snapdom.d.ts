@@ -11,7 +11,7 @@ declare module "@zumer/snapdom" {
     filename?: string;
     dpr?: number;
     quality?: number;
-    crossOrigin?: (url: string) => "anonymous" | "use-credentials";
+    useProxy?: string;
     exclude?: string[];
     filter?: (element: Element, originalElement: Element) => boolean;
   }
@@ -56,7 +56,7 @@ declare module "@zumer/snapdom" {
     root?: Document | HTMLElement,
     options?: {
       embedFonts?: boolean;
-      crossOrigin?: (url: string) => "anonymous" | "use-credentials";
+      useProxy?: string;
     }
   ): Promise<void>;
 }
