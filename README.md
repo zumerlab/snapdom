@@ -151,6 +151,7 @@ All capture methods accept an `options` object:
 | `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                |
 | `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)              |
 | `useProxy`     | string | ''        | Specify a proxy for handling CORS images as fallback|
+| `type`     | string | `svg`        | Select `png`, `jpg`, `webp` Blob type|
 
 ### Setting custom dimensions with width and height options
 
