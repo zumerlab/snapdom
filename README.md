@@ -152,6 +152,8 @@ All capture methods accept an `options` object:
 | `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)              |
 | `useProxy`     | string | ''        | Specify a proxy for handling CORS images as fallback|
 | `type`     | string | `svg`        | Select `png`, `jpg`, `webp` Blob type|
+| `exclude` | string[] | -  | CSS selectors for elements to exclude |
+| `filter` | function | -  | Custom filter function ie `(el) => !el.classList.contains('hidden')` |
 
 ### Setting custom dimensions with width and height options
 
