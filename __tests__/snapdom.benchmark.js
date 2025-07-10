@@ -1,5 +1,7 @@
 import { bench, describe, beforeEach, afterEach } from 'vitest';
 import { domToDataUrl } from 'https://unpkg.com/modern-screenshot';
+import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm';
+//import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js';
 import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.8.0/dist/snapdom.mjs';
 import { snapdom } from '../src/index';
 
@@ -19,6 +21,8 @@ async function loadHtml2Canvas() {
 }
 
 await loadHtml2Canvas();
+
+
 
 const sizes = [
   { width: 200, height: 100, label: 'Small element (200x100)' },
@@ -117,7 +121,7 @@ for (const size of sizes) {
       await snapdom.toRaw(container);
     });
 
-     bench('snapDOM V1.8.0', async () => {
+ /*     bench('snapDOM V1.8.0', async () => {
       await setupContainer();
       await sd.toRaw(container);
     });
@@ -131,6 +135,11 @@ for (const size of sizes) {
     bench('modern-screenshot capture', async () => {
       await setupContainer();
       await domToDataUrl(container);
+    }); */
+
+    bench('html-to-image capture', async () => {
+      await setupContainer();
+      await htmlToImage.toSvg(container);
     });
   });
 }
