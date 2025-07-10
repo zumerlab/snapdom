@@ -130,7 +130,7 @@ expect(webpImg.src.startsWith('data:image/webp')).toBe(true);
   document.body.removeChild(el);
 });
 
-test('snapdom should support exclude option to filter out elements by CSS selectors', async () => {
+it('snapdom should support exclude option to filter out elements by CSS selectors', async () => {
   const el = document.createElement('div');
   el.innerHTML = `
     <h1>Title</h1>
@@ -143,13 +143,14 @@ test('snapdom should support exclude option to filter out elements by CSS select
   const result = await snapdom(el, { exclude: ['.exclude-me', '[data-private]'] });
   
   const svg = result.toRaw();
-  expect(svg).not.toContain('Should be excluded');
-  expect(svg).not.toContain('Private data');
-  expect(svg).toContain('Title');
-  expect(svg).toContain('This should remain');
+  const decoded = decodeURIComponent(svg.split(",")[1]);
+  expect(decoded).not.toContain('Should be excluded');
+  expect(decoded).not.toContain('Private data');
+  expect(decoded).toContain('Title');
+  expect(decoded).toContain('This should remain');
 });
 
-test('snapdom should support filter option to exclude elements with custom logic', async () => {
+it('snapdom should support filter option to exclude elements with custom logic', async () => {
   const el = document.createElement('div');
   el.innerHTML = `
     <div class="level-1">Level 1
@@ -159,17 +160,18 @@ test('snapdom should support filter option to exclude elements with custom logic
     </div>
   `;
   document.body.appendChild(el);
-  const result = await snapdom(target, { 
+  const result = await snapdom(el, { 
     filter: (element) => !element.classList.contains('level-3')
   });
   
-  const svg = result.toRaw();
-  expect(svg).toContain('Level 1');
-  expect(svg).toContain('Level 2');
-  expect(svg).not.toContain('Level 3');
+    const svg = result.toRaw();
+  const decoded = decodeURIComponent(svg.split(",")[1]);
+  expect(decoded).toContain('Level 1');
+  expect(decoded).toContain('Level 2');
+  expect(decoded).not.toContain('Level 3');
 });
 
-test('snapdom should support combining exclude and filter options', async () => {
+it('snapdom should support combining exclude and filter options', async () => {
   const el = document.createElement('div');
   el.innerHTML = `
     <div class="exclude-by-selector">Exclude by selector</div>
@@ -183,10 +185,12 @@ test('snapdom should support combining exclude and filter options', async () => 
     filter: (element) => !element.classList.contains('exclude-by-filter')
   });
   
-  const svg = result.toRaw();
-  expect(svg).not.toContain('Exclude by selector');
-  expect(svg).not.toContain('Exclude by filter');
-  expect(svg).toContain('Keep this content');
+  
+   const svg = result.toRaw();
+  const decoded = decodeURIComponent(svg.split(",")[1]);
+  expect(decoded).not.toContain('Exclude by selector');
+  expect(decoded).not.toContain('Exclude by filter');
+  expect(decoded).toContain('Keep this content');
 });
 
 });
