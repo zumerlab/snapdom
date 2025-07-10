@@ -4,6 +4,8 @@ declare module "@zumer/snapdom" {
     embedFonts?: boolean;
     fast?: boolean;
     scale?: number;
+    width?: number;
+    height?: number;
     backgroundColor?: string;
     format?: "png" | "jpeg" | "jpg" | "webp" | "svg";
     filename?: string;
