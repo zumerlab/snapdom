@@ -108,6 +108,9 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
       clone.checked = node.checked;
       if (node.checked) clone.setAttribute("checked", "");
     }
+    if(node.indeterminate) {
+      clone.indeterminate = node.indeterminate;
+    }
   }
   else if (node instanceof HTMLTextAreaElement) {
     clone.value = node.value;
