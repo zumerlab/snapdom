@@ -14,22 +14,27 @@ import { inlineExternalDef } from '../modules/svgDefs.js';
  *
  * @param {Element} element - Element to clone
  * @param {boolean} [compress=false] - Whether to compress style keys
+ * @param {boolean} [embedFonts=false] - Whether to embed custom fonts
+ * @param {Object} [options={}] - Capture options
+ * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
+ * @param {Function} [options.filter] - Custom filter function
  * @returns {Promise<Object>} Object containing the clone, generated CSS, and style cache
  */
 
-export async function prepareClone(element, compress = false, embedFonts = false, useProxy = '') {
-  const styleMap = /* @__PURE__ */ new Map();
-  const styleCache = /* @__PURE__ */ new WeakMap();
-  const nodeMap = /* @__PURE__ */ new Map();
+export async function prepareClone(element, compress = false, embedFonts = false, options = {}) {
+  const styleMap = new Map();
+  const styleCache = new WeakMap();
+  const nodeMap = new Map();
+
   let clone;
   try {
-    clone = deepClone(element, styleMap, styleCache, nodeMap, compress);
+    clone = deepClone(element, styleMap, styleCache, nodeMap, compress, options, element);
   } catch (e) {
     console.warn("deepClone failed:", e);
     throw e;
   }
   try {
-    await inlinePseudoElements(element, clone, styleMap, styleCache, compress, embedFonts, useProxy);
+    await inlinePseudoElements(element, clone, styleMap, styleCache, compress, embedFonts, options.useProxy);
   } catch (e) {
     console.warn("inlinePseudoElements failed:", e);
   }

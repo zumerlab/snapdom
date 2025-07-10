@@ -150,7 +150,8 @@ All capture methods accept an `options` object:
 | `height`          | number   | -        | Output specific height size                |
 | `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                |
 | `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)              |
-| `crossOrigin`     | function | -        | Function to determine CORS mode per image URL |
+| `useProxy`     | string | ''        | Specify a proxy for handling CORS images as fallback|
+| `type`     | string | `svg`        | Select `png`, `jpg`, `webp` Blob type|
 
 ### Setting custom dimensions with width and height options
 
@@ -192,22 +193,14 @@ Example: `{ scale: 3, width: 500 }` ignores width and scales the image 3x instea
 
 ### Cross-Origin Images
 
-By default, snapDOM loads images with `crossOrigin="anonymous"`. You can customize this behavior using the `crossOrigin` option:
+By default, snapDOM loads images with `crossOrigin="anonymous"` or `crossOrigin="use-credentials"`. In case fails to get the images, `useProxy` can be used to deal with CORS images:
 
 ```js
 const result = await snapdom(element, {
-  crossOrigin: (url) => {
-    // Use credentials for same-origin images
-    if (url.startsWith(window.location.origin)) {
-      return "use-credentials";
-    }
-    // Use anonymous for cross-origin images
-    return "anonymous";
-  }
+  useProxy: 'your/proxy/' //Example: 'https://corsproxy.io/?url=' or 'https://api.allorigins.win/raw?url='
 });
 ```
 
-This is useful when your images require authentication or when dealing with credentialed requests.
 
 ### Download options
 
@@ -242,7 +235,7 @@ import { snapdom, preCache } from './snapdom.mjs';
 
 * `embedFonts` *(boolean, default: true)* — Inlines non-icon fonts during preload.
 * `reset` *(boolean, default: false)* — Clears all existing internal caches.
-* `crossOrigin` *(function)* — Function to determine CORS mode per image URL during preload.
+* `useProxy` *(string)* — Proxy for handling CORS images as fallback.
 
 
 ## Features
@@ -256,29 +249,58 @@ import { snapdom, preCache } from './snapdom.mjs';
 
 ## Limitations
 
-* External images must be CORS-accessible (use `crossOrigin` option for credentialed requests)
+* External images shloud be CORS-accessible (use `useProxy` option for handling CORS denied)
 * Iframes are not supported
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
 
-## Benchmarks
 
-`snapDOM` is not only highly accurate — it’s **extremely fast**.
+## ⚡ Performance Benchmarks
 
-Latest benchmarks show significant performance improvements against other libraries:
+Snapdom has received **major performance improvements** since version `v1.8.0`. Below are benchmark results comparing:
 
-| Scenario                         | vs. `modern-screenshot` | vs. `html2canvas` |
-| -------------------------------- | :---------------------: | :---------------: |
-| Small element (200×100)          |       6.46× faster      |   32.27× faster   |
-| Modal size (400×300)             |       7.28× faster      |   32.66× faster   |
-| Page view (1200×800)             |      13.17× faster      |   35.29× faster   |
-| Large scroll area (2000×1500)    |      38.23× faster      |   68.85× faster   |
-| Very large element (4000×2000)   |      93.31× faster      |   133.12× faster  |
-| Complex small element (200×100)  |       3.97× faster      |   15.23× faster   |
-| Complex modal (400×300)          |       2.32× faster      |    5.33× faster   |
-| Complex page (1200×800)          |       1.62× faster      |    1.65× faster   |
-| Complex large scroll (2000×1500) |       1.66× faster      |    1.24× faster   |
-| Complex very large (4000×2000)   |       1.52× faster      |    1.28× faster   |
+* 🔷 **Snapdom (current)**
+* 🔸 **Snapdom v1.8.0**
+* 🟥 `html2canvas`
+* 🟨 `modern-screenshot`
+
+Each benchmark shows the **fastest observed time** (lower is better), measured in **milliseconds (ms)**.
+
+---
+
+### Simple elements
+
+| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | modern-screenshot |
+| ------------------------ | ----------------- | -------------- | ----------- | ----------------- |
+| Small (200×100)          | **0.4 ms**        | 1.2 ms         | 70.3 ms     | 11.9 ms           |
+| Modal (400×300)          | **0.4 ms**        | 1.1 ms         | 68.8 ms     | 14.1 ms           |
+| Page View (1200×800)     | **0.4 ms**        | 1.0 ms         | 100.5 ms    | 34.2 ms           |
+| Large Scroll (2000×1500) | **0.4 ms**        | 1.0 ms         | 153.1 ms    | 77.8 ms           |
+| Very Large (4000×2000)   | **0.4 ms**        | 1.0 ms         | 278.9 ms    | 194.7 ms          |
+
+---
+
+### Complex elements
+
+| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | modern-screenshot |
+| ------------------------ | ----------------- | -------------- | ----------- | ----------------- |
+| Small (200×100)          | **1.1 ms**        | 3.2 ms         | 72.5 ms     | 16.1 ms           |
+| Modal (400×300)          | **4.5 ms**        | 14.0 ms        | 90.1 ms     | 34.6 ms           |
+| Page View (1200×800)     | **32.9 ms**       | 113.6 ms       | 196.1 ms    | 181.1 ms          |
+| Large Scroll (2000×1500) | **133.9 ms**      | 387.4 ms       | 446.6 ms    | 635.9 ms          |
+| Very Large (4000×2000)   | **364.0 ms**      | 1,200.4 ms     | 1,275.4 ms  | 1,685.6 ms        |
+
+---
+
+### Summary
+
+* Snapdom (current) is consistently **2×–4× faster** than `v1.8.0`
+* Up to **500× faster** than `html2canvas`
+* Also significantly faster than `modern-screenshot`, especially for large DOMs
+
+<sub>All benchmarks were run in Chromium using Vitest.<br>
+Tests were performed on a 2018 MacBook Air.<br>
+⚠️ Performance can be even better on more modern hardware.</sub>
 
 
 ### Run the benchmarks
@@ -331,6 +353,8 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 <a href="https://github.com/domialex" title="domialex"><img src="https://avatars.githubusercontent.com/u/4694217?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="domialex"/></a>
 <a href="https://github.com/elliots" title="elliots"><img src="https://avatars.githubusercontent.com/u/622455?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="elliots"/></a>
 <a href="https://github.com/jswhisperer" title="jswhisperer"><img src="https://avatars.githubusercontent.com/u/1177690?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jswhisperer"/></a>
+<a href="https://github.com/simon1uo" title="simon1uo"><img src="https://avatars.githubusercontent.com/u/60037549?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="simon1uo"/></a>
+<a href="https://github.com/titoBouzout" title="titoBouzout"><img src="https://avatars.githubusercontent.com/u/64156?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="titoBouzout"/></a>
 <a href="https://github.com/jhbae200" title="jhbae200"><img src="https://avatars.githubusercontent.com/u/20170610?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jhbae200"/></a>
 </p>
 <!-- CONTRIBUTORS:END -->

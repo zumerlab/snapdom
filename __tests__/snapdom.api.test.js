@@ -130,5 +130,67 @@ expect(webpImg.src.startsWith('data:image/webp')).toBe(true);
   document.body.removeChild(el);
 });
 
+it('snapdom should support exclude option to filter out elements by CSS selectors', async () => {
+  const el = document.createElement('div');
+  el.innerHTML = `
+    <h1>Title</h1>
+    <div class="exclude-me">Should be excluded</div>
+    <div data-private="true">Private data</div>
+    <p>This should remain</p>
+  `;
+  document.body.appendChild(el);
+  
+  const result = await snapdom(el, { exclude: ['.exclude-me', '[data-private]'] });
+  
+  const svg = result.toRaw();
+  const decoded = decodeURIComponent(svg.split(",")[1]);
+  expect(decoded).not.toContain('Should be excluded');
+  expect(decoded).not.toContain('Private data');
+  expect(decoded).toContain('Title');
+  expect(decoded).toContain('This should remain');
+});
+
+it('snapdom should support filter option to exclude elements with custom logic', async () => {
+  const el = document.createElement('div');
+  el.innerHTML = `
+    <div class="level-1">Level 1
+      <div class="level-2">Level 2
+        <div class="level-3">Level 3</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  const result = await snapdom(el, { 
+    filter: (element) => !element.classList.contains('level-3')
+  });
+  
+    const svg = result.toRaw();
+  const decoded = decodeURIComponent(svg.split(",")[1]);
+  expect(decoded).toContain('Level 1');
+  expect(decoded).toContain('Level 2');
+  expect(decoded).not.toContain('Level 3');
+});
+
+it('snapdom should support combining exclude and filter options', async () => {
+  const el = document.createElement('div');
+  el.innerHTML = `
+    <div class="exclude-by-selector">Exclude by selector</div>
+    <div class="exclude-by-filter">Exclude by filter</div>
+    <div class="keep-me">Keep this content</div>
+  `;
+  document.body.appendChild(el);
+
+  const result = await snapdom(el, { 
+    exclude: ['.exclude-by-selector'],
+    filter: (element) => !element.classList.contains('exclude-by-filter')
+  });
+  
+  
+   const svg = result.toRaw();
+  const decoded = decodeURIComponent(svg.split(",")[1]);
+  expect(decoded).not.toContain('Exclude by selector');
+  expect(decoded).not.toContain('Exclude by filter');
+  expect(decoded).toContain('Keep this content');
+});
 
 });

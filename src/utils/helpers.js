@@ -27,7 +27,7 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
     } else {
       const dataUrl = await fetchImage(encodedUrl, {useProxy: options.useProxy});
       bgCache.set(encodedUrl, dataUrl);
-      return options.skipInline ? void 0 : `url(${dataUrl})`;
+      return options.skipInline ? void 0 : `url("${dataUrl}")`;
     }
   }
   if (isGradient || entry === "none") {
@@ -140,14 +140,53 @@ export function isIconFont(familyOrUrl) {
  * @return {*} 
  */
 
-export function fetchImage(src, {timeout = 3000, useProxy = ''}) {
-  // Determina automáticamente el modo de crossOrigin según la URL
+export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
   function getCrossOriginMode(url) {
     try {
       const parsed = new URL(url, window.location.href);
       return parsed.origin === window.location.origin ? "use-credentials" : "anonymous";
     } catch {
       return "anonymous";
+    }
+  }
+
+  // Función común para fallback vía fetch + proxy
+  async function fetchWithFallback(url) {
+    const fetchBlobAsDataURL = (fetchUrl) =>
+      fetch(fetchUrl, {
+        mode: "cors",
+        credentials: getCrossOriginMode(fetchUrl) === "use-credentials" ? "include" : "omit",
+      })
+        .then(r => r.blob())
+        .then(blob => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result;
+            if (typeof base64 !== "string" || !base64.startsWith("data:image/")) {
+              reject(new Error("Invalid image data URL"));
+              return;
+            }
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error("FileReader error"));
+          reader.readAsDataURL(blob);
+        }));
+
+    try {
+      return await fetchBlobAsDataURL(url);
+    } catch (e) {
+      if (useProxy && typeof useProxy === "string") {
+        const proxied = useProxy.replace(/\/$/, "") + safeEncodeURI(url);
+        try {
+          return await fetchBlobAsDataURL(proxied);
+        } catch {
+          console.error(`[SnapDOM - fetchImage] Proxy fallback failed for: ${url}`);
+          throw new Error("CORS restrictions prevented image capture (even via proxy)");
+        }
+      } else {
+        console.error(`[SnapDOM - fetchImage] No valid proxy URL provided for fallback: ${url}`);
+        throw new Error("Fetch fallback failed and no proxy provided");
+      }
     }
   }
 
@@ -159,98 +198,75 @@ export function fetchImage(src, {timeout = 3000, useProxy = ''}) {
     return Promise.resolve(imageCache.get(src));
   }
 
+  // Detectamos si es un data URI, si sí, devolvemos directo sin fetch
+  const isDataURI = src.startsWith("data:image/");
+  if (isDataURI) {
+    imageCache.set(src, src);
+    return Promise.resolve(src);
+  }
+
+  // Mejor detección SVG, incluyendo query strings
+  const isSVG = /\.svg(\?.*)?$/i.test(src);
+
+  if (isSVG) {
+    return (async () => {
+      try {
+        const response = await fetch(src, {
+          mode: "cors",
+          credentials: crossOriginValue === "use-credentials" ? "include" : "omit"
+        });
+        const svgText = await response.text();
+        const encoded = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+        imageCache.set(src, encoded);
+        return encoded;
+      } catch {
+        return fetchWithFallback(src);
+      }
+    })();
+  }
+
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       console.log(`[SnapDOM - fetchImage] Timeout after ${timeout}ms for image: ${src}`);
       reject(new Error("Image load timed out"));
     }, timeout);
 
-    const fallbackViaFetch = () => {
-      console.warn(`[SnapDOM - fetchImage] Trying fetch fallback for: ${src}`);
-      fetch(src, {
-        mode: "cors",
-        credentials: crossOriginValue === "use-credentials" ? "include" : "omit"
-      }).then((r) => {
-        console.log(`[SnapDOM - fetchImage] Fetch response received for: ${src}`);
-        return r.blob();
-      }).then((blob) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result;
-          if (typeof base64 === "string" && base64.startsWith("data:application/octet-stream")) {
-            reject(new Error("Image response was empty or blocked"));
-            return;
-          }
-          imageCache.set(src, base64);
-          resolve(base64);
-        };
-        reader.readAsDataURL(blob);
-      }).catch(() => {
-        console.warn(`[SnapDOM - fetchImage] Fetch fallback failed for: ${src}`);
-        if (useProxy !== '') {
-          const proxied = typeof useProxy === "string" ? useProxy.replace(/\/$/, "") + safeEncodeURI(src) : 
-          null;
-
-          if (proxied) {
-            console.log(`[SnapDOM - fetchImage] Trying proxy fallback: ${proxied}`);
-          fetch(proxied).then((r) => r.blob()).then((blob) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const base64 = reader.result;
-              if (typeof base64 === "string" && base64.startsWith("data:application/octet-stream")) {
-                reject(new Error("Image response was empty or blocked"));
-                return;
-              }
-              imageCache.set(src, base64);
-              resolve(base64);
-            };
-            reader.readAsDataURL(blob);
-          }).catch(() => {
-            console.error(`[SnapDOM - fetchImage] Proxy fallback failed for: ${src}`);
-            reject(new Error("CORS restrictions prevented image capture (even via proxy)"));
-          });
-          } else {
-            console.error(`[SnapDOM - fetchImage] Provide a valid proxy url: ${src}`);
-          }
-        } else {
-            console.error(`[SnapDOM - fetchImage] You may try add a proxy "useProxy: url" `);
-          }
-      });
-    };
-
     const image = new Image();
     image.crossOrigin = crossOriginValue;
 
     image.onload = async () => {
-      // console.log(`[SnapDOM - fetchImage] Image loaded: ${src}`);
       clearTimeout(timeoutId);
       try {
         await image.decode();
-       //  console.log(`[SnapDOM - fetchImage] Image decoded: ${src}`);
         const canvas = document.createElement("canvas");
         canvas.width = image.width;
         canvas.height = image.height;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const dataURL = canvas.toDataURL("image/png");
+        imageCache.set(src, dataURL);
+        resolve(dataURL);
+      } catch {
         try {
-          const dataURL = canvas.toDataURL("image/png");
-          // console.log(`[SnapDOM - fetchImage] Canvas toDataURL succeeded for: ${src}`);
-          imageCache.set(src, dataURL);
-          resolve(dataURL);
+          const fallbackDataURL = await fetchWithFallback(src);
+          imageCache.set(src, fallbackDataURL);
+          resolve(fallbackDataURL);
         } catch (e) {
-         // console.warn(`[SnapDOM - fetchImage] Canvas toDataURL failed for: ${src}`, e);
-          fallbackViaFetch();
+          reject(e);
         }
-      } catch (e) {
-       // console.error(`[SnapDOM - fetchImage] Image decode failed: ${src}`, e);
-        fallbackViaFetch();
       }
     };
 
-    image.onerror = (e) => {
+    image.onerror = async () => {
       clearTimeout(timeoutId);
-      console.error(`[SnapDOM - fetchImage] Image failed to load: ${src}`, e);
-      fallbackViaFetch();
+      console.error(`[SnapDOM - fetchImage] Image failed to load: ${src}`);
+      try {
+        const fallbackDataURL = await fetchWithFallback(src);
+        imageCache.set(src, fallbackDataURL);
+        resolve(fallbackDataURL);
+      } catch (e) {
+        reject(e);
+      }
     };
 
     image.src = src;

@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.3](https://github.com/zumerlab/snapdom/compare/v1.8.0...v1.9.3)
+
+> 10 July 2025
+
+- Add `filter` and `exclude` options for element exclusion. Thanks @simon1uo  [`#100`](https://github.com/zumerlab/snapdom/pull/100)
+- Missing `width` and `height` in types. Thanks @tarwin [`#94`](https://github.com/zumerlab/snapdom/pull/94)
+- fix: type check. Thanks @17biubiu [`#77`](https://github.com/zumerlab/snapdom/pull/77)
+- Core update: Capture speed is drammatically increased. Closes #72 [`#72`](https://github.com/zumerlab/snapdom/issues/72)
+- Core update: tries differents methods to fetch image, even proxy for CORS denied images. Important: `crossOrigin` is now inbuilt into fetchImages(), no longer needed as option. Closes #78. Closes #73 [`#78`](https://github.com/zumerlab/snapdom/issues/78) [`#73`](https://github.com/zumerlab/snapdom/issues/73)
+- Improve fetchImage() by skiping svg format. Closes #91. Closes #89 [`#91`](https://github.com/zumerlab/snapdom/issues/91) [`#89`](https://github.com/zumerlab/snapdom/issues/89)
+- Add iconFont options and fix doubled icon render. Closes #51, closes #80 [`#51`](https://github.com/zumerlab/snapdom/issues/51) [`#80`](https://github.com/zumerlab/snapdom/issues/80)
+- Add Layui icon font. Closes #74 [`#74`](https://github.com/zumerlab/snapdom/issues/74)
+- Add Blob Types. Closes #71 [`#71`](https://github.com/zumerlab/snapdom/issues/71)
+- Bug: fixes hidden last line PRE tag. Closes #75 [`#75`](https://github.com/zumerlab/snapdom/issues/75)
+- Feat: handles external SVG defs. Fixes #70 [`#70`](https://github.com/zumerlab/snapdom/issues/70)
+- Prevents double url encoding. Fixes #68 [`#68`](https://github.com/zumerlab/snapdom/issues/68)
+- Fix scale background-image [`b1ba326`](https://github.com/zumerlab/snapdom/commit/b1ba326a3a3708a8b2958f2588354bdfa8762cc9)
+
 #### [v1.8.0](https://github.com/zumerlab/snapdom/compare/v1.7.1...v1.8.0)
 
 > 30 June 2025
@@ -38,8 +56,7 @@ All notable changes to this project will be documented in this file.
 - Fix: background img &  img base64 in pseudo elements, closes #36 [`#36`](https://github.com/zumerlab/snapdom/issues/36)
 - Feat: captures input values, closes #35 [`#35`](https://github.com/zumerlab/snapdom/issues/35)
 - Improve: Device Pixel Ratio handling, thanks @jswhisperer [`1a14f69`](https://github.com/zumerlab/snapdom/commit/1a14f69d340e935126b5388febe5d711c4b94e14)
-- Bumped version [`489be08`](https://github.com/zumerlab/snapdom/commit/489be081e6c7e50f1e4ba08d932d79c0ae242d45)
-- Update description [`4db784b`](https://github.com/zumerlab/snapdom/commit/4db784b4250b6eac6da8932e651872147fbc8bc1)
+
 
 #### [v1.2.5](https://github.com/zumerlab/snapdom/compare/v1.2.2...v1.2.5)
 
@@ -48,16 +65,13 @@ All notable changes to this project will be documented in this file.
 - Fix duplicated font-icon when embedFonts is true, closes #30 [`#30`](https://github.com/zumerlab/snapdom/issues/30)
 - Fix url with encode url, closes #29 [`#29`](https://github.com/zumerlab/snapdom/issues/29)
 - Fix .toCanvas scale [`fb47284`](https://github.com/zumerlab/snapdom/commit/fb4728463a65620bd4f4f8f50cd8b2263ba7bbe7)
-- Bumped version [`75b917a`](https://github.com/zumerlab/snapdom/commit/75b917a4fefc5fa9b55da3c028c43955f0656087)
-- Update cdn [`37533a2`](https://github.com/zumerlab/snapdom/commit/37533a2c2a858000e93d8d33009241a4be5f8726)
-- add homepage [`aa85c5d`](https://github.com/zumerlab/snapdom/commit/aa85c5d9f1777c437b07e624d874f7f1a0fac6a9)
+
 
 #### [v1.2.2](https://github.com/zumerlab/snapdom/compare/v1.2.1...v1.2.2)
 
 > 4 June 2025
 
 - Patch: type script definitions, closes #23 [`#23`](https://github.com/zumerlab/snapdom/issues/23)
-- Bumped version [`548d7f3`](https://github.com/zumerlab/snapdom/commit/548d7f30a889d34ae4dac28a8dedc43262089325)
 
 #### [v1.2.1](https://github.com/zumerlab/snapdom/compare/v1.1.0...v1.2.1)
 
@@ -68,9 +82,7 @@ All notable changes to this project will be documented in this file.
 - Improve icon-font conversion [`7bac4ee`](https://github.com/zumerlab/snapdom/commit/7bac4ee3b152d6364c218aaa6d2bed4ad9997943)
 - Fix compress mode [`652cfe9`](https://github.com/zumerlab/snapdom/commit/652cfe9a8947029e31db6b089829fe8da87c0b42)
 - Bumped version [`0cd7973`](https://github.com/zumerlab/snapdom/commit/0cd797320b92310d86df0ce6296706d1f7f0ad5d)
-- Remove some logs [`4348b39`](https://github.com/zumerlab/snapdom/commit/4348b390ab8bb88c59ba9b0d24adbe58051b277a)
-- Chore: delete old comments [`ff81a40`](https://github.com/zumerlab/snapdom/commit/ff81a40e8a1b4baa8bacca2ed2ec59124df40b6e)
-- Chore: add dry bump script [`5c421c7`](https://github.com/zumerlab/snapdom/commit/5c421c75a1775a3b8c1fbd6a688fcfe409f676af)
+
 
 #### [v1.1.0](https://github.com/zumerlab/snapdom/compare/v1.0.0...v1.1.0)
 
@@ -79,23 +91,7 @@ All notable changes to this project will be documented in this file.
 - Add typescript declaration, closes #23 [`#23`](https://github.com/zumerlab/snapdom/issues/23)
 - Feat. support scrolling state, closes #20 [`#20`](https://github.com/zumerlab/snapdom/issues/20)
 - Fix bug by removing trim spaces, closes #21 [`#21`](https://github.com/zumerlab/snapdom/issues/21)
-- fix margin on mobile [`36297c8`](https://github.com/zumerlab/snapdom/commit/36297c89c085f605922f88ac5113f2f176c6a1a9)
-- mobile friendly [`42dada8`](https://github.com/zumerlab/snapdom/commit/42dada88bdbe886033890071e8e76499358a6b91)
-- Update index.html [`1bf3bc1`](https://github.com/zumerlab/snapdom/commit/1bf3bc1b15f4d28b50363c73410cea25ad589cda)
-- Create FUNDING.yml [`ddf914c`](https://github.com/zumerlab/snapdom/commit/ddf914c96727b3a82bbea4694d19dc0eb2b518e3)
-- Bumped version [`7a9f3d8`](https://github.com/zumerlab/snapdom/commit/7a9f3d8662099d15bcc2046ba88043eb3d3b1bfb)
-- add ga [`6d8a73f`](https://github.com/zumerlab/snapdom/commit/6d8a73fd52997e9e1a91944bd9a46d95c8c8507c)
-- Update index.html [`46e4b41`](https://github.com/zumerlab/snapdom/commit/46e4b41209c44766425e96fb9be94e1d1c08b6ae)
-- Update index.html [`1a2a04c`](https://github.com/zumerlab/snapdom/commit/1a2a04cbb3f4e81e2713d823d5b8dcdeb508591d)
-- Ignore generated screenshots tests [`cce8ead`](https://github.com/zumerlab/snapdom/commit/cce8ead47c470280761a34f7c98f9a2fd0796a34)
-- Update index.html [`5dd6749`](https://github.com/zumerlab/snapdom/commit/5dd67495df0a5cd48eda168565a81969d5639f40)
-- FIx bug that prevent scale on png format [`77a5265`](https://github.com/zumerlab/snapdom/commit/77a52651bd0ea8ccb451f199bd3d8f9e2478bf84)
-- Update README.md [`d8440f3`](https://github.com/zumerlab/snapdom/commit/d8440f3864931509f1b369d7e301d6ecccb63b14)
-- update [`ffa3a9a`](https://github.com/zumerlab/snapdom/commit/ffa3a9ad942987a5b52a7c9080914bed912db558)
-- Update README.md [`9c79e6e`](https://github.com/zumerlab/snapdom/commit/9c79e6e406ff9cb4df1539480e057b6828ef1788)
-- Update index.html [`7585674`](https://github.com/zumerlab/snapdom/commit/7585674ed21bb7009b84d1f948ceed2d5ed5ae69)
-- Update index.html [`8f4fb95`](https://github.com/zumerlab/snapdom/commit/8f4fb95a8f839159bd00c3338c7c3dc9fb23071c)
-- Update index.html [`eebc2bc`](https://github.com/zumerlab/snapdom/commit/eebc2bc01a6581f25995d5a9e946aa6bde08dfdc)
+- Fix bug that prevent scale on png format [`77a5265`](https://github.com/zumerlab/snapdom/commit/77a52651bd0ea8ccb451f199bd3d8f9e2478bf84)
 
 ### [v1.0.0](https://github.com/zumerlab/snapdom/compare/v1.0.0-pre.1747581859131...v1.0.0)
 
@@ -148,10 +144,7 @@ All notable changes to this project will be documented in this file.
 
 > 14 May 2025
 
-- Update Dev branch [`#11`](https://github.com/zumerlab/snapdom/pull/11)
-- Delete functions [`c5040d9`](https://github.com/zumerlab/snapdom/commit/c5040d90b6276daa04e919ca4b0ecdf205f73af9)
 - improve cache handling [`27d7b19`](https://github.com/zumerlab/snapdom/commit/27d7b19cfafeed83f4b30a824638ee7edd63e10b)
-- add some examples [`3ce9dd2`](https://github.com/zumerlab/snapdom/commit/3ce9dd2807c8b84ed927c186621850a2518dfd2a)
 - Reorganice and add helpers [`c4f4182`](https://github.com/zumerlab/snapdom/commit/c4f4182a3e9ce636a2a263a05d75e64b33b25d7b)
 - Add tests [`455e7f2`](https://github.com/zumerlab/snapdom/commit/455e7f20e8a72f6a646a7d1e900f41fb22a18666)
 - Check if element to capture exists [`dfa96f2`](https://github.com/zumerlab/snapdom/commit/dfa96f2f720238fdff5df6e24b4572691ad6198f)
@@ -160,16 +153,9 @@ All notable changes to this project will be documented in this file.
 - Add preCache [`48bd910`](https://github.com/zumerlab/snapdom/commit/48bd910743a638ae8ce35ab7d617ad05a75d29a2)
 - Optimice [`cc638e7`](https://github.com/zumerlab/snapdom/commit/cc638e7f0f2e63a24eeee65ab4d87755e7207dec)
 - Bumped version [`3b26632`](https://github.com/zumerlab/snapdom/commit/3b266324c747c4bc139b99e4978493df79a5555c)
-- update [`111fdb4`](https://github.com/zumerlab/snapdom/commit/111fdb444b3c6d61dcb0e6bb2e21c871f5e73587)
 - Add cache Maps [`091484c`](https://github.com/zumerlab/snapdom/commit/091484c00941822684afc9148a59cb23e4b34627)
-- update [`bdbba7a`](https://github.com/zumerlab/snapdom/commit/bdbba7aeff458a60d5a83b5ead2d4f9402492fd3)
-- Update README.md [`c1756a9`](https://github.com/zumerlab/snapdom/commit/c1756a9192f8e3af90fd66da7e19c5fb883dbe0a)
-- Expose preCache [`1e96db1`](https://github.com/zumerlab/snapdom/commit/1e96db14c6c4e697361ceed2fb6f9c618801a138)
-- Chore [`38c08c0`](https://github.com/zumerlab/snapdom/commit/38c08c0c5a9eda486619855b9df47f33f490a921)
-- fix url [`bebec7f`](https://github.com/zumerlab/snapdom/commit/bebec7fd70141b3a82d41a5f6cc0849dcfb0c715)
-- Update README.md [`fb0ab3a`](https://github.com/zumerlab/snapdom/commit/fb0ab3ae528d4b37223e4eef03135e9be6a62b0b)
-- Update README.md [`1a76186`](https://github.com/zumerlab/snapdom/commit/1a76186d938a7a776a33c0e42ecc6813e86a9262)
-- Update README.md [`90d18a1`](https://github.com/zumerlab/snapdom/commit/90d18a165725ca3369fb5ebf48c281e0dd1377ae)
+
+
 
 #### [v0.9.2](https://github.com/zumerlab/snapdom/compare/v0.9.2-pre.1746130901718...v0.9.2)
 
@@ -188,19 +174,7 @@ All notable changes to this project will be documented in this file.
 - Omit process default styles - temporary [`2953196`](https://github.com/zumerlab/snapdom/commit/2953196e00aa6bf9d026df95089d3fc81812f24d)
 - update to v.0.9.2 [`e0179a1`](https://github.com/zumerlab/snapdom/commit/e0179a160e361a1e7d58ee5e83747f385cacb887)
 - Add options as Object and allow bgColor on jpg and webp [`e5abaa7`](https://github.com/zumerlab/snapdom/commit/e5abaa72de77f75ebe6901935c5f539cda253db2)
-- Update commented docs [`cfd2272`](https://github.com/zumerlab/snapdom/commit/cfd2272b065e8c11fff1a729c6cbec1f14000668)
-- Update README.md [`fef6751`](https://github.com/zumerlab/snapdom/commit/fef6751ffa90d379c8d829998277825daddc27b8)
-- update [`26ff7ea`](https://github.com/zumerlab/snapdom/commit/26ff7ea0528d569820bed8748520a7d02c6506cd)
-- Update README.md [`3fda999`](https://github.com/zumerlab/snapdom/commit/3fda999bbdefb5aa32186bb07c59249f9a86e7e9)
-- Update README.md [`8ee616b`](https://github.com/zumerlab/snapdom/commit/8ee616baf0059eefcf7e83e7930f5ab8f3850eb5)
 - Omit delay function - temporary [`0f04721`](https://github.com/zumerlab/snapdom/commit/0f04721c458ba921694ee38117b8e0b8231a8c1a)
-- update unpkg url [`13ce66b`](https://github.com/zumerlab/snapdom/commit/13ce66bfee83802c32edfd9019959540d260cf84)
-- Bumped version [`9e4f518`](https://github.com/zumerlab/snapdom/commit/9e4f51885bddebd5364fb4ca96647233304e0dc7)
-- Update README.md [`3733476`](https://github.com/zumerlab/snapdom/commit/373347665ca89249244038eaf48731f6d7ee37b8)
-- Update README.md [`00c74b0`](https://github.com/zumerlab/snapdom/commit/00c74b07881373275d8c0e5144696d594b031e7e)
-- Update README.md [`dd2c9c5`](https://github.com/zumerlab/snapdom/commit/dd2c9c5dd507a432e4dc75e67c5d2d311073e791)
-- Update README.md [`d271cf7`](https://github.com/zumerlab/snapdom/commit/d271cf77f5747ee69df07785fef34e8c5e63649e)
-- Update README.md [`02bf650`](https://github.com/zumerlab/snapdom/commit/02bf6506ae7e3cf03507e10d8f76983c07f39c66)
 
 #### [v0.9.1](https://github.com/zumerlab/snapdom/compare/v0.9.0...v0.9.1)
 
