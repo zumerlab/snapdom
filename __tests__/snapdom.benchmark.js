@@ -1,6 +1,8 @@
 import { bench, describe, beforeEach, afterEach } from 'vitest';
 import { domToDataUrl } from 'https://unpkg.com/modern-screenshot';
+import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.8.0/dist/snapdom.mjs';
 import { snapdom } from '../src/index';
+
 
 let html2canvasLoaded = false;
 
@@ -110,9 +112,14 @@ for (const size of sizes) {
       }
     });
 
-    bench('snapDOM capture', async () => {
+    bench('snapDOM current version', async () => {
       await setupContainer();
       await snapdom.toRaw(container);
+    });
+
+     bench('snapDOM V1.8.0', async () => {
+      await setupContainer();
+      await sd.toRaw(container);
     });
 
     bench('html2canvas capture', async () => {

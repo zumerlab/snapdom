@@ -18,26 +18,21 @@ import { imageCache, computedStyleCache, bgCache } from "../core/cache";
 export async function inlineSingleBackgroundEntry(entry, options = {}) {
   const isUrl = entry.startsWith("url(");
   const isGradient = /^((repeating-)?(linear|radial|conic)-gradient)\(/i.test(entry);
-
   if (isUrl) {
     const rawUrl = extractURL(entry);
     if (!rawUrl) return entry;
-
     const encodedUrl = safeEncodeURI(rawUrl);
     if (bgCache.has(encodedUrl)) {
-      return options.skipInline ? undefined : `url(${bgCache.get(encodedUrl)})`;
+      return options.skipInline ? void 0 : `url(${bgCache.get(encodedUrl)})`;
     } else {
-      const crossOrigin = options.crossOrigin ? options.crossOrigin(encodedUrl) : "anonymous";
-      const dataUrl = await fetchImage(encodedUrl, 3000, crossOrigin);
+      const dataUrl = await fetchImage(encodedUrl, {useProxy: options.useProxy});
       bgCache.set(encodedUrl, dataUrl);
-      return options.skipInline ? undefined : `url(${dataUrl})`;
+      return options.skipInline ? void 0 : `url(${dataUrl})`;
     }
   }
-
   if (isGradient || entry === "none") {
     return entry;
   }
-
   return entry;
 }
 
@@ -144,24 +139,94 @@ export function isIconFont(familyOrUrl) {
  * @param {number} [timeout=3000]
  * @return {*} 
  */
-export function fetchImage(src, timeout = 3000, crossOrigin = "anonymous") {
+
+export function fetchImage(src, {timeout = 3000, useProxy = ''}) {
+  // Determina automáticamente el modo de crossOrigin según la URL
+  function getCrossOriginMode(url) {
+    try {
+      const parsed = new URL(url, window.location.href);
+      return parsed.origin === window.location.origin ? "use-credentials" : "anonymous";
+    } catch {
+      return "anonymous";
+    }
+  }
+
+  const crossOriginValue = getCrossOriginMode(src);
+  console.log(`[SnapDOM - fetchImage] Start loading image: ${src} with crossOrigin=${crossOriginValue}`);
 
   if (imageCache.has(src)) {
+    console.log(`[SnapDOM - fetchImage] Cache hit for: ${src}`);
     return Promise.resolve(imageCache.get(src));
   }
 
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
+      console.log(`[SnapDOM - fetchImage] Timeout after ${timeout}ms for image: ${src}`);
       reject(new Error("Image load timed out"));
     }, timeout);
 
+    const fallbackViaFetch = () => {
+      console.warn(`[SnapDOM - fetchImage] Trying fetch fallback for: ${src}`);
+      fetch(src, {
+        mode: "cors",
+        credentials: crossOriginValue === "use-credentials" ? "include" : "omit"
+      }).then((r) => {
+        console.log(`[SnapDOM - fetchImage] Fetch response received for: ${src}`);
+        return r.blob();
+      }).then((blob) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result;
+          if (typeof base64 === "string" && base64.startsWith("data:application/octet-stream")) {
+            reject(new Error("Image response was empty or blocked"));
+            return;
+          }
+          imageCache.set(src, base64);
+          resolve(base64);
+        };
+        reader.readAsDataURL(blob);
+      }).catch(() => {
+        console.warn(`[SnapDOM - fetchImage] Fetch fallback failed for: ${src}`);
+        if (useProxy !== '') {
+          const proxied = typeof useProxy === "string" ? useProxy.replace(/\/$/, "") + safeEncodeURI(src) : 
+          null;
+
+          if (proxied) {
+            console.log(`[SnapDOM - fetchImage] Trying proxy fallback: ${proxied}`);
+          fetch(proxied).then((r) => r.blob()).then((blob) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64 = reader.result;
+              if (typeof base64 === "string" && base64.startsWith("data:application/octet-stream")) {
+                reject(new Error("Image response was empty or blocked"));
+                return;
+              }
+              imageCache.set(src, base64);
+              resolve(base64);
+            };
+            reader.readAsDataURL(blob);
+          }).catch(() => {
+            console.error(`[SnapDOM - fetchImage] Proxy fallback failed for: ${src}`);
+            reject(new Error("CORS restrictions prevented image capture (even via proxy)"));
+          });
+          } else {
+            console.error(`[SnapDOM - fetchImage] Provide a valid proxy url: ${src}`);
+          }
+        } else {
+            console.error(`[SnapDOM - fetchImage] You may try add a proxy "useProxy: url" `);
+          }
+      });
+    };
+
     const image = new Image();
-    image.crossOrigin = crossOrigin;
+    image.crossOrigin = crossOriginValue;
 
     image.onload = async () => {
+      // console.log(`[SnapDOM - fetchImage] Image loaded: ${src}`);
       clearTimeout(timeoutId);
       try {
         await image.decode();
+       //  console.log(`[SnapDOM - fetchImage] Image decoded: ${src}`);
         const canvas = document.createElement("canvas");
         canvas.width = image.width;
         canvas.height = image.height;
@@ -169,25 +234,29 @@ export function fetchImage(src, timeout = 3000, crossOrigin = "anonymous") {
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
         try {
           const dataURL = canvas.toDataURL("image/png");
-          // Guarda en cache para futuras llamadas
+          // console.log(`[SnapDOM - fetchImage] Canvas toDataURL succeeded for: ${src}`);
           imageCache.set(src, dataURL);
           resolve(dataURL);
         } catch (e) {
-          reject(new Error("CORS restrictions prevented image capture"));
+         // console.warn(`[SnapDOM - fetchImage] Canvas toDataURL failed for: ${src}`, e);
+          fallbackViaFetch();
         }
       } catch (e) {
-        reject(e);
+       // console.error(`[SnapDOM - fetchImage] Image decode failed: ${src}`, e);
+        fallbackViaFetch();
       }
     };
 
     image.onerror = (e) => {
       clearTimeout(timeoutId);
-      reject(new Error("Failed to load image: " + (e.message || "Unknown error")));
+      console.error(`[SnapDOM - fetchImage] Image failed to load: ${src}`, e);
+      fallbackViaFetch();
     };
 
     image.src = src;
   });
 }
+
 /**
  *
  *

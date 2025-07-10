@@ -12,34 +12,29 @@ import { imageCache, bgCache, resourceCache, baseCSSCache } from '../core/cache.
  */
 
 export async function preCache(root = document, options = {}) {
-  const { embedFonts = true, reset = false, crossOrigin: crossOriginFn } = options;
+  const { embedFonts = true, reset = false} = options;
   if (reset) {
     imageCache.clear();
     bgCache.clear();
     resourceCache.clear();
     baseCSSCache.clear();
-    // computedStyleCache.clear(); Not necessary to clear
     return;
   }
-
   await document.fonts.ready;
   precacheCommonTags();
-
   let imgEls = [], allEls = [];
   if (root?.querySelectorAll) {
-    imgEls = Array.from(root.querySelectorAll('img[src]'));
-    allEls = Array.from(root.querySelectorAll('*'));
+    imgEls = Array.from(root.querySelectorAll("img[src]"));
+    allEls = Array.from(root.querySelectorAll("*"));
   }
-
   const promises = [];
   for (const img of imgEls) {
     const src = img.src;
     if (!imageCache.has(src)) {
-      const crossOrigin = crossOriginFn ? crossOriginFn(src) : "anonymous";
+    
       promises.push(
-        fetchImage(src, 3000, crossOrigin)
-          .then(dataURL => imageCache.set(src, dataURL))
-          .catch(() => {})
+        fetchImage(src, { useProxy: options.useProxy}).then((dataURL) => imageCache.set(src, dataURL)).catch(() => {
+        })
       );
     }
   }
@@ -51,17 +46,15 @@ export async function preCache(root = document, options = {}) {
         const isUrl = entry.startsWith("url(");
         if (isUrl) {
           promises.push(
-            inlineSingleBackgroundEntry(entry, { crossOrigin: crossOriginFn, skipInline: true })
-              .catch(() => {})
+            inlineSingleBackgroundEntry(entry, options).catch(() => {
+            })
           );
         }
       }
     }
   }
-
   if (embedFonts) {
-    await embedCustomFonts({ ignoreIconFonts: !embedFonts, preCached: true });
+    await embedCustomFonts({ preCached: true });
   }
-
   await Promise.all(promises);
 }
