@@ -110,7 +110,7 @@ describe('idle', () => {
 describe('fetchImage', () => {
   it('rejects on image error', async () => {
     await expect(fetchImage('invalid-url', { timeout: 100 }))
-  .rejects.toThrow('Image response was empty or blocked');
+  .rejects.toThrow('Fetch fallback failed and no proxy provided');
 
   });
   it('rejects on timeout', async () => {
@@ -144,7 +144,7 @@ describe('fetchImage error propagation', () => {
       get height() { return 1; }
     };
    await expect(fetchImage('decode-fail-url', { timeout: 100 }))
-  .rejects.toThrow('Image response was empty or blocked');
+  .rejects.toThrow('Fetch fallback failed and no proxy provided');
     window.Image = origImage;
   });
 });
