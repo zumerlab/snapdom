@@ -8,6 +8,7 @@ declare module "@zumer/snapdom" {
     height?: number;
     backgroundColor?: string;
     format?: "png" | "jpeg" | "jpg" | "webp" | "svg";
+    type?: "png" | "jpeg" | "jpg" | "webp" | "svg";
     filename?: string;
     dpr?: number;
     quality?: number;
