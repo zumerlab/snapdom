@@ -17,32 +17,36 @@ import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../
 export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
   const queue = [[source, clone]];
 
+  const imageProps = [
+    "background-image",
+    "mask",
+    "mask-image", "-webkit-mask-image",
+    "mask-source", "mask-box-image-source",
+    "mask-border-source",
+    "-webkit-mask-box-image-source"
+  ];
+
   while (queue.length) {
     const [srcNode, cloneNode] = queue.shift();
     const style = styleCache.get(srcNode) || getStyle(srcNode);
     if (!styleCache.has(srcNode)) styleCache.set(srcNode, style);
 
-    const bg = style.getPropertyValue("background-image");
-    const bgColor = style.getPropertyValue("background-color");
+    for (const prop of imageProps) {
+      const val = style.getPropertyValue(prop);
+      if (!val || val === "none") continue;
 
-    if (!bg || bg === "none") {
-      const sChildren = Array.from(srcNode.children);
-      const cChildren = Array.from(cloneNode.children);
-      for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-        queue.push([sChildren[i], cChildren[i]]);
+      const splits = splitBackgroundImage(val);
+      const inlined = await Promise.all(
+        splits.map(entry => inlineSingleBackgroundEntry(entry, options))
+      );
+
+      if (inlined.some(p => p && p !== "none" && !/^url\(undefined/.test(p))) {
+        cloneNode.style.setProperty(prop, inlined.join(", "));
       }
-      continue;
     }
 
-    // SOLO reemplazar la URL por el dataURL, sin modificar tamaño ni posición
-    const bgSplits = splitBackgroundImage(bg);
-    const newBgParts = await Promise.all(
-      bgSplits.map(entry => inlineSingleBackgroundEntry(entry, options))
-    );
-    if (newBgParts.some(p => p && p !== "none" && !/^url\(undefined\)/.test(p))) {
-      cloneNode.style.backgroundImage = newBgParts.join(", ");
-    }
-
+    // También preservamos el background-color como antes
+    const bgColor = style.getPropertyValue("background-color");
     if (
       bgColor &&
       bgColor !== "transparent" &&
@@ -58,3 +62,4 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     }
   }
 }
+

@@ -16,25 +16,30 @@ import { imageCache, computedStyleCache, bgCache } from "../core/cache";
  * @returns {Promise<string|void>} - The processed entry (unless skipInline is true).
  */
 export async function inlineSingleBackgroundEntry(entry, options = {}) {
-  const isUrl = entry.startsWith("url(");
+  // ✅ Extraemos sólo la URL dentro de `url(...)`
+  const match = entry.match(/url\(["']?(.*?)["']?\)/);
+  const rawUrl = match?.[1];
+
   const isGradient = /^((repeating-)?(linear|radial|conic)-gradient)\(/i.test(entry);
-  if (isUrl) {
-    const rawUrl = extractURL(entry);
-    if (!rawUrl) return entry;
+  
+  if (rawUrl) {
     const encodedUrl = safeEncodeURI(rawUrl);
     if (bgCache.has(encodedUrl)) {
       return options.skipInline ? void 0 : `url(${bgCache.get(encodedUrl)})`;
     } else {
-      const dataUrl = await fetchImage(encodedUrl, {useProxy: options.useProxy});
+      const dataUrl = await fetchImage(encodedUrl, { useProxy: options.useProxy });
       bgCache.set(encodedUrl, dataUrl);
       return options.skipInline ? void 0 : `url("${dataUrl}")`;
     }
   }
+
   if (isGradient || entry === "none") {
     return entry;
   }
+
   return entry;
 }
+
 
 /**
  * Creates a promise that resolves after the specified delay
