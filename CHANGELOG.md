@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.5](https://github.com/zumerlab/snapdom/compare/v1.9.3...v1.9.5)
+
+> 14 July 2025
+
+- Fix: add type def for `SnapOptions`. Thanks @simon1uo  [`#111`](https://github.com/zumerlab/snapdom/pull/111)
+- Add `checkbox.indeterminate`. Thanks @titoBouzout [`#104`](https://github.com/zumerlab/snapdom/pull/104)
+- Add mask-image CSS detection (closes #106) [`#106`](https://github.com/zumerlab/snapdom/issues/106)
+- Add slot detection (closes # 97) / Fix textarea content duplication (closes #110) [`#110`](https://github.com/zumerlab/snapdom/issues/110)
+- Add html-to-image to benchmark. Closes #103 [`#103`](https://github.com/zumerlab/snapdom/issues/103)
+
+
 #### [v1.9.3](https://github.com/zumerlab/snapdom/compare/v1.8.0...v1.9.3)
 
 > 10 July 2025
