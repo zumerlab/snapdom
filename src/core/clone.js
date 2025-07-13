@@ -105,7 +105,10 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
       if (node.checked) clone.setAttribute("checked", "");
     }
   } else if (node instanceof HTMLTextAreaElement) {
-   clone.textContent = node.value;
+    const rect = node.getBoundingClientRect();
+  clone.textContent = node.value;
+  clone.style.width = `${rect.width}px`;
+  clone.style.height = `${rect.height}px`;
   } else if (node instanceof HTMLSelectElement) {
     clone.value = node.value;
     Array.from(clone.options).forEach((opt) => {
@@ -134,6 +137,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   }
 
   return fragment;
+}  else if (node instanceof HTMLTextAreaElement) {
 } else {
     const baseChildren = node.shadowRoot ? node.shadowRoot.childNodes : node.childNodes;
     
