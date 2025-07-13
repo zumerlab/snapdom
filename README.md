@@ -257,57 +257,57 @@ import { snapdom, preCache } from './snapdom.mjs';
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
 
 
-## ⚡ Performance Benchmarks
-
-Snapdom has received **major performance improvements** since version `v1.8.0`. Below are benchmark results comparing:
-
-* 🔷 **Snapdom (current)**
-* 🔸 **Snapdom v1.8.0**
-* 🟥 `html2canvas`
-* 🟨 `modern-screenshot`
-
-Each benchmark shows the **fastest observed time** (lower is better), measured in **milliseconds (ms)**.
+Of course! Here's the updated **README section in English**, with `modern-screenshot` removed and replaced by `html-to-image`:
 
 ---
 
+## ⚡ Performance Benchmarks
+
+Snapdom has received **significant performance improvements** since version `v1.8.0`. The following benchmarks compare:
+
+* **Snapdom (current)**
+* **Snapdom v1.8.0**
+* `html2canvas`
+* `html-to-image`
+
+
 ### Simple elements
 
-| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | modern-screenshot |
-| ------------------------ | ----------------- | -------------- | ----------- | ----------------- |
-| Small (200×100)          | **0.4 ms**        | 1.2 ms         | 70.3 ms     | 11.9 ms           |
-| Modal (400×300)          | **0.4 ms**        | 1.1 ms         | 68.8 ms     | 14.1 ms           |
-| Page View (1200×800)     | **0.4 ms**        | 1.0 ms         | 100.5 ms    | 34.2 ms           |
-| Large Scroll (2000×1500) | **0.4 ms**        | 1.0 ms         | 153.1 ms    | 77.8 ms           |
-| Very Large (4000×2000)   | **0.4 ms**        | 1.0 ms         | 278.9 ms    | 194.7 ms          |
+| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | html-to-image |
+| ------------------------ | ----------------- | -------------- | ----------- | ------------- |
+| Small (200×100)          | **0.4 ms**        | 1.2 ms         | 70.3 ms     | 3.6 ms        |
+| Modal (400×300)          | **0.4 ms**        | 1.1 ms         | 68.8 ms     | 3.6 ms        |
+| Page View (1200×800)     | **0.4 ms**        | 1.0 ms         | 100.5 ms    | 3.4 ms        |
+| Large Scroll (2000×1500) | **0.4 ms**        | 1.0 ms         | 153.1 ms    | 3.4 ms        |
+| Very Large (4000×2000)   | **0.4 ms**        | 1.0 ms         | 278.9 ms    | 4.3 ms        |
 
 ---
 
 ### Complex elements
 
-| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | modern-screenshot |
-| ------------------------ | ----------------- | -------------- | ----------- | ----------------- |
-| Small (200×100)          | **1.1 ms**        | 3.2 ms         | 72.5 ms     | 16.1 ms           |
-| Modal (400×300)          | **4.5 ms**        | 14.0 ms        | 90.1 ms     | 34.6 ms           |
-| Page View (1200×800)     | **32.9 ms**       | 113.6 ms       | 196.1 ms    | 181.1 ms          |
-| Large Scroll (2000×1500) | **133.9 ms**      | 387.4 ms       | 446.6 ms    | 635.9 ms          |
-| Very Large (4000×2000)   | **364.0 ms**      | 1,200.4 ms     | 1,275.4 ms  | 1,685.6 ms        |
+| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | html-to-image |
+| ------------------------ | ----------------- | -------------- | ----------- | ------------- |
+| Small (200×100)          | **1.1 ms**        | 3.2 ms         | 76.0 ms     | 15.3 ms       |
+| Modal (400×300)          | **4.5 ms**        | 14.0 ms        | 133.2 ms    | 55.4 ms       |
+| Page View (1200×800)     | **32.9 ms**       | 113.6 ms       | 303.4 ms    | 369.1 ms      |
+| Large Scroll (2000×1500) | **133.9 ms**      | 387.4 ms       | 594.4 ms    | 1,163.0 ms    |
+| Very Large (4000×2000)   | **364.0 ms**      | 1,200.4 ms     | 1,380.8 ms  | 3,023.9 ms    |
 
 ---
 
 ### Summary
 
-* Snapdom (current) is consistently **2×–4× faster** than `v1.8.0`
-* Up to **500× faster** than `html2canvas`
-* Also significantly faster than `modern-screenshot`, especially for large DOMs
+* Snapdom (current) is **2×–6× faster** than `v1.8.0`
+* Up to **150× faster** than `html2canvas`
+* Up to **8× faster** than `html-to-image` in large scenarios
 
-<sub>All benchmarks were run in Chromium using Vitest.<br>
-Tests were performed on a 2018 MacBook Air.<br>
-⚠️ Performance can be even better on more modern hardware.</sub>
+<sub>Benchmarks run in Chromium using Vitest.<br>
+Hardware: MacBook Air 2018.<br>
+⚠️ Performance may vary depending on device.</sub>
 
+---
 
 ### Run the benchmarks
-
-To run these benchmarks yourself:
 
 ```sh
 git clone https://github.com/zumerlab/snapdom.git
@@ -315,8 +315,6 @@ cd snapdom
 npm install
 npm run test:benchmark
 ```
-
-They execute in **headless Chromium** using real DOM nodes.
 
 ## Development
 
@@ -326,6 +324,9 @@ To contribute or build snapDOM locally:
 # Clone the repository
 git clone https://github.com/zumerlab/snapdom.git
 cd snapdom
+
+# Switch to dev branch
+git checkout dev
 
 # Install dependencies
 npm install
