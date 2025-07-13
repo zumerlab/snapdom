@@ -43,6 +43,14 @@ jobs:
           echo "dev_version=$DEV_VERSION" >> $GITHUB_OUTPUT
           echo "Computed version: $DEV_VERSION"
 
+      - name: Backup original package.json
+        run: cp package.json package.original.json
+
+      - name: Patch package name for GitHub Packages
+        run: |
+          jq '.name = "@zumerlab/snapdom"' package.json > package.tmp.json
+          mv package.tmp.json package.json
+
       - name: Set dev version temporarily
         run: |
           npm version ${{ steps.devver.outputs.dev_version }} --no-git-tag-version
@@ -51,3 +59,6 @@ jobs:
         run: npm publish --registry=https://npm.pkg.github.com/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore original package.json
+        run: mv package.original.json package.json
