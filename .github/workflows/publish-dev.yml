@@ -26,14 +26,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-       - name: Compute next dev version
+      - name: Read base version
+        id: version
+        run: |
+          BASE_VERSION=$(jq -r .version package.json)
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compute next dev version
         id: devver
         run: |
           BASE=${{ steps.version.outputs.base_version }}
           LAST=$(npm view @zumerlab/snapdom versions --registry=https://npm.pkg.github.com/ 2>/dev/null | grep "^${BASE}-next.dev\.[0-9]\+$" | sed "s/${BASE}-next.dev.\([0-9]*\)/\1/" | sort -n | tail -1)
           if [ -z "$LAST" ]; then LAST=0; fi
           N=$((LAST + 1))
-          DEV_VERSION="${BASE}-next-dev.${N}"
+          DEV_VERSION="${BASE}-next.dev.${N}"
           echo "dev_version=$DEV_VERSION" >> $GITHUB_OUTPUT
           echo "Computed version: $DEV_VERSION"
 
