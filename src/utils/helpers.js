@@ -16,9 +16,7 @@ import { cache } from "../core/cache";
  * @returns {Promise<string|void>} - The processed entry (unless skipInline is true).
  */
 export async function inlineSingleBackgroundEntry(entry, options = {}) {
-  // ✅ Extraemos sólo la URL dentro de `url(...)`
-  const match = entry.match(/url\(["']?(.*?)["']?\)/);
-  const rawUrl = match?.[1];
+  const rawUrl = extractURL(entry)
 
   const isGradient = /^((repeating-)?(linear|radial|conic)-gradient)\(/i.test(entry);
   
