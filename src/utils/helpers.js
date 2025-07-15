@@ -3,7 +3,7 @@
  * @module helpers
  */
 
-import { imageCache, computedStyleCache, bgCache } from "../core/cache";
+import { cache } from "../core/cache";
 
 /**
  * Fetches and inlines a single background-image entry to a data URL (with caching).
@@ -24,11 +24,11 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
   
   if (rawUrl) {
     const encodedUrl = safeEncodeURI(rawUrl);
-    if (bgCache.has(encodedUrl)) {
-      return options.skipInline ? void 0 : `url(${bgCache.get(encodedUrl)})`;
+    if (cache.background.has(encodedUrl)) {
+      return options.skipInline ? void 0 : `url(${cache.background.get(encodedUrl)})`;
     } else {
       const dataUrl = await fetchImage(encodedUrl, { useProxy: options.useProxy });
-      bgCache.set(encodedUrl, dataUrl);
+      cache.background.set(encodedUrl, dataUrl);
       return options.skipInline ? void 0 : `url("${dataUrl}")`;
     }
   }
@@ -67,10 +67,10 @@ export function getStyle(el, pseudo = null) {
     return window.getComputedStyle(el, pseudo);
   }
 
-  let map = computedStyleCache.get(el);
+  let map = cache.computedStyle.get(el);
   if (!map) {
     map = new Map();
-    computedStyleCache.set(el, map);
+    cache.computedStyle.set(el, map);
   }
 
   if (!map.has(pseudo)) {
@@ -198,15 +198,15 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
   const crossOriginValue = getCrossOriginMode(src);
   console.log(`[SnapDOM - fetchImage] Start loading image: ${src} with crossOrigin=${crossOriginValue}`);
 
-  if (imageCache.has(src)) {
+  if (cache.image.has(src)) {
     console.log(`[SnapDOM - fetchImage] Cache hit for: ${src}`);
-    return Promise.resolve(imageCache.get(src));
+    return Promise.resolve(cache.image.get(src));
   }
 
   // Detectamos si es un data URI, si sí, devolvemos directo sin fetch
   const isDataURI = src.startsWith("data:image/");
   if (isDataURI) {
-    imageCache.set(src, src);
+    cache.image.set(src, src);
     return Promise.resolve(src);
   }
 
@@ -222,7 +222,7 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
         });
         const svgText = await response.text();
         const encoded = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-        imageCache.set(src, encoded);
+        cache.image.set(src, encoded);
         return encoded;
       } catch {
         return fetchWithFallback(src);
@@ -249,12 +249,12 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
         const dataURL = canvas.toDataURL("image/png");
-        imageCache.set(src, dataURL);
+        cache.image.set(src, dataURL);
         resolve(dataURL);
       } catch {
         try {
           const fallbackDataURL = await fetchWithFallback(src);
-          imageCache.set(src, fallbackDataURL);
+          cache.image.set(src, fallbackDataURL);
           resolve(fallbackDataURL);
         } catch (e) {
           reject(e);
@@ -267,7 +267,7 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
       console.error(`[SnapDOM - fetchImage] Image failed to load: ${src}`);
       try {
         const fallbackDataURL = await fetchWithFallback(src);
-        imageCache.set(src, fallbackDataURL);
+        cache.image.set(src, fallbackDataURL);
         resolve(fallbackDataURL);
       } catch (e) {
         reject(e);

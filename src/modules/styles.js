@@ -1,8 +1,6 @@
 import { getStyleKey } from '../utils/cssTools.js';
 import { getStyle } from '../utils/helpers.js';
-
-const snapshotCache = new WeakMap();       // Element → snapshot (object)
-const snapshotKeyCache = new Map();        // hash string → style key
+import {cache} from '../core/cache.js'
 
 function snapshotComputedStyleFull(style) {
   const result = {};
@@ -24,34 +22,34 @@ function snapshotComputedStyleFull(style) {
   return result;
 }
 
-export function inlineAllStyles(source, clone, styleMap, cache, compress) {
+export function inlineAllStyles(source, clone, compress) {
   if (source.tagName === 'STYLE') return;
 
-  if (!cache.has(source)) {
-    cache.set(source, getStyle(source));
+  if (!cache.preStyle.has(source)) {
+    cache.preStyle.set(source, getStyle(source));
   }
-  const style = cache.get(source);
+  const style = cache.preStyle.get(source);
 
-  if (!snapshotCache.has(source)) {
+  if (!cache.snapshot.has(source)) {
     const snapshot = snapshotComputedStyleFull(style);
-    snapshotCache.set(source, snapshot);
+    cache.snapshot.set(source, snapshot);
   }
 
-  const snapshot = snapshotCache.get(source);
+  const snapshot = cache.snapshot.get(source);
 
   const hash = Object.entries(snapshot)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([prop, val]) => `${prop}:${val}`)
     .join(';');
 
-  if (snapshotKeyCache.has(hash)) {
-    styleMap.set(clone, snapshotKeyCache.get(hash));
+  if (cache.snapshotKey.has(hash)) {
+    cache.preStyleMap.set(clone, cache.snapshotKey.get(hash));
     return;
   }
 
   const tagName = source.tagName?.toLowerCase() || 'div';
   const key = getStyleKey(snapshot, tagName, compress);
 
-  snapshotKeyCache.set(hash, key);
-  styleMap.set(clone, key);
+  cache.snapshotKey.set(hash, key);
+  cache.preStyleMap.set(clone, key);
 }

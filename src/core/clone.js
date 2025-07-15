@@ -4,14 +4,12 @@
  */
 
 import { inlineAllStyles } from '../modules/styles.js';
+import { cache } from '../core/cache.js'
 
 /**
  * Creates a deep clone of a DOM node, including styles, shadow DOM, and special handling for excluded/placeholder/canvas nodes.
  *
  * @param {Node} node - Node to clone
- * @param {Map} styleMap - Map to store element-to-style-key mappings
- * @param {WeakMap} styleCache - Cache of computed styles
- * @param {WeakMap} nodeMap - Map to track original-to-clone node relationships
  * @param {boolean} compress - Whether to compress style keys
  * @param {Object} [options={}] - Capture options including exclude and filter 
  * @param {Node} [originalRoot] - Original root element being captured
@@ -22,7 +20,7 @@ import { inlineAllStyles } from '../modules/styles.js';
   return node.nodeType === Node.ELEMENT_NODE && node.tagName === 'SLOT';
 }
 
-export function deepClone(node, styleMap, styleCache, nodeMap, compress, options = {}, originalRoot) {
+export function deepClone(node, compress, options = {}, originalRoot) {
   if (node.nodeType === Node.TEXT_NODE) {
     return node.cloneNode(true); // Siempre clona nodos de texto
   }
@@ -73,8 +71,8 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
 
   if (node.getAttribute("data-capture") === "placeholder") {
     const clone2 = node.cloneNode(false);
-    nodeMap.set(clone2, node);
-    inlineAllStyles(node, clone2, styleMap, styleCache, compress);
+    cache.preNodeMap.set(clone2, node);
+    inlineAllStyles(node, clone2, compress);
     const placeholder = document.createElement("div");
     placeholder.textContent = node.getAttribute("data-placeholder-text") || "";
     placeholder.style.cssText = `color: #666;font-size: 12px;text-align: center;line-height: 1.4;padding: 0.5em;box-sizing: border-box;`;
@@ -95,7 +93,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   }
 
   const clone = node.cloneNode(false);
-  nodeMap.set(clone, node);
+  cache.preNodeMap.set(clone, node);
 
   if (node instanceof HTMLInputElement) {
     clone.value = node.value;
@@ -120,7 +118,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
     });
   }
 
-  inlineAllStyles(node, clone, styleMap, styleCache, compress);
+  inlineAllStyles(node, clone, compress);
 
   // Aquí es donde se clonan hijos o shadowRoot con slots
   if (isSlotElement(node)) {
@@ -132,7 +130,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   const fragment = document.createDocumentFragment();
 
   for (const child of nodesToClone) {
-    const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+    const clonedChild = deepClone(child, compress, options, originalRoot || node);
     if (clonedChild) fragment.appendChild(clonedChild);
   }
 
@@ -142,14 +140,14 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
     const baseChildren = node.shadowRoot ? node.shadowRoot.childNodes : node.childNodes;
     
     for (const child of baseChildren) {
-      const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+      const clonedChild = deepClone(child, compress, options, originalRoot || node);
       if (clonedChild) clone.appendChild(clonedChild);
     }
 
     if (node.shadowRoot && node.childNodes.length > 0 && !node.shadowRoot.querySelector('slot')) {
       const lightDomContent = document.createDocumentFragment();
       for (const child of node.childNodes) {
-        const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+        const clonedChild = deepClone(child, compress, options, originalRoot || node);
         if (clonedChild) lightDomContent.appendChild(clonedChild);
       }
       clone.appendChild(lightDomContent);

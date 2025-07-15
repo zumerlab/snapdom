@@ -9,7 +9,7 @@ import { inlineBackgroundImages } from '../modules/background.js';
 import { idle, isSafari } from '../utils/helpers.js';
 import { collectUsedTagNames, generateDedupedBaseCSS } from '../utils/cssTools.js';
 import { embedCustomFonts } from '../modules/fonts.js';
-import { baseCSSCache } from '../core/cache.js'
+import { cache } from '../core/cache.js'
 
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
@@ -27,14 +27,15 @@ import { baseCSSCache } from '../core/cache.js'
 
 export async function captureDOM(element, options = {}) {
   if (!element) throw new Error("Element cannot be null or undefined");
+  cache.reset()
   const { compress = true, embedFonts = false, fast = true, scale = 1, useProxy = ''} = options;
-  let clone, classCSS, styleCache;
+  let clone, classCSS;
   let fontsCSS = "";
   let baseCSS = "";
   let dataURL;
   let svgString;
 
-  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts, options));
+  ({ clone, classCSS } = await prepareClone(element, compress, embedFonts, options));
 
   await new Promise((resolve) => {
     idle(async () => {
@@ -44,7 +45,7 @@ export async function captureDOM(element, options = {}) {
   });
   await new Promise((resolve) => {
     idle(async () => {
-      await inlineBackgroundImages(element, clone, styleCache, options);
+      await inlineBackgroundImages(element, clone, options);
       resolve();
     }, { fast });
   });
@@ -59,13 +60,13 @@ export async function captureDOM(element, options = {}) {
   if (compress) {
     const usedTags = collectUsedTagNames(clone).sort();
     const tagKey = usedTags.join(",");
-    if (baseCSSCache.has(tagKey)) {
-      baseCSS = baseCSSCache.get(tagKey);
+    if (cache.baseStyle.has(tagKey)) {
+      baseCSS = cache.baseStyle.get(tagKey);
     } else {
       await new Promise((resolve) => {
         idle(() => {
           baseCSS = generateDedupedBaseCSS(usedTags);
-          baseCSSCache.set(tagKey, baseCSS);
+          cache.baseStyle.set(tagKey, baseCSS);
           resolve();
         }, { fast });
       });
