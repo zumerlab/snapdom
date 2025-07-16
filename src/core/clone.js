@@ -92,9 +92,15 @@ export function deepClone(node, compress, options = {}, originalRoot) {
     return img;
   }
 
-  const clone = node.cloneNode(false);
-  cache.preNodeMap.set(clone, node);
+  let clone;
 
+  try {
+    clone = node.cloneNode(false);
+    cache.preNodeMap.set(clone, node);
+  } catch (err) {
+    console.warn("[Snapdom] Failed to clone node:", node, err);
+  }
+  
   if (node instanceof HTMLInputElement) {
     clone.value = node.value;
     clone.setAttribute("value", node.value);
