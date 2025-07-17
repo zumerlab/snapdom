@@ -130,24 +130,24 @@ describe('embedCustomFonts', () => {
     vi.unstubAllGlobals();
   });
 
-  it('usa resourceCache para fuente dinámica', async () => {
+  it('usa cache.resource para fuente dinámica', async () => {
     const fakeFont = { family: 'dynfont', status: 'loaded', _snapdomSrc: 'https://test.com/font.woff' };
     Object.defineProperty(document, 'fonts', { value: [fakeFont], configurable: true });
-    const { resourceCache, processedFontURLs } = await import('../src/core/cache.js');
-    resourceCache.set('https://test.com/font.woff', 'data:font/woff;base64,AAAA');
-    processedFontURLs.clear();
+    const { cache } = await import('../src/core/cache.js');
+    cache.resource.set('https://test.com/font.woff', 'data:font/woff;base64,AAAA');
+    cache.font.clear();
     const css = await embedCustomFonts();
     expect(css).toMatch(/font-family:\s*['"]?(dynfont|testfont)['"]?/);
-    resourceCache.clear();
-    processedFontURLs.clear();
+    cache.resource.clear();
+    cache.font.clear();
   });
 
   it('fetch+FileReader para fuente dinámica', async () => {
     const fakeFont = { family: 'dynfont', status: 'loaded', _snapdomSrc: 'https://test.com/font.woff' };
     Object.defineProperty(document, 'fonts', { value: [fakeFont], configurable: true });
-    const { resourceCache, processedFontURLs } = await import('../src/core/cache.js');
-    resourceCache.clear();
-    processedFontURLs.clear();
+    const { cache } = await import('../src/core/cache.js');
+    cache.resource.clear();
+    cache.font.clear();
     globalThis.fetch = vi.fn().mockResolvedValue({ blob: () => Promise.resolve('blob') });
     globalThis.FileReader = class {
       readAsDataURL(blob) { setTimeout(() => this.onload({ target: { result: 'data:font/woff;base64,BBBB' } }), 0); }
@@ -156,8 +156,8 @@ describe('embedCustomFonts', () => {
     };
     const css = await embedCustomFonts();
     expect(css).toMatch(/font-family:\s*['"]?(dynfont|testfont)['"]?/);
-    resourceCache.clear();
-    processedFontURLs.clear();
+    cache.resource.clear();
+    cache.font.clear();
     delete globalThis.fetch;
     delete globalThis.FileReader;
   });
@@ -165,31 +165,31 @@ describe('embedCustomFonts', () => {
   it('maneja error de fetch dinámico', async () => {
     const fakeFont = { family: 'dynfont', status: 'loaded', _snapdomSrc: 'https://test.com/font.woff' };
     Object.defineProperty(document, 'fonts', { value: [fakeFont], configurable: true });
-    const { resourceCache, processedFontURLs } = await import('../src/core/cache.js');
-    resourceCache.clear();
-    processedFontURLs.clear();
+    const { cache } = await import('../src/core/cache.js');
+    cache.resource.clear();
+    cache.font.clear();
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('fail'));
     const css = await embedCustomFonts();
     // Puede que no se genere nada si fetch falla, pero no debe lanzar error
     expect(typeof css).toBe('string');
-    resourceCache.clear();
-    processedFontURLs.clear();
+    cache.resource.clear();
+    cache.font.clear();
     delete globalThis.fetch;
   });
 
   it('inserta <style> cuando preCached y hay CSS', async () => {
     const fakeFont = { family: 'dynfont', status: 'loaded', _snapdomSrc: 'data:font/woff;base64,AAAA' };
     Object.defineProperty(document, 'fonts', { value: [fakeFont], configurable: true });
-    const { resourceCache, processedFontURLs } = await import('../src/core/cache.js');
-    resourceCache.clear();
-    processedFontURLs.clear();
+    const { cache } = await import('../src/core/cache.js');
+    cache.resource.clear();
+    cache.font.clear();
     const css = await embedCustomFonts({ preCached: true });
     const style = document.head.querySelector('style[data-snapdom="embedFonts"]');
     expect(style).not.toBeNull();
     expect(style.textContent).toBe(css);
     style.remove();
-    resourceCache.clear();
-    processedFontURLs.clear();
+    cache.resource.clear();
+    cache.font.clear();
   });
 
   it('cubre el catch de acceso a stylesheet (Cannot access stylesheet)', async () => {
@@ -216,12 +216,12 @@ describe('embedCustomFonts', () => {
     spy.mockRestore();
   });
 
-  it('cubre la rama de processedFontURLs (fetch dinámico sin cache ni processed)', async () => {
+  it('cubre la rama de cache.font (fetch dinámico sin cache ni processed)', async () => {
     const fakeFont = { family: 'dynfont', status: 'loaded', _snapdomSrc: 'https://test.com/font.woff' };
     Object.defineProperty(document, 'fonts', { value: [fakeFont], configurable: true });
-    const { resourceCache, processedFontURLs } = await import('../src/core/cache.js');
-    resourceCache.clear();
-    processedFontURLs.clear();
+    const { cache } = await import('../src/core/cache.js');
+    cache.resource.clear();
+    cache.font.clear();
     globalThis.fetch = vi.fn().mockResolvedValue({ blob: () => Promise.resolve('blob') });
     globalThis.FileReader = class {
       readAsDataURL(blob) { setTimeout(() => this.onload({ target: { result: 'data:font/woff;base64,ZZZZ' } }), 0); }
@@ -230,8 +230,8 @@ describe('embedCustomFonts', () => {
     };
     const css = await embedCustomFonts();
     expect(css).toMatch(/font-family:\s*['"]?dynfont['"]?/);
-    resourceCache.clear();
-    processedFontURLs.clear();
+    cache.resource.clear();
+    cache.font.clear();
     delete globalThis.fetch;
     delete globalThis.FileReader;
   });

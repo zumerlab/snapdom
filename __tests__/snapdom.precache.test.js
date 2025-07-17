@@ -1,6 +1,6 @@
 import { describe, test, expect, afterEach, afterAll, beforeEach } from 'vitest';
 import { snapdom, preCache } from '../src/index';
-import { imageCache, bgCache, resourceCache } from '../src/core/cache';
+import { cache } from '../src/core/cache';
 
 const sizes = [
   { width: 200, height: 100, label: 'Small element (200x100)' },
@@ -69,9 +69,9 @@ function waitForNextFrame() {
   });
 }
 beforeEach(() => {
-  imageCache.clear();
-  bgCache.clear();
-  resourceCache.clear();
+  cache.image.clear();
+  cache.background.clear();
+  cache.resource.clear();
 });
 afterAll(() => {
   for (const r of results) {
