@@ -23,7 +23,7 @@ declare module "@zumer/snapdom" {
     toRaw(): string;
     toImg(): Promise<HTMLImageElement>;
     toCanvas(): Promise<HTMLCanvasElement>;
-    toBlob(): Promise<Blob>;
+    toBlob(options?: SnapOptions): Promise<Blob>;
     toPng(options?: SnapOptions): Promise<HTMLImageElement>;
     toJpg(options?: SnapOptions): Promise<HTMLImageElement>;
     toWebp(options?: SnapOptions): Promise<HTMLImageElement>;
