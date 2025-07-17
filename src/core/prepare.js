@@ -24,7 +24,8 @@ import { cache } from '../core/cache.js';
 
 export async function prepareClone(element, compress = false, embedFonts = false, options = {}) {
 
-  let clone, classCSS;
+  let clone
+  let classCSS = '';
   try {
     clone = deepClone(element, compress, options, element);
   } catch (e) {
