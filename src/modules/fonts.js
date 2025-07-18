@@ -166,54 +166,52 @@ export async function embedCustomFonts({preCached = false } = {}) {
 
   for (const sheet of document.styleSheets) {
     try {
-      if (!sheet.href || links.every((link) => link.href !== sheet.href)) {
-        for (const rule of sheet.cssRules) {
-          if (rule.type === CSSRule.FONT_FACE_RULE) {
-            const src = rule.style.getPropertyValue("src");
-            const family = rule.style.getPropertyValue("font-family");
-            if (!src || (isIconFont(family))) continue;
+      for (const rule of sheet.cssRules) {
+        if (rule.type === CSSRule.FONT_FACE_RULE) {
+          const src = rule.style.getPropertyValue("src");
+          const family = rule.style.getPropertyValue("font-family");
+          if (!src || (isIconFont(family))) continue;
 
-            const urlRegex = /url\((["']?)([^"')]+)\1\)/g;
-            let inlinedSrc = src;
-            const matches = Array.from(src.matchAll(urlRegex));
-            for (const match of matches) {
-              let rawUrl = match[2].trim();
-              if (!rawUrl) continue;
-              let url = rawUrl;
-              if (!url.startsWith("http") && !url.startsWith("data:")) {
-                url = new URL(url, sheet.href || location.href).href;
-              }
-              if (isIconFont(url)) continue;
-              if (cache.resource.has(url)) {
-                cache.font.add(url);
-                inlinedSrc = inlinedSrc.replace(match[0], `url(${cache.resource.get(url)})`);
-                continue;
-              }
-              if (cache.font.has(url)) continue;
-              try {
-                const res = await fetch(url);
-                const blob = await res.blob();
-                const b64 = await new Promise((resolve) => {
-                  const reader = new FileReader();
-                  reader.onload = () => resolve(reader.result);
-                  reader.readAsDataURL(blob);
-                });
-                cache.resource.set(url, b64);
-                cache.font.add(url);
-                inlinedSrc = inlinedSrc.replace(match[0], `url(${b64})`);
-              } catch (e) {
-                console.warn("[snapdom] Failed to fetch font URL:", url);
-              }
+          const urlRegex = /url\((["']?)([^"')]+)\1\)/g;
+          let inlinedSrc = src;
+          const matches = Array.from(src.matchAll(urlRegex));
+          for (const match of matches) {
+            let rawUrl = match[2].trim();
+            if (!rawUrl) continue;
+            let url = rawUrl;
+            if (!url.startsWith("http") && !url.startsWith("data:")) {
+              url = new URL(url, sheet.href || location.href).href;
             }
+            if (isIconFont(url)) continue;
+            if (cache.resource.has(url)) {
+              cache.font.add(url);
+              inlinedSrc = inlinedSrc.replace(match[0], `url(${cache.resource.get(url)})`);
+              continue;
+            }
+            if (cache.font.has(url)) continue;
+            try {
+              const res = await fetch(url);
+              const blob = await res.blob();
+              const b64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+              });
+              cache.resource.set(url, b64);
+              cache.font.add(url);
+              inlinedSrc = inlinedSrc.replace(match[0], `url(${b64})`);
+            } catch (e) {
+              console.warn("[snapdom] Failed to fetch font URL:", url);
+            }
+          }
 
-            finalCSS += `@font-face {
-  font-family: ${family};
-  src: ${inlinedSrc};
-  font-style: ${rule.style.getPropertyValue("font-style") || "normal"};
-  font-weight: ${rule.style.getPropertyValue("font-weight") || "normal"};
+          finalCSS += `@font-face {
+font-family: ${family};
+src: ${inlinedSrc};
+font-style: ${rule.style.getPropertyValue("font-style") || "normal"};
+font-weight: ${rule.style.getPropertyValue("font-weight") || "normal"};
 }
 `;
-          }
         }
       }
     } catch (e) {

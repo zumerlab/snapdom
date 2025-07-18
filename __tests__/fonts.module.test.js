@@ -177,6 +177,25 @@ describe('embedCustomFonts', () => {
     delete globalThis.fetch;
   });
 
+  it("should embed `@font-face` defined within link href resource", async () => {
+    // Use live server resources to simulate real css link
+    const resourceUri = "http://127.0.0.1:5501/assets/font-face.css";
+
+    const linkEl = document.createElement("link");
+    linkEl.rel = "stylesheet";
+    linkEl.href = resourceUri;
+    linkEl.crossOrigin = "crossorigin";
+    document.body.appendChild(linkEl);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    const css = await embedCustomFonts();
+    expect(css).toContain('@font-face');
+    expect(css).toContain("hiragino-mincho-pron");
+
+    document.body.removeChild(linkEl);
+  });
+
   it('inserta <style> cuando preCached y hay CSS', async () => {
     const fakeFont = { family: 'dynfont', status: 'loaded', _snapdomSrc: 'data:font/woff;base64,AAAA' };
     Object.defineProperty(document, 'fonts', { value: [fakeFont], configurable: true });
@@ -191,6 +210,7 @@ describe('embedCustomFonts', () => {
     cache.resource.clear();
     cache.font.clear();
   });
+
 
   it('cubre el catch de acceso a stylesheet (Cannot access stylesheet)', async () => {
     // Mock de una hoja de estilos que lanza error al acceder a cssRules

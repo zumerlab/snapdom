@@ -1,0 +1,8 @@
+@font-face {
+  font-family: "hiragino-mincho-pron";
+  src: local("Hiragino Mincho ProN W3"), local("Hiragino Mincho ProN");
+}
+
+.icon_xxxx {
+  /* `icon` keywords will wrongly make `isIconFont(cssText)` return true */
+}

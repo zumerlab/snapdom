@@ -185,7 +185,7 @@ Forces exact dimensions, potentially distorting the image if the aspect ratio di
 ```js
 const result = await snapdom(element, {
   width: 800,  // Outputs an 800px × 200px image (may stretch/squish content)
-  height: 200  
+  height: 200
 });
 ```
 
@@ -327,8 +327,16 @@ git checkout dev
 # Install dependencies
 npm install
 
+# Install playwright browsers
+npx playwright install
+
 # Compile the library (ESM, CJS, and minified versions)
 npm run compile
+
+# Startup live server (IMPORTANT: `npm test` depends on it)
+# Make sure vscode extension `Live Server` installed first
+# In vscode, run command `Live Server: Open with Live Server` to start live server
+# The live server will listen on port 5501
 
 # Run tests
 npm test
@@ -361,7 +369,7 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 
 ## 💖 Sponsors
 
-Special thanks to [@megaphonecolin](https://github.com/megaphonecolin) for supporting this project!  
+Special thanks to [@megaphonecolin](https://github.com/megaphonecolin) for supporting this project!
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 
