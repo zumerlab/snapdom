@@ -96,18 +96,18 @@ export function deepClone(node, compress, options = {}, originalRoot) {
     }
 
     // 9. Manejo especial de canvas
-    if (node.tagName === "CANVAS") {
-      const dataURL = node.toDataURL();
-      const img = document.createElement("img");
-      img.src = dataURL;
-      img.width = node.width;
-      img.height = node.height;
-      img.style.display = "inline-block";
-      img.style.width = node.style.width || `${node.width}px`;
-      img.style.height = node.style.height || `${node.height}px`;
-      return img;
-    }
+     if (node.tagName === "CANVAS") {
+        const dataURL = node.toDataURL();
+        const img = document.createElement("img");
+        img.src = dataURL;
+        img.width = node.width;
+        img.height = node.height;
 
+        cache.preNodeMap.set(img, node);
+        inlineAllStyles(node, img, compress);
+
+        return img;
+    }
     // 10. Clonación del nodo principal
     let clone;
     try {
