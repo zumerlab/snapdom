@@ -2,15 +2,6 @@
 
 All notable changes to this project will be documented in this file. 
 
-#### [v1.9.6-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.5...v1.9.6-dev.0)
-
-> 15 July 2025
-
-- Fix special url names. Closes #29 [`#29`](https://github.com/zumerlab/snapdom/issues/29)
-- Perf: unifies cache [`fe3a368`](https://github.com/zumerlab/snapdom/commit/fe3a3680ddef2736fc0176dcbc210fc760149038)
-- Adjust cache reset [`ff33ed3`](https://github.com/zumerlab/snapdom/commit/ff33ed374dcc02272225ca0154a84c304e6fc19a)
-
-
 #### [v1.9.5](https://github.com/zumerlab/snapdom/compare/v1.9.3...v1.9.5)
 
 > 14 July 2025
