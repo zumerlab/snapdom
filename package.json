@@ -15,6 +15,9 @@
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
     "prebuild": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
   },
+  "engines": {
+    "node": ">= 20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zumerlab/snapdom.git"
