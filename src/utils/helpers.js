@@ -110,6 +110,7 @@ export function extractURL(value) {
   if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
     url = url.slice(1, -1);
   }
+  if (url.startsWith('#')) return null;
   return url;
 }
 
