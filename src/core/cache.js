@@ -20,16 +20,10 @@ export const cache = {
 };
 
 function resetCache() {
-    // cache.image.clear();
-    // cache.background.clear();
-    // cache.resource.clear();
-    // cache.defaultStyle.clear();
-    // cache.baseStyle.clear();
-    cache.computedStyle = new WeakMap();
-    cache.snapshot= new WeakMap(); 
-    cache.snapshotKey.clear();
-    // cache.font.clear();
-    cache.preStyleMap.clear();
-    cache.preStyle = new WeakMap();
-    cache.preNodeMap.clear();
+  cache.computedStyle = new WeakMap();
+  cache.snapshot = new WeakMap();
+  cache.snapshotKey.clear();
+  cache.preStyleMap.clear();
+  cache.preStyle = new WeakMap();
+  cache.preNodeMap.clear();
 }
