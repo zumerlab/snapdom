@@ -1,8 +1,3 @@
-/**
- * General helper utilities for DOM, style, and resource handling.
- * @module helpers
- */
-
 import { cache } from "../core/cache";
 
 /**
@@ -184,21 +179,19 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
         try {
           return await fetchBlobAsDataURL(proxied);
         } catch {
-          console.error(`[SnapDOM - fetchImage] Proxy fallback failed for: ${url}`);
-          throw new Error("CORS restrictions prevented image capture (even via proxy)");
+          
+          throw new Error("[SnapDOM - fetchImage] CORS restrictions prevented image capture (even via proxy)");
         }
       } else {
-        console.error(`[SnapDOM - fetchImage] No valid proxy URL provided for fallback: ${url}`);
-        throw new Error("Fetch fallback failed and no proxy provided");
+       
+        throw new Error("[SnapDOM - fetchImage] Fetch fallback failed and no proxy provided");
       }
     }
   }
 
   const crossOriginValue = getCrossOriginMode(src);
-  console.log(`[SnapDOM - fetchImage] Start loading image: ${src} with crossOrigin=${crossOriginValue}`);
 
   if (cache.image.has(src)) {
-    console.log(`[SnapDOM - fetchImage] Cache hit for: ${src}`);
     return Promise.resolve(cache.image.get(src));
   }
 
@@ -231,8 +224,7 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
 
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
-      console.log(`[SnapDOM - fetchImage] Timeout after ${timeout}ms for image: ${src}`);
-      reject(new Error("Image load timed out"));
+      reject(new Error("[SnapDOM - fetchImage] Image load timed out"));
     }, timeout);
 
     const image = new Image();
