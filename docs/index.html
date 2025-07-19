@@ -1126,14 +1126,16 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
       })
     }
+   
     async function exportFormats(id) {
       const el = document.getElementById(id)
+      const result = await snapdom(el)
       const output = document.getElementById('export-output')
       output.innerHTML = ''
       const [png, jpg, webp] = await Promise.all([
-        snapdom.toPng(el),
-        snapdom.toJpg(el),
-        snapdom.toWebp(el),
+        result.toPng(),
+        result.toJpg(),
+        result.toWebp(),
       ])
       output.append('PNG:', png, document.createElement('br'))
       output.append('JPG:', jpg, document.createElement('br'))
