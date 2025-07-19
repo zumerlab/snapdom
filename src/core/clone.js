@@ -164,7 +164,8 @@ export function deepClone(node, compress, options = {}, originalRoot) {
           }
         }
         return fragment;
-      } else {
+      } else if (node instanceof HTMLTextAreaElement) {
+} else {
         const baseChildren = node.shadowRoot ? node.shadowRoot.childNodes : node.childNodes;
         
         for (const child of baseChildren) {
