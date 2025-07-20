@@ -125,11 +125,11 @@ describe('fetchImage', () => {
 
 describe('fetchImage cache', () => {
   it('returns cached image if present', async () => {
-    const { imageCache } = await import('../src/core/cache.js');
-    imageCache.set('cached-url', 'data:image/png;base64,abc');
+    const { cache } = await import('../src/core/cache.js');
+    cache.image.set('cached-url', 'data:image/png;base64,abc');
     const result = await fetchImage('cached-url', { useProxy: false });
     expect(result).toBe('data:image/png;base64,abc');
-    imageCache.delete('cached-url');
+    cache.image.delete('cached-url');
   });
 });
 

@@ -8,6 +8,7 @@ import { stripTranslate} from '../utils/helpers.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
 import { inlineExternalDef } from '../modules/svgDefs.js';
+import { cache } from '../core/cache.js';
 
 /**
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
@@ -22,19 +23,17 @@ import { inlineExternalDef } from '../modules/svgDefs.js';
  */
 
 export async function prepareClone(element, compress = false, embedFonts = false, options = {}) {
-  const styleMap = new Map();
-  const styleCache = new WeakMap();
-  const nodeMap = new Map();
 
-  let clone;
+  let clone
+  let classCSS = '';
   try {
-    clone = deepClone(element, styleMap, styleCache, nodeMap, compress, options, element);
+    clone = deepClone(element, compress, options, element);
   } catch (e) {
     console.warn("deepClone failed:", e);
     throw e;
   }
   try {
-    await inlinePseudoElements(element, clone, styleMap, styleCache, compress, embedFonts, options.useProxy);
+    await inlinePseudoElements(element, clone, compress, embedFonts, options.useProxy);
   } catch (e) {
     console.warn("inlinePseudoElements failed:", e);
   }
@@ -43,11 +42,10 @@ export async function prepareClone(element, compress = false, embedFonts = false
   } catch (e) {
     console.warn("inlineExternalDef failed:", e);
   }
-  let classCSS = "";
   if (compress) {
-    const keyToClass = generateCSSClasses(styleMap);
+    const keyToClass = generateCSSClasses();
     classCSS = Array.from(keyToClass.entries()).map(([key, className]) => `.${className}{${key}}`).join("");
-    for (const [node, key] of styleMap.entries()) {
+    for (const [node, key] of cache.preStyleMap.entries()) {
       if (node.tagName === "STYLE") continue;
       const className = keyToClass.get(key);
       if (className) node.classList.add(className);
@@ -56,12 +54,12 @@ export async function prepareClone(element, compress = false, embedFonts = false
       if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
     }
   } else {
-    for (const [node, key] of styleMap.entries()) {
+    for (const [node, key] of cache.preStyleMap.entries()) {
       if (node.tagName === "STYLE") continue;
       node.setAttribute("style", key.replace(/;/g, "; "));
     }
   }
-  for (const [cloneNode, originalNode] of nodeMap.entries()) {
+  for (const [cloneNode, originalNode] of cache.preNodeMap.entries()) {
     const scrollX = originalNode.scrollLeft;
     const scrollY = originalNode.scrollTop;
     const hasScroll = scrollX || scrollY;
@@ -80,9 +78,9 @@ export async function prepareClone(element, compress = false, embedFonts = false
       cloneNode.appendChild(inner);
     }
   }
-  if (element === nodeMap.get(clone)) {
-    const computed = styleCache.get(element) || window.getComputedStyle(element);
-    styleCache.set(element, computed);
+  if (element === cache.preNodeMap.get(clone)) {
+    const computed = cache.preStyle.get(element) || window.getComputedStyle(element);
+    cache.preStyle.set(element, computed);
     const transform = stripTranslate(computed.transform);
     clone.style.margin = "0";
     clone.style.position = "static";
@@ -95,11 +93,11 @@ export async function prepareClone(element, compress = false, embedFonts = false
     clone.style.clear = "none";
     clone.style.transform = transform || "";
   }
-  for (const [cloneNode, originalNode] of nodeMap.entries()) {
+  for (const [cloneNode, originalNode] of cache.preNodeMap.entries()) {
     if (originalNode.tagName === "PRE") {
       cloneNode.style.marginTop = "0";
       cloneNode.style.marginBlockStart = "0";
     }
   }
-  return { clone, classCSS, styleCache };
+  return { clone, classCSS };
 }

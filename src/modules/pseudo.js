@@ -7,20 +7,19 @@ import { getStyle, snapshotComputedStyle, parseContent, extractURL, safeEncodeUR
 import { getStyleKey } from '../utils/cssTools.js';
 import { iconToImage } from '../modules/fonts.js';
 import { isIconFont } from '../modules/iconFonts.js';
+import { cache } from '../core/cache.js'
 
 /**
  * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
  *
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
- * @param {Map} styleMap - Map to store element-to-style-key mappings
- * @param {WeakMap} styleCache - Cache of computed styles
  * @param {boolean} compress - Whether to compress style keys
  * @param {boolean} embedFonts - Whether to embed icon fonts as images
  * @returns {Promise} Promise that resolves when all pseudo-elements are processed
  */
 
-export async function inlinePseudoElements(source, clone, styleMap, styleCache, compress, embedFonts = false, useProxy) {
+export async function inlinePseudoElements(source, clone, compress, embedFonts = false, useProxy) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
   for (const pseudo of ["::before", "::after", "::first-letter"]) {
     try {
@@ -44,7 +43,7 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         span.dataset.snapdomPseudo = "::first-letter";
         const snapshot = snapshotComputedStyle(style);
         const key = getStyleKey(snapshot, "span", compress);
-        styleMap.set(span, key);
+        cache.preStyleMap.set(span, key);
         const restNode = document.createTextNode(rest);
         clone.replaceChild(restNode, textNode);
         clone.insertBefore(span, restNode);
@@ -65,9 +64,16 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         pseudoEl.dataset.snapdomPseudo = pseudo;
         const snapshot = snapshotComputedStyle(style);
         const key = getStyleKey(snapshot, "span", compress);
-        styleMap.set(pseudoEl, key);
+        cache.preStyleMap.set(pseudoEl, key);
         const isIconFont2 = isIconFont(fontFamily);
-        const cleanContent = parseContent(content);
+
+         // Detect counter() || counters()
+       let cleanContent;
+        if (/counter\s*\(|counters\s*\(/.test(content)) {
+          cleanContent = "- ";
+        } else {
+          cleanContent = parseContent(content);
+        }
         if (isIconFont2 && cleanContent.length === 1) {
           const imgEl = document.createElement("img");
           imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
@@ -116,8 +122,6 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
     await inlinePseudoElements(
       sChildren[i],
       cChildren[i],
-      styleMap,
-      styleCache,
       compress,
       embedFonts,
       useProxy

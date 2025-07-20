@@ -4,17 +4,17 @@
  */
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils/helpers.js';
+import { cache } from '../core/cache.js'
 
 /**
  * Converts all background images in the cloned element tree to data URLs.
  *
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
- * @param {WeakMap} styleCache - Cache of computed styles
  * @param {Object} [options={}] - Options for image processing
  * @returns {Promise<void>} Promise that resolves when all background images are processed
  */
-export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
+export async function inlineBackgroundImages(source, clone, options = {}) {
   const queue = [[source, clone]];
 
   const imageProps = [
@@ -28,8 +28,8 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
 
   while (queue.length) {
     const [srcNode, cloneNode] = queue.shift();
-    const style = styleCache.get(srcNode) || getStyle(srcNode);
-    if (!styleCache.has(srcNode)) styleCache.set(srcNode, style);
+    const style = cache.preStyle.get(srcNode) || getStyle(srcNode);
+    if (!cache.preStyle.has(srcNode)) cache.preStyle.set(srcNode, style);
 
     for (const prop of imageProps) {
       const val = style.getPropertyValue(prop);

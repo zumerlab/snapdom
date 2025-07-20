@@ -3,7 +3,7 @@
  * @module cssTools
  */
 
-import { defaultStylesCache } from "../core/cache"
+import { cache } from "../core/cache"
 
 const commonTags = [
   'div', 'span', 'p', 'a', 'img', 'ul', 'li', 'button', 'input',
@@ -24,14 +24,14 @@ export function precacheCommonTags() {
  * @returns {Object} Object containing default values for all CSS properties
  */
 export function getDefaultStyleForTag(tagName) {
-  if (defaultStylesCache.has(tagName)) {
-    return defaultStylesCache.get(tagName);
+  if (cache.defaultStyle.has(tagName)) {
+    return cache.defaultStyle.get(tagName);
   }
 
   const skipTags = new Set(['script', 'style', 'meta', 'link', 'noscript', 'template']);
   if (skipTags.has(tagName)) {
     const empty = {};  
-    defaultStylesCache.set(tagName, empty);  
+    cache.defaultStyle.set(tagName, empty);  
     return empty;
   }
 
@@ -59,7 +59,7 @@ export function getDefaultStyleForTag(tagName) {
   }
 
   sandbox.removeChild(el);
-  defaultStylesCache.set(tagName, defaults);
+  cache.defaultStyle.set(tagName, defaults);
   return defaults;
 }
 
@@ -121,7 +121,7 @@ export function generateDedupedBaseCSS(usedTagNames) {
   const groups = new Map();
 
   for (let tagName of usedTagNames) {
-    const styles = defaultStylesCache.get(tagName);
+    const styles = cache.defaultStyle.get(tagName);
     if (!styles) continue;
 
     // Creamos la "firma" del bloque CSS para comparar
@@ -148,11 +148,10 @@ export function generateDedupedBaseCSS(usedTagNames) {
 /**
  * Generates CSS classes from a style map.
  *
- * @param {Map} styleMap - Map of elements to style keys
  * @returns {Map} Map of style keys to class names
  */
-export function generateCSSClasses(styleMap) {
-  const keySet = new Set(styleMap.values());
+export function generateCSSClasses() {
+  const keySet = new Set(cache.preStyleMap.values());
   const classMap = new Map();
   let counter = 1;
   for (const key of keySet) {
