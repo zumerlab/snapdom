@@ -66,7 +66,14 @@ export async function inlinePseudoElements(source, clone, compress, embedFonts =
         const key = getStyleKey(snapshot, "span", compress);
         cache.preStyleMap.set(pseudoEl, key);
         const isIconFont2 = isIconFont(fontFamily);
-        const cleanContent = parseContent(content);
+
+         // Detect counter() || counters()
+       let cleanContent;
+        if (/counter\s*\(|counters\s*\(/.test(content)) {
+          cleanContent = "- ";
+        } else {
+          cleanContent = parseContent(content);
+        }
         if (isIconFont2 && cleanContent.length === 1) {
           const imgEl = document.createElement("img");
           imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
