@@ -80,10 +80,7 @@ function injectLinkIfMissing(href) {
  * @returns {Promise<string>} The inlined CSS for custom fonts
  */
 
-
-
 export async function embedCustomFonts({preCached = false } = {}) {
-
   if (cache.resource.has("fonts-embed-css")) {
     if (preCached) {
       const style = document.createElement("style");
@@ -171,9 +168,20 @@ export async function embedCustomFonts({preCached = false } = {}) {
           if (rule.type === CSSRule.FONT_FACE_RULE) {
             const src = rule.style.getPropertyValue("src");
             const family = rule.style.getPropertyValue("font-family");
-            if (!src || (isIconFont(family))) continue;
+            if (!src || isIconFont(family)) continue;
 
             const urlRegex = /url\((["']?)([^"')]+)\1\)/g;
+            const localRegex = /local\((["']?)[^)]+?\1\)/g;
+            const hasURL = urlRegex.test(src);
+            const hasLocal = localRegex.test(src);
+
+            if (!hasURL && hasLocal) {
+              // Solo local(), conservar en línea compacta
+              finalCSS += `@font-face{font-family:${family};src:${src};font-style:${rule.style.getPropertyValue("font-style") || "normal"};font-weight:${rule.style.getPropertyValue("font-weight") || "normal"};}`;
+              continue;
+            }
+
+            // Embebido para src con url()
             let inlinedSrc = src;
             const matches = Array.from(src.matchAll(urlRegex));
             for (const match of matches) {
@@ -206,13 +214,7 @@ export async function embedCustomFonts({preCached = false } = {}) {
               }
             }
 
-            finalCSS += `@font-face {
-  font-family: ${family};
-  src: ${inlinedSrc};
-  font-style: ${rule.style.getPropertyValue("font-style") || "normal"};
-  font-weight: ${rule.style.getPropertyValue("font-weight") || "normal"};
-}
-`;
+            finalCSS += `@font-face{font-family:${family};src:${inlinedSrc};font-style:${rule.style.getPropertyValue("font-style") || "normal"};font-weight:${rule.style.getPropertyValue("font-weight") || "normal"};}`;
           }
         }
       }
@@ -247,13 +249,7 @@ export async function embedCustomFonts({preCached = false } = {}) {
         }
       }
 
-      finalCSS += `@font-face {
-  font-family: '${font.family}';
-  src: url(${b64});
-  font-style: ${font.style || "normal"};
-  font-weight: ${font.weight || "normal"};
-}
-`;
+      finalCSS += `@font-face{font-family:'${font.family}';src:url(${b64});font-style:${font.style || "normal"};font-weight:${font.weight || "normal"};}`;
     }
   }
 
