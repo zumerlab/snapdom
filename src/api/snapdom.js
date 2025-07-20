@@ -140,8 +140,12 @@ async function toBlob(url, {
  * @returns {Promise<HTMLImageElement>} The resulting raster image
  */
 
- async function toRasterImg(url, { dpr = 1, scale = 1, backgroundColor =  "#fff", quality }, format = "png") {
-  const canvas = await createBackground(url, { dpr, scale }, backgroundColor);
+ async function toRasterImg(url, { dpr = 1, scale = 1, backgroundColor, quality }, format = "png") {
+  const defaultBg = ["jpg", "jpeg", "webp"].includes(format) ? "#fff" : undefined;
+  const finalBg = backgroundColor ?? defaultBg;
+
+  const canvas = await createBackground(url, { dpr, scale }, finalBg);
+
   const img = new Image();
   img.src = canvas.toDataURL(`image/${format}`, quality);
   await img.decode();

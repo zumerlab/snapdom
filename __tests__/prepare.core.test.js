@@ -5,10 +5,9 @@ describe('prepareClone', () => {
   it('prepares a clone of a div', async () => {
     const el = document.createElement('div');
     el.textContent = 'test';
-    const { clone, classCSS, styleCache } = await prepareClone(el);
+    const { clone, classCSS } = await prepareClone(el);
     expect(clone).not.toBeNull();
     expect(typeof classCSS).toBe('string');
-    expect(styleCache).toBeInstanceOf(WeakMap);
   });
 });
 

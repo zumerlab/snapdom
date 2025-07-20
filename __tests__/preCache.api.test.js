@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { preCache } from '../src/api/preCache.js';
-import { imageCache, bgCache, resourceCache } from '../src/core/cache.js';
+import { cache } from '../src/core/cache.js';
 
 describe('preCache', () => {
   beforeEach(() => {
-    imageCache.clear();
-    bgCache.clear();
-    resourceCache.clear();
+    cache.reset()
   });
 
   it('pre-caches images and backgrounds', async () => {
@@ -16,7 +14,7 @@ describe('preCache', () => {
     el.appendChild(img);
     document.body.appendChild(el);
     await preCache(el);
-    expect(imageCache.has(img.src)).toBe(true);
+    expect(cache.image.has(img.src)).toBe(true);
     document.body.removeChild(el);
   });
 
@@ -43,13 +41,13 @@ describe('preCache', () => {
 
   it('limpia los caches y retorna si reset=true', async () => {
     // Prellenar los caches
-    imageCache.set('foo', 'bar');
-    bgCache.set('foo', 'bar');
-    resourceCache.set('foo', 'bar');
+    cache.snapshotKey.set('foo', 'bar');
+    cache.preStyleMap.set('foo', 'bar');
+    cache.preNodeMap.set('foo', 'bar');
     await preCache(document, { reset: true });
-    expect(imageCache.size).toBe(0);
-    expect(bgCache.size).toBe(0);
-    expect(resourceCache.size).toBe(0);
+    expect(cache.snapshotKey.size).toBe(0);
+    expect(cache.preStyleMap.size).toBe(0);
+    expect(cache.preNodeMap.size).toBe(0);
   });
 
   it('procesa múltiples backgrounds en un solo elemento', async () => {

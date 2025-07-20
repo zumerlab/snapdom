@@ -1,7 +1,7 @@
 import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage } from '../utils/helpers.js';
 import { embedCustomFonts } from '../modules/fonts.js';
 import { precacheCommonTags } from '../utils/cssTools.js';
-import { imageCache, bgCache, resourceCache, baseCSSCache } from '../core/cache.js';
+import { cache } from '../core/cache.js';
 
 /**
  * Preloads images, background images, and optionally fonts into cache before DOM capture.
@@ -14,10 +14,7 @@ import { imageCache, bgCache, resourceCache, baseCSSCache } from '../core/cache.
 export async function preCache(root = document, options = {}) {
   const { embedFonts = true, reset = false} = options;
   if (reset) {
-    imageCache.clear();
-    bgCache.clear();
-    resourceCache.clear();
-    baseCSSCache.clear();
+    cache.reset()
     return;
   }
   await document.fonts.ready;
@@ -30,10 +27,10 @@ export async function preCache(root = document, options = {}) {
   const promises = [];
   for (const img of imgEls) {
     const src = img.src;
-    if (!imageCache.has(src)) {
+    if (!cache.image.has(src)) {
     
       promises.push(
-        fetchImage(src, { useProxy: options.useProxy}).then((dataURL) => imageCache.set(src, dataURL)).catch(() => {
+        fetchImage(src, { useProxy: options.useProxy}).then((dataURL) => cache.image.set(src, dataURL)).catch(() => {
         })
       );
     }

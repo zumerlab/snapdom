@@ -1,9 +1,4 @@
-/**
- * General helper utilities for DOM, style, and resource handling.
- * @module helpers
- */
-
-import { imageCache, computedStyleCache, bgCache } from "../core/cache";
+import { cache } from "../core/cache";
 
 /**
  * Fetches and inlines a single background-image entry to a data URL (with caching).
@@ -16,19 +11,17 @@ import { imageCache, computedStyleCache, bgCache } from "../core/cache";
  * @returns {Promise<string|void>} - The processed entry (unless skipInline is true).
  */
 export async function inlineSingleBackgroundEntry(entry, options = {}) {
-  // ✅ Extraemos sólo la URL dentro de `url(...)`
-  const match = entry.match(/url\(["']?(.*?)["']?\)/);
-  const rawUrl = match?.[1];
+  const rawUrl = extractURL(entry)
 
   const isGradient = /^((repeating-)?(linear|radial|conic)-gradient)\(/i.test(entry);
   
   if (rawUrl) {
     const encodedUrl = safeEncodeURI(rawUrl);
-    if (bgCache.has(encodedUrl)) {
-      return options.skipInline ? void 0 : `url(${bgCache.get(encodedUrl)})`;
+    if (cache.background.has(encodedUrl)) {
+      return options.skipInline ? void 0 : `url(${cache.background.get(encodedUrl)})`;
     } else {
       const dataUrl = await fetchImage(encodedUrl, { useProxy: options.useProxy });
-      bgCache.set(encodedUrl, dataUrl);
+      cache.background.set(encodedUrl, dataUrl);
       return options.skipInline ? void 0 : `url("${dataUrl}")`;
     }
   }
@@ -67,10 +60,10 @@ export function getStyle(el, pseudo = null) {
     return window.getComputedStyle(el, pseudo);
   }
 
-  let map = computedStyleCache.get(el);
+  let map = cache.computedStyle.get(el);
   if (!map) {
     map = new Map();
-    computedStyleCache.set(el, map);
+    cache.computedStyle.set(el, map);
   }
 
   if (!map.has(pseudo)) {
@@ -105,13 +98,11 @@ export function parseContent(content) {
  */
 
 export function extractURL(value) {
-  const urlStart = value.indexOf("url(");
-  if (urlStart === -1) return null;
-  let url = value.slice(urlStart + 4).trim(); // Remove "url("
-  if (url.endsWith(")")) url = url.slice(0, -1).trim(); // Remove trailing ")"
-  if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
-    url = url.slice(1, -1);
-  }
+  const match = value.match(/url\((['"]?)(.*?)(\1)\)/);
+  if (!match) return null;
+
+  const url = match[2].trim();
+  if (url.startsWith('#')) return null;
   return url;
 }
 
@@ -185,28 +176,26 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
         try {
           return await fetchBlobAsDataURL(proxied);
         } catch {
-          console.error(`[SnapDOM - fetchImage] Proxy fallback failed for: ${url}`);
-          throw new Error("CORS restrictions prevented image capture (even via proxy)");
+          
+          throw new Error("[SnapDOM - fetchImage] CORS restrictions prevented image capture (even via proxy)");
         }
       } else {
-        console.error(`[SnapDOM - fetchImage] No valid proxy URL provided for fallback: ${url}`);
-        throw new Error("Fetch fallback failed and no proxy provided");
+       
+        throw new Error("[SnapDOM - fetchImage] Fetch fallback failed and no proxy provided");
       }
     }
   }
 
   const crossOriginValue = getCrossOriginMode(src);
-  console.log(`[SnapDOM - fetchImage] Start loading image: ${src} with crossOrigin=${crossOriginValue}`);
 
-  if (imageCache.has(src)) {
-    console.log(`[SnapDOM - fetchImage] Cache hit for: ${src}`);
-    return Promise.resolve(imageCache.get(src));
+  if (cache.image.has(src)) {
+    return Promise.resolve(cache.image.get(src));
   }
 
   // Detectamos si es un data URI, si sí, devolvemos directo sin fetch
   const isDataURI = src.startsWith("data:image/");
   if (isDataURI) {
-    imageCache.set(src, src);
+    cache.image.set(src, src);
     return Promise.resolve(src);
   }
 
@@ -222,7 +211,7 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
         });
         const svgText = await response.text();
         const encoded = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-        imageCache.set(src, encoded);
+        cache.image.set(src, encoded);
         return encoded;
       } catch {
         return fetchWithFallback(src);
@@ -232,8 +221,7 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
 
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
-      console.log(`[SnapDOM - fetchImage] Timeout after ${timeout}ms for image: ${src}`);
-      reject(new Error("Image load timed out"));
+      reject(new Error("[SnapDOM - fetchImage] Image load timed out"));
     }, timeout);
 
     const image = new Image();
@@ -249,12 +237,12 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
         const dataURL = canvas.toDataURL("image/png");
-        imageCache.set(src, dataURL);
+        cache.image.set(src, dataURL);
         resolve(dataURL);
       } catch {
         try {
           const fallbackDataURL = await fetchWithFallback(src);
-          imageCache.set(src, fallbackDataURL);
+          cache.image.set(src, fallbackDataURL);
           resolve(fallbackDataURL);
         } catch (e) {
           reject(e);
@@ -267,7 +255,7 @@ export function fetchImage(src, { timeout = 3000, useProxy = '' } = {}) {
       console.error(`[SnapDOM - fetchImage] Image failed to load: ${src}`);
       try {
         const fallbackDataURL = await fetchWithFallback(src);
-        imageCache.set(src, fallbackDataURL);
+        cache.image.set(src, fallbackDataURL);
         resolve(fallbackDataURL);
       } catch (e) {
         reject(e);

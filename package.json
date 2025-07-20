@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom",
-  "version": "1.9.5",
+  "version": "1.9.6-dev.2",
   "description": "snapDOM captures HTML elements to images with exceptional speed and accuracy.",
   "main": "dist/snapdom.js",
   "module": "dist/snapdom.mjs",
@@ -14,6 +14,9 @@
     "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
     "prebuild": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
+  },
+  "engines": {
+    "node": ">= 20"
   },
   "repository": {
     "type": "git",
@@ -65,8 +68,8 @@
   },
   "homepage": "https://zumerlab.github.io/snapdom/",
   "devDependencies": {
-    "@vitest/browser": "^3.1.2",
-    "@vitest/coverage-v8": "^3.1.2",
-    "playwright": "^1.52.0"
+    "@vitest/browser": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.4",
+    "playwright": "^1.54.1"
   }
 }

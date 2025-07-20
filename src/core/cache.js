@@ -3,11 +3,27 @@
  * @module cache
  */
 
-export const imageCache = new Map();
-export const bgCache = new Map();
-export const resourceCache = new Map();
-export const defaultStylesCache = new Map();
-export const baseCSSCache = new Map();
-export const computedStyleCache = new WeakMap();
-export const processedFontURLs = new Set();
+export const cache = {
+  image: new Map(),
+  background: new Map(),
+  resource: new Map(),
+  defaultStyle: new Map(),
+  baseStyle: new Map(),
+  computedStyle: new WeakMap(),
+  font: new Set(),
+  snapshot: new WeakMap(),
+  snapshotKey: new Map(),
+  preStyleMap: new Map(),
+  preStyle: new WeakMap(),
+  preNodeMap: new Map(),
+  reset: resetCache
+};
 
+function resetCache() {
+  cache.computedStyle = new WeakMap();
+  cache.snapshot = new WeakMap();
+  cache.snapshotKey.clear();
+  cache.preStyleMap.clear();
+  cache.preStyle = new WeakMap();
+  cache.preNodeMap.clear();
+}

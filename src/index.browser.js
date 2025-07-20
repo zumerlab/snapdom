@@ -7,6 +7,7 @@
 import { snapdom } from './api/snapdom.js';
 import { preCache } from './api/preCache.js';
 
-window.snapdom = snapdom;
-window.preCache = preCache;
-
+if (typeof window !== 'undefined') {
+  window.snapdom = snapdom;
+  window.preCache = preCache;
+}
