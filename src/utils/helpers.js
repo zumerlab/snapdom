@@ -98,13 +98,10 @@ export function parseContent(content) {
  */
 
 export function extractURL(value) {
-  const urlStart = value.indexOf("url(");
-  if (urlStart === -1) return null;
-  let url = value.slice(urlStart + 4).trim(); // Remove "url("
-  if (url.endsWith(")")) url = url.slice(0, -1).trim(); // Remove trailing ")"
-  if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
-    url = url.slice(1, -1);
-  }
+  const match = value.match(/url\((['"]?)(.*?)(\1)\)/);
+  if (!match) return null;
+
+  const url = match[2].trim();
   if (url.startsWith('#')) return null;
   return url;
 }
