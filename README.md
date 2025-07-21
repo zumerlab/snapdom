@@ -116,8 +116,8 @@ Returns an object with reusable export methods:
   toRaw(): string;
   toImg(): Promise<HTMLImageElement>;
   toCanvas(): Promise<HTMLCanvasElement>;
-  toBlob(): Promise<Blob>;
-  toPng(): Promise<HTMLImageElement>;
+  toBlob(options?): Promise<Blob>;
+  toPng(options?): Promise<HTMLImageElement>;
   toJpg(options?): Promise<HTMLImageElement>;
   toWebp(options?): Promise<HTMLImageElement>;
   download(options?): Promise<void>;
