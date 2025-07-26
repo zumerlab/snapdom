@@ -172,8 +172,8 @@ export async function embedCustomFonts({preCached = false } = {}) {
 
             const urlRegex = /url\((["']?)([^"')]+)\1\)/g;
             const localRegex = /local\((["']?)[^)]+?\1\)/g;
-            const hasURL = urlRegex.test(src);
-            const hasLocal = localRegex.test(src);
+            const hasURL = !!src.match(urlRegex);
+            const hasLocal = !!src.match(localRegex);
 
             if (!hasURL && hasLocal) {
               // Solo local(), conservar en línea compacta
