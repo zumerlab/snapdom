@@ -132,7 +132,7 @@ export function deepClone(node, compress, options = {}, originalRoot) {
       if (node.checked) clone.setAttribute("checked", "");
       if (node.indeterminate) clone.indeterminate = node.indeterminate;
     }
-    return clone;
+    // return clone;
   }
 
   // Special handling: select → postpone value adjustment
