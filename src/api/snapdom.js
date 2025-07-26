@@ -22,14 +22,9 @@ import { extendIconFonts } from '../modules/iconFonts.js';
   const img = new Image();
   img.src = url;
   await img.decode();
-  if (isSafari) {
   img.width = img.width * scale ;
- img.height = img.height * scale ;
-  } else {
-    img.width = img.width / scale ;
- img.height = img.height / scale ;
-  }
- 
+  img.height = img.height * scale ;
+  
   return img;
 }
 

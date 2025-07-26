@@ -105,8 +105,6 @@ export async function captureDOM(element, options = {}) {
         const existingTransform = clone.style.transform || "";
         const scaleTransform = `scale(${scaleX}, ${scaleY})`;
         clone.style.transform = `${scaleTransform} ${existingTransform}`.trim();
-      } else if (hasScale && isSafari()) {
-        clone.style.scale = `${scale}`;
       }
       const svgNS = "http://www.w3.org/2000/svg";
       const fo = document.createElementNS(svgNS, "foreignObject");
