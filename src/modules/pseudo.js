@@ -49,69 +49,96 @@ export async function inlinePseudoElements(source, clone, compress, embedFonts =
         clone.insertBefore(span, restNode);
         continue;
       }
-      const content = style.getPropertyValue("content");
-      const bg = style.getPropertyValue("background-image");
-      const bgColor = style.getPropertyValue("background-color");
-      const hasContent = content !== "none";
-      const hasBg = bg && bg !== "none";
-      const hasBgColor = bgColor && bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)";
-      if (hasContent || hasBg || hasBgColor) {
-        const fontFamily = style.getPropertyValue("font-family");
-        const fontSize = parseInt(style.getPropertyValue("font-size")) || 32;
-        const fontWeight = parseInt(style.getPropertyValue("font-weight")) || false;
-        const color = style.getPropertyValue("color") || "#000";
-        const pseudoEl = document.createElement("span");
-        pseudoEl.dataset.snapdomPseudo = pseudo;
-        const snapshot = snapshotComputedStyle(style);
-        const key = getStyleKey(snapshot, "span", compress);
-        cache.preStyleMap.set(pseudoEl, key);
-        const isIconFont2 = isIconFont(fontFamily);
+const content = style.getPropertyValue("content");
+const bg = style.getPropertyValue("background-image");
+const bgColor = style.getPropertyValue("background-color");
 
-         // Detect counter() || counters()
-       let cleanContent;
-        if (/counter\s*\(|counters\s*\(/.test(content)) {
-          cleanContent = "- ";
-        } else {
-          cleanContent = parseContent(content);
-        }
-        if (isIconFont2 && cleanContent.length === 1) {
-          const imgEl = document.createElement("img");
-          imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
-          imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
-          pseudoEl.appendChild(imgEl);
-        } else if (cleanContent.startsWith("url(")) {
-          const rawUrl = extractURL(cleanContent);
-          if (rawUrl && rawUrl.trim() !== "") {
-            try {
-              const imgEl = document.createElement("img");
-              const dataUrl = await fetchImage(safeEncodeURI(rawUrl, {useProxy: useProxy}));
-              imgEl.src = dataUrl;
-              imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
-              pseudoEl.appendChild(imgEl);
-            } catch (e) {
-              console.error(`[snapdom] Error in pseudo ${pseudo} for`, source, e);
-            }
-          }
-        } else if (!isIconFont2 && cleanContent && cleanContent !== "none") {
-          pseudoEl.textContent = cleanContent;
-        }
-        if (hasBg) {
-          try {
-            const bgSplits = splitBackgroundImage(bg);
-            const newBgParts = await Promise.all(
-              bgSplits.map((entry) => inlineSingleBackgroundEntry(entry))
-            );
-            pseudoEl.style.backgroundImage = newBgParts.join(", ");
-          } catch (e) {
-            console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e);
-          }
-        }
-        if (hasBgColor) pseudoEl.style.backgroundColor = bgColor;
-        const hasContent2 = pseudoEl.childNodes.length > 0 || pseudoEl.textContent && pseudoEl.textContent.trim() !== "";
-        const hasVisibleBox = hasContent2 || hasBg || hasBgColor;
-        if (!hasVisibleBox) continue;
-        pseudo === "::before" ? clone.insertBefore(pseudoEl, clone.firstChild) : clone.appendChild(pseudoEl);
-      }
+const fontFamily = style.getPropertyValue("font-family");
+const fontSize = parseInt(style.getPropertyValue("font-size")) || 32;
+const fontWeight = parseInt(style.getPropertyValue("font-weight")) || false;
+const color = style.getPropertyValue("color") || "#000";
+const display = style.getPropertyValue("display");
+const width = parseFloat(style.getPropertyValue("width"));
+const height = parseFloat(style.getPropertyValue("height"));
+const borderStyle = style.getPropertyValue("border-style");
+const transform = style.getPropertyValue("transform");
+
+const isIconFont2 = isIconFont(fontFamily);
+
+// Detect counter() || counters()
+let cleanContent;
+if (/counter\s*\(|counters\s*\(/.test(content)) {
+  cleanContent = "- ";
+} else {
+  cleanContent = parseContent(content);
+}
+
+const hasContent = content !== "none";
+const hasExplicitContent = hasContent && cleanContent !== "";
+const hasBg = bg && bg !== "none";
+const hasBgColor = bgColor && bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)";
+const hasBox = display !== "inline" && (width > 0 || height > 0);
+const hasBorder = borderStyle && borderStyle !== "none";
+const hasTransform = transform && transform !== "none";
+
+const shouldRender =
+  hasExplicitContent || hasBg || hasBgColor || hasBox || hasBorder || hasTransform;
+
+if (!shouldRender) continue;
+
+const pseudoEl = document.createElement("span");
+pseudoEl.dataset.snapdomPseudo = pseudo;
+const snapshot = snapshotComputedStyle(style);
+const key = getStyleKey(snapshot, "span", compress);
+cache.preStyleMap.set(pseudoEl, key);
+
+if (isIconFont2 && cleanContent.length === 1) {
+  const imgEl = document.createElement("img");
+  imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
+  imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
+  pseudoEl.appendChild(imgEl);
+} else if (cleanContent.startsWith("url(")) {
+  const rawUrl = extractURL(cleanContent);
+  if (rawUrl && rawUrl.trim() !== "") {
+    try {
+      const imgEl = document.createElement("img");
+      const dataUrl = await fetchImage(safeEncodeURI(rawUrl, { useProxy }));
+      imgEl.src = dataUrl;
+      imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
+      pseudoEl.appendChild(imgEl);
+    } catch (e) {
+      console.error(`[snapdom] Error in pseudo ${pseudo} for`, source, e);
+    }
+  }
+} else if (!isIconFont2 && hasExplicitContent) {
+  pseudoEl.textContent = cleanContent;
+}
+
+if (hasBg) {
+  try {
+    const bgSplits = splitBackgroundImage(bg);
+    const newBgParts = await Promise.all(
+      bgSplits.map((entry) => inlineSingleBackgroundEntry(entry))
+    );
+    pseudoEl.style.backgroundImage = newBgParts.join(", ");
+  } catch (e) {
+    console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e);
+  }
+}
+
+if (hasBgColor) pseudoEl.style.backgroundColor = bgColor;
+
+const hasContent2 =
+  pseudoEl.childNodes.length > 0 ||
+  (pseudoEl.textContent && pseudoEl.textContent.trim() !== "");
+const hasVisibleBox = hasContent2 || hasBg || hasBgColor || hasBox || hasBorder || hasTransform;
+
+if (!hasVisibleBox) continue;
+
+pseudo === "::before"
+  ? clone.insertBefore(pseudoEl, clone.firstChild)
+  : clone.appendChild(pseudoEl);
+
     } catch (e) {
       console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e);
     }
