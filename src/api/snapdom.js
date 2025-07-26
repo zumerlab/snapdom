@@ -194,7 +194,7 @@ async function toBlob(url, {
  * @returns {Promise<void>} Resolves when download is triggered
  */
 
- async function download(url,{ dpr = 1, scale = 1, backgroundColor =  "#fff", format = "png", filename = "capture"} = {}) {
+ async function download(url,{ dpr = 1, scale = 1, backgroundColor, format = "png", filename = "snapDOM"} = {}) {
   if (format === "svg") {
     const blob = await toBlob(url);
     const objectURL = URL.createObjectURL(blob);
