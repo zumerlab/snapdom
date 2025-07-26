@@ -236,7 +236,6 @@ import { snapdom, preCache } from './snapdom.mjs';
 **Options for `preCache()`:**
 
 * `embedFonts` *(boolean, default: true)* — Inlines non-icon fonts during preload.
-* `reset` *(boolean, default: false)* — Clears all existing internal caches.
 * `useProxy` *(string)* — Proxy for handling CORS images as fallback.
 
 
