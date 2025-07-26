@@ -44,23 +44,48 @@ import { extendIconFonts } from '../modules/iconFonts.js';
  */
 
 async function toCanvas(url, { dpr = 1, scale = 1 } = {}) {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const canvas = document.createElement("canvas");
-    const width = img.width * scale;
-    const height = img.height * scale;
-    canvas.width = Math.ceil(width * dpr);
-    canvas.height = Math.ceil(height * dpr);
-    const ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr);
-    ctx.drawImage(img, 0, 0, width, height);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    
-    return canvas;
-}
+  const img = new Image();
+  img.src = url;
+  img.crossOrigin = 'anonymous';
+  img.loading = 'eager';
+  img.decoding = 'sync';
 
+  const isSafariBrowser = isSafari();
+  let appended = false;
+
+  if (isSafariBrowser) {
+    document.body.appendChild(img);
+    appended = true;
+  }
+
+  await img.decode();
+
+  if (isSafariBrowser) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  if (img.width === 0 || img.height === 0) {
+    if (appended) img.remove();
+    throw new Error('Image failed to load or has no dimensions');
+  }
+
+  const width = img.width * scale;
+  const height = img.height * scale;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(width * dpr);
+  canvas.height = Math.ceil(height * dpr);
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.drawImage(img, 0, 0, width, height);
+
+  if (appended) img.remove();
+
+  return canvas;
+}
 
 /**
  * Converts a DOM snapshot (SVG data URL) into a Blob of the specified format.
