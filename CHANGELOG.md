@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.7](https://github.com/zumerlab/snapdom/compare/v1.9.6...v1.9.7)
+
+> 27 July 2025
+
+- Fix input css styles. Closes #144, closes #147 [`#144`](https://github.com/zumerlab/snapdom/issues/144) [`#147`](https://github.com/zumerlab/snapdom/issues/147)
+- Fix Safari scale. Closes #133 [`#133`](https://github.com/zumerlab/snapdom/issues/133)
+- Fix @font-face. Closes #145 [`#145`](https://github.com/zumerlab/snapdom/issues/145)
+- Fix edge case that generates blank images on Safari. Closes #129 [`#129`](https://github.com/zumerlab/snapdom/issues/129)
+- Improve pseudo elements detection. Closes # 143 [`539e488`](https://github.com/zumerlab/snapdom/commit/539e488c018a1bf7be05e0d9d969e350c9ed4291)
+- Remove default backgroundColor on download(). Ref dissussion #142 [`a875fe3`](https://github.com/zumerlab/snapdom/commit/a875fe31c1c1fc9a1d0d59ef2934b5930a6b7c88)
+- Update docs, thanks @kohaiy[`e38d67b`](https://github.com/zumerlab/snapdom/commit/e38d67b0102edf75a9f6e742bd45eacc43be51c1)
+
 #### [v1.9.6](https://github.com/zumerlab/snapdom/compare/v1.9.5...v1.9.6)
 
 > 20 July 2025
