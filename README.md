@@ -217,7 +217,7 @@ const result = await snapdom(element, {
 
 ### `preCache()` – Optional helper
 
-The `preCache()` function can be used to load external resources (like images and fonts) in advance. It is specially useful when the element to capure is big and complex.
+The `preCache()` function can be used to load external resources (like images and fonts) in advance. It is specially useful when the element to capture is big and complex.
 
 ```js
 import { preCache } from '@zumer/snapdom';
@@ -250,7 +250,7 @@ import { snapdom, preCache } from './snapdom.mjs';
 
 ## Limitations
 
-* External images shloud be CORS-accessible (use `useProxy` option for handling CORS denied)
+* External images should be CORS-accessible (use `useProxy` option for handling CORS denied)
 * Iframes are not supported
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
