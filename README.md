@@ -146,6 +146,7 @@ All capture methods accept an `options` object:
 | `fast`            | boolean  | `true`   | Skips idle delay for faster results        |
 | `embedFonts`      | boolean  | `false`  | Inlines fonts (icon fonts always embedded) |
 | `scale`           | number   | `1`      | Output scale multiplier                    |
+| `dpr`             | number   | `devicePixelRatio` | Device pixel ratio                 |
 | `width`           | number   | -        | Output specific width size                 |
 | `height`          | number   | -        | Output specific height size                |
 | `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                |
