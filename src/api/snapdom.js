@@ -9,22 +9,27 @@ import { isSafari } from '../utils/helpers.js';
 import { extendIconFonts } from '../modules/iconFonts.js';
 
 /**
- * Converts an SVG data URL to an HTMLImageElement.
+ * Converts an SVG data URL to an HTMLImageElement (vector).
+ *
+ * Note: This method returns a vector-based image (`img.src = data:image/svg+xml`)
+ * and does NOT apply DPR-based scaling. Use `toPng` or `toCanvas` for raster output.
  *
  * @param {string} url - SVG data URL
  * @param {Object} options
- * @param {number} [options.dpr=1] - Device pixel ratio
- * @param {number} [options.scale=1] - Scale multiplier
+ * @param {number} [options.scale=1] - Optional visual scale (CSS size)
  * @returns {Promise<HTMLImageElement>} The resulting image
  */
 
- async function toImg(url, { dpr = 1, scale = 1 }) {
+ async function toImg(url, { scale = 1 } = {}) {
   const img = new Image();
   img.src = url;
   await img.decode();
-  img.width = img.width * scale ;
-  img.height = img.height * scale ;
-  
+
+  if (scale !== 1) {
+    img.style.width = `${img.naturalWidth * scale}px`;
+    img.style.height = `${img.naturalHeight * scale}px`;
+  }
+
   return img;
 }
 
@@ -64,18 +69,25 @@ async function toCanvas(url, { dpr = 1, scale = 1 } = {}) {
     throw new Error('Image failed to load or has no dimensions');
   }
 
-  const width = img.width * scale;
-  const height = img.height * scale;
+const width = img.naturalWidth * scale;
+const height = img.naturalHeight * scale;
 
   const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(width * dpr);
-  canvas.height = Math.ceil(height * dpr);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
 
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.drawImage(img, 0, 0, width, height);
+
+canvas.width = Math.ceil(width * dpr);
+canvas.height = Math.ceil(height * dpr);
+canvas.style.width = `${width}px`;
+canvas.style.height = `${height}px`;
+
+const ctx = canvas.getContext("2d");
+
+// Scale the context so drawing happens in logical pixels
+ctx.scale(dpr, dpr);
+
+// Draw using unscaled dimensions
+ctx.drawImage(img, 0, 0, width, height);
+
 
   if (appended) img.remove();
 
@@ -247,21 +259,23 @@ export async function snapdom(element, options = {}) {
 
 snapdom.capture = async (el, options = {}) => {
   const url = await captureDOM(el, options);
-  const dpr = window.devicePixelRatio || 1;
+const dpr = options.dpr ?? (window.devicePixelRatio || 1);
   const scale = options.scale || 1;
 
   return {
     url,
     options,
     toRaw: () => url,
-    toImg: () => toImg(url, { dpr, scale }),
-    toCanvas: () => toCanvas(url, { dpr, scale }),
-    toBlob: (options) => toBlob(url, { dpr, scale, ...options }),
-    toPng: (options) => toRasterImg(url, { dpr, scale, ...options  }, "png"),
-    toJpg: (options) => toRasterImg(url, { dpr, scale, ...options }, "jpeg"),
-    toWebp: (options) => toRasterImg(url, { dpr, scale, ...options }, "webp"),
-    download: ({ format = "png", filename = "capture", backgroundColor } = {}) => download(url, { dpr, scale, backgroundColor, format, filename})
+    toImg: (opts = {}) => toImg(url, { dpr, scale, ...opts }),
+    toCanvas: (opts = {}) => toCanvas(url, { dpr, scale, ...opts }),
+    toBlob: (opts = {}) => toBlob(url, { dpr, scale, ...opts }),
+    toPng: (opts = {}) => toRasterImg(url, { dpr, scale, ...opts }, "png"),
+    toJpg: (opts = {}) => toRasterImg(url, { dpr, scale, ...opts }, "jpeg"),
+    toWebp: (opts = {}) => toRasterImg(url, { dpr, scale, ...opts }, "webp"),
+    download: ({ format = "png", filename = "snapDOM", backgroundColor, ...opts } = {}) =>
+      download(url, { dpr, scale, format, filename, backgroundColor, ...opts }),
   };
+
 };
 
 // Compatibilidad
