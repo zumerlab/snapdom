@@ -34,7 +34,7 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 
 * 📸 Full DOM capture
 * 🎨 Embedded styles, pseudo-elements, and fonts
-* 🖼️ Export to SVG, PNG, JPG, WebP, or `canvas`
+* 🖼️ Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
 * ⚡ Ultra fast, no dependencies
 * 📦 100% based on standard Web APIs
 
@@ -52,6 +52,12 @@ npm i @zumer/snapdom
 
 ```sh
 yarn add @zumer/snapdom
+```
+
+Then import it in your code:
+
+```js
+import { snapdom } from '@zumer/snapdom';
 ```
 
 ### CDN
@@ -311,6 +317,36 @@ cd snapdom
 npm install
 npm run test:benchmark
 ```
+
+
+## Roadmap
+
+Planned improvements for future versions of SnapDOM:
+
+* [ ] **Implement plugin system**
+  SnapDOM will support external plugins to extend or override internal behavior (e.g. custom node transformers, exporters, or filters).
+
+* [ ] **Refactor to modular architecture**
+  Internal logic will be split into smaller, focused modules to improve maintainability and code reuse.
+
+* [ ] **Decouple internal logic from global options**
+  Functions will be redesigned to avoid relying directly on `options`. A centralized capture context will improve clarity, autonomy, and testability.
+
+* [ ] **Expose cache control**
+  Users will be able to manually clear image and font caches or configure their own caching strategies.
+
+* [ ] **Auto font preloading**
+  Required fonts will be automatically detected and preloaded before capture, reducing the need for manual `preCache()` calls.
+
+* [ ] **Document plugin development**
+  A full guide will be provided for creating and registering custom SnapDOM plugins.
+
+* [ ] **Make export utilities tree-shakeable**
+  Export functions like `toPng`, `toJpg`, `toBlob`, etc. will be restructured into independent modules to support tree shaking and minimal builds.
+
+Have ideas or feature requests?
+Feel free to share suggestions or feedback in [GitHub Discussions](https://github.com/zumerlab/snapdom/discussions).
+
 
 ## Development
 
