@@ -62,7 +62,7 @@ async function toCanvas(url, { dpr = 1, scale = 1 } = {}) {
       if (img.complete) resolve(null);
       const onLoad = () => {
         img.removeEventListener('load', onLoad);
-        resolve(null);
+        requestAnimationFrame(requestAnimationFrame(() => resolve(null)));
       };
       const onError = () => {
         img.removeEventListener('error', onError);
