@@ -23,7 +23,13 @@ export async function inlineBackgroundImages(source, clone, options = {}) {
     "mask-image", "-webkit-mask-image",
     "mask-source", "mask-box-image-source",
     "mask-border-source",
-    "-webkit-mask-box-image-source"
+    "-webkit-mask-box-image-source",
+    "border-image",
+    "border-image-source",
+     'border-image-slice',
+  'border-image-width',
+  'border-image-outset',
+  'border-image-repeat'
   ];
 
   while (queue.length) {
