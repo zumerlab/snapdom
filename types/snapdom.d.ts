@@ -58,6 +58,7 @@ declare module "@zumer/snapdom" {
     options?: {
       embedFonts?: boolean;
       useProxy?: string;
+      reset?: boolean;
     }
   ): Promise<void>;
 }
