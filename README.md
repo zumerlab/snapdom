@@ -1,8 +1,6 @@
-# snapDOM
-
 <p align="center">
   <a href="http://zumerlab.github.io/snapdom">
-    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/hero.png" width="80%">
+    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/newhero.png" width="70%">
   </a>
 </p>
 
@@ -27,6 +25,8 @@
     <img alt="License" src="https://img.shields.io/github/license/zumerlab/snapdom?style=flat-square">
   </a>
 </p>
+
+# snapDOM
 
 **snapDOM** is a fast and accurate DOM-to-image capture tool built for **Zumly**, a zoom-based view transition framework.
 
