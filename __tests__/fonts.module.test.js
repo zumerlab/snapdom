@@ -16,19 +16,24 @@ function addStyleTag(css) {
 }
 
 describe('iconToImage', () => {
-  it('genera un dataURL para un carácter unicode', async () => {
-    const url = await iconToImage('★', 'Arial', 'bold', 32, '#000');
-    expect(url.startsWith('data:image/')).toBe(true);
+  it('genera un dataURL y dimensiones para un carácter unicode', async () => {
+    const result = await iconToImage('★', 'Arial', 'bold', 32, '#000');
+    expect(result.dataUrl.startsWith('data:image/')).toBe(true);
+    expect(result.width).toBeGreaterThan(0);
+    expect(result.height).toBeGreaterThan(0);
   });
 
   it('maneja diferentes pesos y colores de fuente', async () => {
-    const url = await iconToImage('★', 'Arial', 700, 40, '#ff0000');
-    expect(url.startsWith('data:image/')).toBe(true);
+    const result = await iconToImage('★', 'Arial', 700, 40, '#ff0000');
+    expect(result.dataUrl.startsWith('data:image/')).toBe(true);
+    expect(result.width).toBeGreaterThan(0);
+    expect(result.height).toBeGreaterThan(0);
   });
 
   it('usa valores por defecto si no hay métricas', async () => {
-    const orig = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function() {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+
+    HTMLCanvasElement.prototype.getContext = function () {
       return {
         font: '',
         scale: vi.fn(),
@@ -36,12 +41,18 @@ describe('iconToImage', () => {
         textBaseline: '',
         fillStyle: '',
         fillText: vi.fn(),
-        measureText: () => ({ width: 10 })
+        measureText: () => ({ width: 10 }),
       };
     };
-    const url = await iconToImage('★', 'Arial', 'bold', 32, '#000');
-    expect(url.startsWith('data:image/')).toBe(true);
-    HTMLCanvasElement.prototype.getContext = orig;
+
+    try {
+      const result = await iconToImage('★', 'Arial', 'bold', 32, '#000');
+      expect(result.dataUrl.startsWith('data:image/')).toBe(true);
+      expect(result.width).toBeGreaterThan(0); // width debería seguir siendo > 0
+      expect(result.height).toBeGreaterThan(0);
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext;
+    }
   });
 });
 

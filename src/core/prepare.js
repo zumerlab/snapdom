@@ -50,8 +50,13 @@ export async function prepareClone(element, compress = false, embedFonts = false
       const className = keyToClass.get(key);
       if (className) node.classList.add(className);
       const bgImage = node.style?.backgroundImage;
+      const hasIcon =  node.dataset?.snapdomHasIcon;
       node.removeAttribute("style");
       if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
+      if (hasIcon) {
+        node.style.verticalAlign = 'middle';
+        node.style.display = 'inline';
+      }
     }
   } else {
     for (const [node, key] of cache.preStyleMap.entries()) {

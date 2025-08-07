@@ -28,7 +28,7 @@ import { cache } from '../core/cache.js';
  * @returns {Promise} Promise that resolves when all pseudo-elements are processed
  */
 
-export async function inlinePseudoElements(source, clone, compress, embedFonts = false, useProxy) {
+export async function inlinePseudoElements(source, clone, options) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
 
   for (const pseudo of ['::before', '::after', '::first-letter']) {
@@ -70,7 +70,7 @@ export async function inlinePseudoElements(source, clone, compress, embedFonts =
         span.textContent = first;
         span.dataset.snapdomPseudo = '::first-letter';
         const snapshot = snapshotComputedStyle(style);
-        const key = getStyleKey(snapshot, 'span', compress);
+        const key = getStyleKey(snapshot, 'span', options);
         cache.preStyleMap.set(span, key);
 
         const restNode = document.createTextNode(rest);
@@ -115,21 +115,24 @@ export async function inlinePseudoElements(source, clone, compress, embedFonts =
 
       const pseudoEl = document.createElement('span');
       pseudoEl.dataset.snapdomPseudo = pseudo;
+      pseudoEl.style.verticalAlign = 'middle'
       const snapshot = snapshotComputedStyle(style);
-      const key = getStyleKey(snapshot, 'span', compress);
+      const key = getStyleKey(snapshot, 'span', options);
       cache.preStyleMap.set(pseudoEl, key);
 
       if (isIconFont2 && cleanContent.length === 1) {
-        const imgEl = document.createElement('img');
-        imgEl.src = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
-        imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
-        pseudoEl.appendChild(imgEl);
+       const { dataUrl, width, height } = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
+const imgEl = document.createElement("img");
+imgEl.src = dataUrl;
+imgEl.style = `height:${fontSize}px;width:${(width / height) * fontSize}px;object-fit:contain;`;
+pseudoEl.appendChild(imgEl);
+        clone.dataset.snapdomHasIcon = "true";
       } else if (cleanContent.startsWith('url(')) {
         const rawUrl = extractURL(cleanContent);
         if (rawUrl?.trim()) {
           try {
             const imgEl = document.createElement('img');
-            const dataUrl = await fetchImage(safeEncodeURI(rawUrl, { useProxy }));
+            const dataUrl = await fetchImage(safeEncodeURI(rawUrl), options);
             imgEl.src = dataUrl;
             imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
             pseudoEl.appendChild(imgEl);
@@ -173,7 +176,7 @@ export async function inlinePseudoElements(source, clone, compress, embedFonts =
   const sChildren = Array.from(source.children);
   const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo);
   for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-    await inlinePseudoElements(sChildren[i], cChildren[i], compress, embedFonts, useProxy);
+    await inlinePseudoElements(sChildren[i], cChildren[i], options);
   }
 }
 

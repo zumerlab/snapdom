@@ -23,36 +23,47 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, "");
   const dpr = window.devicePixelRatio || 1;
 
-  // Create temporary context to measure
-  const tempCanvas = document.createElement("canvas");
-  const tempCtx = tempCanvas.getContext("2d");
-  tempCtx.font = fontWeight
-    ? `${fontWeight} ${fontSize}px "${fontFamily}"`
-    : `${fontSize}px "${fontFamily}"`;
+  // Asegurar que la fuente esté cargada (para evitar medidas incorrectas)
+  await document.fonts.ready;
 
-  const metrics = tempCtx.measureText(unicodeChar);
-  const ascent = metrics.actualBoundingBoxAscent || fontSize * 0.8;
-  const descent = metrics.actualBoundingBoxDescent || fontSize * 0.2;
-  const height = ascent + descent;
-  const width = metrics.width;
+  // Crear span oculto para medir tamaño real
+  const span = document.createElement("span");
+  span.textContent = unicodeChar;
+  span.style.position = "absolute";
+  span.style.visibility = "hidden";
+  span.style.fontFamily = `"${fontFamily}"`;
+  span.style.fontWeight = fontWeight || "normal";
+  span.style.fontSize = `${fontSize}px`;
+  span.style.lineHeight = "1";
+  span.style.whiteSpace = "nowrap";
+  span.style.padding = "0";
+  span.style.margin = "0";
+  document.body.appendChild(span);
 
+  const rect = span.getBoundingClientRect();
+  const width = Math.ceil(rect.width);
+  const height = Math.ceil(rect.height);
+  document.body.removeChild(span);
+
+  // Crear canvas del tamaño medido
   const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(width * dpr);
-  canvas.height = Math.ceil(height * dpr);
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
 
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr, dpr);
-  ctx.font = tempCtx.font;
+  ctx.font = fontWeight ? `${fontWeight} ${fontSize}px "${fontFamily}"` : `${fontSize}px "${fontFamily}"`;
   ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic"; // aligns with baseline
+  ctx.textBaseline = "top"; // Alineado exacto con getBoundingClientRect
   ctx.fillStyle = color;
+  ctx.fillText(unicodeChar, 0, 0);
 
-  // Draw at (0, ascent) so the full glyph fits vertically
-  ctx.fillText(unicodeChar, 0, ascent);
-
-  return canvas.toDataURL();
+  return {
+    dataUrl: canvas.toDataURL(),
+    width,
+    height
+  };
 }
-
 
 function isStylesheetLoaded(href) {
   return Array.from(document.styleSheets).some(sheet => sheet.href === href);
