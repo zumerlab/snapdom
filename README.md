@@ -329,8 +329,8 @@ Planned improvements for future versions of SnapDOM:
 * [ ] **Refactor to modular architecture**
   Internal logic will be split into smaller, focused modules to improve maintainability and code reuse.
 
-* [ ] **Decouple internal logic from global options**
-  Functions will be redesigned to avoid relying directly on `options`. A centralized capture context will improve clarity, autonomy, and testability.
+* [X] **Decouple internal logic from global options**
+  Functions will be redesigned to avoid relying directly on `options`. A centralized capture context will improve clarity, autonomy, and testability. See [`next` branch](https://github.com/zumerlab/snapdom/tree/main)
 
 * [ ] **Expose cache control**
   Users will be able to manually clear image and font caches or configure their own caching strategies.
