@@ -411,6 +411,10 @@ Special thanks to [@megaphonecolin](https://github.com/megaphonecolin) for suppo
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=zumerlab/snapdom&type=Date)](https://www.star-history.com/#zumerlab/snapdom&Date)
+
 ## License
 
 MIT © Zumerlab
