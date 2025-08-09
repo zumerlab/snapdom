@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.8](https://github.com/zumerlab/snapdom/compare/v1.9.7...v1.9.8)
+
+> 10 August 2025
+
+- fix(types): update `preCache` [`#166`](https://github.com/zumerlab/snapdom/pull/166)
+- Fix defs & symbols outside captured element and hidden visibility, closes #178. Stabilize layout before cloning, closes  #179. Fix inline styles, closes #177 [`#178`](https://github.com/zumerlab/snapdom/issues/178) [`#177`](https://github.com/zumerlab/snapdom/issues/177)  [`#179`](https://github.com/zumerlab/snapdom/issues/179)
+- Fix icontFont alignment and rendered size. Closes #176 [`#176`](https://github.com/zumerlab/snapdom/issues/176)
+- Ensure skip empty pseudo elements. Closes #168 [`#168`](https://github.com/zumerlab/snapdom/issues/168)
+- Add basic border-image support. Closes #159 [`#159`](https://github.com/zumerlab/snapdom/issues/159)
+- Fix input css styles. Closes #144, closes #147 [`#144`](https://github.com/zumerlab/snapdom/issues/144) [`#147`](https://github.com/zumerlab/snapdom/issues/147)
+
+
 #### [v1.9.7](https://github.com/zumerlab/snapdom/compare/v1.9.6...v1.9.7)
 
 > 27 July 2025
