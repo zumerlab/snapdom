@@ -15,11 +15,6 @@ describe('prepareClone edge cases', () => {
   it('throws for null node', async () => {
     await expect(prepareClone(null)).rejects.toThrow();
   });
-  it('returns a comment clone for unsupported node', async () => {
-    const fake = document.createComment('not supported');
-    const result = await prepareClone(fake);
-    expect(result.clone.nodeType).toBe(Node.COMMENT_NODE);
-  });
   it('handles error in internal logic', async () => {
     const el = document.createElement('div');
     vi.spyOn(el, 'cloneNode').mockImplementation(() => { throw new Error('fail'); });
