@@ -28,7 +28,7 @@ export function getDefaultStyleForTag(tagName) {
     return cache.defaultStyle.get(tagName);
   }
 
-  const skipTags = new Set(['script', 'style', 'meta', 'link', 'noscript', 'template']);
+  const skipTags = new Set(['script', 'style', 'meta', 'link', 'noscript', 'template', 'defs', 'symbol', 'title', 'metadata', 'desc']);
   if (skipTags.has(tagName)) {
     const empty = {};  
     cache.defaultStyle.set(tagName, empty);  
@@ -72,10 +72,18 @@ export function getDefaultStyleForTag(tagName) {
  * @returns {string} Semi-colon separated list of non-default properties
  */
 
-export function getStyleKey(snapshot, tagName, compress = false) {
+const IGNORED_PROPS = new Set([
+  '-webkit-locale'
+]);
+
+ export function getStyleKey(snapshot, tagName, compress = false) {
   const entries = [];
   const defaultStyles = getDefaultStyleForTag(tagName);
+
   for (let [prop, value] of Object.entries(snapshot)) {
+    // Ignorar props no deseadas
+    if (IGNORED_PROPS.has(prop)) continue;
+
     if (!compress) {
       if (value) {
         entries.push(`${prop}:${value}`);
@@ -87,8 +95,7 @@ export function getStyleKey(snapshot, tagName, compress = false) {
       }
     }
   }
-
-  return entries.sort().join(";");
+   return entries.sort().join(";");
 }
 
 /**
@@ -155,6 +162,7 @@ export function generateCSSClasses() {
   const classMap = new Map();
   let counter = 1;
   for (const key of keySet) {
+    if (!key.trim()) continue;
     classMap.set(key, `c${counter++}`);
   }
   return classMap;
