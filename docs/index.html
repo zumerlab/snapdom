@@ -691,7 +691,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         gap: 1em;
         justify-content: center;
       ">
-    <a href="#benchmark">Benchmark</a>
+   
     <a href="#basic">Basic</a>
     <a href="#transition">Transition</a>
     <a href="#orbit">Orbit</a>
@@ -706,42 +706,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
   </nav>
   <main style="width: 100%; max-width: 700px">
 
-    <section id="benchmark" style="margin-top:3rem;">
-      <h2>🏁 Benchmark: snapDOM vs html2canvas</h2>
-      <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
-        Each library will capture the same DOM element to canvas 5 times. We'll calculate average speed and show the
-        winner.
-      </p>
-
-      <div style="display: flex; justify-content: center; margin: 2rem 0;  margin: 0 auto; ">
-        <div class="card pseudo-box" id="benchmark-box" style="text-align: center; max-width: 300px;padding: 1rem;">
-          This is the benchmark test element to be captured by both libraries.
-        </div>
-      </div>
-
-      <div style="text-align:center; margin-bottom: 2rem;">
-        <button data-umami-event="Run benchmarks" class="run-benchmark-button" onclick="runBenchmark()">Run Benchmark</button>
-      </div>
-
-      <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;">
-      </div>
-
-      <div class="benchmark-container">
-        <div class="benchmark-column">
-          <div class="label">snapDOM</div>
-          <div id="snapdom-benchmark-output" class="benchmark-output">
-            <div class="progress-message">Waiting to start...</div>
-          </div>
-        </div>
-        <div class="benchmark-column">
-          <div class="label">html2canvas</div>
-          <div id="h2c-benchmark-output" class="benchmark-output">
-            <div class="progress-message">Waiting to start...</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
+   
     <section id="basic">
       <h2>📦 Basic</h2>
       <div class="card" id="basic-box">
