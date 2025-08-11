@@ -37,6 +37,9 @@ export async function captureDOM(element, options = {}) {
 
   ({ clone, classCSS } = await prepareClone(element, compress, embedFonts, options));
 
+  options.width && clone.setAttribute("width", options.width + 'px');
+  options.height && clone.setAttribute("height", options.height + 'px');
+
   await new Promise((resolve) => {
     idle(async () => {
       await inlineImages(clone, options);
