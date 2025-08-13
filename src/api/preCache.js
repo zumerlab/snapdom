@@ -5,53 +5,69 @@ import { cache } from '../core/cache.js';
 
 /**
  * Preloads images, background images, and optionally fonts into cache before DOM capture.
- *
- * @param {Document|Element} [root=document] - The root node to search for resources
- * @param {Object} [options={}] - Pre-caching options
- * @returns {Promise<void>} Resolves when all resources are pre-cached
+ * Nunca deja promesas rechazadas sin manejar (evita unhandled rejections).
  */
-
 export async function preCache(root = document, options = {}) {
-  const { embedFonts = true, reset = false} = options;
+  const { embedFonts = true, reset = false, useProxy } = options;
+
   if (reset) {
-    cache.reset()
+    // Resetea sin reasignar (los tests llaman cache.reset(), pero por si acaso)
+   cache.image.clear(); 
+   cache.background.clear(); 
+   cache.resource.clear(); 
+   cache.defaultStyle.clear(); 
+   cache.baseStyle.clear(); 
+   cache.font.clear(); 
+   cache.computedStyle = new WeakMap(); 
     return;
   }
-  await document.fonts.ready;
+
+  // Fonts: no rompas el flujo si falla en tests/browser
+  try { await document.fonts.ready; } catch {}
+
   precacheCommonTags();
+
   let imgEls = [], allEls = [];
   if (root?.querySelectorAll) {
-    imgEls = Array.from(root.querySelectorAll("img[src]"));
-    allEls = Array.from(root.querySelectorAll("*"));
+    imgEls = Array.from(root.querySelectorAll('img[src]'));
+    allEls = Array.from(root.querySelectorAll('*'));
   }
+
   const promises = [];
+
+  // <img>
   for (const img of imgEls) {
-    const src = img.src;
+    const src = img?.src;
+    if (!src) continue;
     if (!cache.image.has(src)) {
-    
-      promises.push(
-        fetchImage(src, { useProxy: options.useProxy}).then((dataURL) => cache.image.set(src, dataURL)).catch(() => {
-        })
-      );
+      const p = Promise.resolve()
+        .then(() => fetchImage(src, { useProxy }))
+        .then((dataURL) => { cache.image.set(src, dataURL); })
+        .catch(() => {}); // traga error para no propagar
+      promises.push(p);
     }
   }
+
+  // background-image
   for (const el of allEls) {
-    const bg = getStyle(el).backgroundImage;
-    if (bg && bg !== "none") {
+    let bg = '';
+    try { bg = getStyle(el).backgroundImage; } catch {}
+    if (bg && bg !== 'none') {
       const bgSplits = splitBackgroundImage(bg);
       for (const entry of bgSplits) {
-        const isUrl = entry.startsWith("url(");
-        if (isUrl) {
-          promises.push(
-            inlineSingleBackgroundEntry(entry, options).catch(() => {
-            })
-          );
+        if (entry.startsWith('url(')) {
+          const p = Promise.resolve()
+            .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
+            .catch(() => {}); // traga error
+          promises.push(p);
         }
       }
     }
   }
+
   if (embedFonts) {
-    await embedCustomFonts({ preCached: true });
+    try { await embedCustomFonts({ preCached: true }); } catch {}
   }
-  await Promise.all(promises);
+
+  await Promise.allSettled(promises);
 }

@@ -157,8 +157,8 @@ export function generateDedupedBaseCSS(usedTagNames) {
  *
  * @returns {Map} Map of style keys to class names
  */
-export function generateCSSClasses() {
-  const keySet = new Set(cache.preStyleMap.values());
+export function generateCSSClasses(styleMap) {
+  const keySet = new Set(styleMap.values());
   const classMap = new Map();
   let counter = 1;
   for (const key of keySet) {

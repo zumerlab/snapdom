@@ -13,17 +13,9 @@ export const cache = {
   font: new Set(),
   snapshot: new WeakMap(),
   snapshotKey: new Map(),
-  preStyleMap: new Map(),
-  preStyle: new WeakMap(),
-  preNodeMap: new Map(),
   reset: resetCache
 };
 
 function resetCache() {
   cache.computedStyle = new WeakMap();
-  cache.snapshot = new WeakMap();
-  cache.snapshotKey.clear();
-  cache.preStyleMap.clear();
-  cache.preStyle = new WeakMap();
-  cache.preNodeMap.clear();
 }

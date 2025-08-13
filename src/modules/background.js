@@ -23,7 +23,7 @@ import { cache } from '../core/cache.js'
  * @param {Object} [options={}] Optional parameters passed to image inlining functions.
  * @returns {Promise<void>} Resolves when all inlining operations (including async image fetches) complete.
  */
-export async function inlineBackgroundImages(source, clone, options = {}) {
+export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
   const queue = [[source, clone]];
 
   const imageProps = [
@@ -45,8 +45,8 @@ export async function inlineBackgroundImages(source, clone, options = {}) {
     const [srcNode, cloneNode] = queue.shift();
 
     // Retrieve cached or computed style for source node
-    const style = cache.preStyle.get(srcNode) || getStyle(srcNode);
-    if (!cache.preStyle.has(srcNode)) cache.preStyle.set(srcNode, style);
+    const style = styleCache.get(srcNode) || getStyle(srcNode);
+    if (!styleCache.has(srcNode)) styleCache.set(srcNode, style);
 
     // Determine if border-image or border-image-source is active for conditional copying
     const hasBorderImage = (() => {

@@ -17,7 +17,7 @@ import { cache } from '../core/cache.js'
  */
 
  
-export function deepClone(node, compress, options = {}, originalRoot) {
+export function deepClone(node, styleMap, styleCache, nodeMap, compress, options = {}, originalRoot) {
   if (!node) throw new Error('Invalid node');
 
   // Local set to avoid duplicates in slot processing
@@ -82,8 +82,8 @@ export function deepClone(node, compress, options = {}, originalRoot) {
   // 7. Placeholder nodes
   if (node.getAttribute("data-capture") === "placeholder") {
     const clone2 = node.cloneNode(false);
-    cache.preNodeMap.set(clone2, node);
-    inlineAllStyles(node, clone2, compress);
+    nodeMap.set(clone2, node);
+    inlineAllStyles(node, clone2, styleMap, styleCache, compress);
     const placeholder = document.createElement("div");
     placeholder.textContent = node.getAttribute("data-placeholder-text") || "";
     placeholder.style.cssText = `color:#666;font-size:12px;text-align:center;line-height:1.4;padding:0.5em;box-sizing:border-box;`;
@@ -98,8 +98,8 @@ export function deepClone(node, compress, options = {}, originalRoot) {
     img.src = dataURL;
     img.width = node.width;
     img.height = node.height;
-    cache.preNodeMap.set(img, node);
-    inlineAllStyles(node, img, compress);
+    nodeMap.set(img, node);
+    inlineAllStyles(node, img, styleMap, styleCache, compress);
     return img;
   }
 
@@ -107,7 +107,7 @@ export function deepClone(node, compress, options = {}, originalRoot) {
   let clone;
   try {
     clone = node.cloneNode(false);
-    cache.preNodeMap.set(clone, node);
+    nodeMap.set(clone, node);
   } catch (err) {
     console.error("[Snapdom] Failed to clone node:", node, err);
     throw err;
@@ -141,7 +141,7 @@ export function deepClone(node, compress, options = {}, originalRoot) {
   }
 
   // 11. Inline styles
-  inlineAllStyles(node, clone, compress);
+  inlineAllStyles(node, clone, styleMap, styleCache, compress);
 
   // 12. ShadowRoot logic
   if (node.shadowRoot) {
@@ -153,9 +153,9 @@ export function deepClone(node, compress, options = {}, originalRoot) {
         if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
           const cssText = child.textContent || "";
           if (cssText.trim() && compress) {
-            if (!cache.preStyle) cache.preStyle = new WeakMap();
-            cache.preStyle.set(child, cssText);
-          }
+            //if (!cache.preStyle) cache.preStyle = new WeakMap();
+            styleCache.set(child, cssText);
+         }
         }
       }
     } else {
@@ -165,12 +165,12 @@ export function deepClone(node, compress, options = {}, originalRoot) {
         if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
           const cssText = child.textContent || "";
           if (cssText.trim() && compress) {
-            if (!cache.preStyle) cache.preStyle = new WeakMap();
-            cache.preStyle.set(child, cssText);
+          //  if (!cache.preStyle) cache.preStyle = new WeakMap();
+            styleCache.set(child, cssText);
           }
           continue;
         }
-        const clonedChild = deepClone(child, compress, options, originalRoot || node);
+        const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
         if (clonedChild) shadowFrag.appendChild(clonedChild);
       }
       clone.appendChild(shadowFrag);
@@ -184,7 +184,7 @@ export function deepClone(node, compress, options = {}, originalRoot) {
     const fragment = document.createDocumentFragment();
 
     for (const child of nodesToClone) {
-      const clonedChild = deepClone(child, compress, options, originalRoot || node);
+      const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
       if (clonedChild) fragment.appendChild(clonedChild);
     }
     return fragment;
@@ -194,7 +194,7 @@ export function deepClone(node, compress, options = {}, originalRoot) {
   for (const child of node.childNodes) {
     if (clonedAssignedNodes.has(child)) continue;
 
-    const clonedChild = deepClone(child, compress, options, originalRoot || node);
+    const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
     if (clonedChild) clone.appendChild(clonedChild);
   }
 

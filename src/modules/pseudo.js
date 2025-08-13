@@ -28,7 +28,7 @@ import { cache } from '../core/cache.js';
  * @returns {Promise} Promise that resolves when all pseudo-elements are processed
  */
 
-export async function inlinePseudoElements(source, clone, options) {
+export async function inlinePseudoElements(source, clone, styleMap, styleCache, options) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
 
   for (const pseudo of ['::before', '::after', '::first-letter']) {
@@ -71,7 +71,7 @@ export async function inlinePseudoElements(source, clone, options) {
         span.dataset.snapdomPseudo = '::first-letter';
         const snapshot = snapshotComputedStyle(style);
         const key = getStyleKey(snapshot, 'span', options);
-        cache.preStyleMap.set(span, key);
+        styleMap.set(span, key);
 
         const restNode = document.createTextNode(rest);
         clone.replaceChild(restNode, textNode);
@@ -118,7 +118,7 @@ export async function inlinePseudoElements(source, clone, options) {
       pseudoEl.style.verticalAlign = 'middle'
       const snapshot = snapshotComputedStyle(style);
       const key = getStyleKey(snapshot, 'span', options);
-      cache.preStyleMap.set(pseudoEl, key);
+      styleMap.set(pseudoEl, key);
 
       if (isIconFont2 && cleanContent.length === 1) {
        const { dataUrl, width, height } = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
@@ -176,7 +176,7 @@ pseudoEl.appendChild(imgEl);
   const sChildren = Array.from(source.children);
   const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo);
   for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-    await inlinePseudoElements(sChildren[i], cChildren[i], options);
+    await inlinePseudoElements(sChildren[i], cChildren[i], styleMap, styleCache, options);
   }
 }
 

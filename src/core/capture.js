@@ -27,15 +27,15 @@ import { cache } from '../core/cache.js'
 
 export async function captureDOM(element, options = {}) {
   if (!element) throw new Error("Element cannot be null or undefined");
-  cache.reset()
+   cache.reset()
   const { compress = true, embedFonts = false, fast = true, scale = 1, useProxy = ''} = options;
-  let clone, classCSS;
+  let clone, classCSS, styleCache;
   let fontsCSS = "";
   let baseCSS = "";
   let dataURL;
   let svgString;
 
-  ({ clone, classCSS } = await prepareClone(element, compress, embedFonts, options));
+  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts, options));
 
   await new Promise((resolve) => {
     idle(async () => {
@@ -45,7 +45,7 @@ export async function captureDOM(element, options = {}) {
   });
   await new Promise((resolve) => {
     idle(async () => {
-      await inlineBackgroundImages(element, clone, options);
+      await inlineBackgroundImages(element, clone, styleCache, options);
       resolve();
     }, { fast });
   });
