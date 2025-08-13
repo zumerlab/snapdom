@@ -4,7 +4,30 @@
  */
 
 import { inlineAllStyles } from '../modules/styles.js';
-import { cache } from '../core/cache.js'
+
+/**
+ * Freeze the responsive selection of an <img> that has srcset/sizes.
+ * Copies a concrete URL into `src` and removes `srcset`/`sizes` so the clone
+ * doesn't need layout to resolve a candidate.
+ * Works with <picture> because currentSrc reflects the chosen source.
+ * @param {HTMLImageElement} original - Image in the live DOM.
+ * @param {HTMLImageElement} cloned - Just-created cloned <img>.
+ */
+function freezeImgSrcset(original, cloned) {
+  try {
+    const chosen = original.currentSrc || original.src || '';
+    if (!chosen) return;
+    cloned.setAttribute('src', chosen);
+    cloned.removeAttribute('srcset');
+    cloned.removeAttribute('sizes');
+    // Hint deterministic decode/load for capture
+    cloned.loading = 'eager';
+    cloned.decoding = 'sync';
+  } catch {
+    // no-op
+  }
+}
+
 
 /**
  * Creates a deep clone of a DOM node, including styles, shadow DOM, and special handling for excluded/placeholder/canvas nodes.
@@ -108,6 +131,10 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   try {
     clone = node.cloneNode(false);
     nodeMap.set(clone, node);
+    
+    if (node.tagName === 'IMG') {
+      freezeImgSrcset(node, clone);
+    }
   } catch (err) {
     console.error("[Snapdom] Failed to clone node:", node, err);
     throw err;

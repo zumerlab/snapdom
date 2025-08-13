@@ -15,6 +15,12 @@ import { fetchImage } from '../utils/helpers.js';
 export async function inlineImages(clone, options = {}) {
   const imgs = Array.from(clone.querySelectorAll("img"));
   const processImg = async (img) => {
+    if (!img.getAttribute('src')) {
+      const eff = img.currentSrc || img.src || '';
+      if (eff) img.setAttribute('src', eff);
+    }
+    img.removeAttribute('srcset');
+    img.removeAttribute('sizes');
     const src = img.src;
     try {
       const dataUrl = await fetchImage(src, { useProxy: options.useProxy });
