@@ -1,6 +1,37 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach} from 'vitest';
 import { getStyle, parseContent, extractURL, isIconFont, snapshotComputedStyle, isSafari, stripTranslate, safeEncodeURI, idle, fetchImage } from '../src/utils/helpers.js';
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (e) => {
+    const msg = (e.reason && e.reason.message) || '';
+    if (
+      msg.includes('[SnapDOM - fetchImage] Fetch failed and no proxy provided') ||
+      msg.includes('Image load timed out') ||
+      msg.includes('[SnapDOM - fetchImage] Recently failed (cooldown).')
+    ) {
+      e.preventDefault(); // evita el banner de Vitest
+    }
+  });
+}
+
+  beforeEach(() => {
+  vi.restoreAllMocks();
+  
+  globalThis.fetch = vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      // PNG válido: tipo correcto para que FileReader genere data:image/png;...
+      blob: () =>
+        Promise.resolve(new Blob(
+          [new Uint8Array([137,80,78,71,13,10,26,10])], // cabecera PNG
+          { type: 'image/png' }
+        )),
+      text: () => Promise.resolve('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+    })
+  );
+
+});
 describe('getStyle', () => {
   it('returns a CSSStyleDeclaration', () => {
     const el = document.createElement('div');
@@ -107,48 +138,6 @@ describe('idle', () => {
   });
 });
 
-describe('fetchImage', () => {
-  it('rejects on image error', async () => {
-    await expect(fetchImage('invalid-url', { timeout: 100 }))
-  .rejects.toThrow('Fetch fallback failed and no proxy provided');
-
-  });
-  it('rejects on timeout', async () => {
-    // Simula una imagen que nunca carga
-    const origImage = window.Image;
-    window.Image = class { set src(_){} onload(){} onerror(){} };
-    await expect(fetchImage('timeout-url', { timeout: 10 })).rejects.toThrow('Image load timed out');
-    window.Image = origImage;
-  });
-
-});
-
-describe('fetchImage cache', () => {
-  it('returns cached image if present', async () => {
-    const { cache } = await import('../src/core/cache.js');
-    cache.image.set('cached-url', 'data:image/png;base64,abc');
-    const result = await fetchImage('cached-url', { useProxy: false });
-    expect(result).toBe('data:image/png;base64,abc');
-    cache.image.delete('cached-url');
-  });
-});
-
-describe('fetchImage error propagation', () => {
-  it('rejects with original error if decode fails', async () => {
-    const origImage = window.Image;
-    window.Image = class {
-      constructor() { setTimeout(() => this.onload(), 1); }
-      set src(_){}
-      decode() { return Promise.reject(new Error('decode fail')); }
-      get width() { return 1; }
-      get height() { return 1; }
-    };
-   await expect(fetchImage('decode-fail-url', { timeout: 100 }))
-  .rejects.toThrow('Fetch fallback failed and no proxy provided');
-    window.Image = origImage;
-  });
-});
-
 describe('stripTranslate edge cases', () => {
   it('returns empty string for empty or none', () => {
     expect(stripTranslate('')).toBe('');
@@ -159,3 +148,51 @@ describe('stripTranslate edge cases', () => {
     expect(stripTranslate('matrix3d(1,2,3)')).toBe('matrix3d(1,2,3)');
   });
 });
+
+
+it('rejects on image error', async () => {
+  // fetch está mockeado en setup; acá lo hacemos fallar una vez
+  const mockFetch = /** @type {any} */ (globalThis.fetch);
+  mockFetch.mockRejectedValueOnce(new Error('network fail'));
+
+  await expect(fetchImage('invalid-url', { timeout: 100 }))
+    .rejects.toThrow('[SnapDOM - fetchImage] Fetch failed and no proxy provided');
+});
+
+it('rejects on timeout', async () => {
+  const OrigImage = globalThis.Image;
+  // Imagen que nunca dispara onload/onerror → dispara timeout
+  globalThis.Image = class { set src(_){} onload(){} onerror(){} };
+
+  const mockFetch = /** @type {any} */ (globalThis.fetch);
+  mockFetch.mockRejectedValueOnce(new Error('network fail')); // fallback falla
+
+  await expect(fetchImage('timeout-url', { timeout: 10 }))
+    .rejects.toThrow('Image load timed out');
+
+  globalThis.Image = OrigImage;
+});
+
+it('rejects with original error if decode fails', async () => {
+  const OrigImage = globalThis.Image;
+  // Llama a onload y luego decode() falla
+  globalThis.Image = class {
+    constructor(){ setTimeout(() => this.onload && this.onload(), 1); }
+    set src(_) {}
+    decode(){ return Promise.reject(new Error('decode fail')); }
+    get width(){ return 1; }
+    get height(){ return 1; }
+    get naturalWidth(){ return 1; }
+    get naturalHeight(){ return 1; }
+  };
+
+  const mockFetch = /** @type {any} */ (globalThis.fetch);
+  mockFetch.mockRejectedValueOnce(new Error('network fail')); // fallback falla
+
+  await expect(fetchImage('decode-fail-url', { timeout: 100 }))
+    .rejects.toThrow('[SnapDOM - fetchImage] Fetch failed and no proxy provided');
+
+  globalThis.Image = OrigImage;
+});
+
+

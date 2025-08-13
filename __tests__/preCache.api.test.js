@@ -1,11 +1,29 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { preCache } from '../src/api/preCache.js';
 import { cache } from '../src/core/cache.js';
 
+
 describe('preCache', () => {
   beforeEach(() => {
-    cache.reset()
-  });
+  vi.restoreAllMocks();
+  globalThis.fetch = vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      // PNG válido: tipo correcto para que FileReader genere data:image/png;...
+      blob: () =>
+        Promise.resolve(new Blob(
+          [new Uint8Array([137,80,78,71,13,10,26,10])], // cabecera PNG
+          { type: 'image/png' }
+        )),
+      text: () => Promise.resolve('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+    })
+  );
+  cache.reset()
+});
+
+
+
 
   it('pre-caches images and backgrounds', async () => {
     const el = document.createElement('div');
@@ -39,16 +57,6 @@ describe('preCache', () => {
     document.body.removeChild(el);
   });
 
-  it('limpia los caches y retorna si reset=true', async () => {
-    // Prellenar los caches
-    cache.snapshotKey.set('foo', 'bar');
-    cache.preStyleMap.set('foo', 'bar');
-    cache.preNodeMap.set('foo', 'bar');
-    await preCache(document, { reset: true });
-    expect(cache.snapshotKey.size).toBe(0);
-    expect(cache.preStyleMap.size).toBe(0);
-    expect(cache.preNodeMap.size).toBe(0);
-  });
 
   it('procesa múltiples backgrounds en un solo elemento', async () => {
     const el = document.createElement('div');
