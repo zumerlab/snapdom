@@ -152,6 +152,7 @@ All capture methods accept an `options` object:
 | `fast`            | boolean  | `true`   | Skips idle delay for faster results        |
 | `embedFonts`      | boolean  | `false`  | Inlines fonts (icon fonts always embedded) |
 | `localFonts`      | array   | `[]`     | Array of local font descriptors `{ family, src, weight?, style? }` |
+| `iconFonts`       | string \| RegExp \| (string \| RegExp)[] | `[]` | Additional icon font families or patterns |
 | `scale`           | number   | `1`      | Output scale multiplier                    |
 | `dpr`             | number   | `devicePixelRatio` | Device pixel ratio                 |
 | `width`           | number   | -        | Output specific width size                 |

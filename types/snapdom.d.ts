@@ -3,6 +3,7 @@ declare module "@zumer/snapdom" {
     compress?: boolean;
     embedFonts?: boolean;
     localFonts?: Array<{ family: string; src: string; weight?: string; style?: string }>;
+    iconFonts?: string | RegExp | Array<string | RegExp>;
     fast?: boolean;
     scale?: number;
     width?: number;
