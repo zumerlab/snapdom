@@ -2,6 +2,7 @@ declare module "@zumer/snapdom" {
   export interface SnapOptions {
     compress?: boolean;
     embedFonts?: boolean;
+    localFonts?: Array<{ family: string; src: string; weight?: string; style?: string }>;
     fast?: boolean;
     scale?: number;
     width?: number;
@@ -59,6 +60,7 @@ declare module "@zumer/snapdom" {
       embedFonts?: boolean;
       useProxy?: string;
       reset?: boolean;
+      localFonts?: Array<{ family: string; src: string; weight?: string; style?: string }>;
     }
   ): Promise<void>;
 }

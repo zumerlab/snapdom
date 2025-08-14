@@ -3,7 +3,7 @@
  * @module fonts
  */
 
-import { extractURL} from "../utils/helpers"
+import { extractURL, fetchResource } from "../utils/helpers"
 import { cache } from "../core/cache"
 import { isIconFont } from '../modules/iconFonts.js';
 
@@ -18,7 +18,6 @@ import { isIconFont } from '../modules/iconFonts.js';
  * @param {string} [color="#000"] - The color to use
  * @returns {Promise<string>} Data URL of the rendered icon
  */
-
 export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = "#000") {
   fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, "");
   const dpr = window.devicePixelRatio || 1;
@@ -65,6 +64,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   };
 }
 
+
 function isStylesheetLoaded(href) {
   return Array.from(document.styleSheets).some(sheet => sheet.href === href);
 }
@@ -88,10 +88,11 @@ function injectLinkIfMissing(href) {
  * @export
  * @param {Object} options
  * @param {boolean} [options.preCached=false] - Whether to use pre-cached resources
+ * @param {Object} [options.localFonts=[]] - Additional local fonts to embed
+ * @param {string} [options.useProxy=''] - Optional proxy for font fetching
  * @returns {Promise<string>} The inlined CSS for custom fonts
  */
-
-export async function embedCustomFonts({preCached = false } = {}) {
+export async function embedCustomFonts({ preCached = false, localFonts = [], useProxy = '' } = {}) {
   if (cache.resource.has("fonts-embed-css")) {
     if (preCached) {
       const style = document.createElement("style");
@@ -101,6 +102,15 @@ export async function embedCustomFonts({preCached = false } = {}) {
     }
     return cache.resource.get("fonts-embed-css");
   }
+
+  const loadedFonts = new Set();
+  try {
+    for (const f of document.fonts) {
+      if (f.status === "loaded") {
+        loadedFonts.add(`${f.family}__${f.weight || "normal"}__${f.style || "normal"}`);
+      }
+    }
+  } catch {}
 
   const importRegex = /@import\s+url\(["']?([^"')]+)["']?\)/g;
   const styleImports = [];
@@ -124,28 +134,52 @@ export async function embedCustomFonts({preCached = false } = {}) {
 
   for (const link of links) {
     try {
-      const res = await fetch(link.href);
+      const res = await fetchResource(link.href, { useProxy });
       const cssText = await res.text();
 
       if ((isIconFont(link.href) || isIconFont(cssText))) continue;
 
-      const urlRegex = /url\((["']?)([^"')]+)\1\)/g;
-      const inlinedCSS = await Promise.all(
-        Array.from(cssText.matchAll(urlRegex)).map(async (match) => {
+      const faceRegex = /@font-face[^{}]*{[^}]*}/g;
+      let cssFinal = cssText;
+      for (const face of cssText.match(faceRegex) || []) {
+        const famMatch = face.match(/font-family:\s*([^;]+);/i);
+        if (!famMatch) continue;
+        const family = famMatch[1].replace(/['"]/g, '').trim();
+        const weightMatch = face.match(/font-weight:\s*([^;]+);/i);
+        const styleMatch = face.match(/font-style:\s*([^;]+);/i);
+        const weight = weightMatch ? weightMatch[1].trim() : 'normal';
+        const style = styleMatch ? styleMatch[1].trim() : 'normal';
+        const key = `${family}__${weight}__${style}`;
+        const urlRegex = /url\((["']?)([^"')]+)\1\)/g;
+        const hasURL = /url\(/i.test(face);
+        const hasLocal = /local\(/i.test(face);
+
+        if (!hasURL && hasLocal) {
+          continue;
+        }
+        if (!loadedFonts.has(key)) {
+          cssFinal = cssFinal.replace(face, '');
+          continue;
+        }
+
+        let inlined = face;
+        const matches = Array.from(face.matchAll(urlRegex));
+        for (const match of matches) {
           let rawUrl = extractURL(match[0]);
-          if (!rawUrl) return null;
+          if (!rawUrl) continue;
           let url = rawUrl;
-          if (!url.startsWith("http") && !url.startsWith("data:")) {
+          if (!url.startsWith('http') && !url.startsWith('data:')) {
             url = new URL(url, link.href).href;
           }
-          if (isIconFont(url)) return null;
+          if (isIconFont(url)) continue;
           if (cache.resource.has(url)) {
             cache.font.add(url);
-            return { original: match[0], inlined: `url(${cache.resource.get(url)})` };
+            inlined = inlined.replace(match[0], `url(${cache.resource.get(url)})`);
+            continue;
           }
-          if (cache.font.has(url)) return null;
+          if (cache.font.has(url)) continue;
           try {
-            const fontRes = await fetch(url);
+            const fontRes = await fetchResource(url, { useProxy });
             const blob = await fontRes.blob();
             const b64 = await new Promise((resolve) => {
               const reader = new FileReader();
@@ -154,17 +188,12 @@ export async function embedCustomFonts({preCached = false } = {}) {
             });
             cache.resource.set(url, b64);
             cache.font.add(url);
-            return { original: match[0], inlined: `url(${b64})` };
+            inlined = inlined.replace(match[0], `url(${b64})`);
           } catch (e) {
-            console.warn("[snapdom] Failed to fetch font resource:", url);
-            return null;
+            console.warn('[snapdom] Failed to fetch font resource:', url);
           }
-        })
-      );
-
-      let cssFinal = cssText;
-      for (const r of inlinedCSS) {
-        if (r) cssFinal = cssFinal.replace(r.original, r.inlined);
+        }
+        cssFinal = cssFinal.replace(face, inlined);
       }
       finalCSS += cssFinal + "\n";
     } catch (e) {
@@ -181,18 +210,22 @@ export async function embedCustomFonts({preCached = false } = {}) {
             const family = rule.style.getPropertyValue("font-family");
             if (!src || isIconFont(family)) continue;
 
+            const weightVal = rule.style.getPropertyValue("font-weight") || "normal";
+            const styleVal = rule.style.getPropertyValue("font-style") || "normal";
+            const key = `${family}__${weightVal}__${styleVal}`;
+
             const urlRegex = /url\((["']?)([^"')]+)\1\)/g;
             const localRegex = /local\((["']?)[^)]+?\1\)/g;
             const hasURL = !!src.match(urlRegex);
             const hasLocal = !!src.match(localRegex);
 
             if (!hasURL && hasLocal) {
-              // Solo local(), conservar en línea compacta
-              finalCSS += `@font-face{font-family:${family};src:${src};font-style:${rule.style.getPropertyValue("font-style") || "normal"};font-weight:${rule.style.getPropertyValue("font-weight") || "normal"};}`;
+              finalCSS += `@font-face{font-family:${family};src:${src};font-style:${styleVal};font-weight:${weightVal};}`;
               continue;
             }
 
-            // Embebido para src con url()
+            if (!loadedFonts.has(key)) continue;
+
             let inlinedSrc = src;
             const matches = Array.from(src.matchAll(urlRegex));
             for (const match of matches) {
@@ -210,7 +243,7 @@ export async function embedCustomFonts({preCached = false } = {}) {
               }
               if (cache.font.has(url)) continue;
               try {
-                const res = await fetch(url);
+                const res = await fetchResource(url, { useProxy });
                 const blob = await res.blob();
                 const b64 = await new Promise((resolve) => {
                   const reader = new FileReader();
@@ -225,7 +258,7 @@ export async function embedCustomFonts({preCached = false } = {}) {
               }
             }
 
-            finalCSS += `@font-face{font-family:${family};src:${inlinedSrc};font-style:${rule.style.getPropertyValue("font-style") || "normal"};font-weight:${rule.style.getPropertyValue("font-weight") || "normal"};}`;
+            finalCSS += `@font-face{font-family:${family};src:${inlinedSrc};font-style:${styleVal};font-weight:${weightVal};}`;
           }
         }
       }
@@ -244,7 +277,7 @@ export async function embedCustomFonts({preCached = false } = {}) {
           cache.font.add(font._snapdomSrc);
         } else if (!cache.font.has(font._snapdomSrc)) {
           try {
-            const res = await fetch(font._snapdomSrc);
+            const res = await fetchResource(font._snapdomSrc, { useProxy });
             const blob = await res.blob();
             b64 = await new Promise((resolve) => {
               const reader = new FileReader();
@@ -264,6 +297,34 @@ export async function embedCustomFonts({preCached = false } = {}) {
     }
   }
 
+  for (const font of localFonts) {
+    if (!font || typeof font !== 'object') continue;
+    const { family, src, weight = 'normal', style = 'normal' } = font;
+    if (!family || !src) continue;
+
+    let b64 = src;
+    if (!b64.startsWith('data:')) {
+      try {
+        const res = await fetchResource(src, { useProxy });
+        const blob = await res.blob();
+        b64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        cache.resource.set(src, b64);
+        cache.font.add(src);
+      } catch (e) {
+        console.warn('[snapdom] Failed to load local font:', src);
+        continue;
+      }
+    } else {
+      cache.resource.set(src, b64);
+      cache.font.add(src);
+    }
+    finalCSS += `@font-face{font-family:'${family}';src:url(${b64});font-style:${style};font-weight:${weight};}`;
+  }
+  
   if (finalCSS) {
     cache.resource.set("fonts-embed-css", finalCSS);
     if (preCached) {

@@ -28,7 +28,7 @@ import { cache } from '../core/cache.js'
 export async function captureDOM(element, options = {}) {
   if (!element) throw new Error("Element cannot be null or undefined");
    cache.reset()
-  const { compress = true, embedFonts = false, fast = true, scale = 1, useProxy = ''} = options;
+  const { compress = true, embedFonts = false, fast = true, scale = 1, useProxy = '', localFonts = []} = options;
   let clone, classCSS, styleCache;
   let fontsCSS = "";
   let baseCSS = "";
@@ -52,7 +52,7 @@ export async function captureDOM(element, options = {}) {
   if (embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
-        fontsCSS = await embedCustomFonts();
+        fontsCSS = await embedCustomFonts({ localFonts, useProxy });
         resolve();
       }, { fast });
     });

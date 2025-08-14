@@ -127,6 +127,31 @@ export function isIconFont(familyOrUrl) {
   ];
   return iconFontPatterns.some(rx => rx.test(familyOrUrl));
 }
+
+/**
+ * Fetch a resource with optional proxy fallback.
+ * @param {string} url - Resource URL
+ * @param {Object} [options]
+ * @param {string} [options.useProxy=''] - Proxy prefix
+ * @returns {Promise<Response>} The fetched response
+ */
+export async function fetchResource(url, { useProxy = '' } = {}) {
+  async function doFetch(u) {
+    const res = await fetch(u);
+    if (!res.ok) throw new Error(`[snapdom] Failed to fetch resource: ${u}`);
+    return res;
+  }
+  try {
+    return await doFetch(url);
+  } catch (e) {
+    if (useProxy && typeof useProxy === 'string') {
+      const proxied = useProxy.replace(/\/$/, '') + safeEncodeURI(url);
+      return doFetch(proxied);
+    }
+    throw e;
+  }
+}
+
 /**
  *
  *

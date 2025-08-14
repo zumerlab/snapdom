@@ -66,7 +66,7 @@ export async function preCache(root = document, options = {}) {
   }
 
   if (embedFonts) {
-    try { await embedCustomFonts({ preCached: true }); } catch {}
+    try {await embedCustomFonts({ preCached: true, localFonts: options.localFonts, useProxy: options.useProxy })} catch {};
   }
 
   await Promise.allSettled(promises);
