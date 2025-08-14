@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.9](https://github.com/zumerlab/snapdom/compare/v1.9.8...v1.9.9)
+
+> 14 August 2025
+
+- Improves external fonts handling. Closes #139, closes #146, closes #186 [`#139`](https://github.com/zumerlab/snapdom/issues/139) [`#146`](https://github.com/zumerlab/snapdom/issues/146) [`#186`](https://github.com/zumerlab/snapdom/issues/186)
+- Handles srcset. Closes #190 [`#190`](https://github.com/zumerlab/snapdom/issues/190)
+- Fix speed regression. [`542ed00`](https://github.com/zumerlab/snapdom/commit/542ed003e3f35c19bd51fd5317f5572c12ba1ac8)
+- Handles Blob scr [`fe27239`](https://github.com/zumerlab/snapdom/commit/fe27239ac3efef9a0e9e7f0feeb223dd74fd9086). Closes [`#169`](https://github.com/zumerlab/snapdom/issues/169) 
+
+
 #### [v1.9.8](https://github.com/zumerlab/snapdom/compare/v1.9.7...v1.9.8)
 
 > 10 August 2025
