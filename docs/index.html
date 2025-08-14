@@ -1187,7 +1187,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         await forceRender(); // Forzar renderizado del mensaje
 
         const t0 = performance.now();
-        snapCanvas = await snapdom.toCanvas(el);
+        snapCanvas = await snapdom.toImg(el);
         snapTotal += performance.now() - t0;
 
         // Mostrar resultado parcial
