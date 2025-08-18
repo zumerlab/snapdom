@@ -3,7 +3,7 @@
  * @module fonts
  */
 
-import { extractURL, fetchResource } from "../utils/helpers"
+import { extractURL, fetchResource } from "../utils"
 import { cache } from "../core/cache"
 import { isIconFont } from '../modules/iconFonts.js';
 

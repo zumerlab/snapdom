@@ -1,5 +1,4 @@
-import { getStyleKey } from '../utils/cssTools.js';
-import { getStyle } from '../utils/helpers.js';
+import { getStyleKey, getStyle} from '../utils/index.js';
 import {cache} from '../core/cache.js'
 
 const snapshotCache = new WeakMap();       // Element → snapshot (object)
@@ -36,14 +35,14 @@ function snapshotComputedStyleFull(style) {
 
 
 
-export function inlineAllStyles(source, clone, styleMap, cache, compress) {
+export function inlineAllStyles(source, clone, sessionCache, options) {
   
   if (source.tagName === 'STYLE') return;
 
-  if (!cache.has(source)) {
-    cache.set(source, getStyle(source));
+  if (!sessionCache.styleCache.has(source)) {
+    sessionCache.styleCache.set(source, getStyle(source));
   }
-  const style = cache.get(source);
+  const style = sessionCache.styleCache.get(source);
 
   if (!snapshotCache.has(source)) {
     const snapshot = snapshotComputedStyleFull(style);
@@ -58,15 +57,15 @@ export function inlineAllStyles(source, clone, styleMap, cache, compress) {
     .join(';');
 
   if (snapshotKeyCache.has(hash)) {
-    styleMap.set(clone, snapshotKeyCache.get(hash));
+    sessionCache.styleMap.set(clone, snapshotKeyCache.get(hash));
     return;
   }
 
   const tagName = source.tagName?.toLowerCase() || 'div';
-  const key = getStyleKey(snapshot, tagName, compress);
+  const key = getStyleKey(snapshot, tagName, options);
 
   snapshotKeyCache.set(hash, key);
-  styleMap.set(clone, key);
+  sessionCache.styleMap.set(clone, key);
 }
 
 

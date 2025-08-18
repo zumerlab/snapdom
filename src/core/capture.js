@@ -6,8 +6,7 @@
 import { prepareClone } from './prepare.js';
 import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
-import { idle, isSafari } from '../utils/helpers.js';
-import { collectUsedTagNames, generateDedupedBaseCSS } from '../utils/cssTools.js';
+import { idle,collectUsedTagNames, generateDedupedBaseCSS } from '../utils/index.js';
 import { embedCustomFonts } from '../modules/fonts.js';
 import { cache } from '../core/cache.js'
 
@@ -25,17 +24,17 @@ import { cache } from '../core/cache.js'
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 
-export async function captureDOM(element, options = {}) {
+export async function captureDOM(element, options) {
   if (!element) throw new Error("Element cannot be null or undefined");
    cache.reset()
-  const { compress = true, embedFonts = false, fast = true, scale = 1, useProxy = '', localFonts = []} = options;
+   const fast = options.fast
   let clone, classCSS, styleCache;
   let fontsCSS = "";
   let baseCSS = "";
   let dataURL;
   let svgString;
 
-  ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts, options));
+  ({ clone, classCSS, styleCache } = await prepareClone(element, options));
 
   await new Promise((resolve) => {
     idle(async () => {
@@ -49,15 +48,15 @@ export async function captureDOM(element, options = {}) {
       resolve();
     }, { fast });
   });
-  if (embedFonts) {
+  if (options.embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
-        fontsCSS = await embedCustomFonts({ localFonts, useProxy });
+        fontsCSS = await embedCustomFonts(options);
         resolve();
       }, { fast });
     });
   }
-  if (compress) {
+  if (options.compress) {
     const usedTags = collectUsedTagNames(clone).sort();
     const tagKey = usedTags.join(",");
     if (cache.baseStyle.has(tagKey)) {

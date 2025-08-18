@@ -1,13 +1,15 @@
-vi.mock('../src/utils/helpers.js', async () => {
-  const actual = await vi.importActual('../src/utils/helpers.js');
+import { describe, it, vi } from 'vitest';
+import { inlinePseudoElements } from '../src/modules/pseudo.js';
+
+vi.mock('../src/utils', async () => {
+  const actual = await vi.importActual('../src/utils');
   return {
     ...actual,
     inlineSingleBackgroundEntry: vi.fn().mockResolvedValue('url("data:image/png;base64,abc")'),
   };
 });
 
-import { describe, it, vi } from 'vitest';
-import { inlinePseudoElements } from '../src/modules/pseudo.js';
+
 
 describe('inlinePseudoElements background-image inlining (success)', () => {
   it('cubre el inlining exitoso de background-image en pseudo', async () => {

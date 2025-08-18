@@ -3,7 +3,7 @@
  * @module images
  */
 
-import { fetchImage } from '../utils/helpers.js';
+import { fetchImage } from '../utils/index.js';
 
 /**
  * Converts all <img> elements in the clone to data URLs or replaces them with placeholders if loading fails.

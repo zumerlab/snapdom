@@ -1,5 +1,5 @@
-vi.mock('../src/utils/helpers.js', async () => {
-  const actual = await vi.importActual('../src/utils/helpers.js');
+vi.mock('../src/utils', async () => {
+  const actual = await vi.importActual('../src/utils');
   return {
     ...actual,
     fetchImage: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock('../src/modules/fonts.js', async () => {
 
 import { describe, it, expect, vi } from 'vitest';
 import { inlinePseudoElements } from '../src/modules/pseudo.js';
-import * as helpers from '../src/utils/helpers.js';
+import * as helpers from '../src/utils';
 import * as fonts from '../src/modules/fonts.js';
 
 describe('inlinePseudoElements', () => {

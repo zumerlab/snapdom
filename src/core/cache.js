@@ -11,11 +11,19 @@ export const cache = {
   baseStyle: new Map(),
   computedStyle: new WeakMap(),
   font: new Set(),
-  snapshot: new WeakMap(),
-  snapshotKey: new Map(),
+  session: {
+    styleMap: new Map(),
+    styleCache: new WeakMap(),
+    nodeMap: new Map(),
+  },
   reset: resetCache
 };
 
 function resetCache() {
   cache.computedStyle = new WeakMap();
+  cache.session.styleMap.clear()
+  cache.session.styleCache = new WeakMap()
+  cache.session.nodeMap.clear()
+  cache.defaultStyle.clear()
+  cache.baseStyle.clear()
 }

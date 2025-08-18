@@ -32,15 +32,15 @@ function freezeImgSrcset(original, cloned) {
 /**
  * Creates a deep clone of a DOM node, including styles, shadow DOM, and special handling for excluded/placeholder/canvas nodes.
  *
- * @param {Node} node - Node to clone
- * @param {boolean} compress - Whether to compress style keys
+ * @param {Node} node - Node to clone 
+ * @param {boolean} options.compress - Whether to options.compress style keys
  * @param {Object} [options={}] - Capture options including exclude and filter 
  * @param {Node} [originalRoot] - Original root element being captured
  * @returns {Node|null} Cloned node with styles and shadow DOM content, or null for empty text nodes or filtered elements
  */
 
  
-export function deepClone(node, styleMap, styleCache, nodeMap, compress, options = {}, originalRoot) {
+export function deepClone(node, sessionCache, options) {
   if (!node) throw new Error('Invalid node');
 
   // Local set to avoid duplicates in slot processing
@@ -84,7 +84,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   // 5. Custom filter function
   if (typeof options.filter === "function") {
     try {
-      if (!options.filter(node, originalRoot || node)) {
+      if (!options.filter(node)) {
         const spacer = document.createElement("div");
         const rect = node.getBoundingClientRect();
         spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
@@ -105,8 +105,8 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   // 7. Placeholder nodes
   if (node.getAttribute("data-capture") === "placeholder") {
     const clone2 = node.cloneNode(false);
-    nodeMap.set(clone2, node);
-    inlineAllStyles(node, clone2, styleMap, styleCache, compress);
+    sessionCache.nodeMap.set(clone2, node);
+    inlineAllStyles(node, clone2, sessionCache, options);
     const placeholder = document.createElement("div");
     placeholder.textContent = node.getAttribute("data-placeholder-text") || "";
     placeholder.style.cssText = `color:#666;font-size:12px;text-align:center;line-height:1.4;padding:0.5em;box-sizing:border-box;`;
@@ -121,8 +121,8 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
     img.src = dataURL;
     img.width = node.width;
     img.height = node.height;
-    nodeMap.set(img, node);
-    inlineAllStyles(node, img, styleMap, styleCache, compress);
+    sessionCache.nodeMap.set(img, node);
+    inlineAllStyles(node, img, sessionCache, options);
     return img;
   }
 
@@ -130,7 +130,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   let clone;
   try {
     clone = node.cloneNode(false);
-    nodeMap.set(clone, node);
+    sessionCache.nodeMap.set(clone, node);
     
     if (node.tagName === 'IMG') {
       freezeImgSrcset(node, clone);
@@ -168,7 +168,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   }
 
   // 11. Inline styles
-  inlineAllStyles(node, clone, styleMap, styleCache, compress);
+  inlineAllStyles(node, clone, sessionCache, options);
 
   // 12. ShadowRoot logic
   if (node.shadowRoot) {
@@ -179,9 +179,9 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
       for (const child of node.shadowRoot.childNodes) {
         if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
           const cssText = child.textContent || "";
-          if (cssText.trim() && compress) {
+          if (cssText.trim() && options.compress) {
             //if (!cache.preStyle) cache.preStyle = new WeakMap();
-            styleCache.set(child, cssText);
+            sessionCache.styleCache.set(child, cssText);
          }
         }
       }
@@ -191,13 +191,13 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
       for (const child of node.shadowRoot.childNodes) {
         if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
           const cssText = child.textContent || "";
-          if (cssText.trim() && compress) {
+          if (cssText.trim() && options.compress) {
           //  if (!cache.preStyle) cache.preStyle = new WeakMap();
-            styleCache.set(child, cssText);
+            sessionCache.styleCache.set(child, cssText);
           }
           continue;
         }
-        const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+        const clonedChild = deepClone(child, sessionCache, options);
         if (clonedChild) shadowFrag.appendChild(clonedChild);
       }
       clone.appendChild(shadowFrag);
@@ -211,7 +211,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
     const fragment = document.createDocumentFragment();
 
     for (const child of nodesToClone) {
-      const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+      const clonedChild = deepClone(child, sessionCache, options);
       if (clonedChild) fragment.appendChild(clonedChild);
     }
     return fragment;
@@ -221,7 +221,7 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
   for (const child of node.childNodes) {
     if (clonedAssignedNodes.has(child)) continue;
 
-    const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+    const clonedChild = deepClone(child, sessionCache, options);
     if (clonedChild) clone.appendChild(clonedChild);
   }
 

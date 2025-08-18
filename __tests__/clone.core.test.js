@@ -1,11 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
 import { deepClone } from '../src/core/clone.js';
+import { createContext } from '../src/core/context.js';
+import { cache } from '../src/core/cache.js';
 
-function runClone(node, compress = false, options = {}) {
-  const styleMap = new Map();
-  const styleCache = new WeakMap();
-  const nodeMap = new Map();
-  return deepClone(node, styleMap, styleCache, nodeMap, compress, options);
+let options = createContext()
+const sessionCache = {
+        styleMap: cache.session.styleMap,
+        styleCache: cache.session.styleCache,
+        nodeMap: cache.session.nodeMap
+      }
+
+function runClone(node, compress = false) {
+  return deepClone(node, sessionCache, {...options, compress});
 }
 
 describe('deepClone', () => {
@@ -34,7 +40,7 @@ describe('deepClone', () => {
   it('deepClone handles data-capture="exclude"', () => {
     const el = document.createElement('div');
     el.setAttribute('data-capture', 'exclude');
-    const clone = runClone(el, true, {});
+    const clone = runClone(el, true);
     expect(clone).not.toBeNull();
   });
 
@@ -42,7 +48,7 @@ describe('deepClone', () => {
     const el = document.createElement('div');
     el.setAttribute('data-capture', 'placeholder');
     el.setAttribute('data-placeholder-text', 'Placeholder!');
-    const clone = runClone(el, true, {});
+    const clone = runClone(el, true);
     expect(clone.textContent).toContain('Placeholder!');
   });
 
@@ -50,7 +56,7 @@ describe('deepClone', () => {
     const iframe = document.createElement('iframe');
     iframe.width = 100;
     iframe.height = 50;
-    const clone = runClone(iframe, true, {});
+    const clone = runClone(iframe, true);
     expect(clone.tagName).toBe('DIV');
   });
 
@@ -69,7 +75,7 @@ describe('deepClone', () => {
     select.value = 'baz';
 
     [input, textarea, select].forEach(el => {
-      const clone = runClone(el, true, {});
+      const clone = runClone(el, true);
       expect(clone.value).toBe(el.value);
     });
   });
@@ -80,7 +86,7 @@ describe('deepClone', () => {
     const span = document.createElement('span');
     span.textContent = 'shadow';
     shadow.appendChild(span);
-    const clone = runClone(el, true, {});
+    const clone = runClone(el, true);
     expect(clone).not.toBeNull();
   });
 });
@@ -88,7 +94,7 @@ describe('deepClone', () => {
 describe('deepClone edge cases', () => {
   it('clones unsupported node (Comment) as a new Comment', () => {
     const fake = document.createComment('not supported');
-    const result = runClone(fake, true, {});
+    const result = runClone(fake, true);
     expect(result.nodeType).toBe(Node.COMMENT_NODE);
     expect(result.textContent).toBe('not supported');
     expect(result).not.toBe(fake);
@@ -97,7 +103,7 @@ describe('deepClone edge cases', () => {
   it('clones attributes and children', () => {
     const el = document.createElement('div');
     el.setAttribute('data-test', '1');
-    const result = runClone(el, true, {});
+    const result = runClone(el, true);
     expect(result.getAttribute('data-test')).toBe('1');
   });
 });

@@ -1,6 +1,5 @@
-import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage } from '../utils/helpers.js';
+import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage, precacheCommonTags } from '../utils';
 import { embedCustomFonts } from '../modules/fonts.js';
-import { precacheCommonTags } from '../utils/cssTools.js';
 import { cache } from '../core/cache.js';
 
 /**

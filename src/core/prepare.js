@@ -3,8 +3,7 @@
  * @module prepare
  */
 
-import { generateCSSClasses} from '../utils/cssTools.js';
-import { stripTranslate} from '../utils/helpers.js';
+import { generateCSSClasses, stripTranslate} from '../utils/index.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
 import { inlineExternalDefsAndSymbols} from '../modules/svgDefs.js';
@@ -22,10 +21,13 @@ import { cache } from '../core/cache.js';
  * @returns {Promise<Object>} Object containing the clone, generated CSS, and style cache
  */
 
-export async function prepareClone(element, compress = false, embedFonts = false, options = {}) {
-  const styleMap = new Map();
-  const styleCache = new WeakMap();
-  const nodeMap = new Map();
+export async function prepareClone(element, options = {}) {
+  const sessionCache = {
+    styleMap: cache.session.styleMap,
+    styleCache: cache.session.styleCache,
+    nodeMap: cache.session.nodeMap
+  }
+ 
   let clone
   let classCSS = '';
   
@@ -39,24 +41,24 @@ export async function prepareClone(element, compress = false, embedFonts = false
 
 
   try {
-    clone = deepClone(element, styleMap, styleCache, nodeMap, compress, options, element);
+    clone = deepClone(element, sessionCache, options, element);
   } catch (e) {
     console.warn("deepClone failed:", e);
     throw e;
   }
   try {
-    await inlinePseudoElements(element, clone, styleMap, styleCache, compress, embedFonts, options.useProxy);
+    await inlinePseudoElements(element, clone, sessionCache, options);
   } catch (e) {
     console.warn("inlinePseudoElements failed:", e);
   }
   await resolveBlobUrlsInTree(clone);
-  if (compress) {
-  const keyToClass = generateCSSClasses(styleMap);
+  if (options.compress) {
+  const keyToClass = generateCSSClasses(sessionCache.styleMap);
   classCSS = Array.from(keyToClass.entries())
     .map(([key, className]) => `.${className}{${key}}`)
     .join("");
   
-  for (const [node, key] of styleMap.entries()) {
+  for (const [node, key] of sessionCache.styleMap.entries()) {
     if (node.tagName === "STYLE") continue;
 
     // Detecta si el nodo está dentro de Shadow DOM
@@ -81,13 +83,13 @@ export async function prepareClone(element, compress = false, embedFonts = false
   }
 } else {
   // Sin compresión: siempre estilos inline completos
-  for (const [node, key] of styleMap.entries()) {
+  for (const [node, key] of sessionCache.styleMap.entries()) {
     if (node.tagName === "STYLE") continue;
     node.setAttribute("style", key.replace(/;/g, "; "));
   }
 }
 
-  for (const [cloneNode, originalNode] of nodeMap.entries()) {
+  for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
     const scrollX = originalNode.scrollLeft;
     const scrollY = originalNode.scrollTop;
     const hasScroll = scrollX || scrollY;
@@ -106,9 +108,9 @@ export async function prepareClone(element, compress = false, embedFonts = false
       cloneNode.appendChild(inner);
     }
   }
-  if (element === nodeMap.get(clone)) {
-    const computed = styleCache.get(element) || window.getComputedStyle(element);
-    styleCache.set(element, computed);
+  if (element === sessionCache.nodeMap.get(clone)) {
+    const computed = sessionCache.styleCache.get(element) || window.getComputedStyle(element);
+    sessionCache.styleCache.set(element, computed);
     const transform = stripTranslate(computed.transform);
     clone.style.margin = "0";
     clone.style.position = "static";
@@ -121,13 +123,13 @@ export async function prepareClone(element, compress = false, embedFonts = false
     clone.style.clear = "none";
     clone.style.transform = transform || "";
   }
-  for (const [cloneNode, originalNode] of nodeMap.entries()) {
+  for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
     if (originalNode.tagName === "PRE") {
       cloneNode.style.marginTop = "0";
       cloneNode.style.marginBlockStart = "0";
     }
   }
-  return { clone, classCSS, styleCache };
+  return { clone, classCSS, styleCache: sessionCache.styleCache };
 }
 
 function stabilizeLayout(element) {
