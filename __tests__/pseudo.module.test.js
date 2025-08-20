@@ -18,11 +18,16 @@ import { inlinePseudoElements } from '../src/modules/pseudo.js';
 import * as helpers from '../src/utils';
 import * as fonts from '../src/modules/fonts.js';
 
+const sessionCache = {
+    styleMap: new Map(),
+    styleCache: new WeakMap()
+  }
+
 describe('inlinePseudoElements', () => {
   it('does not fail with simple elements', async () => {
     const el = document.createElement('div');
     const clone = document.createElement('div');
-    await expect(inlinePseudoElements(el, clone, new Map(), new WeakMap(), false)).resolves.toBeUndefined();
+    await expect(inlinePseudoElements(el, clone, sessionCache, {})).resolves.toBeUndefined();
   });
 
   it('handles ::before with text content', async () => {
@@ -35,7 +40,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -50,7 +55,7 @@ describe('inlinePseudoElements', () => {
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
     fonts.iconToImage.mockResolvedValue('data:image/png;base64,icon');
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -65,7 +70,7 @@ describe('inlinePseudoElements', () => {
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
     helpers.fetchImage.mockResolvedValue('data:image/png;base64,img');
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -79,7 +84,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -94,7 +99,7 @@ describe('inlinePseudoElements', () => {
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
     helpers.fetchImage.mockResolvedValue('data:image/png;base64,img');
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -109,7 +114,7 @@ describe('inlinePseudoElements', () => {
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
     helpers.fetchImage.mockRejectedValue(new Error('fail'));
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -122,7 +127,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -132,7 +137,7 @@ describe('inlinePseudoElements', () => {
     vi.spyOn(window, 'getComputedStyle').mockImplementation(() => ({
       getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: ''
     }));
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -140,20 +145,20 @@ describe('inlinePseudoElements', () => {
     const el = document.createElement('div');
     const clone = document.createElement('div');
     vi.spyOn(window, 'getComputedStyle').mockImplementation(() => { throw new Error('fail'); });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
   it('ignores if source no es Element', async () => {
     const notElement = {};
     const clone = document.createElement('div');
-    await expect(inlinePseudoElements(notElement, clone, new Map(), new WeakMap(), false)).resolves.toBeUndefined();
+    await expect(inlinePseudoElements(notElement, clone, sessionCache, {})).resolves.toBeUndefined();
   });
 
   it('ignores if clone no es Element', async () => {
     const el = document.createElement('div');
     const notElement = {};
-    await expect(inlinePseudoElements(el, notElement, new Map(), new WeakMap(), false)).resolves.toBeUndefined();
+    await expect(inlinePseudoElements(el, notElement, {})).resolves.toBeUndefined();
   });
 
   it('inserta pseudoEl como ::after', async () => {
@@ -166,7 +171,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -180,7 +185,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -193,7 +198,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -208,7 +213,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '#000', fontSize: '32px', fontWeight: '400', fontFamily: 'Arial' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -226,7 +231,7 @@ describe('inlinePseudoElements', () => {
       };
       return { getPropertyValue: () => '', color: '', fontSize: '', fontWeight: '', fontFamily: '' };
     });
-    await inlinePseudoElements(el, clone, new Map(), new WeakMap(), false);
+    await inlinePseudoElements(el, clone, sessionCache, {});
     window.getComputedStyle.mockRestore();
   });
 
@@ -237,8 +242,6 @@ describe('inlinePseudoElements', () => {
 
   document.body.appendChild(el);
   const clone = el.cloneNode(true);
-  const styleMap = new Map();
-  const styleCache = new WeakMap();
 
   const style = document.createElement('style');
   style.textContent = `
@@ -249,7 +252,7 @@ describe('inlinePseudoElements', () => {
   `;
   document.head.appendChild(style);
 
-  await inlinePseudoElements(el, clone, styleMap, styleCache, false);
+  await inlinePseudoElements(el, clone, sessionCache, {});
   const firstLetterEl = clone.querySelector('[data-snapdom-pseudo="::first-letter"]');
   expect(firstLetterEl).toBeTruthy();
   expect(firstLetterEl.textContent.length).toBeGreaterThan(0);
@@ -272,10 +275,8 @@ it('should inline background-image entries for pseudo-element', async () => {
   document.head.appendChild(style);
 
   const clone = el.cloneNode(true);
-  const styleMap = new Map();
-  const styleCache = new WeakMap();
-
-  await inlinePseudoElements(el, clone, styleMap, styleCache, false);
+  
+  await inlinePseudoElements(el, clone, sessionCache, {});
   const pseudoAfter = clone.querySelector('[data-snapdom-pseudo="::after"]');
   expect(pseudoAfter).toBeTruthy();
   expect(pseudoAfter.style.backgroundImage.startsWith("url(\"data:image/")).toBeTruthy();
