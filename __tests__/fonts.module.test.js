@@ -17,6 +17,18 @@ function addStyleTag(css) {
   return style;
 }
 
+// Helpers nuevos para la API smart
+function makeRequired(family, weight='400', style='normal', stretchPct=100) {
+  const key = `${family}__${weight}__${style}__${stretchPct}`;
+  return new Set([key]);
+}
+
+function makeUsedCodepoints(text='A') {
+  const s = new Set();
+  for (const ch of text) s.add(ch.codePointAt(0));
+  return s;
+}
+
 /**
  * Mock seguro de document.fonts (FontFaceSet "mínimo pero compatible")
  * @param {Array<{ family:string, status:string, weight?:string, style?:string, _snapdomSrc?:string }>} fontsArray
@@ -34,13 +46,18 @@ function setDocumentFonts(fontsArray = []) {
     entries: function* () { for (const it of items) yield [it.family, it]; },
     forEach(cb, thisArg) { for (const it of items) cb.call(thisArg, it, it, fakeSet); },
     has(ff) { return items.includes(ff); },
-    get size() { return items.length; },
+    add(ff) { items.push(ff); },
+    delete(ff) { const i = items.indexOf(ff); if (i >= 0) items.splice(i, 1); },
+    clear() { items.length = 0; },
     ready: Promise.resolve(),
+    // extra mínimo
+    size: items.length
   };
 
   Object.defineProperty(document, 'fonts', {
     configurable: true,
     get() { return fakeSet; },
+    set() {}
   });
 
   return () => { delete document.fonts; };
@@ -80,22 +97,13 @@ describe('iconToImage', () => {
       textBaseline: '',
       fillStyle: '',
       fillText: vi.fn(),
-      // mide algo > 0
-      measureText: () => ({ width: 10, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2 }),
-      // opcionalmente usado por algunas impls:
-      clearRect: vi.fn(),
-      save: vi.fn(),
-      restore: vi.fn(),
     }));
+    toDataURLSpy = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => 'data:image/png;base64,TEST');
 
-    toDataURLSpy = vi
-      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
-      .mockReturnValue('data:image/png;base64,AA==');
-
-    const result = await iconToImage('★', 'Arial', 'bold', 32, '#000');
-    expect(result.dataUrl.startsWith('data:image/')).toBe(true);
-    expect(result.width).toBeGreaterThan(0);
-    expect(result.height).toBeGreaterThan(0);
+    const { dataUrl, width, height } = await iconToImage('A', 'Arial', '400', 16, '#000');
+    expect(dataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(width).toBeGreaterThan(0);
+    expect(height).toBeGreaterThan(0);
   });
 });
 
@@ -104,14 +112,17 @@ describe('embedCustomFonts', () => {
   it('conserva @font-face con solo local() en src', async () => {
     const style = addStyleTag(`
       @font-face {
-        font-family: OnlyLocal;
+        font-family: 'OnlyLocal';
         src: local("Arial");
         font-style: normal;
-        font-weight: normal;
+        font-weight: 400;
       }
     `);
 
-    const css = await embedCustomFonts();
+    const css = await embedCustomFonts({
+      required: makeRequired('OnlyLocal', '400', 'normal', 100),
+      usedCodepoints: makeUsedCodepoints('abc')
+    });
     expect(css).toMatch(/font-family:\s*['"]?OnlyLocal['"]?/);
     expect(css).toMatch(/src:\s*local\(["']Arial["']\)/);
     document.head.removeChild(style);
@@ -128,13 +139,18 @@ describe('embedCustomFonts', () => {
       @font-face { font-family: 'UnusedFont'; src: url(data:font/woff;base64,BB==); }
     `);
 
-    const css = await embedCustomFonts();
+    const css = await embedCustomFonts({
+      required: makeRequired('UsedFont', '400', 'normal', 100),
+      usedCodepoints: makeUsedCodepoints('A')
+    });
     expect(css).toMatch(/UsedFont/);
     expect(css).not.toMatch(/UnusedFont/);
   });
 
   it('embebe fuentes locales provistas', async () => {
     const css = await embedCustomFonts({
+      required: makeRequired('MyLocal', '400', 'normal', 100),
+      usedCodepoints: makeUsedCodepoints('A'),
       localFonts: [{ family: 'MyLocal', src: 'data:font/woff;base64,AA==' }],
     });
     expect(css).toMatch(/font-family:\s*['"]?MyLocal['"]?/);
@@ -146,7 +162,11 @@ describe('embedCustomFonts', () => {
     restoreFonts = setDocumentFonts([
       { family: 'DynFont', status: 'loaded', weight: 'normal', style: 'normal', _snapdomSrc: 'data:font/woff;base64,CC==' },
     ]);
-    const css = await embedCustomFonts();
+
+    const css = await embedCustomFonts({
+      required: makeRequired('DynFont', '400', 'normal', 100),
+      usedCodepoints: makeUsedCodepoints('A'),
+    });
     expect(css).toMatch(/font-family:\s*['"]?DynFont['"]?/);
     expect(css).toMatch(/CC==/);
   });
@@ -161,7 +181,10 @@ describe('embedCustomFonts', () => {
       }
     `);
 
-    const css = await embedCustomFonts();
+    const css = await embedCustomFonts({
+      required: makeRequired('LocalFont', '700', 'italic', 100),
+      usedCodepoints: makeUsedCodepoints('Z')
+    });
     expect(css).toMatch(/font-family:\s*['"]?LocalFont['"]?/);
     expect(css).toMatch(/src:\s*local\(['"]MyFont['"]\),\s*local\(['"]FallbackFont['"]\)/);
     expect(css).toMatch(/font-style:\s*italic/);
