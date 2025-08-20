@@ -7,7 +7,7 @@ import { prepareClone } from './prepare.js';
 import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
 import { idle,collectUsedTagNames, generateDedupedBaseCSS } from '../utils/index.js';
-import { embedCustomFonts } from '../modules/fonts.js';
+import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints } from '../modules/fonts.js';
 import { cache } from '../core/cache.js'
 
 /**
@@ -51,7 +51,16 @@ export async function captureDOM(element, options) {
   if (options.embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
-        fontsCSS = await embedCustomFonts(options);
+        // en tu captureDOM (o prepareClone) antes de llamar embedCustomFonts:
+const required = collectUsedFontVariants(element);
+const usedCodepoints = collectUsedCodepoints(element);
+// ...
+
+ fontsCSS = await embedCustomFonts({ required, usedCodepoints, preCached: false,  exclude: options.fontExclude, useProxy: options.useProxy });
+
+// luego concat: baseCSS + fontsCSS + ...
+
+      //  fontsCSS = await embedCustomFonts(options);
         resolve();
       }, { fast });
     });

@@ -1,40 +1,61 @@
+// src/api/preCache.js
+
 import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage, precacheCommonTags } from '../utils';
-import { embedCustomFonts } from '../modules/fonts.js';
+import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints } from '../modules/fonts.js';
 import { cache } from '../core/cache.js';
 
 /**
- * Preloads images, background images, and optionally fonts into cache before DOM capture.
- * Nunca deja promesas rechazadas sin manejar (evita unhandled rejections).
+ * Preloads images, background images, and (optionally) fonts into cache before DOM capture.
+ * - Never leaves unhandled rejections (uses catch / Promise.allSettled).
+ * - Fonts are embedded in "smart" mode: only families/weights/styles/stretch actually used under `root`,
+ *   further pruned by unicode-range intersection. Honors simple excludes from options.fontExclude.
+ *
+ * @param {Element|Document} [root=document]   - Subtree to analyze (only this subtree is scanned)
+ * @param {Object} [options={}]
+ * @param {boolean} [options.embedFonts=true]
+ * @param {boolean} [options.reset=false]
+ * @param {string}  [options.useProxy=""]
+ * @param {Array<{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}>} [options.localFonts=[]]
+ * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.fontExclude]
+ * @returns {Promise<void>}
  */
 export async function preCache(root = document, options = {}) {
-  const { embedFonts = true, reset = false, useProxy } = options;
+  const {
+    embedFonts = true,
+    reset = false,
+    useProxy = "",
+  } = options;
 
   if (reset) {
-    // Resetea sin reasignar (los tests llaman cache.reset(), pero por si acaso)
-   cache.image.clear(); 
-   cache.background.clear(); 
-   cache.resource.clear(); 
-   cache.defaultStyle.clear(); 
-   cache.baseStyle.clear(); 
-   cache.font.clear(); 
-   cache.computedStyle = new WeakMap(); 
+    // Soft reset: clear all caches and computed styles
+    cache.image.clear();
+    cache.background.clear();
+    cache.resource.clear();
+    cache.defaultStyle.clear();
+    cache.baseStyle.clear();
+    cache.font.clear();
+    cache.computedStyle = new WeakMap();
     return;
   }
 
-  // Fonts: no rompas el flujo si falla en tests/browser
+  // Fonts readiness: don't crash in test/headless environments
   try { await document.fonts.ready; } catch {}
 
+  // Common <img>/<link rel="icon">, etc.
   precacheCommonTags();
 
+  // Collect elements inside root (bounded scan)
   let imgEls = [], allEls = [];
-  if (root?.querySelectorAll) {
-    imgEls = Array.from(root.querySelectorAll('img[src]'));
-    allEls = Array.from(root.querySelectorAll('*'));
-  }
+  try {
+    if (root?.querySelectorAll) {
+      imgEls = Array.from(root.querySelectorAll('img[src]'));
+      allEls = Array.from(root.querySelectorAll('*'));
+    }
+  } catch { /* ignore */ }
 
   const promises = [];
 
-  // <img>
+  // <img src="..."> → cache as dataURL
   for (const img of imgEls) {
     const src = img?.src;
     if (!src) continue;
@@ -42,12 +63,12 @@ export async function preCache(root = document, options = {}) {
       const p = Promise.resolve()
         .then(() => fetchImage(src, { useProxy }))
         .then((dataURL) => { cache.image.set(src, dataURL); })
-        .catch(() => {}); // traga error para no propagar
+        .catch(() => {}); // swallow error to avoid bubbling
       promises.push(p);
     }
   }
 
-  // background-image
+  // background-image: url(...) in any element
   for (const el of allEls) {
     let bg = '';
     try { bg = getStyle(el).backgroundImage; } catch {}
@@ -57,16 +78,33 @@ export async function preCache(root = document, options = {}) {
         if (entry.startsWith('url(')) {
           const p = Promise.resolve()
             .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
-            .catch(() => {}); // traga error
+            .catch(() => {}); // swallow error
           promises.push(p);
         }
       }
     }
   }
 
+  // Fonts (smart): collect only from the same subtree `root`
   if (embedFonts) {
-    try {await embedCustomFonts({ preCached: true, localFonts: options.localFonts, useProxy: options.useProxy })} catch {};
+    try {
+      const required = collectUsedFontVariants(root);     // Set<string> family__weight__style__stretchPct
+      const usedCodepoints = collectUsedCodepoints(root); // Set<number>
+
+      // preCached=true injects the style now AND stores "fonts-embed-css" in cache.resource
+      await embedCustomFonts({
+        required,
+        usedCodepoints,
+        exclude: options.fontExclude,   // { families?, domains?, subsets? }
+        preCached: true,
+        localFonts: options.localFonts,
+        useProxy: options.useProxy ?? useProxy,
+      });
+    } catch {
+      // swallow font errors; don't fail preCache
+    }
   }
 
+  // Wait for non-font assets
   await Promise.allSettled(promises);
 }

@@ -21,9 +21,9 @@ export const cache = {
 
 function resetCache() {
   cache.computedStyle = new WeakMap();
-  cache.session.styleMap.clear()
+  cache.session.styleMap = new Map()
   cache.session.styleCache = new WeakMap()
-  cache.session.nodeMap.clear()
-  cache.defaultStyle.clear()
-  cache.baseStyle.clear()
+  cache.session.nodeMap = new Map()
+  cache.defaultStyle = new Map()
+  cache.baseStyle = new Map()
 }
