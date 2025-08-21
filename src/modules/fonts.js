@@ -528,11 +528,11 @@ if (importUrls.length) {
         if (isIconFont(link.href)) continue;
       }
 
-      let cssOut = cssText;
+      let facesOut = "";
       for (const face of cssText.match(FACE_RE) || []) {
         const famRaw      = (face.match(/font-family:\s*([^;]+);/i)?.[1] || "").trim();
         const family      = pickPrimaryFamily(famRaw);
-        if (!family || isIconFont(family)) { cssOut = cssOut.replace(face, ""); continue; }
+        if (!family || isIconFont(family)) {  continue; }
 
         const weightSpec  = (face.match(/font-weight:\s*([^;]+);/i)?.[1] || "400").trim();
         const styleSpec   = (face.match(/font-style:\s*([^;]+);/i)?.[1]  || "normal").trim();
@@ -541,18 +541,20 @@ if (importUrls.length) {
         const srcRaw      = (face.match(/src\s*:\s*([^;]+);/i)?.[1]     || "").trim();
         const srcUrls     = extractSrcUrls(srcRaw, link.href);
 
-        if (!faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) { cssOut = cssOut.replace(face, ""); continue; }
+        if (!faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) {  continue; }
         const ranges = parseUnicodeRange(urange);
-        if (!unicodeIntersects(usedCodepoints, ranges)) { cssOut = cssOut.replace(face, ""); continue; }
+        if (!unicodeIntersects(usedCodepoints, ranges)) {  continue; }
 
         const meta = { family, weightSpec, styleSpec, stretchSpec, unicodeRange: urange, srcRaw, srcUrls, href: link.href };
-        if (exclude && simpleExcluder(meta, ranges)) { cssOut = cssOut.replace(face, ""); continue; }
+        if (exclude && simpleExcluder(meta, ranges)) {  continue; }
 
-        const newFace = /url\(/i.test(srcRaw) ? await inlineUrlsInCssBlock(face, link.href) : face;
-        cssOut = cssOut.replace(face, newFace);
+        const newFace = /url\(/i.test(srcRaw)
+         ? await inlineUrlsInCssBlock(face, link.href)
+         : face;
+       facesOut += newFace + "\n";
       }
 
-      if (cssOut.trim()) finalCSS += cssOut + "\n";
+      if (facesOut.trim()) finalCSS += facesOut + "\n";
     } catch (e) {
       console.warn("[snapdom] Failed to process stylesheet:", link.href);
     }
