@@ -191,3 +191,52 @@ describe('embedCustomFonts', () => {
     document.head.removeChild(style);
   });
 });
+
+
+
+/**
+ * Ensures that when a family only publishes a single weight (e.g., 400),
+ * and the required variant asks for 700, we still embed the available 400 face
+ * (browser will synthesize bold). This covers families like "Mansalva".
+ */
+describe('embedCustomFonts - single weight fallback', () => {
+  it('embeds the 400 @font-face when 700 is required (fallback)', async () => {
+    // Prepare a minimal @font-face for "Mansalva" with only weight 400
+    const style = document.createElement('style');
+    style.textContent = `
+      @font-face {
+        font-family: 'Mansalva';
+        font-style: normal;
+        font-weight: 400;
+        font-stretch: 100%;
+        unicode-range: U+000-5FF;
+        src: local('Mansalva'),
+             url(data:font/woff2;base64,AA==) format('woff2');
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Required variants:
+    // ask for 700 normal stretch=100% (our faceMatchesRequired must accept nearest=400)
+    const required = new Set([`Mansalva__700__normal__100`]);
+
+    // Used codepoints: any latin char; we keep within declared unicode-range
+    const usedCodepoints = new Set([65]); // 'A'
+
+    const css = await embedCustomFonts({
+      required,
+      usedCodepoints,
+      // no excludes, no proxy
+    });
+
+    // Expectations:
+    expect(css).toMatch(/font-family:\s*['"]?Mansalva['"]?/);
+    // It must embed the available 400 face (we accept nearest)
+    expect(css).toMatch(/font-weight:\s*400/);
+    // And keep the inlined data URL we provided
+    expect(css).toMatch(/data:font\/woff2;base64,AA==/);
+
+    document.head.removeChild(style);
+  });
+});
+
