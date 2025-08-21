@@ -151,6 +151,58 @@ function normStretchPct(st) {
     const v = m ? parseFloat(m[1]) : 100;
     return { min: v, max: v };
   };
+/**
+ * Return true if a stylesheet URL is likely to contain @font-face rules.
+ * Conservative allowlist for cross-origin fetches.
+ * - Same-origin: always allowed (we read CSSOM, no fetch).
+ * - Cross-origin: allow only well-known font hosts or URLs containing family hints.
+ * @param {string} href
+ * @param {Set<string>} requiredFamilies // plain names e.g. "Unbounded", "Mansalva"
+ */
+function isLikelyFontStylesheet(href, requiredFamilies) {
+  if (!href) return false;
+  try {
+    const u = new URL(href, location.href);
+    const sameOrigin = (u.origin === location.origin);
+    if (sameOrigin) return true; // read via CSSOM, no network fetch here
+
+    const host = u.host.toLowerCase();
+    // common font CDNs / keywords
+    const FONT_HOSTS = [
+      'fonts.googleapis.com', 'fonts.gstatic.com',
+      'use.typekit.net', 'p.typekit.net', 'kit.fontawesome.com', 'use.fontawesome.com'
+    ];
+    if (FONT_HOSTS.some(h => host.endsWith(h))) return true;
+
+    // fallback: heuristic by path keywords
+    const path = (u.pathname + u.search).toLowerCase();
+    if (/\bfont(s)?\b/.test(path) || /\.woff2?(\b|$)/.test(path)) return true;
+
+    // check if any required family token appears in the URL (e.g., family=Unbounded)
+    for (const fam of requiredFamilies) {
+      const tokenA = fam.toLowerCase().replace(/\s+/g, '+');
+      const tokenB = fam.toLowerCase().replace(/\s+/g, '-');
+      if (path.includes(tokenA) || path.includes(tokenB)) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Handy: build the set of plain family names from the required keys.
+ * required key format: "family__weight__style__stretchPct"
+ * @param {Set<string>} required
+ */
+function familiesFromRequired(required) {
+  const out = new Set();
+  for (const k of (required || [])) {
+    const fam = String(k).split('__')[0]?.trim();
+    if (fam) out.add(fam);
+  }
+  return out;
+}
 
 /**
  * Embed only the @font-face rules that match required variants AND intersect used unicode ranges.
@@ -175,30 +227,88 @@ export async function embedCustomFonts({
   localFonts = [],
   useProxy = "",
 } = {}) {
-  // ---------- Fast path from cache ----------
-  if (cache.resource?.has("fonts-embed-css")) {
-    const css = cache.resource.get("fonts-embed-css");
-    if (preCached) {
-      const style = document.createElement("style");
-      style.setAttribute("data-snapdom", "embedFonts");
-      style.textContent = css;
-      document.head.appendChild(style);
-    }
-    return css;
+  // ---------- Normalize inputs ----------
+  if (!(required instanceof Set)) required = new Set();
+  if (!(usedCodepoints instanceof Set)) usedCodepoints = new Set();
+
+  // Build index: family -> [{w,s,st}]
+  const requiredIndex = new Map();
+  for (const key of required) {
+    const [fam, w, s, st] = String(key).split("__");
+    if (!fam) continue;
+    const arr = requiredIndex.get(fam) || [];
+    arr.push({ w: parseInt(w, 10), s, st: parseInt(st, 10) });
+    requiredIndex.set(fam, arr);
   }
 
-  // ---------- Helpers (local, no external deps) ----------
+  // ---- Local helpers (scoped) ----
   const IMPORT_RE = /@import\s+url\(["']?([^"')]+)["']?\)/g;
   const URL_RE    = /url\((["']?)([^"')]+)\1\)/g;
   const FACE_RE   = /@font-face[^{}]*\{[^}]*\}/g;
 
-
   /**
-   * Parse unicode-range string into array of [min,max] integers.
-   * Supports wildcards (e.g., U+4??).
-   * @param {string} ur
-   * @returns {Array<[number,number]>}
-   */
+ * Decide si un @font-face (por family/style/weight/stretch declarados en CSS)
+ * satisface alguna variante requerida. Acepta:
+ * - Coincidencia exacta por rango (p.ej. 100..900 incluye cualquier req).
+ * - Coincidencia exacta por valor.
+ * - Fallback por “mejor cercano” cuando el face declara un único peso y la familia
+ *   no publica el requerido (p.ej. req=700, face=400 ⇒ OK).
+ */
+function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
+  if (!requiredIndex.has(fam)) return false;
+
+  const need    = requiredIndex.get(fam);           // [{ w:number, s:string, st:number }]
+  const ws      = parseWeightSpec(weightSpec);      // { min, max }
+  const ss      = parseStyleSpec(styleSpec);        // { kind: 'normal'|'italic'|'oblique' }
+  const ts      = parseStretchSpec(stretchSpec);    // { min, max }
+
+  // ¿El face declara un rango real (no single)?
+  const faceIsRange = ws.min !== ws.max;
+  const faceSingleW = ws.min; // si single, min==max
+
+  // helper: ¿req.style es compatible con face.style?
+  const styleOK = (reqKind) => (
+    (ss.kind === 'normal' && reqKind === 'normal') ||
+    (ss.kind !== 'normal' && (reqKind === 'italic' || reqKind === 'oblique'))
+  );
+
+  let exactMatched = false;
+
+  for (const r of need) {
+    // Coincidencia exacta por rango/peso
+    const wOk = faceIsRange ? (r.w >= ws.min && r.w <= ws.max) : (r.w === faceSingleW);
+    const sOk = styleOK(normStyle(r.s));
+    const tOk = (r.st >= ts.min && r.st <= ts.max);
+
+    if (wOk && sOk && tOk) {
+      exactMatched = true;
+      break;
+    }
+  }
+
+  if (exactMatched) return true;
+
+  // --- Fallback “mejor cercano” ---
+  // Si el face NO trae rango (solo un peso) y falló exacto, permitimos cercanía.
+  // Razonamiento: algunos families (Mansalva, etc.) solo publican 400 y el navegador
+  // sintetiza bold/italic. Aceptamos diferencia de hasta 300 (400 vs 700).
+  if (!faceIsRange) {
+    for (const r of need) {
+      const sOk = styleOK(normStyle(r.s));
+      const tOk = (r.st >= ts.min && r.st <= ts.max);
+      const nearWeight = Math.abs(faceSingleW - r.w) <= 300; // 100..900 pasos de 100
+
+      if (nearWeight && sOk && tOk) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+
+  /** @param {string} ur */
   function parseUnicodeRange(ur) {
     if (!ur) return [];
     const ranges = [];
@@ -217,7 +327,7 @@ export async function embedCustomFonts({
         const A = expand(a), B = expand(b);
         const min = Array.isArray(A) ? A[0] : A;
         const max = Array.isArray(B) ? B[1] : B;
-        ranges.push([Math.min(min,max), Math.max(min,max)]);
+        ranges.push([Math.min(min, max), Math.max(min, max)]);
       } else {
         const X = expand(a);
         if (Array.isArray(X)) ranges.push([X[0], X[1]]);
@@ -227,65 +337,16 @@ export async function embedCustomFonts({
     return ranges;
   }
 
-  /**
-   * Return true if any codepoint in `used` lies within `ranges`.
-   * If ranges is empty => keep (no unicode-range declared).
-   * @param {Set<number>} used
-   * @param {Array<[number,number]>} ranges
-   */
+  /** @param {Set<number>} used @param {Array<[number,number]>} ranges */
   function unicodeIntersects(used, ranges) {
     if (!ranges.length) return true;
     for (const cp of used) {
-      for (const [a,b] of ranges) if (cp >= a && cp <= b) return true;
+      for (const [a, b] of ranges) if (cp >= a && cp <= b) return true;
     }
     return false;
   }
 
-  /**
-   * Map unicode ranges to a coarse subset label (for simple excludes).
-   * Returns one of "latin","latin-ext","greek","cyrillic","vietnamese" or null.
-   * @param {Array<[number,number]>} ranges
-   * @returns {string|null}
-   */
-  function subsetFromRanges(ranges) {
-    if (!ranges.length) return null;
-    const hit = (a,b) => ranges.some(([x,y]) => !(y < a || x > b));
-    const latin    = hit(0x0000,0x00FF) || hit(0x0131,0x0131);
-    const latinExt = hit(0x0100,0x024F) || hit(0x1E00,0x1EFF);
-    const greek    = hit(0x0370,0x03FF);
-    const cyr      = hit(0x0400,0x04FF);
-    const viet     = hit(0x1EA0,0x1EF9) || hit(0x0102,0x0103) || hit(0x01A0,0x01A1) || hit(0x01AF,0x01B0);
-    if (viet) return "vietnamese";
-    if (cyr)  return "cyrillic";
-    if (greek) return "greek";
-    if (latinExt) return "latin-ext";
-    if (latin) return "latin";
-    return null;
-  }
-
-  /**
-   * Build a simple excluder (no regex) from {families, domains, subsets}.
-   * Returns a predicate(meta, parsedRanges) => true to exclude.
-   */
-  function buildSimpleExcluder(ex = {}) {
-    const famSet = new Set((ex.families || []).map(s => String(s).toLowerCase()));
-    const domSet = new Set((ex.domains  || []).map(s => String(s).toLowerCase()));
-    const subSet = new Set((ex.subsets  || []).map(s => String(s).toLowerCase()));
-    return (meta, parsedRanges) => {
-      if (famSet.size && famSet.has(meta.family.toLowerCase())) return true;
-      if (domSet.size) {
-        for (const u of meta.srcUrls) {
-          try { if (domSet.has(new URL(u).host.toLowerCase())) return true; } catch {}
-        }
-      }
-      if (subSet.size) {
-        const label = subsetFromRanges(parsedRanges);
-        if (label && subSet.has(label)) return true;
-      }
-      return false;
-    };
-  }
-
+  /** @param {string} srcValue @param {string} baseHref */
   function extractSrcUrls(srcValue, baseHref) {
     const urls = [];
     if (!srcValue) return urls;
@@ -300,6 +361,7 @@ export async function embedCustomFonts({
     return urls;
   }
 
+  /** @param {string} cssBlock @param {string} baseHref */
   async function inlineUrlsInCssBlock(cssBlock, baseHref) {
     let out = cssBlock;
     for (const m of cssBlock.matchAll(URL_RE)) {
@@ -336,44 +398,83 @@ export async function embedCustomFonts({
     return out;
   }
 
-  // ---------- Required/used indexes ----------
-  if (!(required instanceof Set)) required = new Set();
-  if (!(usedCodepoints instanceof Set)) usedCodepoints = new Set();
+  // ---- simple exclude builder (families/domains/subsets) ----
+  function subsetFromRanges(ranges) {
+    if (!ranges.length) return null;
+    const hit = (a, b) => ranges.some(([x, y]) => !(y < a || x > b));
+    const latin    = hit(0x0000, 0x00FF) || hit(0x0131, 0x0131);
+    const latinExt = hit(0x0100, 0x024F) || hit(0x1E00, 0x1EFF);
+    const greek    = hit(0x0370, 0x03FF);
+    const cyr      = hit(0x0400, 0x04FF);
+    const viet     = hit(0x1EA0, 0x1EF9) || hit(0x0102, 0x0103) || hit(0x01A0, 0x01A1) || hit(0x01AF, 0x01B0);
+    if (viet) return "vietnamese";
+    if (cyr)  return "cyrillic";
+    if (greek) return "greek";
+    if (latinExt) return "latin-ext";
+    if (latin) return "latin";
+    return null;
+  }
+  function buildSimpleExcluder(ex = {}) {
+    const famSet = new Set((ex.families || []).map(s => String(s).toLowerCase()));
+    const domSet = new Set((ex.domains  || []).map(s => String(s).toLowerCase()));
+    const subSet = new Set((ex.subsets  || []).map(s => String(s).toLowerCase()));
+    return (meta, parsedRanges) => {
+      if (famSet.size && famSet.has(meta.family.toLowerCase())) return true;
+      if (domSet.size) {
+        for (const u of meta.srcUrls) {
+          try { if (domSet.has(new URL(u).host.toLowerCase())) return true; } catch {}
+        }
+      }
+      if (subSet.size) {
+        const label = subsetFromRanges(parsedRanges);
+        if (label && subSet.has(label)) return true;
+      }
+      return false;
+    };
+  }
+  const simpleExcluder = buildSimpleExcluder(exclude);
 
-  const requiredIndex = new Map(); // fam -> [{w,s,st}]
-  for (const key of required) {
-    const [fam, w, s, st] = String(key).split("__");
-    if (!fam) continue;
-    const arr = requiredIndex.get(fam) || [];
-    arr.push({ w: parseInt(w,10), s, st: parseInt(st,10) });
-    requiredIndex.set(fam, arr);
+  // ---- cache key per capture signature (avoid cross‑pollution between different targets) ----
+  function buildFontsCacheKey() {
+    const req = Array.from(required || []).sort().join('|');
+    const ex  = exclude ? JSON.stringify({
+      families: (exclude.families || []).map(s => String(s).toLowerCase()).sort(),
+      domains:  (exclude.domains  || []).map(s => String(s).toLowerCase()).sort(),
+      subsets:  (exclude.subsets  || []).map(s => String(s).toLowerCase()).sort(),
+    }) : '';
+    const lf  = (localFonts || [])
+      .map(f => `${(f.family||'').toLowerCase()}::${f.weight||'normal'}::${f.style||'normal'}::${f.src||''}`)
+      .sort()
+      .join('|');
+    const px  = useProxy || '';
+    return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}`;
+  }
+  function injectOrReplaceEmbedStyle(cssText) {
+    document.querySelectorAll('style[data-snapdom="embedFonts"]').forEach(s => s.remove());
+    const style = document.createElement('style');
+    style.setAttribute('data-snapdom', 'embedFonts');
+    style.textContent = cssText;
+    document.head.appendChild(style);
+    return style;
+  }
+  const cacheKey = buildFontsCacheKey();
+  if (cache.resource?.has(cacheKey)) {
+    const css = cache.resource.get(cacheKey);
+    if (preCached && css) injectOrReplaceEmbedStyle(css);
+    return css;
   }
 
-  function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
-    if (!requiredIndex.has(fam)) return false;
-    const need = requiredIndex.get(fam);
-    const ws = parseWeightSpec(weightSpec);
-    const ss = parseStyleSpec(styleSpec);
-    const ts = parseStretchSpec(stretchSpec);
-    for (const r of need) {
-      const wOk = (r.w >= ws.min && r.w <= ws.max);
-      const sNeed = normStyle(r.s);
-      const sOk =
-        (ss.kind === "normal" && sNeed === "normal") ||
-        (ss.kind !== "normal" && (sNeed === "italic" || sNeed === "oblique"));
-      const tOk = (r.st >= ts.min && r.st <= ts.max);
-      if (wOk && sOk && tOk) return true;
-    }
-    return false;
-  }
-
-  // ---------- Ensure @import styles are reachable as <link> ----------
+  // ---- Ensure only likely @import font styles become reachable (<link>), avoid noise (orbit, fa, etc.) ----
+  const requiredFamilies = familiesFromRequired(required);
   const importUrls = [];
   for (const styleTag of document.querySelectorAll("style")) {
     const cssText = styleTag.textContent || "";
     for (const m of cssText.matchAll(IMPORT_RE)) {
       const u = m[1];
-      if (u && !isIconFont(u) && !Array.from(document.styleSheets).some(s => s.href === u)) {
+      if (!u) continue;
+      if (isIconFont(u)) continue;
+      if (!isLikelyFontStylesheet(u, requiredFamilies)) continue;
+      if (!Array.from(document.styleSheets).some(s => s.href === u)) {
         importUrls.push(u);
       }
     }
@@ -391,9 +492,6 @@ export async function embedCustomFonts({
     })));
   }
 
-  // ---------- Simple excluder ----------
-  const simpleExcluder = buildSimpleExcluder(exclude);
-
   let finalCSS = "";
 
   // ---------- 1) External <link rel="stylesheet"> ----------
@@ -401,22 +499,47 @@ export async function embedCustomFonts({
 
   for (const link of linkNodes) {
     try {
-      const res = await fetchResource(link.href, { useProxy });
-      const cssText = await res.text();
+      // skip icon fonts by href early
       if (isIconFont(link.href)) continue;
+
+      // same-origin => prefer CSSOM (no fetch)
+      let cssText = '';
+      let sameOrigin = false;
+      try { sameOrigin = new URL(link.href, location.href).origin === location.origin; } catch {}
+      if (!sameOrigin) {
+        // cross-origin: only fetch if likely font stylesheet
+        if (!isLikelyFontStylesheet(link.href, requiredFamilies)) continue;
+      }
+
+      if (sameOrigin) {
+        const sheet = Array.from(document.styleSheets).find(s => s.href === link.href);
+        if (sheet) {
+          try {
+            const rules = sheet.cssRules || [];
+            cssText = Array.from(rules).map(r => r.cssText).join('\n');
+          } catch {
+            // fallback to fetch
+          }
+        }
+      }
+      if (!cssText) {
+        const res = await fetchResource(link.href, { useProxy });
+        cssText = await res.text();
+        if (isIconFont(cssText)) continue;
+      }
 
       let cssOut = cssText;
       for (const face of cssText.match(FACE_RE) || []) {
-        const famRaw     = (face.match(/font-family:\s*([^;]+);/i)?.[1] || "").trim();
-        const family     = pickPrimaryFamily(famRaw);
+        const famRaw      = (face.match(/font-family:\s*([^;]+);/i)?.[1] || "").trim();
+        const family      = pickPrimaryFamily(famRaw);
         if (!family || isIconFont(family)) { cssOut = cssOut.replace(face, ""); continue; }
 
-        const weightSpec = (face.match(/font-weight:\s*([^;]+);/i)?.[1] || "400").trim();
-        const styleSpec  = (face.match(/font-style:\s*([^;]+);/i)?.[1]  || "normal").trim();
-        const stretchSpec= (face.match(/font-stretch:\s*([^;]+);/i)?.[1]|| "100%").trim();
-        const urange     = (face.match(/unicode-range:\s*([^;]+);/i)?.[1]|| "").trim();
-        const srcRaw     = (face.match(/src\s*:\s*([^;]+);/i)?.[1]     || "").trim();
-        const srcUrls    = extractSrcUrls(srcRaw, link.href);
+        const weightSpec  = (face.match(/font-weight:\s*([^;]+);/i)?.[1] || "400").trim();
+        const styleSpec   = (face.match(/font-style:\s*([^;]+);/i)?.[1]  || "normal").trim();
+        const stretchSpec = (face.match(/font-stretch:\s*([^;]+);/i)?.[1] || "100%").trim();
+        const urange      = (face.match(/unicode-range:\s*([^;]+);/i)?.[1]|| "").trim();
+        const srcRaw      = (face.match(/src\s*:\s*([^;]+);/i)?.[1]     || "").trim();
+        const srcUrls     = extractSrcUrls(srcRaw, link.href);
 
         if (!faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) { cssOut = cssOut.replace(face, ""); continue; }
         const ranges = parseUnicodeRange(urange);
@@ -431,28 +554,30 @@ export async function embedCustomFonts({
 
       if (cssOut.trim()) finalCSS += cssOut + "\n";
     } catch (e) {
-      console.warn("[snapdom] Failed to fetch CSS:", link.href);
+      console.warn("[snapdom] Failed to process stylesheet:", link.href);
     }
   }
 
   // ---------- 2) CSSOM (inline/imported) ----------
   for (const sheet of document.styleSheets) {
     try {
+      // avoid double-processing if already handled via link loop
       if (sheet.href && linkNodes.some(l => l.href === sheet.href)) continue;
+
       const rules = sheet.cssRules || [];
       for (const rule of rules) {
         if (rule.type !== CSSRule.FONT_FACE_RULE) continue;
 
-        const famRaw     = (rule.style.getPropertyValue("font-family") || "").trim();
-        const family     = pickPrimaryFamily(famRaw);
+        const famRaw      = (rule.style.getPropertyValue("font-family") || "").trim();
+        const family      = pickPrimaryFamily(famRaw);
         if (!family || isIconFont(family)) continue;
 
-        const weightSpec = (rule.style.getPropertyValue("font-weight")  || "400").trim();
-        const styleSpec  = (rule.style.getPropertyValue("font-style")    || "normal").trim();
-        const stretchSpec= (rule.style.getPropertyValue("font-stretch")  || "100%").trim();
-        const srcRaw     = (rule.style.getPropertyValue("src") || "").trim();
-        const urange     = (rule.style.getPropertyValue("unicode-range") || "").trim();
-        const srcUrls    = extractSrcUrls(srcRaw, sheet.href || location.href);
+        const weightSpec  = (rule.style.getPropertyValue("font-weight")  || "400").trim();
+        const styleSpec   = (rule.style.getPropertyValue("font-style")    || "normal").trim();
+        const stretchSpec = (rule.style.getPropertyValue("font-stretch")  || "100%").trim();
+        const srcRaw      = (rule.style.getPropertyValue("src") || "").trim();
+        const urange      = (rule.style.getPropertyValue("unicode-range") || "").trim();
+        const srcUrls     = extractSrcUrls(srcRaw, sheet.href || location.href);
 
         if (!faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) continue;
         const ranges = parseUnicodeRange(urange);
@@ -465,6 +590,7 @@ export async function embedCustomFonts({
           const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, sheet.href || location.href);
           finalCSS += `@font-face{font-family:${family};src:${inlinedSrc};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange?`unicode-range:${urange};`:""}}\n`;
         } else {
+          // keep local()-only variants
           finalCSS += `@font-face{font-family:${family};src:${srcRaw};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange?`unicode-range:${urange};`:""}}\n`;
         }
       }
@@ -473,7 +599,7 @@ export async function embedCustomFonts({
     }
   }
 
-  // ---------- 3) document.fonts with _snapdomSrc (optional & consistent with "smart") ----------
+  // ---------- 3) document.fonts with _snapdomSrc ----------
   try {
     for (const f of document.fonts || []) {
       if (!f || !f.family || f.status !== "loaded" || !f._snapdomSrc) continue;
@@ -481,7 +607,6 @@ export async function embedCustomFonts({
       if (isIconFont(fam)) continue;
       if (!requiredIndex.has(fam)) continue;
 
-      // Simple family-level exclude applies here too
       if (exclude?.families && exclude.families.some(n => String(n).toLowerCase() === fam.toLowerCase())) {
         continue;
       }
@@ -552,16 +677,16 @@ export async function embedCustomFonts({
 
   // ---------- Cache + optional inject ----------
   if (finalCSS) {
-    cache.resource?.set("fonts-embed-css", finalCSS);
+    cache.resource?.set(cacheKey, finalCSS);
+    // borro global viejo si existiera (legacy)
+    if (cache.resource?.has('fonts-embed-css')) cache.resource.delete('fonts-embed-css');
     if (preCached) {
-      const style = document.createElement("style");
-      style.setAttribute("data-snapdom", "embedFonts");
-      style.textContent = finalCSS;
-      document.head.appendChild(style);
+      injectOrReplaceEmbedStyle(finalCSS);
     }
   }
   return finalCSS;
 }
+
 
 export function collectUsedFontVariants(root) {
   const req = /* @__PURE__ */ new Set();
