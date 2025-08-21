@@ -1,7 +1,7 @@
 // src/api/preCache.js
 
-import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage, precacheCommonTags } from '../utils';
-import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints } from '../modules/fonts.js';
+import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage, precacheCommonTags, isSafari } from '../utils';
+import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
 import { cache } from '../core/cache.js';
 
 /**
@@ -90,7 +90,15 @@ export async function preCache(root = document, options = {}) {
     try {
       const required = collectUsedFontVariants(root);     // Set<string> family__weight__style__stretchPct
       const usedCodepoints = collectUsedCodepoints(root); // Set<number>
-
+if (isSafari) {
+ const families = new Set(
+        Array.from(required)
+          .map(k => String(k).split('__')[0])
+          .filter(Boolean)
+      );
+      await ensureFontsReady(families, 2);
+}
+     
       // preCached=true injects the style now AND stores "fonts-embed-css" in cache.resource
       await embedCustomFonts({
         required,

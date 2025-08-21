@@ -6,8 +6,8 @@
 import { prepareClone } from './prepare.js';
 import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
-import { idle,collectUsedTagNames, generateDedupedBaseCSS } from '../utils/index.js';
-import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints } from '../modules/fonts.js';
+import { idle,collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js';
+import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
 import { cache } from '../core/cache.js'
 
 /**
@@ -55,7 +55,14 @@ export async function captureDOM(element, options) {
 const required = collectUsedFontVariants(element);
 const usedCodepoints = collectUsedCodepoints(element);
 // ...
-
+if (isSafari) {
+const families = new Set(
+        Array.from(required)
+          .map(k => String(k).split('__')[0])
+          .filter(Boolean)
+      );
+      await ensureFontsReady(families, 2);
+    }
  fontsCSS = await embedCustomFonts({ required, usedCodepoints, preCached: false,  exclude: options.fontExclude, useProxy: options.useProxy });
 
 // luego concat: baseCSS + fontsCSS + ...
