@@ -204,7 +204,7 @@ function familiesFromRequired(required) {
   return out;
 }
 
-/**
+/** FULL LAST
  * Embed only the @font-face rules that match required variants AND intersect used unicode ranges.
  * Smart by default + simple "exclude" knobs (no regex for end users).
  *
@@ -339,12 +339,14 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   /** @param {Set<number>} used @param {Array<[number,number]>} ranges */
   function unicodeIntersects(used, ranges) {
-    if (!ranges.length) return true;
-    for (const cp of used) {
-      for (const [a, b] of ranges) if (cp >= a && cp <= b) return true;
-    }
-    return false;
+  if (!ranges.length) return true;
+  // >>> FIX: si no hay usados conocidos, no filtres
+  if (!used || used.size === 0) return true;
+  for (const cp of used) {
+    for (const [a,b] of ranges) if (cp >= a && cp <= b) return true;
   }
+  return false;
+}
 
   /** @param {string} srcValue @param {string} baseHref */
   function extractSrcUrls(srcValue, baseHref) {
@@ -466,31 +468,29 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   // ---- Ensure only likely @import font styles become reachable (<link>), avoid noise (orbit, fa, etc.) ----
   const requiredFamilies = familiesFromRequired(required);
+  
   const importUrls = [];
-  for (const styleTag of document.querySelectorAll("style")) {
-    const cssText = styleTag.textContent || "";
-    for (const m of cssText.matchAll(IMPORT_RE)) {
-      const u = m[1];
-      if (!u) continue;
-      if (isIconFont(u)) continue;
-      if (!isLikelyFontStylesheet(u, requiredFamilies)) continue;
-      if (!Array.from(document.styleSheets).some(s => s.href === u)) {
-        importUrls.push(u);
-      }
-    }
+for (const styleTag of document.querySelectorAll("style")) {
+  const cssText = styleTag.textContent || "";
+  for (const m of cssText.matchAll(IMPORT_RE)) {
+    const u = m[1];
+    if (!u || isIconFont(u)) continue;
+    const hasLink = !!document.querySelector(`link[rel="stylesheet"][href="${u}"]`);
+    if (!hasLink) importUrls.push(u);
   }
-  if (importUrls.length) {
-    await Promise.all(importUrls.map((u) => new Promise((resolve) => {
-      if (Array.from(document.styleSheets).some(s => s.href === u)) return resolve(null);
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = u;
-      link.setAttribute("data-snapdom", "injected-import");
-      link.onload = () => resolve(link);
-      link.onerror = () => resolve(null);
-      document.head.appendChild(link);
-    })));
-  }
+}
+if (importUrls.length) {
+  await Promise.all(importUrls.map((u) => new Promise((resolve) => {
+    if (document.querySelector(`link[rel="stylesheet"][href="${u}"]`)) return resolve(null);
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = u;
+    link.setAttribute("data-snapdom", "injected-import");
+    link.onload = () => resolve(link);
+    link.onerror = () => resolve(null);
+    document.head.appendChild(link);
+  })));
+}
 
   let finalCSS = "";
 
@@ -525,7 +525,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!cssText) {
         const res = await fetchResource(link.href, { useProxy });
         cssText = await res.text();
-        if (isIconFont(cssText)) continue;
+        if (isIconFont(link.href)) continue;
       }
 
       let cssOut = cssText;
@@ -755,3 +755,61 @@ export function collectUsedCodepoints(root) {
   }
   return used;
 }
+
+/**
+ * Ensures web fonts are fully resolved before capture, with a Safari-friendly warm-up.
+ * - Awaits document.fonts.ready
+ * - Forces layout/rasterization for each family by painting hidden spans
+ * - Optionally retries a couple of times if Safari is still lazy
+ *
+ * @param {Set<string>|string[]} families - Plain family names (e.g., "Mansalva", "Unbounded")
+ * @param {number} [warmupRepetitions=1] - How many times to warm-up each family
+ * @returns {Promise<void>}
+ */
+export async function ensureFontsReady(families, warmupRepetitions = 1) {
+  try { await document.fonts.ready; } catch { /* ignore */ }
+
+  const fams = Array.from(families || []).filter(Boolean);
+  if (fams.length === 0) return;
+
+  // We do a warm-up by forcing layout on hidden spans using each family.
+  const warmupOnce = () => {
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: absolute !important;
+      left: -9999px !important;
+      top: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      contain: layout size style;
+    `;
+
+    for (const fam of fams) {
+      const span = document.createElement('span');
+      span.textContent = 'AaBbGg1234ÁÉÍÓÚçñ—∞'; // mezcla de glifos para activar latin/latin-ext
+      span.style.fontFamily = `"${fam}"`;
+      span.style.fontWeight = '700';      // fuerza bold sintetizado si no existe
+      span.style.fontStyle = 'italic';    // idem italic sintetizado
+      span.style.fontSize = '32px';
+      span.style.lineHeight = '1';
+      span.style.whiteSpace = 'nowrap';
+      span.style.margin = '0';
+      span.style.padding = '0';
+      container.appendChild(span);
+    }
+
+    document.body.appendChild(container);
+    // Force layout/reflow: read sizes
+    // eslint-disable-next-line no-unused-expressions
+    container.offsetWidth;
+    document.body.removeChild(container);
+  };
+
+  // Do 1..N warmups; on Safari a single pass suele ser suficiente, pero dejamos reps.
+  for (let i = 0; i < Math.max(1, warmupRepetitions); i++) {
+    warmupOnce();
+    // micro “yield” para dejar al layout pipeline aplicar la fuente
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }
+}
+
