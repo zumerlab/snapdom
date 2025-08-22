@@ -89,10 +89,9 @@ import { snapdom } from './snapdom.mjs';
 ## Basic usage
 
 ### Reusable capture
-
 ```js
 const el = document.querySelector('#target');
-const result = await snapdom(el, { scale: 2 });
+const result = await snapdom(el);
 
 const img = await result.toPng();
 document.body.appendChild(img);
@@ -101,7 +100,6 @@ await result.download({ format: 'jpg', filename: 'my-capture' });
 ```
 
 ### One-step shortcuts
-
 ```js
 const el = document.querySelector('#target');
 const png = await snapdom.toPng(el);
@@ -132,132 +130,161 @@ Returns an object with reusable export methods:
 
 ### Shortcut methods
 
-| Method                         | Description                           |
-| ------------------------------ | ------------------------------------- |
-| `snapdom.toImg(el, options?)`  | Returns an `HTMLImageElement`         |
-| `snapdom.toCanvas(el, options?)     ` | Returns a `Canvas`                    |
-| `snapdom.toBlob(el, options?)` | Returns an SVG `Blob`                 |
-| `snapdom.toPng(el, options?)`  | Returns a PNG image                   |
-| `snapdom.toJpg(el, options?)`  | Returns a JPG image                   |
-| `snapdom.toWebp(el, options?)` | Returns a WebP image                  |
-| `snapdom.download(el, options?)     ` | Triggers download in specified format |
+| Method                         | Description                       |
+| ------------------------------ | --------------------------------- |
+| `snapdom.toImg(el, options?)`  | Returns an `HTMLImageElement`     |
+| `snapdom.toCanvas(el, options?)` | Returns a `Canvas`               |
+| `snapdom.toBlob(el, options?)` | Returns an SVG or raster `Blob`   |
+| `snapdom.toPng(el, options?)`  | Returns a PNG image               |
+| `snapdom.toJpg(el, options?)`  | Returns a JPG image               |
+| `snapdom.toWebp(el, options?)` | Returns a WebP image              |
+| `snapdom.download(el, options?)` | Triggers a download              |
 
 ## Options
 
+> ✅ **Note:** Style compression is now always on internally. The `compress` option has been removed.
+
 All capture methods accept an `options` object:
 
-| Option            | Type     | Default  | Description                                |
-| ----------------- | -------- | -------- | ------------------------------------------ |
-| `compress`        | boolean  | `true`   | Removes redundant styles                   |
-| `fast`            | boolean  | `true`   | Skips idle delay for faster results        |
-| `embedFonts`      | boolean  | `false`  | Inlines fonts (icon fonts always embedded) |
-| `localFonts`      | array   | `[]`     | Array of local font descriptors `{ family, src, weight?, style? }` |
-| `iconFonts`       | string \| RegExp \| (string \| RegExp)[] | `[]` | Additional icon font families or patterns |
-| `scale`           | number   | `1`      | Output scale multiplier                    |
-| `dpr`             | number   | `devicePixelRatio` | Device pixel ratio                 |
-| `width`           | number   | -        | Output specific width size                 |
-| `height`          | number   | -        | Output specific height size                |
-| `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                |
-| `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)              |
-| `useProxy`     | string | ''        | Specify a proxy for handling CORS images/fonts as fallback|
-| `type`     | string | `svg`        | Select `png`, `jpg`, `webp` Blob type|
-| `exclude` | string[] | -  | CSS selectors for elements to exclude |
-| `filter` | function | -  | Custom filter function ie `(el) => !el.classList.contains('hidden')` |
+| Option            | Type     | Default  | Description                                     |
+| ----------------- | -------- | -------- | ----------------------------------------------- |
+| `fast`            | boolean  | `true`   | Skips small idle delays for faster results      |
+| `embedFonts`      | boolean  | `false`  | Inlines non-icon fonts (icon fonts always on)   |
+| `localFonts`      | array    | `[]`     | Local fonts `{ family, src, weight?, style? }`  |
+| `iconFonts`       | string\|RegExp\|Array | `[]` | Extra icon font matchers                      |
+| `excludeFonts`    | object  | `{}`     | Exclude font families/domains/subsets during embedding |
+| `scale`           | number   | `1`      | Output scale multiplier                         |
+| `dpr`             | number   | `devicePixelRatio` | Device pixel ratio                     |
+| `width`           | number   | -        | Output width                                    |
+| `height`          | number   | -        | Output height                                   |
+| `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                     |
+| `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)                   |
+| `useProxy`        | string   | `''`     | Proxy base for CORS fallbacks                   |
+| `type`            | string   | `svg`    | Default Blob type (`svg`\|`png`\|`jpg`\|`webp`) |
+| `exclude`         | string[] | -        | CSS selectors to exclude                        |
+| `filter`          | function | -        | Custom predicate `(el) => boolean`              |
+| `reset`          | string | `soft`      | Control internal caches `soft, hard, none` |
 
-### Setting custom dimensions with width and height options
+### Dimensions (`scale`, `width`, `height`)
 
-Use the `width` and `height` options to generate an image with specific dimensions.
+* If `scale` is provided, it **takes precedence** over `width`/`height`.
+* If only `width` is provided, height scales proportionally (and vice versa).
+* Providing both `width` and `height` forces an exact size (may distort).
 
-**Examples:**
+### Cross-Origin Images & Fonts (`useProxy`)
 
-**1. Fixed width (proportional height)**
-Sets a specific width while maintaining the aspect ratio. Height adjusts proportionally.
+By default snapDOM tries `crossOrigin="anonymous"` (or `use-credentials` for same-origin). If an asset is CORS-blocked, you can set `useProxy` to a prefix URL that forwards the actual `src`:
 
 ```js
-const result = await snapdom(element, {
-  width: 400 // Outputs a 400px-wide image with auto-scaled height
+await snapdom.toPng(el, {
+  useProxy: 'your-proxy' // Example 'https://api.allorigins.win/raw?url='
 });
 ```
 
-**2. Fixed height (proportional width)**
-Sets a specific height while maintaining the aspect ratio. Width adjusts proportionally.
+**Tips**
+
+* Keep the proxy **fast** and **cache-friendly** (adds big wins on repeated captures).
+* The proxy is only used as a **fallback**; same-origin and CORS-enabled assets skip it.
+
+### Fonts
+
+#### `embedFonts`
+When `true`, snapDOM embeds **non-icon** `@font-face` rules detected as used within the captured subtree. Icon fonts (Font Awesome, Material Icons, etc.) are embedded **always**.
+
+#### `localFonts`
+If you serve fonts yourself or have data URLs, you can declare them here to avoid extra CSS discovery:
 
 ```js
-const result = await snapdom(element, {
-  height: 200 // Outputs a 200px-tall image with auto-scaled width
+await snapdom.toPng(el, {
+  embedFonts: true,
+  localFonts: [
+    { family: 'Inter', src: '/fonts/Inter-Variable.woff2', weight: 400, style: 'normal' },
+    { family: 'Inter', src: '/fonts/Inter-Italic.woff2', style: 'italic' }
+  ]
 });
 ```
 
-**3. Fixed width and height (may distort image)**
-Forces exact dimensions, potentially distorting the image if the aspect ratio differs.
+#### `iconFonts`
+Add custom icon families (names or regex matchers). Useful for private icon sets:
 
 ```js
-const result = await snapdom(element, {
-  width: 800,  // Outputs an 800px × 200px image (may stretch/squish content)
-  height: 200
+await snapdom.toPng(el, {
+  iconFonts: ['MyIcons', /^(Remix|Feather) Icons?$/i]
 });
 ```
 
-**Note:** If `scale` is different from  1, it takes priority over width and height.
-Example: `{ scale: 3, width: 500 }` ignores width and scales the image 3x instead.
-
-
-### Cross-Origin Images
-
-By default, snapDOM loads images with `crossOrigin="anonymous"` or `crossOrigin="use-credentials"`. In case fails to get the images, `useProxy` can be used to deal with CORS images:
+#### `excludeFonts`
+Skip specific non-icon fonts to speed up capture or avoid unnecessary downloads.
 
 ```js
-const result = await snapdom(element, {
-  useProxy: 'your/proxy/' //Example: 'https://corsproxy.io/?url=' or 'https://api.allorigins.win/raw?url='
+await snapdom.toPng(el, {
+  embedFonts: true,
+  excludeFonts: {
+    families: ['Noto Serif', 'SomeHeavyFont'],     // skip by family name
+    domains: ['fonts.gstatic.com', 'cdn.example'], // skip by source host
+    subsets: ['cyrillic-ext']                      // skip by unicode-range subset tag
+  }
 });
 ```
+*Notes*
+- `excludeFonts` only applies to **non-icon** fonts. Icon fonts are always embedded.
+- Matching is case-insensitive for `families`. Hosts are matched by substring against the resolved URL.
 
 
-### Download options
+### Filtering nodes: `exclude` vs `filter`
 
+* `exclude`: remove by **selector**.
+* `filter`: advanced predicate per element (return `false` to drop).
+
+**Example: filter out elements with `display:none`:**
 ```js
-{
-  format?: "svg" | "png" | "jpg" | "jpeg" | "webp"; // default: "png"
-  filename?: string;         // default: "capture"
-  backgroundColor?: string;  // optional override
+/**
+ * Example filter: skip elements with display:none
+ * @param {Element} el
+ * @returns {boolean} true = keep, false = exclude
+ */
+function filterHidden(el) {
+  const cs = window.getComputedStyle(el);
+  if (cs.display === 'none') return false;
+  return true;
 }
+
+await snapdom.toPng(document.body, { filter: filterHidden });
 ```
 
-
+**Example with `exclude`:** remove banners or tooltips by selector
+```js
+await snapdom.toPng(el, {
+  exclude: ['.cookie-banner', '.tooltip', '[data-test="debug"]']
+});
+```
 ### `preCache()` – Optional helper
 
-The `preCache()` function can be used to load external resources (like images and fonts) in advance. It is specially useful when the element to capture is big and complex.
+Preloads external resources to avoid first-capture stalls (helpful for big/complex trees).
 
 ```js
 import { preCache } from '@zumer/snapdom';
 
-await preCache(document.body);
+await preCache({
+  root: document.body,
+  embedFonts: true,
+  localFonts: [{ family: 'Inter', src: '/fonts/Inter.woff2', weight: 400 }],
+  useProxy: 'your-proxy'
+});
 ```
 
-```js
-import { snapdom, preCache } from './snapdom.mjs';
-    window.addEventListener('load', async () => {
-    await preCache();
-    console.log('📦 Resources preloaded');
-    });
-```
+## Reset & cache control
 
-**Options for `preCache()`:**
+SnapDOM maintains internal caches for images, backgrounds, resources, default/computed styles, and fonts. It is designed to automatically refresh some caches to ensure fidelity in multiple captures. However, if you need to free memory between captures or guarantee a fresh first‑capture behavior, you can reset them.
 
-* `embedFonts` *(boolean, default: true)* — Inlines non-icon fonts during preload.
-* `localFonts` *(array)* — Array of `{ family, src, weight?, style? }` for local font sources.
-* `useProxy` *(string)* — Proxy for handling CORS images/fonts as fallback.
+### When to use which?
 
+Use **soft** when doing multiple captures in the same page and you just need fresh computed styles.
 
+Use **hard** after dynamically loading new CSS/fonts or when testing cold-start performance.
 
-## Features
+Use **none** if you want maximum speed across many captures and can tolerate cached results.
 
-* Captures **shadow DOM** and Web Components
-* Supports `::before`, `::after` and `::first-letter` pseudo-elements
-* Inlines background images and fonts
-* Handles **Font Awesome**, **Material Icons**, and more
-* `data-capture="exclude"` to ignore an element
-* `data-capture="placeholder"` with `data-placeholder-text` for masked replacements
 
 ## Limitations
 
