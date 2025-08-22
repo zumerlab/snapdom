@@ -214,7 +214,6 @@ function familiesFromRequired(required) {
  * @param {Set<string>} options.required                     // keys: "family__weight__style__stretchPct"
  * @param {Set<number>} options.usedCodepoints               // codepoints used in the captured subtree
  * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.exclude] // simple exclude
- * @param {boolean} [options.preCached=false]
  * @param {Array<{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}>} [options.localFonts=[]]
  * @param {string}  [options.useProxy=""]
  * @returns {Promise<string>} inlined @font-face CSS
@@ -223,7 +222,6 @@ export async function embedCustomFonts({
   required,
   usedCodepoints,
   exclude = undefined,
-  preCached = false,
   localFonts = [],
   useProxy = "",
 } = {}) {
@@ -436,6 +434,51 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   }
   const simpleExcluder = buildSimpleExcluder(exclude);
 
+  function dedupeFontFaces(cssText) {
+  if (!cssText) return cssText;
+
+  const FACE_RE = /@font-face[^{}]*\{[^}]*\}/gi;
+
+  const seen = new Set();
+  const out = [];
+
+  for (const block of cssText.match(FACE_RE) || []) {
+    // Extraer props clave
+    const familyRaw   = block.match(/font-family:\s*([^;]+);/i)?.[1] || "";
+    const family      = pickPrimaryFamily(familyRaw);
+    const weightSpec  = (block.match(/font-weight:\s*([^;]+);/i)?.[1] || "400").trim();
+    const styleSpec   = (block.match(/font-style:\s*([^;]+);/i)?.[1]  || "normal").trim();
+    const stretchSpec = (block.match(/font-stretch:\s*([^;]+);/i)?.[1] || "100%").trim();
+    const urange      = (block.match(/unicode-range:\s*([^;]+);/i)?.[1]|| "").trim();
+    const srcRaw      = (block.match(/src\s*:\s*([^;]+);/i)?.[1]     || "").trim();
+
+    // Normalizar 'src' en una firma estable
+    const urls = extractSrcUrls(srcRaw, location.href);
+    const srcPart = urls.length
+      ? urls.map(u => String(u).toLowerCase()).sort().join("|")
+      : srcRaw.toLowerCase();
+
+    const key = [
+      String(family || "").toLowerCase(),
+      weightSpec, styleSpec, stretchSpec,
+      urange.toLowerCase(),
+      srcPart
+    ].join("|");
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(block);
+    }
+  }
+
+  // Si no hubo matches, devuelve tal cual.
+  if (out.length === 0) return cssText;
+
+  // Reemplaza solo la parte de @font-face por la versión deduplicada,
+  // preservando el resto (si hubiera CSS adicional).
+  let i = 0;
+  return cssText.replace(FACE_RE, () => out[i++] || "");
+}
   // ---- cache key per capture signature (avoid cross‑pollution between different targets) ----
   function buildFontsCacheKey() {
     const req = Array.from(required || []).sort().join('|');
@@ -451,18 +494,9 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     const px  = useProxy || '';
     return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}`;
   }
-  function injectOrReplaceEmbedStyle(cssText) {
-    document.querySelectorAll('style[data-snapdom="embedFonts"]').forEach(s => s.remove());
-    const style = document.createElement('style');
-    style.setAttribute('data-snapdom', 'embedFonts');
-    style.textContent = cssText;
-    document.head.appendChild(style);
-    return style;
-  }
   const cacheKey = buildFontsCacheKey();
   if (cache.resource?.has(cacheKey)) {
     const css = cache.resource.get(cacheKey);
-    if (preCached && css) injectOrReplaceEmbedStyle(css);
     return css;
   }
 
@@ -516,7 +550,7 @@ if (importUrls.length) {
         if (sheet) {
           try {
             const rules = sheet.cssRules || [];
-            cssText = Array.from(rules).map(r => r.cssText).join('\n');
+            cssText = Array.from(rules).map(r => r.cssText).join('');
           } catch {
             // fallback to fetch
           }
@@ -551,10 +585,10 @@ if (importUrls.length) {
         const newFace = /url\(/i.test(srcRaw)
          ? await inlineUrlsInCssBlock(face, link.href)
          : face;
-       facesOut += newFace + "\n";
+       facesOut += newFace + "";
       }
 
-      if (facesOut.trim()) finalCSS += facesOut + "\n";
+      if (facesOut.trim()) finalCSS += facesOut + "";
     } catch (e) {
       console.warn("[snapdom] Failed to process stylesheet:", link.href);
     }
@@ -590,10 +624,10 @@ if (importUrls.length) {
 
         if (/url\(/i.test(srcRaw)) {
           const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, sheet.href || location.href);
-          finalCSS += `@font-face{font-family:${family};src:${inlinedSrc};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange?`unicode-range:${urange};`:""}}\n`;
+          finalCSS += `@font-face{font-family:${family};src:${inlinedSrc};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange?`unicode-range:${urange};`:""}}`;
         } else {
           // keep local()-only variants
-          finalCSS += `@font-face{font-family:${family};src:${srcRaw};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange?`unicode-range:${urange};`:""}}\n`;
+          finalCSS += `@font-face{font-family:${family};src:${srcRaw};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange?`unicode-range:${urange};`:""}}`;
         }
       }
     } catch {
@@ -635,7 +669,7 @@ if (importUrls.length) {
           }
         }
       }
-      finalCSS += `@font-face{font-family:'${fam}';src:url(${b64});font-style:${f.style||"normal"};font-weight:${f.weight||"normal"};}\n`;
+      finalCSS += `@font-face{font-family:'${fam}';src:url(${b64});font-style:${f.style||"normal"};font-weight:${f.weight||"normal"};}`;
     }
   } catch {}
 
@@ -674,20 +708,17 @@ if (importUrls.length) {
         }
       }
     }
-    finalCSS += `@font-face{font-family:'${family}';src:url(${b64});font-style:${style};font-weight:${weight};font-stretch:${stretch};}\n`;
+    finalCSS += `@font-face{font-family:'${family}';src:url(${b64});font-style:${style};font-weight:${weight};font-stretch:${stretch};}`;
   }
 
   // ---------- Cache + optional inject ----------
   if (finalCSS) {
+    finalCSS = dedupeFontFaces(finalCSS); 
     cache.resource?.set(cacheKey, finalCSS);
-    // borro global viejo si existiera (legacy)
-    if (cache.resource?.has('fonts-embed-css')) cache.resource.delete('fonts-embed-css');
-    if (preCached) {
-      injectOrReplaceEmbedStyle(finalCSS);
-    }
   }
   return finalCSS;
 }
+
 
 
 export function collectUsedFontVariants(root) {
@@ -777,14 +808,7 @@ export async function ensureFontsReady(families, warmupRepetitions = 1) {
   // We do a warm-up by forcing layout on hidden spans using each family.
   const warmupOnce = () => {
     const container = document.createElement('div');
-    container.style.cssText = `
-      position: absolute !important;
-      left: -9999px !important;
-      top: 0 !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-      contain: layout size style;
-    `;
+    container.style.cssText = `position: absolute !important;left: -9999px !important;top: 0 !important;opacity: 0 !important;pointer-events: none !important;contain: layout size style;`;
 
     for (const fam of fams) {
       const span = document.createElement('span');

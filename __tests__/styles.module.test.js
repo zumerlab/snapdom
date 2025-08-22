@@ -4,7 +4,7 @@ import { cache } from '../src/core/cache.js';
 import { createContext } from '../src/core/context.js';
 
 
- it('inlineAllStyles works with compress true', () => {
+ it('inlineAllStyles works with compress true default', () => {
     const el = document.createElement('span');
     const clone = document.createElement('span');
     const options = createContext()
@@ -13,6 +13,6 @@ import { createContext } from '../src/core/context.js';
         styleCache: cache.session.styleCache,
         nodeMap: cache.session.nodeMap
       }
-    inlineAllStyles(el, clone, sessionCache, {...options, compress: true});
+    inlineAllStyles(el, clone, sessionCache, {...options});
     expect(sessionCache.styleMap.has(clone)).toBe(true);
   });

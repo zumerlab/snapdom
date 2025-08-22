@@ -58,33 +58,34 @@ export function getDefaultStyleForTag(tagName) {
   return defaults;
 }
 
-/**
- * Creates a unique key from an element's computed style that differs from defaults.
- *
- * @param {Object} snapshot - Computed style snapshot
- * @param {string} tagName - The tag name of the element
- * @param {boolean} [compress=false] - Whether to compress style keys
- * @returns {string} Semi-colon separated list of non-default properties
- */
+// === Solo excluir lo que seguro no pinta el frame ===
 
-export function getStyleKey(snapshot, tagName, options) {
-  const entries = [];
-  const defaultStyles = getDefaultStyleForTag(tagName);
-  for (let [prop, value] of Object.entries(snapshot)) {
-    if (!options.compress) {
-      if (value) {
-        entries.push(`${prop}:${value}`);
-      }
-    } else {
-      const defaultValue = defaultStyles[prop];
-      if (value && value !== defaultValue) {
-        entries.push(`${prop}:${value}`);
-      }
-    }
-  }
+// tokens "animation"/"transition" en cualquier parte del nombre (con límites por guiones)
+const NO_PAINT_TOKEN = /(?:^|-)(animation|transition)(?:-|$)/i;
 
-  return entries.sort().join(";");
+// prefijos que no afectan el pixel del frame
+const NO_PAINT_PREFIX = /^(--|view-timeline|scroll-timeline|offset-|app-region|interactivity|box-decoration-break|-webkit-locale)/i;
+
+function shouldIgnoreProp(prop /*, tag */) {
+  const p = String(prop).toLowerCase();
+  if (NO_PAINT_PREFIX.test(p)) return true; // --*, view/scroll-timeline*, offset-*, hints UA
+  if (NO_PAINT_TOKEN.test(p)) return true;  // …-animation…, …-transition… (incluye caret-animation, animation-trigger-*)
+  return false;
 }
+
+export function getStyleKey(snapshot, tagName) {
+  const entries = [];
+  const defaults = getDefaultStyleForTag(tagName);
+  for (let [prop, value] of Object.entries(snapshot)) {
+    if (shouldIgnoreProp(prop)) continue;
+    const def = defaults[prop];
+    if (value && value !== def) entries.push(`${prop}:${value}`);
+  }
+  entries.sort();
+  return entries.join(';');
+}
+
+
 
 /**
  * Collects all unique tag names used in the DOM tree rooted at the given node.

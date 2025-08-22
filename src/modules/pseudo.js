@@ -23,7 +23,6 @@ import { cache } from '../core/cache.js';
  *
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
- * @param {boolean} compress - Whether to compress style keys
  * @param {boolean} embedFonts - Whether to embed icon fonts as images
  * @returns {Promise} Promise that resolves when all pseudo-elements are processed
  */
@@ -70,7 +69,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         span.textContent = first;
         span.dataset.snapdomPseudo = '::first-letter';
         const snapshot = snapshotComputedStyle(style);
-        const key = getStyleKey(snapshot, 'span', options);
+        const key = getStyleKey(snapshot, 'span');
         sessionCache.styleMap.set(span, key);
 
         const restNode = document.createTextNode(rest);
@@ -117,7 +116,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       pseudoEl.dataset.snapdomPseudo = pseudo;
       pseudoEl.style.verticalAlign = 'middle'
       const snapshot = snapshotComputedStyle(style);
-      const key = getStyleKey(snapshot, 'span', options);
+      const key = getStyleKey(snapshot, 'span');
       sessionCache.styleMap.set(pseudoEl, key);
 
       if (isIconFont2 && cleanContent.length === 1) {

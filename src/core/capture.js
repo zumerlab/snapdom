@@ -8,14 +8,13 @@ import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
 import { idle,collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js';
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
-import { cache } from '../core/cache.js'
+import { cache, applyReset } from '../core/cache.js'
 
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
  * @param {Element} element - DOM element to capture
  * @param {Object} [options={}] - Capture options
- * @param {boolean} [options.compress=true] - Whether to compress style keys
  * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
  * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
  * @param {number} [options.scale=1] - Output scale multiplier
@@ -26,8 +25,8 @@ import { cache } from '../core/cache.js'
 
 export async function captureDOM(element, options) {
   if (!element) throw new Error("Element cannot be null or undefined");
-   cache.reset()
-   const fast = options.fast
+  applyReset(options.reset)
+  const fast = options.fast
   let clone, classCSS, styleCache;
   let fontsCSS = "";
   let baseCSS = "";
@@ -63,7 +62,7 @@ const families = new Set(
       );
       await ensureFontsReady(families, 2);
     }
- fontsCSS = await embedCustomFonts({ required, usedCodepoints, preCached: false,  exclude: options.fontExclude, useProxy: options.useProxy });
+ fontsCSS = await embedCustomFonts({ required, usedCodepoints, preCached: false,  exclude: options.excludeFonts, useProxy: options.useProxy });
 
 // luego concat: baseCSS + fontsCSS + ...
 
@@ -72,21 +71,21 @@ const families = new Set(
       }, { fast });
     });
   }
-  if (options.compress) {
-    const usedTags = collectUsedTagNames(clone).sort();
-    const tagKey = usedTags.join(",");
-    if (cache.baseStyle.has(tagKey)) {
-      baseCSS = cache.baseStyle.get(tagKey);
-    } else {
-      await new Promise((resolve) => {
-        idle(() => {
-          baseCSS = generateDedupedBaseCSS(usedTags);
-          cache.baseStyle.set(tagKey, baseCSS);
-          resolve();
-        }, { fast });
-      });
-    }
+
+  const usedTags = collectUsedTagNames(clone).sort();
+  const tagKey = usedTags.join(",");
+  if (cache.baseStyle.has(tagKey)) {
+    baseCSS = cache.baseStyle.get(tagKey);
+  } else {
+    await new Promise((resolve) => {
+      idle(() => {
+        baseCSS = generateDedupedBaseCSS(usedTags);
+        cache.baseStyle.set(tagKey, baseCSS);
+        resolve();
+      }, { fast });
+    });
   }
+
   await new Promise((resolve) => {
     idle(() => {
       const rect = element.getBoundingClientRect();

@@ -100,7 +100,7 @@ for (const size of sizes) {
 
     bench('snapDOM current version', async () => {
       await setupContainer();
-      await snapdom.toRaw(container, {compress: true, fast: true});
+      await snapdom.toRaw(container);
     });
 
      bench('snapDOM V1.9.9', async () => {

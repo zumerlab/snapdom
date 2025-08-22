@@ -2,7 +2,7 @@
 
 import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage, precacheCommonTags, isSafari } from '../utils';
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
-import { cache } from '../core/cache.js';
+import { cache, applyReset } from '../core/cache.js';
 
 /**
  * Preloads images, background images, and (optionally) fonts into cache before DOM capture.
@@ -22,21 +22,11 @@ import { cache } from '../core/cache.js';
 export async function preCache(root = document, options = {}) {
   const {
     embedFonts = true,
-    reset = false,
+    reset = 'hard',
     useProxy = "",
   } = options;
 
-  if (reset) {
-    // Soft reset: clear all caches and computed styles
-    cache.image.clear();
-    cache.background.clear();
-    cache.resource.clear();
-    cache.defaultStyle.clear();
-    cache.baseStyle.clear();
-    cache.font.clear();
-    cache.computedStyle = new WeakMap();
-    return;
-  }
+  applyReset(reset)
 
   // Fonts readiness: don't crash in test/headless environments
   try { await document.fonts.ready; } catch {}
@@ -103,8 +93,7 @@ if (isSafari) {
       await embedCustomFonts({
         required,
         usedCodepoints,
-        exclude: options.fontExclude,   // { families?, domains?, subsets? }
-        preCached: true,
+        exclude: options.excludeFonts,   // { families?, domains?, subsets? }
         localFonts: options.localFonts,
         useProxy: options.useProxy ?? useProxy,
       });

@@ -13,7 +13,6 @@ import { cache } from '../core/cache.js';
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
  *
  * @param {Element} element - Element to clone
- * @param {boolean} [compress=false] - Whether to compress style keys
  * @param {boolean} [embedFonts=false] - Whether to embed custom fonts
  * @param {Object} [options={}] - Capture options
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
@@ -52,7 +51,7 @@ export async function prepareClone(element, options = {}) {
     console.warn("inlinePseudoElements failed:", e);
   }
   await resolveBlobUrlsInTree(clone);
-  if (options.compress) {
+
   const keyToClass = generateCSSClasses(sessionCache.styleMap);
   classCSS = Array.from(keyToClass.entries())
     .map(([key, className]) => `.${className}{${key}}`)
@@ -81,13 +80,7 @@ export async function prepareClone(element, options = {}) {
       node.style.display = "inline";
     }
   }
-} else {
-  // Sin compresión: siempre estilos inline completos
-  for (const [node, key] of sessionCache.styleMap.entries()) {
-    if (node.tagName === "STYLE") continue;
-    node.setAttribute("style", key.replace(/;/g, "; "));
-  }
-}
+
 
   for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
     const scrollX = originalNode.scrollLeft;

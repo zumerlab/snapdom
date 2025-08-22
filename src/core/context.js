@@ -1,53 +1,60 @@
 /**
- * Creates a unified configuration context
- * @param {Object} options - User options
- * @returns {Object} Context with clear format/type separation
+ * @param {Object} [options={}]
+ * @returns {Object}
  */
 export function createContext(options = {}) {
+  const resolvedFormat = options.format ?? 'png';
   return {
-    // Core Capture
     debug: options.debug ?? false,
-    compress: options.compress ?? true,
     fast: options.fast ?? true,
     scale: options.scale ?? 1,
 
-    // ⚠️ EXISTENTE: suele ser para excluir nodos del DOM (no confundir con fuentes)
+    // DOM filters (no confundir con fuentes)
     exclude: options.exclude ?? [],
     filter: options.filter ?? null,
 
-    // Fonts
+    // Fuentes (público)
     embedFonts: options.embedFonts ?? false,
-    iconFonts: options.iconFonts ?? [],
-    localFonts: options.localFonts ?? [],
-    /** Simple font exclude (no regex).
-     *  { families?: string[], domains?: string[], subsets?: string[] }
-     *  families: nombres de familia (case-insensitive)
-     *  domains: hosts a excluir (p.ej. "fonts.gstatic.com")
-     *  subsets: "latin" | "latin-ext" | "greek" | "cyrillic" | "vietnamese"
+    iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts : (options.iconFonts ? [options.iconFonts] : []),
+    localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
+    /**
+     * Font exclusion rules (simple, no regex).
+     * @type {{families?:string[], domains?:string[], subsets?:string[]}|undefined}
      */
-    fontExclude: options.fontExclude ?? undefined,
+    excludeFonts: options.excludeFonts ?? undefined,
 
-    preCached: options.preCached ?? false,
-    reset: options.reset ?? false,
-    useProxy: options.useProxy ?? "",
+    /** @type {'soft'|'hard'|'none'} */
+    reset: normalizeResetOption(options.reset),
 
-    // Output Configuration
+    // Red
+    useProxy: typeof options.useProxy === 'string' ? options.useProxy : "",
+
+    // Salida
     width: options.width ?? null,
     height: options.height ?? null,
-    format: options.format ?? 'png',   // 'png'|'jpg'|'jpeg'|'webp'|'svg'
+    format: resolvedFormat,
     type: options.type ?? 'svg',
     quality: options.quality ?? 0.92,
     dpr: options.dpr ?? (window.devicePixelRatio || 1),
     backgroundColor: options.backgroundColor ??
-      (['jpg','jpeg','webp'].includes(options.format) ? '#ffffff' : null),
+      (['jpg','jpeg','webp'].includes(resolvedFormat) ? '#ffffff' : null),
     filename: options.filename ?? `snapDOM`,
+  };
+}
 
-    // Plugins (disabled por ahora)
+/**
+ * @param {unknown} v
+ * @returns {'soft'|'hard'|'full'|'none'}
+ */
+function normalizeResetOption(v) {
+  if (v === 'soft' || v === 'hard' || v === 'none') return v;
+  return 'soft'; // default pedido
+}
+
+// Plugins (disabled por ahora)
     /* plugins: normalizePlugins(
       options.ignoreGlobalPlugins
         ? options.plugins ?? []
         : [...getGlobalPlugins(), ...(options.plugins ?? [])],
       options.debug
     ) */
-  };
-}

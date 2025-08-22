@@ -33,7 +33,6 @@ function freezeImgSrcset(original, cloned) {
  * Creates a deep clone of a DOM node, including styles, shadow DOM, and special handling for excluded/placeholder/canvas nodes.
  *
  * @param {Node} node - Node to clone 
- * @param {boolean} options.compress - Whether to options.compress style keys
  * @param {Object} [options={}] - Capture options including exclude and filter 
  * @param {Node} [originalRoot] - Original root element being captured
  * @returns {Node|null} Cloned node with styles and shadow DOM content, or null for empty text nodes or filtered elements
@@ -179,8 +178,7 @@ export function deepClone(node, sessionCache, options) {
       for (const child of node.shadowRoot.childNodes) {
         if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
           const cssText = child.textContent || "";
-          if (cssText.trim() && options.compress) {
-            //if (!cache.preStyle) cache.preStyle = new WeakMap();
+          if (cssText.trim()) {
             sessionCache.styleCache.set(child, cssText);
          }
         }
@@ -191,8 +189,7 @@ export function deepClone(node, sessionCache, options) {
       for (const child of node.shadowRoot.childNodes) {
         if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
           const cssText = child.textContent || "";
-          if (cssText.trim() && options.compress) {
-          //  if (!cache.preStyle) cache.preStyle = new WeakMap();
+          if (cssText.trim()) {
             sessionCache.styleCache.set(child, cssText);
           }
           continue;

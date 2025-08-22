@@ -169,11 +169,12 @@ function ensureContext(context) {
  * @param {object} [context]
  */
 export async function inlineAllStyles(source, clone, context) {
+    if (source.tagName === "STYLE") return;
   // Wire invalidation (idempotent, tiny cost)
   setupInvalidationOnce(document.documentElement);
 
   const ctx = ensureContext(context);
-  const { session, persist, options } = ctx;
+  const { session, persist } = ctx;
 
   // Cache getComputedStyle per capture (your current pattern)
   if (!session.styleCache.has(source)) {
@@ -189,32 +190,9 @@ export async function inlineAllStyles(source, clone, context) {
   let key = persist.snapshotKeyCache.get(sig);
   if (!key) {
     const tag = source.tagName?.toLowerCase() || 'div';
-    key = getStyleKey(snapshot, tag, options);
+    key = getStyleKey(snapshot, tag);
     persist.snapshotKeyCache.set(sig, key);
   }
 
   session.styleMap.set(clone, key);
-}
-
-// -----------------------------------------------------------------------------
-// 5) Optional soft/hard reset helpers (unchanged behavior for your callers)
-// -----------------------------------------------------------------------------
-
-export function softResetCaches() {
-  cache.computedStyle = new WeakMap();
-  cache.session.styleMap.clear();
-  cache.session.styleCache = new WeakMap();
-  cache.session.nodeMap.clear();
-  // NOTE: we intentionally do NOT clear snapshotCache or snapshotKeyCache here
-}
-
-export function hardResetCaches() {
-  softResetCaches();
-  cache.defaultStyle.clear();
-  cache.baseStyle.clear();
-  cache.image.clear();
-  cache.background.clear();
-  cache.resource.clear();
-  cache.font.clear();
-  // snapshotKeyCache.clear(); // uncomment only if you really want to drop signature→key
 }
