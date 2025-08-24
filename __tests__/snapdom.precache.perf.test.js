@@ -82,7 +82,7 @@ afterAll(() => {
       document.body.innerHTML = '';
 });
 for (const size of sizes) {
-  describe(`snapDOM performance test (may not be accurate) - ${size.label}`, () => {
+  describe(`snapDOM performance preCache test (may not be accurate) - ${size.label}`, () => {
     let container;
 
     afterEach( () => {
