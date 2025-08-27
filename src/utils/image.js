@@ -1,7 +1,5 @@
-
 import { cache } from "../core/cache";
 import { extractURL, safeEncodeURI } from "./helpers";
-
 
 /**
  * Adds a background color to the canvas if specified.
@@ -26,11 +24,6 @@ export function createBackground(baseCanvas, backgroundColor) {
 
   return temp;
 }
-
-// deps esperadas en tu archivo:
-// import { cache } from '../core/cache.js'
-// import { fetchImage } from '../utils/fetchImage.js'
-// import { extractURL, safeEncodeURI } from '../utils/index.js'
 
 /**
  * Inline a single background-image entry (one layer) robustly.

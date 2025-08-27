@@ -1,4 +1,3 @@
-
 /**
  * Extracts a URL from a CSS value like background-image.
  *
@@ -37,7 +36,6 @@ export function isIconFont(familyOrUrl) {
   return iconFontPatterns.some(rx => rx.test(familyOrUrl));
 }
 
-
 export function stripTranslate(transform) {
   if (!transform || transform === 'none') return '';
 
@@ -70,7 +68,6 @@ export function safeEncodeURI(uri) {
     return uri;
   }
 }
-
 
 /**
  * Fetch a resource with optional proxy fallback.

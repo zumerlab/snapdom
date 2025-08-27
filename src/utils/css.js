@@ -1,39 +1,70 @@
-import { cache } from "../core/cache"
+// -----------------------------------------------------------------------------
+// Central single-source-of-truth sets
+// -----------------------------------------------------------------------------
+
+/** Tags that Snapdom must never capture (skip node + subtree). */
+export const NO_CAPTURE_TAGS = new Set([
+  "meta","script","noscript","title","base","link","template"
+]);
+
+/** Tags that must not generate default styles nor auto-classes. */
+export const NO_DEFAULTS_TAGS = new Set([
+
+  // non-painting / head stuff
+  "meta","link","style","title","base","noscript","script","template",
+  // SVG whole namespace (safe for LeaderLine/presentation attrs)
+  "svg","defs","symbol","g","use",'path', 'circle', 'rect', 'line','marker',
+  "filter",
+  "lineargradient","radialgradient","stop"
+]);
+
+import { cache } from "../core/cache";
 
 const commonTags = [
-  'div', 'span', 'p', 'a', 'img', 'ul', 'li', 'button', 'input',
-  'select', 'textarea', 'label', 'section', 'article', 'header',
-  'footer', 'nav', 'main', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-  'svg', 'path', 'circle', 'rect', 'line', 'g', 'table', 'thead', 'tbody', 'tr', 'td', 'th'
+  
 ];
 
+// -----------------------------------------------------------------------------
+// 1) precacheCommonTags → salta NO_CAPTURE y NO_DEFAULTS (no calienta basura)
+// -----------------------------------------------------------------------------
 export function precacheCommonTags() {
   for (let tag of commonTags) {
-    getDefaultStyleForTag(tag);
+    const t = String(tag).toLowerCase();
+    if (NO_CAPTURE_TAGS.has(t)) continue;
+    if (NO_DEFAULTS_TAGS.has(t)) continue; // evita precache de SVG/body/etc.
+    getDefaultStyleForTag(t);
   }
 }
+
+// -----------------------------------------------------------------------------
+// 2) getDefaultStyleForTag → gate único por NO_DEFAULTS_TAGS + sandbox marcado
+// -----------------------------------------------------------------------------
 /**
  * Retrieves default CSS property values from a temporary element.
  *
- * @param {string} tagName - The tag name to get default styles for
+ * @param {string} tagName - The tag name to get default styles for (case-insensitive)
  * @returns {Object} Object containing default values for all CSS properties
  */
 export function getDefaultStyleForTag(tagName) {
-  if (cache.defaultStyle.has(tagName)) {
-    return cache.defaultStyle.get(tagName);
+  tagName = String(tagName).toLowerCase();
+
+  // Single gate: no defaults (and later no classes) for these tags
+  if (NO_DEFAULTS_TAGS.has(tagName)) {
+    const empty = {};
+    cache.defaultStyle.set(tagName, empty);
+    return empty;
   }
 
-  const skipTags = new Set(['script', 'style', 'meta', 'link', 'noscript', 'template']);
-  if (skipTags.has(tagName)) {
-    const empty = {};  
-    cache.defaultStyle.set(tagName, empty);  
-    return empty;
+  if (cache.defaultStyle.has(tagName)) {
+    return cache.defaultStyle.get(tagName);
   }
 
   let sandbox = document.getElementById('snapdom-sandbox');
   if (!sandbox) {
     sandbox = document.createElement('div');
     sandbox.id = 'snapdom-sandbox';
+    sandbox.setAttribute('data-snapdom-sandbox', 'true'); // <- identifica sandbox
+    sandbox.setAttribute('aria-hidden', 'true');
     sandbox.style.position = 'absolute';
     sandbox.style.left = '-9999px';
     sandbox.style.top = '-9999px';
@@ -44,7 +75,7 @@ export function getDefaultStyleForTag(tagName) {
   }
 
   const el = document.createElement(tagName);
-  el.style.all = 'initial';
+  //el.style.all = 'initial';
   sandbox.appendChild(el);
 
   const styles = getComputedStyle(el);
@@ -73,7 +104,20 @@ function shouldIgnoreProp(prop /*, tag */) {
   return false;
 }
 
+// -----------------------------------------------------------------------------
+// 3) getStyleKey → si NO_DEFAULTS_TAGS: "", así no hay clase auto
+// -----------------------------------------------------------------------------
+/**
+ * Builds a style key from a snapshot; returns "" for tags in NO_DEFAULTS_TAGS.
+ * @param {Record<string,string>} snapshot
+ * @param {string} tagName
+ */
 export function getStyleKey(snapshot, tagName) {
+  tagName = String(tagName || '').toLowerCase();
+  if (NO_DEFAULTS_TAGS.has(tagName)) {
+    return ""; // no key => no class
+  }
+
   const entries = [];
   const defaults = getDefaultStyleForTag(tagName);
   for (let [prop, value] of Object.entries(snapshot)) {
@@ -84,8 +128,6 @@ export function getStyleKey(snapshot, tagName) {
   entries.sort();
   return entries.join(';');
 }
-
-
 
 /**
  * Collects all unique tag names used in the DOM tree rooted at the given node.
@@ -107,6 +149,9 @@ export function collectUsedTagNames(root) {
   return Array.from(tagSet);
 }
 
+// -----------------------------------------------------------------------------
+// 5) generateDedupedBaseCSS → salta keys vacías (sin reglas basura)
+// -----------------------------------------------------------------------------
 /**
  * Generates deduplicated base CSS for the given tag names.
  *
@@ -126,6 +171,8 @@ export function generateDedupedBaseCSS(usedTagNames) {
       .sort()
       .join('');
 
+    if (!key) continue; // <- evita reglas vacías (NO_DEFAULTS_TAGS produce {})
+
     // Agrupamos por firma
     if (!groups.has(key)) {
       groups.set(key, []);
@@ -141,6 +188,10 @@ export function generateDedupedBaseCSS(usedTagNames) {
 
   return css;
 }
+
+// -----------------------------------------------------------------------------
+// 4) generateCSSClasses → ignora keys vacías (defensivo)
+// -----------------------------------------------------------------------------
 /**
  * Generates CSS classes from a style map.
  *
@@ -151,6 +202,7 @@ export function generateCSSClasses(styleMap) {
   const classMap = new Map();
   let counter = 1;
   for (const key of keySet) {
+    if (!key) continue; // no class for empty keys
     classMap.set(key, `c${counter++}`);
   }
   return classMap;
@@ -201,11 +253,9 @@ export function parseContent(content) {
 }
 
 /**
- *
- *
  * @export
- * @param {*} style
- * @return {*} 
+ * @param {CSSStyleDeclaration} style
+ * @return {Record<string,string>}
  */
 export function snapshotComputedStyle(style) {
   const snap = {};
@@ -216,13 +266,10 @@ export function snapshotComputedStyle(style) {
 }
 
 /**
- *
- *
  * @export
- * @param {*} style
- * @return {*} 
+ * @param {string} bg
+ * @return {string[]}
  */
-
 export function splitBackgroundImage(bg) {
   const parts = [];
   let depth = 0;

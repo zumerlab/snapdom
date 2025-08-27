@@ -51,11 +51,23 @@ export async function prepareClone(element, options = {}) {
     console.warn("inlinePseudoElements failed:", e);
   }
   await resolveBlobUrlsInTree(clone);
+   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
+let shadowScopedCSS = '';
+try {
+  const styleNodes = clone.querySelectorAll('style[data-sd]');
+  for (const s of styleNodes) {
+    shadowScopedCSS += s.textContent || '';
+    s.remove(); // Do not leave <style> inside the visual clone
+  }
+} catch {}
+const keyToClass = generateCSSClasses(sessionCache.styleMap);
+classCSS = Array.from(keyToClass.entries())
+  .map(([key, className]) => `.${className}{${key}}`)
+  .join("");
 
-  const keyToClass = generateCSSClasses(sessionCache.styleMap);
-  classCSS = Array.from(keyToClass.entries())
-    .map(([key, className]) => `.${className}{${key}}`)
-    .join("");
+// prepend shadow CSS so variables/rules are available for everything
+classCSS = shadowScopedCSS + classCSS;
+
   
   for (const [node, key] of sessionCache.styleMap.entries()) {
     if (node.tagName === "STYLE") continue;

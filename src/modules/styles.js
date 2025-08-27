@@ -4,7 +4,7 @@
 //
 // Drop-in: preserves your imports and cache usage.
 
-import { getStyleKey } from '../utils/index.js';
+import { getStyleKey,NO_DEFAULTS_TAGS } from '../utils/index.js';
 import { cache } from '../core/cache.js';
 
 // -----------------------------------------------------------------------------
@@ -170,6 +170,11 @@ function ensureContext(context) {
  */
 export async function inlineAllStyles(source, clone, context) {
     if (source.tagName === "STYLE") return;
+    if (NO_DEFAULTS_TAGS.has(source.tagName?.toLowerCase())) {
+  const author = source.getAttribute?.('style');
+  if (author) target.setAttribute('style', author);
+  return; // no computadas para estos tags
+}
   // Wire invalidation (idempotent, tiny cost)
   setupInvalidationOnce(document.documentElement);
 
