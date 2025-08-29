@@ -1,6 +1,7 @@
 // __tests__/utils.image.more.test.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createBackground, inlineSingleBackgroundEntry, fetchImage } from '../src/utils/image.js';
+import { createBackground, inlineSingleBackgroundEntry } from '../src/utils/image.js';
+import { snapFetch } from '../src/modules/snapFetch.js';
 import { cache } from '../src/core/cache.js';
 
 // Silence our intentional rejections so Vitest doesn't flag them as unhandled
@@ -8,8 +9,8 @@ if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (e) => {
     const msg = String(e?.reason?.message || '');
     if (
-      msg.includes('[SnapDOM - fetchImage] Fetch failed and no proxy provided') ||
-      msg.includes('[SnapDOM - fetchImage] Recently failed (cooldown).') ||
+      msg.includes('[SnapDOM - snapFetch] Fetch failed and no proxy provided') ||
+      msg.includes('[SnapDOM - snapFetch] Recently failed (cooldown).') ||
       msg.includes('Image load timed out')
     ) {
       e.preventDefault();
@@ -105,7 +106,7 @@ describe('inlineSingleBackgroundEntry', () => {
     expect(out).toBe(`url("${data}")`);
   });
 
-  it('inlines via fetchImage on success (raster path → Image onload)', async () => {
+  it('inlines via snapFetch on success (raster path → Image onload)', async () => {
     // Simulate an <img> that loads immediately with non-zero size
     globalThis.Image = class {
       constructor() { setTimeout(() => this.onload && this.onload(), 0); }
@@ -142,10 +143,41 @@ describe('inlineSingleBackgroundEntry', () => {
 });
 
 // -----------------------------
-// fetchImage
+// snapFetch
 // -----------------------------
-describe('fetchImage (raster path)', () => {
-  it('resolves a data URL when the image loads and decodes', async () => {
+// -----------------------------
+// snapFetch (helpers)
+// -----------------------------
+/**
+ * @param {import('../src/modules/snapFetch.js').SnapFetchResult} r
+ */
+function expectOkDataURL(r) {
+  expect(r.ok).toBe(true);
+  expect(typeof r.data).toBe('string');
+  expect(r.data).toMatch(/^data:/);
+}
+
+/**
+ * @param {import('../src/modules/snapFetch.js').SnapFetchResult} r
+ */
+function expectOkBlob(r) {
+  expect(r.ok).toBe(true);
+  expect(r.data instanceof Blob).toBe(true);
+}
+
+/**
+ * @param {import('../src/modules/snapFetch.js').SnapFetchResult} r
+ */
+function expectOkText(r) {
+  expect(r.ok).toBe(true);
+  expect(typeof r.data).toBe('string');
+}
+
+// -----------------------------
+// snapFetch (raster path)
+// -----------------------------
+describe('snapFetch (raster path)', () => {
+  it('resolves a DataURL when the image loads and decode succeeds', async () => {
     globalThis.Image = class {
       constructor() { setTimeout(() => this.onload && this.onload(), 0); }
       set src(_) {}
@@ -157,46 +189,38 @@ describe('fetchImage (raster path)', () => {
       set onerror(_) {}
     };
 
-    const out = await fetchImage('https://cdn.example.com/photo.jpg', { timeout: 100 });
-    expect(out).toMatch(/^data:image\/png;base64,/);
+    const r = await snapFetch('https://cdn.example.com/photo.jpg', { timeout: 100, as: 'dataURL' });
+    expectOkDataURL(r);
+    expect(r.mime).toMatch(/image\/png|image\/jpeg|image\/jpg/i);
   });
 
-  it('uses "use-credentials" for same-origin URLs (crossOrigin assignment)', async () => {
-    let assigned = '';
-    globalThis.Image = class {
-      constructor() { setTimeout(() => this.onload && this.onload(), 0); }
-      set src(_) {}
-      decode() { return Promise.resolve(); }
-      get naturalWidth() { return 1; }
-      get naturalHeight() { return 1; }
-      set crossOrigin(v) { assigned = v; }
-      set onload(_) {}
-      set onerror(_) {}
-    };
+  it('uses credentials: "include" for same-origin URLs', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch');
+    // first call uses our default globalThis.fetch mock; we only care about the opts it receives
+    await snapFetch('/local.png', { timeout: 100, as: 'blob' });
 
-    await fetchImage('/local.png', { timeout: 100 });
-    expect(assigned).toBe('use-credentials');
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [, opts] = spy.mock.calls[0];
+    expect(opts.credentials).toBe('include');
+
+    spy.mockRestore();
   });
 });
 
-describe('fetchImage (svg path)', () => {
-  it('inlines SVG via direct text fetch', async () => {
-    const out = await fetchImage('https://example.com/icon.svg');
-    expect(out).toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
+// -----------------------------
+// snapFetch (svg path)
+// -----------------------------
+describe('snapFetch (svg path)', () => {
+  it('inlines SVG via direct text fetch when as:"text"', async () => {
+    const r = await snapFetch('https://example.com/icon.svg', { as: 'text' });
+    expectOkText(r);
+    expect(String(r.data)).toMatch(/^<svg[\s>]/);
   });
 
-  it('returns cached value without fetching again', async () => {
-    cache.image.set('https://site.com/logo.svg', 'data:image/svg+xml;charset=utf-8,AAA');
-    const spy = vi.spyOn(globalThis, 'fetch'); // should not be called
-    const out = await fetchImage('https://site.com/logo.svg');
-    expect(out).toBe('data:image/svg+xml;charset=utf-8,AAA');
-    expect(spy).not.toHaveBeenCalled();
-    spy.mockRestore();
-  });
-
-  it('deduplicates in-flight fetches (single fetch for concurrent calls)', async () => {
+  it('deduplicates in-flight fetches (single network call for concurrent requests)', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    // Slow down the first fetch so both calls overlap
+
+    // Slow down first fetch so both calls overlap
     fetchSpy.mockImplementationOnce(async () => {
       await new Promise(r => setTimeout(r, 50));
       return {
@@ -204,61 +228,62 @@ describe('fetchImage (svg path)', () => {
         status: 200,
         text: async () => '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
         blob: async () => new Blob([new Uint8Array([137,80,78,71])], { type: 'image/png' }),
+        headers: new Headers({ 'content-type': 'image/svg+xml' }),
       };
     });
 
-    const p1 = fetchImage('https://slow.example.com/a.svg');
-    const p2 = fetchImage('https://slow.example.com/a.svg');
+    const p1 = snapFetch('https://slow.example.com/a.svg', { as: 'text' });
+    const p2 = snapFetch('https://slow.example.com/a.svg', { as: 'text' });
     const [a, b] = await Promise.all([p1, p2]);
-    expect(a).toMatch(/^data:image\/svg\+xml/);
-    expect(b).toMatch(/^data:image\/svg\+xml/);
-    // Only one network call for the same URL while in-flight
+
+    expectOkText(a);
+    expectOkText(b);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+
     fetchSpy.mockRestore();
   });
 
-  it('sets cooldown after failure and rejects subsequent calls quickly', async () => {
+ it('sets cooldown after failure and resolves ok:false; subsequent calls hit fromCache quickly', async () => {
   const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
-  // 1) Direct text fetch (SVG) falla
+  // Una sola falla de red es suficiente para poblar el error cache
   fetchSpy.mockRejectedValueOnce(new Error('boom'));
 
-  // 2) Fallback (blob) también falla (sin proxy): ok:false
-  fetchSpy.mockResolvedValueOnce({
-    ok: false,
-    status: 500,
-    blob: async () => new Blob([], { type: 'image/png' }),
-    text: async () => '',
-  });
+  const opts = { errorTTL: 5000, as: 'text' };
 
-  await expect(fetchImage('https://fail.example.com/x.svg', { errorTTL: 5000 }))
-    .rejects.toThrow('[SnapDOM - fetchImage] Fetch failed and no proxy provided');
+  // 1) Primer intento: falla y entra al error cache
+  const r1 = await snapFetch('https://fail.example.com/x.svg', opts);
+  expect(r1.ok).toBe(false);
+  expect(['network', 'timeout', 'abort', 'http_error']).toContain(r1.reason);
 
-  // Retry inmediato debe golpear cooldown y no invocar fetch de nuevo
+  // 2) Retry inmediato con las MISMAS opciones → debe salir de cache
   fetchSpy.mockClear();
-  await expect(fetchImage('https://fail.example.com/x.svg'))
-    .rejects.toThrow('Recently failed (cooldown).');
+  const r2 = await snapFetch('https://fail.example.com/x.svg', opts);
+  expect(r2.ok).toBe(false);
+  expect(r2.fromCache).toBe(true);
   expect(fetchSpy).not.toHaveBeenCalled();
 
   fetchSpy.mockRestore();
 });
 
 
-  it('falls back to proxy when direct fetch fails and returns image data URL', async () => {
+  it('uses proxy for cross-origin when provided and returns DataURL if requested', async () => {
     const f = /** @type {any} */ (globalThis.fetch);
-    // 1) Direct text fetch fails for the SVG path
-    f.mockRejectedValueOnce(new Error('direct fail'));
-    // 2) Fallback (blob) succeeds via proxy
+    // La primera llamada en este test no falla; simplemente queremos chequear que se aplique el proxy y DataURL
     f.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      blob: async () => new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }),
+      // devolvemos un PNG mínimo como blob
+      blob: async () => new Blob([new Uint8Array([137,80,78,71,13,10,26,10])], { type: 'image/png' }),
       text: async () => '<svg/>',
+      headers: new Headers({ 'content-type': 'image/png' }),
     });
 
-    const out = await fetchImage('https://blocked.example.com/asset.svg', {
-      useProxy: 'https://proxy.test/?',
-    });
-    expect(out).toMatch(/^data:image\/png;base64,/);
+    const proxy = 'https://proxy.test/?';
+    const url = 'https://blocked.example.com/asset.svg';
+    const r = await snapFetch(url, { useProxy: proxy, as: 'dataURL' });
+
+    expectOkDataURL(r);
+    expect(r.url.startsWith(proxy)).toBe(true);
   });
 });

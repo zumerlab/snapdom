@@ -39,7 +39,7 @@ describe('createContext - defaults & normalization', () => {
     expect(ctx.excludeFonts).toBeUndefined();
 
     // reset defaults to 'soft'
-    expect(ctx.reset).toBe('soft');
+    expect(ctx.cache).toBe('soft');
 
     // network / output
     expect(ctx.useProxy).toBe('');
@@ -74,13 +74,14 @@ describe('createContext - defaults & normalization', () => {
     expect(createContext({}).excludeFonts).toBeUndefined();
   });
 
-  it('normalizes reset option: soft|hard|none or defaults to soft when invalid', () => {
-    expect(createContext({ reset: 'soft' }).reset).toBe('soft');
-    expect(createContext({ reset: 'hard' }).reset).toBe('hard');
-    expect(createContext({ reset: 'none' }).reset).toBe('none');
+  it('normalizes cache option: soft|full|disabled|auto or defaults to soft when invalid', () => {
+    expect(createContext({ cache: 'soft' }).cache).toBe('soft');
+    expect(createContext({ cache: 'full' }).cache).toBe('full');
+    expect(createContext({ cache: 'auto' }).cache).toBe('auto');
+    expect(createContext({ cache: 'disabled' }).cache).toBe('disabled');
     // invalid → soft
-    expect(createContext({ reset: 'weird' }).reset).toBe('soft');
-    expect(createContext({ reset: 123 }).reset).toBe('soft');
+    expect(createContext({ cache: 'weird' }).cache).toBe('soft');
+    expect(createContext({ cache: 123 }).cache).toBe('soft');
   });
 
   it('sets useProxy only when it is a string; otherwise empty string', () => {

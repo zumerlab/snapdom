@@ -12,50 +12,52 @@ beforeEach(() => {
 
 describe('preCache – extra coverage', () => {
   it('prefetches SVG background via proxy fallback and dedupes repeated URL', async () => {
-    const PROXY  = 'https://proxy.example.com/?u=';
-    const DIRECT = 'https://cdn.example.com/icon.svg';
-    const svg    = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>';
+  const PROXY  = 'https://proxy.example.com/?u=';
+  const DIRECT = 'https://cdn.example.com/icon.svg';
+  const svg    = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>';
 
-    globalThis.fetch = vi.fn((url) => {
-      const u = String(url);
-      if (u.startsWith(PROXY)) {
-        return Promise.resolve({
-          ok: true,
-          text: () => Promise.resolve(svg),
-          blob: () => Promise.resolve(new Blob([svg], { type: 'image/svg+xml' })),
-        });
-      }
-      // falla el directo => fuerza fallback al proxy
-      return Promise.reject(new Error('network fail'));
-    });
-
-    const root = document.createElement('div');
-    const a = document.createElement('div');
-    const b = document.createElement('div');
-    a.style.backgroundImage = `url(${DIRECT})`;
-    b.style.backgroundImage = `url(${DIRECT})`;
-    root.appendChild(a);
-    root.appendChild(b);
-    document.body.appendChild(root);
-
-    await preCache(root, { useProxy: PROXY });
-
-    const calls = vi.mocked(globalThis.fetch).mock.calls.map(([u]) => String(u));
-    const proxyCalls   = calls.filter(u => u.startsWith(PROXY));
-    const directCalls  = calls.filter(u => u === DIRECT);
-
-    // (1) EXACTAMENTE una llamada proxied
-    expect(proxyCalls.length).toBe(1);
-    // (2) Hubo al menos un intento directo (fallido); puede ser 1 o más según timing
-    expect(directCalls.length).toBeGreaterThanOrEqual(1);
-
-    // (3) Dedupe en cache.background: una sola entrada para ese URL
-    const key = safeEncodeURI(DIRECT);
-    expect(cache.background.has(key)).toBe(true);
-    expect([...cache.background.keys()].filter(k => k === key).length).toBe(1);
-
-    document.body.removeChild(root);
+  globalThis.fetch = vi.fn((url) => {
+    const u = String(url);
+    if (u.startsWith(PROXY)) {
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve(svg),
+        blob: () => Promise.resolve(new Blob([svg], { type: 'image/svg+xml' })),
+      });
+    }
+    // En el contrato nuevo, no se debería llegar acá si useProxy está seteado
+    return Promise.reject(new Error('network fail'));
   });
+
+  const root = document.createElement('div');
+  const a = document.createElement('div');
+  const b = document.createElement('div');
+  a.style.backgroundImage = `url(${DIRECT})`;
+  b.style.backgroundImage = `url(${DIRECT})`;
+  root.appendChild(a);
+  root.appendChild(b);
+  document.body.appendChild(root);
+
+  await preCache(root, { useProxy: PROXY });
+
+  const calls = vi.mocked(globalThis.fetch).mock.calls.map(([u]) => String(u));
+  const proxyCalls   = calls.filter(u => u.startsWith(PROXY));
+  const directCalls  = calls.filter(u => u === DIRECT);
+
+  // (1) EXACTAMENTE una llamada proxied (in-flight + cache dedupe)
+  expect(proxyCalls.length).toBe(1);
+
+  // (2) Con proxy activo, NO hay intentos directos en el nuevo snapFetch
+  expect(directCalls.length).toBe(0);
+
+  // (3) Dedupe en cache.background: una sola entrada para ese URL
+  const key = safeEncodeURI(DIRECT);
+  expect(cache.background.has(key)).toBe(true);
+  expect([...cache.background.keys()].filter(k => k === key).length).toBe(1);
+
+  document.body.removeChild(root);
+});
+
 
   it('handles mixed background layers (gradient + url) and only processes the URL layer', async () => {
     // No contamos fetch acá porque raster usa Image() y puede ser 0.
