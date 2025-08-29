@@ -1,147 +1,93 @@
-// === Minimal patch: ultra-fast snapshots with full-change invalidation ===
-// Keeps snapshot & snapshotKey caches persistent (no resets) but auto-invalidates
-// on ANY change (DOM, stylesheets, fonts) via a single global epoch.
-//
-// Drop-in: preserves your imports and cache usage.
-
-import { getStyleKey,NO_DEFAULTS_TAGS } from '../utils/index.js';
+import { getStyleKey, NO_DEFAULTS_TAGS } from '../utils/index.js';
 import { cache } from '../core/cache.js';
 
-// -----------------------------------------------------------------------------
-// 0) Persistent caches (do NOT reset between captures)
-// -----------------------------------------------------------------------------
-
-/** Element -> { epoch:number, snapshot:Object } */
-const snapshotCache = new WeakMap();
-/** signature:string -> styleKey:string (keep hot across captures) */
-const snapshotKeyCache = new Map();
-
-// -----------------------------------------------------------------------------
-// 1) Global epoch that bumps on ANY relevant change
-// -----------------------------------------------------------------------------
-
-let __epoch = 0; // increases whenever something changes that can affect styles
+// === epoch + caches internos (persistentes entre capturas) ===
+const snapshotCache = new WeakMap();      // el -> {epoch, snapshot}
+const snapshotKeyCache = new Map();       // signature -> styleKey
+let __epoch = 0;
 function bumpEpoch() { __epoch++; }
 
-// Wire once; extremely low overhead
+// opcional: hook público si querés forzar invalidación manual desde otro módulo
+export function notifyStyleEpoch() { bumpEpoch(); }
+
 let __wired = false;
-/**
- * Observe document-level changes that can affect computed styles:
- * - DOM mutations under the root you're capturing
- * - <style>/<link rel="stylesheet"> changes
- * - Font loading (icon fonts, etc.)
- * Call is idempotent; safe to leave as-is.
- * @param {Element} [root=document.documentElement]
- */
 function setupInvalidationOnce(root = document.documentElement) {
   if (__wired) return;
   __wired = true;
-
-  // Any DOM change under root triggers invalidation
   try {
     const domObs = new MutationObserver(() => bumpEpoch());
-    domObs.observe(root || document.documentElement, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-    });
+    domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
   } catch {}
-
-  // Stylesheet changes (new/removed/edited style/link) trigger invalidation
   try {
     const headObs = new MutationObserver(() => bumpEpoch());
-    headObs.observe(document.head, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-    });
+    headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true });
   } catch {}
-
-  // Font availability (metrics/icon fonts becoming ready) triggers invalidation
   try {
     const f = document.fonts;
     if (f) {
-      f.addEventListener?.('loadingdone', bumpEpoch, { once: false });
+      f.addEventListener?.('loadingdone', bumpEpoch);
       f.ready?.then(() => bumpEpoch()).catch(() => {});
     }
   } catch {}
 }
 
-// -----------------------------------------------------------------------------
-// 2) Snapshot helpers (unchanged semantics; minimal add of epoch check)
-// -----------------------------------------------------------------------------
-
-/**
- * Build a flattened computed-style snapshot from a CSSStyleDeclaration.
- * Keeps your visibility tweak and external URL sanitization.
- * @param {CSSStyleDeclaration} style
- * @returns {Record<string,string>}
- */
 function snapshotComputedStyleFull(style) {
-  const result = {};
-  const computedVisibility = style.getPropertyValue('visibility');
-
+  const out = {};
+  const vis = style.getPropertyValue('visibility');
   for (let i = 0; i < style.length; i++) {
     const prop = style[i];
     let val = style.getPropertyValue(prop);
-    if (
-      (prop === 'background-image' || prop === 'content') &&
-      val.includes('url(') &&
-      !val.includes('data:')
-    ) {
+    if ((prop === 'background-image' || prop === 'content') && val.includes('url(') && !val.includes('data:')) {
       val = 'none';
     }
-    result[prop] = val;
+    out[prop] = val;
   }
-
-  if (computedVisibility === 'hidden') {
-    result.opacity = '0';
-  }
-  return result;
+  if (vis === 'hidden') out.opacity = '0';
+  return out;
 }
-
-/** Memo for signatures per snapshot object */
 const __snapshotSig = new WeakMap();
-/**
- * Canonical signature for a computed-style snapshot (memoized).
- * @param {Record<string,string>} snapshot
- */
-function styleSignature(snapshot) {
-  let sig = __snapshotSig.get(snapshot);
+function styleSignature(snap) {
+  let sig = __snapshotSig.get(snap);
   if (sig) return sig;
-  const entries = Object.entries(snapshot);
-  entries.sort((a, b) => (a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0)));
-  sig = entries.map(([k, v]) => `${k}:${v}`).join(';');
-  __snapshotSig.set(snapshot, sig);
+  const entries = Object.entries(snap).sort((a,b) => a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0));
+  sig = entries.map(([k,v]) => `${k}:${v}`).join(';');
+  __snapshotSig.set(snap, sig);
   return sig;
 }
-
-/**
- * Return a snapshot for `el`. Reuse only if the global epoch didn't change.
- * If anything in the doc changed since the last capture, the epoch differs and we recompute.
- * @param {Element} el
- * @param {CSSStyleDeclaration|null} [preStyle]
- */
 function getSnapshot(el, preStyle = null) {
   const rec = snapshotCache.get(el);
-  if (rec && rec.epoch === __epoch) {
-    return rec.snapshot; // HOT path: unchanged environment
-  }
+  if (rec && rec.epoch === __epoch) return rec.snapshot;
   const style = preStyle || getComputedStyle(el);
   const snap = snapshotComputedStyleFull(style);
   snapshotCache.set(el, { epoch: __epoch, snapshot: snap });
   return snap;
 }
 
-// -----------------------------------------------------------------------------
-// 3) Back-compat context adapter (keeps your current cache/session usage)
-// -----------------------------------------------------------------------------
+// adapta cualquier llamada: (src, clone, sessionCache, options)  o  (src, clone, ctx)
+function _resolveCtx(sessionOrCtx, opts) {
+  // 1) ya es ctx completo
+  if (sessionOrCtx && sessionOrCtx.session && sessionOrCtx.persist) return sessionOrCtx;
 
-function ensureContext(context) {
-  if (context && context.session && context.persist) return context;
+  // 2) vino sessionCache + options
+  if (sessionOrCtx && (sessionOrCtx.styleMap || sessionOrCtx.styleCache || sessionOrCtx.nodeMap)) {
+    return {
+      session: sessionOrCtx,
+      persist: {
+        snapshotKeyCache,
+        defaultStyle: cache.defaultStyle,
+        baseStyle: cache.baseStyle,
+        image: cache.image,
+        resource: cache.resource,
+        background: cache.background,
+        font: cache.font,
+      },
+      options: opts || {},
+    };
+  }
+
+  // 3) fallback: sólo options
   return {
+    session: cache.session,
     persist: {
       snapshotKeyCache,
       defaultStyle: cache.defaultStyle,
@@ -151,51 +97,47 @@ function ensureContext(context) {
       background: cache.background,
       font: cache.font,
     },
-    session: cache.session,
-    options: (context && context.options) || {},
+    options: (sessionOrCtx || opts || {}),
   };
 }
 
-// -----------------------------------------------------------------------------
-// 4) Public API: inlineAllStyles (drop-in)
-// -----------------------------------------------------------------------------
-
 /**
- * Inline styles using persistent snapshot & signature caches with full invalidation.
- * Speed: when nothing changed, all nodes hit hot caches.
- * Fidelity: if *anything* changed (DOM, styles, fonts), epoch increments and nodes recompute.
- * @param {Element} source
- * @param {Element} clone
- * @param {object} [context]
+ * Firma flexible:
+ *   inlineAllStyles(source, clone, sessionCache, options)
+ *   inlineAllStyles(source, clone, ctx)
  */
-export async function inlineAllStyles(source, clone, context) {
-    if (source.tagName === "STYLE") return;
-    if (NO_DEFAULTS_TAGS.has(source.tagName?.toLowerCase())) {
-  const author = source.getAttribute?.('style');
-  if (author) target.setAttribute('style', author);
-  return; // no computadas para estos tags
-}
-  // Wire invalidation (idempotent, tiny cost)
-  setupInvalidationOnce(document.documentElement);
+export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
+  if (source.tagName === 'STYLE') return;
 
-  const ctx = ensureContext(context);
+  const ctx = _resolveCtx(sessionOrCtx, opts);
+  const resetMode = (ctx.options && ctx.options.cache) || 'auto';
+
+  // sólo enganchar observer si NO está 'disabled'
+  if (resetMode !== 'disabled') setupInvalidationOnce(document.documentElement);
+
+  // Copia author styles para tags sin defaults costosos (pero seguimos mapeando)
+  if (NO_DEFAULTS_TAGS.has(source.tagName?.toLowerCase())) {
+    const author = source.getAttribute?.('style');
+    if (author) clone.setAttribute('style', author);
+  }
+
   const { session, persist } = ctx;
 
-  // Cache getComputedStyle per capture (your current pattern)
+  // cachea getComputedStyle por captura
   if (!session.styleCache.has(source)) {
     session.styleCache.set(source, getComputedStyle(source));
   }
-  const preStyle = session.styleCache.get(source);
+  const pre = session.styleCache.get(source);
 
-  // Snapshot that auto-invalidates if ANY change happened
-  const snapshot = getSnapshot(source, preStyle);
+  // snapshot dependiente de epoch
+  const snap = getSnapshot(source, pre);
 
-  // Dedupe by canonical signature → stable style key (persistent across captures)
-  const sig = styleSignature(snapshot);
+  // dedupe por firma → clave de estilo estable
+  const sig = styleSignature(snap);
   let key = persist.snapshotKeyCache.get(sig);
   if (!key) {
     const tag = source.tagName?.toLowerCase() || 'div';
-    key = getStyleKey(snapshot, tag);
+    key = getStyleKey(snap, tag);
     persist.snapshotKeyCache.set(sig, key);
   }
 

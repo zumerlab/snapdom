@@ -9,7 +9,6 @@ import {
   parseContent,
   extractURL,
   safeEncodeURI,
-  fetchImage,
   inlineSingleBackgroundEntry,
   splitBackgroundImage,
   getStyleKey
@@ -17,6 +16,7 @@ import {
 import { iconToImage } from '../modules/fonts.js';
 import { isIconFont } from '../modules/iconFonts.js';
 import { cache } from '../core/cache.js';
+import { snapFetch } from './snapFetch.js';
 
 /**
  * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
@@ -131,8 +131,8 @@ pseudoEl.appendChild(imgEl);
         if (rawUrl?.trim()) {
           try {
             const imgEl = document.createElement('img');
-            const dataUrl = await fetchImage(safeEncodeURI(rawUrl), {useProxy: options.useProxy});
-            imgEl.src = dataUrl;
+            const dataUrl = await snapFetch(safeEncodeURI(rawUrl), {as:'dataURL', useProxy: options.useProxy});
+            imgEl.src = dataUrl.data;
             imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
             pseudoEl.appendChild(imgEl);
           } catch (e) {

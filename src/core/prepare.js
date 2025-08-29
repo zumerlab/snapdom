@@ -6,6 +6,7 @@
 import { generateCSSClasses, stripTranslate} from '../utils/index.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
+import { snapFetch } from '../modules/snapFetch.js';
 import { inlineExternalDefsAndSymbols} from '../modules/svgDefs.js';
 import { cache } from '../core/cache.js';
 
@@ -29,6 +30,7 @@ export async function prepareClone(element, options = {}) {
  
   let clone
   let classCSS = '';
+  let shadowScopedCSS = '';
   
   stabilizeLayout(element)
 
@@ -52,7 +54,7 @@ export async function prepareClone(element, options = {}) {
   }
   await resolveBlobUrlsInTree(clone);
    // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
-let shadowScopedCSS = '';
+
 try {
   const styleNodes = clone.querySelectorAll('style[data-sd]');
   for (const s of styleNodes) {
@@ -60,6 +62,7 @@ try {
     s.remove(); // Do not leave <style> inside the visual clone
   }
 } catch {}
+
 const keyToClass = generateCSSClasses(sessionCache.styleMap);
 classCSS = Array.from(keyToClass.entries())
   .map(([key, className]) => `.${className}{${key}}`)
@@ -152,26 +155,47 @@ function stabilizeLayout(element) {
   }
 }
 
-var _blobToDataUrlCache = /* @__PURE__ */ new Map();
+var _blobToDataUrlCache = new Map();
 
+
+/**
+ * Read a blob: URL and return its data URL, with memoization + shared cache.
+ * - Usa snapFetch(as:'dataURL') para convertir directo.
+ * - Dedupea inflight guardando la promesa en el Map.
+ * - Escribe también en cache.resource para reuso cross-módulo.
+ * @param {string} blobUrl
+ * @returns {Promise<string>} data URL
+ */
 async function blobUrlToDataUrl(blobUrl) {
+  // 1) Hit en cache global compartido
+  if (cache.resource?.has(blobUrl)) return cache.resource.get(blobUrl);
+
+  // 2) Hit en memo local (puede ser promesa o string resuelto)
   if (_blobToDataUrlCache.has(blobUrl)) return _blobToDataUrlCache.get(blobUrl);
-  const res = await fetch(blobUrl);
-  if (!res.ok) throw new Error(`[SnapDOM] HTTP ${res.status} on blob fetch (${blobUrl})`);
-  const blob = await res.blob();
-  const dataUrl = await new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onloadend = () => {
-      const v = fr.result;
-      if (typeof v === "string" && v.startsWith("data:")) resolve(v);
-      else reject(new Error("[SnapDOM] Invalid data URL from blob"));
-    };
-    fr.onerror = () => reject(new Error("[SnapDOM] FileReader error"));
-    fr.readAsDataURL(blob);
-  });
-  _blobToDataUrlCache.set(blobUrl, dataUrl);
-  return dataUrl;
+
+  // 3) Crear promesa inflight y guardarla para dedupe
+  const p = (async () => {
+    const r = await snapFetch(blobUrl, { as: 'dataURL', silent: true });
+    if (!r.ok || typeof r.data !== 'string') {
+      throw new Error(`[snapDOM] Failed to read blob URL: ${blobUrl}`);
+    }
+    cache.resource?.set(blobUrl, r.data);   // cache compartido
+    return r.data;
+  })();
+
+  _blobToDataUrlCache.set(blobUrl, p);
+  try {
+    const data = await p;
+    // Opcional: reemplazar promesa por string ya resuelto (menos retenciones)
+    _blobToDataUrlCache.set(blobUrl, data);
+    return data;
+  } catch (e) {
+    // Si falla, limpiamos para permitir reintentos futuros
+    _blobToDataUrlCache.delete(blobUrl);
+    throw e;
+  }
 }
+
 
 var BLOB_URL_RE = /\bblob:[^)"'\s]+/g;
 

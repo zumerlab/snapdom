@@ -1,30 +1,76 @@
 /**
+ * @typedef {"disabled"|"full"|"auto"|"soft"} CachePolicy
+ */
+
+/**
+ * Normalizes `options.cache` into a canonical policy.
+ * Shorthands:
+ *  - true  => "soft"
+ *  - false => "disabled"
+ * Accepted strings: "disabled" | "full" | "auto" | "soft"
+ * Default: "soft"
+ * @param {unknown} v
+ * @returns {CachePolicy}
+ */
+export function normalizeCachePolicy(v) {
+  if (v === true) return "soft";
+  if (v === false) return "disabled";
+  if (typeof v === "string") {
+    const s = v.toLowerCase().trim();
+    if (s === "disabled" || s === "full" || s === "auto" || s === "soft") return /** @type {CachePolicy} */(s);
+  }
+  return "soft";
+}
+
+/**
+ * Creates a normalized capture context for SnapDOM.
  * @param {Object} [options={}]
+ * @param {boolean} [options.debug]
+ * @param {boolean} [options.fast]
+ * @param {number}  [options.scale]
+ * @param {Array<string|RegExp>} [options.exclude]
+ * @param {(node: Node)=>boolean} [options.filter]
+ * @param {boolean} [options.embedFonts]
+ * @param {string|string[]} [options.iconFonts]
+ * @param {string[]} [options.localFonts]
+ * @param {string[]|undefined} [options.excludeFonts]
+ * @param {string}  [options.useProxy]
+ * @param {number|null} [options.width]
+ * @param {number|null} [options.height]
+ * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.format]
+ * @param {"svg"|"img"|"canvas"|"blob"} [options.type]
+ * @param {number}  [options.quality]
+ * @param {number}  [options.dpr]
+ * @param {string|null} [options.backgroundColor]
+ * @param {string}  [options.filename]
+ * @param {unknown} [options.cache] // ← NEW: "disabled"|"full"|"auto"|"soft" | boolean shorthands
  * @returns {Object}
  */
 export function createContext(options = {}) {
   const resolvedFormat = options.format ?? 'png';
+  /** @type {CachePolicy} */
+  const cachePolicy = normalizeCachePolicy(options.cache);
+
   return {
+    // Debug & perf
     debug: options.debug ?? false,
     fast: options.fast ?? true,
     scale: options.scale ?? 1,
 
-    // DOM filters (no confundir con fuentes)
+    // DOM filters
     exclude: options.exclude ?? [],
     filter: options.filter ?? null,
 
-    // Fuentes (público)
+    // Fuentes
     embedFonts: options.embedFonts ?? false,
-    iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts : (options.iconFonts ? [options.iconFonts] : []),
+    iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts
+             : (options.iconFonts ? [options.iconFonts] : []),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
-    /**
-     * Font exclusion rules (simple, no regex).
-     * @type {{families?:string[], domains?:string[], subsets?:string[]}|undefined}
-     */
     excludeFonts: options.excludeFonts ?? undefined,
 
-    /** @type {'soft'|'hard'|'none'} */
-    reset: normalizeResetOption(options.reset),
+    /** Cache policy (disabled|full|auto|soft). Default: "soft" */
+    /** @type {CachePolicy} */
+    cache: cachePolicy,
 
     // Red
     useProxy: typeof options.useProxy === 'string' ? options.useProxy : "",
@@ -36,25 +82,11 @@ export function createContext(options = {}) {
     type: options.type ?? 'svg',
     quality: options.quality ?? 0.92,
     dpr: options.dpr ?? (window.devicePixelRatio || 1),
-    backgroundColor: options.backgroundColor ??
-      (['jpg','jpeg','webp'].includes(resolvedFormat) ? '#ffffff' : null),
-    filename: options.filename ?? `snapDOM`,
+    backgroundColor:
+      options.backgroundColor ?? (['jpg','jpeg','webp'].includes(resolvedFormat) ? '#ffffff' : null),
+    filename: options.filename ?? 'snapDOM',
+
+    // Plugins (reservado para futura activación)
+    // plugins: normalizePlugins(...),
   };
 }
-
-/**
- * @param {unknown} v
- * @returns {'soft'|'hard'|'full'|'none'}
- */
-function normalizeResetOption(v) {
-  if (v === 'soft' || v === 'hard' || v === 'none') return v;
-  return 'soft'; // default pedido
-}
-
-// Plugins (disabled por ahora)
-    /* plugins: normalizePlugins(
-      options.ignoreGlobalPlugins
-        ? options.plugins ?? []
-        : [...getGlobalPlugins(), ...(options.plugins ?? [])],
-      options.debug
-    ) */

@@ -1,8 +1,8 @@
 // src/api/preCache.js
-import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage, precacheCommonTags, isSafari } from '../utils';
+import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage, precacheCommonTags, isSafari } from '../utils';
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
-import { cache, applyReset } from '../core/cache.js';
-// ✅ NEW: importa la API que el test espía
+import { snapFetch } from '../modules/snapFetch.js';
+import { cache, applyCachePolicy } from '../core/cache.js';
 import { inlineBackgroundImages } from '../modules/background.js';
 
 /**
@@ -10,7 +10,7 @@ import { inlineBackgroundImages } from '../modules/background.js';
  * @param {Element|Document} [root=document]
  * @param {Object} [options={}]
  * @param {boolean} [options.embedFonts=true]
- * @param {'hard'|'soft'|false} [options.reset='hard']
+ * @param {'full'|'soft'|'auto'|'disabled'} [options.cache='full']
  * @param {string}  [options.useProxy=""]
  * @param {{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}[]} [options.localFonts=[]]
  * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.excludeFonts]
@@ -19,11 +19,11 @@ import { inlineBackgroundImages } from '../modules/background.js';
 export async function preCache(root = document, options = {}) {
   const {
     embedFonts = true,
-    reset = 'hard',
+    cacheOpt = 'full',
     useProxy = "",
   } = options;
 
-  applyReset(reset);
+  applyCachePolicy(cacheOpt);
 
   // No rompas en headless
   try { await document.fonts.ready; } catch {}
@@ -60,7 +60,7 @@ export async function preCache(root = document, options = {}) {
     if (!src) continue;
     if (!cache.image.has(src)) {
       const p = Promise.resolve()
-        .then(() => fetchImage(src, { useProxy }))
+        .then(() => snapFetch(src, { as: 'dataURL',useProxy }))
         .then((dataURL) => { cache.image.set(src, dataURL); })
         .catch(() => {});
       promises.push(p);

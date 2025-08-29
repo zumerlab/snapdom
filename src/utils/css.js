@@ -4,24 +4,24 @@
 
 /** Tags that Snapdom must never capture (skip node + subtree). */
 export const NO_CAPTURE_TAGS = new Set([
-  "meta","script","noscript","title","base","link","template"
+  "meta","script","noscript","title","link","template"
 ]);
 
 /** Tags that must not generate default styles nor auto-classes. */
 export const NO_DEFAULTS_TAGS = new Set([
 
   // non-painting / head stuff
-  "meta","link","style","title","base","noscript","script","template",
+  "meta","link","style","title","noscript","script","template",
   // SVG whole namespace (safe for LeaderLine/presentation attrs)
-  "svg","defs","symbol","g","use",'path', 'circle', 'rect', 'line','marker',
-  "filter",
-  "lineargradient","radialgradient","stop"
+  'svg','g','defs','use','marker','mask','clipPath','pattern',
+  'path','polygon','polyline','line','circle','ellipse','rect',
+  "filter","lineargradient","radialgradient","stop"
 ]);
 
 import { cache } from "../core/cache";
 
 const commonTags = [
-  
+  "div", "span","p","a","img","ul","li","button","input","select","textarea","label","section","article","header","footer","nav","main","aside","h1","h2","h3","h4","h5","h6","table","thead","tbody","tr","td","th"
 ];
 
 // -----------------------------------------------------------------------------
@@ -39,16 +39,14 @@ export function precacheCommonTags() {
 // -----------------------------------------------------------------------------
 // 2) getDefaultStyleForTag → gate único por NO_DEFAULTS_TAGS + sandbox marcado
 // -----------------------------------------------------------------------------
-/**
+/*
  * Retrieves default CSS property values from a temporary element.
- *
- * @param {string} tagName - The tag name to get default styles for (case-insensitive)
- * @returns {Object} Object containing default values for all CSS properties
+ * @param {string} tagName
+ * @returns {Object}
  */
 export function getDefaultStyleForTag(tagName) {
   tagName = String(tagName).toLowerCase();
 
-  // Single gate: no defaults (and later no classes) for these tags
   if (NO_DEFAULTS_TAGS.has(tagName)) {
     const empty = {};
     cache.defaultStyle.set(tagName, empty);
@@ -63,25 +61,28 @@ export function getDefaultStyleForTag(tagName) {
   if (!sandbox) {
     sandbox = document.createElement('div');
     sandbox.id = 'snapdom-sandbox';
-    sandbox.setAttribute('data-snapdom-sandbox', 'true'); // <- identifica sandbox
+    sandbox.setAttribute('data-snapdom-sandbox', 'true');
     sandbox.setAttribute('aria-hidden', 'true');
     sandbox.style.position = 'absolute';
     sandbox.style.left = '-9999px';
     sandbox.style.top = '-9999px';
-    sandbox.style.width = '0';
-    sandbox.style.height = '0';
+    sandbox.style.width = '0px';
+    sandbox.style.height = '0px';
     sandbox.style.overflow = 'hidden';
     document.body.appendChild(sandbox);
   }
 
   const el = document.createElement(tagName);
-  //el.style.all = 'initial';
+  el.style.all = 'initial'; 
   sandbox.appendChild(el);
 
   const styles = getComputedStyle(el);
   const defaults = {};
   for (let prop of styles) {
-    defaults[prop] = styles.getPropertyValue(prop);
+    // ⬇️ Nuevo: filtramos ruido que no pinta y props dependientes de layout
+    if (shouldIgnoreProp(prop)) continue;
+    const value = styles.getPropertyValue(prop);
+    defaults[prop] = value;
   }
 
   sandbox.removeChild(el);
@@ -89,18 +90,46 @@ export function getDefaultStyleForTag(tagName) {
   return defaults;
 }
 
-// === Solo excluir lo que seguro no pinta el frame ===
 
-// tokens "animation"/"transition" en cualquier parte del nombre (con límites por guiones)
+/** Tokens "animation"/"transition" anywhere in the name (dash-bounded). */
 const NO_PAINT_TOKEN = /(?:^|-)(animation|transition)(?:-|$)/i;
 
-// prefijos que no afectan el pixel del frame
-const NO_PAINT_PREFIX = /^(--|view-timeline|scroll-timeline|offset-|app-region|interactivity|box-decoration-break|-webkit-locale)/i;
+/** Prefixes that never affect the static pixel of the frame. */
+const NO_PAINT_PREFIX = /^(--|view-timeline|scroll-timeline|animation-trigger|offset-|position-try|app-region|interactivity|overlay|view-transition|-webkit-locale|-webkit-user-(?:drag|modify)|-webkit-tap-highlight-color|-webkit-text-security)$/i;
 
-function shouldIgnoreProp(prop /*, tag */) {
+/** Exact properties that do not render pixels (control/interaction/UA hints). */
+const NO_PAINT_EXACT = new Set([
+  // Interaction hints
+  'cursor',
+  'pointer-events',
+  'touch-action',
+  'user-select',
+  // Printing/speech/reading-mode hints
+  'print-color-adjust',
+  'speak',
+  'reading-flow',
+  'reading-order',
+  // Anchoring/container/timeline scopes (metadata for layout queries)
+  'anchor-name',
+  'anchor-scope',
+  'container-name',
+  'container-type',
+  'timeline-scope',
+]);
+
+/**
+ * Returns true if a CSS property should be ignored because it does not affect
+ * the static pixel output of a frame capture.
+ * - Matches prefixes (fast path) and tokens (e.g., “...-animation-...”).
+ * - Skips a curated set of exact property names.
+ * @param {string} prop
+ * @returns {boolean}
+ */
+export function shouldIgnoreProp(prop /*, tag */) {
   const p = String(prop).toLowerCase();
-  if (NO_PAINT_PREFIX.test(p)) return true; // --*, view/scroll-timeline*, offset-*, hints UA
-  if (NO_PAINT_TOKEN.test(p)) return true;  // …-animation…, …-transition… (incluye caret-animation, animation-trigger-*)
+  if (NO_PAINT_EXACT.has(p)) return true;
+  if (NO_PAINT_PREFIX.test(p)) return true; // --*, view/scroll-timeline*, offset-*, position-try*, etc.
+  if (NO_PAINT_TOKEN.test(p)) return true;  // …-animation…, …-transition… (incluye caret/trigger)
   return false;
 }
 
@@ -128,6 +157,7 @@ export function getStyleKey(snapshot, tagName) {
   entries.sort();
   return entries.join(';');
 }
+
 
 /**
  * Collects all unique tag names used in the DOM tree rooted at the given node.
@@ -198,13 +228,12 @@ export function generateDedupedBaseCSS(usedTagNames) {
  * @returns {Map} Map of style keys to class names
  */
 export function generateCSSClasses(styleMap) {
-  const keySet = new Set(styleMap.values());
+  const keys = Array.from(new Set(styleMap.values()))
+    .filter(Boolean)
+    .sort();                 // ← orden estable
   const classMap = new Map();
-  let counter = 1;
-  for (const key of keySet) {
-    if (!key) continue; // no class for empty keys
-    classMap.set(key, `c${counter++}`);
-  }
+  let i = 1;
+  for (const k of keys) classMap.set(k, `c${i++}`);
   return classMap;
 }
 

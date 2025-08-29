@@ -3,9 +3,10 @@
  * @module fonts
  */
 
-import { extractURL, fetchResource } from "../utils/helpers"
+import { extractURL } from "../utils/helpers"
 import { cache } from "../core/cache"
 import { isIconFont } from '../modules/iconFonts.js';
+import { snapFetch } from "./snapFetch.js";
 
 /**
  * Converts a unicode character from an icon font into a data URL image.
@@ -381,19 +382,17 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (cache.font?.has(abs)) continue;
 
       try {
-        const res  = await fetchResource(abs, { useProxy });
-        const blob = await res.blob();
-        const b64  = await new Promise((resolve) => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result);
-          r.readAsDataURL(blob);
-        });
-        cache.resource?.set(abs, b64);
-        cache.font?.add(abs);
-        out = out.replace(m[0], `url(${b64})`);
+        const r = await snapFetch(abs, { as: 'dataURL', useProxy, silent: true });
+        if (r.ok && typeof r.data === 'string') {
+          const b64 = r.data; // "data:...base64"
+          cache.resource?.set(abs, b64);
+          cache.font?.add(abs);
+          out = out.replace(m[0], `url(${b64})`);
+        }
       } catch {
-        console.warn("[snapdom] Failed to fetch font resource:", abs);
+        console.warn("[snapDOM] Failed to fetch font resource:", abs);
       }
+
     }
     return out;
   }
@@ -557,8 +556,8 @@ if (importUrls.length) {
         }
       }
       if (!cssText) {
-        const res = await fetchResource(link.href, { useProxy });
-        cssText = await res.text();
+        const res = await snapFetch(link.href, {as:'text', useProxy });
+        cssText = res.data;
         if (isIconFont(link.href)) continue;
       }
 
@@ -654,15 +653,14 @@ if (importUrls.length) {
           cache.font?.add(f._snapdomSrc);
         } else if (!cache.font?.has(f._snapdomSrc)) {
           try {
-            const res  = await fetchResource(f._snapdomSrc, { useProxy });
-            const blob = await res.blob();
-            b64 = await new Promise((resolve) => {
-              const r = new FileReader();
-              r.onload = () => resolve(r.result);
-              r.readAsDataURL(blob);
-            });
-            cache.resource?.set(f._snapdomSrc, b64);
-            cache.font?.add(f._snapdomSrc);
+            const r = await snapFetch(f._snapdomSrc, { as: 'dataURL', useProxy, silent: true });
+            if (r.ok && typeof r.data === 'string') {
+              b64 = r.data;
+              cache.resource?.set(f._snapdomSrc, b64);
+              cache.font?.add(f._snapdomSrc);
+            } else {
+              continue; // mantiene robustez sin cortar la captura
+            }
           } catch {
             console.warn("[snapdom] Failed to fetch dynamic font src:", f._snapdomSrc);
             continue;
@@ -693,15 +691,14 @@ if (importUrls.length) {
         cache.font?.add(src);
       } else if (!cache.font?.has(src)) {
         try {
-          const res  = await fetchResource(src, { useProxy });
-          const blob = await res.blob();
-          b64 = await new Promise((resolve) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result);
-            r.readAsDataURL(blob);
-          });
-          cache.resource?.set(src, b64);
-          cache.font?.add(src);
+          const r = await snapFetch(src, { as: 'dataURL', useProxy, silent: true });
+          if (r.ok && typeof r.data === 'string') {
+            b64 = r.data;
+            cache.resource?.set(src, b64);
+            cache.font?.add(src);
+          } else {
+            continue;
+          }
         } catch {
           console.warn("[snapdom] Failed to fetch localFonts src:", src);
           continue;

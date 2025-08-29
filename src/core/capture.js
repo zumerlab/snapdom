@@ -8,7 +8,7 @@ import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
 import { idle,collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js';
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
-import { cache, applyReset } from '../core/cache.js'
+import { cache, applyCachePolicy } from '../core/cache.js'
 
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
@@ -25,7 +25,7 @@ import { cache, applyReset } from '../core/cache.js'
 
 export async function captureDOM(element, options) {
   if (!element) throw new Error("Element cannot be null or undefined");
-  applyReset(options.reset)
+  applyCachePolicy(options.cache)
   const fast = options.fast
   let clone, classCSS, styleCache;
   let fontsCSS = "";
