@@ -163,7 +163,7 @@ All capture methods accept an `options` object:
 | `type`            | string   | `svg`    | Default Blob type (`svg`\|`png`\|`jpg`\|`webp`) |
 | `exclude`         | string[] | -        | CSS selectors to exclude                        |
 | `filter`          | function | -        | Custom predicate `(el) => boolean`              |
-| `reset`          | string | `soft`      | Control internal caches `soft, hard, none` |
+| `cache`           | string   | `"soft"` | Control internal caches: `disabled`, `soft`, `auto`, `full` |
 
 ### Dimensions (`scale`, `width`, `height`)
 
@@ -273,18 +273,30 @@ await preCache({
 });
 ```
 
-## Reset & cache control
+### Cache control
 
-SnapDOM maintains internal caches for images, backgrounds, resources, default/computed styles, and fonts. It is designed to automatically refresh some caches to ensure fidelity in multiple captures. However, if you need to free memory between captures or guarantee a fresh first‑capture behavior, you can reset them.
+SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.  
+You can control how they are cleared between captures using the `cache` option:
 
-### When to use which?
+| Mode        | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| `"disabled"`| No cache: clears absolutely everything on every capture                     |
+| `"soft"`    | Clears session caches (`styleMap`, `nodeMap`, `styleCache`) _(default)_      |
+| `"auto"`    | Minimal cleanup: only clears transient maps                                 |
+| `"full"`    | Keeps all caches (nothing is cleared, maximum performance)                  |
 
-Use **soft** when doing multiple captures in the same page and you just need fresh computed styles.
+**Examples:**
 
-Use **hard** after dynamically loading new CSS/fonts or when testing cold-start performance.
+```js
+// Use minimal but fast cache
+await snapdom.toPng(el, { cache: 'auto' });
 
-Use **none** if you want maximum speed across many captures and can tolerate cached results.
+// Keep everything in memory between captures
+await snapdom.toPng(el, { cache: 'full' });
 
+// Force a full cleanup on every capture
+await snapdom.toPng(el, { cache: 'disabled' });
+```
 
 ## Limitations
 
