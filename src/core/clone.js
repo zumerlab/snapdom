@@ -4,6 +4,28 @@
  */
 
 import { inlineAllStyles } from '../modules/styles.js';
+import { idle } from '../utils/helpers.js'
+
+function idleCallback(childList, callback) {
+  return Promise.all(childList.map(child => {
+    return new Promise((resolve) => {
+      function deal() {
+        idle((deadline) => {
+          if (deadline instanceof IdleDeadline) {
+            if (deadline.timeRemaining()) {
+              callback(child, resolve)
+            } else {
+              deal() // 重启当前执行
+            }
+          } else {
+            callback(child, resolve)
+          }
+        })
+      }
+      deal()
+    })
+  }))
+}
 
 /**
  * Freeze the responsive selection of an <img> that has srcset/sizes.
@@ -40,7 +62,7 @@ function freezeImgSrcset(original, cloned) {
  */
 
  
-export function deepClone(node, styleMap, styleCache, nodeMap, compress, options = {}, originalRoot) {
+export async function deepClone(node, styleMap, styleCache, nodeMap, compress, options = {}, originalRoot) {
   if (!node) throw new Error('Invalid node');
 
   // Local set to avoid duplicates in slot processing
@@ -188,19 +210,41 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
     } else {
       // ShadowRoot without slots: clone full content
       const shadowFrag = document.createDocumentFragment();
-      for (const child of node.shadowRoot.childNodes) {
-        if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
-          const cssText = child.textContent || "";
-          if (cssText.trim() && compress) {
-          //  if (!cache.preStyle) cache.preStyle = new WeakMap();
-            styleCache.set(child, cssText);
+      if (options.performance) {
+        function callback(child, resolve) {
+          if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
+            const cssText = child.textContent || "";
+            if (cssText.trim() && compress) {
+            //  if (!cache.preStyle) cache.preStyle = new WeakMap();
+              styleCache.set(child, cssText);
+              return resolve(null)
+            }
+            deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node).then((clonedChild) => {
+              resolve(clonedChild || null)
+            }).catch((e) => {
+              resolve(null)
+            })
           }
-          continue;
         }
-        const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
-        if (clonedChild) shadowFrag.appendChild(clonedChild);
+
+        const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), callback)
+        shadowFrag.append(...cloneList.filter(clonedChild => !!clonedChild))
+        clone.appendChild(shadowFrag)
+      } else {
+        for (const child of node.shadowRoot.childNodes) {
+          if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "STYLE") {
+            const cssText = child.textContent || "";
+            if (cssText.trim() && compress) {
+            //  if (!cache.preStyle) cache.preStyle = new WeakMap();
+              styleCache.set(child, cssText);
+            }
+            continue;
+          }
+          const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+          if (clonedChild) shadowFrag.appendChild(clonedChild);
+        }
+        clone.appendChild(shadowFrag);
       }
-      clone.appendChild(shadowFrag);
     }
   }
 
@@ -210,19 +254,46 @@ export function deepClone(node, styleMap, styleCache, nodeMap, compress, options
     const nodesToClone = assigned.length > 0 ? assigned : Array.from(node.childNodes);
     const fragment = document.createDocumentFragment();
 
-    for (const child of nodesToClone) {
-      const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
-      if (clonedChild) fragment.appendChild(clonedChild);
+    if (options.performance) {
+      function callback(child, resolve) {
+        deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node).then((clonedChild) => {
+          resolve(clonedChild || null)
+        }).catch((e) => {
+          resolve(null)
+        })
+      }
+      const cloneList = await idleCallback(Array.from(nodesToClone), callback)
+      fragment.append(...cloneList.filter(clonedChild => !!clonedChild))
+      return fragment;
+    } else {
+      for (const child of nodesToClone) {
+        const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+        if (clonedChild) fragment.appendChild(clonedChild);
+      }
+      return fragment;
     }
-    return fragment;
   }
 
   // 14. Clone children (light DOM), skipping duplicates
-  for (const child of node.childNodes) {
-    if (clonedAssignedNodes.has(child)) continue;
+  if (options.performance) {
+    // Render frames normally
+    function callback(child, resolve) {
+      if (clonedAssignedNodes.has(child)) return resolve(null);
+      deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node).then((clonedChild) => {
+        resolve(clonedChild || null)
+      }).catch((e) => {
+        resolve(null)
+      })
+    }
+    const cloneList = await idleCallback(Array.from(node.childNodes), callback)
+    clone.append(...cloneList.filter(clonedChild => !!clonedChild))
+  } else {
+    for (const child of node.childNodes) {
+      if (clonedAssignedNodes.has(child)) continue;
 
-    const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
-    if (clonedChild) clone.appendChild(clonedChild);
+      const clonedChild = deepClone(child, styleMap, styleCache, nodeMap, compress, options, originalRoot || node);
+      if (clonedChild) clone.appendChild(clonedChild);
+    }
   }
 
   // Adjust select value after children are cloned

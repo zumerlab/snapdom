@@ -39,7 +39,7 @@ export async function prepareClone(element, compress = false, embedFonts = false
 
 
   try {
-    clone = deepClone(element, styleMap, styleCache, nodeMap, compress, options, element);
+    clone = await deepClone(element, styleMap, styleCache, nodeMap, compress, options, element);
   } catch (e) {
     console.warn("deepClone failed:", e);
     throw e;

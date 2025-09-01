@@ -17,6 +17,7 @@ declare module "@zumer/snapdom" {
     useProxy?: string;
     exclude?: string[];
     filter?: (element: Element, originalElement: Element) => boolean;
+    performance?: boolean;
   }
 
   export interface SnapResult {

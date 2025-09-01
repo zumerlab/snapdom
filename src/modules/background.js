@@ -70,14 +70,18 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       // Split multiple background images (e.g., comma-separated) for inlining each separately
       const splits = splitBackgroundImage(val);
 
-      // Inline each background image entry asynchronously (e.g., fetch and embed as data URI)
-      const inlined = await Promise.all(
-        splits.map(entry => inlineSingleBackgroundEntry(entry, options))
-      );
+      try {
 
-      // If any inlined entry is valid, set the joined inline style on the clone
-      if (inlined.some(p => p && p !== "none" && !/^url\(undefined/.test(p))) {
-        cloneNode.style.setProperty(prop, inlined.join(", "));
+        // Inline each background image entry asynchronously (e.g., fetch and embed as data URI)
+        const inlined = await Promise.all(
+          splits.map(entry => inlineSingleBackgroundEntry(entry, options))
+        );
+  
+        // If any inlined entry is valid, set the joined inline style on the clone
+        if (inlined.some(p => p && p !== "none" && !/^url\(undefined/.test(p))) {
+          cloneNode.style.setProperty(prop, inlined.join(", "));
+        }
+      } catch (e) {
       }
     }
 
