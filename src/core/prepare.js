@@ -42,7 +42,7 @@ export async function prepareClone(element, options = {}) {
 
 
   try {
-    clone = deepClone(element, sessionCache, options, element);
+    clone = await deepClone(element, sessionCache, options, element);
   } catch (e) {
     console.warn("deepClone failed:", e);
     throw e;
