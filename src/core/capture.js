@@ -3,13 +3,13 @@
  * @module capture
  */
 
-import { prepareClone } from './prepare.js';
-import { inlineImages } from '../modules/images.js';
+import { cache } from '../core/cache.js';
 import { inlineBackgroundImages } from '../modules/background.js';
-import { idle, isSafari } from '../utils/helpers.js';
-import { collectUsedTagNames, generateDedupedBaseCSS } from '../utils/cssTools.js';
 import { embedCustomFonts } from '../modules/fonts.js';
-import { cache } from '../core/cache.js'
+import { inlineImages } from '../modules/images.js';
+import { collectUsedTagNames, generateDedupedBaseCSS } from '../utils/cssTools.js';
+import { idle } from '../utils/helpers.js';
+import { prepareClone } from './prepare.js';
 
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
@@ -21,7 +21,7 @@ import { cache } from '../core/cache.js'
  * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
- * @param {Function} [options.filter] - Custom filter function 
+ * @param {Function} [options.filter] - Custom filter function
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 
@@ -36,6 +36,9 @@ export async function captureDOM(element, options = {}) {
   let svgString;
 
   ({ clone, classCSS, styleCache } = await prepareClone(element, compress, embedFonts, options));
+
+  options.width && clone.setAttribute("width", options.width + 'px');
+  options.height && clone.setAttribute("height", options.height + 'px');
 
   await new Promise((resolve) => {
     idle(async () => {
