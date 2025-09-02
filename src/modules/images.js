@@ -46,22 +46,26 @@ export async function inlineImages(clone, options = {}) {
     const w = img.width || img.naturalWidth || 100;
     const h = img.height || img.naturalHeight || 100;
 
-    const fallback = document.createElement('div');
-    // Mantener layout: inline-block con el mismo ancho/alto
-    fallback.style.cssText = [
-      `width:${w}px`,
-      `height:${h}px`,
-      'background:#ccc',
-      'display:inline-block',
-      'text-align:center',
-      `line-height:${h}px`,
-      'color:#666',
-      'font-size:12px',
-      'overflow:hidden',
-    ].join(';');
-
-    fallback.textContent = 'img';
-    img.replaceWith(fallback);
+    if (options.placeholders !== false) {
+      const fallback = document.createElement("div");
+      fallback.style.cssText = [
+        `width:${w}px`,
+        `height:${h}px`,
+        "background:#ccc",
+        "display:inline-block",
+        "text-align:center",
+        `line-height:${h}px`,
+        "color:#666",
+        "font-size:12px",
+        "overflow:hidden"
+      ].join(";");
+      fallback.textContent = "img";
+      img.replaceWith(fallback);
+    } else {
+      const spacer = document.createElement("div");
+      spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`;
+      img.replaceWith(spacer);
+    }
   };
 
   // Procesar en lotes de 4 para balancear velocidad/fidelidad

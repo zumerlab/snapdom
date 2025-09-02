@@ -296,9 +296,19 @@ export function deepClone(node, sessionCache, options) {
 
   // 6. Special case: iframe → fallback pattern
   if (node.tagName === "IFRAME") {
-    const fallback = document.createElement("div");
-    fallback.style.cssText = `width:${node.offsetWidth}px;height:${node.offsetHeight}px;background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
-    return fallback;
+    if (options.placeholders) {
+      const fallback = document.createElement("div");
+      fallback.style.cssText = `width:${node.offsetWidth}px;height:${node.offsetHeight}px;background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
+      inlineAllStyles(node, fallback, sessionCache, options);
+      return fallback;
+    } else {
+      // Spacer invisible: mantiene layout sin placeholder visible
+      const rect = node.getBoundingClientRect();
+      const spacer = document.createElement("div");
+      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
+      inlineAllStyles(node, spacer, sessionCache, options);
+      return spacer;
+    }
   }
 
   // 7. Placeholder nodes
