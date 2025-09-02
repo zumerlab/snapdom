@@ -346,7 +346,7 @@ export function deepClone(node, sessionCache, options) {
     const rect = node.getBoundingClientRect();
     clone.style.width = `${rect.width}px`;
     clone.style.height = `${rect.height}px`;
-    return clone;
+    //return clone;
   }
 
   // Special handling: input
