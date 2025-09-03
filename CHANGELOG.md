@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.10-dev.1](https://github.com/zumerlab/snapdom/compare/v1.9.10-dev.0...v1.9.10-dev.1)
+
+> 3 September 2025
+
+- Fix flickering on Safari. Closes #197 [`#197`](https://github.com/zumerlab/snapdom/issues/197)
+- Prevents default svg values overwrite custom ones. Closes #217 [`#217`](https://github.com/zumerlab/snapdom/issues/217)
+- Feature: add placeholders option to disable rendered placeholder for iframes and fallback images. Closes #137 [`#137`](https://github.com/zumerlab/snapdom/issues/137)
+- FIx textarea styles. Closes #212 [`#212`](https://github.com/zumerlab/snapdom/issues/212)
+
+
 #### [v1.9.10-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.9...v1.9.10-dev.0)
 
 > 29 August 2025
