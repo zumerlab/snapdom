@@ -2,7 +2,12 @@ declare module "@zumer/snapdom" {
   export interface SnapOptions {
     compress?: boolean;
     embedFonts?: boolean;
-    localFonts?: Array<{ family: string; src: string; weight?: string; style?: string }>;
+    localFonts?: Array<{
+      family: string;
+      src: string;
+      weight?: string;
+      style?: string;
+    }>;
     iconFonts?: string | RegExp | Array<string | RegExp>;
     fast?: boolean;
     scale?: number;
@@ -15,6 +20,19 @@ declare module "@zumer/snapdom" {
     dpr?: number;
     quality?: number;
     useProxy?: string;
+    /**
+     * Fallback image source when an <img> fails to load.
+     * - String: use as-is.
+     * - Callback: receives measured width/height and original src, returns a URL string.
+     */
+    defaultImageUrl?:
+      | string
+      | ((args: {
+          width?: number;
+          height?: number;
+          src?: string;
+          element: HTMLImageElement;
+        }) => string | Promise<string>);
     exclude?: string[];
     filter?: (element: Element, originalElement: Element) => boolean;
   }
@@ -41,15 +59,39 @@ declare module "@zumer/snapdom" {
   ): Promise<SnapResult>;
 
   export namespace snapdom {
-    function capture(element: HTMLElement, options?: SnapOptions): Promise<SnapResult>;
-    function toRaw(element: HTMLElement, options?: SnapOptions): Promise<string>;
-    function toImg(element: HTMLElement, options?: SnapOptions): Promise<HTMLImageElement>;
-    function toCanvas(element: HTMLElement, options?: SnapOptions): Promise<HTMLCanvasElement>;
+    function capture(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<SnapResult>;
+    function toRaw(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<string>;
+    function toImg(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<HTMLImageElement>;
+    function toCanvas(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<HTMLCanvasElement>;
     function toBlob(element: HTMLElement, options?: SnapOptions): Promise<Blob>;
-    function toPng(element: HTMLElement, options?: SnapOptions): Promise<HTMLImageElement>;
-    function toJpg(element: HTMLElement, options?: SnapOptions): Promise<HTMLImageElement>;
-    function toWebp(element: HTMLElement, options?: SnapOptions): Promise<HTMLImageElement>;
-    function download(element: HTMLElement, options?: SnapOptions): Promise<void>;
+    function toPng(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<HTMLImageElement>;
+    function toJpg(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<HTMLImageElement>;
+    function toWebp(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<HTMLImageElement>;
+    function download(
+      element: HTMLElement,
+      options?: SnapOptions
+    ): Promise<void>;
   }
 
   /**
@@ -61,7 +103,12 @@ declare module "@zumer/snapdom" {
       embedFonts?: boolean;
       useProxy?: string;
       reset?: boolean;
-      localFonts?: Array<{ family: string; src: string; weight?: string; style?: string }>;
+      localFonts?: Array<{
+        family: string;
+        src: string;
+        weight?: string;
+        style?: string;
+      }>;
     }
   ): Promise<void>;
 }
