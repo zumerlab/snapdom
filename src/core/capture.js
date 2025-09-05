@@ -132,6 +132,10 @@ export async function captureDOM(element, options) {
       const TOTAL = matrixFromComputed(measure);
       document.documentElement.removeChild(measure);
 
+      // -- NUEVO: extraigo la traslación total (px) para cancelarla en el container
+      const e = TOTAL.e ?? TOTAL.m41 ?? 0; // translateX total
+      const f = TOTAL.f ?? TOTAL.m42 ?? 0; // translateY total
+
       // 4) bbox proyectado (sin traslación) sobre el tamaño w,h
       const M2D = TOTAL.is2D ? matrix2DNoTranslate(TOTAL) : matrix2DNoTranslate(new DOMMatrix(TOTAL.toString()));
       const bb = bboxFromMatrix(w, h, M2D);
@@ -158,7 +162,7 @@ export async function captureDOM(element, options) {
         classCSS;
       fo.appendChild(styleTag);
 
-      // 6) contenedor para el re-escalado por width/height (si aplica)
+      // 6) contenedor para el re-escalado y la cancelación de translate
       const container = document.createElement("div");
       container.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
       container.style.width = `${w}px`;
@@ -166,14 +170,18 @@ export async function captureDOM(element, options) {
       container.style.overflow = "visible";
       container.style.transformOrigin = "0 0";
 
+      // armamos la transform del container empezando por CANCELAR la traslación total
+      const cancels = [`translate(${-e}px, ${-f}px)`];
+
+      // luego tu lógica de escalado de salida
       if (!hasScale && (hasW || hasH)) {
-        // escalo solo por petición de output w/h
         const sxWH = rect.width ? (w / rect.width) : 1;
         const syWH = rect.height ? (h / rect.height) : 1;
-        container.style.transform = `scale(${sxWH}, ${syWH})`;
+        cancels.push(`scale(${sxWH}, ${syWH})`);
       } else if (hasScale) {
-        container.style.transform = `scale(${scaleOpt})`;
+        cancels.push(`scale(${scaleOpt})`);
       }
+      container.style.transform = cancels.join(" ");
 
       // 7) aplicar al clone EXACTAMENTE lo que tenía el elemento
       clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
@@ -210,83 +218,83 @@ export async function captureDOM(element, options) {
   return dataURL;
 }
 
-      // helpers -----------------------------------------------------------------------
-      function getNaturalBorderBoxSize(el) {
-        const cs = getComputedStyle(el);
-        const px = (v) => parseFloat(v) || 0;
-        let w = px(cs.width);
-        let h = px(cs.height);
-        if (cs.boxSizing === "content-box") {
-          w += px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
-          h += px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
-        }
-        return { width: w, height: h };
-      }
+// helpers -----------------------------------------------------------------------
+function getNaturalBorderBoxSize(el) {
+  const cs = getComputedStyle(el);
+  const px = (v) => parseFloat(v) || 0;
+  let w = px(cs.width);
+  let h = px(cs.height);
+  if (cs.boxSizing === "content-box") {
+    w += px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
+    h += px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
+  }
+  return { width: w, height: h };
+}
 
-      function matrixFromComputed(el) {
-        const tr = getComputedStyle(el).transform;
-        if (!tr || tr === "none") return new DOMMatrix(); // identidad
-        try { return new DOMMatrix(tr); }
-        catch { return new WebKitCSSMatrix(tr); } // fallback WebKit
-      }
+function matrixFromComputed(el) {
+  const tr = getComputedStyle(el).transform;
+  if (!tr || tr === "none") return new DOMMatrix(); // identidad
+  try { return new DOMMatrix(tr); }
+  catch { return new WebKitCSSMatrix(tr); } // fallback WebKit
+}
 
-      function matrix2DNoTranslate(M) {
-        // devuelvo solo a,b,c,d y cero e,f para bbox
-        return new DOMMatrix([M.a, M.b, M.c, M.d, 0, 0]);
-      }
+function matrix2DNoTranslate(M) {
+  // devuelvo solo a,b,c,d y cero e,f para bbox
+  return new DOMMatrix([M.a, M.b, M.c, M.d, 0, 0]);
+}
 
-      function bboxFromMatrix(w, h, M2D) {
-        const pts = [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: 0, y: h },
-          { x: w, y: h },
-        ];
-        const t = pts.map(p => ({
-          x: M2D.a * p.x + M2D.c * p.y,
-          y: M2D.b * p.x + M2D.d * p.y,
-        }));
-        const minX = Math.min(...t.map(p => p.x));
-        const maxX = Math.max(...t.map(p => p.x));
-        const minY = Math.min(...t.map(p => p.y));
-        const maxY = Math.max(...t.map(p => p.y));
-        return { minX, minY, width: maxX - minX, height: maxY - minY };
-      }
+function bboxFromMatrix(w, h, M2D) {
+  const pts = [
+    { x: 0, y: 0 },
+    { x: w, y: 0 },
+    { x: 0, y: h },
+    { x: w, y: h },
+  ];
+  const t = pts.map(p => ({
+    x: M2D.a * p.x + M2D.c * p.y,
+    y: M2D.b * p.x + M2D.d * p.y,
+  }));
+  const minX = Math.min(...t.map(p => p.x));
+  const maxX = Math.max(...t.map(p => p.x));
+  const minY = Math.min(...t.map(p => p.y));
+  const maxY = Math.max(...t.map(p => p.y));
+  return { minX, minY, width: maxX - minX, height: maxY - minY };
+}
 
-      // lectura de typed OM (cuando existe)
-      function readIndividualTransforms(el) {
-        const out = { rotate: "0deg", scale: null, translate: null };
-        const map = el.computedStyleMap?.();
-        if (map) {
-          const rot = map.get("rotate");
-          if (rot) {
-            const ang = rot.angle ?? rot;
-            if (ang && "unit" in ang) {
-              out.rotate = ang.unit === "rad" ? (ang.value * 180 / Math.PI) + "deg" : ang.value + ang.unit;
-            } else {
-              out.rotate = String(rot);
-            }
-          }
-          const sc = map.get("scale");
-          if (sc && sc.length) {
-            const sx = sc[0]?.value ?? 1;
-            const sy = sc[1]?.value ?? sx;
-            out.scale = `${sx} ${sy}`;
-          }
-          const tr = map.get("translate");
-          if (tr && tr.length) {
-            const tx = tr[0]?.value ?? 0;
-            const ty = tr[1]?.value ?? 0;
-            const ux = tr[0]?.unit ?? "px";
-            const uy = tr[1]?.unit ?? "px";
-            out.translate = `${tx}${ux} ${ty}${uy}`;
-          }
-          return out;
-        }
-        // fallbacks por si no hay Typed OM
-        const cs = getComputedStyle(el);
-        out.rotate = cs.rotate && cs.rotate !== "none" ? cs.rotate : "0deg";
-        out.scale = cs.scale && cs.scale !== "none" ? cs.scale : null;
-        out.translate = cs.translate && cs.translate !== "none" ? cs.translate : null;
-        return out;
+// lectura de typed OM (cuando existe)
+function readIndividualTransforms(el) {
+  const out = { rotate: "0deg", scale: null, translate: null };
+  const map = el.computedStyleMap?.();
+  if (map) {
+    const rot = map.get("rotate");
+    if (rot) {
+      const ang = rot.angle ?? rot;
+      if (ang && "unit" in ang) {
+        out.rotate = ang.unit === "rad" ? (ang.value * 180 / Math.PI) + "deg" : ang.value + ang.unit;
+      } else {
+        out.rotate = String(rot);
       }
+    }
+    const sc = map.get("scale");
+    if (sc && sc.length) {
+      const sx = sc[0]?.value ?? 1;
+      const sy = sc[1]?.value ?? sx;
+      out.scale = `${sx} ${sy}`;
+    }
+    const tr = map.get("translate");
+    if (tr && tr.length) {
+      const tx = tr[0]?.value ?? 0;
+      const ty = tr[1]?.value ?? 0;
+      const ux = tr[0]?.unit ?? "px";
+      const uy = tr[1]?.unit ?? "px";
+      out.translate = `${tx}${ux} ${ty}${uy}`;
+    }
+    return out;
+  }
+  // fallbacks por si no hay Typed OM
+  const cs = getComputedStyle(el);
+  out.rotate = cs.rotate && cs.rotate !== "none" ? cs.rotate : "0deg";
+  out.scale = cs.scale && cs.scale !== "none" ? cs.scale : null;
+  out.translate = cs.translate && cs.translate !== "none" ? cs.translate : null;
+  return out;
+}
