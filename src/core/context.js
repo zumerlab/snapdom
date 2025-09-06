@@ -60,6 +60,7 @@ export function createContext(options = {}) {
     // DOM filters
     exclude: options.exclude ?? [],
     filter: options.filter ?? null,
+    placeholders: options.placeholders !== false, // default true
 
     // Fuentes
     embedFonts: options.embedFonts ?? false,

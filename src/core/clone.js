@@ -252,44 +252,31 @@ function markSlottedSubtree(root) {
 }
  
 export async function deepClone(node, sessionCache, options) {
-  if (!node) throw new Error('Invalid node');
-
-  // Local set to avoid duplicates in slot processing
-  const clonedAssignedNodes = new Set();
-  let pendingSelectValue = null; // Track select value for later fix
-
-   // 0) Fast path for ELEMENT_NODE: apply capture policy BEFORE recursing
+  if (!node) throw new Error("Invalid node");
+  const clonedAssignedNodes =  new Set();
+  let pendingSelectValue = null;
+  let pendingTextAreaValue = null;
   if (node.nodeType === Node.ELEMENT_NODE) {
     const tag = (node.localName || node.tagName || "").toLowerCase();
-    // ignore internal sandbox (no capturar ni su subtree)
-    if (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox')) {
+    if (node.id === "snapdom-sandbox" || node.hasAttribute("data-snapdom-sandbox")) {
       return null;
     }
-    // NO_CAPTURE_TAGS: corta de raíz (meta, script, title, etc.)
     if (NO_CAPTURE_TAGS.has(tag)) {
       return null;
     }
   }
-
-  // 1. Text nodes
   if (node.nodeType === Node.TEXT_NODE) {
     return node.cloneNode(true);
   }
-
-  // 2. Non-element nodes (comments, etc.)
   if (node.nodeType !== Node.ELEMENT_NODE) {
     return node.cloneNode(true);
   }
-
-  // 3. Exclude by attribute
   if (node.getAttribute("data-capture") === "exclude") {
     const spacer = document.createElement("div");
     const rect = node.getBoundingClientRect();
     spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
     return spacer;
   }
-
-  // 4. Exclude by selectors
   if (options.exclude && Array.isArray(options.exclude)) {
     for (const selector of options.exclude) {
       try {
@@ -304,8 +291,6 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
-
-  // 5. Custom filter function
   if (typeof options.filter === "function") {
     try {
       if (!options.filter(node)) {
@@ -318,15 +303,20 @@ export async function deepClone(node, sessionCache, options) {
       console.warn("Error in filter function:", err);
     }
   }
-
-  // 6. Special case: iframe → fallback pattern
   if (node.tagName === "IFRAME") {
-    const fallback = document.createElement("div");
-    fallback.style.cssText = `width:${node.offsetWidth}px;height:${node.offsetHeight}px;background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
-    return fallback;
+    if (options.placeholders) {
+      const fallback = document.createElement("div");
+      fallback.style.cssText = `width:${node.offsetWidth}px;height:${node.offsetHeight}px;background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
+      inlineAllStyles(node, fallback, sessionCache, options);
+      return fallback;
+    } else {
+      const rect = node.getBoundingClientRect();
+      const spacer = document.createElement("div");
+      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
+      inlineAllStyles(node, spacer, sessionCache, options);
+      return spacer;
+    }
   }
-
-  // 7. Placeholder nodes
   if (node.getAttribute("data-capture") === "placeholder") {
     const clone2 = node.cloneNode(false);
     sessionCache.nodeMap.set(clone2, node);
@@ -337,8 +327,6 @@ export async function deepClone(node, sessionCache, options) {
     clone2.appendChild(placeholder);
     return clone2;
   }
-
-  // 8. Canvas → convert to image
   if (node.tagName === "CANVAS") {
     const dataURL = node.toDataURL();
     const img = document.createElement("img");
@@ -349,32 +337,22 @@ export async function deepClone(node, sessionCache, options) {
     inlineAllStyles(node, img, sessionCache, options);
     return img;
   }
-
-  // 9. Base clone (without children)
   let clone;
   try {
     clone = node.cloneNode(false);
     sessionCache.nodeMap.set(clone, node);
-    
-    if (node.tagName === 'IMG') {
+    if (node.tagName === "IMG") {
       freezeImgSrcset(node, clone);
     }
   } catch (err) {
     console.error("[Snapdom] Failed to clone node:", node, err);
     throw err;
   }
-
-  // Special handling: textarea (keep size and value)
   if (node instanceof HTMLTextAreaElement) {
-    clone.textContent = node.value;
-    clone.value = node.value;
     const rect = node.getBoundingClientRect();
     clone.style.width = `${rect.width}px`;
     clone.style.height = `${rect.height}px`;
-    return clone;
   }
-
-  // Special handling: input
   if (node instanceof HTMLInputElement) {
     clone.value = node.value;
     clone.setAttribute("value", node.value);
@@ -383,67 +361,40 @@ export async function deepClone(node, sessionCache, options) {
       if (node.checked) clone.setAttribute("checked", "");
       if (node.indeterminate) clone.indeterminate = node.indeterminate;
     }
-    // return clone;
   }
-
-  // Special handling: select → postpone value adjustment
   if (node instanceof HTMLSelectElement) {
     pendingSelectValue = node.value;
   }
-
-  // 11. Inline styles
-  inlineAllStyles(node, clone, sessionCache, options);
-
-
-// 12. ShadowRoot logic (always clone content and inject scoped CSS)
-if (node.shadowRoot) {
-
-  // 12.0 (NEW) – Mark all assigned nodes of slots so light-DOM cloning (step 14)
-  // does NOT duplicate the slotted content.
-// 12.0 – Mark slotted light-DOM nodes to avoid duplicating them later (step 14)
-try {
-  const slots = node.shadowRoot.querySelectorAll('slot');
-  for (const s of slots) {
-    let assigned = [];
-    try {
-      // Some environments may not support the options object
-      assigned = s.assignedNodes?.({ flatten: true }) || s.assignedNodes?.() || [];
-    } catch {
-      assigned = s.assignedNodes?.() || [];
-    }
-    for (const an of assigned) clonedAssignedNodes.add(an);
+    if (node instanceof HTMLTextAreaElement) {
+    pendingTextAreaValue = node.value;
   }
-} catch {}
-
-
-  // 12.1 Scope id & mark the HOST clone
-  const scopeId = nextShadowScopeId(sessionCache);
-  const scopeSelector = `[data-sd="${scopeId}"]`;
-  try { clone.setAttribute('data-sd', scopeId); } catch {}
-
-  // 12.2 Extract + rewrite Shadow CSS and inject it into the HOST clone
-const rawCSS = extractShadowCSS(node.shadowRoot);
-//const scopeSelector = `[data-sd="${scopeId}"]`;
-const rewritten = rewriteShadowCSS(rawCSS, scopeSelector);
-
-const neededVars = collectCustomPropsFromCSS(rawCSS);
-// (opcional) sumar las que aparezcan en style="" de nodos dentro del shadow
-const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector);
-
-// inyectar primero seeds, luego CSS
-injectScopedStyle(clone, seed + rewritten, scopeId);
-
-
-  // 12.3 Clone full shadow content (skip original <style>, already in 12.2)
-  const shadowFrag = document.createDocumentFragment();
-  // if (options.fast) {
-  //   for (const child of node.shadowRoot.childNodes) {
-  //     if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE') continue;
-  //     const clonedChild = deepClone(child, sessionCache, options);
-  //     if (clonedChild) shadowFrag.appendChild(clonedChild);
-  //   }
-  //   clone.appendChild(shadowFrag);
-  // } else {
+  inlineAllStyles(node, clone, sessionCache, options);
+  if (node.shadowRoot) {
+    try {
+      const slots = node.shadowRoot.querySelectorAll("slot");
+      for (const s of slots) {
+        let assigned = [];
+        try {
+          assigned = s.assignedNodes?.({ flatten: true }) || s.assignedNodes?.() || [];
+        } catch {
+          assigned = s.assignedNodes?.() || [];
+        }
+        for (const an of assigned) clonedAssignedNodes.add(an);
+      }
+    } catch {
+    }
+    const scopeId = nextShadowScopeId(sessionCache);
+    const scopeSelector = `[data-sd="${scopeId}"]`;
+    try {
+      clone.setAttribute("data-sd", scopeId);
+    } catch {
+    }
+    const rawCSS = extractShadowCSS(node.shadowRoot);
+    const rewritten = rewriteShadowCSS(rawCSS, scopeSelector);
+    const neededVars = collectCustomPropsFromCSS(rawCSS);
+    const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector);
+    injectScopedStyle(clone, seed + rewritten, scopeId);
+    const shadowFrag = document.createDocumentFragment();
     function callback(child, resolve) {
       if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE') {
         return resolve(null)
@@ -459,25 +410,12 @@ injectScopedStyle(clone, seed + rewritten, scopeId);
     const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), callback, options.fast)
     shadowFrag.append(...cloneList.filter(clonedChild => !!clonedChild))
     clone.appendChild(shadowFrag)
-  // }
-}
-
-  // 13. Slot outside ShadowRoot
+  }
   if (node.tagName === "SLOT") {
-  const assigned = node.assignedNodes?.({ flatten: true }) || [];
-  const nodesToClone = assigned.length > 0 ? assigned : Array.from(node.childNodes);
-  const fragment = document.createDocumentFragment();
+    const assigned = node.assignedNodes?.({ flatten: true }) || [];
+    const nodesToClone = assigned.length > 0 ? assigned : Array.from(node.childNodes);
+    const fragment = document.createDocumentFragment();
 
-  // if (options.fast) {
-  //   for (const child of nodesToClone) {
-  //     const clonedChild = deepClone(child, sessionCache, options);
-  //     if (clonedChild) {
-  //       markSlottedSubtree(clonedChild);   // ← ← marca todo lo sloteado
-  //       fragment.appendChild(clonedChild);
-  //     }
-  //   }
-  //   return fragment;
-  // } else {
     function callback(child, resolve) {
       deepClone(child, sessionCache, options).then((clonedChild) => {
         if (clonedChild) {
@@ -491,29 +429,18 @@ injectScopedStyle(clone, seed + rewritten, scopeId);
     const cloneList = await idleCallback(Array.from(nodesToClone), callback, options.fast)
     fragment.append(...cloneList.filter(clonedChild => !!clonedChild))
     return fragment;
-  // }
-}
+  }
 
-  // 14. Clone children (light DOM), skipping duplicates
-  // if (options.fast) {
-  //   for (const child of node.childNodes) {
-  //     if (clonedAssignedNodes.has(child)) continue;
-  
-  //     const clonedChild = deepClone(child, sessionCache, options);
-  //     if (clonedChild) clone.appendChild(clonedChild);
-  //   }
-  // } else {
-    function callback(child, resolve) {
-      if (clonedAssignedNodes.has(child)) return resolve(null);
-      deepClone(child, sessionCache, options).then((clonedChild) => {
-        resolve(clonedChild || null)
-      }).catch((e) => {
-        resolve(null)
-      })
-    }
-    const cloneList = await idleCallback(Array.from(node.childNodes), callback, options.fast)
-    clone.append(...cloneList.filter(clonedChild => !!clonedChild))
-  // }
+  function callback(child, resolve) {
+    if (clonedAssignedNodes.has(child)) return resolve(null);
+    deepClone(child, sessionCache, options).then((clonedChild) => {
+      resolve(clonedChild || null)
+    }).catch((e) => {
+      resolve(null)
+    })
+  }
+  const cloneList = await idleCallback(Array.from(node.childNodes), callback, options.fast)
+  clone.append(...cloneList.filter(clonedChild => !!clonedChild))
 
   // Adjust select value after children are cloned
   if (pendingSelectValue !== null && clone instanceof HTMLSelectElement) {
@@ -526,6 +453,9 @@ injectScopedStyle(clone, seed + rewritten, scopeId);
       }
     }
   }
+    if (pendingTextAreaValue !== null && clone instanceof HTMLTextAreaElement) {
+    clone.textContent = pendingTextAreaValue;
 
+  }
   return clone;
-}  
+}
