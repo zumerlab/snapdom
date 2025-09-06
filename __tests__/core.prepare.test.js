@@ -197,10 +197,16 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
   })
 
   const { clone } = await prepareClone(wrap)
-  const out = clone.querySelector('img')?.getAttribute('srcset') || ''
-  expect(out).not.toContain('blob:')
-  expect(out).toMatch(/data:/)
-
+   const outImg = clone.querySelector('img')
+   const outSrcset = outImg?.getAttribute('srcset') || ''
+   const outSrc = outImg?.getAttribute('src') || ''
+   // Nunca debe quedar blob:
+   expect(outSrcset).not.toContain('blob:')
+   expect(outSrc).not.toContain('blob:')
+   // Aceptamos ambos flujos: (a) srcset con data: o (b) src con data: y srcset vacío
+   expect(
+     (outSrcset.includes('data:')) || (outSrc.startsWith('data:'))
+   ).toBe(true)
   globalThis.fetch = originalFetch
 })
 

@@ -21,22 +21,22 @@ describe('deepClone – extra coverage', () => {
     session = makeSession()
   })
 
-  it('clones a Text node (TEXT_NODE path)', () => {
+  it('clones a Text node (TEXT_NODE path)', async () => {
     const t = document.createTextNode('hello')
-    const c = deepClone(t, session, {})
+    const c = await deepClone(t, session, {})
     expect(c.nodeType).toBe(Node.TEXT_NODE)
     expect(c.nodeValue).toBe('hello')
     expect(c).not.toBe(t)
   })
 
-  it('freezes <img> srcset using src (no currentSrc) and strips srcset/sizes', () => {
+  it('freezes <img> srcset using src (no currentSrc) and strips srcset/sizes', async () => {
     const img = document.createElement('img')
     // supply a concrete src so freeze picks it
     img.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='
     img.setAttribute('srcset', 'a.png 1x, b.png 2x')
     img.setAttribute('sizes', '(max-width: 600px) 100vw, 600px')
 
-    const clone = deepClone(img, session, {})
+    const clone = await deepClone(img, session, {})
     expect(clone.tagName).toBe('IMG')
     // chosen copied to src
     expect(clone.getAttribute('src')).toContain('data:image/')
@@ -48,24 +48,24 @@ describe('deepClone – extra coverage', () => {
     expect(clone.decoding).toBe('sync')
   })
 
-  it('does not freeze when no chosen URL (keeps srcset/sizes)', () => {
+  it('does not freeze when no chosen URL (keeps srcset/sizes)', async () => {
     const img = document.createElement('img')
     img.setAttribute('srcset', 'a.png 1x')
     img.setAttribute('sizes', '100vw')
     // leave src and currentSrc empty
 
-    const clone = deepClone(img, session, {})
+    const clone = await deepClone(img, session, {})
     // no src chosen => still has original responsive attributes
     expect(clone.hasAttribute('src')).toBe(false)
     expect(clone.getAttribute('srcset')).toBe('a.png 1x')
     expect(clone.getAttribute('sizes')).toBe('100vw')
   })
 
-  it('does not exclude when selector is invalid; only warns', () => {
+  it('does not exclude when selector is invalid; only warns', async () => {
   const el = document.createElement('div')
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-  const out = deepClone(el, session, { exclude: ['::bad('] })
+  const out = await deepClone(el, session, { exclude: ['::bad('] })
 
   expect(out).toBeInstanceOf(HTMLElement)
   expect(out.tagName).toBe('DIV')
@@ -77,63 +77,63 @@ describe('deepClone – extra coverage', () => {
 })
 
 
-  it('excludes by custom filter returning false; and handles filter error', () => {
+  it('excludes by custom filter returning false; and handles filter error', async () => {
     // filter false -> spacer
     const a = document.createElement('p')
-    const out1 = deepClone(a, session, { filter: () => false })
+    const out1 = await deepClone(a, session, { filter: () => false })
     expect(out1).toBeInstanceOf(HTMLElement)
     expect(out1.style.visibility).toBe('hidden')
 
     // filter throws -> warn + spacer
     const b = document.createElement('p')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const out2 = deepClone(b, session, { filter: () => { throw new Error('boom') } })
+    const out2 = await deepClone(b, session, { filter: () => { throw new Error('boom') } })
     expect(out2).toBeInstanceOf(HTMLElement)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
   })
 
-  it('IFRAME fallback uses gradient style and element size', () => {
+  it('IFRAME fallback uses gradient style and element size', async () => {
     const frame = document.createElement('iframe')
     // JSDOM offset* are not layouted; provide getters
     Object.defineProperty(frame, 'offsetWidth', { configurable: true, get: () => 123 })
     Object.defineProperty(frame, 'offsetHeight', { configurable: true, get: () => 45 })
 
-    const fallback = deepClone(frame, session, {})
+   const fallback = await deepClone(frame, session, { placeholders: true })
     expect(fallback.tagName).toBe('DIV')
     expect(fallback.style.width).toBe('123px')
     expect(fallback.style.height).toBe('45px')
     expect(fallback.style.backgroundImage).toContain('repeating-linear-gradient')
   })
 
-  it('throws and logs when base clone (node.cloneNode) fails', () => {
+  it('throws and logs when base clone (node.cloneNode) fails', async () => {
     const el = document.createElement('div')
     const err = new Error('fail')
     const spy = vi.spyOn(el, 'cloneNode').mockImplementation(() => { throw err })
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(() => deepClone(el, session, {})).toThrow('fail')
+    await expect(() => deepClone(el, session, {})).rejects.toThrow('fail')
     expect(log).toHaveBeenCalled()
     spy.mockRestore()
     log.mockRestore()
   })
 
-  it('textarea keeps value and explicit size via getBoundingClientRect', () => {
+  it('textarea keeps value and explicit size via getBoundingClientRect', async () => {
     const ta = document.createElement('textarea')
     ta.value = 'hello'
     vi.spyOn(ta, 'getBoundingClientRect').mockReturnValue({ width: 80, height: 30 })
-    const clone = deepClone(ta, session, {})
+    const clone = await deepClone(ta, session, {})
     expect(clone.value).toBe('hello')
     expect(clone.style.width).toBe('80px')
     expect(clone.style.height).toBe('30px')
   })
 
-  it('input copies value/checked/attributes and select applies selected on options', () => {
+  it('input copies value/checked/attributes and select applies selected on options', async () => {
     // input
     const input = document.createElement('input')
     input.type = 'checkbox'
     input.checked = true
     input.value = 'abc'
-    const c1 = deepClone(input, session, {})
+    const c1 = await deepClone(input, session, {})
     expect(c1.value).toBe('abc')
     expect(c1.checked).toBe(true)
     expect(c1.getAttribute('value')).toBe('abc')
@@ -144,13 +144,13 @@ describe('deepClone – extra coverage', () => {
     const o1 = document.createElement('option'); o1.value = 'a'; sel.appendChild(o1)
     const o2 = document.createElement('option'); o2.value = 'b'; sel.appendChild(o2)
     sel.value = 'b'
-    const c2 = deepClone(sel, session, {})
+    const c2 = await deepClone(sel, session, {})
     expect(c2.value).toBe('b')
     expect([...c2.options].find(o => o.value === 'b')?.hasAttribute('selected')).toBe(true)
     expect([...c2.options].find(o => o.value === 'a')?.hasAttribute('selected')).toBe(false)
   })
 
-   it('ShadowRoot with <slot> only stores STYLE css into styleCache (no content clone)', () => {
+   it('ShadowRoot with <slot> only stores STYLE css into styleCache (no content clone)', async () => {
      const host = document.createElement('div')
      const sr = host.attachShadow({ mode: 'open' })
      const style = document.createElement('style')
@@ -159,7 +159,7 @@ describe('deepClone – extra coverage', () => {
      sr.appendChild(style)
      sr.appendChild(slot)
 
-     const clone = deepClone(host, session, {})
+     const clone = await deepClone(host, session, {})
     // nuevo comportamiento: se inyecta un <style data-sd="sN"> en el host clone
     const injected = clone.querySelector && clone.querySelector('style[data-sd]')
     expect(!!injected).toBe(true)
@@ -170,7 +170,7 @@ describe('deepClone – extra coverage', () => {
    })
 
 
-  it('<slot> outside ShadowRoot clones assignedNodes and returns DocumentFragment', () => {
+  it('<slot> outside ShadowRoot clones assignedNodes and returns DocumentFragment', async () => {
     const s = document.createElement('slot')
     // emulate assignedNodes() API
     Object.defineProperty(s, 'assignedNodes', {
@@ -178,7 +178,7 @@ describe('deepClone – extra coverage', () => {
       value: () => [document.createTextNode('slotted!')],
     })
 
-    const frag = deepClone(s, session, {})
+    const frag = await deepClone(s, session, {})
     expect(frag.nodeType).toBe(Node.DOCUMENT_FRAGMENT_NODE)
     // fragment should contain a text node "slotted!"
     const txt = frag.firstChild

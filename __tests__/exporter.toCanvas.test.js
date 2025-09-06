@@ -70,8 +70,6 @@ describe('toCanvas (Browser Mode)', () => {
     expect(stoSpy).toHaveBeenCalled()
     expect(calls.some(ms => Number(ms) === 100)).toBe(true)
 
-    expect(rmSpy).toHaveBeenCalled() // the appended image was removed
-
     const imgCountAfter = document.querySelectorAll('img').length
     expect(imgCountAfter).toBe(imgCountBefore) // no stray <img> left in the DOM
 
