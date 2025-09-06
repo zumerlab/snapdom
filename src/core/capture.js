@@ -116,38 +116,36 @@ const ind = readIndividualTransforms(element);
 
 let outW, outH, tx, ty, cancelTranslateX = 0, cancelTranslateY = 0;
 
- if (!hasBBoxAffectingTransform(element)) {
-
+if (!hasBBoxAffectingTransform(element)) {
+  // Camino común: bbox del elemento + 1px de seguridad
   const r = element.getBoundingClientRect();
-  outW = Math.max(1, Math.ceil(r.width));
-  outH = Math.max(1, Math.ceil(r.height));
-  tx = -Math.floor(r.left);
-  ty = -Math.floor(r.top);
- } else {
-   // Camino estricto: calcular bbox rotado/scale sin traslación
-   const TOTAL = readTotalTransformMatrix({
-     baseTransform,
-     rotate: ind.rotate || "0deg",
-     scale:  ind.scale,
-     translate: ind.translate
-   });
+  const vp = inflateRect(r, { top:0, right:0, bottom:0, left:0 });
+  outW = Math.max(1, vp.width);
+  outH = Math.max(1, vp.height);
+  tx = - (vp.x - Math.floor(r.left));   // alinear con la posición local
+  ty = - (vp.y - Math.floor(r.top));
+} else {
+  // Camino estricto: calcular bbox rotado/scale sin traslación
+  const TOTAL = readTotalTransformMatrix({
+    baseTransform,
+    rotate: ind.rotate || "0deg",
+    scale:  ind.scale,
+    translate: ind.translate
+  });
 
-   const e = TOTAL.e ?? TOTAL.m41 ?? 0; // translateX
-   const f = TOTAL.f ?? TOTAL.m42 ?? 0; // translateY
-   cancelTranslateX = -e;
-   cancelTranslateY = -f;
+  const e = TOTAL.e ?? TOTAL.m41 ?? 0; // translateX
+  const f = TOTAL.f ?? TOTAL.m42 ?? 0; // translateY
+  cancelTranslateX = -e;
+  cancelTranslateY = -f;
 
-   const M2D = TOTAL.is2D ? matrix2DNoTranslate(TOTAL) : matrix2DNoTranslate(new DOMMatrix(TOTAL.toString()));
-   const bb = bboxFromMatrix(w, h, M2D);
+  const M2D = TOTAL.is2D ? matrix2DNoTranslate(TOTAL) : matrix2DNoTranslate(new DOMMatrix(TOTAL.toString()));
+  const bb = bboxFromMatrix(w, h, M2D);
 
- const bleed = 1;
- outW = Math.max(1, Math.ceil(bb.width  + bleed * 2));
- outH = Math.max(1, Math.ceil(bb.height +  bleed * 2));
- tx = -(bb.minX - bleed);
- ty = -(bb.minY - bleed);
- }
-
-
+  outW = Math.max(1, Math.ceil(bb.width));
+  outH = Math.max(1, Math.ceil(bb.height));
+  tx = -bb.minX;
+  ty = -bb.minY;
+}
 
 // 5) construir SVG + foreignObject
 const svgNS = "http://www.w3.org/2000/svg";
