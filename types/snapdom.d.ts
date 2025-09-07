@@ -1,7 +1,7 @@
 /**
  * snapDOM – ultra-fast DOM-to-image capture
  * TypeScript definitions
- * 
+ *
  * Notes:
  * - Style compression is always enabled internally (no user option).
  * - Icon fonts are always embedded; `embedFonts` controls non-icon fonts only.
@@ -101,6 +101,20 @@ export interface CaptureOptions {
    * - "none": do not reset anything (fastest, may reuse stale resources).
    */
   reset?: "soft" | "hard" | "none";
+
+  /**
+   * Fallback image source when an <img> fails to load.
+   * - String: use as-is.
+   * - Callback: receives measured width/height and original src, returns a URL string.
+   */
+  defaultImageUrl?:
+        | string
+        | ((args: {
+        width?: number;
+        height?: number;
+        src?: string;
+        element: HTMLImageElement;
+    }) => string | Promise<string>);
 }
 
 export interface BlobOptions {

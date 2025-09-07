@@ -343,6 +343,25 @@ export async function deepClone(node, sessionCache, options) {
     sessionCache.nodeMap.set(clone, node);
     if (node.tagName === "IMG") {
       freezeImgSrcset(node, clone);
+      // Record original image dimensions for fallback usage when inlining fails
+      try {
+        const rect = node.getBoundingClientRect();
+        let w = Math.round(rect.width || 0);
+        let h = Math.round(rect.height || 0);
+        if (!w || !h) {
+          const computed = window.getComputedStyle(node);
+          const cssW = parseFloat(computed.width) || 0;
+          const cssH = parseFloat(computed.height) || 0;
+          const attrW = parseInt(node.getAttribute('width') || '', 10) || 0;
+          const attrH = parseInt(node.getAttribute('height') || '', 10) || 0;
+          const propW = node.width || node.naturalWidth || 0;
+          const propH = node.height || node.naturalHeight || 0;
+          w = Math.round(w || cssW || attrW || propW || 0);
+          h = Math.round(h || cssH || attrH || propH || 0);
+        }
+        if (w) clone.dataset.snapdomWidth = String(w);
+        if (h) clone.dataset.snapdomHeight = String(h);
+      } catch {}
     }
   } catch (err) {
     console.error("[Snapdom] Failed to clone node:", node, err);

@@ -164,6 +164,36 @@ All capture methods accept an `options` object:
 | `exclude`         | string[] | -        | CSS selectors to exclude                        |
 | `filter`          | function | -        | Custom predicate `(el) => boolean`              |
 | `cache`           | string   | `"soft"` | Control internal caches: `disabled`, `soft`, `auto`, `full` |
+| `defaultImageUrl` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
+
+### Fallback image on `<img>` load failure
+
+Provide a default image for failed `<img>` loads. You can pass a fixed URL or a callback that receives measured dimensions and returns a URL (handy to generate dynamic placeholders).
+
+```js
+// 1) Fixed URL fallback
+await snapdom.toImg(element, {
+  defaultImageUrl: '/images/fallback.png'
+});
+
+// 2) Dynamic placeholder via callback
+await snapdom.toImg(element, {
+  defaultImageUrl: ({ width = 300, height = 150 }) =>
+    `https://placehold.co/${Math.round(width)}x${Math.round(height)}`
+});
+
+// 3) With proxy (if your fallback host has no CORS)
+await snapdom.toImg(element, {
+  defaultImageUrl: ({ width = 300, height = 150 }) =>
+    `https://dummyimage.com/${Math.round(width)}x${Math.round(height)}/cccccc/666.png&text=img`,
+  useProxy: 'https://corsproxy.io/?url='
+});
+```
+
+Notes:
+- If the fallback image also fails to load, snapDOM replaces the `<img>` with a placeholder block preserving width/height.
+- Width/height used by the callback are gathered from the original element (dataset, style/attrs, etc.) when available.
+
 
 ### Dimensions (`scale`, `width`, `height`)
 

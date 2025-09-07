@@ -34,6 +34,7 @@ export function normalizeCachePolicy(v) {
  * @param {string|string[]} [options.iconFonts]
  * @param {string[]} [options.localFonts]
  * @param {string[]|undefined} [options.excludeFonts]
+ * @param {string|function} [options.defaultImageUrl]
  * @param {string}  [options.useProxy]
  * @param {number|null} [options.width]
  * @param {number|null} [options.height]
@@ -68,6 +69,7 @@ export function createContext(options = {}) {
              : (options.iconFonts ? [options.iconFonts] : []),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
+    defaultImageUrl: options.defaultImageUrl ?? undefined,
 
     /** Cache policy (disabled|full|auto|soft). Default: "soft" */
     /** @type {CachePolicy} */
