@@ -303,19 +303,7 @@ function measureContentBox(el) {
 function pinIframeViewport(doc, w, h) {
   const style = doc.createElement('style');
   style.setAttribute('data-sd-iframe-pin','');
-  style.textContent = `
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      width: ${w}px !important;
-      height: ${h}px !important;
-      min-width: ${w}px !important;
-      min-height: ${h}px !important;
-      box-sizing: border-box !important;
-      overflow: hidden !important;
-      background-clip: border-box !important;
-    }
-  `;
+  style.textContent = `html, body {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style);
   return () => { try { style.remove(); } catch {} };
 }
