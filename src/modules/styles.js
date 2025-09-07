@@ -115,6 +115,11 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // sólo enganchar observer si NO está 'disabled'
   if (resetMode !== 'disabled') setupInvalidationOnce(document.documentElement);
 
+    if (resetMode === 'disabled' && !ctx.session.__bumpedForDisabled) {
+    bumpEpoch();               // invalida snapshotCache por epoch
+    snapshotKeyCache.clear();  // evita reuso de firmas→styleKey previas
+    ctx.session.__bumpedForDisabled = true;
+  }
   // Copia author styles para tags sin defaults costosos (pero seguimos mapeando)
   if (NO_DEFAULTS_TAGS.has(source.tagName?.toLowerCase())) {
     const author = source.getAttribute?.('style');

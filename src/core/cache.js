@@ -61,14 +61,21 @@ export function applyCachePolicy(policy = "soft") {
       return;
     }
     case "disabled": {
-      // No usar cache: limpiar absolutamente todo
+      // 🔁 Session (clonar siempre para cortar referencias)
       cache.session.styleMap   = new Map();
       cache.session.nodeMap    = new Map();
       cache.session.styleCache = new WeakMap();
-      cache.image.clear();
-      cache.background.clear();
-      cache.resource.clear();
-      cache.font.clear();
+
+      // 🔁 Estilos globales (ANTES solo se hacía clear() de algunos)
+      cache.computedStyle = new WeakMap();
+      cache.baseStyle     = new Map();
+      cache.defaultStyle  = new Map();
+
+      // 🔁 Recursos (mejor reinstanciar que clear() para cortar iteradores/referencias)
+      cache.image      = new Map();
+      cache.background = new Map();
+      cache.resource   = new Map();
+      cache.font       = new Set();
       return;
     }
     default: {
