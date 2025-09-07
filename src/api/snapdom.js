@@ -33,6 +33,16 @@ export async function snapdom(element, userOptions) {
 
   if (context.iconFonts && context.iconFonts.length > 0) extendIconFonts(context.iconFonts);
 
+  if (!context.snap) {
+    /** Facade used by core (e.g., deepClone for same-origin iframes). */
+    context.snap = {
+      /** Delegates to this module’s PNG path (tu build devuelve <img>). */
+      toPng: (el, opts) => snapdom.toPng(el, opts),
+      /** Útil si en algún flujo necesitás vector o <img> directo. */
+      toImg: (el, opts) => snapdom.toImg(el, opts),
+    };
+  }
+
   return snapdom.capture(element, context, INTERNAL_TOKEN);
 }
 

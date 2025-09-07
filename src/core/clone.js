@@ -250,6 +250,131 @@ function markSlottedSubtree(root) {
     root.querySelectorAll('*').forEach(el => el.setAttribute('data-sd-slotted', ''));
   }
 }
+
+
+/**
+ * Wait for an accessible same-origin Document for a given <iframe>.
+ * @param {HTMLIFrameElement} iframe
+ * @param {number} [attempts=3]
+ * @returns {Promise<Document|null>}
+ */
+async function getAccessibleIframeDocument(iframe, attempts = 3) {
+  const probe = () => {
+    try { return iframe.contentDocument || iframe.contentWindow?.document || null; } catch { return null; }
+  };
+  let doc = probe();
+  let i = 0;
+  while (i < attempts && (!doc || (!doc.body && !doc.documentElement))) {
+    await new Promise(r => setTimeout(r, 0));
+    doc = probe();
+    i++;
+  }
+  return doc && (doc.body || doc.documentElement) ? doc : null;
+}
+
+/**
+ * Compute the content-box size of an element (client rect minus borders).
+ * @param {Element} el
+ * @returns {{contentWidth:number, contentHeight:number, rect:DOMRect}}
+ */
+function measureContentBox(el) {
+  const rect = el.getBoundingClientRect();
+  let bl=0, br=0, bt=0, bb=0;
+  try {
+    const cs = getComputedStyle(el);
+    bl = parseFloat(cs.borderLeftWidth)  || 0;
+    br = parseFloat(cs.borderRightWidth) || 0;
+    bt = parseFloat(cs.borderTopWidth)   || 0;
+    bb = parseFloat(cs.borderBottomWidth)|| 0;
+  } catch {}
+  const contentWidth  = Math.max(0, Math.round(rect.width  - (bl + br)));
+  const contentHeight = Math.max(0, Math.round(rect.height - (bt + bb)));
+  return { contentWidth, contentHeight, rect };
+}
+
+/**
+ * Temporarily pin the iframe's internal viewport to (w, h) CSS px.
+ * Injects a <style> into the iframe doc and returns a cleanup function.
+ * @param {Document} doc
+ * @param {number} w
+ * @param {number} h
+ * @returns {() => void}
+ */
+function pinIframeViewport(doc, w, h) {
+  const style = doc.createElement('style');
+  style.setAttribute('data-sd-iframe-pin','');
+  style.textContent = `
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: ${w}px !important;
+      height: ${h}px !important;
+      min-width: ${w}px !important;
+      min-height: ${h}px !important;
+      box-sizing: border-box !important;
+      overflow: hidden !important;
+      background-clip: border-box !important;
+    }
+  `;
+  (doc.head || doc.documentElement).appendChild(style);
+  return () => { try { style.remove(); } catch {} };
+}
+
+/**
+ * Rasterize a same-origin iframe exactly at its content-box size, as the user requested:
+ * - Capture iframe.contentDocument.documentElement
+ * - Force a bitmap (toPng) sized to the iframe viewport (not the content height)
+ * - Wrap with a styled container that mimics the <iframe> box (borders, radius, etc.)
+ *
+ * @param {HTMLIFrameElement} iframe
+ * @param {object} sessionCache
+ * @param {object} options
+ * @returns {Promise<HTMLElement>}
+ */
+async function rasterizeIframe(iframe, sessionCache, options) {
+  const doc = await getAccessibleIframeDocument(iframe, 3);
+  if (!doc) throw new Error('iframe document not accessible/ready');
+
+  const { contentWidth, contentHeight, rect } = measureContentBox(iframe);
+
+  // Prefer snapdom from the iframe realm; fallback to host's window.snapdom
+  const snap = options?.snap
+  if (!snap || typeof snap.toPng !== 'function') {
+    throw new Error('snapdom.toPng not available in iframe or window');
+  }
+
+  // Avoid double scaling; parent capture decides final scale
+  const nested = { ...options, scale: 1 };
+
+  // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
+  const unpin = pinIframeViewport(doc, contentWidth, contentHeight);
+  let imgEl;
+  try {
+    imgEl = await snap.toPng(doc.documentElement, nested);
+  } finally {
+    unpin();
+  }
+
+  // Build <img> (bitmap) sized to content box
+  
+  imgEl.style.display = 'block';
+  imgEl.style.width  = `${contentWidth}px`;
+  imgEl.style.height = `${contentHeight}px`;
+
+  // Wrapper that preserves the iframe box (border, radius...) and clips
+  const wrapper = document.createElement('div');
+  sessionCache.nodeMap.set(wrapper, iframe);
+  inlineAllStyles(iframe, wrapper, sessionCache, options);
+  wrapper.style.overflow = 'hidden';
+    wrapper.style.display = 'block';
+  if (!wrapper.style.width)  wrapper.style.width  = `${Math.round(rect.width)}px`;
+  if (!wrapper.style.height) wrapper.style.height = `${Math.round(rect.height)}px`;
+
+  wrapper.appendChild(imgEl);
+  return wrapper;
+}
+
+
  
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error("Invalid node");
@@ -303,20 +428,40 @@ export async function deepClone(node, sessionCache, options) {
       console.warn("Error in filter function:", err);
     }
   }
-  if (node.tagName === "IFRAME") {
-    if (options.placeholders) {
-      const fallback = document.createElement("div");
-      fallback.style.cssText = `width:${node.offsetWidth}px;height:${node.offsetHeight}px;background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
-      inlineAllStyles(node, fallback, sessionCache, options);
-      return fallback;
-    } else {
-      const rect = node.getBoundingClientRect();
-      const spacer = document.createElement("div");
-      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
-      inlineAllStyles(node, spacer, sessionCache, options);
-      return spacer;
+if (node.tagName === "IFRAME") {
+  let sameOrigin = false;
+  try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document); } catch { sameOrigin = false; }
+
+  if (sameOrigin) {
+    try {
+      const wrapper = await rasterizeIframe(node, sessionCache, options);
+      return wrapper;
+    } catch (err) {
+      console.warn('[SnapDOM] iframe rasterization failed, fallback:', err);
+      // fall through
     }
   }
+
+  // Fallback actual (placeholder o spacer)
+  if (options.placeholders) {
+    const fallback = document.createElement("div");
+    fallback.style.cssText =
+      `width:${node.offsetWidth}px;height:${node.offsetHeight}px;` +
+      `background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);` +
+      `display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
+    inlineAllStyles(node, fallback, sessionCache, options);
+    return fallback;
+  } else {
+    const rect = node.getBoundingClientRect();
+    const spacer = document.createElement("div");
+    spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
+    inlineAllStyles(node, spacer, sessionCache, options);
+    return spacer;
+  }
+}
+
+
+
   if (node.getAttribute("data-capture") === "placeholder") {
     const clone2 = node.cloneNode(false);
     sessionCache.nodeMap.set(clone2, node);
