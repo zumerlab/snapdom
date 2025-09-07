@@ -9,26 +9,25 @@ import {
   parseContent,
   extractURL,
   safeEncodeURI,
-  fetchImage,
   inlineSingleBackgroundEntry,
   splitBackgroundImage,
-} from '../utils/helpers.js';
-import { getStyleKey } from '../utils/cssTools.js';
+  getStyleKey
+} from '../utils';
 import { iconToImage } from '../modules/fonts.js';
 import { isIconFont } from '../modules/iconFonts.js';
 import { cache } from '../core/cache.js';
+import { snapFetch } from './snapFetch.js';
 
 /**
  * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
  *
  * @param {Element} source - Original element
  * @param {Element} clone - Cloned element
- * @param {boolean} compress - Whether to compress style keys
  * @param {boolean} embedFonts - Whether to embed icon fonts as images
  * @returns {Promise} Promise that resolves when all pseudo-elements are processed
  */
 
-export async function inlinePseudoElements(source, clone, styleMap, styleCache, options) {
+export async function inlinePseudoElements(source, clone, sessionCache, options) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return;
 
   for (const pseudo of ['::before', '::after', '::first-letter']) {
@@ -70,8 +69,8 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
         span.textContent = first;
         span.dataset.snapdomPseudo = '::first-letter';
         const snapshot = snapshotComputedStyle(style);
-        const key = getStyleKey(snapshot, 'span', options);
-        styleMap.set(span, key);
+        const key = getStyleKey(snapshot, 'span');
+        sessionCache.styleMap.set(span, key);
 
         const restNode = document.createTextNode(rest);
         clone.replaceChild(restNode, textNode);
@@ -117,8 +116,8 @@ export async function inlinePseudoElements(source, clone, styleMap, styleCache, 
       pseudoEl.dataset.snapdomPseudo = pseudo;
       pseudoEl.style.verticalAlign = 'middle'
       const snapshot = snapshotComputedStyle(style);
-      const key = getStyleKey(snapshot, 'span', options);
-      styleMap.set(pseudoEl, key);
+      const key = getStyleKey(snapshot, 'span');
+      sessionCache.styleMap.set(pseudoEl, key);
 
       if (isIconFont2 && cleanContent.length === 1) {
        const { dataUrl, width, height } = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
@@ -132,8 +131,8 @@ pseudoEl.appendChild(imgEl);
         if (rawUrl?.trim()) {
           try {
             const imgEl = document.createElement('img');
-            const dataUrl = await fetchImage(safeEncodeURI(rawUrl), options);
-            imgEl.src = dataUrl;
+            const dataUrl = await snapFetch(safeEncodeURI(rawUrl), {as:'dataURL', useProxy: options.useProxy});
+            imgEl.src = dataUrl.data;
             imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
             pseudoEl.appendChild(imgEl);
           } catch (e) {
@@ -176,7 +175,7 @@ pseudoEl.appendChild(imgEl);
   const sChildren = Array.from(source.children);
   const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo);
   for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-    await inlinePseudoElements(sChildren[i], cChildren[i], styleMap, styleCache, options);
+    await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options);
   }
 }
 

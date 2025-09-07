@@ -3,7 +3,7 @@
  * @module background
  */
 
-import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils/helpers.js';
+import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage , NO_DEFAULTS_TAGS} from '../utils';
 import { cache } from '../core/cache.js'
 /**
  * Recursively inlines background-related images and masks from the source element to its clone.
@@ -81,16 +81,17 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       }
     }
 
-    // Preserve background-color if it's not transparent or default transparent rgba
+   /*  // Preserve background-color if it's not transparent or default transparent rgba
     const bgColor = style.getPropertyValue("background-color");
     if (
       bgColor &&
       bgColor !== "transparent" &&
-      bgColor !== "rgba(0, 0, 0, 0)"
+      bgColor !== "rgba(0, 0, 0, 0)" &&
+      !NO_DEFAULTS_TAGS.has(cloneNode.tagName.toLowerCase())
     ) {
       cloneNode.style.backgroundColor = bgColor;
     }
-
+ */
     // Queue children for recursive processing
     const sChildren = Array.from(srcNode.children);
     const cChildren = Array.from(cloneNode.children);
