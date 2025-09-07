@@ -1,6 +1,6 @@
 <p align="center">
   <a href="http://zumerlab.github.io/snapdom">
-    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/newhero.png" width="70%">
+    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/newhero.png" width="80%">
   </a>
 </p>
 
@@ -310,7 +310,7 @@ You can control how they are cleared between captures using the `cache` option:
 
 | Mode        | Description                                                                 |
 | ----------- | --------------------------------------------------------------------------- |
-| `"disabled"`| No cache: clears absolutely everything on every capture                     |
+| `"disabled"`| No cache                   |
 | `"soft"`    | Clears session caches (`styleMap`, `nodeMap`, `styleCache`) _(default)_      |
 | `"auto"`    | Minimal cleanup: only clears transient maps                                 |
 | `"full"`    | Keeps all caches (nothing is cleared, maximum performance)                  |
@@ -331,7 +331,6 @@ await snapdom.toPng(el, { cache: 'disabled' });
 ## Limitations
 
 * External images should be CORS-accessible (use `useProxy` option for handling CORS denied)
-* Iframes are not supported
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
 
