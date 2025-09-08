@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.10-dev.2](https://github.com/zumerlab/snapdom/compare/v1.9.10-dev.1...v1.9.10-dev.2)
+
+> 8 September 2025
+
+- Fix cache disabled bug. Closes #221 [`#221`](https://github.com/zumerlab/snapdom/issues/221)
+- Add extra margin when element has transform [`6688eee`](https://github.com/zumerlab/snapdom/commit/6688eee661de2d91249f9db28948629f421b14b4)
+- Feat. handkles css trasnforms and scale rotate new props. Ref #216 [`d151da1`](https://github.com/zumerlab/snapdom/commit/d151da1993f1374d2bae16ed1a076a05f9ff8d45)
+- Add same-origin iframe support .See #222 [`f50720f`](https://github.com/zumerlab/snapdom/commit/f50720fe76d8d114c1de31ffe802ade1edd7060e)
+- Fix regression that doesnt reset origial translate [`800c427`](https://github.com/zumerlab/snapdom/commit/800c427d327f41fbcc9703dfa5a3e99b9b7c789f)
+- Fix duplicated values on textArea [`0915f8d`](https://github.com/zumerlab/snapdom/commit/0915f8d4f1b9e58800407ba28ad86e16b6cc4621)
+- 增强图像处理功能，添加图像加载失败时的后备图像源支持，并记录原始图像尺寸以便于使用。更新类型定义以包含新选项。 [`011620a`](https://github.com/zumerlab/snapdom/commit/011620a3c8dbabed9c2e509766c4516205fbad66)
+- ✨ feat: [`e3a4556`](https://github.com/zumerlab/snapdom/commit/e3a4556a4085c0968bcce9f54d7d0fb9bbcfc6a7)
+- remove iframe limitation [`77abf8f`](https://github.com/zumerlab/snapdom/commit/77abf8f617fd1942565ee141406757c3704f45ae)
+- Merge pull request #220 from Jarvis2018/main [`adb6455`](https://github.com/zumerlab/snapdom/commit/adb6455fd6ff9db128dda5a59ac7556a16c851fa)
+- Merge pull request #215 from xiaobai-web715/dev [`37be327`](https://github.com/zumerlab/snapdom/commit/37be327f7c55ae20ee65001a8469f59284dbe12f)
+
+
 #### [v1.9.10-dev.1](https://github.com/zumerlab/snapdom/compare/v1.9.10-dev.0...v1.9.10-dev.1)
 
 > 3 September 2025
