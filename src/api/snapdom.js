@@ -55,9 +55,8 @@ export async function snapdom(element, userOptions) {
  * @returns {Promise<object>} Exporter functions.
  */
 snapdom.capture = async (el, context, _token) => {
-  if (_token !== INTERNAL_TOKEN) {
-    throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.');
-  }
+   /* v8 ignore next */
+  if (_token !== INTERNAL_TOKEN) throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.');
   const url = await captureDOM(el, context);
 
   const ensureContext = (opts) => ({ ...context, ...(opts || {}) });

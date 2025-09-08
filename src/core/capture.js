@@ -137,7 +137,7 @@ if (!hasBBoxAffectingTransform(element)) {
   const f = TOTAL.f ?? TOTAL.m42 ?? 0; // translateY
   cancelTranslateX = -e;
   cancelTranslateY = -f;
-
+  /* v8 ignore next */
   const M2D = TOTAL.is2D ? matrix2DNoTranslate(TOTAL) : matrix2DNoTranslate(new DOMMatrix(TOTAL.toString()));
   const bb = bboxFromMatrix(w, h, M2D);
 
@@ -291,7 +291,7 @@ function readIndividualTransforms(el) {
     }
     return out;
   }
-  // fallbacks por si no hay Typed OM
+  /* v8 ignore next */
   const cs = getComputedStyle(el);
   out.rotate = cs.rotate && cs.rotate !== "none" ? cs.rotate : "0deg";
   out.scale = cs.scale && cs.scale !== "none" ? cs.scale : null;

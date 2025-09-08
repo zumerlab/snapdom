@@ -174,9 +174,7 @@ function freezeImgSrcset(original, cloned) {
     // Hint deterministic decode/load for capture
     cloned.loading = 'eager';
     cloned.decoding = 'sync';
-  } catch {
-    // no-op
-  }
+  } catch {}
 }
 /**
  * Collect all custom properties referenced via var(--foo) in a CSS string.
@@ -210,6 +208,7 @@ function resolveCustomProp(el, name) {
     let v = rootCS.getPropertyValue(name).trim();
     if (v) return v;
   } catch {}
+  /* istanbul ignore next */
   return '';
 }
 

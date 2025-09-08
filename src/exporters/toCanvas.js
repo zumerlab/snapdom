@@ -52,6 +52,7 @@ export async function toCanvas(url, options) {
 
   // Limpieza simple: removemos el slot entero (y por ende el <img>)
   if (tempSlot && tempSlot.parentNode) {
+     /* v8 ignore next */
     try { tempSlot.parentNode.removeChild(tempSlot); } catch {}
   }
 

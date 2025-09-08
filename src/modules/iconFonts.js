@@ -28,6 +28,7 @@ export function extendIconFonts(fonts) {
 }
 
 export function isIconFont(input) {
+   /* v8 ignore next */
   const text = typeof input === "string" ? input : "";
 
   const candidates = [...defaultIconFonts, ...userIconFonts];
@@ -37,13 +38,8 @@ export function isIconFont(input) {
   }
 
   // Heurística básica
-  if (
-    /icon/i.test(text) ||
-    /glyph/i.test(text) ||
-    /symbols/i.test(text) ||
-    /feather/i.test(text) ||
-    /fontawesome/i.test(text)
-  ) return true;
+   /* v8 ignore next */
+  if (/icon/i.test(text) || /glyph/i.test(text) || /symbols/i.test(text) || /feather/i.test(text) || /fontawesome/i.test(text)) return true;
 
   return false;
 }

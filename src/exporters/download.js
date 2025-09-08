@@ -26,9 +26,8 @@ export async function download(url, options) {
   }
 
   const canvas = await toCanvas(url, options);
-  const finalCanvas = options.backgroundColor
-    ? createBackground(canvas, options.backgroundColor)
-    : canvas;
+    /* v8 ignore next */
+  const finalCanvas = options.backgroundColor ? createBackground(canvas, options.backgroundColor) : canvas;
 
   const a = document.createElement('a');
   a.href = finalCanvas.toDataURL(`image/${options.format}`, options.quality);

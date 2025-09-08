@@ -4,17 +4,12 @@
 
 /**
  * Normalizes `options.cache` into a canonical policy.
- * Shorthands:
- *  - true  => "soft"
- *  - false => "disabled"
  * Accepted strings: "disabled" | "full" | "auto" | "soft"
  * Default: "soft"
  * @param {unknown} v
  * @returns {CachePolicy}
  */
 export function normalizeCachePolicy(v) {
-  if (v === true) return "soft";
-  if (v === false) return "disabled";
   if (typeof v === "string") {
     const s = v.toLowerCase().trim();
     if (s === "disabled" || s === "full" || s === "auto" || s === "soft") return /** @type {CachePolicy} */(s);

@@ -62,9 +62,5 @@ export function stripTranslate(transform) {
 
 export function safeEncodeURI(uri) {
   if (/%[0-9A-Fa-f]{2}/.test(uri)) return uri; // prevent reencode
-  try {
-    return encodeURI(uri);
-  } catch {
-    return uri;
-  }
+  try { return encodeURI(uri);} catch { return uri;}
 }
