@@ -45,6 +45,15 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 ## Status
 
 > 💡 Check and try the dev version of SnapDOM in [GitHub Discussion #202](https://github.com/zumerlab/snapdom/discussions/202).
+>
+> How to try dev version?
+> 
+> `@zumer/snapdom@1.9.10-dev.2`
+> 
+> `npm i @zumer/snapdom@1.9.10-dev.2`
+> 
+>  `https://unpkg.com/@zumer/snapdom@dev`
+> 
 
 
 ## Installation
