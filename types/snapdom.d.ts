@@ -1,9 +1,9 @@
 /**
  * snapDOM – ultra-fast DOM-to-image capture
- * TypeScript definitions
+ * TypeScript definitions (v1.9.10-dev.2)
  *
  * Notes:
- * - Style compression is always enabled internally (no user option).
+ * - Style compression is internal (no public option).
  * - Icon fonts are always embedded; `embedFonts` controls non-icon fonts only.
  */
 
@@ -11,11 +11,12 @@ export type RasterMime = "png" | "jpg" | "jpeg" | "webp";
 export type BlobType = "svg" | RasterMime;
 
 export type IconFontMatcher = string | RegExp;
+export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
 export interface LocalFontDescriptor {
-  /** CSS font-family name (e.g. "Inter") */
+  /** CSS font-family name (e.g. "Inter"). */
   family: string;
-  /** URL to the font source (woff2/woff/ttf). Data URLs are allowed. */
+  /** URL to the font source (woff2/woff/ttf). Data URLs allowed. */
   src: string;
   /** CSS font-weight value (e.g. 400, "bold"). */
   weight?: string | number;
@@ -27,27 +28,16 @@ export interface LocalFontDescriptor {
 
 export interface CaptureOptions {
   /**
-   * Skip small idle delays for faster overall capture on some browsers.
+   * Enable additional internal logs.
+   * Default: false
+   */
+  debug?: boolean;
+
+  /**
+   * Skip small idle delays for faster overall capture.
    * Default: true
    */
   fast?: boolean;
-
-  /**
-   * Inline non-icon fonts that are detected as used within the captured subtree.
-   * Icon fonts are always embedded.
-   * Default: false
-   */
-  embedFonts?: boolean;
-
-  /**
-   * Additional local fonts to be considered during embedding.
-   */
-  localFonts?: LocalFontDescriptor[];
-
-  /**
-   * Extra icon font family matchers (by name or regex). Helpful for custom icon sets.
-   */
-  iconFonts?: IconFontMatcher | IconFontMatcher[];
 
   /**
    * Output scale multiplier. If set, takes precedence over width/height.
@@ -67,10 +57,16 @@ export interface CaptureOptions {
   /** Target height for the exported image. Ignored if `scale` is provided. */
   height?: number;
 
-  /** Fallback color for JPG/WebP exports (no alpha). Default: "#fff". */
-  backgroundColor?: string;
+  /**
+   * Fallback color for lossy raster formats (JPG/WebP have no alpha).
+   * Default: "#ffffff" for JPG/JPEG/WebP, `null` otherwise.
+   */
+  backgroundColor?: string | null;
 
-  /** Quality for JPG/WebP (0..1). Default: 1. */
+  /**
+   * Quality for JPG/WebP (0..1).
+   * Default: 0.92
+   */
   quality?: number;
 
   /**
@@ -83,24 +79,47 @@ export interface CaptureOptions {
   type?: BlobType;
 
   /**
-   * CSS selectors for elements to exclude entirely from capture.
-   * They are removed from the cloned subtree before processing.
+   * Preferred export format used by convenience methods / download.
+   * Default: "png"
    */
+  format?: "svg" | RasterMime;
+
+  /** CSS selectors removed from the cloned subtree before processing. */
   exclude?: string[];
 
   /**
-   * Advanced filter; return false to exclude a node.
-   * Applied to the cloned subtree during traversal.
+   * Advanced node filter; return false to exclude a node during traversal.
+   * Applied to the cloned subtree.
    */
   filter?: (el: Element) => boolean;
 
   /**
-   * Reset mode for internal caches at the beginning of capture.
-   * - "soft" (default): clear ephemeral/session caches (computed styles, per-capture maps).
-   * - "hard": clear all caches including images/resources/fonts/base styles.
-   * - "none": do not reset anything (fastest, may reuse stale resources).
+   * Whether to synthesize placeholders for broken images, etc.
+   * Default: true
    */
-  reset?: "soft" | "hard" | "none";
+  placeholders?: boolean;
+
+  /**
+   * Inline non-icon fonts used within the captured subtree.
+   * Icon fonts are always embedded.
+   * Default: false
+   */
+  embedFonts?: boolean;
+
+  /**
+   * Additional local fonts to be considered during embedding.
+   */
+  localFonts?: LocalFontDescriptor[];
+
+  /**
+   * Extra icon font family matchers (by name or regex).
+   */
+  iconFonts?: IconFontMatcher | IconFontMatcher[];
+
+  /**
+   * Font family matchers to explicitly exclude from embedding.
+   */
+  excludeFonts?: IconFontMatcher[];
 
   /**
    * Fallback image source when an <img> fails to load.
@@ -108,13 +127,27 @@ export interface CaptureOptions {
    * - Callback: receives measured width/height and original src, returns a URL string.
    */
   defaultImageUrl?:
-        | string
-        | ((args: {
-        width?: number;
-        height?: number;
-        src?: string;
-        element: HTMLImageElement;
-    }) => string | Promise<string>);
+    | string
+    | ((
+        args: {
+          width?: number;
+          height?: number;
+          src?: string;
+          element: HTMLImageElement;
+        }
+      ) => string | Promise<string>);
+
+  /**
+   * Cache policy applied at capture start.
+   * Default: "soft"
+   */
+  cache?: CachePolicy;
+
+  /**
+   * Base filename used by `download`.
+   * Default: "snapDOM"
+   */
+  filename?: string;
 }
 
 export interface BlobOptions {
@@ -123,39 +156,39 @@ export interface BlobOptions {
   /** JPG/WebP quality (0..1). */
   quality?: number;
   /** Background override for lossy formats. */
-  backgroundColor?: string;
+  backgroundColor?: string | null;
 }
 
 export interface DownloadOptions {
   /** File format. Default: "png". */
   format?: "svg" | RasterMime;
-  /** Base filename without extension. Default: "capture". */
+  /** Base filename without extension. Default: "snapDOM". */
   filename?: string;
   /** Background override for lossy formats. */
-  backgroundColor?: string;
-  /** Quality for JPG/WebP (0..1). */
+  backgroundColor?: string | null;
+  /** JPG/WebP quality (0..1). Default: 0.92. */
   quality?: number;
 }
 
 export interface CaptureResult {
   /** SVG data URL representing the captured element. */
   url: string;
-  /** Returns the raw SVG markup as string. */
+  /** Returns the same SVG data URL string. */
   toRaw(): string;
-  /** Creates an HTMLImageElement from the SVG. */
-  toImg(): Promise<HTMLImageElement>;
-  /** Renders into a Canvas element (sized appropriately). */
-  toCanvas(): Promise<HTMLCanvasElement>;
+  /** Creates an HTMLImageElement from the SVG (accepts options). */
+  toImg(options?: CaptureOptions): Promise<HTMLImageElement>;
+  /** Renders into a Canvas element (accepts options). */
+  toCanvas(options?: CaptureOptions): Promise<HTMLCanvasElement>;
   /** Exports to a Blob (SVG/PNG/JPG/WebP). */
-  toBlob(options?: BlobOptions): Promise<Blob>;
+  toBlob(options?: CaptureOptions & BlobOptions): Promise<Blob>;
   /** Convenience PNG export (returns an <img>). */
-  toPng(options?: { backgroundColor?: string; quality?: number }): Promise<HTMLImageElement>;
+  toPng(options?: CaptureOptions): Promise<HTMLImageElement>;
   /** Convenience JPG export (returns an <img>). */
-  toJpg(options?: { backgroundColor?: string; quality?: number }): Promise<HTMLImageElement>;
+  toJpg(options?: CaptureOptions): Promise<HTMLImageElement>;
   /** Convenience WebP export (returns an <img>). */
-  toWebp(options?: { backgroundColor?: string; quality?: number }): Promise<HTMLImageElement>;
+  toWebp(options?: CaptureOptions): Promise<HTMLImageElement>;
   /** Triggers a file download. */
-  download(options?: DownloadOptions): Promise<void>;
+  download(options?: CaptureOptions & DownloadOptions): Promise<void>;
 }
 
 /**
@@ -177,16 +210,27 @@ export declare namespace snapdom {
  * Preload resources (images/fonts) to avoid first-capture stalls.
  */
 export interface PreCacheOptions {
-  /** Root element to scan. Default: document.body. */
-  root?: Element | Document;
   /** Inline non-icon fonts during preload. Default: true. */
   embedFonts?: boolean;
   /** Additional local fonts. */
   localFonts?: LocalFontDescriptor[];
   /** Proxy for CORS fallbacks. */
   useProxy?: string;
+  /** Font family matchers to explicitly exclude from embedding. */
+  excludeFonts?: IconFontMatcher[];
+  /**
+   * Cache policy used during precache.
+   * Note: for `preCache` the option name in runtime is `cacheOpt`.
+   */
+  cacheOpt?: CachePolicy;
 }
 
-export declare function preCache(options?: PreCacheOptions): Promise<void>;
+/**
+ * Preload resources rooted at `root` (defaults to `document`).
+ */
+export declare function preCache(
+  root?: Element | Document,
+  options?: PreCacheOptions
+): Promise<void>;
 
 export {};
