@@ -382,7 +382,7 @@ Values are **average capture time (ms)** → lower is better.
 
 ### Simple elements
 
-| Scenario                 | SnapDOM v1.9.10 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| Scenario                 | SnapDOM current | SnapDOM v1.9.9 | html2canvas | html-to-image |
 | ------------------------ | --------------- | -------------- | ----------- | ------------- |
 | Small (200×100)          | **0.5 ms**      | 0.8 ms         | 67.7 ms     | 3.1 ms        |
 | Modal (400×300)          | **0.5 ms**      | 0.8 ms         | 75.5 ms     | 3.6 ms        |
@@ -394,7 +394,7 @@ Values are **average capture time (ms)** → lower is better.
 
 ### Complex elements
 
-| Scenario                 | SnapDOM v1.9.10 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| Scenario                 | SnapDOM current | SnapDOM v1.9.9 | html2canvas | html-to-image |
 | ------------------------ | --------------- | -------------- | ----------- | ------------- |
 | Small (200×100)          | **1.6 ms**      | 3.3 ms         | 68.0 ms     | 14.3 ms       |
 | Modal (400×300)          | **2.9 ms**      | 6.8 ms         | 87.5 ms     | 34.8 ms       |
