@@ -30,15 +30,12 @@ export async function snapdom(element, userOptions) {
   if (!element) throw new Error('Element cannot be null or undefined');
 
   const context = createContext(userOptions);
-   /* c8 ignore next 1 */
+  /* c8 ignore next 1 */
   if (context.iconFonts && context.iconFonts.length > 0) extendIconFonts(context.iconFonts);
 
   if (!context.snap) {
-    /** Facade used by core (e.g., deepClone for same-origin iframes). */
     context.snap = {
-      /** Delegates to this module’s PNG path (tu build devuelve <img>). */
       toPng: (el, opts) => snapdom.toPng(el, opts),
-      /** Útil si en algún flujo necesitás vector o <img> directo. */
       toImg: (el, opts) => snapdom.toImg(el, opts),
     };
   }
@@ -55,7 +52,7 @@ export async function snapdom(element, userOptions) {
  * @returns {Promise<object>} Exporter functions.
  */
 snapdom.capture = async (el, context, _token) => {
-   /* v8 ignore next */
+  /* v8 ignore next */
   if (_token !== INTERNAL_TOKEN) throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.');
   const url = await captureDOM(el, context);
 
@@ -82,8 +79,6 @@ snapdom.capture = async (el, context, _token) => {
     download: (opts) => download(url, ensureContext(opts)),
   };
 };
-
-// Compatibility methods — all normalize options through snapdom first
 
 /**
  * Returns the raw data URL from a captured element.

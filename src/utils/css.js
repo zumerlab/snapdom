@@ -4,24 +4,23 @@
 
 /** Tags that Snapdom must never capture (skip node + subtree). */
 export const NO_CAPTURE_TAGS = new Set([
-  "meta","script","noscript","title","link","template"
+  "meta", "script", "noscript", "title", "link", "template"
 ]);
 
 /** Tags that must not generate default styles nor auto-classes. */
 export const NO_DEFAULTS_TAGS = new Set([
-
   // non-painting / head stuff
-  "meta","link","style","title","noscript","script","template",
+  "meta", "link", "style", "title", "noscript", "script", "template",
   // SVG whole namespace (safe for LeaderLine/presentation attrs)
-  'g','defs','use','marker','mask','clipPath','pattern',
-  'path','polygon','polyline','line','circle','ellipse','rect',
-  "filter","lineargradient","radialgradient","stop"
+  'g', 'defs', 'use', 'marker', 'mask', 'clipPath', 'pattern',
+  'path', 'polygon', 'polyline', 'line', 'circle', 'ellipse', 'rect',
+  "filter", "lineargradient", "radialgradient", "stop"
 ]);
 
 import { cache } from "../core/cache";
 
 const commonTags = [
-  "div", "span","p","a","img","ul","li","button","input","select","textarea","label","section","article","header","footer","nav","main","aside","h1","h2","h3","h4","h5","h6","table","thead","tbody","tr","td","th"
+  "div", "span", "p", "a", "img", "ul", "li", "button", "input", "select", "textarea", "label", "section", "article", "header", "footer", "nav", "main", "aside", "h1", "h2", "h3", "h4", "h5", "h6", "table", "thead", "tbody", "tr", "td", "th"
 ];
 
 // -----------------------------------------------------------------------------
@@ -73,7 +72,7 @@ export function getDefaultStyleForTag(tagName) {
   }
 
   const el = document.createElement(tagName);
-  el.style.all = 'initial'; 
+  el.style.all = 'initial';
   sandbox.appendChild(el);
 
   const styles = getComputedStyle(el);
@@ -89,7 +88,6 @@ export function getDefaultStyleForTag(tagName) {
   cache.defaultStyle.set(tagName, defaults);
   return defaults;
 }
-
 
 /** Tokens "animation"/"transition" anywhere in the name (dash-bounded). */
 const NO_PAINT_TOKEN = /(?:^|-)(animation|transition)(?:-|$)/i;

@@ -44,34 +44,28 @@ export function normalizeCachePolicy(v) {
 export function applyCachePolicy(policy = "soft") {
   switch (policy) {
     case "auto": {
-      // Limpieza mínima: solo maps transitorios
       cache.session.styleMap = new Map();
       cache.session.nodeMap  = new Map();
       return;
     }
     case "soft": {
-      // Limpieza de sesión completa
       cache.session.styleMap   = new Map();
       cache.session.nodeMap    = new Map();
       cache.session.styleCache = new WeakMap();
       return;
     }
     case "full": {
-      // Mantener todo (no limpiar nada)
       return;
     }
     case "disabled": {
-      // 🔁 Session (clonar siempre para cortar referencias)
       cache.session.styleMap   = new Map();
       cache.session.nodeMap    = new Map();
       cache.session.styleCache = new WeakMap();
 
-      // 🔁 Estilos globales (ANTES solo se hacía clear() de algunos)
       cache.computedStyle = new WeakMap();
       cache.baseStyle     = new Map();
       cache.defaultStyle  = new Map();
 
-      // 🔁 Recursos (mejor reinstanciar que clear() para cortar iteradores/referencias)
       cache.image      = new Map();
       cache.background = new Map();
       cache.resource   = new Map();

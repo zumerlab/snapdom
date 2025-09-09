@@ -42,26 +42,22 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
   if (isGradient || entry.trim() === "none") {
     return entry; // leave as is
   }
-
   // Extract raw URL from url("...") (your existing helper)
   const rawUrl = extractURL(entry);
   if (!rawUrl) {
     // Not a URL(...) we recognize → keep original as a safe fallback
     return entry;
   }
-
   // Normalize / encode the URL string for cache key & fetch
   const encodedUrl = safeEncodeURI(rawUrl);
-
   // Fast path: cached success
   if (cache.background.has(encodedUrl)) {
     const dataUrl = cache.background.get(encodedUrl);
     return dataUrl ? `url("${dataUrl}")` : "none";
   }
-
   // Try to inline; never throw — degrade to "none" on failure
   try {
-    const dataUrl = await snapFetch(encodedUrl, {as:'dataURL', useProxy: options.useProxy});
+    const dataUrl = await snapFetch(encodedUrl, { as: 'dataURL', useProxy: options.useProxy });
     // Guard: ensure it actually looks like an image data URL
     if (dataUrl.ok) {
       cache.background.set(encodedUrl, dataUrl.data);

@@ -15,7 +15,6 @@ import {
 } from '../utils';
 import { iconToImage } from '../modules/fonts.js';
 import { isIconFont } from '../modules/iconFonts.js';
-import { cache } from '../core/cache.js';
 import { snapFetch } from './snapFetch.js';
 
 /**
@@ -120,18 +119,18 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       sessionCache.styleMap.set(pseudoEl, key);
 
       if (isIconFont2 && cleanContent.length === 1) {
-       const { dataUrl, width, height } = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
-const imgEl = document.createElement("img");
-imgEl.src = dataUrl;
-imgEl.style = `height:${fontSize}px;width:${(width / height) * fontSize}px;object-fit:contain;`;
-pseudoEl.appendChild(imgEl);
+        const { dataUrl, width, height } = await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color);
+        const imgEl = document.createElement("img");
+        imgEl.src = dataUrl;
+        imgEl.style = `height:${fontSize}px;width:${(width / height) * fontSize}px;object-fit:contain;`;
+        pseudoEl.appendChild(imgEl);
         clone.dataset.snapdomHasIcon = "true";
       } else if (cleanContent.startsWith('url(')) {
         const rawUrl = extractURL(cleanContent);
         if (rawUrl?.trim()) {
           try {
             const imgEl = document.createElement('img');
-            const dataUrl = await snapFetch(safeEncodeURI(rawUrl), {as:'dataURL', useProxy: options.useProxy});
+            const dataUrl = await snapFetch(safeEncodeURI(rawUrl), { as: 'dataURL', useProxy: options.useProxy });
             imgEl.src = dataUrl.data;
             imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`;
             pseudoEl.appendChild(imgEl);

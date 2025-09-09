@@ -19,7 +19,6 @@ export async function toCanvas(url, options) {
   img.decoding = 'sync';
   img.src = url;
 
-  // Safari: contenedor offscreen temporal (por llamada)
   let tempSlot = null;
   if (safari) {
     tempSlot = document.createElement('div');
@@ -33,7 +32,6 @@ export async function toCanvas(url, options) {
 
   await img.decode();
   if (safari) {
-    // Conservador: mantiene tu settle actual
     await new Promise(r => setTimeout(r, 100));
   }
 
@@ -50,10 +48,9 @@ export async function toCanvas(url, options) {
   if (dpr !== 1) ctx.scale(dpr, dpr);
   ctx.drawImage(img, 0, 0, width, height);
 
-  // Limpieza simple: removemos el slot entero (y por ende el <img>)
   if (tempSlot && tempSlot.parentNode) {
-     /* v8 ignore next */
-    try { tempSlot.parentNode.removeChild(tempSlot); } catch {}
+    /* v8 ignore next */
+    try { tempSlot.parentNode.removeChild(tempSlot); } catch { }
   }
 
   return canvas;

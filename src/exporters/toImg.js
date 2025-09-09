@@ -15,6 +15,5 @@ export async function toImg(url, options) {
     img.style.width = `${img.naturalWidth * options.scale}px`;
     img.style.height = `${img.naturalHeight * options.scale}px`;
   }
-
   return img;
 }

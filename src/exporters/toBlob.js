@@ -20,7 +20,7 @@ export async function toBlob(url, options) {
   }
 
   const canvas = await toCanvas(url, options);
-   /* v8 ignore next */
+  /* v8 ignore next */
   const finalCanvas = options.backgroundColor ? createBackground(canvas, options.backgroundColor) : canvas;
 
   return new Promise((resolve) =>

@@ -3,11 +3,11 @@
  * @module prepare
  */
 
-import { generateCSSClasses, stripTranslate} from '../utils/index.js';
+import { generateCSSClasses, stripTranslate } from '../utils/index.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
 import { snapFetch } from '../modules/snapFetch.js';
-import { inlineExternalDefsAndSymbols} from '../modules/svgDefs.js';
+import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js';
 import { cache } from '../core/cache.js';
 
 /**
@@ -27,11 +27,11 @@ export async function prepareClone(element, options = {}) {
     styleCache: cache.session.styleCache,
     nodeMap: cache.session.nodeMap
   }
- 
+
   let clone
   let classCSS = '';
   let shadowScopedCSS = '';
-  
+
   stabilizeLayout(element)
 
   try {
@@ -53,25 +53,24 @@ export async function prepareClone(element, options = {}) {
     console.warn("inlinePseudoElements failed:", e);
   }
   await resolveBlobUrlsInTree(clone);
-   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
+  // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
 
-try {
-  const styleNodes = clone.querySelectorAll('style[data-sd]');
-  for (const s of styleNodes) {
-    shadowScopedCSS += s.textContent || '';
-    s.remove(); // Do not leave <style> inside the visual clone
-  }
-} catch {}
+  try {
+    const styleNodes = clone.querySelectorAll('style[data-sd]');
+    for (const s of styleNodes) {
+      shadowScopedCSS += s.textContent || '';
+      s.remove(); // Do not leave <style> inside the visual clone
+    }
+  } catch { }
 
-const keyToClass = generateCSSClasses(sessionCache.styleMap);
-classCSS = Array.from(keyToClass.entries())
-  .map(([key, className]) => `.${className}{${key}}`)
-  .join("");
+  const keyToClass = generateCSSClasses(sessionCache.styleMap);
+  classCSS = Array.from(keyToClass.entries())
+    .map(([key, className]) => `.${className}{${key}}`)
+    .join("");
 
-// prepend shadow CSS so variables/rules are available for everything
-classCSS = shadowScopedCSS + classCSS;
+  // prepend shadow CSS so variables/rules are available for everything
+  classCSS = shadowScopedCSS + classCSS;
 
-  
   for (const [node, key] of sessionCache.styleMap.entries()) {
     if (node.tagName === "STYLE") continue;
     /* c8 ignore next 4 */
@@ -207,7 +206,7 @@ async function replaceBlobUrlsInCssText(cssText) {
     try {
       const d = await blobUrlToDataUrl(u);
       out = out.split(u).join(d);
-    } catch {}
+    } catch { }
   }
   return out;
 }
@@ -253,12 +252,12 @@ async function resolveBlobUrlsInTree(root) {
             try {
               p.url = await blobUrlToDataUrl(p.url);
               changed = true;
-            } catch {}
+            } catch { }
           }
         }
         if (changed) img.setAttribute("srcset", stringifySrcset(parts));
       }
-    } catch {}
+    } catch { }
   }
 
   const svgImages = root.querySelectorAll ? root.querySelectorAll("image") : [];
@@ -271,7 +270,7 @@ async function resolveBlobUrlsInTree(root) {
         node.setAttribute("href", d);
         node.removeAttributeNS?.(XLINK_NS, "href");
       }
-    } catch {}
+    } catch { }
   }
 
   const styled = root.querySelectorAll ? root.querySelectorAll("[style*='blob:']") : [];
@@ -282,7 +281,7 @@ async function resolveBlobUrlsInTree(root) {
         const replaced = await replaceBlobUrlsInCssText(styleText);
         el.setAttribute("style", replaced);
       }
-    } catch {}
+    } catch { }
   }
 
   const styleTags = root.querySelectorAll ? root.querySelectorAll("style") : [];
@@ -292,7 +291,7 @@ async function resolveBlobUrlsInTree(root) {
       if (css.includes("blob:")) {
         s.textContent = await replaceBlobUrlsInCssText(css);
       }
-    } catch {}
+    } catch { }
   }
 
   const urlAttrs = ["poster"];
@@ -304,7 +303,7 @@ async function resolveBlobUrlsInTree(root) {
         if (isBlobUrl(u)) {
           n.setAttribute(attr, await blobUrlToDataUrl(u));
         }
-      } catch {}
+      } catch { }
     }
   }
 }

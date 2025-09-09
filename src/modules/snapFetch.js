@@ -33,11 +33,9 @@
 // ---------------------------------------------------------------------------
 
 function createSnapLogger(prefix = '[snapDOM]', { ttlMs = 5 * 60_000, maxEntries = 12 } = {}) {
-  /** @type {Map<string, number>} until timestamps by key */
   const seen = new Map();
   let emitted = 0;
 
-  /** @param {'warn'|'error'} level @param {string} key @param {string} msg */
   function log(level, key, msg) {
     if (emitted >= maxEntries) return;
     const now = Date.now();
@@ -62,21 +60,17 @@ const snapLogger = createSnapLogger('[snapDOM]', { ttlMs: 3 * 60_000, maxEntries
 // Internal state
 // ---------------------------------------------------------------------------
 
-/** @type {Map<string, Promise<SnapFetchResult>>} */
 const _inflight = new Map();
-/** @type {Map<string, {until:number, result:SnapFetchResult}>} */
 const _errorCache = new Map();
 
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
 
-/** @param {string} url */
 function isSpecialURL(url) {
   return /^data:|^blob:|^about:blank$/.test(url);
 }
 
-/** @param {string} url @param {string} useProxy */
 function shouldProxy(url, useProxy) {
   if (!useProxy || isSpecialURL(url)) return false;
   try {
@@ -88,15 +82,13 @@ function shouldProxy(url, useProxy) {
   }
 }
 
-/** @param {string} url @param {string} useProxy */
 function applyProxy(url, useProxy) {
   if (!useProxy) return url;
   if (useProxy.includes('{url}')) return useProxy.replace('{url}', encodeURIComponent(url));
-    const sep = useProxy.endsWith('?') ? '' : (useProxy.includes('?') ? '&' : '?');
-    return `${useProxy}${sep}url=${encodeURIComponent(url)}`;
+  const sep = useProxy.endsWith('?') ? '' : (useProxy.includes('?') ? '&' : '?');
+  return `${useProxy}${sep}url=${encodeURIComponent(url)}`;
 }
 
-/** @param {Blob} blob */
 function blobToDataURL(blob) {
   return new Promise((res, rej) => {
     const fr = new FileReader();
@@ -106,7 +98,6 @@ function blobToDataURL(blob) {
   });
 }
 
-/** @param {string} url @param {SnapFetchOptions} o */
 function makeKey(url, o) {
   return [
     o.as || 'blob',
@@ -136,23 +127,18 @@ export async function snapFetch(url, options = {}) {
   const silent = !!options.silent;
 
   const key = makeKey(url, { as, timeout, useProxy, errorTTL });
-
   // Error cache
   const e = _errorCache.get(key);
   if (e && e.until > Date.now()) {
-  return { ...e.result, fromCache: true };
-
+    return { ...e.result, fromCache: true };
   } else if (e) {
     _errorCache.delete(key);
   }
-
   // Inflight
   const inflight = _inflight.get(key);
   if (inflight) return inflight;
-
   // Final URL & credentials
   const finalURL = shouldProxy(url, useProxy) ? applyProxy(url, useProxy) : url;
-
   let cred = options.credentials;
   if (!cred) {
     try {
@@ -164,11 +150,9 @@ export async function snapFetch(url, options = {}) {
       cred = 'omit';
     }
   }
-
   // Timeout controller
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort('timeout'), timeout);
-
   const p = (async () => {
     try {
       const resp = await fetch(finalURL, { signal: ctrl.signal, credentials: cred, headers });
@@ -199,7 +183,6 @@ export async function snapFetch(url, options = {}) {
         const dataURL = await blobToDataURL(blob);
         return { ok: true, data: dataURL, status: resp.status, url: finalURL, fromCache: false, mime };
       }
-
       // default blob
       return { ok: true, data: blob, status: resp.status, url: finalURL, fromCache: false, mime };
 
@@ -220,8 +203,8 @@ export async function snapFetch(url, options = {}) {
         const tips = reason === 'timeout'
           ? `Timeout after ${timeout}ms. Consider increasing timeout or using a proxy for ${url}`
           : reason === 'abort'
-          ? `Request aborted while fetching ${as} ${url}`
-          : `Network/CORS issue while fetching ${as} ${url}. A proxy may be required`;
+            ? `Request aborted while fetching ${as} ${url}`
+            : `Network/CORS issue while fetching ${as} ${url}. A proxy may be required`;
         snapLogger.errorOnce(k, tips);
       }
 

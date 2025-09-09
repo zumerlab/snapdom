@@ -61,7 +61,7 @@ export function createContext(options = {}) {
     // Fuentes
     embedFonts: options.embedFonts ?? false,
     iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts
-             : (options.iconFonts ? [options.iconFonts] : []),
+      : (options.iconFonts ? [options.iconFonts] : []),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
     defaultImageUrl: options.defaultImageUrl ?? undefined,
@@ -81,7 +81,7 @@ export function createContext(options = {}) {
     quality: options.quality ?? 0.92,
     dpr: options.dpr ?? (window.devicePixelRatio || 1),
     backgroundColor:
-      options.backgroundColor ?? (['jpg','jpeg','webp'].includes(resolvedFormat) ? '#ffffff' : null),
+      options.backgroundColor ?? (['jpg', 'jpeg', 'webp'].includes(resolvedFormat) ? '#ffffff' : null),
     filename: options.filename ?? 'snapDOM',
 
     // Plugins (reservado para futura activación)

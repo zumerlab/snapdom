@@ -3,7 +3,7 @@
  * @module background
  */
 
-import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage , NO_DEFAULTS_TAGS} from '../utils';
+import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage, NO_DEFAULTS_TAGS } from '../utils';
 import { cache } from '../core/cache.js'
 /**
  * Recursively inlines background-related images and masks from the source element to its clone.
@@ -81,23 +81,19 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
 
   while (queue.length) {
     const [srcNode, cloneNode] = queue.shift();
-
     // Style cache
     const style = styleCache.get(srcNode) || getStyle(srcNode);
     if (!styleCache.has(srcNode)) styleCache.set(srcNode, style);
-
     // Border-image present?
     const hasBorderImage = (() => {
       const bi = style.getPropertyValue('border-image');
       const bis = style.getPropertyValue('border-image-source');
       return (bi && bi !== 'none') || (bis && bis !== 'none');
     })();
-
     // 1) Inline URL-bearing properties
     for (const prop of URL_PROPS) {
       const val = style.getPropertyValue(prop);
       if (!val || val === 'none') continue;
-
       // Split multiple layers (comma-separated)
       const splits = splitBackgroundImage(val);
 
@@ -109,7 +105,6 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
         cloneNode.style.setProperty(prop, inlined.join(', '));
       }
     }
-
     // 2) Copy mask layout longhands (position / size / repeat, etc.)
     for (const prop of MASK_LAYOUT_PROPS) {
       const val = style.getPropertyValue(prop);
@@ -117,7 +112,6 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       if (!val || val === 'initial') continue;
       cloneNode.style.setProperty(prop, val);
     }
-
     // 3) Copy border-image auxiliaries only if border-image is active
     if (hasBorderImage) {
       for (const prop of BORDER_AUX_PROPS) {
@@ -126,7 +120,6 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
         cloneNode.style.setProperty(prop, val);
       }
     }
-
     // 4) Recurse
     const sChildren = Array.from(srcNode.children);
     const cChildren = Array.from(cloneNode.children);

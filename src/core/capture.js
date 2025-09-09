@@ -6,7 +6,7 @@
 import { prepareClone } from './prepare.js';
 import { inlineImages } from '../modules/images.js';
 import { inlineBackgroundImages } from '../modules/background.js';
-import { idle,collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js';
+import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js';
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
 import { cache, applyCachePolicy } from '../core/cache.js'
 
@@ -89,124 +89,114 @@ export async function captureDOM(element, options) {
 
   await new Promise((resolve) => {
     idle(() => {
-    // 1) tamaño base del elemento original
-const rect = getNaturalBorderBoxSize(element);
-let w = rect.width;
-let h = rect.height;
+      const rect = getNaturalBorderBoxSize(element);
+      let w = rect.width;
+      let h = rect.height;
 
-// 2) ajuste por width/height opcionales SIN tocar la matriz del elemento
-const hasW = Number.isFinite(options.width);
-const hasH = Number.isFinite(options.height);
-const scaleOpt = options.scale ?? 1;
-const hasScale = typeof scaleOpt === "number" && scaleOpt !== 1;
+      const hasW = Number.isFinite(options.width);
+      const hasH = Number.isFinite(options.height);
+      const scaleOpt = options.scale ?? 1;
+      const hasScale = typeof scaleOpt === "number" && scaleOpt !== 1;
 
-if (!hasScale) {
-  const aspect = rect.width / rect.height;
-  if (hasW && hasH) { w = options.width; h = options.height; }
-  else if (hasW)    { w = options.width; h = w / aspect; }
-  else if (hasH)    { h = options.height; w = h * aspect; }
-}
-w = Math.max(1, Math.ceil(w));
-h = Math.max(1, Math.ceil(h));
+      if (!hasScale) {
+        const aspect = rect.width / rect.height;
+        if (hasW && hasH) { w = options.width; h = options.height; }
+        else if (hasW) { w = options.width; h = w / aspect; }
+        else if (hasH) { h = options.height; w = h * aspect; }
+      }
+      w = Math.max(1, Math.ceil(w));
+      h = Math.max(1, Math.ceil(h));
 
-// === FAST PATH vs STRICT (solo si transforma el bbox) ===
-const csEl = getComputedStyle(element);
-const baseTransform = csEl.transform && csEl.transform !== "none" ? csEl.transform : "";
-const ind = readIndividualTransforms(element);
+      const csEl = getComputedStyle(element);
+      const baseTransform = csEl.transform && csEl.transform !== "none" ? csEl.transform : "";
+      const ind = readIndividualTransforms(element);
 
-let outW, outH, tx, ty, cancelTranslateX = 0, cancelTranslateY = 0;
+      let outW, outH, tx, ty, cancelTranslateX = 0, cancelTranslateY = 0;
 
-if (!hasBBoxAffectingTransform(element)) {
-  // Camino común: bbox del elemento + 1px de seguridad
-  const r = element.getBoundingClientRect();
-  const vp = inflateRect(r, { top:0, right:0, bottom:0, left:0 });
-  outW = Math.max(1, vp.width);
-  outH = Math.max(1, vp.height);
-  tx = - (vp.x - Math.floor(r.left));   // alinear con la posición local
-  ty = - (vp.y - Math.floor(r.top));
-} else {
-  // Camino estricto: calcular bbox rotado/scale sin traslación
-  const TOTAL = readTotalTransformMatrix({
-    baseTransform,
-    rotate: ind.rotate || "0deg",
-    scale:  ind.scale,
-    translate: ind.translate
-  });
+      if (!hasBBoxAffectingTransform(element)) {
+        const r = element.getBoundingClientRect();
+        const vp = inflateRect(r, { top: 0, right: 0, bottom: 0, left: 0 });
+        outW = Math.max(1, vp.width);
+        outH = Math.max(1, vp.height);
+        tx = - (vp.x - Math.floor(r.left));
+        ty = - (vp.y - Math.floor(r.top));
+      } else {
+        const TOTAL = readTotalTransformMatrix({
+          baseTransform,
+          rotate: ind.rotate || "0deg",
+          scale: ind.scale,
+          translate: ind.translate
+        });
 
-  const e = TOTAL.e ?? TOTAL.m41 ?? 0; // translateX
-  const f = TOTAL.f ?? TOTAL.m42 ?? 0; // translateY
-  cancelTranslateX = -e;
-  cancelTranslateY = -f;
-  /* v8 ignore next */
-  const M2D = TOTAL.is2D ? matrix2DNoTranslate(TOTAL) : matrix2DNoTranslate(new DOMMatrix(TOTAL.toString()));
-  const bb = bboxFromMatrix(w, h, M2D);
+        const e = TOTAL.e ?? TOTAL.m41 ?? 0; // translateX
+        const f = TOTAL.f ?? TOTAL.m42 ?? 0; // translateY
+        cancelTranslateX = -e;
+        cancelTranslateY = -f;
+        /* v8 ignore next */
+        const M2D = TOTAL.is2D ? matrix2DNoTranslate(TOTAL) : matrix2DNoTranslate(new DOMMatrix(TOTAL.toString()));
+        const bb = bboxFromMatrix(w, h, M2D);
 
-  outW = Math.max(1, Math.ceil(bb.width));
-  outH = Math.max(1, Math.ceil(bb.height));
-  tx = -bb.minX;
-  ty = -bb.minY;
-}
+        outW = Math.max(1, Math.ceil(bb.width));
+        outH = Math.max(1, Math.ceil(bb.height));
+        tx = -bb.minX;
+        ty = -bb.minY;
+      }
 
-// 5) construir SVG + foreignObject
-const svgNS = "http://www.w3.org/2000/svg";
-const fo = document.createElementNS(svgNS, "foreignObject");
-fo.setAttribute("width", "100%");
-fo.setAttribute("height", "100%");
-fo.setAttribute("x", String(tx));
-fo.setAttribute("y", String(ty));
-fo.style.overflow = "visible";
+      const svgNS = "http://www.w3.org/2000/svg";
+      const fo = document.createElementNS(svgNS, "foreignObject");
+      fo.setAttribute("width", "100%");
+      fo.setAttribute("height", "100%");
+      fo.setAttribute("x", String(tx));
+      fo.setAttribute("y", String(ty));
+      fo.style.overflow = "visible";
 
-// estilos base
-const styleTag = document.createElement("style");
-styleTag.textContent =
-  baseCSS +
-  fontsCSS +
-  "svg{overflow:visible;} foreignObject{overflow:visible;}" +
-  classCSS;
-fo.appendChild(styleTag);
+      const styleTag = document.createElement("style");
+      styleTag.textContent =
+        baseCSS +
+        fontsCSS +
+        "svg{overflow:visible;} foreignObject{overflow:visible;}" +
+        classCSS;
+      fo.appendChild(styleTag);
 
-// 6) contenedor para re-escalado y cancelación de translate (si hubo)
-const container = document.createElement("div");
-container.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-container.style.width = `${w}px`;
-container.style.height = `${h}px`;
-container.style.overflow = "visible";
-container.style.transformOrigin = "0 0";
+      const container = document.createElement("div");
+      container.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+      container.style.width = `${w}px`;
+      container.style.height = `${h}px`;
+      container.style.overflow = "visible";
+      container.style.transformOrigin = "0 0";
 
-const cancels = [];
-if (cancelTranslateX || cancelTranslateY) {
-  cancels.push(`translate(${cancelTranslateX}px, ${cancelTranslateY}px)`);
-}
-if (!hasScale && (hasW || hasH)) {
-  const sxWH = rect.width ? (w / rect.width) : 1;
-  const syWH = rect.height ? (h / rect.height) : 1;
-  cancels.push(`scale(${sxWH}, ${syWH})`);
-} else if (hasScale) {
-  cancels.push(`scale(${scaleOpt})`);
-}
-if (cancels.length) container.style.transform = cancels.join(" ");
+      const cancels = [];
+      if (cancelTranslateX || cancelTranslateY) {
+        cancels.push(`translate(${cancelTranslateX}px, ${cancelTranslateY}px)`);
+      }
+      if (!hasScale && (hasW || hasH)) {
+        const sxWH = rect.width ? (w / rect.width) : 1;
+        const syWH = rect.height ? (h / rect.height) : 1;
+        cancels.push(`scale(${sxWH}, ${syWH})`);
+      } else if (hasScale) {
+        cancels.push(`scale(${scaleOpt})`);
+      }
+      if (cancels.length) container.style.transform = cancels.join(" ");
 
-// 7) aplicar al clone EXACTAMENTE lo que tenía el elemento (sin mutarlo extra)
-clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-clone.style.transformOrigin = "0 0";
-clone.style.position = "static";
-clone.style.left = "0";
-clone.style.top = "0";
-if (baseTransform) clone.style.transform = baseTransform;
-clone.style.rotate    = ind.rotate || "0deg";
-clone.style.scale     = ind.scale  || "1";
-clone.style.translate = ind.translate || "0 0";
+      clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+      clone.style.transformOrigin = "0 0";
+      clone.style.position = "static";
+      clone.style.left = "0";
+      clone.style.top = "0";
+      if (baseTransform) clone.style.transform = baseTransform;
+      clone.style.rotate = ind.rotate || "0deg";
+      clone.style.scale = ind.scale || "1";
+      clone.style.translate = ind.translate || "0 0";
 
-container.appendChild(clone);
-fo.appendChild(container);
+      container.appendChild(clone);
+      fo.appendChild(container);
 
-// 8) serialización SVG
-const serializer = new XMLSerializer();
-const foString = serializer.serializeToString(fo);
-const svgHeader = `<svg xmlns="${svgNS}" width="${outW}" height="${outH}" viewBox="0 0 ${outW} ${outH}">`;
-const svgFooter = "</svg>";
-svgString = svgHeader + foString + svgFooter;
-dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+      const serializer = new XMLSerializer();
+      const foString = serializer.serializeToString(fo);
+      const svgHeader = `<svg xmlns="${svgNS}" width="${outW}" height="${outH}" viewBox="0 0 ${outW} ${outH}">`;
+      const svgFooter = "</svg>";
+      svgString = svgHeader + foString + svgFooter;
+      dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
 
       resolve();
     }, { fast });
@@ -216,8 +206,6 @@ dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();
   return dataURL;
 }
-
-// helpers -----------------------------------------------------------------------
 
 function getNaturalBorderBoxSize(el) {
   const cs = getComputedStyle(el);
@@ -233,13 +221,12 @@ function getNaturalBorderBoxSize(el) {
 
 function matrixFromComputed(el) {
   const tr = getComputedStyle(el).transform;
-  if (!tr || tr === "none") return new DOMMatrix(); // identidad
+  if (!tr || tr === "none") return new DOMMatrix();
   try { return new DOMMatrix(tr); }
   catch { return new WebKitCSSMatrix(tr); } // fallback WebKit
 }
 
 function matrix2DNoTranslate(M) {
-  // devuelvo solo a,b,c,d y cero e,f para bbox
   return new DOMMatrix([M.a, M.b, M.c, M.d, 0, 0]);
 }
 
@@ -261,7 +248,6 @@ function bboxFromMatrix(w, h, M2D) {
   return { minX, minY, width: maxX - minX, height: maxY - minY };
 }
 
-// lectura de typed OM (cuando existe)
 function readIndividualTransforms(el) {
   const out = { rotate: "0deg", scale: null, translate: null };
   const map = el.computedStyleMap?.();
@@ -319,9 +305,9 @@ function hasBBoxAffectingTransform(el) {
  */
 function inflateRect(r, p) {
   const x = Math.floor(r.left - p.left);
-  const y = Math.floor(r.top  - p.top);
-  const w = Math.ceil(r.width  + p.left + p.right);
-  const h = Math.ceil(r.height + p.top  + p.bottom);
+  const y = Math.floor(r.top - p.top);
+  const w = Math.ceil(r.width + p.left + p.right);
+  const h = Math.ceil(r.height + p.top + p.bottom);
   return { x, y, width: w, height: h };
 }
 
@@ -331,7 +317,7 @@ function getMeasureHost() {
   if (__measureHost) return __measureHost;
   const n = document.createElement('div');
   n.id = 'snapdom-measure-slot';
-  n.setAttribute('aria-hidden','true');
+  n.setAttribute('aria-hidden', 'true');
   Object.assign(n.style, {
     position: 'absolute', left: '-99999px', top: '0px',
     width: '0px', height: '0px', overflow: 'hidden',
@@ -352,9 +338,9 @@ function readTotalTransformMatrix(t) {
   const tmp = document.createElement('div');
   tmp.style.transformOrigin = '0 0';
   if (t.baseTransform) tmp.style.transform = t.baseTransform;
-  if (t.rotate)        tmp.style.rotate = t.rotate;
-  if (t.scale)         tmp.style.scale = t.scale;
-  if (t.translate)     tmp.style.translate = t.translate;
+  if (t.rotate) tmp.style.rotate = t.rotate;
+  if (t.scale) tmp.style.scale = t.scale;
+  if (t.translate) tmp.style.translate = t.translate;
   host.appendChild(tmp);
   const M = matrixFromComputed(tmp);
   host.removeChild(tmp);

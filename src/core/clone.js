@@ -4,7 +4,7 @@
  */
 
 import { inlineAllStyles } from '../modules/styles.js';
-import {NO_CAPTURE_TAGS} from '../utils/css.js'
+import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { idle } from '../utils/index.js';
 
 function idleCallback(childList, callback, fast) {
@@ -22,7 +22,7 @@ function idleCallback(childList, callback, fast) {
             } else {
               callback(child, resolve)
             }
-          }, 
+          },
           {
             fast
           }
@@ -123,9 +123,7 @@ function nextShadowScopeId(sessionCache) {
 function extractShadowCSS(sr) {
   let css = '';
   try {
-    // inline <style>
     sr.querySelectorAll('style').forEach(s => { css += (s.textContent || '') + '\n'; });
-
     // adoptedStyleSheets (may throw cross-origin; guard)
     const sheets = sr.adoptedStyleSheets || [];
     for (const sh of sheets) {
@@ -138,8 +136,6 @@ function extractShadowCSS(sr) {
   } catch { /* ignore */ }
   return css;
 }
-
-
 
 /**
  * Inject a <style> as the first child of `hostClone` with rewritten CSS.
@@ -174,7 +170,7 @@ function freezeImgSrcset(original, cloned) {
     // Hint deterministic decode/load for capture
     cloned.loading = 'eager';
     cloned.decoding = 'sync';
-  } catch {}
+  } catch { }
 }
 /**
  * Collect all custom properties referenced via var(--foo) in a CSS string.
@@ -202,12 +198,12 @@ function resolveCustomProp(el, name) {
     const cs = getComputedStyle(el);
     let v = cs.getPropertyValue(name).trim();
     if (v) return v;
-  } catch {}
+  } catch { }
   try {
     const rootCS = getComputedStyle(document.documentElement);
     let v = rootCS.getPropertyValue(name).trim();
     if (v) return v;
-  } catch {}
+  } catch { }
   /* istanbul ignore next */
   return '';
 }
@@ -229,7 +225,6 @@ function buildSeedCustomPropsRule(hostEl, names, scopeSelector) {
   if (!decls.length) return '';
   return `${scopeSelector}{${decls.join('')}}\n`;
 }
-
 
 /**
  * Creates a deep clone of a DOM node, including styles, shadow DOM, and special handling for excluded/placeholder/canvas nodes.
@@ -278,15 +273,15 @@ async function getAccessibleIframeDocument(iframe, attempts = 3) {
  */
 function measureContentBox(el) {
   const rect = el.getBoundingClientRect();
-  let bl=0, br=0, bt=0, bb=0;
+  let bl = 0, br = 0, bt = 0, bb = 0;
   try {
     const cs = getComputedStyle(el);
-    bl = parseFloat(cs.borderLeftWidth)  || 0;
+    bl = parseFloat(cs.borderLeftWidth) || 0;
     br = parseFloat(cs.borderRightWidth) || 0;
-    bt = parseFloat(cs.borderTopWidth)   || 0;
-    bb = parseFloat(cs.borderBottomWidth)|| 0;
-  } catch {}
-  const contentWidth  = Math.max(0, Math.round(rect.width  - (bl + br)));
+    bt = parseFloat(cs.borderTopWidth) || 0;
+    bb = parseFloat(cs.borderBottomWidth) || 0;
+  } catch { }
+  const contentWidth = Math.max(0, Math.round(rect.width - (bl + br)));
   const contentHeight = Math.max(0, Math.round(rect.height - (bt + bb)));
   return { contentWidth, contentHeight, rect };
 }
@@ -301,10 +296,10 @@ function measureContentBox(el) {
  */
 function pinIframeViewport(doc, w, h) {
   const style = doc.createElement('style');
-  style.setAttribute('data-sd-iframe-pin','');
+  style.setAttribute('data-sd-iframe-pin', '');
   style.textContent = `html, body {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style);
-  return () => { try { style.remove(); } catch {} };
+  return () => { try { style.remove(); } catch { } };
 }
 
 /**
@@ -343,9 +338,8 @@ async function rasterizeIframe(iframe, sessionCache, options) {
   }
 
   // Build <img> (bitmap) sized to content box
-  
   imgEl.style.display = 'block';
-  imgEl.style.width  = `${contentWidth}px`;
+  imgEl.style.width = `${contentWidth}px`;
   imgEl.style.height = `${contentHeight}px`;
 
   // Wrapper that preserves the iframe box (border, radius...) and clips
@@ -353,19 +347,17 @@ async function rasterizeIframe(iframe, sessionCache, options) {
   sessionCache.nodeMap.set(wrapper, iframe);
   inlineAllStyles(iframe, wrapper, sessionCache, options);
   wrapper.style.overflow = 'hidden';
-    wrapper.style.display = 'block';
-  if (!wrapper.style.width)  wrapper.style.width  = `${Math.round(rect.width)}px`;
+  wrapper.style.display = 'block';
+  if (!wrapper.style.width) wrapper.style.width = `${Math.round(rect.width)}px`;
   if (!wrapper.style.height) wrapper.style.height = `${Math.round(rect.height)}px`;
 
   wrapper.appendChild(imgEl);
   return wrapper;
 }
 
-
- 
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error("Invalid node");
-  const clonedAssignedNodes =  new Set();
+  const clonedAssignedNodes = new Set();
   let pendingSelectValue = null;
   let pendingTextAreaValue = null;
   if (node.nodeType === Node.ELEMENT_NODE) {
@@ -415,39 +407,37 @@ export async function deepClone(node, sessionCache, options) {
       console.warn("Error in filter function:", err);
     }
   }
-if (node.tagName === "IFRAME") {
-  let sameOrigin = false;
-  try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document); } catch { sameOrigin = false; }
+  if (node.tagName === "IFRAME") {
+    let sameOrigin = false;
+    try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document); } catch { sameOrigin = false; }
 
-  if (sameOrigin) {
-    try {
-      const wrapper = await rasterizeIframe(node, sessionCache, options);
-      return wrapper;
-    } catch (err) {
-      console.warn('[SnapDOM] iframe rasterization failed, fallback:', err);
-      // fall through
+    if (sameOrigin) {
+      try {
+        const wrapper = await rasterizeIframe(node, sessionCache, options);
+        return wrapper;
+      } catch (err) {
+        console.warn('[SnapDOM] iframe rasterization failed, fallback:', err);
+        // fall through
+      }
+    }
+
+    // Fallback actual (placeholder o spacer)
+    if (options.placeholders) {
+      const fallback = document.createElement("div");
+      fallback.style.cssText =
+        `width:${node.offsetWidth}px;height:${node.offsetHeight}px;` +
+        `background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);` +
+        `display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
+      inlineAllStyles(node, fallback, sessionCache, options);
+      return fallback;
+    } else {
+      const rect = node.getBoundingClientRect();
+      const spacer = document.createElement("div");
+      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
+      inlineAllStyles(node, spacer, sessionCache, options);
+      return spacer;
     }
   }
-
-  // Fallback actual (placeholder o spacer)
-  if (options.placeholders) {
-    const fallback = document.createElement("div");
-    fallback.style.cssText =
-      `width:${node.offsetWidth}px;height:${node.offsetHeight}px;` +
-      `background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);` +
-      `display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;`;
-    inlineAllStyles(node, fallback, sessionCache, options);
-    return fallback;
-  } else {
-    const rect = node.getBoundingClientRect();
-    const spacer = document.createElement("div");
-    spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
-    inlineAllStyles(node, spacer, sessionCache, options);
-    return spacer;
-  }
-}
-
-
 
   if (node.getAttribute("data-capture") === "placeholder") {
     const clone2 = node.cloneNode(false);
@@ -493,7 +483,7 @@ if (node.tagName === "IFRAME") {
         }
         if (w) clone.dataset.snapdomWidth = String(w);
         if (h) clone.dataset.snapdomHeight = String(h);
-      } catch {}
+      } catch { }
     }
   } catch (err) {
     console.error("[Snapdom] Failed to clone node:", node, err);
@@ -516,7 +506,7 @@ if (node.tagName === "IFRAME") {
   if (node instanceof HTMLSelectElement) {
     pendingSelectValue = node.value;
   }
-    if (node instanceof HTMLTextAreaElement) {
+  if (node instanceof HTMLTextAreaElement) {
     pendingTextAreaValue = node.value;
   }
   inlineAllStyles(node, clone, sessionCache, options);
@@ -604,7 +594,7 @@ if (node.tagName === "IFRAME") {
       }
     }
   }
-    if (pendingTextAreaValue !== null && clone instanceof HTMLTextAreaElement) {
+  if (pendingTextAreaValue !== null && clone instanceof HTMLTextAreaElement) {
     clone.textContent = pendingTextAreaValue;
 
   }

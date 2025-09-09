@@ -36,38 +36,37 @@ export async function inlineImages(clone, options = {}) {
     if (r.ok && typeof r.data === 'string' && r.data.startsWith('data:')) {
       // Success path: inline DataURL and ensure dimensions for layout fidelity
       img.src = r.data;
-      if (!img.width)  img.width  = img.naturalWidth  || 100;
+      if (!img.width) img.width = img.naturalWidth || 100;
       if (!img.height) img.height = img.naturalHeight || 100;
       return;
     }
-
     // Try defaultImageUrl (string or callback)
     const { defaultImageUrl } = options || {};
     if (defaultImageUrl) {
       try {
-          const dsW = parseInt(img.dataset?.snapdomWidth || '', 10) || 0;
-          const dsH = parseInt(img.dataset?.snapdomHeight || '', 10) || 0;
-          const attrW = parseInt(img.getAttribute('width') || '', 10) || 0;
-          const attrH = parseInt(img.getAttribute('height') || '', 10) || 0;
-          const styleW = parseFloat(img.style?.width || '') || 0;
-          const styleH = parseFloat(img.style?.height || '') || 0;
-          const width = dsW || styleW || attrW || img.width || undefined;
-          const height = dsH || styleH || attrH || img.height || undefined;
+        const dsW = parseInt(img.dataset?.snapdomWidth || '', 10) || 0;
+        const dsH = parseInt(img.dataset?.snapdomHeight || '', 10) || 0;
+        const attrW = parseInt(img.getAttribute('width') || '', 10) || 0;
+        const attrH = parseInt(img.getAttribute('height') || '', 10) || 0;
+        const styleW = parseFloat(img.style?.width || '') || 0;
+        const styleH = parseFloat(img.style?.height || '') || 0;
+        const width = dsW || styleW || attrW || img.width || undefined;
+        const height = dsH || styleH || attrH || img.height || undefined;
 
-          const fallbackUrl = typeof defaultImageUrl === 'function'
-              ? await defaultImageUrl({ width, height, src, element: img })
-              : defaultImageUrl;
+        const fallbackUrl = typeof defaultImageUrl === 'function'
+          ? await defaultImageUrl({ width, height, src, element: img })
+          : defaultImageUrl;
 
-          if (fallbackUrl) {
-              const fallbackData = await snapFetch(fallbackUrl, { as: 'dataURL', useProxy: options.useProxy });
-              img.src = fallbackData.data;
-              if (!img.width && width) img.width = width;
-              if (!img.height && height) img.height = height;
-              if (!img.width) img.width = img.naturalWidth || 100;
-              if (!img.height) img.height = img.naturalHeight || 100;
-              return;
-          }
-      } catch {}
+        if (fallbackUrl) {
+          const fallbackData = await snapFetch(fallbackUrl, { as: 'dataURL', useProxy: options.useProxy });
+          img.src = fallbackData.data;
+          if (!img.width && width) img.width = width;
+          if (!img.height && height) img.height = height;
+          if (!img.width) img.width = img.naturalWidth || 100;
+          if (!img.height) img.height = img.naturalHeight || 100;
+          return;
+        }
+      } catch { }
     }
 
     // Failure path: sized, neutral fallback
@@ -96,7 +95,6 @@ export async function inlineImages(clone, options = {}) {
     }
   };
 
-  // Procesar en lotes de 4 para balancear velocidad/fidelidad
   for (let i = 0; i < imgs.length; i += 4) {
     const group = imgs.slice(i, i + 4).map(processImg);
     await Promise.allSettled(group);
