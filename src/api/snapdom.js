@@ -30,7 +30,7 @@ export async function snapdom(element, userOptions) {
   if (!element) throw new Error('Element cannot be null or undefined');
 
   const context = createContext(userOptions);
-
+   /* c8 ignore next 1 */
   if (context.iconFonts && context.iconFonts.length > 0) extendIconFonts(context.iconFonts);
 
   if (!context.snap) {

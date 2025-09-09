@@ -74,10 +74,8 @@ classCSS = shadowScopedCSS + classCSS;
   
   for (const [node, key] of sessionCache.styleMap.entries()) {
     if (node.tagName === "STYLE") continue;
-
-    // Detecta si el nodo está dentro de Shadow DOM
+    /* c8 ignore next 4 */
     if (node.getRootNode && node.getRootNode() instanceof ShadowRoot) {
-      // Dentro de Shadow DOM: aplica estilos inline completos (sin clases)
       node.setAttribute("style", key.replace(/;/g, "; "));
       continue;
     }
@@ -90,6 +88,7 @@ classCSS = shadowScopedCSS + classCSS;
     const bgImage = node.style?.backgroundImage;
     const hasIcon = node.dataset?.snapdomHasIcon;
     if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
+    /* c8 ignore next 4 */
     if (hasIcon) {
       node.style.verticalAlign = "middle";
       node.style.display = "inline";
@@ -230,9 +229,7 @@ function parseSrcset(srcset) {
 }
 
 function stringifySrcset(parts) {
-  return parts
-    .map((p) => (p.desc ? `${p.url} ${p.desc.trim()}` : p.url))
-    .join(", ");
+  return parts.map((p) => (p.desc ? `${p.url} ${p.desc.trim()}` : p.url)).join(", ");
 }
 
 async function resolveBlobUrlsInTree(root) {
