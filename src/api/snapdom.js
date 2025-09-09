@@ -60,8 +60,15 @@ snapdom.capture = async (el, context, _token) => {
   const url = await captureDOM(el, context);
 
   const ensureContext = (opts) => ({ ...context, ...(opts || {}) });
-  const withFormat = (format) => (opts) =>
-    rasterize(url, ensureContext({ ...(opts || {}), format }));
+  const withFormat = (format) => (opts) => {
+    const next = ensureContext({ ...(opts || {}), format });
+    const wantsJpeg = format === 'jpeg' || format === 'jpg';
+    const noBg = next.backgroundColor == null || next.backgroundColor === 'transparent';
+    if (wantsJpeg && noBg) {
+      next.backgroundColor = '#ffffff';
+    }
+    return rasterize(url, next);
+  };
 
   return {
     url,
