@@ -203,6 +203,7 @@ All capture methods accept an `options` object:
 | `type`            | string   | `svg`    | Default Blob type (`svg`\|`png`\|`jpg`\|`webp`) |
 | `exclude`         | string[] | -        | CSS selectors to exclude                        |
 | `filter`          | function | -        | Custom predicate `(el) => boolean`              |
+| `exclusionMode`   | string   | 'visuallyHide' | Control how `exclude` and `filter` works with nodes |
 | `cache`           | string   | `"soft"` | Control internal caches: `disabled`, `soft`, `auto`, `full` |
 | `defaultImageUrl` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
 
@@ -305,6 +306,7 @@ await snapdom.toPng(el, {
 
 * `exclude`: remove by **selector**.
 * `filter`: advanced predicate per element (return `false` to drop).
+* `exclusionMode`: `visuallyHide` applies `visibility:hidden` CSS rule on node and the layout remains as the original. `remove` do not clone the node at all.
 
 **Example: filter out elements with `display:none`:**
 ```js
@@ -345,7 +347,7 @@ await preCache({
 
 ### Cache control
 
-SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.  
+SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.
 You can control how they are cleared between captures using the `cache` option:
 
 | Mode        | Description                                                                 |

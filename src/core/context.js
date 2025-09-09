@@ -25,6 +25,7 @@ export function normalizeCachePolicy(v) {
  * @param {number}  [options.scale]
  * @param {Array<string|RegExp>} [options.exclude]
  * @param {(node: Node)=>boolean} [options.filter]
+ * @param {string}  [options.exclusionMode]
  * @param {boolean} [options.embedFonts]
  * @param {string|string[]} [options.iconFonts]
  * @param {string[]} [options.localFonts]
@@ -56,6 +57,7 @@ export function createContext(options = {}) {
     // DOM filters
     exclude: options.exclude ?? [],
     filter: options.filter ?? null,
+    exclusionMode: options.exclusionMode ?? 'visuallyHide',
     placeholders: options.placeholders !== false, // default true
 
     // Fuentes

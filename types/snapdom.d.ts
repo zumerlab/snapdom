@@ -13,6 +13,8 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
+export type ExclusionMode = 'visuallyHide' | 'remove';
+
 export interface LocalFontDescriptor {
   /** CSS font-family name (e.g. "Inter"). */
   family: string;
@@ -92,6 +94,12 @@ export interface CaptureOptions {
    * Applied to the cloned subtree.
    */
   filter?: (el: Element) => boolean;
+
+  /**
+   * Mode applied to excluded or filtered nodes of the cloned tree.
+   * Default: "visuallyHide"
+   */
+  exclusionMode?: ExclusionMode;
 
   /**
    * Whether to synthesize placeholders for broken images, etc.
