@@ -42,6 +42,46 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 
 [https://zumerlab.github.io/snapdom/](https://zumerlab.github.io/snapdom/)
 
+
+## Table of Contents
+
+- [Installation](#installation)
+  - [NPM / Yarn](#npm--yarn)
+  - [CDN](#cdn)
+  - [Script tag (local)](#script-tag-local)
+  - [ES Module](#es-module)
+  - [Module via CDN](#module-via-cdn)
+- [Basic usage](#basic-usage)
+  - [Reusable capture](#reusable-capture)
+  - [One-step shortcuts](#one-step-shortcuts)
+- [API](#api)
+  - [snapdom(el, options?)](#snapdomel-options)
+  - [Shortcut methods](#shortcut-methods)
+- [Options](#options)
+  - [Fallback image on `<img>` load failure](#fallback-image-on-img-load-failure)
+  - [Dimensions (`scale`, `width`, `height`)](#dimensions-scale-width-height)
+  - [Cross-Origin Images & Fonts (`useProxy`)](#cross-origin-images--fonts-useproxy)
+  - [Fonts](#fonts)
+    - [embedFonts](#embedfonts)
+    - [localFonts](#localfonts)
+    - [iconFonts](#iconfonts)
+    - [excludeFonts](#excludefonts)
+  - [Filtering nodes: `exclude` vs `filter`](#filtering-nodes-exclude-vs-filter)
+  - [preCache() – Optional helper](#precache--optional-helper)
+  - [Cache control](#cache-control)
+- [Limitations](#limitations)
+- [⚡ Performance Benchmarks (Chromium)](#performance-benchmarks)
+  - [Simple elements](#simple-elements)
+  - [Complex elements](#complex-elements)
+  - [Run the benchmarks](#run-the-benchmarks)
+- [Roadmap](#roadmap)
+- [Development](#development)
+- [Contributors 🙌](#contributors)
+- [💖 Sponsors](#sponsors)
+- [Star History](#star-history)
+- [License](#license)
+
+
 ## Installation
 
 ### NPM / Yarn
@@ -335,50 +375,32 @@ await snapdom.toPng(el, { cache: 'disabled' });
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
 
 
-## ⚡ Performance Benchmarks
+## Performance Benchmarks
 
-Snapdom has received **significant performance improvements** since version `v1.8.0`. The following benchmarks compare:
-
-* **Snapdom (current)**
-* **Snapdom v1.8.0**
-* `html2canvas`
-* `html-to-image`
-
+**Setup.** Vitest benchmarks on Chromium, repo tests. Hardware may affect results.
+Values are **average capture time (ms)** → lower is better.
 
 ### Simple elements
 
-| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | html-to-image |
-| ------------------------ | ----------------- | -------------- | ----------- | ------------- |
-| Small (200×100)          | **0.4 ms**        | 1.2 ms         | 70.3 ms     | 3.6 ms        |
-| Modal (400×300)          | **0.4 ms**        | 1.1 ms         | 68.8 ms     | 3.6 ms        |
-| Page View (1200×800)     | **0.4 ms**        | 1.0 ms         | 100.5 ms    | 3.4 ms        |
-| Large Scroll (2000×1500) | **0.4 ms**        | 1.0 ms         | 153.1 ms    | 3.4 ms        |
-| Very Large (4000×2000)   | **0.4 ms**        | 1.0 ms         | 278.9 ms    | 4.3 ms        |
+| Scenario                 | SnapDOM v1.9.10 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| ------------------------ | --------------- | -------------- | ----------- | ------------- |
+| Small (200×100)          | **0.5 ms**      | 0.8 ms         | 67.7 ms     | 3.1 ms        |
+| Modal (400×300)          | **0.5 ms**      | 0.8 ms         | 75.5 ms     | 3.6 ms        |
+| Page View (1200×800)     | **0.5 ms**      | 0.8 ms         | 114.2 ms    | 3.3 ms        |
+| Large Scroll (2000×1500) | **0.5 ms**      | 0.8 ms         | 186.3 ms    | 3.2 ms        |
+| Very Large (4000×2000)   | **0.5 ms**      | 0.9 ms         | 425.9 ms    | 3.3 ms        |
 
-
+---
 
 ### Complex elements
 
-| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | html-to-image |
-| ------------------------ | ----------------- | -------------- | ----------- | ------------- |
-| Small (200×100)          | **1.1 ms**        | 3.2 ms         | 76.0 ms     | 15.3 ms       |
-| Modal (400×300)          | **4.5 ms**        | 14.0 ms        | 133.2 ms    | 55.4 ms       |
-| Page View (1200×800)     | **32.9 ms**       | 113.6 ms       | 303.4 ms    | 369.1 ms      |
-| Large Scroll (2000×1500) | **133.9 ms**      | 387.4 ms       | 594.4 ms    | 1,163.0 ms    |
-| Very Large (4000×2000)   | **364.0 ms**      | 1,200.4 ms     | 1,380.8 ms  | 3,023.9 ms    |
-
-
-
-### Summary
-
-* Snapdom (current) is **2×–6× faster** than `v1.8.0`
-* Up to **150× faster** than `html2canvas`
-* Up to **8× faster** than `html-to-image` in large scenarios
-
-<sub>Benchmarks run in Chromium using Vitest.<br>
-Hardware: MacBook Air 2018.<br>
-⚠️ Performance may vary depending on device.</sub>
-
+| Scenario                 | SnapDOM v1.9.10 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| ------------------------ | --------------- | -------------- | ----------- | ------------- |
+| Small (200×100)          | **1.6 ms**      | 3.3 ms         | 68.0 ms     | 14.3 ms       |
+| Modal (400×300)          | **2.9 ms**      | 6.8 ms         | 87.5 ms     | 34.8 ms       |
+| Page View (1200×800)     | **17.5 ms**     | 50.2 ms        | 178.0 ms    | 429.0 ms      |
+| Large Scroll (2000×1500) | **54.0 ms**     | 201.8 ms       | 735.2 ms    | 984.2 ms      |
+| Very Large (4000×2000)   | **171.4 ms**    | 453.7 ms       | 1,800.4 ms  | 2,611.9 ms    |
 
 
 ### Run the benchmarks
@@ -404,10 +426,10 @@ Planned improvements for future versions of SnapDOM:
 * [X] **Decouple internal logic from global options**
   Functions will be redesigned to avoid relying directly on `options`. A centralized capture context will improve clarity, autonomy, and testability. See [`next` branch](https://github.com/zumerlab/snapdom/tree/main)
 
-* [ ] **Expose cache control**
+* [X] **Expose cache control**
   Users will be able to manually clear image and font caches or configure their own caching strategies.
 
-* [ ] **Auto font preloading**
+* [X] **Auto font preloading**
   Required fonts will be automatically detected and preloaded before capture, reducing the need for manual `preCache()` calls.
 
 * [ ] **Document plugin development**
@@ -453,7 +475,7 @@ The main entry point is in `src/`, and output bundles are generated in the `dist
 For detailed contribution guidelines, please see [CONTRIBUTING](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING.md).
 
 
-## Contributors 🙌
+## Contributors
 
 <!-- CONTRIBUTORS:START -->
 <p>
@@ -478,7 +500,7 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 </p>
 <!-- CONTRIBUTORS:END -->
 
-## 💖 Sponsors
+## Sponsors
 
 Special thanks to [@megaphonecolin](https://github.com/megaphonecolin) for supporting this project!
 
