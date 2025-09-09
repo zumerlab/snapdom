@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.11](https://github.com/zumerlab/snapdom/compare/v1.9.10...v1.9.11)
+
+> 9 September 2025
+
+- Fix Safari bug that prevents capture [`6a43e59`](https://github.com/zumerlab/snapdom/commit/6a43e59d1c311452c7d16e1adc9bb12bb89132b4)
+
+
 #### [v1.9.10](https://github.com/zumerlab/snapdom/compare/v1.9.10-dev.2...v1.9.10)
 
 > 9 September 2025
@@ -12,7 +19,6 @@ All notable changes to this project will be documented in this file.
 - Update types defs [`648f4a9`](https://github.com/zumerlab/snapdom/commit/648f4a965106c58c6f63d384bf8db600a661146c)
 - Improves mask handling [`f3915ea`](https://github.com/zumerlab/snapdom/commit/f3915ea919b927b5f2ff0a9f3c865beb7b08b231)
 - fix backgroundColor regression [`21a6a39`](https://github.com/zumerlab/snapdom/commit/21a6a3923d81d2f733d6bc61136a9d4eda8f1a62)
-
 
 
 #### [v1.9.10-dev.2](https://github.com/zumerlab/snapdom/compare/v1.9.10-dev.1...v1.9.10-dev.2)
@@ -59,9 +65,6 @@ All notable changes to this project will be documented in this file.
 - Fix bug that affects overall capture fidelity [`35539a5`](https://github.com/zumerlab/snapdom/commit/35539a50da67c30e28c39272a4c1efefbf24a2e2)
 - update to avoid vitest issues [`51ef80d`](https://github.com/zumerlab/snapdom/commit/51ef80d24b693ceee3e33d75e2b64ba7037e49ea)
 
-### Changelog
-
-All notable changes to this project will be documented in this file. 
 
 #### [v1.9.9](https://github.com/zumerlab/snapdom/compare/v1.9.8...v1.9.9)
 
