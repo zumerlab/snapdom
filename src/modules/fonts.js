@@ -796,7 +796,7 @@ export function collectUsedCodepoints(root) {
  * @param {number} [warmupRepetitions=1] - How many times to warm-up each family
  * @returns {Promise<void>}
  */
-export async function ensureFontsReady(families, warmupRepetitions = 1) {
+export async function ensureFontsReady(families, warmupRepetitions = 2) {
   try { await document.fonts.ready; } catch { /* ignore */ }
 
   const fams = Array.from(families || []).filter(Boolean);

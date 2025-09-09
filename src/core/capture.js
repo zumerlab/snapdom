@@ -59,7 +59,7 @@ export async function captureDOM(element, options) {
           const families = new Set(
             Array.from(required).map((k) => String(k).split("__")[0]).filter(Boolean)
           );
-          await ensureFontsReady(families, 2);
+          await ensureFontsReady(families, 5);
         }
         fontsCSS = await embedCustomFonts({
           required,
