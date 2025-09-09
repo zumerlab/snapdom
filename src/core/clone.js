@@ -7,31 +7,36 @@ import { inlineAllStyles } from '../modules/styles.js';
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { idle } from '../utils/index.js';
 
+/**
+ * Schedule work across idle slices without relying on IdleDeadline constructor.
+ * Falls back to setTimeout on browsers without requestIdleCallback.
+ * @param {Node[]} childList
+ * @param {(child: Node, done: () => void) => void} callback
+ * @param {boolean} fast
+ * @returns {Promise<(Node|null)[]>}
+ */
 function idleCallback(childList, callback, fast) {
-  return Promise.all(childList.map(child => {
+  return Promise.all(childList.map((child) => {
     return new Promise((resolve) => {
       function deal() {
-        idle(
-          (deadline) => {
-            if (deadline instanceof IdleDeadline) {
-              if (deadline.timeRemaining()) {
-                callback(child, resolve)
-              } else {
-                deal()
-              }
-            } else {
-              callback(child, resolve)
-            }
-          },
-          {
-            fast
+        idle((deadline) => {
+          // Safari iOS doesn’t expose IdleDeadline constructor; duck-type it instead
+          const hasIdleBudget = deadline && typeof deadline.timeRemaining === 'function'
+            ? deadline.timeRemaining() > 0
+            : true; // setTimeout path or unknown object
+
+          if (hasIdleBudget) {
+            callback(child, resolve);
+          } else {
+            deal();
           }
-        )
+        }, { fast });
       }
-      deal()
-    })
-  }))
+      deal();
+    });
+  }));
 }
+
 
 /**
  * Add :not([data-sd-slotted]) at the rightmost compound of a selector.
