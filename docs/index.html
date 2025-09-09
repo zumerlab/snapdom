@@ -388,6 +388,22 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     @keyframes glow { from { box-shadow: 0 0 8px 2px rgba(0, 255, 0, 0.4); transform: scale(1.01); } to { box-shadow: 0 0 14px 4px rgba(0, 255, 0, 0.6); transform: scale(1.02); } }
 
     @media (min-width: 601px) { .nav-collapsible { max-height: none !important; } .nav-toggle { display: none !important; } }
+    @media (max-width: 600px) {
+  .benchmark-container {
+    display: flex;           /* ya lo tenés, lo mantenemos */
+    flex-direction: column;  /* apila verticalmente */
+    align-items: stretch;    /* contenedores a ancho completo */
+    gap: 1rem;               /* separador vertical cómodo */
+  }
+  .benchmark-column {
+    max-width: 95% !important;
+    min-width: 0 !important; /* evita forzar dos columnas */
+  }
+  .benchmark-output {
+    height: 220px;           /* un poquito menos de alto en mobile */
+  }
+}
+
   </style>
 </head>
 
@@ -473,7 +489,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       </p>
 
       <div style="display: flex; justify-content: center; margin: 2rem 0;  margin: 0 auto; ">
-        <div class="card pseudo-box" id="benchmark-box" style="text-align: center; max-width: 300px;padding: 1rem;">
+        <div class="card pseudo-box" id="benchmark-box" style="text-align: center; max-width: 250px;padding: 1rem;">
           This is the benchmark test element to be captured by both libraries.
         </div>
       </div>
