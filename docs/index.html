@@ -907,9 +907,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
 
       const img = await snapdom.toImg(el, {
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
-        scale: id === 'body' ? 0.4 : 1,
-        fast: id !== 'fonts-box' ? true : false,
-        compress: id !== 'fonts-box' ? true : false,
+        scale: id === 'body' ? 0.4 : 1
       })
       output.innerHTML = ''
       output.appendChild(img)
@@ -949,7 +947,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       const doc = iframe.contentDocument
       const target = doc?.body
       if (!target) return
-      const img = await snapdom.toImg(target, { fast: true, compress: true })
+      const img = await snapdom.toImg(target, {})
       output.innerHTML = ''
       output.appendChild(img)
       if (btn) btn.disabled = false
