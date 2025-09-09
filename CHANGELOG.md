@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.10-dev.2](https://github.com/zumerlab/snapdom/compare/v1.9.10-dev.1...v1.9.10-dev.2)
+
+> 8 September 2025
+
+- Fix cache disabled bug. Closes #221 [`#221`](https://github.com/zumerlab/snapdom/issues/221)
+- Add extra margin when element has transform [`6688eee`](https://github.com/zumerlab/snapdom/commit/6688eee661de2d91249f9db28948629f421b14b4)
+- Feat. handkles css trasnforms and scale rotate new props. Ref #216 [`d151da1`](https://github.com/zumerlab/snapdom/commit/d151da1993f1374d2bae16ed1a076a05f9ff8d45)
+- Add same-origin iframe support .See #222 [`f50720f`](https://github.com/zumerlab/snapdom/commit/f50720fe76d8d114c1de31ffe802ade1edd7060e)
+- Fix regression that doesnt reset origial translate [`800c427`](https://github.com/zumerlab/snapdom/commit/800c427d327f41fbcc9703dfa5a3e99b9b7c789f)
+- Fix duplicated values on textArea [`0915f8d`](https://github.com/zumerlab/snapdom/commit/0915f8d4f1b9e58800407ba28ad86e16b6cc4621)
+- 增强图像处理功能，添加图像加载失败时的后备图像源支持，并记录原始图像尺寸以便于使用。更新类型定义以包含新选项。 [`011620a`](https://github.com/zumerlab/snapdom/commit/011620a3c8dbabed9c2e509766c4516205fbad66)
+- ✨ feat: [`e3a4556`](https://github.com/zumerlab/snapdom/commit/e3a4556a4085c0968bcce9f54d7d0fb9bbcfc6a7)
+- remove iframe limitation [`77abf8f`](https://github.com/zumerlab/snapdom/commit/77abf8f617fd1942565ee141406757c3704f45ae)
+- Merge pull request #220 from Jarvis2018/main [`adb6455`](https://github.com/zumerlab/snapdom/commit/adb6455fd6ff9db128dda5a59ac7556a16c851fa)
+- Merge pull request #215 from xiaobai-web715/dev [`37be327`](https://github.com/zumerlab/snapdom/commit/37be327f7c55ae20ee65001a8469f59284dbe12f)
+
+
+#### [v1.9.10-dev.1](https://github.com/zumerlab/snapdom/compare/v1.9.10-dev.0...v1.9.10-dev.1)
+
+> 3 September 2025
+
+- Fix flickering on Safari. Closes #197 [`#197`](https://github.com/zumerlab/snapdom/issues/197)
+- Prevents default svg values overwrite custom ones. Closes #217 [`#217`](https://github.com/zumerlab/snapdom/issues/217)
+- Feature: add placeholders option to disable rendered placeholder for iframes and fallback images. Closes #137 [`#137`](https://github.com/zumerlab/snapdom/issues/137)
+- FIx textarea styles. Closes #212 [`#212`](https://github.com/zumerlab/snapdom/issues/212)
+
+
+#### [v1.9.10-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.9...v1.9.10-dev.0)
+
+> 29 August 2025
+
+- Code refactor, cache improve, options centralized [`3bd7182`](https://github.com/zumerlab/snapdom/commit/3bd71822cf72614b3bb5993039482fdb05833ceb)
+- Improve performance and cache [`8882025`](https://github.com/zumerlab/snapdom/commit/88820259d4000fd36dbf4f59bb4940a6e12e6611)
+- Enhance font handling [`cb1e04a`](https://github.com/zumerlab/snapdom/commit/cb1e04af0551f097b44eeb84ba64a97e869b6f60)
+- Improve capture fidelity [`e05f027`](https://github.com/zumerlab/snapdom/commit/e05f027b8eb3b5b90e22a9d8ce7a7279f7b1614b)
+- fix font fetching [`70dd092`](https://github.com/zumerlab/snapdom/commit/70dd092adb14899031f0596d83ec354c9ab023b9)
+- Set compress as default [`7e5ab00`](https://github.com/zumerlab/snapdom/commit/7e5ab007f653f995b09ecbbf7711d69937fdef4a)
+- optimice code [`df52437`](https://github.com/zumerlab/snapdom/commit/df524379288fcb08dd19b8957d627a24b898685e)
+- Core update: increase X3 speed capture compared 1.9.9 [`94bc57d`](https://github.com/zumerlab/snapdom/commit/94bc57dc53cb63d82532467b4a041ab26da7481a)
+- Ensure custom fonts are capured [`8125689`](https://github.com/zumerlab/snapdom/commit/81256893249b2313edfebacb9d68ec6ed4fa9ed2)
+- Fix first custom font bug on Safari [`971d976`](https://github.com/zumerlab/snapdom/commit/971d9762dd73263689057e16fb47c00d2e0eba1b)
+- Fix bug that affects overall capture fidelity [`35539a5`](https://github.com/zumerlab/snapdom/commit/35539a50da67c30e28c39272a4c1efefbf24a2e2)
+- update to avoid vitest issues [`51ef80d`](https://github.com/zumerlab/snapdom/commit/51ef80d24b693ceee3e33d75e2b64ba7037e49ea)
+
+### Changelog
+
+All notable changes to this project will be documented in this file. 
+
 #### [v1.9.9](https://github.com/zumerlab/snapdom/compare/v1.9.8...v1.9.9)
 
 > 14 August 2025

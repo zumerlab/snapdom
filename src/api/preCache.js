@@ -1,64 +1,75 @@
-import { getStyle, inlineSingleBackgroundEntry, fetchImage, splitBackgroundImage } from '../utils/helpers.js';
-import { embedCustomFonts } from '../modules/fonts.js';
-import { precacheCommonTags } from '../utils/cssTools.js';
-import { cache } from '../core/cache.js';
+// src/api/preCache.js
+import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage, precacheCommonTags, isSafari } from '../utils';
+import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
+import { snapFetch } from '../modules/snapFetch.js';
+import { cache, applyCachePolicy } from '../core/cache.js';
+import { inlineBackgroundImages } from '../modules/background.js';
 
 /**
- * Preloads images, background images, and optionally fonts into cache before DOM capture.
- * Nunca deja promesas rechazadas sin manejar (evita unhandled rejections).
+ * Preloads images, background images, and (optionally) fonts into cache before DOM capture.
+ * @param {Element|Document} [root=document]
+ * @param {Object} [options={}]
+ * @param {boolean} [options.embedFonts=true]
+ * @param {'full'|'soft'|'auto'|'disabled'} [options.cache='full']
+ * @param {string}  [options.useProxy=""]
+ * @param {{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}[]} [options.localFonts=[]]
+ * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.excludeFonts]
+ * @returns {Promise<void>}
  */
 export async function preCache(root = document, options = {}) {
-  const { embedFonts = true, reset = false, useProxy } = options;
+  const {
+    embedFonts = true,
+    cacheOpt = 'full',
+    useProxy = "",
+  } = options;
 
-  if (reset) {
-    // Resetea sin reasignar (los tests llaman cache.reset(), pero por si acaso)
-   cache.image.clear(); 
-   cache.background.clear(); 
-   cache.resource.clear(); 
-   cache.defaultStyle.clear(); 
-   cache.baseStyle.clear(); 
-   cache.font.clear(); 
-   cache.computedStyle = new WeakMap(); 
-    return;
-  }
+  applyCachePolicy(cacheOpt);
 
-  // Fonts: no rompas el flujo si falla en tests/browser
-  try { await document.fonts.ready; } catch {}
+  try { await document.fonts.ready; } catch { }
 
   precacheCommonTags();
 
-  let imgEls = [], allEls = [];
-  if (root?.querySelectorAll) {
-    imgEls = Array.from(root.querySelectorAll('img[src]'));
-    allEls = Array.from(root.querySelectorAll('*'));
+  cache.session = cache.session || {};
+  if (!cache.session.styleCache) {
+    cache.session.styleCache = new WeakMap();
   }
+
+  try {
+    await inlineBackgroundImages(root, /* mirror */ undefined, cache.session.styleCache, { useProxy });
+  } catch { }
+
+  let imgEls = [], allEls = [];
+  try {
+    if (root?.querySelectorAll) {
+      imgEls = Array.from(root.querySelectorAll('img[src]'));
+      allEls = Array.from(root.querySelectorAll('*'));
+    }
+  } catch { }
 
   const promises = [];
 
-  // <img>
   for (const img of imgEls) {
     const src = img?.src;
     if (!src) continue;
     if (!cache.image.has(src)) {
       const p = Promise.resolve()
-        .then(() => fetchImage(src, { useProxy }))
+        .then(() => snapFetch(src, { as: 'dataURL', useProxy }))
         .then((dataURL) => { cache.image.set(src, dataURL); })
-        .catch(() => {}); // traga error para no propagar
+        .catch(() => { });
       promises.push(p);
     }
   }
 
-  // background-image
   for (const el of allEls) {
     let bg = '';
-    try { bg = getStyle(el).backgroundImage; } catch {}
+    try { bg = getStyle(el).backgroundImage; } catch { }
     if (bg && bg !== 'none') {
-      const bgSplits = splitBackgroundImage(bg);
-      for (const entry of bgSplits) {
+      const parts = splitBackgroundImage(bg);
+      for (const entry of parts) {
         if (entry.startsWith('url(')) {
           const p = Promise.resolve()
             .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
-            .catch(() => {}); // traga error
+            .catch(() => { });
           promises.push(p);
         }
       }
@@ -66,7 +77,27 @@ export async function preCache(root = document, options = {}) {
   }
 
   if (embedFonts) {
-    try {await embedCustomFonts({ preCached: true, localFonts: options.localFonts, useProxy: options.useProxy })} catch {};
+    try {
+      const required = collectUsedFontVariants(root);
+      const usedCodepoints = collectUsedCodepoints(root);
+
+      if (typeof isSafari === 'function' ? isSafari() : !!isSafari) {
+        const families = new Set(
+          Array.from(required)
+            .map(k => String(k).split('__')[0])
+            .filter(Boolean)
+        );
+        await ensureFontsReady(families, 2);
+      }
+
+      await embedCustomFonts({
+        required,
+        usedCodepoints,
+        exclude: options.excludeFonts,
+        localFonts: options.localFonts,
+        useProxy: options.useProxy ?? useProxy,
+      });
+    } catch { }
   }
 
   await Promise.allSettled(promises);

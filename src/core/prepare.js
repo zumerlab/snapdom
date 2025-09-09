@@ -3,18 +3,17 @@
  * @module prepare
  */
 
-import { generateCSSClasses} from '../utils/cssTools.js';
-import { stripTranslate} from '../utils/helpers.js';
+import { generateCSSClasses, stripTranslate } from '../utils/index.js';
 import { deepClone } from './clone.js';
 import { inlinePseudoElements } from '../modules/pseudo.js';
-import { inlineExternalDefsAndSymbols} from '../modules/svgDefs.js';
+import { snapFetch } from '../modules/snapFetch.js';
+import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js';
 import { cache } from '../core/cache.js';
 
 /**
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
  *
  * @param {Element} element - Element to clone
- * @param {boolean} [compress=false] - Whether to compress style keys
  * @param {boolean} [embedFonts=false] - Whether to embed custom fonts
  * @param {Object} [options={}] - Capture options
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
@@ -22,13 +21,17 @@ import { cache } from '../core/cache.js';
  * @returns {Promise<Object>} Object containing the clone, generated CSS, and style cache
  */
 
-export async function prepareClone(element, compress = false, embedFonts = false, options = {}) {
-  const styleMap = new Map();
-  const styleCache = new WeakMap();
-  const nodeMap = new Map();
+export async function prepareClone(element, options = {}) {
+  const sessionCache = {
+    styleMap: cache.session.styleMap,
+    styleCache: cache.session.styleCache,
+    nodeMap: cache.session.nodeMap
+  }
+
   let clone
   let classCSS = '';
-  
+  let shadowScopedCSS = '';
+
   stabilizeLayout(element)
 
   try {
@@ -39,29 +42,39 @@ export async function prepareClone(element, compress = false, embedFonts = false
 
 
   try {
-    clone = deepClone(element, styleMap, styleCache, nodeMap, compress, options, element);
+    clone = await deepClone(element, sessionCache, options, element);
   } catch (e) {
     console.warn("deepClone failed:", e);
     throw e;
   }
   try {
-    await inlinePseudoElements(element, clone, styleMap, styleCache, compress, embedFonts, options.useProxy);
+    await inlinePseudoElements(element, clone, sessionCache, options);
   } catch (e) {
     console.warn("inlinePseudoElements failed:", e);
   }
   await resolveBlobUrlsInTree(clone);
-  if (compress) {
-  const keyToClass = generateCSSClasses(styleMap);
+  // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
+
+  try {
+    const styleNodes = clone.querySelectorAll('style[data-sd]');
+    for (const s of styleNodes) {
+      shadowScopedCSS += s.textContent || '';
+      s.remove(); // Do not leave <style> inside the visual clone
+    }
+  } catch { }
+
+  const keyToClass = generateCSSClasses(sessionCache.styleMap);
   classCSS = Array.from(keyToClass.entries())
     .map(([key, className]) => `.${className}{${key}}`)
     .join("");
-  
-  for (const [node, key] of styleMap.entries()) {
-    if (node.tagName === "STYLE") continue;
 
-    // Detecta si el nodo está dentro de Shadow DOM
+  // prepend shadow CSS so variables/rules are available for everything
+  classCSS = shadowScopedCSS + classCSS;
+
+  for (const [node, key] of sessionCache.styleMap.entries()) {
+    if (node.tagName === "STYLE") continue;
+    /* c8 ignore next 4 */
     if (node.getRootNode && node.getRootNode() instanceof ShadowRoot) {
-      // Dentro de Shadow DOM: aplica estilos inline completos (sin clases)
       node.setAttribute("style", key.replace(/;/g, "; "));
       continue;
     }
@@ -74,20 +87,15 @@ export async function prepareClone(element, compress = false, embedFonts = false
     const bgImage = node.style?.backgroundImage;
     const hasIcon = node.dataset?.snapdomHasIcon;
     if (bgImage && bgImage !== "none") node.style.backgroundImage = bgImage;
+    /* c8 ignore next 4 */
     if (hasIcon) {
       node.style.verticalAlign = "middle";
       node.style.display = "inline";
     }
   }
-} else {
-  // Sin compresión: siempre estilos inline completos
-  for (const [node, key] of styleMap.entries()) {
-    if (node.tagName === "STYLE") continue;
-    node.setAttribute("style", key.replace(/;/g, "; "));
-  }
-}
 
-  for (const [cloneNode, originalNode] of nodeMap.entries()) {
+
+  for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
     const scrollX = originalNode.scrollLeft;
     const scrollY = originalNode.scrollTop;
     const hasScroll = scrollX || scrollY;
@@ -106,9 +114,9 @@ export async function prepareClone(element, compress = false, embedFonts = false
       cloneNode.appendChild(inner);
     }
   }
-  if (element === nodeMap.get(clone)) {
-    const computed = styleCache.get(element) || window.getComputedStyle(element);
-    styleCache.set(element, computed);
+  if (element === sessionCache.nodeMap.get(clone)) {
+    const computed = sessionCache.styleCache.get(element) || window.getComputedStyle(element);
+    sessionCache.styleCache.set(element, computed);
     const transform = stripTranslate(computed.transform);
     clone.style.margin = "0";
     clone.style.position = "static";
@@ -121,13 +129,13 @@ export async function prepareClone(element, compress = false, embedFonts = false
     clone.style.clear = "none";
     clone.style.transform = transform || "";
   }
-  for (const [cloneNode, originalNode] of nodeMap.entries()) {
+  for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
     if (originalNode.tagName === "PRE") {
       cloneNode.style.marginTop = "0";
       cloneNode.style.marginBlockStart = "0";
     }
   }
-  return { clone, classCSS, styleCache };
+  return { clone, classCSS, styleCache: sessionCache.styleCache };
 }
 
 function stabilizeLayout(element) {
@@ -145,26 +153,47 @@ function stabilizeLayout(element) {
   }
 }
 
-var _blobToDataUrlCache = /* @__PURE__ */ new Map();
+var _blobToDataUrlCache = new Map();
 
+
+/**
+ * Read a blob: URL and return its data URL, with memoization + shared cache.
+ * - Usa snapFetch(as:'dataURL') para convertir directo.
+ * - Dedupea inflight guardando la promesa en el Map.
+ * - Escribe también en cache.resource para reuso cross-módulo.
+ * @param {string} blobUrl
+ * @returns {Promise<string>} data URL
+ */
 async function blobUrlToDataUrl(blobUrl) {
+  // 1) Hit en cache global compartido
+  if (cache.resource?.has(blobUrl)) return cache.resource.get(blobUrl);
+
+  // 2) Hit en memo local (puede ser promesa o string resuelto)
   if (_blobToDataUrlCache.has(blobUrl)) return _blobToDataUrlCache.get(blobUrl);
-  const res = await fetch(blobUrl);
-  if (!res.ok) throw new Error(`[SnapDOM] HTTP ${res.status} on blob fetch (${blobUrl})`);
-  const blob = await res.blob();
-  const dataUrl = await new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onloadend = () => {
-      const v = fr.result;
-      if (typeof v === "string" && v.startsWith("data:")) resolve(v);
-      else reject(new Error("[SnapDOM] Invalid data URL from blob"));
-    };
-    fr.onerror = () => reject(new Error("[SnapDOM] FileReader error"));
-    fr.readAsDataURL(blob);
-  });
-  _blobToDataUrlCache.set(blobUrl, dataUrl);
-  return dataUrl;
+
+  // 3) Crear promesa inflight y guardarla para dedupe
+  const p = (async () => {
+    const r = await snapFetch(blobUrl, { as: 'dataURL', silent: true });
+    if (!r.ok || typeof r.data !== 'string') {
+      throw new Error(`[snapDOM] Failed to read blob URL: ${blobUrl}`);
+    }
+    cache.resource?.set(blobUrl, r.data);   // cache compartido
+    return r.data;
+  })();
+
+  _blobToDataUrlCache.set(blobUrl, p);
+  try {
+    const data = await p;
+    // Opcional: reemplazar promesa por string ya resuelto (menos retenciones)
+    _blobToDataUrlCache.set(blobUrl, data);
+    return data;
+  } catch (e) {
+    // Si falla, limpiamos para permitir reintentos futuros
+    _blobToDataUrlCache.delete(blobUrl);
+    throw e;
+  }
 }
+
 
 var BLOB_URL_RE = /\bblob:[^)"'\s]+/g;
 
@@ -177,7 +206,7 @@ async function replaceBlobUrlsInCssText(cssText) {
     try {
       const d = await blobUrlToDataUrl(u);
       out = out.split(u).join(d);
-    } catch {}
+    } catch { }
   }
   return out;
 }
@@ -199,9 +228,7 @@ function parseSrcset(srcset) {
 }
 
 function stringifySrcset(parts) {
-  return parts
-    .map((p) => (p.desc ? `${p.url} ${p.desc.trim()}` : p.url))
-    .join(", ");
+  return parts.map((p) => (p.desc ? `${p.url} ${p.desc.trim()}` : p.url)).join(", ");
 }
 
 async function resolveBlobUrlsInTree(root) {
@@ -225,12 +252,12 @@ async function resolveBlobUrlsInTree(root) {
             try {
               p.url = await blobUrlToDataUrl(p.url);
               changed = true;
-            } catch {}
+            } catch { }
           }
         }
         if (changed) img.setAttribute("srcset", stringifySrcset(parts));
       }
-    } catch {}
+    } catch { }
   }
 
   const svgImages = root.querySelectorAll ? root.querySelectorAll("image") : [];
@@ -243,7 +270,7 @@ async function resolveBlobUrlsInTree(root) {
         node.setAttribute("href", d);
         node.removeAttributeNS?.(XLINK_NS, "href");
       }
-    } catch {}
+    } catch { }
   }
 
   const styled = root.querySelectorAll ? root.querySelectorAll("[style*='blob:']") : [];
@@ -254,7 +281,7 @@ async function resolveBlobUrlsInTree(root) {
         const replaced = await replaceBlobUrlsInCssText(styleText);
         el.setAttribute("style", replaced);
       }
-    } catch {}
+    } catch { }
   }
 
   const styleTags = root.querySelectorAll ? root.querySelectorAll("style") : [];
@@ -264,7 +291,7 @@ async function resolveBlobUrlsInTree(root) {
       if (css.includes("blob:")) {
         s.textContent = await replaceBlobUrlsInCssText(css);
       }
-    } catch {}
+    } catch { }
   }
 
   const urlAttrs = ["poster"];
@@ -276,7 +303,7 @@ async function resolveBlobUrlsInTree(root) {
         if (isBlobUrl(u)) {
           n.setAttribute(attr, await blobUrlToDataUrl(u));
         }
-      } catch {}
+      } catch { }
     }
   }
 }

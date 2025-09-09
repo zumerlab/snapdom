@@ -82,7 +82,7 @@ afterAll(() => {
       document.body.innerHTML = '';
 });
 for (const size of sizes) {
-  describe(`snapDOM performance test (may not be accurate) - ${size.label}`, () => {
+  describe(`snapDOM performance preCache test (may not be accurate) - ${size.label}`, () => {
     let container;
 
     afterEach( () => {
@@ -98,7 +98,7 @@ for (const size of sizes) {
       await waitForNextFrame();
 
       const start = performance.now();
-      await snapdom.toRaw(container, { compress: true });
+      await snapdom.toRaw(container);
       const end = performance.now();
 
        let log = `[${size.label}] WITHOUT preCache: capture ${(end - start).toFixed(2)}ms`;
@@ -117,7 +117,7 @@ for (const size of sizes) {
       const endPre = performance.now();
       
       const startCap = performance.now();
-      await snapdom.toRaw(container, { compress: true });
+      await snapdom.toRaw(container);
       const endCap = performance.now();
     
       const precacheTime = (endPre - startPre).toFixed(2);

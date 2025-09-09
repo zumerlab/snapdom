@@ -1,5 +1,5 @@
 var defaultIconFonts = [
-// /uicons/i,
+  // /uicons/i,
   /font\s*awesome/i,
   /material\s*icons/i,
   /ionicons/i,
@@ -28,22 +28,13 @@ export function extendIconFonts(fonts) {
 }
 
 export function isIconFont(input) {
+  /* v8 ignore next */
   const text = typeof input === "string" ? input : "";
-
   const candidates = [...defaultIconFonts, ...userIconFonts];
-
   for (const rx of candidates) {
     if (rx instanceof RegExp && rx.test(text)) return true;
   }
-
-  // Heurística básica
-  if (
-    /icon/i.test(text) ||
-    /glyph/i.test(text) ||
-    /symbols/i.test(text) ||
-    /feather/i.test(text) ||
-    /fontawesome/i.test(text)
-  ) return true;
-
+  /* v8 ignore next */
+  if (/icon/i.test(text) || /glyph/i.test(text) || /symbols/i.test(text) || /feather/i.test(text) || /fontawesome/i.test(text)) return true;
   return false;
 }

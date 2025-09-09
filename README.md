@@ -1,6 +1,6 @@
 <p align="center">
   <a href="http://zumerlab.github.io/snapdom">
-    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/newhero.png" width="70%">
+    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/newhero.png" width="80%">
   </a>
 </p>
 
@@ -42,18 +42,44 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 
 [https://zumerlab.github.io/snapdom/](https://zumerlab.github.io/snapdom/)
 
-## Status
 
-> 💡 Check and try the dev version of SnapDOM in [GitHub Discussion #202](https://github.com/zumerlab/snapdom/discussions/202).
->
-> How to try dev version?
-> 
-> `@zumer/snapdom@1.9.10-dev.2`
-> 
-> `npm i @zumer/snapdom@1.9.10-dev.2`
-> 
->  `https://unpkg.com/@zumer/snapdom@dev`
-> 
+## Table of Contents
+
+- [Installation](#installation)
+  - [NPM / Yarn](#npm--yarn)
+  - [CDN](#cdn)
+  - [Script tag (local)](#script-tag-local)
+  - [ES Module](#es-module)
+  - [Module via CDN](#module-via-cdn)
+- [Basic usage](#basic-usage)
+  - [Reusable capture](#reusable-capture)
+  - [One-step shortcuts](#one-step-shortcuts)
+- [API](#api)
+  - [snapdom(el, options?)](#snapdomel-options)
+  - [Shortcut methods](#shortcut-methods)
+- [Options](#options)
+  - [Fallback image on `<img>` load failure](#fallback-image-on-img-load-failure)
+  - [Dimensions (`scale`, `width`, `height`)](#dimensions-scale-width-height)
+  - [Cross-Origin Images & Fonts (`useProxy`)](#cross-origin-images--fonts-useproxy)
+  - [Fonts](#fonts)
+    - [embedFonts](#embedfonts)
+    - [localFonts](#localfonts)
+    - [iconFonts](#iconfonts)
+    - [excludeFonts](#excludefonts)
+  - [Filtering nodes: `exclude` vs `filter`](#filtering-nodes-exclude-vs-filter)
+  - [preCache() – Optional helper](#precache--optional-helper)
+  - [Cache control](#cache-control)
+- [Limitations](#limitations)
+- [⚡ Performance Benchmarks (Chromium)](#performance-benchmarks)
+  - [Simple elements](#simple-elements)
+  - [Complex elements](#complex-elements)
+  - [Run the benchmarks](#run-the-benchmarks)
+- [Roadmap](#roadmap)
+- [Development](#development)
+- [Contributors 🙌](#contributors)
+- [💖 Sponsors](#sponsors)
+- [Star History](#star-history)
+- [License](#license)
 
 
 ## Installation
@@ -103,10 +129,9 @@ import { snapdom } from './snapdom.mjs';
 ## Basic usage
 
 ### Reusable capture
-
 ```js
 const el = document.querySelector('#target');
-const result = await snapdom(el, { scale: 2 });
+const result = await snapdom(el);
 
 const img = await result.toPng();
 document.body.appendChild(img);
@@ -115,7 +140,6 @@ await result.download({ format: 'jpg', filename: 'my-capture' });
 ```
 
 ### One-step shortcuts
-
 ```js
 const el = document.querySelector('#target');
 const png = await snapdom.toPng(el);
@@ -146,185 +170,237 @@ Returns an object with reusable export methods:
 
 ### Shortcut methods
 
-| Method                         | Description                           |
-| ------------------------------ | ------------------------------------- |
-| `snapdom.toImg(el, options?)`  | Returns an `HTMLImageElement`         |
-| `snapdom.toCanvas(el, options?)     ` | Returns a `Canvas`                    |
-| `snapdom.toBlob(el, options?)` | Returns an SVG `Blob`                 |
-| `snapdom.toPng(el, options?)`  | Returns a PNG image                   |
-| `snapdom.toJpg(el, options?)`  | Returns a JPG image                   |
-| `snapdom.toWebp(el, options?)` | Returns a WebP image                  |
-| `snapdom.download(el, options?)     ` | Triggers download in specified format |
+| Method                         | Description                       |
+| ------------------------------ | --------------------------------- |
+| `snapdom.toImg(el, options?)`  | Returns an `HTMLImageElement`     |
+| `snapdom.toCanvas(el, options?)` | Returns a `Canvas`               |
+| `snapdom.toBlob(el, options?)` | Returns an SVG or raster `Blob`   |
+| `snapdom.toPng(el, options?)`  | Returns a PNG image               |
+| `snapdom.toJpg(el, options?)`  | Returns a JPG image               |
+| `snapdom.toWebp(el, options?)` | Returns a WebP image              |
+| `snapdom.download(el, options?)` | Triggers a download              |
 
 ## Options
 
+> ✅ **Note:** Style compression is now always on internally. The `compress` option has been removed.
+
 All capture methods accept an `options` object:
 
-| Option            | Type     | Default  | Description                                |
-| ----------------- | -------- | -------- | ------------------------------------------ |
-| `compress`        | boolean  | `true`   | Removes redundant styles                   |
-| `fast`            | boolean  | `true`   | Skips idle delay for faster results        |
-| `embedFonts`      | boolean  | `false`  | Inlines fonts (icon fonts always embedded) |
-| `localFonts`      | array   | `[]`     | Array of local font descriptors `{ family, src, weight?, style? }` |
-| `iconFonts`       | string \| RegExp \| (string \| RegExp)[] | `[]` | Additional icon font families or patterns |
-| `scale`           | number   | `1`      | Output scale multiplier                    |
-| `dpr`             | number   | `devicePixelRatio` | Device pixel ratio                 |
-| `width`           | number   | -        | Output specific width size                 |
-| `height`          | number   | -        | Output specific height size                |
-| `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                |
-| `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)              |
-| `useProxy`     | string | ''        | Specify a proxy for handling CORS images/fonts as fallback|
-| `type`     | string | `svg`        | Select `png`, `jpg`, `webp` Blob type|
-| `exclude` | string[] | -  | CSS selectors for elements to exclude |
-| `filter` | function | -  | Custom filter function ie `(el) => !el.classList.contains('hidden')` |
+| Option            | Type     | Default  | Description                                     |
+| ----------------- | -------- | -------- | ----------------------------------------------- |
+| `fast`            | boolean  | `true`   | Skips small idle delays for faster results      |
+| `embedFonts`      | boolean  | `false`  | Inlines non-icon fonts (icon fonts always on)   |
+| `localFonts`      | array    | `[]`     | Local fonts `{ family, src, weight?, style? }`  |
+| `iconFonts`       | string\|RegExp\|Array | `[]` | Extra icon font matchers                      |
+| `excludeFonts`    | object  | `{}`     | Exclude font families/domains/subsets during embedding |
+| `scale`           | number   | `1`      | Output scale multiplier                         |
+| `dpr`             | number   | `devicePixelRatio` | Device pixel ratio                     |
+| `width`           | number   | -        | Output width                                    |
+| `height`          | number   | -        | Output height                                   |
+| `backgroundColor` | string   | `"#fff"` | Fallback color for JPG/WebP                     |
+| `quality`         | number   | `1`      | Quality for JPG/WebP (0 to 1)                   |
+| `useProxy`        | string   | `''`     | Proxy base for CORS fallbacks                   |
+| `type`            | string   | `svg`    | Default Blob type (`svg`\|`png`\|`jpg`\|`webp`) |
+| `exclude`         | string[] | -        | CSS selectors to exclude                        |
+| `filter`          | function | -        | Custom predicate `(el) => boolean`              |
+| `cache`           | string   | `"soft"` | Control internal caches: `disabled`, `soft`, `auto`, `full` |
+| `defaultImageUrl` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
 
-### Setting custom dimensions with width and height options
+### Fallback image on `<img>` load failure
 
-Use the `width` and `height` options to generate an image with specific dimensions.
-
-**Examples:**
-
-**1. Fixed width (proportional height)**
-Sets a specific width while maintaining the aspect ratio. Height adjusts proportionally.
+Provide a default image for failed `<img>` loads. You can pass a fixed URL or a callback that receives measured dimensions and returns a URL (handy to generate dynamic placeholders).
 
 ```js
-const result = await snapdom(element, {
-  width: 400 // Outputs a 400px-wide image with auto-scaled height
+// 1) Fixed URL fallback
+await snapdom.toImg(element, {
+  defaultImageUrl: '/images/fallback.png'
+});
+
+// 2) Dynamic placeholder via callback
+await snapdom.toImg(element, {
+  defaultImageUrl: ({ width = 300, height = 150 }) =>
+    `https://placehold.co/${Math.round(width)}x${Math.round(height)}`
+});
+
+// 3) With proxy (if your fallback host has no CORS)
+await snapdom.toImg(element, {
+  defaultImageUrl: ({ width = 300, height = 150 }) =>
+    `https://dummyimage.com/${Math.round(width)}x${Math.round(height)}/cccccc/666.png&text=img`,
+  useProxy: 'https://corsproxy.io/?url='
 });
 ```
 
-**2. Fixed height (proportional width)**
-Sets a specific height while maintaining the aspect ratio. Width adjusts proportionally.
+Notes:
+- If the fallback image also fails to load, snapDOM replaces the `<img>` with a placeholder block preserving width/height.
+- Width/height used by the callback are gathered from the original element (dataset, style/attrs, etc.) when available.
+
+
+### Dimensions (`scale`, `width`, `height`)
+
+* If `scale` is provided, it **takes precedence** over `width`/`height`.
+* If only `width` is provided, height scales proportionally (and vice versa).
+* Providing both `width` and `height` forces an exact size (may distort).
+
+### Cross-Origin Images & Fonts (`useProxy`)
+
+By default snapDOM tries `crossOrigin="anonymous"` (or `use-credentials` for same-origin). If an asset is CORS-blocked, you can set `useProxy` to a prefix URL that forwards the actual `src`:
 
 ```js
-const result = await snapdom(element, {
-  height: 200 // Outputs a 200px-tall image with auto-scaled width
+await snapdom.toPng(el, {
+  useProxy: 'your-proxy' // Example 'https://api.allorigins.win/raw?url='
 });
 ```
 
-**3. Fixed width and height (may distort image)**
-Forces exact dimensions, potentially distorting the image if the aspect ratio differs.
+**Tips**
+
+* Keep the proxy **fast** and **cache-friendly** (adds big wins on repeated captures).
+* The proxy is only used as a **fallback**; same-origin and CORS-enabled assets skip it.
+
+### Fonts
+
+#### `embedFonts`
+When `true`, snapDOM embeds **non-icon** `@font-face` rules detected as used within the captured subtree. Icon fonts (Font Awesome, Material Icons, etc.) are embedded **always**.
+
+#### `localFonts`
+If you serve fonts yourself or have data URLs, you can declare them here to avoid extra CSS discovery:
 
 ```js
-const result = await snapdom(element, {
-  width: 800,  // Outputs an 800px × 200px image (may stretch/squish content)
-  height: 200
+await snapdom.toPng(el, {
+  embedFonts: true,
+  localFonts: [
+    { family: 'Inter', src: '/fonts/Inter-Variable.woff2', weight: 400, style: 'normal' },
+    { family: 'Inter', src: '/fonts/Inter-Italic.woff2', style: 'italic' }
+  ]
 });
 ```
 
-**Note:** If `scale` is different from  1, it takes priority over width and height.
-Example: `{ scale: 3, width: 500 }` ignores width and scales the image 3x instead.
-
-
-### Cross-Origin Images
-
-By default, snapDOM loads images with `crossOrigin="anonymous"` or `crossOrigin="use-credentials"`. In case fails to get the images, `useProxy` can be used to deal with CORS images:
+#### `iconFonts`
+Add custom icon families (names or regex matchers). Useful for private icon sets:
 
 ```js
-const result = await snapdom(element, {
-  useProxy: 'your/proxy/' //Example: 'https://corsproxy.io/?url=' or 'https://api.allorigins.win/raw?url='
+await snapdom.toPng(el, {
+  iconFonts: ['MyIcons', /^(Remix|Feather) Icons?$/i]
 });
 ```
 
-
-### Download options
+#### `excludeFonts`
+Skip specific non-icon fonts to speed up capture or avoid unnecessary downloads.
 
 ```js
-{
-  format?: "svg" | "png" | "jpg" | "jpeg" | "webp"; // default: "png"
-  filename?: string;         // default: "capture"
-  backgroundColor?: string;  // optional override
+await snapdom.toPng(el, {
+  embedFonts: true,
+  excludeFonts: {
+    families: ['Noto Serif', 'SomeHeavyFont'],     // skip by family name
+    domains: ['fonts.gstatic.com', 'cdn.example'], // skip by source host
+    subsets: ['cyrillic-ext']                      // skip by unicode-range subset tag
+  }
+});
+```
+*Notes*
+- `excludeFonts` only applies to **non-icon** fonts. Icon fonts are always embedded.
+- Matching is case-insensitive for `families`. Hosts are matched by substring against the resolved URL.
+
+
+### Filtering nodes: `exclude` vs `filter`
+
+* `exclude`: remove by **selector**.
+* `filter`: advanced predicate per element (return `false` to drop).
+
+**Example: filter out elements with `display:none`:**
+```js
+/**
+ * Example filter: skip elements with display:none
+ * @param {Element} el
+ * @returns {boolean} true = keep, false = exclude
+ */
+function filterHidden(el) {
+  const cs = window.getComputedStyle(el);
+  if (cs.display === 'none') return false;
+  return true;
 }
+
+await snapdom.toPng(document.body, { filter: filterHidden });
 ```
 
-
+**Example with `exclude`:** remove banners or tooltips by selector
+```js
+await snapdom.toPng(el, {
+  exclude: ['.cookie-banner', '.tooltip', '[data-test="debug"]']
+});
+```
 ### `preCache()` – Optional helper
 
-The `preCache()` function can be used to load external resources (like images and fonts) in advance. It is specially useful when the element to capture is big and complex.
+Preloads external resources to avoid first-capture stalls (helpful for big/complex trees).
 
 ```js
 import { preCache } from '@zumer/snapdom';
 
-await preCache(document.body);
+await preCache({
+  root: document.body,
+  embedFonts: true,
+  localFonts: [{ family: 'Inter', src: '/fonts/Inter.woff2', weight: 400 }],
+  useProxy: 'your-proxy'
+});
 ```
+
+### Cache control
+
+SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.  
+You can control how they are cleared between captures using the `cache` option:
+
+| Mode        | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| `"disabled"`| No cache                   |
+| `"soft"`    | Clears session caches (`styleMap`, `nodeMap`, `styleCache`) _(default)_      |
+| `"auto"`    | Minimal cleanup: only clears transient maps                                 |
+| `"full"`    | Keeps all caches (nothing is cleared, maximum performance)                  |
+
+**Examples:**
 
 ```js
-import { snapdom, preCache } from './snapdom.mjs';
-    window.addEventListener('load', async () => {
-    await preCache();
-    console.log('📦 Resources preloaded');
-    });
+// Use minimal but fast cache
+await snapdom.toPng(el, { cache: 'auto' });
+
+// Keep everything in memory between captures
+await snapdom.toPng(el, { cache: 'full' });
+
+// Force a full cleanup on every capture
+await snapdom.toPng(el, { cache: 'disabled' });
 ```
-
-**Options for `preCache()`:**
-
-* `embedFonts` *(boolean, default: true)* — Inlines non-icon fonts during preload.
-* `localFonts` *(array)* — Array of `{ family, src, weight?, style? }` for local font sources.
-* `useProxy` *(string)* — Proxy for handling CORS images/fonts as fallback.
-
-
-
-## Features
-
-* Captures **shadow DOM** and Web Components
-* Supports `::before`, `::after` and `::first-letter` pseudo-elements
-* Inlines background images and fonts
-* Handles **Font Awesome**, **Material Icons**, and more
-* `data-capture="exclude"` to ignore an element
-* `data-capture="placeholder"` with `data-placeholder-text` for masked replacements
 
 ## Limitations
 
 * External images should be CORS-accessible (use `useProxy` option for handling CORS denied)
-* Iframes are not supported
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
 
 
-## ⚡ Performance Benchmarks
+## Performance Benchmarks
 
-Snapdom has received **significant performance improvements** since version `v1.8.0`. The following benchmarks compare:
-
-* **Snapdom (current)**
-* **Snapdom v1.8.0**
-* `html2canvas`
-* `html-to-image`
-
+**Setup.** Vitest benchmarks on Chromium, repo tests. Hardware may affect results.
+Values are **average capture time (ms)** → lower is better.
 
 ### Simple elements
 
-| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | html-to-image |
-| ------------------------ | ----------------- | -------------- | ----------- | ------------- |
-| Small (200×100)          | **0.4 ms**        | 1.2 ms         | 70.3 ms     | 3.6 ms        |
-| Modal (400×300)          | **0.4 ms**        | 1.1 ms         | 68.8 ms     | 3.6 ms        |
-| Page View (1200×800)     | **0.4 ms**        | 1.0 ms         | 100.5 ms    | 3.4 ms        |
-| Large Scroll (2000×1500) | **0.4 ms**        | 1.0 ms         | 153.1 ms    | 3.4 ms        |
-| Very Large (4000×2000)   | **0.4 ms**        | 1.0 ms         | 278.9 ms    | 4.3 ms        |
+| Scenario                 | SnapDOM v1.9.10 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| ------------------------ | --------------- | -------------- | ----------- | ------------- |
+| Small (200×100)          | **0.5 ms**      | 0.8 ms         | 67.7 ms     | 3.1 ms        |
+| Modal (400×300)          | **0.5 ms**      | 0.8 ms         | 75.5 ms     | 3.6 ms        |
+| Page View (1200×800)     | **0.5 ms**      | 0.8 ms         | 114.2 ms    | 3.3 ms        |
+| Large Scroll (2000×1500) | **0.5 ms**      | 0.8 ms         | 186.3 ms    | 3.2 ms        |
+| Very Large (4000×2000)   | **0.5 ms**      | 0.9 ms         | 425.9 ms    | 3.3 ms        |
 
-
+---
 
 ### Complex elements
 
-| Scenario                 | Snapdom (current) | Snapdom v1.8.0 | html2canvas | html-to-image |
-| ------------------------ | ----------------- | -------------- | ----------- | ------------- |
-| Small (200×100)          | **1.1 ms**        | 3.2 ms         | 76.0 ms     | 15.3 ms       |
-| Modal (400×300)          | **4.5 ms**        | 14.0 ms        | 133.2 ms    | 55.4 ms       |
-| Page View (1200×800)     | **32.9 ms**       | 113.6 ms       | 303.4 ms    | 369.1 ms      |
-| Large Scroll (2000×1500) | **133.9 ms**      | 387.4 ms       | 594.4 ms    | 1,163.0 ms    |
-| Very Large (4000×2000)   | **364.0 ms**      | 1,200.4 ms     | 1,380.8 ms  | 3,023.9 ms    |
-
-
-
-### Summary
-
-* Snapdom (current) is **2×–6× faster** than `v1.8.0`
-* Up to **150× faster** than `html2canvas`
-* Up to **8× faster** than `html-to-image` in large scenarios
-
-<sub>Benchmarks run in Chromium using Vitest.<br>
-Hardware: MacBook Air 2018.<br>
-⚠️ Performance may vary depending on device.</sub>
-
+| Scenario                 | SnapDOM v1.9.10 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| ------------------------ | --------------- | -------------- | ----------- | ------------- |
+| Small (200×100)          | **1.6 ms**      | 3.3 ms         | 68.0 ms     | 14.3 ms       |
+| Modal (400×300)          | **2.9 ms**      | 6.8 ms         | 87.5 ms     | 34.8 ms       |
+| Page View (1200×800)     | **17.5 ms**     | 50.2 ms        | 178.0 ms    | 429.0 ms      |
+| Large Scroll (2000×1500) | **54.0 ms**     | 201.8 ms       | 735.2 ms    | 984.2 ms      |
+| Very Large (4000×2000)   | **171.4 ms**    | 453.7 ms       | 1,800.4 ms  | 2,611.9 ms    |
 
 
 ### Run the benchmarks
@@ -350,10 +426,10 @@ Planned improvements for future versions of SnapDOM:
 * [X] **Decouple internal logic from global options**
   Functions will be redesigned to avoid relying directly on `options`. A centralized capture context will improve clarity, autonomy, and testability. See [`next` branch](https://github.com/zumerlab/snapdom/tree/main)
 
-* [ ] **Expose cache control**
+* [X] **Expose cache control**
   Users will be able to manually clear image and font caches or configure their own caching strategies.
 
-* [ ] **Auto font preloading**
+* [X] **Auto font preloading**
   Required fonts will be automatically detected and preloaded before capture, reducing the need for manual `preCache()` calls.
 
 * [ ] **Document plugin development**
@@ -399,7 +475,7 @@ The main entry point is in `src/`, and output bundles are generated in the `dist
 For detailed contribution guidelines, please see [CONTRIBUTING](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING.md).
 
 
-## Contributors 🙌
+## Contributors
 
 <!-- CONTRIBUTORS:START -->
 <p>
@@ -424,7 +500,7 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 </p>
 <!-- CONTRIBUTORS:END -->
 
-## 💖 Sponsors
+## Sponsors
 
 Special thanks to [@megaphonecolin](https://github.com/megaphonecolin) for supporting this project!
 
