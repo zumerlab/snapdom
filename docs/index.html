@@ -39,12 +39,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1"></script>
   <script>
     window.dataLayer = window.dataLayer || []
-
-    function gtag() {
-      dataLayer.push(arguments)
-    }
+    function gtag() { dataLayer.push(arguments) }
     gtag('js', new Date())
-
     gtag('config', 'G-4G88ZHG7S1')
   </script>
   <style>
@@ -81,235 +77,141 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       margin: 0 0.5em 1.5em 0;
     }
 
-    button#capture:hover {
-      background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%);
-      transform: scale(1.04);
-    }
+    button#capture:hover { background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%); transform: scale(1.04); }
 
-    nav {
-      margin-bottom: 2rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1em;
-      justify-content: center;
-    }
-
-    nav a {
-      color: #1a2233;
-      text-decoration: none;
-      font-weight: bold;
-      border-bottom: 2px solid transparent;
-      transition: border 0.3s;
-      font-size: 1.1em;
-    }
-
-    nav a:hover {
-      border-bottom: 2px solid #4facfe;
-    }
-
-    section a {
-      color: #576c99;
-      text-decoration: none;
-      font-weight: bold;
-      border-bottom: 2px solid transparent;
-      transition: border 0.3s;
-      font-size: 1.1em;
-    }
-
-    section a:hover {
-      border-bottom: 2px solid #4facfe;
-    }
-
-    main {
+    /* === Header + menú hamburger === */
+    .site-header {
       width: 100%;
       max-width: 700px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: saturate(1.1) blur(6px);
     }
+    .nav-bar { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: .75rem; }
+    .nav-toggle {
+      display: none; border: 0; background: #1a2233; color: #fff; border-radius: 10px;
+      padding: .5rem .75rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px #1a223322;
+    }
+    .nav-toggle:focus-visible { outline: 3px solid #4facfe; outline-offset: 2px; }
+    .nav-icon {
+      display: inline-block; width: 1.15rem; height: 2px; margin-right: .35rem; position: relative;
+      color: currentColor; background: currentColor; border-radius: 2px;
+    }
+    .nav-icon::before, .nav-icon::after {
+      content: ""; position: absolute; left: 0; right: 0; height: 2px; background: currentColor; border-radius: 2px;
+    }
+    .nav-icon::before { top: -6px; } .nav-icon::after { top: 6px; }
+    .nav-collapsible { overflow: hidden; max-height: 0; transition: max-height .24s ease; border-radius: 12px; }
+    .nav-collapsible.open { max-height: 60vh; }
 
-    section {
-      margin-bottom: 3rem;
-      padding: 1.5rem;
-      border-radius: 12px;
-      background: rgb(39 71 208 / 11%);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    nav.demo-menu {
+      margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 1em; justify-content: center;
     }
+    nav.demo-menu a {
+      color: #1a2233; text-decoration: none; font-weight: bold; border-bottom: 2px solid transparent;
+      transition: border 0.3s; font-size: 1.1em;
+    }
+    nav.demo-menu a:hover { border-bottom: 2px solid #4facfe; }
+
+    section a {
+      color: #576c99; text-decoration: none; font-weight: bold; border-bottom: 2px solid transparent;
+      transition: border 0.3s; font-size: 1.1em;
+    }
+    section a:hover { border-bottom: 2px solid #4facfe; }
+
+    main { width: 100%; max-width: 700px; }
+    section {
+      margin-bottom: 3rem; padding: 1.5rem; border-radius: 12px;
+      background: rgb(39 71 208 / 11%); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+/* Asegurar visibilidad y scroll del menú en mobile */
+.site-header { z-index: 999; } /* encima del contenido */
+
+.nav-collapsible {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .24s ease;
+  border-radius: 12px;
+}
+
+.nav-collapsible.open {
+  /* más alto y con scroll táctil */
+  max-height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-block: .5rem; /* que no corte el primer/último link */
+  background: rgba(255,255,255,.78);
+  box-shadow: 0 10px 24px rgba(0,0,0,.12);
+}
+
+/* Opcional: mejora de scrollbar (no afecta performance) */
+.nav-collapsible.open::-webkit-scrollbar { width: 10px; }
+.nav-collapsible.open::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,.15); border-radius: 999px;
+}
+.nav-collapsible.open { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.15) transparent; }
+
+/* Mobile grid del menú (ya lo tenías, lo dejo aquí por claridad) */
+@media (max-width: 600px) {
+  nav.demo-menu {
+    display: grid;
+    gap: .65rem;
+    padding: .75rem 1rem;
+    background: transparent; /* el fondo ya lo da el contenedor */
+  }
+  nav.demo-menu a {
+    display: block;
+    text-align: center;
+    padding: .35rem .5rem;
+  }
+}
 
     .card {
       background: linear-gradient(145deg, #ffffff, #e3f0ff);
-      padding: 1.5em;
-      border-left: 5px solid #ff7043;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2em;
+      padding: 1.5em; border-left: 5px solid #ff7043; border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); margin-bottom: 2em;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+    .card.black { background: black; padding: 1.5em; border-left: 5px solid #ff7043; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); margin-bottom: 2em; transition: transform .2s, box-shadow .2s; }
+    .card:hover { transform: scale(1.02); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13); }
 
-    .card.black {
-      background: black;
-      padding: 1.5em;
-      border-left: 5px solid #ff7043;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2em;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .card:hover {
-      transform: scale(1.02);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
-    }
-
-    .transition-box {
-      background: linear-gradient(to right, #43cea2, #185a9d);
-      color: rgb(30, 27, 27);
-      text-align: center;
-      font-size: 1.2em;
-      padding: 2em;
-      border-radius: 16px;
-      animation: bounceColor 5s infinite ease-in-out;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    }
+    .transition-box { background: linear-gradient(to right, #43cea2, #185a9d); color: rgb(30,27,27); text-align: center; font-size: 1.2em; padding: 2em; border-radius: 16px; animation: bounceColor 5s infinite ease-in-out; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
 
     @keyframes bounceColor {
-      0% {
-        transform: rotate(0deg) scale(1) translateY(0);
-        background: radial-gradient(circle at center, #4facfe, #00f2fe);
-        filter: brightness(1);
-      }
-
-      20% {
-        transform: rotate(-1deg) scale(1.08) translateY(4px);
-        background: radial-gradient(circle at 40% 60%, #fa709a, #fee140);
-        filter: brightness(1.12) hue-rotate(20deg);
-      }
-
-      50% {
-        transform: rotate(2deg) scale(0.9) translateY(-6px);
-        background: radial-gradient(circle at 70% 30%, #30cfd0, #330867);
-        filter: brightness(1.1) hue-rotate(-20deg);
-      }
-
-      70% {
-        transform: rotate(-3deg) scale(1) translateY(6px);
-        background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751);
-        filter: brightness(1.15) saturate(1.2);
-      }
-
-      100% {
-        transform: rotate(0deg) scale(0.95) translateY(0);
-        background: radial-gradient(circle at center, #4facfe, #00f2fe);
-        filter: brightness(1);
-      }
+      0% { transform: rotate(0deg) scale(1) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
+      20% { transform: rotate(-1deg) scale(1.08) translateY(4px); background: radial-gradient(circle at 40% 60%, #fa709a, #fee140); filter: brightness(1.12) hue-rotate(20deg); }
+      50% { transform: rotate(2deg) scale(0.9) translateY(-6px); background: radial-gradient(circle at 70% 30%, #30cfd0, #330867); filter: brightness(1.1) hue-rotate(-20deg); }
+      70% { transform: rotate(-3deg) scale(1) translateY(6px); background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751); filter: brightness(1.15) saturate(1.2); }
+      100% { transform: rotate(0deg) scale(0.95) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
     }
 
-    .export-text {
-      font-size: 1.1rem;
-      color: #2d3a4b;
-      text-align: center;
-    }
+    .export-text { font-size: 1.1rem; color: #2d3a4b; text-align: center; }
+    .export-format { font-weight: bold; padding: 0.2rem 0.4rem; border-radius: 8px; background: rgba(255, 255, 255, 0.7); margin: 0 0.2rem; }
 
-    .export-format {
-      font-weight: bold;
-      padding: 0.2rem 0.4rem;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.7);
-      margin: 0 0.2rem;
-    }
+    .pseudo-box::before { content: '★ '; color: gold; font-size: 1.2em; }
+    .pseudo-box::after { content: ' ✨'; color: violet; font-size: 1.2em; }
 
-    .pseudo-box::before {
-      content: '★ ';
-      color: gold;
-      font-size: 1.2em;
-    }
+    .clip-card { clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%); background: linear-gradient(120deg, #b6eaff 0%, #6dd5ed 100%); color: #1a2233; font-weight: bold; text-align: center; }
 
-    .pseudo-box::after {
-      content: ' ✨';
-      color: violet;
-      font-size: 1.2em;
-    }
+    .blend-card { background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover; background-blend-mode: multiply; background-color: red; color: white; padding: 3em; font-weight: bold; border-radius: 16px; text-align: center; }
 
-    .clip-card {
-      clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
-      background: linear-gradient(120deg, #b6eaff 0%, #6dd5ed 100%);
-      color: #1a2233;
-      font-weight: bold;
-      text-align: center;
-    }
-
-    .blend-card {
-      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center;
-      background-size: cover;
-      background-blend-mode: multiply;
-      background-color: red;
-
-      color: white;
-      padding: 3em;
-      font-weight: bold;
-      border-radius: 16px;
-      text-align: center;
-    }
-
-    .dancers {
-      display: inline-block;
-      font-size: 2.2rem;
-      animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
-      will-change: transform, filter;
-    }
+    .dancers { display: inline-block; font-size: 2.2rem; animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55); will-change: transform, filter; }
 
     @keyframes dance-move {
-      0% {
-        transform: rotate(-10deg) scale(1) translateY(0);
-        filter: brightness(1) drop-shadow(0 0 0 #fff0);
-      }
-
-      10% {
-        transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg);
-        filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988);
-      }
-
-      20% {
-        transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg);
-        filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66);
-      }
-
-      30% {
-        transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg);
-        filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66);
-      }
-
-      40% {
-        transform: rotate(-8deg) scale(1.02, 1.02) translateY(2px) skewY(6deg);
-        filter: brightness(1.08) drop-shadow(0 2px 4px #38f9d766);
-      }
-
-      50% {
-        transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg);
-        filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066);
-      }
-
-      60% {
-        transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px) skewY(10deg);
-        filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066);
-      }
-
-      70% {
-        transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg);
-        filter: brightness(1.12) drop-shadow(0 2px 4px #33086766);
-      }
-
-      80% {
-        transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg);
-        filter: brightness(1.05) drop-shadow(0 0 0 #fff0);
-      }
-
-      100% {
-        transform: rotate(-10deg) scale(1) translateY(0);
-        filter: brightness(1) drop-shadow(0 0 0 #fff0);
-      }
+      0% { transform: rotate(-10deg) scale(1) translateY(0); filter: brightness(1) drop-shadow(0 0 0 #fff0); }
+      10% { transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg); filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988); }
+      20% { transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg); filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66); }
+      30% { transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg); filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66); }
+      40% { transform: rotate(-8deg) scale(1.02, 1.02) translateY(2px) skewY(6deg); filter: brightness(1.08) drop-shadow(0 2px 4px #38f9d766); }
+      50% { transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg); filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066); }
+      60% { transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px) skewY(10deg); filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066); }
+      70% { transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg); filter: brightness(1.12) drop-shadow(0 2px 4px #33086766); }
+      80% { transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg); filter: brightness(1.05) drop-shadow(0 0 0 #fff0); }
+      100% { transform: rotate(-10deg) scale(1) translateY(0); filter: brightness(1) drop-shadow(0 0 0 #fff0); }
     }
 
-    .output {
-      margin-top: 1.3rem;
-    }
+    .output { margin-top: 1.3rem; }
 
     #orbit-box {
       font-family: sans-serif;
@@ -318,327 +220,174 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       color: rgba(255, 255, 255, 0.451);
     }
 
-    .dashed {
-      border-style: dashed;
+    .dashed { border-style: dashed; }
+    .bold { border-width: 2.5px; }
+    .text { width: 400px; font-size: 5px; flex-direction: column; text-align: center; }
+    .text1 { width: 100px; font-size: 5px; flex-direction: column; text-align: center; color: black; }
+    .plantet { background-color: rgba(255, 255, 255, 0.579); }
+    .orbit,[class*='orbit-'] { border: 0.1px solid rgba(255, 255, 255, 0.422) !important; }
+    .invisible { border: none !important; }
+    .vector { background-color: rgba(255, 255, 255, 0.259); height: 0.1px; }
+    .visible { background-color: white; border: none; }
+
+    .rotate-orbit { animation-name: rotation; animation-iteration-count: 10; animation-timing-function: linear; }
+    .rotate-time-1 { animation-duration: 40s; }
+    .rotate-time-2 { animation-duration: 30s; }
+    .rotate-time-3 { animation-duration: 20s; }
+    .rotate-time-4 { animation-duration: 10s; }
+    .rotate-time-5 { animation-duration: 5s; }
+    .invert { animation-direction: reverse; }
+
+    @keyframes rotation { 0% { rotate: 360deg; } 100% { rotate: 0deg; } }
+
+    /* === Mask demos === */
+    .mask-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .mask-card { position: relative; min-height: 180px; display: grid; place-items: center; border-radius: 16px; overflow: hidden; }
+    .mask-bg { position:absolute; inset:0; background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat; }
+    .mask-label { position: relative; z-index: 2; background: rgba(255,255,255,.75); padding: .3rem .6rem; border-radius: 8px; font-weight: 700; }
+
+    /* CSS mask-image (radial spotlight) */
+    .mask-radial .mask-bg {
+      mask-image: radial-gradient(circle at 60% 40%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 70%);
+      -webkit-mask-image: radial-gradient(circle at 60% 40%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 70%);
     }
 
-    .bold {
-      border-width: 2.5px;
+    /* PNG/SVG circle via mask (inline data URL, no 404/CORS) */
+/* PNG/SVG circle mask — longhands + base64 for robust capture */
+.mask-png .mask-bg {
+  /* Standard longhands */
+  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
+  mask-position: center;
+  mask-size: 60% 60%;
+  mask-repeat: no-repeat;
+
+  /* WebKit longhands (Safari) */
+  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
+  -webkit-mask-position: center;
+  -webkit-mask-size: 60% 60%;
+  -webkit-mask-repeat: no-repeat;
+
+  background-color: #9bd3ff;
+}
+
+
+    /* SVG mask inline */
+    .mask-svg { background: linear-gradient(135deg, #dceefb, #e8d9ff); }
+    .mask-svg .masked-box {
+      width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
+      mask: url(#svg-blob-mask);
+      -webkit-mask: url(#svg-blob-mask);
     }
 
-    .text {
-      width: 400px;
-      font-size: 5px;
-      flex-direction: column;
-      text-align: center;
-    }
+   /* Forms: asegurar sizing y ancho */
+.form-demo {
+  display: grid;
+  gap: .8rem;
+  width: 100%;
+}
+.form-row {
+  display: grid;
+  gap: .35rem;
+}
+.form-row.inline {
+  grid-template-columns: 1fr 1fr; /* desktop: dos columnas */
+  gap: .6rem;
+}
+.form-demo input[type="text"],
+.form-demo input[type="email"],
+.form-demo select,
+.form-demo textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 2px solid #3658f1;
+  border-radius: 10px;
+  padding: .55rem .7rem;
+  font-size: 1rem;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,.05);
+  min-height: 42px; /* mejora tap target en mobile */
+}
+.form-demo textarea {
+  display: block;
+  resize: vertical;
+}
 
-    .text1 {
-      width: 100px;
-      font-size: 5px;
-      flex-direction: column;
-      text-align: center;
-      color: black;
-    }
+/* Mobile: apilar filas inline y evitar overflow */
+@media (max-width: 600px) {
+  .form-row.inline {
+    grid-template-columns: 1fr !important; /* una columna en mobile */
+  }
+  .form-demo input[type="text"],
+  .form-demo input[type="email"],
+  .form-demo select,
+  .form-demo textarea {
+    font-size: 16px; /* evita zoom automático en iOS */
+  }
+}
 
-    .plantet {
-      background-color: rgba(255, 255, 255, 0.579);
-    }
 
-    .orbit,
-    [class*='orbit-'] {
-      border: 0.1px solid rgba(255, 255, 255, 0.422) !important;
-    }
-
-    .invisible {
-      border: none !important;
-    }
-
-    .vector {
-      background-color: rgba(255, 255, 255, 0.259);
-      height: 0.1px;
-    }
-
-    .visible {
-      background-color: white;
-      border: none;
-    }
-
-    .rotate-orbit {
-      animation-name: rotation;
-      animation-iteration-count: 10;
-      animation-timing-function: linear;
-    }
-
-    .rotate-time-1 {
-      animation-duration: 40s;
-    }
-
-    .rotate-time-2 {
-      animation-duration: 30s;
-    }
-
-    .rotate-time-3 {
-      animation-duration: 20s;
-    }
-
-    .rotate-time-4 {
-      animation-duration: 10s;
-    }
-
-    .rotate-time-5 {
-      animation-duration: 5s;
-    }
-
-    .invert {
-      animation-direction: reverse;
-    }
-
-    @keyframes rotation {
-      0% {
-        rotate: 360deg;
-      }
-
-      100% {
-        rotate: 0deg;
-      }
-    }
+    /* === Iframe demo === */
+    .iframe-wrap { border-radius: 14px; overflow: hidden; border: 2px solid #dfe7ff; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+    .iframe-wrap iframe { display: block; width: 100%; height: 240px; background: white; }
 
     @media (max-width: 600px) {
-      body {
-        padding: 0.5rem;
-      }
+      body { padding: 0.5rem; }
+      h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+      main { max-width: 100vw; width: 100vw; padding: 0; }
+      section { padding: 0.7rem; margin-bottom: 1.2rem; }
 
-      h1 {
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
+      .nav-toggle { display: inline-flex; align-items: center; }
+      .nav-collapsible { border-radius: 12px; }
+      nav.demo-menu {
+        display: grid; gap: .65rem; padding: .75rem 1rem; background: rgba(255,255,255,.7); box-shadow: 0 4px 16px rgba(0,0,0,.08);
       }
+      nav.demo-menu a { display: block; text-align: center; padding: .35rem .5rem; }
 
-      main {
-        max-width: 100vw;
-        width: 100vw;
-        padding: 0;
-      }
+      .card, .card.black { padding: 0.7em; font-size: 0.8em; border-radius: 10px; }
+      .output { margin-top: 0.7rem; }
+      .blend-card { padding: 1em; font-size: 0.8em; }
+      .transition-box { padding: 1em; font-size: 0.8em; }
+      .dancers { font-size: 1.3rem; }
 
-      section {
-        padding: 0.7rem;
-        margin-bottom: 1.2rem;
-      }
+      #github-badge { flex-direction: column; gap: 0.2em; font-size: 0.7em; margin-bottom: 1em; }
+      #github-badge span { font-size: 0.7em; }
+      #repo-link { display: none; }
 
-      .card,
-      .card.black {
-        padding: 0.7em;
-        font-size: 0.8em;
-        border-radius: 10px;
-      }
+      button#capture, button { font-size: 1em; padding: 0.5em 1em; margin-bottom: 0.7em; }
+      .export-text { font-size: 1em; }
+      .clip-card { font-size: 1em; }
+      .pseudo-box { font-size: 1em; }
 
-      nav {
-        flex-direction: column;
-        gap: 0.5em;
-        font-size: 0.9em;
-        margin-bottom: 1em;
-      }
-
-      nav a {
-        font-size: 0.9em;
-        padding: 0.3em 0;
-      }
-
-      .output {
-        margin-top: 0.7rem;
-      }
-
-      .blend-card {
-        padding: 1em;
-         font-size: 0.8em;
-      }
-
-      .transition-box {
-        padding: 1em;
-         font-size: 0.8em;
-      }
-
-      .dancers {
-        font-size: 1.3rem;
-      }
-
-      #github-badge {
-        flex-direction: column;
-        gap: 0.2em;
-        font-size: 0.7em;
-        margin-bottom: 1em;
-      }
-
-      #github-badge span {
-        font-size: 0.7em;
-      }
-
-      #repo-link {
-        display: none;
-      }
-
-      button#capture,
-      button {
-        font-size: 1em;
-        padding: 0.5em 1em;
-        margin-bottom: 0.7em;
-      }
-
-      .export-text {
-        font-size: 1em;
-      }
-
-      .clip-card {
-        font-size: 1em;
-      }
-
-      .pseudo-box {
-        font-size: 1em;
-      }
-
-      #orbit-box {
-        height: 220px !important;
-        min-width: 0;
-        font-size: 0.8em;
-      }
-
-      .text,
-      .text1 {
-        width: 90vw;
-        font-size: 0.8em;
-      }
-        .benchmark-output {
-        height: 200px;
-      }
-
-      .benchmark-container {
-        gap: 1rem;
-        /* Menor gap en móviles */
-      }
-
-      .benchmark-column {
-        max-width: 100%;
-        /* Ocupa todo el ancho en móviles */
-      }
+      #orbit-box { height: 220px !important; min-width: 0; font-size: 0.8em; }
+      .text, .text1 { width: 90vw; font-size: 0.8em; }
+      .mask-grid { grid-template-columns: 1fr; }
+      .benchmark-output { height: 200px; }
+      .benchmark-container { gap: 1rem; }
+      .benchmark-column { max-width: 100%; }
     }
 
-    .comparison-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      margin-top: 1rem;
-      flex-direction: row;
-      /* Asegura que es fila, no columna */
-    }
+    .comparison-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; margin-top: 1rem; flex-direction: row; }
+    .comparison-row>div { flex: 1; min-width: 300px; text-align: center; }
+    .label { font-weight: bold; margin-bottom: 0.5rem; }
 
-    .comparison-row>div {
-      flex: 1;
-      /* Hace que ambos divs ocupen espacio igual */
-      min-width: 300px;
-      /* Ancho mínimo para evitar que se compriman demasiado */
-      text-align: center;
-    }
+    .winner-glow { animation: glow 1.2s infinite alternate ease-in-out; border-radius: 20px; }
+    .progress-message { margin: 1rem 0; font-size: 0.9rem; color: #555; font-weight: bold; }
+    .result-message { margin-top: 0.5rem; font-weight: bold; background: rgba(0, 0, 0, 0.05); padding: 0.3rem; border-radius: 4px; }
 
-    .label {
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-    }
+    .winner-message { font-size: 1.4rem; margin: 1rem 0; padding: 0.8rem; border-radius: 12px; background: linear-gradient(145deg, #ffffff, #f3f8ff); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); display: inline-block; }
+    .winner-message .speed-badge { display: inline-block; background: #4facfe; color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: bold; margin-left: 0.5rem; }
 
-    .winner-glow {
-      animation: glow 1.2s infinite alternate ease-in-out;
-      border-radius: 20px;
-    }
-
-    .progress-message {
-      margin: 1rem 0;
-      font-size: 0.9rem;
-      color: #555;
-      font-weight: bold;
-    }
-
-    .result-message {
-      margin-top: 0.5rem;
-      font-weight: bold;
-      background: rgba(0, 0, 0, 0.05);
-      padding: 0.3rem;
-      border-radius: 4px;
-    }
-
-
-    .winner-message {
-      font-size: 1.4rem;
-      margin: 1rem 0;
-      padding: 0.8rem;
-      border-radius: 12px;
-      background: linear-gradient(145deg, #ffffff, #f3f8ff);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      display: inline-block;
-    }
-
-    .winner-message .speed-badge {
-      display: inline-block;
-      background: #4facfe;
-      color: white;
-      padding: 0.2rem 0.6rem;
-      border-radius: 20px;
-      font-weight: bold;
-      margin-left: 0.5rem;
-    }
-
-    .benchmark-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 2rem;
-      /* Ajusta este valor para más/menos espacio */
-      width: 100%;
-    }
-
-    .benchmark-column {
-      flex: 1;
-      min-width: 100px;
-      max-width: calc(50% - 1rem);
-      /* Resta la mitad del gap para evitar desbordamiento */
-    }
-
+    .benchmark-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
+    .benchmark-column { flex: 1; min-width: 100px; max-width: calc(50% - 1rem); }
     .benchmark-output {
-      width: 100%;
-      height: 250px;
-      overflow: auto;
-      border: 1px solid #eee;
-      border-radius: 8px;
-      padding: 10px;
-      background: #292e3d24;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      width: 100%; height: 250px; overflow: auto; border: 1px solid #eee; border-radius: 8px; padding: 10px;
+      background: #292e3d24; display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
+    .benchmark-output img, .benchmark-output canvas { max-width: 100%; max-height: 200px; object-fit: contain; margin: 0 auto; display: block; }
 
-    .benchmark-output img,
-    .benchmark-output canvas {
-      max-width: 100%;
-      max-height: 200px;
-      object-fit: contain;
-      margin: 0 auto;
-      display: block;
-    }
+    @keyframes glow { from { box-shadow: 0 0 8px 2px rgba(0, 255, 0, 0.4); transform: scale(1.01); } to { box-shadow: 0 0 14px 4px rgba(0, 255, 0, 0.6); transform: scale(1.02); } }
 
-   
-
-    @keyframes glow {
-      from {
-        box-shadow: 0 0 8px 2px rgba(0, 255, 0, 0.4);
-        transform: scale(1.01);
-      }
-
-      to {
-        box-shadow: 0 0 14px 4px rgba(0, 255, 0, 0.6);
-        transform: scale(1.02);
-      }
-    }
+    @media (min-width: 601px) { .nav-collapsible { max-height: none !important; } .nav-toggle { display: none !important; } }
   </style>
 </head>
 
@@ -648,8 +397,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         align-items: center;
         gap: 0.5em;
         justify-content: center;
-        margin-bottom: 1.5em;
-      ">
+        margin-bottom: 1.5em;">
     <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" style="
           display: flex;
           align-items: center;
@@ -671,8 +419,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
             margin-left: 0.5em;
             box-shadow: 0 2px 8px #e0e7ef;
             font-size: 1em;
-            gap: 0.3em;
-          ">
+            gap: 0.3em;">
         <i class="fas fa-star" style="color: #f7b500"></i>
         <span id="star-count">...</span>
       </span>
@@ -684,29 +431,41 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     SnapDOM captures HTML elements to images with exceptional speed and accuracy, supporting pseudo-elements, shadow
     DOM, web fonts, and more.
   </p>
-  <nav style="
-        margin-bottom: 2rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1em;
-        justify-content: center;
-      ">
-    <a href="#benchmark">Benchmark</a>
-    <a href="#basic">Basic</a>
-    <a href="#transition">Transition</a>
-    <a href="#orbit">Orbit</a>
-    <a href="#fonts-demo">Fonts</a>
-    <a href="#shadow">Shadow DOM</a>
-    <a href="#canvas">Canvas</a>
-    <a href="#export">Export</a>
-    <a href="#pseudo">Pseudo</a>
-    <a href="#clip">Clip-Path</a>
-    <a href="#blend">Blend</a>
-    <a href="#fullbody">Full Page</a>
-  </nav>
+
+  <!-- Header + menú responsive -->
+  <header class="site-header">
+    <div class="nav-bar">
+      <button id="menu-toggle" class="nav-toggle" aria-expanded="false" aria-controls="demo-menu">
+        <span class="nav-icon" aria-hidden="true"></span>
+        Menu
+      </button>
+    </div>
+
+    <div id="menu-container" class="nav-collapsible">
+      <nav id="demo-menu" class="demo-menu">
+        <a href="#benchmark">Benchmark</a>
+        <a href="#basic">Basic</a>
+        <a href="#transition">Transition</a>
+        <a href="#orbit">Orbit</a>
+        <a href="#fonts-demo">Fonts</a>
+        <a href="#shadow">Shadow DOM</a>
+        <a href="#canvas">Canvas</a>
+        <a href="#export">Export</a>
+        <a href="#pseudo">Pseudo</a>
+        <a href="#clip">Clip-Path</a>
+        <a href="#blend">Blend</a>
+        <a href="#iframe">Iframe</a>
+        <a href="#forms">Inputs</a>
+        <a href="#mask">Masking</a>
+        <a href="#fullbody">Full Page</a>
+      </nav>
+    </div>
+  </header>
+
   <main style="width: 100%; max-width: 700px">
 
-   <section id="benchmark" style="margin-top:3rem;">
+    <!-- Benchmark -->
+    <section id="benchmark" style="margin-top:3rem;">
       <h2>🏁 Benchmark: snapDOM vs html2canvas</h2>
       <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
         Each library will capture the same DOM element to canvas 5 times. We'll calculate average speed and show the
@@ -723,8 +482,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         <button data-umami-event="Run benchmarks" class="run-benchmark-button" onclick="runBenchmark()">Run Benchmark</button>
       </div>
 
-      <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;">
-      </div>
+      <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;"></div>
 
       <div class="benchmark-container">
         <div class="benchmark-column">
@@ -742,46 +500,33 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       </div>
     </section>
 
+    <!-- Basic -->
     <section id="basic">
       <h2>📦 Basic</h2>
       <div class="card" id="basic-box">
         <h3>Hello SnapDOM!</h3>
       </div>
-      <button data-umami-event="Capture basic" onclick="captureDemo('basic-box', 'basic-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download basic" onclick="downloadDemo('basic-box')">
-        Download
-      </button>
+      <button data-umami-event="Capture basic" onclick="captureDemo('basic-box', 'basic-output', this)">Capture</button>
+      <button data-umami-event="Download basic" onclick="downloadDemo('basic-box')">Download</button>
       <div class="output" id="basic-output"></div>
     </section>
+
+    <!-- Transition -->
     <section id="transition">
       <h2>🚀 Fun Transition</h2>
       <div class="card transition-box" id="transition-box">
         <div class="dancers">🕺💃</div>
-        <p style="margin: 0; font-weight: bold">
-          I'm dancing and changing color!
-        </p>
+        <p style="margin: 0; font-weight: bold">I'm dancing and changing color!</p>
       </div>
-      <button data-umami-event="Capture transition" onclick="captureDemo('transition-box', 'transition-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download transition" onclick="downloadDemo('transition-box')">
-        Download
-      </button>
+      <button data-umami-event="Capture transition" onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
+      <button data-umami-event="Download transition" onclick="downloadDemo('transition-box')">Download</button>
       <div class="output" id="transition-output"></div>
     </section>
+
+    <!-- Orbit -->
     <section id="orbit">
-      <h2>
-        📦 Orbit CSS framework -
-        <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom" data-umami-event="To orbit repo"
-          target="_blank">repo</a>
-      </h2>
-      <div class="card black" id="orbit-box" style="
-            height: 400px;
-            overflow: hidden;
-            background-color: black !important;
-          ">
+      <h2>📦 Orbit CSS framework - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom" data-umami-event="To orbit repo" target="_blank">repo</a></h2>
+      <div class="card black" id="orbit-box" style="height: 400px; overflow: hidden; background-color: black !important;">
         <div class="bigbang">
           <div class="gravity-spot" style="--o-force: 1000px">
             <div class="orbit-3 invisible">
@@ -799,24 +544,16 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
           </div>
           <div class="gravity-spot" style="--o-force: 90px">
             <div class="orbit dashed"></div>
-            <div class="orbit rotate-orbit rotate-time-4">
-              <div class="satellite visible shrink-50 angle-320"></div>
-            </div>
-            <div class="orbit rotate-orbit rotate-time-5">
-              <div class="satellite visible shrink-50 angle-20"></div>
-            </div>
+            <div class="orbit rotate-orbit rotate-time-4"><div class="satellite visible shrink-50 angle-320"></div></div>
+            <div class="orbit rotate-orbit rotate-time-5"><div class="satellite visible shrink-50 angle-20"></div></div>
             <div class="orbit dashed"></div>
-            <div class="orbit rotate-orbit rotate-time-3">
-              <div class="satellite visible shrink-50 angle-120"></div>
-            </div>
+            <div class="orbit rotate-orbit rotate-time-3"><div class="satellite visible shrink-50 angle-120"></div></div>
             <div class="orbit dashed"></div>
           </div>
           <div class="gravity-spot uncentered" style="--o-force: 350px">
             <div class="orbit-1 invisible">
               <div class="satellite angle-270 invisible">
-                <div class="gravity-spot uncentered" style="--o-force: 150px">
-                  <div class="orbit-6"></div>
-                </div>
+                <div class="gravity-spot uncentered" style="--o-force: 150px"><div class="orbit-6"></div></div>
               </div>
             </div>
             <div class="orbit-2 shrink-60 invisible">
@@ -824,11 +561,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
                 <div class="gravity-spot uncentered" style="--o-force: 150px">
                   <div class="orbit-10">
                     <div class="satellite angle-270 invisible rotate-orbit rotate-time-2 invert">
-                      <div class="capsule rotate-orbit rotate-time-2 text">
-                        Orbit<br />
-                        THIRD EXTERNAL ORBITAL PATH<br />
-                        MERIDIAN SYSTEM
-                      </div>
+                      <div class="capsule rotate-orbit rotate-time-2 text">Orbit<br/>THIRD EXTERNAL ORBITAL PATH<br/>MERIDIAN SYSTEM</div>
                     </div>
                   </div>
                 </div>
@@ -849,9 +582,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
               <div class="satellite angle-60">
                 <div class="gravity-spot from-2x" style="--o-force: 90px">
                   <div class="orbit-1 planet">
-                    <div class="satellite at-center rotate-orbit rotate-time-3 invert">
-                      <div class="capsule text1">PLANET</div>
-                    </div>
+                    <div class="satellite at-center rotate-orbit rotate-time-3 invert"><div class="capsule text1">PLANET</div></div>
                   </div>
                   <div class="orbit dashed"></div>
                   <div class="orbit-4 dashed"></div>
@@ -878,16 +609,10 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
             <div class="orbit-18 invisible rotate-orbit rotate-time-1">
               <div class="satellite angle-270">
                 <div class="gravity-spot from-6x" style="--o-force: 90px">
-                  <div class="orbit-12 rotate-orbit rotate-time-4 invert">
-                    <div class="satellite visible grow-1x angle-120"></div>
-                  </div>
+                  <div class="orbit-12 rotate-orbit rotate-time-4 invert"><div class="satellite visible grow-1x angle-120"></div></div>
                   <div class="orbit-22 rotate-orbit rotate-time-1 invert">
                     <div class="satellite angle-90 invisible">
-                      <div class="capsule text">
-                        Orbit<br />
-                        SECOND EXTERNAL SYSTEM <br />
-                        MERIDIAN SYSTEM
-                      </div>
+                      <div class="capsule text">Orbit<br/>SECOND EXTERNAL SYSTEM <br/>MERIDIAN SYSTEM</div>
                     </div>
                   </div>
                   <div class="orbit">
@@ -906,115 +631,207 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
           </div>
         </div>
       </div>
-      <button data-umami-event="Capture orbit" onclick="captureDemo('orbit-box', 'orbit-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">
-        Download
-      </button>
+      <button data-umami-event="Capture orbit" onclick="captureDemo('orbit-box', 'orbit-output', this)">Capture</button>
+      <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
       <div class="output" id="orbit-output"></div>
     </section>
+
+    <!-- Fonts -->
     <section id="fonts-demo">
       <h2>🔤 Google Fonts</h2>
       <div class="card" id="fonts-box">
         <h3 style="font-family: 'Mansalva', cursive">Unique Typography!</h3>
-        <p style="font-family: 'Unbounded', cursive">
-          Google Fonts with <code>embedFonts: true</code>.
-        </p>
+        <p style="font-family: 'Unbounded', cursive">Google Fonts with <code>embedFonts: true</code>.</p>
       </div>
-      <button data-umami-event="Capture fonts" onclick="captureDemo('fonts-box', 'fonts-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download fonts" onclick="downloadDemo('fonts-box')">
-        Download
-      </button>
+      <button data-umami-event="Capture fonts" onclick="captureDemo('fonts-box', 'fonts-output', this)">Capture</button>
+      <button data-umami-event="Download fonts" onclick="downloadDemo('fonts-box')">Download</button>
       <div class="output" id="fonts-output"></div>
     </section>
 
+    <!-- Shadow DOM -->
     <section id="shadow">
       <h2>🧱 Shadow DOM</h2>
       <div class="card" id="shadow-host"></div>
-      <button data-umami-event="Capture shadow" onclick="captureDemo('shadow-host', 'shadow-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download shadow" onclick="downloadDemo('shadow-host')">
-        Download
-      </button>
+      <button data-umami-event="Capture shadow" onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
+      <button data-umami-event="Download shadow" onclick="downloadDemo('shadow-host')">Download</button>
       <div class="output" id="shadow-output"></div>
     </section>
+
+    <!-- Canvas -->
     <section id="canvas">
       <h2>🎨 Canvas</h2>
-      <div class="card">
-        <canvas id="myCanvas" width="160" height="160" style="border: 1px solid #000"></canvas>
-      </div>
-      <button data-umami-event="Capture canvas" onclick="captureDemo('myCanvas', 'canvas-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download canvas" onclick="downloadDemo('myCanvas')">
-        Download
-      </button>
+      <div class="card"><canvas id="myCanvas" width="160" height="160" style="border: 1px solid #000"></canvas></div>
+      <button data-umami-event="Capture canvas" onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
+      <button data-umami-event="Download canvas" onclick="downloadDemo('myCanvas')">Download</button>
       <div class="output" id="canvas-output"></div>
     </section>
+
+    <!-- Export -->
     <section id="export">
       <h2>📁 Export Formats</h2>
       <div class="card" id="export-box">
-        <div class="export-text">
-          <strong>📤 Export as</strong><br />
-          <span class="export-format">PNG</span>,
-          <span class="export-format">JPG</span> &
-          <span class="export-format">WebP</span>.
-        </div>
+        <div class="export-text"><strong>📤 Export as</strong><br /><span class="export-format">PNG</span>, <span class="export-format">JPG</span> & <span class="export-format">WebP</span>.</div>
       </div>
-      <button data-umami-event="Export formats " onclick="exportFormats('export-box')">
-        Export
-      </button>
+      <button data-umami-event="Export formats" onclick="exportFormats('export-box')">Export</button>
       <div class="output" id="export-output"></div>
     </section>
+
+    <!-- Pseudo -->
     <section id="pseudo">
       <h2>✨ Pseudo Elements</h2>
-      <div class="card pseudo-box" id="pseudo-box">
-        This element has pseudo-elements.
-      </div>
-      <button data-umami-event="Capture pseudo" onclick="captureDemo('pseudo-box', 'pseudo-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download pseudo" onclick="downloadDemo('pseudo-box')">
-        Download
-      </button>
+      <div class="card pseudo-box" id="pseudo-box">This element has pseudo-elements.</div>
+      <button data-umami-event="Capture pseudo" onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
+      <button data-umami-event="Download pseudo" onclick="downloadDemo('pseudo-box')">Download</button>
       <div class="output" id="pseudo-output"></div>
     </section>
+
+    <!-- Clip-Path -->
     <section id="clip">
       <h2>✂️ Clip-Path Demo</h2>
-      <div class="card clip-card" id="clip-box">
-        This shape uses clip-path
-      </div>
-      <button data-umami-event="Capture clip path" onclick="captureDemo('clip-box', 'clip-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download clip path" onclick="downloadDemo('clip-box')">
-        Download
-      </button>
+      <div class="card clip-card" id="clip-box">This shape uses clip-path</div>
+      <button data-umami-event="Capture clip path" onclick="captureDemo('clip-box', 'clip-output', this)">Capture</button>
+      <button data-umami-event="Download clip path" onclick="downloadDemo('clip-box')">Download</button>
       <div class="output" id="clip-output"></div>
     </section>
+
+    <!-- Blend -->
     <section id="blend">
       <h2>🌀 Mix Blend Mode</h2>
       <div class="card blend-card" id="blend-box">Blended content</div>
-      <button data-umami-event="Capture blend" onclick="captureDemo('blend-box', 'blend-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download blend" onclick="downloadDemo('blend-box')">
-        Download
-      </button>
+      <button data-umami-event="Capture blend" onclick="captureDemo('blend-box', 'blend-output', this)">Capture</button>
+      <button data-umami-event="Download blend" onclick="downloadDemo('blend-box')">Download</button>
       <div class="output" id="blend-output"></div>
     </section>
+
+    <!-- NEW: Iframe same-origin -->
+    <section id="iframe">
+      <h2>🧩 Iframe (same-origin)</h2>
+      <div class="card iframe-wrap">
+        <iframe id="demo-iframe" title="Same-origin demo" sandbox="allow-same-origin allow-scripts"
+          srcdoc="<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<style>
+  body { font-family: system-ui, Arial; margin: 0; padding: 16px; background: #f4f8ff; }
+  .box { padding: 14px; border-radius: 12px; background: white; border: 2px solid #3658f1; position: relative; }
+  .box::before { content: 'iframe:'; position: absolute; top: -10px; left: 12px; background: #3658f1; color: white; font-weight: 700; font-size: 12px; padding: 2px 6px; border-radius: 6px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #edf2ff; border: 1px solid #cdd7ff; font-weight: 700; }
+</style>
+<body>
+  <div class='box'>
+    <h4>Same-origin content</h4>
+    <div class='row'><span class='pill'>pseudo-elements</span><span class='pill'>grid</span></div>
+  </div>
+</body>
+</html>">
+        </iframe>
+      </div>
+      <button data-umami-event="Capture iframe" onclick="captureIframeBody('demo-iframe','iframe-output', this)">Capture</button>
+      <button data-umami-event="Download iframe" onclick="downloadIframeBody('demo-iframe')">Download</button>
+      <div class="output" id="iframe-output"></div>
+    </section>
+
+    <!-- NEW: Inputs & Textarea -->
+    <section id="forms">
+      <h2>⌨️ Inputs & Textarea</h2>
+      <div class="card" id="forms-box">
+        <form class="form-demo" onsubmit="return false;">
+          <div class="form-row inline">
+            <div>
+              <label for="name">Name</label>
+              <input id="name" type="text" placeholder="John Doe" value="Ada Lovelace" />
+            </div>
+            <div>
+              <label for="email">Email</label>
+              <input id="email" type="email" placeholder="ada@math.org" value="ada@math.org" />
+            </div>
+          </div>
+
+          <div class="form-row inline">
+            <div>
+              <label for="role">Role</label>
+              <select id="role">
+                <option>Developer</option>
+                <option selected>Researcher</option>
+                <option>Designer</option>
+              </select>
+            </div>
+            <div style="display:grid; grid-template-columns:auto 1fr; align-items:center; gap:.5rem;">
+              <input id="newsletter" type="checkbox" checked />
+              <label for="newsletter" style="margin:0;">Subscribe</label>
+            </div>
+          </div>
+
+          <div class="form-row" style="align-items:center; grid-template-columns:auto auto auto; gap:1rem;">
+            <label><input type="radio" name="level" value="junior"> Junior</label>
+            <label><input type="radio" name="level" value="mid" checked> Mid</label>
+            <label><input type="radio" name="level" value="senior"> Senior</label>
+          </div>
+
+          <div class="form-row">
+            <label for="bio">Bio</label>
+            <textarea id="bio" rows="3" style="resize:vertical;">Pioneer of computing. Loves analytical engines.</textarea>
+          </div>
+        </form>
+      </div>
+      <button data-umami-event="Capture forms" onclick="captureDemo('forms-box','forms-output', this)">Capture</button>
+      <button data-umami-event="Download forms" onclick="downloadDemo('forms-box')">Download</button>
+      <div class="output" id="forms-output"></div>
+    </section>
+
+    <!-- NEW: Masking Effects -->
+    <section id="mask">
+      <h2>🎭 Masking Effects</h2>
+
+      <!-- SVG defs for mask -->
+      <svg width="0" height="0" style="position:absolute;">
+        <defs>
+          <mask id="svg-blob-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="black"></rect>
+            <circle cx="35%" cy="40%" r="28%" fill="white"></circle>
+            <circle cx="65%" cy="60%" r="30%" fill="white"></circle>
+          </mask>
+        </defs>
+      </svg>
+
+      <div class="mask-grid">
+        <div class="mask-card mask-radial" id="mask-radial">
+          <div class="mask-bg"></div>
+          <div class="mask-label">CSS radial mask</div>
+        </div>
+
+        <div class="mask-card mask-png" id="mask-png">
+          <div class="mask-bg"></div>
+          <div class="mask-label">PNG circle mask</div>
+        </div>
+
+        <div class="mask-card mask-svg" id="mask-svg">
+          <div class="masked-box"></div>
+          <div class="mask-label">SVG mask</div>
+        </div>
+
+        <div class="mask-card" id="mask-gradient" style="background:#111;">
+          <div style="position:absolute; inset:0; background:linear-gradient(135deg,#8ec5fc,#e0c3fc); -webkit-mask-image: linear-gradient(90deg, transparent, black, transparent); mask-image: linear-gradient(90deg, transparent, black, transparent);"></div>
+          <div class="mask-label">Linear gradient mask</div>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;">
+        <button data-umami-event="Capture mask radial" onclick="captureDemo('mask-radial','mask-output', this)">Capture radial</button>
+        <button data-umami-event="Capture mask png" onclick="captureDemo('mask-png','mask-output', this)">Capture PNG</button>
+        <button data-umami-event="Capture mask svg" onclick="captureDemo('mask-svg','mask-output', this)">Capture SVG</button>
+        <button data-umami-event="Capture mask gradient" onclick="captureDemo('mask-gradient','mask-output', this)">Capture gradient</button>
+      </div>
+      <div class="output" id="mask-output"></div>
+    </section>
+
+    <!-- Full Page -->
     <section id="fullbody">
       <h2>🧾 Full Page Capture</h2>
-      <button data-umami-event="Capture full" onclick="captureDemo('body', 'fullbody-output', this)">
-        Capture
-      </button>
-      <button data-umami-event="Download full" onclick="downloadDemo('body')">
-        Download
-      </button>
+      <button data-umami-event="Capture full" onclick="captureDemo('body', 'fullbody-output', this)">Capture</button>
+      <button data-umami-event="Download full" onclick="downloadDemo('body')">Download</button>
       <div class="output" id="fullbody-output"></div>
     </section>
 
@@ -1025,39 +842,20 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     class MyBox extends HTMLElement {
       constructor() {
         super()
-        const shadow = this.attachShadow({
-          mode: 'open',
-        })
+        const shadow = this.attachShadow({ mode: 'open' })
         const container = document.createElement('section')
         container.innerHTML = `
           <style>
             .fun-box {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              padding: 18px 10px 10px 10px;
-              border-radius: 12px;
+              display: flex; flex-direction: column; align-items: center;
+              padding: 18px 10px 10px 10px; border-radius: 12px;
               background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
-              box-shadow: 0 2px 8px #fda08544;
-              font-weight: bold;
-              text-align: center;
-              font-size: 1.1rem;
-              color: #2d3a4b;
-              position: relative;
+              box-shadow: 0 2px 8px #fda08544; font-weight: bold; text-align: center;
+              font-size: 1.1rem; color: #2d3a4b; position: relative;
             }
-            .emoji {
-              font-size: 2.5rem;
-              margin-bottom: 0.5rem;
-              animation: spin 1.5s linear infinite alternate;
-            }
-            @keyframes spin {
-              0% { transform: rotate(-10deg) scale(1); }
-              100% { transform: rotate(10deg) scale(1.15); }
-            }
-            .msg {
-              font-size: 1.1rem;
-              margin-top: 0.2rem;
-            }
+            .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; animation: spin 1.5s linear infinite alternate; }
+            @keyframes spin { 0% { transform: rotate(-10deg) scale(1); } 100% { transform: rotate(10deg) scale(1.15); } }
+            .msg { font-size: 1.1rem; margin-top: 0.2rem; }
           </style>
           <div class="fun-box">
             <div class="emoji">🦄✨</div>
@@ -1067,16 +865,13 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         shadow.appendChild(container)
       }
     }
-
     customElements.define('my-box', MyBox)
 
     document.addEventListener('DOMContentLoaded', async () => {
       // Shadow DOM ejemplo
       const host = document.getElementById('shadow-host')
       if (host && !host.shadowRoot) {
-        const shadow = host.attachShadow({
-          mode: 'open',
-        })
+        const shadow = host.attachShadow({ mode: 'open' })
         shadow.innerHTML =
           `<div style='padding: 1em; background: #b2f0ff; border-radius: 8px; font-weight:bold; text-align:center;'>¡Dentro del <strong>Shadow DOM</strong>! 🎩✨</div>`
       }
@@ -1097,9 +892,15 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       ctx.fillText('🎨', 60, 80)
     }
 
+    /**
+     * Captures a demo element by id and appends the resulting image in the output container.
+     * @param {string} id - Element id to capture (or 'body' for full page).
+     * @param {string} outputId - Output container id.
+     * @param {HTMLButtonElement} [btn] - Optional button to disable while capturing.
+     * @returns {Promise<void>}
+     */
     async function captureDemo(id, outputId, btn) {
       const el = id === 'body' ? document.body : document.getElementById(id)
-
       const output = document.getElementById(outputId)
       if (!el || !output) return
       if (btn) btn.disabled = true
@@ -1115,6 +916,12 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
 
       if (btn) btn.disabled = false
     }
+
+    /**
+     * Downloads a captured element as PNG using snapdom.download.
+     * @param {string} id - Element id (or 'body').
+     * @returns {Promise<void>}
+     */
     async function downloadDemo(id) {
       const el = id === 'body' ? document.body : document.getElementById(id)
       if (!el) return
@@ -1126,32 +933,103 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
       })
     }
-   
+
+    /**
+     * Captures the BODY inside a same-origin iframe (uses iframe.srcdoc to ensure same origin).
+     * @param {string} iframeId - ID of the iframe element.
+     * @param {string} outputId - Output container id.
+     * @param {HTMLButtonElement} [btn] - Optional button to disable while capturing.
+     * @returns {Promise<void>}
+     */
+    async function captureIframeBody(iframeId, outputId, btn) {
+      const iframe = document.getElementById(iframeId)
+      const output = document.getElementById(outputId)
+      if (!iframe || !output) return
+      if (btn) btn.disabled = true
+      const doc = iframe.contentDocument
+      const target = doc?.body
+      if (!target) return
+      const img = await snapdom.toImg(target, { fast: true, compress: true })
+      output.innerHTML = ''
+      output.appendChild(img)
+      if (btn) btn.disabled = false
+    }
+
+    /**
+     * Downloads the BODY content of a same-origin iframe.
+     * @param {string} iframeId - ID of the iframe element.
+     * @returns {Promise<void>}
+     */
+    async function downloadIframeBody(iframeId) {
+      const iframe = document.getElementById(iframeId)
+      const doc = iframe?.contentDocument
+      const target = doc?.body
+      if (!target) return
+      await snapdom.download(target, { format: 'png', name: 'iframe-body', scale: 1, quality: 1 })
+    }
+
+    /**
+     * Export multiple formats for a given element.
+     * @param {string} id
+     * @returns {Promise<void>}
+     */
     async function exportFormats(id) {
       const el = document.getElementById(id)
       const result = await snapdom(el)
       const output = document.getElementById('export-output')
       output.innerHTML = ''
-      const [png, jpg, webp] = await Promise.all([
-        result.toPng(),
-        result.toJpg(),
-        result.toWebp(),
-      ])
+      const [png, jpg, webp] = await Promise.all([ result.toPng(), result.toJpg(), result.toWebp() ])
       output.append('PNG:', png, document.createElement('br'))
       output.append('JPG:', jpg, document.createElement('br'))
       output.append('WebP:', webp)
     }
   </script>
+
+<script>
+  (function setupMobileMenu() {
+    const toggle = document.getElementById('menu-toggle');
+    const panel  = document.getElementById('menu-container');
+    const menu   = document.getElementById('demo-menu');
+    if (!toggle || !panel || !menu) return;
+
+    function setOpen(open) {
+      toggle.setAttribute('aria-expanded', String(open));
+      panel.classList.toggle('open', open);
+      if (open) panel.scrollTop = 0;            // <--- NUEVO: asegura ver todos los items
+      document.body.style.overflow = open ? 'hidden' : '';
+    }
+
+    function toggleMenu() {
+      const isOpen = panel.classList.contains('open');
+      setOpen(!isOpen);
+      if (!isOpen) {
+        const firstLink = menu.querySelector('a');
+        if (firstLink) firstLink.focus({ preventScroll: true });
+      } else {
+        toggle.focus({ preventScroll: true });
+      }
+    }
+
+    toggle.addEventListener('click', (e) => { e.preventDefault(); toggleMenu(); });
+    menu.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t && t.tagName === 'A' && panel.classList.contains('open')) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open')) setOpen(false); });
+    const mql = window.matchMedia('(min-width: 601px)');
+    mql.addEventListener?.('change', () => { if (mql.matches) setOpen(false); });
+  })();
+</script>
+
+
   <script type="module">
     import {
       snapdom,
-      preCache,
     } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs';
-
     import html2canvas from 'https://cdn.skypack.dev/html2canvas';
 
     window.snapdom = snapdom
-    window.preCache = preCache
+   
 
     window.runBenchmark = async function () {
       const el = document.getElementById("benchmark-box");
@@ -1168,95 +1046,64 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       benchmarkBtn.disabled = true;
       benchmarkBtn.textContent = "Running benchmark...";
 
-      // Función auxiliar para forzar renderizado
-      const forceRender = async () => {
-        await new Promise(resolve => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(resolve);
-          });
-        });
-      };
+      const forceRender = async () => new Promise(resolve => {
+        requestAnimationFrame(() => { requestAnimationFrame(resolve); });
+      });
 
       // Benchmark snapDOM
       let snapTotal = 0;
       let snapCanvas;
       for (let i = 0; i < 5; i++) {
-        // Actualizar progreso
-        snapContainer.innerHTML =
-          `<div class="progress-message">Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}.</div>`;
-        await forceRender(); // Forzar renderizado del mensaje
-
+        snapContainer.innerHTML = `<div class="progress-message">Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}.</div>`;
+        await forceRender();
         const t0 = performance.now();
         snapCanvas = await snapdom.toImg(el);
         snapTotal += performance.now() - t0;
-
-        // Mostrar resultado parcial
         snapContainer.innerHTML = '';
         snapContainer.appendChild(snapCanvas);
-        snapContainer.insertAdjacentHTML('beforeend',
-          `<div class="progress-message">snapDOM: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`);
-
-        await forceRender(); // Permitir que se vea el resultado
+        snapContainer.insertAdjacentHTML('beforeend', `<div class="progress-message">snapDOM: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`);
+        await forceRender();
       }
 
       // Benchmark html2canvas
       let h2cTotal = 0;
       let h2cCanvas;
       for (let i = 0; i < 5; i++) {
-        // Actualizar progreso
-        h2cContainer.innerHTML =
-          `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`;
-        await forceRender(); // Forzar renderizado del mensaje
-
+        h2cContainer.innerHTML = `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`;
+        await forceRender();
         const t0 = performance.now();
-        h2cCanvas = await html2canvas(el, {
-          logging: false
-        });
+        h2cCanvas = await html2canvas(el, { logging: false });
         h2cTotal += performance.now() - t0;
-
-        // Mostrar resultado parcial
         h2cContainer.innerHTML = '';
         h2cContainer.appendChild(h2cCanvas);
-        h2cContainer.insertAdjacentHTML('beforeend',
-          `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'} </div>`);
-
-        await forceRender(); // Permitir que se vea el resultado
+        h2cContainer.insertAdjacentHTML('beforeend', `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'} </div>`);
+        await forceRender();
       }
 
-      // Mostrar resultados finales
       const snapAvg = snapTotal / 5;
       const h2cAvg = h2cTotal / 5;
-
-      snapContainer.insertAdjacentHTML("beforeend",
-        `<div class="result-message">⏱ Average: ${snapAvg.toFixed(1)} ms</div>`);
-      h2cContainer.insertAdjacentHTML("beforeend",
-        `<div class="result-message">⏱ Average: ${h2cAvg.toFixed(1)} ms</div>`);
-
-      // Determinar ganador
-
+      snapContainer.insertAdjacentHTML("beforeend", `<div class="result-message">⏱ Average: ${snapAvg.toFixed(1)} ms</div>`);
+      h2cContainer.insertAdjacentHTML("beforeend", `<div class="result-message">⏱ Average: ${h2cAvg.toFixed(1)} ms</div>`);
 
       const speedRatio = h2cAvg / snapAvg;
-      const winnerMessage = snapAvg < h2cAvg ?
-        `🏆 snapDOM wins! (${speedRatio.toFixed(1)}x faster)` :
-        `🏆 html2canvas wins! (${(snapAvg/h2cAvg).toFixed(1)}x faster)`;
+      const winnerMessage = snapAvg < h2cAvg
+        ? `🏆 snapDOM wins! (${speedRatio.toFixed(1)}x faster)`
+        : `🏆 html2canvas wins! (${(snapAvg/h2cAvg).toFixed(1)}x faster)`;
 
       resultText.innerHTML = `<div class="winner-message">${winnerMessage}</div>`;
 
-      // Aplicar efectos visuales
       snapContainer.classList.toggle("winner-glow", snapAvg < h2cAvg);
       h2cContainer.classList.toggle("winner-glow", h2cAvg < snapAvg);
 
-      // Restaurar botón
       benchmarkBtn.disabled = false;
       benchmarkBtn.textContent = "Run Benchmark Again";
     };
   </script>
+
   <script>
     async function updateGitHubStars() {
       try {
-        const res = await fetch(
-          'https://api.github.com/repos/zumerlab/snapdom'
-        )
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom')
         if (!res.ok) throw new Error('No stars')
         const data = await res.json()
         const stars = data.stargazers_count
@@ -1270,5 +1117,4 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
   </script>
   <script crossorigin src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js"></script>
 </body>
-
 </html>
