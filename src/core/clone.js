@@ -376,12 +376,12 @@ export async function deepClone(node, sessionCache, options) {
     return node.cloneNode(true);
   }
   if (node.getAttribute("data-capture") === "exclude") {
-    if (options.exclusionMode === "visuallyHide") {
+    if (options.excludeMode === "visuallyHide") {
       const spacer = document.createElement("div");
       const rect = node.getBoundingClientRect();
       spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
       return spacer;
-    } else if (options.exclusionMode === "remove") {
+    } else if (options.excludeMode === "remove") {
       return null;
     }
   }
@@ -389,12 +389,12 @@ export async function deepClone(node, sessionCache, options) {
     for (const selector of options.exclude) {
       try {
         if (node.matches?.(selector)) {
-          if (options.exclusionMode === "visuallyHide") {
+          if (options.excludeMode === "visuallyHide") {
             const spacer = document.createElement("div");
             const rect = node.getBoundingClientRect();
             spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
             return spacer;
-          } else if (options.exclusionMode === "remove") {
+          } else if (options.excludeMode === "remove") {
             return null;
           }
         }
@@ -406,12 +406,12 @@ export async function deepClone(node, sessionCache, options) {
   if (typeof options.filter === "function") {
     try {
       if (!options.filter(node)) {
-        if (options.exclusionMode === "visuallyHide") {
+        if (options.filterMode === "visuallyHide") {
           const spacer = document.createElement("div");
           const rect = node.getBoundingClientRect();
           spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
           return spacer;
-        } else if (options.exclusionMode === "remove") {
+        } else if (options.filterMode === "remove") {
           return null;
         }
       }

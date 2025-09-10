@@ -77,17 +77,17 @@ describe('deepClone – extra coverage', () => {
   warn.mockRestore()
 })
 
-it('exclude by selector with exclusionMode = "remove" skips element from clonning', async () => {
+it('exclude by selector with excludeMode = "remove" skips element from clonning', async () => {
   const el = document.createElement('div');
   el.classList.add('exclude-me');
-  const out = await deepClone(el, session, { exclude: ['.exclude-me'], exclusionMode: 'remove' })
+  const out = await deepClone(el, session, { exclude: ['.exclude-me'], excludeMode: 'remove' })
   expect(out).not.toBeInstanceOf(HTMLElement)
 });
 
   it('excludes by custom filter returning false; and handles filter error', async () => {
     // filter false -> spacer
     const a = document.createElement('p')
-    const out1 = await deepClone(a, session, { filter: () => false, exclusionMode: 'visuallyHide' })
+    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'visuallyHide' })
     expect(out1).toBeInstanceOf(HTMLElement)
     expect(out1.style.visibility).toBe('hidden')
 
@@ -100,10 +100,10 @@ it('exclude by selector with exclusionMode = "remove" skips element from clonnin
     warn.mockRestore()
   });
 
-  if ('custom filter with exclusionMode = "remove" skips element from clonning', async () => {
+  if ('custom filter with filterMode = "remove" skips element from clonning', async () => {
     // filter false -> null
     const a = document.createElement('p')
-    const out1 = await deepClone(a, session, { filter: () => false, exclusionMode: 'remove' })
+    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'remove' })
     expect(out1).not.toBeInstanceOf(HTMLElement)
   });
 
@@ -200,10 +200,10 @@ it('exclude by selector with exclusionMode = "remove" skips element from clonnin
     expect(txt.nodeValue).toBe('slotted!')
   })
 
-  it('deepClone handles data-capture="exclude" with exclusionMode = "remove"', async () => {
+  it('deepClone handles data-capture="exclude" with excludeMode = "remove"', async () => {
     const el = document.createElement('div');
     el.setAttribute('data-capture', 'exclude');
-    const out1 = await deepClone(el, session, { exclusionMode: 'remove' })
+    const out1 = await deepClone(el, session, { excludeMode: 'remove' })
     expect(out1).not.toBeInstanceOf(HTMLElement)
   });
 })
