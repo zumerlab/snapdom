@@ -77,11 +77,17 @@ describe('deepClone – extra coverage', () => {
   warn.mockRestore()
 })
 
+it('exclude by selector with excludeMode = "remove" skips element from clonning', async () => {
+  const el = document.createElement('div');
+  el.classList.add('exclude-me');
+  const out = await deepClone(el, session, { exclude: ['.exclude-me'], excludeMode: 'remove' })
+  expect(out).not.toBeInstanceOf(HTMLElement)
+});
 
   it('excludes by custom filter returning false; and handles filter error', async () => {
     // filter false -> spacer
     const a = document.createElement('p')
-    const out1 = await deepClone(a, session, { filter: () => false })
+    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'visuallyHide' })
     expect(out1).toBeInstanceOf(HTMLElement)
     expect(out1.style.visibility).toBe('hidden')
 
@@ -92,7 +98,14 @@ describe('deepClone – extra coverage', () => {
     expect(out2).toBeInstanceOf(HTMLElement)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
-  })
+  });
+
+  if ('custom filter with filterMode = "remove" skips element from clonning', async () => {
+    // filter false -> null
+    const a = document.createElement('p')
+    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'remove' })
+    expect(out1).not.toBeInstanceOf(HTMLElement)
+  });
 
   it('IFRAME fallback uses gradient style and element size', async () => {
     const frame = document.createElement('iframe')
@@ -186,6 +199,13 @@ describe('deepClone – extra coverage', () => {
     expect(txt.nodeType).toBe(Node.TEXT_NODE)
     expect(txt.nodeValue).toBe('slotted!')
   })
+
+  it('deepClone handles data-capture="exclude" with excludeMode = "remove"', async () => {
+    const el = document.createElement('div');
+    el.setAttribute('data-capture', 'exclude');
+    const out1 = await deepClone(el, session, { excludeMode: 'remove' })
+    expect(out1).not.toBeInstanceOf(HTMLElement)
+  });
 })
 
 
@@ -487,7 +507,7 @@ describe('deepClone – extra targets to lift coverage', () => {
     expect(out.style.width).toBe('200px')
     expect(out.style.height).toBe('150px')
 
-    // 3) El <img> interno adopta el content-box (resta bordes): 
+    // 3) El <img> interno adopta el content-box (resta bordes):
     const img = out.querySelector('img')
     expect(img).toBeTruthy()
     expect(img.style.width).toBe('200px')

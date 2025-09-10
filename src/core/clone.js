@@ -234,8 +234,8 @@ function buildSeedCustomPropsRule(hostEl, names, scopeSelector) {
 /**
  * Creates a deep clone of a DOM node, including styles, shadow DOM, and special handling for excluded/placeholder/canvas nodes.
  *
- * @param {Node} node - Node to clone 
- * @param {Object} [options={}] - Capture options including exclude and filter 
+ * @param {Node} node - Node to clone
+ * @param {Object} [options={}] - Capture options including exclude and filter
  * @param {Node} [originalRoot] - Original root element being captured
  * @returns {Node|null} Cloned node with styles and shadow DOM content, or null for empty text nodes or filtered elements
  */
@@ -381,19 +381,27 @@ export async function deepClone(node, sessionCache, options) {
     return node.cloneNode(true);
   }
   if (node.getAttribute("data-capture") === "exclude") {
-    const spacer = document.createElement("div");
-    const rect = node.getBoundingClientRect();
-    spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
-    return spacer;
+    if (options.excludeMode === "visuallyHide") {
+      const spacer = document.createElement("div");
+      const rect = node.getBoundingClientRect();
+      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
+      return spacer;
+    } else if (options.excludeMode === "remove") {
+      return null;
+    }
   }
   if (options.exclude && Array.isArray(options.exclude)) {
     for (const selector of options.exclude) {
       try {
         if (node.matches?.(selector)) {
-          const spacer = document.createElement("div");
-          const rect = node.getBoundingClientRect();
-          spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
-          return spacer;
+          if (options.excludeMode === "visuallyHide") {
+            const spacer = document.createElement("div");
+            const rect = node.getBoundingClientRect();
+            spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
+            return spacer;
+          } else if (options.excludeMode === "remove") {
+            return null;
+          }
         }
       } catch (err) {
         console.warn(`Invalid selector in exclude option: ${selector}`, err);
@@ -403,10 +411,14 @@ export async function deepClone(node, sessionCache, options) {
   if (typeof options.filter === "function") {
     try {
       if (!options.filter(node)) {
-        const spacer = document.createElement("div");
-        const rect = node.getBoundingClientRect();
-        spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
-        return spacer;
+        if (options.filterMode === "visuallyHide") {
+          const spacer = document.createElement("div");
+          const rect = node.getBoundingClientRect();
+          spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
+          return spacer;
+        } else if (options.filterMode === "remove") {
+          return null;
+        }
       }
     } catch (err) {
       console.warn("Error in filter function:", err);

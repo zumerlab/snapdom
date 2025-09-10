@@ -202,7 +202,9 @@ All capture methods accept an `options` object:
 | `useProxy`        | string   | `''`     | Proxy base for CORS fallbacks                   |
 | `type`            | string   | `svg`    | Default Blob type (`svg`\|`png`\|`jpg`\|`webp`) |
 | `exclude`         | string[] | -        | CSS selectors to exclude                        |
+| `excludeMode`     | string   | 'visuallyHide' | Controls how `exclude` works with nodes    |
 | `filter`          | function | -        | Custom predicate `(el) => boolean`              |
+| `filterMode`      | string   | 'visuallyHide' | Controls how `filter` works with nodes    |
 | `cache`           | string   | `"soft"` | Control internal caches: `disabled`, `soft`, `auto`, `full` |
 | `defaultImageUrl` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
 
@@ -304,7 +306,9 @@ await snapdom.toPng(el, {
 ### Filtering nodes: `exclude` vs `filter`
 
 * `exclude`: remove by **selector**.
+* `excludeMode`: `visuallyHide` applies `visibility:hidden` CSS rule on excluded nodes and the layout remains as the original. `remove` do not clone excluded nodes at all.
 * `filter`: advanced predicate per element (return `false` to drop).
+* `filterMode`: `visuallyHide` applies `visibility:hidden` CSS rule on filtered nodes and the layout remains as the original. `remove` do not clone filtered nodes at all.
 
 **Example: filter out elements with `display:none`:**
 ```js
@@ -345,7 +349,7 @@ await preCache({
 
 ### Cache control
 
-SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.  
+SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.
 You can control how they are cleared between captures using the `cache` option:
 
 | Mode        | Description                                                                 |
