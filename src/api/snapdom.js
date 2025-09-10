@@ -7,9 +7,12 @@ import { toCanvas } from '../exporters/toCanvas.js';
 import { toBlob } from '../exporters/toBlob.js';
 import { rasterize } from '../modules/rasterize.js';
 import { download } from '../exporters/download.js';
+import { isSafari } from '../utils/browser.js';
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal');
+
+let _safariWarmup = false;
 
 /**
  * Main function that captures a DOM element and returns export utilities.
@@ -29,6 +32,18 @@ const INTERNAL_TOKEN = Symbol('snapdom.internal');
 export async function snapdom(element, userOptions) {
   if (!element) throw new Error('Element cannot be null or undefined');
 
+  if (isSafari()) {
+    for (let i = 0; i < 3; i++) {
+      try {
+         await safariWarmup(element, userOptions)
+      console.log("Iteración número:", i);
+      _safariWarmup = false
+      } catch (error) {
+        
+      }
+     
+    }
+  }
   const context = createContext(userOptions);
   /* c8 ignore next 1 */
   if (context.iconFonts && context.iconFonts.length > 0) extendIconFonts(context.iconFonts);
@@ -146,3 +161,52 @@ snapdom.toWebp = (el, options) => snapdom(el, { ...options, format: 'webp' }).th
  */
 snapdom.download = (el, options) => snapdom(el, options).then(result => result.download());
 
+/**
+ * Force Safari to decode fonts and images by doing an offscreen pre-capture.
+ * - Creates a tiny offscreen <img> using the SVG data URL from captureDOM.
+ * - Awaits decoding and paints to a 1×1 canvas to ensure full decode/composite.
+ *
+ * @param {HTMLElement} element
+ * @param {object} baseOptions - user options
+ * @returns {Promise<void>}
+ */
+async function safariWarmup(element, baseOptions) {
+  if (_safariWarmup) return;
+  const preflight = {
+    ...baseOptions,
+    fast: true,
+    embedFonts: true,
+    scale: 0.2
+  };
+
+  let url;
+  try {
+    url = await captureDOM(element, preflight);
+  } catch {
+    // Even if captureDOM fails here, don’t block the real capture.
+    return;
+  }
+
+  await new Promise((resolve) => {
+    // Build offscreen <img> to force decoding
+    const img = new Image();
+     img.decoding = 'sync'; 
+     img.loading = 'eager';
+    img.style.cssText =
+  'position:absolute;left:0;top:0;width:4px;height:4px;overflow:hidden;' +
+  'opacity:0.01;pointer-events:none;contain:size layout style;' +
+  'transform:translateZ(0);backface-visibility:hidden;'
+  'will-change:transform,opacity;'; 
+    img.src = url;
+
+    const cleanup = async () => {
+      await new Promise(r => setTimeout(r, 80));
+      if (img && img.parentNode) img.parentNode.removeChild(img);
+      _safariWarmup = true;
+      resolve();
+    };
+
+    document.body.appendChild(img);
+   cleanup()
+  });
+}
