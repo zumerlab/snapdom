@@ -11,7 +11,7 @@ import { isSafari } from '../utils/browser';
  */
 export async function toCanvas(url, options) {
   const { scale, dpr } = options;
-  const safari = isSafari();
+  // const safari = isSafari();
 
   const img = new Image();
   img.crossOrigin = 'anonymous';
@@ -19,8 +19,8 @@ export async function toCanvas(url, options) {
   img.decoding = 'sync';
   img.src = url;
 
-  let tempSlot = null;
-  if (safari) {
+//  let tempSlot = null;
+/*   if (safari) {
     tempSlot = document.createElement('div');
     tempSlot.setAttribute('aria-hidden', 'true');
     tempSlot.style.cssText =
@@ -28,12 +28,12 @@ export async function toCanvas(url, options) {
       'opacity:0;pointer-events:none;contain:size layout style;';
     document.body.appendChild(tempSlot);
     tempSlot.appendChild(img);
-  }
+  } */
 
   await img.decode();
-  if (safari) {
+  /* if (safari) {
     await new Promise(r => setTimeout(r, 100));
-  }
+  } */
 
   const width = img.naturalWidth * scale;
   const height = img.naturalHeight * scale;
@@ -48,10 +48,10 @@ export async function toCanvas(url, options) {
   if (dpr !== 1) ctx.scale(dpr, dpr);
   ctx.drawImage(img, 0, 0, width, height);
 
-  if (tempSlot && tempSlot.parentNode) {
-    /* v8 ignore next */
+  /* if (tempSlot && tempSlot.parentNode) {
     try { tempSlot.parentNode.removeChild(tempSlot); } catch { }
-  }
+  } 
+  */
 
   return canvas;
 }

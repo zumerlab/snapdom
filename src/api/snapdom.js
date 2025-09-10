@@ -192,15 +192,18 @@ async function safariWarmup(element, baseOptions) {
     const img = new Image();
      img.decoding = 'sync'; 
      img.loading = 'eager';
-    img.style.cssText =
-  'position:absolute;left:0;top:0;width:4px;height:4px;overflow:hidden;' +
-  'opacity:0.01;pointer-events:none;contain:size layout style;' +
-  'transform:translateZ(0);backface-visibility:hidden;'
-  'will-change:transform,opacity;'; 
+    img.style.position ='fixed';
+    img.style.left = 0;
+    img.style.top = 0;
+    img.style.width = '10px';
+    img.style.height = '10px';
+    img.style.opacity = '0.01';
+    img.style.transform = 'translateZ(10px)';
+   img.style.willChange = 'transform,opacity;'; 
     img.src = url;
 
     const cleanup = async () => {
-      await new Promise(r => setTimeout(r, 80));
+      await new Promise(r => setTimeout(r, 100));
       if (img && img.parentNode) img.parentNode.removeChild(img);
       _safariWarmup = true;
       resolve();
