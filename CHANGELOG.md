@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.12-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.11...v1.9.12-dev.0)
+
+> 11 September 2025
+
+- Try fix fallback images [`67bedd3`](https://github.com/zumerlab/snapdom/commit/67bedd3c7cb6bda3e2291fe494805a58263e6dce)
+- Two separate mode: filterMode and excludeMode [`394e7f4`](https://github.com/zumerlab/snapdom/commit/394e7f4ca2171fb1028eb382b2331d4718f6a350)
+- Workaround Safari See #231 [`593ad59`](https://github.com/zumerlab/snapdom/commit/593ad59383d0b3adbcb139f6892ae321a08c60d5)
+- Try new approach for solve Safari fonts/images decoding [`5b77738`](https://github.com/zumerlab/snapdom/commit/5b7773847f02809826a9ed459321100cfbd50518)
+
+
 #### [v1.9.11](https://github.com/zumerlab/snapdom/compare/v1.9.10...v1.9.11)
 
 > 9 September 2025
