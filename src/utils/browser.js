@@ -14,5 +14,8 @@ export function idle(fn, { fast = false } = {}) {
 }
 
 export function isSafari() {
-  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+  const isSafariUA = /^((?!chrome|android).)*safari/i.test(ua); // original
+  const isWeChatUA = /(MicroMessenger|wxwork|WeCom|WindowsWechat|MacWechat)/i.test(ua); // agregado
+  return isSafariUA || isWeChatUA;
 }
