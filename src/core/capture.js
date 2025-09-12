@@ -248,26 +248,51 @@ function bboxFromMatrix(w, h, M2D) {
   return { minX, minY, width: maxX - minX, height: maxY - minY };
 }
 
+/**
+ * Safely reads individual transform properties from CSS Typed OM when available,
+ * falling back to getComputedStyle if not supported.
+ * Prevents TypeError: "Invalid propertyName: rotate" on browsers without individual transforms.
+ *
+ * @param {Element} el
+ * @returns {{ rotate: string, scale: string|null, translate: string|null }}
+ */
 function readIndividualTransforms(el) {
   const out = { rotate: "0deg", scale: null, translate: null };
-  const map = el.computedStyleMap?.();
+
+  // Prefer CSS Typed OM if available, but guard against unsupported properties.
+  const map = typeof el.computedStyleMap === "function" ? el.computedStyleMap() : null;
   if (map) {
-    const rot = map.get("rotate");
+    /** @param {"rotate"|"scale"|"translate"} prop */
+    const safeGet = (prop) => {
+      try {
+        // If has() exists and says "no", avoid get()
+        if (typeof map.has === "function" && !map.has(prop)) return null;
+        if (typeof map.get !== "function") return null;
+        return map.get(prop);
+      } catch {
+        return null;
+      }
+    };
+
+    const rot = safeGet("rotate");
     if (rot) {
+      // rot could be a CSSRotate or a plain object depending on impl
       const ang = rot.angle ?? rot;
-      if (ang && "unit" in ang) {
-        out.rotate = ang.unit === "rad" ? (ang.value * 180 / Math.PI) + "deg" : ang.value + ang.unit;
+      if (ang && typeof ang === "object" && "unit" in ang) {
+        out.rotate = ang.unit === "rad" ? (ang.value * 180 / Math.PI) + "deg" : (ang.value + ang.unit);
       } else {
         out.rotate = String(rot);
       }
     }
-    const sc = map.get("scale");
+
+    const sc = safeGet("scale");
     if (sc && sc.length) {
       const sx = sc[0]?.value ?? 1;
       const sy = sc[1]?.value ?? sx;
       out.scale = `${sx} ${sy}`;
     }
-    const tr = map.get("translate");
+
+    const tr = safeGet("translate");
     if (tr && tr.length) {
       const tx = tr[0]?.value ?? 0;
       const ty = tr[1]?.value ?? 0;
@@ -275,15 +300,19 @@ function readIndividualTransforms(el) {
       const uy = tr[1]?.unit ?? "px";
       out.translate = `${tx}${ux} ${ty}${uy}`;
     }
+
     return out;
   }
-  /* v8 ignore next */
+
+  // Fallback: try computed style individual props; if absent, defaults remain
   const cs = getComputedStyle(el);
   out.rotate = cs.rotate && cs.rotate !== "none" ? cs.rotate : "0deg";
   out.scale = cs.scale && cs.scale !== "none" ? cs.scale : null;
   out.translate = cs.translate && cs.translate !== "none" ? cs.translate : null;
+
   return out;
 }
+
 
 /**
  * Returns true if element has a transform that changes its bounding box
