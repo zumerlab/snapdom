@@ -37,6 +37,7 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 * 🖼️ Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
 * ⚡ Ultra fast, no dependencies
 * 📦 100% based on standard Web APIs
+* Support same-origin `ìframe`
 
 ## Demo
 
