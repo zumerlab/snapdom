@@ -29,7 +29,7 @@ function setupInvalidationOnce(root = document.documentElement) {
   } catch { }
 }
 
-function snapshotComputedStyleFull(style) {
+function snapshotComputedStyleFull(style, options = {}) {
   const out = {};
   const vis = style.getPropertyValue('visibility');
   for (let i = 0; i < style.length; i++) {
@@ -39,6 +39,23 @@ function snapshotComputedStyleFull(style) {
       val = 'none';
     }
     out[prop] = val;
+  }
+  if (options.embedFonts) {
+    const EXTRA_FONT_PROPS = [
+      "font-feature-settings",
+      "font-variation-settings",
+      "font-kerning",
+      "font-variant",
+      "font-variant-ligatures",
+      "font-optical-sizing",
+    ];
+    for (const prop of EXTRA_FONT_PROPS) {
+      if (out[prop]) continue;
+      try {
+        const v = style.getPropertyValue(prop);
+        if (v) out[prop] = v;
+      } catch { }
+    }
   }
   if (vis === 'hidden') out.opacity = '0';
   return out;
@@ -52,11 +69,11 @@ function styleSignature(snap) {
   __snapshotSig.set(snap, sig);
   return sig;
 }
-function getSnapshot(el, preStyle = null) {
+function getSnapshot(el, preStyle = null, options = {}) {
   const rec = snapshotCache.get(el);
   if (rec && rec.epoch === __epoch) return rec.snapshot;
   const style = preStyle || getComputedStyle(el);
-  const snap = snapshotComputedStyleFull(style);
+  const snap = snapshotComputedStyleFull(style, options);
   snapshotCache.set(el, { epoch: __epoch, snapshot: snap });
   return snap;
 }
@@ -103,8 +120,8 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (resetMode !== 'disabled') setupInvalidationOnce(document.documentElement);
 
   if (resetMode === 'disabled' && !ctx.session.__bumpedForDisabled) {
-    bumpEpoch();             
-    snapshotKeyCache.clear(); 
+    bumpEpoch();
+    snapshotKeyCache.clear();
     ctx.session.__bumpedForDisabled = true;
   }
 
@@ -120,7 +137,7 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   }
   const pre = session.styleCache.get(source);
 
-  const snap = getSnapshot(source, pre);
+  const snap = getSnapshot(source, pre, ctx.options);
 
   const sig = styleSignature(snap);
   let key = persist.snapshotKeyCache.get(sig);
