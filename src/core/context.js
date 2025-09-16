@@ -31,7 +31,7 @@ export function normalizeCachePolicy(v) {
  * @param {string|string[]} [options.iconFonts]
  * @param {string[]} [options.localFonts]
  * @param {string[]|undefined} [options.excludeFonts]
- * @param {string|function} [options.defaultImageUrl]
+ * @param {string|function} [options.fallbackURL]
  * @param {string}  [options.useProxy]
  * @param {number|null} [options.width]
  * @param {number|null} [options.height]
@@ -57,9 +57,9 @@ export function createContext(options = {}) {
 
     // DOM filters
     exclude: options.exclude ?? [],
-    excludeMode: options.excludeMode ?? 'visuallyHide',
+    excludeMode: options.excludeMode ?? 'hide',
     filter: options.filter ?? null,
-    filterMode: options.filterMode ?? 'visuallyHide',
+    filterMode: options.filterMode ?? 'hide',
 
     placeholders: options.placeholders !== false, // default true
 
@@ -69,7 +69,7 @@ export function createContext(options = {}) {
       : (options.iconFonts ? [options.iconFonts] : []),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
-    defaultImageUrl: options.defaultImageUrl ?? undefined,
+    fallbackURL: options.fallbackURL ?? undefined,
 
     /** Cache policy (disabled|full|auto|soft). Default: "soft" */
     /** @type {CachePolicy} */

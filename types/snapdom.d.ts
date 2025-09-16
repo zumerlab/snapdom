@@ -13,8 +13,8 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
-export type ExcludeMode = 'visuallyHide' | 'remove';
-export type FilterMode = 'visuallyHide' | 'remove';
+export type ExcludeMode = 'hide' | 'remove';
+export type FilterMode = 'hide' | 'remove';
 
 export interface LocalFontDescriptor {
   /** CSS font-family name (e.g. "Inter"). */
@@ -92,7 +92,7 @@ export interface CaptureOptions {
 
   /**
    * Mode applied to excluded nodes of the cloned tree.
-   * Default: "visuallyHide"
+   * Default: "hide"
    */
   excludeMode?: ExcludeMode;
 
@@ -104,7 +104,7 @@ export interface CaptureOptions {
 
   /**
    * Mode applied to filtered nodes of the cloned tree.
-   * Default: "visuallyHide"
+   * Default: "hide"
    */
   filterMode?: FilterMode;
 
@@ -141,7 +141,7 @@ export interface CaptureOptions {
    * - String: use as-is.
    * - Callback: receives measured width/height and original src, returns a URL string.
    */
-  defaultImageUrl?:
+  fallbackURL?:
     | string
     | ((
         args: {

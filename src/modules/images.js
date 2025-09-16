@@ -40,9 +40,9 @@ export async function inlineImages(clone, options = {}) {
       if (!img.height) img.height = img.naturalHeight || 100;
       return;
     }
-    // Try defaultImageUrl (string or callback)
-    const { defaultImageUrl } = options || {};
-    if (defaultImageUrl) {
+    // Try fallbackURL (string or callback)
+    const { fallbackURL } = options || {};
+    if (fallbackURL) {
       try {
         const dsW = parseInt(img.dataset?.snapdomWidth || '', 10) || 0;
         const dsH = parseInt(img.dataset?.snapdomHeight || '', 10) || 0;
@@ -53,9 +53,9 @@ export async function inlineImages(clone, options = {}) {
         const width = dsW || styleW || attrW || img.width || undefined;
         const height = dsH || styleH || attrH || img.height || undefined;
 
-        const fallbackUrl = typeof defaultImageUrl === 'function'
-          ? await defaultImageUrl({ width, height, src, element: img })
-          : defaultImageUrl;
+        const fallbackUrl = typeof fallbackURL === 'function'
+          ? await fallbackURL({ width, height, src, element: img })
+          : fallbackURL;
 
         if (fallbackUrl) {
           const fallbackData = await snapFetch(fallbackUrl, { as: 'dataURL', useProxy: options.useProxy });

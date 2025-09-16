@@ -87,7 +87,7 @@ it('exclude by selector with excludeMode = "remove" skips element from clonning'
   it('excludes by custom filter returning false; and handles filter error', async () => {
     // filter false -> spacer
     const a = document.createElement('p')
-    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'visuallyHide' })
+    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'hide' })
     expect(out1).toBeInstanceOf(HTMLElement)
     expect(out1.style.visibility).toBe('hidden')
 

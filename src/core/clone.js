@@ -381,7 +381,7 @@ export async function deepClone(node, sessionCache, options) {
     return node.cloneNode(true);
   }
   if (node.getAttribute("data-capture") === "exclude") {
-    if (options.excludeMode === "visuallyHide") {
+    if (options.excludeMode === "hide") {
       const spacer = document.createElement("div");
       const rect = node.getBoundingClientRect();
       spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
@@ -394,7 +394,7 @@ export async function deepClone(node, sessionCache, options) {
     for (const selector of options.exclude) {
       try {
         if (node.matches?.(selector)) {
-          if (options.excludeMode === "visuallyHide") {
+          if (options.excludeMode === "hide") {
             const spacer = document.createElement("div");
             const rect = node.getBoundingClientRect();
             spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;
@@ -411,7 +411,7 @@ export async function deepClone(node, sessionCache, options) {
   if (typeof options.filter === "function") {
     try {
       if (!options.filter(node)) {
-        if (options.filterMode === "visuallyHide") {
+        if (options.filterMode === "hide") {
           const spacer = document.createElement("div");
           const rect = node.getBoundingClientRect();
           spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`;

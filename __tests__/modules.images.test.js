@@ -136,7 +136,7 @@ describe('inlineImages – extra coverage', () => {
     expect(img.height).toBe(45)
   })
 
-  it('cuando primer fetch falla usa defaultImageUrl STRING como fallback y conserva tamaño estimado', async () => {
+  it('cuando primer fetch falla usa fallbackURL STRING como fallback y conserva tamaño estimado', async () => {
     const img = document.createElement('img')
     img.src = 'https://ex.com/fails.png'
     // datos de tamaño en dataset/attrs/estilo → se usan por prioridad
@@ -149,14 +149,14 @@ describe('inlineImages – extra coverage', () => {
       .mockResolvedValueOnce({ ok: false, data: null }) // original
       .mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,FALLBACK' }) // fallback
 
-    await inlineImages(wrap, { defaultImageUrl: 'https://ex.com/fallback.png' })
+    await inlineImages(wrap, { fallbackURL: 'https://ex.com/fallback.png' })
 
     expect(img.src).toBe('data:image/png;base64,FALLBACK')
     expect(img.width).toBe(200)
     expect(img.height).toBe(100)
   })
 
-  it('defaultImageUrl CALLBACK async recibe dimensiones inferidas y se aplica', async () => {
+  it('fallbackURL CALLBACK async recibe dimensiones inferidas y se aplica', async () => {
     const img = document.createElement('img')
     img.src = 'https://ex.com/fails2.png'
     // esta vez sin dataset/attr; que tome style → 150x60
@@ -175,7 +175,7 @@ describe('inlineImages – extra coverage', () => {
       return 'https://ex.com/fb.png'
     })
 
-    await inlineImages(wrap, { defaultImageUrl: cb })
+    await inlineImages(wrap, { fallbackURL: cb })
 
     expect(cb).toHaveBeenCalled()
     expect(img.src).toBe('data:image/png;base64,CB')
@@ -188,7 +188,7 @@ describe('inlineImages – extra coverage', () => {
     img.src = 'https://ex.com/down.png'
     wrap.appendChild(img)
 
-    // falla → sin defaultImageUrl → spacer
+    // falla → sin fallbackURL → spacer
     vi.mocked(snapFetch).mockResolvedValueOnce({ ok: false, data: null })
     await inlineImages(wrap, { placeholders: false })
 
@@ -215,7 +215,7 @@ describe('inlineImages – extra coverage', () => {
     expect(divs.length).toBe(5)
   })
 
-  it('si defaultImageUrl arroja error, cae en placeholder por defecto', async () => {
+  it('si fallbackURL arroja error, cae en placeholder por defecto', async () => {
     const img = document.createElement('img')
     img.src = 'https://ex.com/bad.png'
     wrap.appendChild(img)
@@ -224,7 +224,7 @@ describe('inlineImages – extra coverage', () => {
     vi.mocked(snapFetch).mockResolvedValueOnce({ ok: false, data: null })
 
     const badCb = vi.fn(async () => { throw new Error('boom') })
-    await inlineImages(wrap, { defaultImageUrl: badCb })
+    await inlineImages(wrap, { fallbackURL: badCb })
 
     const div = wrap.querySelector('div')
     expect(div).toBeTruthy()

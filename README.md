@@ -203,11 +203,12 @@ All capture methods accept an `options` object:
 | `useProxy`        | string   | `''`     | Proxy base for CORS fallbacks                   |
 | `type`            | string   | `svg`    | Default Blob type (`svg`\|`png`\|`jpg`\|`webp`) |
 | `exclude`         | string[] | -        | CSS selectors to exclude                        |
-| `excludeMode`     | string   | 'visuallyHide' | Controls how `exclude` works with nodes    |
+| `excludeMode`     | string   | 'hide' | Controls how `exclude` works with nodes    |
 | `filter`          | function | -        | Custom predicate `(el) => boolean`              |
-| `filterMode`      | string   | 'visuallyHide' | Controls how `filter` works with nodes    |
+| `filterMode`      | string   | 'hide' | Controls how `filter` works with nodes    |
 | `cache`           | string   | `"soft"` | Control internal caches: `disabled`, `soft`, `auto`, `full` |
-| `defaultImageUrl` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
+| `placeholders`           | boolean   | `true`  | Show placeholders for images and cross-origin iframes |
+| `fallbackURL` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
 
 ### Fallback image on `<img>` load failure
 
@@ -216,20 +217,20 @@ Provide a default image for failed `<img>` loads. You can pass a fixed URL or a 
 ```js
 // 1) Fixed URL fallback
 await snapdom.toImg(element, {
-  defaultImageUrl: '/images/fallback.png'
+  fallbackURL: '/images/fallback.png'
 });
 
 // 2) Dynamic placeholder via callback
 await snapdom.toImg(element, {
-  defaultImageUrl: ({ width = 300, height = 150 }) =>
+  fallbackURL: ({ width = 300, height = 150 }) =>
     `https://placehold.co/${Math.round(width)}x${Math.round(height)}`
 });
 
 // 3) With proxy (if your fallback host has no CORS)
 await snapdom.toImg(element, {
-  defaultImageUrl: ({ width = 300, height = 150 }) =>
+  fallbackURL: ({ width = 300, height = 150 }) =>
     `https://dummyimage.com/${Math.round(width)}x${Math.round(height)}/cccccc/666.png&text=img`,
-  useProxy: 'https://corsproxy.io/?url='
+  useProxy: 'https://proxy.corsfix.com/?'
 });
 ```
 
@@ -250,13 +251,11 @@ By default snapDOM tries `crossOrigin="anonymous"` (or `use-credentials` for sam
 
 ```js
 await snapdom.toPng(el, {
-  useProxy: 'your-proxy' // Example 'https://api.allorigins.win/raw?url='
+  useProxy: 'https://proxy.corsfix.com/?' // Note: Any cors proxy could be used 'https://proxy.corsfix.com/?'
 });
 ```
 
-**Tips**
 
-* Keep the proxy **fast** and **cache-friendly** (adds big wins on repeated captures).
 * The proxy is only used as a **fallback**; same-origin and CORS-enabled assets skip it.
 
 ### Fonts
@@ -307,9 +306,9 @@ await snapdom.toPng(el, {
 ### Filtering nodes: `exclude` vs `filter`
 
 * `exclude`: remove by **selector**.
-* `excludeMode`: `visuallyHide` applies `visibility:hidden` CSS rule on excluded nodes and the layout remains as the original. `remove` do not clone excluded nodes at all.
+* `excludeMode`: `hide` applies `visibility:hidden` CSS rule on excluded nodes and the layout remains as the original. `remove` do not clone excluded nodes at all.
 * `filter`: advanced predicate per element (return `false` to drop).
-* `filterMode`: `visuallyHide` applies `visibility:hidden` CSS rule on filtered nodes and the layout remains as the original. `remove` do not clone filtered nodes at all.
+* `filterMode`: `hide` applies `visibility:hidden` CSS rule on filtered nodes and the layout remains as the original. `remove` do not clone filtered nodes at all.
 
 **Example: filter out elements with `display:none`:**
 ```js
@@ -344,7 +343,7 @@ await preCache({
   root: document.body,
   embedFonts: true,
   localFonts: [{ family: 'Inter', src: '/fonts/Inter.woff2', weight: 400 }],
-  useProxy: 'your-proxy'
+  useProxy: 'https://proxy.corsfix.com/?'
 });
 ```
 
