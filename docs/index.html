@@ -6,7 +6,7 @@
     snapDOM – HTML to Image capture with superior accuracy and speed
   </title>
   <meta name="description"
-content="Snapdom is a powerful alternative to html2canvas and similar tools, offering extreme precision when capturing DOM elements, including pseudo-elements, web fonts, and shadow DOM." />
+    content="Snapdom is a powerful alternative to html2canvas and similar tools, offering extreme precision when capturing DOM elements, including pseudo-elements, web fonts, and shadow DOM." />
   <meta name="keywords"
     content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity" />
 
@@ -77,7 +77,10 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       margin: 0 0.5em 1.5em 0;
     }
 
-    button#capture:hover { background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%); transform: scale(1.04); }
+    button#capture:hover {
+      background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%);
+      transform: scale(1.04);
+    }
 
     /* === Header + menú hamburger === */
     .site-header {
@@ -88,130 +91,353 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       z-index: 30;
       backdrop-filter: saturate(1.1) blur(6px);
     }
-    .nav-bar { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: .75rem; }
+
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      margin-bottom: .75rem;
+    }
+
     .nav-toggle {
-      display: none; border: 0; background: #1a2233; color: #fff; border-radius: 10px;
-      padding: .5rem .75rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px #1a223322;
+      display: none;
+      border: 0;
+      background: #1a2233;
+      color: #fff;
+      border-radius: 10px;
+      padding: .5rem .75rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #1a223322;
     }
-    .nav-toggle:focus-visible { outline: 3px solid #4facfe; outline-offset: 2px; }
+
+    .nav-toggle:focus-visible {
+      outline: 3px solid #4facfe;
+      outline-offset: 2px;
+    }
+
     .nav-icon {
-      display: inline-block; width: 1.15rem; height: 2px; margin-right: .35rem; position: relative;
-      color: currentColor; background: currentColor; border-radius: 2px;
+      display: inline-block;
+      width: 1.15rem;
+      height: 2px;
+      margin-right: .35rem;
+      position: relative;
+      color: currentColor;
+      background: currentColor;
+      border-radius: 2px;
     }
-    .nav-icon::before, .nav-icon::after {
-      content: ""; position: absolute; left: 0; right: 0; height: 2px; background: currentColor; border-radius: 2px;
+
+    .nav-icon::before,
+    .nav-icon::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: currentColor;
+      border-radius: 2px;
     }
-    .nav-icon::before { top: -6px; } .nav-icon::after { top: 6px; }
-    .nav-collapsible { overflow: hidden; max-height: 0; transition: max-height .24s ease; border-radius: 12px; }
-    .nav-collapsible.open { max-height: 60vh; }
+
+    .nav-icon::before {
+      top: -6px;
+    }
+
+    .nav-icon::after {
+      top: 6px;
+    }
+
+    .nav-collapsible {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .24s ease;
+      border-radius: 12px;
+    }
+
+    .nav-collapsible.open {
+      max-height: 60vh;
+    }
 
     nav.demo-menu {
-      margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 1em; justify-content: center;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      justify-content: center;
     }
+
     nav.demo-menu a {
-      color: #1a2233; text-decoration: none; font-weight: bold; border-bottom: 2px solid transparent;
-      transition: border 0.3s; font-size: 1.1em;
+      color: #1a2233;
+      text-decoration: none;
+      font-weight: bold;
+      border-bottom: 2px solid transparent;
+      transition: border 0.3s;
+      font-size: 1.1em;
     }
-    nav.demo-menu a:hover { border-bottom: 2px solid #4facfe; }
+
+    nav.demo-menu a:hover {
+      border-bottom: 2px solid #4facfe;
+    }
 
     section a {
-      color: #576c99; text-decoration: none; font-weight: bold; border-bottom: 2px solid transparent;
-      transition: border 0.3s; font-size: 1.1em;
+      color: #576c99;
+      text-decoration: none;
+      font-weight: bold;
+      border-bottom: 2px solid transparent;
+      transition: border 0.3s;
+      font-size: 1.1em;
     }
-    section a:hover { border-bottom: 2px solid #4facfe; }
 
-    main { width: 100%; max-width: 700px; }
+    section a:hover {
+      border-bottom: 2px solid #4facfe;
+    }
+
+    main {
+      width: 100%;
+      max-width: 700px;
+    }
+
     section {
-      margin-bottom: 3rem; padding: 1.5rem; border-radius: 12px;
-      background: rgb(39 71 208 / 11%); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      margin-bottom: 3rem;
+      padding: 1.5rem;
+      border-radius: 12px;
+      background: rgb(39 71 208 / 11%);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     }
-/* Asegurar visibilidad y scroll del menú en mobile */
-.site-header { z-index: 999; } /* encima del contenido */
 
-.nav-collapsible {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height .24s ease;
-  border-radius: 12px;
-}
+    /* Asegurar visibilidad y scroll del menú en mobile */
+    .site-header {
+      z-index: 999;
+    }
 
-.nav-collapsible.open {
-  /* más alto y con scroll táctil */
-  max-height: 80vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-block: .5rem; /* que no corte el primer/último link */
-  background: rgba(255,255,255,.78);
-  box-shadow: 0 10px 24px rgba(0,0,0,.12);
-}
+    /* encima del contenido */
 
-/* Opcional: mejora de scrollbar (no afecta performance) */
-.nav-collapsible.open::-webkit-scrollbar { width: 10px; }
-.nav-collapsible.open::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,.15); border-radius: 999px;
-}
-.nav-collapsible.open { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.15) transparent; }
+    .nav-collapsible {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .24s ease;
+      border-radius: 12px;
+    }
 
-/* Mobile grid del menú (ya lo tenías, lo dejo aquí por claridad) */
-@media (max-width: 600px) {
-  nav.demo-menu {
-    display: grid;
-    gap: .65rem;
-    padding: .75rem 1rem;
-    background: transparent; /* el fondo ya lo da el contenedor */
-  }
-  nav.demo-menu a {
-    display: block;
-    text-align: center;
-    padding: .35rem .5rem;
-  }
-}
+    .nav-collapsible.open {
+      /* más alto y con scroll táctil */
+      max-height: 80vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-block: .5rem;
+      /* que no corte el primer/último link */
+      background: rgba(255, 255, 255, .78);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
+    }
+
+    /* Opcional: mejora de scrollbar (no afecta performance) */
+    .nav-collapsible.open::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .nav-collapsible.open::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, .15);
+      border-radius: 999px;
+    }
+
+    .nav-collapsible.open {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 0, 0, .15) transparent;
+    }
+
+    /* Mobile grid del menú (ya lo tenías, lo dejo aquí por claridad) */
+    @media (max-width: 600px) {
+      nav.demo-menu {
+        display: grid;
+        gap: .65rem;
+        padding: .75rem 1rem;
+        background: transparent;
+        /* el fondo ya lo da el contenedor */
+      }
+
+      nav.demo-menu a {
+        display: block;
+        text-align: center;
+        padding: .35rem .5rem;
+      }
+    }
 
     .card {
       background: linear-gradient(145deg, #ffffff, #e3f0ff);
-      padding: 1.5em; border-left: 5px solid #ff7043; border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); margin-bottom: 2em;
+      padding: 1.5em;
+      border-left: 5px solid #ff7043;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2em;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .card.black { background: black; padding: 1.5em; border-left: 5px solid #ff7043; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); margin-bottom: 2em; transition: transform .2s, box-shadow .2s; }
-    .card:hover { transform: scale(1.02); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13); }
 
-    .transition-box { background: linear-gradient(to right, #43cea2, #185a9d); color: rgb(30,27,27); text-align: center; font-size: 1.2em; padding: 2em; border-radius: 16px; animation: bounceColor 5s infinite ease-in-out; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+    .card.black {
+      background: black;
+      padding: 1.5em;
+      border-left: 5px solid #ff7043;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2em;
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
+    }
+
+    .transition-box {
+      background: linear-gradient(to right, #43cea2, #185a9d);
+      color: rgb(30, 27, 27);
+      text-align: center;
+      font-size: 1.2em;
+      padding: 2em;
+      border-radius: 16px;
+      animation: bounceColor 5s infinite ease-in-out;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
 
     @keyframes bounceColor {
-      0% { transform: rotate(0deg) scale(1) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
-      20% { transform: rotate(-1deg) scale(1.08) translateY(4px); background: radial-gradient(circle at 40% 60%, #fa709a, #fee140); filter: brightness(1.12) hue-rotate(20deg); }
-      50% { transform: rotate(2deg) scale(0.9) translateY(-6px); background: radial-gradient(circle at 70% 30%, #30cfd0, #330867); filter: brightness(1.1) hue-rotate(-20deg); }
-      70% { transform: rotate(-3deg) scale(1) translateY(6px); background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751); filter: brightness(1.15) saturate(1.2); }
-      100% { transform: rotate(0deg) scale(0.95) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
+      0% {
+        transform: rotate(0deg) scale(1) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+        filter: brightness(1);
+      }
+
+      20% {
+        transform: rotate(-1deg) scale(1.08) translateY(4px);
+        background: radial-gradient(circle at 40% 60%, #fa709a, #fee140);
+        filter: brightness(1.12) hue-rotate(20deg);
+      }
+
+      50% {
+        transform: rotate(2deg) scale(0.9) translateY(-6px);
+        background: radial-gradient(circle at 70% 30%, #30cfd0, #330867);
+        filter: brightness(1.1) hue-rotate(-20deg);
+      }
+
+      70% {
+        transform: rotate(-3deg) scale(1) translateY(6px);
+        background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751);
+        filter: brightness(1.15) saturate(1.2);
+      }
+
+      100% {
+        transform: rotate(0deg) scale(0.95) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+        filter: brightness(1);
+      }
     }
 
-    .export-text { font-size: 1.1rem; color: #2d3a4b; text-align: center; }
-    .export-format { font-weight: bold; padding: 0.2rem 0.4rem; border-radius: 8px; background: rgba(255, 255, 255, 0.7); margin: 0 0.2rem; }
+    .export-text {
+      font-size: 1.1rem;
+      color: #2d3a4b;
+      text-align: center;
+    }
 
-    .pseudo-box::before { content: '★ '; color: gold; font-size: 1.2em; }
-    .pseudo-box::after { content: ' ✨'; color: violet; font-size: 1.2em; }
+    .export-format {
+      font-weight: bold;
+      padding: 0.2rem 0.4rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      margin: 0 0.2rem;
+    }
 
-    .clip-card { clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%); background: linear-gradient(120deg, #b6eaff 0%, #6dd5ed 100%); color: #1a2233; font-weight: bold; text-align: center; }
+    .pseudo-box::before {
+      content: '★ ';
+      color: gold;
+      font-size: 1.2em;
+    }
 
-    .blend-card { background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover; background-blend-mode: multiply; background-color: red; color: white; padding: 3em; font-weight: bold; border-radius: 16px; text-align: center; }
+    .pseudo-box::after {
+      content: ' ✨';
+      color: violet;
+      font-size: 1.2em;
+    }
 
-    .dancers { display: inline-block; font-size: 2.2rem; animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55); will-change: transform, filter; }
+    .clip-card {
+      clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
+      background: linear-gradient(120deg, #b6eaff 0%, #6dd5ed 100%);
+      color: #1a2233;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .blend-card {
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover;
+      background-blend-mode: multiply;
+      background-color: red;
+      color: white;
+      padding: 3em;
+      font-weight: bold;
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .dancers {
+      display: inline-block;
+      font-size: 2.2rem;
+      animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      will-change: transform, filter;
+    }
 
     @keyframes dance-move {
-      0% { transform: rotate(-10deg) scale(1) translateY(0); filter: brightness(1) drop-shadow(0 0 0 #fff0); }
-      10% { transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg); filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988); }
-      20% { transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg); filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66); }
-      30% { transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg); filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66); }
-      40% { transform: rotate(-8deg) scale(1.02, 1.02) translateY(2px) skewY(6deg); filter: brightness(1.08) drop-shadow(0 2px 4px #38f9d766); }
-      50% { transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg); filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066); }
-      60% { transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px) skewY(10deg); filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066); }
-      70% { transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg); filter: brightness(1.12) drop-shadow(0 2px 4px #33086766); }
-      80% { transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg); filter: brightness(1.05) drop-shadow(0 0 0 #fff0); }
-      100% { transform: rotate(-10deg) scale(1) translateY(0); filter: brightness(1) drop-shadow(0 0 0 #fff0); }
+      0% {
+        transform: rotate(-10deg) scale(1) translateY(0);
+        filter: brightness(1) drop-shadow(0 0 0 #fff0);
+      }
+
+      10% {
+        transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg);
+        filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988);
+      }
+
+      20% {
+        transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg);
+        filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66);
+      }
+
+      30% {
+        transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg);
+        filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66);
+      }
+
+      40% {
+        transform: rotate(-8deg) scale(1.02, 1.02) translateY(2px) skewY(6deg);
+        filter: brightness(1.08) drop-shadow(0 2px 4px #38f9d766);
+      }
+
+      50% {
+        transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg);
+        filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066);
+      }
+
+      60% {
+        transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px) skewY(10deg);
+        filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066);
+      }
+
+      70% {
+        transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg);
+        filter: brightness(1.12) drop-shadow(0 2px 4px #33086766);
+      }
+
+      80% {
+        transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg);
+        filter: brightness(1.05) drop-shadow(0 0 0 #fff0);
+      }
+
+      100% {
+        transform: rotate(-10deg) scale(1) translateY(0);
+        filter: brightness(1) drop-shadow(0 0 0 #fff0);
+      }
     }
 
-    .output { margin-top: 1.3rem; }
+    .output {
+      margin-top: 1.3rem;
+    }
 
     #orbit-box {
       font-family: sans-serif;
@@ -220,190 +446,553 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       color: rgba(255, 255, 255, 0.451);
     }
 
-    .dashed { border-style: dashed; }
-    .bold { border-width: 2.5px; }
-    .text { width: 400px; font-size: 5px; flex-direction: column; text-align: center; }
-    .text1 { width: 100px; font-size: 5px; flex-direction: column; text-align: center; color: black; }
-    .plantet { background-color: rgba(255, 255, 255, 0.579); }
-    .orbit,[class*='orbit-'] { border: 0.1px solid rgba(255, 255, 255, 0.422) !important; }
-    .invisible { border: none !important; }
-    .vector { background-color: rgba(255, 255, 255, 0.259); height: 0.1px; }
-    .visible { background-color: white; border: none; }
+    .dashed {
+      border-style: dashed;
+    }
 
-    .rotate-orbit { animation-name: rotation; animation-iteration-count: 10; animation-timing-function: linear; }
-    .rotate-time-1 { animation-duration: 40s; }
-    .rotate-time-2 { animation-duration: 30s; }
-    .rotate-time-3 { animation-duration: 20s; }
-    .rotate-time-4 { animation-duration: 10s; }
-    .rotate-time-5 { animation-duration: 5s; }
-    .invert { animation-direction: reverse; }
+    .bold {
+      border-width: 2.5px;
+    }
 
-    @keyframes rotation { 0% { rotate: 360deg; } 100% { rotate: 0deg; } }
+    .text {
+      width: 400px;
+      font-size: 5px;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .text1 {
+      width: 100px;
+      font-size: 5px;
+      flex-direction: column;
+      text-align: center;
+      color: black;
+    }
+
+    .plantet {
+      background-color: rgba(255, 255, 255, 0.579);
+    }
+
+    .orbit,
+    [class*='orbit-'] {
+      border: 0.1px solid rgba(255, 255, 255, 0.422) !important;
+    }
+
+    .invisible {
+      border: none !important;
+    }
+
+    .vector {
+      background-color: rgba(255, 255, 255, 0.259);
+      height: 0.1px;
+    }
+
+    .visible {
+      background-color: white;
+      border: none;
+    }
+
+    .rotate-orbit {
+      animation-name: rotation;
+      animation-iteration-count: 10;
+      animation-timing-function: linear;
+    }
+
+    .rotate-time-1 {
+      animation-duration: 40s;
+    }
+
+    .rotate-time-2 {
+      animation-duration: 30s;
+    }
+
+    .rotate-time-3 {
+      animation-duration: 20s;
+    }
+
+    .rotate-time-4 {
+      animation-duration: 10s;
+    }
+
+    .rotate-time-5 {
+      animation-duration: 5s;
+    }
+
+    .invert {
+      animation-direction: reverse;
+    }
+
+    @keyframes rotation {
+      0% {
+        rotate: 360deg;
+      }
+
+      100% {
+        rotate: 0deg;
+      }
+    }
 
     /* === Mask demos === */
-    .mask-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-    .mask-card { position: relative; min-height: 180px; display: grid; place-items: center; border-radius: 16px; overflow: hidden; }
-    .mask-bg { position:absolute; inset:0; background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat; }
-    .mask-label { position: relative; z-index: 2; background: rgba(255,255,255,.75); padding: .3rem .6rem; border-radius: 8px; font-weight: 700; }
+    .mask-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .mask-card {
+      position: relative;
+      min-height: 180px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .mask-bg {
+      position: absolute;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
+    }
+
+    .mask-label {
+      position: relative;
+      z-index: 2;
+      background: rgba(255, 255, 255, .75);
+      padding: .3rem .6rem;
+      border-radius: 8px;
+      font-weight: 700;
+    }
 
     /* CSS mask-image (radial spotlight) */
     .mask-radial .mask-bg {
-      mask-image: radial-gradient(circle at 60% 40%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 70%);
-      -webkit-mask-image: radial-gradient(circle at 60% 40%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 70%);
+      mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%);
+      -webkit-mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%);
     }
 
     /* PNG/SVG circle via mask (inline data URL, no 404/CORS) */
-/* PNG/SVG circle mask — longhands + base64 for robust capture */
-.mask-png .mask-bg {
-  /* Standard longhands */
-  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-  mask-position: center;
-  mask-size: 60% 60%;
-  mask-repeat: no-repeat;
+    /* PNG/SVG circle mask — longhands + base64 for robust capture */
+    .mask-png .mask-bg {
+      /* Standard longhands */
+      mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
+      mask-position: center;
+      mask-size: 60% 60%;
+      mask-repeat: no-repeat;
 
-  /* WebKit longhands (Safari) */
-  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-  -webkit-mask-position: center;
-  -webkit-mask-size: 60% 60%;
-  -webkit-mask-repeat: no-repeat;
+      /* WebKit longhands (Safari) */
+      -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
+      -webkit-mask-position: center;
+      -webkit-mask-size: 60% 60%;
+      -webkit-mask-repeat: no-repeat;
 
-  background-color: #9bd3ff;
-}
+      background-color: #9bd3ff;
+    }
 
 
     /* SVG mask inline */
-    .mask-svg { background: linear-gradient(135deg, #dceefb, #e8d9ff); }
+    .mask-svg {
+      background: linear-gradient(135deg, #dceefb, #e8d9ff);
+    }
+
     .mask-svg .masked-box {
-      width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
+      width: 100%;
+      height: 100%;
+      background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
       mask: url(#svg-blob-mask);
       -webkit-mask: url(#svg-blob-mask);
     }
 
-   /* Forms: asegurar sizing y ancho */
-.form-demo {
-  display: grid;
-  gap: .8rem;
-  width: 100%;
-}
-.form-row {
-  display: grid;
-  gap: .35rem;
-}
-.form-row.inline {
-  grid-template-columns: 1fr 1fr; /* desktop: dos columnas */
-  gap: .6rem;
-}
-.form-demo input[type="text"],
-.form-demo input[type="email"],
-.form-demo select,
-.form-demo textarea {
-  width: 100%;
-  box-sizing: border-box;
-  border: 2px solid #3658f1;
-  border-radius: 10px;
-  padding: .55rem .7rem;
-  font-size: 1rem;
-  background: #fff;
-  box-shadow: 0 3px 8px rgba(0,0,0,.05);
-  min-height: 42px; /* mejora tap target en mobile */
-}
-.form-demo textarea {
-  display: block;
-  resize: vertical;
-}
+    /* Forms: asegurar sizing y ancho */
+    .form-demo {
+      display: grid;
+      gap: .8rem;
+      width: 100%;
+    }
 
-/* Mobile: apilar filas inline y evitar overflow */
-@media (max-width: 600px) {
-  .form-row.inline {
-    grid-template-columns: 1fr !important; /* una columna en mobile */
-  }
-  .form-demo input[type="text"],
-  .form-demo input[type="email"],
-  .form-demo select,
-  .form-demo textarea {
-    font-size: 16px; /* evita zoom automático en iOS */
-  }
-}
+    .form-row {
+      display: grid;
+      gap: .35rem;
+    }
+
+    .form-row.inline {
+      grid-template-columns: 1fr 1fr;
+      /* desktop: dos columnas */
+      gap: .6rem;
+    }
+
+    .form-demo input[type="text"],
+    .form-demo input[type="email"],
+    .form-demo select,
+    .form-demo textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 2px solid #3658f1;
+      border-radius: 10px;
+      padding: .55rem .7rem;
+      font-size: 1rem;
+      background: #fff;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, .05);
+      min-height: 42px;
+      /* mejora tap target en mobile */
+    }
+
+    .form-demo textarea {
+      display: block;
+      resize: vertical;
+    }
+
+    /* Mobile: apilar filas inline y evitar overflow */
+    @media (max-width: 600px) {
+      .form-row.inline {
+        grid-template-columns: 1fr !important;
+        /* una columna en mobile */
+      }
+
+      .form-demo input[type="text"],
+      .form-demo input[type="email"],
+      .form-demo select,
+      .form-demo textarea {
+        font-size: 16px;
+        /* evita zoom automático en iOS */
+      }
+    }
 
 
     /* === Iframe demo === */
-    .iframe-wrap { border-radius: 14px; overflow: hidden; border: 2px solid #dfe7ff; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
-    .iframe-wrap iframe { display: block; width: 100%; height: 240px; background: white; }
+    .iframe-wrap {
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid #dfe7ff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .08);
+    }
+
+    .iframe-wrap iframe {
+      display: block;
+      width: 100%;
+      height: 240px;
+      background: white;
+    }
 
     @media (max-width: 600px) {
-      body { padding: 0.5rem; }
-      h1 { font-size: 1.5rem; margin-bottom: 1rem; }
-      main { max-width: 100vw; width: 100vw; padding: 0; }
-      section { padding: 0.7rem; margin-bottom: 1.2rem; }
-
-      .nav-toggle { display: inline-flex; align-items: center; }
-      .nav-collapsible { border-radius: 12px; }
-      nav.demo-menu {
-        display: grid; gap: .65rem; padding: .75rem 1rem; background: rgba(255,255,255,.7); box-shadow: 0 4px 16px rgba(0,0,0,.08);
+      body {
+        padding: 0.5rem;
       }
-      nav.demo-menu a { display: block; text-align: center; padding: .35rem .5rem; }
 
-      .card, .card.black { padding: 0.7em; font-size: 0.8em; border-radius: 10px; }
-      .output { margin-top: 0.7rem; }
-      .blend-card { padding: 1em; font-size: 0.8em; }
-      .transition-box { padding: 1em; font-size: 0.8em; }
-      .dancers { font-size: 1.3rem; }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+      }
 
-      #github-badge { flex-direction: column; gap: 0.2em; font-size: 0.7em; margin-bottom: 1em; }
-      #github-badge span { font-size: 0.7em; }
-      #repo-link { display: none; }
+      main {
+        max-width: 100vw;
+        width: 100vw;
+        padding: 0;
+      }
 
-      button#capture, button { font-size: 1em; padding: 0.5em 1em; margin-bottom: 0.7em; }
-      .export-text { font-size: 1em; }
-      .clip-card { font-size: 1em; }
-      .pseudo-box { font-size: 1em; }
+      section {
+        padding: 0.7rem;
+        margin-bottom: 1.2rem;
+      }
 
-      #orbit-box { height: 220px !important; min-width: 0; font-size: 0.8em; }
-      .text, .text1 { width: 90vw; font-size: 0.8em; }
-      .mask-grid { grid-template-columns: 1fr; }
-      .benchmark-output { height: 200px; }
-      .benchmark-container { gap: 1rem; }
-      .benchmark-column { max-width: 100%; }
+      .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .nav-collapsible {
+        border-radius: 12px;
+      }
+
+      nav.demo-menu {
+        display: grid;
+        gap: .65rem;
+        padding: .75rem 1rem;
+        background: rgba(255, 255, 255, .7);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
+      }
+
+      nav.demo-menu a {
+        display: block;
+        text-align: center;
+        padding: .35rem .5rem;
+      }
+
+      .card,
+      .card.black {
+        padding: 0.7em;
+        font-size: 0.8em;
+        border-radius: 10px;
+      }
+
+      .output {
+        margin-top: 0.7rem;
+      }
+
+      .blend-card {
+        padding: 1em;
+        font-size: 0.8em;
+      }
+
+      .transition-box {
+        padding: 1em;
+        font-size: 0.8em;
+      }
+
+      .dancers {
+        font-size: 1.3rem;
+      }
+
+      #github-badge {
+        flex-direction: column;
+        gap: 0.2em;
+        font-size: 0.7em;
+        margin-bottom: 1em;
+      }
+
+      #github-badge span {
+        font-size: 0.7em;
+      }
+
+      #repo-link {
+        display: none;
+      }
+
+      button#capture,
+      button {
+        font-size: 1em;
+        padding: 0.5em 1em;
+        margin-bottom: 0.7em;
+      }
+
+      .export-text {
+        font-size: 1em;
+      }
+
+      .clip-card {
+        font-size: 1em;
+      }
+
+      .pseudo-box {
+        font-size: 1em;
+      }
+
+      #orbit-box {
+        height: 220px !important;
+        min-width: 0;
+        font-size: 0.8em;
+      }
+
+      .text,
+      .text1 {
+        width: 90vw;
+        font-size: 0.8em;
+      }
+
+      .mask-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .benchmark-output {
+        height: 200px;
+      }
+
+      .benchmark-container {
+        gap: 1rem;
+      }
+
+      .benchmark-column {
+        max-width: 100%;
+      }
     }
 
-    .comparison-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; margin-top: 1rem; flex-direction: row; }
-    .comparison-row>div { flex: 1; min-width: 300px; text-align: center; }
-    .label { font-weight: bold; margin-bottom: 0.5rem; }
+    .comparison-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      margin-top: 1rem;
+      flex-direction: row;
+    }
 
-    .winner-glow { animation: glow 1.2s infinite alternate ease-in-out; border-radius: 20px; }
-    .progress-message { margin: 1rem 0; font-size: 0.9rem; color: #555; font-weight: bold; }
-    .result-message { margin-top: 0.5rem; font-weight: bold; background: rgba(0, 0, 0, 0.05); padding: 0.3rem; border-radius: 4px; }
+    .comparison-row>div {
+      flex: 1;
+      min-width: 300px;
+      text-align: center;
+    }
 
-    .winner-message { font-size: 1.4rem; margin: 1rem 0; padding: 0.8rem; border-radius: 12px; background: linear-gradient(145deg, #ffffff, #f3f8ff); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); display: inline-block; }
-    .winner-message .speed-badge { display: inline-block; background: #4facfe; color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: bold; margin-left: 0.5rem; }
+    .label {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
 
-    .benchmark-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
-    .benchmark-column { flex: 1; min-width: 100px; max-width: calc(50% - 1rem); }
+    .winner-glow {
+      animation: glow 1.2s infinite alternate ease-in-out;
+      border-radius: 20px;
+    }
+
+    .progress-message {
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      color: #555;
+      font-weight: bold;
+    }
+
+    .result-message {
+      margin-top: 0.5rem;
+      font-weight: bold;
+      background: rgba(0, 0, 0, 0.05);
+      padding: 0.3rem;
+      border-radius: 4px;
+    }
+
+    .winner-message {
+      font-size: 1.4rem;
+      margin: 1rem 0;
+      padding: 0.8rem;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #ffffff, #f3f8ff);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      display: inline-block;
+    }
+
+    .winner-message .speed-badge {
+      display: inline-block;
+      background: #4facfe;
+      color: white;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-weight: bold;
+      margin-left: 0.5rem;
+    }
+
+    .benchmark-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem;
+      width: 100%;
+    }
+
+    .benchmark-column {
+      flex: 1;
+      min-width: 100px;
+      max-width: calc(50% - 1rem);
+    }
+
     .benchmark-output {
-      width: 100%; height: 250px; overflow: auto; border: 1px solid #eee; border-radius: 8px; padding: 10px;
-      background: #292e3d24; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 100%;
+      height: 250px;
+      overflow: auto;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 10px;
+      background: #292e3d24;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    .benchmark-output img, .benchmark-output canvas { max-width: 100%; max-height: 200px; object-fit: contain; margin: 0 auto; display: block; }
 
-    @keyframes glow { from { box-shadow: 0 0 8px 2px rgba(0, 255, 0, 0.4); transform: scale(1.01); } to { box-shadow: 0 0 14px 4px rgba(0, 255, 0, 0.6); transform: scale(1.02); } }
+    .benchmark-output img,
+    .benchmark-output canvas {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      margin: 0 auto;
+      display: block;
+    }
 
-    @media (min-width: 601px) { .nav-collapsible { max-height: none !important; } .nav-toggle { display: none !important; } }
+    @keyframes glow {
+      from {
+        box-shadow: 0 0 8px 2px rgba(0, 255, 0, 0.4);
+        transform: scale(1.01);
+      }
+
+      to {
+        box-shadow: 0 0 14px 4px rgba(0, 255, 0, 0.6);
+        transform: scale(1.02);
+      }
+    }
+
+    @media (min-width: 601px) {
+      .nav-collapsible {
+        max-height: none !important;
+      }
+
+      .nav-toggle {
+        display: none !important;
+      }
+    }
+
     @media (max-width: 600px) {
-  .benchmark-container {
-    display: flex;           /* ya lo tenés, lo mantenemos */
-    flex-direction: column;  /* apila verticalmente */
-    align-items: stretch;    /* contenedores a ancho completo */
-    gap: 1rem;               /* separador vertical cómodo */
-  }
-  .benchmark-column {
-    max-width: 95% !important;
-    min-width: 0 !important; /* evita forzar dos columnas */
-  }
-  .benchmark-output {
-    height: 220px;           /* un poquito menos de alto en mobile */
-  }
-}
+      .benchmark-container {
+        display: flex;
+        /* ya lo tenés, lo mantenemos */
+        flex-direction: column;
+        /* apila verticalmente */
+        align-items: stretch;
+        /* contenedores a ancho completo */
+        gap: 1rem;
+        /* separador vertical cómodo */
+      }
 
+      .benchmark-column {
+        max-width: 95% !important;
+        min-width: 0 !important;
+        /* evita forzar dos columnas */
+      }
+
+      .benchmark-output {
+        height: 220px;
+        /* un poquito menos de alto en mobile */
+      }
+    }
+
+    /* CORS Proxy demo */
+    .proxy-card {
+      position: relative;
+      border-radius: 16px;
+      padding: 1rem;
+      background: #fff;
+      border: 2px solid #dfe7ff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .08);
+    }
+
+    .proxy-hero {
+      height: 220px;
+      border-radius: 12px;
+      background: #f3f6ff center/cover no-repeat;
+      border: 1px solid #eaeefc;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .proxy-ctrls {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: .5rem;
+      margin-top: .75rem;
+      align-items: center;
+    }
+
+    .proxy-ctrls input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      border: 2px solid #3658f1;
+      border-radius: 10px;
+      padding: .5rem .7rem;
+      font-size: 0.95rem;
+      background: #fff;
+    }
+
+    .proxy-credit {
+      margin-top: .6rem;
+      font-size: .9rem;
+      color: #444;
+      opacity: .9;
+      text-align: right;
+    }
   </style>
 </head>
 
@@ -473,6 +1062,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         <a href="#iframe">Iframe</a>
         <a href="#forms">Inputs</a>
         <a href="#mask">Masking</a>
+        <a href="#cors">CORS Proxy</a>
         <a href="#fullbody">Full Page</a>
       </nav>
     </div>
@@ -495,10 +1085,12 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       </div>
 
       <div style="text-align:center; margin-bottom: 2rem;">
-        <button data-umami-event="Run benchmarks" class="run-benchmark-button" onclick="runBenchmark()">Run Benchmark</button>
+        <button data-umami-event="Run benchmarks" class="run-benchmark-button" onclick="runBenchmark()">Run
+          Benchmark</button>
       </div>
 
-      <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;"></div>
+      <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;">
+      </div>
 
       <div class="benchmark-container">
         <div class="benchmark-column">
@@ -534,15 +1126,18 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         <div class="dancers">🕺💃</div>
         <p style="margin: 0; font-weight: bold">I'm dancing and changing color!</p>
       </div>
-      <button data-umami-event="Capture transition" onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
+      <button data-umami-event="Capture transition"
+        onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
       <button data-umami-event="Download transition" onclick="downloadDemo('transition-box')">Download</button>
       <div class="output" id="transition-output"></div>
     </section>
 
     <!-- Orbit -->
     <section id="orbit">
-      <h2>📦 Orbit CSS framework - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom" data-umami-event="To orbit repo" target="_blank">repo</a></h2>
-      <div class="card black" id="orbit-box" style="height: 400px; overflow: hidden; background-color: black !important;">
+      <h2>📦 Orbit CSS framework - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
+          data-umami-event="To orbit repo" target="_blank">repo</a></h2>
+      <div class="card black" id="orbit-box"
+        style="height: 400px; overflow: hidden; background-color: black !important;">
         <div class="bigbang">
           <div class="gravity-spot" style="--o-force: 1000px">
             <div class="orbit-3 invisible">
@@ -560,16 +1155,24 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
           </div>
           <div class="gravity-spot" style="--o-force: 90px">
             <div class="orbit dashed"></div>
-            <div class="orbit rotate-orbit rotate-time-4"><div class="satellite visible shrink-50 angle-320"></div></div>
-            <div class="orbit rotate-orbit rotate-time-5"><div class="satellite visible shrink-50 angle-20"></div></div>
+            <div class="orbit rotate-orbit rotate-time-4">
+              <div class="satellite visible shrink-50 angle-320"></div>
+            </div>
+            <div class="orbit rotate-orbit rotate-time-5">
+              <div class="satellite visible shrink-50 angle-20"></div>
+            </div>
             <div class="orbit dashed"></div>
-            <div class="orbit rotate-orbit rotate-time-3"><div class="satellite visible shrink-50 angle-120"></div></div>
+            <div class="orbit rotate-orbit rotate-time-3">
+              <div class="satellite visible shrink-50 angle-120"></div>
+            </div>
             <div class="orbit dashed"></div>
           </div>
           <div class="gravity-spot uncentered" style="--o-force: 350px">
             <div class="orbit-1 invisible">
               <div class="satellite angle-270 invisible">
-                <div class="gravity-spot uncentered" style="--o-force: 150px"><div class="orbit-6"></div></div>
+                <div class="gravity-spot uncentered" style="--o-force: 150px">
+                  <div class="orbit-6"></div>
+                </div>
               </div>
             </div>
             <div class="orbit-2 shrink-60 invisible">
@@ -577,7 +1180,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
                 <div class="gravity-spot uncentered" style="--o-force: 150px">
                   <div class="orbit-10">
                     <div class="satellite angle-270 invisible rotate-orbit rotate-time-2 invert">
-                      <div class="capsule rotate-orbit rotate-time-2 text">Orbit<br/>THIRD EXTERNAL ORBITAL PATH<br/>MERIDIAN SYSTEM</div>
+                      <div class="capsule rotate-orbit rotate-time-2 text">Orbit<br />THIRD EXTERNAL ORBITAL
+                        PATH<br />MERIDIAN SYSTEM</div>
                     </div>
                   </div>
                 </div>
@@ -598,7 +1202,9 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
               <div class="satellite angle-60">
                 <div class="gravity-spot from-2x" style="--o-force: 90px">
                   <div class="orbit-1 planet">
-                    <div class="satellite at-center rotate-orbit rotate-time-3 invert"><div class="capsule text1">PLANET</div></div>
+                    <div class="satellite at-center rotate-orbit rotate-time-3 invert">
+                      <div class="capsule text1">PLANET</div>
+                    </div>
                   </div>
                   <div class="orbit dashed"></div>
                   <div class="orbit-4 dashed"></div>
@@ -625,10 +1231,12 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
             <div class="orbit-18 invisible rotate-orbit rotate-time-1">
               <div class="satellite angle-270">
                 <div class="gravity-spot from-6x" style="--o-force: 90px">
-                  <div class="orbit-12 rotate-orbit rotate-time-4 invert"><div class="satellite visible grow-1x angle-120"></div></div>
+                  <div class="orbit-12 rotate-orbit rotate-time-4 invert">
+                    <div class="satellite visible grow-1x angle-120"></div>
+                  </div>
                   <div class="orbit-22 rotate-orbit rotate-time-1 invert">
                     <div class="satellite angle-90 invisible">
-                      <div class="capsule text">Orbit<br/>SECOND EXTERNAL SYSTEM <br/>MERIDIAN SYSTEM</div>
+                      <div class="capsule text">Orbit<br />SECOND EXTERNAL SYSTEM <br />MERIDIAN SYSTEM</div>
                     </div>
                   </div>
                   <div class="orbit">
@@ -668,7 +1276,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     <section id="shadow">
       <h2>🧱 Shadow DOM</h2>
       <div class="card" id="shadow-host"></div>
-      <button data-umami-event="Capture shadow" onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
+      <button data-umami-event="Capture shadow"
+        onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
       <button data-umami-event="Download shadow" onclick="downloadDemo('shadow-host')">Download</button>
       <div class="output" id="shadow-output"></div>
     </section>
@@ -677,7 +1286,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     <section id="canvas">
       <h2>🎨 Canvas</h2>
       <div class="card"><canvas id="myCanvas" width="160" height="160" style="border: 1px solid #000"></canvas></div>
-      <button data-umami-event="Capture canvas" onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
+      <button data-umami-event="Capture canvas"
+        onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
       <button data-umami-event="Download canvas" onclick="downloadDemo('myCanvas')">Download</button>
       <div class="output" id="canvas-output"></div>
     </section>
@@ -686,7 +1296,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     <section id="export">
       <h2>📁 Export Formats</h2>
       <div class="card" id="export-box">
-        <div class="export-text"><strong>📤 Export as</strong><br /><span class="export-format">PNG</span>, <span class="export-format">JPG</span> & <span class="export-format">WebP</span>.</div>
+        <div class="export-text"><strong>📤 Export as</strong><br /><span class="export-format">PNG</span>, <span
+            class="export-format">JPG</span> & <span class="export-format">WebP</span>.</div>
       </div>
       <button data-umami-event="Export formats" onclick="exportFormats('export-box')">Export</button>
       <div class="output" id="export-output"></div>
@@ -696,7 +1307,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     <section id="pseudo">
       <h2>✨ Pseudo Elements</h2>
       <div class="card pseudo-box" id="pseudo-box">This element has pseudo-elements.</div>
-      <button data-umami-event="Capture pseudo" onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
+      <button data-umami-event="Capture pseudo"
+        onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
       <button data-umami-event="Download pseudo" onclick="downloadDemo('pseudo-box')">Download</button>
       <div class="output" id="pseudo-output"></div>
     </section>
@@ -705,7 +1317,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     <section id="clip">
       <h2>✂️ Clip-Path Demo</h2>
       <div class="card clip-card" id="clip-box">This shape uses clip-path</div>
-      <button data-umami-event="Capture clip path" onclick="captureDemo('clip-box', 'clip-output', this)">Capture</button>
+      <button data-umami-event="Capture clip path"
+        onclick="captureDemo('clip-box', 'clip-output', this)">Capture</button>
       <button data-umami-event="Download clip path" onclick="downloadDemo('clip-box')">Download</button>
       <div class="output" id="clip-output"></div>
     </section>
@@ -723,8 +1336,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     <section id="iframe">
       <h2>🧩 Iframe (same-origin)</h2>
       <div class="card iframe-wrap">
-        <iframe id="demo-iframe" title="Same-origin demo" sandbox="allow-same-origin allow-scripts"
-          srcdoc="<!DOCTYPE html>
+        <iframe id="demo-iframe" title="Same-origin demo" sandbox="allow-same-origin allow-scripts" srcdoc="<!DOCTYPE html>
 <html>
 <head>
 <meta charset='utf-8'>
@@ -744,7 +1356,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
 </html>">
         </iframe>
       </div>
-      <button data-umami-event="Capture iframe" onclick="captureIframeBody('demo-iframe','iframe-output', this)">Capture</button>
+      <button data-umami-event="Capture iframe"
+        onclick="captureIframeBody('demo-iframe','iframe-output', this)">Capture</button>
       <button data-umami-event="Download iframe" onclick="downloadIframeBody('demo-iframe')">Download</button>
       <div class="output" id="iframe-output"></div>
     </section>
@@ -788,7 +1401,8 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
 
           <div class="form-row">
             <label for="bio">Bio</label>
-            <textarea id="bio" rows="3" style="resize:vertical;">Pioneer of computing. Loves analytical engines.</textarea>
+            <textarea id="bio" rows="3"
+              style="resize:vertical;">Pioneer of computing. Loves analytical engines.</textarea>
           </div>
         </form>
       </div>
@@ -829,18 +1443,51 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
         </div>
 
         <div class="mask-card" id="mask-gradient" style="background:#111;">
-          <div style="position:absolute; inset:0; background:linear-gradient(135deg,#8ec5fc,#e0c3fc); -webkit-mask-image: linear-gradient(90deg, transparent, black, transparent); mask-image: linear-gradient(90deg, transparent, black, transparent);"></div>
+          <div
+            style="position:absolute; inset:0; background:linear-gradient(135deg,#8ec5fc,#e0c3fc); -webkit-mask-image: linear-gradient(90deg, transparent, black, transparent); mask-image: linear-gradient(90deg, transparent, black, transparent);">
+          </div>
           <div class="mask-label">Linear gradient mask</div>
         </div>
       </div>
 
       <div style="margin-top:1rem;">
-        <button data-umami-event="Capture mask radial" onclick="captureDemo('mask-radial','mask-output', this)">Capture radial</button>
-        <button data-umami-event="Capture mask png" onclick="captureDemo('mask-png','mask-output', this)">Capture PNG</button>
-        <button data-umami-event="Capture mask svg" onclick="captureDemo('mask-svg','mask-output', this)">Capture SVG</button>
-        <button data-umami-event="Capture mask gradient" onclick="captureDemo('mask-gradient','mask-output', this)">Capture gradient</button>
+        <button data-umami-event="Capture mask radial" onclick="captureDemo('mask-radial','mask-output', this)">Capture
+          radial</button>
+        <button data-umami-event="Capture mask png" onclick="captureDemo('mask-png','mask-output', this)">Capture
+          PNG</button>
+        <button data-umami-event="Capture mask svg" onclick="captureDemo('mask-svg','mask-output', this)">Capture
+          SVG</button>
+        <button data-umami-event="Capture mask gradient"
+          onclick="captureDemo('mask-gradient','mask-output', this)">Capture gradient</button>
       </div>
       <div class="output" id="mask-output"></div>
+    </section>
+    <!-- CORS Proxy -->
+    <section id="cors">
+      <h2>🌐 CORS Proxy (useProxy)</h2>
+      <div class="proxy-card">
+        <div id="proxy-hero" class="proxy-hero">
+          <span style="font-weight:600;color:#567; padding: .4rem .6rem; background:#eef4ff; border-radius:8px;">
+            Image preview (background)
+          </span>
+        </div>
+
+        <div class="proxy-ctrls">
+          <input id="proxy-url" type="text" placeholder="Paste an image URL (one that usually fails CORS)"
+            value="https://cdn.sstatic.net/Sites/stackoverflow/company/img/logos/so/so-logo.png" />
+          <button id="enable-proxy-btn">Enable proxy</button>
+          <button id="disable-proxy-btn">Disable</button>
+        </div>
+
+        <div style="display:flex; gap:.5rem; margin-top:.6rem; flex-wrap:wrap;">
+          <button data-umami-event="Capture proxy demo" onclick="captureCorsDemo(this)">Capture</button>
+          <button data-umami-event="Download proxy demo" onclick="downloadCorsDemo()">Download</button>
+        </div>
+
+        <div class="proxy-credit">CORS proxy by <a href="https://corsfix.com/" target="_blank">Corsfix</a></div>
+      </div>
+
+      <div class="output" id="proxy-output"></div>
     </section>
 
     <!-- Full Page -->
@@ -992,48 +1639,48 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       const result = await snapdom(el)
       const output = document.getElementById('export-output')
       output.innerHTML = ''
-      const [png, jpg, webp] = await Promise.all([ result.toPng(), result.toJpg(), result.toWebp() ])
+      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp()])
       output.append('PNG:', png, document.createElement('br'))
       output.append('JPG:', jpg, document.createElement('br'))
       output.append('WebP:', webp)
     }
   </script>
 
-<script>
-  (function setupMobileMenu() {
-    const toggle = document.getElementById('menu-toggle');
-    const panel  = document.getElementById('menu-container');
-    const menu   = document.getElementById('demo-menu');
-    if (!toggle || !panel || !menu) return;
+  <script>
+    (function setupMobileMenu() {
+      const toggle = document.getElementById('menu-toggle');
+      const panel = document.getElementById('menu-container');
+      const menu = document.getElementById('demo-menu');
+      if (!toggle || !panel || !menu) return;
 
-    function setOpen(open) {
-      toggle.setAttribute('aria-expanded', String(open));
-      panel.classList.toggle('open', open);
-      if (open) panel.scrollTop = 0;            // <--- NUEVO: asegura ver todos los items
-      document.body.style.overflow = open ? 'hidden' : '';
-    }
-
-    function toggleMenu() {
-      const isOpen = panel.classList.contains('open');
-      setOpen(!isOpen);
-      if (!isOpen) {
-        const firstLink = menu.querySelector('a');
-        if (firstLink) firstLink.focus({ preventScroll: true });
-      } else {
-        toggle.focus({ preventScroll: true });
+      function setOpen(open) {
+        toggle.setAttribute('aria-expanded', String(open));
+        panel.classList.toggle('open', open);
+        if (open) panel.scrollTop = 0;            // <--- NUEVO: asegura ver todos los items
+        document.body.style.overflow = open ? 'hidden' : '';
       }
-    }
 
-    toggle.addEventListener('click', (e) => { e.preventDefault(); toggleMenu(); });
-    menu.addEventListener('click', (e) => {
-      const t = e.target;
-      if (t && t.tagName === 'A' && panel.classList.contains('open')) setOpen(false);
-    });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open')) setOpen(false); });
-    const mql = window.matchMedia('(min-width: 601px)');
-    mql.addEventListener?.('change', () => { if (mql.matches) setOpen(false); });
-  })();
-</script>
+      function toggleMenu() {
+        const isOpen = panel.classList.contains('open');
+        setOpen(!isOpen);
+        if (!isOpen) {
+          const firstLink = menu.querySelector('a');
+          if (firstLink) firstLink.focus({ preventScroll: true });
+        } else {
+          toggle.focus({ preventScroll: true });
+        }
+      }
+
+      toggle.addEventListener('click', (e) => { e.preventDefault(); toggleMenu(); });
+      menu.addEventListener('click', (e) => {
+        const t = e.target;
+        if (t && t.tagName === 'A' && panel.classList.contains('open')) setOpen(false);
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open')) setOpen(false); });
+      const mql = window.matchMedia('(min-width: 601px)');
+      mql.addEventListener?.('change', () => { if (mql.matches) setOpen(false); });
+    })();
+  </script>
 
 
   <script type="module">
@@ -1043,7 +1690,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
     import html2canvas from 'https://cdn.skypack.dev/html2canvas';
 
     window.snapdom = snapdom
-   
+
 
     window.runBenchmark = async function () {
       const el = document.getElementById("benchmark-box");
@@ -1102,7 +1749,7 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       const speedRatio = h2cAvg / snapAvg;
       const winnerMessage = snapAvg < h2cAvg
         ? `🏆 snapDOM wins! (${speedRatio.toFixed(1)}x faster)`
-        : `🏆 html2canvas wins! (${(snapAvg/h2cAvg).toFixed(1)}x faster)`;
+        : `🏆 html2canvas wins! (${(snapAvg / h2cAvg).toFixed(1)}x faster)`;
 
       resultText.innerHTML = `<div class="winner-message">${winnerMessage}</div>`;
 
@@ -1112,6 +1759,142 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
       benchmarkBtn.disabled = false;
       benchmarkBtn.textContent = "Run Benchmark Again";
     };
+
+
+    let PROXY_BASE = ""; // disabled by default
+
+    /**
+     * Enable Corsfix proxy.
+     * @returns {void}
+     */
+    function enableProxy() {
+      PROXY_BASE = "https://proxy.corsfix.com/?";
+      const enableBtn = document.getElementById("enable-proxy-btn");
+      const disableBtn = document.getElementById("disable-proxy-btn");
+      if (enableBtn) enableBtn.disabled = true;
+      if (disableBtn) disableBtn.disabled = false;
+    }
+
+    /**
+     * Disable proxy.
+     * @returns {void}
+     */
+    function disableProxy() {
+      PROXY_BASE = "";
+      const enableBtn = document.getElementById("enable-proxy-btn");
+      const disableBtn = document.getElementById("disable-proxy-btn");
+      if (enableBtn) enableBtn.disabled = false;
+      if (disableBtn) disableBtn.disabled = true;
+    }
+
+    /**
+     * Update preview box background with provided URL.
+     * @param {string} url
+     * @returns {void}
+     */
+    function setProxyHeroBackground(url) {
+      const hero = document.getElementById("proxy-hero");
+      if (hero) hero.style.backgroundImage = url ? `url("${url}")` : "none";
+    }
+    /**
+     * Demo-only convenience wrapper over snapdom.toImg that injects the current proxy state.
+     * @param {Element} el - Target element to capture.
+     * @param {object} [opts] - Extra snapdom options.
+     * @returns {Promise<HTMLImageElement>}
+     */
+    async function toImgCors(el, opts = {}) {
+      return snapdom.toImg(el, {
+        ...opts,
+        // Honor current proxy toggle
+        useProxy: PROXY_BASE || '',
+        cache: 'disabled'
+      });
+    }
+
+    /**
+     * Read the current URL from the CORS demo input and update the hero background.
+     * @returns {string} - The normalized URL from the input.
+     */
+    function getCorsDemoUrl() {
+      const urlInput = document.getElementById('proxy-url');
+      const url = (urlInput?.value || '').trim();
+      setProxyHeroBackground(url);
+      return url;
+    }
+
+    /**
+     * Capture the CORS demo card using the toImgCors wrapper.
+     * @param {HTMLButtonElement} [btn]
+     * @returns {Promise<void>}
+     */
+    async function captureCorsDemo(btn) {
+      const el = document.getElementById('proxy-hero');
+      const output = document.getElementById('proxy-output');
+      if (!el || !output) return;
+
+      if (btn) btn.disabled = true;
+      // Ensure the preview URL is reflected in CSS background
+      getCorsDemoUrl();
+
+      const img = await toImgCors(el, {
+        // Keep it 1:1 so artifacts are easier to compare
+        scale: 1,
+        // Fonts not critical here, but you can enable if you want
+        embedFonts: false
+      });
+
+      output.innerHTML = '';
+      output.appendChild(img);
+      if (btn) btn.disabled = false;
+    }
+
+    /**
+     * Download the CORS demo card honoring the current proxy toggle.
+     * @returns {Promise<void>}
+     */
+    async function downloadCorsDemo() {
+      const el = document.getElementById('proxy-hero');
+      if (!el) return;
+
+      // Ensure background reflects the latest input before downloading
+      getCorsDemoUrl();
+
+      await snapdom.download(el, {
+        format: 'png',
+        name: 'cors-demo',
+        useProxy: PROXY_BASE || '',
+        cache: 'disabled'
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const urlInput = document.getElementById("proxy-url");
+      const enableBtn = document.getElementById("enable-proxy-btn");
+      const disableBtn = document.getElementById("disable-proxy-btn");
+
+      // Inicial
+      if (urlInput) setProxyHeroBackground(urlInput.value || "");
+
+      urlInput?.addEventListener("change", () => {
+        setProxyHeroBackground(urlInput.value.trim());
+      });
+
+      enableBtn?.addEventListener("click", enableProxy);
+      disableBtn?.addEventListener("click", disableProxy);
+
+      // Estado inicial de botones
+      if (enableBtn) enableBtn.disabled = false;
+      if (disableBtn) disableBtn.disabled = true;
+
+
+    });
+    Object.assign(window, {
+      captureCorsDemo,
+      downloadCorsDemo,
+      enableProxy,
+      disableProxy,
+    });
+
   </script>
 
   <script>
@@ -1131,4 +1914,5 @@ content="Snapdom is a powerful alternative to html2canvas and similar tools, off
   </script>
   <script crossorigin src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js"></script>
 </body>
+
 </html>
