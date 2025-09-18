@@ -169,6 +169,7 @@ export async function captureDOM(element, options) {
       if (cancelTranslateX || cancelTranslateY) {
         cancels.push(`translate(${cancelTranslateX}px, ${cancelTranslateY}px)`);
       }
+
       if (!hasScale && (hasW || hasH)) {
         const sxWH = rect.width ? (w / rect.width) : 1;
         const syWH = rect.height ? (h / rect.height) : 1;
@@ -176,6 +177,7 @@ export async function captureDOM(element, options) {
       } else if (hasScale) {
         cancels.push(`scale(${scaleOpt})`);
       }
+
       if (cancels.length) container.style.transform = cancels.join(" ");
 
       clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
@@ -193,7 +195,11 @@ export async function captureDOM(element, options) {
 
       const serializer = new XMLSerializer();
       const foString = serializer.serializeToString(fo);
-      const svgHeader = `<svg xmlns="${svgNS}" width="${outW}" height="${outH}" viewBox="0 0 ${outW} ${outH}">`;
+      const finalW = (!hasScale && (hasW || hasH)) ? w : outW;
+      const finalH = (!hasScale && (hasH || hasW)) ? h : outH;
+      const svgHeader = `<svg xmlns="${svgNS}" width="${finalW}" height="${finalH}" viewBox="0 0 ${outW} ${outH}">`;
+      // const svgHeader = `<svg xmlns="${svgNS}" width="${outW}" height="${outH}" viewBox="0 0 ${outW} ${outH}">`;
+
       const svgFooter = "</svg>";
       svgString = svgHeader + foString + svgFooter;
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;

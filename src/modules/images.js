@@ -50,23 +50,29 @@ export async function inlineImages(clone, options = {}) {
         const attrH = parseInt(img.getAttribute('height') || '', 10) || 0;
         const styleW = parseFloat(img.style?.width || '') || 0;
         const styleH = parseFloat(img.style?.height || '') || 0;
-        const width = dsW || styleW || attrW || img.width || undefined;
-        const height = dsH || styleH || attrH || img.height || undefined;
 
-        const fallbackUrl = typeof fallbackURL === 'function'
-          ? await fallbackURL({ width, height, src, element: img })
-          : fallbackURL;
+        const fbW = dsW || styleW || attrW || img.width || undefined;
+        const fbH = dsH || styleH || attrH || img.height || undefined;
+
+        const fallbackUrl =
+          typeof fallbackURL === 'function'
+            ? await fallbackURL({ width: fbW, height: fbH, src, element: img })
+            : fallbackURL;
 
         if (fallbackUrl) {
           const fallbackData = await snapFetch(fallbackUrl, { as: 'dataURL', useProxy: options.useProxy });
           img.src = fallbackData.data;
-          if (!img.width && width) img.width = width;
-          if (!img.height && height) img.height = height;
+
+          // Mantener tu comportamiento actual:
+          if (!img.width && fbW) img.width = fbW;
+          if (!img.height && fbH) img.height = fbH;
           if (!img.width) img.width = img.naturalWidth || 100;
           if (!img.height) img.height = img.naturalHeight || 100;
           return;
         }
-      } catch { }
+      } catch {
+        // noop → cae al placeholder
+      }
     }
 
     // Failure path: sized, neutral fallback
