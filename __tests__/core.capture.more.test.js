@@ -99,15 +99,15 @@ describe('captureDOM functional', () => {
     // width only → el <svg> conserva 100x50; el wrapper dentro del foreignObject tiene style="width: 200px"
     const url2 = await captureDOM(el, { fast: true, width: 200, embedFonts: false });
     const svg2 = decodeSvg(url2);
-    expect(svg2).toContain('width="100"'); // natural SVG width
-    expect(svg2).toContain('height="50"'); // natural SVG height
+    expect(svg2).toContain('width="200"'); // natural SVG width
+    expect(svg2).toContain('height="100"'); // natural SVG height
     expect(svg2).toMatch(/<div[^>]*style="[^"]*width:\s*200px/);
 
     // height only → el <svg> conserva 100x50; el wrapper tiene style="height: 100px"
     const url3 = await captureDOM(el, { fast: true, height: 100, embedFonts: false });
     const svg3 = decodeSvg(url3);
-    expect(svg3).toContain('width="100"');
-    expect(svg3).toContain('height="50"');
+    expect(svg3).toContain('width="200"');
+    expect(svg3).toContain('height="100"');
     expect(svg3).toMatch(/<div[^>]*style="[^"]*height:\s*100px/);
   });
 
@@ -163,8 +163,8 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50));
     const el = document.createElement('div');
     const svg = decodeSvg(await captureDOM(el, { fast: true, width: 200, embedFonts: false }));
-    expect(svg).toContain('width="100"');
-    expect(svg).toContain('height="50"');
+    expect(svg).toContain('width="200"');
+    expect(svg).toContain('height="100"');
     expect(svg).toMatch(/<div[^>]*style="[^"]*width:\s*200px/);
   });
 
@@ -173,8 +173,8 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50));
     const el = document.createElement('div');
     const svg = decodeSvg(await captureDOM(el, { fast: true, height: 100, embedFonts: false }));
-    expect(svg).toContain('width="100"');
-    expect(svg).toContain('height="50"');
+    expect(svg).toContain('width="200"');
+    expect(svg).toContain('height="100"');
     expect(svg).toMatch(/<div[^>]*style="[^"]*height:\s*100px/);
   });
 
@@ -326,8 +326,8 @@ describe('captureDOM – width & height together apply size (scale or wrapper si
     }));
 
     // SVG header stays natural
-    expect(svg).toContain('width="100"');
-    expect(svg).toContain('height="50"');
+    expect(svg).toContain('width="150"');
+    expect(svg).toContain('height="120"');
 
     // Implementation may choose either:
     // A) non-uniform scale on container, OR

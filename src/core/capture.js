@@ -89,9 +89,9 @@ export async function captureDOM(element, options) {
 
   await new Promise((resolve) => {
     idle(() => {
-      const rect = getNaturalBorderBoxSize(element);
-      let w = rect.width;
-      let h = rect.height;
+      const rect = element.getBoundingClientRect();
+      let w = Number(rect.width) || 0;
+      let h = Number(rect.height) || 0;
 
       const hasW = Number.isFinite(options.width);
       const hasH = Number.isFinite(options.height);
@@ -99,13 +99,21 @@ export async function captureDOM(element, options) {
       const hasScale = typeof scaleOpt === "number" && scaleOpt !== 1;
 
       if (!hasScale) {
-        const aspect = rect.width / rect.height;
-        if (hasW && hasH) { w = options.width; h = options.height; }
-        else if (hasW) { w = options.width; h = w / aspect; }
-        else if (hasH) { h = options.height; w = h * aspect; }
+        const aspect = h > 0 ? (w / h) : 1;
+        if (hasW && hasH) {
+          w = Number(options.width);
+          h = Number(options.height);
+        } else if (hasW) {
+          w = Number(options.width);
+          h = w / (aspect || 1);
+        } else if (hasH) {
+          h = Number(options.height);
+          w = h * (aspect || 1);
+        }
       }
-      w = Math.max(1, Math.ceil(w));
-      h = Math.max(1, Math.ceil(h));
+
+      w = Math.max(1, Math.ceil(Number.isFinite(w) ? w : 1));
+      h = Math.max(1, Math.ceil(Number.isFinite(h) ? h : 1));
 
       const csEl = getComputedStyle(element);
       const baseTransform = csEl.transform && csEl.transform !== "none" ? csEl.transform : "";
@@ -211,18 +219,6 @@ export async function captureDOM(element, options) {
   const sandbox = document.getElementById("snapdom-sandbox");
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();
   return dataURL;
-}
-
-function getNaturalBorderBoxSize(el) {
-  const cs = getComputedStyle(el);
-  const px = (v) => parseFloat(v) || 0;
-  let w = px(cs.width);
-  let h = px(cs.height);
-  if (cs.boxSizing === "content-box") {
-    w += px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
-    h += px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
-  }
-  return { width: w, height: h };
 }
 
 function matrixFromComputed(el) {
