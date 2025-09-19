@@ -14,6 +14,7 @@ import { createBackground } from '../utils/index.js';
  * @returns {Promise<void>}
  */
 export async function download(url, options) {
+   options.dpr = 1;
   if (options.format === 'svg') {
     const blob = await toBlob(url, { ...options, type: 'svg' });
     const objectURL = URL.createObjectURL(blob);
