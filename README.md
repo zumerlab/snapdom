@@ -38,6 +38,8 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 * ⚡ Ultra fast, no dependencies
 * 📦 100% based on standard Web APIs
 * Support same-origin `ìframe`
+* Support CSS counter() and counters()
+* Support `...` line-clamp
 
 ## Demo
 
@@ -47,11 +49,10 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 ## Table of Contents
 
 - [Installation](#installation)
-  - [NPM / Yarn](#npm--yarn)
-  - [CDN](#cdn)
-  - [Script tag (local)](#script-tag-local)
-  - [ES Module](#es-module)
-  - [Module via CDN](#module-via-cdn)
+  - [NPM / Yarn (stable)](#npm--yarn-stable)
+  - [NPM / Yarn (dev builds)](#npm--yarn-dev-builds)
+  - [CDN (stable)](#cdn-stable)
+  - [CDN (dev builds)](#cdn-dev-builds)
 - [Basic usage](#basic-usage)
   - [Reusable capture](#reusable-capture)
   - [One-step shortcuts](#one-step-shortcuts)
@@ -83,49 +84,52 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 - [License](#license)
 
 
+
 ## Installation
 
-### NPM / Yarn
+### NPM / Yarn (stable)
 
-```sh
+```bash
 npm i @zumer/snapdom
-```
-
-```sh
 yarn add @zumer/snapdom
 ```
 
-Then import it in your code:
+### NPM / Yarn (dev builds)
 
-```js
-import { snapdom } from '@zumer/snapdom';
+For early access to new features and fixes:
+
+```bash
+npm i @zumer/snapdom@dev
+yarn add @zumer/snapdom@dev
 ```
 
-### CDN
+⚠️ The `@dev` tag usually includes improvements before they reach production, but may be less stable.
+
+
+### CDN (stable)
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.min.js"></script>
-```
+<!-- Minified UMD build -->
+<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.min.js"></script>
 
-### Script tag (local)
-
-```html
-<script src="snapdom.js"></script>
-```
-
-### ES Module
-
-```js
-import { snapdom } from './snapdom.mjs';
-```
-
-### Module via CDN
-
-```html
+<!-- ES Module build -->
 <script type="module">
-  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.mjs';
+  import { snapdom } from "https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs";
 </script>
 ```
+
+### CDN (dev builds)
+
+```html
+<!-- Minified UMD build (dev) -->
+<script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.min.js"></script>
+
+<!-- ES Module build (dev) -->
+<script type="module">
+  import { snapdom } from "https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs";
+</script>
+```
+
 
 ## Basic usage
 
@@ -222,14 +226,14 @@ await snapdom.toImg(element, {
 
 // 2) Dynamic placeholder via callback
 await snapdom.toImg(element, {
-  fallbackURL: ({ width = 300, height = 150 }) =>
-    `https://placehold.co/${Math.round(width)}x${Math.round(height)}`
+  fallbackURL: ({ width: 300, height: 150 }) =>
+    `https://placehold.co/${width}x${height}`
 });
 
 // 3) With proxy (if your fallback host has no CORS)
 await snapdom.toImg(element, {
   fallbackURL: ({ width = 300, height = 150 }) =>
-    `https://dummyimage.com/${Math.round(width)}x${Math.round(height)}/cccccc/666.png&text=img`,
+    `https://dummyimage.com/${width}x${height}/cccccc/666.png&text=img`,
   useProxy: 'https://proxy.corsfix.com/?'
 });
 ```
