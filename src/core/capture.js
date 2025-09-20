@@ -9,6 +9,7 @@ import { inlineBackgroundImages } from '../modules/background.js';
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js';
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
 import { cache, applyCachePolicy } from '../core/cache.js'
+import { lineClamp } from '../modules/lineClamp.js';
 
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
@@ -34,7 +35,12 @@ export async function captureDOM(element, options) {
   let dataURL;
   let svgString;
 
-  ({ clone, classCSS, styleCache } = await prepareClone(element, options));
+  const undoClamp = lineClamp(element); // no-op si no hay clamp
+  try {
+    ({ clone, classCSS, styleCache } = await prepareClone(element, options));
+  } finally {
+    undoClamp(); // siempre deja el DOM original como estaba
+  }
 
   await new Promise((resolve) => {
     idle(async () => {
