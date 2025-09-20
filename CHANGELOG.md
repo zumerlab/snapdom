@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.12-dev.1](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.0...v1.9.12-dev.1)
+
+> 20 September 2025
+
+- Modularize counters [`024a7f9`](https://github.com/zumerlab/snapdom/commit/024a7f9b2d1b4805c7b12b5cbb62f0200295cc8f)
+- Improve CSS counter() and counters() handling. See #120, see #235 [`8fb0385`](https://github.com/zumerlab/snapdom/commit/8fb03859301075ea9b096197ec5b4dbca4223a95)
+- Feat lineClamp. See #241 [`4082cd6`](https://github.com/zumerlab/snapdom/commit/4082cd6c39ff43bcb842a81768e11b858c5e8559)
+- Fix width/height options [`7cd2111`](https://github.com/zumerlab/snapdom/commit/7cd21114d1337e48b5d743cb94989feb1a1a0d20)
+- Fix bug that hangs snapDOM on some browsers. See #236 [`bc3c400`](https://github.com/zumerlab/snapdom/commit/bc3c400356a6f32f8d1d8a986c9a427e6dd13c7f)
+- Fix bug that overrides options.width/heigth. See #241 [`49fbb63`](https://github.com/zumerlab/snapdom/commit/49fbb63ac6c28a66a8e6d9076618bee7b6beab62)
+- Improve webFonts render. See #229 [`3082a3a`](https://github.com/zumerlab/snapdom/commit/3082a3ae019f424e127f3c065cbcfa7bad59bb39)
+- Feat. detect wechat browser. See #223 [`e7c4723`](https://github.com/zumerlab/snapdom/commit/e7c4723a24ad3a9c52da5a2e021c115b354bcf66)
+- Ensure donwload file measure. See #241 [`eed1995`](https://github.com/zumerlab/snapdom/commit/eed1995a56664c0ace5d94422ba6bb8b5ef82324)
+- Add iframe support [`ec59e4b`](https://github.com/zumerlab/snapdom/commit/ec59e4bad3dbb639cde37aed929dccb42b54e6b5)
+
 #### [v1.9.12-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.11...v1.9.12-dev.0)
 
 > 11 September 2025
