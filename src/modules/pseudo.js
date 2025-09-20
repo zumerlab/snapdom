@@ -15,190 +15,15 @@ import {
 } from '../utils';
 import { iconToImage } from '../modules/fonts.js';
 import { isIconFont } from '../modules/iconFonts.js';
+import {
+  buildCounterContext,
+  resolveCountersInContent,
+  hasCounters
+} from '../modules/counter.js';
 import { snapFetch } from './snapFetch.js';
 
 
 let counterCtx = null;
-
-const RX_COUNTER_FN = /\b(counter|counters)\s*\(([^)]+)\)/g;
-function unquoteDoubleStrings(s) {
-  // Replace every CSS string token "..." with its raw content (keeps single quotes)
-  return s.replace(/"([^"]*)"/g, '$1');
-}
-
-
-function alpha(n, upper=false) {
-  let s = "", x = Math.max(1, n);
-  while (x > 0) { x--; s = String.fromCharCode(97 + (x % 26)) + s; x = Math.floor(x / 26); }
-  return upper ? s.toUpperCase() : s;
-}
-
-function roman(n, upper=true) {
-  const map = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
-  let num = Math.max(1, Math.min(3999, n)), out = '';
-  for (const [v, sym] of map) while (num >= v) { out += sym; num -= v; }
-  return upper ? out : out.toLowerCase();
-}
-
-function formatCounter(value, style) {
-  switch ((style||'decimal').toLowerCase()) {
-    case 'decimal': return String(Math.max(0, value));
-    case 'decimal-leading-zero': return (value < 10 ? '0' : '') + String(Math.max(0, value));
-    case 'lower-alpha': return alpha(value, false);
-    case 'upper-alpha': return alpha(value, true);
-    case 'lower-roman': return roman(value, false);
-    case 'upper-roman': return roman(value, true);
-    default: return String(Math.max(0, value));
-  }
-}
-
-function buildCounterContext(root) {
-  // Map<Element, Map<string, number[]>>  ← pila por contador en cada nodo
-  const nodeCounters = new WeakMap();
-  const rootEl = (root instanceof Document) ? root.documentElement : root;
-
-  const isLi = (el) => el && el.tagName === 'LI';
-  const countPrevLi = (li) => {
-    let c = 0, p = li?.parentElement;
-    if (!p) return 0;
-    for (const sib of p.children) { if (sib === li) break; if (sib.tagName === 'LI') c++; }
-    return c;
-  };
-  const cloneMap = (m) => {
-    const out = new Map();
-    for (const [k, arr] of m) out.set(k, arr.slice());
-    return out;
-  };
-
-  // Aplica reset/increment/list-item sobre un mapa base, usando parentMap para decidir push vs replace
-  const applyTo = (baseMap, parentMap, el) => {
-    const map = cloneMap(baseMap);
-
-    // counter-reset: si el padre tiene ese contador → push; si no → replace
-    let reset;
-    try { reset = el.style?.counterReset || getComputedStyle(el).counterReset; } catch {}
-    if (reset && reset !== 'none') {
-      for (const part of reset.split(',')) {
-        const toks = part.trim().split(/\s+/);
-        const name = toks[0];
-        const val = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 0;
-        if (!name) continue;
-
-        const parentStack = parentMap.get(name);               // pila heredada del PADRE
-        if (parentStack && parentStack.length) {
-          // anidar sobre la pila del padre
-          const s = parentStack.slice();
-          s.push(val);
-          map.set(name, s);
-        } else {
-          // reemplazar cualquier estado arrastrado entre hermanos
-          map.set(name, [val]);
-        }
-      }
-    }
-
-    // counter-increment: suma al tope (crea top=0 si no existe)
-    let inc;
-    try { inc = el.style?.counterIncrement || getComputedStyle(el).counterIncrement; } catch {}
-    if (inc && inc !== 'none') {
-      for (const part of inc.split(',')) {
-        const toks = part.trim().split(/\s+/);
-        const name = toks[0];
-        const by = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 1;
-        if (!name) continue;
-        const stack = map.get(name) || [];
-        if (stack.length === 0) stack.push(0);
-        stack[stack.length - 1] += by;
-        map.set(name, stack);
-      }
-    }
-
-    // list-item simple (OL/UL) con start y li[value]
-    try {
-      const cs = getComputedStyle(el);
-      if (cs.display === 'list-item' && isLi(el)) {
-        const p = el.parentElement;
-        let idx = 1;
-        if (p && p.tagName === 'OL') {
-          const startAttr = p.getAttribute('start');
-          const start = Number.isFinite(Number(startAttr)) ? Number(startAttr) : 1;
-          const prev = countPrevLi(el);
-          const ownAttr = el.getAttribute('value');
-          idx = Number.isFinite(Number(ownAttr)) ? Number(ownAttr) : (start + prev);
-        } else {
-          idx = 1 + countPrevLi(el);
-        }
-        const s = map.get('list-item') || [];
-        if (s.length === 0) s.push(0);
-        s[s.length - 1] = idx;
-        map.set('list-item', s);
-      }
-    } catch {}
-
-    return map;
-  };
-
-  // Construye recursivo con (parentMap, carryMap)
-  const build = (el, parentMap, carryMap) => {
-    // mapa del propio elemento: aplicar sobre el estado ARRASTRADO, decidiendo con el mapa del PADRE
-    const curr = applyTo(carryMap, parentMap, el);
-    nodeCounters.set(el, curr);
-
-    // hijos: el primer hijo parte de curr; cada siguiente parte del mapa que dejó el hermano anterior
-    let nextCarry = curr;
-    for (const child of el.children) {
-      const childCarry = build(child, curr, nextCarry);
-      nextCarry = childCarry;
-    }
-    // devolver curr para que el siguiente hermano del *mismo nivel* arranque desde acá
-    return curr;
-  };
-
-  const empty = new Map();
-  build(rootEl, empty, empty);
-
-  return {
-    get(node, name) {
-      const s = nodeCounters.get(node)?.get(name);
-      return s && s.length ? s[s.length - 1] : 0;
-    },
-    getStack(node, name) {
-      const s = nodeCounters.get(node)?.get(name);
-      return s ? s.slice() : [];
-    }
-  };
-}
-
-
-
-function resolveCountersInContent(raw, node, ctx) {
-  if (!raw || raw === 'none') return raw;
-  try {
-    let out = raw.replace(RX_COUNTER_FN, (_, fn, args) => {
-      const parts = args.split(',').map(s => s.trim());
-      if (fn === 'counter') {
-        const name = parts[0]?.replace(/^["']|["']$/g, '');
-        const style = (parts[1] || 'decimal').toLowerCase();
-        const v = ctx.get(node, name);
-        return formatCounter(v, style);
-      } else { // counters(name, sep, style?)
-        const name = parts[0]?.replace(/^["']|["']$/g, '');
-        const sep  = (parts[1]?.replace(/^["']|["']$/g, '')) ?? '';
-        const style = (parts[2] || 'decimal').toLowerCase();
-        const stack = ctx.getStack(node, name);
-        // empty stack → empty string (no "0", no trailing sep)
-        if (!stack.length) return '';
-        const pieces = stack.map(v => formatCounter(v, style));
-        return pieces.join(sep);
-      }
-    });
-    // remove CSS double-quoted string tokens: " … " →  …
-    out = unquoteDoubleStrings(out);
-    return out;
-  } catch {
-    return "- ";
-  }
-}
 
 
 /**
@@ -262,12 +87,13 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       }
 
       const content = style.content;
-      
+
       let cleanContent = parseContent(content);
-if (/\bcounter\s*\(|\bcounters\s*\(/.test(content)) {
-  counterCtx = buildCounterContext(source.ownerDocument || document);
-  cleanContent = resolveCountersInContent(cleanContent, source, counterCtx);
-}
+      if (hasCounters(content)) {
+        // build once per capture si querés (podés memoizar fuera del bucle)
+        counterCtx = buildCounterContext(source.ownerDocument || document);
+        cleanContent = resolveCountersInContent(cleanContent, source, counterCtx);
+      }
 
 
 
