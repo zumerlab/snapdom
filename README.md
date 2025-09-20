@@ -37,6 +37,7 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 * 🖼️ Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
 * ⚡ Ultra fast, no dependencies
 * 📦 100% based on standard Web APIs
+* Support same-origin `ìframe`
 
 ## Demo
 
@@ -46,11 +47,10 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 ## Table of Contents
 
 - [Installation](#installation)
-  - [NPM / Yarn](#npm--yarn)
-  - [CDN](#cdn)
-  - [Script tag (local)](#script-tag-local)
-  - [ES Module](#es-module)
-  - [Module via CDN](#module-via-cdn)
+  - [NPM / Yarn (stable)](#npm--yarn-stable)
+  - [NPM / Yarn (dev builds)](#npm--yarn-dev-builds)
+  - [CDN (stable)](#cdn-stable)
+  - [CDN (dev builds)](#cdn-dev-builds)
 - [Basic usage](#basic-usage)
   - [Reusable capture](#reusable-capture)
   - [One-step shortcuts](#one-step-shortcuts)
@@ -82,49 +82,52 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 - [License](#license)
 
 
+
 ## Installation
 
-### NPM / Yarn
+### NPM / Yarn (stable)
 
-```sh
+```bash
 npm i @zumer/snapdom
-```
-
-```sh
 yarn add @zumer/snapdom
 ```
 
-Then import it in your code:
+### NPM / Yarn (dev builds)
 
-```js
-import { snapdom } from '@zumer/snapdom';
+For early access to new features and fixes:
+
+```bash
+npm i @zumer/snapdom@dev
+yarn add @zumer/snapdom@dev
 ```
 
-### CDN
+⚠️ The `@dev` tag usually includes improvements before they reach production, but may be less stable.
+
+
+### CDN (stable)
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.min.js"></script>
-```
+<!-- Minified UMD build -->
+<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.min.js"></script>
 
-### Script tag (local)
-
-```html
-<script src="snapdom.js"></script>
-```
-
-### ES Module
-
-```js
-import { snapdom } from './snapdom.mjs';
-```
-
-### Module via CDN
-
-```html
+<!-- ES Module build -->
 <script type="module">
-  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.mjs';
+  import { snapdom } from "https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs";
 </script>
 ```
+
+### CDN (dev builds)
+
+```html
+<!-- Minified UMD build (dev) -->
+<script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.min.js"></script>
+
+<!-- ES Module build (dev) -->
+<script type="module">
+  import { snapdom } from "https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs";
+</script>
+```
+
 
 ## Basic usage
 
@@ -202,9 +205,12 @@ All capture methods accept an `options` object:
 | `useProxy`        | string   | `''`     | Proxy base for CORS fallbacks                   |
 | `type`            | string   | `svg`    | Default Blob type (`svg`\|`png`\|`jpg`\|`webp`) |
 | `exclude`         | string[] | -        | CSS selectors to exclude                        |
+| `excludeMode`     | string   | 'hide' | Controls how `exclude` works with nodes    |
 | `filter`          | function | -        | Custom predicate `(el) => boolean`              |
+| `filterMode`      | string   | 'hide' | Controls how `filter` works with nodes    |
 | `cache`           | string   | `"soft"` | Control internal caches: `disabled`, `soft`, `auto`, `full` |
-| `defaultImageUrl` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
+| `placeholders`           | boolean   | `true`  | Show placeholders for images and cross-origin iframes |
+| `fallbackURL` | string \| function  | -                  | Fallback image when an `<img>` fails. If a function is provided, it receives `{ width?, height?, src?, element }` and must return a URL (string or Promise<string>). Useful for placeholder services (e.g. `https://placehold.co/{width}x{height}`) |
 
 ### Fallback image on `<img>` load failure
 
@@ -213,20 +219,20 @@ Provide a default image for failed `<img>` loads. You can pass a fixed URL or a 
 ```js
 // 1) Fixed URL fallback
 await snapdom.toImg(element, {
-  defaultImageUrl: '/images/fallback.png'
+  fallbackURL: '/images/fallback.png'
 });
 
 // 2) Dynamic placeholder via callback
 await snapdom.toImg(element, {
-  defaultImageUrl: ({ width = 300, height = 150 }) =>
-    `https://placehold.co/${Math.round(width)}x${Math.round(height)}`
+  fallbackURL: ({ width: 300, height: 150 }) =>
+    `https://placehold.co/${width}x${height}`
 });
 
 // 3) With proxy (if your fallback host has no CORS)
 await snapdom.toImg(element, {
-  defaultImageUrl: ({ width = 300, height = 150 }) =>
-    `https://dummyimage.com/${Math.round(width)}x${Math.round(height)}/cccccc/666.png&text=img`,
-  useProxy: 'https://corsproxy.io/?url='
+  fallbackURL: ({ width = 300, height = 150 }) =>
+    `https://dummyimage.com/${width}x${height}/cccccc/666.png&text=img`,
+  useProxy: 'https://proxy.corsfix.com/?'
 });
 ```
 
@@ -247,13 +253,11 @@ By default snapDOM tries `crossOrigin="anonymous"` (or `use-credentials` for sam
 
 ```js
 await snapdom.toPng(el, {
-  useProxy: 'your-proxy' // Example 'https://api.allorigins.win/raw?url='
+  useProxy: 'https://proxy.corsfix.com/?' // Note: Any cors proxy could be used 'https://proxy.corsfix.com/?'
 });
 ```
 
-**Tips**
 
-* Keep the proxy **fast** and **cache-friendly** (adds big wins on repeated captures).
 * The proxy is only used as a **fallback**; same-origin and CORS-enabled assets skip it.
 
 ### Fonts
@@ -304,7 +308,9 @@ await snapdom.toPng(el, {
 ### Filtering nodes: `exclude` vs `filter`
 
 * `exclude`: remove by **selector**.
+* `excludeMode`: `hide` applies `visibility:hidden` CSS rule on excluded nodes and the layout remains as the original. `remove` do not clone excluded nodes at all.
 * `filter`: advanced predicate per element (return `false` to drop).
+* `filterMode`: `hide` applies `visibility:hidden` CSS rule on filtered nodes and the layout remains as the original. `remove` do not clone filtered nodes at all.
 
 **Example: filter out elements with `display:none`:**
 ```js
@@ -339,13 +345,13 @@ await preCache({
   root: document.body,
   embedFonts: true,
   localFonts: [{ family: 'Inter', src: '/fonts/Inter.woff2', weight: 400 }],
-  useProxy: 'your-proxy'
+  useProxy: 'https://proxy.corsfix.com/?'
 });
 ```
 
 ### Cache control
 
-SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.  
+SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts.
 You can control how they are cleared between captures using the `cache` option:
 
 | Mode        | Description                                                                 |
