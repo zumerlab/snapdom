@@ -74,6 +74,7 @@ function getSnapshot(el, preStyle = null, options = {}) {
   if (rec && rec.epoch === __epoch) return rec.snapshot;
   const style = preStyle || getComputedStyle(el);
   const snap = snapshotComputedStyleFull(style, options);
+  stripHeightForWrappers(el, style, snap);
   snapshotCache.set(el, { epoch: __epoch, snapshot: snap });
   return snap;
 }
@@ -148,3 +149,97 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   }
   session.styleMap.set(clone, key);
 }
+/**
+ * @param {Element} el
+ * @returns {boolean}
+ */
+function isReplaced(el) {
+  return el instanceof HTMLImageElement ||
+         el instanceof HTMLCanvasElement ||
+         el instanceof HTMLVideoElement ||
+         el instanceof HTMLIFrameElement ||
+         el instanceof SVGElement ||
+         el instanceof HTMLObjectElement ||
+         el instanceof HTMLEmbedElement;
+}
+
+/**
+ * Caja “visual”: bg/border/padding u overflow ≠ visible.
+ * @param {CSSStyleDeclaration} cs
+ */
+function hasBox(cs) {
+  if (cs.backgroundImage && cs.backgroundImage !== 'none') return true;
+  if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') return true;
+  if ((parseFloat(cs.borderTopWidth) || 0) > 0) return true;
+  if ((parseFloat(cs.borderBottomWidth) || 0) > 0) return true;
+  if ((parseFloat(cs.paddingTop) || 0) > 0) return true;
+  if ((parseFloat(cs.paddingBottom) || 0) > 0) return true;
+  const ob = cs.overflowBlock || cs.overflowY || 'visible';
+  return ob !== 'visible';
+}
+
+/**
+ * Item de flex/grid (mirando display del padre, 1 getComputedStyle).
+ * @param {Element} el
+ */
+function isFlexOrGridItem(el) {
+  const p = el.parentElement;
+  if (!p) return false;
+  const pd = getComputedStyle(p).display || '';
+  return pd.includes('flex') || pd.includes('grid');
+}
+
+/**
+ * ¿Hay contenido en flujo? Versión rápida:
+ *  - Texto no vacío → true (no dispara layout).
+ *  - <br> inmediato → true.
+ *  - Geometry probe: scrollHeight > padding (abspos NO suma) → true.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs  // ya lo tenemos en mano
+ */
+function hasFlowFast(el, cs) {
+  if (el.textContent && /\S/.test(el.textContent)) return true;
+  const f = el.firstElementChild, l = el.lastElementChild;
+  if ((f && f.tagName === 'BR') || (l && l.tagName === 'BR')) return true;
+
+  // Probe geométrico (1 lectura de layout): evita recorrer hijos
+  // Nota: scrollHeight no incluye hijos absolute; si sólo hay absolute → ≈ padding
+  const sh = el.scrollHeight;
+  if (sh === 0) return false;
+  const pt = parseFloat(cs.paddingTop) || 0;
+  const pb = parseFloat(cs.paddingBottom) || 0;
+  return sh > pt + pb;
+}
+
+/**
+ * Quita height/block-size SOLO en wrappers transparentes de flujo normal
+ * que SÍ tienen contenido en flujo. Mantiene height si no hay flujo (sólo abspos),
+ * si el autor lo puso inline, si es replaced, posicionado/transform, tiene caja visual,
+ * o es item flex/grid.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs
+ * @param {Record<string,string>} snap
+ */
+function stripHeightForWrappers(el, cs, snap) {
+  // autor inline → respetar
+  if (el instanceof HTMLElement && el.style && el.style.height) return;
+
+  // ⛳️ clave para Orbit: si EL ELEMENTO es contenedor flex/grid, no tocar su height
+  const disp = cs.display || '';
+  if (disp.includes('flex') || disp.includes('grid')) return;
+
+  // guardas existentes
+  if (isReplaced(el)) return;
+  const pos = cs.position;
+  if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return;
+  if (cs.transform !== 'none') return;
+  if (hasBox(cs)) return;
+  if (isFlexOrGridItem(el)) return;
+
+  // wrapper transparente con flujo → permitir margin-collapsing
+  if (!hasFlowFast(el, cs)) return;
+
+  delete snap.height;
+  delete snap['block-size'];
+}
+
