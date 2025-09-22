@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.12-dev.2](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.1...v1.9.12-dev.2)
+
+> 22 September 2025
+
+- Fix margin collapsing in some cases. See #243 [`7fe0a3f`](https://github.com/zumerlab/snapdom/commit/7fe0a3ffe6e9827b276f0c0337c60c8c02c4129c)
+
+
+
 #### [v1.9.12-dev.1](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.0...v1.9.12-dev.1)
 
 > 20 September 2025
