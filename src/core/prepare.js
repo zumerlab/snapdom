@@ -119,12 +119,12 @@ export async function prepareClone(element, options = {}) {
     sessionCache.styleCache.set(element, computed);
     const transform = stripTranslate(computed.transform);
     clone.style.margin = "0";
-    clone.style.position = "static";
+   // clone.style.position = "static";
     clone.style.top = "auto";
     clone.style.left = "auto";
     clone.style.right = "auto";
     clone.style.bottom = "auto";
-    clone.style.zIndex = "auto";
+    //clone.style.zIndex = "auto";
     clone.style.float = "none";
     clone.style.clear = "none";
     clone.style.transform = transform || "";

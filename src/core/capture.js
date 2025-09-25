@@ -24,7 +24,6 @@ import { lineClamp } from '../modules/lineClamp.js';
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 
-// src/core/capture.js
 export async function captureDOM(element, options) {
   if (!element) throw new Error("Element cannot be null or undefined");
   applyCachePolicy(options.cache);
@@ -34,34 +33,30 @@ export async function captureDOM(element, options) {
   let baseCSS = "";
   let dataURL;
   let svgString;
-
-  const undoClamp = lineClamp(element); // no-op si no hay clamp
+  const undoClamp = lineClamp(element);
   try {
     ({ clone, classCSS, styleCache } = await prepareClone(element, options));
   } finally {
-    undoClamp(); // siempre deja el DOM original como estaba
+    undoClamp();
   }
-
   await new Promise((resolve) => {
     idle(async () => {
       await inlineImages(clone, options);
       resolve();
     }, { fast });
   });
-
   await new Promise((resolve) => {
     idle(async () => {
       await inlineBackgroundImages(element, clone, styleCache, options);
       resolve();
     }, { fast });
   });
-
   if (options.embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
         const required = collectUsedFontVariants(element);
         const usedCodepoints = collectUsedCodepoints(element);
-        if (isSafari) {
+        if (isSafari()) {
           const families = new Set(
             Array.from(required).map((k) => String(k).split("__")[0]).filter(Boolean)
           );
@@ -72,13 +67,12 @@ export async function captureDOM(element, options) {
           usedCodepoints,
           preCached: false,
           exclude: options.excludeFonts,
-          useProxy: options.useProxy,
+          useProxy: options.useProxy
         });
         resolve();
       }, { fast });
     });
   }
-
   const usedTags = collectUsedTagNames(clone).sort();
   const tagKey = usedTags.join(",");
   if (cache.baseStyle.has(tagKey)) {
@@ -92,288 +86,363 @@ export async function captureDOM(element, options) {
       }, { fast });
     });
   }
-
   await new Promise((resolve) => {
     idle(() => {
-      const rect = element.getBoundingClientRect();
-      let w = Number(rect.width) || 0;
-      let h = Number(rect.height) || 0;
-
-      const hasW = Number.isFinite(options.width);
-      const hasH = Number.isFinite(options.height);
-      const scaleOpt = options.scale ?? 1;
-      const hasScale = typeof scaleOpt === "number" && scaleOpt !== 1;
-
-      if (!hasScale) {
-        const aspect = h > 0 ? (w / h) : 1;
-        if (hasW && hasH) {
-          w = Number(options.width);
-          h = Number(options.height);
-        } else if (hasW) {
-          w = Number(options.width);
-          h = w / (aspect || 1);
-        } else if (hasH) {
-          h = Number(options.height);
-          w = h * (aspect || 1);
-        }
-      }
-
-      w = Math.max(1, Math.ceil(Number.isFinite(w) ? w : 1));
-      h = Math.max(1, Math.ceil(Number.isFinite(h) ? h : 1));
-
       const csEl = getComputedStyle(element);
-      const baseTransform = csEl.transform && csEl.transform !== "none" ? csEl.transform : "";
-      const ind = readIndividualTransforms(element);
+      function parseFilterDropShadows(cs) {
+        // Soporta 'filter' y '-webkit-filter'; puede haber múltiples drop-shadow()
+        const raw = `${cs.filter || ""} ${cs.webkitFilter || ""}`.trim();
+        if (!raw || raw === "none") {
+          return { bleed: { top: 0, right: 0, bottom: 0, left: 0 }, has: false };
+        }
 
-      let outW, outH, tx, ty, cancelTranslateX = 0, cancelTranslateY = 0;
+        // Captura tokens drop-shadow(...) tolerando paréntesis en colores (rgb(a), hsl(a))
+        const tokens = raw.match(/drop-shadow\((?:[^()]|\([^()]*\))*\)/gi) || [];
+        let t = 0, r = 0, b = 0, l = 0;
+        let found = false;
 
-      if (!hasBBoxAffectingTransform(element)) {
-        const r = element.getBoundingClientRect();
-        const vp = inflateRect(r, { top: 0, right: 0, bottom: 0, left: 0 });
-        outW = Math.max(1, vp.width);
-        outH = Math.max(1, vp.height);
-        tx = - (vp.x - Math.floor(r.left));
-        ty = - (vp.y - Math.floor(r.top));
-      } else {
-        const TOTAL = readTotalTransformMatrix({
-          baseTransform,
-          rotate: ind.rotate || "0deg",
-          scale: ind.scale,
-          translate: ind.translate
-        });
+        for (const tok of tokens) {
+          found = true;
+          // Extrae offsets/blur en px (ox oy [blur]); 'spread' no existe en drop-shadow()
+          const nums = tok.match(/-?\d+(?:\.\d+)?px/gi)?.map(v => parseFloat(v)) || [];
+          const [ox = 0, oy = 0, blur = 0] = nums;
+          const extX = Math.abs(ox) + blur;
+          const extY = Math.abs(oy) + blur;
+          r = Math.max(r, extX + Math.max(ox, 0));
+          l = Math.max(l, extX + Math.max(-ox, 0));
+          b = Math.max(b, extY + Math.max(oy, 0));
+          t = Math.max(t, extY + Math.max(-oy, 0));
+        }
 
-        const e = TOTAL.e ?? TOTAL.m41 ?? 0; // translateX
-        const f = TOTAL.f ?? TOTAL.m42 ?? 0; // translateY
-        cancelTranslateX = -e;
-        cancelTranslateY = -f;
-        /* v8 ignore next */
-        const M2D = TOTAL.is2D ? matrix2DNoTranslate(TOTAL) : matrix2DNoTranslate(new DOMMatrix(TOTAL.toString()));
-        const bb = bboxFromMatrix(w, h, M2D);
-
-        outW = Math.max(1, Math.ceil(bb.width));
-        outH = Math.max(1, Math.ceil(bb.height));
-        tx = -bb.minX;
-        ty = -bb.minY;
+        return {
+          bleed: { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b), left: Math.ceil(l) },
+          has: found
+        };
       }
 
+      function parseBoxShadow(cs) {
+        const v = cs.boxShadow || "";
+        if (!v || v === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
+        const parts = v.split(/\),(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map((s) => s.trim());
+        let t = 0, r = 0, b2 = 0, l = 0;
+        for (const part of parts) {
+          const nums = part.match(/-?\d+(\.\d+)?px/g)?.map((n) => parseFloat(n)) || [];
+          if (nums.length < 2) continue;
+          const [ox2, oy2, blur = 0, spread = 0] = nums;
+          const extX = Math.abs(ox2) + blur + spread;
+          const extY = Math.abs(oy2) + blur + spread;
+          r = Math.max(r, extX + Math.max(ox2, 0));
+          l = Math.max(l, extX + Math.max(-ox2, 0));
+          b2 = Math.max(b2, extY + Math.max(oy2, 0));
+          t = Math.max(t, extY + Math.max(-oy2, 0));
+        }
+        return { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b2), left: Math.ceil(l) };
+      }
+      function parseFilterBlur(cs) {
+        const m = (cs.filter || "").match(/blur\(\s*([0-9.]+)px\s*\)/);
+        const b2 = m ? Math.ceil(parseFloat(m[1]) || 0) : 0;
+        return { top: b2, right: b2, bottom: b2, left: b2 };
+      }
+      function parseOutline(cs) {
+        if ((cs.outlineStyle || "none") === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
+        const w2 = Math.ceil(parseFloat(cs.outlineWidth || "0") || 0);
+        return { top: w2, right: w2, bottom: w2, left: w2 };
+      }
+      function bboxWithOriginFull(w2, h2, M, ox2, oy2) {
+        const a2 = M.a, b2 = M.b, c2 = M.c, d2 = M.d, e2 = M.e || 0, f2 = M.f || 0;
+        function pt(x, y) {
+          let X = x - ox2, Y = y - oy2;
+          let X2 = a2 * X + c2 * Y, Y2 = b2 * X + d2 * Y;
+          X2 += ox2 + e2;
+          Y2 += oy2 + f2;
+          return [X2, Y2];
+        }
+        const P = [pt(0, 0), pt(w2, 0), pt(0, h2), pt(w2, h2)];
+        let minX2 = Infinity, minY2 = Infinity, maxX2 = -Infinity, maxY2 = -Infinity;
+        for (const [X, Y] of P) {
+          if (X < minX2) minX2 = X;
+          if (Y < minY2) minY2 = Y;
+          if (X > maxX2) maxX2 = X;
+          if (Y > maxY2) maxY2 = Y;
+        }
+        return { minX: minX2, minY: minY2, maxX: maxX2, maxY: maxY2, width: maxX2 - minX2, height: maxY2 - minY2 };
+      }
+      function hasTFBBox(el) {
+        return hasBBoxAffectingTransform(el);
+      }
+      const rect = element.getBoundingClientRect();
+      const w0 = Math.max(1, Math.ceil(element.offsetWidth || parseFloat(csEl.width) || rect.width || 1));
+      const h0 = Math.max(1, Math.ceil(element.offsetHeight || parseFloat(csEl.height) || rect.height || 1));
+      const coerceNum = (v, def = NaN) => {
+        const n = typeof v === "string" ? parseFloat(v) : v;
+        return Number.isFinite(n) ? n : def;
+      };
+      const optW = coerceNum(options.width);
+      const optH = coerceNum(options.height);
+      let w = w0, h = h0;
+      const hasW = Number.isFinite(optW);
+      const hasH = Number.isFinite(optH);
+      const aspect0 = h0 > 0 ? w0 / h0 : 1;
+      if (hasW && hasH) {
+        w = Math.max(1, Math.ceil(optW));
+        h = Math.max(1, Math.ceil(optH));
+      } else if (hasW) {
+        w = Math.max(1, Math.ceil(optW));
+        h = Math.max(1, Math.ceil(w / (aspect0 || 1)));
+      } else if (hasH) {
+        h = Math.max(1, Math.ceil(optH));
+        w = Math.max(1, Math.ceil(h * (aspect0 || 1)));
+      } else {
+        w = w0;
+        h = h0;
+      }
+
+      let minX = 0, minY = 0, maxX = w0, maxY = h0;
+      if (hasTFBBox(element)) {
+        const baseTransform2 = csEl.transform && csEl.transform !== "none" ? csEl.transform : "";
+        const ind2 = readIndividualTransforms(element);
+        const TOTAL = readTotalTransformMatrix({
+          baseTransform: baseTransform2,
+          rotate: ind2.rotate || "0deg",
+          scale: ind2.scale,
+          translate: ind2.translate
+        });
+        const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0);
+        const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString());
+        const bb = bboxWithOriginFull(w0, h0, M, ox2, oy2);
+        minX = bb.minX;
+        minY = bb.minY;
+        maxX = bb.maxX;
+        maxY = bb.maxY;
+      }
+      const bleedShadow = parseBoxShadow(csEl);
+      const bleedBlur = parseFilterBlur(csEl);
+      const bleedOutline = parseOutline(csEl);
+      const drop = parseFilterDropShadows(csEl);
+
+
+      // Suma a los bleeds
+      const bleed = {
+        top: bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top,
+        right: bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right,
+        bottom: bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom,
+        left: bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left
+      };
+
+
+      minX -= bleed.left;
+      minY -= bleed.top;
+      maxX += bleed.right;
+      maxY += bleed.bottom;
+      const vbW0 = Math.max(1, Math.ceil(maxX - minX));
+      const vbH0 = Math.max(1, Math.ceil(maxY - minY));
+      const outW = Math.max(1, Math.round(vbW0 * (hasW || hasH ? w / w0 : 1)));
+      const outH = Math.max(1, Math.round(vbH0 * (hasH || hasW ? h / h0 : 1)));
       const svgNS = "http://www.w3.org/2000/svg";
+      const pad = isSafari() ? 1 : 0;
       const fo = document.createElementNS(svgNS, "foreignObject");
-      fo.setAttribute("width", "100%");
-      fo.setAttribute("height", "100%");
-      fo.setAttribute("x", String(tx));
-      fo.setAttribute("y", String(ty));
+      const vbMinX = Math.floor(minX);
+      const vbMinY = Math.floor(minY);
+      fo.setAttribute("x", String(-(vbMinX - pad)));
+      fo.setAttribute("y", String(-(vbMinY - pad)));
+      fo.setAttribute("width", String(Math.ceil(w0 + pad * 2)));
+      fo.setAttribute("height", String(Math.ceil(h0 + pad * 2)));
       fo.style.overflow = "visible";
-
       const styleTag = document.createElement("style");
-      styleTag.textContent =
-        baseCSS +
-        fontsCSS +
-        "svg{overflow:visible;} foreignObject{overflow:visible;}" +
-        classCSS;
+      styleTag.textContent = baseCSS + fontsCSS + "svg{overflow:visible;} foreignObject{overflow:visible;}" + classCSS;
       fo.appendChild(styleTag);
-
       const container = document.createElement("div");
       container.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-      container.style.width = `${w}px`;
-      container.style.height = `${h}px`;
+      container.style.width = `${w0}px`;
+      container.style.height = `${h0}px`;
       container.style.overflow = "visible";
-      container.style.transformOrigin = "0 0";
-
-      const cancels = [];
-      if (cancelTranslateX || cancelTranslateY) {
-        cancels.push(`translate(${cancelTranslateX}px, ${cancelTranslateY}px)`);
-      }
-
-      if (!hasScale && (hasW || hasH)) {
-        const sxWH = rect.width ? (w / rect.width) : 1;
-        const syWH = rect.height ? (h / rect.height) : 1;
-        cancels.push(`scale(${sxWH}, ${syWH})`);
-      } else if (hasScale) {
-        cancels.push(`scale(${scaleOpt})`);
-      }
-
-      if (cancels.length) container.style.transform = cancels.join(" ");
-
       clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-      clone.style.transformOrigin = "0 0";
-      clone.style.position = "static";
-      clone.style.left = "0";
-      clone.style.top = "0";
-      if (baseTransform) clone.style.transform = baseTransform;
-      clone.style.rotate = ind.rotate || "0deg";
-      clone.style.scale = ind.scale || "1";
-      clone.style.translate = ind.translate || "0 0";
-
       container.appendChild(clone);
+
       fo.appendChild(container);
 
       const serializer = new XMLSerializer();
       const foString = serializer.serializeToString(fo);
-      const finalW = (!hasScale && (hasW || hasH)) ? w : outW;
-      const finalH = (!hasScale && (hasH || hasW)) ? h : outH;
-      const svgHeader = `<svg xmlns="${svgNS}" width="${finalW}" height="${finalH}" viewBox="0 0 ${outW} ${outH}">`;
-      // const svgHeader = `<svg xmlns="${svgNS}" width="${outW}" height="${outH}" viewBox="0 0 ${outW} ${outH}">`;
-
+      const vbW = vbW0 + pad * 2;
+      const vbH = vbH0 + pad * 2;
+      const svgHeader = `<svg xmlns="${svgNS}" width="${outW + pad * 2}" height="${outH + pad * 2}" viewBox="0 0 ${vbW} ${vbH}">`;
       const svgFooter = "</svg>";
       svgString = svgHeader + foString + svgFooter;
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
-
       resolve();
     }, { fast });
   });
-
   const sandbox = document.getElementById("snapdom-sandbox");
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();
   return dataURL;
 }
-
 function matrixFromComputed(el) {
   const tr = getComputedStyle(el).transform;
   if (!tr || tr === "none") return new DOMMatrix();
-  try { return new DOMMatrix(tr); }
-  catch { return new WebKitCSSMatrix(tr); } // fallback WebKit
-}
-
-function matrix2DNoTranslate(M) {
-  return new DOMMatrix([M.a, M.b, M.c, M.d, 0, 0]);
-}
-
-function bboxFromMatrix(w, h, M2D) {
-  const pts = [
-    { x: 0, y: 0 },
-    { x: w, y: 0 },
-    { x: 0, y: h },
-    { x: w, y: h },
-  ];
-  const t = pts.map(p => ({
-    x: M2D.a * p.x + M2D.c * p.y,
-    y: M2D.b * p.x + M2D.d * p.y,
-  }));
-  const minX = Math.min(...t.map(p => p.x));
-  const maxX = Math.max(...t.map(p => p.x));
-  const minY = Math.min(...t.map(p => p.y));
-  const maxY = Math.max(...t.map(p => p.y));
-  return { minX, minY, width: maxX - minX, height: maxY - minY };
+  try {
+    return new DOMMatrix(tr);
+  } catch {
+    return new WebKitCSSMatrix(tr);
+  }
 }
 
 /**
- * Safely reads individual transform properties from CSS Typed OM when available,
- * falling back to getComputedStyle if not supported.
- * Prevents TypeError: "Invalid propertyName: rotate" on browsers without individual transforms.
- *
+ * Returns a robust snapshot of individual transform-like properties.
+ * Supports CSS Typed OM (CSSScale/CSSRotate/CSSTranslate) and legacy strings.
  * @param {Element} el
- * @returns {{ rotate: string, scale: string|null, translate: string|null }}
+ * @returns {{ rotate:string, scale:string|null, translate:string|null }}
  */
 function readIndividualTransforms(el) {
   const out = { rotate: "0deg", scale: null, translate: null };
 
-  // Prefer CSS Typed OM if available, but guard against unsupported properties.
-  const map = typeof el.computedStyleMap === "function" ? el.computedStyleMap() : null;
+  const map = (typeof el.computedStyleMap === "function") ? el.computedStyleMap() : null;
   if (map) {
-    /** @param {"rotate"|"scale"|"translate"} prop */
     const safeGet = (prop) => {
       try {
-        // If has() exists and says "no", avoid get()
         if (typeof map.has === "function" && !map.has(prop)) return null;
         if (typeof map.get !== "function") return null;
         return map.get(prop);
-      } catch {
-        return null;
-      }
+      } catch { return null; }
     };
 
+    // ROTATE
     const rot = safeGet("rotate");
     if (rot) {
-      // rot could be a CSSRotate or a plain object depending on impl
-      const ang = rot.angle ?? rot;
-      if (ang && typeof ang === "object" && "unit" in ang) {
-        out.rotate = ang.unit === "rad" ? (ang.value * 180 / Math.PI) + "deg" : (ang.value + ang.unit);
+      // CSSRotate or CSSUnitValue(angle)
+      if (rot.angle) {
+        const ang = rot.angle; // CSSUnitValue
+        out.rotate = (ang.unit === "rad")
+          ? (ang.value * 180 / Math.PI) + "deg"
+          : (ang.value + ang.unit);
+      } else if (rot.unit) {
+        // CSSUnitValue
+        out.rotate = rot.unit === "rad"
+          ? (rot.value * 180 / Math.PI) + "deg"
+          : (rot.value + rot.unit);
       } else {
         out.rotate = String(rot);
       }
+    } else {
+      // Legacy fallback
+      const cs = getComputedStyle(el);
+      out.rotate = (cs.rotate && cs.rotate !== "none") ? cs.rotate : "0deg";
     }
 
+    // SCALE
     const sc = safeGet("scale");
-    if (sc && sc.length) {
-      const sx = sc[0]?.value ?? 1;
-      const sy = sc[1]?.value ?? sx;
+    if (sc) {
+      // Chrome: CSSScale { x: CSSUnitValue, y: CSSUnitValue, z? }
+      // Safari TP / spec variants can differ; be permissive:
+      const sx = ("x" in sc && sc.x?.value != null) ? sc.x.value : (Array.isArray(sc) ? sc[0]?.value : Number(sc) || 1);
+      const sy = ("y" in sc && sc.y?.value != null) ? sc.y.value : (Array.isArray(sc) ? sc[1]?.value : sx);
       out.scale = `${sx} ${sy}`;
+    } else {
+      const cs = getComputedStyle(el);
+      out.scale = (cs.scale && cs.scale !== "none") ? cs.scale : null;
     }
 
+    // TRANSLATE
     const tr = safeGet("translate");
-    if (tr && tr.length) {
-      const tx = tr[0]?.value ?? 0;
-      const ty = tr[1]?.value ?? 0;
-      const ux = tr[0]?.unit ?? "px";
-      const uy = tr[1]?.unit ?? "px";
+    if (tr) {
+      // CSSTranslate: { x: CSSNumericValue, y: CSSNumericValue }
+      const tx = ("x" in tr && "value" in tr.x) ? tr.x.value : (Array.isArray(tr) ? tr[0]?.value : 0);
+      const ty = ("y" in tr && "value" in tr.y) ? tr.y.value : (Array.isArray(tr) ? tr[1]?.value : 0);
+      const ux = ("x" in tr && tr.x?.unit) ? tr.x.unit : "px";
+      const uy = ("y" in tr && tr.y?.unit) ? tr.y.unit : "px";
       out.translate = `${tx}${ux} ${ty}${uy}`;
+    } else {
+      const cs = getComputedStyle(el);
+      out.translate = (cs.translate && cs.translate !== "none") ? cs.translate : null;
     }
-
     return out;
   }
 
-  // Fallback: try computed style individual props; if absent, defaults remain
+  // Legacy path – no Typed OM
   const cs = getComputedStyle(el);
-  out.rotate = cs.rotate && cs.rotate !== "none" ? cs.rotate : "0deg";
-  out.scale = cs.scale && cs.scale !== "none" ? cs.scale : null;
-  out.translate = cs.translate && cs.translate !== "none" ? cs.translate : null;
-
+  out.rotate = (cs.rotate && cs.rotate !== "none") ? cs.rotate : "0deg";
+  out.scale = (cs.scale && cs.scale !== "none") ? cs.scale : null;
+  out.translate = (cs.translate && cs.translate !== "none") ? cs.translate : null;
   return out;
 }
 
-
 /**
- * Returns true if element has a transform that changes its bounding box
- * (i.e., rotation/scale/skew). Pure translate is ignored.
+ * True if any transform (matrix or individual) can affect layout/bbox.
  * @param {Element} el
  */
 function hasBBoxAffectingTransform(el) {
-  const t = getComputedStyle(el).transform || 'none';
-  if (t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)') return false; // identity
-  // pure translate: matrix(1,0,0,1,tx,ty)
-  if (/^matrix\(\s*1\s*,\s*0\s*,\s*0\s*,\s*1\s*,/i.test(t)) return false;
-  return true; // rotation/scale/skew/perspective → affects bbox
+  const cs = getComputedStyle(el);
+  const t = cs.transform || "none";
+
+  // Matrix identity or none => might still have individual transforms
+  const hasMatrix =
+    t !== "none" &&
+    !/^matrix\(\s*1\s*,\s*0\s*,\s*0\s*,\s*1\s*,\s*0\s*,\s*0\s*\)$/i.test(t);
+
+  if (hasMatrix) return true;
+
+  // Check individual transform-like properties
+  const r = cs.rotate && cs.rotate !== "none" && cs.rotate !== "0deg";
+  const s = cs.scale && cs.scale !== "none" && cs.scale !== "1";
+  const tr = cs.translate && cs.translate !== "none" && cs.translate !== "0px 0px";
+
+  return Boolean(r || s || tr);
 }
 
 /**
- * Inflate a DOMRect with margins (px) using floor/ceil to avoid subpixel clipping.
- * @param {DOMRect} r
- * @param {{top:number,right:number,bottom:number,left:number}} p
+ * Parses transform-origin supporting keywords (left/center/right, top/center/bottom).
+ * Returns pixel offsets.
+ * @param {CSSStyleDeclaration} cs
+ * @param {number} w
+ * @param {number} h
  */
-function inflateRect(r, p) {
-  const x = Math.floor(r.left - p.left);
-  const y = Math.floor(r.top - p.top);
-  const w = Math.ceil(r.width + p.left + p.right);
-  const h = Math.ceil(r.height + p.top + p.bottom);
-  return { x, y, width: w, height: h };
+function parseTransformOriginPx(cs, w, h) {
+  const raw = (cs.transformOrigin || "0 0").trim().split(/\s+/);
+  const [oxRaw, oyRaw] = [raw[0] || "0", raw[1] || "0"];
+
+  const toPx = (token, size) => {
+    const t = token.toLowerCase();
+    if (t === "left" || t === "top") return 0;
+    if (t === "center") return size / 2;
+    if (t === "right") return size;
+    if (t === "bottom") return size;
+    if (t.endsWith("px")) return parseFloat(t) || 0;
+    if (t.endsWith("%")) return (parseFloat(t) || 0) * size / 100;
+    // number without unit => px
+    if (/^-?\d+(\.\d+)?$/.test(t)) return parseFloat(t) || 0;
+    return 0;
+  };
+
+  return {
+    ox: toPx(oxRaw, w),
+    oy: toPx(oyRaw, h),
+  };
 }
 
-let __measureHost = null;
-/** Get a persistent offscreen host for measurement (no layout trashing per capture). */
+var __measureHost = null;
 function getMeasureHost() {
   if (__measureHost) return __measureHost;
-  const n = document.createElement('div');
-  n.id = 'snapdom-measure-slot';
-  n.setAttribute('aria-hidden', 'true');
+  const n = document.createElement("div");
+  n.id = "snapdom-measure-slot";
+  n.setAttribute("aria-hidden", "true");
   Object.assign(n.style, {
-    position: 'absolute', left: '-99999px', top: '0px',
-    width: '0px', height: '0px', overflow: 'hidden',
-    opacity: '0', pointerEvents: 'none', contain: 'size layout style'
+    position: "absolute",
+    left: "-99999px",
+    top: "0px",
+    width: "0px",
+    height: "0px",
+    overflow: "hidden",
+    opacity: "0",
+    pointerEvents: "none",
+    contain: "size layout style"
   });
   document.documentElement.appendChild(n);
   __measureHost = n;
   return n;
 }
-
-/**
- * Safe matrix read from a temporary child in the measure host.
- * Applies classic + individual transforms to the temp node and reads DOMMatrix.
- * @param {{ baseTransform:string, rotate:string, scale:string|null, translate:string|null }} t
- */
 function readTotalTransformMatrix(t) {
   const host = getMeasureHost();
-  const tmp = document.createElement('div');
-  tmp.style.transformOrigin = '0 0';
+  const tmp = document.createElement("div");
+  tmp.style.transformOrigin = "0 0";
   if (t.baseTransform) tmp.style.transform = t.baseTransform;
   if (t.rotate) tmp.style.rotate = t.rotate;
   if (t.scale) tmp.style.scale = t.scale;
