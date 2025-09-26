@@ -13,8 +13,8 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
-export type ExcludeMode = "hide" | "remove";
-export type FilterMode = "hide" | "remove";
+export type ExcludeMode = 'hide' | 'remove';
+export type FilterMode = 'hide' | 'remove';
 
 export interface LocalFontDescriptor {
   /** CSS font-family name (e.g. "Inter"). */
@@ -143,12 +143,14 @@ export interface CaptureOptions {
    */
   fallbackURL?:
     | string
-    | ((args: {
-        width?: number;
-        height?: number;
-        src?: string;
-        element: HTMLImageElement;
-      }) => string | Promise<string>);
+    | ((
+        args: {
+          width?: number;
+          height?: number;
+          src?: string;
+          element: HTMLImageElement;
+        }
+      ) => string | Promise<string>);
 
   /**
    * Cache policy applied at capture start.
@@ -174,7 +176,7 @@ export interface BlobOptions {
 
 export interface DownloadOptions {
   /** File format. Default: "png". */
-  format?: BlobType;
+  format?: "svg" | RasterMime;
   /** Base filename without extension. Default: "snapDOM". */
   filename?: string;
   /** Background override for lossy formats. */
@@ -207,40 +209,16 @@ export interface CaptureResult {
 /**
  * Capture an element and return reusable export helpers.
  */
-export declare function snapdom(
-  el: Element,
-  options?: CaptureOptions
-): Promise<CaptureResult>;
+export declare function snapdom(el: Element, options?: CaptureOptions): Promise<CaptureResult>;
 
 export declare namespace snapdom {
-  function toImg(
-    el: Element,
-    options?: CaptureOptions
-  ): Promise<HTMLImageElement>;
-  function toCanvas(
-    el: Element,
-    options?: CaptureOptions
-  ): Promise<HTMLCanvasElement>;
-  function toBlob(
-    el: Element,
-    options?: CaptureOptions & BlobOptions
-  ): Promise<Blob>;
-  function toPng(
-    el: Element,
-    options?: CaptureOptions
-  ): Promise<HTMLImageElement>;
-  function toJpg(
-    el: Element,
-    options?: CaptureOptions
-  ): Promise<HTMLImageElement>;
-  function toWebp(
-    el: Element,
-    options?: CaptureOptions
-  ): Promise<HTMLImageElement>;
-  function download(
-    el: Element,
-    options?: CaptureOptions & DownloadOptions
-  ): Promise<void>;
+  function toImg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
+  function toCanvas(el: Element, options?: CaptureOptions): Promise<HTMLCanvasElement>;
+  function toBlob(el: Element, options?: CaptureOptions & BlobOptions): Promise<Blob>;
+  function toPng(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
+  function toJpg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
+  function toWebp(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
+  function download(el: Element, options?: CaptureOptions & DownloadOptions): Promise<void>;
 }
 
 /**
