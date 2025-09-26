@@ -32,19 +32,20 @@ let _safariWarmup = false;
 export async function snapdom(element, userOptions) {
   if (!element) throw new Error('Element cannot be null or undefined');
 
-  if (isSafari()) {
-    for (let i = 0; i < 3; i++) {
-      try {
-         await safariWarmup(element, userOptions)
+  const context = createContext(userOptions);
+
+  if (isSafari() && (context.embedFonts === true || hasBackgroundOrMask(element))) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      await safariWarmup(element, userOptions);
       console.log("Iteración número:", i);
-      _safariWarmup = false
-      } catch (error) {
-        
-      }
-     
+      _safariWarmup = false;
+    } catch (error) {
+      // swallow error
     }
   }
-  const context = createContext(userOptions);
+}
+
   /* c8 ignore next 1 */
   if (context.iconFonts && context.iconFonts.length > 0) extendIconFonts(context.iconFonts);
 
@@ -213,3 +214,24 @@ async function safariWarmup(element, baseOptions) {
    cleanup()
   });
 }
+
+/**
+ * Checks if the element (or its descendants) use background or mask images.
+ * @param {Element} el - The root element to inspect.
+ * @returns {boolean} True if any background or mask image is found.
+ */
+function hasBackgroundOrMask(el) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT);
+  while (walker.nextNode()) {
+    const node = /** @type {Element} */ (walker.currentNode);
+    const cs = getComputedStyle(node);
+
+    const bg = cs.backgroundImage && cs.backgroundImage !== 'none';
+    const mask = (cs.maskImage && cs.maskImage !== 'none') ||
+                 (cs.webkitMaskImage && cs.webkitMaskImage !== 'none');
+
+    if (bg || mask) return true;
+  }
+  return false;
+}
+
