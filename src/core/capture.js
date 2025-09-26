@@ -180,6 +180,7 @@ export async function captureDOM(element, options) {
       const optW = coerceNum(options.width);
       const optH = coerceNum(options.height);
       let w = w0, h = h0;
+      
       const hasW = Number.isFinite(optW);
       const hasH = Number.isFinite(optH);
       const aspect0 = h0 > 0 ? w0 / h0 : 1;
@@ -234,6 +235,7 @@ export async function captureDOM(element, options) {
       minY -= bleed.top;
       maxX += bleed.right;
       maxY += bleed.bottom;
+      
       const vbW0 = Math.max(1, Math.ceil(maxX - minX));
       const vbH0 = Math.max(1, Math.ceil(maxY - minY));
       const outW = Math.max(1, Math.round(vbW0 * (hasW || hasH ? w / w0 : 1)));
@@ -265,7 +267,28 @@ export async function captureDOM(element, options) {
       const foString = serializer.serializeToString(fo);
       const vbW = vbW0 + pad * 2;
       const vbH = vbH0 + pad * 2;
-      const svgHeader = `<svg xmlns="${svgNS}" width="${outW + pad * 2}" height="${outH + pad * 2}" viewBox="0 0 ${vbW} ${vbH}">`;
+
+
+const wantsSize = hasW || hasH;
+
+// Guardar todo en un bloque meta
+options.meta = {
+  w0,        // ancho natural del elemento
+  h0,        // alto natural
+  vbW,       // ancho del viewBox
+  vbH,       // alto del viewBox
+  targetW: w,  // ancho deseado según options.width
+  targetH: h   // alto deseado según options.height
+};
+
+// SVG header: si es Safari + width/height => mantener natural
+const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad*2);
+const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad*2);
+
+const svgHeader =
+  `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`;
+
+     // const svgHeader = `<svg xmlns="${svgNS}" width="${outW + pad * 2}" height="${outH + pad * 2}" viewBox="0 0 ${vbW} ${vbH}">`;
       const svgFooter = "</svg>";
       svgString = svgHeader + foString + svgFooter;
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;

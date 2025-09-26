@@ -111,31 +111,66 @@ function maybeConvertBoxShadowForSafari(url) {
   }
 }
 
-// ——— toCanvas: SOLO raster, SOLO Safari ———
+
+/**
+ * Rasterize SVG into a canvas honoring width/height + scale.
+ * Uses options.meta for natural sizes (from captureDOM).
+ * @param {string} url
+ * @param {{width?:number,height?:number,scale?:number,dpr?:number,meta?:object}} options
+ * @returns {Promise<HTMLCanvasElement>}
+ */
 export async function toCanvas(url, options) {
-  const { scale, dpr } = options;
-
-  // convertir box-shadow → drop-shadow SOLO en Safari y SOLO para SVG embebidos
+  let { width: optW, height: optH, scale = 1, dpr = 1, meta = {} } = options;
   url = maybeConvertBoxShadowForSafari(url);
-
   const img = new Image();
-  img.crossOrigin = 'anonymous';
   img.loading = 'eager';
   img.decoding = 'sync';
+  img.crossOrigin = 'anonymous';
   img.src = url;
   await img.decode();
 
-  const width = img.naturalWidth * scale;
-  const height = img.naturalHeight * scale;
+  const natW = img.naturalWidth;
+  const natH = img.naturalHeight;
+
+  // Referencia natural del elemento
+  const refW = Number.isFinite(meta.w0) ? meta.w0 : natW;
+  const refH = Number.isFinite(meta.h0) ? meta.h0 : natH;
+
+  let outW, outH;
+  const hasW = Number.isFinite(optW);
+  const hasH = Number.isFinite(optH);
+
+  if (hasW && hasH) {
+    outW = Math.max(1, optW);
+    outH = Math.max(1, optH);
+  } else if (hasW) {
+    const k = optW / Math.max(1, refW);
+    outW = optW;
+    outH = Math.round(refH * k);
+  } else if (hasH) {
+    const k = optH / Math.max(1, refH);
+    outH = optH;
+    outW = Math.round(refW * k);
+  } else {
+    outW = natW;
+    outH = natH;
+  }
+
+  // Aplica scale sobre lo resultante
+  outW = Math.round(outW * scale);
+  outH = Math.round(outH * scale);
 
   const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(width * dpr);
-  canvas.height = Math.ceil(height * dpr);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  canvas.width = Math.ceil(outW * dpr);
+  canvas.height = Math.ceil(outH * dpr);
+  canvas.style.width = `${outW}px`;
+  canvas.style.height = `${outH}px`;
 
   const ctx = canvas.getContext('2d');
   if (dpr !== 1) ctx.scale(dpr, dpr);
-  ctx.drawImage(img, 0, 0, width, height);
+
+  ctx.drawImage(img, 0, 0, outW, outH);
+
   return canvas;
 }
+
