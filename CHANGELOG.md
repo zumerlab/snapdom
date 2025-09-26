@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.12-dev.3](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.2...v1.9.12-dev.3)
+
+> 26 September 2025
+
+- Captures CSS shadows [`050365f`](https://github.com/zumerlab/snapdom/commit/050365f8ab2087a912c71c468b4b1c234b21dd6a)
+- Improve counter simulation [`4c9e21d`](https://github.com/zumerlab/snapdom/commit/4c9e21d6bc0135614b882e1940ce31b64c5e40b2)
+- Fix scale, width, height options [`8ef48cb`](https://github.com/zumerlab/snapdom/commit/8ef48cb2e038c286eea9b7ce2baafac30c062a5e)
+- Just run safariWarmup if it is needed [`a32846d`](https://github.com/zumerlab/snapdom/commit/a32846d6f48ab8c583b1f26c41d19f3cff67ab55)
+- Safari, in case of scale, width or height options use png to ensure fidelity [`0711a77`](https://github.com/zumerlab/snapdom/commit/0711a7774f6f545cd05e0cce86f3354fe377b02d)
+- Sanitize container [`a6ba396`](https://github.com/zumerlab/snapdom/commit/a6ba396c52406bf9c5dd0ffd27f9460cd34b028e)
+
+
 #### [v1.9.12-dev.2](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.1...v1.9.12-dev.2)
 
 > 22 September 2025
