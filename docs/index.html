@@ -71,7 +71,7 @@
       padding: 0.6rem 1.6rem;
       font-size: 1.1rem;
       font-weight: bold;
-      box-shadow: 0 2px 8px #e52e7133;
+      box-shadow: 0 2px 8px #db0a56f3;
       cursor: pointer;
       transition: background 0.2s, transform 0.2s;
       margin: 0 0.5em 1.5em 0;
@@ -267,8 +267,9 @@
       background: linear-gradient(145deg, #ffffff, #e3f0ff);
       padding: 1.5em;
       border-left: 5px solid #ff7043;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      border-radius: 46px;
+      /*box-shadow: 0 6px 20px rgb(0, 255, 21); */
+      /* filter: drop-shadow(30px 10px 4px #4444dd); */
       margin-bottom: 2em;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
@@ -993,7 +994,13 @@
       opacity: .9;
       text-align: right;
     }
-  </style>
+
+.card.shadow-demo {
+  width: 50%;
+  box-shadow: 0 6px 20px rgb(255, 94, 0) !important;
+}
+
+</style>
 </head>
 
 <body>
@@ -1052,6 +1059,7 @@
         <a href="#basic">Basic</a>
         <a href="#transition">Transition</a>
         <a href="#orbit">Orbit</a>
+         <a href="#shadow-card">Box Shadow</a>
         <a href="#fonts-demo">Fonts</a>
         <a href="#shadow">Shadow DOM</a>
         <a href="#canvas">Canvas</a>
@@ -1259,6 +1267,22 @@
       <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
       <div class="output" id="orbit-output"></div>
     </section>
+<section id="shadow-card">
+  <h2>🧩 Card with Shadows (demo)</h2>
+  <div class="card shadow-demo" id="shadow-demo-box">
+    <h3>Shadows active only here</h3>
+    <p style="margin:0;">
+      This card keeps shadows for demonstration purposes,
+      while the rest of the cards on the site have no shadow.
+    </p>
+  </div>
+  <button data-umami-event="Capture shadow card"
+          onclick="captureDemo('shadow-demo-box','shadow-demo-output', this)">Capture</button>
+  <button data-umami-event="Download shadow card"
+          onclick="downloadDemo('shadow-demo-box')">Download</button>
+  <div class="output" id="shadow-demo-output"></div>
+</section>
+
 
     <!-- Fonts -->
     <section id="fonts-demo">
@@ -1555,13 +1579,7 @@
       ctx.fillText('🎨', 60, 80)
     }
 
-    /**
-     * Captures a demo element by id and appends the resulting image in the output container.
-     * @param {string} id - Element id to capture (or 'body' for full page).
-     * @param {string} outputId - Output container id.
-     * @param {HTMLButtonElement} [btn] - Optional button to disable while capturing.
-     * @returns {Promise<void>}
-     */
+    
     async function captureDemo(id, outputId, btn) {
       const el = id === 'body' ? document.body : document.getElementById(id)
       const output = document.getElementById(outputId)
@@ -1570,7 +1588,8 @@
 
       const img = await snapdom.toImg(el, {
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
-        scale: id === 'body' ? 0.4 : 1
+        scale: id === 'body' ? 0.4 : 1,
+        useProxy: "https://proxy.corsfix.com/?"
       })
       output.innerHTML = ''
       output.appendChild(img)
@@ -1590,6 +1609,7 @@
         format: 'png',
         name: id,
         scale: id === 'body' ? 0.5 : 1,
+        width: 100,
         quality: 1,
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
       })
@@ -1636,10 +1656,12 @@
      */
     async function exportFormats(id) {
       const el = document.getElementById(id)
-      const result = await snapdom(el)
+      const result = await snapdom(el, {})
       const output = document.getElementById('export-output')
       output.innerHTML = ''
-      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp()])
+      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp(), 
+      result.download({format:'png', filename: 'png'})])
+
       output.append('PNG:', png, document.createElement('br'))
       output.append('JPG:', jpg, document.createElement('br'))
       output.append('WebP:', webp)
@@ -1686,7 +1708,7 @@
   <script type="module">
     import {
       snapdom,
-    } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs';
+    } from 'https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.min.mjs'; //"../dist/snapdom.mjs"; 
     import html2canvas from 'https://cdn.skypack.dev/html2canvas';
 
     window.snapdom = snapdom
