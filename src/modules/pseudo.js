@@ -269,8 +269,8 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         borderStyle && borderStyle !== 'none' && borderWidth > 0;
       const hasTransform = transform && transform !== 'none';
 
-      const shouldRender =
-        hasExplicitContent || hasBg || hasBgColor || hasBox || hasBorder || hasTransform;
+           const shouldRender =
+        hasExplicitContent || hasBg || hasBgColor || hasBorder || hasTransform;
 
       if (!shouldRender) {
         // Aun si no renderizamos caja, si el pseudo tenía increments, propagar a hermanos
@@ -294,6 +294,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       const pseudoEl = document.createElement('span');
       pseudoEl.dataset.snapdomPseudo = pseudo;
       pseudoEl.style.verticalAlign = 'middle';
+      pseudoEl.style.pointerEvents = 'none';
       const snapshot = snapshotComputedStyle(style);
       const key = getStyleKey(snapshot, 'span');
       sessionCache.styleMap.set(pseudoEl, key);
@@ -326,6 +327,12 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       }
 
       // ---- Backgrounds / colors ----
+           // Reset explícito para no heredar nada a menos que el pseudo lo defina
+     pseudoEl.style.background = 'none';
+     // Mask también reseteada por defecto (si tu pipeline soporta masks)
+     if ('mask' in pseudoEl.style) {
+       pseudoEl.style.mask = 'none';
+     }
       if (hasBg) {
         try {
           const bgSplits = splitBackgroundImage(bg);
@@ -339,8 +346,8 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
 
       const hasContent2 =
         pseudoEl.childNodes.length > 0 || (pseudoEl.textContent?.trim() !== '');
-      const hasVisibleBox =
-        hasContent2 || hasBg || hasBgColor || hasBox || hasBorder || hasTransform;
+     const hasVisibleBox =
+       hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform;
 
       // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
       if (incs && incs.length && source.parentElement) {
