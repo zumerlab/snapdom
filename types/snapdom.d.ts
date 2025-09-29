@@ -85,7 +85,7 @@ export interface CaptureOptions {
    * Preferred export format used by convenience methods / download.
    * Default: "png"
    */
-  format?: "svg" | RasterMime;
+  format?: BlobType;
 
   /** CSS selectors removed from the cloned subtree before processing. */
   exclude?: string[];
