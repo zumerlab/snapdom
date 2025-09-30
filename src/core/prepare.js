@@ -9,6 +9,7 @@ import { inlinePseudoElements } from '../modules/pseudo.js';
 import { snapFetch } from '../modules/snapFetch.js';
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js';
 import { cache } from '../core/cache.js';
+import { freezeSticky } from '../modules/changeCSS.js'
 
 /**
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
@@ -114,6 +115,14 @@ export async function prepareClone(element, options = {}) {
       cloneNode.appendChild(inner);
     }
   }
+  const contentRoot =
+  (clone instanceof HTMLElement && clone.firstElementChild instanceof HTMLElement)
+    ? clone.firstElementChild
+    : clone;
+
+// Congela header/footer: header => top = topInit + scrollTop
+//                        footer => bottom = bottomInit - scrollTop
+freezeSticky(element, contentRoot);
   if (element === sessionCache.nodeMap.get(clone)) {
     const computed = sessionCache.styleCache.get(element) || window.getComputedStyle(element);
     sessionCache.styleCache.set(element, computed);
