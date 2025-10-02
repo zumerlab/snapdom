@@ -2,26 +2,32 @@
 import { captureDOM } from '../core/capture';
 import { extendIconFonts } from '../modules/iconFonts.js';
 import { createContext } from '../core/context';
-import { toImg } from '../exporters/toImg.js';
+import { toImg, toSvg} from '../exporters/toImg.js';
 import { toCanvas } from '../exporters/toCanvas.js';
 import { toBlob } from '../exporters/toBlob.js';
 import { rasterize } from '../modules/rasterize.js';
 import { download } from '../exporters/download.js';
 import { isSafari } from '../utils/browser.js';
+import { registerPlugins } from '../core/plugins.js';
+import { registerExporters } from '../core/exporters.js';
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal');
 
 let _safariWarmup = false;
 
+
+
 /**
  * Main function that captures a DOM element and returns export utilities.
  * @param {HTMLElement} element - The DOM element to capture.
  * @param {object} userOptions - Options for rendering/exporting.
  * @returns {Promise<object>} Object with exporter methods:
+ * @deprecated toImg()
  *   - url: The raw data URL
  *   - toRaw(): Gets raw data URL
- *   - toImg(): Converts to HTMLImageElement
+ *   - toImg(): Converts to Svg format 
+ *   - toSvg(): Converts to Svg format
  *   - toCanvas(): Converts to HTMLCanvasElement
  *   - toBlob(): Converts to Blob
  *   - toPng(): Converts to PNG format
@@ -52,12 +58,27 @@ export async function snapdom(element, userOptions) {
   if (!context.snap) {
     context.snap = {
       toPng: (el, opts) => snapdom.toPng(el, opts),
-      toImg: (el, opts) => snapdom.toImg(el, opts),
+      toSvg: (el, opts) => snapdom.toSvg(el, opts),
     };
   }
 
   return snapdom.capture(element, context, INTERNAL_TOKEN);
 }
+
+
+/**
+ * Global registration API (plugins).
+ * @param  {...any} defs
+ * @returns {typeof snapdom}
+ */
+snapdom.plugins = (...defs) => { registerPlugins(...defs); return snapdom; };
+
+/**
+ * Global registration API (exporters).
+ * @param  {...any} defs
+ * @returns {typeof snapdom}
+ */
+snapdom.exporters = (...defs) => { registerExporters(...defs); return snapdom; };
 
 /**
  * Internal capture method that returns helper methods for transformation/export.
@@ -87,6 +108,7 @@ snapdom.capture = async (el, context, _token) => {
     url,
     toRaw: () => url,
     toImg: (opts) => toImg(url, ensureContext(opts)),
+    toSvg: (opts) => toSvg(url, ensureContext(opts)),
     toCanvas: (opts) => toCanvas(url, ensureContext(opts)),
     toBlob: (opts) => toBlob(url, ensureContext(opts)),
     toPng: withFormat('png'),
@@ -111,6 +133,7 @@ snapdom.toRaw = (el, options) => snapdom(el, options).then(result => result.toRa
  * @returns {Promise<HTMLImageElement>} Loaded image element.
  */
 snapdom.toImg = (el, options) => snapdom(el, options).then(result => result.toImg());
+snapdom.toSvg = (el, options) => snapdom(el, options).then(result => result.toSvg());
 
 /**
  * Returns a Canvas element from a captured element.

@@ -10,6 +10,7 @@ import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js';
 import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClamp } from '../modules/lineClamp.js';
+import { runHook } from './plugins.js';
 
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
@@ -27,27 +28,40 @@ import { lineClamp } from '../modules/lineClamp.js';
 export async function captureDOM(element, options) {
   if (!element) throw new Error("Element cannot be null or undefined");
   applyCachePolicy(options.cache);
+  const context = options
+  await runHook('beforeSnap', context);
+
+
   const fast = options.fast;
   let clone, classCSS, styleCache;
   let fontsCSS = "";
   let baseCSS = "";
   let dataURL;
   let svgString;
+
+  await runHook('beforeClone', context);
+
   const undoClamp = lineClamp(element);
   try {
     ({ clone, classCSS, styleCache } = await prepareClone(element, options));
+    context.clone = clone;
+    context.classCSS = classCSS;
+    context.styleCache = styleCache;
+
+    // HOOK: afterClone
+    await runHook('afterClone', context);
   } finally {
     undoClamp();
   }
   await new Promise((resolve) => {
     idle(async () => {
-      await inlineImages(clone, options);
+      await inlineImages(context.clone, options);
       resolve();
     }, { fast });
   });
   await new Promise((resolve) => {
     idle(async () => {
-      await inlineBackgroundImages(element, clone, styleCache, options);
+      await inlineBackgroundImages(element, context.clone, context.styleCache, options);
       resolve();
     }, { fast });
   });
@@ -73,7 +87,7 @@ export async function captureDOM(element, options) {
       }, { fast });
     });
   }
-  const usedTags = collectUsedTagNames(clone).sort();
+  const usedTags = collectUsedTagNames(context.clone).sort();
   const tagKey = usedTags.join(",");
   if (cache.baseStyle.has(tagKey)) {
     baseCSS = cache.baseStyle.get(tagKey);
@@ -86,90 +100,11 @@ export async function captureDOM(element, options) {
       }, { fast });
     });
   }
+  context.fontsCSS = fontsCSS;
+  context.baseCSS = baseCSS;
   await new Promise((resolve) => {
     idle(() => {
       const csEl = getComputedStyle(element);
-      function parseFilterDropShadows(cs) {
-        // Soporta 'filter' y '-webkit-filter'; puede haber múltiples drop-shadow()
-        const raw = `${cs.filter || ""} ${cs.webkitFilter || ""}`.trim();
-        if (!raw || raw === "none") {
-          return { bleed: { top: 0, right: 0, bottom: 0, left: 0 }, has: false };
-        }
-
-        // Captura tokens drop-shadow(...) tolerando paréntesis en colores (rgb(a), hsl(a))
-        const tokens = raw.match(/drop-shadow\((?:[^()]|\([^()]*\))*\)/gi) || [];
-        let t = 0, r = 0, b = 0, l = 0;
-        let found = false;
-
-        for (const tok of tokens) {
-          found = true;
-          // Extrae offsets/blur en px (ox oy [blur]); 'spread' no existe en drop-shadow()
-          const nums = tok.match(/-?\d+(?:\.\d+)?px/gi)?.map(v => parseFloat(v)) || [];
-          const [ox = 0, oy = 0, blur = 0] = nums;
-          const extX = Math.abs(ox) + blur;
-          const extY = Math.abs(oy) + blur;
-          r = Math.max(r, extX + Math.max(ox, 0));
-          l = Math.max(l, extX + Math.max(-ox, 0));
-          b = Math.max(b, extY + Math.max(oy, 0));
-          t = Math.max(t, extY + Math.max(-oy, 0));
-        }
-
-        return {
-          bleed: { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b), left: Math.ceil(l) },
-          has: found
-        };
-      }
-
-      function parseBoxShadow(cs) {
-        const v = cs.boxShadow || "";
-        if (!v || v === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
-        const parts = v.split(/\),(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map((s) => s.trim());
-        let t = 0, r = 0, b2 = 0, l = 0;
-        for (const part of parts) {
-          const nums = part.match(/-?\d+(\.\d+)?px/g)?.map((n) => parseFloat(n)) || [];
-          if (nums.length < 2) continue;
-          const [ox2, oy2, blur = 0, spread = 0] = nums;
-          const extX = Math.abs(ox2) + blur + spread;
-          const extY = Math.abs(oy2) + blur + spread;
-          r = Math.max(r, extX + Math.max(ox2, 0));
-          l = Math.max(l, extX + Math.max(-ox2, 0));
-          b2 = Math.max(b2, extY + Math.max(oy2, 0));
-          t = Math.max(t, extY + Math.max(-oy2, 0));
-        }
-        return { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b2), left: Math.ceil(l) };
-      }
-      function parseFilterBlur(cs) {
-        const m = (cs.filter || "").match(/blur\(\s*([0-9.]+)px\s*\)/);
-        const b2 = m ? Math.ceil(parseFloat(m[1]) || 0) : 0;
-        return { top: b2, right: b2, bottom: b2, left: b2 };
-      }
-      function parseOutline(cs) {
-        if ((cs.outlineStyle || "none") === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
-        const w2 = Math.ceil(parseFloat(cs.outlineWidth || "0") || 0);
-        return { top: w2, right: w2, bottom: w2, left: w2 };
-      }
-      function bboxWithOriginFull(w2, h2, M, ox2, oy2) {
-        const a2 = M.a, b2 = M.b, c2 = M.c, d2 = M.d, e2 = M.e || 0, f2 = M.f || 0;
-        function pt(x, y) {
-          let X = x - ox2, Y = y - oy2;
-          let X2 = a2 * X + c2 * Y, Y2 = b2 * X + d2 * Y;
-          X2 += ox2 + e2;
-          Y2 += oy2 + f2;
-          return [X2, Y2];
-        }
-        const P = [pt(0, 0), pt(w2, 0), pt(0, h2), pt(w2, h2)];
-        let minX2 = Infinity, minY2 = Infinity, maxX2 = -Infinity, maxY2 = -Infinity;
-        for (const [X, Y] of P) {
-          if (X < minX2) minX2 = X;
-          if (Y < minY2) minY2 = Y;
-          if (X > maxX2) maxX2 = X;
-          if (Y > maxY2) maxY2 = Y;
-        }
-        return { minX: minX2, minY: minY2, maxX: maxX2, maxY: maxY2, width: maxX2 - minX2, height: maxY2 - minY2 };
-      }
-      function hasTFBBox(el) {
-        return hasBBoxAffectingTransform(el);
-      }
       const rect = element.getBoundingClientRect();
       const w0 = Math.max(1, Math.ceil(element.offsetWidth || parseFloat(csEl.width) || rect.width || 1));
       const h0 = Math.max(1, Math.ceil(element.offsetHeight || parseFloat(csEl.height) || rect.height || 1));
@@ -180,7 +115,7 @@ export async function captureDOM(element, options) {
       const optW = coerceNum(options.width);
       const optH = coerceNum(options.height);
       let w = w0, h = h0;
-      
+
       const hasW = Number.isFinite(optW);
       const hasH = Number.isFinite(optH);
       const aspect0 = h0 > 0 ? w0 / h0 : 1;
@@ -221,7 +156,6 @@ export async function captureDOM(element, options) {
       const bleedOutline = parseOutline(csEl);
       const drop = parseFilterDropShadows(csEl);
 
-
       // Suma a los bleeds
       const bleed = {
         top: bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top,
@@ -230,12 +164,11 @@ export async function captureDOM(element, options) {
         left: bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left
       };
 
-
       minX -= bleed.left;
       minY -= bleed.top;
       maxX += bleed.right;
       maxY += bleed.bottom;
-      
+
       const vbW0 = Math.max(1, Math.ceil(maxX - minX));
       const vbH0 = Math.max(1, Math.ceil(maxY - minY));
       const outW = Math.max(1, Math.round(vbW0 * (hasW || hasH ? w / w0 : 1)));
@@ -260,45 +193,138 @@ export async function captureDOM(element, options) {
       container.style.overflow = "visible";
       clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
       container.appendChild(clone);
-
       fo.appendChild(container);
-
       const serializer = new XMLSerializer();
       const foString = serializer.serializeToString(fo);
       const vbW = vbW0 + pad * 2;
       const vbH = vbH0 + pad * 2;
 
+      const wantsSize = hasW || hasH;
 
-const wantsSize = hasW || hasH;
+      // Guardar todo en un bloque meta
+      options.meta = {
+        w0,        // ancho natural del elemento
+        h0,        // alto natural
+        vbW,       // ancho del viewBox
+        vbH,       // alto del viewBox
+        targetW: w,  // ancho deseado según options.width
+        targetH: h   // alto deseado según options.height
+      };
 
-// Guardar todo en un bloque meta
-options.meta = {
-  w0,        // ancho natural del elemento
-  h0,        // alto natural
-  vbW,       // ancho del viewBox
-  vbH,       // alto del viewBox
-  targetW: w,  // ancho deseado según options.width
-  targetH: h   // alto deseado según options.height
-};
+      // SVG header: si es Safari + width/height => mantener natural
+      const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad * 2);
+      const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad * 2);
 
-// SVG header: si es Safari + width/height => mantener natural
-const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad*2);
-const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad*2);
+      context.renderParts = {
+        foString, svgNS,
+        viewBox: { width: vbW, height: vbH },
+        output: { width: svgOutW, height: svgOutH },
+        pad
+      };
 
-const svgHeader =
-  `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`;
+      runHook('beforeRender', context).then(() => {
+        const { foString: _fo, svgNS: _ns, viewBox, output } = context.renderParts;
+        const svgHeader = `<svg xmlns="${_ns}" width="${output.width}" height="${output.height}" viewBox="0 0 ${viewBox.width} ${viewBox.height}">`;
+        const svgFooter = "</svg>";
+        svgString = svgHeader + _fo + svgFooter;
+        dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
 
-     // const svgHeader = `<svg xmlns="${svgNS}" width="${outW + pad * 2}" height="${outH + pad * 2}" viewBox="0 0 ${vbW} ${vbH}">`;
-      const svgFooter = "</svg>";
-      svgString = svgHeader + foString + svgFooter;
-      dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
-      resolve();
+        // Publicar resultado de render
+        context.svgString = svgString;
+        context.dataURL = dataURL;
+
+        // HOOK: afterRender
+        runHook('afterRender', context).then(resolve);
+      });
+     
     }, { fast });
   });
   const sandbox = document.getElementById("snapdom-sandbox");
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();
   return dataURL;
 }
+
+function parseFilterDropShadows(cs) {
+  // Soporta 'filter' y '-webkit-filter'; puede haber múltiples drop-shadow()
+  const raw = `${cs.filter || ""} ${cs.webkitFilter || ""}`.trim();
+  if (!raw || raw === "none") {
+    return { bleed: { top: 0, right: 0, bottom: 0, left: 0 }, has: false };
+  }
+
+  // Captura tokens drop-shadow(...) tolerando paréntesis en colores (rgb(a), hsl(a))
+  const tokens = raw.match(/drop-shadow\((?:[^()]|\([^()]*\))*\)/gi) || [];
+  let t = 0, r = 0, b = 0, l = 0;
+  let found = false;
+
+  for (const tok of tokens) {
+    found = true;
+    // Extrae offsets/blur en px (ox oy [blur]); 'spread' no existe en drop-shadow()
+    const nums = tok.match(/-?\d+(?:\.\d+)?px/gi)?.map(v => parseFloat(v)) || [];
+    const [ox = 0, oy = 0, blur = 0] = nums;
+    const extX = Math.abs(ox) + blur;
+    const extY = Math.abs(oy) + blur;
+    r = Math.max(r, extX + Math.max(ox, 0));
+    l = Math.max(l, extX + Math.max(-ox, 0));
+    b = Math.max(b, extY + Math.max(oy, 0));
+    t = Math.max(t, extY + Math.max(-oy, 0));
+  }
+
+  return {
+    bleed: { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b), left: Math.ceil(l) },
+    has: found
+  };
+}
+function parseBoxShadow(cs) {
+  const v = cs.boxShadow || "";
+  if (!v || v === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
+  const parts = v.split(/\),(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map((s) => s.trim());
+  let t = 0, r = 0, b2 = 0, l = 0;
+  for (const part of parts) {
+    const nums = part.match(/-?\d+(\.\d+)?px/g)?.map((n) => parseFloat(n)) || [];
+    if (nums.length < 2) continue;
+    const [ox2, oy2, blur = 0, spread = 0] = nums;
+    const extX = Math.abs(ox2) + blur + spread;
+    const extY = Math.abs(oy2) + blur + spread;
+    r = Math.max(r, extX + Math.max(ox2, 0));
+    l = Math.max(l, extX + Math.max(-ox2, 0));
+    b2 = Math.max(b2, extY + Math.max(oy2, 0));
+    t = Math.max(t, extY + Math.max(-oy2, 0));
+  }
+  return { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b2), left: Math.ceil(l) };
+}
+function parseFilterBlur(cs) {
+  const m = (cs.filter || "").match(/blur\(\s*([0-9.]+)px\s*\)/);
+  const b2 = m ? Math.ceil(parseFloat(m[1]) || 0) : 0;
+  return { top: b2, right: b2, bottom: b2, left: b2 };
+}
+function parseOutline(cs) {
+  if ((cs.outlineStyle || "none") === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
+  const w2 = Math.ceil(parseFloat(cs.outlineWidth || "0") || 0);
+  return { top: w2, right: w2, bottom: w2, left: w2 };
+}
+function bboxWithOriginFull(w2, h2, M, ox2, oy2) {
+  const a2 = M.a, b2 = M.b, c2 = M.c, d2 = M.d, e2 = M.e || 0, f2 = M.f || 0;
+  function pt(x, y) {
+    let X = x - ox2, Y = y - oy2;
+    let X2 = a2 * X + c2 * Y, Y2 = b2 * X + d2 * Y;
+    X2 += ox2 + e2;
+    Y2 += oy2 + f2;
+    return [X2, Y2];
+  }
+  const P = [pt(0, 0), pt(w2, 0), pt(0, h2), pt(w2, h2)];
+  let minX2 = Infinity, minY2 = Infinity, maxX2 = -Infinity, maxY2 = -Infinity;
+  for (const [X, Y] of P) {
+    if (X < minX2) minX2 = X;
+    if (Y < minY2) minY2 = Y;
+    if (X > maxX2) maxX2 = X;
+    if (Y > maxY2) maxY2 = Y;
+  }
+  return { minX: minX2, minY: minY2, maxX: maxX2, maxY: maxY2, width: maxX2 - minX2, height: maxY2 - minY2 };
+}
+function hasTFBBox(el) {
+  return hasBBoxAffectingTransform(el);
+}
+
 function matrixFromComputed(el) {
   const tr = getComputedStyle(el).transform;
   if (!tr || tr === "none") return new DOMMatrix();
