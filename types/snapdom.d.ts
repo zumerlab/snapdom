@@ -192,6 +192,8 @@ export interface CaptureResult {
   toRaw(): string;
   /** Creates an HTMLImageElement from the SVG (accepts options). */
   toImg(options?: CaptureOptions): Promise<HTMLImageElement>;
+  /** Creates an HTMLImageElement from the SVG (accepts options). */
+  toSvg(options?: CaptureOptions): Promise<HTMLImageElement>;
   /** Renders into a Canvas element (accepts options). */
   toCanvas(options?: CaptureOptions): Promise<HTMLCanvasElement>;
   /** Exports to a Blob (SVG/PNG/JPG/WebP). */
@@ -213,6 +215,7 @@ export declare function snapdom(el: Element, options?: CaptureOptions): Promise<
 
 export declare namespace snapdom {
   function toImg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
+  function toSvg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
   function toCanvas(el: Element, options?: CaptureOptions): Promise<HTMLCanvasElement>;
   function toBlob(el: Element, options?: CaptureOptions & BlobOptions): Promise<Blob>;
   function toPng(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;

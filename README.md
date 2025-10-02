@@ -163,7 +163,8 @@ Returns an object with reusable export methods:
 {
   url: string;
   toRaw(): string;
-  toImg(): Promise<HTMLImageElement>;
+  toImg(): Promise<HTMLImageElement>; // deprecated 
+  toSvg(): Promise<HTMLImageElement>;
   toCanvas(): Promise<HTMLCanvasElement>;
   toBlob(options?): Promise<Blob>;
   toPng(options?): Promise<HTMLImageElement>;
@@ -177,7 +178,8 @@ Returns an object with reusable export methods:
 
 | Method                         | Description                       |
 | ------------------------------ | --------------------------------- |
-| `snapdom.toImg(el, options?)`  | Returns an `HTMLImageElement`     |
+| `snapdom.toImg(el, options?)`  | Returns an SVG `HTMLImageElement` (deprecated) |
+| `snapdom.toSvg(el, options?)`  | Returns an SVG `HTMLImageElement` |
 | `snapdom.toCanvas(el, options?)` | Returns a `Canvas`               |
 | `snapdom.toBlob(el, options?)` | Returns an SVG or raster `Blob`   |
 | `snapdom.toPng(el, options?)`  | Returns a PNG image               |
@@ -220,18 +222,18 @@ Provide a default image for failed `<img>` loads. You can pass a fixed URL or a 
 
 ```js
 // 1) Fixed URL fallback
-await snapdom.toImg(element, {
+await snapdom.toSvg(element, {
   fallbackURL: '/images/fallback.png'
 });
 
 // 2) Dynamic placeholder via callback
-await snapdom.toImg(element, {
+await snapdom.toSvg(element, {
   fallbackURL: ({ width: 300, height: 150 }) =>
     `https://placehold.co/${width}x${height}`
 });
 
 // 3) With proxy (if your fallback host has no CORS)
-await snapdom.toImg(element, {
+await snapdom.toSvg(element, {
   fallbackURL: ({ width = 300, height = 150 }) =>
     `https://dummyimage.com/${width}x${height}/cccccc/666.png&text=img`,
   useProxy: 'https://proxy.corsfix.com/?'
@@ -512,7 +514,7 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 
 ## Sponsors
 
-Special thanks to [@megaphonecolin](https://github.com/megaphonecolin) for supporting this project!
+Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), and [@reynaldichernando](https://github.com/reynaldichernando) for supporting this project!
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 

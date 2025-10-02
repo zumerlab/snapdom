@@ -56,3 +56,5 @@ const img = new Image();
  }
  return img;
 }
+
+export { toImg as toSvg };
