@@ -6,12 +6,12 @@
  */
 
 export function extractURL(value) {
-  const match = value.match(/url\((['"]?)(.*?)(\1)\)/);
-  if (!match) return null;
+  const match = value.match(/url\((['"]?)(.*?)(\1)\)/)
+  if (!match) return null
 
-  const url = match[2].trim();
-  if (url.startsWith('#')) return null;
-  return url;
+  const url = match[2].trim()
+  if (url.startsWith('#')) return null
+  return url
 }
 
 /**
@@ -32,35 +32,35 @@ export function isIconFont(familyOrUrl) {
     /heroicons/i,
     /layui/i,
     /lucide/i
-  ];
-  return iconFontPatterns.some(rx => rx.test(familyOrUrl));
+  ]
+  return iconFontPatterns.some(rx => rx.test(familyOrUrl))
 }
 
 export function stripTranslate(transform) {
-  if (!transform || transform === 'none') return '';
+  if (!transform || transform === 'none') return ''
 
-  let cleaned = transform.replace(/translate[XY]?\([^)]*\)/g, '');
+  let cleaned = transform.replace(/translate[XY]?\([^)]*\)/g, '')
 
   cleaned = cleaned.replace(/matrix\(([^)]+)\)/g, (_, values) => {
-    const parts = values.split(',').map(s => s.trim());
-    if (parts.length !== 6) return `matrix(${values})`;
-    parts[4] = '0';
-    parts[5] = '0';
-    return `matrix(${parts.join(', ')})`;
-  });
+    const parts = values.split(',').map(s => s.trim())
+    if (parts.length !== 6) return `matrix(${values})`
+    parts[4] = '0'
+    parts[5] = '0'
+    return `matrix(${parts.join(', ')})`
+  })
 
   cleaned = cleaned.replace(/matrix3d\(([^)]+)\)/g, (_, values) => {
-    const parts = values.split(',').map(s => s.trim());
-    if (parts.length !== 16) return `matrix3d(${values})`;
-    parts[12] = '0';
-    parts[13] = '0';
-    return `matrix3d(${parts.join(', ')})`;
-  });
+    const parts = values.split(',').map(s => s.trim())
+    if (parts.length !== 16) return `matrix3d(${values})`
+    parts[12] = '0'
+    parts[13] = '0'
+    return `matrix3d(${parts.join(', ')})`
+  })
 
-  return cleaned.trim().replace(/\s{2,}/g, ' ');
+  return cleaned.trim().replace(/\s{2,}/g, ' ')
 }
 
 export function safeEncodeURI(uri) {
-  if (/%[0-9A-Fa-f]{2}/.test(uri)) return uri; // prevent reencode
-  try { return encodeURI(uri); } catch { return uri; }
+  if (/%[0-9A-Fa-f]{2}/.test(uri)) return uri // prevent reencode
+  try { return encodeURI(uri) } catch { return uri }
 }

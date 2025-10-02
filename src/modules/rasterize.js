@@ -1,6 +1,6 @@
 // src/exporters/rasterize.js
-import { toCanvas } from '../exporters/toCanvas.js';
-import { createBackground } from '../utils/index.js';
+import { toCanvas } from '../exporters/toCanvas.js'
+import { createBackground } from '../utils/index.js'
 
 /**
  * Converts to an HTMLImageElement with raster format.
@@ -13,17 +13,17 @@ import { createBackground } from '../utils/index.js';
  * @returns {Promise<HTMLImageElement>} Resolves with the rasterized Image element.
  */
 export async function rasterize(url, options) {
-  const canvas = await toCanvas(url, options);
+  const canvas = await toCanvas(url, options)
   const finalCanvas = options.backgroundColor
     ? createBackground(canvas, options.backgroundColor)
-    : canvas;
+    : canvas
 
-  const img = new Image();
-  img.src = finalCanvas.toDataURL(`image/${options.format}`, options.quality);
-  await img.decode();
+  const img = new Image()
+  img.src = finalCanvas.toDataURL(`image/${options.format}`, options.quality)
+  await img.decode()
 
-  img.style.width = `${finalCanvas.width / options.dpr}px`;
-  img.style.height = `${finalCanvas.height / options.dpr}px`;
+  img.style.width = `${finalCanvas.width / options.dpr}px`
+  img.style.height = `${finalCanvas.height / options.dpr}px`
 
-  return img;
+  return img
 }

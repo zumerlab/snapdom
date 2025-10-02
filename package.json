@@ -5,6 +5,8 @@
   "main": "dist/snapdom.js",
   "module": "dist/snapdom.mjs",
   "scripts": {
+    "lint": "eslint src --ext .js",
+    "lint:fix": "eslint src --ext .js --fix",
     "test": "npx vitest run --browser.headless --reporter=verbose",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
     "compile-browser": "npx @zumerbox/build -n snapdom -j src/index.browser.js -t es2015",
@@ -65,8 +67,11 @@
   },
   "homepage": "https://zumerlab.github.io/snapdom/",
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
     "@vitest/browser": "^3.1.2",
     "@vitest/coverage-v8": "^3.1.2",
+    "eslint": "^9.36.0",
+    "globals": "^16.4.0",
     "playwright": "^1.52.0"
   }
 }

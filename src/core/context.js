@@ -10,11 +10,11 @@
  * @returns {CachePolicy}
  */
 export function normalizeCachePolicy(v) {
-  if (typeof v === "string") {
-    const s = v.toLowerCase().trim();
-    if (s === "disabled" || s === "full" || s === "auto" || s === "soft") return /** @type {CachePolicy} */(s);
+  if (typeof v === 'string') {
+    const s = v.toLowerCase().trim()
+    if (s === 'disabled' || s === 'full' || s === 'auto' || s === 'soft') return /** @type {CachePolicy} */(s)
   }
-  return "soft";
+  return 'soft'
 }
 
 /**
@@ -45,9 +45,9 @@ export function normalizeCachePolicy(v) {
  * @returns {Object}
  */
 export function createContext(options = {}) {
-  const resolvedFormat = options.format ?? 'png';
+  const resolvedFormat = options.format ?? 'png'
   /** @type {CachePolicy} */
-  const cachePolicy = normalizeCachePolicy(options.cache);
+  const cachePolicy = normalizeCachePolicy(options.cache)
 
   return {
     // Debug & perf
@@ -76,7 +76,7 @@ export function createContext(options = {}) {
     cache: cachePolicy,
 
     // Red
-    useProxy: typeof options.useProxy === 'string' ? options.useProxy : "",
+    useProxy: typeof options.useProxy === 'string' ? options.useProxy : '',
 
     // Salida
     width: options.width ?? null,
@@ -91,5 +91,5 @@ export function createContext(options = {}) {
 
     // Plugins (reservado para futura activación)
     // plugins: normalizePlugins(...),
-  };
+  }
 }
