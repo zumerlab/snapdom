@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.12-dev.4](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.3...v1.9.12-dev.4)
+
+> 30 September 2025
+
+- Add basic support to sticky elements. See #232 [`02893e6`](https://github.com/zumerlab/snapdom/commit/02893e60e7f3244c1274d64232e7dbf338a283ec)
+- Update types [`19317e6`](https://github.com/zumerlab/snapdom/commit/19317e6ff34599028e627f891ae5a2d28036bac1)
+- fix formating [`58ca761`](https://github.com/zumerlab/snapdom/commit/58ca7616e3e82ec81122804264466f33d79c45c2)
+- Enhance browser detection. See #251 [`cfe753c`](https://github.com/zumerlab/snapdom/commit/cfe753c280ab0c0cda8aca88978a550257caf23f)
+- Fix pseudo capture. See #252 [`e85678e`](https://github.com/zumerlab/snapdom/commit/e85678e54fac6736c3dac8a0eaac8f1607dcbb6a)
+- Merge pull request #249 from K1ender/dev [`e497bba`](https://github.com/zumerlab/snapdom/commit/e497bbae30e2c539c53715f9dd0bed585d10cf9a)
+
+
+
 #### [v1.9.12-dev.3](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.2...v1.9.12-dev.3)
 
 > 26 September 2025
