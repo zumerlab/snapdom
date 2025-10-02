@@ -120,56 +120,6 @@ export async function captureDOM(element, options) {
         };
       }
 
-      function parseBoxShadow(cs) {
-        const v = cs.boxShadow || "";
-        if (!v || v === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
-        const parts = v.split(/\),(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map((s) => s.trim());
-        let t = 0, r = 0, b2 = 0, l = 0;
-        for (const part of parts) {
-          const nums = part.match(/-?\d+(\.\d+)?px/g)?.map((n) => parseFloat(n)) || [];
-          if (nums.length < 2) continue;
-          const [ox2, oy2, blur = 0, spread = 0] = nums;
-          const extX = Math.abs(ox2) + blur + spread;
-          const extY = Math.abs(oy2) + blur + spread;
-          r = Math.max(r, extX + Math.max(ox2, 0));
-          l = Math.max(l, extX + Math.max(-ox2, 0));
-          b2 = Math.max(b2, extY + Math.max(oy2, 0));
-          t = Math.max(t, extY + Math.max(-oy2, 0));
-        }
-        return { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b2), left: Math.ceil(l) };
-      }
-      function parseFilterBlur(cs) {
-        const m = (cs.filter || "").match(/blur\(\s*([0-9.]+)px\s*\)/);
-        const b2 = m ? Math.ceil(parseFloat(m[1]) || 0) : 0;
-        return { top: b2, right: b2, bottom: b2, left: b2 };
-      }
-      function parseOutline(cs) {
-        if ((cs.outlineStyle || "none") === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
-        const w2 = Math.ceil(parseFloat(cs.outlineWidth || "0") || 0);
-        return { top: w2, right: w2, bottom: w2, left: w2 };
-      }
-      function bboxWithOriginFull(w2, h2, M, ox2, oy2) {
-        const a2 = M.a, b2 = M.b, c2 = M.c, d2 = M.d, e2 = M.e || 0, f2 = M.f || 0;
-        function pt(x, y) {
-          let X = x - ox2, Y = y - oy2;
-          let X2 = a2 * X + c2 * Y, Y2 = b2 * X + d2 * Y;
-          X2 += ox2 + e2;
-          Y2 += oy2 + f2;
-          return [X2, Y2];
-        }
-        const P = [pt(0, 0), pt(w2, 0), pt(0, h2), pt(w2, h2)];
-        let minX2 = Infinity, minY2 = Infinity, maxX2 = -Infinity, maxY2 = -Infinity;
-        for (const [X, Y] of P) {
-          if (X < minX2) minX2 = X;
-          if (Y < minY2) minY2 = Y;
-          if (X > maxX2) maxX2 = X;
-          if (Y > maxY2) maxY2 = Y;
-        }
-        return { minX: minX2, minY: minY2, maxX: maxX2, maxY: maxY2, width: maxX2 - minX2, height: maxY2 - minY2 };
-      }
-      function hasTFBBox(el) {
-        return hasBBoxAffectingTransform(el);
-      }
       const rect = element.getBoundingClientRect();
       const w0 = Math.max(1, Math.ceil(element.offsetWidth || parseFloat(csEl.width) || rect.width || 1));
       const h0 = Math.max(1, Math.ceil(element.offsetHeight || parseFloat(csEl.height) || rect.height || 1));
@@ -180,7 +130,7 @@ export async function captureDOM(element, options) {
       const optW = coerceNum(options.width);
       const optH = coerceNum(options.height);
       let w = w0, h = h0;
-      
+
       const hasW = Number.isFinite(optW);
       const hasH = Number.isFinite(optH);
       const aspect0 = h0 > 0 ? w0 / h0 : 1;
@@ -235,7 +185,7 @@ export async function captureDOM(element, options) {
       minY -= bleed.top;
       maxX += bleed.right;
       maxY += bleed.bottom;
-      
+
       const vbW0 = Math.max(1, Math.ceil(maxX - minX));
       const vbH0 = Math.max(1, Math.ceil(maxY - minY));
       const outW = Math.max(1, Math.round(vbW0 * (hasW || hasH ? w / w0 : 1)));
@@ -269,26 +219,26 @@ export async function captureDOM(element, options) {
       const vbH = vbH0 + pad * 2;
 
 
-const wantsSize = hasW || hasH;
+      const wantsSize = hasW || hasH;
 
-// Guardar todo en un bloque meta
-options.meta = {
-  w0,        // ancho natural del elemento
-  h0,        // alto natural
-  vbW,       // ancho del viewBox
-  vbH,       // alto del viewBox
-  targetW: w,  // ancho deseado según options.width
-  targetH: h   // alto deseado según options.height
-};
+      // Guardar todo en un bloque meta
+      options.meta = {
+        w0,        // ancho natural del elemento
+        h0,        // alto natural
+        vbW,       // ancho del viewBox
+        vbH,       // alto del viewBox
+        targetW: w,  // ancho deseado según options.width
+        targetH: h   // alto deseado según options.height
+      };
 
-// SVG header: si es Safari + width/height => mantener natural
-const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad*2);
-const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad*2);
+      // SVG header: si es Safari + width/height => mantener natural
+      const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad * 2);
+      const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad * 2);
 
-const svgHeader =
-  `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`;
+      const svgHeader =
+        `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`;
 
-     // const svgHeader = `<svg xmlns="${svgNS}" width="${outW + pad * 2}" height="${outH + pad * 2}" viewBox="0 0 ${vbW} ${vbH}">`;
+      // const svgHeader = `<svg xmlns="${svgNS}" width="${outW + pad * 2}" height="${outH + pad * 2}" viewBox="0 0 ${vbW} ${vbH}">`;
       const svgFooter = "</svg>";
       svgString = svgHeader + foString + svgFooter;
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
@@ -299,6 +249,58 @@ const svgHeader =
   if (sandbox && sandbox.style.position === "absolute") sandbox.remove();
   return dataURL;
 }
+
+function parseBoxShadow(cs) {
+  const v = cs.boxShadow || "";
+  if (!v || v === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
+  const parts = v.split(/\),(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map((s) => s.trim());
+  let t = 0, r = 0, b2 = 0, l = 0;
+  for (const part of parts) {
+    const nums = part.match(/-?\d+(\.\d+)?px/g)?.map((n) => parseFloat(n)) || [];
+    if (nums.length < 2) continue;
+    const [ox2, oy2, blur = 0, spread = 0] = nums;
+    const extX = Math.abs(ox2) + blur + spread;
+    const extY = Math.abs(oy2) + blur + spread;
+    r = Math.max(r, extX + Math.max(ox2, 0));
+    l = Math.max(l, extX + Math.max(-ox2, 0));
+    b2 = Math.max(b2, extY + Math.max(oy2, 0));
+    t = Math.max(t, extY + Math.max(-oy2, 0));
+  }
+  return { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b2), left: Math.ceil(l) };
+}
+function parseFilterBlur(cs) {
+  const m = (cs.filter || "").match(/blur\(\s*([0-9.]+)px\s*\)/);
+  const b2 = m ? Math.ceil(parseFloat(m[1]) || 0) : 0;
+  return { top: b2, right: b2, bottom: b2, left: b2 };
+}
+function parseOutline(cs) {
+  if ((cs.outlineStyle || "none") === "none") return { top: 0, right: 0, bottom: 0, left: 0 };
+  const w2 = Math.ceil(parseFloat(cs.outlineWidth || "0") || 0);
+  return { top: w2, right: w2, bottom: w2, left: w2 };
+}
+function bboxWithOriginFull(w2, h2, M, ox2, oy2) {
+  const a2 = M.a, b2 = M.b, c2 = M.c, d2 = M.d, e2 = M.e || 0, f2 = M.f || 0;
+  function pt(x, y) {
+    let X = x - ox2, Y = y - oy2;
+    let X2 = a2 * X + c2 * Y, Y2 = b2 * X + d2 * Y;
+    X2 += ox2 + e2;
+    Y2 += oy2 + f2;
+    return [X2, Y2];
+  }
+  const P = [pt(0, 0), pt(w2, 0), pt(0, h2), pt(w2, h2)];
+  let minX2 = Infinity, minY2 = Infinity, maxX2 = -Infinity, maxY2 = -Infinity;
+  for (const [X, Y] of P) {
+    if (X < minX2) minX2 = X;
+    if (Y < minY2) minY2 = Y;
+    if (X > maxX2) maxX2 = X;
+    if (Y > maxY2) maxY2 = Y;
+  }
+  return { minX: minX2, minY: minY2, maxX: maxX2, maxY: maxY2, width: maxX2 - minX2, height: maxY2 - minY2 };
+}
+function hasTFBBox(el) {
+  return hasBBoxAffectingTransform(el);
+}
+
 function matrixFromComputed(el) {
   const tr = getComputedStyle(el).transform;
   if (!tr || tr === "none") return new DOMMatrix();

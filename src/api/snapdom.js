@@ -2,7 +2,7 @@
 import { captureDOM } from '../core/capture';
 import { extendIconFonts } from '../modules/iconFonts.js';
 import { createContext } from '../core/context';
-import { toImg } from '../exporters/toImg.js';
+import { toImg, toSvg} from '../exporters/toImg.js';
 import { toCanvas } from '../exporters/toCanvas.js';
 import { toBlob } from '../exporters/toBlob.js';
 import { rasterize } from '../modules/rasterize.js';
@@ -19,9 +19,11 @@ let _safariWarmup = false;
  * @param {HTMLElement} element - The DOM element to capture.
  * @param {object} userOptions - Options for rendering/exporting.
  * @returns {Promise<object>} Object with exporter methods:
+ * @deprecated toImg()
  *   - url: The raw data URL
  *   - toRaw(): Gets raw data URL
- *   - toImg(): Converts to HTMLImageElement
+ *   - toImg(): Converts to Svg format 
+ *   - toSvg(): Converts to Svg format
  *   - toCanvas(): Converts to HTMLCanvasElement
  *   - toBlob(): Converts to Blob
  *   - toPng(): Converts to PNG format
@@ -52,7 +54,7 @@ export async function snapdom(element, userOptions) {
   if (!context.snap) {
     context.snap = {
       toPng: (el, opts) => snapdom.toPng(el, opts),
-      toImg: (el, opts) => snapdom.toImg(el, opts),
+      toSvg: (el, opts) => snapdom.toSvg(el, opts),
     };
   }
 
@@ -87,6 +89,7 @@ snapdom.capture = async (el, context, _token) => {
     url,
     toRaw: () => url,
     toImg: (opts) => toImg(url, ensureContext(opts)),
+    toSvg: (opts) => toSvg(url, ensureContext(opts)),
     toCanvas: (opts) => toCanvas(url, ensureContext(opts)),
     toBlob: (opts) => toBlob(url, ensureContext(opts)),
     toPng: withFormat('png'),
@@ -111,6 +114,8 @@ snapdom.toRaw = (el, options) => snapdom(el, options).then(result => result.toRa
  * @returns {Promise<HTMLImageElement>} Loaded image element.
  */
 snapdom.toImg = (el, options) => snapdom(el, options).then(result => result.toImg());
+snapdom.toSvg = (el, options) => snapdom(el, options).then(result => result.toSvg());
+
 
 /**
  * Returns a Canvas element from a captured element.
