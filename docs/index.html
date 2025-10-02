@@ -1001,12 +1001,11 @@
       text-align: right;
     }
 
-.card.shadow-demo {
-  width: 50%;
-  box-shadow: 0 6px 20px rgb(255, 94, 0) !important;
-}
-
-</style>
+    .card.shadow-demo {
+      width: 50%;
+      box-shadow: 0 6px 20px rgb(255, 94, 0) !important;
+    }
+  </style>
 </head>
 
 <body>
@@ -1065,7 +1064,7 @@
         <a href="#basic">Basic</a>
         <a href="#transition">Transition</a>
         <a href="#orbit">Orbit</a>
-         <a href="#shadow-card">Box Shadow</a>
+        <a href="#shadow-card">Box Shadow</a>
         <a href="#fonts-demo">Fonts</a>
         <a href="#shadow">Shadow DOM</a>
         <a href="#canvas">Canvas</a>
@@ -1273,21 +1272,20 @@
       <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
       <div class="output" id="orbit-output"></div>
     </section>
-<section id="shadow-card">
-  <h2>🧩 Card with Shadows (demo)</h2>
-  <div class="card shadow-demo" id="shadow-demo-box">
-    <h3>Shadows active only here</h3>
-    <p style="margin:0;">
-      This card keeps shadows for demonstration purposes,
-      while the rest of the cards on the site have no shadow.
-    </p>
-  </div>
-  <button data-umami-event="Capture shadow card"
-          onclick="captureDemo('shadow-demo-box','shadow-demo-output', this)">Capture</button>
-  <button data-umami-event="Download shadow card"
-          onclick="downloadDemo('shadow-demo-box')">Download</button>
-  <div class="output" id="shadow-demo-output"></div>
-</section>
+    <section id="shadow-card">
+      <h2>🧩 Card with Shadows (demo)</h2>
+      <div class="card shadow-demo" id="shadow-demo-box">
+        <h3>Shadows active only here</h3>
+        <p style="margin:0;">
+          This card keeps shadows for demonstration purposes,
+          while the rest of the cards on the site have no shadow.
+        </p>
+      </div>
+      <button data-umami-event="Capture shadow card"
+        onclick="captureDemo('shadow-demo-box','shadow-demo-output', this)">Capture</button>
+      <button data-umami-event="Download shadow card" onclick="downloadDemo('shadow-demo-box')">Download</button>
+      <div class="output" id="shadow-demo-output"></div>
+    </section>
 
 
     <!-- Fonts -->
@@ -1585,7 +1583,7 @@
       ctx.fillText('🎨', 60, 80)
     }
 
-    
+
     async function captureDemo(id, outputId, btn) {
       const el = id === 'body' ? document.body : document.getElementById(id)
       const output = document.getElementById(outputId)
@@ -1665,8 +1663,8 @@
       const result = await snapdom(el, {})
       const output = document.getElementById('export-output')
       output.innerHTML = ''
-      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp(), 
-      result.download({format:'png', filename: 'png'})])
+      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp(),
+      result.download({ format: 'png', filename: 'png' })])
 
       output.append('PNG:', png, document.createElement('br'))
       output.append('JPG:', jpg, document.createElement('br'))
