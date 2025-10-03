@@ -89,9 +89,6 @@ function setDocumentFonts (fontsArray = []) {
   return () => { delete document.fonts }
 }
 
-const req = (...keys) => new Set(keys)
-const cps = (t) => new Set([...t].map(ch => ch.codePointAt(0)))
-
 let restoreFonts = () => {}
 
 // ====== setup/teardown ======

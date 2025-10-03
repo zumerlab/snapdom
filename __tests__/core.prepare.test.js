@@ -11,7 +11,6 @@ vi.mock('../src/modules/snapFetch.js', async () => {
   }
 })
 
-
 // Wrap ESM exports once so we can override per-test with mockImplementationOnce.
 // By default they call through to the actual implementations.
 vi.mock('../src/modules/svgDefs.js', async () => {
@@ -53,14 +52,6 @@ import * as svgDefs from '../src/modules/svgDefs.js'
 import * as pseudo from '../src/modules/pseudo.js'
 import * as utils from '../src/utils/index.js'
 import * as cloneMod from '../src/core/clone.js'
-
-function freshSessionCache() {
-  return {
-    styleMap: new Map(),
-    styleCache: new WeakMap(),
-    nodeMap: new Map(),
-  }
-}
 
 describe('prepareClone deep coverage (Browser Mode)', () => {
   beforeEach(() => {
@@ -107,7 +98,6 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
   window.getComputedStyle.mockRestore()
 })
 
-
   it('handles error in inlineExternalDefsAndSymbols (logs and continues)', async () => {
     const el = document.createElement('div')
     vi.mocked(svgDefs.inlineExternalDefsAndSymbols).mockImplementationOnce(() => {
@@ -140,7 +130,6 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
   expect(wrapper instanceof HTMLElement).toBe(true)
   expect(wrapper.style.transform).toContain('translate(-10px, -20px)')
 })
-
 
   it('applies inline styles (no class) for nodes inside ShadowRoot', async () => {
     const host = document.createElement('div')
@@ -194,7 +183,6 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
   globalThis.fetch = originalFetch
 })
 
-
  it('converts <img srcset> entries with blob: to data URLs', async () => {
   const wrap = document.createElement('div')
   const el = document.createElement('img')
@@ -220,7 +208,6 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
    ).toBe(true)
   globalThis.fetch = originalFetch
 })
-
 
   it('converts <svg><image href="blob:..."> to data URL', async () => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -307,7 +294,6 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
   })
 })
 
-
 // 1) No hay blob: en CSS → early return de replaceBlobUrlsInCssText
 it('does nothing when no blob: appears in style/style attribute', async () => {
   const root = document.createElement('div')
@@ -375,7 +361,6 @@ vi.mocked(snapFetch).mockResolvedValueOnce({
 const { clone } = await prepareClone(wrap)
 const srcs = [...clone.querySelectorAll('img')].map(n => n.getAttribute('src') || '')
 expect(srcs.every(s => s.startsWith('data:'))).toBe(true)
-
 
 })
 

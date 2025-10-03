@@ -12,28 +12,26 @@ vi.mock('../src/modules/snapFetch.js', async () => {
 import { snapFetch } from '../src/modules/snapFetch.js'
 
 describe('inlineImages', () => {
-  let container;
-
+  let container
 
 if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (e) => {
-    const msg = (e.reason && e.reason.message) || '';
+    const msg = (e.reason && e.reason.message) || ''
     if (
       msg.includes('[SnapDOM - fetchImage] Fetch failed and no proxy provided') ||
       msg.includes('Image load timed out') ||
       msg.includes('[SnapDOM - fetchImage] Recently failed (cooldown).')
     ) {
-      e.preventDefault(); // evita el banner de Vitest
+      e.preventDefault() // evita el banner de Vitest
     }
-  });
+  })
 }
 
-
   beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
+    container = document.createElement('div')
+    document.body.appendChild(container)
 
-    vi.restoreAllMocks();
+    vi.restoreAllMocks()
     // Mock OK por defecto para fetch (evita red real en otros tests)
     globalThis.fetch = vi.fn(() =>
       Promise.resolve({
@@ -48,23 +46,23 @@ if (typeof window !== 'undefined') {
           ),
         text: () => Promise.resolve('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
       })
-    );
-  });
+    )
+  })
 
   afterEach(() => {
-    document.body.removeChild(container);
-  });
+    document.body.removeChild(container)
+  })
 
   it('converts <img> to dataURL if the image loads', async () => {
-    const img = document.createElement('img');
+    const img = document.createElement('img')
     img.src =
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==';
-    container.appendChild(img);
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg=='
+    container.appendChild(img)
 
-    await inlineImages(container);
+    await inlineImages(container)
 
-    expect(img.src.startsWith('data:image/')).toBe(true);
-  });
+    expect(img.src.startsWith('data:image/')).toBe(true)
+  })
 
  it('replaces <img> with a fallback if the image fails', async () => {
   const img = document.createElement('img')
@@ -80,10 +78,7 @@ if (typeof window !== 'undefined') {
   expect(container.querySelector('img')).toBeNull()
 })
 
-
-});
-
-
+})
 
 describe('inlineImages – extra coverage', () => {
   let wrap
@@ -118,7 +113,6 @@ describe('inlineImages – extra coverage', () => {
   // y el resultado final es data:
   expect(img.src.startsWith('data:')).toBe(true)
 })
-
 
   it('convierte a dataURL cuando snapFetch ok y garantiza dimensiones', async () => {
     const img = document.createElement('img')
@@ -199,12 +193,21 @@ describe('inlineImages – extra coverage', () => {
   })
 
   it('procesa en lotes de 4 (5 imágenes) y aplica placeholder por falla', async () => {
-    const imgs = Array.from({ length: 5 }, (_, i) => {
-      const n = document.createElement('img')
-      n.src = `https://ex.com/${i}.png`
-      wrap.appendChild(n)
-      return n
-    })
+    const img = document.createElement('img')
+    img.src = 'https://ex.com/down.png'
+    wrap.appendChild(img)
+    const img1 = document.createElement('img')
+    img1.src = 'https://ex.com/down.png'
+    wrap.appendChild(img1)
+    const img2 = document.createElement('img')
+    img2.src = 'https://ex.com/down.png'
+    wrap.appendChild(img2)
+    const img3 = document.createElement('img')
+    img3.src = 'https://ex.com/down.png'
+    wrap.appendChild(img3)
+    const img4 = document.createElement('img')
+    img4.src = 'https://ex.com/down.png'
+    wrap.appendChild(img4)
     // todas fallan
     vi.mocked(snapFetch).mockResolvedValue({ ok: false, data: null })
 

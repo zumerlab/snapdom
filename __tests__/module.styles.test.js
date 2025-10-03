@@ -77,7 +77,6 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(session.styleMap.has(clone)).toBe(true)
   })
 
-
   it('firma #1: (source, clone, sessionCache, options)', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 

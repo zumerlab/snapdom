@@ -1,33 +1,33 @@
-import { describe, it, expect } from 'vitest';
-import { getStyleKey, collectUsedTagNames, getDefaultStyleForTag } from '../src/utils';
+import { describe, it, expect } from 'vitest'
+import { getStyleKey, collectUsedTagNames, getDefaultStyleForTag } from '../src/utils'
 
 describe('getStyleKey', () => {
-  
+
   it('getStyleKey works with compress true default', () => {
-    const snapshot = { color: 'red', 'font-size': '12px' };
-    const key = getStyleKey(snapshot, 'div');
-    expect(typeof key).toBe('string');
-  });
-});
+    const snapshot = { color: 'red', 'font-size': '12px' }
+    const key = getStyleKey(snapshot, 'div')
+    expect(typeof key).toBe('string')
+  })
+})
 
 describe('collectUsedTagNames', () => {
   it('returns unique tag names', () => {
-    const root = document.createElement('div');
-    root.innerHTML = '<span></span><p></p><span></span>';
-    const tags = collectUsedTagNames(root);
-    expect(tags).toContain('div');
-    expect(tags).toContain('span');
-    expect(tags).toContain('p');
-  });
-});
+    const root = document.createElement('div')
+    root.innerHTML = '<span></span><p></p><span></span>'
+    const tags = collectUsedTagNames(root)
+    expect(tags).toContain('div')
+    expect(tags).toContain('span')
+    expect(tags).toContain('p')
+  })
+})
 
 describe('getDefaultStyleForTag', () => {
   it('returns a default style object', () => {
-    const defaults = getDefaultStyleForTag('div');
-    expect(typeof defaults).toBe('object');
-  });
+    const defaults = getDefaultStyleForTag('div')
+    expect(typeof defaults).toBe('object')
+  })
 
   it('getDefaultStyleForTag skips special tags', () => {
-    expect(getDefaultStyleForTag('script')).toEqual({});
-  });
-});
+    expect(getDefaultStyleForTag('script')).toEqual({})
+  })
+})
