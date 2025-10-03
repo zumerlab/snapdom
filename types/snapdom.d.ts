@@ -163,7 +163,22 @@ export interface CaptureOptions {
    * Default: "snapDOM"
    */
   filename?: string;
+
+  /**
+   * Normalize only translate*rotate* on the cloned root (keeps scale/skew intact).
+   * Children are not modified.
+   * Default: false
+   */
+  straighten?: boolean;
+
+  /**
+   * Do not expand the root viewBox for shadows/blur/outline/drop-shadow.
+   * Children are not modified. The root may also have those visuals cleared to avoid clipping.
+   * Default: false
+   */
+  noShadows?: boolean;
 }
+
 
 export interface BlobOptions {
   /** Blob type to export. Default: "svg". */

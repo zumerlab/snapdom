@@ -41,7 +41,9 @@ export function normalizeCachePolicy(v) {
  * @param {number}  [options.dpr]
  * @param {string|null} [options.backgroundColor]
  * @param {string}  [options.filename]
- * @param {unknown} [options.cache] // ← NEW: "disabled"|"full"|"auto"|"soft" | boolean shorthands
+ * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
+ * @param {boolean} [options.straighten] // NEW
+ * @param {boolean} [options.noShadows]      // NEW
  * @returns {Object}
  */
 export function createContext(options = {}) {
@@ -61,9 +63,10 @@ export function createContext(options = {}) {
     filter: options.filter ?? null,
     filterMode: options.filterMode ?? 'hide',
 
+    // Placeholders
     placeholders: options.placeholders !== false, // default true
 
-    // Fuentes
+    // Fonts
     embedFonts: options.embedFonts ?? false,
     iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts
       : (options.iconFonts ? [options.iconFonts] : []),
@@ -71,14 +74,13 @@ export function createContext(options = {}) {
     excludeFonts: options.excludeFonts ?? undefined,
     fallbackURL: options.fallbackURL ?? undefined,
 
-    /** Cache policy (disabled|full|auto|soft). Default: "soft" */
     /** @type {CachePolicy} */
     cache: cachePolicy,
 
-    // Red
+    // Network
     useProxy: typeof options.useProxy === 'string' ? options.useProxy : '',
 
-    // Salida
+    // Output
     width: options.width ?? null,
     height: options.height ?? null,
     format: resolvedFormat,
@@ -89,7 +91,11 @@ export function createContext(options = {}) {
       options.backgroundColor ?? (['jpg', 'jpeg', 'webp'].includes(resolvedFormat) ? '#ffffff' : null),
     filename: options.filename ?? 'snapDOM',
 
-    // Plugins (reservado para futura activación)
+    // NEW flags (user-friendly)
+    straighten: options.straighten ?? false,
+    noShadows: options.noShadows ?? false,
+
+    // Plugins (reservado)
     // plugins: normalizePlugins(...),
   }
 }

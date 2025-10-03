@@ -12,6 +12,27 @@ import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClamp } from '../modules/lineClamp.js'
 
 /**
+ * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, blur()/drop-shadow()).
+ * Children remain intact.
+ * @param {Element} originalEl
+ * @param {HTMLElement} cloneRoot
+ */
+function stripRootShadows(originalEl, cloneRoot) {
+  if (!originalEl || !cloneRoot || !cloneRoot.style) return
+  const cs = getComputedStyle(originalEl)
+  try { cloneRoot.style.boxShadow = 'none' } catch {}
+  try { cloneRoot.style.textShadow = 'none' } catch {}
+  try { cloneRoot.style.outline = 'none' } catch {}
+  const f = cs.filter || ''
+  const cleaned = f
+    .replace(/\bblur\([^()]*\)\s*/gi, '')
+    .replace(/\bdrop-shadow\([^()]*\)\s*/gi, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+  try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch {}
+}
+
+/**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
  * @param {Element} element - DOM element to capture
@@ -21,36 +42,68 @@ import { lineClamp } from '../modules/lineClamp.js'
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {Function} [options.filter] - Custom filter function
+ * @param {boolean} [options.straighten=false] - Normalize root by removing translate*rotate* (keep scale/skew)
+ * @param {boolean} [options.noShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
-
+/**
+ * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
+ *
+ * @param {Element} element - DOM element to capture
+ * @param {Object} [options={}] - Capture options
+ * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
+ * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
+ * @param {number} [options.scale=1] - Output scale multiplier
+ * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
+ * @param {Function} [options.filter] - Custom filter function
+ * @param {boolean} [options.straighten=false] - Normalize root by removing translate/rotate (keep scale/skew)
+ * @param {boolean} [options.noShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
+ * @returns {Promise<string>} Promise that resolves to an SVG data URL
+ */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
   const fast = options.fast
+  const straighten = !!options.straighten
+  const noShadows = !!options.noShadows
+
   let clone, classCSS, styleCache
   let fontsCSS = ''
   let baseCSS = ''
   let dataURL
   let svgString
+  // NEW: store root transform (scale/skew) when straighten is on
+  let rootTransform2D = null
+
   const undoClamp = lineClamp(element)
   try {
     ({ clone, classCSS, styleCache } = await prepareClone(element, options))
+
+    // ——— apply flags ONLY on the cloned root ———
+    if (straighten && clone) {
+      rootTransform2D = normalizeRootTransforms(element, clone) // {a,b,c,d} or null
+    }
+    if (noShadows && clone) {
+      stripRootShadows(element, clone)
+    }
   } finally {
     undoClamp()
   }
+
   await new Promise((resolve) => {
     idle(async () => {
       await inlineImages(clone, options)
       resolve()
     }, { fast })
   })
+
   await new Promise((resolve) => {
     idle(async () => {
       await inlineBackgroundImages(element, clone, styleCache, options)
       resolve()
     }, { fast })
   })
+
   if (options.embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
@@ -60,7 +113,7 @@ export async function captureDOM(element, options) {
           const families = new Set(
             Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
           )
-          await ensureFontsReady(families, 2)
+          await ensureFontsReady(families, 1)
         }
         fontsCSS = await embedCustomFonts({
           required,
@@ -73,6 +126,7 @@ export async function captureDOM(element, options) {
       }, { fast })
     })
   }
+
   const usedTags = collectUsedTagNames(clone).sort()
   const tagKey = usedTags.join(',')
   if (cache.baseStyle.has(tagKey)) {
@@ -86,24 +140,20 @@ export async function captureDOM(element, options) {
       }, { fast })
     })
   }
+
   await new Promise((resolve) => {
     idle(() => {
       const csEl = getComputedStyle(element)
+
       function parseFilterDropShadows(cs) {
-        // Soporta 'filter' y '-webkit-filter'; puede haber múltiples drop-shadow()
         const raw = `${cs.filter || ''} ${cs.webkitFilter || ''}`.trim()
         if (!raw || raw === 'none') {
           return { bleed: { top: 0, right: 0, bottom: 0, left: 0 }, has: false }
         }
-
-        // Captura tokens drop-shadow(...) tolerando paréntesis en colores (rgb(a), hsl(a))
         const tokens = raw.match(/drop-shadow\((?:[^()]|\([^()]*\))*\)/gi) || []
-        let t = 0, r = 0, b = 0, l = 0
-        let found = false
-
+        let t = 0, r = 0, b = 0, l = 0; let found = false
         for (const tok of tokens) {
           found = true
-          // Extrae offsets/blur en px (ox oy [blur]); 'spread' no existe en drop-shadow()
           const nums = tok.match(/-?\d+(?:\.\d+)?px/gi)?.map(v => parseFloat(v)) || []
           const [ox = 0, oy = 0, blur = 0] = nums
           const extX = Math.abs(ox) + blur
@@ -113,16 +163,13 @@ export async function captureDOM(element, options) {
           b = Math.max(b, extY + Math.max(oy, 0))
           t = Math.max(t, extY + Math.max(-oy, 0))
         }
-
-        return {
-          bleed: { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b), left: Math.ceil(l) },
-          has: found
-        }
+        return { bleed: { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b), left: Math.ceil(l) }, has: found }
       }
 
       const rect = element.getBoundingClientRect()
       const w0 = Math.max(1, Math.ceil(element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
       const h0 = Math.max(1, Math.ceil(element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
+
       const coerceNum = (v, def = NaN) => {
         const n = typeof v === 'string' ? parseFloat(v) : v
         return Number.isFinite(n) ? n : def
@@ -148,36 +195,53 @@ export async function captureDOM(element, options) {
         h = h0
       }
 
+      // ——— BBOX ———
       let minX = 0, minY = 0, maxX = w0, maxY = h0
-      if (hasTFBBox(element)) {
-        const baseTransform2 = csEl.transform && csEl.transform !== 'none' ? csEl.transform : ''
-        const ind2 = readIndividualTransforms(element)
-        const TOTAL = readTotalTransformMatrix({
-          baseTransform: baseTransform2,
-          rotate: ind2.rotate || '0deg',
-          scale: ind2.scale,
-          translate: ind2.translate
-        })
-        const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0)
-        const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString())
-        const bb = bboxWithOriginFull(w0, h0, M, ox2, oy2)
-        minX = bb.minX
-        minY = bb.minY
-        maxX = bb.maxX
-        maxY = bb.maxY
+
+      // NEW: if straighten => expand bbox using the post-normalization 2D matrix
+      if (straighten && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
+        const M2 = { a: rootTransform2D.a, b: rootTransform2D.b || 0, c: rootTransform2D.c || 0, d: rootTransform2D.d || 1, e: 0, f: 0 }
+        const bb2 = bboxWithOriginFull(w0, h0, M2, 0, 0) // anchored at 0,0 (transformOrigin forced to 0 0)
+        minX = bb2.minX
+        minY = bb2.minY
+        maxX = bb2.maxX
+        maxY = bb2.maxY
+      } else {
+        // Classic path (only when NOT straighten): bbox-aware to transforms
+        const useTFBBox = !straighten && hasTFBBox(element)
+        if (useTFBBox) {
+          const baseTransform2 = csEl.transform && csEl.transform !== 'none' ? csEl.transform : ''
+          const ind2 = readIndividualTransforms(element)
+          const TOTAL = readTotalTransformMatrix({
+            baseTransform: baseTransform2,
+            rotate: ind2.rotate || '0deg',
+            scale: ind2.scale,
+            translate: ind2.translate
+          })
+          const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0)
+          const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString())
+          const bb = bboxWithOriginFull(w0, h0, M, ox2, oy2)
+          minX = bb.minX
+          minY = bb.minY
+          maxX = bb.maxX
+          maxY = bb.maxY
+        }
       }
+
+      // ——— BLEED ———
       const bleedShadow = parseBoxShadow(csEl)
       const bleedBlur = parseFilterBlur(csEl)
       const bleedOutline = parseOutline(csEl)
       const drop = parseFilterDropShadows(csEl)
 
-      // Suma a los bleeds
-      const bleed = {
-        top: bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top,
-        right: bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right,
-        bottom: bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom,
-        left: bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left
-      }
+      const bleed = (noShadows)
+        ? { top: 0, right: 0, bottom: 0, left: 0 }
+        : {
+            top: bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top,
+            right: bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right,
+            bottom: bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom,
+            left: bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left
+          }
 
       minX -= bleed.left
       minY -= bleed.top
@@ -188,8 +252,12 @@ export async function captureDOM(element, options) {
       const vbH0 = Math.max(1, Math.ceil(maxY - minY))
       const outW = Math.max(1, Math.round(vbW0 * (hasW || hasH ? w / w0 : 1)))
       const outH = Math.max(1, Math.round(vbH0 * (hasH || hasW ? h / h0 : 1)))
+
       const svgNS = 'http://www.w3.org/2000/svg'
-      const pad = isSafari() ? 1 : 0
+      const basePad = isSafari() ? 1 : 0
+      const extraPad = straighten ? 1 : 0 // NEW: tiny safety margin for rounding
+      const pad = basePad + extraPad
+
       const fo = document.createElementNS(svgNS, 'foreignObject')
       const vbMinX = Math.floor(minX)
       const vbMinY = Math.floor(minY)
@@ -198,53 +266,117 @@ export async function captureDOM(element, options) {
       fo.setAttribute('width', String(Math.ceil(w0 + pad * 2)))
       fo.setAttribute('height', String(Math.ceil(h0 + pad * 2)))
       fo.style.overflow = 'visible'
+
       const styleTag = document.createElement('style')
       styleTag.textContent = baseCSS + fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + classCSS
       fo.appendChild(styleTag)
+
       const container = document.createElement('div')
       container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.style.width = `${w0}px`
       container.style.height = `${h0}px`
       container.style.overflow = 'visible'
+
       clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(clone)
-
       fo.appendChild(container)
 
       const serializer = new XMLSerializer()
       const foString = serializer.serializeToString(fo)
       const vbW = vbW0 + pad * 2
       const vbH = vbH0 + pad * 2
-
       const wantsSize = hasW || hasH
 
-      // Guardar todo en un bloque meta
-      options.meta = {
-        w0,        // ancho natural del elemento
-        h0,        // alto natural
-        vbW,       // ancho del viewBox
-        vbH,       // alto del viewBox
-        targetW: w,  // ancho deseado según options.width
-        targetH: h   // alto deseado según options.height
-      }
+      options.meta = { w0, h0, vbW, vbH, targetW: w, targetH: h }
 
-      // SVG header: si es Safari + width/height => mantener natural
       const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad * 2)
       const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad * 2)
-
-      const svgHeader =
-        `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`
-
-      // const svgHeader = `<svg xmlns="${svgNS}" width="${outW + pad * 2}" height="${outH + pad * 2}" viewBox="0 0 ${vbW} ${vbH}">`;
+      const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`
       const svgFooter = '</svg>'
       svgString = svgHeader + foString + svgFooter
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
       resolve()
     }, { fast })
   })
+
   const sandbox = document.getElementById('snapdom-sandbox')
   if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()
   return dataURL
+}
+
+/**
+ * Remove only translate/rotate from CLONE ROOT transform, keeping scale/skew.
+ * Also forces transformOrigin to 0 0 to avoid negative offsets.
+ * Returns the applied 2D matrix components so the caller can expand the viewBox accordingly.
+ *
+ * @param {Element} originalEl
+ * @param {HTMLElement} cloneRoot
+ * @returns {{a:number,b:number,c:number,d:number}|null} The 2D matrix (without translation) or null if not applicable.
+ */
+function normalizeRootTransforms(originalEl, cloneRoot) {
+  if (!originalEl || !cloneRoot || !cloneRoot.style) return null
+  const cs = getComputedStyle(originalEl)
+
+  // Always anchor at top-left so scale/skew doesn't push content into negative coords
+  try { cloneRoot.style.transformOrigin = '0 0' } catch {}
+
+  // Try individual properties first (no-op safe)
+  try {
+    if ('translate' in cloneRoot.style) cloneRoot.style.translate = 'none'
+    if ('rotate'    in cloneRoot.style) cloneRoot.style.rotate    = 'none'
+    // do NOT touch 'scale'
+  } catch {}
+
+  const tr = cs.transform || 'none'
+  if (!tr || tr === 'none') {
+    // May still have individual scale; let computed matrix capture it
+    try {
+      const M = matrixFromComputed(originalEl)
+      // If identity, nothing to apply
+      if ((M.a === 1 && M.b === 0 && M.c === 0 && M.d === 1)) {
+        cloneRoot.style.transform = 'none'
+        return { a: 1, b: 0, c: 0, d: 1 }
+      }
+    } catch {}
+  }
+
+  // Composite path: decompose 2D; keep scale/skew, drop translate (e,f) and rotation
+  const m2d = tr.match(/^matrix\(\s*([^)]+)\)$/i)
+  if (m2d) {
+    const nums = m2d[1].split(',').map(v => parseFloat(v.trim()))
+    if (nums.length === 6 && nums.every(Number.isFinite)) {
+      const [a, b, c, d] = nums // ignore e,f
+      // Decompose to isolate scale + shear, remove rotation:
+      const scaleX = Math.sqrt(a * a + b * b) || 0
+      let a1 = 0, b1 = 0, shear = 0, c2 = 0, d2 = 0, scaleY = 0
+      if (scaleX > 0) {
+        a1 = a / scaleX
+        b1 = b / scaleX
+        shear = a1 * c + b1 * d
+        c2 = c - a1 * shear
+        d2 = d - b1 * shear
+        scaleY = Math.sqrt(c2 * c2 + d2 * d2) || 0
+        if (scaleY > 0) shear = shear / scaleY
+        else shear = 0
+      }
+      const aP = scaleX
+      const bP = 0                 // rotation removed
+      const cP = shear * scaleY    // 2D shear component
+      const dP = scaleY
+      try { cloneRoot.style.transform = `matrix(${aP}, ${bP}, ${cP}, ${dP}, 0, 0)` } catch {}
+      return { a: aP, b: bP, c: cP, d: dP }
+    }
+  }
+
+  // 3D or unknown: best-effort — neutralize move/rotate at the end
+  try {
+    const legacy = String(tr).trim()
+    cloneRoot.style.transform = legacy + ' translate(0px, 0px) rotate(0deg)'
+    // We cannot reliably derive pure 2D here; return null to skip bbox expansion
+    return null
+  } catch {
+    return null
+  }
 }
 
 function parseBoxShadow(cs) {
