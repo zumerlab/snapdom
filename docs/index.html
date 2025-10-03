@@ -32,7 +32,7 @@
   <meta name="apple-mobile-web-app-title" content="SnapDOM" />
   <link rel="manifest" href="./assets/favicon/site.webmanifest" />
   <!-- Canonical link -->
-  <link rel="canonical" href="https://zumerlab.github.io/snapdom/" />
+  <link rel="canonical" href="https://snapdom.dev/" />
   <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     crossorigin="anonymous" />
@@ -278,6 +278,7 @@
       /* filter: drop-shadow(30px 10px 4px #4444dd); */
       margin-bottom: 2em;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      /*transform: rotate(5deg)*/
     }
 
     .card.black {
@@ -558,7 +559,7 @@
     .mask-bg {
       position: absolute;
       inset: 0;
-      background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover;
     }
 
     .mask-label {
@@ -966,13 +967,16 @@
     }
 
     .proxy-hero {
-      height: 220px;
+      height: 120px;
       border-radius: 12px;
-      background: #f3f6ff center/cover no-repeat;
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: center;
       border: 1px solid #eaeefc;
       display: grid;
       place-items: center;
       overflow: hidden;
+      background-color: white;
     }
 
     .proxy-ctrls {
@@ -1063,8 +1067,8 @@
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
         <a href="#transition">Transition</a>
+         <a href="#opts-demo">Shadows/Transform</a>
         <a href="#orbit">Orbit</a>
-        <a href="#shadow-card">Box Shadow</a>
         <a href="#fonts-demo">Fonts</a>
         <a href="#shadow">Shadow DOM</a>
         <a href="#canvas">Canvas</a>
@@ -1131,6 +1135,48 @@
       <button data-umami-event="Download basic" onclick="downloadDemo('basic-box')">Download</button>
       <div class="output" id="basic-output"></div>
     </section>
+
+    <!-- Transforms & Shadows (isolated target only) -->
+    <section id="opts-demo">
+      <h2>Transforms & Shadows</h2>
+
+      <div style="max-width:440px; margin-inline:auto;">
+        <div id="opts-target" style="
+  width: 250px; height: 100px; margin: auto;
+  background: linear-gradient(135deg, #7bdff2, #f7d5b2);
+  border-radius: 14px;
+  box-shadow: 0 14px 28px rgba(26,34,51,.25);
+  transform: rotate(8deg) scale(1.06);
+  transform-origin: 50% 50%;
+  display:grid; place-items:center; color:#1a2233; font-weight:800;">
+          Transformed + Shadow
+        </div>
+        <p></p>
+        <p style="text-align:center; margin:0.5rem 0 0;">
+          Capture it <strong>just</strong> with <code>straighten</code> /
+          <code>noShadows</code>.
+        </p>
+      </div>
+
+      <div style="display:grid; gap:.6rem; justify-items:center; margin-top:.6rem;">
+        <label style="display:flex; gap:.5rem; align-items:center;">
+          <input id="opts-flat" type="checkbox" checked />
+          <span><code>straighten</code> (remove CSS transforms)</span>
+        </label>
+        <label style="display:flex; gap:.5rem; align-items:center;">
+          <input id="opts-shadow" type="checkbox" checked />
+          <span><code>noShadows</code> (remove CSS shadows)</span>
+        </label>
+
+        <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+          <button data-umami-event="Capture" onclick="captureOptsTarget(this)">Capture</button>
+          <button data-umami-event="Download" onclick="downloadOptsTarget()">Download</button>
+        </div>
+      </div>
+
+      <div class="output" id="opts-demo-output"></div>
+    </section>
+
 
     <!-- Transition -->
     <section id="transition">
@@ -1272,20 +1318,7 @@
       <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
       <div class="output" id="orbit-output"></div>
     </section>
-    <section id="shadow-card">
-      <h2>🧩 Card with Shadows (demo)</h2>
-      <div class="card shadow-demo" id="shadow-demo-box">
-        <h3>Shadows active only here</h3>
-        <p style="margin:0;">
-          This card keeps shadows for demonstration purposes,
-          while the rest of the cards on the site have no shadow.
-        </p>
-      </div>
-      <button data-umami-event="Capture shadow card"
-        onclick="captureDemo('shadow-demo-box','shadow-demo-output', this)">Capture</button>
-      <button data-umami-event="Download shadow card" onclick="downloadDemo('shadow-demo-box')">Download</button>
-      <div class="output" id="shadow-demo-output"></div>
-    </section>
+
 
 
     <!-- Fonts -->
@@ -1590,10 +1623,11 @@
       if (!el || !output) return
       if (btn) btn.disabled = true
 
-      const img = await snapdom.toImg(el, {
+      const img = await snapdom.toSvg(el, {
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
         scale: id === 'body' ? 0.4 : 1,
-        useProxy: "https://proxy.corsfix.com/?"
+        straighten: false,
+        noShadows: true
       })
       output.innerHTML = ''
       output.appendChild(img)
@@ -1613,19 +1647,61 @@
         format: 'png',
         name: id,
         scale: id === 'body' ? 0.5 : 1,
-        width: 100,
         quality: 1,
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
+        straighten: false,
+        noShadows: true
       })
     }
 
+
+
+
     /**
-     * Captures the BODY inside a same-origin iframe (uses iframe.srcdoc to ensure same origin).
-     * @param {string} iframeId - ID of the iframe element.
-     * @param {string} outputId - Output container id.
-     * @param {HTMLButtonElement} [btn] - Optional button to disable while capturing.
+     * Capture ONLY the inner transformed/shadowed target (#opts-target).
+     * @param {HTMLButtonElement} [btn]
      * @returns {Promise<void>}
      */
+    async function captureOptsTarget(btn) {
+      const target = document.getElementById('opts-target');
+      const output = document.getElementById('opts-demo-output');
+      if (!target || !output) return;
+
+      const straighten = !!document.getElementById('opts-flat')?.checked;
+      const noShadows = !!document.getElementById('opts-shadow')?.checked;
+
+      if (btn) btn.disabled = true;
+      const img = await snapdom.toSvg(target, {
+        embedFonts: false,
+        straighten,
+        noShadows
+      });
+      output.innerHTML = '';
+      output.appendChild(img);
+      if (btn) btn.disabled = false;
+    }
+
+    /**
+     * Download ONLY the inner transformed/shadowed target (#opts-target).
+     * @returns {Promise<void>}
+     */
+    async function downloadOptsTarget() {
+      const target = document.getElementById('opts-target');
+      if (!target) return;
+
+      const straighten = !!document.getElementById('opts-flat')?.checked;
+      const noShadows = !!document.getElementById('opts-shadow')?.checked;
+
+      await snapdom.download(target, {
+        format: 'png',
+        quality: 1,
+        embedFonts: false,
+        straighten,
+        noShadows
+      });
+    }
+
+
     async function captureIframeBody(iframeId, outputId, btn) {
       const iframe = document.getElementById(iframeId)
       const output = document.getElementById(outputId)
@@ -1650,7 +1726,8 @@
       const doc = iframe?.contentDocument
       const target = doc?.body
       if (!target) return
-      await snapdom.download(target, { format: 'png', name: 'iframe-body', scale: 1, quality: 1 })
+      await snapdom.download(target, { format: 'png', name: 'iframe-body', scale: 1, quality: 1, straighten: false,
+        noShadows: true })
     }
 
     /**
@@ -1663,8 +1740,7 @@
       const result = await snapdom(el, {})
       const output = document.getElementById('export-output')
       output.innerHTML = ''
-      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp(),
-      result.download({ format: 'png', filename: 'png' })])
+      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp()])
 
       output.append('PNG:', png, document.createElement('br'))
       output.append('JPG:', jpg, document.createElement('br'))
@@ -1712,11 +1788,10 @@
   <script type="module">
     import {
       snapdom,
-    } from 'https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.min.mjs'; //"../dist/snapdom.mjs"; 
+    } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.min.mjs';
     import html2canvas from 'https://cdn.skypack.dev/html2canvas';
 
     window.snapdom = snapdom
-
 
     window.runBenchmark = async function () {
       const el = document.getElementById("benchmark-box");
@@ -1744,7 +1819,7 @@
         snapContainer.innerHTML = `<div class="progress-message">Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}.</div>`;
         await forceRender();
         const t0 = performance.now();
-        snapCanvas = await snapdom.toImg(el);
+        snapCanvas = await snapdom.toSvg(el);
         snapTotal += performance.now() - t0;
         snapContainer.innerHTML = '';
         snapContainer.appendChild(snapCanvas);
@@ -1785,7 +1860,6 @@
       benchmarkBtn.disabled = false;
       benchmarkBtn.textContent = "Run Benchmark Again";
     };
-
 
     let PROXY_BASE = ""; // disabled by default
 
@@ -1862,12 +1936,7 @@
       // Ensure the preview URL is reflected in CSS background
       getCorsDemoUrl();
 
-      const img = await toImgCors(el, {
-        // Keep it 1:1 so artifacts are easier to compare
-        scale: 1,
-        // Fonts not critical here, but you can enable if you want
-        embedFonts: false
-      });
+      const img = await toImgCors(el, {});
 
       output.innerHTML = '';
       output.appendChild(img);
