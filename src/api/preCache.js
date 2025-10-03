@@ -103,7 +103,7 @@ export async function preCache(root = document, options = {}) {
             .map(k => String(k).split('__')[0])
             .filter(Boolean)
         )
-        await ensureFontsReady(families, 2)
+        await ensureFontsReady(families, 3)
       }
 
       await embedCustomFonts({

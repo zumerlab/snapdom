@@ -222,6 +222,8 @@ function rewriteRelativeUrls(cssText, baseHref) {
 // Supports both @import url("...") and @import "..."
 const IMPORT_ANY_RE = /@import\s+(?:url\(\s*(['"]?)([^)"']+)\1\s*\)|(['"])([^"']+)\3)([^;]*);/g
 
+const MAX_IMPORT_DEPTH = 4
+
 /**
  * Flattens @import recursively and rewrites relative urls at each level
  * using that sheet's base href. Uses snapFetch (with proxy) on purpose
@@ -234,7 +236,6 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
   if (!cssText) return cssText
 
   const visited = new Set()
-  const MAX_IMPORT_DEPTH = 10
 
   function normalizeUrl(u, base) {
     try { return new URL(u, base || location.href).href } catch { return u }
@@ -258,7 +259,7 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
 
       if (visited.has(absUrl)) {
         console.warn(`[snapDOM] Skipping circular @import: ${absUrl}`)
-        continue // skip re-including this import
+        continue
       }
       visited.add(absUrl)
 
@@ -504,7 +505,6 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
   const normalizeUrl = (u, base) => {
     try { return new URL(u, base || location.href).href } catch { return u }
   }
-  const MAX_IMPORT_DEPTH = 10
 
   for (const rule of rules) {
     if (rule.type === CSSRule.IMPORT_RULE && rule.styleSheet) {
@@ -961,7 +961,6 @@ export async function ensureFontsReady(families, warmupRepetitions = 2) {
 
     document.body.appendChild(container)
     // Force layout
-
     container.offsetWidth
     document.body.removeChild(container)
   }
