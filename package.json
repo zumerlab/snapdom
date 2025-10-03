@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "eslint src --ext .js",
     "lint:fix": "eslint src --ext .js --fix",
-    "test": "npx vitest run --browser.headless --reporter=verbose",
+    "test": "npm run lint:fix && npx vitest run --browser.headless --reporter=verbose",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
     "compile-browser": "npx @zumerbox/build -n snapdom -j src/index.browser.js -t es2015",
     "compile-esm": "npx @zumerbox/build -n snapdom -j src/index.js -p neutral -x",
