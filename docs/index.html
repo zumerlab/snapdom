@@ -454,91 +454,6 @@
       color: rgba(255, 255, 255, 0.451);
     }
 
-    .dashed {
-      border-style: dashed;
-    }
-
-    .bold {
-      border-width: 2.5px;
-    }
-
-    .text {
-      width: 400px;
-      font-size: 5px;
-      flex-direction: column;
-      text-align: center;
-    }
-
-    .text1 {
-      width: 100px;
-      font-size: 5px;
-      flex-direction: column;
-      text-align: center;
-      color: black;
-    }
-
-    .plantet {
-      background-color: rgba(255, 255, 255, 0.579);
-    }
-
-    .orbit,
-    [class*='orbit-'] {
-      border: 0.1px solid rgba(255, 255, 255, 0.422) !important;
-    }
-
-    .invisible {
-      border: none !important;
-    }
-
-    .vector {
-      background-color: rgba(255, 255, 255, 0.259);
-      height: 0.1px;
-    }
-
-    .visible {
-      background-color: white;
-      border: none;
-    }
-
-    .rotate-orbit {
-      animation-name: rotation;
-      animation-iteration-count: 10;
-      animation-timing-function: linear;
-    }
-
-    .rotate-time-1 {
-      animation-duration: 40s;
-    }
-
-    .rotate-time-2 {
-      animation-duration: 30s;
-    }
-
-    .rotate-time-3 {
-      animation-duration: 20s;
-    }
-
-    .rotate-time-4 {
-      animation-duration: 10s;
-    }
-
-    .rotate-time-5 {
-      animation-duration: 5s;
-    }
-
-    .invert {
-      animation-direction: reverse;
-    }
-
-    @keyframes rotation {
-      0% {
-        rotate: 360deg;
-      }
-
-      100% {
-        rotate: 0deg;
-      }
-    }
 
     /* === Mask demos === */
     .mask-grid {
@@ -1010,6 +925,109 @@
       box-shadow: 0 6px 20px rgb(255, 94, 0) !important;
     }
   </style>
+  <style>
+    .container-gyro {
+      background: black;
+    }
+
+
+    .gyro {
+      transform-style: preserve-3d;
+      perspective: 300px;
+    }
+
+    .z-15 {
+      transform: translateZ(-15px);
+    }
+
+    .z-35 {
+      transform: translateZ(-35px);
+    }
+
+    .z-75 {
+      transform: translateZ(-75px);
+    }
+
+    .z-85 {
+      transform: translateZ(-85px);
+    }
+
+    .z-110 {
+      transform: translateZ(-110px);
+    }
+
+    .z-120 {
+      transform: translateZ(-120px);
+    }
+
+    .z-155 {
+      transform: translateZ(-155px);
+    }
+
+    .cyan {
+      --o-fill: var(--o-cyan)
+    }
+
+    .cyan-light {
+      --o-fill: var(--o-cyan-light)
+    }
+
+    .cyan-dark-transparent {
+      --o-fill: var(--o-cyan-dark);
+      opacity: 0.6
+    }
+
+    .pink {
+      --o-fill: var(--o-pink)
+    }
+
+    .transparent {
+      --o-fill: none
+    }
+
+    .white {
+      color: white
+    }
+
+    .dashed-small {
+      opacity: 0.5;
+      height: 3px;
+      background: var(--o-cyan-darker);
+    }
+
+    .dashed-big {
+      opacity: 0.8;
+      height: 6px;
+      background: var(--o-cyan);
+
+    }
+
+    .gyro {
+      animation: tiltLoop 10s ease-in-out 5 alternate;
+    }
+
+    @keyframes tiltLoop {
+      0% {
+        transform: rotateX(-35deg) rotateY(-35deg);
+      }
+
+      25% {
+        transform: rotateX(-35deg) rotateY(35deg);
+      }
+
+      50% {
+        transform: rotateX(35deg) rotateY(35deg);
+      }
+
+      75% {
+        transform: rotateX(35deg) rotateY(-35deg);
+      }
+
+      100% {
+        transform: rotateX(-35deg) rotateY(-35deg);
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -1047,7 +1065,7 @@
     </a>
   </div>
 
-  <h1>SnapDOM demo gallery</h1>
+  <h1>SnapDOM showcase</h1>
   <p style="text-align:center; max-width: 700px; margin: 0 auto 2rem; font-size: 1.1rem; color: #333;">
     SnapDOM captures HTML elements to images with exceptional speed and accuracy, supporting pseudo-elements, shadow
     DOM, web fonts, and more.
@@ -1067,7 +1085,7 @@
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
         <a href="#transition">Transition</a>
-         <a href="#opts-demo">Shadows/Transform</a>
+        <a href="#opts-demo">Shadows/Transform</a>
         <a href="#orbit">Orbit</a>
         <a href="#fonts-demo">Fonts</a>
         <a href="#shadow">Shadow DOM</a>
@@ -1193,130 +1211,81 @@
 
     <!-- Orbit -->
     <section id="orbit">
-      <h2>📦 Orbit CSS framework - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
-          data-umami-event="To orbit repo" target="_blank">repo</a></h2>
+      <h2>Orbit CSS toolkit - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
+          data-umami-event="To orbit repo" target="_blank">Go to repo</a></h2>
       <div class="card black" id="orbit-box"
         style="height: 400px; overflow: hidden; background-color: black !important;">
-        <div class="bigbang">
-          <div class="gravity-spot" style="--o-force: 1000px">
-            <div class="orbit-3 invisible">
-              <div class="vector grow-4x"></div>
-              <div class="vector grow-1.9x inner-orbit"></div>
-              <div class="vector grow-3x angle-60"></div>
-              <div class="vector grow-3x angle-90"></div>
-              <div class="vector grow-4x"></div>
-              <div class="vector grow-3x"></div>
-              <div class="vector grow-1.9x inner-orbit"></div>
-              <div class="vector grow-3x angle-240"></div>
-              <div class="vector grow-5x"></div>
-              <div class="vector grow-3x"></div>
+        <div class="bigbang container-gyro">
+          <div class="gravity-spot gyro">
+            <div class="orbit-6 from-120 range-240 small-dash z-15">
+              <!-- small dash elements -->
             </div>
-          </div>
-          <div class="gravity-spot" style="--o-force: 90px">
-            <div class="orbit dashed"></div>
-            <div class="orbit rotate-orbit rotate-time-4">
-              <div class="satellite visible shrink-50 angle-320"></div>
+            <div class="orbit-6 z-35">
+              <o-arc value="25" class="from-215 shrink-70 outer-orbit pink"></o-arc>
             </div>
-            <div class="orbit rotate-orbit rotate-time-5">
-              <div class="satellite visible shrink-50 angle-20"></div>
+            <div class="orbit-5">
+              <o-arc value="25" class="from-315 shrink-80 inner-orbit cyan-light"></o-arc>
             </div>
-            <div class="orbit dashed"></div>
-            <div class="orbit rotate-orbit rotate-time-3">
-              <div class="satellite visible shrink-50 angle-120"></div>
+            <div class="orbit-5 from-48 range-130">
+              <o-arc class=" shrink-40 outer-orbit cyan-dark-transparent"></o-arc>
             </div>
-            <div class="orbit dashed"></div>
-          </div>
-          <div class="gravity-spot uncentered" style="--o-force: 350px">
-            <div class="orbit-1 invisible">
-              <div class="satellite angle-270 invisible">
-                <div class="gravity-spot uncentered" style="--o-force: 150px">
-                  <div class="orbit-6"></div>
-                </div>
-              </div>
+            <div class="orbit-5 from-180 range-100 big-dash">
+              <!-- small dash elements -->
             </div>
-            <div class="orbit-2 shrink-60 invisible">
-              <div class="satellite angle-270 invisible">
-                <div class="gravity-spot uncentered" style="--o-force: 150px">
-                  <div class="orbit-10">
-                    <div class="satellite angle-270 invisible rotate-orbit rotate-time-2 invert">
-                      <div class="capsule rotate-orbit rotate-time-2 text">Orbit<br />THIRD EXTERNAL ORBITAL
-                        PATH<br />MERIDIAN SYSTEM</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div class="orbit-4 z-85">
+              <o-arc value="40" class="from-10 shrink-40 pink"></o-arc>
             </div>
-            <div class="orbit-4 shrink-40 invisible">
-              <div class="satellite angle-270 invisible">
-                <div class="gravity-spot uncentered" style="--o-force: 220px">
-                  <div class="orbit-12 rotate-orbit rotate-time-2">
-                    <div class="satellite visible shrink-50 angle-20"></div>
-                    <div class="satellite visible shrink-20 angle-135"></div>
-                    <div class="satellite visible shrink-60 angle-210"></div>
-                  </div>
-                </div>
-              </div>
+            <div class="orbit-6 from-320 z-110">
+              <o-arc value="40" class="shrink-40 cyan-light"></o-arc>
             </div>
-            <div class="orbit-12 rotate-orbit rotate-time-3">
-              <div class="satellite angle-60">
-                <div class="gravity-spot from-2x" style="--o-force: 90px">
-                  <div class="orbit-1 planet">
-                    <div class="satellite at-center rotate-orbit rotate-time-3 invert">
-                      <div class="capsule text1">PLANET</div>
-                    </div>
-                  </div>
-                  <div class="orbit dashed"></div>
-                  <div class="orbit-4 dashed"></div>
-                  <div class="orbit-5 rotate-orbit rotate-time-3">
-                    <div class="satellite visible shrink-50 angle-20"></div>
-                    <div class="satellite visible shrink-50"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="satellite angle-145">
-                <div class="gravity-spot" style="--o-force: 90px">
-                  <div class="orbit bold" style="border-width: 2.5px"></div>
-                  <div class="orbit dashed"></div>
-                  <div class="orbit dashed"></div>
-                  <div class="orbit dashed"></div>
-                  <div class="orbit dashed"></div>
-                  <div class="orbit rotate-orbit rotate-time-5 invert">
-                    <div class="satellite visible shrink-50"></div>
-                    <div class="satellite visible shrink-50"></div>
-                  </div>
-                </div>
-              </div>
+            <div class="orbit-6  from-30 z-120">
+              <o-arc class="shrink-60 cyan-light"></o-arc>
+              <o-arc class="shrink-60 transparent"></o-arc>
+              <o-arc class="shrink-60 cyan-light"></o-arc>
+              <o-arc class="shrink-60 transparent"></o-arc>
             </div>
-            <div class="orbit-18 invisible rotate-orbit rotate-time-1">
-              <div class="satellite angle-270">
-                <div class="gravity-spot from-6x" style="--o-force: 90px">
-                  <div class="orbit-12 rotate-orbit rotate-time-4 invert">
-                    <div class="satellite visible grow-1x angle-120"></div>
-                  </div>
-                  <div class="orbit-22 rotate-orbit rotate-time-1 invert">
-                    <div class="satellite angle-90 invisible">
-                      <div class="capsule text">Orbit<br />SECOND EXTERNAL SYSTEM <br />MERIDIAN SYSTEM</div>
-                    </div>
-                  </div>
-                  <div class="orbit">
-                    <div class="satellite visible grow-1x angle-120">
-                      <div class="gravity-spot" style="--o-force: 300px">
-                        <div class="orbit rotate-orbit rotate-time-4 invert">
-                          <div class="satellite visible shrink-80"></div>
-                          <div class="satellite visible shrink-80"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div class="orbit-6  from-100 z-155">
+              <o-arc value="40" class="shrink-90 inner-orbit cyan-light"></o-arc>
             </div>
+            <div class="orbit-6 from-185 range-80 z-75">
+              <o-arc class="grow-0.5x cyan-dark-transparent"></o-arc>
+            </div>
+            <div class="orbit-0 white">ORBIT</div>
           </div>
         </div>
       </div>
-      <button data-umami-event="Capture orbit" onclick="captureDemo('orbit-box', 'orbit-output', this)">Capture</button>
+
+
+
+      <script>
+        const container = document.querySelector('.container-gyro');
+        const gyro = document.querySelector('.gyro');
+        const sd = document.querySelector('.small-dash')
+        const bd = document.querySelector('.big-dash')
+
+        const smallDashs = [];
+        const bigDashs = [];
+
+        for (let i = 0; i < 30; i++) {
+          smallDashs.push("<div class='vector shrink-40 outer-orbit dashed-small'></div>");
+        }
+
+        for (let i = 0; i < 15; i++) {
+          bigDashs.push("<div class='vector shrink-40 outer-orbit dashed-big'></div>");
+        }
+
+        sd.innerHTML = smallDashs.join('');
+        bd.innerHTML = bigDashs.join('');
+
+      </script>
+
+      </div>
+      <button data-umami-event="Capture orbit"
+        onclick="captureOrbit('orbit-box', 'orbit-output', this)">Capture</button>
       <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
-      <div class="output" id="orbit-output"></div>
+      <div class="output" id="orbit-output">
+
+      </div>
     </section>
 
 
@@ -1602,7 +1571,6 @@
       // await preCache()
     })
 
-    // Canvas ejemplo
     const canvas = document.getElementById('myCanvas')
     if (canvas) {
       const ctx = canvas.getContext('2d')
@@ -1616,14 +1584,13 @@
       ctx.fillText('🎨', 60, 80)
     }
 
-
     async function captureDemo(id, outputId, btn) {
       const el = id === 'body' ? document.body : document.getElementById(id)
       const output = document.getElementById(outputId)
       if (!el || !output) return
       if (btn) btn.disabled = true
 
-      const img = await snapdom.toSvg(el, {
+      const img = await snapdom.toImg(el, {
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
         scale: id === 'body' ? 0.4 : 1,
         straighten: false,
@@ -1635,11 +1602,33 @@
       if (btn) btn.disabled = false
     }
 
-    /**
-     * Downloads a captured element as PNG using snapdom.download.
-     * @param {string} id - Element id (or 'body').
-     * @returns {Promise<void>}
-     */
+
+    async function captureOrbit(id, outputId, btn) {
+      const el = document.getElementById(id)
+      const output = document.getElementById(outputId)
+      if (!el || !output) return
+      if (btn) btn.disabled = true
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      output.innerHTML = ''
+      if (isSafari) {
+        const img = await snapdom.toRaw(el, {noShadows: true})
+        const rect = el.getBoundingClientRect()
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('sandbox', 'allow-same-origin');
+        iframe.setAttribute('scrolling', 'no');
+        iframe.style.cssText = `width:${rect.width}px;height:${rect.height}px;border:0;overflow:hidden;`;
+        iframe.src = img;
+        output.appendChild(iframe)
+        if (btn) btn.disabled = false
+      } else {
+        const img = await snapdom.toImg(el, {noShadows: true})
+        output.appendChild(img)
+        if (btn) btn.disabled = false
+      }
+
+    }
+
+
     async function downloadDemo(id) {
       const el = id === 'body' ? document.body : document.getElementById(id)
       if (!el) return
@@ -1654,14 +1643,6 @@
       })
     }
 
-
-
-
-    /**
-     * Capture ONLY the inner transformed/shadowed target (#opts-target).
-     * @param {HTMLButtonElement} [btn]
-     * @returns {Promise<void>}
-     */
     async function captureOptsTarget(btn) {
       const target = document.getElementById('opts-target');
       const output = document.getElementById('opts-demo-output');
@@ -1671,7 +1652,7 @@
       const noShadows = !!document.getElementById('opts-shadow')?.checked;
 
       if (btn) btn.disabled = true;
-      const img = await snapdom.toSvg(target, {
+      const img = await snapdom.toImg(target, {
         embedFonts: false,
         straighten,
         noShadows
@@ -1681,10 +1662,6 @@
       if (btn) btn.disabled = false;
     }
 
-    /**
-     * Download ONLY the inner transformed/shadowed target (#opts-target).
-     * @returns {Promise<void>}
-     */
     async function downloadOptsTarget() {
       const target = document.getElementById('opts-target');
       if (!target) return;
@@ -1701,7 +1678,6 @@
       });
     }
 
-
     async function captureIframeBody(iframeId, outputId, btn) {
       const iframe = document.getElementById(iframeId)
       const output = document.getElementById(outputId)
@@ -1716,25 +1692,17 @@
       if (btn) btn.disabled = false
     }
 
-    /**
-     * Downloads the BODY content of a same-origin iframe.
-     * @param {string} iframeId - ID of the iframe element.
-     * @returns {Promise<void>}
-     */
     async function downloadIframeBody(iframeId) {
       const iframe = document.getElementById(iframeId)
       const doc = iframe?.contentDocument
       const target = doc?.body
       if (!target) return
-      await snapdom.download(target, { format: 'png', name: 'iframe-body', scale: 1, quality: 1, straighten: false,
-        noShadows: true })
+      await snapdom.download(target, {
+        format: 'png', name: 'iframe-body', scale: 1, quality: 1, straighten: false,
+        noShadows: true
+      })
     }
 
-    /**
-     * Export multiple formats for a given element.
-     * @param {string} id
-     * @returns {Promise<void>}
-     */
     async function exportFormats(id) {
       const el = document.getElementById(id)
       const result = await snapdom(el, {})
@@ -1788,7 +1756,7 @@
   <script type="module">
     import {
       snapdom,
-    } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.min.mjs';
+    } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs';
     import html2canvas from 'https://cdn.skypack.dev/html2canvas';
 
     window.snapdom = snapdom
@@ -1819,7 +1787,7 @@
         snapContainer.innerHTML = `<div class="progress-message">Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}.</div>`;
         await forceRender();
         const t0 = performance.now();
-        snapCanvas = await snapdom.toSvg(el);
+        snapCanvas = await snapdom.toImg(el);
         snapTotal += performance.now() - t0;
         snapContainer.innerHTML = '';
         snapContainer.appendChild(snapCanvas);
