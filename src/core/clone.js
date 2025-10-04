@@ -6,6 +6,7 @@
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { idle } from '../utils/index.js'
+import { resolveCSSVars } from '../modules/CSSVar.js'
 
 /**
  * Schedule work across idle slices without relying on IdleDeadline constructor.
@@ -477,6 +478,7 @@ export async function deepClone(node, sessionCache, options) {
   let clone
   try {
     clone = node.cloneNode(false)
+    resolveCSSVars(node, clone)
     sessionCache.nodeMap.set(clone, node)
     if (node.tagName === 'IMG') {
       freezeImgSrcset(node, clone)
