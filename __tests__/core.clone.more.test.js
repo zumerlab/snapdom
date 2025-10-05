@@ -77,11 +77,17 @@ describe('deepClone – extra coverage', () => {
   warn.mockRestore()
 })
 
+it('exclude by selector with excludeMode = "remove" skips element from clonning', async () => {
+  const el = document.createElement('div')
+  el.classList.add('exclude-me')
+  const out = await deepClone(el, session, { exclude: ['.exclude-me'], excludeMode: 'remove' })
+  expect(out).not.toBeInstanceOf(HTMLElement)
+})
 
   it('excludes by custom filter returning false; and handles filter error', async () => {
     // filter false -> spacer
     const a = document.createElement('p')
-    const out1 = await deepClone(a, session, { filter: () => false })
+    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'hide' })
     expect(out1).toBeInstanceOf(HTMLElement)
     expect(out1.style.visibility).toBe('hidden')
 
@@ -92,6 +98,13 @@ describe('deepClone – extra coverage', () => {
     expect(out2).toBeInstanceOf(HTMLElement)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
+  })
+
+  it ('custom filter with filterMode = "remove" skips element from clonning', async () => {
+    // filter false -> null
+    const a = document.createElement('p')
+    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'remove' })
+    expect(out1).not.toBeInstanceOf(HTMLElement)
   })
 
   it('IFRAME fallback uses gradient style and element size', async () => {
@@ -170,7 +183,6 @@ describe('deepClone – extra coverage', () => {
     expect(nonStyleChildren.length).toBe(0)
    })
 
-
   it('<slot> outside ShadowRoot clones assignedNodes and returns DocumentFragment', async () => {
     const s = document.createElement('slot')
     // emulate assignedNodes() API
@@ -186,8 +198,14 @@ describe('deepClone – extra coverage', () => {
     expect(txt.nodeType).toBe(Node.TEXT_NODE)
     expect(txt.nodeValue).toBe('slotted!')
   })
-})
 
+  it('deepClone handles data-capture="exclude" with excludeMode = "remove"', async () => {
+    const el = document.createElement('div')
+    el.setAttribute('data-capture', 'exclude')
+    const out1 = await deepClone(el, session, { excludeMode: 'remove' })
+    expect(out1).not.toBeInstanceOf(HTMLElement)
+  })
+})
 
 describe('deepClone – targeted branches for coverage gaps', () => {
   let session
@@ -322,7 +340,6 @@ describe('deepClone – targeted branches for coverage gaps', () => {
   host.remove()
 })
 
-
   it('ShadowRoot cloning skips <style> nodes in child iteration', async () => {
   const host = document.createElement('div')
   const sr = host.attachShadow({ mode: 'open' })
@@ -392,7 +409,7 @@ describe('deepClone – extra targets to lift coverage', () => {
 
      const alreadyMatches = css.match(/:where\(\.already\)/g) || []
       expect(alreadyMatches.length).toBe(1)
-       expect(css).toMatch(/:where\(\s*\[?data-sd="s\d+"\]?[^\)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted\]\)\)/)
+       expect(css).toMatch(/:where\(\s*\[?data-sd="s\d+"\]?[^)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted\]\)\)/)
 
     // el bloque @media queda presente (el rewriter ignora @ en la captura de selectores)
     expect(css).toMatch(/@media\s*\(min-width:\s*1px\)\s*\{\s*\.m\s*\{\s*display:\s*block/i)
@@ -407,7 +424,7 @@ describe('deepClone – extra targets to lift coverage', () => {
     const h1 = document.createElement('div')
     const s1 = h1.attachShadow({ mode: 'open' })
     const st1 = document.createElement('style')
-    st1.textContent = `.x { color: red }`
+    st1.textContent = '.x { color: red }'
     s1.appendChild(st1)
 
     // segundo host
@@ -415,12 +432,11 @@ describe('deepClone – extra targets to lift coverage', () => {
     const s2 = h2.attachShadow({ mode: 'open' })
     const st2 = document.createElement('style')
     // ya contiene :not([data-sd-slotted]) → no se debe duplicar al reescribir
-    st2.textContent = `.y:not([data-sd-slotted]) { color: blue }`
+    st2.textContent = '.y:not([data-sd-slotted]) { color: blue }'
     s2.appendChild(st2)
 
     const out1 = await deepClone(h1, session, { fast: true })
     const out2 = await deepClone(h2, session, { fast: true })
-    const css1 = out1.querySelector('style[data-sd]')?.textContent || ''
     const css2 = out2.querySelector('style[data-sd]')?.textContent || ''
 
     // scopes distintos
@@ -487,7 +503,7 @@ describe('deepClone – extra targets to lift coverage', () => {
     expect(out.style.width).toBe('200px')
     expect(out.style.height).toBe('150px')
 
-    // 3) El <img> interno adopta el content-box (resta bordes): 
+    // 3) El <img> interno adopta el content-box (resta bordes):
     const img = out.querySelector('img')
     expect(img).toBeTruthy()
     expect(img.style.width).toBe('200px')

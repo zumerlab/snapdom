@@ -1,68 +1,86 @@
-import { getStyleKey, NO_DEFAULTS_TAGS } from '../utils/index.js';
-import { cache } from '../core/cache.js';
+import { getStyleKey, NO_DEFAULTS_TAGS } from '../utils/index.js'
+import { cache } from '../core/cache.js'
 
-const snapshotCache = new WeakMap();
-const snapshotKeyCache = new Map();
-let __epoch = 0;
-function bumpEpoch() { __epoch++; }
+const snapshotCache = new WeakMap()
+const snapshotKeyCache = new Map()
+let __epoch = 0
+function bumpEpoch() { __epoch++ }
 
-export function notifyStyleEpoch() { bumpEpoch(); }
+export function notifyStyleEpoch() { bumpEpoch() }
 
-let __wired = false;
+let __wired = false
 function setupInvalidationOnce(root = document.documentElement) {
-  if (__wired) return;
-  __wired = true;
+  if (__wired) return
+  __wired = true
   try {
-    const domObs = new MutationObserver(() => bumpEpoch());
-    domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
+    const domObs = new MutationObserver(() => bumpEpoch())
+    domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
-    const headObs = new MutationObserver(() => bumpEpoch());
-    headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true });
+    const headObs = new MutationObserver(() => bumpEpoch())
+    headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
-    const f = document.fonts;
+    const f = document.fonts
     if (f) {
-      f.addEventListener?.('loadingdone', bumpEpoch);
-      f.ready?.then(() => bumpEpoch()).catch(() => { });
+      f.addEventListener?.('loadingdone', bumpEpoch)
+      f.ready?.then(() => bumpEpoch()).catch(() => { })
     }
   } catch { }
 }
 
-function snapshotComputedStyleFull(style) {
-  const out = {};
-  const vis = style.getPropertyValue('visibility');
+function snapshotComputedStyleFull(style, options = {}) {
+  const out = {}
+  const vis = style.getPropertyValue('visibility')
   for (let i = 0; i < style.length; i++) {
-    const prop = style[i];
-    let val = style.getPropertyValue(prop);
+    const prop = style[i]
+    let val = style.getPropertyValue(prop)
     if ((prop === 'background-image' || prop === 'content') && val.includes('url(') && !val.includes('data:')) {
-      val = 'none';
+      val = 'none'
     }
-    out[prop] = val;
+    out[prop] = val
   }
-  if (vis === 'hidden') out.opacity = '0';
-  return out;
+  if (options.embedFonts) {
+    const EXTRA_FONT_PROPS = [
+      'font-feature-settings',
+      'font-variation-settings',
+      'font-kerning',
+      'font-variant',
+      'font-variant-ligatures',
+      'font-optical-sizing',
+    ]
+    for (const prop of EXTRA_FONT_PROPS) {
+      if (out[prop]) continue
+      try {
+        const v = style.getPropertyValue(prop)
+        if (v) out[prop] = v
+      } catch { }
+    }
+  }
+  if (vis === 'hidden') out.opacity = '0'
+  return out
 }
-const __snapshotSig = new WeakMap();
+const __snapshotSig = new WeakMap()
 function styleSignature(snap) {
-  let sig = __snapshotSig.get(snap);
-  if (sig) return sig;
-  const entries = Object.entries(snap).sort((a, b) => a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0));
-  sig = entries.map(([k, v]) => `${k}:${v}`).join(';');
-  __snapshotSig.set(snap, sig);
-  return sig;
+  let sig = __snapshotSig.get(snap)
+  if (sig) return sig
+  const entries = Object.entries(snap).sort((a, b) => a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0))
+  sig = entries.map(([k, v]) => `${k}:${v}`).join(';')
+  __snapshotSig.set(snap, sig)
+  return sig
 }
-function getSnapshot(el, preStyle = null) {
-  const rec = snapshotCache.get(el);
-  if (rec && rec.epoch === __epoch) return rec.snapshot;
-  const style = preStyle || getComputedStyle(el);
-  const snap = snapshotComputedStyleFull(style);
-  snapshotCache.set(el, { epoch: __epoch, snapshot: snap });
-  return snap;
+function getSnapshot(el, preStyle = null, options = {}) {
+  const rec = snapshotCache.get(el)
+  if (rec && rec.epoch === __epoch) return rec.snapshot
+  const style = preStyle || getComputedStyle(el)
+  const snap = snapshotComputedStyleFull(style, options)
+  stripHeightForWrappers(el, style, snap)
+  snapshotCache.set(el, { epoch: __epoch, snapshot: snap })
+  return snap
 }
 
 function _resolveCtx(sessionOrCtx, opts) {
-  if (sessionOrCtx && sessionOrCtx.session && sessionOrCtx.persist) return sessionOrCtx;
+  if (sessionOrCtx && sessionOrCtx.session && sessionOrCtx.persist) return sessionOrCtx
   if (sessionOrCtx && (sessionOrCtx.styleMap || sessionOrCtx.styleCache || sessionOrCtx.nodeMap)) {
     return {
       session: sessionOrCtx,
@@ -76,7 +94,7 @@ function _resolveCtx(sessionOrCtx, opts) {
         font: cache.font,
       },
       options: opts || {},
-    };
+    }
   }
 
   return {
@@ -91,43 +109,136 @@ function _resolveCtx(sessionOrCtx, opts) {
       font: cache.font,
     },
     options: (sessionOrCtx || opts || {}),
-  };
+  }
 }
 
 export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
-  if (source.tagName === 'STYLE') return;
+  if (source.tagName === 'STYLE') return
 
-  const ctx = _resolveCtx(sessionOrCtx, opts);
-  const resetMode = (ctx.options && ctx.options.cache) || 'auto';
+  const ctx = _resolveCtx(sessionOrCtx, opts)
+  const resetMode = (ctx.options && ctx.options.cache) || 'auto'
 
-  if (resetMode !== 'disabled') setupInvalidationOnce(document.documentElement);
+  if (resetMode !== 'disabled') setupInvalidationOnce(document.documentElement)
 
   if (resetMode === 'disabled' && !ctx.session.__bumpedForDisabled) {
-    bumpEpoch();             
-    snapshotKeyCache.clear(); 
-    ctx.session.__bumpedForDisabled = true;
+    bumpEpoch()
+    snapshotKeyCache.clear()
+    ctx.session.__bumpedForDisabled = true
   }
 
   if (NO_DEFAULTS_TAGS.has(source.tagName?.toLowerCase())) {
-    const author = source.getAttribute?.('style');
-    if (author) clone.setAttribute('style', author);
+    const author = source.getAttribute?.('style')
+    if (author) clone.setAttribute('style', author)
   }
 
-  const { session, persist } = ctx;
+  const { session, persist } = ctx
 
   if (!session.styleCache.has(source)) {
-    session.styleCache.set(source, getComputedStyle(source));
+    session.styleCache.set(source, getComputedStyle(source))
   }
-  const pre = session.styleCache.get(source);
+  const pre = session.styleCache.get(source)
 
-  const snap = getSnapshot(source, pre);
+  const snap = getSnapshot(source, pre, ctx.options)
 
-  const sig = styleSignature(snap);
-  let key = persist.snapshotKeyCache.get(sig);
+  const sig = styleSignature(snap)
+  let key = persist.snapshotKeyCache.get(sig)
   if (!key) {
-    const tag = source.tagName?.toLowerCase() || 'div';
-    key = getStyleKey(snap, tag);
-    persist.snapshotKeyCache.set(sig, key);
+    const tag = source.tagName?.toLowerCase() || 'div'
+    key = getStyleKey(snap, tag)
+    persist.snapshotKeyCache.set(sig, key)
   }
-  session.styleMap.set(clone, key);
+  session.styleMap.set(clone, key)
+}
+/**
+ * @param {Element} el
+ * @returns {boolean}
+ */
+function isReplaced(el) {
+  return el instanceof HTMLImageElement ||
+         el instanceof HTMLCanvasElement ||
+         el instanceof HTMLVideoElement ||
+         el instanceof HTMLIFrameElement ||
+         el instanceof SVGElement ||
+         el instanceof HTMLObjectElement ||
+         el instanceof HTMLEmbedElement
+}
+
+/**
+ * Caja “visual”: bg/border/padding u overflow ≠ visible.
+ * @param {CSSStyleDeclaration} cs
+ */
+function hasBox(cs) {
+  if (cs.backgroundImage && cs.backgroundImage !== 'none') return true
+  if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') return true
+  if ((parseFloat(cs.borderTopWidth) || 0) > 0) return true
+  if ((parseFloat(cs.borderBottomWidth) || 0) > 0) return true
+  if ((parseFloat(cs.paddingTop) || 0) > 0) return true
+  if ((parseFloat(cs.paddingBottom) || 0) > 0) return true
+  const ob = cs.overflowBlock || cs.overflowY || 'visible'
+  return ob !== 'visible'
+}
+
+/**
+ * Item de flex/grid (mirando display del padre, 1 getComputedStyle).
+ * @param {Element} el
+ */
+function isFlexOrGridItem(el) {
+  const p = el.parentElement
+  if (!p) return false
+  const pd = getComputedStyle(p).display || ''
+  return pd.includes('flex') || pd.includes('grid')
+}
+
+/**
+ * ¿Hay contenido en flujo? Versión rápida:
+ *  - Texto no vacío → true (no dispara layout).
+ *  - <br> inmediato → true.
+ *  - Geometry probe: scrollHeight > padding (abspos NO suma) → true.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs  // ya lo tenemos en mano
+ */
+function hasFlowFast(el, cs) {
+  if (el.textContent && /\S/.test(el.textContent)) return true
+  const f = el.firstElementChild, l = el.lastElementChild
+  if ((f && f.tagName === 'BR') || (l && l.tagName === 'BR')) return true
+
+  // Probe geométrico (1 lectura de layout): evita recorrer hijos
+  // Nota: scrollHeight no incluye hijos absolute; si sólo hay absolute → ≈ padding
+  const sh = el.scrollHeight
+  if (sh === 0) return false
+  const pt = parseFloat(cs.paddingTop) || 0
+  const pb = parseFloat(cs.paddingBottom) || 0
+  return sh > pt + pb
+}
+
+/**
+ * Quita height/block-size SOLO en wrappers transparentes de flujo normal
+ * que SÍ tienen contenido en flujo. Mantiene height si no hay flujo (sólo abspos),
+ * si el autor lo puso inline, si es replaced, posicionado/transform, tiene caja visual,
+ * o es item flex/grid.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs
+ * @param {Record<string,string>} snap
+ */
+function stripHeightForWrappers(el, cs, snap) {
+  // autor inline → respetar
+  if (el instanceof HTMLElement && el.style && el.style.height) return
+
+  // ⛳️ clave para Orbit: si EL ELEMENTO es contenedor flex/grid, no tocar su height
+  const disp = cs.display || ''
+  if (disp.includes('flex') || disp.includes('grid')) return
+
+  // guardas existentes
+  if (isReplaced(el)) return
+  const pos = cs.position
+  if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return
+  if (cs.transform !== 'none') return
+  if (hasBox(cs)) return
+  if (isFlexOrGridItem(el)) return
+
+  // wrapper transparente con flujo → permitir margin-collapsing
+  if (!hasFlowFast(el, cs)) return
+
+  delete snap.height
+  delete snap['block-size']
 }

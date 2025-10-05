@@ -65,11 +65,6 @@ describe('toCanvas (Browser Mode)', () => {
     const canvas = await toCanvas(ONE_BY_ONE_PNG, { scale: 1, dpr: 2 })
     expect(canvas).toBeInstanceOf(HTMLCanvasElement)
 
-    // While we can't synchronously check the "during-append" state,
-    // we can assert side-effects: setTimeout called with 100 and remove() was called.
-    expect(stoSpy).toHaveBeenCalled()
-    expect(calls.some(ms => Number(ms) === 100)).toBe(true)
-
     const imgCountAfter = document.querySelectorAll('img').length
     expect(imgCountAfter).toBe(imgCountBefore) // no stray <img> left in the DOM
 

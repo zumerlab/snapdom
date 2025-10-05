@@ -13,6 +13,9 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
+export type ExcludeMode = 'hide' | 'remove';
+export type FilterMode = 'hide' | 'remove';
+
 export interface LocalFontDescriptor {
   /** CSS font-family name (e.g. "Inter"). */
   family: string;
@@ -82,16 +85,28 @@ export interface CaptureOptions {
    * Preferred export format used by convenience methods / download.
    * Default: "png"
    */
-  format?: "svg" | RasterMime;
+  format?: BlobType;
 
   /** CSS selectors removed from the cloned subtree before processing. */
   exclude?: string[];
+
+  /**
+   * Mode applied to excluded nodes of the cloned tree.
+   * Default: "hide"
+   */
+  excludeMode?: ExcludeMode;
 
   /**
    * Advanced node filter; return false to exclude a node during traversal.
    * Applied to the cloned subtree.
    */
   filter?: (el: Element) => boolean;
+
+  /**
+   * Mode applied to filtered nodes of the cloned tree.
+   * Default: "hide"
+   */
+  filterMode?: FilterMode;
 
   /**
    * Whether to synthesize placeholders for broken images, etc.
@@ -126,7 +141,7 @@ export interface CaptureOptions {
    * - String: use as-is.
    * - Callback: receives measured width/height and original src, returns a URL string.
    */
-  defaultImageUrl?:
+  fallbackURL?:
     | string
     | ((
         args: {
@@ -148,7 +163,22 @@ export interface CaptureOptions {
    * Default: "snapDOM"
    */
   filename?: string;
+
+  /**
+   * Normalize only translate*rotate* on the cloned root (keeps scale/skew intact).
+   * Children are not modified.
+   * Default: false
+   */
+  straighten?: boolean;
+
+  /**
+   * Do not expand the root viewBox for shadows/blur/outline/drop-shadow.
+   * Children are not modified. The root may also have those visuals cleared to avoid clipping.
+   * Default: false
+   */
+  noShadows?: boolean;
 }
+
 
 export interface BlobOptions {
   /** Blob type to export. Default: "svg". */
@@ -177,6 +207,8 @@ export interface CaptureResult {
   toRaw(): string;
   /** Creates an HTMLImageElement from the SVG (accepts options). */
   toImg(options?: CaptureOptions): Promise<HTMLImageElement>;
+  /** Creates an HTMLImageElement from the SVG (accepts options). */
+  toSvg(options?: CaptureOptions): Promise<HTMLImageElement>;
   /** Renders into a Canvas element (accepts options). */
   toCanvas(options?: CaptureOptions): Promise<HTMLCanvasElement>;
   /** Exports to a Blob (SVG/PNG/JPG/WebP). */
@@ -198,6 +230,7 @@ export declare function snapdom(el: Element, options?: CaptureOptions): Promise<
 
 export declare namespace snapdom {
   function toImg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
+  function toSvg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
   function toCanvas(el: Element, options?: CaptureOptions): Promise<HTMLCanvasElement>;
   function toBlob(el: Element, options?: CaptureOptions & BlobOptions): Promise<Blob>;
   function toPng(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;

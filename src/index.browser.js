@@ -4,10 +4,10 @@
  * @file index.browser.js
  */
 
-import { snapdom } from './api/snapdom.js';
-import { preCache } from './api/preCache.js';
+import { snapdom } from './api/snapdom.js'
+import { preCache } from './api/preCache.js'
 
 if (typeof window !== 'undefined') {
-  window.snapdom = snapdom;
-  window.preCache = preCache;
+  window.snapdom = snapdom
+  window.preCache = preCache
 }

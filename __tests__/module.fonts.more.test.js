@@ -37,7 +37,6 @@ vi.mock('../src/modules/snapFetch.js', () => ({
 }))
 
 import { embedCustomFonts, ensureFontsReady } from '../src/modules/fonts.js'
-import * as helpers from '../src/utils/helpers'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
 
@@ -123,7 +122,7 @@ describe('embedCustomFonts - external links & heuristics', () => {
     // 1) CSS del <link>
     vi.mocked(snapFetch).mockResolvedValueOnce({
       ok: true,
-      data: `@font-face{font-family:'My Fancy Font';font-style:normal;font-weight:400;font-stretch:100%;src:url(https://cdn.example.com/mff.woff2) format('woff2');}`,
+      data: '@font-face{font-family:\'My Fancy Font\';font-style:normal;font-weight:400;font-stretch:100%;src:url(https://cdn.example.com/mff.woff2) format(\'woff2\');}',
       status: 200,
       url: href,
       fromCache: false,
@@ -201,7 +200,7 @@ describe('embedCustomFonts - @import injection & dedupe', () => {
     // 1) CSS importado
     vi.mocked(snapFetch).mockResolvedValueOnce({
       ok: true,
-      data: `@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-stretch:100%;src:url(https://fonts.gstatic.com/s/inter/v1/a.woff2) format('woff2');}`,
+      data: '@font-face{font-family:\'Inter\';font-style:normal;font-weight:400;font-stretch:100%;src:url(https://fonts.gstatic.com/s/inter/v1/a.woff2) format(\'woff2\');}',
       status: 200,
       url: imported,
       fromCache: false,

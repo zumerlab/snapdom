@@ -1,7 +1,7 @@
 // src/exporters/download.js
-import { toBlob } from './toBlob.js';
-import { toCanvas } from './toCanvas.js';
-import { createBackground } from '../utils/index.js';
+import { toBlob } from './toBlob.js'
+import { toCanvas } from './toCanvas.js'
+import { createBackground } from '../utils/index.js'
 
 /**
  * Triggers download of the generated image.
@@ -14,23 +14,24 @@ import { createBackground } from '../utils/index.js';
  * @returns {Promise<void>}
  */
 export async function download(url, options) {
+   options.dpr = 1
   if (options.format === 'svg') {
-    const blob = await toBlob(url, { ...options, type: 'svg' });
-    const objectURL = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectURL;
-    a.download = options.filename;
-    a.click();
-    URL.revokeObjectURL(objectURL);
-    return;
+    const blob = await toBlob(url, { ...options, type: 'svg' })
+    const objectURL = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectURL
+    a.download = options.filename
+    a.click()
+    URL.revokeObjectURL(objectURL)
+    return
   }
 
-  const canvas = await toCanvas(url, options);
+  const canvas = await toCanvas(url, options)
   /* v8 ignore next */
-  const finalCanvas = options.backgroundColor ? createBackground(canvas, options.backgroundColor) : canvas;
+  const finalCanvas = options.backgroundColor ? createBackground(canvas, options.backgroundColor) : canvas
 
-  const a = document.createElement('a');
-  a.href = finalCanvas.toDataURL(`image/${options.format}`, options.quality);
-  a.download = options.filename;
-  a.click();
+  const a = document.createElement('a')
+  a.href = finalCanvas.toDataURL(`image/${options.format}`, options.quality)
+  a.download = options.filename
+  a.click()
 }

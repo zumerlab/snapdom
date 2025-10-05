@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.12-dev.4](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.3...v1.9.12-dev.4)
+
+> 30 September 2025
+
+- Add basic support to sticky elements. See #232 [`02893e6`](https://github.com/zumerlab/snapdom/commit/02893e60e7f3244c1274d64232e7dbf338a283ec)
+- Update types [`19317e6`](https://github.com/zumerlab/snapdom/commit/19317e6ff34599028e627f891ae5a2d28036bac1)
+- fix formating [`58ca761`](https://github.com/zumerlab/snapdom/commit/58ca7616e3e82ec81122804264466f33d79c45c2)
+- Enhance browser detection. See #251 [`cfe753c`](https://github.com/zumerlab/snapdom/commit/cfe753c280ab0c0cda8aca88978a550257caf23f)
+- Fix pseudo capture. See #252 [`e85678e`](https://github.com/zumerlab/snapdom/commit/e85678e54fac6736c3dac8a0eaac8f1607dcbb6a)
+- Merge pull request #249 from K1ender/dev [`e497bba`](https://github.com/zumerlab/snapdom/commit/e497bbae30e2c539c53715f9dd0bed585d10cf9a)
+
+
+
+#### [v1.9.12-dev.3](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.2...v1.9.12-dev.3)
+
+> 26 September 2025
+
+- Captures CSS shadows [`050365f`](https://github.com/zumerlab/snapdom/commit/050365f8ab2087a912c71c468b4b1c234b21dd6a)
+- Improve counter simulation [`4c9e21d`](https://github.com/zumerlab/snapdom/commit/4c9e21d6bc0135614b882e1940ce31b64c5e40b2)
+- Fix scale, width, height options [`8ef48cb`](https://github.com/zumerlab/snapdom/commit/8ef48cb2e038c286eea9b7ce2baafac30c062a5e)
+- Just run safariWarmup if it is needed [`a32846d`](https://github.com/zumerlab/snapdom/commit/a32846d6f48ab8c583b1f26c41d19f3cff67ab55)
+- Safari, in case of scale, width or height options use png to ensure fidelity [`0711a77`](https://github.com/zumerlab/snapdom/commit/0711a7774f6f545cd05e0cce86f3354fe377b02d)
+- Sanitize container [`a6ba396`](https://github.com/zumerlab/snapdom/commit/a6ba396c52406bf9c5dd0ffd27f9460cd34b028e)
+
+
+#### [v1.9.12-dev.2](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.1...v1.9.12-dev.2)
+
+> 22 September 2025
+
+- Fix margin collapsing in some cases. See #243 [`7fe0a3f`](https://github.com/zumerlab/snapdom/commit/7fe0a3ffe6e9827b276f0c0337c60c8c02c4129c)
+
+
+
+#### [v1.9.12-dev.1](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.0...v1.9.12-dev.1)
+
+> 20 September 2025
+
+- Modularize counters [`024a7f9`](https://github.com/zumerlab/snapdom/commit/024a7f9b2d1b4805c7b12b5cbb62f0200295cc8f)
+- Improve CSS counter() and counters() handling. See #120, see #235 [`8fb0385`](https://github.com/zumerlab/snapdom/commit/8fb03859301075ea9b096197ec5b4dbca4223a95)
+- Feat lineClamp. See #241 [`4082cd6`](https://github.com/zumerlab/snapdom/commit/4082cd6c39ff43bcb842a81768e11b858c5e8559)
+- Fix width/height options [`7cd2111`](https://github.com/zumerlab/snapdom/commit/7cd21114d1337e48b5d743cb94989feb1a1a0d20)
+- Fix bug that hangs snapDOM on some browsers. See #236 [`bc3c400`](https://github.com/zumerlab/snapdom/commit/bc3c400356a6f32f8d1d8a986c9a427e6dd13c7f)
+- Fix bug that overrides options.width/heigth. See #241 [`49fbb63`](https://github.com/zumerlab/snapdom/commit/49fbb63ac6c28a66a8e6d9076618bee7b6beab62)
+- Improve webFonts render. See #229 [`3082a3a`](https://github.com/zumerlab/snapdom/commit/3082a3ae019f424e127f3c065cbcfa7bad59bb39)
+- Feat. detect wechat browser. See #223 [`e7c4723`](https://github.com/zumerlab/snapdom/commit/e7c4723a24ad3a9c52da5a2e021c115b354bcf66)
+- Ensure donwload file measure. See #241 [`eed1995`](https://github.com/zumerlab/snapdom/commit/eed1995a56664c0ace5d94422ba6bb8b5ef82324)
+- Add iframe support [`ec59e4b`](https://github.com/zumerlab/snapdom/commit/ec59e4bad3dbb639cde37aed929dccb42b54e6b5)
+
+#### [v1.9.12-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.11...v1.9.12-dev.0)
+
+> 11 September 2025
+
+- Try fix fallback images [`67bedd3`](https://github.com/zumerlab/snapdom/commit/67bedd3c7cb6bda3e2291fe494805a58263e6dce)
+- Two separate mode: filterMode and excludeMode [`394e7f4`](https://github.com/zumerlab/snapdom/commit/394e7f4ca2171fb1028eb382b2331d4718f6a350)
+- Workaround Safari See #231 [`593ad59`](https://github.com/zumerlab/snapdom/commit/593ad59383d0b3adbcb139f6892ae321a08c60d5)
+- Try new approach for solve Safari fonts/images decoding [`5b77738`](https://github.com/zumerlab/snapdom/commit/5b7773847f02809826a9ed459321100cfbd50518)
+
+
 #### [v1.9.11](https://github.com/zumerlab/snapdom/compare/v1.9.10...v1.9.11)
 
 > 9 September 2025
