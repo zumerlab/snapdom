@@ -43,7 +43,7 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 
 ## Demo
 
-[https://zumerlab.github.io/snapdom/](https://zumerlab.github.io/snapdom/)
+[https://snapdom.dev](https://snapdom.dev)
 
 
 ## Table of Contents
