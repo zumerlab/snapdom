@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.14](https://github.com/zumerlab/snapdom/compare/v1.9.13...v1.9.14)
+
+> 5 October 2025
+
+- Recompile builds [`fca9e00`](https://github.com/zumerlab/snapdom/commit/fca9e00d49bb675d6b6103ba2de3f898c85c5578)
+
+
 #### [v1.9.13](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.4...v1.9.13)
 
 > 5 October 2025
