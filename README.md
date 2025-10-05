@@ -542,7 +542,7 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 
 ## Sponsors
 
-Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), and [@reynaldichernando](https://github.com/reynaldichernando) for supporting this project!
+Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), [@reynaldichernando](https://github.com/reynaldichernando) and [@gamma-app](https://github.com/gamma-app), for supporting this project!
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 
