@@ -38,7 +38,7 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
 * ⚡ Ultra fast, no dependencies
 * 📦 100% based on standard Web APIs
 * Support same-origin `ìframe`
-* Support CSS counter() and counters()
+* Support CSS counter() and CSS counters()
 * Support `...` line-clamp
 
 ## Demo
@@ -132,6 +132,7 @@ yarn add @zumer/snapdom@dev
 </script>
 ```
 
+
 ## Basic usage
 
 ### Reusable capture
@@ -219,7 +220,6 @@ All capture methods accept an `options` object:
 | `fallbackURL`     | string \| function  | - | Fallback image for `<img>` load failure |
 | `straighten`      | boolean  | `false`  | Straightens the root: removes `translate/rotate` but preserves `scale/skew`, producing a flat, reusable capture |
 | `noShadows`       | boolean  | `false`  | Do not expand the root’s bounding box for shadows/blur/outline, and strip those visual effects from the cloned root |
-
 
 ### Fallback image on `<img>` load failure
 
