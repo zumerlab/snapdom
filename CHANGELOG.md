@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.9.13](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.4...v1.9.13)
+
+> 5 October 2025
+
+- Improve CSS vars detection. Closes #255 [`#255`](https://github.com/zumerlab/snapdom/issues/255)
+- Fix toImg() dimensions when scale==1. Closes #254 [`#254`](https://github.com/zumerlab/snapdom/issues/254)
+- Enhance web fonts detection on deph relative paths. See #253 [`e2a8c45`](https://github.com/zumerlab/snapdom/commit/e2a8c454fbab7590f39f77da544193f8e5af13ab)
+- Add two new options to control transforms and shadows on root element [`8c9a75f`](https://github.com/zumerlab/snapdom/commit/8c9a75f77940221107a6005e458514cca981b2eb)
+- Add toSvg() in replacement of toImg() [`10e2043`](https://github.com/zumerlab/snapdom/commit/10e2043182672b42dfbda4268fb17f75bc3b561a), [`122317e`](https://github.com/zumerlab/snapdom/commit/122317eb0301f8375cc23ea8f3fd2361d1b759a4)
+- Improve relative path detection. See #253 [`34158e0`](https://github.com/zumerlab/snapdom/commit/34158e0f5cf8f797cd49416f090d06d2d233542d)
+- Lint code [`c754981`](https://github.com/zumerlab/snapdom/commit/c7549812a018d28809e0e2b314c973abe0cd542c)
+- Lint tests [`ee974ed`](https://github.com/zumerlab/snapdom/commit/ee974ede694f324f674b688aa7cce16f7ec30a90)
+
+
 #### [v1.9.12-dev.4](https://github.com/zumerlab/snapdom/compare/v1.9.12-dev.3...v1.9.12-dev.4)
 
 > 30 September 2025
