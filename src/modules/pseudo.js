@@ -100,7 +100,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
   }
 
   const resets = parseListDecl(pseudoStyle?.counterReset)
-  const incs   = parseListDecl(pseudoStyle?.counterIncrement)
+  const incs = parseListDecl(pseudoStyle?.counterIncrement)
 
   function getStackDerived(name) {
     if (modStacks.has(name)) return modStacks.get(name).slice()
@@ -152,7 +152,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
  */
 function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
   let ps
-  try { ps = getComputedStyle(node, pseudo) } catch {}
+  try { ps = getComputedStyle(node, pseudo) } catch { }
   const raw = ps?.content
   if (!raw || raw === 'none' || raw === 'normal') return { text: '', incs: [] }
 
@@ -264,7 +264,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         borderStyle && borderStyle !== 'none' && borderWidth > 0
       const hasTransform = transform && transform !== 'none'
 
-           const shouldRender =
+      const shouldRender =
         hasExplicitContent || hasBg || hasBgColor || hasBorder || hasTransform
 
       if (!shouldRender) {
@@ -322,12 +322,10 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       }
 
       // ---- Backgrounds / colors ----
-           // Reset explícito para no heredar nada a menos que el pseudo lo defina
-     pseudoEl.style.background = 'none'
-     // Mask también reseteada por defecto (si tu pipeline soporta masks)
-     if ('mask' in pseudoEl.style) {
-       pseudoEl.style.mask = 'none'
-     }
+      pseudoEl.style.backgroundImage = 'none'
+      if ('maskImage' in pseudoEl.style) pseudoEl.style.maskImage = 'none'
+      if ('webkitMaskImage' in pseudoEl.style) pseudoEl.style.webkitMaskImage = 'none'
+
       if (hasBg) {
         try {
           const bgSplits = splitBackgroundImage(bg)
@@ -341,8 +339,8 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
 
       const hasContent2 =
         pseudoEl.childNodes.length > 0 || (pseudoEl.textContent?.trim() !== '')
-     const hasVisibleBox =
-       hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform
+      const hasVisibleBox =
+        hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform
 
       // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
       if (incs && incs.length && source.parentElement) {
