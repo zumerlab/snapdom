@@ -8,6 +8,8 @@ import { toBlob } from '../exporters/toBlob.js'
 import { rasterize } from '../modules/rasterize.js'
 import { download } from '../exporters/download.js'
 import { isSafari } from '../utils/browser.js'
+import { registerPlugins } from '../core/plugins.js'
+import { registerExporters } from '../core/exporters.js'
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
@@ -60,6 +62,20 @@ export async function snapdom(element, userOptions) {
 
   return snapdom.capture(element, context, INTERNAL_TOKEN)
 }
+
+/**
+ * Global registration API (plugins).
+ * @param  {...any} defs
+ * @returns {typeof snapdom}
+ */
+snapdom.plugins = (...defs) => { registerPlugins(...defs); return snapdom }
+
+/**
+ * Global registration API (exporters).
+ * @param  {...any} defs
+ * @returns {typeof snapdom}
+ */
+snapdom.exporters = (...defs) => { registerExporters(...defs); return snapdom }
 
 /**
  * Internal capture method that returns helper methods for transformation/export.

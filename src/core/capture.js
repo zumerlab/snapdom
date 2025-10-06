@@ -10,6 +10,7 @@ import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClamp } from '../modules/lineClamp.js'
+import { runHook } from './plugins.js'
 
 /**
  * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, blur()/drop-shadow()).
@@ -20,32 +21,18 @@ import { lineClamp } from '../modules/lineClamp.js'
 function stripRootShadows(originalEl, cloneRoot) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return
   const cs = getComputedStyle(originalEl)
-  try { cloneRoot.style.boxShadow = 'none' } catch {}
-  try { cloneRoot.style.textShadow = 'none' } catch {}
-  try { cloneRoot.style.outline = 'none' } catch {}
+  try { cloneRoot.style.boxShadow = 'none' } catch { }
+  try { cloneRoot.style.textShadow = 'none' } catch { }
+  try { cloneRoot.style.outline = 'none' } catch { }
   const f = cs.filter || ''
   const cleaned = f
     .replace(/\bblur\([^()]*\)\s*/gi, '')
     .replace(/\bdrop-shadow\([^()]*\)\s*/gi, '')
     .trim()
     .replace(/\s+/g, ' ')
-  try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch {}
+  try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch { }
 }
 
-/**
- * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
- *
- * @param {Element} element - DOM element to capture
- * @param {Object} [options={}] - Capture options
- * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
- * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
- * @param {number} [options.scale=1] - Output scale multiplier
- * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
- * @param {Function} [options.filter] - Custom filter function
- * @param {boolean} [options.straighten=false] - Normalize root by removing translate*rotate* (keep scale/skew)
- * @param {boolean} [options.noShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
- * @returns {Promise<string>} Promise that resolves to an SVG data URL
- */
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
@@ -63,6 +50,8 @@ function stripRootShadows(originalEl, cloneRoot) {
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
+  const context = options
+  await runHook('beforeSnap', context)
   const fast = options.fast
   const straighten = !!options.straighten
   const noShadows = !!options.noShadows
@@ -74,7 +63,7 @@ export async function captureDOM(element, options) {
   let svgString
   // NEW: store root transform (scale/skew) when straighten is on
   let rootTransform2D = null
-
+  await runHook('beforeClone', context)
   const undoClamp = lineClamp(element)
   try {
     ({ clone, classCSS, styleCache } = await prepareClone(element, options))
@@ -89,6 +78,8 @@ export async function captureDOM(element, options) {
   } finally {
     undoClamp()
   }
+  // HOOK: afterClone
+  await runHook('afterClone', context)
 
   await new Promise((resolve) => {
     idle(async () => {
@@ -142,7 +133,7 @@ export async function captureDOM(element, options) {
   }
 
   await new Promise((resolve) => {
-    idle(() => {
+    idle(async () => {
       const csEl = getComputedStyle(element)
 
       function parseFilterDropShadows(cs) {
@@ -237,11 +228,11 @@ export async function captureDOM(element, options) {
       const bleed = (noShadows)
         ? { top: 0, right: 0, bottom: 0, left: 0 }
         : {
-            top: bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top,
-            right: bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right,
-            bottom: bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom,
-            left: bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left
-          }
+          top: bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top,
+          right: bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right,
+          bottom: bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom,
+          left: bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left
+        }
 
       minX -= bleed.left
       minY -= bleed.top
@@ -291,10 +282,12 @@ export async function captureDOM(element, options) {
 
       const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad * 2)
       const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad * 2)
+      await runHook('beforeRender', context)
       const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`
       const svgFooter = '</svg>'
       svgString = svgHeader + foString + svgFooter
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
+      await runHook('afterRender', context)
       resolve()
     }, { fast })
   })
@@ -318,14 +311,14 @@ function normalizeRootTransforms(originalEl, cloneRoot) {
   const cs = getComputedStyle(originalEl)
 
   // Always anchor at top-left so scale/skew doesn't push content into negative coords
-  try { cloneRoot.style.transformOrigin = '0 0' } catch {}
+  try { cloneRoot.style.transformOrigin = '0 0' } catch { }
 
   // Try individual properties first (no-op safe)
   try {
     if ('translate' in cloneRoot.style) cloneRoot.style.translate = 'none'
-    if ('rotate'    in cloneRoot.style) cloneRoot.style.rotate    = 'none'
+    if ('rotate' in cloneRoot.style) cloneRoot.style.rotate = 'none'
     // do NOT touch 'scale'
-  } catch {}
+  } catch { }
 
   const tr = cs.transform || 'none'
   if (!tr || tr === 'none') {
@@ -337,7 +330,7 @@ function normalizeRootTransforms(originalEl, cloneRoot) {
         cloneRoot.style.transform = 'none'
         return { a: 1, b: 0, c: 0, d: 1 }
       }
-    } catch {}
+    } catch { }
   }
 
   // Composite path: decompose 2D; keep scale/skew, drop translate (e,f) and rotation
@@ -363,7 +356,7 @@ function normalizeRootTransforms(originalEl, cloneRoot) {
       const bP = 0                 // rotation removed
       const cP = shear * scaleY    // 2D shear component
       const dP = scaleY
-      try { cloneRoot.style.transform = `matrix(${aP}, ${bP}, ${cP}, ${dP}, 0, 0)` } catch {}
+      try { cloneRoot.style.transform = `matrix(${aP}, ${bP}, ${cP}, ${dP}, 0, 0)` } catch { }
       return { a: aP, b: bP, c: cP, d: dP }
     }
   }
