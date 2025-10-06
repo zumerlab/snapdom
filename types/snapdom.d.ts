@@ -132,9 +132,17 @@ export interface CaptureOptions {
   iconFonts?: IconFontMatcher | IconFontMatcher[];
 
   /**
-   * Font family matchers to explicitly exclude from embedding.
-   */
-  excludeFonts?: IconFontMatcher[];
+ * Exclude specific web fonts from embedding.
+ * This option accepts an object with granular matchers.
+ *
+ * @example
+ * excludeFonts: {
+ *   families: ['Noto Serif', /SomeHeavy/i],
+ *   domains: ['fonts.gstatic.com', /cdn\.example$/i],
+ *   subsets: ['cyrillic-ext']
+ * }
+ */
+  excludeFonts?: ExcludeFontsOptions
 
   /**
    * Fallback image source when an <img> fails to load.
@@ -142,15 +150,15 @@ export interface CaptureOptions {
    * - Callback: receives measured width/height and original src, returns a URL string.
    */
   fallbackURL?:
-    | string
-    | ((
-        args: {
-          width?: number;
-          height?: number;
-          src?: string;
-          element: HTMLImageElement;
-        }
-      ) => string | Promise<string>);
+  | string
+  | ((
+    args: {
+      width?: number;
+      height?: number;
+      src?: string;
+      element: HTMLImageElement;
+    }
+  ) => string | Promise<string>);
 
   /**
    * Cache policy applied at capture start.
@@ -177,6 +185,28 @@ export interface CaptureOptions {
    * Default: false
    */
   noShadows?: boolean;
+}
+
+export type FontMatcher = string | RegExp
+
+export interface ExcludeFontsOptions {
+  /**
+   * Skip by font-family (first resolved non-generic name).
+   * Examples: "Noto Serif", /SomeHeavy/i
+   */
+  families?: FontMatcher[]
+
+  /**
+   * Skip by source host (parsed from @font-face src URLs).
+   * Examples: "fonts.gstatic.com", /cdn\.example$/i
+   */
+  domains?: FontMatcher[]
+
+  /**
+   * Skip by unicode-range subset tag (your pipeline-defined label).
+   * Examples: "latin-ext", "cyrillic-ext"
+   */
+  subsets?: string[]
 }
 
 
@@ -239,9 +269,6 @@ export declare namespace snapdom {
   function download(el: Element, options?: CaptureOptions & DownloadOptions): Promise<void>;
 }
 
-/**
- * Preload resources (images/fonts) to avoid first-capture stalls.
- */
 export interface PreCacheOptions {
   /** Inline non-icon fonts during preload. Default: true. */
   embedFonts?: boolean;
@@ -249,14 +276,18 @@ export interface PreCacheOptions {
   localFonts?: LocalFontDescriptor[];
   /** Proxy for CORS fallbacks. */
   useProxy?: string;
-  /** Font family matchers to explicitly exclude from embedding. */
-  excludeFonts?: IconFontMatcher[];
+  /**
+   * Exclude specific web fonts from embedding during preload.
+   * Same shape as in CaptureOptions.
+   */
+  excludeFonts?: ExcludeFontsOptions;
   /**
    * Cache policy used during precache.
    * Note: for `preCache` the option name in runtime is `cacheOpt`.
    */
   cacheOpt?: CachePolicy;
 }
+
 
 /**
  * Preload resources rooted at `root` (defaults to `document`).
@@ -266,4 +297,4 @@ export declare function preCache(
   options?: PreCacheOptions
 ): Promise<void>;
 
-export {};
+export { };
