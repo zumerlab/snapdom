@@ -465,16 +465,56 @@ export async function deepClone(node, sessionCache, options) {
     clone2.appendChild(placeholder)
     return clone2
   }
-  if (node.tagName === 'CANVAS') {
-    const dataURL = node.toDataURL()
+    if (node.tagName === 'CANVAS') {
+    // Safari-safe snapshot: poke + rAF + retry + scratch fallback
+    let url = ''
+    try {
+      const ctx = node.getContext('2d', { willReadFrequently: true })
+      try { ctx && ctx.getImageData(0, 0, 1, 1) } catch {}
+      await new Promise(r => requestAnimationFrame(r)) // deja materializar el frame
+
+      url = node.toDataURL('image/png')
+
+      if (!url || url === 'data:,') {
+        // reintento rápido
+        try { ctx && ctx.getImageData(0, 0, 1, 1) } catch {}
+        await new Promise(r => requestAnimationFrame(r))
+        url = node.toDataURL('image/png')
+
+        // último recurso: copiar a un scratch-canvas y leer desde ahí
+        if (!url || url === 'data:,') {
+          const scratch = document.createElement('canvas')
+          scratch.width = node.width
+          scratch.height = node.height
+          const sctx = scratch.getContext('2d')
+          if (sctx) {
+            sctx.drawImage(node, 0, 0)
+            url = scratch.toDataURL('image/png')
+          }
+        }
+      }
+    } catch {}
+
     const img = document.createElement('img')
-    img.src = dataURL
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+    if (url) img.src = url
+
+    // conservar dimensiones intrínsecas del bitmap
     img.width = node.width
     img.height = node.height
+
+    // conservar caja CSS para no romper layout
+    try {
+      const cs = getComputedStyle(node)
+      if (cs.width)  img.style.width  = cs.width
+      if (cs.height) img.style.height = cs.height
+    } catch {}
+
     sessionCache.nodeMap.set(img, node)
     inlineAllStyles(node, img, sessionCache, options)
     return img
   }
+
   let clone
   try {
     clone = node.cloneNode(false)

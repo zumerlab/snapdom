@@ -2,7 +2,7 @@
 import { captureDOM } from '../core/capture'
 import { extendIconFonts } from '../modules/iconFonts.js'
 import { createContext } from '../core/context'
-import { toImg, toSvg} from '../exporters/toImg.js'
+import { toImg, toSvg } from '../exporters/toImg.js'
 import { toCanvas } from '../exporters/toCanvas.js'
 import { toBlob } from '../exporters/toBlob.js'
 import { rasterize } from '../modules/rasterize.js'
@@ -39,16 +39,16 @@ export async function snapdom(element, userOptions) {
   const context = createContext(userOptions)
 
   if (isSafari() && (context.embedFonts === true || hasBackgroundOrMask(element))) {
-  for (let i = 0; i < 3; i++) {
-    try {
-      await safariWarmup(element, userOptions)
-      console.log('Iteración número:', i)
-      _safariWarmup = false
-    } catch {
-      // swallow error
+    for (let i = 0; i < 3; i++) {
+      try {
+        await safariWarmup(element, userOptions)
+        console.log('safariWarmup:', i)
+        _safariWarmup = false
+      } catch {
+        // swallow error
+      }
     }
   }
-}
 
   /* c8 ignore next 1 */
   if (context.iconFonts && context.iconFonts.length > 0) extendIconFonts(context.iconFonts)
@@ -193,6 +193,7 @@ snapdom.download = (el, options) => snapdom(el, options).then(result => result.d
  */
 async function safariWarmup(element, baseOptions) {
   if (_safariWarmup) return
+
   const preflight = {
     ...baseOptions,
     fast: true,
@@ -204,35 +205,46 @@ async function safariWarmup(element, baseOptions) {
   try {
     url = await captureDOM(element, preflight)
   } catch {
-    // Even if captureDOM fails here, don’t block the real capture.
-    return
+    // no bloquea la captura real
   }
 
-  await new Promise((resolve) => {
-    // Build offscreen <img> to force decoding
-    const img = new Image()
-     img.decoding = 'sync'
-     img.loading = 'eager'
-    img.style.position ='fixed'
-    img.style.left = 0
-    img.style.top = 0
-    img.style.width = '10px'
-    img.style.height = '10px'
-    img.style.opacity = '0.01'
-    img.style.transform = 'translateZ(10px)'
-   img.style.willChange = 'transform,opacity;'
-    img.src = url
+  // 1) estabiliza layout/paint en WebKit
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 
-    const cleanup = async () => {
-      await new Promise(r => setTimeout(r, 100))
-      if (img && img.parentNode) img.parentNode.removeChild(img)
-      _safariWarmup = true
-      resolve()
-    }
+  if (url) {
+    await new Promise((resolve) => {
+      const img = new Image()
+      try { img.decoding = 'sync'; img.loading = 'eager' } catch { }
+      img.style.cssText =
+        'position:fixed;left:0px;top:0px;width:10px;height:10px;opacity:0.01;pointer-events:none;'
+      img.src = url
+      document.body.appendChild(img)
 
-    document.body.appendChild(img)
-   cleanup()
+        ; (async () => {
+          try { if (typeof img.decode === 'function') await img.decode() } catch { }
+
+          const start = performance.now()
+          while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
+            await new Promise(r => setTimeout(r, 50))
+          }
+
+          await new Promise(r => requestAnimationFrame(r))
+          try { img.remove() } catch { }
+          resolve()
+        })()
+    })
+
+  }
+
+  // 3) “poke” a los canvas del elemento (Chart.js, etc.)
+  element.querySelectorAll('canvas').forEach(c => {
+    try {
+      const ctx = c.getContext('2d', { willReadFrequently: true })
+      if (ctx) { ctx.getImageData(0, 0, 1, 1) }
+    } catch { }
   })
+
+  _safariWarmup = true
 }
 
 /**
@@ -248,9 +260,10 @@ function hasBackgroundOrMask(el) {
 
     const bg = cs.backgroundImage && cs.backgroundImage !== 'none'
     const mask = (cs.maskImage && cs.maskImage !== 'none') ||
-                 (cs.webkitMaskImage && cs.webkitMaskImage !== 'none')
+      (cs.webkitMaskImage && cs.webkitMaskImage !== 'none')
 
     if (bg || mask) return true
+    if (node.tagName === 'CANVAS') return true
   }
   return false
 }
