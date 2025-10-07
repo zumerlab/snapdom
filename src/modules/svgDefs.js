@@ -66,14 +66,9 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
       if (id && !globalExistingIds.has(id)) neededIds.add(id)
     }
     // url(#...) en attrs/estilos
-    const candidates = rootSvg.querySelectorAll(`
-      *[style*="url("],
-      *[fill^="url("], *[stroke^="url("],
-      *[filter^="url("], *[clip-path^="url("],
-      *[mask^="url("],
-      *[marker^="url("], *[marker-start^="url("],
-      *[marker-mid^="url("], *[marker-end^="url("]
-    `)
+    let query = '*[style*="url("],*[fill^="url("], *[stroke^="url("],*[filter^="url("], *[clip-path^="url("],*[mask^="url("],*[marker^="url("], *[marker-start^="url("],*[marker-mid^="url("], *[marker-end^="url("]'
+
+    const candidates = rootSvg.querySelectorAll(query)
     for (const el of candidates) {
       addUrlIdsFromValue(el.getAttribute('style') || '')
       for (const a of URL_ATTRS) addUrlIdsFromValue(el.getAttribute(a))
