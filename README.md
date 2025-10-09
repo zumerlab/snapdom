@@ -8,6 +8,9 @@
  <a href="https://www.npmjs.com/package/@zumer/snapdom">
     <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=Version">
   </a>
+  <a href="https://www.npmjs.com/package/@zumer/snapdom">
+    <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom/dev?style=flat-square&label=Dev">
+  </a>
   <a href="https://github.com/zumerlab/snapdom/graphs/contributors">
     <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/zumerlab/snapdom?style=flat-square&label=Contributors">
   </a>
@@ -32,11 +35,11 @@
 
 It captures any HTML element as a scalable SVG image, preserving styles, fonts, background images, pseudo-elements, and even shadow DOM. It also supports export to raster image formats and canvas.
 
-* 📸 Full DOM capture
-* 🎨 Embedded styles, pseudo-elements, and fonts
-* 🖼️ Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
+* Full DOM capture
+* Embedded styles, pseudo-elements, and fonts
+* Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
 * ⚡ Ultra fast, no dependencies
-* 📦 100% based on standard Web APIs
+* 100% based on standard Web APIs
 * Support same-origin `ìframe`
 * Support CSS counter() and CSS counters()
 * Support `...` line-clamp
