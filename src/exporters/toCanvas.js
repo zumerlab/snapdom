@@ -145,23 +145,23 @@ export async function toCanvas(url, options) {
   } else if (hasW) {
     const k = optW / Math.max(1, refW)
     outW = optW
-    outH = Math.round(refH * k)
+    outH = refH * k
   } else if (hasH) {
     const k = optH / Math.max(1, refH)
     outH = optH
-    outW = Math.round(refW * k)
+    outW = refW * k
   } else {
     outW = natW
     outH = natH
   }
 
   // Aplica scale sobre lo resultante
-  outW = Math.round(outW * scale)
-  outH = Math.round(outH * scale)
+  outW = outW * scale
+  outH = outH * scale
 
   const canvas = document.createElement('canvas')
-  canvas.width = Math.ceil(outW * dpr)
-  canvas.height = Math.ceil(outH * dpr)
+  canvas.width = outW * dpr
+  canvas.height = outH * dpr
   canvas.style.width = `${outW}px`
   canvas.style.height = `${outH}px`
 

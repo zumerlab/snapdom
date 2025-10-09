@@ -10,7 +10,7 @@ import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClamp } from '../modules/lineClamp.js'
-import { runHook } from './plugins.js'
+//import { runHook } from './plugins.js'
 
 /**
  * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, blur()/drop-shadow()).
@@ -50,8 +50,8 @@ function stripRootShadows(originalEl, cloneRoot) {
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
-  const context = options
-  await runHook('beforeSnap', context)
+  //const context = options
+//  await runHook('beforeSnap', context)
   const fast = options.fast
   const straighten = !!options.straighten
   const noShadows = !!options.noShadows
@@ -63,7 +63,7 @@ export async function captureDOM(element, options) {
   let svgString
   // NEW: store root transform (scale/skew) when straighten is on
   let rootTransform2D = null
-  await runHook('beforeClone', context)
+  //await runHook('beforeClone', context)
   const undoClamp = lineClamp(element)
   try {
     ({ clone, classCSS, styleCache } = await prepareClone(element, options))
@@ -79,7 +79,7 @@ export async function captureDOM(element, options) {
     undoClamp()
   }
   // HOOK: afterClone
-  await runHook('afterClone', context)
+  //await runHook('afterClone', context)
 
   await new Promise((resolve) => {
     idle(async () => {
@@ -132,165 +132,197 @@ export async function captureDOM(element, options) {
     })
   }
 
-  await new Promise((resolve) => {
-    idle(async () => {
-      const csEl = getComputedStyle(element)
+ await new Promise((resolve) => {
+  idle(() => {
+    const csEl = getComputedStyle(element)
 
-      function parseFilterDropShadows(cs) {
-        const raw = `${cs.filter || ''} ${cs.webkitFilter || ''}`.trim()
-        if (!raw || raw === 'none') {
-          return { bleed: { top: 0, right: 0, bottom: 0, left: 0 }, has: false }
-        }
-        const tokens = raw.match(/drop-shadow\((?:[^()]|\([^()]*\))*\)/gi) || []
-        let t = 0, r = 0, b = 0, l = 0; let found = false
-        for (const tok of tokens) {
-          found = true
-          const nums = tok.match(/-?\d+(?:\.\d+)?px/gi)?.map(v => parseFloat(v)) || []
-          const [ox = 0, oy = 0, blur = 0] = nums
-          const extX = Math.abs(ox) + blur
-          const extY = Math.abs(oy) + blur
-          r = Math.max(r, extX + Math.max(ox, 0))
-          l = Math.max(l, extX + Math.max(-ox, 0))
-          b = Math.max(b, extY + Math.max(oy, 0))
-          t = Math.max(t, extY + Math.max(-oy, 0))
-        }
-        return { bleed: { top: Math.ceil(t), right: Math.ceil(r), bottom: Math.ceil(b), left: Math.ceil(l) }, has: found }
+    /**
+     * Limit a number to N decimals without forcing string formatting.
+     * @param {number} v
+     * @param {number} [n=3]
+     * @returns {number}
+     */
+    const limitDecimals = (v, n = 3) =>
+      Number.isFinite(v) ? Math.round(v * 10 ** n) / 10 ** n : v
+
+    function parseFilterDropShadows(cs) {
+      const raw = `${cs.filter || ''} ${cs.webkitFilter || ''}`.trim()
+      if (!raw || raw === 'none') {
+        return { bleed: { top: 0, right: 0, bottom: 0, left: 0 }, has: false }
       }
-
-      const rect = element.getBoundingClientRect()
-      const w0 = Math.max(1, Math.ceil(element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
-      const h0 = Math.max(1, Math.ceil(element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
-
-      const coerceNum = (v, def = NaN) => {
-        const n = typeof v === 'string' ? parseFloat(v) : v
-        return Number.isFinite(n) ? n : def
+      const tokens = raw.match(/drop-shadow\((?:[^()]|\([^()]*\))*\)/gi) || []
+      let t = 0, r = 0, b = 0, l = 0
+      let found = false
+      for (const tok of tokens) {
+        found = true
+        const nums = tok.match(/-?\d+(?:\.\d+)?px/gi)?.map(v => parseFloat(v)) || []
+        const [ox = 0, oy = 0, blur = 0] = nums
+        const extX = Math.abs(ox) + blur
+        const extY = Math.abs(oy) + blur
+        r = Math.max(r, extX + Math.max(ox, 0))
+        l = Math.max(l, extX + Math.max(-ox, 0))
+        b = Math.max(b, extY + Math.max(oy, 0))
+        t = Math.max(t, extY + Math.max(-oy, 0))
       }
-      const optW = coerceNum(options.width)
-      const optH = coerceNum(options.height)
-      let w = w0, h = h0
-
-      const hasW = Number.isFinite(optW)
-      const hasH = Number.isFinite(optH)
-      const aspect0 = h0 > 0 ? w0 / h0 : 1
-      if (hasW && hasH) {
-        w = Math.max(1, Math.ceil(optW))
-        h = Math.max(1, Math.ceil(optH))
-      } else if (hasW) {
-        w = Math.max(1, Math.ceil(optW))
-        h = Math.max(1, Math.ceil(w / (aspect0 || 1)))
-      } else if (hasH) {
-        h = Math.max(1, Math.ceil(optH))
-        w = Math.max(1, Math.ceil(h * (aspect0 || 1)))
-      } else {
-        w = w0
-        h = h0
+      return {
+        bleed: {
+          top: limitDecimals(t),
+          right: limitDecimals(r),
+          bottom: limitDecimals(b),
+          left: limitDecimals(l)
+        },
+        has: found
       }
+    }
 
-      // ——— BBOX ———
-      let minX = 0, minY = 0, maxX = w0, maxY = h0
+    const rect = element.getBoundingClientRect()
+    const w0 = Math.max(1, limitDecimals(element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
+    const h0 = Math.max(1, limitDecimals(element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
 
-      // NEW: if straighten => expand bbox using the post-normalization 2D matrix
-      if (straighten && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
-        const M2 = { a: rootTransform2D.a, b: rootTransform2D.b || 0, c: rootTransform2D.c || 0, d: rootTransform2D.d || 1, e: 0, f: 0 }
-        const bb2 = bboxWithOriginFull(w0, h0, M2, 0, 0) // anchored at 0,0 (transformOrigin forced to 0 0)
-        minX = bb2.minX
-        minY = bb2.minY
-        maxX = bb2.maxX
-        maxY = bb2.maxY
-      } else {
-        // Classic path (only when NOT straighten): bbox-aware to transforms
-        const useTFBBox = !straighten && hasTFBBox(element)
-        if (useTFBBox) {
-          const baseTransform2 = csEl.transform && csEl.transform !== 'none' ? csEl.transform : ''
-          const ind2 = readIndividualTransforms(element)
-          const TOTAL = readTotalTransformMatrix({
-            baseTransform: baseTransform2,
-            rotate: ind2.rotate || '0deg',
-            scale: ind2.scale,
-            translate: ind2.translate
-          })
-          const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0)
-          const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString())
-          const bb = bboxWithOriginFull(w0, h0, M, ox2, oy2)
-          minX = bb.minX
-          minY = bb.minY
-          maxX = bb.maxX
-          maxY = bb.maxY
+    const coerceNum = (v, def = NaN) => {
+      const n = typeof v === 'string' ? parseFloat(v) : v
+      return Number.isFinite(n) ? n : def
+    }
+
+    const optW = coerceNum(options.width)
+    const optH = coerceNum(options.height)
+    let w = w0, h = h0
+
+    const hasW = Number.isFinite(optW)
+    const hasH = Number.isFinite(optH)
+    const aspect0 = h0 > 0 ? w0 / h0 : 1
+
+    if (hasW && hasH) {
+      w = Math.max(1, limitDecimals(optW))
+      h = Math.max(1, limitDecimals(optH))
+    } else if (hasW) {
+      w = Math.max(1, limitDecimals(optW))
+      h = Math.max(1, limitDecimals(w / (aspect0 || 1)))
+    } else if (hasH) {
+      h = Math.max(1, limitDecimals(optH))
+      w = Math.max(1, limitDecimals(h * (aspect0 || 1)))
+    } else {
+      w = w0
+      h = h0
+    }
+
+    // ——— BBOX ———
+    let minX = 0, minY = 0, maxX = w0, maxY = h0
+
+    // NEW: if straighten => expand bbox using the post-normalization 2D matrix
+    if (straighten && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
+      const M2 = {
+        a: rootTransform2D.a,
+        b: rootTransform2D.b || 0,
+        c: rootTransform2D.c || 0,
+        d: rootTransform2D.d || 1,
+        e: 0,
+        f: 0
+      }
+      const bb2 = bboxWithOriginFull(w0, h0, M2, 0, 0)
+      minX = limitDecimals(bb2.minX)
+      minY = limitDecimals(bb2.minY)
+      maxX = limitDecimals(bb2.maxX)
+      maxY = limitDecimals(bb2.maxY)
+    } else {
+      const useTFBBox = !straighten && hasTFBBox(element)
+      if (useTFBBox) {
+        const baseTransform2 = csEl.transform && csEl.transform !== 'none' ? csEl.transform : ''
+        const ind2 = readIndividualTransforms(element)
+        const TOTAL = readTotalTransformMatrix({
+          baseTransform: baseTransform2,
+          rotate: ind2.rotate || '0deg',
+          scale: ind2.scale,
+          translate: ind2.translate
+        })
+        const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0)
+        const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString())
+        const bb = bboxWithOriginFull(w0, h0, M, ox2, oy2)
+        minX = limitDecimals(bb.minX)
+        minY = limitDecimals(bb.minY)
+        maxX = limitDecimals(bb.maxX)
+        maxY = limitDecimals(bb.maxY)
+      }
+    }
+
+    // ——— BLEED ———
+    const bleedShadow = parseBoxShadow(csEl)
+    const bleedBlur = parseFilterBlur(csEl)
+    const bleedOutline = parseOutline(csEl)
+    const drop = parseFilterDropShadows(csEl)
+
+    const bleed = (noShadows)
+      ? { top: 0, right: 0, bottom: 0, left: 0 }
+      : {
+          top: limitDecimals(bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top),
+          right: limitDecimals(bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right),
+          bottom: limitDecimals(bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
+          left: limitDecimals(bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left)
         }
-      }
 
-      // ——— BLEED ———
-      const bleedShadow = parseBoxShadow(csEl)
-      const bleedBlur = parseFilterBlur(csEl)
-      const bleedOutline = parseOutline(csEl)
-      const drop = parseFilterDropShadows(csEl)
+    minX = limitDecimals(minX - bleed.left)
+    minY = limitDecimals(minY - bleed.top)
+    maxX = limitDecimals(maxX + bleed.right)
+    maxY = limitDecimals(maxY + bleed.bottom)
 
-      const bleed = (noShadows)
-        ? { top: 0, right: 0, bottom: 0, left: 0 }
-        : {
-          top: bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top,
-          right: bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right,
-          bottom: bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom,
-          left: bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left
-        }
+    const vbW0 = Math.max(1, limitDecimals(maxX - minX))
+    const vbH0 = Math.max(1, limitDecimals(maxY - minY))
+    const scaleW = (hasW || hasH) ? limitDecimals(w / w0) : 1
+    const scaleH = (hasH || hasW) ? limitDecimals(h / h0) : 1
+    const outW = Math.max(1, limitDecimals(vbW0 * scaleW))
+    const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
 
-      minX -= bleed.left
-      minY -= bleed.top
-      maxX += bleed.right
-      maxY += bleed.bottom
+    const svgNS = 'http://www.w3.org/2000/svg'
+    const basePad = isSafari() ? 1 : 0
+    const extraPad = straighten ? 1 : 0
+    const pad = limitDecimals(basePad + extraPad)
 
-      const vbW0 = Math.max(1, Math.ceil(maxX - minX))
-      const vbH0 = Math.max(1, Math.ceil(maxY - minY))
-      const outW = Math.max(1, Math.round(vbW0 * (hasW || hasH ? w / w0 : 1)))
-      const outH = Math.max(1, Math.round(vbH0 * (hasH || hasW ? h / h0 : 1)))
+    const fo = document.createElementNS(svgNS, 'foreignObject')
+    const vbMinX = limitDecimals(minX)
+    const vbMinY = limitDecimals(minY)
+    fo.setAttribute('x', String(limitDecimals(-(vbMinX - pad))))
+    fo.setAttribute('y', String(limitDecimals(-(vbMinY - pad))))
+    fo.setAttribute('width', String(limitDecimals(w0 + pad * 2)))
+    fo.setAttribute('height', String(limitDecimals(h0 + pad * 2)))
+    fo.style.overflow = 'visible'
 
-      const svgNS = 'http://www.w3.org/2000/svg'
-      const basePad = isSafari() ? 1 : 0
-      const extraPad = straighten ? 1 : 0 // NEW: tiny safety margin for rounding
-      const pad = basePad + extraPad
+    const styleTag = document.createElement('style')
+    styleTag.textContent =
+      baseCSS + fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + classCSS
+    fo.appendChild(styleTag)
 
-      const fo = document.createElementNS(svgNS, 'foreignObject')
-      const vbMinX = Math.floor(minX)
-      const vbMinY = Math.floor(minY)
-      fo.setAttribute('x', String(-(vbMinX - pad)))
-      fo.setAttribute('y', String(-(vbMinY - pad)))
-      fo.setAttribute('width', String(Math.ceil(w0 + pad * 2)))
-      fo.setAttribute('height', String(Math.ceil(h0 + pad * 2)))
-      fo.style.overflow = 'visible'
+    const container = document.createElement('div')
+    container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
+    container.style.width = `${limitDecimals(w0)}px`
+    container.style.height = `${limitDecimals(h0)}px`
+    container.style.overflow = 'visible'
 
-      const styleTag = document.createElement('style')
-      styleTag.textContent = baseCSS + fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + classCSS
-      fo.appendChild(styleTag)
+    clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
+    container.appendChild(clone)
+    fo.appendChild(container)
 
-      const container = document.createElement('div')
-      container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-      container.style.width = `${w0}px`
-      container.style.height = `${h0}px`
-      container.style.overflow = 'visible'
+    const serializer = new XMLSerializer()
+    const foString = serializer.serializeToString(fo)
+    const vbW = limitDecimals(vbW0 + pad * 2)
+    const vbH = limitDecimals(vbH0 + pad * 2)
+    const wantsSize = hasW || hasH
 
-      clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-      container.appendChild(clone)
-      fo.appendChild(container)
+    options.meta = { w0, h0, vbW, vbH, targetW: w, targetH: h }
 
-      const serializer = new XMLSerializer()
-      const foString = serializer.serializeToString(fo)
-      const vbW = vbW0 + pad * 2
-      const vbH = vbH0 + pad * 2
-      const wantsSize = hasW || hasH
+    const svgOutW = (isSafari() && wantsSize)
+      ? vbW
+      : limitDecimals(outW + pad * 2)
+    const svgOutH = (isSafari() && wantsSize)
+      ? vbH
+      : limitDecimals(outH + pad * 2)
 
-      options.meta = { w0, h0, vbW, vbH, targetW: w, targetH: h }
-
-      const svgOutW = (isSafari() && wantsSize) ? vbW : (outW + pad * 2)
-      const svgOutH = (isSafari() && wantsSize) ? vbH : (outH + pad * 2)
-      await runHook('beforeRender', context)
-      const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`
-      const svgFooter = '</svg>'
-      svgString = svgHeader + foString + svgFooter
-      dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
-      await runHook('afterRender', context)
-      resolve()
-    }, { fast })
-  })
+    const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`
+    const svgFooter = '</svg>'
+    svgString = svgHeader + foString + svgFooter
+    dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
+    resolve()
+  }, { fast })
+})
 
   const sandbox = document.getElementById('snapdom-sandbox')
   if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()
