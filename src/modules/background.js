@@ -70,7 +70,12 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     '-webkit-mask-position-x',
     '-webkit-mask-position-y',
   ]
-
+  const BG_LAYOUT_PROPS = [
+    'background-position', 'background-position-x', 'background-position-y',
+    'background-size', 'background-repeat',
+    'background-origin', 'background-clip',
+    'background-attachment', 'background-blend-mode'
+  ]
   /** Border-image aux longhands (copy only when active) */
   const BORDER_AUX_PROPS = [
     'border-image-slice',
@@ -90,6 +95,11 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       const bis = style.getPropertyValue('border-image-source')
       return (bi && bi !== 'none') || (bis && bis !== 'none')
     })()
+    for (const prop of BG_LAYOUT_PROPS) {
+      const v = style.getPropertyValue(prop)
+      if (!v) continue
+      cloneNode.style.setProperty(prop, v)
+    }
     // 1) Inline URL-bearing properties
     for (const prop of URL_PROPS) {
       const val = style.getPropertyValue(prop)
@@ -122,7 +132,8 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     }
     // 4) Recurse
     const sChildren = Array.from(srcNode.children)
-    const cChildren = Array.from(cloneNode.children)
+ const cChildren = Array.from(cloneNode.children)
+   .filter(el => !(el.dataset && el.dataset.snapdomPseudo))
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
       queue.push([sChildren[i], cChildren[i]])
     }

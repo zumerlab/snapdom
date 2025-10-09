@@ -38,6 +38,7 @@ export async function preCache(root = document, options = {}) {
     cache.session.styleCache = new WeakMap()
   }
   cache.image = cache.image || new Map()
+  cache.background = cache.background || new Map()
 
   // Pre-inline background images into cache (best-effort)
   try {
@@ -47,7 +48,16 @@ export async function preCache(root = document, options = {}) {
   // Collect elements for prefetch
   let imgEls = [], allEls = []
   try {
-    if (root?.querySelectorAll) {
+    // 🔸 Importante: incluir al root si es un Element
+    if (root && root.nodeType === 1 /* ELEMENT_NODE */) {
+      const descendants = root.querySelectorAll ? Array.from(root.querySelectorAll('*')) : []
+      allEls = [root, ...descendants]
+      // Sólo imágenes dentro del subtree (el root también puede ser <img>)
+      imgEls = []
+      if (root.tagName === 'IMG' && root.getAttribute('src')) imgEls.push(root)
+      imgEls.push(...Array.from(root.querySelectorAll?.('img[src]') || []))
+    } else if (root?.querySelectorAll) {
+      // Document o DocumentFragment
       imgEls = Array.from(root.querySelectorAll('img[src]'))
       allEls = Array.from(root.querySelectorAll('*'))
     }
@@ -75,17 +85,33 @@ export async function preCache(root = document, options = {}) {
   // Prefetch background-image url(...) entries
   for (const el of allEls) {
     let bg = ''
-    try { bg = getStyle(el).backgroundImage } catch {}
-    if (bg && bg !== 'none') {
-      const parts = splitBackgroundImage(bg)
-      for (const entry of parts) {
-        if (entry.startsWith('url(')) {
-          const p = Promise.resolve()
-            .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
-            .catch(() => {})
-          promises.push(p)
-        }
+    try {
+      // Preferir estilo autor (estable en JSDOM/test); fallback a computado
+      bg = el?.style?.backgroundImage || ''
+      if (!bg || bg === 'none') {
+        bg = getStyle(el).backgroundImage
       }
+    } catch {}
+    if (bg && bg !== 'none') {
+      // Extraer SOLO capas url(...) (robusto ante comas de gradients)
+      const urlEntries = bg.match(/url\((?:[^()"']+|"(?:[^"]*)"|'(?:[^']*)')\)/gi) || []
+      for (const entry of urlEntries) {
+        const p = Promise.resolve()
+          .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
+          .catch(() => {})
+        promises.push(p)
+      }
+
+      // (quedó como compat opcional por si querés volver a splitBackgroundImage)
+      // const parts = splitBackgroundImage(bg)
+      // for (const entry of parts) {
+      //   if (entry.startsWith('url(')) {
+      //     const p = Promise.resolve()
+      //       .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
+      //       .catch(() => {})
+      //     promises.push(p)
+      //   }
+      // }
     }
   }
 
