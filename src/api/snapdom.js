@@ -8,8 +8,10 @@ import { toBlob } from '../exporters/toBlob.js'
 import { rasterize } from '../modules/rasterize.js'
 import { download } from '../exporters/download.js'
 import { isSafari } from '../utils/browser.js'
-import { registerPlugins } from '../core/plugins.js'
-import { registerExporters } from '../core/exporters.js'
+import { registerPlugins, runHook, runAll } from '../core/plugins.js' // ← usar runAll
+
+// API pública
+snapdom.plugins = (...defs) => { registerPlugins(...defs); return snapdom }
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
@@ -71,14 +73,8 @@ export async function snapdom(element, userOptions) {
 snapdom.plugins = (...defs) => { registerPlugins(...defs); return snapdom }
 
 /**
- * Global registration API (exporters).
- * @param  {...any} defs
- * @returns {typeof snapdom}
- */
-snapdom.exporters = (...defs) => { registerExporters(...defs); return snapdom }
-
-/**
  * Internal capture method that returns helper methods for transformation/export.
+ * Integrates export hooks: beforeExport → work() → afterExport → afterSnap(once per URL)
  * @private
  * @param {HTMLElement} el - The DOM element to capture.
  * @param {object} context - Normalized context options.
@@ -86,33 +82,94 @@ snapdom.exporters = (...defs) => { registerExporters(...defs); return snapdom }
  * @returns {Promise<object>} Exporter functions.
  */
 snapdom.capture = async (el, context, _token) => {
-  /* v8 ignore next */
   if (_token !== INTERNAL_TOKEN) throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.')
   const url = await captureDOM(el, context)
 
-  const ensureContext = (opts) => ({ ...context, ...(opts || {}) })
-  const withFormat = (format) => (opts) => {
-    const next = ensureContext({ ...(opts || {}), format })
-    const wantsJpeg = format === 'jpeg' || format === 'jpg'
-    const noBg = next.backgroundColor == null || next.backgroundColor === 'transparent'
-    if (wantsJpeg && noBg) {
-      next.backgroundColor = '#ffffff'
-    }
-    return rasterize(url, next)
-  }
+  // ——— 1) exports core por defecto ———
+const coreExports = {
+  img:    async (ctx, opts) => toImg(url,    { ...ctx, ...(opts||{}) }),
+  svg:    async (ctx, opts) => toSvg(url,    { ...ctx, ...(opts||{}) }),
+  canvas: async (ctx, opts) => toCanvas(url, { ...ctx, ...(opts||{}) }),
+  blob:   async (ctx, opts) => toBlob(url,   { ...ctx, ...(opts||{}) }),
+  png:    async (ctx, opts) => rasterize(url, { ...ctx, ...(opts||{}), format: 'png'  }),
+  jpeg:   async (ctx, opts) => rasterize(url, { ...ctx, ...(opts||{}), format: 'jpeg' }),
+  webp:   async (ctx, opts) => rasterize(url, { ...ctx, ...(opts||{}), format: 'webp' }),
+  download: async (ctx, opts) => download(url, { ...ctx, ...(opts||{}) }),
+}
 
-  return {
-    url,
-    toRaw: () => url,
-    toImg: (opts) => toImg(url, ensureContext(opts)),
-    toSvg: (opts) => toSvg(url, ensureContext(opts)),
-    toCanvas: (opts) => toCanvas(url, ensureContext(opts)),
-    toBlob: (opts) => toBlob(url, ensureContext(opts)),
-    toPng: withFormat('png'),
-    toJpg: withFormat('jpeg'),
-    toWebp: withFormat('webp'),
-    download: (opts) => download(url, ensureContext(opts)),
+// ——— 2) exports declarados por plugins ———
+const providedMaps = await runAll('defineExports', context)
+const provided = Object.assign({}, ...providedMaps.filter(x => x && typeof x === 'object'))
+
+// Merge (plugins pueden overridear core)
+const exportsMap = { ...coreExports, ...provided }
+
+// ——— Alias: jpg → jpeg (para toJpg y to('jpg')) ———
+if (exportsMap.jpeg && !exportsMap.jpg) {
+  exportsMap.jpg = (ctx, opts) => exportsMap.jpeg(ctx, opts)
+}
+
+// ——— Normalizador para opciones por tipo (p.ej. JPEG: fondo blanco) ———
+function normalizeExportOptions(type, opts) {
+  const next = { ...context, ...(opts || {}) }
+  if ((type === 'jpeg' || type === 'jpg')) {
+    const noBg = next.backgroundColor == null || next.backgroundColor === 'transparent'
+    if (noBg) next.backgroundColor = '#ffffff'
   }
+  return next
+}
+
+// ——— Runner unificado con beforeExport/afterExport ———
+let afterSnapFired = false
+let _exportQueue = Promise.resolve()
+async function runExport(type, opts) {
+  const job = async () => {
+  const work = exportsMap[type]
+  if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
+  const nextOpts = normalizeExportOptions(type, opts)
+  const ctx = { ...context, export: { type, options: nextOpts, url } }
+
+  await runHook('beforeExport', ctx)
+  const result = await work(ctx, nextOpts)
+  await runHook('afterExport', ctx, result)
+
+  if (!afterSnapFired) {
+    afterSnapFired = true
+    await runHook('afterSnap', context)
+  }
+  return result
+
+}
+
+  return _exportQueue = _exportQueue.then(job)
+}
+
+// ——— Helpers esperados por los tests + API azúcar ———
+const result = {
+  url,
+  toRaw: () => url,
+  to: (type, opts) => runExport(type, opts),
+
+  // Métodos “clásicos” que los tests esperan:
+  toImg:    (opts) => runExport('img', opts),
+  toSvg:    (opts) => runExport('svg', opts),
+  toCanvas: (opts) => runExport('canvas', opts),
+  toBlob:   (opts) => runExport('blob', opts),
+  toPng:    (opts) => runExport('png', opts),
+  toJpg:    (opts) => runExport('jpg', opts),     // ← alias requerido por los tests
+  toWebp:   (opts) => runExport('webp', opts),
+  download: (opts) => runExport('download', opts) // ← método directo (no toDownload)
+}
+
+// Además generamos azúcar dinámico por cada export registrado (plugins incluidos)
+for (const key of Object.keys(exportsMap)) {
+  const helper = 'to' + key.charAt(0).toUpperCase() + key.slice(1)
+  if (!result[helper]) {
+    result[helper] = (opts) => runExport(key, opts)
+  }
+}
+return result
+
 }
 
 /**

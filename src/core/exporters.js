@@ -62,3 +62,40 @@ export function getExporter(format) {
 /** Utilities for tests */
 export function _exportersMap() { return new Map(__exporters) }
 export function _clearExporters() { __exporters.clear() }
+
+/* -------------------------------------------------------------------------- */
+/* 🧩 Export Hooks Integration (auto-once afterSnap)                          */
+/* -------------------------------------------------------------------------- */
+
+import { runHook } from './plugins.js'
+
+/** Keeps track of which captures have already triggered afterSnap */
+const finished = new Set()
+
+/**
+ * Runs export-related hooks around a given export task.
+ *
+ * Flow:
+ *   beforeExport → work() → afterExport → afterSnap(once per URL)
+ *
+ * @template T
+ * @param {object} ctx - Capture context extended with { export:{ type, options, url } }
+ * @param {() => Promise<T>} work - Async exporter function
+ * @returns {Promise<T>} - The export result
+ */
+export async function runExportHooks(ctx, work) {
+  await runHook('beforeExport', ctx)
+
+  ctx.export.result = await work()
+
+  await runHook('afterExport', ctx)
+
+  const key = ctx.export?.url
+  if (key && !finished.has(key)) {
+    finished.add(key)
+    await runHook('afterSnap', ctx)
+
+  }
+
+  return ctx.export.result
+}

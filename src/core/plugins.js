@@ -12,15 +12,10 @@
  *
  * Hook signature: (context, payload?) => void | any | Promise<void|any>
  */
+// core/plugins.js
 
 const __plugins = []
 
-/**
- * Normalize any plugin spec into an instance.
- * Accepts: Factory, [Factory, options], { plugin, options }, plain instance.
- * @param {any} spec
- * @returns {any|null}
- */
 export function normalizePlugin(spec) {
   if (!spec) return null
   if (Array.isArray(spec)) {
@@ -35,25 +30,20 @@ export function normalizePlugin(spec) {
   return spec
 }
 
-/**
- * Register many plugins globally.
- * @param  {...any} defs
- */
 export function registerPlugins(...defs) {
   const flat = defs.flat()
   for (const d of flat) {
     const inst = normalizePlugin(d)
-    if (inst && !__plugins.includes(inst)) __plugins.push(inst)
+    if (!inst) continue
+    // 🔒 de-dup por name
+    if (!__plugins.some(p => p && p.name && inst.name && p.name === inst.name)) {
+      __plugins.push(inst)
+    }
   }
 }
 
 /**
- * Emit a hook to all plugins (in registration order).
- * If a plugin returns non-undefined, it becomes the accumulator.
- * @param {string} name
- * @param {object} context
- * @param {any} [payload]
- * @returns {Promise<any>}
+ * Llama un hook y propaga un acumulador (compat con tu runHook actual).
  */
 export async function runHook(name, context, payload) {
   let acc = payload
@@ -66,6 +56,20 @@ export async function runHook(name, context, payload) {
   return acc
 }
 
-/** Utilities to query/clear (handy for tests) */
+/**
+ * NUEVO: recolecta los valores devueltos por TODOS los plugins para un hook.
+ * Útil para `defineExports` (cada plugin devuelve un mapa propio).
+ */
+export async function runAll(name, context, payload) {
+  const outs = []
+  for (const p of __plugins) {
+    const fn = p && typeof p[name] === 'function' ? p[name] : null
+    if (!fn) continue
+    const out = await fn(context, payload)
+    if (typeof out !== 'undefined') outs.push(out)
+  }
+  return outs
+}
+
 export function pluginsList() { return __plugins.slice() }
 export function clearPlugins() { __plugins.length = 0 }
