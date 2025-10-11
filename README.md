@@ -687,7 +687,7 @@ npm run test:benchmark
 
 Planned improvements for future versions of SnapDOM:
 
-* [ ] **Implement plugin system**
+* [X] **Implement plugin system**
   SnapDOM will support external plugins to extend or override internal behavior (e.g. custom node transformers, exporters, or filters).
 
 * [ ] **Refactor to modular architecture**
@@ -702,7 +702,7 @@ Planned improvements for future versions of SnapDOM:
 * [X] **Auto font preloading**
   Required fonts will be automatically detected and preloaded before capture, reducing the need for manual `preCache()` calls.
 
-* [ ] **Document plugin development**
+* [X] **Document plugin development**
   A full guide will be provided for creating and registering custom SnapDOM plugins.
 
 * [ ] **Make export utilities tree-shakeable**
