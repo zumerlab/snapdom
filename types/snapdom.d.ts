@@ -1,11 +1,16 @@
 /**
  * snapDOM – ultra-fast DOM-to-image capture
- * TypeScript definitions (v1.9.10-dev.2)
+ * TypeScript definitions (v1.9.14)
  *
  * Notes:
  * - Style compression is internal (no public option).
  * - Icon fonts are always embedded; `embedFonts` controls non-icon fonts only.
+ * - This file preserves backward compatibility with earlier 1.9.x defs.
  */
+
+/* =========================
+ * Basic MIME / type aliases
+ * ========================= */
 
 export type RasterMime = "png" | "jpg" | "jpeg" | "webp";
 export type BlobType = "svg" | RasterMime;
@@ -13,288 +18,345 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
-export type ExcludeMode = 'hide' | 'remove';
-export type FilterMode = 'hide' | 'remove';
+/* =========================
+ * Font & proxy declarations
+ * ========================= */
 
-export interface LocalFontDescriptor {
-  /** CSS font-family name (e.g. "Inter"). */
+export interface LocalFont {
   family: string;
-  /** URL to the font source (woff2/woff/ttf). Data URLs allowed. */
-  src: string;
-  /** CSS font-weight value (e.g. 400, "bold"). */
+  src: string;            // URL or data: URL
   weight?: string | number;
-  /** CSS font-style value (e.g. "normal", "italic"). */
   style?: string;
-  /** CSS font-stretch as percentage (e.g. 100 for normal). */
-  stretchPct?: number;
 }
 
-export interface CaptureOptions {
-  /**
-   * Enable additional internal logs.
-   * Default: false
-   */
-  debug?: boolean;
+export interface ExcludeFonts {
+  /** Case-insensitive family names to skip (non-icon only). */
+  families?: string[];
+  /** Host substrings to skip (e.g., "fonts.gstatic.com"). */
+  domains?: string[];
+  /** Unicode-range subset tags to skip (e.g., "cyrillic-ext"). */
+  subsets?: string[];
+}
 
-  /**
-   * Skip small idle delays for faster overall capture.
-   * Default: true
-   */
+/* =========================
+ * Capture options
+ * ========================= */
+
+export interface SnapdomOptions {
+  /** Fast path: skip small idle delays where safe. */
   fast?: boolean;
-
-  /**
-   * Output scale multiplier. If set, takes precedence over width/height.
-   * Default: 1
-   */
+  /** Output scale multiplier. Takes precedence over width/height. */
   scale?: number;
-
-  /**
-   * Device pixel ratio to use for raster exports.
-   * Default: `window.devicePixelRatio` at capture time.
-   */
+  /** Device pixel ratio to use for rasterization (defaults to `devicePixelRatio`). */
   dpr?: number;
-
-  /** Target width for the exported image. Ignored if `scale` is provided. */
+  /** Target width of the export (keeps aspect if only one dimension is provided). */
   width?: number;
-
-  /** Target height for the exported image. Ignored if `scale` is provided. */
+  /** Target height of the export (keeps aspect if only one dimension is provided). */
   height?: number;
 
-  /**
-   * Fallback color for lossy raster formats (JPG/WebP have no alpha).
-   * Default: "#ffffff" for JPG/JPEG/WebP, `null` otherwise.
-   */
-  backgroundColor?: string | null;
-
-  /**
-   * Quality for JPG/WebP (0..1).
-   * Default: 0.92
-   */
+  /** Background fallback color (used esp. for JPEG). Default "#fff". */
+  backgroundColor?: string;
+  /** Quality for JPEG/WebP (0..1). Default 1. */
   quality?: number;
 
-  /**
-   * Proxy base URL used as a fallback for CORS-restricted images/fonts.
-   * Example: "https://corsproxy.io/?url="
-   */
+  /** Cross-origin proxy prefix (used as a fallback when CORS blocks). */
   useProxy?: string;
 
-  /** Preferred Blob type for `toBlob`. Default: "svg". */
+  /** Default Blob type for toBlob() when unspecified. */
   type?: BlobType;
 
-  /**
-   * Preferred export format used by convenience methods / download.
-   * Default: "png"
-   */
-  format?: BlobType;
-
-  /** CSS selectors removed from the cloned subtree before processing. */
+  /** CSS selector list to filter nodes. */
   exclude?: string[];
+  /** How to apply `exclude` ("hide" keeps layout via visibility:hidden; "remove" drops nodes). Default "hide". */
+  excludeMode?: "hide" | "remove";
 
   /**
-   * Mode applied to excluded nodes of the cloned tree.
-   * Default: "hide"
-   */
-  excludeMode?: ExcludeMode;
-
-  /**
-   * Advanced node filter; return false to exclude a node during traversal.
-   * Applied to the cloned subtree.
+   * Custom predicate: return true to keep node, false to exclude.
+   * Runs in document order; pairs with `filterMode`.
    */
   filter?: (el: Element) => boolean;
+  /** How to apply `filter` ("hide" or "remove"). Default "hide". */
+  filterMode?: "hide" | "remove";
 
-  /**
-   * Mode applied to filtered nodes of the cloned tree.
-   * Default: "hide"
-   */
-  filterMode?: FilterMode;
-
-  /**
-   * Whether to synthesize placeholders for broken images, etc.
-   * Default: true
-   */
-  placeholders?: boolean;
-
-  /**
-   * Inline non-icon fonts used within the captured subtree.
-   * Icon fonts are always embedded.
-   * Default: false
-   */
-  embedFonts?: boolean;
-
-  /**
-   * Additional local fonts to be considered during embedding.
-   */
-  localFonts?: LocalFontDescriptor[];
-
-  /**
-   * Extra icon font family matchers (by name or regex).
-   */
-  iconFonts?: IconFontMatcher | IconFontMatcher[];
-
-  /**
- * Exclude specific web fonts from embedding.
- * This option accepts an object with granular matchers.
- *
- * @example
- * excludeFonts: {
- *   families: ['Noto Serif', /SomeHeavy/i],
- *   domains: ['fonts.gstatic.com', /cdn\.example$/i],
- *   subsets: ['cyrillic-ext']
- * }
- */
-  excludeFonts?: ExcludeFontsOptions
-
-  /**
-   * Fallback image source when an <img> fails to load.
-   * - String: use as-is.
-   * - Callback: receives measured width/height and original src, returns a URL string.
-   */
-  fallbackURL?:
-  | string
-  | ((
-    args: {
-      width?: number;
-      height?: number;
-      src?: string;
-      element: HTMLImageElement;
-    }
-  ) => string | Promise<string>);
-
-  /**
-   * Cache policy applied at capture start.
-   * Default: "soft"
-   */
-  cache?: CachePolicy;
-
-  /**
-   * Base filename used by `download`.
-   * Default: "snapDOM"
-   */
-  filename?: string;
-
-  /**
-   * Normalize only translate*rotate* on the cloned root (keeps scale/skew intact).
-   * Children are not modified.
-   * Default: false
-   */
+  /** Straighten the root: remove translate/rotate, keep scale/skew. */
   straighten?: boolean;
-
   /**
-   * Do not expand the root viewBox for shadows/blur/outline/drop-shadow.
-   * Children are not modified. The root may also have those visuals cleared to avoid clipping.
-   * Default: false
+   * Do not expand root bbox for shadows/blur/outline; also strip shadows/outline
+   * from the cloned root to get a tight capture box.
    */
   noShadows?: boolean;
-}
 
-export type FontMatcher = string | RegExp
-
-export interface ExcludeFontsOptions {
-  /**
-   * Skip by font-family (first resolved non-generic name).
-   * Examples: "Noto Serif", /SomeHeavy/i
-   */
-  families?: FontMatcher[]
-
-  /**
-   * Skip by source host (parsed from @font-face src URLs).
-   * Examples: "fonts.gstatic.com", /cdn\.example$/i
-   */
-  domains?: FontMatcher[]
+  /** Inline non-icon fonts actually used within the subtree. */
+  embedFonts?: boolean;
+  /** Provide fonts explicitly to avoid remote discovery. */
+  localFonts?: LocalFont[];
+  /** Additional matchers for icon font families (strings or regex). */
+  iconFonts?: IconFontMatcher | IconFontMatcher[];
+  /** Skip specific non-icon fonts (by family/domain/subset). */
+  excludeFonts?: ExcludeFonts;
 
   /**
-   * Skip by unicode-range subset tag (your pipeline-defined label).
-   * Examples: "latin-ext", "cyrillic-ext"
+   * Fallback image when <img> fails to load.
+   * Can be a fixed URL or a callback that receives measured dimensions.
    */
-  subsets?: string[]
+  fallbackURL?:
+    | string
+    | ((dims: { width?: number; height?: number }) => string);
+
+  /** Cache policy for resources and style maps. Default "soft". */
+  cache?: CachePolicy;
+
+  /** Show placeholders when resources are missing. Default true. */
+  placeholders?: boolean;
+
+  /** Arbitrary plugin configuration at call-site (see PluginUse). */
+  plugins?: PluginUse[];
 }
 
+/* =========================
+ * Capture context (hook state)
+ * ========================= */
 
-export interface BlobOptions {
-  /** Blob type to export. Default: "svg". */
-  type?: BlobType;
-  /** JPG/WebP quality (0..1). */
-  quality?: number;
-  /** Background override for lossy formats. */
-  backgroundColor?: string | null;
+export interface CaptureContext extends SnapdomOptions {
+  /** Input element being captured. */
+  element: Element;
+
+  /** Cloned root (detached), available after `beforeClone`/`afterClone`. */
+  clone?: HTMLElement | SVGElement | null;
+
+  /** Internal style/class caches (opaque to user). */
+  classCSS?: string;
+  styleCache?: unknown;
+  fontsCSS?: string;
+  baseCSS?: string;
+
+  /** Serialized artifacts, available after render. */
+  svgString?: string;
+  dataURL?: string;
+
+  /** Current export info during beforeExport/afterExport. */
+  export?: {
+    /** Export key (e.g., "png", "jpeg", "svg", or any custom key). */
+    type: string;
+    /** Options passed to the exporter. */
+    options?: any;
+    /** Canonical SVG data URL of this capture. */
+    url: string;
+  };
 }
+
+/* =========================
+ * Exporter signatures
+ * ========================= */
+
+export type Exporter = (ctx: CaptureContext, opts?: any) => Promise<any>;
+
+/** Map returned by `defineExports`: keys are exposed on the result (e.g., `pdf` → `result.toPdf()` as well as `result['pdf']()`). */
+export type ExportMap = Record<string, Exporter>;
+
+/* =========================
+ * Plugin system
+ * ========================= */
+
+export interface SnapdomPlugin {
+  /** Unique name for de-dupe/overrides. */
+  name: string;
+
+  /** Hook order follows registration order. All hooks may be async. */
+  beforeSnap?(context: CaptureContext): void | Promise<void>;
+  beforeClone?(context: CaptureContext): void | Promise<void>;
+  afterClone?(context: CaptureContext): void | Promise<void>;
+  beforeRender?(context: CaptureContext): void | Promise<void>;
+  afterRender?(context: CaptureContext): void | Promise<void>;
+
+  /** Runs before EACH export. */
+  beforeExport?(context: CaptureContext): void | Promise<void>;
+  /**
+   * Runs after EACH export; returning a value will be chained to the next plugin
+   * (transform pipeline). If undefined is returned, the prior result is preserved.
+   */
+  afterExport?(context: CaptureContext, result: any): any | Promise<any>;
+
+  /**
+   * Provide custom exporters (e.g., { pdf: async (ctx, opts) => Blob }).
+   * Keys are exposed on the capture result as helpers (toPdf()) and as index access (result['pdf']()).
+   */
+  defineExports?(context: CaptureContext): ExportMap | Promise<ExportMap>;
+
+  /** Runs ONCE after the FIRST successful export of this capture (good for cleanup). */
+  afterSnap?(context: CaptureContext): void | Promise<void>;
+}
+
+export type PluginFactory = (options?: any) => SnapdomPlugin;
+/** You can pass a plugin instance, a factory, or a tuple with options. */
+export type PluginUse =
+  | SnapdomPlugin
+  | PluginFactory
+  | [PluginFactory, any]
+  | { plugin: PluginFactory; options?: any };
+
+/* =========================
+ * Capture result API
+ * ========================= */
 
 export interface DownloadOptions {
-  /** File format. Default: "png". */
-  format?: "svg" | RasterMime;
-  /** Base filename without extension. Default: "snapDOM". */
   filename?: string;
-  /** Background override for lossy formats. */
-  backgroundColor?: string | null;
-  /** JPG/WebP quality (0..1). Default: 0.92. */
+  /** Override default blob type for this download. */
+  type?: BlobType;
+  /** Quality hint for raster formats. */
   quality?: number;
+  /** Target width/height for this export. */
+  width?: number;
+  height?: number;
+}
+
+export interface BlobOptions {
+  type?: BlobType;
+  quality?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface CaptureResult {
-  /** SVG data URL representing the captured element. */
+  /** Canonical data URL of the SVG snapshot (when available). */
   url: string;
-  /** Returns the same SVG data URL string. */
-  toRaw(): string;
-  /** Creates an HTMLImageElement from the SVG (accepts options). */
-  toImg(options?: CaptureOptions): Promise<HTMLImageElement>;
-  /** Creates an HTMLImageElement from the SVG (accepts options). */
-  toSvg(options?: CaptureOptions): Promise<HTMLImageElement>;
-  /** Renders into a Canvas element (accepts options). */
-  toCanvas(options?: CaptureOptions): Promise<HTMLCanvasElement>;
-  /** Exports to a Blob (SVG/PNG/JPG/WebP). */
-  toBlob(options?: CaptureOptions & BlobOptions): Promise<Blob>;
-  /** Convenience PNG export (returns an <img>). */
-  toPng(options?: CaptureOptions): Promise<HTMLImageElement>;
-  /** Convenience JPG export (returns an <img>). */
-  toJpg(options?: CaptureOptions): Promise<HTMLImageElement>;
-  /** Convenience WebP export (returns an <img>). */
-  toWebp(options?: CaptureOptions): Promise<HTMLImageElement>;
-  /** Triggers a file download. */
-  download(options?: CaptureOptions & DownloadOptions): Promise<void>;
+
+  /**
+   * @deprecated Use `toSvg()` for an <img> that renders the SVG snapshot.
+   * Historical alias kept for compatibility.
+   */
+  toImg(): Promise<HTMLImageElement>;
+
+  /** Returns an HTMLImageElement that renders the SVG snapshot. */
+  toSvg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+
+  /** Returns a Canvas with the rasterized snapshot. */
+  toCanvas(options?: Partial<SnapdomOptions>): Promise<HTMLCanvasElement>;
+
+  /** Returns a Blob of the chosen type (svg/png/jpeg/webp). */
+  toBlob(options?: BlobOptions & Partial<SnapdomOptions>): Promise<Blob>;
+
+  /** Convenience raster exports returning an HTMLImageElement. */
+  toPng(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  toJpeg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  /** Alias for `toJpeg()`. */
+  toJpg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  toWebp(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+
+  /** Trigger a client-side download of the snapshot using current/default settings. */
+  download(options?: DownloadOptions & Partial<SnapdomOptions>): Promise<void>;
+
+  /**
+   * Custom exporters exposed by plugins:
+   * - As helpers: a plugin returning { pdf: (...) => ... } also enables result.toPdf(...)
+   * - As index access: result["pdf"](...)
+   *
+   * Since keys are not known ahead of time, we allow index access.
+   */
+  [key: string]: any;
 }
+
+/* =========================
+ * Main callable & static helpers
+ * ========================= */
+
+/** Overload: main callable returns a reusable exporter object for the element. */
+export declare function snapdom(
+  element: Element,
+  options?: SnapdomOptions
+): Promise<CaptureResult>;
 
 /**
- * Capture an element and return reusable export helpers.
+ * Global plugin registration (chainable).
+ * - De-duplicates by `name`.
+ * - Execution order = registration order.
+ * - Per-capture plugins run before globals and override by `name`.
  */
-export declare function snapdom(el: Element, options?: CaptureOptions): Promise<CaptureResult>;
-
 export declare namespace snapdom {
-  function toImg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
-  function toSvg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
-  function toCanvas(el: Element, options?: CaptureOptions): Promise<HTMLCanvasElement>;
-  function toBlob(el: Element, options?: CaptureOptions & BlobOptions): Promise<Blob>;
-  function toPng(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
-  function toJpg(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
-  function toWebp(el: Element, options?: CaptureOptions): Promise<HTMLImageElement>;
-  function download(el: Element, options?: CaptureOptions & DownloadOptions): Promise<void>;
+  function plugins(...defs: PluginUse[]): typeof snapdom;
+
+  /** Shortcut helpers that run a one-off capture+export. */
+
+  /** @deprecated Returns an SVG <img>; prefer `toSvg`. */
+  function toImg(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<HTMLImageElement>;
+
+  function toSvg(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<HTMLImageElement>;
+
+  function toCanvas(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<HTMLCanvasElement>;
+
+  function toBlob(
+    element: Element,
+    options?: SnapdomOptions & BlobOptions
+  ): Promise<Blob>;
+
+  function toPng(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<HTMLImageElement>;
+
+  function toJpeg(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<HTMLImageElement>;
+
+  /** Alias for `toJpeg`. */
+  function toJpg(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<HTMLImageElement>;
+
+  function toWebp(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<HTMLImageElement>;
+
+  function download(
+    element: Element,
+    options?: SnapdomOptions & DownloadOptions
+  ): Promise<void>;
 }
 
+/* =========================
+ * preCache helper
+ * ========================= */
+
 export interface PreCacheOptions {
-  /** Inline non-icon fonts during preload. Default: true. */
+  /** Root to scan (defaults to `document`). */
+  root?: Element | Document;
+  /** Try to embed non-icon fonts used under root (see also localFonts). */
   embedFonts?: boolean;
-  /** Additional local fonts. */
-  localFonts?: LocalFontDescriptor[];
-  /** Proxy for CORS fallbacks. */
+  /** Provide fonts explicitly to avoid remote discovery. */
+  localFonts?: LocalFont[];
+  /** Additional matchers for icon fonts (strings or regex). */
+  iconFonts?: IconFontMatcher | IconFontMatcher[];
+  /** Cross-origin proxy prefix (as in SnapdomOptions.useProxy). */
   useProxy?: string;
+  /** Cache policy for this preload operation. */
+  cache?: CachePolicy;
+
+  /** Back-compat fields (no-ops if present) */
   /**
-   * Exclude specific web fonts from embedding during preload.
-   * Same shape as in CaptureOptions.
-   */
-  excludeFonts?: ExcludeFontsOptions;
-  /**
-   * Cache policy used during precache.
-   * Note: for `preCache` the option name in runtime is `cacheOpt`.
+   * @deprecated Use `cache` instead.
    */
   cacheOpt?: CachePolicy;
 }
 
-
 /**
- * Preload resources rooted at `root` (defaults to `document`).
+ * Preload external resources for a subtree to avoid first-capture stalls.
+ * Uses the same discovery heuristics as the main capture path.
  */
 export declare function preCache(
   root?: Element | Document,
   options?: PreCacheOptions
 ): Promise<void>;
 
-export { };
+export {};
