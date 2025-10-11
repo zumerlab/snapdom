@@ -53,7 +53,7 @@ export async function captureDOM(element, options) {
   const fast = options.fast
   const straighten = !!options.straighten
   const noShadows = !!options.noShadows
-  let state = { element, options }
+  let state = { element, options, plugins: options.plugins }
 
   let clone, classCSS, styleCache
   let fontsCSS = ''
