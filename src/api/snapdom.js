@@ -97,13 +97,13 @@ snapdom.capture = async (el, context, _token) => {
 
   // ——— 1) Core exports por defecto ———
   const coreExports = {
-    img:     async (ctx, opts) => toImg(url,    { ...ctx, ...(opts || {}) }),
-    svg:     async (ctx, opts) => toSvg(url,    { ...ctx, ...(opts || {}) }),
-    canvas:  async (ctx, opts) => toCanvas(url, { ...ctx, ...(opts || {}) }),
-    blob:    async (ctx, opts) => toBlob(url,   { ...ctx, ...(opts || {}) }),
-    png:     async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'png'  }),
-    jpeg:    async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'jpeg' }),
-    webp:    async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'webp' }),
+    img: async (ctx, opts) => toImg(url, { ...ctx, ...(opts || {}) }),
+    svg: async (ctx, opts) => toSvg(url, { ...ctx, ...(opts || {}) }),
+    canvas: async (ctx, opts) => toCanvas(url, { ...ctx, ...(opts || {}) }),
+    blob: async (ctx, opts) => toBlob(url, { ...ctx, ...(opts || {}) }),
+    png: async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'png' }),
+    jpeg: async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'jpeg' }),
+    webp: async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'webp' }),
     download: async (ctx, opts) => download(url, { ...ctx, ...(opts || {}) }),
   }
 
@@ -132,25 +132,21 @@ snapdom.capture = async (el, context, _token) => {
   // ——— Runner unificado con beforeExport/afterExport y cola por sesión ———
   let afterSnapFired = false
   let _exportQueue = Promise.resolve()
-
   async function runExport(type, opts) {
     const job = async () => {
       const work = exportsMap[type]
       if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, opts)
       const ctx = { ...context, export: { type, options: nextOpts, url } }
-
       await runHook('beforeExport', ctx)
-      const result = await work(ctx, nextOpts)
-      await runHook('afterExport', ctx, result)
-
+      const result2 = await work(ctx, nextOpts)
+      await runHook('afterExport', ctx, result2)
       if (!afterSnapFired) {
         afterSnapFired = true
         await runHook('afterSnap', context)
       }
-      return result
+      return result2
     }
-
     return _exportQueue = _exportQueue.then(job)
   }
 
@@ -161,13 +157,13 @@ snapdom.capture = async (el, context, _token) => {
     to: (type, opts) => runExport(type, opts),
 
     // Métodos “clásicos” que los tests esperan:
-    toImg:    (opts) => runExport('img', opts),
-    toSvg:    (opts) => runExport('svg', opts),
+    toImg: (opts) => runExport('img', opts),
+    toSvg: (opts) => runExport('svg', opts),
     toCanvas: (opts) => runExport('canvas', opts),
-    toBlob:   (opts) => runExport('blob', opts),
-    toPng:    (opts) => runExport('png', opts),
-    toJpg:    (opts) => runExport('jpg', opts),     // ← alias requerido por los tests
-    toWebp:   (opts) => runExport('webp', opts),
+    toBlob: (opts) => runExport('blob', opts),
+    toPng: (opts) => runExport('png', opts),
+    toJpg: (opts) => runExport('jpg', opts),     // ← alias requerido por los tests
+    toWebp: (opts) => runExport('webp', opts),
     download: (opts) => runExport('download', opts) // ← método directo (no toDownload)
   }
 
@@ -287,20 +283,20 @@ async function safariWarmup(element, baseOptions) {
       img.src = url
       document.body.appendChild(img)
 
-      ;(async () => {
-        try { if (typeof img.decode === 'function') await img.decode() } catch { /* noop */ }
+        ; (async () => {
+          try { if (typeof img.decode === 'function') await img.decode() } catch { /* noop */ }
 
-        const start = performance.now()
-        while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
-          // ~3–4 ticks worst-case
+          const start = performance.now()
+          while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
+            // ~3–4 ticks worst-case
 
-          await new Promise(r => setTimeout(r, 50))
-        }
+            await new Promise(r => setTimeout(r, 50))
+          }
 
-        await new Promise(r => requestAnimationFrame(r))
-        try { img.remove() } catch { /* noop */ }
-        resolve()
-      })()
+          await new Promise(r => requestAnimationFrame(r))
+          try { img.remove() } catch { /* noop */ }
+          resolve()
+        })()
     })
   }
 
