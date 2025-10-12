@@ -15,6 +15,8 @@ snapdom.plugins = (...defs) => { registerPlugins(...defs); return snapdom }
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
+// Token interno para llamadas de export "silenciosas" desde plugins (no hooks)
+const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
 
 let _safariWarmup = false
 
@@ -51,7 +53,6 @@ export async function snapdom(element, userOptions) {
     for (let i = 0; i < 3; i++) {
       try {
         await safariWarmup(element, userOptions)
-
         console.log('safariWarmup:', i)
         _safariWarmup = false
       } catch {
@@ -108,7 +109,22 @@ snapdom.capture = async (el, context, _token) => {
   }
 
   // ——— 2) Exports declarados por plugins ———
-  const providedMaps = await runAll('defineExports', context)
+  // Facade para plugins: insumos reutilizables "silenciosos" (sin hooks), nombres sin "to"
+  const _pluginExports = {
+    svg:   (opts) => toSvg(url,    { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true }),
+    canvas:(opts) => toCanvas(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true }),
+    png:   (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'png',  [INTERNAL_EXPORT_TOKEN]: true }),
+    jpeg:  (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true }),
+    jpg:   (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true }),
+    webp:  (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'webp', [INTERNAL_EXPORT_TOKEN]: true }),
+    blob:  (opts) => toBlob(url,   { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true }),
+    img:   (opts) => toImg(url,    { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+  }
+
+  // Contexto extendido para defineExports (incluye URL y la fachada para reuso)
+  const _defineCtx = { ...context, export: { url }, exports: _pluginExports }
+
+  const providedMaps = await runAll('defineExports', _defineCtx)
   const provided = Object.assign({}, ...providedMaps.filter(x => x && typeof x === 'object'))
 
   // Merge (plugins pueden overridear core)
@@ -283,20 +299,17 @@ async function safariWarmup(element, baseOptions) {
       img.src = url
       document.body.appendChild(img)
 
-        ; (async () => {
-          try { if (typeof img.decode === 'function') await img.decode() } catch { /* noop */ }
-
-          const start = performance.now()
-          while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
-            // ~3–4 ticks worst-case
-
-            await new Promise(r => setTimeout(r, 50))
-          }
-
-          await new Promise(r => requestAnimationFrame(r))
-          try { img.remove() } catch { /* noop */ }
-          resolve()
-        })()
+      ;(async () => {
+        try { if (typeof img.decode === 'function') await img.decode() } catch { /* noop */ }
+        const start = performance.now()
+        while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
+          // ~3–4 ticks worst-case
+          await new Promise(r => setTimeout(r, 50))
+        }
+        await new Promise(r => requestAnimationFrame(r))
+        try { img.remove() } catch { /* noop */ }
+        resolve()
+      })()
     })
   }
 
