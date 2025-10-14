@@ -5,8 +5,8 @@
   "main": "dist/snapdom.js",
   "module": "dist/snapdom.mjs",
   "scripts": {
-    "lint": "eslint src __tests__ --ext .js",
-    "lint:fix": "eslint src __tests__ --ext .js --fix",
+    "lint": "eslint src __tests__ docs --ext .js",
+    "lint:fix": "eslint src __tests__ docs --ext .js --fix",
     "test": "npm run lint:fix && npx vitest run --browser.headless --reporter=verbose",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
     "compile-browser": "npx @zumerbox/build -n snapdom -j src/index.browser.js -t es2015",
