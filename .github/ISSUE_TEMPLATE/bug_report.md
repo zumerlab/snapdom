@@ -13,8 +13,9 @@ assignees: ''
 
 ### Quick demo to reproduce
 <!-- A visual or code issue, screenshots, help a ton -->
-<!-- you can use any playground code (CodeSandbox, CodePen, etc)  -->
+<!-- You can use the following codepen template or any playground code (CodeSandbox, etc)  -->
+<!-- https://codepen.io/pen?template=GgoWPay -->
 <!-- Or just paste relevant code snippets -->
 
 ### Anything else we should know?
-<!-- For example: Device/browser/version -->
+<!-- For example: Device/browser/ Snapdom version -->
