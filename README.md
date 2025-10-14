@@ -8,6 +8,9 @@
  <a href="https://www.npmjs.com/package/@zumer/snapdom">
     <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=Version">
   </a>
+  <a href="https://www.npmjs.com/package/@zumer/snapdom">
+    <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom/dev?style=flat-square&label=Dev">
+  </a>
   <a href="https://github.com/zumerlab/snapdom/graphs/contributors">
     <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/zumerlab/snapdom?style=flat-square&label=Contributors">
   </a>
@@ -32,11 +35,11 @@
 
 It captures any HTML element as a scalable SVG image, preserving styles, fonts, background images, pseudo-elements, and even shadow DOM. It also supports export to raster image formats and canvas.
 
-* 📸 Full DOM capture
-* 🎨 Embedded styles, pseudo-elements, and fonts
-* 🖼️ Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
+* Full DOM capture
+* Embedded styles, pseudo-elements, and fonts
+* Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
 * ⚡ Ultra fast, no dependencies
-* 📦 100% based on standard Web APIs
+* 100% based on standard Web APIs
 * Support same-origin `ìframe`
 * Support CSS counter() and CSS counters()
 * Support `...` line-clamp
@@ -73,6 +76,13 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
   - [noShadows](#no-shadows)
   - [Cache control](#cache-control)
 - [preCache](#precache--optional-helper)
+- [Plugins (BETA)](#plugins-beta)
+  - [Registering Plugins](#registering-plugins)
+  - [Plugin Lifecycle Hooks](#plugin-lifecycle-hooks)
+  - [Context Object](#context-object)
+  - [Custom Exports via Plugins](#custom-exports-via-plugins)
+  - [Example: Overlay Filter Plugin](#example-overlay-filter-plugin)
+  - [Full Plugin Template](#full-plugin-template)
 - [Limitations](#limitations)
 - [⚡ Performance Benchmarks (Chromium)](#performance-benchmarks)
   - [Simple elements](#simple-elements)
@@ -406,6 +416,229 @@ await preCache({
 });
 ```
 
+## Plugins (BETA)
+
+SnapDOM includes a lightweight **plugin system** that allows you to extend or override behavior at any stage of the capture and export process — without touching the core library.
+
+A plugin is a simple object with a unique `name` and one or more lifecycle **hooks**.
+Hooks can be synchronous or `async`, and they receive a shared **`context`** object.
+
+### Registering Plugins
+
+**Global registration** (applies to all captures):
+
+```js
+import { snapdom } from '@zumer/snapdom';
+
+// You can register instances, factories, or [factory, options]
+snapdom.plugins(
+  myPluginInstance,
+  [myPluginFactory, { optionA: true }],
+  { plugin: anotherFactory, options: { level: 2 } }
+);
+```
+
+**Per-capture registration** (only for that specific call):
+
+```js
+const out = await snapdom(element, {
+  plugins: [
+    [overlayFilterPlugin, { color: 'rgba(0,0,0,0.25)' }],
+    [myFullPlugin, { providePdf: true }]
+  ]
+});
+```
+
+* **Execution order = registration order** (first registered, first executed).
+* **Per-capture plugins** run **before** global ones.
+* Duplicates are automatically skipped by `name`; a per-capture plugin with the same `name` overrides its global version.
+
+### Plugin Lifecycle Hooks
+
+| Hook                           | Purpose                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| `beforeSnap(context)`          | Before any clone/style work. Ideal for adjusting global capture options.             |
+| `beforeClone(context)`         | Before DOM cloning. Can modify live DOM (use carefully).                             |
+| `afterClone(context)`          | After the element subtree has been cloned. Safe to modify styles in the cloned tree. |
+| `beforeRender(context)`        | Right before SVG/dataURL serialization.                                              |
+| `afterRender(context)`         | After serialization (you can inspect `context.svgString` or `context.dataURL`).      |
+| `beforeExport(context)`        | Before each export call (`toPng`, `toSvg`, etc.).                                    |
+| `afterExport(context, result)` | After each export call — can transform the returned result.                          |
+| `afterSnap(context)`           | Runs **once**, after the **first export** finishes. Perfect for cleanup.             |
+| `defineExports(context)`       | Returns a map of **custom exporters**, e.g. `{ pdf: async (ctx, opts) => Blob }`.    |
+
+> Returned values from `afterExport` are chained to the next plugin (transform pipeline).
+
+### Context Object
+
+Every hook receives a single `context` object that contains normalized capture state:
+
+* **Input & options:**
+  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `straighten`, `noShadows`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`.
+
+* **Intermediate values (depending on stage):**
+  `clone`, `classCSS`, `styleCache`, `fontsCSS`, `baseCSS`, `svgString`, `dataURL`.
+
+* **During export:**
+  `context.export = { type, options, url }`
+  where `type` is the exporter name (`"png"`, `"jpeg"`, `"svg"`, `"blob"`, etc.), and `url` is the serialized SVG base.
+
+> You may safely modify `context` (e.g., override `backgroundColor` or `quality`) — but do so early (`beforeSnap`) for global effects or in `beforeExport` for single-export changes.
+
+
+## Custom Exports via Plugins
+
+Plugins can add new exports using `defineExports(context)`.
+For each export key you return (e.g., `"pdf"`), SnapDOM automatically exposes a helper method named **`toPdf()`** on the capture result.
+
+**Register the plugin (global or per capture):**
+
+```js
+import { snapdom } from '@zumer/snapdom';
+
+// global
+snapdom.plugins(pdfExportPlugin());
+
+// or per capture
+const out = await snapdom(element, { plugins: [pdfExportPlugin()] });
+```
+
+**Call the custom export:**
+
+```js
+const out = await snapdom(document.querySelector('#report'));
+
+// because the plugin returns { pdf: async (ctx, opts) => ... }
+const pdfBlob = await out.toPdf({
+  // exporter-specific options (width, height, quality, filename, etc.)
+});
+```
+
+### Example: Overlay Filter Plugin
+
+Adds a translucent overlay or color filter **only** to the captured clone (not your live DOM).
+Useful for highlighting or dimming sections before export.
+
+```js
+/**
+ * Ultra-simple overlay filter for SnapDOM (HTML-only).
+ * Inserts a full-size <div> overlay on the cloned root.
+ *
+ * @param {{ color?: string; blur?: number }} [options]
+ *   color: overlay color (rgba/hex/hsl). Default: 'rgba(0,0,0,0.25)'
+ *   blur: optional blur in px (default: 0)
+ */
+export function overlayFilterPlugin(options = {}) {
+  const color = options.color ?? 'rgba(0,0,0,0.25)';
+  const blur = Math.max(0, options.blur ?? 0);
+
+  return {
+    name: 'overlay-filter',
+
+    /**
+     * Add a full-coverage overlay to the cloned HTML root.
+     * @param {any} context
+     */
+    async afterClone(context) {
+      const root = context.clone;
+      if (!(root instanceof HTMLElement)) return; // HTML-only
+
+      // Ensure containing block so absolute overlay anchors to the root
+      if (getComputedStyle(root).position === 'static') {
+        root.style.position = 'relative';
+      }
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'absolute';
+      overlay.style.left = '0';
+      overlay.style.top = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.background = color;
+      overlay.style.pointerEvents = 'none';
+      if (blur) overlay.style.filter = `blur(${blur}px)`;
+
+      root.appendChild(overlay);
+    }
+  };
+}
+
+```
+
+**Usage:**
+
+```js
+import { snapdom } from '@zumer/snapdom';
+
+// Global registration
+snapdom.plugins([overlayFilterPlugin, { color: 'rgba(0,0,0,0.3)', blur: 2 }]);
+
+// Per-capture
+const out = await snapdom(document.querySelector('#card'), {
+  plugins: [[overlayFilterPlugin, { color: 'rgba(255,200,0,0.15)' }]]
+});
+
+const png = await out.toPng();
+document.body.appendChild(png);
+```
+
+> The overlay is injected **only in the cloned tree**, never in your live DOM, ensuring perfect fidelity and zero flicker.
+
+
+### Full Plugin Template
+
+Use this as a starting point for custom logic or exporters.
+
+```js
+export function myPlugin(options = {}) {
+  return {
+    /** Unique name used for de-duplication/overrides */
+    name: 'my-plugin',
+
+    /** Early adjustments before any clone/style work. */
+    async beforeSnap(context) {},
+
+    /** Before subtree cloning (use sparingly if touching the live DOM). */
+    async beforeClone(context) {},
+
+    /** After subtree cloning (safe to modify the cloned tree). */
+    async afterClone(context) {},
+
+    /** Right before serialization (SVG/dataURL). */
+    async beforeRender(context) {},
+
+    /** After serialization; inspect context.svgString/context.dataURL if needed. */
+    async afterRender(context) {},
+
+    /** Before EACH export call (toPng/toSvg/toBlob/...). */
+    async beforeExport(context) {},
+
+    /**
+     * After EACH export call.
+     * If you return a value, it becomes the result for the next plugin (chaining).
+     */
+    async afterExport(context, result) { return result; },
+
+    /**
+     * Define custom exporters (auto-added as helpers like out.toPdf()).
+     * Return a map { [key: string]: (ctx:any, opts:any) => Promise<any> }.
+     */
+    async defineExports(context) { return {}; },
+
+    /** Runs ONCE after the FIRST export finishes (cleanup). */
+    async afterSnap(context) {}
+  };
+}
+```
+
+**Quick recap:**
+
+* Plugins can modify capture behavior (`beforeSnap`, `afterClone`, etc.).
+* You can inject visuals or transformations safely into the cloned tree.
+* New exporters defined in `defineExports()` automatically become helpers like `out.toPdf()`.
+* All hooks can be asynchronous, run in order, and share the same `context`.
+
+
 ## Limitations
 
 * External images should be CORS-accessible (use `useProxy` option for handling CORS denied)
@@ -428,7 +661,6 @@ Values are **average capture time (ms)** → lower is better.
 | Large Scroll (2000×1500) | **0.5 ms**      | 0.8 ms         | 186.3 ms    | 3.2 ms        |
 | Very Large (4000×2000)   | **0.5 ms**      | 0.9 ms         | 425.9 ms    | 3.3 ms        |
 
----
 
 ### Complex elements
 
@@ -455,7 +687,7 @@ npm run test:benchmark
 
 Planned improvements for future versions of SnapDOM:
 
-* [ ] **Implement plugin system**
+* [X] **Implement plugin system**
   SnapDOM will support external plugins to extend or override internal behavior (e.g. custom node transformers, exporters, or filters).
 
 * [ ] **Refactor to modular architecture**
@@ -470,7 +702,7 @@ Planned improvements for future versions of SnapDOM:
 * [X] **Auto font preloading**
   Required fonts will be automatically detected and preloaded before capture, reducing the need for manual `preCache()` calls.
 
-* [ ] **Document plugin development**
+* [X] **Document plugin development**
   A full guide will be provided for creating and registering custom SnapDOM plugins.
 
 * [ ] **Make export utilities tree-shakeable**
