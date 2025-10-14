@@ -1029,106 +1029,23 @@
     }
   </style>
   <style>
-  /* ===== Responsive for plugin demos (ASCII / Timestamp) ===== */
+/* Plugins: tamaños fijos, sin aspect-ratio */
+#ascii-section .demo,
+#ts-section .demo {
+  width: 420px !important;
+  height: 240px !important;
+  border-radius: 14px;
+}
 
-  /* 1) Cards: evita tamaños fijos (420×240) y usa aspect-ratio */
-  #ascii-section .demo,
-  #ts-section .demo {
-    width: min(100%, 480px) !important;   /* escala al ancho de pantalla */
-    height: auto !important;
-    aspect-ratio: 7 / 4;                  /* conserva proporción */
-    border-radius: 14px;
-  }
+/* Salida: no achicar la captura */
+#ascii-output img,
+#ascii-output svg,
+#ascii-output pre,
+#ts-output img {
+  max-width: none !important;
+  height: auto;
+}
 
-  /* 2) Stage contenedor: centra y evita overflow lateral */
-  #ascii-section .stage {
-    width: 100%;
-    justify-items: center;
-    gap: 0.8rem;
-    padding-inline: 0.25rem;
-  }
-
-  /* 3) Controles: que envuelvan en mobile y ocupen buen ancho táctil */
-  #ascii-section .row {
-    flex-wrap: wrap;
-    row-gap: .5rem;
-  }
-  #ascii-section .row select,
-  #ascii-section .row button,
-  #ascii-section .row label {
-    flex: 1 1 160px;
-  }
-  @media (max-width: 480px) {
-    #ascii-section .row select,
-    #ascii-section .row button {
-      min-width: 48%;
-    }
-  }
-
-  /* 4) Emoji grid: columnas y tamaño de emoji responsivos */
-  #demo-emoji {
-    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-    font-size: clamp(28px, 10vw, 58px) !important;
-  }
-  @media (max-width: 600px) {
-    #demo-emoji { grid-template-columns: repeat(4, 1fr) !important; }
-  }
-  @media (max-width: 380px) {
-    #demo-emoji { grid-template-columns: repeat(3, 1fr) !important; }
-  }
-
-  /* 5) Giant text: que el título/subtítulo escalen */
-  #demo-giant > div:first-child {
-    font-size: clamp(36px, 14vw, 88px) !important;
-    line-height: .95;
-  }
-  #demo-giant > .legend, 
-  #demo-giant div:last-child {
-    font-size: clamp(12px, 5vw, 24px) !important;
-  }
-
-  /* 6) Imagen del demo: que rellene el card sin distorsión */
-  #demo-image img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-  }
-
-  /* 7) Salida de ASCII: tipografía y scroll horizontales en pantallas chicas */
-  #ascii-output {
-    max-width: 100%;
-    overflow: auto;             /* por si el ASCII queda ancho */
-  }
-  #ascii-output pre {
-    font-size: clamp(6px, 1.8vw, 10px) !important;
-    line-height: 1 !important;
-    white-space: pre;
-    margin: 0;
-  }
-  /* SVG de salida: responsive */
-  #ascii-output svg, 
-  #ascii-output img, 
-  #ts-output img {
-    max-width: 100%;
-    height: auto;
-  }
-
-  /* 8) Timestamp card: escala tipografías grandes */
-  #ts-target {
-    font-size: clamp(28px, 10vw, 58px) !important;
-  }
-  #ts-section small {
-    font-size: clamp(12px, 4vw, 24px) !important;
-  }
-
-  /* 9) Botonera genérica dentro de secciones de plugin */
-  #ts-section .output,
-  #ascii-section .output {
-    padding: .6rem;
-    border: 1px solid rgba(20, 67, 51, 0.25);
-    border-radius: 10px;
-    background: rgba(0,0,0,0.04);
-  }
 </style>
 
 </head>

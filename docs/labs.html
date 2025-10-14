@@ -135,7 +135,7 @@
     <div class="brand">
       <h1>snapDOM</h1>
 
-      <h3>Dog ID Card (Plugins Playground)</h3>
+      
 
      
     </div>
@@ -148,6 +148,13 @@
   </header>
 
   <main>
+    <h3 style="text-align: center;">Dog ID Card (Plugins Playground)</h3>
+
+      <p style="text-align: center;">SnapDOM plugins give freedom to modify the captured element on the fly. It is possible
+        to modify the cloned element before render it, but also to create custom exports, like toAscii(), toPdf, etc.
+
+        Check <a href="https://github.com/zumerlab/snapdom?tab=readme-ov-file#plugins-beta" target="_blank">docs to create your own plugin!!</a> 
+      </p>
     <!-- Dog ID Card -->
     <section class="card" id="dog-card">
       <div class="badge">OFFICIAL • Dog ID</div>
@@ -326,34 +333,53 @@
         }
       };
     }
+    
     function timestampOverlayPlugin(kind='locale') {
-      const pad = n => (n<10 ? '0'+n : ''+n);
-      const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-      return {
-        name:'timestamp-overlay',
-        async afterClone(ctx){
-          const root = ctx.clone; if(!(root instanceof HTMLElement)) return;
-          const doc = root.ownerDocument || document;
-          const cs = getComputedStyle(root);
-          if (!/relative|absolute|fixed|sticky/.test(cs.position)) root.style.position = 'relative';
+  const pad = n => (n<10 ? '0'+n : ''+n);
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-          const tag = doc.createElement('div');
-          const stamp = (kind==='iso') ? iso(new Date()) : new Date().toLocaleString();
-          tag.textContent = `Issued: ${stamp}`;
-          Object.assign(tag.style, {
-            position:'absolute', right:'12px', bottom:'10px',
-            background:'linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.70))',
-            color:'#fff', padding:'.35rem .6rem', borderRadius:'10px',
-            font:'12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
-            letterSpacing:'.3px', lineHeight:'1', pointerEvents:'none',
-            boxShadow:'0 3px 10px rgba(0,0,0,.35)', zIndex:'2147483647',
-            border:'1px solid rgba(255,255,255,.14)', backdropFilter:'blur(1px)'
-          });
-          tag.style.setProperty('-webkit-text-fill-color', '#fff', 'important');
-          root.appendChild(tag);
-        }
-      };
+  return {
+    name:'timestamp-overlay',
+    async afterClone(ctx){
+      const root = ctx.clone; if(!(root instanceof HTMLElement)) return;
+      const doc = root.ownerDocument || document;
+      const cs = getComputedStyle(root);
+      if (!/relative|absolute|fixed|sticky/.test(cs.position)) root.style.position = 'relative';
+
+      const tag = doc.createElement('div');
+      const stamp = (kind==='iso') ? iso(new Date()) : new Date().toLocaleString();
+      tag.textContent = `Issued: ${stamp}`;
+
+      Object.assign(tag.style, {
+        position:'absolute', right:'12px', bottom:'10px',
+        background:'linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.70))',
+        color:'#fff',                           // valor base
+        padding:'.35rem .6rem', borderRadius:'10px',
+        font:'12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
+        letterSpacing:'.3px', lineHeight:'1', pointerEvents:'none',
+        boxShadow:'0 3px 10px rgba(0,0,0,.35)', zIndex:'2147483647',
+        border:'1px solid rgba(255,255,255,.14)',
+        backdropFilter:'blur(1px)',            // Safari soporta 'backdrop-filter'
+        WebkitBackdropFilter:'blur(1px)',
+        // —— hints para Safari/foreignObject ——
+        willChange:'transform',
+        transform:'translateZ(0)',             // fuerza layer en WebKit
+        mixBlendMode:'normal',
+        textRendering:'optimizeLegibility'
+      });
+
+      // ⚠️ Safari: asegurar fill blanco sin stroke, con prioridad máxima
+      tag.style.setProperty('color', '#fff', 'important');
+      tag.style.setProperty('-webkit-text-fill-color', '#fff', 'important');
+      tag.style.setProperty('-webkit-text-stroke-width', '0', 'important');
+      tag.style.setProperty('-webkit-text-stroke-color', 'transparent', 'important');
+      // Sutil refuerzo de contraste (no obligatorio)
+      tag.style.setProperty('text-shadow', '0 1px 1px rgba(0,0,0,.35)', 'important');
+
+      root.appendChild(tag);
     }
+  };
+}
 
     // Capture flow
     const btn = document.getElementById('btn-capture');
