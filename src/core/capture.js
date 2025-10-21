@@ -6,6 +6,7 @@
 import { prepareClone } from './prepare.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
+import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
@@ -85,6 +86,9 @@ export async function captureDOM(element, options) {
   // AFTERCLONE
   state = { clone, classCSS, styleCache, ...state }
   await runHook('afterClone', state)
+try {
+  await ligatureIconToImage(state.clone, state.element)
+} catch { /* non-blocking */ }
 
   await new Promise((resolve) => {
     idle(async () => {
