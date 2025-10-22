@@ -1028,6 +1028,26 @@
       }
     }
   </style>
+  <style>
+/* Plugins: tamaños fijos, sin aspect-ratio */
+#ascii-section .demo,
+#ts-section .demo {
+  width: 420px !important;
+  height: 240px !important;
+  border-radius: 14px;
+}
+
+/* Salida: no achicar la captura */
+#ascii-output img,
+#ascii-output svg,
+#ascii-output pre,
+#ts-output img {
+  max-width: none !important;
+  height: auto;
+}
+
+</style>
+
 </head>
 
 <body>
@@ -1082,10 +1102,11 @@
 
     <div id="menu-container" class="nav-collapsible">
       <nav id="demo-menu" class="demo-menu">
+         <a href="./labs.html">✨Labs!✨</a>
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
-        <a href="#ascii-section">ASCII Plugin!</a>
-        <a href="#ts-section">Timestamp Plugin!</a>
+        <a href="#ascii-section">✨ASCII Plugin!✨</a>
+        <a href="#ts-section">✨Timestamp Plugin!✨</a>
         <a href="#transition">Transition</a>
         <a href="#transition">Transition</a>
         <a href="#opts-demo">Shadows/Transform</a>
