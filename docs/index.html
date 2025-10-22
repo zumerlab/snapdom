@@ -1,54 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <title>
-    snapDOM – HTML to Image capture with superior accuracy and speed - Now with Plugins!
-  </title>
-  <meta name="description"
-    content="Snapdom is a powerful alternative to html2canvas and similar tools, offering extreme precision when capturing DOM elements, including pseudo-elements, web fonts, and shadow DOM." />
-  <meta name="keywords"
-    content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity, plugins" />
-
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="snapDOM – serious alternative to html2canvas" />
-  <meta property="og:description"
-    content="Capture any web UI with high accuracy and speed, including details that html2canvas misses. Try the demo and see the difference." />
-  <meta property="og:url" content="https://zumerlab.github.io/snapdom/" />
-  <meta property="og:image" content="https://zumerlab.github.io/snapdom/assets/hero.png" />
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="snapdom – HTML capture reinvented" />
-  <meta name="twitter:description"
-    content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support." />
-  <meta name="twitter:image" content="https://zumerlab.github.io/snapdom/assets/hero.png" />
+  <!-- === Meta básicos === -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg" />
-  <link rel="shortcut icon" href="./assets/favicon/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon/apple-touch-icon.png" />
-  <meta name="apple-mobile-web-app-title" content="SnapDOM" />
-  <link rel="manifest" href="./assets/favicon/site.webmanifest" />
-  <!-- Canonical link -->
-  <link rel="canonical" href="https://snapdom.dev/" />
-  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    crossorigin="anonymous" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap"
-    rel="stylesheet" />
+  <title>snapDOM – HTML to Image capture with superior accuracy and speed - Now with Plugins!</title>
+
+  <meta name="description" content="Snapdom is a powerful alternative to html2canvas and similar tools, offering extreme precision when capturing DOM elements, including pseudo-elements, web fonts, and shadow DOM.">
+  <meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity, plugins">
+
+  <!-- === Open Graph / Twitter === -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="snapDOM – serious alternative to html2canvas">
+  <meta property="og:description" content="Capture any web UI with high accuracy and speed, including details that html2canvas misses. Try the demo and see the difference.">
+  <meta property="og:url" content="https://snapdom.dev/">
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="snapdom – HTML capture reinvented">
+  <meta name="twitter:description" content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support.">
+  <meta name="twitter:image" content="https://snapdom.dev/assets/hero.png">
+
+  <!-- === Favicons === -->
+  <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="./assets/favicon/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="SnapDOM">
+  <link rel="manifest" href="./assets/favicon/site.webmanifest">
+  <link rel="canonical" href="https://snapdom.dev/">
+  <meta name="theme-color" content="#0b1220">
+
+  <!-- === Resource hints (PageSpeed) === -->
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.googletagmanager.com">
+  <link rel="preconnect" href="https://www.google-analytics.com">
+  <link rel="preconnect" href="https://cloud.umami.is">
+  <link rel="preconnect" href="https://upload.wikimedia.org">
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="preconnect" href="https://api.github.com">
+
+  <!-- === Preload critical CSS === -->
+  <link rel="preload" as="style" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" fetchpriority="high">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap">
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+
+  <!-- === Stylesheets === -->
+  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap" rel="stylesheet">
+
+  <!-- === Analytics === -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
-  <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1"></script>
   <script>
-    window.dataLayer = window.dataLayer || []
-    function gtag() { dataLayer.push(arguments) }
-    gtag('js', new Date())
-    gtag('config', 'G-4G88ZHG7S1')
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-4G88ZHG7S1', {transport_type: 'beacon'});
   </script>
+
   <style>
     body {
       font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
@@ -1082,10 +1096,11 @@
 
     <div id="menu-container" class="nav-collapsible">
       <nav id="demo-menu" class="demo-menu">
+         <a href="./labs.html">✨Labs!✨</a>
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
-        <a href="#ascii-section">ASCII Plugin!</a>
-        <a href="#ts-section">Timestamp Plugin!</a>
+        <a href="#ascii-section">✨ASCII Plugin!✨</a>
+        <a href="#ts-section">✨Timestamp Plugin!✨</a>
         <a href="#transition">Transition</a>
         <a href="#transition">Transition</a>
         <a href="#opts-demo">Shadows/Transform</a>
