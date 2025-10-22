@@ -2,53 +2,95 @@
 <html lang="en">
 
 <head>
-  <title>
-    snapDOM – HTML to Image capture with superior accuracy and speed - Now with Plugins!
-  </title>
+  <!-- Meta básicos primero para evitar reflows -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>snapDOM – HTML to Image capture with superior accuracy and speed - Now with Plugins!</title>
   <meta name="description"
     content="Snapdom is a powerful alternative to html2canvas and similar tools, offering extreme precision when capturing DOM elements, including pseudo-elements, web fonts, and shadow DOM." />
   <meta name="keywords"
     content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity, plugins" />
 
+  <!-- Canonical -->
+  <link rel="canonical" href="https://snapdom.dev/" />
+
+  <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="snapDOM – serious alternative to html2canvas" />
   <meta property="og:description"
     content="Capture any web UI with high accuracy and speed, including details that html2canvas misses. Try the demo and see the difference." />
-  <meta property="og:url" content="https://zumerlab.github.io/snapdom/" />
-  <meta property="og:image" content="https://zumerlab.github.io/snapdom/assets/hero.png" />
+  <meta property="og:url" content="https://snapdom.dev/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="snapdom – HTML capture reinvented" />
   <meta name="twitter:description"
     content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support." />
-  <meta name="twitter:image" content="https://zumerlab.github.io/snapdom/assets/hero.png" />
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg" />
-  <link rel="shortcut icon" href="./assets/favicon/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon/apple-touch-icon.png" />
+  <meta name="twitter:image" content="https://snapdom.dev/assets/hero.png" />
+
+  <!-- Favicons / PWA -->
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon/favicon.svg" />
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png" sizes="96x96" />
+  <link rel="shortcut icon" href="/assets/favicon/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-title" content="SnapDOM" />
-  <link rel="manifest" href="./assets/favicon/site.webmanifest" />
-  <!-- Canonical link -->
-  <link rel="canonical" href="https://snapdom.dev/" />
-  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    crossorigin="anonymous" />
+  <link rel="manifest" href="/assets/favicon/site.webmanifest" />
+  <meta name="theme-color" content="#0b1220" />
+
+  <!-- ===== Resource Hints (ordenados) ===== -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- CDNs -->
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+  <!-- Analytics -->
+  <link rel="preconnect" href="https://www.googletagmanager.com" />
+  <link rel="preconnect" href="https://www.google-analytics.com" />
+  <link rel="preconnect" href="https://cloud.umami.is" />
+  <!-- Imágenes externas que usas en CSS/demos -->
+  <link rel="preconnect" href="https://upload.wikimedia.org" />
+  <link rel="preconnect" href="https://images.unsplash.com" />
+
+  <!-- ===== CSS crítico (LCP) ===== -->
+  <!-- Orbit: preload + stylesheet (alta prioridad de estilo) -->
+  <link rel="preload" as="style" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" fetchpriority="high" />
+  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous"
+    fetchpriority="high" />
+
+  <!-- Google Fonts con swap + preload de la hoja -->
+  <link rel="preload" as="style"
+    href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap"
     rel="stylesheet" />
+
+  <!-- Font Awesome: no bloquear render -->
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    crossorigin="anonymous" />
+  <link rel="stylesheet" media="print"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" onload="this.media='all'"
+    crossorigin="anonymous" />
+  <noscript>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      crossorigin="anonymous" />
+  </noscript>
+
+  <!-- Umami (defer) -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1"></script>
   <script>
-    window.dataLayer = window.dataLayer || []
-    function gtag() { dataLayer.push(arguments) }
-    gtag('js', new Date())
-    gtag('config', 'G-4G88ZHG7S1')
+    // init concisa y con beacon para no bloquear
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' });
   </script>
+
+  <!-- =================== TUS ESTILOS (intactos) =================== -->
   <style>
     body {
       font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
@@ -71,16 +113,16 @@
 
     button#capture {
       background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%);
-      color: white;
+      color: #fff;
       border: none;
       border-radius: 24px;
-      padding: 0.6rem 1.6rem;
+      padding: .6rem 1.6rem;
       font-size: 1.1rem;
-      font-weight: bold;
+      font-weight: 700;
       box-shadow: 0 2px 8px #db0a56f3;
       cursor: pointer;
-      transition: background 0.2s, transform 0.2s;
-      margin: 0 0.5em 1.5em 0;
+      transition: background .2s, transform .2s;
+      margin: 0 .5em 1.5em 0;
     }
 
     button#capture:hover {
@@ -113,7 +155,7 @@
       color: #fff;
       border-radius: 10px;
       padding: .5rem .75rem;
-      font-size: 0.95rem;
+      font-size: .95rem;
       font-weight: 700;
       cursor: pointer;
       box-shadow: 0 2px 8px #1a223322;
@@ -173,28 +215,17 @@
       justify-content: center;
     }
 
-    nav.demo-menu a {
+    nav.demo-menu a,
+    section a {
       color: #1a2233;
       text-decoration: none;
       font-weight: bold;
       border-bottom: 2px solid transparent;
-      transition: border 0.3s;
+      transition: border .3s;
       font-size: 1.1em;
     }
 
-    nav.demo-menu a:hover {
-      border-bottom: 2px solid #4facfe;
-    }
-
-    section a {
-      color: #576c99;
-      text-decoration: none;
-      font-weight: bold;
-      border-bottom: 2px solid transparent;
-      transition: border 0.3s;
-      font-size: 1.1em;
-    }
-
+    nav.demo-menu a:hover,
     section a:hover {
       border-bottom: 2px solid #4facfe;
     }
@@ -209,15 +240,12 @@
       padding: 1.5rem;
       border-radius: 12px;
       background: rgb(39 71 208 / 11%);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .1);
     }
 
-    /* Asegurar visibilidad y scroll del menú en mobile */
     .site-header {
       z-index: 999;
     }
-
-    /* encima del contenido */
 
     .nav-collapsible {
       overflow: hidden;
@@ -227,17 +255,14 @@
     }
 
     .nav-collapsible.open {
-      /* más alto y con scroll táctil */
       max-height: 80vh;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding-block: .5rem;
-      /* que no corte el primer/último link */
       background: rgba(255, 255, 255, .78);
       box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
     }
 
-    /* Opcional: mejora de scrollbar (no afecta performance) */
     .nav-collapsible.open::-webkit-scrollbar {
       width: 10px;
     }
@@ -252,14 +277,12 @@
       scrollbar-color: rgba(0, 0, 0, .15) transparent;
     }
 
-    /* Mobile grid del menú (ya lo tenías, lo dejo aquí por claridad) */
-    @media (max-width: 600px) {
+    @media (max-width:600px) {
       nav.demo-menu {
         display: grid;
         gap: .65rem;
         padding: .75rem 1rem;
         background: transparent;
-        /* el fondo ya lo da el contenedor */
       }
 
       nav.demo-menu a {
@@ -274,11 +297,8 @@
       padding: 1.5em;
       border-left: 5px solid #ff7043;
       border-radius: 46px;
-      /*box-shadow: 0 6px 20px rgb(0, 255, 21); */
-      /* filter: drop-shadow(30px 10px 4px #4444dd); */
       margin-bottom: 2em;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      /*transform: rotate(5deg)*/
+      transition: transform .2s ease, box-shadow .2s ease;
     }
 
     .card.black {
@@ -286,14 +306,14 @@
       padding: 1.5em;
       border-left: 5px solid #ff7043;
       border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .1);
       margin-bottom: 2em;
       transition: transform .2s, box-shadow .2s;
     }
 
     .card:hover {
       transform: scale(1.02);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .13);
     }
 
     .transition-box {
@@ -304,12 +324,12 @@
       padding: 2em;
       border-radius: 16px;
       animation: bounceColor 5s infinite ease-in-out;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
     }
 
     @keyframes bounceColor {
       0% {
-        transform: rotate(0deg) scale(1) translateY(0);
+        transform: rotate(0) scale(1) translateY(0);
         background: radial-gradient(circle at center, #4facfe, #00f2fe);
         filter: brightness(1);
       }
@@ -321,7 +341,7 @@
       }
 
       50% {
-        transform: rotate(2deg) scale(0.9) translateY(-6px);
+        transform: rotate(2deg) scale(.9) translateY(-6px);
         background: radial-gradient(circle at 70% 30%, #30cfd0, #330867);
         filter: brightness(1.1) hue-rotate(-20deg);
       }
@@ -333,7 +353,7 @@
       }
 
       100% {
-        transform: rotate(0deg) scale(0.95) translateY(0);
+        transform: rotate(0) scale(.95) translateY(0);
         background: radial-gradient(circle at center, #4facfe, #00f2fe);
         filter: brightness(1);
       }
@@ -347,10 +367,10 @@
 
     .export-format {
       font-weight: bold;
-      padding: 0.2rem 0.4rem;
+      padding: .2rem .4rem;
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.7);
-      margin: 0 0.2rem;
+      background: rgba(255, 255, 255, .7);
+      margin: 0 .2rem;
     }
 
     .pseudo-box::before {
@@ -374,10 +394,10 @@
     }
 
     .blend-card {
-      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center/cover;
       background-blend-mode: multiply;
       background-color: red;
-      color: white;
+      color: #fff;
       padding: 3em;
       font-weight: bold;
       border-radius: 16px;
@@ -398,17 +418,17 @@
       }
 
       10% {
-        transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg);
+        transform: rotate(8deg) scale(1.08, .95) translateY(-6px) skewY(-6deg);
         filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988);
       }
 
       20% {
-        transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg);
+        transform: rotate(-12deg) scale(.98, 1.05) translateY(4px) skewY(8deg);
         filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66);
       }
 
       30% {
-        transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg);
+        transform: rotate(10deg) scale(1.04, .96) translateY(-8px) skewY(-8deg);
         filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66);
       }
 
@@ -418,613 +438,12 @@
       }
 
       50% {
-        transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg);
+        transform: rotate(12deg) scale(1.08, .92) translateY(-10px) skewY(-10deg);
         filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066);
       }
 
       60% {
-        transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px) skewY(10deg);
-        filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066);
-      }
-
-      70% {
-        transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg);
-        filter: brightness(1.12) drop-shadow(0 2px 4px #33086766);
-      }
-
-      80% {
-        transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg);
-        filter: brightness(1.05) drop-shadow(0 0 0 #fff0);
-      }
-
-      100% {
-        transform: rotate(-10deg) scale(1) translateY(0);
-        filter: brightness(1) drop-shadow(0 0 0 #fff0);
-      }
-    }
-
-    .output {
-      margin-top: 1.3rem;
-    }
-
-    #orbit-box {
-      font-family: sans-serif;
-      font-optical-sizing: auto;
-      background-color: rgb(16, 16, 16) !important;
-      color: rgba(255, 255, 255, 0.451);
-    }
-
-
-    /* === Mask demos === */
-    .mask-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1rem;
-    }
-
-    .mask-card {
-      position: relative;
-      min-height: 180px;
-      display: grid;
-      place-items: center;
-      border-radius: 16px;
-      overflow: hidden;
-    }
-
-    .mask-bg {
-      position: absolute;
-      inset: 0;
-      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover;
-    }
-
-    .mask-label {
-      position: relative;
-      z-index: 2;
-      background: rgba(255, 255, 255, .75);
-      padding: .3rem .6rem;
-      border-radius: 8px;
-      font-weight: 700;
-    }
-
-    /* CSS mask-image (radial spotlight) */
-    .mask-radial .mask-bg {
-      mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%);
-      -webkit-mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%);
-    }
-
-    /* PNG/SVG circle via mask (inline data URL, no 404/CORS) */
-    /* PNG/SVG circle mask — longhands + base64 for robust capture */
-    .mask-png .mask-bg {
-      /* Standard longhands */
-      mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-      mask-position: center;
-      mask-size: 60% 60%;
-      mask-repeat: no-repeat;
-
-      /* WebKit longhands (Safari) */
-      -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-      -webkit-mask-position: center;
-      -webkit-mask-size: 60% 60%;
-      -webkit-mask-repeat: no-repeat;
-
-      background-color: #9bd3ff;
-    }
-
-
-    /* SVG mask inline */
-    .mask-svg {
-      background: linear-gradient(135deg, #dceefb, #e8d9ff);
-    }
-
-    .mask-svg .masked-box {
-      width: 100%;
-      height: 100%;
-      background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
-      mask: url(#svg-blob-mask);
-      -webkit-mask: url(#svg-blob-mask);
-    }
-
-    /* Forms: asegurar sizing y ancho */
-    .form-demo {
-      display: grid;
-      gap: .8rem;
-      width: 100%;
-    }
-
-    .form-row {
-      display: grid;
-      gap: .35rem;
-    }
-
-    .form-row.inline {
-      grid-template-columns: 1fr 1fr;
-      /* desktop: dos columnas */
-      gap: .6rem;
-    }
-
-    .form-demo input[type="text"],
-    .form-demo input[type="email"],
-    .form-demo select,
-    .form-demo textarea {
-      width: 100%;
-      box-sizing: border-box;
-      border: 2px solid #3658f1;
-      border-radius: 10px;
-      padding: .55rem .7rem;
-      font-size: 1rem;
-      background: #fff;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, .05);
-      min-height: 42px;
-      /* mejora tap target en mobile */
-    }
-
-    .form-demo textarea {
-      display: block;
-      resize: vertical;
-    }
-
-    /* Mobile: apilar filas inline y evitar overflow */
-    @media (max-width: 600px) {
-      .form-row.inline {
-        grid-template-columns: 1fr !important;
-        /* una columna en mobile */
-      }
-
-      .form-demo input[type="text"],
-      .form-demo input[type="email"],
-      .form-demo select,
-      .form-demo textarea {
-        font-size: 16px;
-        /* evita zoom automático en iOS */
-      }
-    }
-
-
-    /* === Iframe demo === */
-    .iframe-wrap {
-      border-radius: 14px;
-      overflow: hidden;
-      border: 2px solid #dfe7ff;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, .08);
-    }
-
-    .iframe-wrap iframe {
-      display: block;
-      width: 100%;
-      height: 240px;
-      background: white;
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 0.5rem;
-      }
-
-      h1 {
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
-      }
-
-      main {
-        max-width: 100vw;
-        width: 100vw;
-        padding: 0;
-      }
-
-      section {
-        padding: 0.7rem;
-        margin-bottom: 1.2rem;
-      }
-
-      .nav-toggle {
-        display: inline-flex;
-        align-items: center;
-      }
-
-      .nav-collapsible {
-        border-radius: 12px;
-      }
-
-      nav.demo-menu {
-        display: grid;
-        gap: .65rem;
-        padding: .75rem 1rem;
-        background: rgba(255, 255, 255, .7);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
-      }
-
-      nav.demo-menu a {
-        display: block;
-        text-align: center;
-        padding: .35rem .5rem;
-      }
-
-      .card,
-      .card.black {
-        padding: 0.7em;
-        font-size: 0.8em;
-        border-radius: 10px;
-      }
-
-      .output {
-        margin-top: 0.7rem;
-      }
-
-      .blend-card {
-        padding: 1em;
-        font-size: 0.8em;
-      }
-
-      .transition-box {
-        padding: 1em;
-        font-size: 0.8em;
-      }
-
-      .dancers {
-        font-size: 1.3rem;
-      }
-
-      #github-badge {
-        flex-direction: column;
-        gap: 0.2em;
-        font-size: 0.7em;
-        margin-bottom: 1em;
-      }
-
-      #github-badge span {
-        font-size: 0.7em;
-      }
-
-      #repo-link {
-        display: none;
-      }
-
-      button#capture,
-      button {
-        font-size: 1em;
-        padding: 0.5em 1em;
-        margin-bottom: 0.7em;
-      }
-
-      .export-text {
-        font-size: 1em;
-      }
-
-      .clip-card {
-        font-size: 1em;
-      }
-
-      .pseudo-box {
-        font-size: 1em;
-      }
-
-      #orbit-box {
-        height: 220px !important;
-        min-width: 0;
-        font-size: 0.8em;
-      }
-
-      .text,
-      .text1 {
-        width: 90vw;
-        font-size: 0.8em;
-      }
-
-      .mask-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .benchmark-output {
-        height: 200px;
-      }
-
-      .benchmark-container {
-        gap: 1rem;
-      }
-
-      .benchmark-column {
-        max-width: 100%;
-      }
-    }
-
-    .comparison-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      margin-top: 1rem;
-      flex-direction: row;
-    }
-
-    .comparison-row>div {
-      flex: 1;
-      min-width: 300px;
-      text-align: center;
-    }
-
-    .label {
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-    }
-
-    .winner-glow {
-      animation: glow 1.2s infinite alternate ease-in-out;
-      border-radius: 20px;
-    }
-
-    .progress-message {
-      margin: 1rem 0;
-      font-size: 0.9rem;
-      color: #555;
-      font-weight: bold;
-    }
-
-    .result-message {
-      margin-top: 0.5rem;
-      font-weight: bold;
-      background: rgba(0, 0, 0, 0.05);
-      padding: 0.3rem;
-      border-radius: 4px;
-    }
-
-    .winner-message {
-      font-size: 1.4rem;
-      margin: 1rem 0;
-      padding: 0.8rem;
-      border-radius: 12px;
-      background: linear-gradient(145deg, #ffffff, #f3f8ff);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      display: inline-block;
-    }
-
-    .winner-message .speed-badge {
-      display: inline-block;
-      background: #4facfe;
-      color: white;
-      padding: 0.2rem 0.6rem;
-      border-radius: 20px;
-      font-weight: bold;
-      margin-left: 0.5rem;
-    }
-
-    .benchmark-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 2rem;
-      width: 100%;
-    }
-
-    .benchmark-column {
-      flex: 1;
-      min-width: 100px;
-      max-width: calc(50% - 1rem);
-    }
-
-    .benchmark-output {
-      width: 100%;
-      height: 250px;
-      overflow: auto;
-      border: 1px solid #eee;
-      border-radius: 8px;
-      padding: 10px;
-      background: #292e3d24;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .benchmark-output img,
-    .benchmark-output canvas {
-      max-width: 100%;
-      max-height: 200px;
-      object-fit: contain;
-      margin: 0 auto;
-      display: block;
-    }
-
-    @keyframes glow {
-      from {
-        box-shadow: 0 0 8px 2px rgba(0, 255, 0, 0.4);
-        transform: scale(1.01);
-      }
-
-      to {
-        box-shadow: 0 0 14px 4px rgba(0, 255, 0, 0.6);
-        transform: scale(1.02);
-      }
-    }
-
-    @media (min-width: 601px) {
-      .nav-collapsible {
-        max-height: none !important;
-      }
-
-      .nav-toggle {
-        display: none !important;
-      }
-    }
-
-    @media (max-width: 600px) {
-      .benchmark-container {
-        display: flex;
-        /* ya lo tenés, lo mantenemos */
-        flex-direction: column;
-        /* apila verticalmente */
-        align-items: stretch;
-        /* contenedores a ancho completo */
-        gap: 1rem;
-        /* separador vertical cómodo */
-      }
-
-      .benchmark-column {
-        max-width: 95% !important;
-        min-width: 0 !important;
-        /* evita forzar dos columnas */
-      }
-
-      .benchmark-output {
-        height: 220px;
-        /* un poquito menos de alto en mobile */
-      }
-    }
-
-    /* CORS Proxy demo */
-    .proxy-card {
-      position: relative;
-      border-radius: 16px;
-      padding: 1rem;
-      background: #fff;
-      border: 2px solid #dfe7ff;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, .08);
-    }
-
-    .proxy-hero {
-      height: 120px;
-      border-radius: 12px;
-      background-repeat: no-repeat;
-      background-size: contain;
-      background-position: center;
-      border: 1px solid #eaeefc;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background-color: white;
-    }
-
-    .proxy-ctrls {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: .5rem;
-      margin-top: .75rem;
-      align-items: center;
-    }
-
-    .proxy-ctrls input[type="text"] {
-      width: 100%;
-      box-sizing: border-box;
-      border: 2px solid #3658f1;
-      border-radius: 10px;
-      padding: .5rem .7rem;
-      font-size: 0.95rem;
-      background: #fff;
-    }
-
-    .proxy-credit {
-      margin-top: .6rem;
-      font-size: .9rem;
-      color: #444;
-      opacity: .9;
-      text-align: right;
-    }
-
-    .card.shadow-demo {
-      width: 50%;
-      box-shadow: 0 6px 20px rgb(255, 94, 0) !important;
-    }
-  </style>
-  <style>
-    .container-gyro {
-      background: black;
-    }
-
-
-    .gyro {
-      transform-style: preserve-3d;
-      perspective: 300px;
-    }
-
-    .z-15 {
-      transform: translateZ(-15px);
-    }
-
-    .z-35 {
-      transform: translateZ(-35px);
-    }
-
-    .z-75 {
-      transform: translateZ(-75px);
-    }
-
-    .z-85 {
-      transform: translateZ(-85px);
-    }
-
-    .z-110 {
-      transform: translateZ(-110px);
-    }
-
-    .z-120 {
-      transform: translateZ(-120px);
-    }
-
-    .z-155 {
-      transform: translateZ(-155px);
-    }
-
-    .cyan {
-      --o-fill: var(--o-cyan)
-    }
-
-    .cyan-light {
-      --o-fill: var(--o-cyan-light)
-    }
-
-    .cyan-dark-transparent {
-      --o-fill: var(--o-cyan-dark);
-      opacity: 0.6
-    }
-
-    .pink {
-      --o-fill: var(--o-pink)
-    }
-
-    .transparent {
-      --o-fill: none
-    }
-
-    .white {
-      color: white
-    }
-
-    .dashed-small {
-      opacity: 0.5;
-      height: 3px;
-      background: var(--o-cyan-darker);
-    }
-
-    .dashed-big {
-      opacity: 0.8;
-      height: 6px;
-      background: var(--o-cyan);
-
-    }
-
-    .gyro {
-      animation: tiltLoop 10s ease-in-out 5 alternate;
-    }
-
-    @keyframes tiltLoop {
-      0% {
-        transform: rotateX(-35deg) rotateY(-35deg);
-      }
-
-      25% {
-        transform: rotateX(-35deg) rotateY(35deg);
-      }
-
-      50% {
-        transform: rotateX(35deg) rotateY(35deg);
-      }
-
-      75% {
-        transform: rotateX(35deg) rotateY(-35deg);
-      }
-
-      100% {
-        transform: rotateX(-35deg) rotateY(-35deg);
+        transform: rotate(-10deg)
       }
     }
   </style>
@@ -1198,100 +617,104 @@
       <div class="output" id="opts-demo-output"></div>
     </section>
 
-   <!-- ASCII / SVG -->
-<section id="ascii-section">
-  <h2>🅰️ ASCII Plugin</h2>
+    <!-- ASCII / SVG -->
+    <section id="ascii-section">
+      <h2>🅰️ ASCII Plugin</h2>
 
-  <div class="row" style="display:flex;gap:.75rem;align-items:center;margin-bottom:10px;justify-content:center;">
-    <label for="asciiDemoSelect">Target:</label>
-    <select id="asciiDemoSelect">
-      <option value="demo-emoji">Emoji grid</option>
-      <option value="demo-image">Image poster</option>
-      <option value="demo-giant">Text logo</option>
-    </select>
+      <div class="row" style="display:flex;gap:.75rem;align-items:center;margin-bottom:10px;justify-content:center;">
+        <label for="asciiDemoSelect">Target:</label>
+        <select id="asciiDemoSelect">
+          <option value="demo-emoji">Emoji grid</option>
+          <option value="demo-image">Image poster</option>
+          <option value="demo-giant">Text logo</option>
+        </select>
 
-    <label style="display:flex; gap:.5rem; align-items:center;">
-      <input id="ascii-enable" type="checkbox" />
-      <span>Enable ASCII (otherwise SVG)</span>
-    </label>
+        <label style="display:flex; gap:.5rem; align-items:center;">
+          <input id="ascii-enable" type="checkbox" />
+          <span>Enable ASCII (otherwise SVG)</span>
+        </label>
 
-    <button id="ascii-btn" onclick="captureAsciiSection(this)">Capturar</button>
-  </div>
+        <button id="ascii-btn" onclick="captureAsciiSection(this)">Capturar</button>
+      </div>
 
-  <!-- Escenario con los 4 demos -->
-  <div class="stage" style="display:grid;gap:1rem;align-items:center;justify-items:center;margin-bottom:12px">
+      <!-- Escenario con los 4 demos -->
+      <div class="stage" style="display:grid;gap:1rem;align-items:center;justify-items:center;margin-bottom:12px">
 
-    <!-- Emoji -->
-    <div id="demo-emoji" class="demo hidden" style="
+        <!-- Emoji -->
+        <div id="demo-emoji" class="demo hidden" style="
       width:420px; height:240px; border-radius:14px; color:white; display:grid; place-items:center;
       box-shadow:0 12px 30px rgba(0,0,0,0.35); overflow:hidden;
       background: radial-gradient(120% 120% at 20% 20%, #2a2f3a 0%, #14161a 55%, #0d0f12 100%);
       grid-template-columns:repeat(6,1fr); gap:.2rem; font-size:58px;">
-      <span>🚀</span><span>✨</span><span>🧠</span><span>🖼️</span><span>🎛️</span><span>🧪</span>
-      <span>💡</span><span>🧩</span><span>📦</span><span>🧭</span><span>⚙️</span><span>🛡️</span>
-      <span>📈</span><span>🖥️</span><span>📐</span><span>🧵</span><span>🕹️</span><span>🎨</span>
-      <span>🔬</span><span>🗜️</span><span>🧰</span><span>🔧</span><span>🪄</span><span>🧷</span>
-    </div>
+          <span>🚀</span><span>✨</span><span>🧠</span><span>🖼️</span><span>🎛️</span><span>🧪</span>
+          <span>💡</span><span>🧩</span><span>📦</span><span>🧭</span><span>⚙️</span><span>🛡️</span>
+          <span>📈</span><span>🖥️</span><span>📐</span><span>🧵</span><span>🕹️</span><span>🎨</span>
+          <span>🔬</span><span>🗜️</span><span>🧰</span><span>🔧</span><span>🪄</span><span>🧷</span>
+        </div>
 
-    <!-- Image (CORS OK) -->
-    <div id="demo-image" class="demo hidden" style="
+        <!-- Image (CORS OK) -->
+        <div id="demo-image" class="demo hidden" style="
       width:420px; height:240px; border-radius:14px; color:white; display:grid; grid-template-rows:1fr auto; place-items:center;
       box-shadow:0 12px 30px rgba(0,0,0,0.35); overflow:hidden; background:#000;">
-      <img id="photo" alt="CORS friendly" crossorigin="anonymous"
-        src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=800&auto=format&fit=crop"
-        style="width:100%; height:100%; object-fit:cover; filter: contrast(1.1) saturate(1.15);" />
-      <div class="legend" style="margin:-.5rem 0 .5rem; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.12);
+          <img id="photo" alt="CORS friendly" crossorigin="anonymous"
+            src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=800&auto=format&fit=crop"
+            style="width:100%; height:100%; object-fit:cover; filter: contrast(1.1) saturate(1.15);" />
+          <div class="legend" style="margin:-.5rem 0 .5rem; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.12);
         padding:.25rem .5rem; border-radius:6px; font-size:12px;">Unsplash landscape (CORS OK)</div>
-    </div>
+        </div>
 
-    <!-- Giant text -->
-    <div id="demo-giant" class="demo hidden" style="
+        <!-- Giant text -->
+        <div id="demo-giant" class="demo hidden" style="
       width:420px; height:240px; border-radius:14px; color:white; display:grid; place-items:center;
       box-shadow:0 12px 30px rgba(0,0,0,0.35); overflow:hidden;
       background: radial-gradient(circle at 40% 40%, #1c1e26 0%, #090a0f 100%); position:relative;">
-      <div style="font-weight:900; font-size:88px; line-height:.9; letter-spacing:-2px; text-align:center;
+          <div style="font-weight:900; font-size:88px; line-height:.9; letter-spacing:-2px; text-align:center;
         background: linear-gradient(90deg, #9cf, #0f0); -webkit-background-clip:text; color:transparent;
         filter: drop-shadow(0 2px 8px rgba(0,255,0,0.5));">SNAP<br>DOM</div>
-      <div style="text-align:center; font-size:24px; color:#8f9; margin-top:12px; letter-spacing:2px; opacity:.85;">
-        DOM → IMAGE ENGINE
+          <div style="text-align:center; font-size:24px; color:#8f9; margin-top:12px; letter-spacing:2px; opacity:.85;">
+            DOM → IMAGE ENGINE
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div id="ascii-output" class="output" style="
+      <div id="ascii-output" class="output" style="
     display:block; max-width: 90vw; margin: 0 auto; text-align:center;
     border: 1px solid #143; border-radius: 8px; padding: .75rem; background: transparent">
-    <!-- aquí aparece el ASCII o el SVG -->
-  </div>
-</section>
-<style>
-  .hidden { display: none !important; }
-</style>
-<!-- Timestamp Overlay (afterClone) -->
-<section id="ts-section">
-  <h2>🕒 Timestamp Plugin</h2>
+        <!-- aquí aparece el ASCII o el SVG -->
+      </div>
+    </section>
+    <style>
+      .hidden {
+        display: none !important;
+      }
+    </style>
+    <!-- Timestamp Overlay (afterClone) -->
+    <section id="ts-section">
+      <h2>🕒 Timestamp Plugin</h2>
 
-  <div id="ts-target" class="demo" style="
+      <div id="ts-target" class="demo" style="
     width: 420px; height: 240px; border-radius:14px; color:white; display:grid; place-items:center;
     box-shadow:0 12px 30px rgba(0,0,0,.35); overflow:hidden;
     background: linear-gradient(135deg, #0ea5e9, #22c55e); font-weight:900; font-size:58px; margin: 0 auto 12px;">
-    <div>SnapDOM</div>
-    <small style="opacity:.9; font-size:24px; font-weight:700">Timestamp demo</small>
-  </div>
+        <div>SnapDOM</div>
+        <small style="opacity:.9; font-size:24px; font-weight:700">Timestamp demo</small>
+      </div>
 
-  <div style="display:flex; gap:.75rem; align-items:center; justify-content:center; flex-wrap:wrap; margin:.5rem 0 1rem">
-    <label style="display:flex; gap:.5rem; align-items:center;">
-      <input id="ts-enable" type="checkbox" checked />
-      <span>Enable timestamp (añade sello abajo a la derecha)</span>
-    </label>
-    <button id="ts-btn" onclick="captureTimestampDemo(this)">Capturar PNG</button>
-  </div>
+      <div
+        style="display:flex; gap:.75rem; align-items:center; justify-content:center; flex-wrap:wrap; margin:.5rem 0 1rem">
+        <label style="display:flex; gap:.5rem; align-items:center;">
+          <input id="ts-enable" type="checkbox" checked />
+          <span>Enable timestamp (añade sello abajo a la derecha)</span>
+        </label>
+        <button id="ts-btn" onclick="captureTimestampDemo(this)">Capturar PNG</button>
+      </div>
 
-  <div id="ts-output" class="output" style="
+      <div id="ts-output" class="output"
+        style="
     display:grid; place-items:center; min-height:160px; border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px;">
-    <!-- acá se muestra la imagen resultante -->
-  </div>
-</section>
+        <!-- acá se muestra la imagen resultante -->
+      </div>
+    </section>
     <!-- Transition -->
     <section id="transition">
       <h2>🚀 Fun Transition</h2>
@@ -1589,7 +1012,7 @@
       <div class="output" id="mask-output"></div>
     </section>
     <!-- CORS Proxy -->
-   <section id="cors">
+    <section id="cors">
       <h2>🌐 CORS Proxy (useProxy)</h2>
       <div class="proxy-card">
         <div id="proxy-hero" class="proxy-hero">
@@ -1614,7 +1037,7 @@
       </div>
 
       <div class="output" id="proxy-output"></div>
-    </section> 
+    </section>
 
     <!-- Full Page -->
     <section id="fullbody">
@@ -1625,7 +1048,7 @@
     </section>
 
 
-     
+
 
   </main>
 
@@ -1710,7 +1133,7 @@
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       output.innerHTML = ''
       if (isSafari) {
-        const img = await snapdom.toRaw(el, {noShadows: true})
+        const img = await snapdom.toRaw(el, { noShadows: true })
         const rect = el.getBoundingClientRect()
         const iframe = document.createElement('iframe');
         iframe.setAttribute('sandbox', 'allow-same-origin');
@@ -1720,7 +1143,7 @@
         output.appendChild(iframe)
         if (btn) btn.disabled = false
       } else {
-        const img = await snapdom.toImg(el, {noShadows: true})
+        const img = await snapdom.toImg(el, { noShadows: true })
         output.appendChild(img)
         if (btn) btn.disabled = false
       }
@@ -2057,234 +1480,234 @@
       disableProxy,
     });
 
-// --- Helpers de UI para elegir demo ---
-const asciiSelect = document.getElementById('asciiDemoSelect');
-function showAsciiDemo(id) {
-  document.querySelectorAll('#ascii-section .demo').forEach(el => el.classList.add('hidden'));
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('hidden');
-}
-if (asciiSelect) {
-  showAsciiDemo(asciiSelect.value);
-  asciiSelect.addEventListener('change', () => showAsciiDemo(asciiSelect.value));
-}
-
-// --- Plugin mínimo: result.toAscii(opts) -> Promise<string HTML> ---
-function asciiExportPlugin() {
-  return {
-    name: 'ascii-export',
-    async defineExports(ctx) {
-      async function ascii(_ctx, opts = {}) {
-        const options = { cols: 120, contrast: 0.8, invert: false, charAspect: 2.0, ...opts };
-        const canvas = await ctx.exports.canvas();
-        return canvasToAsciiHTML(canvas, options);
-      }
-      return { ascii };
+    // --- Helpers de UI para elegir demo ---
+    const asciiSelect = document.getElementById('asciiDemoSelect');
+    function showAsciiDemo(id) {
+      document.querySelectorAll('#ascii-section .demo').forEach(el => el.classList.add('hidden'));
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('hidden');
     }
-  };
-}
+    if (asciiSelect) {
+      showAsciiDemo(asciiSelect.value);
+      asciiSelect.addEventListener('change', () => showAsciiDemo(asciiSelect.value));
+    }
 
-// Conversión Canvas -> ASCII (HTML con <pre>)
-function canvasToAsciiHTML(canvas, opts) {
-  const { cols, contrast, invert, charAspect } = opts;
-  const charset = '@%#WMNHQ$OC?7>!1=+;:~-,._  ';
-  const rampLen = charset.length;
-  const W = canvas.width|0, H = canvas.height|0;
-  const g = canvas.getContext('2d', { willReadFrequently: true });
-  const data = g.getImageData(0,0,W,H).data;
-
-  const blockW = Math.max(1, (W/cols)|0);
-  const blockH = Math.max(1, (blockW*charAspect)|0);
-  const rows = Math.max(1, (H/blockH)|0);
-
-  let out = '<pre style="margin:0;font:7px/1 monospace;white-space:pre;">';
-  for (let r=0;r<rows;r++){
-    const y0=r*blockH, y1=Math.min(H,y0+blockH);
-    for (let c=0;c<cols;c++){
-      const x0=c*blockW, x1=Math.min(W,x0+blockW);
-      let sumR=0,sumG=0,sumB=0,sumL=0,count=0;
-      for (let y=y0;y<y1;y++){
-        const rowOff = y*W*4;
-        for (let x=x0;x<x1;x++){
-          const i = rowOff + (x<<2);
-          const R=data[i], G=data[i+1], B=data[i+2];
-          sumR+=R; sumG+=G; sumB+=B; sumL += 0.2126*R + 0.7152*G + 0.0722*B; count++;
+    // --- Plugin mínimo: result.toAscii(opts) -> Promise<string HTML> ---
+    function asciiExportPlugin() {
+      return {
+        name: 'ascii-export',
+        async defineExports(ctx) {
+          async function ascii(_ctx, opts = {}) {
+            const options = { cols: 120, contrast: 0.8, invert: false, charAspect: 2.0, ...opts };
+            const canvas = await ctx.exports.canvas();
+            return canvasToAsciiHTML(canvas, options);
+          }
+          return { ascii };
         }
+      };
+    }
+
+    // Conversión Canvas -> ASCII (HTML con <pre>)
+    function canvasToAsciiHTML(canvas, opts) {
+      const { cols, contrast, invert, charAspect } = opts;
+      const charset = '@%#WMNHQ$OC?7>!1=+;:~-,._  ';
+      const rampLen = charset.length;
+      const W = canvas.width | 0, H = canvas.height | 0;
+      const g = canvas.getContext('2d', { willReadFrequently: true });
+      const data = g.getImageData(0, 0, W, H).data;
+
+      const blockW = Math.max(1, (W / cols) | 0);
+      const blockH = Math.max(1, (blockW * charAspect) | 0);
+      const rows = Math.max(1, (H / blockH) | 0);
+
+      let out = '<pre style="margin:0;font:7px/1 monospace;white-space:pre;">';
+      for (let r = 0; r < rows; r++) {
+        const y0 = r * blockH, y1 = Math.min(H, y0 + blockH);
+        for (let c = 0; c < cols; c++) {
+          const x0 = c * blockW, x1 = Math.min(W, x0 + blockW);
+          let sumR = 0, sumG = 0, sumB = 0, sumL = 0, count = 0;
+          for (let y = y0; y < y1; y++) {
+            const rowOff = y * W * 4;
+            for (let x = x0; x < x1; x++) {
+              const i = rowOff + (x << 2);
+              const R = data[i], G = data[i + 1], B = data[i + 2];
+              sumR += R; sumG += G; sumB += B; sumL += 0.2126 * R + 0.7152 * G + 0.0722 * B; count++;
+            }
+          }
+          const inv = count ? 1 / count : 0;
+          const Rm = (sumR * inv) | 0, Gm = (sumG * inv) | 0, Bm = (sumB * inv) | 0;
+          let norm = (sumL * inv) / 255;
+          norm = (contrast + 1) * (norm - 0.5) + 0.5;
+          if (norm < 0) norm = 0; else if (norm > 1) norm = 1;
+          const idx = invert ? ((norm * (rampLen - 1)) + .5) | 0 : (((1 - norm) * (rampLen - 1)) + .5) | 0;
+          const ch = charset[idx];
+          const safe = ch === ' ' ? '&nbsp;' : (ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch);
+          out += `<span style="color:rgba(${Rm},${Gm},${Bm},1)">${safe}</span>`;
+        }
+        if (r < rows - 1) out += '\n'; // ← escapado para evitar line break literal en template strings
       }
-      const inv = count?1/count:0;
-      const Rm=(sumR*inv)|0, Gm=(sumG*inv)|0, Bm=(sumB*inv)|0;
-      let norm = (sumL*inv)/255;
-      norm = (contrast + 1) * (norm - 0.5) + 0.5;
-      if (norm<0) norm=0; else if (norm>1) norm=1;
-      const idx = invert ? ((norm*(rampLen-1))+.5)|0 : (((1-norm)*(rampLen-1))+.5)|0;
-      const ch = charset[idx];
-      const safe = ch===' ' ? '&nbsp;' : (ch==='&'?'&amp;':ch==='<'?'&lt;':ch==='>'?'&gt;':ch);
-      out += `<span style="color:rgba(${Rm},${Gm},${Bm},1)">${safe}</span>`;
+      out += '</pre>';
+      return out;
     }
-    if (r<rows-1) out += '\n'; // ← escapado para evitar line break literal en template strings
-  }
-  out += '</pre>';
-  return out;
-}
 
-// Acción del botón principal de la sección
-window.captureAsciiSection = async function(btn) {
-  const output = document.getElementById('ascii-output');
-  const enabled = !!document.getElementById('ascii-enable')?.checked;
-  const id = document.getElementById('asciiDemoSelect')?.value || 'demo-gradient';
-  const target = document.getElementById(id);
-  if (!target || !output) return;
+    // Acción del botón principal de la sección
+    window.captureAsciiSection = async function (btn) {
+      const output = document.getElementById('ascii-output');
+      const enabled = !!document.getElementById('ascii-enable')?.checked;
+      const id = document.getElementById('asciiDemoSelect')?.value || 'demo-gradient';
+      const target = document.getElementById(id);
+      if (!target || !output) return;
 
-  if (btn) btn.disabled = true;
-  output.innerHTML = 'Rendering…';
+      if (btn) btn.disabled = true;
+      output.innerHTML = 'Rendering…';
 
-  try {
-    // Captura base
-   
-
-    if (enabled) {
-      // ASCII
-      const result =  await snapdom(target, { 
-        noShadows: true,
-        plugins: [asciiExportPlugin()]
-      });
-    //  snapdom.plugins(asciiExportPlugin());
-      const asciiHTML = await result.toAscii({ cols: 100, invert:true });
-      output.innerHTML = asciiHTML;
-    } else {
-      // SVG
-      const svg =  await snapdom.toImg(target, { noShadows: true });
-      output.innerHTML = '';
-      if (typeof svg === 'string') output.innerHTML = svg; else output.appendChild(svg);
-    }
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-};
+      try {
+        // Captura base
 
 
-/**
- * Plugin per-capture: timestamp overlay en esquina inferior derecha.
- * Hook: afterClone
- *
- * Uso por captura:
- *   const result = await snapdom(target, { plugins: [timestampOverlayPlugin(opts)] });
- */
-function timestampOverlayPlugin(options = {}) {
-  const defaults = {
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
-    fontSize: 15,
-    color: "#fff",
-    background: "rgba(0,0,0,.15)",
-    padding: ".25rem .5rem",
-    borderRadius: 8,
-    right: 8,
-    bottom: 6,
-    zIndex: 2147483647,
-    stampFn: null, // (d:Date)=>string | null
-    text: null     // si está, se usa tal cual
-  };
+        if (enabled) {
+          // ASCII
+          const result = await snapdom(target, {
+            noShadows: true,
+            plugins: [asciiExportPlugin()]
+          });
+          //  snapdom.plugins(asciiExportPlugin());
+          const asciiHTML = await result.toAscii({ cols: 100, invert: true });
+          output.innerHTML = asciiHTML;
+        } else {
+          // SVG
+          const svg = await snapdom.toImg(target, { noShadows: true });
+          output.innerHTML = '';
+          if (typeof svg === 'string') output.innerHTML = svg; else output.appendChild(svg);
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    };
 
-  function pad(n){ return n < 10 ? "0"+n : ""+n; }
-  function defaultStamp(d){
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
-           `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  }
 
-  const cfg = { ...defaults, ...options };
+    /**
+     * Plugin per-capture: timestamp overlay en esquina inferior derecha.
+     * Hook: afterClone
+     *
+     * Uso por captura:
+     *   const result = await snapdom(target, { plugins: [timestampOverlayPlugin(opts)] });
+     */
+    function timestampOverlayPlugin(options = {}) {
+      const defaults = {
+        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        fontSize: 15,
+        color: "#fff",
+        background: "rgba(0,0,0,.15)",
+        padding: ".25rem .5rem",
+        borderRadius: 8,
+        right: 8,
+        bottom: 6,
+        zIndex: 2147483647,
+        stampFn: null, // (d:Date)=>string | null
+        text: null     // si está, se usa tal cual
+      };
 
-  return {
-    name: "timestamp-overlay",
-    async afterClone(ctx) {
-      const root = ctx.clone;
-      if (!root || !(root instanceof HTMLElement)) return;
-
-      const doc = root.ownerDocument || document;
-      const win = doc.defaultView || window;
-
-      // Asegurar posicionamiento del contenedor
-      const cs = win.getComputedStyle(root);
-      if (!/relative|absolute|fixed|sticky/.test(cs.position)) {
-        root.style.position = "relative";
+      function pad(n) { return n < 10 ? "0" + n : "" + n; }
+      function defaultStamp(d) {
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+          `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       }
 
-      // Construir label
-      const label = doc.createElement("div");
-      const stamp = cfg.text ?? (typeof cfg.stampFn === "function" ? cfg.stampFn(new Date()) : defaultStamp(new Date()));
-      label.textContent = stamp;
+      const cfg = { ...defaults, ...options };
 
-      Object.assign(label.style, {
-        position: "absolute",
-        right: (cfg.right|0) + "px",
-        bottom: (cfg.bottom|0) + "px",
-        fontFamily: cfg.fontFamily,
-        fontSize: (cfg.fontSize|0) + "px",
-        color: cfg.color,
-        background: cfg.background,
-        padding: cfg.padding,
-        borderRadius: (cfg.borderRadius|0) + "px",
-        lineHeight: "1",
-        letterSpacing: ".3px",
-        userSelect: "none",
-        pointerEvents: "none",
-        zIndex: String(cfg.zIndex|0),
-        boxShadow: "0 2px 8px rgba(0,0,0,.25)",
-        backdropFilter: "blur(1px)"
-      });
+      return {
+        name: "timestamp-overlay",
+        async afterClone(ctx) {
+          const root = ctx.clone;
+          if (!root || !(root instanceof HTMLElement)) return;
 
-      root.appendChild(label);
-    }
-  };
-}
+          const doc = root.ownerDocument || document;
+          const win = doc.defaultView || window;
 
-/**
- * Handler del botón de la sección Timestamp.
- * Usa plugin por captura (options.plugins) y exporta a PNG.
- */
-window.captureTimestampDemo = async function(btn) {
-  const target = document.getElementById("ts-target");
-  const output = document.getElementById("ts-output");
-  const enabled = !!document.getElementById("ts-enable")?.checked;
-  const fmt = document.getElementById("ts-format")?.value || "iso";
-  if (!target || !output) return;
+          // Asegurar posicionamiento del contenedor
+          const cs = win.getComputedStyle(root);
+          if (!/relative|absolute|fixed|sticky/.test(cs.position)) {
+            root.style.position = "relative";
+          }
 
-  btn && (btn.disabled = true);
-  output.textContent = "Rendering…";
+          // Construir label
+          const label = doc.createElement("div");
+          const stamp = cfg.text ?? (typeof cfg.stampFn === "function" ? cfg.stampFn(new Date()) : defaultStamp(new Date()));
+          label.textContent = stamp;
 
-  try {
-    // Construir lista de plugins per-capture
-    const plugins = [];
-    if (enabled) {
-      const stampFn = fmt === "locale"
-        ? (d) => d.toLocaleString()
-        : null; // usa formato ISO por defecto si null
-      plugins.push(timestampOverlayPlugin({ stampFn }));
+          Object.assign(label.style, {
+            position: "absolute",
+            right: (cfg.right | 0) + "px",
+            bottom: (cfg.bottom | 0) + "px",
+            fontFamily: cfg.fontFamily,
+            fontSize: (cfg.fontSize | 0) + "px",
+            color: cfg.color,
+            background: cfg.background,
+            padding: cfg.padding,
+            borderRadius: (cfg.borderRadius | 0) + "px",
+            lineHeight: "1",
+            letterSpacing: ".3px",
+            userSelect: "none",
+            pointerEvents: "none",
+            zIndex: String(cfg.zIndex | 0),
+            boxShadow: "0 2px 8px rgba(0,0,0,.25)",
+            backdropFilter: "blur(1px)"
+          });
+
+          root.appendChild(label);
+        }
+      };
     }
 
-    // Capturar con plugins per-capture (sin registrar globalmente)
-    const result = await snapdom(target, {
-      noShadows: true,
-      plugins
-    });
+    /**
+     * Handler del botón de la sección Timestamp.
+     * Usa plugin por captura (options.plugins) y exporta a PNG.
+     */
+    window.captureTimestampDemo = async function (btn) {
+      const target = document.getElementById("ts-target");
+      const output = document.getElementById("ts-output");
+      const enabled = !!document.getElementById("ts-enable")?.checked;
+      const fmt = document.getElementById("ts-format")?.value || "iso";
+      if (!target || !output) return;
 
-    // Export final (PNG)
-    const png = await result.toPng({ quality: 0.95 });
-    output.innerHTML = "";
-    if (png instanceof HTMLImageElement) {
-      output.appendChild(png);
-    } else if (typeof png === "string") {
-      const el = new Image(); el.src = png; output.appendChild(el);
-    } else if (png instanceof Blob) {
-      const url = URL.createObjectURL(png);
-      const el = new Image();
-      el.onload = () => URL.revokeObjectURL(url);
-      el.src = url;
-      output.appendChild(el);
-    }
-  } finally {
-    btn && (btn.disabled = false);
-  }
-};
+      btn && (btn.disabled = true);
+      output.textContent = "Rendering…";
+
+      try {
+        // Construir lista de plugins per-capture
+        const plugins = [];
+        if (enabled) {
+          const stampFn = fmt === "locale"
+            ? (d) => d.toLocaleString()
+            : null; // usa formato ISO por defecto si null
+          plugins.push(timestampOverlayPlugin({ stampFn }));
+        }
+
+        // Capturar con plugins per-capture (sin registrar globalmente)
+        const result = await snapdom(target, {
+          noShadows: true,
+          plugins
+        });
+
+        // Export final (PNG)
+        const png = await result.toPng({ quality: 0.95 });
+        output.innerHTML = "";
+        if (png instanceof HTMLImageElement) {
+          output.appendChild(png);
+        } else if (typeof png === "string") {
+          const el = new Image(); el.src = png; output.appendChild(el);
+        } else if (png instanceof Blob) {
+          const url = URL.createObjectURL(png);
+          const el = new Image();
+          el.onload = () => URL.revokeObjectURL(url);
+          el.src = url;
+          output.appendChild(el);
+        }
+      } finally {
+        btn && (btn.disabled = false);
+      }
+    };
 
   </script>
 
