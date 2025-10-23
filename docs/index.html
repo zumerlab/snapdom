@@ -1189,19 +1189,19 @@
         </div>
         <p></p>
         <p style="text-align:center; margin:0.5rem 0 0;">
-          Capture it <strong>just</strong> with <code>straighten</code> /
-          <code>noShadows</code>.
+          Capture it <strong>just</strong> with <code>outerTransforms</code> /
+          <code>outerShadows</code>.
         </p>
       </div>
 
       <div style="display:grid; gap:.6rem; justify-items:center; margin-top:.6rem;">
         <label style="display:flex; gap:.5rem; align-items:center;">
           <input id="opts-flat" type="checkbox" checked />
-          <span><code>straighten</code> (remove CSS transforms)</span>
+          <span><code>outerTransforms</code> (keep external CSS transforms)</span>
         </label>
         <label style="display:flex; gap:.5rem; align-items:center;">
           <input id="opts-shadow" type="checkbox" checked />
-          <span><code>noShadows</code> (remove CSS shadows)</span>
+          <span><code>outerShadows</code> (keep external CSS shadows)</span>
         </label>
 
         <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
@@ -1707,8 +1707,8 @@
       const img = await snapdom.toImg(el, {
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
         scale: id === 'body' ? 0.4 : 1,
-        straighten: false,
-        noShadows: true
+        outerTransforms: true,
+        outerShadows: false
       })
       output.innerHTML = ''
       output.appendChild(img)
@@ -1725,7 +1725,7 @@
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       output.innerHTML = ''
       if (isSafari) {
-        const img = await snapdom.toRaw(el, {noShadows: true})
+        const img = await snapdom.toRaw(el, {outerShadows: true})
         const rect = el.getBoundingClientRect()
         const iframe = document.createElement('iframe');
         iframe.setAttribute('sandbox', 'allow-same-origin');
@@ -1735,7 +1735,7 @@
         output.appendChild(iframe)
         if (btn) btn.disabled = false
       } else {
-        const img = await snapdom.toImg(el, {noShadows: true})
+        const img = await snapdom.toImg(el, {outerShadows: true})
         output.appendChild(img)
         if (btn) btn.disabled = false
       }
@@ -1752,8 +1752,8 @@
         scale: id === 'body' ? 0.5 : 1,
         quality: 1,
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
-        straighten: false,
-        noShadows: true
+        outerTransforms: true,
+        outerShadows: false
       })
     }
 
@@ -1762,14 +1762,14 @@
       const output = document.getElementById('opts-demo-output');
       if (!target || !output) return;
 
-      const straighten = !!document.getElementById('opts-flat')?.checked;
-      const noShadows = !!document.getElementById('opts-shadow')?.checked;
+      const outerTransforms = document.getElementById('opts-flat')?.checked;
+      const outerShadows = document.getElementById('opts-shadow')?.checked;
 
       if (btn) btn.disabled = true;
       const img = await snapdom.toImg(target, {
         embedFonts: false,
-        straighten,
-        noShadows
+        outerTransforms,
+        outerShadows
       });
       output.innerHTML = '';
       output.appendChild(img);
@@ -1780,15 +1780,15 @@
       const target = document.getElementById('opts-target');
       if (!target) return;
 
-      const straighten = !!document.getElementById('opts-flat')?.checked;
-      const noShadows = !!document.getElementById('opts-shadow')?.checked;
+      const outerTransforms = document.getElementById('opts-flat')?.checked;
+      const outerShadows = document.getElementById('opts-shadow')?.checked;
 
       await snapdom.download(target, {
         format: 'png',
         quality: 1,
         embedFonts: false,
-        straighten,
-        noShadows
+        outerTransforms,
+        outerShadows
       });
     }
 
@@ -1812,8 +1812,8 @@
       const target = doc?.body
       if (!target) return
       await snapdom.download(target, {
-        format: 'png', name: 'iframe-body', scale: 1, quality: 1, straighten: false,
-        noShadows: true
+        format: 'png', name: 'iframe-body', scale: 1, quality: 1, outerTransforms: false,
+        outerShadows: true
       })
     }
 
@@ -2160,7 +2160,7 @@ window.captureAsciiSection = async function(btn) {
     if (enabled) {
       // ASCII
       const result =  await snapdom(target, { 
-        noShadows: true,
+        outerShadows: true,
         plugins: [asciiExportPlugin()]
       });
     //  snapdom.plugins(asciiExportPlugin());
@@ -2168,7 +2168,7 @@ window.captureAsciiSection = async function(btn) {
       output.innerHTML = asciiHTML;
     } else {
       // SVG
-      const svg =  await snapdom.toImg(target, { noShadows: true });
+      const svg =  await snapdom.toImg(target, { outerShadows: true });
       output.innerHTML = '';
       if (typeof svg === 'string') output.innerHTML = svg; else output.appendChild(svg);
     }
@@ -2278,7 +2278,7 @@ window.captureTimestampDemo = async function(btn) {
 
     // Capturar con plugins per-capture (sin registrar globalmente)
     const result = await snapdom(target, {
-      noShadows: true,
+      outerShadows: true,
       plugins
     });
 
