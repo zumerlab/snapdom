@@ -78,13 +78,13 @@ export interface SnapdomOptions {
   /** How to apply `filter` ("hide" or "remove"). Default "hide". */
   filterMode?: "hide" | "remove";
 
-  /** Straighten the root: remove translate/rotate, keep scale/skew. */
-  straighten?: boolean;
+  /** outerTransforms the root: remove translate/rotate, keep scale/skew. */
+  outerTransforms?: boolean;
   /**
    * Do not expand root bbox for shadows/blur/outline; also strip shadows/outline
    * from the cloned root to get a tight capture box.
    */
-  noShadows?: boolean;
+  outerShadows?: boolean;
 
   /** Inline non-icon fonts actually used within the subtree. */
   embedFonts?: boolean;

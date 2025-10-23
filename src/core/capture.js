@@ -44,16 +44,17 @@ function stripRootShadows(originalEl, cloneRoot) {
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {Function} [options.filter] - Custom filter function
- * @param {boolean} [options.straighten=false] - Normalize root by removing translate/rotate (keep scale/skew)
- * @param {boolean} [options.noShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
+ * @param {boolean} [options.outerTransforms=false] - Normalize root by removing translate/rotate (keep scale/skew)
+ * @param {boolean} [options.outerShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
   const fast = options.fast
-  const straighten = !!options.straighten
-  const noShadows = !!options.noShadows
+  const outerTransforms = options.outerTransforms !== false   // default: true
+
+  const outerShadows = !!options.outerShadows
   let state = { element, options, plugins: options.plugins }
 
   let clone, classCSS, styleCache
@@ -61,7 +62,7 @@ export async function captureDOM(element, options) {
   let baseCSS = ''
   let dataURL
   let svgString
-  // NEW: store root transform (scale/skew) when straighten is on
+  // NEW: store root transform (scale/skew) when outerTransforms is on
   let rootTransform2D = null
   // BEFORESNAP
   await runHook('beforeSnap', state)
@@ -73,10 +74,10 @@ export async function captureDOM(element, options) {
 
     // state = {clone, classCSS, styleCache, ...state}
 
-   if (straighten && clone) {
+   if (!outerTransforms && clone) {
     rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
   }
-  if (noShadows && clone) {
+  if (!outerShadows && clone) {
     stripRootShadows(state.element, clone)
   }
   } finally {
@@ -181,8 +182,8 @@ try {
       // ——— BBOX ———
       let minX = 0, minY = 0, maxX = w0, maxY = h0
 
-      // NEW: if straighten => expand bbox using the post-normalization 2D matrix
-      if (straighten && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
+      // NEW: if outerTransforms => expand bbox using the post-normalization 2D matrix
+      if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
         const M2 = {
           a: rootTransform2D.a,
           b: rootTransform2D.b || 0,
@@ -197,7 +198,7 @@ try {
         maxX = limitDecimals(bb2.maxX)
         maxY = limitDecimals(bb2.maxY)
       } else {
-        const useTFBBox = !straighten && hasTFBBox(state.element)
+        const useTFBBox = outerTransforms && hasTFBBox(state.element)
         if (useTFBBox) {
           const baseTransform2 = csEl.transform && csEl.transform !== 'none' ? csEl.transform : ''
           const ind2 = readIndividualTransforms(state.element)
@@ -223,7 +224,7 @@ try {
       const bleedOutline = parseOutline(csEl)
       const drop = parseFilterDropShadows(csEl)
 
-      const bleed = (noShadows)
+      const bleed = (!outerShadows)
         ? { top: 0, right: 0, bottom: 0, left: 0 }
         : {
           top: limitDecimals(bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top),
@@ -246,7 +247,7 @@ try {
 
       const svgNS = 'http://www.w3.org/2000/svg'
       const basePad = isSafari() ? 1 : 0
-      const extraPad = straighten ? 1 : 0
+      const extraPad = !outerTransforms ? 1 : 0
       const pad = limitDecimals(basePad + extraPad)
 
       const fo = document.createElementNS(svgNS, 'foreignObject')

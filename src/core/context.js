@@ -42,8 +42,8 @@ export function normalizeCachePolicy(v) {
  * @param {string|null} [options.backgroundColor]
  * @param {string}  [options.filename]
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
- * @param {boolean} [options.straighten] // NEW
- * @param {boolean} [options.noShadows]      // NEW
+ * @param {boolean} [options.outerTransforms] // NEW
+ * @param {boolean} [options.outerShadows]      // NEW
  * @returns {Object}
  */
 export function createContext(options = {}) {
@@ -93,8 +93,8 @@ export function createContext(options = {}) {
     filename: options.filename ?? 'snapDOM',
 
     // NEW flags (user-friendly)
-    straighten: options.straighten ?? false,
-    noShadows: options.noShadows ?? false,
+    outerTransforms: options.outerTransforms ?? true,
+    outerShadows: options.outerShadows ?? false,
 
     // Plugins (reservado)
     // plugins: normalizePlugins(...),
