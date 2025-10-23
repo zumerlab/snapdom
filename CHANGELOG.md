@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.0-dev.1](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.0...v2.0.0-dev.1)
+
+> 23 October 2025
+
+- Add basic support for icons with ligature such as material-icons. Closes #275 [`#275`](https://github.com/zumerlab/snapdom/issues/275)
+- Replace straighten with outerTransforms, and noShadows with outerShadows [`902f032`](https://github.com/zumerlab/snapdom/commit/902f032a43ed4919701765d89818c7782902b403)
+- Fix straighten regression [`60c6569`](https://github.com/zumerlab/snapdom/commit/60c6569ebcfbc9ea562c9bddfe9f01c6ea4136db)
+
+
 #### [v2.0.0-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.14...v2.0.0-dev.0)
 
 > 14 October 2025
