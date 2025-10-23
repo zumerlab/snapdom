@@ -73,13 +73,12 @@ export async function captureDOM(element, options) {
 
     // state = {clone, classCSS, styleCache, ...state}
 
-    // ——— apply flags ONLY on the cloned root ———
-    if (straighten && clone) {
-      rootTransform2D = normalizeRootTransforms(state.element, state.clone) // {a,b,c,d} or null
-    }
-    if (noShadows && clone) {
-      stripRootShadows(state.element, state.clone)
-    }
+   if (straighten && clone) {
+    rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
+  }
+  if (noShadows && clone) {
+    stripRootShadows(state.element, clone)
+  }
   } finally {
     undoClamp()
   }
