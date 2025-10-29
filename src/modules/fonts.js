@@ -432,7 +432,7 @@ function dedupeFontFaces(cssText) {
     const styleSpec = (block.match(/font-style:\s*([^;]+);/i)?.[1] || 'normal').trim()
     const stretchSpec = (block.match(/font-stretch:\s*([^;]+);/i)?.[1] || '100%').trim()
     const urange = (block.match(/unicode-range:\s*([^;]+);/i)?.[1] || '').trim()
-    const srcRaw = (block.match(/src\s*:\s*([^;]+);/i)?.[1] || '').trim()
+    const srcRaw = (block.match(/src\s*:\s*([^;}]+)[;}]/i)?.[1] || '').trim()
 
     const urls = extractSrcUrls(srcRaw, location.href)
     const srcPart = urls.length
@@ -720,7 +720,7 @@ export async function embedCustomFonts({
         const styleSpec = (face.match(/font-style:\s*([^;]+);/i)?.[1] || 'normal').trim()
         const stretchSpec = (face.match(/font-stretch:\s*([^;]+);/i)?.[1] || '100%').trim()
         const urange = (face.match(/unicode-range:\s*([^;]+);/i)?.[1] || '').trim()
-        const srcRaw = (face.match(/src\s*:\s*([^;]+);/i)?.[1] || '').trim()
+        const srcRaw = (face.match(/src\s*:\s*([^;}]+)[;}]/i)?.[1] || '').trim()
         const srcUrls = extractSrcUrls(srcRaw, link.href)
 
         if (!faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) continue
