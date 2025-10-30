@@ -497,10 +497,10 @@ For each export key you return (e.g., `"pdf"`), SnapDOM automatically exposes a 
 import { snapdom } from '@zumer/snapdom';
 
 // global
-snapdom.plugins(pdfExportPlugin());
+snapdom.plugins(overlayFilterPlugin());
 
 // or per capture
-const out = await snapdom(element, { plugins: [pdfExportPlugin()] });
+const out = await snapdom(element, { plugins: [overlayFilterPlugin()] });
 ```
 
 **Call the custom export:**
