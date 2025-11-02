@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.0-dev.1](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.0...v2.0.0-dev.1)
+
+> 23 October 2025
+
+- Add basic support for icons with ligature such as material-icons. Closes #275 [`#275`](https://github.com/zumerlab/snapdom/issues/275)
+- Replace straighten with outerTransforms, and noShadows with outerShadows [`902f032`](https://github.com/zumerlab/snapdom/commit/902f032a43ed4919701765d89818c7782902b403)
+- Fix straighten regression [`60c6569`](https://github.com/zumerlab/snapdom/commit/60c6569ebcfbc9ea562c9bddfe9f01c6ea4136db)
+
+
+#### [v2.0.0-dev.0](https://github.com/zumerlab/snapdom/compare/v1.9.14...v2.0.0-dev.0)
+
+> 14 October 2025
+
+- Document plugin system [`d87ac01`](https://github.com/zumerlab/snapdom/commit/d87ac01fcf0beb8779afbe2be709aa1b35cf7113)
+- First plugin and exporter draft [`5da0948`](https://github.com/zumerlab/snapdom/commit/5da09483b82e18ca0fc6873393b9d6830632fcfc)
+- Fix subpixel bug. See #261 [`465950b`](https://github.com/zumerlab/snapdom/commit/465950b18e68ce0faf94b229bd65511128cd18a7)
+- Update demos with plugins [`50e6c4f`](https://github.com/zumerlab/snapdom/commit/50e6c4f85d74bb769fcd7f753f92a3c5be4536c6)
+- Update plugin system [`4e21b47`](https://github.com/zumerlab/snapdom/commit/4e21b475fdc42c6eade9cb4dada5bb5ffeb71978)
+- Enhance external SVG defs. See #262 [`cd4a7fb`](https://github.com/zumerlab/snapdom/commit/cd4a7fbf0e2d9fc1651c06d5c5f5a3a8f0f54329)
+- First plugin system draft [`9c6b91b`](https://github.com/zumerlab/snapdom/commit/9c6b91bc4352de3d323c0746a4e3040058dad519)
+- Fix complex canvas render on Safari. See #263 [`2697207`](https://github.com/zumerlab/snapdom/commit/2697207c98373867bcbb91d4afb73d3820c878d3)
+- Enhance CSS vars detection. See #262 [`6655303`](https://github.com/zumerlab/snapdom/commit/665530377bceff05ff9c1570301019bd95370a9c)
+- Fix counter CSS reset and bug when exist background-image. See #265 [`3c29997`](https://github.com/zumerlab/snapdom/commit/3c299978e2a4cd4c2daf07d64de5772b28e880b8)
+- FIx excludeFonts defs. See #260 [`84b1770`](https://github.com/zumerlab/snapdom/commit/84b1770dd2e6e487e22afcd04c2d34cd0490528c)
+- Fix local register [`9c4508e`](https://github.com/zumerlab/snapdom/commit/9c4508e0cdeb445b76babd71483fe154e0e2ee3e)
+- Enable use built-in exporters in custom exporter [`5c6fe36`](https://github.com/zumerlab/snapdom/commit/5c6fe367101d8dfec710372d2b0a7362da3597a3)
+- Fix background-repeat. See #259 [`0ad5fa4`](https://github.com/zumerlab/snapdom/commit/0ad5fa4ee56e417016ce495ea299cf4a3c586f6a)
+- Fix export name format jpg -&gt; jpeg [`47d532a`](https://github.com/zumerlab/snapdom/commit/47d532a98be096829b592295527c1a6428d6a5d8)
+- Update roadmap [`dff59b9`](https://github.com/zumerlab/snapdom/commit/dff59b9ea62fed09a9146fd1e9d897dace30a37b)
+- Fix local plugin registration [`0997618`](https://github.com/zumerlab/snapdom/commit/0997618fb2e716ead23bfbe4824bb8365987ccd4)
+
+
 #### [v1.9.14](https://github.com/zumerlab/snapdom/compare/v1.9.13...v1.9.14)
 
 > 5 October 2025

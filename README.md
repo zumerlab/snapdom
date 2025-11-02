@@ -29,6 +29,8 @@
   </a>
 </p>
 
+<p align="center">English | <a href="readme_cn.md">简体中文</a></p>
+
 # snapDOM
 
 **snapDOM** is a fast and accurate DOM-to-image capture tool built for **Zumly**, a zoom-based view transition framework.
@@ -72,8 +74,8 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
     - [iconFonts](#iconfonts)
     - [excludeFonts](#excludefonts)
   - [Filtering nodes: `exclude` vs `filter`](#filtering-nodes-exclude-vs-filter)
-  - [straighten](#straighten)
-  - [noShadows](#no-shadows)
+  - [outerTransforms](#outerTransforms)
+  - [outerShadows](#no-shadows)
   - [Cache control](#cache-control)
 - [preCache](#precache--optional-helper)
 - [Plugins (BETA)](#plugins-beta)
@@ -228,8 +230,8 @@ All capture methods accept an `options` object:
 | `cache`           | string   | `"soft"` | `disabled` \| `soft` \| `auto` \| `full`        |
 | `placeholders`    | boolean  | `true`   | Show placeholders for images/CORS iframes       |
 | `fallbackURL`     | string \| function  | - | Fallback image for `<img>` load failure |
-| `straighten`      | boolean  | `false`  | Straightens the root: removes `translate/rotate` but preserves `scale/skew`, producing a flat, reusable capture |
-| `noShadows`       | boolean  | `false`  | Do not expand the root’s bounding box for shadows/blur/outline, and strip those visual effects from the cloned root |
+| `outerTransforms`      | boolean  | `true`  | When `false` removes `translate/rotate` but preserves `scale/skew`, producing a flat, reusable capture |
+| `outerShadows`       | boolean  | `false`  | Do not expand the root’s bounding box for shadows/blur/outline, and strip those visual effects from the cloned root |
 
 ### Fallback image on `<img>` load failure
 
@@ -354,26 +356,25 @@ await snapdom.toPng(el, {
 });
 ```
 
-### Straighten 
+### outerTransforms 
 
-When capturing rotated or translated elements, you may want to **straighten** the root so the snapshot can be reused in another layout without inheriting those transforms.
+When capturing rotated or translated elements, you may want use **outerTransforms: false** option if you want to eliminate those external transforms. So, the output is **flat, upright, and ready** to use elsewhere.
 
-- **`straighten: true`**  
-  Straightens the cloned root: **removes `translate` and `rotate`** but **keeps `scale/skew`** to preserve proportions.  
-  The output is **flat, upright, and ready** to embed elsewhere.
+- **`outerTransforms: true (default)`**  
+  **Keeps the original `transforms` and `rotate`**.  
+  
 
-
-### noShadows
-- **`noShadows: true`**  
+### outerShadows
+- **`outerShadows: false (default)`**  
   Prevents expanding the bounding box for shadows, blur, or outline on the root, and also strips `box-shadow`, `text-shadow`, `filter: blur()/drop-shadow()`, and `outline` from the cloned root.  
 
-> 💡 **Tip:** Using both (`straighten` + `noShadows`) produces a strict, minimal bounding box with no visual bleed.
+> 💡 **Tip:** Using both (`outerTransforms: false` + `outerShadows: false`) produces a strict, minimal bounding box with no visual bleed.
 
 **Example**
 
 ```js
-// Straighten and remove shadow bleed
-await snapdom.toSvg(el, { straighten: true, noShadows: true });
+// outerTransforms and remove shadow bleed
+await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });
 ```
 
 ## Cache control
@@ -474,7 +475,7 @@ const out = await snapdom(element, {
 Every hook receives a single `context` object that contains normalized capture state:
 
 * **Input & options:**
-  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `straighten`, `noShadows`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`.
+  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `outerTransforms`, `outerShadows`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`.
 
 * **Intermediate values (depending on stage):**
   `clone`, `classCSS`, `styleCache`, `fontsCSS`, `baseCSS`, `svgString`, `dataURL`.
@@ -497,10 +498,10 @@ For each export key you return (e.g., `"pdf"`), SnapDOM automatically exposes a 
 import { snapdom } from '@zumer/snapdom';
 
 // global
-snapdom.plugins(overlayFilterPlugin());
+snapdom.plugins(pdfExportPlugin());
 
 // or per capture
-const out = await snapdom(element, { plugins: [overlayFilterPlugin()] });
+const out = await snapdom(element, { plugins: [pdfExportPlugin()] });
 ```
 
 **Call the custom export:**

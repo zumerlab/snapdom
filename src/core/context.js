@@ -42,12 +42,13 @@ export function normalizeCachePolicy(v) {
  * @param {string|null} [options.backgroundColor]
  * @param {string}  [options.filename]
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
- * @param {boolean} [options.straighten] // NEW
- * @param {boolean} [options.noShadows]      // NEW
+ * @param {boolean} [options.outerTransforms] // NEW
+ * @param {boolean} [options.outerShadows]      // NEW
  * @returns {Object}
  */
 export function createContext(options = {}) {
-  const resolvedFormat = options.format ?? 'png'
+  let resolvedFormat = options.format ?? 'png'
+  if (resolvedFormat === 'jpg') resolvedFormat = 'jpeg'
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
 
@@ -88,12 +89,12 @@ export function createContext(options = {}) {
     quality: options.quality ?? 0.92,
     dpr: options.dpr ?? (window.devicePixelRatio || 1),
     backgroundColor:
-      options.backgroundColor ?? (['jpg', 'jpeg', 'webp'].includes(resolvedFormat) ? '#ffffff' : null),
+      options.backgroundColor ?? (['jpeg', 'webp'].includes(resolvedFormat) ? '#ffffff' : null),
     filename: options.filename ?? 'snapDOM',
 
     // NEW flags (user-friendly)
-    straighten: options.straighten ?? false,
-    noShadows: options.noShadows ?? false,
+    outerTransforms: options.outerTransforms ?? true,
+    outerShadows: options.outerShadows ?? false,
 
     // Plugins (reservado)
     // plugins: normalizePlugins(...),

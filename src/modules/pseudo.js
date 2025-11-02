@@ -20,11 +20,11 @@ import {
   hasCounters
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
-
-let counterCtx = null
+import { cache } from '../core/cache.js'
 
 /** Acumulador de contadores por padre para propagar increments en pseudos entre hermanos */
-const __siblingCounters = new WeakMap() // parentElement -> Map<counterName, number>
+var __siblingCounters = new WeakMap() // parentElement -> Map<counterName, number>
+var __pseudoEpoch = -1
 
 /** Remove only enclosing double-quoted tokens from CSS content (keeps single quotes). */
 function unquoteDoubleStrings(s) {
@@ -100,7 +100,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
   }
 
   const resets = parseListDecl(pseudoStyle?.counterReset)
-  const incs   = parseListDecl(pseudoStyle?.counterIncrement)
+  const incs = parseListDecl(pseudoStyle?.counterIncrement)
 
   function getStackDerived(name) {
     if (modStacks.has(name)) return modStacks.get(name).slice()
@@ -152,7 +152,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
  */
 function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
   let ps
-  try { ps = getComputedStyle(node, pseudo) } catch {}
+  try { ps = getComputedStyle(node, pseudo) } catch { }
   const raw = ps?.content
   if (!raw || raw === 'none' || raw === 'normal') return { text: '', incs: [] }
 
@@ -183,13 +183,18 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
  */
 export async function inlinePseudoElements(source, clone, sessionCache, options) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return
+// Reset per-capture: si cambió el epoch, limpiamos overrides de hermanos
+const epoch = (cache?.session?.__counterEpoch ?? 0)
+if (__pseudoEpoch !== epoch) {
+  __siblingCounters = new WeakMap()
+  if (sessionCache) sessionCache.__counterCtx = null
+  __pseudoEpoch = epoch
+}
 
-  // Build counters context once per document
-  if (!counterCtx) {
-    try {
-      counterCtx = buildCounterContext(source.ownerDocument || document)
-    } catch { /* noop */ }
+    if (!sessionCache.__counterCtx) {
+    try { sessionCache.__counterCtx = buildCounterContext(source.ownerDocument || document) } catch {}
   }
+  const counterCtx = sessionCache.__counterCtx
 
   for (const pseudo of ['::before', '::after', '::first-letter']) {
     try {
@@ -264,7 +269,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         borderStyle && borderStyle !== 'none' && borderWidth > 0
       const hasTransform = transform && transform !== 'none'
 
-           const shouldRender =
+      const shouldRender =
         hasExplicitContent || hasBg || hasBgColor || hasBorder || hasTransform
 
       if (!shouldRender) {
@@ -288,7 +293,8 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
 
       const pseudoEl = document.createElement('span')
       pseudoEl.dataset.snapdomPseudo = pseudo
-      pseudoEl.style.verticalAlign = 'middle'
+      pseudoEl.style.display = 'inline'
+      pseudoEl.style.verticalAlign = 'baseline'
       pseudoEl.style.pointerEvents = 'none'
       const snapshot = snapshotComputedStyle(style)
       const key = getStyleKey(snapshot, 'span')
@@ -322,12 +328,25 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       }
 
       // ---- Backgrounds / colors ----
-           // Reset explícito para no heredar nada a menos que el pseudo lo defina
-     pseudoEl.style.background = 'none'
-     // Mask también reseteada por defecto (si tu pipeline soporta masks)
-     if ('mask' in pseudoEl.style) {
-       pseudoEl.style.mask = 'none'
-     }
+      pseudoEl.style.backgroundImage = 'none'
+      if ('maskImage' in pseudoEl.style) pseudoEl.style.maskImage = 'none'
+      if ('webkitMaskImage' in pseudoEl.style) pseudoEl.style.webkitMaskImage = 'none'
+
+      try {
+        pseudoEl.style.backgroundRepeat = style.backgroundRepeat
+        pseudoEl.style.backgroundSize = style.backgroundSize
+        if (style.backgroundPositionX && style.backgroundPositionY) {
+          pseudoEl.style.backgroundPositionX = style.backgroundPositionX
+          pseudoEl.style.backgroundPositionY = style.backgroundPositionY
+        } else {
+          pseudoEl.style.backgroundPosition = style.backgroundPosition
+        }
+        pseudoEl.style.backgroundOrigin = style.backgroundOrigin
+        pseudoEl.style.backgroundClip = style.backgroundClip
+        pseudoEl.style.backgroundAttachment = style.backgroundAttachment
+        pseudoEl.style.backgroundBlendMode = style.backgroundBlendMode
+      } catch { }
+
       if (hasBg) {
         try {
           const bgSplits = splitBackgroundImage(bg)
@@ -341,8 +360,8 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
 
       const hasContent2 =
         pseudoEl.childNodes.length > 0 || (pseudoEl.textContent?.trim() !== '')
-     const hasVisibleBox =
-       hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform
+      const hasVisibleBox =
+        hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform
 
       // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
       if (incs && incs.length && source.parentElement) {
