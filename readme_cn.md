@@ -28,6 +28,7 @@
     <img alt="License" src="https://img.shields.io/github/license/zumerlab/snapdom?style=flat-square">
   </a>
 </p>
+<p align="center"><a href="readme_cn.md">English</a> | 简体中文</p>
 
 # snapDOM
 

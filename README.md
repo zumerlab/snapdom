@@ -29,6 +29,8 @@
   </a>
 </p>
 
+<p align="center">English | <a href="readme_cn.md">简体中文</a></p>
+
 # snapDOM
 
 **snapDOM** is a fast and accurate DOM-to-image capture tool built for **Zumly**, a zoom-based view transition framework.
