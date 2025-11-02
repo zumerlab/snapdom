@@ -29,7 +29,7 @@
   </a>
 </p>
 
-<p align="center">English | <a href="readme_cn.md">简体中文</a></p>
+<p align="center">English | <a href="README_CN.md">简体中文</a></p>
 
 # snapDOM
 
