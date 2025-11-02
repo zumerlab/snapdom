@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>snapDOM — Dog ID Card (Plugins Playground)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="description" content="snapDOM Dog ID Card demo with per-capture plugin composer: red text, replace text, CSS filter, and timestamp." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous"/>
+  <style>
+    :root{--ink:#1a2233;--panel:#fff;--muted:#576c99}
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:'Segoe UI','Roboto',Arial,sans-serif;
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:2rem 1rem;
+    }
+
+    /* ===== Header (home look) ===== */
+    .site-header{width:100%; max-width:900px; position:sticky; top:0; z-index:30; backdrop-filter:saturate(1.05) blur(6px)}
+    .brand{display:grid; gap:.75rem; justify-items:center; margin-bottom:.75rem}
+    .brand h1{
+      color:#1a2233; text-align:center; letter-spacing:.3px;
+      font-size:clamp(20px,4vw,34px); margin:0; text-shadow:0 2px 8px #e0e7ef;
+    }
+    .nav-bar{display:flex; align-items:center; justify-content:space-between; gap:.75rem}
+    .back-home{
+      appearance:none; border:0; border-radius:12px; padding:.5rem .75rem; font-weight:800;
+      background:#1a2233; color:#fff; text-decoration:none; box-shadow:0 2px 8px #1a223322;
+    }
+    .nav-toggle{
+      border:0; background:#1a2233; color:#fff; border-radius:10px; padding:.5rem .75rem;
+      font-weight:700; cursor:pointer; box-shadow:0 2px 8px #1a223322; display:inline-flex; align-items:center; gap:.4rem;
+    }
+    .nav-icon{display:inline-block; width:1.15rem; height:2px; background:currentColor; border-radius:2px; position:relative}
+    .nav-icon::before,.nav-icon::after{content:""; position:absolute; left:0; right:0; height:2px; background:currentColor; border-radius:2px}
+    .nav-icon::before{top:-6px}.nav-icon::after{top:6px}
+    .nav-collapsible{overflow:hidden; max-height:0; transition:max-height .24s ease; border-radius:12px}
+    .nav-collapsible.open{max-height:80vh; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:.5rem;
+      background:rgba(255,255,255,.78); box-shadow:0 10px 24px rgba(0,0,0,.12)}
+    nav.demo-menu{display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center}
+    nav.demo-menu a{
+      color:#1a2233; text-decoration:none; font-weight:700; border-bottom:2px solid transparent; transition:border .2s;
+    }
+    nav.demo-menu a:hover{border-bottom-color:#4facfe}
+
+    /* GitHub badge */
+    #github-badge{display:flex; align-items:center; gap:.5em; justify-content:center; margin:.6rem 0 0}
+    #github-badge a{
+      display:flex; align-items:center; gap:.45em; text-decoration:none; color:#24292f; font-weight:700;
+      background:#ffffffc7; border-radius:14px; padding:.35rem .65rem; box-shadow:0 2px 8px #e0e7ef;
+    }
+    #github-stars{display:flex; align-items:center; gap:.35em; background:#fff; border-radius:10px; padding:.2em .55em; font-weight:700}
+    #github-stars i{color:#f7b500}
+
+    main{width:100%; max-width:900px; display:grid; gap:18px; margin-top:1rem}
+
+    /* ===== Dog card ===== */
+    .card{
+      width:min(100%,720px);
+      position:relative; border-radius:16px; overflow:hidden;
+      background: radial-gradient(140% 140% at 20% 20%, #2a2f3a 0%, #14161a 55%, #0d0f12 100%);
+      color:#fff; box-shadow:0 18px 40px rgba(0,0,0,.18);
+      display:grid; grid-template-columns: 1.05fr 2fr; gap:0; margin:0 auto;
+      aspect-ratio:16/9;
+    }
+    @media (max-width:760px){ .card{ grid-template-columns:1fr; aspect-ratio:auto; } }
+    .photo{ display:grid; place-items:center; padding:18px;
+      background: radial-gradient(120% 120% at 35% 20%, #344055 0%, #1b2232 55%, #0f1422 100%);
+    }
+    .avatar{
+      width:min(60vmin, 240px); height:min(60vmin, 240px); max-width:240px; max-height:240px;
+      border-radius:18px; display:grid; place-items:center; background:#0004; border:1px solid #ffffff22;
+      box-shadow:0 12px 28px rgba(0,0,0,.35); font-size:clamp(64px,14vw,140px);
+    }
+    .badge{
+      position:absolute; top:12px; left:12px; background:#ffcc00; color:#1c1c1c; font-weight:900;
+      padding:.28rem .6rem; border-radius:999px; letter-spacing:.4px; box-shadow:0 6px 16px rgba(0,0,0,.25);
+    }
+    .content{ padding:18px 18px 22px; display:grid; gap:10px; align-content:center }
+    .title{ display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap }
+    .title h2{ margin:0; font-size:clamp(22px,4vw,32px) }
+    .type{ font:800 12px/1 system-ui,-apple-system,Segoe UI,Roboto,Arial; padding:.25rem .5rem; border-radius:8px;
+      background:#ffffff12; color:#cfe3ff; border:1px solid #ffffff20 }
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px }
+    @media (max-width:760px){ .grid{ grid-template-columns:1fr } }
+    .field{ background:#0f173b; border:1px solid #243079; border-radius:12px; padding:10px; display:grid; gap:6px; min-height:64px }
+    .label{ font-size:.8rem; opacity:.9 }
+    .val{ font-weight:800; letter-spacing:.2px; font-size:clamp(14px,3.6vw,18px) }
+    .owner{ display:flex; align-items:center; gap:.6rem }
+    .owner .dot{ width:10px; height:10px; border-radius:50%; background:#4f7cff; box-shadow:0 0 0 2px #1b255a }
+
+    /* Controls panel */
+    .panel{ background:rgb(39 71 208 / 11%); border-radius:12px; padding:12px; box-shadow:0 4px 16px rgba(0,0,0,.08); display:grid; gap:10px }
+    .row{display:flex; flex-wrap:wrap; gap:.6rem; align-items:center}
+    .control{display:grid; gap:6px; min-width:220px; flex:1}
+    .control input[type="text"], .control select{
+      width:100%; padding:.55rem .6rem; border-radius:10px; border:1px solid #c9d8ff; background:#fff; color:#1a2233
+    }
+    button{
+      appearance:none; border:0; border-radius:24px; padding:.65rem 1rem; font-weight:800;
+      background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%); color:#fff; cursor:pointer;
+      box-shadow:0 2px 8px #db0a56f3; transition:background .2s, transform .2s
+    }
+    button:hover{ background:linear-gradient(90deg,#e52e71 0%, #ff8a00 100%); transform:scale(1.04) }
+
+    .output{display:grid;place-items:center;min-height:160px;border:1px solid rgba(20,67,51,.18);border-radius:12px;padding:10px;background:rgba(0,0,0,.04)}
+    .output img{max-width:100%; height:auto}
+
+    /* Collapsible on mobile */
+    @media (max-width:600px){
+      body{padding:1.2rem .75rem}
+      .nav-collapsible.open{padding:.5rem}
+      nav.demo-menu{display:grid; gap:.65rem}
+      #github-badge a{font-size:.95rem}
+    }
+    @media (min-width:601px){
+      .nav-collapsible{max-height:none!important}
+      .nav-toggle{display:none!important}
+    }
+  </style>
+</head>
+<body>
+  <!-- Header / Home style -->
+  <header class="site-header">
+     <div id="github-badge">
+        <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">
+          <i class="fab fa-github" style="font-size:1.4em"></i>
+          <span>zumerlab/snapdom</span>
+          <span id="github-stars">
+            <i class="fas fa-star"></i><span id="star-count">…</span>
+          </span>
+        </a>
+      </div>
+      <br>
+    <div class="brand">
+      <h1>snapDOM</h1>
+
+      
+
+     
+    </div>
+
+    <div class="nav-bar">
+      <a class="back-home" href="./index.html">← Back to Home</a>
+    </div>
+
+   
+  </header>
+
+  <main>
+    <h3 style="text-align: center;">Dog ID Card (Plugins Playground)</h3>
+
+      <p style="text-align: center;">SnapDOM plugins give freedom to modify the captured element on the fly. It is possible
+        to modify the cloned element before render it, but also to create custom exports, like toAscii(), toPdf, etc.
+
+        Check <a href="https://github.com/zumerlab/snapdom?tab=readme-ov-file#plugins-beta" target="_blank">docs to create your own plugin!!</a> 
+      </p>
+    <!-- Dog ID Card -->
+    <section class="card" id="dog-card">
+      <div class="badge">OFFICIAL • Dog ID</div>
+      <div class="photo">
+        <div class="avatar" aria-label="Dog avatar">🐶</div>
+      </div>
+      <div class="content">
+        <div class="title">
+          <h2 id="dog-name">FRIDA</h2>
+          <span class="type">Registered Dog</span>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <div class="label">Breed</div>
+            <div class="val" id="dog-breed">Border Collie (Dog)</div>
+          </div>
+          <div class="field">
+            <div class="label">Age</div>
+            <div class="val" id="dog-age">2 years (Dog adult)</div>
+          </div>
+          <div class="field">
+            <div class="label">Owner</div>
+            <div class="val owner"><span class="dot"></span><span id="dog-owner">John Peters</span></div>
+          </div>
+          <div class="field">
+            <div class="label">Microchip</div>
+            <div class="val" id="dog-chip">ID-0xD0G-0001</div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:6px">
+          <div class="label">Notes</div>
+          <div class="val" id="dog-notes">Friendly Dog. Loves fetch, hates vacuums.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="panel" aria-label="Compose plugins">
+      <div class="row" style="justify-content:center">
+       
+        <label><input type="checkbox" id="p-replace"> 1) Replace text (e.g., Frida → Indy)</label>
+        <label><input type="checkbox" id="p-filter"> 2) CSS filter</label>
+         <label><input type="checkbox" id="p-red" checked> 3) Tint text to orange</label>
+        <label><input type="checkbox" id="p-stamp" checked> 4) Timestamp</label>
+      </div>
+
+      <div class="row">
+        <div class="control">
+          <label for="p-find" class="label" style="color:var(--muted)">Find</label>
+          <input id="p-find" type="text" >
+        </div>
+        <div class="control">
+          <label for="p-repl" class="label" style="color:var(--muted)">Replace with</label>
+          <input id="p-repl" type="text" >
+        </div>
+        <div class="control">
+          <label for="p-filter-kind" class="label" style="color:var(--muted)">Filter</label>
+          <select id="p-filter-kind">
+            <option value="none">none</option>
+            <option value="grayscale(100%)">grayscale</option>
+            <option value="blur(2px)">blur (2px)</option>
+            <option value="contrast(1.25)">contrast (+25%)</option>
+            <option value="saturate(1.3)">saturate (+30%)</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="p-stamp-kind" class="label" style="color:var(--muted)">Timestamp format</label>
+          <select id="p-stamp-kind">
+            <option value="iso">ISO</option>
+            <option value="locale" selected>Locale</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:center">
+        <button id="btn-capture">Capture PNG</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="output" id="out">—</div>
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script>
+    // Mobile menu (mismo comportamiento que el home)
+    (function setupMobileMenu() {
+      const toggle = document.getElementById('menu-toggle');
+      const panel = document.getElementById('menu-container');
+      const menu  = document.getElementById('demo-menu');
+      if (!toggle || !panel || !menu) return;
+
+      function setOpen(open) {
+        toggle.setAttribute('aria-expanded', String(open));
+        panel.classList.toggle('open', open);
+        if (open) panel.scrollTop = 0;
+        document.body.style.overflow = open ? 'hidden' : '';
+      }
+      function toggleMenu() {
+        const isOpen = panel.classList.contains('open');
+        setOpen(!isOpen);
+        if (!isOpen) {
+          const firstLink = menu.querySelector('a'); firstLink?.focus({ preventScroll:true });
+        } else {
+          toggle.focus({ preventScroll:true });
+        }
+      }
+      toggle.addEventListener('click', (e)=>{ e.preventDefault(); toggleMenu(); });
+      menu.addEventListener('click', (e)=>{ if (e.target?.tagName === 'A' && panel.classList.contains('open')) setOpen(false); });
+      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && panel.classList.contains('open')) setOpen(false); });
+      const mql = window.matchMedia('(min-width: 601px)');
+      mql.addEventListener?.('change', ()=>{ if (mql.matches) setOpen(false); });
+    })();
+
+    // GH stars
+    (async function updateGitHubStars(){
+      try{
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if(!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      }catch(e){
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@2.0.0-dev.0/dist/snapdom.mjs';
+    window.snapdom = snapdom;
+
+    // --- Plugins ---
+    function redTextPlugin(color = 'orange') {
+      return {
+        name: 'red-text',
+        async afterClone(ctx) {
+          const root = ctx.clone; if (!(root instanceof HTMLElement)) return;
+          const all = root.querySelectorAll('*');
+          for (const el of all) {
+            if (el instanceof HTMLElement) {
+              el.style.setProperty('color', color, 'important');
+              el.style.setProperty('-webkit-text-fill-color', color, 'important');
+            }
+          }
+          const svgTexts = root.querySelectorAll('svg text, svg tspan');
+          for (const node of svgTexts) {
+            node.setAttribute('fill', color);
+            node.style?.setProperty('fill', color, 'important');
+          }
+        }
+      };
+    }
+    function replaceTextPlugin(find, repl) {
+      if (!find) return { name:'noop', async afterClone(){} };
+      const safe = (s)=> s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(safe(find), 'gi');
+      return {
+        name: 'replace-text',
+        async afterClone(ctx) {
+          const root = ctx.clone; if (!(root instanceof HTMLElement)) return;
+          const tw = (root.ownerDocument || document).createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          const nodes = []; for (let n = tw.nextNode(); n; n = tw.nextNode()) nodes.push(n);
+          for (const tn of nodes) tn.nodeValue = tn.nodeValue.replace(pattern, repl ?? '');
+        }
+      };
+    }
+    function filterPlugin(value) {
+      return {
+        name: 'css-filter',
+        async afterClone(ctx) {
+          const root = ctx.clone; if (!(root instanceof HTMLElement)) return;
+          root.style.filter = value || 'none';
+        }
+      };
+    }
+    
+    function timestampOverlayPlugin(kind='locale') {
+  const pad = n => (n<10 ? '0'+n : ''+n);
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+  return {
+    name:'timestamp-overlay',
+    async afterClone(ctx){
+      const root = ctx.clone; if(!(root instanceof HTMLElement)) return;
+      const doc = root.ownerDocument || document;
+      const cs = getComputedStyle(root);
+      if (!/relative|absolute|fixed|sticky/.test(cs.position)) root.style.position = 'relative';
+
+      const tag = doc.createElement('div');
+      const stamp = (kind==='iso') ? iso(new Date()) : new Date().toLocaleString();
+      tag.textContent = `Issued: ${stamp}`;
+
+      Object.assign(tag.style, {
+        position:'absolute', right:'12px', bottom:'10px',
+        background:'linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.70))',
+        color:'#fff',                           // valor base
+        padding:'.35rem .6rem', borderRadius:'10px',
+        font:'12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
+        letterSpacing:'.3px', lineHeight:'1', pointerEvents:'none',
+        boxShadow:'0 3px 10px rgba(0,0,0,.35)', zIndex:'2147483647',
+        border:'1px solid rgba(255,255,255,.14)',
+        backdropFilter:'blur(1px)',            // Safari soporta 'backdrop-filter'
+        WebkitBackdropFilter:'blur(1px)',
+        // —— hints para Safari/foreignObject ——
+        willChange:'transform',
+        transform:'translateZ(0)',             // fuerza layer en WebKit
+        mixBlendMode:'normal',
+        textRendering:'optimizeLegibility'
+      });
+
+      // ⚠️ Safari: asegurar fill blanco sin stroke, con prioridad máxima
+      tag.style.setProperty('color', '#fff', 'important');
+      tag.style.setProperty('-webkit-text-fill-color', '#fff', 'important');
+      tag.style.setProperty('-webkit-text-stroke-width', '0', 'important');
+      tag.style.setProperty('-webkit-text-stroke-color', 'transparent', 'important');
+      // Sutil refuerzo de contraste (no obligatorio)
+      tag.style.setProperty('text-shadow', '0 1px 1px rgba(0,0,0,.35)', 'important');
+
+      root.appendChild(tag);
+    }
+  };
+}
+
+    // Capture flow
+    const btn = document.getElementById('btn-capture');
+    const target = document.getElementById('dog-card');
+    const out = document.getElementById('out');
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; out.textContent = 'Rendering…';
+      try{
+        const plugins = [];
+        if(document.getElementById('p-replace').checked){
+          const f = (document.getElementById('p-find').value || 'Dog').trim();
+          const r = document.getElementById('p-repl').value || 'Cat';
+          plugins.push(replaceTextPlugin(f, r));
+        }
+        if(document.getElementById('p-filter').checked){
+          const v = document.getElementById('p-filter-kind').value;
+          plugins.push(filterPlugin(v));
+        }
+         if(document.getElementById('p-red').checked){
+          plugins.push(redTextPlugin('orange'));
+        }
+        if(document.getElementById('p-stamp').checked){
+          const kind = document.getElementById('p-stamp-kind').value;
+          plugins.push(timestampOverlayPlugin(kind));
+        }
+
+        // Orden sugerido: Replace → Red → Filter → Timestamp
+        const result = await snapdom(target, { noShadows:true, plugins });
+        const png = await result.toPng({ quality:0.95 });
+
+        out.innerHTML = '';
+        if (png instanceof HTMLImageElement) out.appendChild(png);
+        else if (typeof png === 'string') { const img = new Image(); img.src = png; out.appendChild(img); }
+        else if (png instanceof Blob) { const url = URL.createObjectURL(png); const img = new Image(); img.onload=()=>URL.revokeObjectURL(url); img.src=url; out.appendChild(img); }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
