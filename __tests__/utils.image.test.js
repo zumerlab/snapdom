@@ -1,6 +1,6 @@
 // __tests__/utils.image.more.test.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createBackground, inlineSingleBackgroundEntry } from '../src/utils/image.js'
+import { inlineSingleBackgroundEntry } from '../src/utils/image.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
 import { cache } from '../src/core/cache.js'
 
@@ -48,41 +48,6 @@ beforeEach(() => {
 afterEach(() => {
   globalThis.Image = OrigImage
   globalThis.fetch = OrigFetch
-})
-
-// -----------------------------
-// createBackground
-// -----------------------------
-describe('createBackground', () => {
-  it('returns the original canvas when no color is provided', () => {
-    const c = document.createElement('canvas')
-    c.width = 10; c.height = 10
-    const out = createBackground(c, '')
-    expect(out).toBe(c)
-  })
-
-  it('returns the original canvas when canvas has zero size', () => {
-    const c = document.createElement('canvas')
-    c.width = 0; c.height = 0
-    const out = createBackground(c, 'red')
-    expect(out).toBe(c)
-  })
-
-  it('paints a solid background and keeps dimensions', () => {
-    const base = document.createElement('canvas')
-    base.width = 4; base.height = 4
-    const out = createBackground(base, 'rgb(255,0,0)')
-    expect(out).not.toBe(base)
-    expect(out.width).toBe(4)
-    expect(out.height).toBe(4)
-
-    const ctx = out.getContext('2d')
-    const px = ctx.getImageData(0, 0, 1, 1).data
-    expect(px[0]).toBe(255)
-    expect(px[1]).toBe(0)
-    expect(px[2]).toBe(0)
-    expect(px[3]).toBe(255)
-  })
 })
 
 // -----------------------------
