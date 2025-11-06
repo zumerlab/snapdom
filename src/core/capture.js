@@ -34,6 +34,63 @@ function stripRootShadows(originalEl, cloneRoot) {
   try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch { }
 }
 
+/** Remove all HTML comments (prevents invalid XML like "--") */
+function removeAllComments(root) {
+  const it = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
+  const toRemove = []
+  while (it.nextNode()) toRemove.push(it.currentNode)
+  for (const n of toRemove) n.remove()
+}
+
+/**
+ * Sanitize attributes to produce valid XHTML inside foreignObject.
+ * - Drop "@", unknown ":" prefixes
+ * - Drop common framework directives (x-*, v-*, :*, on:*, bind:*, let:*, class:*)
+ */
+function sanitizeAttributesForXHTML(root, opts = {}) {
+  const { stripFrameworkDirectives = true } = opts
+  const ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+  while (walker.nextNode()) {
+    const el = walker.currentNode
+    // Copy first—NamedNodeMap is live
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name
+
+      // "@": never valid in XML attribute names
+      if (name.includes('@')) { el.removeAttribute(name); continue }
+
+      // ":" requires a declared namespace (xml:, xlink:)
+      if (name.includes(':')) {
+        const prefix = name.split(':', 1)[0]
+        if (!ALLOWED_PREFIXES.has(prefix)) { el.removeAttribute(name); continue }
+      }
+
+      if (!stripFrameworkDirectives) continue
+
+      // Common framework directives that break XHTML
+      if (
+        name.startsWith('x-') ||     // Alpine
+        name.startsWith('v-') ||     // Vue
+        name.startsWith(':') ||      // Vue/Alpine shorthand
+        name.startsWith('on:') ||    // Svelte
+        name.startsWith('bind:') ||  // Svelte
+        name.startsWith('let:') ||   // Svelte
+        name.startsWith('class:')    // Svelte
+      ) {
+        el.removeAttribute(name)
+        continue
+      }
+    }
+  }
+}
+
+function sanitizeCloneForXHTML(root, opts = {}) {
+  if (!root) return
+  sanitizeAttributesForXHTML(root, opts)
+  removeAllComments(root)
+}
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
@@ -74,21 +131,23 @@ export async function captureDOM(element, options) {
 
     // state = {clone, classCSS, styleCache, ...state}
 
-   if (!outerTransforms && clone) {
-    rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
-  }
-  if (!outerShadows && clone) {
-    stripRootShadows(state.element, clone)
-  }
+    if (!outerTransforms && clone) {
+      rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
+    }
+    if (!outerShadows && clone) {
+      stripRootShadows(state.element, clone)
+    }
   } finally {
     undoClamp()
   }
+
   // AFTERCLONE
   state = { clone, classCSS, styleCache, ...state }
   await runHook('afterClone', state)
-try {
-  await ligatureIconToImage(state.clone, state.element)
-} catch { /* non-blocking */ }
+  sanitizeCloneForXHTML(state.clone)
+  try {
+    await ligatureIconToImage(state.clone, state.element)
+  } catch { /* non-blocking */ }
 
   await new Promise((resolve) => {
     idle(async () => {
