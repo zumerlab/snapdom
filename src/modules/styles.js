@@ -40,6 +40,22 @@ function snapshotComputedStyleFull(style, options = {}) {
     }
     out[prop] = val
   }
+    // Asegurar props de decoración de texto (algunos motores no las listan en la iteración)
+  const EXTRA_TEXT_DECORATION_PROPS = [
+    'text-decoration-line',
+    'text-decoration-color',
+    'text-decoration-style',
+    'text-decoration-thickness',
+    'text-underline-offset',
+    'text-decoration-skip-ink'
+  ]
+  for (const prop of EXTRA_TEXT_DECORATION_PROPS) {
+    if (out[prop]) continue
+    try {
+      const v = style.getPropertyValue(prop)
+      if (v) out[prop] = v
+    } catch {}
+  }
   if (options.embedFonts) {
     const EXTRA_FONT_PROPS = [
       'font-feature-settings',
