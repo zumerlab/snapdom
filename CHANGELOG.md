@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.0-dev.2](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.1...v2.0.0-dev.2)
+
+> 9 November 2025
+
+- Integrate createBackground into toCanvas. Closes #297 [`#297`](https://github.com/zumerlab/snapdom/issues/297)
+- Add Chinese translation of README.md (readme_cn.md) [`#298`](https://github.com/zumerlab/snapdom/issues/298)
+- Adjust final dimensions when excludeMode: remove. See #294 [`a860827`](https://github.com/zumerlab/snapdom/commit/a8608271ffd9b891ec815fa7e3130c0e1be45307)
+- Improve material icon / symbols. See #304 [`526c4c8`](https://github.com/zumerlab/snapdom/commit/526c4c8e6874b2dab6110c8ac3361a29b1dc91de)
+- Add XHTML sanitize. See #282 [`0039301`](https://github.com/zumerlab/snapdom/commit/003930196ed6e11c5dd54fce75d814046a36637d)
+- Add detection to Baidu on iOS. Also detect other apps/browsers on iOS. See #295 [`97e6dff`](https://github.com/zumerlab/snapdom/commit/97e6dffa34440d157b0b2b1afc5267d7b15c1d7b)
+- add support for text-underline-offset. See #303 [`fb603bc`](https://github.com/zumerlab/snapdom/commit/fb603bca971a10577215c436b73ba5468a4255ae)
+- add support for text-underline-offset. See#303 [`0b93c0d`](https://github.com/zumerlab/snapdom/commit/0b93c0de7a720a7c6708a50a153de86ba6f2684e)
+- fix: improve CSS src property parsing in font faces [`dbe52a1`](https://github.com/zumerlab/snapdom/commit/dbe52a121a7d68441570c02ae32c607907e188dc)
+
+
 #### [v2.0.0-dev.1](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.0...v2.0.0-dev.1)
 
 > 23 October 2025
