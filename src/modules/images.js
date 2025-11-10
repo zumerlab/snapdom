@@ -6,6 +6,25 @@
 import { snapFetch } from './snapFetch.js'
 
 /**
+ * Extract dimensions from an image element in priority order
+ * @param {HTMLImageElement} img
+ * @returns {{ width: number, height: number }}
+ */
+function extractImageDimensions(img) {
+  const dsW = parseInt(img.dataset?.snapdomWidth || '', 10) || 0
+  const dsH = parseInt(img.dataset?.snapdomHeight || '', 10) || 0
+  const attrW = parseInt(img.getAttribute('width') || '', 10) || 0
+  const attrH = parseInt(img.getAttribute('height') || '', 10) || 0
+  const styleW = parseFloat(img.style?.width || '') || 0
+  const styleH = parseFloat(img.style?.height || '') || 0
+
+  const w = dsW || styleW || attrW || img.width || img.naturalWidth || 100
+  const h = dsH || styleH || attrH || img.height || img.naturalHeight || 100
+
+  return { width: w, height: h }
+}
+
+/**
  * Converts all <img> elements in the clone to data URLs or replaces them with
  * placeholders if loading fails. Compatible with the new non-throwing snapFetch.
  *
@@ -41,19 +60,10 @@ export async function inlineImages(clone, options = {}) {
       return
     }
     // Try fallbackURL (string or callback)
+    const { width: fbW, height: fbH } = extractImageDimensions(img)
     const { fallbackURL } = options || {}
     if (fallbackURL) {
       try {
-        const dsW = parseInt(img.dataset?.snapdomWidth || '', 10) || 0
-        const dsH = parseInt(img.dataset?.snapdomHeight || '', 10) || 0
-        const attrW = parseInt(img.getAttribute('width') || '', 10) || 0
-        const attrH = parseInt(img.getAttribute('height') || '', 10) || 0
-        const styleW = parseFloat(img.style?.width || '') || 0
-        const styleH = parseFloat(img.style?.height || '') || 0
-
-        const fbW = dsW || styleW || attrW || img.width || undefined
-        const fbH = dsH || styleH || attrH || img.height || undefined
-
         const fallbackUrl =
           typeof fallbackURL === 'function'
             ? await fallbackURL({ width: fbW, height: fbH, src, element: img })
@@ -64,10 +74,8 @@ export async function inlineImages(clone, options = {}) {
           img.src = fallbackData.data
 
           // Mantener tu comportamiento actual:
-          if (!img.width && fbW) img.width = fbW
-          if (!img.height && fbH) img.height = fbH
-          if (!img.width) img.width = img.naturalWidth || 100
-          if (!img.height) img.height = img.naturalHeight || 100
+          if (!img.width) img.width = fbW
+          if (!img.height) img.height = fbH
           return
         }
       } catch {
@@ -75,19 +83,15 @@ export async function inlineImages(clone, options = {}) {
       }
     }
 
-    // Failure path: sized, neutral fallback
-    const w = img.width || img.naturalWidth || 100
-    const h = img.height || img.naturalHeight || 100
-
     if (options.placeholders !== false) {
       const fallback = document.createElement('div')
       fallback.style.cssText = [
-        `width:${w}px`,
-        `height:${h}px`,
+        `width:${fbW}px`,
+        `height:${fbH}px`,
         'background:#ccc',
         'display:inline-block',
         'text-align:center',
-        `line-height:${h}px`,
+        `line-height:${fbH}px`,
         'color:#666',
         'font-size:12px',
         'overflow:hidden'
@@ -96,7 +100,7 @@ export async function inlineImages(clone, options = {}) {
       img.replaceWith(fallback)
     } else {
       const spacer = document.createElement('div')
-      spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
+      spacer.style.cssText = `display:inline-block;width:${fbW}px;height:${fbH}px;visibility:hidden;`
       img.replaceWith(spacer)
     }
   }
