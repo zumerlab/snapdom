@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.0-dev.3](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.2...v2.0.0-dev.3)
+
+> 11 November 2025
+
+- Reorganice helper functions [`d1fd982`](https://github.com/zumerlab/snapdom/commit/d1fd98240459f07897311a42e09c1ad3e3a48c62)
+- Perf improvement [`daf0eca`](https://github.com/zumerlab/snapdom/commit/daf0eca47c0d11828e1a702b6d64d8ab7450581d)
+- Fix placeholder dimensions when image loading fails [`e44b9d9`](https://github.com/zumerlab/snapdom/commit/e44b9d947efaf28fec8976dc13b398788d461d52)
+
+
 #### [v2.0.0-dev.2](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.1...v2.0.0-dev.2)
 
 > 9 November 2025
