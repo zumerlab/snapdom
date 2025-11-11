@@ -127,19 +127,19 @@ export async function deepClone(node, sessionCache, options) {
     clone2.appendChild(placeholder)
     return clone2
   }
-    if (node.tagName === 'CANVAS') {
+  if (node.tagName === 'CANVAS') {
     // Safari-safe snapshot: poke + rAF + retry + scratch fallback
     let url = ''
     try {
       const ctx = node.getContext('2d', { willReadFrequently: true })
-      try { ctx && ctx.getImageData(0, 0, 1, 1) } catch {}
+      try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
       await new Promise(r => requestAnimationFrame(r)) // deja materializar el frame
 
       url = node.toDataURL('image/png')
 
       if (!url || url === 'data:,') {
         // reintento rápido
-        try { ctx && ctx.getImageData(0, 0, 1, 1) } catch {}
+        try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
         await new Promise(r => requestAnimationFrame(r))
         url = node.toDataURL('image/png')
 
@@ -155,10 +155,10 @@ export async function deepClone(node, sessionCache, options) {
           }
         }
       }
-    } catch {}
+    } catch { }
 
     const img = document.createElement('img')
-    try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch { }
     if (url) img.src = url
 
     // conservar dimensiones intrínsecas del bitmap
@@ -168,9 +168,9 @@ export async function deepClone(node, sessionCache, options) {
     // conservar caja CSS para no romper layout
     try {
       const cs = getComputedStyle(node)
-      if (cs.width)  img.style.width  = cs.width
+      if (cs.width) img.style.width = cs.width
       if (cs.height) img.style.height = cs.height
-    } catch {}
+    } catch { }
 
     sessionCache.nodeMap.set(img, node)
     inlineAllStyles(node, img, sessionCache, options)
@@ -203,6 +203,32 @@ export async function deepClone(node, sessionCache, options) {
         if (w) clone.dataset.snapdomWidth = String(w)
         if (h) clone.dataset.snapdomHeight = String(h)
       } catch { }
+
+      // Si el autor usó % o auto, o el alto/ ancho efectivos dan 0,
+      // escribimos px en línea para evitar que el clon “pierda” la imagen.
+      try {
+        const authored = node.getAttribute('style') || ''
+        const cs = window.getComputedStyle(node)
+        const usesPercentOrAuto = (prop) => {
+          const a = authored.match(new RegExp(`${prop}\\s*:\\s*([^;]+)`, 'i'))
+          const v = a ? a[1].trim() : cs.getPropertyValue(prop)
+          return /%|auto/i.test(String(v || ''))
+        }
+
+        const w = parseInt(clone.dataset.snapdomWidth || '0', 10)
+        const h = parseInt(clone.dataset.snapdomHeight || '0', 10)
+
+        const needFreezeW = usesPercentOrAuto('width') || !w
+        const needFreezeH = usesPercentOrAuto('height') || !h
+
+        if (needFreezeW && w) clone.style.width = `${w}px`
+        if (needFreezeH && h) clone.style.height = `${h}px`
+
+        // Blindaje extra: evita que una clase agregada luego anule el fix
+        if (w) clone.style.minWidth = `${w}px`
+        if (h) clone.style.minHeight = `${h}px`
+      } catch { }
+
     }
   } catch (err) {
     console.error('[Snapdom] Failed to clone node:', node, err)
