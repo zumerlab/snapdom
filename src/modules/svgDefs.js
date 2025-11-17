@@ -33,6 +33,44 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
   const cssEscape = (s) =>
     (window.CSS && CSS.escape) ? CSS.escape(s) : s.replace(/[^a-zA-Z0-9_-]/g, '\\$&')
 
+  const XLINK_NS = 'http://www.w3.org/1999/xlink'
+
+  /**
+   * Robustly get any SVG href-like attribute, including namespaced ones:
+   *  - href
+   *  - xlink:href
+   *  - getAttributeNS(xlinkNS, 'href')
+   *  - any other prefix:*:href (e.g. ns1:href used by some serializers)
+   * @param {Element} el
+   * @returns {string|null}
+   */
+  const getHrefAttr = (el) => {
+    if (!el || !el.getAttribute) return null
+
+    let href =
+      el.getAttribute('href') ||
+      el.getAttribute('xlink:href') ||
+      (typeof el.getAttributeNS === 'function'
+        ? el.getAttributeNS(XLINK_NS, 'href')
+        : null)
+
+    if (href) return href
+
+    // Fallback: scan any prefix:href attributes (e.g. ns1:href)
+    const attrs = el.attributes
+    if (!attrs) return null
+    for (let i = 0; i < attrs.length; i++) {
+      const a = attrs[i]
+      if (!a || !a.name) continue
+      if (a.name === 'href') return a.value
+      const idx = a.name.indexOf(':')
+      if (idx !== -1 && a.name.slice(idx + 1) === 'href') {
+        return a.value
+      }
+    }
+    return null
+  }
+
   /** IDs ya presentes en TODO el contenedor root (no solo por-svg) */
   const globalExistingIds = new Set(
     Array.from(element.querySelectorAll('[id]')).map(n => n.id)
@@ -44,29 +82,47 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
   /** Flag para saber si hubo referencias (aunque luego no existan matches) */
   let sawAnyReference = false
 
-  const addUrlIdsFromValue = (val) => {
+  /**
+   * Extrae ids de url(#id) de un valor de atributo/inline style.
+   * Opcionalmente también encola los ids para resolución recursiva.
+   * @param {string|null} val
+   * @param {Set<string>|null} queueForResolve
+   */
+  const addUrlIdsFromValue = (val, queueForResolve = null) => {
     if (!val) return
     URL_ID_RE.lastIndex = 0
     let m
     while ((m = URL_ID_RE.exec(val))) {
       sawAnyReference = true
       const id = (m[1] || '').trim()
-      if (id && !globalExistingIds.has(id)) neededIds.add(id)
+      if (!id) continue
+
+      if (!globalExistingIds.has(id)) {
+        neededIds.add(id)
+        if (queueForResolve && !queueForResolve.has(id)) {
+          queueForResolve.add(id)
+        }
+      }
     }
   }
 
   const collectReferencesInSvg = (rootSvg) => {
-    // <use href="#...">
-    const uses = rootSvg.querySelectorAll('use[href^="#"], use[xlink\\:href^="#"]')
+    // <use ...href="#..."> (cualquier namespace/prefix)
+    const uses = rootSvg.querySelectorAll('use')
     for (const u of uses) {
-      const href = u.getAttribute('href') || u.getAttribute('xlink:href')
+      const href = getHrefAttr(u)
       if (!href || !href.startsWith('#')) continue
       sawAnyReference = true
       const id = href.slice(1).trim()
       if (id && !globalExistingIds.has(id)) neededIds.add(id)
     }
+
     // url(#...) en attrs/estilos
-    let query = '*[style*="url("],*[fill^="url("], *[stroke^="url("],*[filter^="url("], *[clip-path^="url("],*[mask^="url("],*[marker^="url("], *[marker-start^="url("],*[marker-mid^="url("], *[marker-end^="url("]'
+    const query =
+      '*[style*="url("],' +
+      '*[fill^="url("], *[stroke^="url("],*[filter^="url("],' +
+      '*[clip-path^="url("],*[mask^="url("],*[marker^="url("],' +
+      '*[marker-start^="url("],*[marker-mid^="url("],*[marker-end^="url("]'
 
     const candidates = rootSvg.querySelectorAll(query)
     for (const el of candidates) {
@@ -144,16 +200,20 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
     // Seguir dependencias internas del clon (recursivo, dedupe global)
     const walk = [clone, ...clone.querySelectorAll('*')]
     for (const node of walk) {
-      const h = node.getAttribute?.('href') || node.getAttribute?.('xlink:href')
-      if (h && h.startsWith('#')) {
-        const ref = h.slice(1).trim()
-        if (ref && !globalExistingIds.has(ref) && !inlined.has(ref)) queued.add(ref)
+      const href = getHrefAttr(node)
+      if (href && href.startsWith('#')) {
+        const ref = href.slice(1).trim()
+        if (ref && !globalExistingIds.has(ref) && !inlined.has(ref)) {
+          queued.add(ref)
+        }
       }
+
       const style = node.getAttribute?.('style') || ''
-      if (style) addUrlIdsFromValue(style)
+      if (style) addUrlIdsFromValue(style, queued)
+
       for (const a of URL_ATTRS) {
         const v = node.getAttribute?.(a)
-        if (v) addUrlIdsFromValue(v)
+        if (v) addUrlIdsFromValue(v, queued)
       }
     }
   }
