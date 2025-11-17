@@ -236,25 +236,61 @@ function hasFlowFast(el, cs) {
  * @param {CSSStyleDeclaration} cs
  * @param {Record<string,string>} snap
  */
+/**
+ * Best-effort: quita height/block-size en wrappers "vacíos" para permitir
+ * comportamiento de flujo (margin-collapsing, etc.) sin romper casos como KaTeX.
+ *
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs
+ * @param {Record<string, any>} snap
+ */
 function stripHeightForWrappers(el, cs, snap) {
-  // autor inline → respetar
-  if (el instanceof HTMLElement && el.style && el.style.height) return
+  // 1) Respeta height inline del autor
+  if (el instanceof HTMLElement && el.style && el.style.height) return;
 
-  // ⛳️ clave para Orbit: si EL ELEMENTO es contenedor flex/grid, no tocar su height
-  const disp = cs.display || ''
-  if (disp.includes('flex') || disp.includes('grid')) return
+  // 2) Solo operar sobre contenedores de layout clásicos (evita math, span, svg, etc.)
+  const tag = el.tagName && el.tagName.toLowerCase();
+  if (!tag || (
+    tag !== 'div' &&
+    tag !== 'section' &&
+    tag !== 'article' &&
+    tag !== 'main' &&
+    tag !== 'aside' &&
+    tag !== 'header' &&
+    tag !== 'footer' &&
+    tag !== 'nav'
+  )) {
+    return;
+  }
 
-  // guardas existentes
-  if (isReplaced(el)) return
-  const pos = cs.position
-  if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return
-  if (cs.transform !== 'none') return
-  if (hasBox(cs)) return
-  if (isFlexOrGridItem(el)) return
+  // clave para Orbit: si EL ELEMENTO es contenedor flex/grid, no tocar su height
+  const disp = cs.display || '';
+  if (disp.includes('flex') || disp.includes('grid')) return;
 
-  // wrapper transparente con flujo → permitir margin-collapsing
-  if (!hasFlowFast(el, cs)) return
+  // 3) Guardas existentes
+  if (isReplaced(el)) return;
 
-  delete snap.height
-  delete snap['block-size']
+  const pos = cs.position;
+  if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return;
+  if (cs.transform !== 'none') return;
+  if (hasBox(cs)) return;
+  if (isFlexOrGridItem(el)) return;
+
+  // 4) No tocar wrappers que se usan para ocultar / accesibilidad (KaTeX, screen-reader hacks, etc.)
+  const overflowX = cs.overflowX || cs.overflow || 'visible';
+  const overflowY = cs.overflowY || cs.overflow || 'visible';
+  if (overflowX !== 'visible' || overflowY !== 'visible') return;
+
+  const clip = cs.clip;
+  if (clip && clip !== 'auto' && clip !== 'rect(auto, auto, auto, auto)') return;
+
+  if (cs.visibility === 'hidden' || cs.opacity === '0') return;
+
+  // 5) Solo wrappers "en flujo" realmente neutros
+  if (!hasFlowFast(el, cs)) return;
+
+  // 6) Ahora sí: quitamos height y block-size del snapshot
+  delete snap.height;
+  delete snap['block-size'];
 }
+
