@@ -594,48 +594,82 @@ export async function embedCustomFonts({
     requiredIndex.set(fam, arr)
   }
 
-  function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
-    if (!requiredIndex.has(fam)) return false
+  /**
+ * Decide if a given @font-face matches at least one of the required variants
+ * for the specified family.
+ *
+ * - Prioriza match exacto (peso, estilo, stretch).
+ * - Luego permite "near weight" manteniendo estilo/stretch.
+ * - Y como fallback específico:
+ *   Si SOLO hay @font-face `normal` para una familia,
+ *   pero el DOM pide `italic`/`oblique`,
+ *   acepta este face normal (si el peso/stretch son razonables),
+ *   de modo que el motor pueda generar cursiva sintética.
+ *
+ * @param {string} fam
+ * @param {string} styleSpec   font-style desde @font-face (p.ej. "normal" o "italic")
+ * @param {string} weightSpec  font-weight desde @font-face (p.ej. "400" o "400 700")
+ * @param {string} stretchSpec font-stretch desde @font-face (p.ej. "100%")
+ */
+function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
+  if (!requiredIndex.has(fam)) return false
 
-    const need = requiredIndex.get(fam)
-    const ws = parseWeightSpec(weightSpec)
-    const ss = parseStyleSpec(styleSpec)
-    const ts = parseStretchSpec(stretchSpec)
+  const need = requiredIndex.get(fam)
+  const ws = parseWeightSpec(weightSpec)
+  const ss = parseStyleSpec(styleSpec)
+  const ts = parseStretchSpec(stretchSpec)
 
-    const faceIsRange = ws.min !== ws.max
-    const faceSingleW = ws.min
+  const faceIsRange = ws.min !== ws.max
+  const faceSingleW = ws.min
 
-    const styleOK = (reqKind) => (
-      (ss.kind === 'normal' && reqKind === 'normal') ||
-      (ss.kind !== 'normal' && (reqKind === 'italic' || reqKind === 'oblique'))
-    )
+  const styleOK = (reqKind) => (
+    (ss.kind === 'normal' && reqKind === 'normal') ||
+    (ss.kind !== 'normal' && (reqKind === 'italic' || reqKind === 'oblique'))
+  )
 
-    let exactMatched = false
+  let exactMatched = false
 
+  // 1) Match exacto
+  for (const r of need) {
+    const wOk = faceIsRange ? (r.w >= ws.min && r.w <= ws.max) : (r.w === faceSingleW)
+    const sOk = styleOK(normStyle(r.s))
+    const tOk = (r.st >= ts.min && r.st <= ts.max)
+
+    if (wOk && sOk && tOk) {
+      exactMatched = true
+      break
+    }
+  }
+
+  if (exactMatched) return true
+
+  // 2) "Near weight" manteniendo estilo/stretch
+  if (!faceIsRange) {
     for (const r of need) {
-      const wOk = faceIsRange ? (r.w >= ws.min && r.w <= ws.max) : (r.w === faceSingleW)
       const sOk = styleOK(normStyle(r.s))
       const tOk = (r.st >= ts.min && r.st <= ts.max)
-
-      if (wOk && sOk && tOk) {
-        exactMatched = true
-        break
-      }
+      const nearWeight = Math.abs(faceSingleW - r.w) <= 300
+      if (nearWeight && sOk && tOk) return true
     }
-
-    if (exactMatched) return true
-
-    if (!faceIsRange) {
-      for (const r of need) {
-        const sOk = styleOK(normStyle(r.s))
-        const tOk = (r.st >= ts.min && r.st <= ts.max)
-        const nearWeight = Math.abs(faceSingleW - r.w) <= 300
-        if (nearWeight && sOk && tOk) return true
-      }
-    }
-
-    return false
   }
+
+  // 3) Fallback: DOM pide italic/oblique pero solo hay @font-face normal
+  //    para ESTA familia: aceptamos el face normal si peso/stretch son razonables.
+  if (!faceIsRange && ss.kind === 'normal') {
+    const hasItalicRequest = need.some((r) => normStyle(r.s) !== 'normal')
+    if (hasItalicRequest) {
+      for (const r of need) {
+        const nearWeight = Math.abs(faceSingleW - r.w) <= 300
+        const stretchOK = (r.st >= ts.min && r.st <= ts.max)
+        if (nearWeight && stretchOK) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 

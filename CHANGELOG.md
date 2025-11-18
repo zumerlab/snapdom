@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.0-dev.4](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.3...v2.0.0-dev.4)
+
+> 18 November 2025
+
+- Feature enable tree-shakeable code [`ebb7b6a`](https://github.com/zumerlab/snapdom/commit/ebb7b6add3b47c75a450e0264d628837303def5d)
+- Fix bug when img has height with % units. Closes #268 [`#268`](https://github.com/zumerlab/snapdom/issues/268)
+- Fix regression to process MathJax [`7ef116c`](https://github.com/zumerlab/snapdom/commit/7ef116cdbbfcba0793cd918b2ba8ad94e063f74f)
+- Fix bug See #316 [`7efbede`](https://github.com/zumerlab/snapdom/commit/7efbede5970ed09982c06f8cfa3fe45d990d8fdf)
+
+#### [v2.0.0-dev.3](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.2...v2.0.0-dev.3)
+
+> 11 November 2025
+
+- Reorganice helper functions [`d1fd982`](https://github.com/zumerlab/snapdom/commit/d1fd98240459f07897311a42e09c1ad3e3a48c62)
+- Perf improvement [`daf0eca`](https://github.com/zumerlab/snapdom/commit/daf0eca47c0d11828e1a702b6d64d8ab7450581d)
+- Fix placeholder dimensions when image loading fails [`e44b9d9`](https://github.com/zumerlab/snapdom/commit/e44b9d947efaf28fec8976dc13b398788d461d52)
+
+
+#### [v2.0.0-dev.2](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.1...v2.0.0-dev.2)
+
+> 9 November 2025
+
+- Integrate createBackground into toCanvas. Closes #297 [`#297`](https://github.com/zumerlab/snapdom/issues/297)
+- Add Chinese translation of README.md (readme_cn.md) [`#298`](https://github.com/zumerlab/snapdom/issues/298)
+- Adjust final dimensions when excludeMode: remove. See #294 [`a860827`](https://github.com/zumerlab/snapdom/commit/a8608271ffd9b891ec815fa7e3130c0e1be45307)
+- Improve material icon / symbols. See #304 [`526c4c8`](https://github.com/zumerlab/snapdom/commit/526c4c8e6874b2dab6110c8ac3361a29b1dc91de)
+- Add XHTML sanitize. See #282 [`0039301`](https://github.com/zumerlab/snapdom/commit/003930196ed6e11c5dd54fce75d814046a36637d)
+- Add detection to Baidu on iOS. Also detect other apps/browsers on iOS. See #295 [`97e6dff`](https://github.com/zumerlab/snapdom/commit/97e6dffa34440d157b0b2b1afc5267d7b15c1d7b)
+- add support for text-underline-offset. See #303 [`fb603bc`](https://github.com/zumerlab/snapdom/commit/fb603bca971a10577215c436b73ba5468a4255ae)
+- add support for text-underline-offset. See#303 [`0b93c0d`](https://github.com/zumerlab/snapdom/commit/0b93c0de7a720a7c6708a50a153de86ba6f2684e)
+- fix: improve CSS src property parsing in font faces [`dbe52a1`](https://github.com/zumerlab/snapdom/commit/dbe52a121a7d68441570c02ae32c607907e188dc)
+
+
 #### [v2.0.0-dev.1](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.0...v2.0.0-dev.1)
 
 > 23 October 2025
