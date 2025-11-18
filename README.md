@@ -33,9 +33,8 @@
 
 # snapDOM
 
-**snapDOM** is a fast and accurate DOM-to-image capture tool built for **Zumly**, a zoom-based view transition framework.
-
-It captures any HTML element as a scalable SVG image, preserving styles, fonts, background images, pseudo-elements, and even shadow DOM. It also supports export to raster image formats and canvas.
+**SnapDOM** is a next-generation **DOM Capture Engine** — ultra-fast, modular, and extensible.  
+It converts any DOM subtree into a self-contained representation that can be exported to SVG, PNG, JPG, WebP, Canvas, Blob, or **any custom format** through plugins.
 
 * Full DOM capture
 * Embedded styles, pseudo-elements, and fonts
@@ -58,6 +57,7 @@ It captures any HTML element as a scalable SVG image, preserving styles, fonts, 
   - [NPM / Yarn (dev builds)](#npm--yarn-dev-builds)
   - [CDN (stable)](#cdn-stable)
   - [CDN (dev builds)](#cdn-dev-builds)
+- [Build Outputs & Tree-Shaking](#build-outputs--tree-shaking)
 - [Basic usage](#basic-usage)
   - [Reusable capture](#reusable-capture)
   - [One-step shortcuts](#one-step-shortcuts)
@@ -123,10 +123,10 @@ yarn add @zumer/snapdom@dev
 ### CDN (stable)
 
 ```html
-<!-- Minified UMD build -->
-<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.min.js"></script>
+<!-- Minified build -->
+<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
 
-<!-- ES Module build -->
+<!-- Minified ES Module build -->
 <script type="module">
   import { snapdom } from "https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs";
 </script>
@@ -135,14 +135,55 @@ yarn add @zumer/snapdom@dev
 ### CDN (dev builds)
 
 ```html
-<!-- Minified UMD build (dev) -->
-<script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.min.js"></script>
+<!-- Minified build (dev) -->
+<script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.js"></script>
 
-<!-- ES Module build (dev) -->
+<!-- Minified ES Module build (dev) -->
 <script type="module">
   import { snapdom } from "https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs";
 </script>
 ```
+
+## Build Outputs & Tree-Shaking
+
+SnapDOM ships multiple build variants, but using it is simple.
+
+### npm usage → ESM modular build (tree-shakeable)
+
+When you import SnapDOM in a project with a bundler:
+
+```js
+import { snapdom } from '@zumer/snapdom';
+```
+
+your environment automatically loads:
+
+```sh
+dist/modules/snapdom.js
+```
+
+This is the modular ESM build, enabling:
+
+- Tree-shaking
+
+- Code-splitting
+
+- Lazy loading of exporters (toPng, toJpg, toWebp, etc.)
+
+You do not need to configure anything; bundlers pick this build automatically.
+
+### Script tag usage → Global build
+
+```html
+<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
+<script>
+  snapdom.toPng(document.body).then(img => {
+    document.body.appendChild(img);
+  });
+</script>
+```
+
+This loads the monolithic global build and exposes snapdom on window.
 
 
 ## Basic usage
