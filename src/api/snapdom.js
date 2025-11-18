@@ -1,17 +1,13 @@
 // src/api/snapdom.js
-import { captureDOM } from '../core/capture'
+import { captureDOM } from '../core/capture.js'
 import { extendIconFonts } from '../modules/iconFonts.js'
-import { createContext } from '../core/context'
-import { toImg, toSvg } from '../exporters/toImg.js'
-import { toCanvas } from '../exporters/toCanvas.js'
-import { toBlob } from '../exporters/toBlob.js'
-import { rasterize } from '../modules/rasterize.js'
-import { download } from '../exporters/download.js'
+import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
-import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js' // ← local-first support
+import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
 
 // API pública (registro global de plugins)
-snapdom.plugins = (...defs) => { registerPlugins(...defs); return snapdom }
+export function plugins(...defs) { registerPlugins(...defs); return snapdom }
+export const snapdom = Object.assign(main, { plugins })
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
@@ -27,11 +23,10 @@ let _safariWarmup = false
  * @param {HTMLElement} element - The DOM element to capture.
  * @param {object} userOptions - Options for rendering/exporting.
  * @returns {Promise<object>} Object with exporter methods:
- * @deprecated toImg()
  *   - url: The raw data URL
  *   - toRaw(): Gets raw data URL
- *   - toImg(): Converts to Svg format
- *   - toSvg(): Converts to Svg format
+ *   - toImg(): Converts to Image element
+ *   - toSvg(): Converts to SVG Image element
  *   - toCanvas(): Converts to HTMLCanvasElement
  *   - toBlob(): Converts to Blob
  *   - toPng(): Converts to PNG format
@@ -39,7 +34,7 @@ let _safariWarmup = false
  *   - toWebp(): Converts to WebP format
  *   - download(): Triggers file download
  */
-export async function snapdom(element, userOptions) {
+async function main(element, userOptions) {
   if (!element) throw new Error('Element cannot be null or undefined')
 
   // Normalize options into a capture context
@@ -53,7 +48,6 @@ export async function snapdom(element, userOptions) {
     for (let i = 0; i < 3; i++) {
       try {
         await safariWarmup(element, userOptions)
-        console.log('safariWarmup:', i)
         _safariWarmup = false
       } catch {
         // swallow error
@@ -61,10 +55,10 @@ export async function snapdom(element, userOptions) {
     }
   }
 
-  /* c8 ignore next 1 */
   if (context.iconFonts && context.iconFonts.length > 0) extendIconFonts(context.iconFonts)
 
   if (!context.snap) {
+    // Mantener compat: atajos disponibles en context.snap
     context.snap = {
       toPng: (el, opts) => snapdom.toPng(el, opts),
       toSvg: (el, opts) => snapdom.toSvg(el, opts),
@@ -73,14 +67,6 @@ export async function snapdom(element, userOptions) {
 
   return snapdom.capture(element, context, INTERNAL_TOKEN)
 }
-
-/**
- * Global registration API (plugins).
- * Kept here for DX; identical to the top alias.
- * @param  {...any} defs
- * @returns {typeof snapdom}
- */
-snapdom.plugins = (...defs) => { registerPlugins(...defs); return snapdom }
 
 /**
  * Internal capture method that returns helper methods for transformation/export.
@@ -96,29 +82,78 @@ snapdom.capture = async (el, context, _token) => {
 
   const url = await captureDOM(el, context)
 
-  // ——— 1) Core exports por defecto ———
+  // ——— 1) Core exports por defecto (carga lazy en cada tipo) ———
+  // NOTA: no importamos estáticamente los exportadores aquí.
   const coreExports = {
-    img: async (ctx, opts) => toImg(url, { ...ctx, ...(opts || {}) }),
-    svg: async (ctx, opts) => toSvg(url, { ...ctx, ...(opts || {}) }),
-    canvas: async (ctx, opts) => toCanvas(url, { ...ctx, ...(opts || {}) }),
-    blob: async (ctx, opts) => toBlob(url, { ...ctx, ...(opts || {}) }),
-    png: async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'png' }),
-    jpeg: async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'jpeg' }),
-    webp: async (ctx, opts) => rasterize(url, { ...ctx, ...(opts || {}), format: 'webp' }),
-    download: async (ctx, opts) => download(url, { ...ctx, ...(opts || {}) }),
+    img: async (ctx, opts) => {
+      const { toImg } = await import('../exporters/toImg.js')
+      return toImg(url, { ...ctx, ...(opts || {}) })
+    },
+    svg: async (ctx, opts) => {
+      const { toSvg } = await import('../exporters/toImg.js')
+      return toSvg(url, { ...ctx, ...(opts || {}) })
+    },
+    canvas: async (ctx, opts) => {
+      const { toCanvas } = await import('../exporters/toCanvas.js')
+      return toCanvas(url, { ...ctx, ...(opts || {}) })
+    },
+    blob: async (ctx, opts) => {
+      const { toBlob } = await import('../exporters/toBlob.js')
+      return toBlob(url, { ...ctx, ...(opts || {}) })
+    },
+    png: async (ctx, opts) => {
+      const { rasterize } = await import('../modules/rasterize.js')
+      return rasterize(url, { ...ctx, ...(opts || {}), format: 'png' })
+    },
+    jpeg: async (ctx, opts) => {
+      const { rasterize } = await import('../modules/rasterize.js')
+      return rasterize(url, { ...ctx, ...(opts || {}), format: 'jpeg' })
+    },
+    webp: async (ctx, opts) => {
+      const { rasterize } = await import('../modules/rasterize.js')
+      return rasterize(url, { ...ctx, ...(opts || {}), format: 'webp' })
+    },
+    download: async (ctx, opts) => {
+      const { download } = await import('../exporters/download.js')
+      return download(url, { ...ctx, ...(opts || {}) })
+    },
   }
 
   // ——— 2) Exports declarados por plugins ———
-  // Facade para plugins: insumos reutilizables "silenciosos" (sin hooks), nombres sin "to"
+  // Fachada reutilizable “silenciosa” (sin hooks) para uso en defineExports()
   const _pluginExports = {
-    svg:   (opts) => toSvg(url,    { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true }),
-    canvas:(opts) => toCanvas(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true }),
-    png:   (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'png',  [INTERNAL_EXPORT_TOKEN]: true }),
-    jpeg:  (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true }),
-    jpg:   (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true }),
-    webp:  (opts) => rasterize(url,{ ...context, ...(opts || {}), format: 'webp', [INTERNAL_EXPORT_TOKEN]: true }),
-    blob:  (opts) => toBlob(url,   { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true }),
-    img:   (opts) => toImg(url,    { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+    svg:   async (opts) => {
+      const { toSvg } = await import('../exporters/toImg.js')
+      return toSvg(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+    },
+    canvas:async (opts) => {
+      const { toCanvas } = await import('../exporters/toCanvas.js')
+      return toCanvas(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+    },
+    png:   async (opts) => {
+      const { rasterize } = await import('../modules/rasterize.js')
+      return rasterize(url, { ...context, ...(opts || {}), format: 'png', [INTERNAL_EXPORT_TOKEN]: true })
+    },
+    jpeg:  async (opts) => {
+      const { rasterize } = await import('../modules/rasterize.js')
+      return rasterize(url, { ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true })
+    },
+    jpg:   async (opts) => {
+      const { rasterize } = await import('../modules/rasterize.js')
+      return rasterize(url, { ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true })
+    },
+    webp:  async (opts) => {
+      const { rasterize } = await import('../modules/rasterize.js')
+      return rasterize(url, { ...context, ...(opts || {}), format: 'webp', [INTERNAL_EXPORT_TOKEN]: true })
+    },
+    blob:  async (opts) => {
+      const { toBlob } = await import('../exporters/toBlob.js')
+      return toBlob(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+    },
+    img:   async (opts) => {
+      const { toImg } = await import('../exporters/toImg.js')
+      return toImg(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+    },
   }
 
   // Contexto extendido para defineExports (incluye URL y la fachada para reuso)
@@ -130,12 +165,12 @@ snapdom.capture = async (el, context, _token) => {
   // Merge (plugins pueden overridear core)
   const exportsMap = { ...coreExports, ...provided }
 
-  // ——— Alias: jpg → jpeg (para toJpg y to('jpg')) ———
+  // —— Alias: jpg → jpeg (para toJpg y to('jpg')) ——
   if (exportsMap.jpeg && !exportsMap.jpg) {
     exportsMap.jpg = (ctx, opts) => exportsMap.jpeg(ctx, opts)
   }
 
-  // ——— Normalizador para opciones por tipo (p.ej. JPEG: fondo blanco) ———
+  // —— Normalizador para opciones por tipo (p.ej. JPEG: fondo blanco) ——
   function normalizeExportOptions(type, opts) {
     const next = { ...context, ...(opts || {}) }
     if (type === 'jpeg' || type === 'jpg') {
@@ -145,7 +180,7 @@ snapdom.capture = async (el, context, _token) => {
     return next
   }
 
-  // ——— Runner unificado con beforeExport/afterExport y cola por sesión ———
+  // —— Runner unificado con beforeExport/afterExport y cola por sesión ——
   let afterSnapFired = false
   let _exportQueue = Promise.resolve()
   async function runExport(type, opts) {
@@ -166,7 +201,7 @@ snapdom.capture = async (el, context, _token) => {
     return _exportQueue = _exportQueue.then(job)
   }
 
-  // ——— Helpers esperados por los tests + API azúcar ———
+  // —— Helpers esperados por los tests + API azúcar ——
   const result = {
     url,
     toRaw: () => url,
@@ -178,9 +213,9 @@ snapdom.capture = async (el, context, _token) => {
     toCanvas: (opts) => runExport('canvas', opts),
     toBlob: (opts) => runExport('blob', opts),
     toPng: (opts) => runExport('png', opts),
-    toJpg: (opts) => runExport('jpg', opts),     // ← alias requerido por los tests
+    toJpg: (opts) => runExport('jpg', opts),     // alias requerido por tests
     toWebp: (opts) => runExport('webp', opts),
-    download: (opts) => runExport('download', opts) // ← método directo (no toDownload)
+    download: (opts) => runExport('download', opts)
   }
 
   // Azúcar dinámico por cada export registrado (plugins incluidos)
@@ -263,12 +298,6 @@ snapdom.download = (el, options) => snapdom(el, options).then(result => result.d
 
 /**
  * Force Safari to decode fonts and images by doing an offscreen pre-capture.
- * - Creates a tiny offscreen <img> using the SVG data URL from captureDOM.
- * - Awaits decoding and paints to a 1×1 canvas to ensure full decode/composite.
- *
- * @param {HTMLElement} element
- * @param {object} baseOptions - user options
- * @returns {Promise<void>}
  */
 async function safariWarmup(element, baseOptions) {
   if (_safariWarmup) return
@@ -283,9 +312,7 @@ async function safariWarmup(element, baseOptions) {
   let url
   try {
     url = await captureDOM(element, preflight)
-  } catch {
-    // no bloquea la captura real
-  }
+  } catch {}
 
   // 1) estabiliza layout/paint en WebKit
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
@@ -293,21 +320,20 @@ async function safariWarmup(element, baseOptions) {
   if (url) {
     await new Promise((resolve) => {
       const img = new Image()
-      try { img.decoding = 'sync'; img.loading = 'eager' } catch { /* noop */ }
+      try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
       img.style.cssText =
         'position:fixed;left:0px;top:0px;width:10px;height:10px;opacity:0.01;pointer-events:none;'
       img.src = url
       document.body.appendChild(img)
 
       ;(async () => {
-        try { if (typeof img.decode === 'function') await img.decode() } catch { /* noop */ }
+        try { if (typeof img.decode === 'function') await img.decode() } catch {}
         const start = performance.now()
         while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
-          // ~3–4 ticks worst-case
           await new Promise(r => setTimeout(r, 50))
         }
         await new Promise(r => requestAnimationFrame(r))
-        try { img.remove() } catch { /* noop */ }
+        try { img.remove() } catch {}
         resolve()
       })()
     })
@@ -318,7 +344,7 @@ async function safariWarmup(element, baseOptions) {
     try {
       const ctx = c.getContext('2d', { willReadFrequently: true })
       if (ctx) { ctx.getImageData(0, 0, 1, 1) }
-    } catch { /* noop */ }
+    } catch {}
   })
 
   _safariWarmup = true
@@ -326,8 +352,6 @@ async function safariWarmup(element, baseOptions) {
 
 /**
  * Checks if the element (or its descendants) use background or mask images.
- * @param {Element} el - The root element to inspect.
- * @returns {boolean} True if any background or mask image is found.
  */
 function hasBackgroundOrMask(el) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT)
@@ -344,3 +368,5 @@ function hasBackgroundOrMask(el) {
   }
   return false
 }
+
+export default snapdom
