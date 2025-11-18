@@ -13,20 +13,39 @@ export function idle(fn, { fast = false } = {}) {
   }
 }
 
-/**
- * Detecta Safari real + Safari en iOS WebView (UIWebView/WKWebView) + variantes WeChat.
- */
 export function isSafari() {
-  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : ''
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const uaLower = ua.toLowerCase()
 
-  // Safari "clásico" (descarta Chrome y Android)
-  const isSafariUA = /^((?!chrome|android).)*safari/i.test(ua)
+  // Safari desktop/mobile UA, excluding Chrome iOS, Firefox iOS and Android browsers
+  const isSafariUA =
+    uaLower.includes('safari') &&
+    !uaLower.includes('chrome') &&
+    !uaLower.includes('crios') &&   // Chrome on iOS
+    !uaLower.includes('fxios') &&   // Firefox on iOS
+    !uaLower.includes('android')
 
-  // UIWebView/WKWebView en iOS: AppleWebKit + Mobile pero sin "Safari"
-  const isUIWebView = /AppleWebKit/i.test(ua) && /Mobile/i.test(ua) && !/Safari/i.test(ua)
+  // Generic WebKit-based engines (UIWebView / WKWebView)
+  const isWebKit = /applewebkit/i.test(ua)
+  const isMobile = /mobile/i.test(ua)
+  const missingSafariToken = !/safari/i.test(ua)
 
-  // Apps tipo WeChat que embeben WebKit
-  const isWeChatUA = /(MicroMessenger|wxwork|WeCom|WindowsWechat|MacWechat)/i.test(ua)
+  // iOS UIWebView or WKWebView inside apps (in-app browsers)
+  const isUIWebView = isWebKit && isMobile && missingSafariToken
 
-  return isSafariUA || isUIWebView || isWeChatUA
+  // WeChat / WeCom embedded browsers on iOS
+  const isWeChatUA =
+    /(micromessenger|wxwork|wecom|windowswechat|macwechat)/i.test(ua)
+
+  // Baidu app browsers on iOS (BaiduBoxApp, BaiduBrowser, etc.)
+  const isBaiduUA =
+    /(baiduboxapp|baidubrowser|baidusearch|baiduboxlite)/i.test(uaLower)
+
+  // On iOS, all browsers use WebKit as the rendering engine (WKWebView)
+  // If the device is iOS and uses WebKit, treat it as Safari-equivalent
+  const isIOSWebKit =
+    /ipad|iphone|ipod/.test(uaLower) && isWebKit
+
+  return isSafariUA || isUIWebView || isWeChatUA || isBaiduUA || isIOSWebKit
 }

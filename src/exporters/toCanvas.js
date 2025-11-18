@@ -112,15 +112,23 @@ function maybeConvertBoxShadowForSafari(url) {
 }
 
 /**
- * Rasterize SVG into a canvas honoring width/height + scale.
- * Uses options.meta for natural sizes (from captureDOM).
+ * Rasterize SVG (o data URL) en un canvas respetando width/height + scale.
+ * Soporta aplanar un background color sin canvas intermedio.
  * @param {string} url
- * @param {{width?:number,height?:number,scale?:number,dpr?:number,meta?:object}} options
+ * @param {{
+ *   width?:number,
+ *   height?:number,
+ *   scale?:number,
+ *   dpr?:number,
+ *   meta?:object,
+ *   backgroundColor?: string // <- NUEVO: color opcional para aplanar fondo
+ * }} options
  * @returns {Promise<HTMLCanvasElement>}
  */
 export async function toCanvas(url, options) {
-  let { width: optW, height: optH, scale = 1, dpr = 1, meta = {} } = options
+  let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor } = options
   url = maybeConvertBoxShadowForSafari(url)
+
   const img = new Image()
   img.loading = 'eager'
   img.decoding = 'sync'
@@ -131,7 +139,6 @@ export async function toCanvas(url, options) {
   const natW = img.naturalWidth
   const natH = img.naturalHeight
 
-  // Referencia natural del elemento
   const refW = Number.isFinite(meta.w0) ? meta.w0 : natW
   const refH = Number.isFinite(meta.h0) ? meta.h0 : natH
 
@@ -155,7 +162,6 @@ export async function toCanvas(url, options) {
     outH = natH
   }
 
-  // Aplica scale sobre lo resultante
   outW = outW * scale
   outH = outH * scale
 
@@ -168,7 +174,13 @@ export async function toCanvas(url, options) {
   const ctx = canvas.getContext('2d')
   if (dpr !== 1) ctx.scale(dpr, dpr)
 
-  ctx.drawImage(img, 0, 0, outW, outH)
+  if (backgroundColor) {
+    ctx.save()
+    ctx.fillStyle = backgroundColor
+    ctx.fillRect(0, 0, outW, outH)
+    ctx.restore()
+  }
 
+  ctx.drawImage(img, 0, 0, outW, outH)
   return canvas
 }

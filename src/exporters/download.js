@@ -1,7 +1,6 @@
 // src/exporters/download.js
 import { toBlob } from './toBlob.js'
 import { toCanvas } from './toCanvas.js'
-import { createBackground } from '../utils/index.js'
 
 /**
  * Triggers download of the generated image.
@@ -14,7 +13,7 @@ import { createBackground } from '../utils/index.js'
  * @returns {Promise<void>}
  */
 export async function download(url, options) {
-   options.dpr = 1
+  options.dpr = 1
   if (options.format === 'svg') {
     const blob = await toBlob(url, { ...options, type: 'svg' })
     const objectURL = URL.createObjectURL(blob)
@@ -26,12 +25,9 @@ export async function download(url, options) {
     return
   }
 
-  const canvas = await toCanvas(url, options)
-  /* v8 ignore next */
-  const finalCanvas = options.backgroundColor ? createBackground(canvas, options.backgroundColor) : canvas
-
+  const canvas = await toCanvas(url, options) // backgroundColor inline
   const a = document.createElement('a')
-  a.href = finalCanvas.toDataURL(`image/${options.format}`, options.quality)
+  a.href = canvas.toDataURL(`image/${options.format}`, options.quality)
   a.download = options.filename
   a.click()
 }
