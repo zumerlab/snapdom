@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+### [v2.0.0](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.4...v2.0.0)
+
+> 18 November 2025
+
+- V2 release!! [`#319`](https://github.com/zumerlab/snapdom/pull/319)
+
+
 #### [v2.0.0-dev.4](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.3...v2.0.0-dev.4)
 
 > 18 November 2025
