@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.0-dev.4](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.3...v2.0.0-dev.4)
+
+> 18 November 2025
+
+- Feature enable tree-shakeable code [`ebb7b6a`](https://github.com/zumerlab/snapdom/commit/ebb7b6add3b47c75a450e0264d628837303def5d)
+- Fix bug when img has height with % units. Closes #268 [`#268`](https://github.com/zumerlab/snapdom/issues/268)
+- Fix regression to process MathJax [`7ef116c`](https://github.com/zumerlab/snapdom/commit/7ef116cdbbfcba0793cd918b2ba8ad94e063f74f)
+- Fix bug See #316 [`7efbede`](https://github.com/zumerlab/snapdom/commit/7efbede5970ed09982c06f8cfa3fe45d990d8fdf)
+
 #### [v2.0.0-dev.3](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.2...v2.0.0-dev.3)
 
 > 11 November 2025
