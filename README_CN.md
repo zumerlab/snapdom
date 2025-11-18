@@ -32,9 +32,11 @@
 
 # snapDOM
 
-**snapDOM** 是一个快速、准确的 DOM 转图片捕获工具，专为 **Zumly**（一个基于缩放效果的视图过渡框架）构建。
+**SnapDOM** 是新一代的 **DOM 捕获引擎（DOM Capture Engine）**——超高速、模块化、可扩展。  
+它可以将任意 DOM 子树转换为自包含的结构，并导出为 SVG、PNG、JPG、WebP、Canvas、Blob，或通过插件系统生成 **任何自定义格式**。
 
-它可以将任何 HTML 元素捕获为可缩放的 SVG 图片，保留样式、字体、背景图片、伪元素，甚至 shadow DOM。同时支持导出为光栅图片格式和 canvas。
+SnapDOM 会保留样式、字体、背景图像、伪元素、Shadow DOM 等所有视觉特性，并通过可扩展的架构实现强大的灵活性和最高级别的捕获质量。
+
 
 * 完整的 DOM 捕获
 * 内嵌样式、伪元素和字体
@@ -57,6 +59,7 @@
   - [NPM / Yarn (开发版)](#npm--yarn-开发版)
   - [CDN (稳定版)](#cdn-稳定版)
   - [CDN (开发版)](#cdn-开发版)
+- [Build Outputs & Tree-Shaking (构建产物与摇树优化)](#构建产物与摇树优化)
 - [基本用法](#基本用法)
   - [可复用的捕获](#可复用的捕获)
   - [一步式快捷方法](#一步式快捷方法)
@@ -120,8 +123,8 @@ yarn add @zumer/snapdom@dev
 ### CDN (稳定版)
 
 ```html
-<!-- 压缩的 UMD 构建 -->
-<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.min.js"></script>
+<!-- 压缩的 构建 -->
+<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
 
 <!-- ES 模块构建 -->
 <script type="module">
@@ -133,7 +136,7 @@ yarn add @zumer/snapdom@dev
 
 ```html
 <!-- 压缩的 UMD 构建（开发版） -->
-<script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.min.js"></script>
+<script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.js"></script>
 
 <!-- ES 模块构建（开发版） -->
 <script type="module">
@@ -141,6 +144,47 @@ yarn add @zumer/snapdom@dev
 </script>
 ```
 
+
+## **构建产物与摇树优化**
+
+SnapDOM 提供多种构建版本，但使用方式非常简单。
+
+### npm 使用 → **ESM 模块化构建（支持 Tree-Shaking）**
+
+在使用打包工具（Vite、Webpack、Rollup 等）的项目中：
+
+```js
+import { snapdom } from '@zumer/snapdom';
+```
+
+打包工具会自动加载：
+
+```
+dist/modules/snapdom.js
+```
+
+这是 SnapDOM 的 **模块化 ESM 构建**，具有以下特性：
+
+* 支持 Tree-Shaking（自动移除未使用代码）
+* 支持按需代码拆分
+* 内部导出函数（`toPng`、`toJpg`、`toWebp` 等）会 **懒加载**
+
+无需额外配置，打包工具会自动选择此构建版本。
+
+### 浏览器直接使用 `<script>` → **全局 IIFE 构建**
+
+```html
+<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
+<script>
+  snapdom.toPng(document.body).then(img => {
+    document.body.appendChild(img);
+  });
+</script>
+```
+
+此方式会加载完整的单文件构建，并在 `window` 上提供全局变量 `snapdom`。
+
+```
 
 ## 基本用法
 
@@ -747,7 +791,6 @@ npm run test:benchmark
 <a href="https://github.com/tinchox5" title="tinchox5"><img src="https://avatars.githubusercontent.com/u/11557901?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="tinchox5"/></a>
 <a href="https://github.com/Jarvis2018" title="Jarvis2018"><img src="https://avatars.githubusercontent.com/u/36788851?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="Jarvis2018"/></a>
 <a href="https://github.com/tarwin" title="tarwin"><img src="https://avatars.githubusercontent.com/u/646149?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="tarwin"/></a>
-<a href="https://github.com/jswhisperer" title="jswhisperer"><img src="https://avatars.githubusercontent.com/u/1177690?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jswhisperer"/></a>
 <a href="https://github.com/K1ender" title="K1ender"><img src="https://avatars.githubusercontent.com/u/146767945?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="K1ender"/></a>
 <a href="https://github.com/17biubiu" title="17biubiu"><img src="https://avatars.githubusercontent.com/u/13295895?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="17biubiu"/></a>
 <a href="https://github.com/av01d" title="av01d"><img src="https://avatars.githubusercontent.com/u/6247646?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="av01d"/></a>
@@ -755,16 +798,14 @@ npm run test:benchmark
 <a href="https://github.com/pedrocateexte" title="pedrocateexte"><img src="https://avatars.githubusercontent.com/u/207524750?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="pedrocateexte"/></a>
 <a href="https://github.com/domialex" title="domialex"><img src="https://avatars.githubusercontent.com/u/4694217?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="domialex"/></a>
 <a href="https://github.com/elliots" title="elliots"><img src="https://avatars.githubusercontent.com/u/622455?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="elliots"/></a>
-<a href="https://github.com/mon-jai" title="mon-jai"><img src="https://avatars.githubusercontent.com/u/91261297?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="mon-jai"/></a>
+<a href="https://github.com/jswhisperer" title="jswhisperer"><img src="https://avatars.githubusercontent.com/u/1177690?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jswhisperer"/></a>
 <a href="https://github.com/sharuzzaman" title="sharuzzaman"><img src="https://avatars.githubusercontent.com/u/7421941?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="sharuzzaman"/></a>
 <a href="https://github.com/simon1uo" title="simon1uo"><img src="https://avatars.githubusercontent.com/u/60037549?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="simon1uo"/></a>
 <a href="https://github.com/titoBouzout" title="titoBouzout"><img src="https://avatars.githubusercontent.com/u/64156?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="titoBouzout"/></a>
-<a href="https://github.com/harshasiddartha" title="harshasiddartha"><img src="https://avatars.githubusercontent.com/u/147021873?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="harshasiddartha"/></a>
 <a href="https://github.com/jhbae200" title="jhbae200"><img src="https://avatars.githubusercontent.com/u/20170610?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jhbae200"/></a>
 <a href="https://github.com/xiaobai-web715" title="xiaobai-web715"><img src="https://avatars.githubusercontent.com/u/81091224?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="xiaobai-web715"/></a>
 <a href="https://github.com/miusuncle" title="miusuncle"><img src="https://avatars.githubusercontent.com/u/7549857?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="miusuncle"/></a>
 <a href="https://github.com/rbbydotdev" title="rbbydotdev"><img src="https://avatars.githubusercontent.com/u/101137670?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="rbbydotdev"/></a>
-<a href="https://github.com/Amyuan23" title="Amyuan23"><img src="https://avatars.githubusercontent.com/u/25892910?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="Amyuan23"/></a>
 <a href="https://github.com/zhanghaotian2018" title="zhanghaotian2018"><img src="https://avatars.githubusercontent.com/u/169218899?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="zhanghaotian2018"/></a>
 <a href="https://github.com/kohaiy" title="kohaiy"><img src="https://avatars.githubusercontent.com/u/15622127?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="kohaiy"/></a>
 <a href="https://github.com/fu050409" title="fu050409"><img src="https://avatars.githubusercontent.com/u/46275354?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="fu050409"/></a>
@@ -784,4 +825,3 @@ npm run test:benchmark
 ## 许可证
 
 MIT © Zumerlab
-
