@@ -31,7 +31,7 @@
 
 <p align="center">English | <a href="README_CN.md">简体中文</a></p>
 
-# snapDOM
+# SnapDOM
 
 **SnapDOM** is a next-generation **DOM Capture Engine** — ultra-fast, modular, and extensible.  
 It converts any DOM subtree into a self-contained representation that can be exported to SVG, PNG, JPG, WebP, Canvas, Blob, or **any custom format** through plugins.
@@ -820,7 +820,7 @@ For detailed contribution guidelines, please see [CONTRIBUTING](https://github.c
 
 ## Sponsors
 
-Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), [@reynaldichernando](https://github.com/reynaldichernando) and [@gamma-app](https://github.com/gamma-app), for supporting this project!
+Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), [@reynaldichernando](https://github.com/reynaldichernando), [@gamma-app](https://github.com/gamma-app) and [@jrjohnson](https://github.com/jrjohnson),for supporting this project!
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 
