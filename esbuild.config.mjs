@@ -79,7 +79,7 @@ async function buildGlobalUnminified() {
     entryPoints: ['src/index.js'],
     outfile: 'dist/snapdom.mjs',
     format: 'esm',
-    minify: false,
+    minify: true,
     splitting: false, // Monolítico
     banner,
   })
