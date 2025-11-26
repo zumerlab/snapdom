@@ -4,6 +4,7 @@ import { extendIconFonts } from '../modules/iconFonts.js'
 import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
+export { preCache } from './preCache.js'
 
 // API pública (registro global de plugins)
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
