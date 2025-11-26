@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.1](https://github.com/zumerlab/snapdom/compare/v2.0.0...v2.0.1)
+
+> 26 November 2025
+
+- Fix spaces. Closes #326 [`#326`](https://github.com/zumerlab/snapdom/issues/326)
+- Fix download options. Closes #323 [`#323`](https://github.com/zumerlab/snapdom/issues/323)
+- Fix Safari Image Issue. See #330 [`ba80b6f`](https://github.com/zumerlab/snapdom/commit/ba80b6f66393886298cdb2fc7ce134d1824184f7)
+- Minify mjs version [`9155d4f`](https://github.com/zumerlab/snapdom/commit/9155d4fa2e2fc4bb6a0e3d7a991fc75818644084)
+- Add a re-export for preCache. See #332 [`acc5b79`](https://github.com/zumerlab/snapdom/commit/acc5b79a0c8d38de9f6dea5b98bf1179b54ef671)
+
+
 ### [v2.0.0](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.4...v2.0.0)
 
 > 18 November 2025
