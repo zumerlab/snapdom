@@ -330,7 +330,7 @@ async function safariWarmup(element, baseOptions) {
         try { if (typeof img.decode === 'function') await img.decode() } catch {}
         const start = performance.now()
         while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
-          await new Promise(r => setTimeout(r, 50))
+          await new Promise(r => setTimeout(r, 200))
         }
         await new Promise(r => requestAnimationFrame(r))
         try { img.remove() } catch {}
