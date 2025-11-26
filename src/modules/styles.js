@@ -258,7 +258,10 @@ function stripHeightForWrappers(el, cs, snap) {
     tag !== 'aside' &&
     tag !== 'header' &&
     tag !== 'footer' &&
-    tag !== 'nav'
+    tag !== 'nav' &&
+    tag !== 'ol' &&
+    tag !== 'ul' &&
+    tag !== 'li'
   )) {
     return
   }
