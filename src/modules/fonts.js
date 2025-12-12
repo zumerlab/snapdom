@@ -70,6 +70,9 @@ const GENERIC_FAMILIES = new Set([
   'emoji', 'math', 'fangsong', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded'
 ])
 
+/** Common libraries that include web fonts (for cross-origin stylesheet detection) */
+const FONT_LIBRARIES = ['katex', 'mathjax', 'mathml']
+
 /**
  * Normalize a CSS font-family list to the first non-generic family.
  * E.g. `"Roboto", Arial, sans-serif` -> `Roboto`
@@ -174,6 +177,9 @@ function isLikelyFontStylesheet(href, requiredFamilies) {
 
     const path = (u.pathname + u.search).toLowerCase()
     if (/\bfont(s)?\b/.test(path) || /\.woff2?(\b|$)/.test(path)) return true
+
+    // Check for common libraries that include web fonts (e.g., KaTeX for math rendering)
+    if (FONT_LIBRARIES.some(lib => path.includes(lib))) return true
 
     for (const fam of requiredFamilies) {
       const tokenA = fam.toLowerCase().replace(/\s+/g, '+')
