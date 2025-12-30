@@ -591,11 +591,4 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e)
     }
   }
-
-  // Recurse
-  const sChildren = Array.from(source.children)
-  const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo)
-  for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-    await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options)
-  }
 }
