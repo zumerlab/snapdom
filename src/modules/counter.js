@@ -1,4 +1,4 @@
-import { cache } from '../core/cache'
+import { cache } from '../core/cache.js'
 
 /**
  * Lightweight CSS counter resolver for SnapDOM.

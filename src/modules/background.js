@@ -3,7 +3,7 @@
  * @module background
  */
 
-import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
+import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils/index.js'
 
 /**
  * Recursively inlines background-related images and masks from the source element to its clone.

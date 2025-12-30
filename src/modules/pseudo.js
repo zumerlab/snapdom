@@ -11,7 +11,7 @@ import {
   inlineSingleBackgroundEntry,
   splitBackgroundImage,
   getStyleKey
-} from '../utils'
+} from '../utils/index.js'
 import { iconToImage } from '../modules/fonts.js'
 import { isIconFont } from '../modules/iconFonts.js'
 import {

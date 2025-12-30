@@ -17,7 +17,7 @@ export const NO_DEFAULTS_TAGS = new Set([
   'filter', 'lineargradient', 'radialgradient', 'stop'
 ])
 
-import { cache } from '../core/cache'
+import { cache } from '../core/cache.js'
 
 const commonTags = [
   'div', 'span', 'p', 'a', 'img', 'ul', 'li', 'button', 'input', 'select', 'textarea', 'label', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'td', 'th'

@@ -1,6 +1,6 @@
-import { cache } from '../core/cache'
-import { extractURL, safeEncodeURI } from './helpers'
-import { snapFetch } from '../modules/snapFetch'
+import { cache } from '../core/cache.js'
+import { extractURL, safeEncodeURI } from './helpers.js'
+import { snapFetch } from '../modules/snapFetch.js'
 
 /**
  * Inline a single background-image entry (one layer) robustly.
