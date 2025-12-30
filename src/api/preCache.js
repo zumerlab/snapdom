@@ -1,5 +1,5 @@
 // src/api/preCache.js
-import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
+import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils/index.js'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { cache, applyCachePolicy } from '../core/cache.js'

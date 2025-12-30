@@ -11,7 +11,7 @@ import {
   inlineSingleBackgroundEntry,
   splitBackgroundImage,
   getStyleKey
-} from '../utils'
+} from '../utils/index.js'
 import { iconToImage } from '../modules/fonts.js'
 import { isIconFont } from '../modules/iconFonts.js'
 import {
@@ -590,12 +590,5 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
     } catch (e) {
       console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e)
     }
-  }
-
-  // Recurse
-  const sChildren = Array.from(source.children)
-  const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo)
-  for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-    await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options)
   }
 }

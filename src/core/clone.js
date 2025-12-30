@@ -18,10 +18,11 @@ import {
   markSlottedSubtree,
   rasterizeIframe
 } from '../utils/clone.helpers.js'
+import { inlinePseudoElements } from '../modules/pseudo.js'
 
 // helper implementations moved to ../utils/clone.helpers.js
 
-export async function deepClone(node, sessionCache, options) {
+async function _deepClone(node, sessionCache, options) {
   if (!node) throw new Error('Invalid node')
   const clonedAssignedNodes = new Set()
   let pendingSelectValue = null
@@ -342,6 +343,18 @@ export async function deepClone(node, sessionCache, options) {
   if (pendingTextAreaValue !== null && clone instanceof HTMLTextAreaElement) {
     clone.textContent = pendingTextAreaValue
 
+  }
+  return clone
+}
+
+export async function deepClone(node, sessionCache, options) {
+  const clone = await _deepClone(node, sessionCache, options)
+  if (clone) {
+    try {
+      await inlinePseudoElements(node, clone, sessionCache, options)
+    } catch (e) {
+      console.warn('inlinePseudoElements failed:', e)
+    }
   }
   return clone
 }

@@ -1,5 +1,5 @@
 // src/exporters/toCanvas.js
-import { isSafari } from '../utils/browser'
+import { isSafari } from '../utils/browser.js'
 
 /**
  * Converts a data URL to a Canvas element.

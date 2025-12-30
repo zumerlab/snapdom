@@ -3,8 +3,8 @@
  * @module fonts
  */
 
-import { extractURL } from '../utils/helpers'
-import { cache } from '../core/cache'
+import { extractURL } from '../utils/helpers.js'
+import { cache } from '../core/cache.js'
 import { isIconFont } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
 

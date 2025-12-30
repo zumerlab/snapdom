@@ -1,6 +1,6 @@
 // src/exporters/toImg.js
-import { isSafari } from '../utils'
-import { rasterize } from '../modules/rasterize'
+import { isSafari } from '../utils/index.js'
+import { rasterize } from '../modules/rasterize.js'
 /**
  * Converts a data URL to an HTMLImageElement.
  * @param {string} url - The data URL of the image.

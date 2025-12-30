@@ -5,7 +5,6 @@
 
 import { generateCSSClasses, stripTranslate } from '../utils/index.js'
 import { deepClone } from './clone.js'
-import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { cache } from '../core/cache.js'
 import { freezeSticky } from '../modules/changeCSS.js'
@@ -47,11 +46,6 @@ export async function prepareClone(element, options = {}) {
   } catch (e) {
     console.warn('deepClone failed:', e)
     throw e
-  }
-  try {
-    await inlinePseudoElements(element, clone, sessionCache, options)
-  } catch (e) {
-    console.warn('inlinePseudoElements failed:', e)
   }
   await resolveBlobUrlsInTree(clone)
   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
