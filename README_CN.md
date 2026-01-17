@@ -242,9 +242,41 @@ const blob = await snapdom.toBlob(el);
 | `snapdom.toWebp(el, options?)` | 返回一个 WebP 图片              |
 | `snapdom.download(el, options?)` | 触发下载              |
 
-## 选项
+### 导出器专用选项
 
-> ✅ **注意：** 样式压缩现在内部默认启用。`compress` 选项已被移除。
+除了全局的捕获选项之外，部分导出器还支持一小组 **仅用于导出** 的选项。
+
+#### `download()`
+
+| Option     | Type                                          | Default   | Description |
+| ---------- | --------------------------------------------- | --------- | ----------- |
+| `filename` | `string`                                      | `snapdom` | 下载文件名。      |
+| `format`   | `"png" \| "jpeg" \| "jpg" \| "webp" \| "svg"` | `"png"`   | 下载文件的输出格式。  |
+
+**示例：**
+
+```js
+await result.download({
+  format: 'jpg',
+  quality: 0.92,
+  filename: 'my-capture'
+});
+```
+
+#### `toBlob()`
+
+| Option | Type                                          | Default | Description  |
+| ------ | --------------------------------------------- | ------- | ------------ |
+| `type` | `"svg" \| "png" \| "jpeg" \| "jpg" \| "webp"` | `"svg"` | 生成的 Blob 类型。 |
+
+**示例：**
+
+```js
+const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });
+```
+
+
+## 选项
 
 所有捕获方法都接受一个 `options` 对象：
 
@@ -263,7 +295,6 @@ const blob = await snapdom.toBlob(el);
 | `backgroundColor` | string   | `"#fff"` | JPG/WebP 的备用颜色                     |
 | `quality`         | number   | `1`      | JPG/WebP 的质量（0 到 1）                   |
 | `useProxy`        | string   | `''`     | CORS 备用代理基础 URL                   |
-| `type`            | string   | `svg`    | 默认 Blob 类型 (`svg`\|`png`\|`jpg`\|`webp`) |
 | `exclude`         | string[] | -        | 要排除的 CSS 选择器                        |
 | `excludeMode`     | `"hide"`\|`"remove"` | `"hide"` | `exclude` 的应用方式                  |
 | `filter`          | function | -        | 自定义谓词函数 `(el) => boolean`              |
