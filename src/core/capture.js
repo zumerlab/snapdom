@@ -286,7 +286,7 @@ export async function captureDOM(element, options) {
       container.style.height = `${limitDecimals(h0)}px`
       container.style.overflow = 'visible'
 
-      state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
+      //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(state.clone)
       fo.appendChild(container)
 
