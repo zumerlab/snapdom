@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.2](https://github.com/zumerlab/snapdom/compare/v2.0.1...v2.0.2)
+
+> 20 January 2026
+
+- Fix bug when captured element is SVG. Closes #324 [`#324`](https://github.com/zumerlab/snapdom/issues/324)
+- Improve docs for blob [`#352`](https://github.com/zumerlab/snapdom/issues/352)
+
 #### [v2.0.1](https://github.com/zumerlab/snapdom/compare/v2.0.0...v2.0.1)
 
 > 26 November 2025
