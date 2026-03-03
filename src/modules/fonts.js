@@ -213,7 +213,7 @@ function rewriteRelativeUrls(cssText, baseHref) {
       const src = (u || '').trim()
       if (!src || /^data:|^blob:|^https?:|^file:|^about:/i.test(src)) return m
       let abs = src
-      try { abs = new URL(src, baseHref || location.href).href } catch {}
+      try { abs = new URL(src, baseHref || (location.origin + '/')).href } catch {}
       return `url("${abs}")`
     }
   )
@@ -238,7 +238,7 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
   const visited = new Set()
 
   function normalizeUrl(u, base) {
-    try { return new URL(u, base || location.href).href } catch { return u }
+    try { return new URL(u, base || (location.origin + '/')).href } catch { return u }
   }
 
   async function resolveOnce(text, baseHref, depth = 0) {
@@ -282,8 +282,8 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
     return out
   }
 
-  let rewritten = rewriteRelativeUrls(cssText, ownerHref || location.href)
-  rewritten = await resolveOnce(rewritten, ownerHref || location.href, 0)
+  let rewritten = rewriteRelativeUrls(cssText, ownerHref || (location.origin + '/'))
+  rewritten = await resolveOnce(rewritten, ownerHref || (location.origin + '/'), 0)
   return rewritten
 }
 
@@ -340,7 +340,7 @@ function extractSrcUrls(srcValue, baseHref) {
     let u = (m[2] || '').trim()
     if (!u || u.startsWith('data:')) continue
     if (!/^https?:/i.test(u)) {
-      try { u = new URL(u, baseHref || location.href).href } catch {}
+      try { u = new URL(u, baseHref || (location.origin + '/')).href } catch {}
     }
     urls.push(u)
   }
@@ -355,7 +355,7 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
     if (!raw) continue
     let abs = raw
     if (!abs.startsWith('http') && !abs.startsWith('data:')) {
-      try { abs = new URL(abs, baseHref || location.href).href } catch {}
+      try { abs = new URL(abs, baseHref || (location.origin + '/')).href } catch {}
     }
     if (isIconFont(abs)) continue
 
@@ -434,7 +434,7 @@ function dedupeFontFaces(cssText) {
     const urange = (block.match(/unicode-range:\s*([^;]+);/i)?.[1] || '').trim()
     const srcRaw = (block.match(/src\s*:\s*([^;}]+)[;}]/i)?.[1] || '').trim()
 
-    const urls = extractSrcUrls(srcRaw, location.href)
+    const urls = extractSrcUrls(srcRaw, location.origin + '/')
     const srcPart = urls.length
       ? urls.map(u => String(u).toLowerCase()).sort().join('|')
       : srcRaw.toLowerCase()
@@ -503,7 +503,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
   }
 
   const normalizeUrl = (u, base) => {
-    try { return new URL(u, base || location.href).href } catch { return u }
+    try { return new URL(u, base || (location.origin + '/')).href } catch { return u }
   }
 
   for (const rule of rules) {
@@ -544,13 +544,13 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
         family, weightSpec, styleSpec, stretchSpec,
         unicodeRange: urange,
         srcRaw,
-        srcUrls: extractSrcUrls(srcRaw, baseHref || location.href),
-        href: baseHref || location.href
+        srcUrls: extractSrcUrls(srcRaw, baseHref || (location.origin + '/')),
+        href: baseHref || (location.origin + '/')
       }
       if (ctx.simpleExcluder && ctx.simpleExcluder(meta, ranges)) continue
 
       if (/url\(/i.test(srcRaw)) {
-        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy)
+        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || (location.origin + '/'), ctx.useProxy)
         await emitFace(`@font-face{font-family:${family};src:${inlinedSrc};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange ? `unicode-range:${urange};` : ''}}`)
       } else {
         await emitFace(`@font-face{font-family:${family};src:${srcRaw};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange ? `unicode-range:${urange};` : ''}}`)
@@ -790,7 +790,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const sheet of document.styleSheets) {
     if (sheet.href && linkNodes.some(l => l.href === sheet.href)) continue
     try {
-      const rootHref = sheet.href || location.href
+      const rootHref = sheet.href || (location.origin + '/')
       if (rootHref) ctx.visitedSheets.add(rootHref)
       await collectFacesFromSheet(
         sheet,
