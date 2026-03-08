@@ -1,0 +1,72 @@
+name: Auto-label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Label bug reports
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = (issue.title || '').toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const text = title + ' ' + body;
+            const labelsToAdd = [];
+            const existingLabels = issue.labels.map(l => l.name);
+
+            // ── Keyword patterns ──────────────────────────────────────────────
+            const BUG_KEYWORDS      = /bug|error|broken|crash|fail|not work|doesn't work|cannot|can't|unable|wrong|incorrect|missing|disappear|blank|empty|distort/;
+            const FEATURE_KEYWORDS  = /feature request|suggestion|enhancement|would like|wish|please add/;
+            const QUESTION_KEYWORDS = /^(why|how|what|can you|is it possible|does it|do you)|\bquestion\b|\bhelp\b/;
+            const SAFARI_KEYWORDS   = /safari|ios|webkit|iphone|ipad|apple/;
+            const FIREFOX_KEYWORDS  = /firefox|mozilla|gecko/;
+
+            const CRITICAL_KEYWORDS = /crash|data loss|cannot capture|completely broken|decode|source image/;
+            const HIGH_KEYWORDS     = /pseudo.?element|iframe|font|background.?image|cross.?origin|checkbox|radio|text.?stroke|transform|matrix/;
+            const LOW_BUG_KEYWORDS  = /configuration option|timeout setting|cors support/;
+
+            // ── Detect issue type ─────────────────────────────────────────────
+            const isBug      = BUG_KEYWORDS.test(text);
+            const isFeature  = FEATURE_KEYWORDS.test(text) && !isBug;
+            const isQuestion = QUESTION_KEYWORDS.test(text) && !isBug;
+
+            // ── Apply type labels ─────────────────────────────────────────────
+            if (isBug     && !existingLabels.includes('bug'))         labelsToAdd.push('bug');
+            if (isFeature && !existingLabels.includes('enhancement')) labelsToAdd.push('enhancement');
+            if (isQuestion && !existingLabels.includes('question'))   labelsToAdd.push('question');
+
+            // ── Apply browser labels ──────────────────────────────────────────
+            if (SAFARI_KEYWORDS.test(text)  && !existingLabels.includes('safari-hates-me'))  labelsToAdd.push('safari-hates-me');
+            if (FIREFOX_KEYWORDS.test(text) && !existingLabels.includes('Fails on Firefox')) labelsToAdd.push('Fails on Firefox');
+
+            // ── Assign priority for bugs (skip if already labelled) ───────────
+            const hasPriority = existingLabels.some(l => l.startsWith('priority:'));
+            if (isBug && !hasPriority) {
+              if (CRITICAL_KEYWORDS.test(text)) {
+                labelsToAdd.push('priority: critical');
+              } else if (HIGH_KEYWORDS.test(text)) {
+                labelsToAdd.push('priority: high');
+              } else if (LOW_BUG_KEYWORDS.test(text)) {
+                labelsToAdd.push('priority: low');
+              } else {
+                labelsToAdd.push('priority: medium');
+              }
+            }
+
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+              console.log(`Added labels: ${labelsToAdd.join(', ')} to issue #${issue.number}`);
+            }
