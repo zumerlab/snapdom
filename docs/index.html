@@ -8,6 +8,9 @@
 
   <meta name="description" content="Snapdom is a powerful alternative to html2canvas and similar tools, offering extreme precision when capturing DOM elements, including pseudo-elements, web fonts, and shadow DOM.">
   <meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity, plugins">
+  <meta name="author" content="zumerlab">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://snapdom.dev/">
 
   <!-- === Open Graph / Twitter === -->
   <meta property="og:type" content="website">
@@ -28,113 +31,184 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="SnapDOM">
   <link rel="manifest" href="./assets/favicon/site.webmanifest">
-  <link rel="canonical" href="https://snapdom.dev/">
   <meta name="theme-color" content="#0b1220">
 
-  <!-- === Resource hints (PageSpeed) === -->
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <!-- === JSON-LD Structured Data === -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "SnapDOM",
+    "applicationCategory": "DeveloperApplication",
+    "description": "Next-generation DOM capture engine. Convert any DOM subtree to SVG, PNG, JPG, WebP. High-fidelity alternative to html2canvas.",
+    "url": "https://snapdom.dev",
+    "operatingSystem": "Web",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+
+  <!-- Preconnect to critical origins only (reduces DNS/TLS overhead) -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://www.googletagmanager.com">
-  <link rel="preconnect" href="https://www.google-analytics.com">
-  <link rel="preconnect" href="https://cloud.umami.is">
-  <link rel="preconnect" href="https://upload.wikimedia.org">
-  <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="preconnect" href="https://api.github.com">
-
-  <!-- === Preload critical CSS === -->
-  <link rel="preload" as="style" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" fetchpriority="high">
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap">
-  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
 
   <!-- === Stylesheets === -->
   <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
-  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap">
 
-  <!-- === Analytics === -->
+  <!-- Analytics: loaded after interactive to avoid LCP penalty -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1"></script>
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-4G88ZHG7S1', {transport_type: 'beacon'});
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
   </script>
 
   <style>
+    :root {
+      --sd-primary: #0f172a;
+      --sd-primary-light: #1e293b;
+      --sd-accent: #6366f1;
+      --sd-accent-hover: #818cf8;
+      --sd-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --sd-gradient-alt: linear-gradient(90deg, #f97316 0%, #ec4899 100%);
+      --sd-surface: rgba(255, 255, 255, 0.92);
+      --sd-surface-elevated: #ffffff;
+      --sd-text: #0f172a;
+      --sd-text-muted: #475569;
+      --sd-border: rgba(99, 102, 241, 0.2);
+      --sd-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+      --sd-shadow-hover: 0 8px 32px rgba(99, 102, 241, 0.15);
+      --sd-radius: 14px;
+      --sd-radius-sm: 10px;
+      --sd-star: #fbbf24;
+    }
+
     body {
-      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
-      padding: 2rem;
-      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      font-family: 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 1.5rem;
+      background: linear-gradient(160deg, #f0f4ff 0%, #e8ecff 50%, #eef2ff 100%);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
+      color: var(--sd-text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
     h1 {
-      color: #1a2233;
-      font-size: 2.5rem;
-      margin-bottom: 1.5rem;
+      color: var(--sd-primary);
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      margin-bottom: 0.75rem;
       text-align: center;
-      letter-spacing: 1px;
-      text-shadow: 0 2px 8px #e0e7ef;
+      letter-spacing: -0.02em;
+      font-weight: 800;
     }
 
-    button#capture {
-      background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%);
-      color: white;
+    h2 {
+      font-size: clamp(1.15rem, 2.5vw, 1.35rem);
+      color: var(--sd-primary);
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+
+    button, button#capture, .run-benchmark-button {
+      background: var(--sd-gradient-alt);
+      color: white !important;
       border: none;
-      border-radius: 24px;
-      padding: 0.6rem 1.6rem;
-      font-size: 1.1rem;
-      font-weight: bold;
-      box-shadow: 0 2px 8px #db0a56f3;
+      border-radius: 12px;
+      padding: 0.55rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      box-shadow: 0 2px 12px rgba(249, 115, 22, 0.35);
       cursor: pointer;
-      transition: background 0.2s, transform 0.2s;
-      margin: 0 0.5em 1.5em 0;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      margin: 0 0.5em 0.5em 0;
     }
 
-    button#capture:hover {
-      background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%);
-      transform: scale(1.04);
+    button:hover:not(:disabled), button#capture:hover, .run-benchmark-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(249, 115, 22, 0.45);
     }
 
-    /* === Header + menú hamburger === */
-    .site-header {
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    /* === Hero: título + badge + menú === */
+    .hero-block {
       width: 100%;
-      max-width: 700px;
-      position: sticky;
-      top: 0;
-      z-index: 30;
-      backdrop-filter: saturate(1.1) blur(6px);
+      max-width: 720px;
+      text-align: center;
+      padding: 2rem 1.25rem 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-block h1 {
+      margin-bottom: 0.35rem;
+      font-size: clamp(2rem, 6vw, 3rem);
+    }
+
+    .hero-tagline {
+      font-size: 1.1rem;
+      color: var(--sd-text-muted);
+      margin: 0 auto 1.25rem;
+      max-width: 520px;
+      line-height: 1.5;
+    }
+
+    .nav-section {
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--sd-border);
+    }
+
+    .nav-section .nav-toggle {
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .nav-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--sd-text-muted);
+      margin: 0 0 0.6rem;
+      letter-spacing: 0.03em;
     }
 
     .nav-bar {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: .75rem;
-      margin-bottom: .75rem;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0;
     }
 
     .nav-toggle {
       display: none;
       border: 0;
-      background: #1a2233;
+      background: var(--sd-primary);
       color: #fff;
-      border-radius: 10px;
-      padding: .5rem .75rem;
-      font-size: 0.95rem;
+      border-radius: var(--sd-radius-sm);
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 2px 8px #1a223322;
+      box-shadow: var(--sd-shadow);
+      transition: background 0.2s;
+    }
+
+    .nav-toggle:hover {
+      background: var(--sd-primary-light);
     }
 
     .nav-toggle:focus-visible {
-      outline: 3px solid #4facfe;
+      outline: 3px solid var(--sd-accent);
       outline-offset: 2px;
     }
 
@@ -142,11 +216,11 @@
       display: inline-block;
       width: 1.15rem;
       height: 2px;
-      margin-right: .35rem;
-      position: relative;
-      color: currentColor;
+      margin-right: 0.4rem;
+      vertical-align: middle;
       background: currentColor;
       border-radius: 2px;
+      position: relative;
     }
 
     .nav-icon::before,
@@ -160,154 +234,182 @@
       border-radius: 2px;
     }
 
-    .nav-icon::before {
-      top: -6px;
-    }
-
-    .nav-icon::after {
-      top: 6px;
-    }
+    .nav-icon::before { top: -6px; }
+    .nav-icon::after { top: 6px; }
 
     .nav-collapsible {
       overflow: hidden;
       max-height: 0;
-      transition: max-height .24s ease;
-      border-radius: 12px;
+      transition: max-height 0.3s ease;
+      border-radius: var(--sd-radius-sm);
     }
 
     .nav-collapsible.open {
-      max-height: 60vh;
+      max-height: 75vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 1rem 0 0.5rem;
+      margin-top: 0.75rem;
+      border-top: 1px solid var(--sd-border);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+    }
+
+    .nav-collapsible.open::-webkit-scrollbar { width: 8px; }
+    .nav-collapsible.open::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.25);
+      border-radius: 999px;
     }
 
     nav.demo-menu {
-      margin-bottom: 2rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1em;
-      justify-content: center;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.5rem 1rem;
+      padding: 0;
     }
 
     nav.demo-menu a {
-      color: #1a2233;
+      color: var(--sd-primary);
       text-decoration: none;
-      font-weight: bold;
-      border-bottom: 2px solid transparent;
-      transition: border 0.3s;
-      font-size: 1.1em;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--sd-radius-sm);
+      transition: background 0.2s, color 0.2s;
     }
 
     nav.demo-menu a:hover {
-      border-bottom: 2px solid #4facfe;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--sd-accent);
+    }
+
+    nav.demo-menu a[href^="./"] {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(236, 72, 153, 0.1));
     }
 
     section a {
-      color: #576c99;
+      color: var(--sd-accent);
       text-decoration: none;
-      font-weight: bold;
-      border-bottom: 2px solid transparent;
-      transition: border 0.3s;
-      font-size: 1.1em;
+      font-weight: 600;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s;
     }
 
     section a:hover {
-      border-bottom: 2px solid #4facfe;
+      border-bottom-color: var(--sd-accent);
     }
 
     main {
       width: 100%;
-      max-width: 700px;
+      max-width: 720px;
     }
 
     section {
-      margin-bottom: 3rem;
+      margin-bottom: 2.5rem;
       padding: 1.5rem;
-      border-radius: 12px;
-      background: rgb(39 71 208 / 11%);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      border-radius: var(--sd-radius);
+      background: var(--sd-surface);
+      box-shadow: var(--sd-shadow);
+      border: 1px solid var(--sd-border);
     }
 
-    /* Asegurar visibilidad y scroll del menú en mobile */
-    .site-header {
-      z-index: 999;
+    section:target {
+      box-shadow: var(--sd-shadow-hover);
+      border-color: rgba(99, 102, 241, 0.3);
     }
 
-    /* encima del contenido */
-
-    .nav-collapsible {
-      overflow: hidden;
-      max-height: 0;
-      transition: max-height .24s ease;
-      border-radius: 12px;
+    .demo-explanation {
+      font-size: 0.95rem;
+      color: var(--sd-text-muted);
+      margin: -0.5rem 0 1rem;
+      line-height: 1.5;
     }
 
-    .nav-collapsible.open {
-      /* más alto y con scroll táctil */
-      max-height: 80vh;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-block: .5rem;
-      /* que no corte el primer/último link */
-      background: rgba(255, 255, 255, .78);
-      box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
+    .demo-explanation code {
+      background: rgba(99, 102, 241, 0.12);
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+      font-size: 0.9em;
     }
 
-    /* Opcional: mejora de scrollbar (no afecta performance) */
-    .nav-collapsible.open::-webkit-scrollbar {
-      width: 10px;
-    }
-
-    .nav-collapsible.open::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, .15);
-      border-radius: 999px;
-    }
-
-    .nav-collapsible.open {
-      scrollbar-width: thin;
-      scrollbar-color: rgba(0, 0, 0, .15) transparent;
-    }
-
-    /* Mobile grid del menú (ya lo tenías, lo dejo aquí por claridad) */
-    @media (max-width: 600px) {
+    @media (min-width: 601px) {
       nav.demo-menu {
-        display: grid;
-        gap: .65rem;
-        padding: .75rem 1rem;
-        background: transparent;
-        /* el fondo ya lo da el contenedor */
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.4rem;
       }
 
       nav.demo-menu a {
-        display: block;
-        text-align: center;
-        padding: .35rem .5rem;
+        padding: 0.4rem 0.85rem;
       }
     }
 
+    /* GitHub badge - destacado, invitación a dar estrellas */
+    .github-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: var(--sd-primary);
+      font-weight: 700;
+      font-size: 0.95rem;
+      background: var(--sd-surface-elevated);
+      padding: 0.5rem 0.9rem;
+      border-radius: 999px;
+      box-shadow: var(--sd-shadow);
+      border: 1px solid var(--sd-border);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .github-badge:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--sd-shadow-hover);
+    }
+
+    .github-badge .fab {
+      font-size: 1.25rem;
+      color: var(--sd-primary);
+    }
+
+    #github-stars {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      font-weight: 800;
+      color: var(--sd-primary);
+      font-size: 0.9rem;
+    }
+
+    #github-stars .fas {
+      color: var(--sd-star);
+    }
+
     .card {
-      background: linear-gradient(145deg, #ffffff, #e3f0ff);
+      background: linear-gradient(145deg, #ffffff, #f8fafc);
       padding: 1.5em;
-      border-left: 5px solid #ff7043;
-      border-radius: 46px;
-      /*box-shadow: 0 6px 20px rgb(0, 255, 21); */
-      /* filter: drop-shadow(30px 10px 4px #4444dd); */
-      margin-bottom: 2em;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      /*transform: rotate(5deg)*/
+      border-left: 4px solid var(--sd-accent);
+      border-radius: var(--sd-radius);
+      margin-bottom: 1.5em;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
     }
 
     .card.black {
-      background: black;
+      background: #0f172a;
       padding: 1.5em;
-      border-left: 5px solid #ff7043;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2em;
-      transition: transform .2s, box-shadow .2s;
+      border-left: 4px solid var(--sd-accent);
+      border-radius: var(--sd-radius);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      margin-bottom: 1.5em;
     }
 
     .card:hover {
-      transform: scale(1.02);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
+      transform: translateY(-2px);
+      box-shadow: var(--sd-shadow-hover);
     }
 
     .transition-box {
@@ -388,14 +490,19 @@
     }
 
     .blend-card {
-      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover;
+      /* Gradient + color overlay with background-blend-mode: multiply */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23e0f2fe'/%3E%3Cstop offset='50%25' stop-color='%23bae6fd'/%3E%3Cstop offset='100%25' stop-color='%237dd3fc'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='0' y1='1' x2='0' y2='0'%3E%3Cstop offset='0%25' stop-color='%2322c55e'/%3E%3Cstop offset='60%25' stop-color='%234ade80'/%3E%3Cstop offset='100%25' stop-color='%23bbf7d0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23a)' width='400' height='180'/%3E%3Crect fill='url(%23b)' y='140' width='400' height='160'/%3E%3C/svg%3E");
+      background-color: rgba(30, 58, 138, 0.65);
       background-blend-mode: multiply;
-      background-color: red;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       color: white;
-      padding: 3em;
+      padding: 2.5em 2em;
       font-weight: bold;
       border-radius: 16px;
       text-align: center;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
 
     .dancers {
@@ -488,7 +595,7 @@
     .mask-bg {
       position: absolute;
       inset: 0;
-      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center / cover;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%233b82f6'/%3E%3Cstop offset='60%25' stop-color='%2360a5fa'/%3E%3Cstop offset='100%25' stop-color='%2393c5fd'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='0' y1='1' x2='0' y2='0'%3E%3Cstop offset='0%25' stop-color='%2315803d'/%3E%3Cstop offset='40%25' stop-color='%2322c55e'/%3E%3Cstop offset='100%25' stop-color='%234ade80'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23a)' width='400' height='200'/%3E%3Crect fill='url(%23b)' y='150' width='400' height='150'/%3E%3C/svg%3E") no-repeat center/cover;
     }
 
     .mask-label {
@@ -533,7 +640,7 @@
     .mask-svg .masked-box {
       width: 100%;
       height: 100%;
-      background: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%233b82f6'/%3E%3Cstop offset='60%25' stop-color='%2360a5fa'/%3E%3Cstop offset='100%25' stop-color='%2393c5fd'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='0' y1='1' x2='0' y2='0'%3E%3Cstop offset='0%25' stop-color='%2315803d'/%3E%3Cstop offset='40%25' stop-color='%2322c55e'/%3E%3Cstop offset='100%25' stop-color='%234ade80'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23a)' width='400' height='200'/%3E%3Crect fill='url(%23b)' y='150' width='400' height='150'/%3E%3C/svg%3E") center/cover no-repeat;
       mask: url(#svg-blob-mask);
       -webkit-mask: url(#svg-blob-mask);
     }
@@ -611,23 +718,31 @@
 
     @media (max-width: 600px) {
       body {
-        padding: 0.5rem;
+        padding: 0.75rem;
       }
 
       h1 {
         font-size: 1.5rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .hero-desc {
+        font-size: 0.95rem;
+        margin-bottom: 1.25rem;
       }
 
       main {
-        max-width: 100vw;
-        width: 100vw;
+        max-width: 100%;
         padding: 0;
       }
 
       section {
-        padding: 0.7rem;
-        margin-bottom: 1.2rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .hero-block {
+        padding: 1.25rem 1rem 1rem;
       }
 
       .nav-toggle {
@@ -635,29 +750,39 @@
         align-items: center;
       }
 
-      .nav-collapsible {
-        border-radius: 12px;
+      .nav-toggle-text {
+        display: inline;
+      }
+
+      .github-badge {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.7rem;
+      }
+
+      #repo-link {
+        display: none;
+      }
+
+      #github-stars {
+        font-size: 0.85rem;
       }
 
       nav.demo-menu {
         display: grid;
-        gap: .65rem;
-        padding: .75rem 1rem;
-        background: rgba(255, 255, 255, .7);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
       }
 
       nav.demo-menu a {
-        display: block;
-        text-align: center;
-        padding: .35rem .5rem;
+        padding: 0.5rem 0.6rem;
+        font-size: 0.85rem;
       }
 
       .card,
       .card.black {
-        padding: 0.7em;
-        font-size: 0.8em;
-        border-radius: 10px;
+        padding: 1em;
+        font-size: 0.9em;
+        border-radius: var(--sd-radius-sm);
       }
 
       .output {
@@ -666,38 +791,23 @@
 
       .blend-card {
         padding: 1em;
-        font-size: 0.8em;
+        font-size: 0.85em;
       }
 
       .transition-box {
         padding: 1em;
-        font-size: 0.8em;
+        font-size: 0.9em;
       }
 
       .dancers {
         font-size: 1.3rem;
       }
 
-      #github-badge {
-        flex-direction: column;
-        gap: 0.2em;
-        font-size: 0.7em;
-        margin-bottom: 1em;
-      }
-
-      #github-badge span {
-        font-size: 0.7em;
-      }
-
-      #repo-link {
-        display: none;
-      }
-
       button#capture,
       button {
-        font-size: 1em;
+        font-size: 0.9em;
         padding: 0.5em 1em;
-        margin-bottom: 0.7em;
+        margin-bottom: 0.5em;
       }
 
       .export-text {
@@ -718,12 +828,6 @@
         font-size: 0.8em;
       }
 
-      .text,
-      .text1 {
-        width: 90vw;
-        font-size: 0.8em;
-      }
-
       .mask-grid {
         grid-template-columns: 1fr;
       }
@@ -734,6 +838,7 @@
 
       .benchmark-container {
         gap: 1rem;
+        flex-direction: column;
       }
 
       .benchmark-column {
@@ -854,34 +959,42 @@
     @media (min-width: 601px) {
       .nav-collapsible {
         max-height: none !important;
+        padding: 0;
+        margin-top: 0;
       }
 
       .nav-toggle {
         display: none !important;
       }
+
+      .nav-label {
+        display: block;
+      }
     }
 
     @media (max-width: 600px) {
-      .benchmark-container {
-        display: flex;
-        /* ya lo tenés, lo mantenemos */
-        flex-direction: column;
-        /* apila verticalmente */
-        align-items: stretch;
-        /* contenedores a ancho completo */
-        gap: 1rem;
-        /* separador vertical cómodo */
+      .nav-label {
+        display: none;
       }
+    }
 
+    [id] {
+      scroll-margin-top: 1rem;
+    }
+
+    .card.shadow-demo {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    @media (max-width: 600px) {
       .benchmark-column {
-        max-width: 95% !important;
-        min-width: 0 !important;
-        /* evita forzar dos columnas */
+        max-width: 100%;
+        min-width: 0;
       }
 
-      .benchmark-output {
-        height: 220px;
-        /* un poquito menos de alto en mobile */
+      .proxy-ctrls {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -934,10 +1047,6 @@
       text-align: right;
     }
 
-    .card.shadow-demo {
-      width: 50%;
-      box-shadow: 0 6px 20px rgb(255, 94, 0) !important;
-    }
   </style>
   <style>
     .container-gyro {
@@ -1045,86 +1154,52 @@
 </head>
 
 <body>
-  <div id="github-badge" style="
-        display: flex;
-        align-items: center;
-        gap: 0.5em;
-        justify-content: center;
-        margin-bottom: 1.5em;">
-    <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" style="
-          display: flex;
-          align-items: center;
-          text-decoration: none;
-          color: #24292f;
-          font-weight: bold;
-          font-size: 1.1em;
-          gap: 0.4em;
-        " data-umami-event="SnapDOM repo">
-      <i class="fab fa-github" style="font-size: 1.6em"></i>
+  <header class="hero-block">
+    <h1>SnapDOM</h1>
+    <p class="hero-tagline">Next-generation DOM capture engine — fast, modular, extensible.</p>
+    <a href="https://github.com/zumerlab/snapdom" id="github-badge" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
+      <i class="fab fa-github"></i>
       <span id="repo-link">zumerlab/snapdom</span>
-
-      <span id="github-stars" style="
-            display: flex;
-            align-items: center;
-            background: #fff;
-            border-radius: 12px;
-            padding: 0.2em 0.7em 0.2em 0.5em;
-            margin-left: 0.5em;
-            box-shadow: 0 2px 8px #e0e7ef;
-            font-size: 1em;
-            gap: 0.3em;">
-        <i class="fas fa-star" style="color: #f7b500"></i>
-        <span id="star-count">...</span>
-      </span>
+      <span id="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
     </a>
-  </div>
 
-  <h1>SnapDOM showcase</h1>
-  <p style="text-align:center; max-width: 700px; margin: 0 auto 2rem; font-size: 1.1rem; color: #333;">
-    <b>SnapDOM</b> is a next-generation <b>DOM Capture Engine</b> — ultra-fast, modular, and extensible.  
-It converts any DOM subtree into a self-contained representation that can be exported to SVG, PNG, JPG, WebP, Canvas, Blob, or any custom format through plugins.
-  </p>
-
-  <!-- Header + menú responsive -->
-  <header class="site-header">
-    <div class="nav-bar">
+    <div class="nav-section">
+      <p class="nav-label">Browse demos</p>
       <button id="menu-toggle" class="nav-toggle" aria-expanded="false" aria-controls="demo-menu">
         <span class="nav-icon" aria-hidden="true"></span>
-        Menu
+        <span class="nav-toggle-text">Browse demos</span>
       </button>
-    </div>
-
-    <div id="menu-container" class="nav-collapsible">
-      <nav id="demo-menu" class="demo-menu">
-         <a href="./labs.html">✨Labs!✨</a>
-        <a href="#benchmark">Benchmark</a>
-        <a href="#basic">Basic</a>
-        <a href="#ascii-section">✨ASCII Plugin!✨</a>
-        <a href="#ts-section">✨Timestamp Plugin!✨</a>
-        <a href="#transition">Transition</a>
-        <a href="#transition">Transition</a>
-        <a href="#opts-demo">Shadows/Transform</a>
-        <a href="#orbit">Orbit</a>
-        <a href="#fonts-demo">Fonts</a>
-        <a href="#shadow">Shadow DOM</a>
-        <a href="#canvas">Canvas</a>
-        <a href="#export">Export</a>
-        <a href="#pseudo">Pseudo</a>
-        <a href="#clip">Clip-Path</a>
-        <a href="#blend">Blend</a>
-        <a href="#iframe">Iframe</a>
-        <a href="#forms">Inputs</a>
-        <a href="#mask">Masking</a>
-        <a href="#cors">CORS Proxy</a>
-        <a href="#fullbody">Full Page</a>
-      </nav>
+      <div id="menu-container" class="nav-collapsible">
+        <nav id="demo-menu" class="demo-menu">
+          <a href="./labs.html">✨ Labs</a>
+          <a href="#benchmark">Benchmark</a>
+          <a href="#basic">Basic</a>
+          <a href="#ascii-section">ASCII Plugin</a>
+          <a href="#ts-section">Timestamp</a>
+          <a href="#transition">Transition</a>
+          <a href="#opts-demo">Shadows</a>
+          <a href="#orbit">Orbit</a>
+          <a href="#fonts-demo">Fonts</a>
+          <a href="#shadow">Shadow DOM</a>
+          <a href="#canvas">Canvas</a>
+          <a href="#export">Export</a>
+          <a href="#pseudo">Pseudo</a>
+          <a href="#clip">Clip-Path</a>
+          <a href="#blend">Blend</a>
+          <a href="#iframe">Iframe</a>
+          <a href="#forms">Inputs</a>
+          <a href="#mask">Masking</a>
+          <a href="#cors">CORS</a>
+          <a href="#fullbody">Full Page</a>
+        </nav>
+      </div>
     </div>
   </header>
 
-  <main style="width: 100%; max-width: 700px">
+  <main>
 
     <!-- Benchmark -->
-    <section id="benchmark" style="margin-top:3rem;">
+    <section id="benchmark">
       <h2>🏁 Benchmark: snapDOM vs html2canvas</h2>
       <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
         Each library will capture the same DOM element to canvas 5 times. We'll calculate average speed and show the
@@ -1252,11 +1327,11 @@ It converts any DOM subtree into a self-contained representation that can be exp
     <div id="demo-image" class="demo hidden" style="
       width:420px; height:240px; border-radius:14px; color:white; display:grid; grid-template-rows:1fr auto; place-items:center;
       box-shadow:0 12px 30px rgba(0,0,0,0.35); overflow:hidden; background:#000;">
-      <img id="photo" alt="CORS friendly" crossorigin="anonymous"
-        src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=800&auto=format&fit=crop"
+      <img id="photo" alt="Landscape demo for capture" loading="lazy"
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%233b82f6'/%3E%3Cstop offset='60%25' stop-color='%2360a5fa'/%3E%3Cstop offset='100%25' stop-color='%2393c5fd'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='0' y1='1' x2='0' y2='0'%3E%3Cstop offset='0%25' stop-color='%2315803d'/%3E%3Cstop offset='40%25' stop-color='%2322c55e'/%3E%3Cstop offset='100%25' stop-color='%234ade80'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23a)' width='400' height='200'/%3E%3Crect fill='url(%23b)' y='150' width='400' height='150'/%3E%3C/svg%3E"
         style="width:100%; height:100%; object-fit:cover; filter: contrast(1.1) saturate(1.15);" />
       <div class="legend" style="margin:-.5rem 0 .5rem; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.12);
-        padding:.25rem .5rem; border-radius:6px; font-size:12px;">Unsplash landscape (CORS OK)</div>
+        padding:.25rem .5rem; border-radius:6px; font-size:12px;">Inline SVG landscape</div>
     </div>
 
     <!-- Giant text -->
@@ -1467,7 +1542,8 @@ It converts any DOM subtree into a self-contained representation that can be exp
     <!-- Blend -->
     <section id="blend">
       <h2>🌀 Mix Blend Mode</h2>
-      <div class="card blend-card" id="blend-box">Blended content</div>
+      <p class="demo-explanation">CSS <code>background-blend-mode: multiply</code> — a gradient image (sky + grass) blended with a blue overlay. SnapDOM captures the final rendered result.</p>
+      <div class="card blend-card" id="blend-box">Gradient × blue overlay = tinted result</div>
       <button data-umami-event="Capture blend" onclick="captureDemo('blend-box', 'blend-output', this)">Capture</button>
       <button data-umami-event="Download blend" onclick="downloadDemo('blend-box')">Download</button>
       <div class="output" id="blend-output"></div>
@@ -1477,7 +1553,7 @@ It converts any DOM subtree into a self-contained representation that can be exp
     <section id="iframe">
       <h2>🧩 Iframe (same-origin)</h2>
       <div class="card iframe-wrap">
-        <iframe id="demo-iframe" title="Same-origin demo" sandbox="allow-same-origin allow-scripts" srcdoc="<!DOCTYPE html>
+        <iframe id="demo-iframe" title="Same-origin demo" loading="lazy" sandbox="allow-same-origin allow-scripts" srcdoc="<!DOCTYPE html>
 <html>
 <head>
 <meta charset='utf-8'>
@@ -2318,7 +2394,7 @@ window.captureTimestampDemo = async function(btn) {
     updateGitHubStars()
     setInterval(updateGitHubStars, 60000)
   </script>
-  <script crossorigin src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js"></script>
+  <script defer src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js" crossorigin></script>
 </body>
 
 </html>

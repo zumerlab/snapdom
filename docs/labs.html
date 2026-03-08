@@ -2,67 +2,88 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>snapDOM — Labs (Plugins Playground + html-in-canvas)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="description" content="snapDOM Dog ID Card demo with per-capture plugin composer: red text, replace text, CSS filter, and timestamp." />
+  <title>snapDOM Labs — Plugins Playground & html-in-canvas Demo</title>
+  <meta name="description" content="SnapDOM Labs: Dog ID Card plugin demo (replace text, CSS filters, timestamp overlay) and html-in-canvas capture. Try per-capture plugin composition."/>
+  <meta name="robots" content="index, follow"/>
+  <link rel="canonical" href="https://snapdom.dev/labs.html"/>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous"/>
   <style>
-    :root{--ink:#1a2233;--panel:#fff;--muted:#576c99}
+    :root{
+      --sd-primary:#0f172a;
+      --sd-primary-light:#1e293b;
+      --sd-accent:#6366f1;
+      --sd-gradient:linear-gradient(90deg,#f97316 0%,#ec4899 100%);
+      --sd-surface:rgba(255,255,255,.92);
+      --sd-text:#0f172a;
+      --sd-text-muted:#475569;
+      --sd-border:rgba(99,102,241,.2);
+      --sd-shadow:0 4px 24px rgba(15,23,42,.08);
+      --sd-star:#fbbf24;
+      --sd-radius:14px;
+    }
     *{box-sizing:border-box}
     body{
-      margin:0; font-family:'Segoe UI','Roboto',Arial,sans-serif;
-      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
-      min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:2rem 1rem;
+      margin:0; font-family:'Segoe UI','Roboto',-apple-system,sans-serif;
+      background:linear-gradient(160deg,#f0f4ff 0%,#e8ecff 50%,#eef2ff 100%);
+      min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:1.5rem;
+      -webkit-font-smoothing:antialiased;
     }
 
-    /* ===== Header (home look) ===== */
-    .site-header{width:100%; max-width:900px; position:sticky; top:0; z-index:30; backdrop-filter:saturate(1.05) blur(6px)}
-    .brand{display:grid; gap:.75rem; justify-items:center; margin-bottom:.75rem}
-    .brand h1{
-      color:#1a2233; text-align:center; letter-spacing:.3px;
-      font-size:clamp(20px,4vw,34px); margin:0; text-shadow:0 2px 8px #e0e7ef;
+    .hero-block{
+      width:100%; max-width:720px; text-align:center;
+      padding:2rem 1.25rem 1.5rem; margin-bottom:0.5rem;
     }
-    .nav-bar{display:flex; align-items:center; justify-content:space-between; gap:.75rem}
+    .hero-block h1{
+      color:var(--sd-primary); margin:0 0 .35rem; font-size:clamp(1.5rem,4vw,2.25rem);
+      font-weight:800; letter-spacing:-.02em;
+    }
+    .hero-tagline{font-size:1rem; color:var(--sd-text-muted); margin:0 auto 1rem; max-width:400px}
+    .nav-section{margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--sd-border)}
     .back-home{
-      appearance:none; border:0; border-radius:12px; padding:.5rem .75rem; font-weight:800;
-      background:#1a2233; color:#fff; text-decoration:none; box-shadow:0 2px 8px #1a223322;
+      display:inline-block; text-decoration:none; color:var(--sd-accent); font-weight:600;
+      margin-bottom:.75rem; font-size:.9rem;
     }
+    .back-home:hover{text-decoration:underline}
     .nav-toggle{
-      border:0; background:#1a2233; color:#fff; border-radius:10px; padding:.5rem .75rem;
-      font-weight:700; cursor:pointer; box-shadow:0 2px 8px #1a223322; display:inline-flex; align-items:center; gap:.4rem;
+      border:0; background:var(--sd-primary); color:#fff; border-radius:10px;
+      padding:.5rem 1rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem;
     }
     .nav-icon{display:inline-block; width:1.15rem; height:2px; background:currentColor; border-radius:2px; position:relative}
     .nav-icon::before,.nav-icon::after{content:""; position:absolute; left:0; right:0; height:2px; background:currentColor; border-radius:2px}
     .nav-icon::before{top:-6px}.nav-icon::after{top:6px}
-    .nav-collapsible{overflow:hidden; max-height:0; transition:max-height .24s ease; border-radius:12px}
-    .nav-collapsible.open{max-height:80vh; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:.5rem;
-      background:rgba(255,255,255,.78); box-shadow:0 10px 24px rgba(0,0,0,.12)}
-    nav.demo-menu{display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center}
+    .nav-collapsible{overflow:hidden; max-height:0; transition:max-height .3s ease; border-radius:10px}
+    .nav-collapsible.open{
+      max-height:75vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+      padding:1rem 0 .5rem; margin-top:.75rem; border-top:1px solid var(--sd-border);
+    }
+    nav.demo-menu{display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center}
     nav.demo-menu a{
-      color:#1a2233; text-decoration:none; font-weight:700; border-bottom:2px solid transparent; transition:border .2s;
+      color:var(--sd-primary); text-decoration:none; font-weight:600; font-size:.9rem;
+      padding:.45rem .85rem; border-radius:10px; transition:background .2s,color .2s;
     }
-    nav.demo-menu a:hover{border-bottom-color:#4facfe}
-    section a{color:#576c99;text-decoration:none;font-weight:700;border-bottom:2px solid transparent;transition:border .2s}
-    section a:hover{border-bottom-color:#4facfe}
+    nav.demo-menu a:hover{background:rgba(99,102,241,.1); color:var(--sd-accent)}
+    section a{color:var(--sd-accent); text-decoration:none; font-weight:600}
+    section a:hover{text-decoration:underline}
 
-    /* GitHub badge */
-    #github-badge{display:flex; align-items:center; gap:.5em; justify-content:center; margin:.6rem 0 0}
-    #github-badge a{
-      display:flex; align-items:center; gap:.45em; text-decoration:none; color:#24292f; font-weight:700;
-      background:#ffffffc7; border-radius:14px; padding:.35rem .65rem; box-shadow:0 2px 8px #e0e7ef;
+    .github-badge{
+      display:inline-flex; align-items:center; gap:.5rem; text-decoration:none; color:var(--sd-primary);
+      font-weight:700; font-size:.9rem; background:#fff; padding:.4rem .8rem; border-radius:999px;
+      box-shadow:var(--sd-shadow); border:1px solid var(--sd-border); transition:transform .2s,box-shadow .2s;
     }
-    #github-stars{display:flex; align-items:center; gap:.35em; background:#fff; border-radius:10px; padding:.2em .55em; font-weight:700}
-    #github-stars i{color:#f7b500}
+    .github-badge:hover{transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,.15)}
+    #github-stars{display:inline-flex; align-items:center; gap:.3rem; background:linear-gradient(135deg,#fef3c7,#fde68a); padding:.2rem .5rem; border-radius:999px; font-weight:800; color:var(--sd-primary)}
+    #github-stars i{color:var(--sd-star)}
 
-    main{width:100%; max-width:900px; display:grid; gap:18px; margin-top:1rem}
+    main{width:100%; max-width:720px; display:grid; gap:1.5rem; margin-top:.5rem}
 
-    /* ===== Dog card ===== */
     .card{
       width:min(100%,720px);
-      position:relative; border-radius:16px; overflow:hidden;
-      background: radial-gradient(140% 140% at 20% 20%, #2a2f3a 0%, #14161a 55%, #0d0f12 100%);
-      color:#fff; box-shadow:0 18px 40px rgba(0,0,0,.18);
-      display:grid; grid-template-columns: 1.05fr 2fr; gap:0; margin:0 auto;
+      position:relative; border-radius:var(--sd-radius); overflow:hidden;
+      background:radial-gradient(140% 140% at 20% 20%,#2a2f3a 0%,#14161a 55%,#0d0f12 100%);
+      color:#fff; box-shadow:0 12px 32px rgba(0,0,0,.2);
+      display:grid; grid-template-columns:1.05fr 2fr; gap:0; margin:0 auto;
       aspect-ratio:16/9;
     }
     @media (max-width:760px){ .card{ grid-template-columns:1fr; aspect-ratio:auto; } }
@@ -91,19 +112,22 @@
     .owner{ display:flex; align-items:center; gap:.6rem }
     .owner .dot{ width:10px; height:10px; border-radius:50%; background:#4f7cff; box-shadow:0 0 0 2px #1b255a }
 
-    /* Controls panel */
-    .panel{ background:rgb(39 71 208 / 11%); border-radius:12px; padding:12px; box-shadow:0 4px 16px rgba(0,0,0,.08); display:grid; gap:10px }
+    .panel{
+      background:var(--sd-surface); border-radius:var(--sd-radius); padding:1.25rem;
+      box-shadow:var(--sd-shadow); border:1px solid var(--sd-border);
+      display:grid; gap:1rem;
+    }
     .row{display:flex; flex-wrap:wrap; gap:.6rem; align-items:center}
     .control{display:grid; gap:6px; min-width:220px; flex:1}
     .control input[type="text"], .control select{
       width:100%; padding:.55rem .6rem; border-radius:10px; border:1px solid #c9d8ff; background:#fff; color:#1a2233
     }
     button{
-      appearance:none; border:0; border-radius:24px; padding:.65rem 1rem; font-weight:800;
-      background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%); color:#fff; cursor:pointer;
-      box-shadow:0 2px 8px #db0a56f3; transition:background .2s, transform .2s
+      appearance:none; border:0; border-radius:12px; padding:.55rem 1.25rem; font-weight:700;
+      background:var(--sd-gradient); color:#fff; cursor:pointer; font-size:.95rem;
+      box-shadow:0 2px 12px rgba(249,115,22,.35); transition:transform .2s,box-shadow .2s
     }
-    button:hover{ background:linear-gradient(90deg,#e52e71 0%, #ff8a00 100%); transform:scale(1.04) }
+    button:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 4px 20px rgba(249,115,22,.45) }
 
     .output{display:flex;justify-content:center;align-items:center;min-height:160px;border:1px solid rgba(20,67,51,.18);border-radius:12px;padding:10px;background:rgba(0,0,0,.04)}
     .output img{max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
@@ -111,53 +135,42 @@
     /* Anchor scroll offset for sticky header */
     [id^="demo-"]{scroll-margin-top:1.5rem}
 
-    /* Collapsible on mobile */
     @media (max-width:600px){
-      body{padding:1.2rem .75rem}
-      .nav-collapsible.open{padding:.5rem}
-      nav.demo-menu{display:grid; gap:.65rem}
-      #github-badge a{font-size:.95rem}
+      body{padding:1rem .75rem}
+      .hero-block{padding:1.25rem 1rem}
+      .nav-toggle{display:inline-flex}
+      nav.demo-menu{display:grid; grid-template-columns:1fr 1fr; gap:.4rem}
+      #repo-link{display:none}
+      .card{grid-template-columns:1fr; aspect-ratio:auto}
     }
     @media (min-width:601px){
-      .nav-collapsible{max-height:none!important}
+      .nav-collapsible{max-height:none!important; padding:0; margin-top:.75rem; border-top:1px solid var(--sd-border)}
       .nav-toggle{display:none!important}
     }
+    [id^="demo-"]{scroll-margin-top:5rem}
   </style>
 </head>
 <body>
-  <!-- Header / Home style -->
-  <header class="site-header">
-     <div id="github-badge">
-        <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">
-          <i class="fab fa-github" style="font-size:1.4em"></i>
-          <span>zumerlab/snapdom</span>
-          <span id="github-stars">
-            <i class="fas fa-star"></i><span id="star-count">…</span>
-          </span>
-        </a>
-      </div>
-      <br>
-    <div class="brand">
-      <h1>snapDOM</h1>
-
-      
-
-     
-    </div>
-
-    <div class="nav-bar">
-      <a class="back-home" href="./index.html">← Back to Home</a>
+  <header class="hero-block">
+    <h1>SnapDOM Labs</h1>
+    <p class="hero-tagline">Plugins playground &amp; experimental demos</p>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener">
+      <i class="fab fa-github"></i>
+      <span id="repo-link">zumerlab/snapdom</span>
+      <span id="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <div class="nav-section">
+      <a class="back-home" href="./index.html">← Back to showcase</a>
       <button id="menu-toggle" class="nav-toggle" aria-expanded="false" aria-controls="demo-menu">
         <span class="nav-icon" aria-hidden="true"></span>
-        Menu
+        Jump to demo
       </button>
-    </div>
-
-    <div id="menu-container" class="nav-collapsible">
-      <nav id="demo-menu" class="demo-menu">
-        <a href="#demo-plugins">Dog ID Card (Plugins)</a>
-        <a href="#demo-htmlcanvas">html-in-canvas</a>
-      </nav>
+      <div id="menu-container" class="nav-collapsible">
+        <nav id="demo-menu" class="demo-menu">
+          <a href="#demo-plugins">Dog ID Card (Plugins)</a>
+          <a href="#demo-htmlcanvas">html-in-canvas</a>
+        </nav>
+      </div>
     </div>
   </header>
 
