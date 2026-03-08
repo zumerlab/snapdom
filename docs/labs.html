@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>snapDOM — Dog ID Card (Plugins Playground)</title>
+  <title>snapDOM — Labs (Plugins Playground + html-in-canvas)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="description" content="snapDOM Dog ID Card demo with per-capture plugin composer: red text, replace text, CSS filter, and timestamp." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous"/>
@@ -42,6 +42,8 @@
       color:#1a2233; text-decoration:none; font-weight:700; border-bottom:2px solid transparent; transition:border .2s;
     }
     nav.demo-menu a:hover{border-bottom-color:#4facfe}
+    section a{color:#576c99;text-decoration:none;font-weight:700;border-bottom:2px solid transparent;transition:border .2s}
+    section a:hover{border-bottom-color:#4facfe}
 
     /* GitHub badge */
     #github-badge{display:flex; align-items:center; gap:.5em; justify-content:center; margin:.6rem 0 0}
@@ -103,8 +105,11 @@
     }
     button:hover{ background:linear-gradient(90deg,#e52e71 0%, #ff8a00 100%); transform:scale(1.04) }
 
-    .output{display:grid;place-items:center;min-height:160px;border:1px solid rgba(20,67,51,.18);border-radius:12px;padding:10px;background:rgba(0,0,0,.04)}
-    .output img{max-width:100%; height:auto}
+    .output{display:flex;justify-content:center;align-items:center;min-height:160px;border:1px solid rgba(20,67,51,.18);border-radius:12px;padding:10px;background:rgba(0,0,0,.04)}
+    .output img{max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
+
+    /* Anchor scroll offset for sticky header */
+    [id^="demo-"]{scroll-margin-top:1.5rem}
 
     /* Collapsible on mobile */
     @media (max-width:600px){
@@ -142,18 +147,27 @@
 
     <div class="nav-bar">
       <a class="back-home" href="./index.html">← Back to Home</a>
+      <button id="menu-toggle" class="nav-toggle" aria-expanded="false" aria-controls="demo-menu">
+        <span class="nav-icon" aria-hidden="true"></span>
+        Menu
+      </button>
     </div>
 
-   
+    <div id="menu-container" class="nav-collapsible">
+      <nav id="demo-menu" class="demo-menu">
+        <a href="#demo-plugins">Dog ID Card (Plugins)</a>
+        <a href="#demo-htmlcanvas">html-in-canvas</a>
+      </nav>
+    </div>
   </header>
 
   <main>
-    <h3 style="text-align: center;">Dog ID Card (Plugins Playground)</h3>
-
-      <p style="text-align: center;">SnapDOM plugins give freedom to modify the captured element on the fly. It is possible
-        to modify the cloned element before render it, but also to create custom exports, like toAscii(), toPdf, etc.
-
-        Check <a href="https://github.com/zumerlab/snapdom?tab=readme-ov-file#plugins-beta" target="_blank">docs to create your own plugin!!</a> 
+    <!-- Demo 1: Plugins Playground -->
+    <section id="demo-plugins" class="panel" style="padding:1.5rem; margin-bottom:2rem">
+      <h3 style="text-align:center; margin-top:0">Dog ID Card (Plugins Playground)</h3>
+      <p style="text-align:center; font-size:0.95rem; color:var(--muted); max-width:560px; margin:0.5rem auto 1rem">
+        SnapDOM plugins let you modify the cloned element before render (text replacement, filters, overlays) and add custom exports like <code>toPdf()</code> or <code>toAscii()</code>.
+        <a href="https://github.com/zumerlab/snapdom?tab=readme-ov-file#plugins-beta" target="_blank">Create your own plugin →</a>
       </p>
     <!-- Dog ID Card -->
     <section class="card" id="dog-card">
@@ -194,16 +208,24 @@
     </section>
 
     <!-- Controls -->
-    <section class="panel" aria-label="Compose plugins">
-      <div class="row" style="justify-content:center">
-       
-        <label><input type="checkbox" id="p-replace"> 1) Replace text (e.g., Frida → Indy)</label>
-        <label><input type="checkbox" id="p-filter"> 2) CSS filter</label>
-         <label><input type="checkbox" id="p-red" checked> 3) Tint text to orange</label>
-        <label><input type="checkbox" id="p-stamp" checked> 4) Timestamp</label>
+    <section class="panel" aria-label="Compose plugins" style="margin-top:1rem">
+      <h4 style="margin:0 0 0.75rem; font-size:0.95rem; color:var(--ink)">Compose plugins (toggle to enable)</h4>
+      <div class="row" style="justify-content:flex-start; gap:1rem; flex-wrap:wrap">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
+          <input type="checkbox" id="p-replace"> Replace text
+        </label>
+        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
+          <input type="checkbox" id="p-filter"> CSS filter
+        </label>
+        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
+          <input type="checkbox" id="p-red" checked> Tint text (orange)
+        </label>
+        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
+          <input type="checkbox" id="p-stamp" checked> Timestamp overlay
+        </label>
       </div>
 
-      <div class="row">
+      <div class="row" style="margin-top:0.75rem">
         <div class="control">
           <label for="p-find" class="label" style="color:var(--muted)">Find</label>
           <input id="p-find" type="text" >
@@ -236,8 +258,35 @@
       </div>
     </section>
 
-    <section>
-      <div class="output" id="out">—</div>
+      <div class="output" id="out" style="margin-top:1rem">—</div>
+    </section>
+
+    <!-- Demo 2: html-in-canvas (Issue #172) -->
+    <section id="demo-htmlcanvas" class="panel" style="margin-top:2rem; padding:1.5rem">
+      <h3 style="text-align:center; margin-top:0">WICG html-in-canvas (Issue #172)</h3>
+      <p style="text-align:center; font-size:0.9rem; color:var(--muted)">
+        Uses <code>drawElementImage()</code> to render the clone directly into canvas, bypassing SVG/foreignObject.
+        Requires Chrome with <code>chrome://flags/#canvas-draw-element</code> enabled.
+      </p>
+      <div id="target-htmlcanvas" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:1rem;border-radius:12px;margin:1rem 0">
+        <strong>Target for html-in-canvas</strong>
+        <p style="margin:0.5rem 0 0;opacity:0.95">This box is captured via both PNG and drawElementImage.</p>
+      </div>
+      <div class="row" style="justify-content:center; gap:0.75rem">
+        <button id="btn-htmlcanvas-default">Capture (PNG)</button>
+        <button id="btn-htmlcanvas-api">Capture via html-in-canvas</button>
+      </div>
+      <div class="row" style="margin-top:1rem; gap:1.5rem; flex-wrap:wrap">
+        <div style="flex:1; min-width:200px">
+          <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.25rem">Default (SVG)</div>
+          <div class="output" id="out-htmlcanvas-default" style="min-height:80px">—</div>
+        </div>
+        <div style="flex:1; min-width:200px">
+          <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.25rem">html-in-canvas</div>
+          <div class="output" id="out-htmlcanvas-api" style="min-height:80px">—</div>
+          <div id="status-htmlcanvas" style="font-size:0.75rem; color:var(--muted); margin-top:0.25rem"></div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -419,6 +468,136 @@
         btn.disabled = false;
       }
     });
+
+    // --- html-in-canvas (Issue #172) ---
+    (function setupHtmlInCanvas() {
+      const target = document.getElementById('target-htmlcanvas');
+      const outDefault = document.getElementById('out-htmlcanvas-default');
+      const outApi = document.getElementById('out-htmlcanvas-api');
+      const statusApi = document.getElementById('status-htmlcanvas');
+
+      function isDrawElementImageAvailable() {
+        try {
+          const c = document.createElement('canvas');
+          const ctx = c.getContext('2d');
+          return ctx && typeof ctx.drawElementImage === 'function';
+        } catch { return false; }
+      }
+
+      const available = isDrawElementImageAvailable();
+      if (!available) {
+        statusApi.innerHTML = '<span style="color:#c00">drawElementImage not available. Enable chrome://flags/#canvas-draw-element</span>';
+      } else {
+        statusApi.textContent = 'drawElementImage available';
+      }
+
+      const htmlInCanvasPlugin = () => ({
+        name: 'html-in-canvas',
+        beforeRender(state) {
+          if (!available || !state.clone || !state.element) return;
+          state.options.__htmlInCanvas = {
+            clone: state.clone,
+            baseCSS: state.baseCSS || '',
+            fontsCSS: state.fontsCSS || '',
+            classCSS: state.classCSS || '',
+            element: state.element,
+            w0: null, h0: null
+          };
+        },
+        afterRender(state) {
+          if (!available) return;
+          const meta = state.options?.meta;
+          const stored = state.options?.__htmlInCanvas;
+          if (meta && stored) { stored.w0 = meta.w0; stored.h0 = meta.h0; }
+        },
+        async defineExports(ctx) {
+          if (!available) return {};
+          const stored = ctx.__htmlInCanvas || ctx.options?.__htmlInCanvas;
+          if (!stored) return {};
+          return {
+            htmlInCanvas: async (opts = {}) => {
+              const { clone, baseCSS, fontsCSS, classCSS, element } = stored;
+              const w0 = stored.w0 ?? element?.offsetWidth;
+              const h0 = stored.h0 ?? element?.offsetHeight;
+              const scale = opts.scale ?? ctx.scale ?? 1;
+              const dpr = window.devicePixelRatio || 1;
+              const rect = element?.getBoundingClientRect?.();
+              const width = w0 ?? rect?.width ?? 100;
+              const height = h0 ?? rect?.height ?? 100;
+              const outW = Math.round(width * scale * dpr);
+              const outH = Math.round(height * scale * dpr);
+
+              const canvas = document.createElement('canvas');
+              canvas.width = outW;
+              canvas.height = outH;
+              canvas.setAttribute('layoutsubtree', '');
+
+              const wrapper = document.createElement('div');
+              wrapper.style.cssText = `width:${width}px;height:${height}px;overflow:visible;box-sizing:border-box;`;
+              wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+
+              const styleTag = document.createElement('style');
+              styleTag.textContent = (baseCSS || '') + (fontsCSS || '') + 'svg{overflow:visible;}' + (classCSS || '');
+              wrapper.appendChild(styleTag);
+              wrapper.appendChild(clone.cloneNode(true));
+
+              canvas.appendChild(wrapper);
+
+              const container = document.createElement('div');
+              container.id = 'snapdom-html-in-canvas-temp';
+              container.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+              container.appendChild(canvas);
+              document.body.appendChild(container);
+
+              try {
+                await new Promise(r => requestAnimationFrame(r));
+                const ctx2d = canvas.getContext('2d');
+                if (!ctx2d || typeof ctx2d.drawElementImage !== 'function')
+                  throw new Error('drawElementImage not available');
+                ctx2d.save();
+                ctx2d.scale(dpr * scale, dpr * scale);
+                ctx2d.drawElementImage(wrapper, 0, 0, width, height);
+                ctx2d.restore();
+                return canvas;
+              } finally {
+                try { document.body.removeChild(container); } catch {}
+              }
+            }
+          };
+        }
+      });
+
+      document.getElementById('btn-htmlcanvas-default').onclick = async () => {
+        outDefault.textContent = 'Capturing…';
+        try {
+          const result = await snapdom(target, { embedFonts: true });
+          const img = await result.toPng();
+          outDefault.innerHTML = '';
+          outDefault.appendChild(img);
+        } catch (e) {
+          outDefault.innerHTML = '<span style="color:#c00">' + e.message + '</span>';
+        }
+      };
+
+      document.getElementById('btn-htmlcanvas-api').onclick = async () => {
+        if (!available) return;
+        outApi.textContent = 'Capturing…';
+        try {
+          const result = await snapdom(target, { embedFonts: true, plugins: [htmlInCanvasPlugin()] });
+          const canvas = await result.toHtmlInCanvas();
+          outApi.innerHTML = '';
+          if (canvas) {
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL('image/png');
+            outApi.appendChild(img);
+          } else {
+            outApi.innerHTML = '<span style="color:#c00">toHtmlInCanvas not available</span>';
+          }
+        } catch (e) {
+          outApi.innerHTML = '<span style="color:#c00">' + e.message + '</span>';
+        }
+      };
+    })();
   </script>
 </body>
 </html>
