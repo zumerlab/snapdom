@@ -184,7 +184,6 @@ dist/modules/snapdom.js
 
 此方式会加载完整的单文件构建，并在 `window` 上提供全局变量 `snapdom`。
 
-```
 
 ## 基本用法
 
