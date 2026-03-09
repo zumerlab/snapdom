@@ -53,8 +53,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://api.github.com">
-
+  
   <!-- === Stylesheets (Orbit se carga después para no bloquear Safari) === -->
+  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css" crossorigin="anonymous" fetchpriority="high">
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap">
 
@@ -2415,8 +2417,8 @@ window.captureTimestampDemo = async function(btn) {
     setInterval(updateGitHubStars, 60000)
   </script>
   <script>
-    (function(){var l=function(){var c=document.createElement('link');c.rel='stylesheet';c.href='https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.css';c.crossOrigin='anonymous';document.head.appendChild(c);var s=document.createElement('script');s.src='https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js';s.crossOrigin='anonymous';document.body.appendChild(s);};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',l);else l();})();
   </script>
+   <script crossorigin src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.min.js"></script>
 </body>
 
 </html>
