@@ -1,0 +1,72 @@
+# Priority labels
+- name: "priority: critical"
+  color: "B60205"
+  description: "Core functionality broken, causes crashes or data loss, affects most users"
+
+- name: "priority: high"
+  color: "D93F0B"
+  description: "Important feature broken or significantly degraded, no practical workaround"
+
+- name: "priority: medium"
+  color: "E4E669"
+  description: "Feature partially broken or degraded, workaround exists"
+
+- name: "priority: low"
+  color: "0E8A16"
+  description: "Minor issue, cosmetic problem, or question"
+
+# Type labels
+- name: "bug"
+  color: "D73A4A"
+  description: "Something isn't working"
+
+- name: "enhancement"
+  color: "A2EEEF"
+  description: "New feature or request"
+
+- name: "question"
+  color: "D876E3"
+  description: "Further information is requested"
+
+- name: "documentation"
+  color: "0075CA"
+  description: "Improvements or additions to documentation"
+
+# Status labels
+- name: "🔧 in development"
+  color: "FBCA04"
+  description: "This issue is being actively worked on"
+
+- name: "need repro"
+  color: "E4E669"
+  description: "A reproducible test case is needed to investigate"
+
+- name: "duplicate"
+  color: "CFD3D7"
+  description: "This issue or pull request already exists"
+
+- name: "wontfix"
+  color: "FFFFFF"
+  description: "This will not be worked on"
+
+- name: "good first issue"
+  color: "7057FF"
+  description: "Good for newcomers"
+
+# Browser/environment labels
+- name: "safari-hates-me"
+  color: "0052CC"
+  description: "Issue specific to Safari browser"
+
+- name: "Fails on Firefox"
+  color: "FF6B35"
+  description: "Issue specific to Firefox browser"
+
+# Feature area labels
+- name: "plugin idea"
+  color: "BFD4F2"
+  description: "Could be implemented as a plugin"
+
+- name: "experimental"
+  color: "F9D0C4"
+  description: "Experimental feature or idea"

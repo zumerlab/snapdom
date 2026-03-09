@@ -44,15 +44,15 @@ function buildHTML(contributors) {
 
 function updateReadmes(contributorHTML) {
   for (const path of readmePaths) {
-    try {
+    //try {
       const content = readFileSync(path, 'utf8');
       const updated = content.replace(
         /<!-- CONTRIBUTORS:START -->([\s\S]*?)<!-- CONTRIBUTORS:END -->/,
         `<!-- CONTRIBUTORS:START -->${contributorHTML}<!-- CONTRIBUTORS:END -->`
       );
       writeFileSync(path, updated);
-    } catch () {
-    }
+    //} catch () {
+    //}
   }
 }
 

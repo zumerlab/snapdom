@@ -592,10 +592,21 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
     }
   }
 
-  // Recurse
-  const sChildren = Array.from(source.children)
+  // Recurse – use nodeMap (clone→source) for alignment instead of index,
+  // because deepClone filters out NO_CAPTURE_TAGS (script, link, etc.),
+  // which causes index mismatch between source.children and clone.children.
   const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo)
-  for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-    await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options)
+  if (sessionCache.nodeMap) {
+    for (const cChild of cChildren) {
+      const sChild = sessionCache.nodeMap.get(cChild)
+      if (sChild instanceof Element) {
+        await inlinePseudoElements(sChild, cChild, sessionCache, options)
+      }
+    }
+  } else {
+    const sChildren = Array.from(source.children)
+    for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
+      await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options)
+    }
   }
 }

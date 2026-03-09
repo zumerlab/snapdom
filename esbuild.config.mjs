@@ -61,8 +61,8 @@ async function buildGlobalMinified() {
     ...common,
     entryPoints: ['src/index.browser.js'], // O tu index.browser.js si lo usas
     outfile: 'dist/snapdom.js',
-    format: 'iife',
     globalName: 'snapdom',
+    platform:'neutral',
     minify: true,   // <--- MINIFICADA
     target: ['es2020'],
     banner,
@@ -79,7 +79,7 @@ async function buildGlobalUnminified() {
     entryPoints: ['src/index.js'],
     outfile: 'dist/snapdom.mjs',
     format: 'esm',
-    minify: false,
+    minify: true,
     splitting: false, // Monolítico
     banner,
   })

@@ -4,6 +4,7 @@ import { extendIconFonts } from '../modules/iconFonts.js'
 import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
+export { preCache } from './preCache.js'
 
 // API pública (registro global de plugins)
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
@@ -330,7 +331,7 @@ async function safariWarmup(element, baseOptions) {
         try { if (typeof img.decode === 'function') await img.decode() } catch {}
         const start = performance.now()
         while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
-          await new Promise(r => setTimeout(r, 50))
+          await new Promise(r => setTimeout(r, 200))
         }
         await new Promise(r => requestAnimationFrame(r))
         try { img.remove() } catch {}

@@ -86,6 +86,9 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
 
   while (queue.length) {
     const [srcNode, cloneNode] = queue.shift()
+
+    if (!cloneNode) continue
+
     // Style cache
     const style = styleCache.get(srcNode) || getStyle(srcNode)
     if (!styleCache.has(srcNode)) styleCache.set(srcNode, style)
@@ -104,6 +107,7 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     for (const prop of URL_PROPS) {
       const val = style.getPropertyValue(prop)
       if (!val || val === 'none') continue
+
       // Split multiple layers (comma-separated)
       const splits = splitBackgroundImage(val)
 
@@ -131,9 +135,20 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       }
     }
     // 4) Recurse
-    const sChildren = Array.from(srcNode.children)
- const cChildren = Array.from(cloneNode.children)
-   .filter(el => !(el.dataset && el.dataset.snapdomPseudo))
+    // Fix: When srcNode is a shadow DOM host, its light DOM children are empty
+    // (content lives in shadowRoot). Use shadowRoot.children instead, filtering
+    // out <style> elements which are skipped during shadow DOM cloning.
+    const sChildren = srcNode.shadowRoot
+      ? Array.from(srcNode.shadowRoot.children).filter(el => el.tagName !== 'STYLE')
+      : Array.from(srcNode.children)
+    const cChildren = Array.from(cloneNode.children)
+      .filter(el => {
+        if (el.dataset?.snapdomPseudo) return false
+        // Only exclude injected <style data-sd> tags, not shadow DOM host elements
+        if (el.tagName === 'STYLE' && el.dataset?.sd) return false
+        return true
+      })
+
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
       queue.push([sChildren[i], cChildren[i]])
     }

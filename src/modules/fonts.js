@@ -790,7 +790,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const sheet of document.styleSheets) {
     if (sheet.href && linkNodes.some(l => l.href === sheet.href)) continue
     try {
-      const rootHref = sheet.href || location.href
+      const rootHref = sheet.href || (location.origin + '/')
       if (rootHref) ctx.visitedSheets.add(rootHref)
       await collectFacesFromSheet(
         sheet,
