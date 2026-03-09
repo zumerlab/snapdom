@@ -16,7 +16,8 @@ import {
   collectCustomPropsFromCSS,
   buildSeedCustomPropsRule,
   markSlottedSubtree,
-  rasterizeIframe
+  rasterizeIframe,
+  getUnscaledDimensions
 } from '../utils/clone.helpers.js'
 
 // helper implementations moved to ../utils/clone.helpers.js
@@ -101,17 +102,18 @@ export async function deepClone(node, sessionCache, options) {
 
     // Fallback actual (placeholder o spacer)
     if (options.placeholders) {
+      const { width, height } = getUnscaledDimensions(node)
       const fallback = document.createElement('div')
       fallback.style.cssText =
-        `width:${node.offsetWidth}px;height:${node.offsetHeight}px;` +
+        `width:${width}px;height:${height}px;` +
         'background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);' +
         'display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;'
       inlineAllStyles(node, fallback, sessionCache, options)
       return fallback
     } else {
-      const rect = node.getBoundingClientRect()
+      const { width, height } = getUnscaledDimensions(node)
       const spacer = document.createElement('div')
-      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`
+      spacer.style.cssText = `display:inline-block;width:${width}px;height:${height}px;visibility:hidden;`
       inlineAllStyles(node, spacer, sessionCache, options)
       return spacer
     }
@@ -165,12 +167,10 @@ export async function deepClone(node, sessionCache, options) {
     img.width = node.width
     img.height = node.height
 
-    // conservar caja CSS para no romper layout
-    try {
-      const cs = getComputedStyle(node)
-      if (cs.width) img.style.width = cs.width
-      if (cs.height) img.style.height = cs.height
-    } catch { }
+    // conservar caja CSS para no romper layout usando dimensiones pre-transform
+    const { width, height } = getUnscaledDimensions(node)
+    if (width > 0) img.style.width = `${width}px`
+    if (height > 0) img.style.height = `${height}px`
 
     sessionCache.nodeMap.set(img, node)
     inlineAllStyles(node, img, sessionCache, options)
@@ -184,22 +184,11 @@ export async function deepClone(node, sessionCache, options) {
     sessionCache.nodeMap.set(clone, node)
     if (node.tagName === 'IMG') {
       freezeImgSrcset(node, clone)
-      // Record original image dimensions for fallback usage when inlining fails
+      // Record original image dimensions (pre-transform) for fallback usage when inlining fails
       try {
-        const rect = node.getBoundingClientRect()
-        let w = Math.round(rect.width || 0)
-        let h = Math.round(rect.height || 0)
-        if (!w || !h) {
-          const computed = window.getComputedStyle(node)
-          const cssW = parseFloat(computed.width) || 0
-          const cssH = parseFloat(computed.height) || 0
-          const attrW = parseInt(node.getAttribute('width') || '', 10) || 0
-          const attrH = parseInt(node.getAttribute('height') || '', 10) || 0
-          const propW = node.width || node.naturalWidth || 0
-          const propH = node.height || node.naturalHeight || 0
-          w = Math.round(w || cssW || attrW || propW || 0)
-          h = Math.round(h || cssH || attrH || propH || 0)
-        }
+        const { width, height } = getUnscaledDimensions(node)
+        const w = Math.round(width || 0)
+        const h = Math.round(height || 0)
         if (w) clone.dataset.snapdomWidth = String(w)
         if (h) clone.dataset.snapdomHeight = String(h)
       } catch { }
