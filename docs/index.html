@@ -1944,79 +1944,100 @@
 
 
   <script type="module">
-    import {
-      snapdom,
-    } from 'https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs'; //'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.mjs';
-    import html2canvas from 'https://cdn.skypack.dev/html2canvas';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs';
 
-    window.snapdom = snapdom
+    window.snapdom = snapdom;
+
+    // html2canvas carga solo al hacer benchmark (evita bloqueo en Safari por ESM)
+    let html2canvas = null;
+    async function loadHtml2Canvas() {
+      if (!html2canvas) {
+        const mod = await import('https://cdn.skypack.dev/html2canvas');
+        html2canvas = mod.default;
+      }
+      return html2canvas;
+    }
 
     window.runBenchmark = async function () {
       const el = document.getElementById("benchmark-box");
       const snapContainer = document.getElementById("snapdom-benchmark-output");
       const h2cContainer = document.getElementById("h2c-benchmark-output");
       const resultText = document.getElementById("benchmark-result");
-
-      // Limpiar y preparar UI
-      snapContainer.innerHTML = '<div class="progress-message">Starting snapDOM test...</div>';
-      h2cContainer.innerHTML = '<div class="progress-message">Starting html2canvas test...</div>';
-      resultText.textContent = "";
-
       const benchmarkBtn = document.querySelector(".run-benchmark-button");
+
+      if (!el || !snapContainer || !h2cContainer || !resultText || !benchmarkBtn) return;
+
+      snapContainer.innerHTML = '<div class="progress-message">Starting snapDOM test...</div>';
+      h2cContainer.innerHTML = '<div class="progress-message">Loading html2canvas...</div>';
+      resultText.textContent = "";
       benchmarkBtn.disabled = true;
       benchmarkBtn.textContent = "Running benchmark...";
 
-      const forceRender = async () => new Promise(resolve => {
-        requestAnimationFrame(() => { requestAnimationFrame(resolve); });
-      });
+      let h2c;
+      try {
+        h2c = await loadHtml2Canvas();
+      } catch (e) {
+        h2cContainer.innerHTML = '<div class="progress-message" style="color:#c00">html2canvas failed to load (Safari?). Showing snapDOM only.</div>';
+        h2c = null;
+      }
+
+      const forceRender = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       // Benchmark snapDOM
       let snapTotal = 0;
       let snapCanvas;
       for (let i = 0; i < 5; i++) {
-        snapContainer.innerHTML = `<div class="progress-message">Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}.</div>`;
+        snapContainer.innerHTML = '<div class="progress-message">Capture ' + (i + 1) + '/5...</div>';
         await forceRender();
         const t0 = performance.now();
         snapCanvas = await snapdom.toImg(el);
         snapTotal += performance.now() - t0;
         snapContainer.innerHTML = '';
         snapContainer.appendChild(snapCanvas);
-        snapContainer.insertAdjacentHTML('beforeend', `<div class="progress-message">snapDOM: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`);
+        snapContainer.insertAdjacentHTML('beforeend', '<div class="progress-message">snapDOM: ' + (i + 1) + '/5</div>');
         await forceRender();
       }
 
-      // Benchmark html2canvas
       let h2cTotal = 0;
       let h2cCanvas;
-      for (let i = 0; i < 5; i++) {
-        h2cContainer.innerHTML = `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'}</div>`;
+      if (h2c) {
+        h2cContainer.innerHTML = '<div class="progress-message">Starting html2canvas test...</div>';
         await forceRender();
-        const t0 = performance.now();
-        h2cCanvas = await html2canvas(el, { logging: false });
-        h2cTotal += performance.now() - t0;
-        h2cContainer.innerHTML = '';
-        h2cContainer.appendChild(h2cCanvas);
-        h2cContainer.insertAdjacentHTML('beforeend', `<div class="progress-message">html2canvas: Capture ${i + 1}/5${i + 1 === 5 ? ' ✅' : '...'} </div>`);
-        await forceRender();
+        for (let i = 0; i < 5; i++) {
+          h2cContainer.innerHTML = '<div class="progress-message">html2canvas: Capture ' + (i + 1) + '/5...</div>';
+          await forceRender();
+          const t0 = performance.now();
+          h2cCanvas = await h2c(el, { logging: false });
+          h2cTotal += performance.now() - t0;
+          h2cContainer.innerHTML = '';
+          h2cContainer.appendChild(h2cCanvas);
+          h2cContainer.insertAdjacentHTML('beforeend', '<div class="progress-message">html2canvas: ' + (i + 1) + '/5</div>');
+          await forceRender();
+        }
+      } else {
+        h2cTotal = snapTotal * 2;
+        h2cCanvas = null;
       }
 
       const snapAvg = snapTotal / 5;
       const h2cAvg = h2cTotal / 5;
-      snapContainer.insertAdjacentHTML("beforeend", `<div class="result-message">⏱ Average: ${snapAvg.toFixed(1)} ms</div>`);
-      h2cContainer.insertAdjacentHTML("beforeend", `<div class="result-message">⏱ Average: ${h2cAvg.toFixed(1)} ms</div>`);
+      snapContainer.insertAdjacentHTML('beforeend', '<div class="result-message">Average: ' + snapAvg.toFixed(1) + ' ms</div>');
+      if (h2c) {
+        h2cContainer.insertAdjacentHTML('beforeend', '<div class="result-message">Average: ' + h2cAvg.toFixed(1) + ' ms</div>');
+      }
 
-      const speedRatio = h2cAvg / snapAvg;
-      const winnerMessage = snapAvg < h2cAvg
-        ? `🏆 snapDOM wins! (${speedRatio.toFixed(1)}x faster)`
-        : `🏆 html2canvas wins! (${(snapAvg / h2cAvg).toFixed(1)}x faster)`;
+      const winnerMessage = !h2c
+        ? 'snapDOM benchmark complete (html2canvas unavailable)'
+        : (snapAvg < h2cAvg
+          ? 'snapDOM wins! (' + (h2cAvg / snapAvg).toFixed(1) + 'x faster)'
+          : 'html2canvas wins! (' + (snapAvg / h2cAvg).toFixed(1) + 'x faster)');
+      resultText.innerHTML = '<div class="winner-message">' + winnerMessage + '</div>';
 
-      resultText.innerHTML = `<div class="winner-message">${winnerMessage}</div>`;
-
-      snapContainer.classList.toggle("winner-glow", snapAvg < h2cAvg);
-      h2cContainer.classList.toggle("winner-glow", h2cAvg < snapAvg);
+      snapContainer.classList.toggle('winner-glow', !h2c || snapAvg < h2cAvg);
+      h2cContainer.classList.toggle('winner-glow', h2c && h2cAvg < snapAvg);
 
       benchmarkBtn.disabled = false;
-      benchmarkBtn.textContent = "Run Benchmark Again";
+      benchmarkBtn.textContent = 'Run Benchmark Again';
     };
 
     let PROXY_BASE = ""; // disabled by default
