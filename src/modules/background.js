@@ -105,7 +105,14 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     }
     // 1) Inline URL-bearing properties
     for (const prop of URL_PROPS) {
-      const val = style.getPropertyValue(prop)
+      let val = style.getPropertyValue(prop)
+      // Fallback: when background-image is none/empty, parse url() from background shorthand (#343)
+      if ((prop === 'background-image') && (!val || val === 'none')) {
+        const bgShorthand = style.getPropertyValue('background')
+        if (bgShorthand && /url\s*\(/.test(bgShorthand)) {
+          val = splitBackgroundImage(bgShorthand).find(p => /url\s*\(/.test(p)) || val
+        }
+      }
       if (!val || val === 'none') continue
 
       // Split multiple layers (comma-separated)

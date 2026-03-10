@@ -1,5 +1,16 @@
-import { describe, it, expect} from 'vitest'
-import { extractURL, isIconFont, stripTranslate, safeEncodeURI } from '../src/utils'
+import { describe, it, expect } from 'vitest'
+import { extractURL, isIconFont, stripTranslate, safeEncodeURI, resolveURL } from '../src/utils'
+
+describe('resolveURL', () => {
+  it('resolves relative URL against base', () => {
+    expect(resolveURL('bg_body.png', 'https://example.com/page')).toBe('https://example.com/bg_body.png')
+    expect(resolveURL('img/a.png', 'https://example.com/page/')).toBe('https://example.com/page/img/a.png')
+  })
+  it('returns data/blob/about URLs unchanged', () => {
+    expect(resolveURL('data:image/png;base64,abc')).toBe('data:image/png;base64,abc')
+    expect(resolveURL('blob:https://x/123')).toBe('blob:https://x/123')
+  })
+})
 
 describe('extractURL', () => {
   it('extracts the URL from background-image', () => {
