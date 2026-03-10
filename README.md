@@ -50,15 +50,76 @@ It converts any DOM subtree into a self-contained representation that can be exp
 [https://snapdom.dev](https://snapdom.dev)
 
 
+## Quick Start
+
+**Capture any DOM element to PNG in one line:**
+
+```js
+import { snapdom } from '@zumer/snapdom';
+
+const img = await snapdom.toPng(document.querySelector('#card'));
+document.body.appendChild(img);
+```
+
+**Reusable capture** (one clone, multiple exports):
+
+```js
+const result = await snapdom(document.querySelector('#card'));
+await result.toPng();      // → HTMLImageElement
+await result.toSvg();      // → SVG as Image
+await result.download({ format: 'jpg', filename: 'card.jpg' });
+```
+
+---
+
+## Capture Flow
+
+SnapDOM transforms your DOM element through these stages:
+
+```mermaid
+flowchart LR
+    subgraph Input
+        A[DOM Element]
+    end
+    
+    subgraph Capture
+        B[Clone] --> C[Styles & Pseudo]
+        C --> D[Images & Backgrounds]
+        D --> E[Fonts]
+        E --> F[SVG foreignObject]
+    end
+    
+    subgraph Output
+        F --> G[data:image/svg+xml]
+        G --> H[toPng / toSvg / toBlob / download]
+    end
+    
+    A --> B
+```
+
+| Stage | What happens |
+|-------|--------------|
+| **Clone** | Deep clone with styles, Shadow DOM, iframes. Exclude/filter nodes. |
+| **Styles & Pseudo** | Inline `::before`/`::after` as elements, resolve `counter()`/`counters()`. |
+| **Images & Backgrounds** | Fetch and inline external images/backgrounds as data URLs. |
+| **Fonts** | Embed `@font-face` (optional) and icon fonts. |
+| **SVG** | Wrap clone in `<foreignObject>`, serialize to `data:image/svg+xml`. |
+| **Export** | Convert SVG to PNG/JPG/WebP/Blob or trigger download. |
+
+Plugin hooks: `beforeSnap` → `beforeClone` → `afterClone` → `beforeRender` → `afterRender` → `beforeExport` → `afterExport`.
+
+
 ## Table of Contents
 
+- [Quick Start](#quick-start)
+- [Capture Flow](#capture-flow)
 - [Installation](#installation)
   - [NPM / Yarn (stable)](#npm--yarn-stable)
   - [NPM / Yarn (dev builds)](#npm--yarn-dev-builds)
   - [CDN (stable)](#cdn-stable)
   - [CDN (dev builds)](#cdn-dev-builds)
-- [Build Outputs & Tree-Shaking](#build-outputs--tree-shaking)
-- [Basic usage](#basic-usage)
+- [Build Outputs](#build-outputs--tree-shaking)
+- [Usage](#usage)
   - [Reusable capture](#reusable-capture)
   - [One-step shortcuts](#one-step-shortcuts)
 - [API](#api)
@@ -144,54 +205,59 @@ yarn add @zumer/snapdom@dev
 </script>
 ```
 
-## Build Outputs & Tree-Shaking
+## Build Outputs
 
-SnapDOM ships two main variants:
+| Variant | File | Use case |
+|---------|------|----------|
+| **ESM** (tree-shakeable) | `dist/snapdom.mjs` | Bundlers (Vite, webpack), `import` |
+| **IIFE** (global) | `dist/snapdom.js` | Script tag, legacy `require` |
 
-### npm usage → ESM build (tree-shakeable)
-
-When you import SnapDOM in a project with a bundler:
-
+**Bundler (npm):**
 ```js
-import { snapdom } from '@zumer/snapdom';
+import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 ```
 
-your environment loads `dist/snapdom.mjs`, a monolithic ESM build. Bundlers tree-shake unused code automatically.
-
-### Script tag usage → Global build
-
+**Script tag (CDN):**
 ```html
 <script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
-<script>
-  snapdom.toPng(document.body).then(img => {
-    document.body.appendChild(img);
-  });
-</script>
+<script> snapdom.toPng(document.body).then(img => document.body.appendChild(img)); </script>
 ```
 
-This loads the IIFE build and exposes snapdom on window.
+**Subpath imports** (lighter bundle if you only need one):
+```js
+import { preCache } from '@zumer/snapdom/preCache';
+import { plugins } from '@zumer/snapdom/plugins';
+```
 
 
-## Basic usage
+## Usage
+
+| Pattern | When to use |
+|---------|-------------|
+| **Reusable** `snapdom(el)` | One clone → many exports (PNG + JPG + download). |
+| **Shortcuts** `snapdom.toPng(el)` | Single export, less code. |
 
 ### Reusable capture
+
+Capture once, export many times (no re-clone):
+
 ```js
 const el = document.querySelector('#target');
 const result = await snapdom(el);
 
 const img = await result.toPng();
 document.body.appendChild(img);
-
 await result.download({ format: 'jpg', filename: 'my-capture.jpg' });
 ```
 
 ### One-step shortcuts
-```js
-const el = document.querySelector('#target');
-const png = await snapdom.toPng(el);
-document.body.appendChild(png);
 
+Direct export when you need a single format:
+
+```js
+const png = await snapdom.toPng(el);
 const blob = await snapdom.toBlob(el);
+document.body.appendChild(png);
 ```
 
 ## API
@@ -513,17 +579,19 @@ const out = await snapdom(element, {
 
 ### Plugin Lifecycle Hooks
 
-| Hook                           | Purpose                                                                              |
-| ------------------------------ | ------------------------------------------------------------------------------------ |
-| `beforeSnap(context)`          | Before any clone/style work. Ideal for adjusting global capture options.             |
-| `beforeClone(context)`         | Before DOM cloning. Can modify live DOM (use carefully).                             |
-| `afterClone(context)`          | After the element subtree has been cloned. Safe to modify styles in the cloned tree. |
-| `beforeRender(context)`        | Right before SVG/dataURL serialization.                                              |
-| `afterRender(context)`         | After serialization (you can inspect `context.svgString` or `context.dataURL`).      |
-| `beforeExport(context)`        | Before each export call (`toPng`, `toSvg`, etc.).                                    |
-| `afterExport(context, result)` | After each export call — can transform the returned result.                          |
-| `afterSnap(context)`           | Runs **once**, after the **first export** finishes. Perfect for cleanup.             |
-| `defineExports(context)`       | Returns a map of **custom exporters**, e.g. `{ pdf: async (ctx, opts) => Blob }`.    |
+Hooks run in capture order (see [Capture Flow](#capture-flow)):
+
+| Hook | Stage | Purpose |
+|------|-------|---------|
+| `beforeSnap` | Start | Adjust options before any work. |
+| `beforeClone` | Pre-clone | Before DOM clone (modify live DOM carefully). |
+| `afterClone` | Post-clone | Modify cloned tree safely (e.g. inject overlay). |
+| `beforeRender` | Pre-serialize | Right before SVG → data URL. |
+| `afterRender` | Post-serialize | Inspect `context.svgString` / `context.dataURL`. |
+| `beforeExport` | Per export | Before each `toPng`, `toSvg`, etc. |
+| `afterExport` | Per export | Transform returned result. |
+| `afterSnap` | Once | After first export; cleanup. |
+| `defineExports` | Setup | Add custom exporters (e.g. `toPdf`). |
 
 > Returned values from `afterExport` are chained to the next plugin (transform pipeline).
 
@@ -772,35 +840,30 @@ Feel free to share suggestions or feedback in [GitHub Discussions](https://githu
 
 ## Development
 
-To contribute or build snapDOM locally:
+**Source layout:**
+- `src/api/` – Public API (`snapdom`, `preCache`)
+- `src/core/` – Capture pipeline, clone, prepare, plugins
+- `src/modules/` – Images, fonts, pseudo-elements, backgrounds, SVG
+- `src/exporters/` – toPng, toSvg, toBlob, etc.
+- `dist/` – Build output (`snapdom.js`, `snapdom.mjs`, `preCache.mjs`, `plugins.mjs`)
 
+**Build:**
 ```sh
-# Clone the repository
 git clone https://github.com/zumerlab/snapdom.git
 cd snapdom
-
-# Switch to dev branch
 git checkout dev
-
-# Install dependencies
 npm install
-
-# Compile the library (ESM, CJS, and minified versions)
 npm run compile
+```
 
-# Install playwright browsers (necessary for running tests)
-npx playwright install
-
-# Run tests
+**Test:**
+```sh
+npx playwright install   # Required for browser tests
 npm test
-
-# Run Benchmarks
 npm run test:benchmark
 ```
 
-The main entry point is in `src/`, and output bundles are generated in the `dist/` folder.
-
-For detailed contribution guidelines, please see [CONTRIBUTING](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING.md).
+For detailed guidelines, see [CONTRIBUTING](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING.md).
 
 
 ## Contributors
