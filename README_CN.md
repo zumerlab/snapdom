@@ -157,19 +157,7 @@ SnapDOM 提供多种构建版本，但使用方式非常简单。
 import { snapdom } from '@zumer/snapdom';
 ```
 
-打包工具会自动加载：
-
-```
-dist/modules/snapdom.js
-```
-
-这是 SnapDOM 的 **模块化 ESM 构建**，具有以下特性：
-
-* 支持 Tree-Shaking（自动移除未使用代码）
-* 支持按需代码拆分
-* 内部导出函数（`toPng`、`toJpg`、`toWebp` 等）会 **懒加载**
-
-无需额外配置，打包工具会自动选择此构建版本。
+打包工具会自动加载 `dist/snapdom.mjs`，这是 SnapDOM 的 **ESM 单文件构建**，支持 Tree-Shaking，打包工具会自动移除未使用代码。无需额外配置。
 
 ### 浏览器直接使用 `<script>` → **全局 IIFE 构建**
 

@@ -146,9 +146,9 @@ yarn add @zumer/snapdom@dev
 
 ## Build Outputs & Tree-Shaking
 
-SnapDOM ships multiple build variants, but using it is simple.
+SnapDOM ships two main variants:
 
-### npm usage → ESM modular build (tree-shakeable)
+### npm usage → ESM build (tree-shakeable)
 
 When you import SnapDOM in a project with a bundler:
 
@@ -156,21 +156,7 @@ When you import SnapDOM in a project with a bundler:
 import { snapdom } from '@zumer/snapdom';
 ```
 
-your environment automatically loads:
-
-```sh
-dist/modules/snapdom.js
-```
-
-This is the modular ESM build, enabling:
-
-- Tree-shaking
-
-- Code-splitting
-
-- Lazy loading of exporters (toPng, toJpg, toWebp, etc.)
-
-You do not need to configure anything; bundlers pick this build automatically.
+your environment loads `dist/snapdom.mjs`, a monolithic ESM build. Bundlers tree-shake unused code automatically.
 
 ### Script tag usage → Global build
 
@@ -183,7 +169,7 @@ You do not need to configure anything; bundlers pick this build automatically.
 </script>
 ```
 
-This loads the monolithic global build and exposes snapdom on window.
+This loads the IIFE build and exposes snapdom on window.
 
 
 ## Basic usage
