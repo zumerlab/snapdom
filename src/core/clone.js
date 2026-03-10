@@ -47,8 +47,10 @@ export async function deepClone(node, sessionCache, options) {
   if (node.getAttribute('data-capture') === 'exclude') {
     if (options.excludeMode === 'hide') {
       const spacer = document.createElement('div')
-      const rect = node.getBoundingClientRect()
-      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`
+      const { width, height } = getUnscaledDimensions(node)
+      const w = width || node.getBoundingClientRect().width || 0
+      const h = height || node.getBoundingClientRect().height || 0
+      spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
       return spacer
     } else if (options.excludeMode === 'remove') {
       return null
@@ -60,8 +62,10 @@ export async function deepClone(node, sessionCache, options) {
         if (node.matches?.(selector)) {
           if (options.excludeMode === 'hide') {
             const spacer = document.createElement('div')
-            const rect = node.getBoundingClientRect()
-            spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`
+            const { width, height } = getUnscaledDimensions(node)
+            const w = width || node.getBoundingClientRect().width || 0
+            const h = height || node.getBoundingClientRect().height || 0
+            spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
             return spacer
           } else if (options.excludeMode === 'remove') {
             return null
@@ -77,8 +81,10 @@ export async function deepClone(node, sessionCache, options) {
       if (!options.filter(node)) {
         if (options.filterMode === 'hide') {
           const spacer = document.createElement('div')
-          const rect = node.getBoundingClientRect()
-          spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`
+          const { width, height } = getUnscaledDimensions(node)
+          const w = width || node.getBoundingClientRect().width || 0
+          const h = height || node.getBoundingClientRect().height || 0
+          spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
           return spacer
         } else if (options.filterMode === 'remove') {
           return null
@@ -227,9 +233,11 @@ export async function deepClone(node, sessionCache, options) {
   }
   let applyInputVisual = null
   if (node instanceof HTMLTextAreaElement) {
-    const rect = node.getBoundingClientRect()
-    clone.style.width = `${rect.width}px`
-    clone.style.height = `${rect.height}px`
+    const { width, height } = getUnscaledDimensions(node)
+    const w = width || node.getBoundingClientRect().width || 0
+    const h = height || node.getBoundingClientRect().height || 0
+    if (w) clone.style.width = `${w}px`
+    if (h) clone.style.height = `${h}px`
   }
   if (node instanceof HTMLInputElement) {
     const type = (node.type || 'text').toLowerCase()

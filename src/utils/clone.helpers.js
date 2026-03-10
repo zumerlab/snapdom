@@ -428,13 +428,14 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
  * @returns {{ el: HTMLDivElement, applyVisual: () => void }}
  */
 export function createCheckboxRadioReplacement(node) {
+  const { width: unscaledW, height: unscaledH } = getUnscaledDimensions(node)
   const rect = node.getBoundingClientRect()
   let cs
   try { cs = window.getComputedStyle(node) } catch { }
   const parsedW = cs ? parseFloat(cs.width) : NaN
   const parsedH = cs ? parseFloat(cs.height) : NaN
-  const rw = Math.round(rect.width || 0)
-  const rh = Math.round(rect.height || 0)
+  const rw = Math.round(unscaledW || rect.width || 0)
+  const rh = Math.round(unscaledH || rect.height || 0)
   let w = Number.isFinite(parsedW) && parsedW > 0 ? Math.round(parsedW) : Math.max(12, rw || 16)
   let h = Number.isFinite(parsedH) && parsedH > 0 ? Math.round(parsedH) : Math.max(12, rh || 16)
   const isCheckbox = (node.type || 'text').toLowerCase() === 'checkbox'
