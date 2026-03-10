@@ -49,3 +49,9 @@ export function isSafari() {
 
   return isSafariUA || isUIWebView || isWeChatUA || isBaiduUA || isIOSWebKit
 }
+
+export function isFirefox() {
+  if (typeof navigator === 'undefined') return false
+  const ua = (navigator.userAgent || '').toLowerCase()
+  return ua.includes('firefox') || ua.includes('fxios')
+}

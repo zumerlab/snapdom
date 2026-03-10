@@ -16,8 +16,11 @@ import {
   collectCustomPropsFromCSS,
   buildSeedCustomPropsRule,
   markSlottedSubtree,
-  rasterizeIframe
+  rasterizeIframe,
+  getUnscaledDimensions,
+  createCheckboxRadioReplacement
 } from '../utils/clone.helpers.js'
+import { isFirefox } from '../utils/browser.js'
 
 // helper implementations moved to ../utils/clone.helpers.js
 
@@ -234,18 +237,28 @@ export async function deepClone(node, sessionCache, options) {
     console.error('[Snapdom] Failed to clone node:', node, err)
     throw err
   }
+  let applyInputVisual = null
   if (node instanceof HTMLTextAreaElement) {
     const rect = node.getBoundingClientRect()
     clone.style.width = `${rect.width}px`
     clone.style.height = `${rect.height}px`
   }
   if (node instanceof HTMLInputElement) {
-    clone.value = node.value
-    clone.setAttribute('value', node.value)
-    if (node.checked !== void 0) {
-      clone.checked = node.checked
-      if (node.checked) clone.setAttribute('checked', '')
-      if (node.indeterminate) clone.indeterminate = node.indeterminate
+    const type = (node.type || 'text').toLowerCase()
+    const isCheckboxOrRadio = type === 'checkbox' || type === 'radio'
+    if (isCheckboxOrRadio && isFirefox()) {
+      const { el: replacement, applyVisual } = createCheckboxRadioReplacement(node)
+      sessionCache.nodeMap.set(replacement, node)
+      applyInputVisual = applyVisual
+      clone = replacement
+    } else {
+      clone.value = node.value
+      clone.setAttribute('value', node.value)
+      if (node.checked !== void 0) {
+        clone.checked = node.checked
+        if (node.checked) clone.setAttribute('checked', '')
+        if (node.indeterminate) clone.indeterminate = node.indeterminate
+      }
     }
   }
   if (node instanceof HTMLSelectElement) {
@@ -255,6 +268,7 @@ export async function deepClone(node, sessionCache, options) {
     pendingTextAreaValue = node.value
   }
   inlineAllStyles(node, clone, sessionCache, options)
+  if (applyInputVisual) { applyInputVisual() }
   if (node.shadowRoot) {
     try {
       const slots = node.shadowRoot.querySelectorAll('slot')

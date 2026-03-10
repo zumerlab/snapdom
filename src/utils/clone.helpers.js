@@ -355,6 +355,66 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   return wrapper
 }
 
+// ========== Checkbox/Radio replacement (Firefox fix) ==========
+
+/**
+ * Creates a visual replacement for checkbox/radio inputs. Firefox does not render
+ * native form controls inside SVG foreignObject; this div-based representation works.
+ * @param {HTMLInputElement} node - Source input
+ * @returns {{ el: HTMLDivElement, applyVisual: () => void }}
+ */
+export function createCheckboxRadioReplacement(node) {
+  const rect = node.getBoundingClientRect()
+  const w = Math.max(12, Math.round(rect.width || 16))
+  const h = Math.max(12, Math.round(rect.height || 16))
+  const isCheckbox = (node.type || 'text').toLowerCase() === 'checkbox'
+  const checked = !!node.checked
+  const indeterminate = !!node.indeterminate
+
+  const box = document.createElement('div')
+  box.setAttribute('data-snapdom-input-replacement', node.type || 'checkbox')
+  box.style.cssText = `display:inline-block;width:${w}px;height:${h}px;vertical-align:middle;box-sizing:border-box;flex-shrink:0;`
+
+  function applyVisual() {
+    let color = '#0a6ed1'
+    try {
+      const cs = window.getComputedStyle(node)
+      color = cs.accentColor || cs.color || color
+    } catch { }
+    box.innerHTML = ''
+    if (isCheckbox) {
+      box.style.border = `2px solid ${color}`
+      box.style.borderRadius = '2px'
+      box.style.backgroundColor = checked ? color : 'transparent'
+      if (checked) {
+        const check = document.createElement('span')
+        check.style.cssText = `display:block;width:100%;height:100%;color:white;font-size:${Math.max(10, h - 4)}px;line-height:${h}px;text-align:center;font-weight:bold;`
+        check.textContent = '✓'
+        box.appendChild(check)
+      } else if (indeterminate) {
+        const dash = document.createElement('span')
+        dash.style.cssText = `display:block;width:${Math.max(6, w - 6)}px;height:2px;background:${color};margin:${(h - 2) / 2}px auto 0;`
+        box.appendChild(dash)
+      }
+    } else {
+      box.style.border = `2px solid ${color}`
+      box.style.borderRadius = '50%'
+      box.style.backgroundColor = checked ? color : 'transparent'
+      if (checked) {
+        const dot = document.createElement('span')
+        const r = Math.max(2, Math.min(w, h) / 4)
+        dot.style.cssText = `display:block;width:${r * 2}px;height:${r * 2}px;background:white;border-radius:50%;`
+        box.style.display = 'flex'
+        box.style.alignItems = 'center'
+        box.style.justifyContent = 'center'
+        box.appendChild(dot)
+      }
+    }
+  }
+  applyVisual()
+  return { el: box, applyVisual }
+}
+
 // ========== Blob URL Helpers ==========
 
 var _blobToDataUrlCache = new Map()
