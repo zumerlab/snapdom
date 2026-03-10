@@ -743,7 +743,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
       if (!cssText) {
         const res = await snapFetch(link.href, { as: 'text', useProxy })
-        cssText = res.data
+        if (res?.ok && typeof res.data === 'string') cssText = res.data
         if (isIconFont(link.href)) continue
       }
 
