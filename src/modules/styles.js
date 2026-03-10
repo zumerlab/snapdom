@@ -1,4 +1,4 @@
-import { getStyleKey, NO_DEFAULTS_TAGS } from '../utils/index.js'
+import { getStyleKey } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -128,6 +128,23 @@ function _resolveCtx(sessionOrCtx, opts) {
   }
 }
 
+/**
+ * Replaces the clone's inline style with computed (cascade-resolved) values for each
+ * property that was authored inline on the source. This ensures !important rules in
+ * stylesheets correctly override inline styles in the clone (fixes #328).
+ * @param {Element} source
+ * @param {Element} clone
+ * @param {CSSStyleDeclaration} computed
+ */
+function normalizeInlineStyleToComputed(source, clone, computed) {
+  if (!source.style || source.style.length === 0) return
+  for (let i = 0; i < source.style.length; i++) {
+    const prop = source.style[i]
+    const val = computed.getPropertyValue(prop)
+    if (val) clone.style.setProperty(prop, val)
+  }
+}
+
 export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (source.tagName === 'STYLE') return
 
@@ -142,17 +159,18 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     ctx.session.__bumpedForDisabled = true
   }
 
-  if (NO_DEFAULTS_TAGS.has(source.tagName?.toLowerCase())) {
-    const author = source.getAttribute?.('style')
-    if (author) clone.setAttribute('style', author)
-  }
-
   const { session, persist } = ctx
 
   if (!session.styleCache.has(source)) {
     session.styleCache.set(source, getComputedStyle(source))
   }
   const pre = session.styleCache.get(source)
+
+  // Replace authored inline style with computed values so !important in stylesheets
+  // correctly overrides inline styles in the clone (fixes #328)
+  if (source.getAttribute?.('style')) {
+    normalizeInlineStyleToComputed(source, clone, pre)
+  }
 
   const snap = getSnapshot(source, pre, ctx.options)
 
