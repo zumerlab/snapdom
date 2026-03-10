@@ -13,6 +13,20 @@ export function idle(fn, { fast = false } = {}) {
   }
 }
 
+export function isIOS() {
+  if (typeof navigator === 'undefined') return false
+  if (navigator.userAgentData) {
+    return navigator.userAgentData.platform === 'iOS'
+  }
+
+  // Usually iOS comes up with iPad/iPod/iPhone as USA
+  const ua = navigator.userAgent || ''
+  const isAppleMobile = /iPhone|iPad|iPod/.test(ua)
+  // Check if touch is enabled
+  const isIPadOS = navigator.maxTouchPoints > 2 && /Macintosh/.test(ua)
+  return isAppleMobile || isIPadOS
+}
+
 export function isSafari() {
   if (typeof navigator === 'undefined') return false
   const ua = navigator.userAgent || ''
