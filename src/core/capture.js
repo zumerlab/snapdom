@@ -286,7 +286,7 @@ export async function captureDOM(element, options) {
       container.style.height = `${limitDecimals(h0)}px`
       container.style.overflow = 'visible'
 
-      state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
+      //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(state.clone)
       fo.appendChild(container)
 
@@ -305,7 +305,8 @@ export async function captureDOM(element, options) {
         ? vbH
         : limitDecimals(outH + pad * 2)
 
-      const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}">`
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">`
       const svgFooter = '</svg>'
       svgString = svgHeader + foString + svgFooter
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`

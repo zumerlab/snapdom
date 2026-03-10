@@ -287,6 +287,69 @@ function measureContentBox(el) {
 }
 
 /**
+ * Get the unscaled dimensions of an element (pre-transform layout dimensions).
+ * This function returns dimensions that do NOT include ancestor CSS transforms,
+ * avoiding the double-scale bug where getBoundingClientRect() returns already-scaled
+ * dimensions that then get scaled again by inherited transforms.
+ *
+ * Priority fallback chain:
+ * 1. offsetWidth/offsetHeight (pre-transform layout dimensions)
+ * 2. getComputedStyle() width/height
+ * 3. getAttribute() width/height
+ * 4. Intrinsic dimensions (naturalWidth/naturalHeight for images)
+ *
+ * @param {Element} el - The element to measure
+ * @returns {{width: number, height: number}} Unscaled dimensions in pixels
+ */
+export function getUnscaledDimensions(el) {
+  let width = 0
+  let height = 0
+
+  // Priority 1: offsetWidth/offsetHeight (pre-transform layout dimensions)
+  if (el.offsetWidth > 0) width = el.offsetWidth
+  if (el.offsetHeight > 0) height = el.offsetHeight
+
+  // Priority 2: getComputedStyle() if offset dimensions not available
+  if (width === 0 || height === 0) {
+    try {
+      const cs = getComputedStyle(el)
+      if (width === 0) {
+        const w = parseFloat(cs.width)
+        if (!isNaN(w) && w > 0) width = w
+      }
+      if (height === 0) {
+        const h = parseFloat(cs.height)
+        if (!isNaN(h) && h > 0) height = h
+      }
+    } catch { }
+  }
+
+  // Priority 3: getAttribute() for hardcoded dimensions
+  if (width === 0 || height === 0) {
+    try {
+      if (width === 0) {
+        const w = parseFloat(el.getAttribute('width'))
+        if (!isNaN(w) && w > 0) width = w
+      }
+      if (height === 0) {
+        const h = parseFloat(el.getAttribute('height'))
+        if (!isNaN(h) && h > 0) height = h
+      }
+    } catch { }
+  }
+
+  // Priority 4: Intrinsic dimensions (for images)
+  if ((width === 0 || height === 0) && (el.naturalWidth || el.naturalHeight)) {
+    try {
+      if (width === 0 && el.naturalWidth > 0) width = el.naturalWidth
+      if (height === 0 && el.naturalHeight > 0) height = el.naturalHeight
+    } catch { }
+  }
+
+  return { width, height }
+}
+
+/**
  * Temporarily pin the iframe's internal viewport to (w, h) CSS px.
  * Injects a <style> into the iframe doc and returns a cleanup function.
  * @param {Document} doc

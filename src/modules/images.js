@@ -71,12 +71,12 @@ export async function inlineImages(clone, options = {}) {
 
         if (fallbackUrl) {
           const fallbackData = await snapFetch(fallbackUrl, { as: 'dataURL', useProxy: options.useProxy })
-          img.src = fallbackData.data
-
-          // Mantener tu comportamiento actual:
-          if (!img.width) img.width = fbW
-          if (!img.height) img.height = fbH
-          return
+          if (fallbackData?.ok && typeof fallbackData.data === 'string') {
+            img.src = fallbackData.data
+            if (!img.width) img.width = fbW
+            if (!img.height) img.height = fbH
+            return
+          }
         }
       } catch {
         // noop → cae al placeholder

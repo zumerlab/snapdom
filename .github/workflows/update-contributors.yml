@@ -1,4 +1,4 @@
-name: Update Contributors in README
+name: Update Contributors in READMES
 
 on:
   push:
@@ -28,4 +28,8 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git diff --quiet || (git add README.md && git commit -m "chore: update contributors list" && git push)
+          if ! git diff --quiet; then
+            git add README.md README_CN.md
+            git commit -m "chore: update contributors list"
+            git push
+          fi

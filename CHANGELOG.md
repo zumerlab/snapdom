@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.1.0](https://github.com/zumerlab/snapdom/compare/v2.0.2...v2.1.0)
+
+> 10 March 2026
+
+- fix(background): inline background-image inside shadow DOM hosts [`#379`](https://github.com/zumerlab/snapdom/pull/379)
+- Update URL handling to use location.origin in fonts.js [`#380`](https://github.com/zumerlab/snapdom/pull/380)
+- fix: use nodeMap for source-clone alignment in inlinePseudoElements [`#381`](https://github.com/zumerlab/snapdom/pull/381)
+- fix(background): properly inline background-image inside shadow DOM hosts [`#318`](https://github.com/zumerlab/snapdom/issues/318)
+- update demo site [`4de1850`](https://github.com/zumerlab/snapdom/commit/4de1850d84d1698e8574fe405007fb47d6a677ea)
+- feat: classify open issues by importance with priority labels and triage workflows [`246a4c4`](https://github.com/zumerlab/snapdom/commit/246a4c43eef13fe8b654e297f52a639a7ad670b1)
+- fix: Enhanced font embedding functionality for dynamically injected stylesheets [`3d4985a`](https://github.com/zumerlab/snapdom/commit/3d4985a6d40963c30ff188207a62ac1e287709ba)
+- fix: resolve CSS transform double-scale bug (issue #321) [`d41504b`](https://github.com/zumerlab/snapdom/commit/d41504b8dcf94454a331337c49d74928d533f49a)
+- fix: improve demo capture functionality with Safari support and locking mechanism [`2cb3856`](https://github.com/zumerlab/snapdom/commit/2cb3856e55f0f1d8e0d2ac050d549705203fc6ae)
+- refactor: update build configuration for legacy and ESM outputs, removing module structure and adding subpath exports [`94f6289`](https://github.com/zumerlab/snapdom/commit/94f62897054f37923c5cd3e4e2d3a57a0fde8db4)
+- docs: update README to reflect changes in SnapDOM ESM build structure and usage instructions [`8e5a710`](https://github.com/zumerlab/snapdom/commit/8e5a7103b45ae2d326a93218c977a371407d8cec)
+- fix: only change to location.origin when treating inline styles in font.js [`94c91c6`](https://github.com/zumerlab/snapdom/commit/94c91c61d57b79a083c75d27aa3025beb1dcb535)
+- fix: validate fallback image data before setting source [`2c754fe`](https://github.com/zumerlab/snapdom/commit/2c754fec37e3ce18c512ff3ee61e386fcf780589)
+- fix: ensure image is only appended if data URL is valid [`46957c5`](https://github.com/zumerlab/snapdom/commit/46957c51c49d766db5ad60357f5664a7cf500049)
+- fix: ensure valid CSS text is fetched for font links [`201209f`](https://github.com/zumerlab/snapdom/commit/201209faad857dd21a01ebc2ae5dc740a33819ce)
+- Merge pull request #301 from Amyuan23/fix/svg-root-font-size [`5bd53ba`](https://github.com/zumerlab/snapdom/commit/5bd53ba4887dba4664589b51651747809a89f8ab)
+- Merge pull request #350 from ZiuChen/fix/remote-katex-font [`3cbbd57`](https://github.com/zumerlab/snapdom/commit/3cbbd577eae0c751fbac41cd3b3ff0aeb251ca0e)
+- Merge pull request #378 from FlavioLimaMindera/fix-scale-image-issue-321 [`e53f2f8`](https://github.com/zumerlab/snapdom/commit/e53f2f8c4a83617a14c168c0c2615bde283d4696)
+- Fix: Inherit root font-size in SVG output [`3bdf300`](https://github.com/zumerlab/snapdom/commit/3bdf300ce417d56b928ea3c1b7258103a35f2445)
+- Merge pull request #374 from kohaiy/patch-1 [`0b21142`](https://github.com/zumerlab/snapdom/commit/0b21142b87d1874aaaa88bc7fc9630eb506ab958)
+
+#### [v2.0.2](https://github.com/zumerlab/snapdom/compare/v2.0.1...v2.0.2)
+
+> 20 January 2026
+
+- Fix bug when captured element is SVG. Closes #324 [`#324`](https://github.com/zumerlab/snapdom/issues/324)
+- Improve docs for blob [`#352`](https://github.com/zumerlab/snapdom/issues/352)
+
+#### [v2.0.1](https://github.com/zumerlab/snapdom/compare/v2.0.0...v2.0.1)
+
+> 26 November 2025
+
+- Fix spaces. Closes #326 [`#326`](https://github.com/zumerlab/snapdom/issues/326)
+- Fix download options. Closes #323 [`#323`](https://github.com/zumerlab/snapdom/issues/323)
+- Fix Safari Image Issue. See #330 [`ba80b6f`](https://github.com/zumerlab/snapdom/commit/ba80b6f66393886298cdb2fc7ce134d1824184f7)
+- Minify mjs version [`9155d4f`](https://github.com/zumerlab/snapdom/commit/9155d4fa2e2fc4bb6a0e3d7a991fc75818644084)
+- Add a re-export for preCache. See #332 [`acc5b79`](https://github.com/zumerlab/snapdom/commit/acc5b79a0c8d38de9f6dea5b98bf1179b54ef671)
+
+
+### [v2.0.0](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.4...v2.0.0)
+
+> 18 November 2025
+
+- V2 release!! [`#319`](https://github.com/zumerlab/snapdom/pull/319)
+
+
 #### [v2.0.0-dev.4](https://github.com/zumerlab/snapdom/compare/v2.0.0-dev.3...v2.0.0-dev.4)
 
 > 18 November 2025

@@ -13,21 +13,26 @@ import { toCanvas } from './toCanvas.js'
  * @returns {Promise<void>}
  */
 export async function download(url, options) {
-  options.dpr = 1
-  if (options.format === 'svg') {
-    const blob = await toBlob(url, { ...options, type: 'svg' })
+  const format = (options?.format || options?.type || '').toLowerCase()
+  const normalizedFormat = format === 'jpg' ? 'jpeg' : format || 'png'
+  const filename = options?.filename || `snapdom.${normalizedFormat}`
+  const nextOptions = { ...(options || {}), format: normalizedFormat, type: normalizedFormat }
+  nextOptions.dpr = 1
+
+  if (normalizedFormat === 'svg') {
+    const blob = await toBlob(url, { ...nextOptions, type: 'svg' })
     const objectURL = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = objectURL
-    a.download = options.filename
+    a.download = filename
     a.click()
     URL.revokeObjectURL(objectURL)
     return
   }
 
-  const canvas = await toCanvas(url, options) // backgroundColor inline
+  const canvas = await toCanvas(url, nextOptions) // backgroundColor inline
   const a = document.createElement('a')
-  a.href = canvas.toDataURL(`image/${options.format}`, options.quality)
-  a.download = options.filename
+  a.href = canvas.toDataURL(`image/${normalizedFormat}`, options?.quality)
+  a.download = filename
   a.click()
 }

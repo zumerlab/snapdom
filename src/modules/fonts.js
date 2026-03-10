@@ -70,6 +70,9 @@ const GENERIC_FAMILIES = new Set([
   'emoji', 'math', 'fangsong', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded'
 ])
 
+/** Common libraries that include web fonts (for cross-origin stylesheet detection) */
+const FONT_LIBRARIES = ['katex', 'mathjax', 'mathml']
+
 /**
  * Normalize a CSS font-family list to the first non-generic family.
  * E.g. `"Roboto", Arial, sans-serif` -> `Roboto`
@@ -174,6 +177,9 @@ function isLikelyFontStylesheet(href, requiredFamilies) {
 
     const path = (u.pathname + u.search).toLowerCase()
     if (/\bfont(s)?\b/.test(path) || /\.woff2?(\b|$)/.test(path)) return true
+
+    // Check for common libraries that include web fonts (e.g., KaTeX for math rendering)
+    if (FONT_LIBRARIES.some(lib => path.includes(lib))) return true
 
     for (const fam of requiredFamilies) {
       const tokenA = fam.toLowerCase().replace(/\s+/g, '+')
@@ -737,7 +743,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
       if (!cssText) {
         const res = await snapFetch(link.href, { as: 'text', useProxy })
-        cssText = res.data
+        if (res?.ok && typeof res.data === 'string') cssText = res.data
         if (isIconFont(link.href)) continue
       }
 
@@ -790,7 +796,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const sheet of document.styleSheets) {
     if (sheet.href && linkNodes.some(l => l.href === sheet.href)) continue
     try {
-      const rootHref = sheet.href || location.href
+      const rootHref = sheet.href || (location.origin + '/')
       if (rootHref) ctx.visitedSheets.add(rootHref)
       await collectFacesFromSheet(
         sheet,

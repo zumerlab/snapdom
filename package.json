@@ -1,24 +1,24 @@
 {
   "name": "@zumer/snapdom",
-  "version": "2.0.0-dev.4",
+  "version": "2.1.0",
   "description": "snapDOM captures HTML elements to images with exceptional speed and accuracy.",
   "type": "module",
   "main": "./dist/snapdom.js",
-  "module": "./dist/modules/snapdom.js",
+  "module": "./dist/snapdom.mjs",
   "types": "./types/snapdom.d.ts",
   "sideEffects": false,
   "exports": {
     ".": {
       "types": "./types/snapdom.d.ts",
-      "import": "./dist/modules/snapdom.js",
+      "import": "./dist/snapdom.mjs",
       "require": "./dist/snapdom.js",
       "default": "./dist/snapdom.mjs"
     },
     "./preCache": {
-      "import": "./dist/modules/preCache.js"
+      "import": "./dist/preCache.mjs"
     },
     "./plugins": {
-      "import": "./dist/modules/plugins.js"
+      "import": "./dist/plugins.mjs"
     }
   },
   "files": [

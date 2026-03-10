@@ -1,5 +1,5 @@
 import { build } from 'esbuild'
-import { readFileSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
 
 /** @type {import('esbuild').BuildOptions} */
 const common = {
@@ -21,75 +21,64 @@ const banner = {
 }
 
 /**
- * 1. VERSIÓN MODERNA (Modules + Splitting + Minified)
- * Salida: dist/modules/snapdom.js (y sus chunks en dist/modules/chunks)
- */
-async function buildModules() {
-  await build({
-    ...common,
-    entryPoints: {
-      // Usamos el prefijo "modules/" para meter todo en esa carpeta
-      'modules/snapdom': 'src/api/snapdom.js',
-      'modules/preCache': 'src/api/preCache.js',
-      'modules/plugins': 'src/core/plugins.js',
-      
-      // Exporters
-      'modules/exporters/toImg': 'src/exporters/toImg.js',
-      'modules/exporters/toSvg': 'src/exporters/toSvg.js',
-      'modules/exporters/toCanvas': 'src/exporters/toCanvas.js',
-      'modules/exporters/toBlob': 'src/exporters/toBlob.js',
-      'modules/exporters/toPng': 'src/exporters/toPng.js',
-      'modules/exporters/toJpg': 'src/exporters/toJpg.js',
-      'modules/exporters/toWebp': 'src/exporters/toWebp.js',
-      'modules/exporters/download': 'src/exporters/download.js',
-    },
-    outdir: 'dist', // La magia la hacen las keys de arriba
-    format: 'esm',
-    splitting: true,
-    minify: true,   // <--- MINIFICADA
-    chunkNames: 'modules/chunks/[name]-[hash]', // Chunks ordenados
-    banner,
-  })
-}
-
-/**
- * 2. VERSIÓN GLOBAL IIFE (Legacy + Minified)
+ * 1. LEGACY IIFE (script tag / require)
  * Salida: dist/snapdom.js
  */
-async function buildGlobalMinified() {
+async function buildLegacy() {
   await build({
     ...common,
-    entryPoints: ['src/index.browser.js'], // O tu index.browser.js si lo usas
+    entryPoints: ['src/index.browser.js'],
     outfile: 'dist/snapdom.js',
-    format: 'iife',
     globalName: 'snapdom',
-    minify: true,   // <--- MINIFICADA
+    platform: 'neutral',
+    minify: true,
     target: ['es2020'],
     banner,
   })
 }
 
 /**
- * 3. VERSIÓN GLOBAL ESM (Monolítica + Sin Minificar)
+ * 2. ESM MONOLÍTICO (tree-shakeable, bundlers + CDN)
  * Salida: dist/snapdom.mjs
  */
-async function buildGlobalUnminified() {
+async function buildESM() {
   await build({
     ...common,
     entryPoints: ['src/index.js'],
     outfile: 'dist/snapdom.mjs',
     format: 'esm',
-    minify: false,
-    splitting: false, // Monolítico
+    minify: true,
+    splitting: false,
+    banner,
+  })
+}
+
+/**
+ * 3. SUBPATH EXPORTS (preCache, plugins)
+ * Salida: dist/preCache.mjs, dist/plugins.mjs
+ */
+async function buildSubpaths() {
+  await build({
+    ...common,
+    entryPoints: {
+      'preCache': 'src/api/preCache.js',
+      'plugins': 'src/core/plugins.js',
+    },
+    outdir: 'dist',
+    outExtension: { '.js': '.mjs' },
+    format: 'esm',
+    minify: true,
+    splitting: false,
     banner,
   })
 }
 
 async function main() {
+  try { rmSync('dist/modules', { recursive: true, force: true }) } catch { /* ok */ }
   await Promise.all([
-    buildModules(),
-    buildGlobalMinified(),
-    buildGlobalUnminified(),
+    buildLegacy(),
+    buildESM(),
+    buildSubpaths(),
   ])
 }
 

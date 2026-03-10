@@ -244,6 +244,61 @@ describe('deepClone – targeted branches for coverage gaps', () => {
   })
 
   /**
+   * Covers: CSS transform double-scale bug
+   * IMG should NOT double-scale when ancestor has transform:scale()
+   * offsetWidth/offsetHeight returns pre-transform dimensions regardless of nesting depth
+   */
+  it('IMG preserves dimensions when parent has transform:scale()', async () => {
+    const container = document.createElement('div')
+    container.style.cssText = 'transform: scale(1.5); width: 200px; height: 200px;'
+
+    const img = document.createElement('img')
+    img.width = 100
+    img.height = 100
+    img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=='
+
+    container.appendChild(img)
+    document.body.appendChild(container)
+
+    const containerClone = await deepClone(container, session, {})
+    const imgClone = containerClone.querySelector('img')
+
+    // Container should preserve its pre-transform dimensions (200x200)
+    expect(containerClone.style.width).toBe('200px')
+    expect(containerClone.style.height).toBe('200px')
+
+    // Image should have original 100x100, NOT 150x150 (scaled by parent)
+    expect(imgClone.dataset.snapdomWidth).toBe('100')
+    expect(imgClone.dataset.snapdomHeight).toBe('100')
+
+    container.remove()
+  })
+
+  /**
+   * Covers: CANVAS element with parent scale
+   */
+  it('CANVAS handles parent transform:scale()', async () => {
+    const container = document.createElement('div')
+    container.style.transform = 'scale(1.5)'
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 100
+    canvas.height = 100
+
+    container.appendChild(canvas)
+    document.body.appendChild(container)
+
+    const clone = await deepClone(canvas, session, {})
+
+    // Clone should be IMG with original dimensions
+    expect(clone.tagName).toBe('IMG')
+    expect(clone.width).toBe(100)
+    expect(clone.height).toBe(100)
+
+    container.remove()
+  })
+
+  /**
    * Covers: textarea pendingTextAreaValue → final textContent assignment path.
    */
   it('TEXTAREA applies pendingTextAreaValue to clone.textContent', async () => {
