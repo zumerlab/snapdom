@@ -1774,48 +1774,73 @@
       ctx.fillText('🎨', 60, 80)
     }
 
+    let captureDemoLock = false
+    const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     async function captureDemo(id, outputId, btn) {
+      if (captureDemoLock) return
+      captureDemoLock = true
       const el = id === 'body' ? document.body : document.getElementById(id)
       const output = document.getElementById(outputId)
-      if (!el || !output) return
+      if (!el || !output) { captureDemoLock = false; return }
       if (btn) btn.disabled = true
 
-      const img = await snapdom.toImg(el, {
-        embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
-        scale: id === 'body' ? 0.4 : 1,
-        outerTransforms: true,
-        outerShadows: false
-      })
-      output.innerHTML = ''
-      output.appendChild(img)
-
-      if (btn) btn.disabled = false
+      try {
+        const opts = {
+          embedFonts: id === 'body' || id === 'fonts-box',
+          scale: id === 'body' ? 0.4 : 1,
+          outerTransforms: true,
+          outerShadows: false,
+          cache: 'auto'
+        }
+        output.innerHTML = ''
+        if (isSafari()) {
+          const dataUrl = await snapdom.toRaw(el, opts)
+          const rect = el.getBoundingClientRect()
+          const iframe = document.createElement('iframe')
+          iframe.setAttribute('sandbox', 'allow-same-origin')
+          iframe.setAttribute('scrolling', 'no')
+          iframe.style.cssText = `width:${rect.width}px;height:${rect.height}px;border:0;overflow:hidden;`
+          iframe.src = dataUrl
+          output.appendChild(iframe)
+        } else {
+          const img = await snapdom.toImg(el, opts)
+          output.appendChild(img)
+        }
+      } finally {
+        captureDemoLock = false
+        if (btn) btn.disabled = false
+      }
     }
 
 
+    let orbitCaptureLock = false
     async function captureOrbit(id, outputId, btn) {
+      if (orbitCaptureLock) return
+      orbitCaptureLock = true
       const el = document.getElementById(id)
       const output = document.getElementById(outputId)
-      if (!el || !output) return
+      if (!el || !output) { orbitCaptureLock = false; return }
       if (btn) btn.disabled = true
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       output.innerHTML = ''
-      if (isSafari) {
-        const img = await snapdom.toRaw(el, {outerShadows: true})
-        const rect = el.getBoundingClientRect()
-        const iframe = document.createElement('iframe');
-        iframe.setAttribute('sandbox', 'allow-same-origin');
-        iframe.setAttribute('scrolling', 'no');
-        iframe.style.cssText = `width:${rect.width}px;height:${rect.height}px;border:0;overflow:hidden;`;
-        iframe.src = img;
-        output.appendChild(iframe)
-        if (btn) btn.disabled = false
-      } else {
-        const img = await snapdom.toImg(el, {outerShadows: true})
-        output.appendChild(img)
+      try {
+        const opts = { outerShadows: true, cache: 'auto' }
+        if (isSafari()) {
+          const dataUrl = await snapdom.toRaw(el, opts)
+          const rect = el.getBoundingClientRect()
+          const iframe = document.createElement('iframe')
+          iframe.setAttribute('sandbox', 'allow-same-origin')
+          iframe.setAttribute('scrolling', 'no')
+          iframe.style.cssText = `width:${rect.width}px;height:${rect.height}px;border:0;overflow:hidden;`
+          iframe.src = dataUrl
+          output.appendChild(iframe)
+        } else {
+          const img = await snapdom.toImg(el, opts)
+          output.appendChild(img)
+        }
+      } finally {
+        orbitCaptureLock = false
         if (btn) btn.disabled = false
       }
-
     }
 
 
@@ -1944,7 +1969,8 @@
 
 
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs';
+        import { snapdom } from 'https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs';
+
 
     window.snapdom = snapdom;
 
