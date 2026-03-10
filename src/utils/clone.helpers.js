@@ -421,58 +421,103 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 // ========== Checkbox/Radio replacement (Firefox fix) ==========
 
 /**
- * Creates a visual replacement for checkbox/radio inputs. Firefox does not render
- * native form controls inside SVG foreignObject; this div-based representation works.
+ * Creates a visual replacement for checkbox/radio inputs using inline SVG.
+ * Firefox does not render native form controls inside SVG foreignObject; SVG-based
+ * representation avoids CSS class conflicts and renders consistently.
  * @param {HTMLInputElement} node - Source input
  * @returns {{ el: HTMLDivElement, applyVisual: () => void }}
  */
 export function createCheckboxRadioReplacement(node) {
   const rect = node.getBoundingClientRect()
-  const w = Math.max(12, Math.round(rect.width || 16))
-  const h = Math.max(12, Math.round(rect.height || 16))
+  let cs
+  try { cs = window.getComputedStyle(node) } catch { }
+  const parsedW = cs ? parseFloat(cs.width) : NaN
+  const parsedH = cs ? parseFloat(cs.height) : NaN
+  const rw = Math.round(rect.width || 0)
+  const rh = Math.round(rect.height || 0)
+  let w = Number.isFinite(parsedW) && parsedW > 0 ? Math.round(parsedW) : Math.max(12, rw || 16)
+  let h = Number.isFinite(parsedH) && parsedH > 0 ? Math.round(parsedH) : Math.max(12, rh || 16)
   const isCheckbox = (node.type || 'text').toLowerCase() === 'checkbox'
   const checked = !!node.checked
   const indeterminate = !!node.indeterminate
 
+  const size = Math.max(Math.min(w, h), 12)
+  const s = size
+
   const box = document.createElement('div')
   box.setAttribute('data-snapdom-input-replacement', node.type || 'checkbox')
-  box.style.cssText = `display:inline-block;width:${w}px;height:${h}px;vertical-align:middle;box-sizing:border-box;flex-shrink:0;`
+  box.style.cssText = `display:inline-block;width:${s}px;height:${s}px;vertical-align:middle;flex-shrink:0;line-height:0;`
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('width', String(s))
+  svg.setAttribute('height', String(s))
+  svg.setAttribute('viewBox', `0 0 ${s} ${s}`)
+  box.appendChild(svg)
 
   function applyVisual() {
     let color = '#0a6ed1'
     try {
-      const cs = window.getComputedStyle(node)
-      color = cs.accentColor || cs.color || color
+      if (cs) color = cs.accentColor || cs.color || color
     } catch { }
-    box.innerHTML = ''
+    const stroke = 2
+    const pad = stroke / 2
+    const inner = s - stroke
+    svg.innerHTML = ''
     if (isCheckbox) {
-      box.style.border = `2px solid ${color}`
-      box.style.borderRadius = '2px'
-      box.style.backgroundColor = checked ? color : 'transparent'
+      const rectEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      rectEl.setAttribute('x', String(pad))
+      rectEl.setAttribute('y', String(pad))
+      rectEl.setAttribute('width', String(inner))
+      rectEl.setAttribute('height', String(inner))
+      rectEl.setAttribute('rx', '2')
+      rectEl.setAttribute('ry', '2')
+      rectEl.setAttribute('fill', checked ? color : 'none')
+      rectEl.setAttribute('stroke', color)
+      rectEl.setAttribute('stroke-width', String(stroke))
+      svg.appendChild(rectEl)
       if (checked) {
-        const check = document.createElement('span')
-        check.style.cssText = `display:block;width:100%;height:100%;color:white;font-size:${Math.max(10, h - 4)}px;line-height:${h}px;text-align:center;font-weight:bold;`
-        check.textContent = '✓'
-        box.appendChild(check)
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        path.setAttribute('d', `M ${pad + 2} ${s / 2} L ${s / 2 - 1} ${s - pad - 2} L ${s - pad - 2} ${pad + 2}`)
+        path.setAttribute('stroke', 'white')
+        path.setAttribute('stroke-width', String(Math.max(1.5, stroke)))
+        path.setAttribute('fill', 'none')
+        path.setAttribute('stroke-linecap', 'round')
+        path.setAttribute('stroke-linejoin', 'round')
+        svg.appendChild(path)
       } else if (indeterminate) {
-        const dash = document.createElement('span')
-        dash.style.cssText = `display:block;width:${Math.max(6, w - 6)}px;height:2px;background:${color};margin:${(h - 2) / 2}px auto 0;`
-        box.appendChild(dash)
+        const dash = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+        const dw = Math.max(6, inner - 4)
+        dash.setAttribute('x', String((s - dw) / 2))
+        dash.setAttribute('y', String((s - stroke) / 2))
+        dash.setAttribute('width', String(dw))
+        dash.setAttribute('height', String(stroke))
+        dash.setAttribute('fill', color)
+        dash.setAttribute('rx', '1')
+        svg.appendChild(dash)
       }
     } else {
-      box.style.border = `2px solid ${color}`
-      box.style.borderRadius = '50%'
-      box.style.backgroundColor = checked ? color : 'transparent'
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      circle.setAttribute('cx', String(s / 2))
+      circle.setAttribute('cy', String(s / 2))
+      circle.setAttribute('r', String((s - stroke) / 2))
+      circle.setAttribute('fill', checked ? color : 'none')
+      circle.setAttribute('stroke', color)
+      circle.setAttribute('stroke-width', String(stroke))
+      svg.appendChild(circle)
       if (checked) {
-        const dot = document.createElement('span')
-        const r = Math.max(2, Math.min(w, h) / 4)
-        dot.style.cssText = `display:block;width:${r * 2}px;height:${r * 2}px;background:white;border-radius:50%;`
-        box.style.display = 'flex'
-        box.style.alignItems = 'center'
-        box.style.justifyContent = 'center'
-        box.appendChild(dot)
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+        const r = Math.max(2, (s - stroke * 2) * 0.35)
+        dot.setAttribute('cx', String(s / 2))
+        dot.setAttribute('cy', String(s / 2))
+        dot.setAttribute('r', String(r))
+        dot.setAttribute('fill', 'white')
+        svg.appendChild(dot)
       }
     }
+    // Force dimensions (inlineAllStyles may copy width:0 from native input)
+    box.style.setProperty('width', `${s}px`, 'important')
+    box.style.setProperty('height', `${s}px`, 'important')
+    box.style.setProperty('min-width', `${s}px`, 'important')
+    box.style.setProperty('min-height', `${s}px`, 'important')
   }
   applyVisual()
   return { el: box, applyVisual }
