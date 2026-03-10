@@ -518,11 +518,13 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         const rawUrl = extractURL(cleanContent)
         if (rawUrl?.trim()) {
           try {
-            const imgEl = document.createElement('img')
             const dataUrl = await snapFetch(safeEncodeURI(rawUrl), { as: 'dataURL', useProxy: options.useProxy })
-            imgEl.src = dataUrl.data
-            imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`
-            pseudoEl.appendChild(imgEl)
+            if (dataUrl?.ok && typeof dataUrl.data === 'string') {
+              const imgEl = document.createElement('img')
+              imgEl.src = dataUrl.data
+              imgEl.style = `width:${fontSize}px;height:auto;object-fit:contain;`
+              pseudoEl.appendChild(imgEl)
+            }
           } catch (e) {
             console.error(`[snapdom] Error in pseudo ${pseudo} for`, source, e)
           }
