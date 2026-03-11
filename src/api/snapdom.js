@@ -4,6 +4,7 @@ import { extendIconFonts } from '../modules/iconFonts.js'
 import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
+import { collectUsedFontVariants, ensureFontsReady } from '../modules/fonts.js'
 export { preCache } from './preCache.js'
 
 // API pública (registro global de plugins)
@@ -44,12 +45,23 @@ async function main(element, userOptions) {
   // Attach per-capture plugins (local-first) without removing globals
   attachSessionPlugins(context, userOptions && userOptions.plugins)
 
-  // Safari warm-up: only when needed (fonts embedded OR backgrounds/masks present)
+  // Safari warm-up: WebKit Bug #219770 — SVG with embedded font triggers img.onload
+  // before font is available. First canvas draw is blank; second+ works. We run
+  // pre-captures + drawImage to prime the font/decode pipeline. Fidelity > speed.
+  // See: https://bugs.webkit.org/show_bug.cgi?id=219770
   if (isSafari() && (context.embedFonts === true || hasBackgroundOrMask(element))) {
-    for (let i = 0; i < 3; i++) {
+    if (context.embedFonts) {
+      try {
+        const required = collectUsedFontVariants(element)
+        const families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
+        await ensureFontsReady(families, 1)
+      } catch { /* non-blocking */ }
+    }
+    const attempts = context.safariWarmupAttempts ?? 3
+    for (let i = 0; i < attempts; i++) {
       try {
         await safariWarmup(element, userOptions)
-        _safariWarmup = false
+        _safariWarmup = false // allow next iteration
       } catch {
         // swallow error
       }
@@ -298,7 +310,14 @@ snapdom.toWebp = (el, options) => snapdom(el, { ...options, format: 'webp' }).th
 snapdom.download = (el, options) => snapdom(el, options).then(result => result.download())
 
 /**
- * Force Safari to decode fonts and images by doing an offscreen pre-capture.
+ * Safari/WebKit warmup: primes font and image decode pipeline.
+ * Workaround for WebKit #219770 (img.onload fires before embedded font ready).
+ * - ensureFontsReady (when embedFonts) runs before first iteration
+ * - Mini pre-capture (scale 0.2) → load as Image + decode
+ * - drawImage to offscreen canvas (consumes "first draw blank" so real capture works)
+ * - Double rAF for layout stabilization
+ * - Poke canvas elements for Chart.js etc.
+ * Skipped after first session warmup (_safariWarmup) to avoid repeated cost.
  */
 async function safariWarmup(element, baseOptions) {
   if (_safariWarmup) return
@@ -333,6 +352,16 @@ async function safariWarmup(element, baseOptions) {
         while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
           await new Promise(r => setTimeout(r, 200))
         }
+        await new Promise(r => requestAnimationFrame(r))
+        // Key: drawImage primes the canvas path. WebKit #219770 — first draw is blank,
+        // second works. We consume the blank draw here so the real capture works.
+        try {
+          const c = document.createElement('canvas')
+          c.width = Math.max(1, img.naturalWidth || 10)
+          c.height = Math.max(1, img.naturalHeight || 10)
+          const ctx = c.getContext('2d')
+          if (ctx) ctx.drawImage(img, 0, 0)
+        } catch { /* non-blocking */ }
         await new Promise(r => requestAnimationFrame(r))
         try { img.remove() } catch {}
         resolve()

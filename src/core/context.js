@@ -96,6 +96,9 @@ export function createContext(options = {}) {
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
 
+    // Safari warmup (WebKit #219770): iterations to prime font/decode pipeline. 1–3.
+    safariWarmupAttempts: Math.min(3, Math.max(1, (options.safariWarmupAttempts ?? 3) | 0)),
+
     // Plugins (reservado)
     // plugins: normalizePlugins(...),
   }
