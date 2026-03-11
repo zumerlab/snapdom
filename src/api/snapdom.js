@@ -135,40 +135,12 @@ snapdom.capture = async (el, context, _token) => {
 
   // ——— 2) Exports declarados por plugins ———
   // Fachada reutilizable “silenciosa” (sin hooks) para uso en defineExports()
-  const _pluginExports = {
-    svg:   async (opts) => {
-      const { toSvg } = await import('../exporters/toImg.js')
-      return toSvg(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
-    },
-    canvas:async (opts) => {
-      const { toCanvas } = await import('../exporters/toCanvas.js')
-      return toCanvas(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
-    },
-    png:   async (opts) => {
-      const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(url, { ...context, ...(opts || {}), format: 'png', [INTERNAL_EXPORT_TOKEN]: true })
-    },
-    jpeg:  async (opts) => {
-      const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(url, { ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true })
-    },
-    jpg:   async (opts) => {
-      const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(url, { ...context, ...(opts || {}), format: 'jpeg', [INTERNAL_EXPORT_TOKEN]: true })
-    },
-    webp:  async (opts) => {
-      const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(url, { ...context, ...(opts || {}), format: 'webp', [INTERNAL_EXPORT_TOKEN]: true })
-    },
-    blob:  async (opts) => {
-      const { toBlob } = await import('../exporters/toBlob.js')
-      return toBlob(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
-    },
-    img:   async (opts) => {
-      const { toImg } = await import('../exporters/toImg.js')
-      return toImg(url, { ...context, ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
-    },
+  const _pluginExports = {}
+  for (const k of ['img', 'svg', 'canvas', 'blob', 'png', 'jpeg', 'webp']) {
+    _pluginExports[k] = async (opts) =>
+      coreExports[k](context, { ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
   }
+  _pluginExports.jpg = _pluginExports.jpeg
 
   // Contexto extendido para defineExports (incluye URL y la fachada para reuso)
   const _defineCtx = { ...context, export: { url }, exports: _pluginExports }
