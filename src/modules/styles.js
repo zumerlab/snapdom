@@ -246,17 +246,8 @@ function hasFlowFast(el, cs) {
 }
 
 /**
- * Quita height/block-size SOLO en wrappers transparentes de flujo normal
- * que SÍ tienen contenido en flujo. Mantiene height si no hay flujo (sólo abspos),
- * si el autor lo puso inline, si es replaced, posicionado/transform, tiene caja visual,
- * o es item flex/grid.
- * @param {Element} el
- * @param {CSSStyleDeclaration} cs
- * @param {Record<string,string>} snap
- */
-/**
- * Best-effort: quita height/block-size en wrappers "vacíos" para permitir
- * comportamiento de flujo (margin-collapsing, etc.) sin romper casos como KaTeX.
+ * Best-effort: quita height/block-size en wrappers transparentes de flujo para permitir
+ * margin-collapsing, etc. sin romper KaTeX, Orbit, ni layouts con height explícito.
  *
  * @param {Element} el
  * @param {CSSStyleDeclaration} cs
@@ -266,29 +257,24 @@ function stripHeightForWrappers(el, cs, snap) {
   // 1) Respeta height inline del autor
   if (el instanceof HTMLElement && el.style && el.style.height) return
 
-  // 2) Solo operar sobre contenedores de layout clásicos (evita math, span, svg, etc.)
+  // 2) Solo div/section/article/main/aside/header/footer/nav (no ol/ul/li: layout de listas)
   const tag = el.tagName && el.tagName.toLowerCase()
-  if (!tag || (
-    tag !== 'div' &&
-    tag !== 'section' &&
-    tag !== 'article' &&
-    tag !== 'main' &&
-    tag !== 'aside' &&
-    tag !== 'header' &&
-    tag !== 'footer' &&
-    tag !== 'nav' &&
-    tag !== 'ol' &&
-    tag !== 'ul' &&
-    tag !== 'li'
-  )) {
-    return
-  }
+  const ALLOWED_TAGS = ['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'nav']
+  if (!tag || !ALLOWED_TAGS.includes(tag)) return
 
-  // clave para Orbit: si EL ELEMENTO es contenedor flex/grid, no tocar su height
+  // 2b) Solo quitar si height parece "auto" (≈scrollHeight); si difiere, el autor lo fijó
+  const usedH = parseFloat(cs.height)
+  const TOL = 2
+  if (Number.isFinite(usedH) && el.scrollHeight > 0 && Math.abs(usedH - el.scrollHeight) > TOL) return
+
+  // 2c) aspect-ratio define dimensiones derivadas; respetar
+  if (cs.aspectRatio && cs.aspectRatio !== 'none' && cs.aspectRatio !== 'auto') return
+
+  // 3) Orbit: si el elemento es flex/grid, no tocar su height
   const disp = cs.display || ''
   if (disp.includes('flex') || disp.includes('grid')) return
 
-  // 3) Guardas existentes
+  // 4) Guardas existentes
   if (isReplaced(el)) return
 
   const pos = cs.position
@@ -297,7 +283,7 @@ function stripHeightForWrappers(el, cs, snap) {
   if (hasBox(cs)) return
   if (isFlexOrGridItem(el)) return
 
-  // 4) No tocar wrappers que se usan para ocultar / accesibilidad (KaTeX, screen-reader hacks, etc.)
+  // 5) No tocar wrappers que se usan para ocultar / accesibilidad (KaTeX, screen-reader hacks, etc.)
   const overflowX = cs.overflowX || cs.overflow || 'visible'
   const overflowY = cs.overflowY || cs.overflow || 'visible'
   if (overflowX !== 'visible' || overflowY !== 'visible') return
@@ -307,10 +293,10 @@ function stripHeightForWrappers(el, cs, snap) {
 
   if (cs.visibility === 'hidden' || cs.opacity === '0') return
 
-  // 5) Solo wrappers "en flujo" realmente neutros
+  // 6) Solo wrappers "en flujo" realmente neutros
   if (!hasFlowFast(el, cs)) return
 
-  // 6) Ahora sí: quitamos height y block-size del snapshot
+  // 7) Ahora sí: quitamos height y block-size del snapshot
   delete snap.height
   delete snap['block-size']
 }

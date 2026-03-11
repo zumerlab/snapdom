@@ -205,6 +205,18 @@ function isInNormalFlow(el) {
 }
 
 /**
+ * True if the element contributes to its parent's height (block, float, sticky, etc.).
+ * Excludes only position absolute/fixed and display:none.
+ * @param {Element} el
+ */
+function contributesToParentHeight(el) {
+  const cs = getComputedStyle(el)
+  if (cs.display === 'none') return false
+  if (cs.position === 'absolute' || cs.position === 'fixed') return false
+  return true
+}
+
+/**
  * Mirrors the removal logic used later so we can know what remains.
  * Extend to honor filterMode:"remove" if needed.
  * @param {Element} el
@@ -236,11 +248,11 @@ export function estimateKeptHeight(container, options) {
   let maxBottom = -Infinity
   let found = false
 
-  // Consider only direct children; es lo más estable para layout en flujo normal
+  // Consider only direct children; incluir floats (contribuyen a la altura del contenedor)
   const kids = Array.from(container.children)
   for (const k of kids) {
     if (willBeExcluded(k, options)) continue
-    if (!isInNormalFlow(k)) continue
+    if (!contributesToParentHeight(k)) continue
     const rk = k.getBoundingClientRect()
     // usar coordenadas relativas al contenedor
     const top = rk.top - rC.top
