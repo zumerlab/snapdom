@@ -357,6 +357,7 @@ const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });
 | `fallbackURL`     | string \| function  | - | `<img>` 加载失败时的备用图片 |
 | `outerTransforms`      | boolean  | `true`  | 当为 `false` 时移除 `translate/rotate` 但保留 `scale/skew`，产生扁平、可复用的捕获 |
 | `outerShadows`       | boolean  | `false`  | 不为根元素的阴影/模糊/轮廓扩展边界框，并从克隆的根元素中移除这些视觉效果 |
+| `safariWarmupAttempts` | number   | `3`      | 仅 Safari：预热的迭代次数（WebKit #219770）。若 3 次过慢可设为 `1` |
 
 ### `<img>` 加载失败时的备用图片
 
@@ -601,7 +602,7 @@ const out = await snapdom(element, {
 每个钩子都接收一个包含规范化捕获状态的 `context` 对象：
 
 * **输入和选项：**
-  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `outerTransforms`, `outerShadows`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`。
+  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `outerTransforms`, `outerShadows`, `safariWarmupAttempts`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`。
 
 * **中间值（取决于阶段）：**
   `clone`, `classCSS`, `styleCache`, `fontsCSS`, `baseCSS`, `svgString`, `dataURL`。
@@ -769,6 +770,7 @@ export function myPlugin(options = {}) {
 * 外部图片应该是 CORS 可访问的（使用 `useProxy` 选项处理 CORS 拒绝）
 * 在 Safari 上使用 WebP 格式时，将回退到 PNG 渲染。
 * `@font-face` CSS 规则得到良好支持，但如果需要使用 JS `FontFace()`，请参阅此解决方案 [`#43`](https://github.com/zumerlab/snapdom/issues/43)
+* **Safari**：启用 `embedFonts` 或包含背景/蒙版图片的捕获会较慢，因 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770)（字体解码时机）。SnapDOM 通过预捕获和 `drawImage` 预热管道；可通过 `safariWarmupAttempts` 调整（默认 3）。
 
 
 ## ⚡ 性能基准测试（Chromium）
