@@ -128,6 +128,7 @@ flowchart LR
   - [snapdom(el, options?)](#snapdomel-options)
   - [快捷方法](#快捷方法)
 - [选项](#选项)
+  - [debug](#debug)
   - [`<img>` 加载失败时的备用图片](#img-加载失败时的备用图片)
   - [尺寸 (`scale`, `width`, `height`)](#尺寸-scale-width-height)
   - [跨域图片和字体 (`useProxy`)](#跨域图片和字体-useproxy)
@@ -336,6 +337,7 @@ const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });
 
 | 选项            | 类型     | 默认值  | 描述                                     |
 | ----------------- | -------- | -------- | ----------------------------------------------- |
+| `debug`           | boolean  | `false`  | 设为 `true` 时，将静默处理的错误输出到 `console.warn`，便于排查问题 |
 | `fast`            | boolean  | `true`   | 跳过小的空闲延迟以获得更快的结果      |
 | `embedFonts`      | boolean  | `false`  | 内嵌非图标字体（图标字体始终内嵌）   |
 | `localFonts`      | array    | `[]`     | 本地字体 `{ family, src, weight?, style? }`  |
@@ -358,6 +360,14 @@ const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });
 | `outerTransforms`      | boolean  | `true`  | 当为 `false` 时移除 `translate/rotate` 但保留 `scale/skew`，产生扁平、可复用的捕获 |
 | `outerShadows`       | boolean  | `false`  | 不为根元素的阴影/模糊/轮廓扩展边界框，并从克隆的根元素中移除这些视觉效果 |
 | `safariWarmupAttempts` | number   | `3`      | 仅 Safari：预热的迭代次数（WebKit #219770）。若 3 次过慢可设为 `1` |
+
+### debug
+
+当 `debug: true` 时，SnapDOM 会将通常静默处理的错误输出到 `console.warn`（带 `[snapdom]` 前缀）。便于排查捕获问题（如 canvas 失败、blob 解析、样式剥离等），而无需在生产环境中产生冗余输出。
+
+```js
+await snapdom.toPng(el, { debug: true });
+```
 
 ### `<img>` 加载失败时的备用图片
 

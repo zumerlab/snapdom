@@ -1,5 +1,5 @@
 // src/exporters/toImg.js
-import { isSafari } from '../utils'
+import { isSafari, debugWarn } from '../utils'
 import { rasterize } from '../modules/rasterize'
 /**
  * Converts a data URL to an HTMLImageElement.
@@ -51,7 +51,9 @@ const img = new Image()
          .replace(/height="[^"]*"/, `height="${cssH}"`)
        url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(patched)}`
        img.src = url
-     } catch {}
+     } catch (e) {
+       debugWarn(options, 'SVG width/height patch in toImg failed', e)
+     }
    }
  }
  return img

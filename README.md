@@ -126,6 +126,7 @@ Plugin hooks: `beforeSnap` → `beforeClone` → `afterClone` → `beforeRender`
   - [snapdom(el, options?)](#snapdomel-options)
   - [Shortcut methods](#shortcut-methods)
 - [Options](#options)
+  - [debug](#debug)
   - [Fallback image on `<img>` load failure](#fallback-image-on-img-load-failure)
   - [Dimensions (`scale`, `width`, `height`)](#dimensions-scale-width-height)
   - [Cross-Origin Images & Fonts (`useProxy`)](#cross-origin-images--fonts-useproxy)
@@ -334,6 +335,7 @@ All capture methods accept an `options` object:
 
 | Option            | Type     | Default  | Description                                     |
 | ----------------- | -------- | -------- | ----------------------------------------------- |
+| `debug`           | boolean  | `false`  | When `true`, logs suppressed errors to `console.warn` for troubleshooting |
 | `fast`            | boolean  | `true`   | Skips small idle delays for faster results      |
 | `embedFonts`      | boolean  | `false`  | Inlines non-icon fonts (icon fonts always on)   |
 | `localFonts`      | array    | `[]`     | Local fonts `{ family, src, weight?, style? }`  |
@@ -357,6 +359,14 @@ All capture methods accept an `options` object:
 | `outerShadows`       | boolean  | `false`  | Do not expand the root’s bounding box for shadows/blur/outline, and strip those visual effects from the cloned root |
 
 | `safariWarmupAttempts` | number   | `3`      | Safari only: iterations to prime font/decode (WebKit #219770). Use `1` if 3 causes lag |
+
+### debug
+
+When `debug: true`, SnapDOM logs normally suppressed errors to `console.warn` (with the `[snapdom]` prefix). Useful for troubleshooting capture issues (canvas failures, blob resolution, style stripping, etc.) without noisy output in production.
+
+```js
+await snapdom.toPng(el, { debug: true });
+```
 
 ### Fallback image on `<img>` load failure
 

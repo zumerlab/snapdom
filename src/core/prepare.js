@@ -3,7 +3,7 @@
  * @module prepare
  */
 
-import { generateCSSClasses, stripTranslate } from '../utils/index.js'
+import { generateCSSClasses, stripTranslate, debugWarn } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
@@ -27,7 +27,8 @@ export async function prepareClone(element, options = {}) {
   const sessionCache = {
     styleMap: cache.session.styleMap,
     styleCache: cache.session.styleCache,
-    nodeMap: cache.session.nodeMap
+    nodeMap: cache.session.nodeMap,
+    options
   }
 
   let clone
@@ -53,7 +54,7 @@ export async function prepareClone(element, options = {}) {
   } catch (e) {
     console.warn('inlinePseudoElements failed:', e)
   }
-  await resolveBlobUrlsInTree(clone)
+  await resolveBlobUrlsInTree(clone, sessionCache)
   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
 
   try {
@@ -62,7 +63,9 @@ export async function prepareClone(element, options = {}) {
       shadowScopedCSS += s.textContent || ''
       s.remove() // Do not leave <style> inside the visual clone
     }
-  } catch { }
+  } catch (e) {
+    debugWarn(sessionCache, 'Failed to extract shadow CSS from style[data-sd]', e)
+  }
 
   const keyToClass = generateCSSClasses(sessionCache.styleMap)
   classCSS = Array.from(keyToClass.entries())

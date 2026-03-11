@@ -6,6 +6,7 @@
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars } from '../modules/CSSVar.js'
+import { debugWarn } from '../utils/index.js'
 import {
   idleCallback,
   rewriteShadowCSS,
@@ -96,7 +97,9 @@ export async function deepClone(node, sessionCache, options) {
   }
   if (node.tagName === 'IFRAME') {
     let sameOrigin = false
-    try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch { sameOrigin = false }
+    try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch (e) {
+      debugWarn(sessionCache, 'iframe same-origin probe failed', e)
+    }
 
     if (sameOrigin) {
       try {
@@ -165,10 +168,14 @@ export async function deepClone(node, sessionCache, options) {
           }
         }
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(sessionCache, 'Canvas toDataURL failed, using empty/fallback', e)
+    }
 
     const img = document.createElement('img')
-    try { img.decoding = 'sync'; img.loading = 'eager' } catch { }
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
+      debugWarn(sessionCache, 'img decoding/loading hints failed', e)
+    }
     if (url) img.src = url
 
     // conservar dimensiones intrínsecas del bitmap
@@ -199,7 +206,9 @@ export async function deepClone(node, sessionCache, options) {
         const h = Math.round(height || 0)
         if (w) clone.dataset.snapdomWidth = String(w)
         if (h) clone.dataset.snapdomHeight = String(h)
-      } catch { }
+      } catch (e) {
+        debugWarn(sessionCache, 'getUnscaledDimensions for IMG failed', e)
+      }
 
       // Si el autor usó % o auto, o el alto/ ancho efectivos dan 0,
       // escribimos px en línea para evitar que el clon “pierda” la imagen.
@@ -224,7 +233,9 @@ export async function deepClone(node, sessionCache, options) {
         // Blindaje extra: evita que una clase agregada luego anule el fix
         if (w) clone.style.minWidth = `${w}px`
         if (h) clone.style.minHeight = `${h}px`
-      } catch { }
+      } catch (e) {
+        debugWarn(sessionCache, 'IMG dimension freeze failed', e)
+      }
 
     }
   } catch (err) {

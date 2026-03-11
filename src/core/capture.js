@@ -75,7 +75,7 @@ export async function captureDOM(element, options) {
       rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
     }
     if (!outerShadows && clone) {
-      stripRootShadows(state.element, clone)
+      stripRootShadows(state.element, clone, state.options)
     }
   } finally {
     undoClamp()
@@ -187,7 +187,7 @@ export async function captureDOM(element, options) {
           document.body.removeChild(wrap)
           if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
           if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
-        } catch (_) { /* fallback: use doc dimensions above */ }
+        } catch { /* fallback: use doc dimensions above */ }
       }
       // === NEW: recompute height using the kept-children span (no offscreen) ===
       if (state.options?.excludeMode === 'remove') {

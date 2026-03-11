@@ -3,7 +3,7 @@
  * @module utils/clone.helpers
  */
 
-import { idle } from './index.js'
+import { idle, debugWarn } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
@@ -608,8 +608,9 @@ function stringifySrcset(parts) {
   return parts.map((p) => (p.desc ? `${p.url} ${p.desc.trim()}` : p.url)).join(', ')
 }
 
-export async function resolveBlobUrlsInTree(root) {
+export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
+  const ctx = sessionCache
 
   const imgs = root.querySelectorAll ? root.querySelectorAll('img') : []
   for (const img of imgs) {
@@ -629,12 +630,16 @@ export async function resolveBlobUrlsInTree(root) {
             try {
               p.url = await blobUrlToDataUrl(p.url)
               changed = true
-            } catch { }
+            } catch (e) {
+              debugWarn(ctx, 'blobUrlToDataUrl for srcset item failed', e)
+            }
           }
         }
         if (changed) img.setAttribute('srcset', stringifySrcset(parts))
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'resolveBlobUrls for img failed', e)
+    }
   }
 
   const svgImages = root.querySelectorAll ? root.querySelectorAll('image') : []
@@ -647,7 +652,9 @@ export async function resolveBlobUrlsInTree(root) {
         node.setAttribute('href', d)
         node.removeAttributeNS?.(XLINK_NS, 'href')
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'resolveBlobUrls for SVG image href failed', e)
+    }
   }
 
   const styled = root.querySelectorAll ? root.querySelectorAll("[style*='blob:']") : []
@@ -658,7 +665,9 @@ export async function resolveBlobUrlsInTree(root) {
         const replaced = await replaceBlobUrlsInCssText(styleText)
         el.setAttribute('style', replaced)
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'replaceBlobUrls in inline style failed', e)
+    }
   }
 
   const styleTags = root.querySelectorAll ? root.querySelectorAll('style') : []
@@ -668,7 +677,9 @@ export async function resolveBlobUrlsInTree(root) {
       if (css.includes('blob:')) {
         s.textContent = await replaceBlobUrlsInCssText(css)
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'replaceBlobUrls in style tag failed', e)
+    }
   }
 
   const urlAttrs = ['poster']
@@ -680,7 +691,9 @@ export async function resolveBlobUrlsInTree(root) {
         if (isBlobUrl(u)) {
           n.setAttribute(attr, await blobUrlToDataUrl(u))
         }
-      } catch { }
+      } catch (e) {
+        debugWarn(ctx, `resolveBlobUrls for ${attr} failed`, e)
+      }
     }
   }
 }

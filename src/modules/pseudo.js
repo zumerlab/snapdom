@@ -10,8 +10,9 @@ import {
   safeEncodeURI,
   inlineSingleBackgroundEntry,
   splitBackgroundImage,
-  getStyleKey
-} from '../utils'
+  getStyleKey,
+  debugWarn
+} from '../utils/index.js'
 import { iconToImage } from '../modules/fonts.js'
 import { isIconFont } from '../modules/iconFonts.js'
 import {
@@ -395,7 +396,9 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   }
 
   if (!sessionCache.__counterCtx) {
-    try { sessionCache.__counterCtx = buildCounterContext(source.ownerDocument || document) } catch { }
+    try { sessionCache.__counterCtx = buildCounterContext(source.ownerDocument || document) } catch (e) {
+      debugWarn(sessionCache, 'buildCounterContext failed', e)
+    }
   }
   const counterCtx = sessionCache.__counterCtx
 

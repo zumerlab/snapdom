@@ -3,25 +3,30 @@
  * @module utils/capture.helpers
  */
 
+import { debugWarn } from './index.js'
+
 /**
  * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, blur()/drop-shadow()).
  * Children remain intact.
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
+ * @param {Object} [opts] - optional { debug } for verbose logging
  */
-export function stripRootShadows(originalEl, cloneRoot) {
+export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return
   const cs = getComputedStyle(originalEl)
-  try { cloneRoot.style.boxShadow = 'none' } catch { }
-  try { cloneRoot.style.textShadow = 'none' } catch { }
-  try { cloneRoot.style.outline = 'none' } catch { }
+  try { cloneRoot.style.boxShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows boxShadow', e) }
+  try { cloneRoot.style.textShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows textShadow', e) }
+  try { cloneRoot.style.outline = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows outline', e) }
   const f = cs.filter || ''
   const cleaned = f
     .replace(/\bblur\([^()]*\)\s*/gi, '')
     .replace(/\bdrop-shadow\([^()]*\)\s*/gi, '')
     .trim()
     .replace(/\s+/g, ' ')
-  try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch { }
+  try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch (e) {
+    debugWarn(opts, 'stripRootShadows filter', e)
+  }
 }
 
 /** Remove all HTML comments (prevents invalid XML like "--") */
@@ -192,19 +197,6 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
 }
 
 /**
- * True if the element is in normal flow (we ignore abs/fixed/sticky/float/transformed).
- * @param {Element} el
- */
-function isInNormalFlow(el) {
-  const cs = getComputedStyle(el)
-  if (cs.display === 'none') return false
-  if (cs.position === 'absolute' || cs.position === 'fixed' || cs.position === 'sticky') return false
-  if ((cs.cssFloat || cs.float || 'none') !== 'none') return false
-  if (cs.transform && cs.transform !== 'none') return false
-  return true
-}
-
-/**
  * True if the element contributes to its parent's height (block, float, sticky, etc.).
  * Excludes only position absolute/fixed and display:none.
  * @param {Element} el
@@ -226,7 +218,11 @@ function willBeExcluded(el, options) {
   if (!(el instanceof Element)) return false
   if (el.getAttribute('data-capture') === 'exclude' && options?.excludeMode === 'remove') return true
   if (Array.isArray(options?.exclude)) {
-    for (const sel of options.exclude) { try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch { } }
+    for (const sel of options.exclude) {
+    try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
+      debugWarn(options, 'exclude selector match failed', e)
+    }
+  }
   }
   return false
 }

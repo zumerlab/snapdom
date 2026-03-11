@@ -3,6 +3,7 @@ import { captureDOM } from '../core/capture.js'
 import { extendIconFonts } from '../modules/iconFonts.js'
 import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
+import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
 import { collectUsedFontVariants, ensureFontsReady } from '../modules/fonts.js'
 export { preCache } from './preCache.js'
@@ -332,7 +333,9 @@ async function safariWarmup(element, baseOptions) {
   let url
   try {
     url = await captureDOM(element, preflight)
-  } catch {}
+  } catch (e) {
+    debugWarn(baseOptions, 'safariWarmup pre-capture failed', e)
+  }
 
   // 1) estabiliza layout/paint en WebKit
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
@@ -340,14 +343,18 @@ async function safariWarmup(element, baseOptions) {
   if (url) {
     await new Promise((resolve) => {
       const img = new Image()
-      try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+      try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
+        debugWarn(baseOptions, 'safariWarmup img hints failed', e)
+      }
       img.style.cssText =
         'position:fixed;left:0px;top:0px;width:10px;height:10px;opacity:0.01;pointer-events:none;'
       img.src = url
       document.body.appendChild(img)
 
       ;(async () => {
-        try { if (typeof img.decode === 'function') await img.decode() } catch {}
+        try { if (typeof img.decode === 'function') await img.decode() } catch (e) {
+          debugWarn(baseOptions, 'safariWarmup img.decode failed', e)
+        }
         const start = performance.now()
         while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
           await new Promise(r => setTimeout(r, 200))
@@ -363,7 +370,9 @@ async function safariWarmup(element, baseOptions) {
           if (ctx) ctx.drawImage(img, 0, 0)
         } catch { /* non-blocking */ }
         await new Promise(r => requestAnimationFrame(r))
-        try { img.remove() } catch {}
+        try { img.remove() } catch (e) {
+          debugWarn(baseOptions, 'safariWarmup img.remove failed', e)
+        }
         resolve()
       })()
     })
@@ -374,7 +383,9 @@ async function safariWarmup(element, baseOptions) {
     try {
       const ctx = c.getContext('2d', { willReadFrequently: true })
       if (ctx) { ctx.getImageData(0, 0, 1, 1) }
-    } catch {}
+    } catch (e) {
+      debugWarn(baseOptions, 'safariWarmup canvas poke failed', e)
+    }
   })
 
   _safariWarmup = true
