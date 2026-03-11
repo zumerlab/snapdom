@@ -2,7 +2,7 @@
 import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
-import { cache, applyCachePolicy } from '../core/cache.js'
+import { cache, applyCachePolicy, EvictingMap } from '../core/cache.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 
 /**
@@ -37,8 +37,8 @@ export async function preCache(root = document, options = {}) {
   if (!cache.session.styleCache) {
     cache.session.styleCache = new WeakMap()
   }
-  cache.image = cache.image || new Map()
-  cache.background = cache.background || new Map()
+  cache.image = cache.image || new EvictingMap(100)
+  cache.background = cache.background || new EvictingMap(100)
 
   // Pre-inline background images into cache (best-effort)
   try {

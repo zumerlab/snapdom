@@ -4,7 +4,7 @@
  */
 
 import { idle } from './index.js'
-import { cache } from '../core/cache.js'
+import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
 
@@ -382,10 +382,16 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   const { contentWidth, contentHeight, rect } = measureContentBox(iframe)
 
-  // Prefer snapdom from the iframe realm; fallback to host's window.snapdom
-  const snap = options?.snap
+  // Prefer options.snap (set by main()); fallback to window.snapdom (IIFE build)
+  let snap = options?.snap
+  if (!snap && typeof window !== 'undefined' && window.snapdom) {
+    snap = window.snapdom
+  }
   if (!snap || typeof snap.toPng !== 'function') {
-    throw new Error('snapdom.toPng not available in iframe or window')
+    throw new Error(
+      '[snapdom] iframe capture requires snapdom.toPng. Use snapdom(el) or pass options.snap. ' +
+      'With ESM, assign window.snapdom = snapdom after import if using iframes.'
+    )
   }
 
   // Avoid double scaling; parent capture decides final scale
@@ -526,7 +532,7 @@ export function createCheckboxRadioReplacement(node) {
 
 // ========== Blob URL Helpers ==========
 
-var _blobToDataUrlCache = new Map()
+var _blobToDataUrlCache = new EvictingMap(80)
 
 /**
  * Read a blob: URL and return its data URL, with memoization + shared cache.
