@@ -147,8 +147,15 @@ export function getStyleKey(snapshot, tagName) {
 
   const entries = []
   const defaults = getDefaultStyleForTag(tagName)
+  const display = (snapshot.display || '').toLowerCase()
+  const isInline = display === 'inline'
+  // Tags that size to text content; grid/flex blockify them but we should not constrain
+  // width (causes wrap when font-weight makes text wider than captured width, e.g. "Timestamp demo")
+  const INLINE_SIZED_TAGS = new Set(['span', 'small', 'p', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
+  const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName)
   for (let [prop, value] of Object.entries(snapshot)) {
     if (shouldIgnoreProp(prop)) continue
+    if (skipWidth && (prop === 'width' || prop === 'min-width' || prop === 'max-width')) continue
     const def = defaults[prop]
     if (value && value !== def) entries.push(`${prop}:${value}`)
   }
