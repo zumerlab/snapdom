@@ -76,25 +76,22 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 SnapDOM transforms your DOM element through these stages:
 
-```mermaid
-flowchart LR
-    subgraph Input
-        A[DOM Element]
-    end
-    
-    subgraph Capture
-        B[Clone] --> C[Styles & Pseudo]
-        C --> D[Images & Backgrounds]
-        D --> E[Fonts]
-        E --> F[SVG foreignObject]
-    end
-    
-    subgraph Output
-        F --> G[data:image/svg+xml]
-        G --> H[toPng / toSvg / toBlob / download]
-    end
-    
-    A --> B
+```
+DOM Element
+    ↓
+Clone
+    ↓
+Styles & Pseudo
+    ↓
+Images & Backgrounds
+    ↓
+Fonts
+    ↓
+SVG foreignObject
+    ↓
+data:image/svg+xml
+    ↓
+toPng / toSvg / toBlob / download
 ```
 
 | Stage | What happens |

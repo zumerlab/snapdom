@@ -78,25 +78,22 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 SnapDOM 将 DOM 元素按以下阶段转换：
 
-```mermaid
-flowchart LR
-    subgraph Input
-        A[DOM Element]
-    end
-    
-    subgraph Capture
-        B[Clone] --> C[Styles & Pseudo]
-        C --> D[Images & Backgrounds]
-        D --> E[Fonts]
-        E --> F[SVG foreignObject]
-    end
-    
-    subgraph Output
-        F --> G[data:image/svg+xml]
-        G --> H[toPng / toSvg / toBlob / download]
-    end
-    
-    A --> B
+```
+DOM Element
+    ↓
+Clone
+    ↓
+Styles & Pseudo
+    ↓
+Images & Backgrounds
+    ↓
+Fonts
+    ↓
+SVG foreignObject
+    ↓
+data:image/svg+xml
+    ↓
+toPng / toSvg / toBlob / download
 ```
 
 | 阶段 | 说明 |
