@@ -2,20 +2,7 @@
  * @typedef {"disabled"|"full"|"auto"|"soft"} CachePolicy
  */
 
-/**
- * Normalizes `options.cache` into a canonical policy.
- * Accepted strings: "disabled" | "full" | "auto" | "soft"
- * Default: "soft"
- * @param {unknown} v
- * @returns {CachePolicy}
- */
-export function normalizeCachePolicy(v) {
-  if (typeof v === 'string') {
-    const s = v.toLowerCase().trim()
-    if (s === 'disabled' || s === 'full' || s === 'auto' || s === 'soft') return /** @type {CachePolicy} */(s)
-  }
-  return 'soft'
-}
+import { normalizeCachePolicy } from './cache.js'
 
 /**
  * Creates a normalized capture context for SnapDOM.
