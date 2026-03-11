@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### Unreleased
+
+- fix: extend CSS transform double-scale fix (#321) to spacers, textarea, and checkbox/radio replacement
+- fix: inline styles now use computed (cascade-resolved) values so !important in stylesheets correctly overrides inline styles. Closes #328
+- fix: body/documentElement capture now uses scrollHeight when content overflows viewport (Chrome was cutting off bottom)
+- fix: skip width/min-width/max-width for inline-sized elements (span, small, etc.) to prevent unwanted text wrap in capture
+
 #### [v2.1.0](https://github.com/zumerlab/snapdom/compare/v2.0.2...v2.1.0)
 
 > 10 March 2026
