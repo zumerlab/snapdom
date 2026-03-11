@@ -158,6 +158,37 @@ export async function captureDOM(element, options) {
       const rect = state.element.getBoundingClientRect()
       let w0 = Math.max(1, limitDecimals(state.element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
       let h0 = Math.max(1, limitDecimals(state.element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
+      // body/documentElement: measure clone in-document to get true content height (Chrome clamps offset/scroll)
+      const isRoot = state.element === document.body || state.element === document.documentElement
+      if (isRoot) {
+        const docH = Math.max(
+          state.element.scrollHeight || 0,
+          document.documentElement?.scrollHeight || 0,
+          document.body?.scrollHeight || 0
+        )
+        const docW = Math.max(
+          state.element.scrollWidth || 0,
+          document.documentElement?.scrollWidth || 0,
+          document.body?.scrollWidth || 0
+        )
+        if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
+        if (docW > 0) w0 = Math.max(w0, limitDecimals(docW))
+        // Also measure clone in a temp container with injected styles (clone may layout differently)
+        try {
+          const wrap = document.createElement('div')
+          wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
+          const styleNode = document.createElement('style')
+          styleNode.textContent = state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+          wrap.appendChild(styleNode)
+          wrap.appendChild(state.clone.cloneNode(true))
+          document.body.appendChild(wrap)
+          const csh = wrap.scrollHeight
+          const csw = wrap.scrollWidth
+          document.body.removeChild(wrap)
+          if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
+          if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
+        } catch (_) { /* fallback: use doc dimensions above */ }
+      }
       // === NEW: recompute height using the kept-children span (no offscreen) ===
       if (state.options?.excludeMode === 'remove') {
         const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
