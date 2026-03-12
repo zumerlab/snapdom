@@ -317,9 +317,10 @@ export async function captureDOM(element, options) {
 
       const container = document.createElement('div')
       container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-      container.style.width = `${limitDecimals(w0)}px`
-      container.style.height = `${limitDecimals(h0)}px`
-      container.style.overflow = 'visible'
+      // #372: isolate wrapper from iframe CSS cascade (e.g. div { border: 10px solid red })
+      container.style.cssText =
+        'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
+        `width:${limitDecimals(w0)}px;height:${limitDecimals(h0)}px`
 
       //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(state.clone)
