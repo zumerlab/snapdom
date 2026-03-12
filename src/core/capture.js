@@ -7,7 +7,7 @@ import { prepareClone } from './prepare.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
-import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js'
+import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClamp } from '../modules/lineClamp.js'
@@ -154,38 +154,40 @@ export async function captureDOM(element, options) {
 
   await new Promise((resolve) => {
     idle(() => {
-      const csEl = getComputedStyle(state.element)
+      const csEl = getStyle(state.element)
 
       const rect = state.element.getBoundingClientRect()
       let w0 = Math.max(1, limitDecimals(state.element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
       let h0 = Math.max(1, limitDecimals(state.element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
       // body/documentElement: measure clone in-document to get true content height (Chrome clamps offset/scroll)
-      const isRoot = state.element === document.body || state.element === document.documentElement
+      // Use element's ownerDocument for iframe support (#371)
+      const elDoc = state.element.ownerDocument || document
+      const isRoot = state.element === elDoc.body || state.element === elDoc.documentElement
       if (isRoot) {
         const docH = Math.max(
           state.element.scrollHeight || 0,
-          document.documentElement?.scrollHeight || 0,
-          document.body?.scrollHeight || 0
+          elDoc.documentElement?.scrollHeight || 0,
+          elDoc.body?.scrollHeight || 0
         )
         const docW = Math.max(
           state.element.scrollWidth || 0,
-          document.documentElement?.scrollWidth || 0,
-          document.body?.scrollWidth || 0
+          elDoc.documentElement?.scrollWidth || 0,
+          elDoc.body?.scrollWidth || 0
         )
         if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
         if (docW > 0) w0 = Math.max(w0, limitDecimals(docW))
         // Also measure clone in a temp container with injected styles (clone may layout differently)
         try {
-          const wrap = document.createElement('div')
+          const wrap = elDoc.createElement('div')
           wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
-          const styleNode = document.createElement('style')
+          const styleNode = elDoc.createElement('style')
           styleNode.textContent = state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
           wrap.appendChild(styleNode)
           wrap.appendChild(state.clone.cloneNode(true))
-          document.body.appendChild(wrap)
+          elDoc.body.appendChild(wrap)
           const csh = wrap.scrollHeight
           const csw = wrap.scrollWidth
-          document.body.removeChild(wrap)
+          elDoc.body.removeChild(wrap)
           if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
           if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
         } catch { /* fallback: use doc dimensions above */ }
@@ -338,7 +340,7 @@ export async function captureDOM(element, options) {
         ? vbH
         : limitDecimals(outH + pad * 2)
 
-      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const rootFontSize = parseFloat(getStyle(elDoc.documentElement)?.fontSize) || 16
       const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">`
       const svgFooter = '</svg>'
       svgString = svgHeader + foString + svgFooter

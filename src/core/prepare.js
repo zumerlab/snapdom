@@ -3,7 +3,7 @@
  * @module prepare
  */
 
-import { generateCSSClasses, stripTranslate, debugWarn } from '../utils/index.js'
+import { generateCSSClasses, stripTranslate, debugWarn, getStyle } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
@@ -129,7 +129,7 @@ export async function prepareClone(element, options = {}) {
   freezeSticky(element, contentRoot)
 
   if (element === sessionCache.nodeMap.get(clone)) {
-    const computed = sessionCache.styleCache.get(element) || window.getComputedStyle(element)
+    const computed = sessionCache.styleCache.get(element) || getStyle(element)
     sessionCache.styleCache.set(element, computed)
     const transform = stripTranslate(computed.transform)
     clone.style.margin = '0'
