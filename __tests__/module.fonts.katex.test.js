@@ -126,6 +126,37 @@ describe('embedCustomFonts - KaTeX CDN support (issue #344)', () => {
     expect(result).toContain('@font-face')
   })
 
+  it('recognizes cross-origin CSS when fontStylesheetDomains allows custom CDN (#309)', async () => {
+    const href = 'https://cdn.example.com/styles.css'
+    addLink(href)
+
+    vi.mocked(snapFetch).mockResolvedValueOnce({
+      ok: true,
+      data: `
+        @font-face {
+          font-family: 'CustomFont';
+          src: url(./CustomFont.woff2) format('woff2');
+        }
+      `,
+      status: 200,
+      url: href,
+      fromCache: false
+    })
+
+    const required = req('CustomFont__400__normal__100')
+    const usedCodepoints = cps('abc')
+
+    const result = await embedCustomFonts({
+      required,
+      usedCodepoints,
+      fontStylesheetDomains: ['cdn.example.com']
+    })
+
+    expect(snapFetch).toHaveBeenCalledWith(href, expect.objectContaining({ as: 'text' }))
+    expect(result).toContain('@font-face')
+    expect(result).toContain('CustomFont')
+  })
+
   it('recognizes MathJax CSS from CDN', async () => {
     const href = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/mathjax.css'
     addLink(href)
