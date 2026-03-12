@@ -294,7 +294,8 @@ export async function captureDOM(element, options) {
       const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
 
       const svgNS = 'http://www.w3.org/2000/svg'
-      const basePad = isSafari() ? 1 : 0
+      // Safari workaround: pad only when root has bbox-affecting transforms (avoids edge clipping)
+      const basePad = (isSafari() && hasTFBBox(state.element)) ? 1 : 0
       const extraPad = !outerTransforms ? 1 : 0
       const pad = limitDecimals(basePad + extraPad)
 
