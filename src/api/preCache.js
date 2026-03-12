@@ -14,6 +14,7 @@ import { inlineBackgroundImages } from '../modules/background.js'
  * @param {string}  [options.useProxy=""]
  * @param {{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}[]} [options.localFonts=[]]
  * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.excludeFonts]
+ * @param {string[]} [options.fontStylesheetDomains]  // extra domains to fetch cross-origin CSS from (#309)
  * @returns {Promise<void>}
  */
 export async function preCache(root = document, options = {}) {
@@ -138,6 +139,7 @@ export async function preCache(root = document, options = {}) {
         exclude: options.excludeFonts,
         localFonts: options.localFonts,
         useProxy: options.useProxy ?? useProxy,
+        fontStylesheetDomains: options.fontStylesheetDomains,
       })
     } catch {}
   }

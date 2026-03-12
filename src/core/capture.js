@@ -127,7 +127,8 @@ export async function captureDOM(element, options) {
           usedCodepoints,
           preCached: false,
           exclude: state.options.excludeFonts,
-          useProxy: state.options.useProxy
+          useProxy: state.options.useProxy,
+          fontStylesheetDomains: state.options.fontStylesheetDomains
         })
         resolve()
       }, { fast })

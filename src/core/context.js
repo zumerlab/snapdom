@@ -18,6 +18,7 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {string|string[]} [options.iconFonts]
  * @param {string[]} [options.localFonts]
  * @param {string[]|undefined} [options.excludeFonts]
+ * @param {string[]} [options.fontStylesheetDomains]      // extra domains to fetch cross-origin CSS from (#309)
  * @param {string|function} [options.fallbackURL]
  * @param {string}  [options.useProxy]
  * @param {number|null} [options.width]
@@ -60,6 +61,7 @@ export function createContext(options = {}) {
       : (options.iconFonts ? [options.iconFonts] : []),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
+    fontStylesheetDomains: Array.isArray(options.fontStylesheetDomains) ? options.fontStylesheetDomains : [],
     fallbackURL: options.fallbackURL ?? undefined,
 
     /** @type {CachePolicy} */
