@@ -56,6 +56,20 @@ function snapshotComputedStyleFull(style, options = {}) {
       if (v) out[prop] = v
     } catch {}
   }
+  // #340: -webkit-text-stroke en Safari – asegurar que se capture aunque no esté en la iteración
+  const TEXT_STROKE_PROPS = [
+    '-webkit-text-stroke',
+    '-webkit-text-stroke-width',
+    '-webkit-text-stroke-color',
+    'paint-order'
+  ]
+  for (const prop of TEXT_STROKE_PROPS) {
+    if (out[prop]) continue
+    try {
+      const v = style.getPropertyValue(prop)
+      if (v) out[prop] = v
+    } catch {}
+  }
   if (options.embedFonts) {
     const EXTRA_FONT_PROPS = [
       'font-feature-settings',
