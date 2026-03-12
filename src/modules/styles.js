@@ -1,4 +1,4 @@
-import { getStyleKey } from '../utils/index.js'
+import { getStyleKey, shouldIgnoreProp } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -32,8 +32,14 @@ function setupInvalidationOnce(root = document.documentElement) {
 function snapshotComputedStyleFull(style, options = {}) {
   const out = {}
   const vis = style.getPropertyValue('visibility')
+  const excludeStyleProps = options.excludeStyleProps
   for (let i = 0; i < style.length; i++) {
     const prop = style[i]
+    if (shouldIgnoreProp(prop)) continue
+    if (excludeStyleProps) {
+      if (excludeStyleProps instanceof RegExp && excludeStyleProps.test(prop)) continue
+      if (typeof excludeStyleProps === 'function' && excludeStyleProps(prop)) continue
+    }
     let val = style.getPropertyValue(prop)
     if ((prop === 'background-image' || prop === 'content') && val.includes('url(') && !val.includes('data:')) {
       val = 'none'

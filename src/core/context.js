@@ -32,6 +32,7 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
  * @param {boolean} [options.outerTransforms] // NEW
  * @param {boolean} [options.outerShadows]      // NEW
+ * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
  * @returns {Object}
  */
 export function createContext(options = {}) {
@@ -87,6 +88,9 @@ export function createContext(options = {}) {
 
     // Safari warmup (WebKit #219770): iterations to prime font/decode pipeline. 1–3.
     safariWarmupAttempts: Math.min(3, Math.max(1, (options.safariWarmupAttempts ?? 3) | 0)),
+
+    // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
+    excludeStyleProps: options.excludeStyleProps ?? null,
 
     // Plugins (reservado)
     // plugins: normalizePlugins(...),

@@ -214,6 +214,33 @@ describe('captureDOM – viewport path sanity', () => {
 
 //
 // ──────────────────────────────────────────────────────────────────────────────
+// #348: CSS vars excluded from snapshot – fidelity preserved (var() resolved)
+// ──────────────────────────────────────────────────────────────────────────────
+//
+describe('captureDOM – #348 CSS vars fidelity', () => {
+  it('color: var(--x) resolves to computed value in output', async () => {
+    const { captureDOM } = await import('../src/core/capture.js')
+
+    const wrap = document.createElement('div')
+    wrap.innerHTML = `
+      <style>:root { --snapdom-test-color: rgb(255, 0, 0); } .t348 { color: var(--snapdom-test-color); }</style>
+      <div class="t348">red text</div>
+    `
+    document.body.appendChild(wrap)
+    const el = wrap.querySelector('.t348')
+
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 80, 20))
+
+    const url = await captureDOM(el, { fast: true, embedFonts: false })
+    document.body.removeChild(wrap)
+
+    const svg = decodeSvg(url)
+    expect(svg).toMatch(/rgb\(255,\s*0,\s*0\)|#[fF]{2}0000/)
+  })
+})
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
 // #372: iframe CSS isolation – wrapper div must not inherit iframe cascade
 // ──────────────────────────────────────────────────────────────────────────────
 //

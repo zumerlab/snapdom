@@ -93,7 +93,7 @@ export function getDefaultStyleForTag(tagName) {
 const NO_PAINT_TOKEN = /(?:^|-)(animation|transition)(?:-|$)/i
 
 /** Prefixes that never affect the static pixel of the frame. */
-const NO_PAINT_PREFIX = /^(--|view-timeline|scroll-timeline|animation-trigger|offset-|position-try|app-region|interactivity|overlay|view-transition|-webkit-locale|-webkit-user-(?:drag|modify)|-webkit-tap-highlight-color|-webkit-text-security)$/i
+const NO_PAINT_PREFIX = /^(--.+|view-timeline|scroll-timeline|animation-trigger|offset-|position-try|app-region|interactivity|overlay|view-transition|-webkit-locale|-webkit-user-(?:drag|modify)|-webkit-tap-highlight-color|-webkit-text-security)$/i
 
 /** Exact properties that do not render pixels (control/interaction/UA hints). */
 const NO_PAINT_EXACT = new Set([
