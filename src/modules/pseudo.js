@@ -587,9 +587,12 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
 
       if (!hasVisibleBox) continue
 
+      // #359: mark parent so we can suppress native ::before/::after in cloned <style> (avoids double render)
       if (pseudo === '::before') {
+        clone.dataset.snapdomHasBefore = '1'
         clone.insertBefore(pseudoEl, clone.firstChild)
       } else {
+        clone.dataset.snapdomHasAfter = '1'
         clone.appendChild(pseudoEl)
       }
     } catch (e) {

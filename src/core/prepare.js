@@ -72,8 +72,10 @@ export async function prepareClone(element, options = {}) {
     .map(([key, className]) => `.${className}{${key}}`)
     .join('')
 
+  // #359: suppress native ::before/::after on elements where we inlined them (avoids double render from cloned <style>)
+  const PSEUDO_SUPPRESS = '[data-snapdom-has-after]::after,[data-snapdom-has-before]::before{content:none!important;display:none!important}'
   // prepend shadow CSS so variables/rules are available for everything
-  classCSS = shadowScopedCSS + classCSS
+  classCSS = shadowScopedCSS + PSEUDO_SUPPRESS + classCSS
 
   for (const [node, key] of sessionCache.styleMap.entries()) {
     if (node.tagName === 'STYLE') continue
