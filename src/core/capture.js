@@ -17,7 +17,8 @@ import {
   sanitizeCloneForXHTML,
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
-  limitDecimals
+  limitDecimals,
+  collectScrollbarCSS
 } from '../utils/capture.helpers.js'
 import {
   parseBoxShadow,
@@ -148,8 +149,9 @@ export async function captureDOM(element, options) {
       }, { fast })
     })
   }
-  // beforeRender(context)
-  state = { fontsCSS, baseCSS, ...state }
+  // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
+  const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
+  state = { fontsCSS, baseCSS, scrollbarCSS, ...state }
   await runHook('beforeRender', state)
 
   await new Promise((resolve) => {
@@ -181,7 +183,7 @@ export async function captureDOM(element, options) {
           const wrap = elDoc.createElement('div')
           wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
           const styleNode = elDoc.createElement('style')
-          styleNode.textContent = state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+          styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
           wrap.appendChild(styleNode)
           wrap.appendChild(state.clone.cloneNode(true))
           elDoc.body.appendChild(wrap)
@@ -312,7 +314,7 @@ export async function captureDOM(element, options) {
 
       const styleTag = document.createElement('style')
       styleTag.textContent =
-        state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+        (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
       fo.appendChild(styleTag)
 
       const container = document.createElement('div')

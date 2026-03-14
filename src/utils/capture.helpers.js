@@ -273,3 +273,66 @@ export function estimateKeptHeight(container, options) {
 
 export const limitDecimals = (v, n = 3) =>
   Number.isFinite(v) ? Math.round(v * 10 ** n) / 10 ** n : v
+
+/** Match ::-webkit-scrollbar and related pseudos (#334) */
+const SCROLLBAR_PSEUDO = /::-webkit-scrollbar(-[a-z]+)?\b/i
+
+/**
+ * Recursively collect CSS rules that contain ::-webkit-scrollbar selectors.
+ * Fixes #334: custom scrollbar styles now apply in capture.
+ * @param {CSSRuleList} rules
+ * @param {Set<string>} seen - dedupe by cssText
+ * @returns {string}
+ */
+function collectScrollbarRulesFromRules(rules, seen = new Set()) {
+  let out = ''
+  if (!rules) return out
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i]
+    try {
+      if (rule.type === CSSRule.IMPORT_RULE && rule.styleSheet) {
+        out += collectScrollbarRulesFromRules(rule.styleSheet.cssRules, seen)
+        continue
+      }
+      if (rule.type === CSSRule.MEDIA_RULE && rule.cssRules) {
+        const inner = collectScrollbarRulesFromRules(rule.cssRules, seen)
+        if (inner) out += `@media ${rule.conditionText}{${inner}}`
+        continue
+      }
+      if (rule.type === CSSRule.STYLE_RULE) {
+        const sel = rule.selectorText || ''
+        if (SCROLLBAR_PSEUDO.test(sel)) {
+          const text = rule.cssText
+          if (text && !seen.has(text)) {
+            seen.add(text)
+            out += text
+          }
+        }
+      }
+    } catch {
+      // CORS or invalid rule; skip
+    }
+  }
+  return out
+}
+
+/**
+ * Extract ::-webkit-scrollbar rules from the document's stylesheets.
+ * Used so custom scrollbar styling appears in capture (#334).
+ * @param {Document} doc
+ * @returns {string}
+ */
+export function collectScrollbarCSS(doc) {
+  if (!doc || !doc.styleSheets) return ''
+  const seen = new Set()
+  let out = ''
+  for (const sheet of Array.from(doc.styleSheets)) {
+    try {
+      const rules = sheet.cssRules
+      if (rules) out += collectScrollbarRulesFromRules(rules, seen)
+    } catch {
+      // Cross-origin stylesheet; cannot read cssRules
+    }
+  }
+  return out
+}

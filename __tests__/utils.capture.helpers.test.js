@@ -7,7 +7,8 @@ import {
   sanitizeCloneForXHTML,
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
-  limitDecimals
+  limitDecimals,
+  collectScrollbarCSS
 } from '../src/utils/capture.helpers.js'
 
 beforeEach(() => {
@@ -153,5 +154,29 @@ describe('limitDecimals', () => {
   it('returns v unchanged for non-finite', () => {
     expect(limitDecimals(NaN)).toBeNaN()
     expect(limitDecimals(Infinity)).toBe(Infinity)
+  })
+})
+
+describe('collectScrollbarCSS (#334)', () => {
+  it('extracts ::-webkit-scrollbar rules from document stylesheets', () => {
+    const style = document.createElement('style')
+    style.textContent = `
+      .scroll-area::-webkit-scrollbar { width: 10px; }
+      .scroll-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); }
+      .other { color: red; }
+    `
+    document.head.appendChild(style)
+
+    const out = collectScrollbarCSS(document)
+    document.head.removeChild(style)
+
+    expect(out).toContain('::-webkit-scrollbar')
+    expect(out).toContain('::-webkit-scrollbar-thumb')
+    expect(out).toContain('width: 10px')
+    expect(out).not.toContain('.other')
+  })
+
+  it('returns empty string for null document', () => {
+    expect(collectScrollbarCSS(null)).toBe('')
   })
 })

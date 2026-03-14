@@ -778,6 +778,7 @@ export function myPlugin(options = {}) {
 * 在 Safari 上使用 WebP 格式时，将回退到 PNG 渲染。
 * `@font-face` CSS 规则得到良好支持，但如果需要使用 JS `FontFace()`，请参阅此解决方案 [`#43`](https://github.com/zumerlab/snapdom/issues/43)
 * **Safari**：启用 `embedFonts` 或包含背景/蒙版图片的捕获会较慢，因 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770)（字体解码时机）。SnapDOM 通过预捕获和 `drawImage` 预热管道；可通过 `safariWarmupAttempts` 调整（默认 3）。
+* **自定义滚动条样式**（`::-webkit-scrollbar`）：仅在元素*未滚动*时生效。若已滚动，将捕获视口内容且不显示滚动条。
 
 
 ## ⚡ 性能基准测试（Chromium）
