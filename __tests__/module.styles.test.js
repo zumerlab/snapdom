@@ -169,6 +169,30 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(key).not.toMatch(/font-size:/)
   })
 
+  it('#362: border: 0 solid normalizes to border: none in snapshot', async () => {
+    const inlineAllStyles = await loadInlineAllStylesFresh()
+
+    const style = document.createElement('style')
+    style.textContent = '* { border: 0 solid; }'
+    document.head.appendChild(style)
+
+    const src = document.createElement('div')
+    document.body.appendChild(src)
+
+    const clone = document.createElement('div')
+    const session = freshSession()
+
+    await inlineAllStyles(src, clone, session, { cache: 'auto' })
+
+    document.body.removeChild(src)
+    document.head.removeChild(style)
+
+    const key = session.styleMap.get(clone)
+    expect(key).toBeDefined()
+    // Tailwind * { border: 0 solid } must become border: none in output (#362)
+    expect(key).toMatch(/\bborder:\s*none\b/)
+  })
+
   it('cachea getComputedStyle en session.styleCache (una sola lectura por source)', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 

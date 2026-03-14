@@ -273,6 +273,39 @@ describe('captureDOM – #372 iframe CSS isolation', () => {
   })
 })
 
+//
+// ──────────────────────────────────────────────────────────────────────────────
+// #362: Tailwind * { border: 0 solid } – normalize to border: none in capture
+// ──────────────────────────────────────────────────────────────────────────────
+//
+describe('captureDOM – #362 canvas Tailwind border', () => {
+  it('elements with border-width 0 get border:none in output (not border: 0 solid)', async () => {
+    const { captureDOM } = await import('../src/core/capture.js')
+
+    const wrap = document.createElement('div')
+    wrap.innerHTML = `
+      <style>* { border: 0 solid; }</style>
+      <canvas id="c362" width="80" height="40"></canvas>
+    `
+    document.body.appendChild(wrap)
+    const canvas = wrap.querySelector('#c362')
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = 'red'
+    ctx.fillRect(0, 0, 80, 40)
+
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, 80, 40)
+    )
+
+    const url = await captureDOM(wrap, { fast: true, embedFonts: false })
+    document.body.removeChild(wrap)
+
+    const svg = decodeSvg(url)
+    // Canvas becomes img; snapshot should normalize border: 0 solid → border: none
+    expect(svg).toMatch(/\bborder:\s*none\b/)
+  })
+})
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Transform handling (lenient, effect-only)
 // ──────────────────────────────────────────────────────────────────────────────

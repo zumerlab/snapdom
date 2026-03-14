@@ -94,6 +94,28 @@ function snapshotComputedStyleFull(style, options = {}) {
     }
   }
   if (vis === 'hidden') out.opacity = '0'
+
+  // #362: Tailwind's * { border: 0 solid } renders incorrectly in capture.
+  // When all border widths are 0, normalize to border: none for unambiguous output.
+  const bt = parseFloat(style.getPropertyValue('border-top-width') || 0) || 0
+  const br = parseFloat(style.getPropertyValue('border-right-width') || 0) || 0
+  const bb = parseFloat(style.getPropertyValue('border-bottom-width') || 0) || 0
+  const bl = parseFloat(style.getPropertyValue('border-left-width') || 0) || 0
+  if (bt === 0 && br === 0 && bb === 0 && bl === 0) {
+    const BORDER_PROPS = [
+      'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
+      'border-width', 'border-style', 'border-color',
+      'border-top-width', 'border-top-style', 'border-top-color',
+      'border-right-width', 'border-right-style', 'border-right-color',
+      'border-bottom-width', 'border-bottom-style', 'border-bottom-color',
+      'border-left-width', 'border-left-style', 'border-left-color',
+      'border-block', 'border-block-width', 'border-block-style', 'border-block-color',
+      'border-inline', 'border-inline-width', 'border-inline-style', 'border-inline-color',
+    ]
+    for (const p of BORDER_PROPS) delete out[p]
+    out['border'] = 'none'
+  }
+
   return out
 }
 const __snapshotSig = new WeakMap()
