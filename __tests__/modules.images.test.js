@@ -233,4 +233,19 @@ describe('inlineImages – extra coverage', () => {
     expect(div).toBeTruthy()
     expect((div?.textContent || '')).toBe('img')
   })
+
+  it('#341: inlines SVG <image href="https://..."> to data URL', async () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image')
+    img.setAttribute('href', 'https://placehold.co/150x100')
+    svg.appendChild(img)
+    wrap.appendChild(svg)
+
+    vi.mocked(snapFetch).mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,SVGIMG' })
+
+    await inlineImages(wrap)
+
+    const out = wrap.querySelector('image')
+    expect(out?.getAttribute('href')).toBe('data:image/png;base64,SVGIMG')
+  })
 })
