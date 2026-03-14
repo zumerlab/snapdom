@@ -10,7 +10,7 @@ import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
-import { lineClamp } from '../modules/lineClamp.js'
+import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook } from './plugins.js'
 import {
   stripRootShadows,
@@ -65,7 +65,7 @@ export async function captureDOM(element, options) {
   await runHook('beforeSnap', state)
   // BEFORECLONE
   await runHook('beforeClone', state)
-  const undoClamp = lineClamp(state.element)
+  const undoClamp = lineClampTree(state.element)
   try {
     ({ clone, classCSS, styleCache } = await prepareClone(state.element, state.options))
 

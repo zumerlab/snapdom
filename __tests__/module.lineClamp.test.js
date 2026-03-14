@@ -1,6 +1,6 @@
 // __tests__/module.lineClamp.test.js – lineClamp coverage
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { lineClamp } from '../src/modules/lineClamp.js'
+import { lineClamp, lineClampTree } from '../src/modules/lineClamp.js'
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -61,5 +61,33 @@ describe('lineClamp', () => {
     document.body.appendChild(div)
     lineClamp(div)
     expect(div.textContent).toBe('Short')
+  })
+})
+
+describe('lineClampTree (#386)', () => {
+  it('clamps nested element with -webkit-line-clamp', () => {
+    const outer = document.createElement('div')
+    outer.style.width = '200px'
+    const inner = document.createElement('div')
+    inner.style.webkitLineClamp = '2'
+    inner.style.lineHeight = '20px'
+    inner.style.fontSize = '16px'
+    inner.style.padding = '0'
+    inner.style.overflow = 'hidden'
+    const longText = 'Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore.'
+    inner.textContent = longText
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+
+    const undo = lineClampTree(outer)
+    expect(inner.textContent).toContain('…')
+    undo()
+    expect(inner.textContent).toBe(longText)
+  })
+
+  it('returns no-op for null', () => {
+    const undo = lineClampTree(null)
+    expect(typeof undo).toBe('function')
+    undo()
   })
 })

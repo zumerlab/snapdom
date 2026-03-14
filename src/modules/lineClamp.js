@@ -1,13 +1,29 @@
 // src/core/lineClamp.js
 
 /**
+ * Apply line-clamp to element AND all descendants that have -webkit-line-clamp.
+ * Fixes #386: ellipsis now renders for nested elements, not just the root.
+ *
+ * @param {Element} el - Root element (and its subtree) to process
+ * @returns {() => void} Combined undo function
+ */
+export function lineClampTree(el) {
+  if (!el) return () => {}
+  const undos = []
+  function walk(node) {
+    const undo = lineClamp(node)
+    if (undo) undos.push(undo)
+    for (const child of node.children || []) walk(child)
+  }
+  walk(el)
+  return () => undos.forEach((u) => u())
+}
+
+/**
  * Apply a multi-line ellipsis ONLY if the target element declares
  * -webkit-line-clamp/line-clamp. Uses the real layout (scrollHeight) and
  * mutates the ORIGINAL node briefly (binary search on text + '…'),
  * then returns an undo() that restores everything right after cloning.
- *
- * Scope intentionally minimal: ROOT element only, plain text container
- * (like your demo). This mirrors the working snippet exactly.
  *
  * @param {Element} el
  * @returns {() => void} undo function (no-op if nothing changed)
