@@ -2,12 +2,51 @@
 
 All notable changes to this project will be documented in this file. 
 
-#### Unreleased
+#### [v2.5.0](https://github.com/zumerlab/snapdom/compare/v2.1.0...v2.5.0)
 
-- fix: extend CSS transform double-scale fix (#321) to spacers, textarea, and checkbox/radio replacement
-- fix: inline styles now use computed (cascade-resolved) values so !important in stylesheets correctly overrides inline styles. Closes #328
-- fix: body/documentElement capture now uses scrollHeight when content overflows viewport (Chrome was cutting off bottom)
-- fix: skip width/min-width/max-width for inline-sized elements (span, small, etc.) to prevent unwanted text wrap in capture
+> 17 March 2026
+
+- fix: CSS vars perf, scrollbar styles, SVG image inline, nested line-clamp, iframe pseudos & isolation, Tailwind border (#334 #341 #348 #362 #371 #372 #386) [`#387`](https://github.com/zumerlab/snapdom/pull/387)
+- fix: enable image download on iOS via Web Share API [`#384`](https://github.com/zumerlab/snapdom/pull/384)
+- feat(scrollbar): implement custom scrollbar style collection for capture, ensuring styles are applied correctly. Closes #334 [`#334`](https://github.com/zumerlab/snapdom/issues/334)
+- feat(styles): normalize Tailwind border styles in capture and inlineAllStyles to ensure consistent output. Closes #362 [`#362`](https://github.com/zumerlab/snapdom/issues/362)
+- feat(lineClamp): introduce lineClampTree function to apply line-clamp to nested elements, enhancing ellipsis rendering. Closes #386 [`#386`](https://github.com/zumerlab/snapdom/issues/386)
+- test(styles): add tests for excluding CSS properties from snapshots, ensuring fidelity with CSS variables. Closes #348 [`#348`](https://github.com/zumerlab/snapdom/issues/348)
+- test(capture): add test for iframe CSS isolation to ensure wrapper div does not inherit iframe styles. Closes #372 [`#372`](https://github.com/zumerlab/snapdom/issues/372)
+- refactor(capture): replace getComputedStyle with getStyle for improved iframe support and consistency across style retrieval. Closes #371 [`#371`](https://github.com/zumerlab/snapdom/issues/371)
+- feat(pseudo): implement suppression of native ::before/::after pseudo-elements in cloned styles to prevent double rendering. Closes #359 [`#359`](https://github.com/zumerlab/snapdom/issues/359)
+- fix(capture): update Safari padding logic to avoid edge clipping by applying padding only when necessary based on bounding box transforms. Closes #333 [`#333`](https://github.com/zumerlab/snapdom/issues/333)
+- test(fonts): add test for cross-origin CSS support in embedCustomFonts function, verifying correct handling of custom CDN stylesheets. Closes #309 [`#309`](https://github.com/zumerlab/snapdom/issues/309)
+- feat(fonts): add fontStylesheetDomains option to support cross-origin CSS fetching, enhancing font loading capabilities. Closes #309, closes #370 [`#309`](https://github.com/zumerlab/snapdom/issues/309) [`#370`](https://github.com/zumerlab/snapdom/issues/370)
+- feat(styles): add support for capturing -webkit-text-stroke properties in Safari to enhance style snapshot accuracy. Closes #340 [`#340`](https://github.com/zumerlab/snapdom/issues/340)
+- fix(styles): normalize inline styles to ensure !important rules in stylesheets correctly override inline styles in clones. Fixes #328. [`#328`](https://github.com/zumerlab/snapdom/issues/328)
+- refactor: improve dimension handling in deepClone and createCheckboxRadioReplacement functions for better accuracy and consistency. Closes #321. See #378 [`#321`](https://github.com/zumerlab/snapdom/issues/321)
+- refactor: enhance checkbox/radio replacement for Firefox with SVG implementation for consistent rendering and improved styling. Closes #290 [`#290`](https://github.com/zumerlab/snapdom/issues/290)
+- fix(background): resolve relative URLs and fallback to `background` shorthand for url() when background-image is empty. Closes #343 [`#343`](https://github.com/zumerlab/snapdom/issues/343)
+- fix: enable image download on iOS via Web Share API [`#383`](https://github.com/zumerlab/snapdom/issues/383)
+- feat(tests): add comprehensive test coverage for various modules including exporters, utils, and modules to improve overall code reliability [`06cc896`](https://github.com/zumerlab/snapdom/commit/06cc8962709e5ce651b54b67c63c38fe5ecc498d)
+- feat(debug): introduce debug option to log suppressed errors for troubleshooting, enhancing error visibility during capture processes [`f107bbe`](https://github.com/zumerlab/snapdom/commit/f107bbef52521fdd92b77987b44b512313f3b88d)
+- fix: Firefox checkbox radio replacement [`b97e553`](https://github.com/zumerlab/snapdom/commit/b97e5539849d08dc871b9a2e486c9505bdfc081e)
+- refactor(cache): implement EvictingMap for cache management to limit memory usage and improve performance [`212cd4f`](https://github.com/zumerlab/snapdom/commit/212cd4f0471613b68a47427a1e23f7d076d303de)
+- refactor(styles): improve height handling for transparent wrappers to support margin collapsing and enhance layout stability [`c50ccef`](https://github.com/zumerlab/snapdom/commit/c50ccefe931e4809d12c8993dde6aba3f9b46a54)
+- fix(styles): prevent overriding border styles when using border-image, and improve getStyle fallback handling [`a5857c5`](https://github.com/zumerlab/snapdom/commit/a5857c5c49febe3d39729f214ca29914928af34a)
+- feat(images): add support for inlining SVG &lt;image&gt; elements as data URLs, addressing #341. [`f7d4616`](https://github.com/zumerlab/snapdom/commit/f7d46160913bcf5dad26be0103ef01dc7d29243c)
+- feat(safari): implement font and image decode warmup for Safari to address WebKit Bug #219770, enhancing capture reliability [`ad450ce`](https://github.com/zumerlab/snapdom/commit/ad450ce8a10a7094ecbde0ee20db626fabe78423)
+- test(getStyle): add tests to ensure getStyle never returns undefined for elements and pseudo-elements [`83c3854`](https://github.com/zumerlab/snapdom/commit/83c3854dc520a0e944a6cf1d23dbc5cdaf8e520a)
+- refactor(snapdom): streamline plugin exports by consolidating export functions into a loop for improved maintainability [`ca35387`](https://github.com/zumerlab/snapdom/commit/ca353871b2b696252ddd21572ae31106b39d3c76)
+- feat(capture): enhance DOM capture dimensions for root elements by measuring scroll dimensions and using a temporary container for accurate height and width calculations [`31e50f2`](https://github.com/zumerlab/snapdom/commit/31e50f27b3069527cc83f1fe8990c3a8c376e35c)
+- fix(css): enhance getWindowForElement and getStyle functions to handle cross-document scenarios and improve fallback logic [`b0fbc8d`](https://github.com/zumerlab/snapdom/commit/b0fbc8d44745811a7c5627e34ef764e02ff188f7)
+- refactor(context): remove inline cache policy normalization and import from cache module for improved code organization [`0492756`](https://github.com/zumerlab/snapdom/commit/04927566faf919c7a3df07287f799b152e5d4c8f)
+- feat(safari): add `safariWarmupAttempts` option to optimize font and image decoding for improved capture performance [`2474c05`](https://github.com/zumerlab/snapdom/commit/2474c0528051940e503c08ca52861042e57cc880)
+- fix(styles): prevent width constraints on inline and specific tags to avoid text wrapping issues [`674ef27`](https://github.com/zumerlab/snapdom/commit/674ef276bcad8e4107c57fee3e976083590a5dd0)
+- chore: update contributors list [`b30de75`](https://github.com/zumerlab/snapdom/commit/b30de75ab66cac137334a0ef68ca2bf9133f88c4)
+- docs: update README files to replace NPM version badge with weekly downloads badge [`8e12d01`](https://github.com/zumerlab/snapdom/commit/8e12d01fbeb861989eb1d60c534596c55ce9207a)
+- chore(.gitignore): add 'demos/' directory to .gitignore to exclude demo files from version control [`fa34905`](https://github.com/zumerlab/snapdom/commit/fa34905450d889e48b9b943c941f29386627acc5)
+- refactor(prepare): simplify deepClone call by removing redundant element argument for cleaner code [`399bfaf`](https://github.com/zumerlab/snapdom/commit/399bfaf127bb4416200068334dc069a5bfcef2ab)
+- fix(styles): adjust inline style for timestamp demo to prevent text wrapping [`b88e8d7`](https://github.com/zumerlab/snapdom/commit/b88e8d74f67fe67e3ac610972c53ff49752f6b74)
+- fix(snapdom): remove redundant safariWarmup reset to improve iteration logic [`72d3fb7`](https://github.com/zumerlab/snapdom/commit/72d3fb72968d136f1c71d234d57272ce0f3fb6e1)
+- Merge PR #384: enable image download on iOS via Web Share API [`05bc67c`](https://github.com/zumerlab/snapdom/commit/05bc67c76dbe6cc02946773de8413d48e314b3d9)
+- Merge main into dev (2.1.0) [`5f5ab34`](https://github.com/zumerlab/snapdom/commit/5f5ab345194832225e311421d177963ce3c4c59e)
 
 #### [v2.1.0](https://github.com/zumerlab/snapdom/compare/v2.0.2...v2.1.0)
 
