@@ -247,15 +247,25 @@ export function generateCSSClasses(styleMap) {
  * Fixes #371 (pseudos in iframe body not rendering when capturing body only).
  *
  * @param {Element} el
- * @returns {Window}
+ * @returns {Window|null}
  */
 function getWindowForElement(el) {
   try {
     const doc = el?.ownerDocument
-    const win = doc?.defaultView
+    if (!doc) return typeof window !== 'undefined' ? window : null
+    let win = doc.defaultView
     if (win && typeof win.getComputedStyle === 'function') return win
+    // In some environments (e.g. srcdoc iframe before fully ready) defaultView can be null.
+    // Find the frame whose document is this document so we use the iframe's window.
+    if (typeof window !== 'undefined' && window.frames) {
+      for (let i = 0; i < window.frames.length; i++) {
+        try {
+          if (window.frames[i]?.document === doc) return window.frames[i]
+        } catch { /* cross-origin */ }
+      }
+    }
   } catch { /* cross-origin etc */ }
-  return typeof window !== 'undefined' ? window : (el?.ownerDocument?.defaultView || null)
+  return typeof window !== 'undefined' ? window : null
 }
 
 /**
@@ -311,7 +321,10 @@ export function getStyle(el, pseudo = null) {
 
     if (!st && typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
       try {
-        st = window.getComputedStyle(el, pseudo)
+        // Only use global window when the element belongs to the same document (e.g. avoid iframe cross-document call).
+        if (el.ownerDocument === document) {
+          st = window.getComputedStyle(el, pseudo)
+        }
       } catch {
         // ignore; handled below
       }
