@@ -161,7 +161,20 @@ function parseStretchSpec(spec) {
  * @param {string} href
  * @param {Set<string>} requiredFamilies // plain names e.g. "Unbounded", "Mansalva"
  */
-function isLikelyFontStylesheet(href, requiredFamilies) {
+/**
+ * Extract base font name for URL matching (e.g. "Nunito Variable" -> "nunito", "Nunito Sans Variable" -> "nunito-sans").
+ * Fixes #370: similar names like Nunito vs Nunito Sans must match distinct CDN paths.
+ */
+function baseFamilyToken(family) {
+  if (!family || typeof family !== 'string') return ''
+  let base = family
+    .replace(/\s+(variable|vf|v[0-9]+)$/i, '')
+    .trim()
+    .toLowerCase()
+  return base.replace(/\s+/g, '-')
+}
+
+function isLikelyFontStylesheet(href, requiredFamilies, allowedDomains = []) {
   if (!href) return false
   try {
     const u = new URL(href, location.href)
@@ -171,9 +184,11 @@ function isLikelyFontStylesheet(href, requiredFamilies) {
     const host = u.host.toLowerCase()
     const FONT_HOSTS = [
       'fonts.googleapis.com', 'fonts.gstatic.com',
-      'use.typekit.net', 'p.typekit.net', 'kit.fontawesome.com', 'use.fontawesome.com'
+      'use.typekit.net', 'p.typekit.net', 'kit.fontawesome.com', 'use.fontawesome.com',
+      'cdn.jsdelivr.net', 'unpkg.com', 'cdnjs.cloudflare.com', 'esm.sh'
     ]
     if (FONT_HOSTS.some(h => host.endsWith(h))) return true
+    if (allowedDomains.some(d => host === d.toLowerCase() || host.endsWith('.' + d.toLowerCase()))) return true
 
     const path = (u.pathname + u.search).toLowerCase()
     if (/\bfont(s)?\b/.test(path) || /\.woff2?(\b|$)/.test(path)) return true
@@ -184,7 +199,9 @@ function isLikelyFontStylesheet(href, requiredFamilies) {
     for (const fam of requiredFamilies) {
       const tokenA = fam.toLowerCase().replace(/\s+/g, '+')
       const tokenB = fam.toLowerCase().replace(/\s+/g, '-')
+      const baseToken = baseFamilyToken(fam)
       if (path.includes(tokenA) || path.includes(tokenB)) return true
+      if (baseToken && path.includes(baseToken)) return true
     }
     return false
   } catch {
@@ -465,7 +482,7 @@ function dedupeFontFaces(cssText) {
 }
 
 // ---- cache key per capture signature (avoid cross-pollution between different targets) ----
-function buildFontsCacheKey(required, exclude, localFonts, useProxy) {
+function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains) {
   const req = Array.from(required || []).sort().join('|')
   const ex = exclude ? JSON.stringify({
     families: (exclude.families || []).map(s => String(s).toLowerCase()).sort(),
@@ -477,7 +494,8 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy) {
     .sort()
     .join('|')
   const px = useProxy || ''
-  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}`
+  const fd = (fontStylesheetDomains || []).map(s => String(s).toLowerCase()).sort().join('|')
+  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}`
 }
 
 // ----------------------------------------------------------------------------
@@ -577,6 +595,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
  * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.exclude] // simple exclude
  * @param {Array<{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}>} [options.localFonts=[]]
  * @param {string}  [options.useProxy=""]
+ * @param {string[]} [options.fontStylesheetDomains=[]]      // extra domains to fetch cross-origin CSS from (#309)
  * @returns {Promise<string>} inlined @font-face CSS
  */
 export async function embedCustomFonts({
@@ -585,6 +604,7 @@ export async function embedCustomFonts({
   exclude = undefined,
   localFonts = [],
   useProxy = '',
+  fontStylesheetDomains = [],
 } = {}) {
   // ---------- Normalize inputs ----------
   if (!(required instanceof Set)) required = new Set()
@@ -679,7 +699,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 
-  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy)
+  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains)
   if (cache.resource?.has(cacheKey)) {
     return cache.resource.get(cacheKey)
   }
@@ -726,7 +746,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       try { sameOrigin = new URL(link.href, location.href).origin === location.origin } catch {}
 
       if (!sameOrigin) {
-        if (!isLikelyFontStylesheet(link.href, requiredFamilies)) continue
+        const allowedDomains = Array.isArray(fontStylesheetDomains) ? fontStylesheetDomains : []
+        if (!isLikelyFontStylesheet(link.href, requiredFamilies, allowedDomains)) continue
       }
 
       if (sameOrigin) {

@@ -3,25 +3,30 @@
  * @module utils/capture.helpers
  */
 
+import { debugWarn } from './index.js'
+
 /**
  * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, blur()/drop-shadow()).
  * Children remain intact.
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
+ * @param {Object} [opts] - optional { debug } for verbose logging
  */
-export function stripRootShadows(originalEl, cloneRoot) {
+export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return
   const cs = getComputedStyle(originalEl)
-  try { cloneRoot.style.boxShadow = 'none' } catch { }
-  try { cloneRoot.style.textShadow = 'none' } catch { }
-  try { cloneRoot.style.outline = 'none' } catch { }
+  try { cloneRoot.style.boxShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows boxShadow', e) }
+  try { cloneRoot.style.textShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows textShadow', e) }
+  try { cloneRoot.style.outline = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows outline', e) }
   const f = cs.filter || ''
   const cleaned = f
     .replace(/\bblur\([^()]*\)\s*/gi, '')
     .replace(/\bdrop-shadow\([^()]*\)\s*/gi, '')
     .trim()
     .replace(/\s+/g, ' ')
-  try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch { }
+  try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch (e) {
+    debugWarn(opts, 'stripRootShadows filter', e)
+  }
 }
 
 /** Remove all HTML comments (prevents invalid XML like "--") */
@@ -192,15 +197,14 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
 }
 
 /**
- * True if the element is in normal flow (we ignore abs/fixed/sticky/float/transformed).
+ * True if the element contributes to its parent's height (block, float, sticky, etc.).
+ * Excludes only position absolute/fixed and display:none.
  * @param {Element} el
  */
-function isInNormalFlow(el) {
+function contributesToParentHeight(el) {
   const cs = getComputedStyle(el)
   if (cs.display === 'none') return false
-  if (cs.position === 'absolute' || cs.position === 'fixed' || cs.position === 'sticky') return false
-  if ((cs.cssFloat || cs.float || 'none') !== 'none') return false
-  if (cs.transform && cs.transform !== 'none') return false
+  if (cs.position === 'absolute' || cs.position === 'fixed') return false
   return true
 }
 
@@ -214,7 +218,11 @@ function willBeExcluded(el, options) {
   if (!(el instanceof Element)) return false
   if (el.getAttribute('data-capture') === 'exclude' && options?.excludeMode === 'remove') return true
   if (Array.isArray(options?.exclude)) {
-    for (const sel of options.exclude) { try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch { } }
+    for (const sel of options.exclude) {
+    try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
+      debugWarn(options, 'exclude selector match failed', e)
+    }
+  }
   }
   return false
 }
@@ -236,11 +244,11 @@ export function estimateKeptHeight(container, options) {
   let maxBottom = -Infinity
   let found = false
 
-  // Consider only direct children; es lo más estable para layout en flujo normal
+  // Consider only direct children; incluir floats (contribuyen a la altura del contenedor)
   const kids = Array.from(container.children)
   for (const k of kids) {
     if (willBeExcluded(k, options)) continue
-    if (!isInNormalFlow(k)) continue
+    if (!contributesToParentHeight(k)) continue
     const rk = k.getBoundingClientRect()
     // usar coordenadas relativas al contenedor
     const top = rk.top - rC.top
@@ -265,3 +273,66 @@ export function estimateKeptHeight(container, options) {
 
 export const limitDecimals = (v, n = 3) =>
   Number.isFinite(v) ? Math.round(v * 10 ** n) / 10 ** n : v
+
+/** Match ::-webkit-scrollbar and related pseudos (#334) */
+const SCROLLBAR_PSEUDO = /::-webkit-scrollbar(-[a-z]+)?\b/i
+
+/**
+ * Recursively collect CSS rules that contain ::-webkit-scrollbar selectors.
+ * Fixes #334: custom scrollbar styles now apply in capture.
+ * @param {CSSRuleList} rules
+ * @param {Set<string>} seen - dedupe by cssText
+ * @returns {string}
+ */
+function collectScrollbarRulesFromRules(rules, seen = new Set()) {
+  let out = ''
+  if (!rules) return out
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i]
+    try {
+      if (rule.type === CSSRule.IMPORT_RULE && rule.styleSheet) {
+        out += collectScrollbarRulesFromRules(rule.styleSheet.cssRules, seen)
+        continue
+      }
+      if (rule.type === CSSRule.MEDIA_RULE && rule.cssRules) {
+        const inner = collectScrollbarRulesFromRules(rule.cssRules, seen)
+        if (inner) out += `@media ${rule.conditionText}{${inner}}`
+        continue
+      }
+      if (rule.type === CSSRule.STYLE_RULE) {
+        const sel = rule.selectorText || ''
+        if (SCROLLBAR_PSEUDO.test(sel)) {
+          const text = rule.cssText
+          if (text && !seen.has(text)) {
+            seen.add(text)
+            out += text
+          }
+        }
+      }
+    } catch {
+      // CORS or invalid rule; skip
+    }
+  }
+  return out
+}
+
+/**
+ * Extract ::-webkit-scrollbar rules from the document's stylesheets.
+ * Used so custom scrollbar styling appears in capture (#334).
+ * @param {Document} doc
+ * @returns {string}
+ */
+export function collectScrollbarCSS(doc) {
+  if (!doc || !doc.styleSheets) return ''
+  const seen = new Set()
+  let out = ''
+  for (const sheet of Array.from(doc.styleSheets)) {
+    try {
+      const rules = sheet.cssRules
+      if (rules) out += collectScrollbarRulesFromRules(rules, seen)
+    } catch {
+      // Cross-origin stylesheet; cannot read cssRules
+    }
+  }
+  return out
+}

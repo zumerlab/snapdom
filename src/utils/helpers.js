@@ -64,3 +64,19 @@ export function safeEncodeURI(uri) {
   if (/%[0-9A-Fa-f]{2}/.test(uri)) return uri // prevent reencode
   try { return encodeURI(uri) } catch { return uri }
 }
+
+/**
+ * Resolves a possibly relative URL to an absolute URL.
+ * @param {string} url - URL (relative or absolute)
+ * @param {string} [base] - Base URL (defaults to document.baseURI or location.href)
+ * @returns {string} Absolute URL
+ */
+export function resolveURL(url, base) {
+  if (!url || /^(data|blob|about|#)/i.test(url.trim())) return url
+  try {
+    const b = base || (typeof document !== 'undefined' && (document.baseURI || document.location?.href)) || 'http://localhost/'
+    return new URL(url, b).href
+  } catch {
+    return url
+  }
+}

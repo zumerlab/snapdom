@@ -1,5 +1,5 @@
-import { describe, it, expect} from 'vitest'
-import { getStyle, parseContent, snapshotComputedStyle, stripTranslate } from '../src/utils'
+import { describe, it, expect } from 'vitest'
+import { getStyle, parseContent, snapshotComputedStyle, stripTranslate, shouldIgnoreProp } from '../src/utils'
 
 describe('getStyle', () => {
   it('returns a CSSStyleDeclaration', () => {
@@ -48,6 +48,17 @@ describe('stripTranslate', () => {
   it('stripTranslate removes matrix and matrix3d', () => {
     expect(stripTranslate('matrix(1,0,0,1,10,20)')).not.toContain('10,20')
     expect(stripTranslate('matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1)')).not.toContain('10,20,30')
+  })
+})
+
+describe('shouldIgnoreProp (#348)', () => {
+  it('ignores CSS custom properties (--*)', () => {
+    expect(shouldIgnoreProp('--my-var')).toBe(true)
+    expect(shouldIgnoreProp('--theme-color')).toBe(true)
+  })
+  it('does not ignore paint-affecting props', () => {
+    expect(shouldIgnoreProp('color')).toBe(false)
+    expect(shouldIgnoreProp('background-color')).toBe(false)
   })
 })
 

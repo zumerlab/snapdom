@@ -2,20 +2,7 @@
  * @typedef {"disabled"|"full"|"auto"|"soft"} CachePolicy
  */
 
-/**
- * Normalizes `options.cache` into a canonical policy.
- * Accepted strings: "disabled" | "full" | "auto" | "soft"
- * Default: "soft"
- * @param {unknown} v
- * @returns {CachePolicy}
- */
-export function normalizeCachePolicy(v) {
-  if (typeof v === 'string') {
-    const s = v.toLowerCase().trim()
-    if (s === 'disabled' || s === 'full' || s === 'auto' || s === 'soft') return /** @type {CachePolicy} */(s)
-  }
-  return 'soft'
-}
+import { normalizeCachePolicy } from './cache.js'
 
 /**
  * Creates a normalized capture context for SnapDOM.
@@ -31,6 +18,7 @@ export function normalizeCachePolicy(v) {
  * @param {string|string[]} [options.iconFonts]
  * @param {string[]} [options.localFonts]
  * @param {string[]|undefined} [options.excludeFonts]
+ * @param {string[]} [options.fontStylesheetDomains]      // extra domains to fetch cross-origin CSS from (#309)
  * @param {string|function} [options.fallbackURL]
  * @param {string}  [options.useProxy]
  * @param {number|null} [options.width]
@@ -44,6 +32,7 @@ export function normalizeCachePolicy(v) {
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
  * @param {boolean} [options.outerTransforms] // NEW
  * @param {boolean} [options.outerShadows]      // NEW
+ * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
  * @returns {Object}
  */
 export function createContext(options = {}) {
@@ -73,6 +62,7 @@ export function createContext(options = {}) {
       : (options.iconFonts ? [options.iconFonts] : []),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
+    fontStylesheetDomains: Array.isArray(options.fontStylesheetDomains) ? options.fontStylesheetDomains : [],
     fallbackURL: options.fallbackURL ?? undefined,
 
     /** @type {CachePolicy} */
@@ -95,6 +85,12 @@ export function createContext(options = {}) {
     // NEW flags (user-friendly)
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
+
+    // Safari warmup (WebKit #219770): iterations to prime font/decode pipeline. 1–3.
+    safariWarmupAttempts: Math.min(3, Math.max(1, (options.safariWarmupAttempts ?? 3) | 0)),
+
+    // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
+    excludeStyleProps: options.excludeStyleProps ?? null,
 
     // Plugins (reservado)
     // plugins: normalizePlugins(...),

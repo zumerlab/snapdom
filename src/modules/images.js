@@ -1,9 +1,17 @@
 /**
- * Utilities for inlining <img> elements as data URLs or placeholders.
+ * Utilities for inlining <img> and SVG <image> elements as data URLs or placeholders.
+ * Fixes #341: SVG <image href="https://..."> now inlined like HTML <img>.
  * @module images
  */
 
 import { snapFetch } from './snapFetch.js'
+
+const XLINK_NS = 'http://www.w3.org/1999/xlink'
+
+function getSvgImageHref(el) {
+  return el.getAttribute('href') || el.getAttribute('xlink:href') ||
+    (typeof el.getAttributeNS === 'function' ? el.getAttributeNS(XLINK_NS, 'href') : null)
+}
 
 /**
  * Extract dimensions from an image element in priority order
@@ -107,6 +115,24 @@ export async function inlineImages(clone, options = {}) {
 
   for (let i = 0; i < imgs.length; i += 4) {
     const group = imgs.slice(i, i + 4).map(processImg)
+    await Promise.allSettled(group)
+  }
+
+  // #341: Inline SVG <image href="https://..."> (e.g. Highcharts, D3)
+  const svgImages = Array.from(clone.querySelectorAll('image'))
+  const processSvgImage = async (el) => {
+    const href = getSvgImageHref(el)
+    if (!href || href.startsWith('data:') || href.startsWith('blob:')) return
+
+    const r = await snapFetch(href, { as: 'dataURL', useProxy: options.useProxy })
+    if (r.ok && typeof r.data === 'string' && r.data.startsWith('data:')) {
+      el.setAttribute('href', r.data)
+      el.removeAttribute('xlink:href')
+      if (typeof el.removeAttributeNS === 'function') el.removeAttributeNS(XLINK_NS, 'href')
+    }
+  }
+  for (let i = 0; i < svgImages.length; i += 4) {
+    const group = svgImages.slice(i, i + 4).map(processSvgImage)
     await Promise.allSettled(group)
   }
 }

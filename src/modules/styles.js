@@ -1,4 +1,4 @@
-import { getStyleKey, NO_DEFAULTS_TAGS } from '../utils/index.js'
+import { getStyleKey, shouldIgnoreProp } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -32,8 +32,14 @@ function setupInvalidationOnce(root = document.documentElement) {
 function snapshotComputedStyleFull(style, options = {}) {
   const out = {}
   const vis = style.getPropertyValue('visibility')
+  const excludeStyleProps = options.excludeStyleProps
   for (let i = 0; i < style.length; i++) {
     const prop = style[i]
+    if (shouldIgnoreProp(prop)) continue
+    if (excludeStyleProps) {
+      if (excludeStyleProps instanceof RegExp && excludeStyleProps.test(prop)) continue
+      if (typeof excludeStyleProps === 'function' && excludeStyleProps(prop)) continue
+    }
     let val = style.getPropertyValue(prop)
     if ((prop === 'background-image' || prop === 'content') && val.includes('url(') && !val.includes('data:')) {
       val = 'none'
@@ -50,6 +56,20 @@ function snapshotComputedStyleFull(style, options = {}) {
     'text-decoration-skip-ink'
   ]
   for (const prop of EXTRA_TEXT_DECORATION_PROPS) {
+    if (out[prop]) continue
+    try {
+      const v = style.getPropertyValue(prop)
+      if (v) out[prop] = v
+    } catch {}
+  }
+  // #340: -webkit-text-stroke en Safari – asegurar que se capture aunque no esté en la iteración
+  const TEXT_STROKE_PROPS = [
+    '-webkit-text-stroke',
+    '-webkit-text-stroke-width',
+    '-webkit-text-stroke-color',
+    'paint-order'
+  ]
+  for (const prop of TEXT_STROKE_PROPS) {
     if (out[prop]) continue
     try {
       const v = style.getPropertyValue(prop)
@@ -74,6 +94,28 @@ function snapshotComputedStyleFull(style, options = {}) {
     }
   }
   if (vis === 'hidden') out.opacity = '0'
+
+  // #362: Tailwind's * { border: 0 solid } renders incorrectly in capture.
+  // When all border widths are 0, normalize to border: none for unambiguous output.
+  const bt = parseFloat(style.getPropertyValue('border-top-width') || 0) || 0
+  const br = parseFloat(style.getPropertyValue('border-right-width') || 0) || 0
+  const bb = parseFloat(style.getPropertyValue('border-bottom-width') || 0) || 0
+  const bl = parseFloat(style.getPropertyValue('border-left-width') || 0) || 0
+  if (bt === 0 && br === 0 && bb === 0 && bl === 0) {
+    const BORDER_PROPS = [
+      'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
+      'border-width', 'border-style', 'border-color',
+      'border-top-width', 'border-top-style', 'border-top-color',
+      'border-right-width', 'border-right-style', 'border-right-color',
+      'border-bottom-width', 'border-bottom-style', 'border-bottom-color',
+      'border-left-width', 'border-left-style', 'border-left-color',
+      'border-block', 'border-block-width', 'border-block-style', 'border-block-color',
+      'border-inline', 'border-inline-width', 'border-inline-style', 'border-inline-color',
+    ]
+    for (const p of BORDER_PROPS) delete out[p]
+    out['border'] = 'none'
+  }
+
   return out
 }
 const __snapshotSig = new WeakMap()
@@ -128,6 +170,23 @@ function _resolveCtx(sessionOrCtx, opts) {
   }
 }
 
+/**
+ * Replaces the clone's inline style with computed (cascade-resolved) values for each
+ * property that was authored inline on the source. This ensures !important rules in
+ * stylesheets correctly override inline styles in the clone (fixes #328).
+ * @param {Element} source
+ * @param {Element} clone
+ * @param {CSSStyleDeclaration} computed
+ */
+function normalizeInlineStyleToComputed(source, clone, computed) {
+  if (!source.style || source.style.length === 0) return
+  for (let i = 0; i < source.style.length; i++) {
+    const prop = source.style[i]
+    const val = computed.getPropertyValue(prop)
+    if (val) clone.style.setProperty(prop, val)
+  }
+}
+
 export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (source.tagName === 'STYLE') return
 
@@ -142,17 +201,18 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     ctx.session.__bumpedForDisabled = true
   }
 
-  if (NO_DEFAULTS_TAGS.has(source.tagName?.toLowerCase())) {
-    const author = source.getAttribute?.('style')
-    if (author) clone.setAttribute('style', author)
-  }
-
   const { session, persist } = ctx
 
   if (!session.styleCache.has(source)) {
     session.styleCache.set(source, getComputedStyle(source))
   }
   const pre = session.styleCache.get(source)
+
+  // Replace authored inline style with computed values so !important in stylesheets
+  // correctly overrides inline styles in the clone (fixes #328)
+  if (source.getAttribute?.('style')) {
+    normalizeInlineStyleToComputed(source, clone, pre)
+  }
 
   const snap = getSnapshot(source, pre, ctx.options)
 
@@ -228,17 +288,8 @@ function hasFlowFast(el, cs) {
 }
 
 /**
- * Quita height/block-size SOLO en wrappers transparentes de flujo normal
- * que SÍ tienen contenido en flujo. Mantiene height si no hay flujo (sólo abspos),
- * si el autor lo puso inline, si es replaced, posicionado/transform, tiene caja visual,
- * o es item flex/grid.
- * @param {Element} el
- * @param {CSSStyleDeclaration} cs
- * @param {Record<string,string>} snap
- */
-/**
- * Best-effort: quita height/block-size en wrappers "vacíos" para permitir
- * comportamiento de flujo (margin-collapsing, etc.) sin romper casos como KaTeX.
+ * Best-effort: quita height/block-size en wrappers transparentes de flujo para permitir
+ * margin-collapsing, etc. sin romper KaTeX, Orbit, ni layouts con height explícito.
  *
  * @param {Element} el
  * @param {CSSStyleDeclaration} cs
@@ -248,29 +299,24 @@ function stripHeightForWrappers(el, cs, snap) {
   // 1) Respeta height inline del autor
   if (el instanceof HTMLElement && el.style && el.style.height) return
 
-  // 2) Solo operar sobre contenedores de layout clásicos (evita math, span, svg, etc.)
+  // 2) Solo div/section/article/main/aside/header/footer/nav (no ol/ul/li: layout de listas)
   const tag = el.tagName && el.tagName.toLowerCase()
-  if (!tag || (
-    tag !== 'div' &&
-    tag !== 'section' &&
-    tag !== 'article' &&
-    tag !== 'main' &&
-    tag !== 'aside' &&
-    tag !== 'header' &&
-    tag !== 'footer' &&
-    tag !== 'nav' &&
-    tag !== 'ol' &&
-    tag !== 'ul' &&
-    tag !== 'li'
-  )) {
-    return
-  }
+  const ALLOWED_TAGS = ['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'nav']
+  if (!tag || !ALLOWED_TAGS.includes(tag)) return
 
-  // clave para Orbit: si EL ELEMENTO es contenedor flex/grid, no tocar su height
+  // 2b) Solo quitar si height parece "auto" (≈scrollHeight); si difiere, el autor lo fijó
+  const usedH = parseFloat(cs.height)
+  const TOL = 2
+  if (Number.isFinite(usedH) && el.scrollHeight > 0 && Math.abs(usedH - el.scrollHeight) > TOL) return
+
+  // 2c) aspect-ratio define dimensiones derivadas; respetar
+  if (cs.aspectRatio && cs.aspectRatio !== 'none' && cs.aspectRatio !== 'auto') return
+
+  // 3) Orbit: si el elemento es flex/grid, no tocar su height
   const disp = cs.display || ''
   if (disp.includes('flex') || disp.includes('grid')) return
 
-  // 3) Guardas existentes
+  // 4) Guardas existentes
   if (isReplaced(el)) return
 
   const pos = cs.position
@@ -279,7 +325,7 @@ function stripHeightForWrappers(el, cs, snap) {
   if (hasBox(cs)) return
   if (isFlexOrGridItem(el)) return
 
-  // 4) No tocar wrappers que se usan para ocultar / accesibilidad (KaTeX, screen-reader hacks, etc.)
+  // 5) No tocar wrappers que se usan para ocultar / accesibilidad (KaTeX, screen-reader hacks, etc.)
   const overflowX = cs.overflowX || cs.overflow || 'visible'
   const overflowY = cs.overflowY || cs.overflow || 'visible'
   if (overflowX !== 'visible' || overflowY !== 'visible') return
@@ -289,10 +335,10 @@ function stripHeightForWrappers(el, cs, snap) {
 
   if (cs.visibility === 'hidden' || cs.opacity === '0') return
 
-  // 5) Solo wrappers "en flujo" realmente neutros
+  // 6) Solo wrappers "en flujo" realmente neutros
   if (!hasFlowFast(el, cs)) return
 
-  // 6) Ahora sí: quitamos height y block-size del snapshot
+  // 7) Ahora sí: quitamos height y block-size del snapshot
   delete snap.height
   delete snap['block-size']
 }

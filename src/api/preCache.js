@@ -2,7 +2,7 @@
 import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
-import { cache, applyCachePolicy } from '../core/cache.js'
+import { cache, applyCachePolicy, EvictingMap } from '../core/cache.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 
 /**
@@ -14,6 +14,7 @@ import { inlineBackgroundImages } from '../modules/background.js'
  * @param {string}  [options.useProxy=""]
  * @param {{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}[]} [options.localFonts=[]]
  * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.excludeFonts]
+ * @param {string[]} [options.fontStylesheetDomains]  // extra domains to fetch cross-origin CSS from (#309)
  * @returns {Promise<void>}
  */
 export async function preCache(root = document, options = {}) {
@@ -37,8 +38,8 @@ export async function preCache(root = document, options = {}) {
   if (!cache.session.styleCache) {
     cache.session.styleCache = new WeakMap()
   }
-  cache.image = cache.image || new Map()
-  cache.background = cache.background || new Map()
+  cache.image = cache.image || new EvictingMap(100)
+  cache.background = cache.background || new EvictingMap(100)
 
   // Pre-inline background images into cache (best-effort)
   try {
@@ -138,6 +139,7 @@ export async function preCache(root = document, options = {}) {
         exclude: options.excludeFonts,
         localFonts: options.localFonts,
         useProxy: options.useProxy ?? useProxy,
+        fontStylesheetDomains: options.fontStylesheetDomains,
       })
     } catch {}
   }

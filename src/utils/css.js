@@ -93,7 +93,7 @@ export function getDefaultStyleForTag(tagName) {
 const NO_PAINT_TOKEN = /(?:^|-)(animation|transition)(?:-|$)/i
 
 /** Prefixes that never affect the static pixel of the frame. */
-const NO_PAINT_PREFIX = /^(--|view-timeline|scroll-timeline|animation-trigger|offset-|position-try|app-region|interactivity|overlay|view-transition|-webkit-locale|-webkit-user-(?:drag|modify)|-webkit-tap-highlight-color|-webkit-text-security)$/i
+const NO_PAINT_PREFIX = /^(--.+|view-timeline|scroll-timeline|animation-trigger|offset-|position-try|app-region|interactivity|overlay|view-transition|-webkit-locale|-webkit-user-(?:drag|modify)|-webkit-tap-highlight-color|-webkit-text-security)$/i
 
 /** Exact properties that do not render pixels (control/interaction/UA hints). */
 const NO_PAINT_EXACT = new Set([
@@ -147,8 +147,15 @@ export function getStyleKey(snapshot, tagName) {
 
   const entries = []
   const defaults = getDefaultStyleForTag(tagName)
+  const display = (snapshot.display || '').toLowerCase()
+  const isInline = display === 'inline'
+  // Tags that size to text content; grid/flex blockify them but we should not constrain
+  // width (causes wrap when font-weight makes text wider than captured width, e.g. "Timestamp demo")
+  const INLINE_SIZED_TAGS = new Set(['span', 'small', 'p', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
+  const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName)
   for (let [prop, value] of Object.entries(snapshot)) {
     if (shouldIgnoreProp(prop)) continue
+    if (skipWidth && (prop === 'width' || prop === 'min-width' || prop === 'max-width')) continue
     const def = defaults[prop]
     if (value && value !== def) entries.push(`${prop}:${value}`)
   }
@@ -235,6 +242,23 @@ export function generateCSSClasses(styleMap) {
 }
 
 /**
+ * Gets the Window to use for getComputedStyle. Uses the element's document when
+ * the element is from an iframe, so computed styles reflect the iframe's cascade.
+ * Fixes #371 (pseudos in iframe body not rendering when capturing body only).
+ *
+ * @param {Element} el
+ * @returns {Window}
+ */
+function getWindowForElement(el) {
+  try {
+    const doc = el?.ownerDocument
+    const win = doc?.defaultView
+    if (win && typeof win.getComputedStyle === 'function') return win
+  } catch { /* cross-origin etc */ }
+  return typeof window !== 'undefined' ? window : (el?.ownerDocument?.defaultView || null)
+}
+
+/**
  * Gets the computed style for an element or pseudo-element, with caching.
  *
  * @param {Element} el - The element
@@ -243,7 +267,8 @@ export function generateCSSClasses(styleMap) {
  */
 export function getStyle(el, pseudo = null) {
   if (!(el instanceof Element)) {
-    return window.getComputedStyle(el, pseudo)
+    const win = typeof window !== 'undefined' ? window : null
+    return win ? win.getComputedStyle(el, pseudo) : null
   }
 
   let map = cache.computedStyle.get(el)
@@ -253,8 +278,9 @@ export function getStyle(el, pseudo = null) {
   }
 
   if (!map.has(pseudo)) {
-    const st = window.getComputedStyle(el, pseudo)
-    map.set(pseudo, st)
+    const win = getWindowForElement(el)
+    const st = win ? win.getComputedStyle(el, pseudo) : null
+    if (st) map.set(pseudo, st)
   }
 
   return map.get(pseudo)

@@ -3,7 +3,7 @@
  * @module prepare
  */
 
-import { generateCSSClasses, stripTranslate } from '../utils/index.js'
+import { generateCSSClasses, stripTranslate, debugWarn, getStyle } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
@@ -27,7 +27,8 @@ export async function prepareClone(element, options = {}) {
   const sessionCache = {
     styleMap: cache.session.styleMap,
     styleCache: cache.session.styleCache,
-    nodeMap: cache.session.nodeMap
+    nodeMap: cache.session.nodeMap,
+    options
   }
 
   let clone
@@ -43,7 +44,7 @@ export async function prepareClone(element, options = {}) {
   }
 
   try {
-    clone = await deepClone(element, sessionCache, options, element)
+    clone = await deepClone(element, sessionCache, options)
   } catch (e) {
     console.warn('deepClone failed:', e)
     throw e
@@ -53,7 +54,7 @@ export async function prepareClone(element, options = {}) {
   } catch (e) {
     console.warn('inlinePseudoElements failed:', e)
   }
-  await resolveBlobUrlsInTree(clone)
+  await resolveBlobUrlsInTree(clone, sessionCache)
   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
 
   try {
@@ -62,15 +63,19 @@ export async function prepareClone(element, options = {}) {
       shadowScopedCSS += s.textContent || ''
       s.remove() // Do not leave <style> inside the visual clone
     }
-  } catch { }
+  } catch (e) {
+    debugWarn(sessionCache, 'Failed to extract shadow CSS from style[data-sd]', e)
+  }
 
   const keyToClass = generateCSSClasses(sessionCache.styleMap)
   classCSS = Array.from(keyToClass.entries())
     .map(([key, className]) => `.${className}{${key}}`)
     .join('')
 
+  // #359: suppress native ::before/::after on elements where we inlined them (avoids double render from cloned <style>)
+  const PSEUDO_SUPPRESS = '[data-snapdom-has-after]::after,[data-snapdom-has-before]::before{content:none!important;display:none!important}'
   // prepend shadow CSS so variables/rules are available for everything
-  classCSS = shadowScopedCSS + classCSS
+  classCSS = shadowScopedCSS + PSEUDO_SUPPRESS + classCSS
 
   for (const [node, key] of sessionCache.styleMap.entries()) {
     if (node.tagName === 'STYLE') continue
@@ -124,7 +129,7 @@ export async function prepareClone(element, options = {}) {
   freezeSticky(element, contentRoot)
 
   if (element === sessionCache.nodeMap.get(clone)) {
-    const computed = sessionCache.styleCache.get(element) || window.getComputedStyle(element)
+    const computed = sessionCache.styleCache.get(element) || getStyle(element)
     sessionCache.styleCache.set(element, computed)
     const transform = stripTranslate(computed.transform)
     clone.style.margin = '0'

@@ -1,12 +1,38 @@
+/** Max entries before evicting oldest (FIFO). Keeps lib lightweight, avoids memory leaks. */
+const MAX_IMAGE = 100
+const MAX_BACKGROUND = 100
+const MAX_RESOURCE = 150
+const MAX_BASE_STYLE = 50
+const MAX_DEFAULT_STYLE = 30
+
+/**
+ * Map that evicts oldest entries when exceeding maxSize. FIFO order.
+ * @extends Map
+ */
+class EvictingMap extends Map {
+  constructor(maxSize = 100, ...args) {
+    super(...args)
+    this._maxSize = maxSize
+  }
+  set(key, value) {
+    if (this.size >= this._maxSize && !this.has(key)) {
+      const first = this.keys().next().value
+      if (first !== undefined) this.delete(first)
+    }
+    return super.set(key, value)
+  }
+}
+
 /**
  * Global caches for images, styles, and resources.
+ * Persistent caches use EvictingMap to avoid unbounded memory growth.
  */
 export const cache = {
-  image: new Map(),
-  background: new Map(),
-  resource: new Map(),
-  defaultStyle: new Map(),
-  baseStyle: new Map(),
+  image: new EvictingMap(MAX_IMAGE),
+  background: new EvictingMap(MAX_BACKGROUND),
+  resource: new EvictingMap(MAX_RESOURCE),
+  defaultStyle: new EvictingMap(MAX_DEFAULT_STYLE),
+  baseStyle: new EvictingMap(MAX_BASE_STYLE),
   computedStyle: new WeakMap(),
   font: new Set(),
   session: {
@@ -15,6 +41,8 @@ export const cache = {
     nodeMap: new Map(),
   }
 }
+
+export { EvictingMap }
 
 /**
  * Normalizes shorthand values to canonical cache policies.
@@ -64,13 +92,12 @@ export function applyCachePolicy(policy = 'soft') {
       cache.session.styleCache = new WeakMap()
 
       cache.computedStyle = new WeakMap()
-      cache.baseStyle     = new Map()
-      cache.defaultStyle  = new Map()
-
-      cache.image      = new Map()
-      cache.background = new Map()
-      cache.resource   = new Map()
-      cache.font       = new Set()
+      cache.baseStyle     = new EvictingMap(MAX_BASE_STYLE)
+      cache.defaultStyle  = new EvictingMap(MAX_DEFAULT_STYLE)
+      cache.image         = new EvictingMap(MAX_IMAGE)
+      cache.background    = new EvictingMap(MAX_BACKGROUND)
+      cache.resource      = new EvictingMap(MAX_RESOURCE)
+      cache.font          = new Set()
       return
     }
     default: {

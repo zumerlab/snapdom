@@ -126,6 +126,73 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(cache.session.styleMap.has(clone)).toBe(true)
   })
 
+  it('#348: excludeStyleProps regex excludes matching props from snapshot', async () => {
+    const inlineAllStyles = await loadInlineAllStylesFresh()
+
+    const src = document.createElement('div')
+    src.style.color = 'red'
+    src.style.fontSize = '13.37px'  // highly non-default so it appears in key
+    document.body.appendChild(src)
+
+    const clone = document.createElement('div')
+    const session = freshSession()
+
+    await inlineAllStyles(src, clone, session, {
+      cache: 'auto',
+      excludeStyleProps: /^color$/
+    })
+
+    document.body.removeChild(src)
+
+    const key = session.styleMap.get(clone)
+    expect(key).toBeDefined()
+    // Only the exact "color" prop was excluded; other *-color props remain
+    expect(key).not.toMatch(/(?:^|;)color:/)
+    expect(key).toMatch(/font-size:/)
+  })
+
+  it('#348: excludeStyleProps function excludes matching props', async () => {
+    const inlineAllStyles = await loadInlineAllStylesFresh()
+
+    const src = document.createElement('span')
+    src.style.fontSize = '14px'
+    const clone = document.createElement('span')
+    const session = freshSession()
+
+    await inlineAllStyles(src, clone, session, {
+      cache: 'auto',
+      excludeStyleProps: (prop) => prop === 'font-size'
+    })
+
+    const key = session.styleMap.get(clone)
+    expect(key).toBeDefined()
+    expect(key).not.toMatch(/font-size:/)
+  })
+
+  it('#362: border: 0 solid normalizes to border: none in snapshot', async () => {
+    const inlineAllStyles = await loadInlineAllStylesFresh()
+
+    const style = document.createElement('style')
+    style.textContent = '* { border: 0 solid; }'
+    document.head.appendChild(style)
+
+    const src = document.createElement('div')
+    document.body.appendChild(src)
+
+    const clone = document.createElement('div')
+    const session = freshSession()
+
+    await inlineAllStyles(src, clone, session, { cache: 'auto' })
+
+    document.body.removeChild(src)
+    document.head.removeChild(style)
+
+    const key = session.styleMap.get(clone)
+    expect(key).toBeDefined()
+    // Tailwind * { border: 0 solid } must become border: none in output (#362)
+    expect(key).toMatch(/\bborder:\s*none\b/)
+  })
+
   it('cachea getComputedStyle en session.styleCache (una sola lectura por source)', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 

@@ -6,6 +6,7 @@
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars } from '../modules/CSSVar.js'
+import { debugWarn } from '../utils/index.js'
 import {
   idleCallback,
   rewriteShadowCSS,
@@ -17,8 +18,10 @@ import {
   buildSeedCustomPropsRule,
   markSlottedSubtree,
   rasterizeIframe,
-  getUnscaledDimensions
+  getUnscaledDimensions,
+  createCheckboxRadioReplacement
 } from '../utils/clone.helpers.js'
+import { isFirefox } from '../utils/browser.js'
 
 // helper implementations moved to ../utils/clone.helpers.js
 
@@ -45,8 +48,10 @@ export async function deepClone(node, sessionCache, options) {
   if (node.getAttribute('data-capture') === 'exclude') {
     if (options.excludeMode === 'hide') {
       const spacer = document.createElement('div')
-      const rect = node.getBoundingClientRect()
-      spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`
+      const { width, height } = getUnscaledDimensions(node)
+      const w = width || node.getBoundingClientRect().width || 0
+      const h = height || node.getBoundingClientRect().height || 0
+      spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
       return spacer
     } else if (options.excludeMode === 'remove') {
       return null
@@ -58,8 +63,10 @@ export async function deepClone(node, sessionCache, options) {
         if (node.matches?.(selector)) {
           if (options.excludeMode === 'hide') {
             const spacer = document.createElement('div')
-            const rect = node.getBoundingClientRect()
-            spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`
+            const { width, height } = getUnscaledDimensions(node)
+            const w = width || node.getBoundingClientRect().width || 0
+            const h = height || node.getBoundingClientRect().height || 0
+            spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
             return spacer
           } else if (options.excludeMode === 'remove') {
             return null
@@ -75,8 +82,10 @@ export async function deepClone(node, sessionCache, options) {
       if (!options.filter(node)) {
         if (options.filterMode === 'hide') {
           const spacer = document.createElement('div')
-          const rect = node.getBoundingClientRect()
-          spacer.style.cssText = `display:inline-block;width:${rect.width}px;height:${rect.height}px;visibility:hidden;`
+          const { width, height } = getUnscaledDimensions(node)
+          const w = width || node.getBoundingClientRect().width || 0
+          const h = height || node.getBoundingClientRect().height || 0
+          spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
           return spacer
         } else if (options.filterMode === 'remove') {
           return null
@@ -88,7 +97,9 @@ export async function deepClone(node, sessionCache, options) {
   }
   if (node.tagName === 'IFRAME') {
     let sameOrigin = false
-    try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch { sameOrigin = false }
+    try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch (e) {
+      debugWarn(sessionCache, 'iframe same-origin probe failed', e)
+    }
 
     if (sameOrigin) {
       try {
@@ -157,10 +168,14 @@ export async function deepClone(node, sessionCache, options) {
           }
         }
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(sessionCache, 'Canvas toDataURL failed, using empty/fallback', e)
+    }
 
     const img = document.createElement('img')
-    try { img.decoding = 'sync'; img.loading = 'eager' } catch { }
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
+      debugWarn(sessionCache, 'img decoding/loading hints failed', e)
+    }
     if (url) img.src = url
 
     // conservar dimensiones intrínsecas del bitmap
@@ -191,7 +206,9 @@ export async function deepClone(node, sessionCache, options) {
         const h = Math.round(height || 0)
         if (w) clone.dataset.snapdomWidth = String(w)
         if (h) clone.dataset.snapdomHeight = String(h)
-      } catch { }
+      } catch (e) {
+        debugWarn(sessionCache, 'getUnscaledDimensions for IMG failed', e)
+      }
 
       // Si el autor usó % o auto, o el alto/ ancho efectivos dan 0,
       // escribimos px en línea para evitar que el clon “pierda” la imagen.
@@ -216,25 +233,39 @@ export async function deepClone(node, sessionCache, options) {
         // Blindaje extra: evita que una clase agregada luego anule el fix
         if (w) clone.style.minWidth = `${w}px`
         if (h) clone.style.minHeight = `${h}px`
-      } catch { }
+      } catch (e) {
+        debugWarn(sessionCache, 'IMG dimension freeze failed', e)
+      }
 
     }
   } catch (err) {
     console.error('[Snapdom] Failed to clone node:', node, err)
     throw err
   }
+  let applyInputVisual = null
   if (node instanceof HTMLTextAreaElement) {
-    const rect = node.getBoundingClientRect()
-    clone.style.width = `${rect.width}px`
-    clone.style.height = `${rect.height}px`
+    const { width, height } = getUnscaledDimensions(node)
+    const w = width || node.getBoundingClientRect().width || 0
+    const h = height || node.getBoundingClientRect().height || 0
+    if (w) clone.style.width = `${w}px`
+    if (h) clone.style.height = `${h}px`
   }
   if (node instanceof HTMLInputElement) {
-    clone.value = node.value
-    clone.setAttribute('value', node.value)
-    if (node.checked !== void 0) {
-      clone.checked = node.checked
-      if (node.checked) clone.setAttribute('checked', '')
-      if (node.indeterminate) clone.indeterminate = node.indeterminate
+    const type = (node.type || 'text').toLowerCase()
+    const isCheckboxOrRadio = type === 'checkbox' || type === 'radio'
+    if (isCheckboxOrRadio && isFirefox()) {
+      const { el: replacement, applyVisual } = createCheckboxRadioReplacement(node)
+      sessionCache.nodeMap.set(replacement, node)
+      applyInputVisual = applyVisual
+      clone = replacement
+    } else {
+      clone.value = node.value
+      clone.setAttribute('value', node.value)
+      if (node.checked !== void 0) {
+        clone.checked = node.checked
+        if (node.checked) clone.setAttribute('checked', '')
+        if (node.indeterminate) clone.indeterminate = node.indeterminate
+      }
     }
   }
   if (node instanceof HTMLSelectElement) {
@@ -244,6 +275,7 @@ export async function deepClone(node, sessionCache, options) {
     pendingTextAreaValue = node.value
   }
   inlineAllStyles(node, clone, sessionCache, options)
+  if (applyInputVisual) { applyInputVisual() }
   if (node.shadowRoot) {
     try {
       const slots = node.shadowRoot.querySelectorAll('slot')

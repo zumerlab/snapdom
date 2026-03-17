@@ -212,6 +212,100 @@ describe('captureDOM – viewport path sanity', () => {
   })
 })
 
+//
+// ──────────────────────────────────────────────────────────────────────────────
+// #348: CSS vars excluded from snapshot – fidelity preserved (var() resolved)
+// ──────────────────────────────────────────────────────────────────────────────
+//
+describe('captureDOM – #348 CSS vars fidelity', () => {
+  it('color: var(--x) resolves to computed value in output', async () => {
+    const { captureDOM } = await import('../src/core/capture.js')
+
+    const wrap = document.createElement('div')
+    wrap.innerHTML = `
+      <style>:root { --snapdom-test-color: rgb(255, 0, 0); } .t348 { color: var(--snapdom-test-color); }</style>
+      <div class="t348">red text</div>
+    `
+    document.body.appendChild(wrap)
+    const el = wrap.querySelector('.t348')
+
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 80, 20))
+
+    const url = await captureDOM(el, { fast: true, embedFonts: false })
+    document.body.removeChild(wrap)
+
+    const svg = decodeSvg(url)
+    expect(svg).toMatch(/rgb\(255,\s*0,\s*0\)|#[fF]{2}0000/)
+  })
+})
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+// #372: iframe CSS isolation – wrapper div must not inherit iframe cascade
+// ──────────────────────────────────────────────────────────────────────────────
+//
+describe('captureDOM – #372 iframe CSS isolation', () => {
+  it('wrapper div has all:initial to block iframe cascade (e.g. div { border: 10px solid red })', async () => {
+    const { captureDOM } = await import('../src/core/capture.js')
+
+    const iframe = document.createElement('iframe')
+    iframe.srcdoc = `
+      <!DOCTYPE html>
+      <html><head><style>div { border: 10px solid red; }</style></head>
+      <body><div>content</div></body></html>
+    `
+    iframe.style.width = '100px'
+    iframe.style.height = '80px'
+    document.body.appendChild(iframe)
+
+    await new Promise((resolve) => { iframe.onload = resolve })
+
+    const doc = iframe.contentDocument
+    const root = doc.documentElement
+    const url = await captureDOM(root, { fast: true, embedFonts: false })
+    document.body.removeChild(iframe)
+
+    const svg = decodeSvg(url)
+    // Wrapper div (container) inside foreignObject must be isolated from iframe CSS (#372).
+    // Browser expands all:initial to individual props (border: initial, position: initial, etc.)
+    expect(svg).toContain('box-sizing: border-box')
+    expect(svg).toMatch(/border:\s*initial|position:\s*initial/)
+  })
+})
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+// #362: Tailwind * { border: 0 solid } – normalize to border: none in capture
+// ──────────────────────────────────────────────────────────────────────────────
+//
+describe('captureDOM – #362 canvas Tailwind border', () => {
+  it('elements with border-width 0 get border:none in output (not border: 0 solid)', async () => {
+    const { captureDOM } = await import('../src/core/capture.js')
+
+    const wrap = document.createElement('div')
+    wrap.innerHTML = `
+      <style>* { border: 0 solid; }</style>
+      <canvas id="c362" width="80" height="40"></canvas>
+    `
+    document.body.appendChild(wrap)
+    const canvas = wrap.querySelector('#c362')
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = 'red'
+    ctx.fillRect(0, 0, 80, 40)
+
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, 80, 40)
+    )
+
+    const url = await captureDOM(wrap, { fast: true, embedFonts: false })
+    document.body.removeChild(wrap)
+
+    const svg = decodeSvg(url)
+    // Canvas becomes img; snapshot should normalize border: 0 solid → border: none
+    expect(svg).toMatch(/\bborder:\s*none\b/)
+  })
+})
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Transform handling (lenient, effect-only)
 // ──────────────────────────────────────────────────────────────────────────────

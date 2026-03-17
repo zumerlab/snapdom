@@ -3,8 +3,8 @@
  * @module utils/clone.helpers
  */
 
-import { idle } from './index.js'
-import { cache } from '../core/cache.js'
+import { idle, debugWarn } from './index.js'
+import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
 
@@ -382,10 +382,16 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   const { contentWidth, contentHeight, rect } = measureContentBox(iframe)
 
-  // Prefer snapdom from the iframe realm; fallback to host's window.snapdom
-  const snap = options?.snap
+  // Prefer options.snap (set by main()); fallback to window.snapdom (IIFE build)
+  let snap = options?.snap
+  if (!snap && typeof window !== 'undefined' && window.snapdom) {
+    snap = window.snapdom
+  }
   if (!snap || typeof snap.toPng !== 'function') {
-    throw new Error('snapdom.toPng not available in iframe or window')
+    throw new Error(
+      '[snapdom] iframe capture requires snapdom.toPng. Use snapdom(el) or pass options.snap. ' +
+      'With ESM, assign window.snapdom = snapdom after import if using iframes.'
+    )
   }
 
   // Avoid double scaling; parent capture decides final scale
@@ -418,9 +424,115 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   return wrapper
 }
 
+// ========== Checkbox/Radio replacement (Firefox fix) ==========
+
+/**
+ * Creates a visual replacement for checkbox/radio inputs using inline SVG.
+ * Firefox does not render native form controls inside SVG foreignObject; SVG-based
+ * representation avoids CSS class conflicts and renders consistently.
+ * @param {HTMLInputElement} node - Source input
+ * @returns {{ el: HTMLDivElement, applyVisual: () => void }}
+ */
+export function createCheckboxRadioReplacement(node) {
+  const { width: unscaledW, height: unscaledH } = getUnscaledDimensions(node)
+  const rect = node.getBoundingClientRect()
+  let cs
+  try { cs = window.getComputedStyle(node) } catch { }
+  const parsedW = cs ? parseFloat(cs.width) : NaN
+  const parsedH = cs ? parseFloat(cs.height) : NaN
+  const rw = Math.round(unscaledW || rect.width || 0)
+  const rh = Math.round(unscaledH || rect.height || 0)
+  let w = Number.isFinite(parsedW) && parsedW > 0 ? Math.round(parsedW) : Math.max(12, rw || 16)
+  let h = Number.isFinite(parsedH) && parsedH > 0 ? Math.round(parsedH) : Math.max(12, rh || 16)
+  const isCheckbox = (node.type || 'text').toLowerCase() === 'checkbox'
+  const checked = !!node.checked
+  const indeterminate = !!node.indeterminate
+
+  const size = Math.max(Math.min(w, h), 12)
+  const s = size
+
+  const box = document.createElement('div')
+  box.setAttribute('data-snapdom-input-replacement', node.type || 'checkbox')
+  box.style.cssText = `display:inline-block;width:${s}px;height:${s}px;vertical-align:middle;flex-shrink:0;line-height:0;`
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('width', String(s))
+  svg.setAttribute('height', String(s))
+  svg.setAttribute('viewBox', `0 0 ${s} ${s}`)
+  box.appendChild(svg)
+
+  function applyVisual() {
+    let color = '#0a6ed1'
+    try {
+      if (cs) color = cs.accentColor || cs.color || color
+    } catch { }
+    const stroke = 2
+    const pad = stroke / 2
+    const inner = s - stroke
+    svg.innerHTML = ''
+    if (isCheckbox) {
+      const rectEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      rectEl.setAttribute('x', String(pad))
+      rectEl.setAttribute('y', String(pad))
+      rectEl.setAttribute('width', String(inner))
+      rectEl.setAttribute('height', String(inner))
+      rectEl.setAttribute('rx', '2')
+      rectEl.setAttribute('ry', '2')
+      rectEl.setAttribute('fill', checked ? color : 'none')
+      rectEl.setAttribute('stroke', color)
+      rectEl.setAttribute('stroke-width', String(stroke))
+      svg.appendChild(rectEl)
+      if (checked) {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        path.setAttribute('d', `M ${pad + 2} ${s / 2} L ${s / 2 - 1} ${s - pad - 2} L ${s - pad - 2} ${pad + 2}`)
+        path.setAttribute('stroke', 'white')
+        path.setAttribute('stroke-width', String(Math.max(1.5, stroke)))
+        path.setAttribute('fill', 'none')
+        path.setAttribute('stroke-linecap', 'round')
+        path.setAttribute('stroke-linejoin', 'round')
+        svg.appendChild(path)
+      } else if (indeterminate) {
+        const dash = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+        const dw = Math.max(6, inner - 4)
+        dash.setAttribute('x', String((s - dw) / 2))
+        dash.setAttribute('y', String((s - stroke) / 2))
+        dash.setAttribute('width', String(dw))
+        dash.setAttribute('height', String(stroke))
+        dash.setAttribute('fill', color)
+        dash.setAttribute('rx', '1')
+        svg.appendChild(dash)
+      }
+    } else {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      circle.setAttribute('cx', String(s / 2))
+      circle.setAttribute('cy', String(s / 2))
+      circle.setAttribute('r', String((s - stroke) / 2))
+      circle.setAttribute('fill', checked ? color : 'none')
+      circle.setAttribute('stroke', color)
+      circle.setAttribute('stroke-width', String(stroke))
+      svg.appendChild(circle)
+      if (checked) {
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+        const r = Math.max(2, (s - stroke * 2) * 0.35)
+        dot.setAttribute('cx', String(s / 2))
+        dot.setAttribute('cy', String(s / 2))
+        dot.setAttribute('r', String(r))
+        dot.setAttribute('fill', 'white')
+        svg.appendChild(dot)
+      }
+    }
+    // Force dimensions (inlineAllStyles may copy width:0 from native input)
+    box.style.setProperty('width', `${s}px`, 'important')
+    box.style.setProperty('height', `${s}px`, 'important')
+    box.style.setProperty('min-width', `${s}px`, 'important')
+    box.style.setProperty('min-height', `${s}px`, 'important')
+  }
+  applyVisual()
+  return { el: box, applyVisual }
+}
+
 // ========== Blob URL Helpers ==========
 
-var _blobToDataUrlCache = new Map()
+var _blobToDataUrlCache = new EvictingMap(80)
 
 /**
  * Read a blob: URL and return its data URL, with memoization + shared cache.
@@ -496,8 +608,9 @@ function stringifySrcset(parts) {
   return parts.map((p) => (p.desc ? `${p.url} ${p.desc.trim()}` : p.url)).join(', ')
 }
 
-export async function resolveBlobUrlsInTree(root) {
+export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
+  const ctx = sessionCache
 
   const imgs = root.querySelectorAll ? root.querySelectorAll('img') : []
   for (const img of imgs) {
@@ -517,12 +630,16 @@ export async function resolveBlobUrlsInTree(root) {
             try {
               p.url = await blobUrlToDataUrl(p.url)
               changed = true
-            } catch { }
+            } catch (e) {
+              debugWarn(ctx, 'blobUrlToDataUrl for srcset item failed', e)
+            }
           }
         }
         if (changed) img.setAttribute('srcset', stringifySrcset(parts))
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'resolveBlobUrls for img failed', e)
+    }
   }
 
   const svgImages = root.querySelectorAll ? root.querySelectorAll('image') : []
@@ -535,7 +652,9 @@ export async function resolveBlobUrlsInTree(root) {
         node.setAttribute('href', d)
         node.removeAttributeNS?.(XLINK_NS, 'href')
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'resolveBlobUrls for SVG image href failed', e)
+    }
   }
 
   const styled = root.querySelectorAll ? root.querySelectorAll("[style*='blob:']") : []
@@ -546,7 +665,9 @@ export async function resolveBlobUrlsInTree(root) {
         const replaced = await replaceBlobUrlsInCssText(styleText)
         el.setAttribute('style', replaced)
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'replaceBlobUrls in inline style failed', e)
+    }
   }
 
   const styleTags = root.querySelectorAll ? root.querySelectorAll('style') : []
@@ -556,7 +677,9 @@ export async function resolveBlobUrlsInTree(root) {
       if (css.includes('blob:')) {
         s.textContent = await replaceBlobUrlsInCssText(css)
       }
-    } catch { }
+    } catch (e) {
+      debugWarn(ctx, 'replaceBlobUrls in style tag failed', e)
+    }
   }
 
   const urlAttrs = ['poster']
@@ -568,7 +691,9 @@ export async function resolveBlobUrlsInTree(root) {
         if (isBlobUrl(u)) {
           n.setAttribute(attr, await blobUrlToDataUrl(u))
         }
-      } catch { }
+      } catch (e) {
+        debugWarn(ctx, `resolveBlobUrls for ${attr} failed`, e)
+      }
     }
   }
 }

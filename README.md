@@ -76,25 +76,22 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 SnapDOM transforms your DOM element through these stages:
 
-```mermaid
-flowchart LR
-    subgraph Input
-        A[DOM Element]
-    end
-    
-    subgraph Capture
-        B[Clone] --> C[Styles & Pseudo]
-        C --> D[Images & Backgrounds]
-        D --> E[Fonts]
-        E --> F[SVG foreignObject]
-    end
-    
-    subgraph Output
-        F --> G[data:image/svg+xml]
-        G --> H[toPng / toSvg / toBlob / download]
-    end
-    
-    A --> B
+```
+DOM Element
+    ↓
+Clone
+    ↓
+Styles & Pseudo
+    ↓
+Images & Backgrounds
+    ↓
+Fonts
+    ↓
+SVG foreignObject
+    ↓
+data:image/svg+xml
+    ↓
+toPng / toSvg / toBlob / download
 ```
 
 | Stage | What happens |
@@ -126,6 +123,7 @@ Plugin hooks: `beforeSnap` → `beforeClone` → `afterClone` → `beforeRender`
   - [snapdom(el, options?)](#snapdomel-options)
   - [Shortcut methods](#shortcut-methods)
 - [Options](#options)
+  - [debug](#debug)
   - [Fallback image on `<img>` load failure](#fallback-image-on-img-load-failure)
   - [Dimensions (`scale`, `width`, `height`)](#dimensions-scale-width-height)
   - [Cross-Origin Images & Fonts (`useProxy`)](#cross-origin-images--fonts-useproxy)
@@ -334,6 +332,7 @@ All capture methods accept an `options` object:
 
 | Option            | Type     | Default  | Description                                     |
 | ----------------- | -------- | -------- | ----------------------------------------------- |
+| `debug`           | boolean  | `false`  | When `true`, logs suppressed errors to `console.warn` for troubleshooting |
 | `fast`            | boolean  | `true`   | Skips small idle delays for faster results      |
 | `embedFonts`      | boolean  | `false`  | Inlines non-icon fonts (icon fonts always on)   |
 | `localFonts`      | array    | `[]`     | Local fonts `{ family, src, weight?, style? }`  |
@@ -355,6 +354,16 @@ All capture methods accept an `options` object:
 | `fallbackURL`     | string \| function  | - | Fallback image for `<img>` load failure |
 | `outerTransforms`      | boolean  | `true`  | When `false` removes `translate/rotate` but preserves `scale/skew`, producing a flat, reusable capture |
 | `outerShadows`       | boolean  | `false`  | Do not expand the root’s bounding box for shadows/blur/outline, and strip those visual effects from the cloned root |
+
+| `safariWarmupAttempts` | number   | `3`      | Safari only: iterations to prime font/decode (WebKit #219770). Use `1` if 3 causes lag |
+
+### debug
+
+When `debug: true`, SnapDOM logs normally suppressed errors to `console.warn` (with the `[snapdom]` prefix). Useful for troubleshooting capture issues (canvas failures, blob resolution, style stripping, etc.) without noisy output in production.
+
+```js
+await snapdom.toPng(el, { debug: true });
+```
 
 ### Fallback image on `<img>` load failure
 
@@ -600,7 +609,7 @@ Hooks run in capture order (see [Capture Flow](#capture-flow)):
 Every hook receives a single `context` object that contains normalized capture state:
 
 * **Input & options:**
-  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `outerTransforms`, `outerShadows`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`.
+  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `outerTransforms`, `outerShadows`, `safariWarmupAttempts`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`.
 
 * **Intermediate values (depending on stage):**
   `clone`, `classCSS`, `styleCache`, `fontsCSS`, `baseCSS`, `svgString`, `dataURL`.
@@ -770,6 +779,8 @@ export function myPlugin(options = {}) {
 * External images should be CORS-accessible (use `useProxy` option for handling CORS denied)
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
+* **Safari**: captures with `embedFonts` or background/mask images run slower due to [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (font decode timing). SnapDOM does pre-captures + `drawImage` to prime the pipeline; configurable via `safariWarmupAttempts` (default 3).
+* **Custom scrollbar styles** (`::-webkit-scrollbar`): Applied only when the element has *not* been scrolled. When scrolled, the viewport content is captured without the scrollbar.
 
 
 ## Performance Benchmarks

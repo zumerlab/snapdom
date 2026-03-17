@@ -7,17 +7,18 @@ import { prepareClone } from './prepare.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
-import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari } from '../utils/index.js'
+import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
-import { lineClamp } from '../modules/lineClamp.js'
+import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook } from './plugins.js'
 import {
   stripRootShadows,
   sanitizeCloneForXHTML,
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
-  limitDecimals
+  limitDecimals,
+  collectScrollbarCSS
 } from '../utils/capture.helpers.js'
 import {
   parseBoxShadow,
@@ -65,7 +66,7 @@ export async function captureDOM(element, options) {
   await runHook('beforeSnap', state)
   // BEFORECLONE
   await runHook('beforeClone', state)
-  const undoClamp = lineClamp(state.element)
+  const undoClamp = lineClampTree(state.element)
   try {
     ({ clone, classCSS, styleCache } = await prepareClone(state.element, state.options))
 
@@ -75,7 +76,7 @@ export async function captureDOM(element, options) {
       rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
     }
     if (!outerShadows && clone) {
-      stripRootShadows(state.element, clone)
+      stripRootShadows(state.element, clone, state.options)
     }
   } finally {
     undoClamp()
@@ -127,7 +128,8 @@ export async function captureDOM(element, options) {
           usedCodepoints,
           preCached: false,
           exclude: state.options.excludeFonts,
-          useProxy: state.options.useProxy
+          useProxy: state.options.useProxy,
+          fontStylesheetDomains: state.options.fontStylesheetDomains
         })
         resolve()
       }, { fast })
@@ -147,17 +149,51 @@ export async function captureDOM(element, options) {
       }, { fast })
     })
   }
-  // beforeRender(context)
-  state = { fontsCSS, baseCSS, ...state }
+  // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
+  const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
+  state = { fontsCSS, baseCSS, scrollbarCSS, ...state }
   await runHook('beforeRender', state)
 
   await new Promise((resolve) => {
     idle(() => {
-      const csEl = getComputedStyle(state.element)
+      const csEl = getStyle(state.element)
 
       const rect = state.element.getBoundingClientRect()
       let w0 = Math.max(1, limitDecimals(state.element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
       let h0 = Math.max(1, limitDecimals(state.element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
+      // body/documentElement: measure clone in-document to get true content height (Chrome clamps offset/scroll)
+      // Use element's ownerDocument for iframe support (#371)
+      const elDoc = state.element.ownerDocument || document
+      const isRoot = state.element === elDoc.body || state.element === elDoc.documentElement
+      if (isRoot) {
+        const docH = Math.max(
+          state.element.scrollHeight || 0,
+          elDoc.documentElement?.scrollHeight || 0,
+          elDoc.body?.scrollHeight || 0
+        )
+        const docW = Math.max(
+          state.element.scrollWidth || 0,
+          elDoc.documentElement?.scrollWidth || 0,
+          elDoc.body?.scrollWidth || 0
+        )
+        if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
+        if (docW > 0) w0 = Math.max(w0, limitDecimals(docW))
+        // Also measure clone in a temp container with injected styles (clone may layout differently)
+        try {
+          const wrap = elDoc.createElement('div')
+          wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
+          const styleNode = elDoc.createElement('style')
+          styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+          wrap.appendChild(styleNode)
+          wrap.appendChild(state.clone.cloneNode(true))
+          elDoc.body.appendChild(wrap)
+          const csh = wrap.scrollHeight
+          const csw = wrap.scrollWidth
+          elDoc.body.removeChild(wrap)
+          if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
+          if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
+        } catch { /* fallback: use doc dimensions above */ }
+      }
       // === NEW: recompute height using the kept-children span (no offscreen) ===
       if (state.options?.excludeMode === 'remove') {
         const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
@@ -262,7 +298,8 @@ export async function captureDOM(element, options) {
       const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
 
       const svgNS = 'http://www.w3.org/2000/svg'
-      const basePad = isSafari() ? 1 : 0
+      // Safari workaround: pad only when root has bbox-affecting transforms (avoids edge clipping)
+      const basePad = (isSafari() && hasTFBBox(state.element)) ? 1 : 0
       const extraPad = !outerTransforms ? 1 : 0
       const pad = limitDecimals(basePad + extraPad)
 
@@ -277,14 +314,15 @@ export async function captureDOM(element, options) {
 
       const styleTag = document.createElement('style')
       styleTag.textContent =
-        state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+        (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
       fo.appendChild(styleTag)
 
       const container = document.createElement('div')
       container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-      container.style.width = `${limitDecimals(w0)}px`
-      container.style.height = `${limitDecimals(h0)}px`
-      container.style.overflow = 'visible'
+      // #372: isolate wrapper from iframe CSS cascade (e.g. div { border: 10px solid red })
+      container.style.cssText =
+        'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
+        `width:${limitDecimals(w0)}px;height:${limitDecimals(h0)}px`
 
       //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(state.clone)
@@ -305,7 +343,7 @@ export async function captureDOM(element, options) {
         ? vbH
         : limitDecimals(outH + pad * 2)
 
-      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const rootFontSize = parseFloat(getStyle(elDoc.documentElement)?.fontSize) || 16
       const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">`
       const svgFooter = '</svg>'
       svgString = svgHeader + foString + svgFooter

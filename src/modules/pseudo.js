@@ -10,8 +10,9 @@ import {
   safeEncodeURI,
   inlineSingleBackgroundEntry,
   splitBackgroundImage,
-  getStyleKey
-} from '../utils'
+  getStyleKey,
+  debugWarn
+} from '../utils/index.js'
 import { iconToImage } from '../modules/fonts.js'
 import { isIconFont } from '../modules/iconFonts.js'
 import {
@@ -349,7 +350,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
  */
 function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
   let ps
-  try { ps = getComputedStyle(node, pseudo) } catch { }
+  try { ps = getStyle(node, pseudo) } catch { }
   const raw = ps?.content
   if (!raw || raw === 'none' || raw === 'normal') return { text: '', incs: [] }
 
@@ -395,7 +396,9 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   }
 
   if (!sessionCache.__counterCtx) {
-    try { sessionCache.__counterCtx = buildCounterContext(source.ownerDocument || document) } catch { }
+    try { sessionCache.__counterCtx = buildCounterContext(source.ownerDocument || document) } catch (e) {
+      debugWarn(sessionCache, 'buildCounterContext failed', e)
+    }
   }
   const counterCtx = sessionCache.__counterCtx
 
@@ -415,7 +418,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
       if (isEmptyPseudo) continue
 
       if (pseudo === '::first-letter') {
-        const normal = getComputedStyle(source)
+        const normal = getStyle(source)
         const isMeaningful =
           style.color !== normal.color ||
           style.fontSize !== normal.fontSize ||
@@ -486,7 +489,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
             // reconstruir valor final desde derived: volvemos a pedirlo
             // Usamos withSiblingOverrides + derive para ser consistentes
             const baseWithSibs = withSiblingOverrides(source, counterCtx)
-            const derived = deriveCounterCtxForPseudo(source, getComputedStyle(source, pseudo), baseWithSibs)
+            const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
             const finalVal = derived.get(source, name)
             map.set(name, finalVal)
           }
@@ -573,7 +576,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if (incs && incs.length && source.parentElement) {
         const map = __siblingCounters.get(source.parentElement) || new Map()
         const baseWithSibs = withSiblingOverrides(source, counterCtx)
-        const derived = deriveCounterCtxForPseudo(source, getComputedStyle(source, pseudo), baseWithSibs)
+        const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
         for (const { name } of incs) {
           if (!name) continue
           const finalVal = derived.get(source, name)
@@ -584,9 +587,12 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
 
       if (!hasVisibleBox) continue
 
+      // #359: mark parent so we can suppress native ::before/::after in cloned <style> (avoids double render)
       if (pseudo === '::before') {
+        clone.dataset.snapdomHasBefore = '1'
         clone.insertBefore(pseudoEl, clone.firstChild)
       } else {
+        clone.dataset.snapdomHasAfter = '1'
         clone.appendChild(pseudoEl)
       }
     } catch (e) {

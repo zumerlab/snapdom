@@ -1,5 +1,5 @@
 import { cache } from '../core/cache'
-import { extractURL, safeEncodeURI } from './helpers'
+import { extractURL, safeEncodeURI, resolveURL } from './helpers'
 import { snapFetch } from '../modules/snapFetch'
 
 /**
@@ -24,8 +24,10 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
     // Not a URL(...) we recognize → keep original as a safe fallback
     return entry
   }
+  // Resolve relative URLs to absolute (fixes #343: background url() missing when relative)
+  const absoluteUrl = resolveURL(rawUrl)
   // Normalize / encode the URL string for cache key & fetch
-  const encodedUrl = safeEncodeURI(rawUrl)
+  const encodedUrl = safeEncodeURI(absoluteUrl)
   // Fast path: cached success
   if (cache.background.has(encodedUrl)) {
     const dataUrl = cache.background.get(encodedUrl)
