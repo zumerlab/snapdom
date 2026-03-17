@@ -62,7 +62,6 @@ async function main(element, userOptions) {
     for (let i = 0; i < attempts; i++) {
       try {
         await safariWarmup(element, userOptions)
-        _safariWarmup = false // allow next iteration
       } catch {
         // swallow error
       }
