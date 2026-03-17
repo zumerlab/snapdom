@@ -102,6 +102,11 @@ function snapshotComputedStyleFull(style, options = {}) {
   const bb = parseFloat(style.getPropertyValue('border-bottom-width') || 0) || 0
   const bl = parseFloat(style.getPropertyValue('border-left-width') || 0) || 0
   if (bt === 0 && br === 0 && bb === 0 && bl === 0) {
+    // If border-image is being used (even with zero border widths), do NOT force
+    // the shorthand `border: none` because it can override the intended rendering.
+    // (Decorative border-image + 0 widths is valid CSS in some setups.)
+    const bis = (style.getPropertyValue('border-image-source') || '').trim()
+    const hasBorderImage = bis && bis !== 'none'
     const BORDER_PROPS = [
       'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
       'border-width', 'border-style', 'border-color',
@@ -113,7 +118,7 @@ function snapshotComputedStyleFull(style, options = {}) {
       'border-inline', 'border-inline-width', 'border-inline-style', 'border-inline-color',
     ]
     for (const p of BORDER_PROPS) delete out[p]
-    out['border'] = 'none'
+    if (!hasBorderImage) out['border'] = 'none'
   }
 
   return out

@@ -151,7 +151,7 @@ export function getStyleKey(snapshot, tagName) {
   const isInline = display === 'inline'
   // Tags that size to text content; grid/flex blockify them but we should not constrain
   // width (causes wrap when font-weight makes text wider than captured width, e.g. "Timestamp demo")
-  const INLINE_SIZED_TAGS = new Set(['span', 'small', 'p', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
+  const INLINE_SIZED_TAGS = new Set(['span', 'small', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
   const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName)
   for (let [prop, value] of Object.entries(snapshot)) {
     if (shouldIgnoreProp(prop)) continue
@@ -266,9 +266,31 @@ function getWindowForElement(el) {
  * @returns {CSSStyleDeclaration} The computed style
  */
 export function getStyle(el, pseudo = null) {
+  /**
+   * Minimal safe fallback CSSStyleDeclaration-like object.
+   * Ensures callers can read properties and iterate length without crashing.
+   */
+  const emptyStyle = () => {
+    const base = {
+      length: 0,
+      getPropertyValue: () => '',
+      item: () => '',
+    }
+    // Make it iterable: for (let prop of style) { ... }
+    base[Symbol.iterator] = function* () { /* empty */ }
+    return /** @type {any} */ (base)
+  }
+
   if (!(el instanceof Element)) {
     const win = typeof window !== 'undefined' ? window : null
-    return win ? win.getComputedStyle(el, pseudo) : null
+    if (win && typeof win.getComputedStyle === 'function') {
+      try {
+        return win.getComputedStyle(/** @type {any} */ (el), pseudo) || emptyStyle()
+      } catch {
+        return emptyStyle()
+      }
+    }
+    return emptyStyle()
   }
   let map = cache.computedStyle.get(el)
   if (!map) {
@@ -280,21 +302,23 @@ export function getStyle(el, pseudo = null) {
 
   if (!style) {
     const win = getWindowForElement(el)
-    const st = win ? win.getComputedStyle(el, pseudo) : null
-    if (st) {
-      map.set(pseudo, st)
-      style = st
-    } else if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+    let st = null
+    try {
+      st = win && typeof win.getComputedStyle === 'function'
+        ? win.getComputedStyle(el, pseudo)
+        : null
+    } catch { /* ignore */ }
+
+    if (!st && typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
       try {
-        const fallback = window.getComputedStyle(el, pseudo)
-        if (fallback) {
-          style = fallback
-          map.set(pseudo, fallback)
-        }
+        st = window.getComputedStyle(el, pseudo)
       } catch {
-        // ignore and leave style as null
+        // ignore; handled below
       }
     }
+
+    style = st || emptyStyle()
+    map.set(pseudo, style)
   }
 
   return style
