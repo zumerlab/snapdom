@@ -270,20 +270,34 @@ export function getStyle(el, pseudo = null) {
     const win = typeof window !== 'undefined' ? window : null
     return win ? win.getComputedStyle(el, pseudo) : null
   }
-
   let map = cache.computedStyle.get(el)
   if (!map) {
     map = new Map()
     cache.computedStyle.set(el, map)
   }
 
-  if (!map.has(pseudo)) {
+  let style = map.get(pseudo)
+
+  if (!style) {
     const win = getWindowForElement(el)
     const st = win ? win.getComputedStyle(el, pseudo) : null
-    if (st) map.set(pseudo, st)
+    if (st) {
+      map.set(pseudo, st)
+      style = st
+    } else if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+      try {
+        const fallback = window.getComputedStyle(el, pseudo)
+        if (fallback) {
+          style = fallback
+          map.set(pseudo, fallback)
+        }
+      } catch {
+        // ignore and leave style as null
+      }
+    }
   }
 
-  return map.get(pseudo)
+  return style
 }
 
 /**

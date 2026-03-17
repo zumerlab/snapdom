@@ -9,6 +9,22 @@ describe('getStyle', () => {
     expect(style).toBeInstanceOf(CSSStyleDeclaration)
     document.body.removeChild(el)
   })
+
+  it('never returns undefined for elements', () => {
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    const style = getStyle(el)
+    expect(style).not.toBeUndefined()
+    document.body.removeChild(el)
+  })
+
+  it('never returns undefined for pseudos', () => {
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    const pseudoStyle = getStyle(el, '::before')
+    expect(pseudoStyle).not.toBeUndefined()
+    document.body.removeChild(el)
+  })
 })
 
 describe('parseContent', () => {
