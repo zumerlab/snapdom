@@ -125,6 +125,22 @@ export function buildCounterContext(root) {
       }
     }
 
+    // counter-set (sets top value without creating a new scope)
+    let set
+    try { set = el.style?.counterSet || getComputedStyle(el).counterSet } catch {}
+    if (set && set !== 'none') {
+      for (const part of set.split(',')) {
+        const toks = part.trim().split(/\s+/)
+        const name = toks[0]
+        const val = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 0
+        if (!name) continue
+        const stack = map.get(name) || []
+        if (stack.length === 0) stack.push(0)
+        stack[stack.length - 1] = val
+        map.set(name, stack)
+      }
+    }
+
     // counter-increment
     let inc
     try { inc = el.style?.counterIncrement || getComputedStyle(el).counterIncrement } catch {}
@@ -176,7 +192,27 @@ export function buildCounterContext(root) {
       const childCarry = build(child, curr, nextCarry)
       nextCarry = childCarry
     }
-    return curr // for the next sibling of the parent
+
+    // Sibling carry: strip depth added by counter-reset on this element.
+    // counter-reset creates a scope local to this subtree; it must not leak
+    // to the next sibling. Truncate each counter back to the depth it had in
+    // the incoming carryMap, preserving increments but discarding new scopes.
+    const siblingCarry = new Map()
+    for (const [name, inStack] of carryMap) {
+      const depth = inStack.length
+      const finalStack = nextCarry.get(name)
+      siblingCarry.set(name, finalStack && finalStack.length
+        ? finalStack.slice(0, depth)
+        : inStack.slice())
+    }
+    // Counters created by increment (no prior existence, no reset) are
+    // implicitly root-level and should propagate to siblings at depth 1.
+    for (const [name, finalStack] of nextCarry) {
+      if (!siblingCarry.has(name) && finalStack.length && !parentMap.has(name)) {
+        siblingCarry.set(name, finalStack.slice(0, 1))
+      }
+    }
+    return siblingCarry
   }
 
   const empty = new Map()
@@ -277,6 +313,7 @@ export function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
   }
 
   const resets = parseListDecl(pseudoStyle?.counterReset)
+  const sets   = parseListDecl(pseudoStyle?.counterSet)
   const incs   = parseListDecl(pseudoStyle?.counterIncrement)
 
   function getStackDerived(name) {
@@ -296,6 +333,14 @@ export function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
       } else {
         stack = [val]
       }
+    }
+
+    // counter-set (set top value without creating a new scope)
+    const s = sets.find(x => x.name === name)
+    if (s) {
+      const val = Number.isFinite(s.num) ? s.num : 0
+      if (stack.length === 0) stack = [0]
+      stack[stack.length - 1] = val
     }
 
     // counter-increment (on top; create top=0 if missing)
