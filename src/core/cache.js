@@ -34,6 +34,10 @@ export const cache = {
   defaultStyle: new EvictingMap(MAX_DEFAULT_STYLE),
   baseStyle: new EvictingMap(MAX_BASE_STYLE),
   computedStyle: new WeakMap(),
+  /** Persistent cache for clone-in-document layout measurements (PERF-3).
+   *  Key: Element. Value: { h, w, cssLen } — cssLen is the total injected CSS length,
+   *  used as a cheap invalidation key when styles change between captures. */
+  measureHints: new WeakMap(),
   font: new Set(),
   session: {
     styleMap: new Map(),
