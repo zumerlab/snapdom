@@ -113,6 +113,10 @@ const NO_PAINT_EXACT = new Set([
   'container-name',
   'container-type',
   'timeline-scope',
+  // #369: CSS zoom — getComputedStyle() widths/heights already reflect post-zoom layout values.
+  // Capturing zoom in the class causes double-zoom inside SVG foreignObject → blank sections.
+  // Excluding zoom prevents this; dimensions are already correct as-is.
+  'zoom',
 ])
 
 /**
