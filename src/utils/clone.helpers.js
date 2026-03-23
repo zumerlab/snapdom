@@ -451,9 +451,13 @@ export function createCheckboxRadioReplacement(node) {
   const size = Math.max(Math.min(w, h), 12)
   const s = size
 
+  // #311: preserve original vertical-align so the replacement doesn't shift inline layout
+  let vAlign = 'middle'
+  try { if (cs && cs.verticalAlign) vAlign = cs.verticalAlign } catch { }
+
   const box = document.createElement('div')
   box.setAttribute('data-snapdom-input-replacement', node.type || 'checkbox')
-  box.style.cssText = `display:inline-block;width:${s}px;height:${s}px;vertical-align:middle;flex-shrink:0;line-height:0;`
+  box.style.cssText = `display:inline-block;width:${s}px;height:${s}px;vertical-align:${vAlign};flex-shrink:0;line-height:0;`
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   svg.setAttribute('width', String(s))
   svg.setAttribute('height', String(s))
