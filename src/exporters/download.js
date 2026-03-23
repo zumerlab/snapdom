@@ -31,7 +31,12 @@ async function shareFile(blob, filename) {
  * @returns {Promise<void>}
  */
 export async function download(url, options) {
-  const format = (options?.format || options?.type || '').toLowerCase()
+  // #339: context.type ('svg'/'img'/'canvas'/'blob') is an output-type, not an image format.
+  // Only use options.type as image format if it's a recognized image format string.
+  const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
+  const rawType = (options?.type || '').toLowerCase()
+  const typeAsFormat = IMAGE_FORMATS.has(rawType) ? rawType : ''
+  const format = (options?.format || typeAsFormat || '').toLowerCase()
   const normalizedFormat = format === 'jpg' ? 'jpeg' : format || 'png'
   const filename = options?.filename || `snapdom.${normalizedFormat}`
   const nextOptions = { ...(options || {}), format: normalizedFormat, type: normalizedFormat }
