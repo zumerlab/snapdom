@@ -46,7 +46,9 @@ function boxShadowToDropShadow(value) {
 
   const fns = []
   for (const layer of layers) {
-    if (/\binset\b/i.test(layer)) continue // no hay equivalente en drop-shadow
+    // CSS inset box-shadows have no SVG filter equivalent (drop-shadow only supports outer shadows).
+    // They are intentionally omitted from the canvas export rather than rendered incorrectly.
+    if (/\binset\b/i.test(layer)) continue
     const nums = layer.match(/-?\d+(?:\.\d+)?px/gi) || []
     const [ox='0px', oy='0px', blur='0px'] = nums // spread no existe en drop-shadow
     // color ≈ lo que quede tras quitar px e 'inset'
