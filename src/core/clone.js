@@ -246,6 +246,21 @@ export async function deepClone(node, sessionCache, options) {
   let clone
   try {
     clone = node.cloneNode(false)
+    // ROB-3: strip XML 1.0 invalid control characters from attribute values.
+    // These characters are legal in HTML but rejected by XMLSerializer, breaking the SVG output.
+    // Most common in data-* attributes with user-generated content.
+    // Invalid chars: U+0000–U+0008, U+000B, U+000C, U+000E–U+001F, U+FFFE, U+FFFF
+    if (clone.attributes?.length) {
+      try {
+        for (const attr of clone.attributes) {
+          /* eslint-disable no-control-regex */
+          if (/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/.test(attr.value)) {
+            clone.setAttribute(attr.name, attr.value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g, ''))
+          }
+          /* eslint-enable no-control-regex */
+        }
+      } catch { /* read-only attr or live collection change — non-blocking */ }
+    }
     resolveCSSVars(node, clone)
     sessionCache.nodeMap.set(clone, node)
     if (node.tagName === 'IMG') {
