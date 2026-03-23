@@ -54,13 +54,16 @@ function roman(n, upper = true) {
  */
 function formatCounter(value, style) {
   switch ((style || 'decimal').toLowerCase()) {
-    case 'decimal': return String(Math.max(0, value))
-    case 'decimal-leading-zero': return (value < 10 ? '0' : '') + String(Math.max(0, value))
+    case 'decimal': return String(value)
+    case 'decimal-leading-zero': {
+      const abs = Math.abs(value)
+      return (value < 0 ? '-' : '') + (abs < 10 ? '0' : '') + String(abs)
+    }
     case 'lower-alpha': return alpha(value, false)
     case 'upper-alpha': return alpha(value, true)
     case 'lower-roman': return roman(value, false)
     case 'upper-roman': return roman(value, true)
-    default: return String(Math.max(0, value))
+    default: return String(value)
   }
 }
 

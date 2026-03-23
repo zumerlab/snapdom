@@ -147,3 +147,30 @@ describe('resolvePseudoContent', () => {
     expect(resolvePseudoContent(span, '::before', ctx)).toBe('')
   })
 })
+
+describe('formatCounter – negative values (NEW-6)', () => {
+  it('resolves negative decimal counter as negative string', () => {
+    // Manually craft a ctx that returns -3 for name 'x'
+    const node = document.createElement('span')
+    document.body.appendChild(node)
+    const fakeCtx = {
+      get: () => -3,
+      getStack: () => [-3]
+    }
+    expect(resolveCountersInContent('counter(x)', node, fakeCtx)).toBe('-3')
+  })
+
+  it('resolves negative decimal-leading-zero counter correctly', () => {
+    const node = document.createElement('span')
+    document.body.appendChild(node)
+    const fakeCtx = { get: () => -5, getStack: () => [-5] }
+    expect(resolveCountersInContent('counter(x, decimal-leading-zero)', node, fakeCtx)).toBe('-05')
+  })
+
+  it('resolves zero decimal counter as "0" not "0" clamped', () => {
+    const node = document.createElement('span')
+    document.body.appendChild(node)
+    const fakeCtx = { get: () => 0, getStack: () => [0] }
+    expect(resolveCountersInContent('counter(x)', node, fakeCtx)).toBe('0')
+  })
+})
