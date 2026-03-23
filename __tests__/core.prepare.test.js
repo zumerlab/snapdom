@@ -266,9 +266,10 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
     globalThis.fetch = originalFetch
   })
 
-  it('converts "poster" attribute when it starts with blob:', async () => {
+  it('converts <video> to <img> with a data URL (frame capture or poster fallback)', async () => {
   const wrap = document.createElement('div')
   const el = document.createElement('video')
+  // blob: poster — used as fallback when no frame is available and canvas is blank
   el.setAttribute('poster', 'blob:123')
   wrap.appendChild(el)
 
@@ -279,8 +280,12 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
   })
 
   const { clone } = await prepareClone(wrap)
-  const outPoster = clone.querySelector('video')?.getAttribute('poster') || ''
-  expect(outPoster).toMatch(/^data:/)
+  // deepClone now replaces <video> with <img> to avoid canvas tainting
+  const img = clone.querySelector('img')
+  expect(img).toBeTruthy()
+  // The img src should be a data URL (either blank frame or resolved poster)
+  const src = img?.getAttribute('src') || ''
+  expect(src).toMatch(/^data:/)
 
   globalThis.fetch = originalFetch
 })

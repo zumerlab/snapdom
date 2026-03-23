@@ -79,4 +79,30 @@ describe('download', () => {
     await download(DATA_PNG, { format: 'png', filename: 'share.png' })
     expect(shareFn).toHaveBeenCalled()
   })
+
+  // #339 — context.type ('svg'/'img'/'canvas'/'blob') is the output-type field,
+  // NOT the image format. It must not override the format when it is a non-image string.
+  it('#339 — non-image type ("canvas") does not override format; defaults to PNG', async () => {
+    const appended = []
+    const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(el => { appended.push(el); return el })
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    // Pass type:'canvas' (output type) without an explicit format — should fall back to PNG
+    await download(DATA_PNG, { type: 'canvas' })
+    const a = appended.find(el => el.tagName === 'A')
+    expect(a?.download).toMatch(/\.png$/i)
+    appendSpy.mockRestore()
+    clickSpy.mockRestore()
+  })
+
+  it('#339 — explicit format always wins over type', async () => {
+    const appended = []
+    const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(el => { appended.push(el); return el })
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    // No filename → default is snapdom.jpeg
+    await download(DATA_PNG, { format: 'jpeg', type: 'canvas' })
+    const a = appended.find(el => el.tagName === 'A')
+    expect(a?.download).toMatch(/\.jpe?g$/i)
+    appendSpy.mockRestore()
+    clickSpy.mockRestore()
+  })
 })

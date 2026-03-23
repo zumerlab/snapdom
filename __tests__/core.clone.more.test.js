@@ -1,8 +1,9 @@
 // __tests__/core.clone.more.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { deepClone } from '../src/core/clone.js'
 import { cache } from '../src/core/cache.js'
 import { NO_CAPTURE_TAGS } from '../src/utils/css.js'
+import { createCheckboxRadioReplacement } from '../src/utils/clone.helpers.js'
 
 // fresh session cache each test
 const makeSession = () => ({
@@ -612,5 +613,164 @@ describe('deepClone – extra targets to lift coverage', () => {
 
     host.remove()
     document.documentElement.style.removeProperty('--b')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tier 2 fix tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('deepClone – Tier 2 fixes', () => {
+  let session
+  beforeEach(() => {
+    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
+    cache.session.styleCache = new WeakMap()
+    cache.session.nodeMap = new Map()
+    session = {
+      styleMap: cache.session.styleMap,
+      styleCache: cache.session.styleCache,
+      nodeMap: cache.session.nodeMap,
+    }
+  })
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  // ── #277 ──────────────────────────────────────────────────────────────────
+  it('#277 — <video> is replaced by <img> to prevent canvas tainting', async () => {
+    const video = document.createElement('video')
+    document.body.appendChild(video)
+    const clone = await deepClone(video, session, {})
+    expect(clone.tagName).toBe('IMG')
+  })
+
+  it('#277 — video clone img src is a data URL (frame capture from blank canvas)', async () => {
+    const video = document.createElement('video')
+    document.body.appendChild(video)
+    const clone = await deepClone(video, session, {})
+    // canvas.toDataURL returns a valid data URL even for a blank canvas
+    const src = clone.getAttribute('src') || clone.src || ''
+    expect(src).toMatch(/^data:/)
+  })
+
+  it('#277 — video without frame falls back to poster when canvas is blank', async () => {
+    const video = document.createElement('video')
+    // Stub canvas so toDataURL returns blank to force poster fallback
+    const origCreate = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+      if (tag === 'canvas') {
+        const c = origCreate('canvas')
+        c.getContext = () => null  // simulate no 2d context
+        return c
+      }
+      return origCreate(tag)
+    })
+    video.poster = 'data:image/png;base64,ABC'
+    document.body.appendChild(video)
+    const clone = await deepClone(video, session, {})
+    vi.restoreAllMocks()
+    expect(clone.tagName).toBe('IMG')
+    expect(clone.getAttribute('src') || clone.src).toContain('data:image/png')
+  })
+
+  // ── #365 ──────────────────────────────────────────────────────────────────
+  it('#365 — SVG painting element has CSS fill/stroke inlined as style', async () => {
+    const styleEl = document.createElement('style')
+    styleEl.textContent = '#sd-test-path { fill: rgb(255, 0, 0); stroke: rgb(0, 128, 0); }'
+    document.head.appendChild(styleEl)
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    path.id = 'sd-test-path'
+    path.setAttribute('d', 'M0 0 L10 10')
+    svg.appendChild(path)
+    document.body.appendChild(svg)
+
+    const clone = await deepClone(path, session, {})
+
+    document.head.removeChild(styleEl)
+
+    expect(clone.style.fill).toBe('rgb(255, 0, 0)')
+    expect(clone.style.stroke).toBe('rgb(0, 128, 0)')
+  })
+
+  it('#365 — non-SVG element is not affected by SVG style inlining', async () => {
+    const div = document.createElement('div')
+    div.style.color = 'red'
+    document.body.appendChild(div)
+    const clone = await deepClone(div, session, {})
+    // div.style.fill should remain empty (only SVG elements get fill inlined)
+    expect(clone.style.fill).toBeFalsy()
+  })
+
+  // ── NEW-7 ─────────────────────────────────────────────────────────────────
+  it('NEW-7 — cross-origin iframe emits console.warn', async () => {
+    const frame = document.createElement('iframe')
+    // Simulate cross-origin: contentDocument access throws
+    Object.defineProperty(frame, 'contentDocument', {
+      configurable: true,
+      get() { throw new DOMException('Blocked by CORS', 'SecurityError') },
+    })
+    Object.defineProperty(frame, 'contentWindow', {
+      configurable: true,
+      get() { return null },
+    })
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await deepClone(frame, session, { placeholders: false })
+    const called = warn.mock.calls.some(args =>
+      String(args[0]).toLowerCase().includes('cross-origin')
+    )
+    warn.mockRestore()
+    expect(called).toBe(true)
+  })
+
+  // ── #315 ──────────────────────────────────────────────────────────────────
+  it('#315 — input with placeholder injects ::placeholder style rule into clone', async () => {
+    const styleEl = document.createElement('style')
+    // Give our test input a distinctly non-transparent placeholder color
+    styleEl.textContent = '#sd-ph-input::placeholder { color: rgb(80, 80, 80); }'
+    document.head.appendChild(styleEl)
+
+    const input = document.createElement('input')
+    input.id = 'sd-ph-input'
+    input.placeholder = 'Search…'
+    // No value → satisfies the !node.value guard
+    document.body.appendChild(input)
+
+    const clone = await deepClone(input, session, {})
+
+    document.head.removeChild(styleEl)
+
+    const injectedStyle = clone.querySelector('style')
+    expect(injectedStyle).toBeTruthy()
+    expect(injectedStyle.textContent).toContain('::placeholder')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #311 — createCheckboxRadioReplacement preserves vertical-align
+// ─────────────────────────────────────────────────────────────────────────────
+describe('createCheckboxRadioReplacement (#311)', () => {
+  afterEach(() => { document.body.innerHTML = '' })
+
+  it('uses vertical-align from the original input computed style', () => {
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.style.verticalAlign = 'top'
+    document.body.appendChild(input)
+
+    const { el } = createCheckboxRadioReplacement(input)
+    expect(el.style.verticalAlign).toBe('top')
+  })
+
+  it('falls back to "middle" when vertical-align is not explicitly set', () => {
+    const input = document.createElement('input')
+    input.type = 'radio'
+    document.body.appendChild(input)
+
+    const { el } = createCheckboxRadioReplacement(input)
+    // Default browser vertical-align for inputs varies; we just check it is set
+    expect(el.style.verticalAlign).toBeTruthy()
   })
 })

@@ -76,6 +76,12 @@ describe('shouldIgnoreProp (#348)', () => {
     expect(shouldIgnoreProp('color')).toBe(false)
     expect(shouldIgnoreProp('background-color')).toBe(false)
   })
+  // #369: CSS zoom — getComputedStyle() already returns post-zoom layout values for
+  // width/height, so capturing zoom in the class would double-zoom elements inside
+  // SVG foreignObject → blank sections. zoom must be excluded from the snapshot.
+  it('ignores zoom (#369)', () => {
+    expect(shouldIgnoreProp('zoom')).toBe(true)
+  })
 })
 
 describe('stripTranslate edge cases', () => {

@@ -42,7 +42,7 @@ vi.mock('../src/modules/snapFetch.js', () => ({
 }))
 
 // ====== SUT + deps ======
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, collectUsedFontVariants } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import * as helpers from '../src/utils/helpers'
 import { snapFetch } from '../src/modules/snapFetch.js'
@@ -242,5 +242,54 @@ describe('document.fonts con _snapdomSrc', () => {
 
     // Puede no incluir DynFail si no pudo inlinear — lo importante es que no explote y sea string.
     expect(typeof css).toBe('string')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #357 — collectUsedFontVariants must register ALL fallback families, not only
+//         the first non-generic one (pickAllFamilies instead of pickPrimaryFamily)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('collectUsedFontVariants – full fallback chain (#357)', () => {
+  afterEach(() => { document.body.innerHTML = '' })
+
+  it('registers keys for every non-generic family in font-family list', () => {
+    const el = document.createElement('div')
+    el.style.fontFamily = '"PrimaryFont", "FallbackFont", sans-serif'
+    document.body.appendChild(el)
+
+    const variants = collectUsedFontVariants(el)
+    const families = new Set([...variants].map(k => String(k).split('__')[0]))
+
+    expect(families.has('PrimaryFont')).toBe(true)
+    expect(families.has('FallbackFont')).toBe(true)
+    // Generic families must be excluded
+    expect(families.has('sans-serif')).toBe(false)
+  })
+
+  it('handles a single non-generic family correctly', () => {
+    const el = document.createElement('div')
+    el.style.fontFamily = '"OnlyFont", serif'
+    document.body.appendChild(el)
+
+    const variants = collectUsedFontVariants(el)
+    const families = new Set([...variants].map(k => String(k).split('__')[0]))
+
+    expect(families.has('OnlyFont')).toBe(true)
+    expect(families.has('serif')).toBe(false)
+  })
+
+  it('collects variants from nested elements too', () => {
+    const parent = document.createElement('div')
+    parent.style.fontFamily = '"ParentFont", sans-serif'
+    const child = document.createElement('span')
+    child.style.fontFamily = '"ChildFont", monospace'
+    parent.appendChild(child)
+    document.body.appendChild(parent)
+
+    const variants = collectUsedFontVariants(parent)
+    const families = new Set([...variants].map(k => String(k).split('__')[0]))
+
+    expect(families.has('ParentFont')).toBe(true)
+    expect(families.has('ChildFont')).toBe(true)
   })
 })
