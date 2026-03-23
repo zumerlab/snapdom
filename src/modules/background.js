@@ -110,7 +110,8 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       if ((prop === 'background-image') && (!val || val === 'none')) {
         const bgShorthand = style.getPropertyValue('background')
         if (bgShorthand && /url\s*\(/.test(bgShorthand)) {
-          val = splitBackgroundImage(bgShorthand).find(p => /url\s*\(/.test(p)) || val
+          // Use filter+join to preserve all url() layers, not just the first (#NEW-5)
+          val = splitBackgroundImage(bgShorthand).filter(p => /url\s*\(/.test(p)).join(', ') || val
         }
       }
       if (!val || val === 'none') continue
