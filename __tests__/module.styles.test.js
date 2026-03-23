@@ -193,6 +193,27 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(key).toMatch(/\bborder:\s*none\b/)
   })
 
+  it('content-visibility:hidden forces visibility:hidden in snapshot (NEW-10)', async () => {
+    const inlineAllStyles = await loadInlineAllStylesFresh()
+
+    const src = document.createElement('div')
+    // Use inline style so computed style definitely reflects the value
+    src.style.setProperty('content-visibility', 'hidden')
+    document.body.appendChild(src)
+
+    const clone = document.createElement('div')
+    const session = freshSession()
+
+    await inlineAllStyles(src, clone, session, { cache: 'auto' })
+
+    document.body.removeChild(src)
+
+    const key = session.styleMap.get(clone)
+    // content-visibility:hidden must produce visibility:hidden in the snapshot key
+    // so the subtree doesn't leak visible content into the capture (NEW-10)
+    expect(key).toMatch(/\bvisibility:\s*hidden\b/)
+  })
+
   it('cachea getComputedStyle en session.styleCache (una sola lectura por source)', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 

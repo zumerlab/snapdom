@@ -94,6 +94,13 @@ function snapshotComputedStyleFull(style, options = {}) {
     }
   }
   if (vis === 'hidden') out.opacity = '0'
+  // content-visibility:hidden skips rendering the subtree entirely (like visibility:hidden
+  // but also skips layout). Force visibility:hidden so the subtree doesn't leak into capture.
+  // Read explicitly because content-visibility is not always enumerated in style.length iteration.
+  try {
+    const cv = out['content-visibility'] || style.getPropertyValue('content-visibility')
+    if (cv === 'hidden') out['visibility'] = 'hidden'
+  } catch { /* ignore */ }
 
   // #362: Tailwind's * { border: 0 solid } renders incorrectly in capture.
   // When all border widths are 0, normalize to border: none for unambiguous output.
