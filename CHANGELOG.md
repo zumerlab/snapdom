@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.6.0](https://github.com/zumerlab/snapdom/compare/v2.5.0...v2.6.0)
+
+> 23 March 2026
+
+- fix(clone): add support for copying form validation attributes and handle nested foreignObject in deepClone [`f87c896`](https://github.com/zumerlab/snapdom/commit/f87c8961280c6230de3ef2045e4eecca58482ae3)
+- fix(clone): video frames (#277), SVG paint props (#365), placeholder color (#315), object-fit (#337), cross-origin iframe warn (NEW-7) [`946ec83`](https://github.com/zumerlab/snapdom/commit/946ec836b7b32c9ac23fc34f8f550d896289db3f)
+- fix(clone): sanitize XML-invalid control characters from attribute values [`4218a17`](https://github.com/zumerlab/snapdom/commit/4218a178f98eb1c7cbda6b031048bcccc76ee059)
+- fix(transforms): handle matrix3d transforms and extract decomposeScaleShear as shared helper (#216) [`0b5eeab`](https://github.com/zumerlab/snapdom/commit/0b5eeab7585820d571b4d0a06361ede630657cc6)
+- fix(prepare): force content-visibility:visible before capture (#281) and fix fixed elements inside scroll wrappers (#364) [`ba2aa6d`](https://github.com/zumerlab/snapdom/commit/ba2aa6de155552766d476f712bd9de11acf68c5d)
+- fix(styles): handle detached elements in inlineAllStyles and evict oversized snapshotKeyCache [`02280d2`](https://github.com/zumerlab/snapdom/commit/02280d2545c96785c39f665b564e469334dde960)
+- Bumped version [`96da0a5`](https://github.com/zumerlab/snapdom/commit/96da0a5576e21380ca5942f6cb3bcb7a9536581f)
+- fix(counter): implement counter-set support to manage top values without new scopes [`f869a46`](https://github.com/zumerlab/snapdom/commit/f869a46d4d2320ab16c0ddf079c93abfcc008479)
+- fix(capture): implement caching for clone measurements to optimize performance [`ff455c2`](https://github.com/zumerlab/snapdom/commit/ff455c20272a5f90d41db2e6f7b33f675cbed80d)
+- fix(counter): handle negative values in formatCounter and update tests for counter resolution [`b9b965d`](https://github.com/zumerlab/snapdom/commit/b9b965d08c16afae65a95535c052591778893f90)
+- fix(fonts): embed all families in font-family fallback chain, not just the primary (#357) [`13ab5c8`](https://github.com/zumerlab/snapdom/commit/13ab5c8629c715b67eb6a5fc0209ecfd0309e110)
+- fix(styles): enforce visibility:hidden when content-visibility:hidden to prevent content leakage in snapshots [`4f5f15a`](https://github.com/zumerlab/snapdom/commit/4f5f15a865ea05d4186d5671c5d104593b1aba87)
+- fix(outline): enhance parseOutline to account for outline-offset in bleed calculation [`7f45084`](https://github.com/zumerlab/snapdom/commit/7f4508474747d526f8ee432fbdf67846ada2bcbd)
+- fix(inlinePseudoElements): enhance style comparison by including additional CSS properties [`df2dd99`](https://github.com/zumerlab/snapdom/commit/df2dd9913bd40a77fec37676d3a59d16ada3126c)
+- fix(capture): normalize foreignObject defaults for flex layout (#351) and whitespace (#349) [`55f3962`](https://github.com/zumerlab/snapdom/commit/55f3962845ff29bf2c5011efc897ac382968b52b)
+- fix(download): ignore non-image type field to prevent format override (#339) [`3f42049`](https://github.com/zumerlab/snapdom/commit/3f420494e9b7a0380ddac4b8e26538957470c2a7)
+- fix(CSSVar): prevent redundant property resolution by tracking visited properties [`e76d700`](https://github.com/zumerlab/snapdom/commit/e76d7002298225a1b0e1b98a2b922e6b4ad9a53f)
+- fix(clone.helpers): preserve vertical-align from original input in checkbox/radio replacement (#311) [`ccaf138`](https://github.com/zumerlab/snapdom/commit/ccaf1389fed364c5ccd4128a8e1ed528dbea346b)
+- fix(pseudo): increase CSS_RULE_SCAN_BUDGET to 1000 for better performance in large applications [`a09f438`](https://github.com/zumerlab/snapdom/commit/a09f438743a4ee1456c40d7d9f2c1a44d473369f)
+- fix(cache): add persistent cache for clone-in-document layout measurements [`c65049b`](https://github.com/zumerlab/snapdom/commit/c65049b457356cdf3725467b73ab1fc2653ce67f)
+- fix(toCanvas): omit CSS inset box-shadows in canvas export to prevent incorrect rendering [`ff4a137`](https://github.com/zumerlab/snapdom/commit/ff4a137344282bf4c59ec25bacc2cc694ae98733)
+- fix(css): exclude zoom from style snapshot to prevent double-zoom inside foreignObject (#369) [`8f80d2a`](https://github.com/zumerlab/snapdom/commit/8f80d2a9097a147fdf86beb880b75bd45824d966)
+- fix(background): preserve all url() layers in background shorthand when inlining images [`fe18140`](https://github.com/zumerlab/snapdom/commit/fe181403bd53a5da077b4ac300ebc2dad357c7e3)
+
+
 #### [v2.5.0](https://github.com/zumerlab/snapdom/compare/v2.1.0...v2.5.0)
 
 > 17 March 2026
