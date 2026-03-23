@@ -38,6 +38,14 @@ export async function deepClone(node, sessionCache, options) {
     if (NO_CAPTURE_TAGS.has(tag)) {
       return null
     }
+    // SVG spec: foreignObject cannot be nested inside another foreignObject.
+    // The capture output already wraps everything in an outer foreignObject, so any
+    // foreignObject found in the captured DOM would become doubly nested → silently
+    // skipped by browsers. Detect via closest() on the source DOM and skip.
+    if (tag === 'foreignobject' && node.parentElement?.closest?.('foreignObject')) {
+      debugWarn(sessionCache, 'Nested <foreignObject> skipped (SVG spec limitation — not rendered by browsers)')
+      return null
+    }
   }
   if (node.nodeType === Node.TEXT_NODE) {
     return node.cloneNode(true)
@@ -340,6 +348,20 @@ export async function deepClone(node, sessionCache, options) {
   }
   if (node instanceof HTMLTextAreaElement) {
     pendingTextAreaValue = node.value
+  }
+  // Copy form validation/state attributes so :disabled, :required, :read-only,
+  // :invalid, :in-range/:out-of-range pseudo-class styles render correctly in the capture.
+  if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement) {
+    if (node.disabled) clone.setAttribute('disabled', '')
+    if (node.required) clone.setAttribute('required', '')
+    if ((/** @type {HTMLInputElement|HTMLTextAreaElement} */ (node)).readOnly) clone.setAttribute('readonly', '')
+    const inputNode = /** @type {HTMLInputElement} */ (node)
+    if (inputNode.min !== undefined && inputNode.min !== '') clone.setAttribute('min', inputNode.min)
+    if (inputNode.max !== undefined && inputNode.max !== '') clone.setAttribute('max', inputNode.max)
+    if (inputNode.pattern !== undefined && inputNode.pattern !== '') clone.setAttribute('pattern', inputNode.pattern)
+    // Reflect aria-invalid to surface :invalid visual state in the snapshot
+    const ariaInvalid = node.getAttribute('aria-invalid')
+    if (ariaInvalid !== null) clone.setAttribute('aria-invalid', ariaInvalid)
   }
   inlineAllStyles(node, clone, sessionCache, options)
   if (applyInputVisual) { applyInputVisual() }

@@ -749,6 +749,114 @@ describe('deepClone – Tier 2 fixes', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// NEW-8 — form validation/state attributes are copied to the clone
+// ─────────────────────────────────────────────────────────────────────────────
+describe('deepClone – form validation attrs (NEW-8)', () => {
+  let session
+  beforeEach(() => {
+    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
+    cache.session.styleCache = new WeakMap()
+    cache.session.nodeMap = new Map()
+    session = {
+      styleMap: cache.session.styleMap,
+      styleCache: cache.session.styleCache,
+      nodeMap: cache.session.nodeMap,
+    }
+  })
+  afterEach(() => { document.body.innerHTML = '' })
+
+  it('copies disabled attribute from disabled input', async () => {
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.disabled = true
+    document.body.appendChild(input)
+    const clone = await deepClone(input, session, {})
+    expect(clone.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('copies required attribute from required input', async () => {
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.required = true
+    document.body.appendChild(input)
+    const clone = await deepClone(input, session, {})
+    expect(clone.hasAttribute('required')).toBe(true)
+  })
+
+  it('copies readonly attribute from readonly textarea', async () => {
+    const ta = document.createElement('textarea')
+    ta.readOnly = true
+    document.body.appendChild(ta)
+    const clone = await deepClone(ta, session, {})
+    expect(clone.hasAttribute('readonly')).toBe(true)
+  })
+
+  it('copies min/max/pattern from input with constraints', async () => {
+    const input = document.createElement('input')
+    input.type = 'number'
+    input.min = '1'
+    input.max = '10'
+    document.body.appendChild(input)
+    const clone = await deepClone(input, session, {})
+    expect(clone.getAttribute('min')).toBe('1')
+    expect(clone.getAttribute('max')).toBe('10')
+  })
+
+  it('copies aria-invalid from input', async () => {
+    const input = document.createElement('input')
+    input.setAttribute('aria-invalid', 'true')
+    document.body.appendChild(input)
+    const clone = await deepClone(input, session, {})
+    expect(clone.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('does not add disabled attribute for enabled input', async () => {
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    const clone = await deepClone(input, session, {})
+    expect(clone.hasAttribute('disabled')).toBe(false)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW-9 — nested <foreignObject> inside SVG is skipped (SVG spec limitation)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('deepClone – nested foreignObject skipped (NEW-9)', () => {
+  let session
+  beforeEach(() => {
+    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
+    cache.session.styleCache = new WeakMap()
+    cache.session.nodeMap = new Map()
+    session = {
+      styleMap: cache.session.styleMap,
+      styleCache: cache.session.styleCache,
+      nodeMap: cache.session.nodeMap,
+    }
+  })
+  afterEach(() => { document.body.innerHTML = '' })
+
+  it('returns null for a <foreignObject> nested inside another <foreignObject>', async () => {
+    // outer foreignObject in source DOM
+    const outerFO = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject')
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    const innerFO = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject')
+    outerFO.appendChild(svg)
+    svg.appendChild(innerFO)
+    document.body.appendChild(outerFO)
+
+    const result = await deepClone(innerFO, session, {})
+    expect(result).toBeNull()
+  })
+
+  it('does not skip a top-level <foreignObject> (no ancestor FO in source DOM)', async () => {
+    const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject')
+    document.body.appendChild(fo)
+    const result = await deepClone(fo, session, {})
+    expect(result).not.toBeNull()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // #311 — createCheckboxRadioReplacement preserves vertical-align
 // ─────────────────────────────────────────────────────────────────────────────
 describe('createCheckboxRadioReplacement (#311)', () => {
