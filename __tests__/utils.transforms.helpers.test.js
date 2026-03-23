@@ -67,6 +67,26 @@ describe('parseOutline', () => {
     const cs = getComputedStyle(div)
     expect(parseOutline(cs)).toEqual({ top: 0, right: 0, bottom: 0, left: 0 })
   })
+
+  it('returns outline width for solid outline with no offset', () => {
+    const cs = { outlineStyle: 'solid', outlineWidth: '3px', outlineOffset: '0px' }
+    const res = parseOutline(cs)
+    expect(res).toEqual({ top: 3, right: 3, bottom: 3, left: 3 })
+  })
+
+  it('adds positive outline-offset to bleed (NEW-3)', () => {
+    const cs = { outlineStyle: 'solid', outlineWidth: '2px', outlineOffset: '4px' }
+    const res = parseOutline(cs)
+    // total = ceil(2) + max(0, ceil(4)) = 2 + 4 = 6
+    expect(res).toEqual({ top: 6, right: 6, bottom: 6, left: 6 })
+  })
+
+  it('does not subtract for negative outline-offset (NEW-3)', () => {
+    const cs = { outlineStyle: 'solid', outlineWidth: '3px', outlineOffset: '-2px' }
+    const res = parseOutline(cs)
+    // negative offset never reduces bleed below outline width
+    expect(res).toEqual({ top: 3, right: 3, bottom: 3, left: 3 })
+  })
 })
 
 describe('parseFilterDropShadows', () => {

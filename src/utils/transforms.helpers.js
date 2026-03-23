@@ -47,8 +47,12 @@ export function parseFilterBlur(cs) {
  */
 export function parseOutline(cs) {
   if ((cs.outlineStyle || 'none') === 'none') return { top: 0, right: 0, bottom: 0, left: 0 }
-  const w2 = Math.ceil(parseFloat(cs.outlineWidth || '0') || 0)
-  return { top: w2, right: w2, bottom: w2, left: w2 }
+  const w = Math.ceil(parseFloat(cs.outlineWidth || '0') || 0)
+  // outline-offset > 0 pushes the outline further out, increasing bleed.
+  // Negative offset moves it inward — it never reduces bleed below the outline width itself.
+  const offset = parseFloat(cs.outlineOffset || '0') || 0
+  const total = w + Math.max(0, Math.ceil(offset))
+  return { top: total, right: total, bottom: total, left: total }
 }
 
 /**
