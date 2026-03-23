@@ -10,7 +10,7 @@ import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { cache } from '../core/cache.js'
 import { freezeSticky } from '../modules/changeCSS.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
-import { stabilizeLayout } from '../utils/prepare.helpers.js'
+import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 
 /**
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
@@ -37,6 +37,9 @@ export async function prepareClone(element, options = {}) {
 
   stabilizeLayout(element)
 
+  // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements
+  const undoContentVisibility = forceContentVisibility(element)
+
   try {
     inlineExternalDefsAndSymbols(element)
   } catch (e) {
@@ -48,6 +51,8 @@ export async function prepareClone(element, options = {}) {
   } catch (e) {
     console.warn('deepClone failed:', e)
     throw e
+  } finally {
+    undoContentVisibility()
   }
   try {
     await inlinePseudoElements(element, clone, sessionCache, options)
@@ -108,6 +113,24 @@ export async function prepareClone(element, options = {}) {
       cloneNode.style.overflow = 'hidden'
       cloneNode.style.scrollbarWidth = 'none'
       cloneNode.style.msOverflowStyle = 'none'
+
+      // #364: Before wrapping with translate, adjust fixed/absolute descendants
+      // so they don't shift when the translate wrapper creates a new containing block.
+      try {
+        const positioned = cloneNode.querySelectorAll('*')
+        for (const child of positioned) {
+          if (!(child instanceof HTMLElement)) continue
+          const pos = child.style.position
+          if (pos === 'fixed' || pos === 'absolute') {
+            const curTop = parseFloat(child.style.top) || 0
+            const curLeft = parseFloat(child.style.left) || 0
+            child.style.top = `${curTop + scrollY}px`
+            child.style.left = `${curLeft + scrollX}px`
+            if (pos === 'fixed') child.style.position = 'absolute'
+          }
+        }
+      } catch { /* non-blocking */ }
+
       const inner = document.createElement('div')
       inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`
       inner.style.willChange = 'transform'
