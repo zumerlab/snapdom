@@ -90,6 +90,23 @@ function pickPrimaryFamily(familyList) {
 }
 
 /**
+ * #357: Return ALL non-generic families from a font-family list (for fallback chain embedding).
+ * E.g. `"Roboto", "Noto Sans SC", sans-serif` -> ["Roboto", "Noto Sans SC"]
+ * @param {string} familyList
+ * @returns {string[]}
+ */
+function pickAllFamilies(familyList) {
+  if (!familyList) return []
+  const out = []
+  for (let raw of familyList.split(',')) {
+    let f = raw.trim().replace(/^['"]+|['"]+$/g, '')
+    if (!f) continue
+    if (!GENERIC_FAMILIES.has(f.toLowerCase())) out.push(f)
+  }
+  return out
+}
+
+/**
  * Normalize weight to 100..900 (maps "normal"->400, "bold"->700).
  * @param {string|number} w
  */
@@ -926,10 +943,14 @@ export function collectUsedFontVariants(root) {
   if (!root) return req
   const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, null)
   const addFromStyle = (cs) => {
-    const family = pickPrimaryFamily(cs.fontFamily)
-    if (!family) return
-    const key = (w, s, st) => `${family}__${normWeight(w)}__${normStyle(s)}__${normStretchPct(st)}`
-    req.add(key(cs.fontWeight, cs.fontStyle, cs.fontStretch))
+    // #357: Register ALL families in the fallback chain, not just the primary one.
+    // This ensures that if the first font doesn't have a glyph, the fallback font is also embedded.
+    const families = pickAllFamilies(cs.fontFamily)
+    if (!families.length) return
+    for (const family of families) {
+      const key = (w, s, st) => `${family}__${normWeight(w)}__${normStyle(s)}__${normStretchPct(st)}`
+      req.add(key(cs.fontWeight, cs.fontStyle, cs.fontStretch))
+    }
   }
   addFromStyle(getComputedStyle(root))
   const csBeforeRoot = getComputedStyle(root, '::before')
