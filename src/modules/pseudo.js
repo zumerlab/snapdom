@@ -422,7 +422,19 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         const isMeaningful =
           style.color !== normal.color ||
           style.fontSize !== normal.fontSize ||
-          style.fontWeight !== normal.fontWeight
+          style.fontWeight !== normal.fontWeight ||
+          style.fontFamily !== normal.fontFamily ||
+          style.fontStyle !== normal.fontStyle ||
+          style.textTransform !== normal.textTransform ||
+          style.float !== normal.float ||
+          style.paddingTop !== normal.paddingTop ||
+          style.paddingRight !== normal.paddingRight ||
+          style.paddingBottom !== normal.paddingBottom ||
+          style.paddingLeft !== normal.paddingLeft ||
+          style.marginTop !== normal.marginTop ||
+          style.marginRight !== normal.marginRight ||
+          style.marginBottom !== normal.marginBottom ||
+          style.marginLeft !== normal.marginLeft
         if (!isMeaningful) continue
 
         const textNode = Array.from(clone.childNodes).find(
