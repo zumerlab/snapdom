@@ -313,8 +313,14 @@ export async function captureDOM(element, options) {
       fo.style.overflow = 'visible'
 
       const styleTag = document.createElement('style')
+      // #351: foreignObject can apply different CSS defaults vs normal DOM; normalize flex text layout
+      // #349: preserve whitespace rendering (multiple spaces) inside foreignObject
+      const foNormalize =
+        'svg{overflow:visible;} foreignObject{overflow:visible;}' +
+        ' foreignObject *{min-width:0;}' +
+        ' foreignObject pre,foreignObject [style*="white-space"]{white-space:inherit;}'
       styleTag.textContent =
-        (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+        (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + foNormalize + state.classCSS
       fo.appendChild(styleTag)
 
       const container = document.createElement('div')
