@@ -3,8 +3,16 @@ import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
 const snapshotKeyCache = new Map()
+/** PERF-4: evict snapshotKeyCache when it grows beyond this size.
+ *  Each entry stores a long CSS signature string → key string. In SPAs with many
+ *  unique element styles, this Map can grow without bound and leak memory. */
+const MAX_SNAPSHOT_KEY_CACHE = 2000
 let __epoch = 0
-function bumpEpoch() { __epoch++ }
+function bumpEpoch() {
+  __epoch++
+  // Evict when oversized — entries are cheap to rebuild on the next capture.
+  if (snapshotKeyCache.size > MAX_SNAPSHOT_KEY_CACHE) snapshotKeyCache.clear()
+}
 
 export function notifyStyleEpoch() { bumpEpoch() }
 
@@ -216,7 +224,12 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const { session, persist } = ctx
 
   if (!session.styleCache.has(source)) {
-    session.styleCache.set(source, getComputedStyle(source))
+    // ROB-1: getComputedStyle() on detached nodes can return an empty or unstable
+    // CSSStyleDeclaration in some environments. Wrap defensively so a stale/detached
+    // element never throws and callers always receive a usable style object.
+    let computed = null
+    try { computed = getComputedStyle(source) } catch { /* detached / cross-origin */ }
+    session.styleCache.set(source, computed || getComputedStyle(document.documentElement))
   }
   const pre = session.styleCache.get(source)
 
