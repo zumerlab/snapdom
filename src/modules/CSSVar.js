@@ -65,8 +65,14 @@ export function resolveCSSVars(sourceEl, cloneEl) {
   if (hasVar) {
     const author = sourceEl.style
     if (author && author.length) {
+      // visitedProps guards against duplicate property names in the iteration
+      // (can happen with browser quirks or malformed style attributes) which
+      // would otherwise re-resolve and re-set the same property redundantly.
+      const visitedProps = new Set()
       for (let i = 0; i < author.length; i++) {
         const prop = author[i]
+        if (visitedProps.has(prop)) continue
+        visitedProps.add(prop)
         const val = author.getPropertyValue(prop)
         if (!val || !val.includes('var(')) continue
         const resolved = cs && cs.getPropertyValue(prop)
