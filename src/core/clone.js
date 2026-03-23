@@ -111,6 +111,11 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
 
+    // NEW-7: warn that this iframe was skipped so callers can react
+    if (!sameOrigin) {
+      console.warn('[snapdom] cross-origin <iframe> skipped (cannot access content). Use options.placeholders to show a placeholder instead.', node)
+    }
+
     // Fallback actual (placeholder o spacer)
     if (options.placeholders) {
       const { width, height } = getUnscaledDimensions(node)
@@ -192,6 +197,44 @@ export async function deepClone(node, sessionCache, options) {
     return img
   }
 
+  if (node.tagName === 'VIDEO') {
+    let url = ''
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = node.videoWidth || node.offsetWidth || 320
+      canvas.height = node.videoHeight || node.offsetHeight || 240
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
+        url = canvas.toDataURL('image/png')
+        // blank canvas = cross-origin or no frame loaded
+        if (!url || url === 'data:,') url = ''
+      }
+    } catch (e) {
+      debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
+    }
+
+    const img = document.createElement('img')
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+    if (url) {
+      img.src = url
+    } else if (node.poster) {
+      img.src = node.poster
+    }
+
+    img.width = node.videoWidth || node.offsetWidth || 0
+    img.height = node.videoHeight || node.offsetHeight || 0
+
+    const { width, height } = getUnscaledDimensions(node)
+    if (width > 0) img.style.width = `${width}px`
+    if (height > 0) img.style.height = `${height}px`
+    img.style.objectFit = 'contain'
+
+    sessionCache.nodeMap.set(img, node)
+    inlineAllStyles(node, img, sessionCache, options)
+    return img
+  }
+
   let clone
   try {
     clone = node.cloneNode(false)
@@ -230,9 +273,19 @@ export async function deepClone(node, sessionCache, options) {
         if (needFreezeW && w) clone.style.width = `${w}px`
         if (needFreezeH && h) clone.style.height = `${h}px`
 
-        // Blindaje extra: evita que una clase agregada luego anule el fix
-        if (w) clone.style.minWidth = `${w}px`
-        if (h) clone.style.minHeight = `${h}px`
+        // #337: Preserve object-fit and object-position for correct image proportions
+        const objectFit = cs.getPropertyValue('object-fit')
+        const objectPosition = cs.getPropertyValue('object-position')
+        if (objectFit && objectFit !== 'fill') {
+          clone.style.objectFit = objectFit
+          if (objectPosition) clone.style.objectPosition = objectPosition
+          // When object-fit is active, minWidth/minHeight can distort the image
+          // Only set min dimensions if no object-fit override is in play
+        } else {
+          // Blindaje extra: evita que una clase agregada luego anule el fix
+          if (w) clone.style.minWidth = `${w}px`
+          if (h) clone.style.minHeight = `${h}px`
+        }
       } catch (e) {
         debugWarn(sessionCache, 'IMG dimension freeze failed', e)
       }
@@ -268,6 +321,20 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
+  // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
+  if ((node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) && !node.value && node.placeholder) {
+    try {
+      const phStyle = window.getComputedStyle(node, '::placeholder')
+      const phColor = phStyle && phStyle.color
+      if (phColor && phColor !== 'rgba(0, 0, 0, 0)') {
+        const uid = 'snapdom-ph-' + (Math.random() * 1e6 | 0)
+        clone.classList.add(uid)
+        const styleEl = document.createElement('style')
+        styleEl.textContent = `.${uid}::placeholder{color:${phColor}!important;opacity:${phStyle.opacity || '1'}!important;}`
+        clone.prepend(styleEl)
+      }
+    } catch { /* non-blocking */ }
+  }
   if (node instanceof HTMLSelectElement) {
     pendingSelectValue = node.value
   }
@@ -276,6 +343,24 @@ export async function deepClone(node, sessionCache, options) {
   }
   inlineAllStyles(node, clone, sessionCache, options)
   if (applyInputVisual) { applyInputVisual() }
+  // #365: SVG painting elements — CSS rules override presentation attributes but aren't captured
+  // via the class-based mechanism (NO_DEFAULTS_TAGS returns '' key). Copy key SVG presentation
+  // properties from computed style as inline styles to ensure CSS-driven fills/strokes survive.
+  if (node instanceof SVGElement) {
+    const SVG_PAINT_PROPS = [
+      'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset',
+      'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'opacity',
+      'fill-opacity', 'stroke-opacity', 'fill-rule', 'clip-rule',
+      'marker', 'marker-start', 'marker-mid', 'marker-end', 'visibility', 'display'
+    ]
+    try {
+      const cs = window.getComputedStyle(node)
+      for (const prop of SVG_PAINT_PROPS) {
+        const val = cs.getPropertyValue(prop)
+        if (val) clone.style.setProperty(prop, val)
+      }
+    } catch { }
+  }
   if (node.shadowRoot) {
     try {
       const slots = node.shadowRoot.querySelectorAll('slot')
