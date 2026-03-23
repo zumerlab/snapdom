@@ -26,8 +26,9 @@ import { cache } from '../core/cache.js'
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
 
-/** Max number of CSS rules to scan across all sheets (keeps it fast) */
-const CSS_RULE_SCAN_BUDGET = 300
+/** Max number of CSS rules to scan across all sheets (keeps it fast).
+ *  300 was too low for large apps (Tailwind, MUI) with 500+ utility rules — raised to 1000. */
+const CSS_RULE_SCAN_BUDGET = 1000
 
 /**
  * Returns whether to process pseudos, but also memoizes the last fingerprint
