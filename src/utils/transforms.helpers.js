@@ -122,40 +122,60 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
     } catch { }
   }
 
+  // Helper: decompose 2D matrix components (a,b,c,d) into scale+shear without rotation
+  function decomposeScaleShear(a, b, c, d) {
+    const scaleX = Math.sqrt(a * a + b * b) || 0
+    let shear = 0, scaleY = 0
+    if (scaleX > 0) {
+      const a1 = a / scaleX
+      const b1 = b / scaleX
+      shear = a1 * c + b1 * d
+      const c2 = c - a1 * shear
+      const d2 = d - b1 * shear
+      scaleY = Math.sqrt(c2 * c2 + d2 * d2) || 0
+      if (scaleY > 0) shear = shear / scaleY
+      else shear = 0
+    }
+    return {
+      a: scaleX,
+      b: 0,                   // rotation removed
+      c: shear * scaleY,      // 2D shear component
+      d: scaleY
+    }
+  }
+
   // Composite path: decompose 2D; keep scale/skew, drop translate (e,f) and rotation
   const m2d = tr.match(/^matrix\(\s*([^)]+)\)$/i)
   if (m2d) {
     const nums = m2d[1].split(',').map(v => parseFloat(v.trim()))
     if (nums.length === 6 && nums.every(Number.isFinite)) {
       const [a, b, c, d] = nums // ignore e,f
-      // Decompose to isolate scale + shear, remove rotation:
-      const scaleX = Math.sqrt(a * a + b * b) || 0
-      let a1 = 0, b1 = 0, shear = 0, c2 = 0, d2 = 0, scaleY = 0
-      if (scaleX > 0) {
-        a1 = a / scaleX
-        b1 = b / scaleX
-        shear = a1 * c + b1 * d
-        c2 = c - a1 * shear
-        d2 = d - b1 * shear
-        scaleY = Math.sqrt(c2 * c2 + d2 * d2) || 0
-        if (scaleY > 0) shear = shear / scaleY
-        else shear = 0
-      }
-      const aP = scaleX
-      const bP = 0                 // rotation removed
-      const cP = shear * scaleY    // 2D shear component
-      const dP = scaleY
-      try { cloneRoot.style.transform = `matrix(${aP}, ${bP}, ${cP}, ${dP}, 0, 0)` } catch { }
-      return { a: aP, b: bP, c: cP, d: dP }
+      const dec = decomposeScaleShear(a, b, c, d)
+      try { cloneRoot.style.transform = `matrix(${dec.a}, ${dec.b}, ${dec.c}, ${dec.d}, 0, 0)` } catch { }
+      return dec
     }
   }
 
-  // 3D or unknown: best-effort — neutralize move/rotate at the end
+  // #216: matrix3d — extract 2D components from 4x4 matrix, decompose scale/shear, drop translate+rotation
+  const m3d = tr.match(/^matrix3d\(\s*([^)]+)\)$/i)
+  if (m3d) {
+    const nums = m3d[1].split(',').map(v => parseFloat(v.trim()))
+    if (nums.length === 16 && nums.every(Number.isFinite)) {
+      // 4x4 column-major: [m11,m12,m13,m14, m21,m22,m23,m24, m31,m32,m33,m34, m41,m42,m43,m44]
+      // 2D projection: a=m11(0), b=m12(1), c=m21(4), d=m22(5), e=m41(12), f=m42(13)
+      const a = nums[0], b = nums[1], c = nums[4], d = nums[5]
+      const dec = decomposeScaleShear(a, b, c, d)
+      try { cloneRoot.style.transform = `matrix(${dec.a}, ${dec.b}, ${dec.c}, ${dec.d}, 0, 0)` } catch { }
+      return dec
+    }
+  }
+
+  // Unknown transform function: use DOMMatrix to extract 2D components
   try {
-    const legacy = String(tr).trim()
-    cloneRoot.style.transform = legacy + ' translate(0px, 0px) rotate(0deg)'
-    // We cannot reliably derive pure 2D here; return null to skip bbox expansion
-    return null
+    const M = new DOMMatrix(tr)
+    const dec = decomposeScaleShear(M.a, M.b, M.c, M.d)
+    try { cloneRoot.style.transform = `matrix(${dec.a}, ${dec.b}, ${dec.c}, ${dec.d}, 0, 0)` } catch { }
+    return dec
   } catch {
     return null
   }
