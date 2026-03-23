@@ -178,20 +178,31 @@ export async function captureDOM(element, options) {
         )
         if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
         if (docW > 0) w0 = Math.max(w0, limitDecimals(docW))
-        // Also measure clone in a temp container with injected styles (clone may layout differently)
+        // Also measure clone in a temp container with injected styles (clone may layout differently).
+        // PERF-3: cache result per element — this cloneNode(true) + layout round-trip is expensive
+        // for large DOMs; reuse when the same element is captured with the same total CSS length.
         try {
-          const wrap = elDoc.createElement('div')
-          wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
-          const styleNode = elDoc.createElement('style')
-          styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
-          wrap.appendChild(styleNode)
-          wrap.appendChild(state.clone.cloneNode(true))
-          elDoc.body.appendChild(wrap)
-          const csh = wrap.scrollHeight
-          const csw = wrap.scrollWidth
-          elDoc.body.removeChild(wrap)
-          if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
-          if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
+          const cssLen = (state.scrollbarCSS || '').length + (state.baseCSS || '').length +
+                         (state.fontsCSS || '').length + (state.classCSS || '').length
+          const hint = cache.measureHints.get(state.element)
+          if (hint && hint.cssLen === cssLen && hint.w0 === w0) {
+            if (hint.csh > 0) h0 = Math.max(h0, limitDecimals(hint.csh))
+            if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
+          } else {
+            const wrap = elDoc.createElement('div')
+            wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
+            const styleNode = elDoc.createElement('style')
+            styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+            wrap.appendChild(styleNode)
+            wrap.appendChild(state.clone.cloneNode(true))
+            elDoc.body.appendChild(wrap)
+            const csh = wrap.scrollHeight
+            const csw = wrap.scrollWidth
+            elDoc.body.removeChild(wrap)
+            cache.measureHints.set(state.element, { cssLen, w0, csh, csw })
+            if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
+            if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
+          }
         } catch { /* fallback: use doc dimensions above */ }
       }
       // === NEW: recompute height using the kept-children span (no offscreen) ===
