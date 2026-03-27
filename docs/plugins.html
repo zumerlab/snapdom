@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plugins — SnapDOM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./shared.css">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface-hover: #1a1a28;
+      --border: #2a2a3a;
+      --border-glow: #4f46e5;
+      --text: #e8e8f0;
+      --text-muted: #8888a0;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --cyan: #22d3ee;
+      --code-bg: #0d0d14;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    html.light {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface-hover: #f0f0f5;
+      --border: #d8d8e0;
+      --border-glow: #4f46e5;
+      --text: #1a1a2e;
+      --text-muted: #6b6b80;
+      --accent: #4f46e5;
+      --accent-light: #6366f1;
+      --green: #059669;
+      --amber: #d97706;
+      --rose: #e11d48;
+      --cyan: #0891b2;
+      --code-bg: #f0f0f5;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; }
+
+    /* Theme toggle, GitHub badge, Page nav → shared.css */
+
+    /* Light mode overrides */
+    html.light .hero::before { background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%); }
+    html.light .pg-target { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    html.light .modal { box-shadow: 0 24px 80px rgba(0,0,0,0.15); }
+    html.light .modal-overlay { background: rgba(0,0,0,0.3); }
+    html.light .plugin-card:hover { box-shadow: 0 8px 30px rgba(99,102,241,0.1); }
+    html.light .hook-badge { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); }
+    html.light .copy-btn { background: var(--surface); }
+
+    /* ── Hero ── */
+    .hero { padding: 80px 24px 60px; text-align: center; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%); pointer-events: none; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border: 1px solid var(--border); border-radius: 100px; font-size: 13px; color: var(--accent-light); font-family: var(--font-mono); margin-bottom: 24px; background: rgba(99,102,241,0.06); }
+    .hero-badge .dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .hero h1 { font-size: clamp(36px, 6vw, 64px); font-weight: 700; letter-spacing: -2px; line-height: 1.1; margin-bottom: 16px; }
+    .hero h1 .accent { background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { color: var(--text-muted); font-size: 18px; max-width: 520px; margin: 0 auto 32px; line-height: 1.6; }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: var(--font-body); text-decoration: none; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent-light); }
+    .btn-sm { padding: 8px 16px; font-size: 12px; border-radius: 8px; }
+
+    .github-badge { margin-bottom: 20px; }
+
+    /* ── Back to top ── */
+    .section-top { display: flex; justify-content: flex-end; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .back-top { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-decoration: none; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; transition: all 0.2s; margin-bottom: 16px; }
+    .back-top:hover { color: var(--accent-light); border-color: var(--accent); }
+
+    /* ── Playground ── */
+    .playground-section { max-width: 1100px; margin: 0 auto 60px; padding: 0 24px; }
+    .playground-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; overflow: hidden; }
+    .playground-card .section-label { margin-bottom: 24px; }
+    .pg-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    .pg-left, .pg-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; overflow: hidden; }
+    .pg-panel { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; min-width: 0; overflow: hidden; }
+    .pg-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .pg-panel-header h4 { font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin: 0; }
+    .pg-panel h4 { font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 14px; }
+    .pg-target { padding: 20px; border-radius: 8px; background: #fff; color: #111; font-family: var(--font-body); }
+    .pg-target h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #1a1a2e; }
+    .pg-target p { font-size: 13px; color: #555; line-height: 1.5; }
+    .pg-target .pg-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #eef2ff; color: #4f46e5; margin-top: 8px; }
+    .pg-result { min-height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; }
+    .pg-result img { max-width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .pg-code-wrap { position: relative; }
+    .pg-code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--text-muted); white-space: pre; overflow-x: auto; margin: 0; min-height: 80px; }
+
+    /* Copy button */
+    .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; z-index: 2; }
+    .copy-btn:hover { color: var(--accent-light); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+    /* Plugin toggles */
+    .pg-plugins { display: flex; flex-direction: column; gap: 2px; }
+    .pg-plugin { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.2s; }
+    .pg-plugin.active { border-color: var(--accent); }
+    .pg-plugin-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; user-select: none; }
+    .pg-plugin-header input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+    .pg-plugin-header span { font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+    .pg-plugin-opts { padding: 0 14px 12px; display: none; }
+    .pg-plugin.active .pg-plugin-opts { display: flex; flex-direction: column; gap: 8px; }
+    .pg-opt { display: flex; align-items: center; gap: 8px; }
+    .pg-opt label { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); min-width: 60px; }
+    .pg-opt select, .pg-opt input[type="text"] { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; color: var(--text); font-family: var(--font-mono); font-size: 12px; flex: 1; min-width: 0; }
+    .pg-opt select { cursor: pointer; }
+    .pg-opt input[type="color"] { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px; padding: 2px; cursor: pointer; background: var(--bg); flex-shrink: 0; }
+    .pg-capture-btn { padding: 10px 20px; border-radius: 8px; border: none; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: all 0.2s; width: 100%; }
+    .pg-capture-btn:hover { background: var(--accent-light); }
+    .pg-capture-btn:disabled { opacity: 0.5; cursor: wait; }
+    .pg-status { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); min-height: 16px; text-align: center; }
+
+    /* ── Install ── */
+    .install-section { max-width: 1100px; margin: 0 auto 60px; padding: 0 24px; }
+    .install-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .install-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; }
+    .install-card .install-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 10px; }
+    .install-card code { font-family: var(--font-mono); font-size: 13px; color: var(--green); display: block; line-height: 1.6; }
+
+    /* ── Usage ── */
+    .usage-section { max-width: 1100px; margin: 0 auto 60px; padding: 0 24px; }
+    .section-label { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .code-block-wrap { position: relative; }
+    .code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.7; color: var(--text-muted); }
+    .code-block .kw { color: var(--accent-light); }
+    .code-block .str { color: var(--green); }
+    .code-block .fn { color: var(--cyan); }
+    .code-block .cm { color: #555568; }
+    .code-block .op { color: var(--text); }
+
+    /* ── Filter bar ── */
+    .filter-bar { max-width: 1100px; margin: 0 auto 40px; padding: 0 24px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-btn { padding: 8px 18px; border-radius: 100px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 500; font-family: var(--font-mono); cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px; }
+    .filter-btn:hover { border-color: var(--accent); color: var(--text); background: rgba(99,102,241,0.06); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(99,102,241,0.3); }
+
+    /* ── Plugin cards ── */
+    .grid-section { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 60px; }
+    .plugin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; transition: all 0.25s; position: relative; overflow: hidden; cursor: pointer; }
+    .plugin-card:hover { border-color: var(--border-glow); background: var(--surface-hover); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99,102,241,0.08); }
+    .plugin-card .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .plugin-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-family: var(--font-mono); font-weight: 700; }
+    .plugin-card[data-category="capture"] .plugin-icon { background: rgba(34,211,238,0.12); color: var(--cyan); }
+    .plugin-card[data-category="transform"] .plugin-icon { background: rgba(251,191,36,0.12); color: var(--amber); }
+    .plugin-card[data-category="export"] .plugin-icon { background: rgba(52,211,153,0.12); color: var(--green); }
+    .plugin-card[data-category="integration"] .plugin-icon { background: rgba(251,113,133,0.12); color: var(--rose); }
+    .plugin-card[data-category="utility"] .plugin-icon { background: rgba(99,102,241,0.12); color: var(--accent-light); }
+    .category-tag { font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    [data-category="capture"] .category-tag { color: var(--cyan); background: rgba(34,211,238,0.1); }
+    [data-category="transform"] .category-tag { color: var(--amber); background: rgba(251,191,36,0.1); }
+    [data-category="export"] .category-tag { color: var(--green); background: rgba(52,211,153,0.1); }
+    [data-category="integration"] .category-tag { color: var(--rose); background: rgba(251,113,133,0.1); }
+    [data-category="utility"] .category-tag { color: var(--accent-light); background: rgba(99,102,241,0.1); }
+    .plugin-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; font-family: var(--font-mono); letter-spacing: -0.3px; }
+    .plugin-card > p { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
+    .plugin-card .hooks { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .hook-badge { font-family: var(--font-mono); font-size: 10px; padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.06); }
+    .plugin-card .card-footer { display: flex; gap: 12px; align-items: center; }
+    .plugin-card .card-footer a { font-size: 13px; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+    .plugin-card .card-footer a:hover { color: #fff; }
+    .official-badge { font-size: 10px; font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px; background: rgba(99,102,241,0.15); color: var(--accent-light); text-transform: uppercase; letter-spacing: 1px; }
+    .community-badge { font-size: 10px; font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px; background: rgba(52,211,153,0.15); color: var(--green); text-transform: uppercase; letter-spacing: 1px; }
+    .expand-hint { font-size: 11px; color: var(--text-muted); margin-left: auto; font-family: var(--font-mono); transition: color 0.2s; }
+    .plugin-card:hover .expand-hint { color: var(--accent-light); }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; max-width: 640px; width: 90%; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 24px 80px rgba(0,0,0,0.5); }
+    .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: 1px solid var(--border); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; font-size: 16px; transition: all 0.2s; }
+    .modal-close:hover { color: var(--text); border-color: var(--accent); }
+    .modal-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-family: var(--font-mono); font-weight: 700; margin-bottom: 16px; }
+    .modal h2 { font-size: 22px; font-weight: 700; font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: -0.5px; }
+    .modal .modal-desc { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+    .modal .modal-hooks { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+    .modal h4 { font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; }
+    .modal h4:not(:first-of-type) { margin-top: 20px; }
+    .modal .opts-table { width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 8px; }
+    .modal .opts-table th { text-align: left; color: var(--text-muted); font-weight: 500; padding: 6px 10px 6px 0; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+    .modal .opts-table td { padding: 6px 10px 6px 0; color: var(--text); font-family: var(--font-mono); font-size: 12px; vertical-align: top; }
+    .modal .opts-table td:first-child { color: var(--cyan); }
+    .modal .opts-table td:nth-child(3) { color: var(--green); }
+    .modal .opts-table td:last-child { color: var(--text-muted); font-family: var(--font-body); }
+    .modal-code-wrap { position: relative; margin-top: 4px; }
+    .modal .card-usage { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; font-family: var(--font-mono); font-size: 12px; line-height: 1.7; color: var(--text-muted); white-space: pre; overflow-x: auto; margin: 0; }
+
+    /* ── CTA ── */
+    .cta-section { max-width: 1100px; margin: 20px auto 80px; padding: 0 24px; }
+    .cta-card { background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(34,211,238,0.05) 100%); border: 1px solid var(--border); border-radius: 20px; padding: 48px; text-align: center; position: relative; overflow: hidden; }
+    .cta-card h2 { font-size: 28px; font-weight: 700; letter-spacing: -1px; margin-bottom: 12px; }
+    .cta-card p { color: var(--text-muted); font-size: 16px; max-width: 480px; margin: 0 auto 28px; line-height: 1.6; }
+    .cta-steps { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+    .cta-step { text-align: left; padding: 16px 20px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid var(--border); min-width: 220px; }
+    .cta-step .step-num { font-family: var(--font-mono); font-size: 11px; color: var(--accent-light); margin-bottom: 6px; }
+    .cta-step code { font-family: var(--font-mono); font-size: 13px; color: var(--green); }
+    .cta-step .step-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .hero { padding: 60px 20px 40px; }
+      .plugin-grid { grid-template-columns: 1fr; }
+      .cta-card { padding: 32px 20px; }
+      .cta-steps { flex-direction: column; align-items: center; }
+      .pg-layout { grid-template-columns: 1fr; }
+      .install-grid { grid-template-columns: 1fr; }
+      .modal { padding: 24px; width: 95%; }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <!-- ── Hero ── -->
+  <section class="hero" id="top">
+    <div class="hero-badge"><span class="dot"></span> Plugin Ecosystem</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener">
+      <i class="fab fa-github"></i>
+      <span class="repo-link">zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>Extend <span class="accent">SnapDOM</span></h1>
+    <p>Transform your captures with a wide range of plugins, or build and share your own in minutes.</p>
+    <div class="hero-actions">
+      <a href="#playground" class="btn btn-primary">Playground</a>
+      <a href="#quickstart" class="btn btn-ghost">Quick Start</a>
+      <a href="#official" class="btn btn-ghost">Browse Plugins</a>
+      <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost">Build a Plugin</a>
+    </div>
+  </section>
+
+  <!-- ── Playground ── -->
+  <section class="playground-section" id="playground">
+    <div class="playground-card">
+      <div class="section-label">Playground</div>
+      <div class="pg-layout">
+        <div class="pg-left">
+          <div class="pg-panel">
+            <h4>Source element</h4>
+            <div class="pg-target" id="pgTarget" style="background:radial-gradient(120% 120% at 20% 20%, #2a2f3a 0%, #14161a 55%, #0d0f12 100%); color:white; padding:16px; border-radius:14px;">
+              <h3 style="color:#fff; margin-bottom:8px;">Hello SnapDOM</h3>
+              <p style="color:#aab; font-size:12px; margin-bottom:10px;">Captured with plugins in real time</p>
+              <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:4px; font-size:28px; text-align:center;">
+                <span>🚀</span><span>✨</span><span>🧠</span><span>🖼️</span><span>🎛️</span><span>🧪</span>
+                <span>💡</span><span>🧩</span><span>📦</span><span>🧭</span><span>⚙️</span><span>🛡️</span>
+              </div>
+              <span class="pg-tag" style="margin-top:10px; background:rgba(255,255,255,0.1); color:#818cf8;">Live content</span>
+            </div>
+          </div>
+          <div class="pg-panel">
+            <h4>Plugins (combine freely)</h4>
+            <div class="pg-plugins">
+              <div class="pg-plugin" data-pg="filter">
+                <div class="pg-plugin-header">
+                  <input type="checkbox" id="pgChkFilter">
+                  <span>filter</span>
+                </div>
+                <div class="pg-plugin-opts">
+                  <div class="pg-opt">
+                    <label for="pgFilterPreset">Preset</label>
+                    <select id="pgFilterPreset">
+                      <option value="grayscale">grayscale</option>
+                      <option value="sepia">sepia</option>
+                      <option value="blur">blur</option>
+                      <option value="vintage">vintage</option>
+                      <option value="dramatic">dramatic</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="pg-plugin" data-pg="timestamp">
+                <div class="pg-plugin-header">
+                  <input type="checkbox" id="pgChkTimestamp">
+                  <span>timestamp-overlay</span>
+                </div>
+                <div class="pg-plugin-opts">
+                  <div class="pg-opt">
+                    <label for="pgTsPos">Position</label>
+                    <select id="pgTsPos">
+                      <option value="bottom-right">bottom-right</option>
+                      <option value="bottom-left">bottom-left</option>
+                      <option value="top-right">top-right</option>
+                      <option value="top-left">top-left</option>
+                    </select>
+                  </div>
+                  <div class="pg-opt">
+                    <label for="pgTsFmt">Format</label>
+                    <select id="pgTsFmt">
+                      <option value="datetime">datetime</option>
+                      <option value="date">date</option>
+                      <option value="time">time</option>
+                      <option value="iso">iso</option>
+                    </select>
+                  </div>
+                  <div class="pg-opt">
+                    <label for="pgTsBg">Bg color</label>
+                    <input type="color" id="pgTsBg" value="#000000">
+                  </div>
+                </div>
+              </div>
+              <div class="pg-plugin" data-pg="replaceText">
+                <div class="pg-plugin-header">
+                  <input type="checkbox" id="pgChkReplace">
+                  <span>replace-text</span>
+                </div>
+                <div class="pg-plugin-opts">
+                  <div class="pg-opt">
+                    <label for="pgReplFind">Find</label>
+                    <input type="text" id="pgReplFind" value="SnapDOM" placeholder="text to find">
+                  </div>
+                  <div class="pg-opt">
+                    <label for="pgReplWith">Replace</label>
+                    <input type="text" id="pgReplWith" value="MyApp" placeholder="replace with">
+                  </div>
+                </div>
+              </div>
+              <div class="pg-plugin" data-pg="ascii">
+                <div class="pg-plugin-header">
+                  <input type="checkbox" id="pgChkAscii">
+                  <span>ascii-export</span>
+                </div>
+                <div class="pg-plugin-opts">
+                  <div class="pg-opt">
+                    <label for="pgAsciiW">Width</label>
+                    <input type="text" id="pgAsciiW" value="80" placeholder="columns">
+                  </div>
+                </div>
+              </div>
+              <div class="pg-plugin" data-pg="pdfImage">
+                <div class="pg-plugin-header">
+                  <input type="checkbox" id="pgChkPdf">
+                  <span>pdf-image</span>
+                </div>
+                <div class="pg-plugin-opts">
+                  <div class="pg-opt">
+                    <label for="pgPdfOrient">Orient</label>
+                    <select id="pgPdfOrient">
+                      <option value="portrait">portrait</option>
+                      <option value="landscape">landscape</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="pg-capture-btn" id="pgCapture">Capture</button>
+          <div class="pg-status" id="pgStatus"></div>
+        </div>
+        <div class="pg-right">
+          <div class="pg-panel">
+            <h4>Captured output</h4>
+            <div class="pg-result" id="pgOutput">Select plugins and click Capture</div>
+          </div>
+          <div class="pg-panel">
+            <div class="pg-panel-header">
+              <h4 style="margin:0">Generated code</h4>
+              <button class="copy-btn" data-copy="pgCode" style="position:static;">Copy</button>
+            </div>
+            <div class="pg-code-wrap">
+              <pre class="pg-code-block" id="pgCode">// Select plugins to see the code</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Install & Usage ── -->
+  <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
+  <section class="install-section" id="quickstart">
+    <div class="section-label">Install</div>
+    <div class="install-grid">
+      <div class="install-card">
+        <div class="install-label">Install core</div>
+        <code>npm i @zumer/snapdom</code>
+      </div>
+      <div class="install-card">
+        <div class="install-label">Install plugins</div>
+        <code>npm i @zumer/snapdom-plugins</code>
+      </div>
+      <div class="install-card">
+        <div class="install-label">CDN (no install)</div>
+        <code>&lt;script type="module"&gt;</code>
+        <code>&nbsp;&nbsp;import { snapdom } from</code>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;'https://esm.sh/@zumer/snapdom';</code>
+        <code>&nbsp;&nbsp;import { filter } from</code>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;'https://esm.sh/@zumer/snapdom-plugins/filter';</code>
+        <code>&lt;/script&gt;</code>
+      </div>
+    </div>
+  </section>
+
+  <section class="usage-section">
+    <div class="section-label">Usage Example</div>
+    <div class="code-block-wrap">
+      <button class="copy-btn" data-copy="usageCode">Copy</button>
+      <div class="code-block" id="usageCode">
+        <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;<br>
+        <span class="kw">import</span> { filter } <span class="kw">from</span> <span class="str">'@zumer/snapdom-plugins/filter'</span>;<br>
+        <span class="kw">import</span> { timestampOverlay } <span class="kw">from</span> <span class="str">'@zumer/snapdom-plugins/timestamp-overlay'</span>;<br><br>
+        <span class="kw">const</span> result <span class="op">=</span> <span class="kw">await</span> <span class="fn">snapdom</span>(element, {<br>
+        &nbsp;&nbsp;plugins: [<span class="fn">filter</span>({ preset: <span class="str">'grayscale'</span> }), <span class="fn">timestampOverlay</span>()]<br>
+        });<br>
+        <span class="kw">const</span> png <span class="op">=</span> <span class="kw">await</span> result.<span class="fn">toPng</span>();
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Plugin Directory ── -->
+  <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="capture">Capture</button>
+    <button class="filter-btn" data-filter="transform">Transform</button>
+    <button class="filter-btn" data-filter="export">Export</button>
+    <button class="filter-btn" data-filter="utility">Utility</button>
+    <button class="filter-btn" data-filter="integration">Integration</button>
+  </div>
+
+  <section class="grid-section" id="official">
+    <div class="section-label">Official — @zumer/snapdom-plugins</div>
+    <div class="plugin-grid" id="officialGrid">
+
+      <!-- picture-resolver -->
+      <div class="plugin-card" data-category="capture" data-plugin="picture-resolver">
+        <div class="card-top"><div class="plugin-icon">P</div><span class="category-tag">capture</span></div>
+        <h3>picture-resolver</h3>
+        <p>Resolves lazy-loaded &lt;picture&gt; placeholders. Detects base64 stubs and fetches the real image before capture.</p>
+        <div class="hooks"><span class="hook-badge">beforeClone</span><span class="hook-badge">afterClone</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/picture-resolver.js">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- timestamp-overlay -->
+      <div class="plugin-card" data-category="transform" data-plugin="timestamp-overlay">
+        <div class="card-top"><div class="plugin-icon">T</div><span class="category-tag">transform</span></div>
+        <h3>timestamp-overlay</h3>
+        <p>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</p>
+        <div class="hooks"><span class="hook-badge">afterClone</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/timestamp-overlay.js">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- filter -->
+      <div class="plugin-card" data-category="transform" data-plugin="filter">
+        <div class="card-top"><div class="plugin-icon">F</div><span class="category-tag">transform</span></div>
+        <h3>filter</h3>
+        <p>Applies CSS filter effects to captures. Ships with presets: grayscale, sepia, blur, vintage, dramatic.</p>
+        <div class="hooks"><span class="hook-badge">afterClone</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/filter.js">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- replace-text -->
+      <div class="plugin-card" data-category="transform" data-plugin="replace-text">
+        <div class="card-top"><div class="plugin-icon">R</div><span class="category-tag">transform</span></div>
+        <h3>replace-text</h3>
+        <p>Find-and-replace text in the captured clone. Supports strings and regex patterns.</p>
+        <div class="hooks"><span class="hook-badge">afterClone</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/replace-text.js">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- color-tint -->
+      <div class="plugin-card" data-category="transform" data-plugin="color-tint">
+        <div class="card-top"><div class="plugin-icon">C</div><span class="category-tag">transform</span></div>
+        <h3>color-tint</h3>
+        <p>Tints the entire capture to a specified color using an overlay with mix-blend-mode.</p>
+        <div class="hooks"><span class="hook-badge">afterClone</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/color-tint.js">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- ascii-export -->
+      <div class="plugin-card" data-category="export" data-plugin="ascii-export">
+        <div class="card-top"><div class="plugin-icon">A</div><span class="category-tag">export</span></div>
+        <h3>ascii-export</h3>
+        <p>Adds a toAscii() method that converts captures to ASCII art. Configurable width, charset, and luminance.</p>
+        <div class="hooks"><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/ascii-export.js">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- pdf-image -->
+      <div class="plugin-card" data-category="export" data-plugin="pdf-image">
+        <div class="card-top"><div class="plugin-icon">D</div><span class="category-tag">export</span></div>
+        <h3>pdf-image</h3>
+        <p>Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.</p>
+        <div class="hooks"><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- html-in-canvas -->
+      <div class="plugin-card" data-category="export" data-plugin="html-in-canvas">
+        <div class="card-top"><div class="plugin-icon">H</div><span class="category-tag">export</span></div>
+        <h3>html-in-canvas</h3>
+        <p>Uses the experimental WICG drawElementImage API for direct DOM-to-canvas rendering where supported.</p>
+        <div class="hooks"><span class="hook-badge">beforeRender</span><span class="hook-badge">afterRender</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-in-canvas.js">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
+  <section class="grid-section" id="community">
+    <div class="section-label">Community Plugins</div>
+    <div class="plugin-grid" id="communityGrid">
+      <div id="communityPlaceholder" class="plugin-card" data-category="integration" style="border-style: dashed; opacity: 0.6; cursor: default;">
+        <div class="card-top"><div class="plugin-icon">+</div><span class="category-tag">yours here</span></div>
+        <h3>Your Plugin</h3>
+        <p>Build a plugin and add it here. Just open a PR adding one line to <code style="color:var(--green);font-size:12px;">community-plugins.md</code>.</p>
+        <div class="card-footer"><a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md">How to submit</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <section class="cta-section">
+    <div class="cta-card">
+      <h2>Build a Plugin in 5 Minutes</h2>
+      <p>SnapDOM's hook system gives you full control over every stage of the capture pipeline.</p>
+      <div class="cta-steps">
+        <div class="cta-step"><div class="step-num">01</div><code>npx degit zumerlab/snapdom/packages/plugin-template my-plugin</code><div class="step-label">Clone the template</div></div>
+        <div class="cta-step"><div class="step-num">02</div><code>export function myPlugin() {}</code><div class="step-label">Write your hook logic</div></div>
+        <div class="cta-step"><div class="step-num">03</div><code>Add a line to community-plugins.md</code><div class="step-label">Open a PR to get listed</div></div>
+      </div>
+      <div class="hero-actions">
+        <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-primary">Read the Plugin Spec</a>
+        <a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md" class="btn btn-ghost">Contribution Guide</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Plugin detail modal ── -->
+  <div class="modal-overlay" id="pluginModal">
+    <div class="modal" id="modalContent">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- ── Scripts ── -->
+
+  <nav class="page-nav">
+    <a href="./index.html">Showcase</a>
+    <a href="./plugins.html" class="current">Plugins</a>
+    <a href="./labs.html">Labs</a>
+  </nav>
+
+  <!-- Theme toggle -->
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+
+  <script>
+    async function updateGitHubStars() {
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error('No stars');
+        const data = await res.json();
+        document.getElementById('star-count').textContent = data.stargazers_count;
+      } catch (e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    }
+    updateGitHubStars();
+    setInterval(updateGitHubStars, 60000);
+  </script>
+
+  <!-- Plugin modal data -->
+  <script>
+    const pluginData = {
+      'picture-resolver': {
+        icon: 'P', category: 'capture',
+        desc: 'Resolves lazy-loaded <picture> placeholders. Detects base64 stubs and fetches the real image before capture.',
+        hooks: ['beforeClone', 'afterClone'],
+        options: [
+          ['timeout', 'number', '5000', 'Max ms per image fetch'],
+          ['concurrency', 'number', '4', 'Max parallel fetches'],
+          ['resolveLazySrc', 'boolean', 'true', 'Also resolve data-src/data-srcset patterns'],
+          ['silent', 'boolean', 'false', 'Suppress console warnings'],
+          ['useProxy', 'string', "''", 'CORS proxy URL for cross-origin images'],
+        ],
+        usage: `import { pictureResolver } from '@zumer/snapdom-plugins/picture-resolver';\n\nconst result = await snapdom(el, {\n  plugins: [pictureResolver({ timeout: 3000 })]\n});`
+      },
+      'timestamp-overlay': {
+        icon: 'T', category: 'transform',
+        desc: 'Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.',
+        hooks: ['afterClone'],
+        options: [
+          ['format', 'string | fn', "'datetime'", "'datetime' | 'date' | 'time' | 'iso' | custom function"],
+          ['position', 'string', "'bottom-right'", "'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'"],
+          ['background', 'string', "'rgba(0,0,0,0.6)'", 'Label background color'],
+          ['color', 'string', "'#fff'", 'Label text color'],
+          ['fontSize', 'number', '11', 'Font size in px'],
+        ],
+        usage: `import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';\n\nconst result = await snapdom(el, {\n  plugins: [timestampOverlay({ format: 'iso', position: 'top-left' })]\n});`
+      },
+      'filter': {
+        icon: 'F', category: 'transform',
+        desc: 'Applies CSS filter effects to captures. Ships with presets: grayscale, sepia, blur, vintage, dramatic.',
+        hooks: ['afterClone'],
+        options: [
+          ['filter', 'string', "''", "CSS filter string, e.g. 'grayscale(1) blur(2px)'"],
+          ['preset', 'string', '--', "'grayscale' | 'sepia' | 'blur' | 'invert' | 'vintage' | 'dramatic'"],
+        ],
+        usage: `import { filter } from '@zumer/snapdom-plugins/filter';\n\nconst result = await snapdom(el, {\n  plugins: [filter({ preset: 'vintage' })]\n});`
+      },
+      'replace-text': {
+        icon: 'R', category: 'transform',
+        desc: 'Find-and-replace text in the captured clone. Supports strings and regex patterns.',
+        hooks: ['afterClone'],
+        options: [
+          ['replacements', 'array', '[]', "Array of { find: string|RegExp, replace: string }"],
+        ],
+        usage: `import { replaceText } from '@zumer/snapdom-plugins/replace-text';\n\nconst result = await snapdom(el, {\n  plugins: [replaceText({\n    replacements: [\n      { find: 'secret', replace: '***' },\n      { find: /\\d{4}/g, replace: 'XXXX' }\n    ]\n  })]\n});`
+      },
+      'color-tint': {
+        icon: 'C', category: 'transform',
+        desc: 'Tints the entire capture to a specified color using an overlay with mix-blend-mode.',
+        hooks: ['afterClone'],
+        options: [
+          ['color', 'string', "'red'", 'CSS color value for the tint'],
+          ['opacity', 'number', '1', 'Overlay opacity (0-1)'],
+        ],
+        usage: `import { colorTint } from '@zumer/snapdom-plugins/color-tint';\n\nconst result = await snapdom(el, {\n  plugins: [colorTint({ color: '#e11d48', opacity: 0.8 })]\n});`
+      },
+      'ascii-export': {
+        icon: 'A', category: 'export',
+        desc: 'Adds a toAscii() method that converts captures to ASCII art. Configurable width, charset, and luminance.',
+        hooks: ['defineExports'],
+        options: [
+          ['width', 'number', '80', 'Character width of output'],
+          ['charset', 'string', "' .:-=+*#%@'", 'Characters from lightest to darkest'],
+          ['invert', 'boolean', 'false', 'Invert luminance mapping'],
+        ],
+        usage: `import { asciiExport } from '@zumer/snapdom-plugins/ascii-export';\n\nconst result = await snapdom(el, {\n  plugins: [asciiExport({ width: 120 })]\n});\nconst ascii = await result.toAscii();`
+      },
+      'pdf-image': {
+        icon: 'D', category: 'export',
+        desc: 'Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.',
+        hooks: ['defineExports'],
+        options: [
+          ['orientation', 'string', "'portrait'", "'portrait' | 'landscape'"],
+        ],
+        usage: `import { pdfImage } from '@zumer/snapdom-plugins/pdf-image';\n\nconst result = await snapdom(el, {\n  plugins: [pdfImage({ orientation: 'landscape' })]\n});\nawait result.toPdfImage(); // downloads PDF`
+      },
+      'html-in-canvas': {
+        icon: 'H', category: 'export',
+        desc: 'Uses the experimental WICG drawElementImage API for direct DOM-to-canvas rendering where supported.',
+        hooks: ['beforeRender', 'afterRender', 'defineExports'],
+        options: [],
+        note: 'Requires Chrome with chrome://flags/#canvas-draw-element enabled.',
+        usage: `import { htmlInCanvasPlugin } from '@zumer/snapdom-plugins/html-in-canvas';\n\nconst result = await snapdom(el, {\n  plugins: [htmlInCanvasPlugin()]\n});\nconst canvas = await result.htmlInCanvas({ scale: 2 });`
+      },
+    };
+
+    const categoryColors = {
+      capture: { bg: 'rgba(34,211,238,0.12)', fg: 'var(--cyan)' },
+      transform: { bg: 'rgba(251,191,36,0.12)', fg: 'var(--amber)' },
+      export: { bg: 'rgba(52,211,153,0.12)', fg: 'var(--green)' },
+      integration: { bg: 'rgba(251,113,133,0.12)', fg: 'var(--rose)' },
+      utility: { bg: 'rgba(99,102,241,0.12)', fg: 'var(--accent-light)' },
+    };
+
+    function openPluginModal(pluginName) {
+      const d = pluginData[pluginName];
+      if (!d) return;
+      const c = categoryColors[d.category] || categoryColors.utility;
+      const modal = document.getElementById('pluginModal');
+      const body = document.getElementById('modalBody');
+
+      let optsHtml = '';
+      if (d.options.length) {
+        optsHtml = `<h4>Options</h4>
+          <table class="opts-table">
+            <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            ${d.options.map(o => `<tr><td>${o[0]}</td><td>${o[1]}</td><td>${o[2]}</td><td>${o[3]}</td></tr>`).join('')}
+          </table>`;
+      }
+
+      let noteHtml = d.note ? `<h4>Requirements</h4><p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">${d.note}</p>` : '';
+
+      body.innerHTML = `
+        <div class="modal-icon" style="background:${c.bg};color:${c.fg};">${d.icon}</div>
+        <h2>${pluginName}</h2>
+        <p class="modal-desc">${d.desc}</p>
+        <div class="modal-hooks">${d.hooks.map(h => `<span class="hook-badge">${h}</span>`).join('')}</div>
+        ${noteHtml}
+        ${optsHtml}
+        <h4>Usage</h4>
+        <div class="modal-code-wrap">
+          <button class="copy-btn" data-copy-text="${d.usage.replace(/"/g, '&quot;')}">Copy</button>
+          <pre class="card-usage">${d.usage}</pre>
+        </div>`;
+
+      modal.classList.add('open');
+    }
+
+    // Open modal on card click
+    document.querySelectorAll('.plugin-card[data-plugin]').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('a')) return;
+        openPluginModal(card.dataset.plugin);
+      });
+    });
+
+    // Close modal
+    document.getElementById('modalClose').addEventListener('click', () => {
+      document.getElementById('pluginModal').classList.remove('open');
+    });
+    document.getElementById('pluginModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') document.getElementById('pluginModal').classList.remove('open');
+    });
+  </script>
+
+  <!-- Copy buttons -->
+  <script>
+    function doCopy(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.copy-btn');
+      if (!btn) return;
+
+      // Direct text attribute
+      if (btn.dataset.copyText) {
+        doCopy(btn.dataset.copyText, btn);
+        return;
+      }
+
+      // Copy from element id
+      const targetId = btn.dataset.copy;
+      if (targetId) {
+        const el = document.getElementById(targetId);
+        if (el) doCopy(el.textContent, btn);
+      }
+    });
+  </script>
+
+  <!-- Filter bar -->
+  <script>
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const f = btn.dataset.filter;
+        document.querySelectorAll('.plugin-card').forEach(card => {
+          card.style.display = (f === 'all' || card.dataset.category === f) ? '' : 'none';
+        });
+      });
+    });
+  </script>
+
+  <!-- Community plugins from .md -->
+  <script>
+    (async function loadCommunityPlugins() {
+      try {
+        const res = await fetch('community-plugins.md');
+        if (!res.ok) return;
+        const text = await res.text();
+        const lines = text.split('\n').filter(l => l.startsWith('|') && !l.startsWith('| name') && !l.startsWith('|---'));
+        if (!lines.length) return;
+
+        const grid = document.getElementById('communityGrid');
+        const placeholder = document.getElementById('communityPlaceholder');
+        const categoryIcons = { capture: 'C', transform: 'T', export: 'E', integration: 'I', utility: 'U' };
+
+        lines.forEach(line => {
+          const cols = line.split('|').map(c => c.trim()).filter(Boolean);
+          if (cols.length < 6) return;
+          const [name, desc, category, npm, github, author] = cols;
+
+          const card = document.createElement('div');
+          card.className = 'plugin-card';
+          card.dataset.category = category;
+          card.style.cursor = 'default';
+          const icon = categoryIcons[category] || '?';
+          card.innerHTML = `
+            <div class="card-top"><div class="plugin-icon">${icon}</div><span class="category-tag">${category}</span></div>
+            <h3>${name}</h3>
+            <p>${desc}</p>
+            <div class="card-footer">
+              <span class="community-badge">community</span>
+              ${npm ? `<a href="https://www.npmjs.com/package/${npm}" target="_blank">npm</a>` : ''}
+              ${github ? `<a href="${github}" target="_blank">GitHub</a>` : ''}
+              <span style="margin-left:auto;font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">${author}</span>
+            </div>`;
+
+          grid.insertBefore(card, placeholder);
+        });
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Playground -->
+  <script type="module">
+    import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+
+    // ── Plugin factories ──
+    function filterPlugin(options = {}) {
+      const presets = {
+        grayscale: 'grayscale(1)', sepia: 'sepia(1)', blur: 'blur(2px)',
+        vintage: 'sepia(0.4) contrast(1.1) brightness(0.9) saturate(0.8)',
+        dramatic: 'contrast(1.4) brightness(0.85) saturate(1.3)',
+      };
+      const css = options.preset ? (presets[options.preset] || '') : (options.filter || '');
+      return { name: 'filter', afterClone(ctx) { if (css) ctx.clone.style.filter = css; } };
+    }
+
+    function timestampOverlayPlugin(options = {}) {
+      const { format = 'datetime', position = 'bottom-right', background = 'rgba(0,0,0,0.6)', color = '#fff', fontSize = 11 } = options;
+      const posMap = { 'top-left': 'top:6px;left:6px', 'top-right': 'top:6px;right:6px', 'bottom-left': 'bottom:6px;left:6px', 'bottom-right': 'bottom:6px;right:6px' };
+      function getTs() {
+        const now = new Date();
+        switch (format) {
+          case 'date': return now.toLocaleDateString();
+          case 'time': return now.toLocaleTimeString();
+          case 'iso': return now.toISOString();
+          default: return now.toLocaleString();
+        }
+      }
+      return {
+        name: 'timestamp-overlay',
+        afterClone(ctx) {
+          const label = document.createElement('div');
+          label.textContent = getTs();
+          label.style.cssText = `position:absolute;${posMap[position] || posMap['bottom-right']};background:${background};color:${color};font-size:${fontSize}px;padding:2px 6px;border-radius:3px;font-family:monospace;pointer-events:none;z-index:999999;line-height:1.4;`;
+          ctx.clone.style.position = 'relative';
+          ctx.clone.appendChild(label);
+        }
+      };
+    }
+
+    function replaceTextPlugin(options = {}) {
+      const { replacements = [] } = options;
+      function walkText(node, fn) {
+        if (node.nodeType === 3) { fn(node); return; }
+        for (const c of node.childNodes) walkText(c, fn);
+      }
+      return {
+        name: 'replace-text',
+        afterClone(ctx) {
+          if (!replacements.length) return;
+          walkText(ctx.clone, (tn) => {
+            let t = tn.textContent;
+            for (const { find, replace } of replacements) {
+              t = find instanceof RegExp ? t.replace(find, replace) : t.split(find).join(replace);
+            }
+            tn.textContent = t;
+          });
+        }
+      };
+    }
+
+    // Exact same pattern as docs/index.html
+    function canvasToAsciiHTML(canvas, opts) {
+      const { cols, contrast, invert, charAspect } = opts;
+      const charset = '@%#WMNHQ$OC?7>!1=+;:~-,._  ';
+      const rampLen = charset.length;
+      const W = canvas.width|0, H = canvas.height|0;
+      const g = canvas.getContext('2d', { willReadFrequently: true });
+      const data = g.getImageData(0,0,W,H).data;
+      const blockW = Math.max(1, (W/cols)|0);
+      const blockH = Math.max(1, (blockW*charAspect)|0);
+      const rows = Math.max(1, (H/blockH)|0);
+      let out = '<pre style="margin:0;font:7px/1 monospace;white-space:pre;">';
+      for (let r=0;r<rows;r++){
+        const y0=r*blockH, y1=Math.min(H,y0+blockH);
+        for (let c=0;c<cols;c++){
+          const x0=c*blockW, x1=Math.min(W,x0+blockW);
+          let sumR=0,sumG=0,sumB=0,sumL=0,count=0;
+          for (let y=y0;y<y1;y++){
+            const rowOff = y*W*4;
+            for (let x=x0;x<x1;x++){
+              const i = rowOff + (x<<2);
+              const R=data[i], G=data[i+1], B=data[i+2];
+              sumR+=R; sumG+=G; sumB+=B; sumL += 0.2126*R + 0.7152*G + 0.0722*B; count++;
+            }
+          }
+          const inv = count?1/count:0;
+          const Rm=(sumR*inv)|0, Gm=(sumG*inv)|0, Bm=(sumB*inv)|0;
+          let norm = (sumL*inv)/255;
+          norm = (contrast + 1) * (norm - 0.5) + 0.5;
+          if (norm<0) norm=0; else if (norm>1) norm=1;
+          const idx = invert ? ((norm*(rampLen-1))+.5)|0 : (((1-norm)*(rampLen-1))+.5)|0;
+          const ch = charset[idx];
+          const safe = ch===' ' ? '&nbsp;' : (ch==='&'?'&amp;':ch==='<'?'&lt;':ch==='>'?'&gt;':ch);
+          out += `<span style="color:rgba(${Rm},${Gm},${Bm},1)">${safe}</span>`;
+        }
+        if (r<rows-1) out += '\n';
+      }
+      out += '</pre>';
+      return out;
+    }
+
+    function asciiExportPlugin() {
+      return {
+        name: 'ascii-export',
+        async defineExports(ctx) {
+          async function ascii(_ctx, opts = {}) {
+            const options = { cols: 120, contrast: 0.8, invert: false, charAspect: 2.0, ...opts };
+            const canvas = await ctx.exports.canvas();
+            return canvasToAsciiHTML(canvas, options);
+          }
+          return { ascii };
+        }
+      };
+    }
+
+    // PDF image plugin — renders the capture as a PNG inside a downloadable PDF
+    function pdfImagePlugin(options = {}) {
+      const { orientation = 'portrait' } = options;
+      return {
+        name: 'pdf-image',
+        defineExports() {
+          return {
+            pdfImage: async (ctx) => {
+              const img = new Image();
+              img.src = ctx.export.url;
+              await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+
+              const isLandscape = orientation === 'landscape';
+              const pageW = isLandscape ? 841.89 : 595.28; // A4 in points
+              const pageH = isLandscape ? 595.28 : 841.89;
+              const margin = 40;
+              const maxW = pageW - margin * 2;
+              const maxH = pageH - margin * 2;
+              const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+              const w = img.width * scale;
+              const h = img.height * scale;
+              const x = (pageW - w) / 2;
+              const y = (pageH - h) / 2;
+
+              // Get image as JPEG data
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width; canvas.height = img.height;
+              canvas.getContext('2d').drawImage(img, 0, 0);
+              const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+              const jpegBase64 = jpegDataUrl.split(',')[1];
+              const jpegBytes = atob(jpegBase64);
+              const jpegLen = jpegBytes.length;
+
+              // Build minimal PDF
+              const offsets = [];
+              let pdf = '';
+              function obj(content) {
+                offsets.push(pdf.length);
+                pdf += `${offsets.length} 0 obj\n${content}\nendobj\n`;
+              }
+              obj(`<< /Type /Catalog /Pages 2 0 R >>`); // 1
+              obj(`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`); // 2
+              obj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 5 0 R /Resources << /XObject << /Img 4 0 R >> >> >>`); // 3
+
+              // Image XObject
+              const imgStream = `<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegLen} >>\nstream\n`;
+              offsets.push(pdf.length);
+              pdf += `4 0 obj\n${imgStream}`;
+              // We'll build as array buffer at the end for binary JPEG
+
+              const contentStream = `q ${w} 0 0 ${h} ${x} ${y} cm /Img Do Q`;
+              const contentObj = `<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`;
+
+              // Build final PDF as binary
+              const enc = new TextEncoder();
+              const header = enc.encode('%PDF-1.4\n');
+
+              // Obj 1-3
+              let textPart = '';
+              const realOffsets = [];
+              textPart += `%PDF-1.4\n`;
+              realOffsets.push(textPart.length);
+              textPart += `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`;
+              realOffsets.push(textPart.length);
+              textPart += `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`;
+              realOffsets.push(textPart.length);
+              textPart += `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 5 0 R /Resources << /XObject << /Img 4 0 R >> >> >>\nendobj\n`;
+
+              // Obj 4 — image with binary stream
+              realOffsets.push(textPart.length);
+              const imgHeader = `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegLen} >>\nstream\n`;
+
+              const imgHeaderBytes = enc.encode(imgHeader);
+              const preImgBytes = enc.encode(textPart);
+
+              const jpegBuf = new Uint8Array(jpegLen);
+              for (let i = 0; i < jpegLen; i++) jpegBuf[i] = jpegBytes.charCodeAt(i);
+
+              const afterImg = `\nendstream\nendobj\n`;
+              realOffsets.push(preImgBytes.length + imgHeaderBytes.length + jpegLen + afterImg.length); // offset for obj 5
+
+              const contentStr = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Img Do Q`;
+              const obj5 = `5 0 obj\n<< /Length ${contentStr.length} >>\nstream\n${contentStr}\nendstream\nendobj\n`;
+
+              // Fix offset 5
+              realOffsets[4] = preImgBytes.length + imgHeaderBytes.length + jpegLen + enc.encode(afterImg).length;
+
+              const afterImgBytes = enc.encode(afterImg);
+              const obj5Bytes = enc.encode(obj5);
+
+              // xref
+              const xrefOffset = preImgBytes.length + imgHeaderBytes.length + jpegLen + afterImgBytes.length + obj5Bytes.length;
+              let xref = `xref\n0 6\n0000000000 65535 f \n`;
+              xref += `${String(realOffsets[0]).padStart(10,'0')} 00000 n \n`;
+              xref += `${String(realOffsets[1]).padStart(10,'0')} 00000 n \n`;
+              xref += `${String(realOffsets[2]).padStart(10,'0')} 00000 n \n`;
+              xref += `${String(realOffsets[3]).padStart(10,'0')} 00000 n \n`;
+              xref += `${String(realOffsets[4]).padStart(10,'0')} 00000 n \n`;
+              xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+              const xrefBytes = enc.encode(xref);
+
+              // Combine all
+              const totalLen = preImgBytes.length + imgHeaderBytes.length + jpegLen + afterImgBytes.length + obj5Bytes.length + xrefBytes.length;
+              const pdfBuf = new Uint8Array(totalLen);
+              let pos = 0;
+              pdfBuf.set(preImgBytes, pos); pos += preImgBytes.length;
+              pdfBuf.set(imgHeaderBytes, pos); pos += imgHeaderBytes.length;
+              pdfBuf.set(jpegBuf, pos); pos += jpegLen;
+              pdfBuf.set(afterImgBytes, pos); pos += afterImgBytes.length;
+              pdfBuf.set(obj5Bytes, pos); pos += obj5Bytes.length;
+              pdfBuf.set(xrefBytes, pos);
+
+              const blob = new Blob([pdfBuf], { type: 'application/pdf' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'capture.pdf';
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(url), 5000);
+              return url;
+            }
+          };
+        }
+      };
+    }
+
+    // ── DOM refs ──
+    const $ = id => document.getElementById(id);
+    const pgTarget = $('pgTarget');
+    const pgOutput = $('pgOutput');
+    const pgStatus = $('pgStatus');
+    const pgCode   = $('pgCode');
+    const pgBtn    = $('pgCapture');
+
+    // Checkbox toggle styling + ascii/pdf mutual exclusion
+    function deactivate(id) {
+      const chk = $(id);
+      if (chk && chk.checked) {
+        chk.checked = false;
+        chk.closest('.pg-plugin').classList.remove('active');
+      }
+    }
+    document.querySelectorAll('.pg-plugin-header').forEach(header => {
+      const chk = header.querySelector('input[type="checkbox"]');
+      const card = header.closest('.pg-plugin');
+      const toggle = () => {
+        card.classList.toggle('active', chk.checked);
+        if (chk.checked && chk.id === 'pgChkAscii') deactivate('pgChkPdf');
+        if (chk.checked && chk.id === 'pgChkPdf') deactivate('pgChkAscii');
+        updateCode();
+      };
+      chk.addEventListener('change', toggle);
+      header.addEventListener('click', (e) => { if (e.target !== chk) { chk.checked = !chk.checked; toggle(); } });
+    });
+
+    // Update code on option change
+    document.querySelectorAll('.pg-plugin-opts select, .pg-plugin-opts input').forEach(el => {
+      el.addEventListener('change', updateCode);
+      el.addEventListener('input', updateCode);
+    });
+
+    function getActivePlugins() {
+      const plugins = [];
+      const imports = [];
+      const calls = [];
+      let hasAscii = false;
+      let hasPdf = false;
+
+      if ($('pgChkFilter').checked) {
+        const preset = $('pgFilterPreset').value;
+        plugins.push(filterPlugin({ preset }));
+        imports.push(`import { filter } from '@zumer/snapdom-plugins/filter';`);
+        calls.push(`filter({ preset: '${preset}' })`);
+      }
+      if ($('pgChkTimestamp').checked) {
+        const position = $('pgTsPos').value;
+        const format = $('pgTsFmt').value;
+        const bg = $('pgTsBg').value;
+        const bgRgba = `rgba(${parseInt(bg.slice(1,3),16)},${parseInt(bg.slice(3,5),16)},${parseInt(bg.slice(5,7),16)},0.6)`;
+        plugins.push(timestampOverlayPlugin({ position, format, background: bgRgba }));
+        imports.push(`import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';`);
+        const tsOpts = [];
+        if (format !== 'datetime') tsOpts.push(`format: '${format}'`);
+        if (position !== 'bottom-right') tsOpts.push(`position: '${position}'`);
+        if (bg !== '#000000') tsOpts.push(`background: '${bgRgba}'`);
+        calls.push(tsOpts.length ? `timestampOverlay({ ${tsOpts.join(', ')} })` : `timestampOverlay()`);
+      }
+      if ($('pgChkReplace').checked) {
+        const find = $('pgReplFind').value;
+        const replace = $('pgReplWith').value;
+        if (find) {
+          plugins.push(replaceTextPlugin({ replacements: [{ find, replace }] }));
+          imports.push(`import { replaceText } from '@zumer/snapdom-plugins/replace-text';`);
+          calls.push(`replaceText({ replacements: [{ find: '${find}', replace: '${replace}' }] })`);
+        }
+      }
+      if ($('pgChkAscii').checked) {
+        plugins.push(asciiExportPlugin());
+        imports.push(`import { asciiExport } from '@zumer/snapdom-plugins/ascii-export';`);
+        calls.push(`asciiExport()`);
+        hasAscii = true;
+      }
+      if ($('pgChkPdf').checked) {
+        const orient = $('pgPdfOrient').value;
+        plugins.push(pdfImagePlugin({ orientation: orient }));
+        imports.push(`// pdf-image is a demo plugin (code in playground)`);
+        calls.push(orient !== 'portrait' ? `pdfImage({ orientation: '${orient}' })` : `pdfImage()`);
+        hasPdf = true;
+      }
+      return { plugins, imports, calls, hasAscii, hasPdf };
+    }
+
+    function updateCode() {
+      const { imports, calls, hasAscii, hasPdf } = getActivePlugins();
+      if (!calls.length) {
+        pgCode.textContent = '// Select plugins to see the code';
+        return;
+      }
+      let code =
+        `import { snapdom } from '@zumer/snapdom';\n` +
+        imports.join('\n') + '\n\n' +
+        `const result = await snapdom(element, {\n` +
+        `  plugins: [\n` +
+        calls.map(c => `    ${c}`).join(',\n') + '\n' +
+        `  ]\n` +
+        `});\n` +
+        `const png = await result.toPng();`;
+      if (hasAscii) code += `\nconst ascii = await result.toAscii();`;
+      if (hasPdf) code += `\nawait result.toPdfImage(); // downloads PDF`;
+      pgCode.textContent = code;
+    }
+
+    // Capture
+    pgBtn.addEventListener('click', async () => {
+      pgBtn.disabled = true;
+      pgStatus.textContent = 'Capturing...';
+      try {
+        const t0 = performance.now();
+        const { plugins, calls, hasAscii, hasPdf } = getActivePlugins();
+        const result = await snapdom(pgTarget, { plugins });
+        pgOutput.innerHTML = '';
+
+        if (hasAscii) {
+          // ASCII mode — call toAscii directly (same pattern as docs/index.html)
+          const cols = parseInt($('pgAsciiW').value) || 100;
+          const asciiHTML = await result.toAscii({ cols, invert: true });
+          pgOutput.innerHTML = asciiHTML;
+        } else {
+          // Normal mode — show PNG
+          const img = await result.toPng();
+          img.alt = 'Captured output';
+          pgOutput.appendChild(img);
+        }
+
+        if (hasPdf && result.toPdfImage) {
+          await result.toPdfImage();
+        }
+
+        const ms = (performance.now() - t0).toFixed(0);
+        pgStatus.textContent = `Captured in ${ms}ms` + (calls.length ? ` with ${calls.length} plugin${calls.length > 1 ? 's' : ''}` : '') + (hasPdf ? ' — PDF downloaded' : '');
+      } catch (err) {
+        pgStatus.textContent = `Error: ${err.message}`;
+        console.error(err);
+      } finally {
+        pgBtn.disabled = false;
+      }
+    });
+
+    updateCode();
+  </script>
+</body>
+</html>

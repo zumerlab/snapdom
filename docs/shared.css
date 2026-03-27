@@ -1,0 +1,92 @@
+/* ═══════════════════════════════════════════════
+   shared.css — Common styles for all SnapDOM docs
+   ═══════════════════════════════════════════════ */
+
+/* ── Theme toggle ── */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  background: var(--surface, var(--sd-surface, rgba(255,255,255,0.92)));
+  border: 1px solid var(--border, var(--sd-border, rgba(99,102,241,0.2)));
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text-muted, var(--sd-text-muted, #8888a0));
+  font-size: 18px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+.theme-toggle:hover {
+  border-color: var(--accent, var(--sd-accent, #6366f1));
+  color: var(--text, var(--sd-text, #e8e8f0));
+}
+
+/* ── GitHub badge ── */
+.github-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text, var(--sd-text, #e8e8f0));
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--surface, var(--sd-surface, rgba(255,255,255,0.92)));
+  padding: 6px 14px;
+  border-radius: 100px;
+  border: 1px solid var(--border, var(--sd-border, rgba(99,102,241,0.2)));
+  transition: all 0.2s;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+.github-badge:hover {
+  border-color: var(--accent, var(--sd-accent, #6366f1));
+  transform: translateY(-1px);
+}
+.github-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(251,191,36,0.15);
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-weight: 800;
+  color: var(--amber, var(--sd-star, #fbbf24));
+  font-size: 12px;
+}
+.github-stars i { color: var(--amber, var(--sd-star, #fbbf24)); font-size: 11px; }
+
+/* ── Page nav ── */
+.page-nav {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9998;
+  display: flex;
+  gap: 6px;
+  background: var(--surface, var(--sd-surface-elevated, #fff));
+  border: 1px solid var(--border, var(--sd-border, rgba(99,102,241,0.2)));
+  border-radius: 100px;
+  padding: 6px 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+.page-nav a {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  color: var(--text-muted, var(--sd-text-muted, #8888a0));
+  text-decoration: none;
+  padding: 4px 12px;
+  border-radius: 100px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+.page-nav a:hover {
+  color: var(--text, var(--sd-text, #e8e8f0));
+  background: rgba(99,102,241,0.1);
+}
+.page-nav a.current {
+  color: var(--accent-light, var(--sd-accent-hover, #818cf8));
+  background: rgba(99,102,241,0.15);
+}

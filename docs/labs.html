@@ -3,614 +3,323 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>snapDOM Labs — Plugins Playground & html-in-canvas Demo</title>
-  <meta name="description" content="SnapDOM Labs: Dog ID Card plugin demo (replace text, CSS filters, timestamp overlay) and html-in-canvas capture. Try per-capture plugin composition."/>
+  <title>snapDOM Labs — html-in-canvas Experimental Demo</title>
+  <meta name="description" content="SnapDOM Labs: html-in-canvas capture using the experimental WICG drawElementImage API."/>
   <meta name="robots" content="index, follow"/>
   <link rel="canonical" href="https://snapdom.dev/labs.html"/>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./shared.css">
   <style>
-    :root{
-      --sd-primary:#0f172a;
-      --sd-primary-light:#1e293b;
-      --sd-accent:#6366f1;
-      --sd-gradient:linear-gradient(90deg,#f97316 0%,#ec4899 100%);
-      --sd-surface:rgba(255,255,255,.92);
-      --sd-text:#0f172a;
-      --sd-text-muted:#475569;
-      --sd-border:rgba(99,102,241,.2);
-      --sd-shadow:0 4px 24px rgba(15,23,42,.08);
-      --sd-star:#fbbf24;
-      --sd-radius:14px;
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface-hover: #1a1a28;
+      --border: #2a2a3a;
+      --border-glow: #4f46e5;
+      --text: #e8e8f0;
+      --text-muted: #8888a0;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --cyan: #22d3ee;
+      --code-bg: #0d0d14;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:'Segoe UI','Roboto',-apple-system,sans-serif;
-      background:linear-gradient(160deg,#f0f4ff 0%,#e8ecff 50%,#eef2ff 100%);
-      min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:1.5rem;
-      -webkit-font-smoothing:antialiased;
+    html.light {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface-hover: #f0f0f5;
+      --border: #d8d8e0;
+      --border-glow: #4f46e5;
+      --text: #1a1a2e;
+      --text-muted: #6b6b80;
+      --accent: #4f46e5;
+      --accent-light: #6366f1;
+      --green: #059669;
+      --amber: #d97706;
+      --rose: #e11d48;
+      --cyan: #0891b2;
+      --code-bg: #f0f0f5;
     }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0; }
 
-    .hero-block{
-      width:100%; max-width:720px; text-align:center;
-      padding:2rem 1.25rem 1.5rem; margin-bottom:0.5rem;
-    }
-    .hero-block h1{
-      color:var(--sd-primary); margin:0 0 .35rem; font-size:clamp(1.5rem,4vw,2.25rem);
-      font-weight:800; letter-spacing:-.02em;
-    }
-    .hero-tagline{font-size:1rem; color:var(--sd-text-muted); margin:0 auto 1rem; max-width:400px}
-    .nav-section{margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--sd-border)}
-    .back-home{
-      display:inline-block; text-decoration:none; color:var(--sd-accent); font-weight:600;
-      margin-bottom:.75rem; font-size:.9rem;
-    }
-    .back-home:hover{text-decoration:underline}
-    .nav-toggle{
-      border:0; background:var(--sd-primary); color:#fff; border-radius:10px;
-      padding:.5rem 1rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem;
-    }
-    .nav-icon{display:inline-block; width:1.15rem; height:2px; background:currentColor; border-radius:2px; position:relative}
-    .nav-icon::before,.nav-icon::after{content:""; position:absolute; left:0; right:0; height:2px; background:currentColor; border-radius:2px}
-    .nav-icon::before{top:-6px}.nav-icon::after{top:6px}
-    .nav-collapsible{overflow:hidden; max-height:0; transition:max-height .3s ease; border-radius:10px}
-    .nav-collapsible.open{
-      max-height:75vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
-      padding:1rem 0 .5rem; margin-top:.75rem; border-top:1px solid var(--sd-border);
-    }
-    nav.demo-menu{display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center}
-    nav.demo-menu a{
-      color:var(--sd-primary); text-decoration:none; font-weight:600; font-size:.9rem;
-      padding:.45rem .85rem; border-radius:10px; transition:background .2s,color .2s;
-    }
-    nav.demo-menu a:hover{background:rgba(99,102,241,.1); color:var(--sd-accent)}
-    section a{color:var(--sd-accent); text-decoration:none; font-weight:600}
-    section a:hover{text-decoration:underline}
+    /* Theme toggle, GitHub badge, Page nav → shared.css */
 
-    .github-badge{
-      display:inline-flex; align-items:center; gap:.5rem; text-decoration:none; color:var(--sd-primary);
-      font-weight:700; font-size:.9rem; background:#fff; padding:.4rem .8rem; border-radius:999px;
-      box-shadow:var(--sd-shadow); border:1px solid var(--sd-border); transition:transform .2s,box-shadow .2s;
-    }
-    .github-badge:hover{transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,.15)}
-    #github-stars{display:inline-flex; align-items:center; gap:.3rem; background:linear-gradient(135deg,#fef3c7,#fde68a); padding:.2rem .5rem; border-radius:999px; font-weight:800; color:var(--sd-primary)}
-    #github-stars i{color:var(--sd-star)}
+    /* ── Hero ── */
+    .hero { padding: 80px 24px 40px; text-align: center; position: relative; overflow: hidden; width: 100%; }
+    .hero::before { content: ''; position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%); pointer-events: none; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border: 1px solid var(--border); border-radius: 100px; font-size: 13px; color: var(--accent-light); font-family: var(--font-mono); margin-bottom: 24px; background: rgba(99,102,241,0.06); }
+    .hero-badge .dot { width: 6px; height: 6px; background: var(--amber); border-radius: 50%; animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .hero h1 { font-size: clamp(32px, 5vw, 52px); font-weight: 700; letter-spacing: -2px; line-height: 1.1; margin-bottom: 12px; }
+    .hero h1 .accent { background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { color: var(--text-muted); font-size: 16px; max-width: 480px; margin: 0 auto 24px; line-height: 1.6; }
 
-    main{width:100%; max-width:720px; display:grid; gap:1.5rem; margin-top:.5rem}
+    .github-badge { margin-bottom: 20px; }
 
-    .card{
-      width:min(100%,720px);
-      position:relative; border-radius:var(--sd-radius); overflow:hidden;
-      background:radial-gradient(140% 140% at 20% 20%,#2a2f3a 0%,#14161a 55%,#0d0f12 100%);
-      color:#fff; box-shadow:0 12px 32px rgba(0,0,0,.2);
-      display:grid; grid-template-columns:1.05fr 2fr; gap:0; margin:0 auto;
-      aspect-ratio:16/9;
-    }
-    @media (max-width:760px){ .card{ grid-template-columns:1fr; aspect-ratio:auto; } }
-    .photo{ display:grid; place-items:center; padding:18px;
-      background: radial-gradient(120% 120% at 35% 20%, #344055 0%, #1b2232 55%, #0f1422 100%);
-    }
-    .avatar{
-      width:min(60vmin, 240px); height:min(60vmin, 240px); max-width:240px; max-height:240px;
-      border-radius:18px; display:grid; place-items:center; background:#0004; border:1px solid #ffffff22;
-      box-shadow:0 12px 28px rgba(0,0,0,.35); font-size:clamp(64px,14vw,140px);
-    }
-    .badge{
-      position:absolute; top:12px; left:12px; background:#ffcc00; color:#1c1c1c; font-weight:900;
-      padding:.28rem .6rem; border-radius:999px; letter-spacing:.4px; box-shadow:0 6px 16px rgba(0,0,0,.25);
-    }
-    .content{ padding:18px 18px 22px; display:grid; gap:10px; align-content:center }
-    .title{ display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap }
-    .title h2{ margin:0; font-size:clamp(22px,4vw,32px) }
-    .type{ font:800 12px/1 system-ui,-apple-system,Segoe UI,Roboto,Arial; padding:.25rem .5rem; border-radius:8px;
-      background:#ffffff12; color:#cfe3ff; border:1px solid #ffffff20 }
-    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px }
-    @media (max-width:760px){ .grid{ grid-template-columns:1fr } }
-    .field{ background:#0f173b; border:1px solid #243079; border-radius:12px; padding:10px; display:grid; gap:6px; min-height:64px }
-    .label{ font-size:.8rem; opacity:.9 }
-    .val{ font-weight:800; letter-spacing:.2px; font-size:clamp(14px,3.6vw,18px) }
-    .owner{ display:flex; align-items:center; gap:.6rem }
-    .owner .dot{ width:10px; height:10px; border-radius:50%; background:#4f7cff; box-shadow:0 0 0 2px #1b255a }
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: var(--font-body); text-decoration: none; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent-light); }
 
-    .panel{
-      background:var(--sd-surface); border-radius:var(--sd-radius); padding:1.25rem;
-      box-shadow:var(--sd-shadow); border:1px solid var(--sd-border);
-      display:grid; gap:1rem;
-    }
-    .row{display:flex; flex-wrap:wrap; gap:.6rem; align-items:center}
-    .control{display:grid; gap:6px; min-width:220px; flex:1}
-    .control input[type="text"], .control select{
-      width:100%; padding:.55rem .6rem; border-radius:10px; border:1px solid #c9d8ff; background:#fff; color:#1a2233
-    }
-    button{
-      appearance:none; border:0; border-radius:12px; padding:.55rem 1.25rem; font-weight:700;
-      background:var(--sd-gradient); color:#fff; cursor:pointer; font-size:.95rem;
-      box-shadow:0 2px 12px rgba(249,115,22,.35); transition:transform .2s,box-shadow .2s
-    }
-    button:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 4px 20px rgba(249,115,22,.45) }
+    /* ── Section label ── */
+    .section-label { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-    .output{display:flex;justify-content:center;align-items:center;min-height:160px;border:1px solid rgba(20,67,51,.18);border-radius:12px;padding:10px;background:rgba(0,0,0,.04)}
-    .output img{max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
+    /* ── Panel ── */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; max-width: 720px; width: 100%; margin: 0 auto; }
+    .panel h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; font-family: var(--font-mono); }
+    .panel p { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+    .panel code { font-family: var(--font-mono); font-size: 12px; color: var(--amber); background: rgba(251,191,36,0.1); padding: 2px 6px; border-radius: 4px; }
 
-    /* Anchor scroll offset for sticky header */
-    [id^="demo-"]{scroll-margin-top:1.5rem}
+    /* ── Demo target ── */
+    .demo-target { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 20px; border-radius: 12px; margin: 16px 0; }
+    .demo-target strong { font-size: 16px; }
+    .demo-target p { color: rgba(255,255,255,0.9); margin: 8px 0 0; }
 
-    @media (max-width:600px){
-      body{padding:1rem .75rem}
-      .hero-block{padding:1.25rem 1rem}
-      .nav-toggle{display:inline-flex}
-      nav.demo-menu{display:grid; grid-template-columns:1fr 1fr; gap:.4rem}
-      #repo-link{display:none}
-      .card{grid-template-columns:1fr; aspect-ratio:auto}
+    /* ── Buttons row ── */
+    .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+
+    /* ── Output ── */
+    .output-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+    .output-col label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); display: block; margin-bottom: 8px; }
+    .output-box { min-height: 100px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; align-items: flex-start; justify-content: center; color: var(--text-muted); font-size: 13px; overflow: hidden; }
+    .output-box img { max-width: 100%; height: auto; border-radius: 8px; object-fit: contain; }
+    .status-msg { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .hero { padding: 60px 20px 30px; }
+      .panel { padding: 20px; }
+      .output-row { grid-template-columns: 1fr; }
     }
-    @media (min-width:601px){
-      .nav-collapsible{max-height:none!important; padding:0; margin-top:.75rem; border-top:1px solid var(--sd-border)}
-      .nav-toggle{display:none!important}
-    }
-    [id^="demo-"]{scroll-margin-top:5rem}
   </style>
 </head>
 <body>
-  <header class="hero-block">
-    <h1>SnapDOM Labs</h1>
-    <p class="hero-tagline">Plugins playground &amp; experimental demos</p>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Experimental</div>
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener">
       <i class="fab fa-github"></i>
-      <span id="repo-link">zumerlab/snapdom</span>
-      <span id="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
     </a>
-    <div class="nav-section">
-      <a class="back-home" href="./index.html">← Back to showcase</a>
-      <button id="menu-toggle" class="nav-toggle" aria-expanded="false" aria-controls="demo-menu">
-        <span class="nav-icon" aria-hidden="true"></span>
-        Jump to demo
-      </button>
-      <div id="menu-container" class="nav-collapsible">
-        <nav id="demo-menu" class="demo-menu">
-          <a href="#demo-plugins">Dog ID Card (Plugins)</a>
-          <a href="#demo-htmlcanvas">html-in-canvas</a>
-        </nav>
-      </div>
-    </div>
-  </header>
+    <h1><span class="accent">SnapDOM</span> Labs</h1>
+    <p>Experimental features and bleeding-edge browser APIs.</p>
+  </section>
 
-  <main>
-    <!-- Demo 1: Plugins Playground -->
-    <section id="demo-plugins" class="panel" style="padding:1.5rem; margin-bottom:2rem">
-      <h3 style="text-align:center; margin-top:0">Dog ID Card (Plugins Playground)</h3>
-      <p style="text-align:center; font-size:0.95rem; color:var(--muted); max-width:560px; margin:0.5rem auto 1rem">
-        SnapDOM plugins let you modify the cloned element before render (text replacement, filters, overlays) and add custom exports like <code>toPdf()</code> or <code>toAscii()</code>.
-        <a href="https://github.com/zumerlab/snapdom?tab=readme-ov-file#plugins-beta" target="_blank">Create your own plugin →</a>
-      </p>
-    <!-- Dog ID Card -->
-    <section class="card" id="dog-card">
-      <div class="badge">OFFICIAL • Dog ID</div>
-      <div class="photo">
-        <div class="avatar" aria-label="Dog avatar">🐶</div>
-      </div>
-      <div class="content">
-        <div class="title">
-          <h2 id="dog-name">FRIDA</h2>
-          <span class="type">Registered Dog</span>
-        </div>
-
-        <div class="grid">
-          <div class="field">
-            <div class="label">Breed</div>
-            <div class="val" id="dog-breed">Border Collie (Dog)</div>
-          </div>
-          <div class="field">
-            <div class="label">Age</div>
-            <div class="val" id="dog-age">2 years (Dog adult)</div>
-          </div>
-          <div class="field">
-            <div class="label">Owner</div>
-            <div class="val owner"><span class="dot"></span><span id="dog-owner">John Peters</span></div>
-          </div>
-          <div class="field">
-            <div class="label">Microchip</div>
-            <div class="val" id="dog-chip">ID-0xD0G-0001</div>
-          </div>
-        </div>
-
-        <div class="field" style="margin-top:6px">
-          <div class="label">Notes</div>
-          <div class="val" id="dog-notes">Friendly Dog. Loves fetch, hates vacuums.</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Controls -->
-    <section class="panel" aria-label="Compose plugins" style="margin-top:1rem">
-      <h4 style="margin:0 0 0.75rem; font-size:0.95rem; color:var(--ink)">Compose plugins (toggle to enable)</h4>
-      <div class="row" style="justify-content:flex-start; gap:1rem; flex-wrap:wrap">
-        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
-          <input type="checkbox" id="p-replace"> Replace text
-        </label>
-        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
-          <input type="checkbox" id="p-filter"> CSS filter
-        </label>
-        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
-          <input type="checkbox" id="p-red" checked> Tint text (orange)
-        </label>
-        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem">
-          <input type="checkbox" id="p-stamp" checked> Timestamp overlay
-        </label>
-      </div>
-
-      <div class="row" style="margin-top:0.75rem">
-        <div class="control">
-          <label for="p-find" class="label" style="color:var(--muted)">Find</label>
-          <input id="p-find" type="text" >
-        </div>
-        <div class="control">
-          <label for="p-repl" class="label" style="color:var(--muted)">Replace with</label>
-          <input id="p-repl" type="text" >
-        </div>
-        <div class="control">
-          <label for="p-filter-kind" class="label" style="color:var(--muted)">Filter</label>
-          <select id="p-filter-kind">
-            <option value="none">none</option>
-            <option value="grayscale(100%)">grayscale</option>
-            <option value="blur(2px)">blur (2px)</option>
-            <option value="contrast(1.25)">contrast (+25%)</option>
-            <option value="saturate(1.3)">saturate (+30%)</option>
-          </select>
-        </div>
-        <div class="control">
-          <label for="p-stamp-kind" class="label" style="color:var(--muted)">Timestamp format</label>
-          <select id="p-stamp-kind">
-            <option value="iso">ISO</option>
-            <option value="locale" selected>Locale</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row" style="justify-content:center">
-        <button id="btn-capture">Capture PNG</button>
-      </div>
-    </section>
-
-      <div class="output" id="out" style="margin-top:1rem">—</div>
-    </section>
-
-    <!-- Demo 2: html-in-canvas (Issue #172) -->
-    <section id="demo-htmlcanvas" class="panel" style="margin-top:2rem; padding:1.5rem">
-      <h3 style="text-align:center; margin-top:0">WICG html-in-canvas (Issue #172)</h3>
-      <p style="text-align:center; font-size:0.9rem; color:var(--muted)">
+  <main style="max-width:720px; width:100%; padding:0 24px 100px;">
+    <!-- html-in-canvas -->
+    <section class="panel" id="demo-htmlcanvas">
+      <div class="section-label">WICG html-in-canvas (Issue #172)</div>
+      <p>
         Uses <code>drawElementImage()</code> to render the clone directly into canvas, bypassing SVG/foreignObject.
         Requires Chrome with <code>chrome://flags/#canvas-draw-element</code> enabled.
       </p>
-      <div id="target-htmlcanvas" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:1rem;border-radius:12px;margin:1rem 0">
+
+      <div class="demo-target" id="target-htmlcanvas">
         <strong>Target for html-in-canvas</strong>
-        <p style="margin:0.5rem 0 0;opacity:0.95">This box is captured via both PNG and drawElementImage.</p>
+        <p>This box is captured via both PNG and drawElementImage.</p>
       </div>
-      <div class="row" style="justify-content:center; gap:0.75rem">
-        <button id="btn-htmlcanvas-default">Capture (PNG)</button>
-        <button id="btn-htmlcanvas-api">Capture via html-in-canvas</button>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btn-htmlcanvas-default">Capture (PNG)</button>
+        <button class="btn btn-primary" id="btn-htmlcanvas-api">Capture via html-in-canvas</button>
       </div>
-      <div class="row" style="margin-top:1rem; gap:1.5rem; flex-wrap:wrap">
-        <div style="flex:1; min-width:200px">
-          <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.25rem">Default (SVG)</div>
-          <div class="output" id="out-htmlcanvas-default" style="min-height:80px">—</div>
+
+      <div class="output-row">
+        <div class="output-col">
+          <label>Default (SVG)</label>
+          <div class="output-box" id="out-htmlcanvas-default">—</div>
         </div>
-        <div style="flex:1; min-width:200px">
-          <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.25rem">html-in-canvas</div>
-          <div class="output" id="out-htmlcanvas-api" style="min-height:80px">—</div>
-          <div id="status-htmlcanvas" style="font-size:0.75rem; color:var(--muted); margin-top:0.25rem"></div>
+        <div class="output-col">
+          <label>html-in-canvas</label>
+          <div class="output-box" id="out-htmlcanvas-api">—</div>
+          <div class="status-msg" id="status-htmlcanvas"></div>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Scripts -->
+  <nav class="page-nav">
+    <a href="./index.html">Showcase</a>
+    <a href="./plugins.html">Plugins</a>
+    <a href="./labs.html" class="current">Labs</a>
+  </nav>
+
+  <!-- Theme toggle -->
   <script>
-    // Mobile menu (mismo comportamiento que el home)
-    (function setupMobileMenu() {
-      const toggle = document.getElementById('menu-toggle');
-      const panel = document.getElementById('menu-container');
-      const menu  = document.getElementById('demo-menu');
-      if (!toggle || !panel || !menu) return;
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
 
-      function setOpen(open) {
-        toggle.setAttribute('aria-expanded', String(open));
-        panel.classList.toggle('open', open);
-        if (open) panel.scrollTop = 0;
-        document.body.style.overflow = open ? 'hidden' : '';
-      }
-      function toggleMenu() {
-        const isOpen = panel.classList.contains('open');
-        setOpen(!isOpen);
-        if (!isOpen) {
-          const firstLink = menu.querySelector('a'); firstLink?.focus({ preventScroll:true });
-        } else {
-          toggle.focus({ preventScroll:true });
-        }
-      }
-      toggle.addEventListener('click', (e)=>{ e.preventDefault(); toggleMenu(); });
-      menu.addEventListener('click', (e)=>{ if (e.target?.tagName === 'A' && panel.classList.contains('open')) setOpen(false); });
-      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && panel.classList.contains('open')) setOpen(false); });
-      const mql = window.matchMedia('(min-width: 601px)');
-      mql.addEventListener?.('change', ()=>{ if (mql.matches) setOpen(false); });
-    })();
-
-    // GH stars
+  <!-- GitHub stars -->
+  <script>
     (async function updateGitHubStars(){
-      try{
+      try {
         const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
-        if(!res.ok) throw new Error();
+        if (!res.ok) throw new Error();
         const data = await res.json();
         document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
-      }catch(e){
+      } catch(e) {
         document.getElementById('star-count').textContent = '';
       }
     })();
   </script>
 
+  <!-- html-in-canvas logic -->
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
-    window.snapdom = snapdom;
+    import { snapdom } from 'https://esm.sh/@zumer/snapdom';
 
-    // --- Plugins ---
-    function redTextPlugin(color = 'orange') {
-      return {
-        name: 'red-text',
-        async afterClone(ctx) {
-          const root = ctx.clone; if (!(root instanceof HTMLElement)) return;
-          const all = root.querySelectorAll('*');
-          for (const el of all) {
-            if (el instanceof HTMLElement) {
-              el.style.setProperty('color', color, 'important');
-              el.style.setProperty('-webkit-text-fill-color', color, 'important');
+    const target = document.getElementById('target-htmlcanvas');
+    const outDefault = document.getElementById('out-htmlcanvas-default');
+    const outApi = document.getElementById('out-htmlcanvas-api');
+    const statusApi = document.getElementById('status-htmlcanvas');
+
+    function isDrawElementImageAvailable() {
+      try {
+        const c = document.createElement('canvas');
+        const ctx = c.getContext('2d');
+        return ctx && typeof ctx.drawElementImage === 'function';
+      } catch { return false; }
+    }
+
+    const available = isDrawElementImageAvailable();
+    if (!available) {
+      statusApi.innerHTML = '<span style="color:var(--rose)">drawElementImage not available. Enable chrome://flags/#canvas-draw-element</span>';
+    } else {
+      statusApi.textContent = 'drawElementImage available';
+      statusApi.style.color = 'var(--green)';
+    }
+
+    const htmlInCanvasPlugin = () => ({
+      name: 'html-in-canvas',
+      beforeRender(state) {
+        if (!available || !state.clone || !state.element) return;
+        state.options.__htmlInCanvas = {
+          clone: state.clone,
+          baseCSS: state.baseCSS || '',
+          fontsCSS: state.fontsCSS || '',
+          classCSS: state.classCSS || '',
+          element: state.element,
+          w0: null, h0: null
+        };
+      },
+      afterRender(state) {
+        if (!available) return;
+        const meta = state.options?.meta;
+        const stored = state.options?.__htmlInCanvas;
+        if (meta && stored) { stored.w0 = meta.w0; stored.h0 = meta.h0; }
+      },
+      async defineExports(ctx) {
+        if (!available) return {};
+        const stored = ctx.__htmlInCanvas || ctx.options?.__htmlInCanvas;
+        if (!stored) return {};
+        return {
+          htmlInCanvas: async (opts = {}) => {
+            const { clone, baseCSS, fontsCSS, classCSS, element } = stored;
+            const w0 = stored.w0 ?? element?.offsetWidth;
+            const h0 = stored.h0 ?? element?.offsetHeight;
+            const scale = opts.scale ?? ctx.scale ?? 1;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = element?.getBoundingClientRect?.();
+            const width = w0 ?? rect?.width ?? 100;
+            const height = h0 ?? rect?.height ?? 100;
+            const outW = Math.round(width * scale * dpr);
+            const outH = Math.round(height * scale * dpr);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = outW;
+            canvas.height = outH;
+            canvas.setAttribute('layoutsubtree', '');
+
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = `width:${width}px;height:${height}px;overflow:visible;box-sizing:border-box;`;
+            wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+
+            const styleTag = document.createElement('style');
+            styleTag.textContent = (baseCSS || '') + (fontsCSS || '') + 'svg{overflow:visible;}' + (classCSS || '');
+            wrapper.appendChild(styleTag);
+            wrapper.appendChild(clone.cloneNode(true));
+
+            canvas.appendChild(wrapper);
+
+            const container = document.createElement('div');
+            container.id = 'snapdom-html-in-canvas-temp';
+            container.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+            container.appendChild(canvas);
+            document.body.appendChild(container);
+
+            try {
+              await new Promise(r => requestAnimationFrame(r));
+              const ctx2d = canvas.getContext('2d');
+              if (!ctx2d || typeof ctx2d.drawElementImage !== 'function')
+                throw new Error('drawElementImage not available');
+              ctx2d.save();
+              ctx2d.scale(dpr * scale, dpr * scale);
+              ctx2d.drawElementImage(wrapper, 0, 0, width, height);
+              ctx2d.restore();
+              return canvas;
+            } finally {
+              try { document.body.removeChild(container); } catch {}
             }
           }
-          const svgTexts = root.querySelectorAll('svg text, svg tspan');
-          for (const node of svgTexts) {
-            node.setAttribute('fill', color);
-            node.style?.setProperty('fill', color, 'important');
-          }
-        }
-      };
-    }
-    function replaceTextPlugin(find, repl) {
-      if (!find) return { name:'noop', async afterClone(){} };
-      const safe = (s)=> s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(safe(find), 'gi');
-      return {
-        name: 'replace-text',
-        async afterClone(ctx) {
-          const root = ctx.clone; if (!(root instanceof HTMLElement)) return;
-          const tw = (root.ownerDocument || document).createTreeWalker(root, NodeFilter.SHOW_TEXT);
-          const nodes = []; for (let n = tw.nextNode(); n; n = tw.nextNode()) nodes.push(n);
-          for (const tn of nodes) tn.nodeValue = tn.nodeValue.replace(pattern, repl ?? '');
-        }
-      };
-    }
-    function filterPlugin(value) {
-      return {
-        name: 'css-filter',
-        async afterClone(ctx) {
-          const root = ctx.clone; if (!(root instanceof HTMLElement)) return;
-          root.style.filter = value || 'none';
-        }
-      };
-    }
-    
-    function timestampOverlayPlugin(kind='locale') {
-  const pad = n => (n<10 ? '0'+n : ''+n);
-  const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
-  return {
-    name:'timestamp-overlay',
-    async afterClone(ctx){
-      const root = ctx.clone; if(!(root instanceof HTMLElement)) return;
-      const doc = root.ownerDocument || document;
-      const cs = getComputedStyle(root);
-      if (!/relative|absolute|fixed|sticky/.test(cs.position)) root.style.position = 'relative';
-
-      const tag = doc.createElement('div');
-      const stamp = (kind==='iso') ? iso(new Date()) : new Date().toLocaleString();
-      tag.textContent = `Issued: ${stamp}`;
-
-      Object.assign(tag.style, {
-        position:'absolute', right:'12px', bottom:'10px',
-        background:'linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.70))',
-        color:'#fff',                           // valor base
-        padding:'.35rem .6rem', borderRadius:'10px',
-        font:'12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
-        letterSpacing:'.3px', lineHeight:'1', pointerEvents:'none',
-        boxShadow:'0 3px 10px rgba(0,0,0,.35)', zIndex:'2147483647',
-        border:'1px solid rgba(255,255,255,.14)',
-        backdropFilter:'blur(1px)',            // Safari soporta 'backdrop-filter'
-        WebkitBackdropFilter:'blur(1px)',
-        // —— hints para Safari/foreignObject ——
-        willChange:'transform',
-        transform:'translateZ(0)',             // fuerza layer en WebKit
-        mixBlendMode:'normal',
-        textRendering:'optimizeLegibility'
-      });
-
-      // ⚠️ Safari: asegurar fill blanco sin stroke, con prioridad máxima
-      tag.style.setProperty('color', '#fff', 'important');
-      tag.style.setProperty('-webkit-text-fill-color', '#fff', 'important');
-      tag.style.setProperty('-webkit-text-stroke-width', '0', 'important');
-      tag.style.setProperty('-webkit-text-stroke-color', 'transparent', 'important');
-      // Sutil refuerzo de contraste (no obligatorio)
-      tag.style.setProperty('text-shadow', '0 1px 1px rgba(0,0,0,.35)', 'important');
-
-      root.appendChild(tag);
-    }
-  };
-}
-
-    // Capture flow
-    const btn = document.getElementById('btn-capture');
-    const target = document.getElementById('dog-card');
-    const out = document.getElementById('out');
-
-    btn.addEventListener('click', async () => {
-      btn.disabled = true; out.textContent = 'Rendering…';
-      try{
-        const plugins = [];
-        if(document.getElementById('p-replace').checked){
-          const f = (document.getElementById('p-find').value || 'Dog').trim();
-          const r = document.getElementById('p-repl').value || 'Cat';
-          plugins.push(replaceTextPlugin(f, r));
-        }
-        if(document.getElementById('p-filter').checked){
-          const v = document.getElementById('p-filter-kind').value;
-          plugins.push(filterPlugin(v));
-        }
-         if(document.getElementById('p-red').checked){
-          plugins.push(redTextPlugin('orange'));
-        }
-        if(document.getElementById('p-stamp').checked){
-          const kind = document.getElementById('p-stamp-kind').value;
-          plugins.push(timestampOverlayPlugin(kind));
-        }
-
-        // Orden sugerido: Replace → Red → Filter → Timestamp
-        const result = await snapdom(target, { noShadows:true, plugins });
-        const png = await result.toPng({ quality:0.95 });
-
-        out.innerHTML = '';
-        if (png instanceof HTMLImageElement) out.appendChild(png);
-        else if (typeof png === 'string') { const img = new Image(); img.src = png; out.appendChild(img); }
-        else if (png instanceof Blob) { const url = URL.createObjectURL(png); const img = new Image(); img.onload=()=>URL.revokeObjectURL(url); img.src=url; out.appendChild(img); }
-      } finally {
-        btn.disabled = false;
+        };
       }
     });
 
-    // --- html-in-canvas (Issue #172) ---
-    (function setupHtmlInCanvas() {
-      const target = document.getElementById('target-htmlcanvas');
-      const outDefault = document.getElementById('out-htmlcanvas-default');
-      const outApi = document.getElementById('out-htmlcanvas-api');
-      const statusApi = document.getElementById('status-htmlcanvas');
-
-      function isDrawElementImageAvailable() {
-        try {
-          const c = document.createElement('canvas');
-          const ctx = c.getContext('2d');
-          return ctx && typeof ctx.drawElementImage === 'function';
-        } catch { return false; }
+    document.getElementById('btn-htmlcanvas-default').onclick = async () => {
+      outDefault.textContent = 'Capturing…';
+      try {
+        const result = await snapdom(target, { embedFonts: true });
+        const img = await result.toPng();
+        outDefault.innerHTML = '';
+        outDefault.appendChild(img);
+      } catch (e) {
+        outDefault.innerHTML = `<span style="color:var(--rose)">${e.message}</span>`;
       }
+    };
 
-      const available = isDrawElementImageAvailable();
-      if (!available) {
-        statusApi.innerHTML = '<span style="color:#c00">drawElementImage not available. Enable chrome://flags/#canvas-draw-element</span>';
-      } else {
-        statusApi.textContent = 'drawElementImage available';
+    document.getElementById('btn-htmlcanvas-api').onclick = async () => {
+      if (!available) return;
+      outApi.textContent = 'Capturing…';
+      try {
+        const result = await snapdom(target, { embedFonts: true, plugins: [htmlInCanvasPlugin()] });
+        const canvas = await result.toHtmlInCanvas();
+        outApi.innerHTML = '';
+        if (canvas) {
+          const img = document.createElement('img');
+          img.src = canvas.toDataURL('image/png');
+          outApi.appendChild(img);
+        } else {
+          outApi.innerHTML = '<span style="color:var(--rose)">toHtmlInCanvas not available</span>';
+        }
+      } catch (e) {
+        outApi.innerHTML = `<span style="color:var(--rose)">${e.message}</span>`;
       }
-
-      const htmlInCanvasPlugin = () => ({
-        name: 'html-in-canvas',
-        beforeRender(state) {
-          if (!available || !state.clone || !state.element) return;
-          state.options.__htmlInCanvas = {
-            clone: state.clone,
-            baseCSS: state.baseCSS || '',
-            fontsCSS: state.fontsCSS || '',
-            classCSS: state.classCSS || '',
-            element: state.element,
-            w0: null, h0: null
-          };
-        },
-        afterRender(state) {
-          if (!available) return;
-          const meta = state.options?.meta;
-          const stored = state.options?.__htmlInCanvas;
-          if (meta && stored) { stored.w0 = meta.w0; stored.h0 = meta.h0; }
-        },
-        async defineExports(ctx) {
-          if (!available) return {};
-          const stored = ctx.__htmlInCanvas || ctx.options?.__htmlInCanvas;
-          if (!stored) return {};
-          return {
-            htmlInCanvas: async (opts = {}) => {
-              const { clone, baseCSS, fontsCSS, classCSS, element } = stored;
-              const w0 = stored.w0 ?? element?.offsetWidth;
-              const h0 = stored.h0 ?? element?.offsetHeight;
-              const scale = opts.scale ?? ctx.scale ?? 1;
-              const dpr = window.devicePixelRatio || 1;
-              const rect = element?.getBoundingClientRect?.();
-              const width = w0 ?? rect?.width ?? 100;
-              const height = h0 ?? rect?.height ?? 100;
-              const outW = Math.round(width * scale * dpr);
-              const outH = Math.round(height * scale * dpr);
-
-              const canvas = document.createElement('canvas');
-              canvas.width = outW;
-              canvas.height = outH;
-              canvas.setAttribute('layoutsubtree', '');
-
-              const wrapper = document.createElement('div');
-              wrapper.style.cssText = `width:${width}px;height:${height}px;overflow:visible;box-sizing:border-box;`;
-              wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-
-              const styleTag = document.createElement('style');
-              styleTag.textContent = (baseCSS || '') + (fontsCSS || '') + 'svg{overflow:visible;}' + (classCSS || '');
-              wrapper.appendChild(styleTag);
-              wrapper.appendChild(clone.cloneNode(true));
-
-              canvas.appendChild(wrapper);
-
-              const container = document.createElement('div');
-              container.id = 'snapdom-html-in-canvas-temp';
-              container.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
-              container.appendChild(canvas);
-              document.body.appendChild(container);
-
-              try {
-                await new Promise(r => requestAnimationFrame(r));
-                const ctx2d = canvas.getContext('2d');
-                if (!ctx2d || typeof ctx2d.drawElementImage !== 'function')
-                  throw new Error('drawElementImage not available');
-                ctx2d.save();
-                ctx2d.scale(dpr * scale, dpr * scale);
-                ctx2d.drawElementImage(wrapper, 0, 0, width, height);
-                ctx2d.restore();
-                return canvas;
-              } finally {
-                try { document.body.removeChild(container); } catch {}
-              }
-            }
-          };
-        }
-      });
-
-      document.getElementById('btn-htmlcanvas-default').onclick = async () => {
-        outDefault.textContent = 'Capturing…';
-        try {
-          const result = await snapdom(target, { embedFonts: true });
-          const img = await result.toPng();
-          outDefault.innerHTML = '';
-          outDefault.appendChild(img);
-        } catch (e) {
-          outDefault.innerHTML = '<span style="color:#c00">' + e.message + '</span>';
-        }
-      };
-
-      document.getElementById('btn-htmlcanvas-api').onclick = async () => {
-        if (!available) return;
-        outApi.textContent = 'Capturing…';
-        try {
-          const result = await snapdom(target, { embedFonts: true, plugins: [htmlInCanvasPlugin()] });
-          const canvas = await result.toHtmlInCanvas();
-          outApi.innerHTML = '';
-          if (canvas) {
-            const img = document.createElement('img');
-            img.src = canvas.toDataURL('image/png');
-            outApi.appendChild(img);
-          } else {
-            outApi.innerHTML = '<span style="color:#c00">toHtmlInCanvas not available</span>';
-          }
-        } catch (e) {
-          outApi.innerHTML = '<span style="color:#c00">' + e.message + '</span>';
-        }
-      };
-    })();
+    };
   </script>
 </body>
 </html>
