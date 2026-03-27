@@ -14,14 +14,28 @@
     "./html-in-canvas": "./html-in-canvas.js",
     "./pdf-image": "./pdf-image.js"
   },
+  "files": [
+    "*.js",
+    "README.md"
+  ],
   "keywords": [
     "snapdom",
     "snapdom-plugin",
     "dom-capture",
     "plugins"
   ],
-  "peerDependencies": {
-    "@zumer/snapdom": ">=0.9.0"
+  "author": "Juan Martin Muda",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zumerlab/snapdom.git",
+    "directory": "packages/plugins"
   },
-  "license": "MIT"
+  "bugs": {
+    "url": "https://github.com/zumerlab/snapdom/issues"
+  },
+  "homepage": "https://zumerlab.github.io/snapdom/",
+  "peerDependencies": {
+    "@zumer/snapdom": ">=2.7.0"
+  }
 }

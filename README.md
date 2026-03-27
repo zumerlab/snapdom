@@ -556,6 +556,44 @@ SnapDOM includes a lightweight **plugin system** that allows you to extend or ov
 A plugin is a simple object with a unique `name` and one or more lifecycle **hooks**.
 Hooks can be synchronous or `async`, and they receive a shared **`context`** object.
 
+### Official Plugins
+
+Install the official plugin package:
+
+```bash
+npm install @zumer/snapdom-plugins
+```
+
+```js
+import { filter } from '@zumer/snapdom-plugins/filter';
+import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';
+```
+
+| Plugin | Category | Description |
+|--------|----------|-------------|
+| `picture-resolver` | Capture | Resolves lazy-loaded `<picture>` placeholders. Detects base64 stubs and fetches the real image before capture. |
+| `timestamp-overlay` | Transform | Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions. |
+| `filter` | Transform | Applies CSS filter effects to captures. Ships with presets: `grayscale`, `sepia`, `blur`, `vintage`, `dramatic`. |
+| `replace-text` | Transform | Find-and-replace text in the captured clone. Supports strings and regex patterns. |
+| `color-tint` | Transform | Tints the entire capture to a specified color using an overlay with `mix-blend-mode`. |
+| `ascii-export` | Export | Adds a `toAscii()` method that converts captures to ASCII art. Configurable width, charset, and luminance. |
+| `pdf-image` | Export | Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations. |
+| `html-in-canvas` | Export | Uses the experimental WICG `drawElementImage` API for direct DOM-to-canvas rendering where supported. |
+
+### Community Plugins
+
+Community plugins are listed on the [Plugins page](https://zumerlab.github.io/snapdom/plugins.html). To submit your plugin, open a PR adding one line to `community-plugins.md`. See [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md).
+
+### Build a Plugin in 5 Minutes
+
+SnapDOM's hook system gives you full control over every stage of the capture pipeline:
+
+1. **Clone the template** — `npx degit zumerlab/snapdom/packages/plugin-template my-plugin`
+2. **Write your hook logic** — `export function myPlugin() {}`
+3. **Get listed** — open a PR adding one line to `community-plugins.md`
+
+See [PLUGIN_SPEC.md](PLUGIN_SPEC.md) for the full specification and [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md) for submission guidelines.
+
 ### Registering Plugins
 
 **Global registration** (applies to all captures):
