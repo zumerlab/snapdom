@@ -231,7 +231,7 @@
   </style>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode" data-umami-event="Plugins toggle theme">&#9790;</button>
 
   <!-- ── Hero ── -->
   <section class="hero" id="top">
@@ -376,7 +376,7 @@
           <div class="pg-panel">
             <div class="pg-panel-header">
               <h4 style="margin:0">Generated code</h4>
-              <button class="copy-btn" data-copy="pgCode" style="position:static;">Copy</button>
+              <button class="copy-btn" data-copy="pgCode" style="position:static;" data-umami-event="Plugins playground copy">Copy</button>
             </div>
             <div class="pg-code-wrap">
               <pre class="pg-code-block" id="pgCode">// Select plugins to see the code</pre>
@@ -415,7 +415,7 @@
   <section class="usage-section">
     <div class="section-label">Usage Example</div>
     <div class="code-block-wrap">
-      <button class="copy-btn" data-copy="usageCode">Copy</button>
+      <button class="copy-btn" data-copy="usageCode" data-umami-event="Plugins quickstart copy">Copy</button>
       <div class="code-block" id="usageCode">
         <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;<br>
         <span class="kw">import</span> { filter } <span class="kw">from</span> <span class="str">'@zumer/snapdom-plugins/filter'</span>;<br>
@@ -431,12 +431,12 @@
   <!-- ── Plugin Directory ── -->
   <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
   <div class="filter-bar">
-    <button class="filter-btn active" data-filter="all">All</button>
-    <button class="filter-btn" data-filter="capture">Capture</button>
-    <button class="filter-btn" data-filter="transform">Transform</button>
-    <button class="filter-btn" data-filter="export">Export</button>
-    <button class="filter-btn" data-filter="utility">Utility</button>
-    <button class="filter-btn" data-filter="integration">Integration</button>
+    <button class="filter-btn active" data-filter="all" data-umami-event="Plugins filter all">All</button>
+    <button class="filter-btn" data-filter="capture" data-umami-event="Plugins filter capture">Capture</button>
+    <button class="filter-btn" data-filter="transform" data-umami-event="Plugins filter transform">Transform</button>
+    <button class="filter-btn" data-filter="export" data-umami-event="Plugins filter export">Export</button>
+    <button class="filter-btn" data-filter="utility" data-umami-event="Plugins filter utility">Utility</button>
+    <button class="filter-btn" data-filter="integration" data-umami-event="Plugins filter integration">Integration</button>
   </div>
 
   <section class="grid-section" id="official">
@@ -449,7 +449,7 @@
         <h3>picture-resolver</h3>
         <p>Resolves lazy-loaded &lt;picture&gt; placeholders. Detects base64 stubs and fetches the real image before capture.</p>
         <div class="hooks"><span class="hook-badge">beforeClone</span><span class="hook-badge">afterClone</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/picture-resolver.js">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/picture-resolver.js" data-umami-event="Plugins source picture-resolver">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- timestamp-overlay -->
@@ -458,7 +458,7 @@
         <h3>timestamp-overlay</h3>
         <p>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/timestamp-overlay.js">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/timestamp-overlay.js" data-umami-event="Plugins source timestamp-overlay">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- filter -->
@@ -467,7 +467,7 @@
         <h3>filter</h3>
         <p>Applies CSS filter effects to captures. Ships with presets: grayscale, sepia, blur, vintage, dramatic.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/filter.js">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/filter.js" data-umami-event="Plugins source filter">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- replace-text -->
@@ -476,7 +476,7 @@
         <h3>replace-text</h3>
         <p>Find-and-replace text in the captured clone. Supports strings and regex patterns.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/replace-text.js">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/replace-text.js" data-umami-event="Plugins source replace-text">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- color-tint -->
@@ -485,7 +485,7 @@
         <h3>color-tint</h3>
         <p>Tints the entire capture to a specified color using an overlay with mix-blend-mode.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/color-tint.js">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/color-tint.js" data-umami-event="Plugins source color-tint">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- ascii-export -->
@@ -494,7 +494,7 @@
         <h3>ascii-export</h3>
         <p>Adds a toAscii() method that converts captures to ASCII art. Configurable width, charset, and luminance.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/ascii-export.js">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/ascii-export.js" data-umami-event="Plugins source ascii-export">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- pdf-image -->
@@ -512,7 +512,7 @@
         <h3>html-in-canvas</h3>
         <p>Uses the experimental WICG drawElementImage API for direct DOM-to-canvas rendering where supported.</p>
         <div class="hooks"><span class="hook-badge">beforeRender</span><span class="hook-badge">afterRender</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-in-canvas.js">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-in-canvas.js" data-umami-event="Plugins source html-in-canvas">Source</a><span class="expand-hint">details</span></div>
       </div>
 
     </div>
@@ -526,7 +526,7 @@
         <div class="card-top"><div class="plugin-icon">+</div><span class="category-tag">yours here</span></div>
         <h3>Your Plugin</h3>
         <p>Build a plugin and add it here. Just open a PR adding one line to <code style="color:var(--green);font-size:12px;">community-plugins.md</code>.</p>
-        <div class="card-footer"><a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md">How to submit</a></div>
+        <div class="card-footer"><a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md" data-umami-event="Plugins how to submit">How to submit</a></div>
       </div>
     </div>
   </section>
@@ -559,9 +559,9 @@
   <!-- ── Scripts ── -->
 
   <nav class="page-nav">
-    <a href="./index.html">Showcase</a>
+    <a href="./index.html" data-umami-event="Plugins nav showcase">Showcase</a>
     <a href="./plugins.html" class="current">Plugins</a>
-    <a href="./labs.html">Labs</a>
+    <a href="./labs.html" data-umami-event="Plugins nav labs">Labs</a>
   </nav>
 
   <!-- Theme toggle -->
