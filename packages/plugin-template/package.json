@@ -1,0 +1,18 @@
+{
+  "name": "snapdom-plugin-template",
+  "version": "1.0.0",
+  "description": "A SnapDOM plugin that ...",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "keywords": [
+    "snapdom",
+    "snapdom-plugin"
+  ],
+  "peerDependencies": {
+    "@zumer/snapdom": ">=0.9.0"
+  },
+  "license": "MIT"
+}
