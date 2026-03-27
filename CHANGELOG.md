@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. 
 
+
+#### [v2.7.0](https://github.com/zumerlab/snapdom/compare/v2.6.0...v2.7.0)
+
+> 27 March 2026
+
+- feat(docs): enhance documentation with new community plugins section, update index and labs pages, and add shared CSS for consistent styling across SnapDOM documentation. [`d35278c`](https://github.com/zumerlab/snapdom/commit/d35278c1d3d677a80d5ff7f6bca62181baab876d)
+- feat(plugins): add multiple new SnapDOM plugins including ascii-export, color-tint, filter, html-in-canvas, pdf-image, picture-resolver, replace-text, timestamp-overlay. Each plugin enhances image processing and manipulation capabilities. Ref #391 [`a4d2331`](https://github.com/zumerlab/snapdom/commit/a4d23319ccb9a884c8533ad8ec686833b6ace0c9)
+- feat(docs): add contributing guidelines and plugin specification for SnapDOM plugins, including usage examples, lifecycle hooks, and best practices. [`5243a34`](https://github.com/zumerlab/snapdom/commit/5243a349f3766275b24fd77ab49834d7103ba65a)
+- feat(plugin-template): add initial SnapDOM plugin template with example usage and options. See #391 
+- feat(workspaces): add workspaces configuration to package.json for better package management [`3032187`](https://github.com/zumerlab/snapdom/commit/30321873eb81386b9180bfe9f97350fe2be90075)
+
+
 #### [v2.6.0](https://github.com/zumerlab/snapdom/compare/v2.5.0...v2.6.0)
 
 > 23 March 2026
