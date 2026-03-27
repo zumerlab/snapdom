@@ -1,0 +1,27 @@
+{
+  "name": "@zumer/snapdom-plugins",
+  "version": "1.0.0",
+  "description": "Official plugins for SnapDOM",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./timestamp-overlay": "./timestamp-overlay.js",
+    "./ascii-export": "./ascii-export.js",
+    "./replace-text": "./replace-text.js",
+    "./filter": "./filter.js",
+    "./color-tint": "./color-tint.js",
+    "./picture-resolver": "./picture-resolver.js",
+    "./html-in-canvas": "./html-in-canvas.js",
+    "./pdf-image": "./pdf-image.js"
+  },
+  "keywords": [
+    "snapdom",
+    "snapdom-plugin",
+    "dom-capture",
+    "plugins"
+  ],
+  "peerDependencies": {
+    "@zumer/snapdom": ">=0.9.0"
+  },
+  "license": "MIT"
+}

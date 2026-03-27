@@ -20,7 +20,7 @@ function isDrawElementImageAvailable() {
 }
 
 /**
- * @returns {import('../src/core/plugins.js').Plugin}
+ * @returns {import('../../src/core/plugins.js').Plugin}
  */
 export function htmlInCanvasPlugin() {
   const available = isDrawElementImageAvailable()
