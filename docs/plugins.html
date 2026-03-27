@@ -8,6 +8,10 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="./shared.css">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
   <style>
     :root {
       --bg: #0a0a0f;
@@ -232,7 +236,7 @@
   <!-- ── Hero ── -->
   <section class="hero" id="top">
     <div class="hero-badge"><span class="dot"></span> Plugin Ecosystem</div>
-    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener">
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Plugins github repo">
       <i class="fab fa-github"></i>
       <span class="repo-link">zumerlab/snapdom</span>
       <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
@@ -240,10 +244,10 @@
     <h1>Extend <span class="accent">SnapDOM</span></h1>
     <p>Transform your captures with a wide range of plugins, or build and share your own in minutes.</p>
     <div class="hero-actions">
-      <a href="#playground" class="btn btn-primary">Playground</a>
-      <a href="#quickstart" class="btn btn-ghost">Quick Start</a>
-      <a href="#official" class="btn btn-ghost">Browse Plugins</a>
-      <a href="#build-plugin" class="btn btn-ghost">Build a Plugin</a>
+      <a href="#playground" class="btn btn-primary" data-umami-event="Plugins hero playground">Playground</a>
+      <a href="#quickstart" class="btn btn-ghost" data-umami-event="Plugins hero quick start">Quick Start</a>
+      <a href="#official" class="btn btn-ghost" data-umami-event="Plugins hero browse plugins">Browse Plugins</a>
+      <a href="#build-plugin" class="btn btn-ghost" data-umami-event="Plugins hero build plugin">Build a Plugin</a>
     </div>
   </section>
 
@@ -361,7 +365,7 @@
               </div>
             </div>
           </div>
-          <button class="pg-capture-btn" id="pgCapture">Capture</button>
+          <button class="pg-capture-btn" id="pgCapture" data-umami-event="Plugins playground capture">Capture</button>
           <div class="pg-status" id="pgStatus"></div>
         </div>
         <div class="pg-right">
@@ -538,8 +542,8 @@
         <div class="cta-step"><div class="step-num">03</div><code>Add a line to community-plugins.md</code><div class="step-label">Open a PR to get listed</div></div>
       </div>
       <div class="hero-actions">
-        <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-primary">Read the Plugin Spec</a>
-        <a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md" class="btn btn-ghost">Contribution Guide</a>
+        <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-primary" data-umami-event="Plugins read spec">Read the Plugin Spec</a>
+        <a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md" class="btn btn-ghost" data-umami-event="Plugins contribution guide">Contribution Guide</a>
       </div>
     </div>
   </section>

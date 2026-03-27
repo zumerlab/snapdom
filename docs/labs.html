@@ -12,6 +12,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./shared.css">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
   <style>
     :root {
       --bg: #0a0a0f;
@@ -111,7 +115,7 @@
 
   <section class="hero">
     <div class="hero-badge"><span class="dot"></span> Experimental</div>
-    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener">
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Labs github repo">
       <i class="fab fa-github"></i>
       <span>zumerlab/snapdom</span>
       <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
@@ -135,8 +139,8 @@
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-ghost" id="btn-htmlcanvas-default">Capture (PNG)</button>
-        <button class="btn btn-primary" id="btn-htmlcanvas-api">Capture via html-in-canvas</button>
+        <button class="btn btn-ghost" id="btn-htmlcanvas-default" data-umami-event="Labs capture png">Capture (PNG)</button>
+        <button class="btn btn-primary" id="btn-htmlcanvas-api" data-umami-event="Labs capture html-in-canvas">Capture via html-in-canvas</button>
       </div>
 
       <div class="output-row">
