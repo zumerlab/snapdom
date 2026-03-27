@@ -1,18 +1,18 @@
-# snapdom-plugin-my-plugin
+# snapdom-plugin-template
 
 A [SnapDOM](https://github.com/zumerlab/snapdom) plugin that ...
 
 ## Install
 
 ```bash
-npm i snapdom-plugin-my-plugin
+npm i snapdom-plugin-template
 ```
 
 ## Usage
 
 ```js
 import { snapdom } from '@zumer/snapdom';
-import { myPlugin } from 'snapdom-plugin-my-plugin';
+import { myPlugin } from 'snapdom-plugin-template';
 
 const result = await snapdom(element, {
   plugins: [myPlugin({ example: 'value' })]
