@@ -7,6 +7,9 @@
   "module": "./dist/snapdom.mjs",
   "types": "./types/snapdom.d.ts",
   "sideEffects": false,
+  "workspaces": [
+    "packages/*"
+  ],
   "exports": {
     ".": {
       "types": "./types/snapdom.d.ts",
