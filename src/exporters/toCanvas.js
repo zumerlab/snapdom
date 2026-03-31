@@ -138,6 +138,15 @@ export async function toCanvas(url, options) {
   img.src = url
   await img.decode()
 
+  // img.decode() only guarantees the outer SVG element is decoded, not that
+  // <img> elements nested inside <foreignObject> have been composited by the
+  // browser. Attaching the image to the document and waiting two animation
+  // frames gives the compositing pipeline time to finish rendering inner images.
+  img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none;'
+  document.body.appendChild(img)
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+  document.body.removeChild(img)
+
   const natW = img.naturalWidth
   const natH = img.naturalHeight
 
