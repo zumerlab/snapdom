@@ -1,0 +1,746 @@
+# snapDOM — Complete LLM Reference
+
+> Package: @zumer/snapdom | Version: 2.7.0 | License: MIT
+> Ultra-fast, zero-dependency DOM-to-image capture engine for the browser.
+> GitHub: https://github.com/zumerlab/snapdom
+> Website: https://snapdom.dev
+
+---
+
+## INSTALLATION
+
+npm:
+```bash
+npm install @zumer/snapdom
+```
+
+CDN (ESM):
+```html
+<script type="module">
+  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.mjs';
+</script>
+```
+
+CDN (IIFE, global window.snapdom):
+```html
+<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.js"></script>
+```
+
+ESM import:
+```js
+import { snapdom } from '@zumer/snapdom';
+```
+
+Subpath exports:
+```js
+import { preCache } from '@zumer/snapdom/preCache';
+import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, promptExport, pictureResolver } from '@zumer/snapdom/plugins';
+```
+
+---
+
+## CORE API
+
+### snapdom(element, options?)
+
+Captures a DOM element. Returns Promise<CaptureResult>.
+
+```js
+const result = await snapdom(document.getElementById('myElement'));
+const img = await result.toPng();
+```
+
+### Static shortcuts (one-step capture + export)
+
+```js
+snapdom.toPng(element, options?)    → Promise<HTMLImageElement>
+snapdom.toJpg(element, options?)    → Promise<HTMLImageElement>
+snapdom.toWebp(element, options?)   → Promise<HTMLImageElement>
+snapdom.toSvg(element, options?)    → Promise<HTMLImageElement>
+snapdom.toImg(element, options?)    → Promise<HTMLImageElement> (deprecated, use toSvg)
+snapdom.toCanvas(element, options?) → Promise<HTMLCanvasElement>
+snapdom.toBlob(element, options?)   → Promise<Blob>
+snapdom.toRaw(element, options?)    → Promise<string> (SVG data URL)
+snapdom.download(element, options?) → Promise<void>
+```
+
+### Plugin registration
+
+```js
+snapdom.plugins(...defs) → snapdom  // chainable, global
+```
+
+---
+
+## OPTIONS (SnapdomOptions)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| fast | boolean | true | Skip idle delays for faster capture |
+| scale | number | 1 | Output scale multiplier |
+| dpr | number | devicePixelRatio | Device pixel ratio for rasterization |
+| width | number | null | Target output width (keeps aspect if only one dimension) |
+| height | number | null | Target output height (keeps aspect if only one dimension) |
+| backgroundColor | string | null (#ffffff for JPEG) | Background color |
+| quality | number | 0.92 | JPEG/WebP quality (0-1) |
+| embedFonts | boolean | false | Embed custom @font-face fonts |
+| localFonts | LocalFont[] | [] | Provide fonts explicitly |
+| iconFonts | string|RegExp|Array | [] | Icon font family matchers (always embedded) |
+| excludeFonts | ExcludeFonts | undefined | Skip fonts by family/domain/subset |
+| useProxy | string | '' | CORS proxy URL prefix |
+| exclude | string[] | [] | CSS selectors to exclude |
+| excludeMode | 'hide'|'remove' | 'hide' | hide=visibility:hidden, remove=drop entirely |
+| filter | (el: Element) => boolean | null | Custom predicate (true=keep, false=exclude) |
+| filterMode | 'hide'|'remove' | 'hide' | How to apply filter |
+| outerTransforms | boolean | true | Normalize root transforms |
+| outerShadows | boolean | false | Expand bbox for shadows/blur/outline |
+| fallbackURL | string|((dims)=>string) | undefined | Fallback image for broken <img> |
+| cache | 'disabled'|'full'|'auto'|'soft' | 'soft' | Resource cache policy |
+| placeholders | boolean | true | Show placeholders for missing resources |
+| resolvePicturePlaceholders | boolean | true | Resolve lazy <picture>/data-src |
+| pictureResolver | object | {} | {timeout?, concurrency?, resolveLazySrc?, silent?} |
+| plugins | PluginUse[] | undefined | Per-capture plugins (override globals by name) |
+| format | string | 'png' | Default format: png, jpeg, webp, svg |
+| filename | string | 'snapDOM' | Default download filename |
+| type | string | 'svg' | Default Blob type for toBlob() |
+| excludeStyleProps | RegExp|function | null | Skip CSS properties during snapshot |
+
+### LocalFont type
+```ts
+{ family: string; src: string; weight?: string|number; style?: string }
+```
+
+### ExcludeFonts type
+```ts
+{ families?: string[]; domains?: string[]; subsets?: string[] }
+```
+
+### PictureResolver options
+```ts
+{ timeout?: number; concurrency?: number; resolveLazySrc?: boolean; silent?: boolean }
+```
+Defaults: timeout=5000, concurrency=4, resolveLazySrc=true, silent=false.
+
+---
+
+## CAPTURE RESULT
+
+Object returned by snapdom(). All methods accept optional options override.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| url | string (property) | Raw SVG data URL |
+| toRaw() | string | Same as url |
+| toSvg(opts?) | Promise<HTMLImageElement> | SVG-rendering image |
+| toImg(opts?) | Promise<HTMLImageElement> | Deprecated, same as toSvg |
+| toCanvas(opts?) | Promise<HTMLCanvasElement> | Rasterized Canvas |
+| toBlob(opts?) | Promise<Blob> | Blob of specified type |
+| toPng(opts?) | Promise<HTMLImageElement> | PNG image |
+| toJpg(opts?) | Promise<HTMLImageElement> | JPEG image (auto white bg) |
+| toWebp(opts?) | Promise<HTMLImageElement> | WebP image |
+| download(opts?) | Promise<void> | Browser file download |
+| to(type, opts?) | Promise<any> | Generic: 'png', 'canvas', or custom |
+
+Plugin exports appear as toX() methods (e.g. toPdfImage(), toAscii(), toPrompt()).
+
+---
+
+## PRECACHE
+
+```js
+import { preCache } from '@zumer/snapdom/preCache';
+await preCache(root?, options?);
+```
+
+Preloads images, backgrounds, fonts into cache before capture.
+
+Options:
+| Option | Type | Default |
+|--------|------|---------|
+| root | Element|Document | document |
+| embedFonts | boolean | true |
+| localFonts | LocalFont[] | [] |
+| iconFonts | string|RegExp|Array | - |
+| useProxy | string | '' |
+| cache | CachePolicy | 'full' |
+| excludeFonts | ExcludeFonts | - |
+
+---
+
+## PLUGIN SYSTEM
+
+### Plugin structure
+
+A plugin is a plain object with a unique `name` and lifecycle hooks:
+
+```js
+{
+  name: 'my-plugin',          // required, kebab-case
+  beforeSnap(ctx) {},          // before anything
+  beforeClone(ctx) {},         // before DOM clone
+  afterClone(ctx) {},          // after clone created — MOST COMMON
+  beforeRender(ctx) {},        // before SVG serialization
+  afterRender(ctx) {},         // after SVG rendered
+  beforeExport(ctx) {},        // before each export
+  afterExport(ctx, result) {}, // after each export (can transform result)
+  defineExports(ctx) {},       // register custom export methods
+  afterSnap(ctx) {}            // once after first export
+}
+```
+
+### Factory pattern (recommended)
+
+```js
+export function myPlugin(options = {}) {
+  const { enabled = true } = options;
+  return {
+    name: 'my-plugin',
+    afterClone(ctx) {
+      if (!enabled) return;
+      // modify ctx.clone
+    }
+  };
+}
+```
+
+### Registration
+
+Global (all captures, chainable):
+```js
+snapdom.plugins(pluginA(), pluginB());
+```
+
+Per-capture (overrides globals by name):
+```js
+const result = await snapdom(element, {
+  plugins: [pluginA({ color: 'red' })]
+});
+```
+
+Plugin input formats:
+- Instance: myPlugin()
+- Factory: myPlugin (auto-called with no args)
+- Tuple: [myPlugin, { color: 'blue' }]
+- Object: { plugin: myPlugin, options: { color: 'red' } }
+
+### Hook execution order
+
+beforeSnap → beforeClone → afterClone → beforeRender → afterRender → [per export: beforeExport → afterExport] → afterSnap (once)
+
+### Hook context (CaptureContext)
+
+All hooks receive a mutable context:
+```js
+{
+  element,           // original DOM element (do NOT mutate after afterClone)
+  clone,             // cloned DOM (available from afterClone onward)
+  debug, fast, scale, dpr, width, height,
+  backgroundColor, quality, embedFonts, useProxy,
+  exclude, excludeMode, filter, filterMode,
+  outerTransforms, outerShadows, cache, fallbackURL,
+  classCSS, styleCache, fontsCSS, baseCSS,  // intermediate
+  svgString, dataURL,                        // after render
+  export: { type, options, url },            // during export hooks
+  plugins                                     // active plugins
+}
+```
+
+### Custom exports (defineExports)
+
+```js
+defineExports(ctx) {
+  return {
+    pdf: async (ctx, opts) => {
+      // ctx.export.url = SVG data URL
+      // ctx.exports.png(opts) = silent PNG access
+      return pdfBlob;
+    }
+  };
+}
+// After registration: result.toPdf() and result.to('pdf') both work.
+```
+
+Inside defineExports, ctx.exports provides silent access to core exports: img, svg, canvas, blob, png, jpeg/jpg, webp.
+
+---
+
+## OFFICIAL PLUGINS
+
+All imported from '@zumer/snapdom/plugins'.
+
+### 1. filter — CSS Filter Effects
+
+```js
+import { filter } from '@zumer/snapdom/plugins';
+snapdom.plugins(filter({ preset: 'grayscale' }));
+// or: filter({ filter: 'brightness(1.2) contrast(0.9) hue-rotate(45deg)' })
+```
+
+Options:
+- filter (string, default ''): CSS filter string
+- preset (string): 'grayscale'|'sepia'|'blur'|'invert'|'vintage'|'dramatic'
+
+Presets:
+- grayscale → grayscale(1)
+- sepia → sepia(1)
+- blur → blur(2px)
+- invert → invert(1)
+- vintage → sepia(0.4) contrast(1.1) brightness(0.9) saturate(0.8)
+- dramatic → contrast(1.4) brightness(0.85) saturate(1.3)
+
+Hook: afterClone — sets ctx.clone.style.filter.
+
+### 2. colorTint — Color Overlay
+
+```js
+import { colorTint } from '@zumer/snapdom/plugins';
+snapdom.plugins(colorTint({ color: '#0066ff', opacity: 0.5 }));
+```
+
+Options:
+- color (string, default 'red'): any CSS color
+- opacity (number, default 1): overlay opacity 0-1
+
+Hook: afterClone — appends div with mix-blend-mode:color.
+
+### 3. replaceText — Text Replacement
+
+```js
+import { replaceText } from '@zumer/snapdom/plugins';
+snapdom.plugins(replaceText({
+  replacements: [
+    { find: /\$\d+\.\d{2}/g, replace: '$X.XX' },
+    { find: 'Beta', replace: 'Release' }
+  ]
+}));
+```
+
+Options:
+- replacements (Array<{find: string|RegExp, replace: string}>, default []): replacement rules
+
+Hook: afterClone — walks text nodes in ctx.clone.
+
+### 4. timestampOverlay — Timestamp Badge
+
+```js
+import { timestampOverlay } from '@zumer/snapdom/plugins';
+snapdom.plugins(timestampOverlay({
+  format: 'iso',
+  position: 'top-left',
+  fontSize: 14
+}));
+```
+
+Options:
+- format (string|function, default 'datetime'): 'datetime'|'date'|'time'|'iso' or (date: Date) => string
+- position (string, default 'bottom-right'): 'top-left'|'top-right'|'bottom-left'|'bottom-right'
+- background (string, default 'rgba(0,0,0,0.6)')
+- color (string, default '#fff')
+- fontSize (number, default 11)
+
+Hook: afterClone — appends styled div to ctx.clone.
+
+### 5. asciiExport — ASCII Art
+
+```js
+import { asciiExport } from '@zumer/snapdom/plugins';
+snapdom.plugins(asciiExport({ width: 100 }));
+const result = await snapdom(element);
+const ascii = await result.toAscii();
+```
+
+Options:
+- width (number, default 80): character width
+- charset (string, default ' .:-=+*#%@'): chars light-to-dark
+- invert (boolean, default false): invert luminance
+
+Custom export: result.toAscii(opts?) → Promise<string>
+Override at export: { width, charset, invert }
+
+Hook: defineExports — registers 'ascii' export.
+
+### 6. pictureResolver — Lazy Image Resolution
+
+```js
+import { pictureResolver } from '@zumer/snapdom/plugins';
+snapdom.plugins(pictureResolver({ timeout: 10000, silent: true }));
+```
+
+NOTE: This logic runs by default in core (resolvePicturePlaceholders: true). Use this plugin only for explicit overrides or when core resolver is disabled.
+
+Options:
+- timeout (number, default 5000): per-element fetch timeout ms
+- concurrency (number, default 4): parallel load limit
+- resolveLazySrc (boolean, default true): resolve data-src, data-lazy-src, data-original, data-hi-res-src, data-srcset, data-lazy-srcset
+- silent (boolean, default false): suppress warnings
+
+Hooks: beforeClone (resolve on live DOM), afterClone (undo mutations).
+
+### 7. pdfImage — PDF Export
+
+```js
+import { pdfImage } from '@zumer/snapdom/plugins';
+snapdom.plugins(pdfImage({ orientation: 'landscape', filename: 'report.pdf' }));
+const result = await snapdom(element);
+await result.toPdfImage(); // downloads PDF
+```
+
+Options:
+- orientation ('portrait'|'landscape', default 'portrait')
+- quality (number, default 0.92): JPEG quality 0-1
+- filename (string, default 'capture.pdf')
+
+Custom export: result.toPdfImage() → Promise<string> (object URL, triggers download)
+
+Generates A4 PDF with centered image, 40pt margins, JPEG compression. No external libraries.
+
+Hook: defineExports — registers 'pdfImage' export.
+
+### 8. promptExport — LLM-Ready Screenshot
+
+```js
+import { promptExport } from '@zumer/snapdom/plugins';
+snapdom.plugins(promptExport());
+const result = await snapdom(document.querySelector('main'));
+const { image, elements, dimensions, prompt } = await result.toPrompt();
+```
+
+Options:
+- annotate (boolean, default true): overlay numbered red badges on interactive elements
+- imageFormat ('png'|'jpg'|'webp', default 'png')
+- imageQuality (number, default 0.8): quality 0-1
+- maxImageWidth (number, default 1024): downscale if wider
+- interactiveSelector (string): custom selector for interactive elements
+- semanticSelector (string): custom selector for semantic elements
+- labelStyle (object): override badge styles
+
+Default interactive selector: a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="checkbox"], [role="radio"], [tabindex]:not([tabindex="-1"]), summary, [contenteditable="true"]
+
+Default semantic selector: h1, h2, h3, h4, h5, h6, p, li, img[alt], nav, main, article, section, header, footer, label, td, th, figcaption, blockquote, legend
+
+Custom export: result.toPrompt(opts?) → Promise<PromptResult>
+
+PromptResult:
+```ts
+{
+  image: string;       // base64 data URL of annotated screenshot
+  elements: Array<{
+    id: number;        // badge number
+    tag: string;       // HTML tag
+    type: 'interactive' | 'semantic';
+    text: string;      // text content (max 200 chars)
+    bbox: { x, y, width, height };
+    attributes: { role?, aria-label?, aria-expanded?, aria-checked?, aria-disabled?, alt?, href?, placeholder?, name?, type?, value?, title?, disabled? }
+  }>;
+  dimensions: { width: number; height: number };
+  prompt: string;      // formatted text for LLM
+}
+```
+
+Prompt text format example:
+```
+Screenshot of a web page (1024x768px).
+
+Interactive elements:
+  [0] <button> "Sign Up" (120,340 200x40) type="submit"
+  [1] <a> "Learn More" (50,400 150x20) href="/about"
+
+Semantic structure:
+  [2] <h1> "Welcome to Our Platform"
+  [3] <p> "Description text..."
+```
+
+Hooks: afterClone (extract metadata, add annotations), defineExports (register 'prompt').
+
+---
+
+## CREATING CUSTOM PLUGINS
+
+### Minimal template
+
+```js
+export function myPlugin(options = {}) {
+  const { enabled = true } = options;
+  return {
+    name: 'my-plugin',
+    afterClone(ctx) {
+      if (!enabled) return;
+      // modify ctx.clone here
+    }
+  };
+}
+```
+
+### Watermark example
+
+```js
+export function watermark(options = {}) {
+  const { text = 'DRAFT', fontSize = 48, color = 'rgba(0,0,0,0.08)', rotate = -30 } = options;
+  return {
+    name: 'watermark',
+    afterClone(ctx) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(${rotate}deg);font-size:${fontSize}px;color:${color};pointer-events:none;z-index:999999;white-space:nowrap;font-weight:700;`;
+      overlay.textContent = text;
+      ctx.clone.style.position = 'relative';
+      ctx.clone.appendChild(overlay);
+    }
+  };
+}
+```
+
+### Custom export format example
+
+```js
+export function jsonExport() {
+  return {
+    name: 'json-export',
+    afterClone(ctx) {
+      ctx.__jsonMeta = {
+        elementCount: ctx.clone.querySelectorAll('*').length,
+        text: ctx.clone.textContent?.slice(0, 1000) || '',
+        capturedAt: new Date().toISOString()
+      };
+    },
+    defineExports(ctx) {
+      return {
+        json: async (ctx, opts = {}) => {
+          const meta = ctx.__jsonMeta || {};
+          if (opts.includeImage !== false) {
+            const img = await ctx.exports.png({ scale: opts.scale || 1 });
+            meta.image = img.src;
+          }
+          return JSON.stringify(meta, null, 2);
+        }
+      };
+    }
+  };
+}
+```
+
+### Best practices
+
+1. Be opt-in: zero overhead when inactive
+2. Use factory pattern: always accept options with defaults
+3. Modify ctx.clone, never ctx.element (after afterClone)
+4. Undo live DOM changes: if mutating in beforeClone, restore in afterClone
+5. Use ctx.__ prefix for custom data on context
+6. Handle errors gracefully with try/catch
+7. Keep dependencies minimal (ideally zero)
+8. Test with scale: 2 (exposes pixel math issues)
+
+### Publishing
+
+Package name: snapdom-plugin-<name>
+Plugin name field: kebab-case
+Peer dependency: "@zumer/snapdom": ">=2.0.0"
+
+---
+
+## CAPTURE PIPELINE (INTERNAL)
+
+The capture flows through these stages:
+
+1. INIT: createContext(options) → normalize all options with defaults
+2. Safari warmup (if needed): pre-capture + canvas draw to prime font pipeline (WebKit #219770)
+3. BEFORESNAP hook
+4. Picture/lazy resolution: resolve <picture> and data-src on live DOM (undo after clone)
+5. BEFORECLONE hook + line-clamp handling
+6. DEEP CLONE: recursive clone with computed styles, Shadow DOM, pseudo-elements, CSS variables, counters, iframes, SVG <use> refs, class-based CSS compression
+7. AFTERCLONE hook + undo picture resolver + XHTML sanitization + icon font ligature conversion
+8. RESOURCE INLINING: <img src> → data URLs, background-image url() → data URLs
+9. FONT EMBEDDING (if embedFonts): discover used variants → fetch fonts → embed as @font-face CSS
+10. CSS GENERATION: base reset CSS + scrollbar CSS
+11. BEFORERENDER hook
+12. SVG CONSTRUCTION: wrap clone in foreignObject, serialize with XMLSerializer, encode as data URL
+13. AFTERRENDER hook
+14. EXPORT: lazy-load exporter module → beforeExport → export → afterExport → afterSnap (once)
+
+### Style compression
+
+Instead of inline styles, snapDOM generates deduped CSS classes (.c0, .c1, ...) for elements with shared computed styles. This reduces SVG size by 50-80%.
+
+### Caching
+
+Multi-tier: image cache, background cache, font cache, style cache, base style cache, measure hints.
+Policies: 'soft' (default, LRU eviction), 'full' (persistent), 'auto' (memory-aware), 'disabled'.
+
+---
+
+## COMMON PATTERNS
+
+### High-DPI capture
+```js
+const img = await snapdom.toPng(element, { scale: 2 });
+```
+
+### Embed fonts
+```js
+const img = await snapdom.toPng(element, { embedFonts: true });
+```
+
+### Exclude elements
+```js
+const img = await snapdom.toPng(element, {
+  exclude: ['.no-capture', '[data-private]'],
+  excludeMode: 'remove'
+});
+```
+
+### CORS proxy
+```js
+const img = await snapdom.toPng(element, {
+  useProxy: 'https://my-cors-proxy.com/?url='
+});
+```
+
+### Download as JPEG
+```js
+await snapdom.download(element, { format: 'jpeg', quality: 0.85, filename: 'shot.jpg' });
+```
+
+### Upload blob
+```js
+const blob = await snapdom.toBlob(element, { type: 'png' });
+const form = new FormData();
+form.append('file', blob, 'capture.png');
+await fetch('/upload', { method: 'POST', body: form });
+```
+
+### Multiple exports from one capture
+```js
+const result = await snapdom(element, { embedFonts: true, scale: 2 });
+const png = await result.toPng();
+const jpeg = await result.toJpg({ quality: 0.8 });
+const canvas = await result.toCanvas();
+```
+
+### preCache for instant captures
+```js
+import { preCache } from '@zumer/snapdom/preCache';
+await preCache(document.querySelector('.app'), { embedFonts: true });
+const img = await snapdom.toPng(element); // fast, resources cached
+```
+
+### React integration
+```jsx
+import { useRef, useCallback } from 'react';
+import { snapdom } from '@zumer/snapdom';
+
+function CaptureButton() {
+  const ref = useRef(null);
+  const capture = useCallback(async () => {
+    const img = await snapdom.toPng(ref.current, { scale: 2 });
+    document.body.appendChild(img);
+  }, []);
+  return (
+    <div>
+      <div ref={ref}>Content to capture</div>
+      <button onClick={capture}>Capture</button>
+    </div>
+  );
+}
+```
+
+### Vue integration
+```vue
+<template>
+  <div ref="target">Content</div>
+  <button @click="capture">Capture</button>
+</template>
+<script setup>
+import { ref } from 'vue';
+import { snapdom } from '@zumer/snapdom';
+const target = ref(null);
+async function capture() {
+  await snapdom.download(target.value, { scale: 2, filename: 'capture.png' });
+}
+</script>
+```
+
+### LLM integration
+```js
+import { promptExport } from '@zumer/snapdom/plugins';
+snapdom.plugins(promptExport());
+const result = await snapdom(document.querySelector('main'));
+const { image, prompt } = await result.toPrompt();
+// Send image + prompt to LLM API
+```
+
+### Combine plugins
+```js
+snapdom.plugins(
+  filter({ preset: 'grayscale' }),
+  replaceText({ replacements: [{ find: /secret/gi, replace: '***' }] }),
+  timestampOverlay({ position: 'top-right' }),
+  pdfImage({ filename: 'report.pdf' })
+);
+const result = await snapdom(element);
+await result.toPdfImage();
+```
+
+---
+
+## TROUBLESHOOTING
+
+### Images blank/broken
+Cause: CORS. Fix: useProxy option or crossorigin="anonymous" on images.
+
+### Lazy images show placeholders
+Fix: resolvePicturePlaceholders is true by default. Increase pictureResolver.timeout if needed.
+
+### Custom fonts missing
+Fix: Set embedFonts: true. Use preCache for faster first capture. Provide localFonts for offline.
+
+### Icon fonts not rendering
+Fix: Register matchers via iconFonts: ['MyIconFont', /icon/i].
+
+### Safari first capture blank
+Cause: WebKit #219770. Fix: handled automatically. Use preCache for best results.
+
+### Capture wrong size
+Fix: Set explicit width/height, or use scale for proportional sizing.
+
+### Excluded elements leave gaps
+Fix: Use excludeMode: 'remove' instead of 'hide'.
+
+### Slow with many CSS variables
+Fix: excludeStyleProps: /^--/ to skip custom properties.
+
+### Memory issues
+Fix: Use cache: 'auto' or 'disabled'. Capture smaller sections. Lower scale.
+
+### Cross-origin iframes
+Only same-origin iframes are captured. Cross-origin iframes appear empty.
+
+---
+
+## TYPESCRIPT
+
+Types at types/snapdom.d.ts. Key types:
+
+```ts
+import type {
+  SnapdomOptions, CaptureResult, CaptureContext, SnapdomPlugin,
+  PluginUse, PluginFactory, LocalFont, ExcludeFonts, CachePolicy,
+  RasterMime, BlobType, DownloadOptions, BlobOptions,
+  Exporter, ExportMap, PreCacheOptions
+} from '@zumer/snapdom';
+```
+
+---
+
+## BROWSER SUPPORT
+
+- Chrome/Edge 80+
+- Firefox 78+
+- Safari 14+ (with automatic WebKit warmup)
+- No Node.js/SSR (requires DOM APIs)
+
+## LIMITATIONS
+
+- Same-origin only for iframes
+- CORS restrictions on external resources (use useProxy)
+- SVG foreignObject rendering varies across browsers
+- Canvas elements rasterized in-place
+- Very large DOMs may hit memory limits

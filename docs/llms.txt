@@ -1,0 +1,73 @@
+# snapDOM
+
+> Ultra-fast, zero-dependency DOM-to-image capture engine for the browser.
+
+snapDOM (`@zumer/snapdom` v2.7.0) captures any HTML element as a self-contained image (SVG, PNG, JPEG, WebP, Canvas, Blob) with full CSS fidelity: pseudo-elements, custom fonts, CSS variables, Shadow DOM, transforms, counters, and more. Extensible via a plugin system.
+
+## Quick Start
+
+```bash
+npm install @zumer/snapdom
+```
+
+```js
+import { snapdom } from '@zumer/snapdom';
+
+const img = await snapdom.toPng(element, { scale: 2 });
+document.body.appendChild(img);
+```
+
+## Links
+
+- Full documentation for LLMs: https://snapdom.dev/llms-full.txt
+- Website: https://snapdom.dev
+- Plugins page: https://snapdom.dev/plugins.html
+- GitHub: https://github.com/zumerlab/snapdom
+- npm: https://www.npmjs.com/package/@zumer/snapdom
+
+## Core API
+
+```js
+snapdom(element, options?)          → Promise<CaptureResult>
+snapdom.toPng(element, options?)    → Promise<HTMLImageElement>
+snapdom.toJpg(element, options?)    → Promise<HTMLImageElement>
+snapdom.toWebp(element, options?)   → Promise<HTMLImageElement>
+snapdom.toCanvas(element, options?) → Promise<HTMLCanvasElement>
+snapdom.toBlob(element, options?)   → Promise<Blob>
+snapdom.download(element, options?) → Promise<void>
+snapdom.plugins(...defs)            → snapdom (chainable)
+```
+
+CaptureResult methods: `toPng()`, `toJpg()`, `toWebp()`, `toSvg()`, `toCanvas()`, `toBlob()`, `download()`, `to(type)`, plus custom plugin exports.
+
+## Key Options
+
+- `scale` (number, default 1): output scale multiplier
+- `embedFonts` (boolean, default false): embed @font-face fonts
+- `backgroundColor` (string): background color
+- `quality` (number, 0-1, default 0.92): JPEG/WebP quality
+- `exclude` (string[]): CSS selectors to exclude
+- `useProxy` (string): CORS proxy URL prefix
+- `plugins` (array): per-capture plugins
+
+## Official Plugins
+
+Import from `@zumer/snapdom/plugins`:
+
+- `filter({ preset?, filter? })` — CSS filter effects (grayscale, sepia, blur, invert, vintage, dramatic)
+- `colorTint({ color?, opacity? })` — color overlay with blend mode
+- `replaceText({ replacements })` — find/replace text in capture
+- `timestampOverlay({ format?, position? })` — timestamp badge
+- `asciiExport({ width?, charset? })` — adds `toAscii()` export
+- `pictureResolver({ timeout?, concurrency? })` — resolve lazy images
+- `pdfImage({ orientation?, filename? })` — adds `toPdfImage()` export
+- `promptExport({ annotate?, maxImageWidth? })` — adds `toPrompt()` for LLM-ready screenshots
+
+## preCache
+
+```js
+import { preCache } from '@zumer/snapdom/preCache';
+await preCache(document, { embedFonts: true });
+```
+
+Preloads resources to avoid first-capture stalls.
