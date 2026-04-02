@@ -582,6 +582,7 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';
 | `ascii-export` | Export | Adds a `toAscii()` method that converts captures to ASCII art. Configurable width, charset, and luminance. |
 | `pdf-image` | Export | Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations. |
 | `html-in-canvas` | Export | Uses the experimental WICG `drawElementImage` API for direct DOM-to-canvas rendering where supported. |
+| `prompt-export` | Export | LLM-friendly capture: adds a `toPrompt()` method that returns an annotated screenshot, structured element map with bounding boxes, and a pre-formatted text prompt. |
 
 ### Community Plugins
 
