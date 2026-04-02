@@ -124,11 +124,12 @@ function maybeConvertBoxShadowForSafari(url) {
  *   dpr?:number,
  *   meta?:object,
  *   backgroundColor?: string // <- NUEVO: color opcional para aplanar fondo
+ *   waitForCompositing?: boolean  // wait two rAFs after decode to ensure <img> inside foreignObject are composited (default: false)
  * }} options
  * @returns {Promise<HTMLCanvasElement>}
  */
 export async function toCanvas(url, options) {
-  let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor } = options
+  let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor, waitForCompositing = false } = options
   url = maybeConvertBoxShadowForSafari(url)
 
   const img = new Image()
@@ -137,6 +138,17 @@ export async function toCanvas(url, options) {
   img.crossOrigin = 'anonymous'
   img.src = url
   await img.decode()
+
+  if (waitForCompositing) {
+    // img.decode() only guarantees the outer SVG element is decoded, not that
+    // <img> elements nested inside <foreignObject> have been composited by the
+    // browser. Attaching the image to the document and waiting two animation
+    // frames gives the compositing pipeline time to finish rendering inner images.
+    img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none;'
+    document.body.appendChild(img)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+    document.body.removeChild(img)
+  }
 
   const natW = img.naturalWidth
   const natH = img.naturalHeight

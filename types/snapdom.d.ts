@@ -109,6 +109,14 @@ export interface SnapdomOptions {
   /** Show placeholders when resources are missing. Default true. */
   placeholders?: boolean;
 
+  /**
+   * Wait two animation frames after `img.decode()` before drawing to canvas,
+   * giving the browser's compositing pipeline time to render `<img>` elements
+   * nested inside `<foreignObject>`. Set to `true` when the captured element
+   * contains images to avoid intermittent blank image bugs. Default `false`.
+   */
+  waitForCompositing?: boolean;
+
   /** Arbitrary plugin configuration at call-site (see PluginUse). */
   plugins?: PluginUse[];
 }
