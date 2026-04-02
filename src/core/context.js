@@ -33,6 +33,8 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {boolean} [options.outerTransforms] // NEW
  * @param {boolean} [options.outerShadows]      // NEW
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
+ * @param {boolean} [options.resolvePicturePlaceholders] - Resolve &lt;picture&gt; placeholders / lazy data-src before clone (default true)
+ * @param {{ timeout?: number, concurrency?: number, resolveLazySrc?: boolean, silent?: boolean }} [options.pictureResolver] - Fine-tune built-in picture resolver
  * @returns {Object}
  */
 export function createContext(options = {}) {
@@ -91,6 +93,13 @@ export function createContext(options = {}) {
 
     // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
     excludeStyleProps: options.excludeStyleProps ?? null,
+
+    // Built-in picture / lazy-src resolver (see src/modules/pictureResolver.js)
+    resolvePicturePlaceholders: options.resolvePicturePlaceholders !== false,
+    pictureResolver:
+      options.pictureResolver && typeof options.pictureResolver === 'object'
+        ? options.pictureResolver
+        : {},
 
     // Plugins (reservado)
     // plugins: normalizePlugins(...),

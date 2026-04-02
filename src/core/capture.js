@@ -11,7 +11,8 @@ import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle }
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClampTree } from '../modules/lineClamp.js'
-import { runHook } from './plugins.js'
+import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
+import { runPictureResolverBeforeClone } from '../modules/pictureResolver.js'
 import {
   stripRootShadows,
   sanitizeCloneForXHTML,
@@ -32,6 +33,21 @@ import {
   readTotalTransformMatrix,
   hasBBoxAffectingTransform,
 } from '../utils/transforms.helpers.js'
+
+/**
+ * @param {object} options
+ * @returns {boolean}
+ */
+function hasPictureResolverPlugin(options) {
+  if (Array.isArray(options.plugins)) {
+    for (const d of options.plugins) {
+      const inst = normalizePlugin(d)
+      if (inst?.name === 'picture-resolver') return true
+    }
+  }
+  return getGlobalPlugins().some(p => p?.name === 'picture-resolver')
+}
+
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
@@ -64,6 +80,13 @@ export async function captureDOM(element, options) {
   let rootTransform2D = null
   // BEFORESNAP
   await runHook('beforeSnap', state)
+
+  /** @type {(() => Promise<void>)|null} */
+  let undoPictureResolver = null
+  if (options.resolvePicturePlaceholders !== false && !hasPictureResolverPlugin(options)) {
+    undoPictureResolver = await runPictureResolverBeforeClone(state.element, state.options)
+  }
+
   // BEFORECLONE
   await runHook('beforeClone', state)
   const undoClamp = lineClampTree(state.element)
@@ -85,6 +108,7 @@ export async function captureDOM(element, options) {
   // AFTERCLONE
   state = { clone, classCSS, styleCache, ...state }
   await runHook('afterClone', state)
+  if (undoPictureResolver) await undoPictureResolver()
   sanitizeCloneForXHTML(state.clone)
   // Shrink pass ONLY when excludeMode === 'remove'
   if (state.options?.excludeMode === 'remove') {
