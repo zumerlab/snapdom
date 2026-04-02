@@ -12,7 +12,8 @@
     "./color-tint": "./color-tint.js",
     "./picture-resolver": "./picture-resolver.js",
     "./html-in-canvas": "./html-in-canvas.js",
-    "./pdf-image": "./pdf-image.js"
+    "./pdf-image": "./pdf-image.js",
+    "./prompt-export": "./prompt-export.js"
   },
   "files": [
     "*.js",

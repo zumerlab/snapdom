@@ -109,6 +109,19 @@ export interface SnapdomOptions {
   /** Show placeholders when resources are missing. Default true. */
   placeholders?: boolean;
 
+  /**
+   * Resolve lazy `<picture>` placeholders / `data-src` patterns before clone (default true).
+   * Set false to skip; register the `picture-resolver` plugin explicitly if you need overrides while core is off.
+   */
+  resolvePicturePlaceholders?: boolean;
+  /** Fine-tune the built-in picture/lazy resolver (timeout, concurrency, etc.). */
+  pictureResolver?: {
+    timeout?: number;
+    concurrency?: number;
+    resolveLazySrc?: boolean;
+    silent?: boolean;
+  };
+
   /** Arbitrary plugin configuration at call-site (see PluginUse). */
   plugins?: PluginUse[];
 }
