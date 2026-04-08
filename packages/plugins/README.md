@@ -117,27 +117,6 @@ snapdom(el, { plugins: [colorTint({ color: 'royalblue', opacity: 0.4 })] });
 
 ---
 
-### `picture-resolver`
-
-Resolves lazy-loaded `<picture>` placeholders and `data-src` patterns before capture.
-Detects base64/blob stubs, fetches the real image, and restores the DOM after cloning (zero side effects).
-
-```js
-import { pictureResolver } from '@zumer/snapdom-plugins/picture-resolver';
-
-snapdom(el, { plugins: [pictureResolver({ timeout: 3000 })] });
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `timeout` | `number` | `5000` | Max ms per image fetch |
-| `concurrency` | `number` | `4` | Max parallel fetches |
-| `resolveLazySrc` | `boolean` | `true` | Also resolve `data-src` / `data-srcset` patterns |
-| `useProxy` | `string` | `''` | CORS proxy URL for cross-origin images |
-| `silent` | `boolean` | `false` | Suppress console warnings |
-
----
-
 ### `ascii-export`
 
 Adds a `toAscii()` export method that converts captures to ASCII art.

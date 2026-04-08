@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Official plugins for SnapDOM",
   "type": "module",
   "exports": {
@@ -10,7 +10,6 @@
     "./replace-text": "./replace-text.js",
     "./filter": "./filter.js",
     "./color-tint": "./color-tint.js",
-    "./picture-resolver": "./picture-resolver.js",
     "./html-in-canvas": "./html-in-canvas.js",
     "./pdf-image": "./pdf-image.js",
     "./prompt-export": "./prompt-export.js"

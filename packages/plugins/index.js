@@ -11,7 +11,6 @@ export { asciiExport } from './ascii-export.js';
 export { replaceText } from './replace-text.js';
 export { filter } from './filter.js';
 export { colorTint } from './color-tint.js';
-export { pictureResolver } from './picture-resolver.js';
 export { pdfImage } from './pdf-image.js';
 export { promptExport } from './prompt-export.js';
 // export { htmlInCanvas } from './html-in-canvas.js';
