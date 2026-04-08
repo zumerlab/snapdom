@@ -27,11 +27,15 @@ export const ICON_FONT_URLS = Object.assign({
 
 let userIconFonts = []
 
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
+}
+
 export function extendIconFonts(fonts) {
   const list = Array.isArray(fonts) ? fonts : [fonts]
   for (const f of list) {
     if (f instanceof RegExp) userIconFonts.push(f)
-    else if (typeof f === 'string') userIconFonts.push(new RegExp(f, 'i'))
+    else if (typeof f === 'string') userIconFonts.push(new RegExp(escapeRegExp(f), 'i'))
     else console.warn('[snapdom] Ignored invalid iconFont value:', f)
   }
 }
