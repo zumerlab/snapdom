@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file. 
 
 
+#### [v2.8.0](https://github.com/zumerlab/snapdom/compare/v2.7.0...v2.8.0)
+
+> 8 April 2026
+
+- Improve robustness of icon font detection [`#397`](https://github.com/zumerlab/snapdom/pull/397)
+- feat(docs): add LLM-friendly documentation links and new reference files [`bc7ece1`](https://github.com/zumerlab/snapdom/commit/bc7ece1e1b864afd3c1eb6c36ff6ed0516106fcb)
+- feat(plugins): add prompt-export plugin for LLM-friendly captures [`314c51a`](https://github.com/zumerlab/snapdom/commit/314c51a46464342a9f21508c1a4ce49477277c6f)
+- feat: extract pictureResolver into standalone module [`1d3dd70`](https://github.com/zumerlab/snapdom/commit/1d3dd70b060861500a23758d07de95d7ed4a8ed5)
+- feat(docs): add official and community plugins sections to README, including installation instructions, usage examples, and detailed descriptions of each plugin's functionality. [`b10235e`](https://github.com/zumerlab/snapdom/commit/b10235e30a67cdeb1cda144ed23edc4771a790bc)
+- feat(docs): enhance plugin documentation with event tracking attributes for improved analytics on user interactions [`84d6901`](https://github.com/zumerlab/snapdom/commit/84d6901e606112d369b684d681c15dcde228d651)
+- feat(docs): add tracking scripts and enhance plugin documentation with event tracking for better analytics [`20de0f2`](https://github.com/zumerlab/snapdom/commit/20de0f2cdae6de394d4a5d6dd122d386a5fbca7c)
+- Ensure font names are escaped before creating dynamic RegExp [`2cd41ec`](https://github.com/zumerlab/snapdom/commit/2cd41ecb77cf2c64bcb8b6591aaa6cc51aa459cb)
+- fix(docs): update "Build a Plugin" link to anchor and add section ID for improved navigation in documentation [`3c01910`](https://github.com/zumerlab/snapdom/commit/3c0191063ea48677176cec58b73932461de07b8c)
+
+
+
 #### [v2.7.0](https://github.com/zumerlab/snapdom/compare/v2.6.0...v2.7.0)
 
 > 27 March 2026
