@@ -357,7 +357,6 @@ All capture methods accept an `options` object:
 | `fallbackURL`     | string \| function  | - | Fallback image for `<img>` load failure |
 | `outerTransforms`      | boolean  | `true`  | When `false` removes `translate/rotate` but preserves `scale/skew`, producing a flat, reusable capture |
 | `outerShadows`       | boolean  | `false`  | Do not expand the root’s bounding box for shadows/blur/outline, and strip those visual effects from the cloned root |
-
 | `safariWarmupAttempts` | number   | `3`      | Safari only: iterations to prime font/decode (WebKit #219770). Use `1` if 3 causes lag |
 
 ### debug
