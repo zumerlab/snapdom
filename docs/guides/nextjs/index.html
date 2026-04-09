@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture HTML to PNG in Next.js with SnapDOM</title>
+  <meta name="description" content="How to use SnapDOM in a Next.js 14 app router project. Client component, dynamic import, the SSR pitfall and a working example." />
+  <meta name="keywords" content="snapdom nextjs, html to png nextjs, next.js screenshot div, next.js html2canvas alternative, nextjs capture component" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/guides/nextjs/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture HTML to PNG in Next.js with SnapDOM" />
+  <meta property="og:description" content="A copy-paste client component for the Next.js app router, with the SSR pitfall to avoid." />
+  <meta property="og:url" content="https://snapdom.dev/guides/nextjs/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Capture HTML to PNG in Next.js with SnapDOM",
+    "description": "Step-by-step guide to using SnapDOM in a Next.js 14 app router project, with a copy-paste client component.",
+    "url": "https://snapdom.dev/guides/nextjs/",
+    "image": "https://snapdom.dev/assets/hero.png",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
+    "mainEntityOfPage": "https://snapdom.dev/guides/nextjs/",
+    "proficiencyLevel": "Beginner"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Why does SnapDOM crash on the Next.js server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SnapDOM relies on browser-only APIs (DOM, SVG, Image). It must run on the client. Use a 'use client' directive at the top of your component or import SnapDOM dynamically with ssr: false."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I use SnapDOM in a server action?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Server actions run in a Node.js environment without a real DOM. Use Puppeteer or Playwright server-side, and SnapDOM client-side."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SnapDOM work with the pages router too?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. The same client component pattern works in both routers — just call SnapDOM inside a useEffect or event handler so it never executes during getServerSideProps or getStaticProps."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Next.js Guide</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Guide nextjs github">
+      <i class="fab fa-github"></i>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>Capture HTML to PNG in <span class="accent">Next.js</span></h1>
+    <p class="lead">A copy-paste client component for the app router, the SSR pitfall to avoid, and a dynamic import pattern that keeps your bundle small.</p>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p>SnapDOM is a browser-only library — it must run on the client. Mark your component with <code>'use client'</code> (app router) or import SnapDOM dynamically with <code>ssr: false</code>. Then it's a regular React capture: <code>useRef</code> + <code>snapdom.toPng(ref.current)</code>.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="install">1. Install</h2>
+      <pre class="code-block">npm install @zumer/snapdom</pre>
+      <p class="muted">Works with Next.js 13, 14 and 15. No special config required.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="client">2. App Router — client component</h2>
+      <p>Create a client component that owns the ref and the capture logic. The <code>'use client'</code> directive on top is critical: without it Next.js will try to evaluate SnapDOM during the server render and crash.</p>
+      <pre class="code-block"><span class="cm">// app/capture/CaptureCard.tsx</span>
+<span class="str">'use client'</span>;
+
+<span class="kw">import</span> { useRef } <span class="kw">from</span> <span class="str">'react'</span>;
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">export default function</span> <span class="fn">CaptureCard</span>() {
+  <span class="kw">const</span> cardRef = <span class="fn">useRef</span>&lt;HTMLDivElement&gt;(<span class="kw">null</span>);
+
+  <span class="kw">async function</span> <span class="fn">handleCapture</span>() {
+    <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
+    <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(cardRef.current, { scale: <span class="num">2</span> });
+    document.body.<span class="fn">appendChild</span>(img);
+  }
+
+  <span class="kw">return</span> (
+    &lt;<span class="fn">div</span>&gt;
+      &lt;<span class="fn">div</span> ref={cardRef} className=<span class="str">"card"</span>&gt;
+        &lt;<span class="fn">h3</span>&gt;Hello SnapDOM&lt;/<span class="fn">h3</span>&gt;
+        &lt;<span class="fn">p</span>&gt;Captured from a Next.js client component.&lt;/<span class="fn">p</span>&gt;
+      &lt;/<span class="fn">div</span>&gt;
+      &lt;<span class="fn">button</span> onClick={handleCapture}&gt;Capture&lt;/<span class="fn">button</span>&gt;
+    &lt;/<span class="fn">div</span>&gt;
+  );
+}</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="use">3. Use it from a server page</h2>
+      <p>Server components can render the client component as a child. The boundary is the <code>'use client'</code> directive — anything below it runs in the browser:</p>
+      <pre class="code-block"><span class="cm">// app/capture/page.tsx</span>
+<span class="kw">import</span> CaptureCard <span class="kw">from</span> <span class="str">'./CaptureCard'</span>;
+
+<span class="kw">export default function</span> <span class="fn">Page</span>() {
+  <span class="kw">return</span> (
+    &lt;<span class="fn">main</span>&gt;
+      &lt;<span class="fn">h1</span>&gt;SnapDOM in Next.js&lt;/<span class="fn">h1</span>&gt;
+      &lt;<span class="fn">CaptureCard</span> /&gt;
+    &lt;/<span class="fn">main</span>&gt;
+  );
+}</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="dynamic">4. Alternative — dynamic import (lazy load)</h2>
+      <p>If you want to keep SnapDOM out of the initial bundle, import the client component dynamically with SSR disabled:</p>
+      <pre class="code-block"><span class="cm">// app/capture/page.tsx</span>
+<span class="kw">import</span> dynamic <span class="kw">from</span> <span class="str">'next/dynamic'</span>;
+
+<span class="kw">const</span> CaptureCard = <span class="fn">dynamic</span>(() =&gt; <span class="fn">import</span>(<span class="str">'./CaptureCard'</span>), {
+  ssr: <span class="kw">false</span>,
+  loading: () =&gt; &lt;<span class="fn">p</span>&gt;Loading capture tool…&lt;/<span class="fn">p</span>&gt;,
+});
+
+<span class="kw">export default function</span> <span class="fn">Page</span>() {
+  <span class="kw">return</span> &lt;<span class="fn">CaptureCard</span> /&gt;;
+}</pre>
+      <p class="muted">This pattern is also useful for the pages router (<code>pages/capture.tsx</code>) where there's no <code>'use client'</code> directive — <code>ssr: false</code> is your only opt-out from server rendering.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="og">5. Bonus — dynamic OG / share images</h2>
+      <p>SnapDOM is great for generating share cards on the fly when the user clicks "share". Capture the rendered card to a Blob, upload it to your CDN, and use that URL as the <code>og:image</code> for the share link:</p>
+      <pre class="code-block"><span class="kw">async function</span> <span class="fn">share</span>() {
+  <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
+  <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.current, { scale: <span class="num">2</span> });
+
+  <span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
+  form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'share.png'</span>);
+
+  <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/upload'</span>, { method: <span class="str">'POST'</span>, body: form });
+}</pre>
+      <p class="muted">For server-rendered OG images that don't need a real browser, Vercel's <code>@vercel/og</code> is a different tool — see the FAQ below.</p>
+    </section>
+
+    <section class="prose faq">
+      <h2 id="faq">Common gotchas</h2>
+
+      <details>
+        <summary>"window is not defined" / "document is not defined" errors</summary>
+        <p>You imported SnapDOM at the top of a server component. Either add <code>'use client'</code> at the top of the file, or use <code>dynamic(() =&gt; import('./CaptureCard'), { ssr: false })</code>.</p>
+      </details>
+
+      <details>
+        <summary>The captured image is blank in production but works in dev</summary>
+        <p>This usually means a font hasn't finished loading by the time you triggered the capture. Pass <code>{ embedFonts: true }</code> and consider calling the optional <code>preCache</code> helper once on mount:</p>
+        <p><code>import { preCache } from '@zumer/snapdom/preCache';</code></p>
+      </details>
+
+      <details>
+        <summary>Should I use SnapDOM or @vercel/og for OG images?</summary>
+        <p>Different tools. <code>@vercel/og</code> renders Satori-compatible JSX on the server (no real browser, no full CSS). SnapDOM runs client-side in a real browser and supports the entire CSS engine including pseudo-elements, custom fonts, animations and Web Components.</p>
+        <p>Use <code>@vercel/og</code> when the card is fully described in JSX and you don't need real browser fidelity. Use SnapDOM when you want to capture a piece of your live UI with pixel accuracy.</p>
+      </details>
+
+      <details>
+        <summary>Can I run SnapDOM in a server action?</summary>
+        <p>No. Server actions run in Node.js without a real DOM. Use Puppeteer or Playwright if you need server-side screenshots, and SnapDOM client-side.</p>
+      </details>
+
+      <details>
+        <summary>Cross-origin images break the capture</summary>
+        <p>Pass a CORS proxy via <code>{ useProxy: 'https://your-proxy.example.com/' }</code>. SnapDOM will fetch external images through the proxy and inline them as data URLs.</p>
+      </details>
+
+      <details>
+        <summary>Does it work with Turbopack?</summary>
+        <p>Yes. SnapDOM is a plain ES module with no native dependencies, so Turbopack and Webpack handle it identically.</p>
+      </details>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../react/">SnapDOM in React <span class="arrow">→</span></a>
+        <a class="related-card" href="../vue/">SnapDOM in Vue <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../how-to/html-to-png/">How to convert HTML to PNG <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Try it in your app router project</h2>
+        <p>Drop SnapDOM into a client component and capture your first element in under a minute.</p>
+        <a href="../../" class="btn btn-primary" data-umami-event="Guide nextjs cta home">Open the demo</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide nextjs cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../../">Showcase</a>
+    <a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../" class="current">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html">Labs</a>
+  </nav>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

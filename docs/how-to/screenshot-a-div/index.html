@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Screenshot a Div in JavaScript — SnapDOM</title>
+  <meta name="description" content="Take a screenshot of any HTML element with one line of JavaScript using SnapDOM. Working example, download recipe and FAQs." />
+  <meta name="keywords" content="screenshot a div, javascript screenshot, html to image, capture html element, screenshot html javascript" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/screenshot-a-div/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Screenshot a Div in JavaScript" />
+  <meta property="og:description" content="Capture any HTML element with one line of JavaScript using SnapDOM." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/screenshot-a-div/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Screenshot a div in JavaScript with SnapDOM",
+    "description": "Capture any DOM element to PNG using the SnapDOM library.",
+    "url": "https://snapdom.dev/how-to/screenshot-a-div/",
+    "image": "https://snapdom.dev/assets/hero.png",
+    "totalTime": "PT2M",
+    "supply": [
+      { "@type": "HowToSupply", "name": "An HTML element with an id" }
+    ],
+    "tool": [
+      { "@type": "HowToTool", "name": "SnapDOM (@zumer/snapdom)" }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Install SnapDOM",
+        "text": "Install the @zumer/snapdom package from npm.",
+        "url": "https://snapdom.dev/how-to/screenshot-a-div/#install"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "Pick the element",
+        "text": "Use document.querySelector to grab the element you want to screenshot.",
+        "url": "https://snapdom.dev/how-to/screenshot-a-div/#pick"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Capture",
+        "text": "Call snapdom.toPng on the element. The promise resolves to an HTMLImageElement.",
+        "url": "https://snapdom.dev/how-to/screenshot-a-div/#capture"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 4,
+        "name": "Use the image",
+        "text": "Append it to the page, download it, or serialise it to a Blob to upload.",
+        "url": "https://snapdom.dev/how-to/screenshot-a-div/#use"
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is the easiest way to screenshot a div in JavaScript?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Install @zumer/snapdom and call snapdom.toPng(element). It returns an HTMLImageElement you can append, download, or convert to a Blob — all in one line of code."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can JavaScript take a screenshot of a webpage?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "JavaScript cannot natively screenshot the entire viewport, but it can serialise any DOM element into an image using a library like SnapDOM, html2canvas, or html-to-image. SnapDOM clones the element, inlines its styles and renders it through SVG foreignObject."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does it work cross-browser?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. SnapDOM works in all modern Chromium, Firefox and Safari browsers. It uses standard Web APIs (SVG foreignObject, Canvas) with no polyfills required."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> How-To Recipe</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Howto div github">
+      <i class="fab fa-github"></i>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>How to <span class="accent">screenshot a div</span> in JavaScript</h1>
+    <p class="lead">The shortest possible answer: pick the element, call <code>snapdom.toPng</code>, get back an image. Two minutes from <code>npm install</code> to working code.</p>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p><code>const img = await snapdom.toPng(document.querySelector('#my-div'));</code> — that's the entire recipe. The promise resolves to an <code>HTMLImageElement</code> you can append, download or upload.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="install">Step 1 — Install SnapDOM</h2>
+      <pre class="code-block">npm install @zumer/snapdom</pre>
+      <p>If you don't use a bundler, you can also use the CDN build:</p>
+      <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> type=<span class="str">"module"</span><span class="op">&gt;</span>
+  <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">"https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs"</span>;
+<span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span></pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="pick">Step 2 — Pick the div you want to screenshot</h2>
+      <p>Anything that's part of the live document tree works. Most people use <code>document.querySelector</code>:</p>
+      <pre class="code-block"><span class="kw">const</span> el = document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>);</pre>
+      <p class="muted">The element doesn't need to be visible inside the viewport, but it does need to be attached to the document (not <code>display: none</code>).</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="capture">Step 3 — Capture it</h2>
+      <p>One line:</p>
+      <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el);</pre>
+      <p>The returned <code>img</code> is a real <code>HTMLImageElement</code> with the captured content as its <code>src</code> (a base64-encoded SVG/PNG data URL).</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="use">Step 4 — Do something with the image</h2>
+
+      <h4>Append it to the page</h4>
+      <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el);
+document.body.<span class="fn">appendChild</span>(img);</pre>
+
+      <h4>Download it as a file</h4>
+      <pre class="code-block"><span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(el);
+<span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
+
+      <h4>Get a Blob to upload to a server</h4>
+      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(el);
+
+<span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
+form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'screenshot.png'</span>);
+<span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/upload'</span>, { method: <span class="str">'POST'</span>, body: form });</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="full-example">Full working example</h2>
+      <p>Drop this into a fresh HTML file and open it in a browser:</p>
+      <pre class="code-block"><span class="op">&lt;!</span><span class="kw">DOCTYPE html</span><span class="op">&gt;</span>
+<span class="op">&lt;</span><span class="kw">html</span><span class="op">&gt;</span>
+<span class="op">&lt;</span><span class="kw">body</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">div</span> id=<span class="str">"card"</span> style=<span class="str">"padding:24px;background:#6366f1;color:#fff;border-radius:12px;"</span><span class="op">&gt;</span>
+    <span class="op">&lt;</span><span class="fn">h2</span><span class="op">&gt;</span>Hello SnapDOM<span class="op">&lt;/</span><span class="fn">h2</span><span class="op">&gt;</span>
+    <span class="op">&lt;</span><span class="fn">p</span><span class="op">&gt;</span>This entire div is about to become a PNG.<span class="op">&lt;/</span><span class="fn">p</span><span class="op">&gt;</span>
+  <span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">button</span> id=<span class="str">"go"</span><span class="op">&gt;</span>Capture<span class="op">&lt;/</span><span class="fn">button</span><span class="op">&gt;</span>
+
+  <span class="op">&lt;</span><span class="kw">script</span> type=<span class="str">"module"</span><span class="op">&gt;</span>
+    <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">"https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs"</span>;
+
+    document.<span class="fn">getElementById</span>(<span class="str">'go'</span>).<span class="fn">addEventListener</span>(<span class="str">'click'</span>, <span class="kw">async</span> () =&gt; {
+      <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">getElementById</span>(<span class="str">'card'</span>));
+      document.body.<span class="fn">appendChild</span>(img);
+    });
+  <span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
+<span class="op">&lt;/</span><span class="kw">body</span><span class="op">&gt;</span>
+<span class="op">&lt;/</span><span class="kw">html</span><span class="op">&gt;</span></pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="options">Useful options</h2>
+      <ul>
+        <li><code>scale: 2</code> — capture at 2× resolution for retina displays.</li>
+        <li><code>backgroundColor: '#fff'</code> — fill transparent areas with a colour.</li>
+        <li><code>embedFonts: true</code> — inline <code>@font-face</code> declarations so custom fonts render correctly.</li>
+        <li><code>exclude: ['.skip']</code> — skip any element matching the selector.</li>
+        <li><code>useProxy: 'https://your-proxy.example.com/'</code> — fetch cross-origin images through a CORS proxy.</li>
+      </ul>
+    </section>
+
+    <section class="prose faq">
+      <h2 id="faq">Frequently asked questions</h2>
+
+      <details>
+        <summary>Why not use the browser's built-in screenshot API?</summary>
+        <p>There isn't one. The closest thing is the Screen Capture API (<code>getDisplayMedia</code>) which captures the whole tab or screen and requires user permission — it cannot target a specific DOM element. SnapDOM is the workaround.</p>
+      </details>
+
+      <details>
+        <summary>Does this work with web fonts?</summary>
+        <p>Yes, but you have to opt in. Pass <code>{ embedFonts: true }</code> and SnapDOM will inline the matching <code>@font-face</code> declarations so the captured image renders with your real fonts.</p>
+      </details>
+
+      <details>
+        <summary>Can I screenshot something inside an iframe?</summary>
+        <p>Same-origin iframes are supported out of the box. Cross-origin iframes are not — the browser blocks access to their content.</p>
+      </details>
+
+      <details>
+        <summary>What about Shadow DOM?</summary>
+        <p>SnapDOM walks open Shadow DOM trees during capture, so Web Components render correctly.</p>
+      </details>
+
+      <details>
+        <summary>How big is the library?</summary>
+        <p>Under 30 KB minified + gzipped, with zero runtime dependencies.</p>
+      </details>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../html-to-png/">How to convert HTML to PNG <span class="arrow">→</span></a>
+        <a class="related-card" href="../../guides/react/">SnapDOM in React <span class="arrow">→</span></a>
+        <a class="related-card" href="../../guides/vue/">SnapDOM in Vue <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Try the live demo</h2>
+        <p>See SnapDOM running in your browser before installing it.</p>
+        <a href="../../" class="btn btn-primary" data-umami-event="Howto div cta home">Open the demo</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Howto div cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../../">Showcase</a>
+    <a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a>
+  </nav>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

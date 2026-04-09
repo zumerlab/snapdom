@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapDOM Framework Guides — React, Vue, Next.js</title>
+  <meta name="description" content="Use SnapDOM with your favourite framework. Step-by-step guides for React, Vue, Next.js and more — copy-paste components included." />
+  <meta name="keywords" content="snapdom react, snapdom vue, snapdom nextjs, html to image react, screenshot div react" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/guides/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SnapDOM Framework Guides" />
+  <meta property="og:description" content="Use SnapDOM with React, Vue, Next.js and more. Copy-paste components and framework-specific gotchas." />
+  <meta property="og:url" content="https://snapdom.dev/guides/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "SnapDOM Framework Guides",
+    "url": "https://snapdom.dev/guides/",
+    "description": "Step-by-step guides to use SnapDOM with React, Vue, Next.js and more.",
+    "isPartOf": { "@type": "WebSite", "name": "SnapDOM", "url": "https://snapdom.dev" }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Framework Guides</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Guides hub github">
+      <i class="fab fa-github"></i>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>SnapDOM in your <span class="accent">framework</span></h1>
+    <p class="lead">Drop SnapDOM into a React component, a Vue setup, or a Next.js page. Copy-paste examples and the gotchas to watch out for in each environment.</p>
+  </section>
+
+  <main class="page">
+    <div class="hub-grid">
+      <a class="hub-card" href="./react/" data-umami-event="Guides card react">
+        <span class="tag">React 18+</span>
+        <h3>SnapDOM in React</h3>
+        <p>useRef + a click handler. Capture any component to PNG without ejecting from the React tree.</p>
+      </a>
+      <a class="hub-card" href="./vue/" data-umami-event="Guides card vue">
+        <span class="tag">Vue 3</span>
+        <h3>SnapDOM in Vue</h3>
+        <p>ref() + onMounted in the Composition API. Capture single-file components in two lines of script.</p>
+      </a>
+      <a class="hub-card" href="./nextjs/" data-umami-event="Guides card nextjs">
+        <span class="tag">Next.js 14+</span>
+        <h3>SnapDOM in Next.js</h3>
+        <p>Client component + dynamic import. Avoid the SSR bundle and ship a clean app router page.</p>
+      </a>
+    </div>
+
+    <section class="prose">
+      <h2>Why a framework guide?</h2>
+      <p>SnapDOM itself is framework-agnostic — it manipulates the DOM the browser already has, so any setup that produces real HTML can use it. The reason these guides exist is that every framework has one or two specific gotchas: refs vs querySelector, hydration boundaries, SSR-only environments, lifecycle timing, etc.</p>
+      <p>Each guide gives you a copy-paste component, the right place to call SnapDOM in the lifecycle, and the one common mistake that makes captures come out blank.</p>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Don't see your stack?</h2>
+        <p>SnapDOM works in plain HTML, Astro, SvelteKit, Solid, Qwik and more. Open an issue on GitHub if you'd like a dedicated guide.</p>
+        <a href="https://github.com/zumerlab/snapdom/issues" class="btn btn-primary" target="_blank" rel="noopener" data-umami-event="Guides hub cta issue">Request a guide</a>
+        <a href="../" class="btn btn-ghost" data-umami-event="Guides hub cta home">Open the demo</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../">Showcase</a>
+    <a href="../plugins.html">Plugins</a>
+    <a href="../compare/">Compare</a>
+    <a href="./" class="current">Guides</a>
+    <a href="../how-to/">How-to</a>
+    <a href="../labs.html">Labs</a>
+  </nav>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

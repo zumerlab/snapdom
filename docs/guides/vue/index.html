@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture HTML to PNG in Vue 3 with SnapDOM</title>
+  <meta name="description" content="How to capture a Vue 3 single-file component to PNG, JPG or SVG with SnapDOM. Composition API hook, gotchas, and a working example." />
+  <meta name="keywords" content="snapdom vue, html to png vue, screenshot div vue, vue 3 capture component, html to image vue" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/guides/vue/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture HTML to PNG in Vue 3 with SnapDOM" />
+  <meta property="og:description" content="A copy-paste Vue 3 setup that captures any single-file component, with the gotchas to watch out for." />
+  <meta property="og:url" content="https://snapdom.dev/guides/vue/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Capture HTML to PNG in Vue 3 with SnapDOM",
+    "description": "Step-by-step guide to using SnapDOM inside a Vue 3 single-file component, with a copy-paste setup.",
+    "url": "https://snapdom.dev/guides/vue/",
+    "image": "https://snapdom.dev/assets/hero.png",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
+    "mainEntityOfPage": "https://snapdom.dev/guides/vue/",
+    "proficiencyLevel": "Beginner"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How do I capture a Vue component as a PNG?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Bind a template ref to the element you want to capture, then call snapdom.toPng(myRef.value) inside an event handler. SnapDOM returns an HTMLImageElement you can append, download or set as src."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SnapDOM work with the Options API?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Use ref=\"myRef\" in your template and access this.$refs.myRef in a method. SnapDOM is framework-agnostic and only needs a real DOM element."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Vue 3 Guide</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Guide vue github">
+      <i class="fab fa-github"></i>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>Capture HTML to PNG in <span class="accent">Vue 3</span></h1>
+    <p class="lead">A copy-paste single-file component using the Composition API, plus the gotchas to watch out for.</p>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p>Bind a template ref with <code>ref="cardRef"</code>, install <code>@zumer/snapdom</code>, and call <code>snapdom.toPng(cardRef.value)</code> from a button handler. SnapDOM returns an <code>HTMLImageElement</code> ready to append.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="install">1. Install</h2>
+      <pre class="code-block">npm install @zumer/snapdom</pre>
+      <p class="muted">Zero runtime dependencies, ESM-only. Works with Vite, Vue CLI and Nuxt out of the box.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="component">2. Minimal capture component (Composition API)</h2>
+      <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> <span class="fn">setup</span><span class="op">&gt;</span>
+<span class="kw">import</span> { ref } <span class="kw">from</span> <span class="str">'vue'</span>;
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">const</span> cardRef = <span class="fn">ref</span>(<span class="kw">null</span>);
+
+<span class="kw">async function</span> <span class="fn">capture</span>() {
+  <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
+  <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(cardRef.value, { scale: <span class="num">2</span> });
+  document.body.<span class="fn">appendChild</span>(img);
+}
+<span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
+
+<span class="op">&lt;</span><span class="kw">template</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">div</span><span class="op">&gt;</span>
+    <span class="op">&lt;</span><span class="fn">div</span> ref=<span class="str">"cardRef"</span> class=<span class="str">"card"</span><span class="op">&gt;</span>
+      <span class="op">&lt;</span><span class="fn">h3</span><span class="op">&gt;</span>Hello SnapDOM<span class="op">&lt;/</span><span class="fn">h3</span><span class="op">&gt;</span>
+      <span class="op">&lt;</span><span class="fn">p</span><span class="op">&gt;</span>This whole div will be captured.<span class="op">&lt;/</span><span class="fn">p</span><span class="op">&gt;</span>
+    <span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
+    <span class="op">&lt;</span><span class="fn">button</span> @click=<span class="str">"capture"</span><span class="op">&gt;</span>Capture<span class="op">&lt;/</span><span class="fn">button</span><span class="op">&gt;</span>
+  <span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
+<span class="op">&lt;/</span><span class="kw">template</span><span class="op">&gt;</span></pre>
+      <p>That's the entire component. The template ref name (<code>cardRef</code>) must match the variable declared in the script setup.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="download">3. Download instead of appending</h2>
+      <pre class="code-block"><span class="kw">async function</span> <span class="fn">download</span>() {
+  <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(cardRef.value);
+  <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });
+}</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="preview">4. Render a live preview</h2>
+      <p>Capture to a Blob and create an object URL to use as the preview <code>&lt;img&gt;</code> source:</p>
+      <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> <span class="fn">setup</span><span class="op">&gt;</span>
+<span class="kw">import</span> { ref } <span class="kw">from</span> <span class="str">'vue'</span>;
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">const</span> cardRef = <span class="fn">ref</span>(<span class="kw">null</span>);
+<span class="kw">const</span> previewUrl = <span class="fn">ref</span>(<span class="str">''</span>);
+
+<span class="kw">async function</span> <span class="fn">capture</span>() {
+  <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
+  <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.value);
+  previewUrl.value = URL.<span class="fn">createObjectURL</span>(blob);
+}
+<span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
+
+<span class="op">&lt;</span><span class="kw">template</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">div</span> ref=<span class="str">"cardRef"</span><span class="op">&gt;</span>…<span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">button</span> @click=<span class="str">"capture"</span><span class="op">&gt;</span>Capture<span class="op">&lt;/</span><span class="fn">button</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">img</span> v-if=<span class="str">"previewUrl"</span> :src=<span class="str">"previewUrl"</span> alt=<span class="str">"preview"</span> /<span class="op">&gt;</span>
+<span class="op">&lt;/</span><span class="kw">template</span><span class="op">&gt;</span></pre>
+      <p class="muted">Revoke the object URL with <code>URL.revokeObjectURL(previewUrl.value)</code> when you're done with it to avoid leaks.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="composable">5. Reusable composable</h2>
+      <pre class="code-block"><span class="cm">// useSnapdom.js</span>
+<span class="kw">import</span> { ref } <span class="kw">from</span> <span class="str">'vue'</span>;
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">export function</span> <span class="fn">useSnapdom</span>(options = {}) {
+  <span class="kw">const</span> target = <span class="fn">ref</span>(<span class="kw">null</span>);
+
+  <span class="kw">async function</span> <span class="fn">capture</span>(format = <span class="str">'png'</span>) {
+    <span class="kw">if</span> (!target.value) <span class="kw">return null</span>;
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(target.value, options);
+    <span class="kw">return</span> result.<span class="fn">to</span>(format);
+  }
+
+  <span class="kw">return</span> { target, capture };
+}</pre>
+
+      <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> <span class="fn">setup</span><span class="op">&gt;</span>
+<span class="kw">import</span> { useSnapdom } <span class="kw">from</span> <span class="str">'./useSnapdom'</span>;
+
+<span class="kw">const</span> { target, capture } = <span class="fn">useSnapdom</span>({ scale: <span class="num">2</span>, embedFonts: <span class="kw">true</span> });
+<span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
+
+<span class="op">&lt;</span><span class="kw">template</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">div</span> ref=<span class="str">"target"</span><span class="op">&gt;</span>…<span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">button</span> @click=<span class="str">"capture('png')"</span><span class="op">&gt;</span>Capture<span class="op">&lt;/</span><span class="fn">button</span><span class="op">&gt;</span>
+<span class="op">&lt;/</span><span class="kw">template</span><span class="op">&gt;</span></pre>
+    </section>
+
+    <section class="prose faq">
+      <h2 id="faq">Common gotchas</h2>
+
+      <details>
+        <summary>The captured image is blank</summary>
+        <p>Make sure you trigger the capture from a user event (click) or inside <code>onMounted</code> — never directly inside <code>setup()</code>. The element ref is only assigned after the component has been mounted.</p>
+        <p>Also confirm the captured element isn't <code>v-if</code>'d off the page. SnapDOM needs the element to be in the live DOM tree.</p>
+      </details>
+
+      <details>
+        <summary>Web fonts aren't being captured</summary>
+        <p>Pass <code>{ embedFonts: true }</code>. SnapDOM will inline the matching <code>@font-face</code> declarations into the SVG so the captured image renders with your real fonts.</p>
+      </details>
+
+      <details>
+        <summary>How do I use SnapDOM with the Options API?</summary>
+        <p>Bind <code>ref="cardRef"</code> in the template and access <code>this.$refs.cardRef</code> in a method:</p>
+        <p><code>const img = await snapdom.toPng(this.$refs.cardRef);</code></p>
+      </details>
+
+      <details>
+        <summary>Does SnapDOM work with Nuxt?</summary>
+        <p>Yes — but only on the client side. Wrap your capture component in <code>&lt;ClientOnly&gt;</code> or import SnapDOM dynamically inside <code>onMounted</code> so it never runs on the server.</p>
+      </details>
+
+      <details>
+        <summary>Cross-origin images don't render</summary>
+        <p>Use the <code>useProxy</code> option pointing to a CORS proxy: <code>{ useProxy: 'https://your-proxy.example.com/' }</code>.</p>
+      </details>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../react/">SnapDOM in React <span class="arrow">→</span></a>
+        <a class="related-card" href="../nextjs/">SnapDOM in Next.js <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Try it in your project</h2>
+        <p>Drop SnapDOM into your Vue app and capture your first component in under a minute.</p>
+        <a href="../../" class="btn btn-primary" data-umami-event="Guide vue cta home">Open the demo</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide vue cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../../">Showcase</a>
+    <a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../" class="current">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html">Labs</a>
+  </nav>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

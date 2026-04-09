@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapDOM vs Other DOM-to-Image Libraries — Compare</title>
+  <meta name="description" content="Compare SnapDOM with html2canvas, dom-to-image, html-to-image and other DOM capture libraries. Feature matrix, benchmarks and migration tips." />
+  <meta name="keywords" content="snapdom alternative, html2canvas alternative, dom-to-image alternative, html to image library comparison" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/compare/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SnapDOM vs Other DOM-to-Image Libraries" />
+  <meta property="og:description" content="Pick the right DOM capture library: feature matrix, benchmarks, and migration tips for html2canvas, dom-to-image and more." />
+  <meta property="og:url" content="https://snapdom.dev/compare/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "SnapDOM Library Comparisons",
+    "url": "https://snapdom.dev/compare/",
+    "description": "Side-by-side comparisons between SnapDOM and other DOM-to-image libraries.",
+    "isPartOf": { "@type": "WebSite", "name": "SnapDOM", "url": "https://snapdom.dev" }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Library Comparisons</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Compare hub github">
+      <i class="fab fa-github"></i>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>SnapDOM vs <span class="accent">the Alternatives</span></h1>
+    <p class="lead">Honest, side-by-side comparisons. Feature matrices, real code examples and migration snippets — pick the library that actually fits your project.</p>
+  </section>
+
+  <main class="page">
+    <div class="hub-grid">
+      <a class="hub-card" href="./html2canvas/" data-umami-event="Compare card html2canvas">
+        <span class="tag">Most popular</span>
+        <h3>snapdom vs html2canvas</h3>
+        <p>The classic DOM-to-canvas library vs the modern foreignObject approach. Pseudo-elements, fonts, plugins and speed.</p>
+      </a>
+      <a class="hub-card" href="./dom-to-image/" data-umami-event="Compare card dom-to-image">
+        <span class="tag">Legacy</span>
+        <h3>snapdom vs dom-to-image</h3>
+        <p>An old favourite that hasn't shipped in years. See what you gain by switching to a maintained, plugin-based engine.</p>
+      </a>
+      <a class="hub-card" href="./html-to-image/" data-umami-event="Compare card html-to-image">
+        <span class="tag">Maintained fork</span>
+        <h3>snapdom vs html-to-image</h3>
+        <p>The popular dom-to-image fork compared head-to-head with SnapDOM on fidelity, fonts and Shadow DOM.</p>
+      </a>
+    </div>
+
+    <section class="prose">
+      <h2>How to choose</h2>
+      <p>If you're building a brand-new project, start with SnapDOM — it has the most complete CSS fidelity, supports Shadow DOM and pseudo-elements out of the box, and ships a plugin system you can extend without forking.</p>
+      <p>If you're maintaining an existing codebase that already uses one of the alternatives, the migration paths are short. SnapDOM exposes a familiar <code>toPng / toJpg / toBlob</code> API, so swapping the import + the call is usually all it takes. Each comparison page above includes a 1:1 migration snippet you can copy.</p>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Try SnapDOM in 30 seconds</h2>
+        <p>Capture any DOM element to PNG with a single import. No build step, no dependencies.</p>
+        <a href="../" class="btn btn-primary" data-umami-event="Compare hub cta home">Open the demo</a>
+        <a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Compare hub cta github">View on GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../">Showcase</a>
+    <a href="../plugins.html">Plugins</a>
+    <a href="./" class="current">Compare</a>
+    <a href="../guides/">Guides</a>
+    <a href="../how-to/">How-to</a>
+    <a href="../labs.html">Labs</a>
+  </nav>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

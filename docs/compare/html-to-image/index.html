@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapDOM vs html-to-image — Side-by-Side Comparison</title>
+  <meta name="description" content="SnapDOM vs html-to-image: feature matrix, fonts, Shadow DOM, plugins and a 1:1 migration snippet." />
+  <meta name="keywords" content="snapdom vs html-to-image, html-to-image alternative, html-to-image fonts, html-to-image shadow dom" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/compare/html-to-image/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="SnapDOM vs html-to-image" />
+  <meta property="og:description" content="Side-by-side comparison and migration guide between SnapDOM and html-to-image." />
+  <meta property="og:url" content="https://snapdom.dev/compare/html-to-image/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "SnapDOM vs html-to-image — Side-by-Side Comparison",
+    "description": "Compare SnapDOM and html-to-image including a migration snippet.",
+    "url": "https://snapdom.dev/compare/html-to-image/",
+    "image": "https://snapdom.dev/assets/hero.png",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
+    "mainEntityOfPage": "https://snapdom.dev/compare/html-to-image/"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is the difference between html-to-image and SnapDOM?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Both libraries clone the DOM and render it via SVG foreignObject. SnapDOM adds a plugin system, native Shadow DOM walking, CSS counter() resolution, and ships first-party plugins for filters, watermarks, ASCII export and PDF export."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I migrate from html-to-image to SnapDOM?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Replace the import with @zumer/snapdom and call snapdom.toPng(element). Most options (filter, backgroundColor, width, height, quality) have direct SnapDOM equivalents."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SnapDOM render web fonts better than html-to-image?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Both libraries can embed @font-face declarations into the SVG output. SnapDOM exposes the embedFonts option as a one-line opt-in and additionally supports localFonts and excludeFonts for fine-grained control."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Library Comparison</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Cmp h2i github">
+      <i class="fab fa-github"></i>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>SnapDOM vs <span class="accent">html-to-image</span></h1>
+    <p class="lead">Two libraries built around the same SVG <code>foreignObject</code> approach — compared on fidelity, fonts, Shadow DOM, plugins and developer experience.</p>
+    <div class="hero-actions">
+      <a href="#matrix" class="btn btn-primary" data-umami-event="Cmp h2i hero matrix">Feature matrix</a>
+      <a href="#migrate" class="btn btn-ghost" data-umami-event="Cmp h2i hero migrate">Migration snippet</a>
+    </div>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p><strong>html-to-image</strong> is a popular, well-maintained fork of dom-to-image with TypeScript support. <strong>SnapDOM</strong> takes the same idea further with a plugin pipeline, native Shadow DOM walking, and out-of-the-box support for CSS counters, line-clamp and CSS variables.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="overview">A quick overview</h2>
+      <p><a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> is the most popular community fork of <a href="../dom-to-image/">dom-to-image</a>. It modernised the codebase, added TypeScript, and improved fidelity for many edge cases. The API is small and predictable.</p>
+      <p><strong>SnapDOM</strong> is a from-scratch alternative. The capture pipeline is broken into lifecycle hooks (<code>beforeClone</code>, <code>afterClone</code>, <code>beforeRender</code>, <code>afterRender</code>, <code>beforeExport</code>, <code>afterExport</code>), which is what enables its plugin system. Plugins ship for things like CSS filters, color tints, timestamps, ASCII export, PDF export and more.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="matrix">Feature matrix</h2>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>Feature</th><th>SnapDOM</th><th>html-to-image</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="feature">Active maintenance</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+          <tr><td class="feature">Pseudo-elements (<code>::before</code> / <code>::after</code>)</td><td class="yes">Full</td><td class="yes">Yes</td></tr>
+          <tr><td class="feature">Web fonts (<code>@font-face</code>)</td><td class="yes">Embedded + local</td><td class="yes">Embedded</td></tr>
+          <tr><td class="feature">Shadow DOM</td><td class="yes">Native</td><td class="partial">Manual</td></tr>
+          <tr><td class="feature">CSS variables</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+          <tr><td class="feature">CSS <code>counter()</code> / <code>counters()</code></td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Line-clamp / multi-line ellipsis</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Plugin system</td><td class="yes">Yes (8+ official)</td><td class="no">No</td></tr>
+          <tr><td class="feature">Output formats</td><td class="num">SVG · PNG · JPG · WebP · Canvas · Blob</td><td class="num">SVG · PNG · JPG · Canvas · Blob</td></tr>
+          <tr><td class="feature">PDF export</td><td class="yes">Plugin</td><td class="no">No</td></tr>
+          <tr><td class="feature">TypeScript types</td><td class="yes">Bundled</td><td class="yes">Bundled</td></tr>
+          <tr><td class="feature">License</td><td class="num">MIT</td><td class="num">MIT</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="prose">
+      <h2 id="when">When to use which</h2>
+      <div class="verdict-grid">
+        <div class="verdict-card snapdom">
+          <h4>Choose SnapDOM when…</h4>
+          <ul>
+            <li>You use Web Components or Shadow DOM heavily.</li>
+            <li>You need CSS counters or line-clamp ellipsis in the captured output.</li>
+            <li>You want to add filters, watermarks, ASCII or PDF export without forking the library.</li>
+            <li>You need fine-grained font control (<code>embedFonts</code>, <code>localFonts</code>, <code>excludeFonts</code>).</li>
+          </ul>
+        </div>
+        <div class="verdict-card other">
+          <h4>html-to-image might still fit when…</h4>
+          <ul>
+            <li>You're already using it and it works for your case — there's no urgent reason to switch.</li>
+            <li>You don't need a plugin pipeline and your captures are simple HTML/CSS.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2 id="code">Same task, side by side</h2>
+      <p>Capturing <code>#card</code> as a PNG and inserting the resulting image into the page:</p>
+
+      <h4>html-to-image</h4>
+      <pre class="code-block"><span class="kw">import</span> { toPng } <span class="kw">from</span> <span class="str">'html-to-image'</span>;
+
+<span class="kw">const</span> dataUrl = <span class="kw">await</span> <span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
+<span class="kw">const</span> img = <span class="kw">new</span> <span class="fn">Image</span>();
+img.src = dataUrl;
+document.body.<span class="fn">appendChild</span>(img);</pre>
+
+      <h4>SnapDOM</h4>
+      <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
+document.body.<span class="fn">appendChild</span>(img);</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="migrate">Migration snippet</h2>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>html-to-image</th><th>SnapDOM</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">toPng(el)</td><td class="num">snapdom.toPng(el)</td></tr>
+          <tr><td class="num">toJpeg(el, { quality: 0.9 })</td><td class="num">snapdom.toJpg(el, { quality: 0.9 })</td></tr>
+          <tr><td class="num">toBlob(el)</td><td class="num">snapdom.toBlob(el)</td></tr>
+          <tr><td class="num">toCanvas(el)</td><td class="num">snapdom.toCanvas(el)</td></tr>
+          <tr><td class="num">toSvg(el)</td><td class="num">(await snapdom(el)).toSvg()</td></tr>
+          <tr><td class="num">{ backgroundColor: '#fff' }</td><td class="num">{ backgroundColor: '#fff' }</td></tr>
+          <tr><td class="num">{ pixelRatio: 2 }</td><td class="num">{ scale: 2 }</td></tr>
+          <tr><td class="num">{ filter: node =&gt; … }</td><td class="num">{ filter: node =&gt; … }</td></tr>
+          <tr><td class="num">{ fontEmbedCSS }</td><td class="num">{ embedFonts: true }</td></tr>
+          <tr><td class="num">— (not supported)</td><td class="num">{ plugins: [...] }</td></tr>
+        </tbody>
+      </table>
+
+      <pre class="code-block"><span class="cm">// Before</span>
+<span class="kw">import</span> { toPng } <span class="kw">from</span> <span class="str">'html-to-image'</span>;
+<span class="kw">const</span> dataUrl = <span class="kw">await</span> <span class="fn">toPng</span>(el, { pixelRatio: <span class="num">2</span> });
+
+<span class="cm">// After</span>
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+<span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, { scale: <span class="num">2</span> });</pre>
+    </section>
+
+    <section class="prose faq">
+      <h2 id="faq">Frequently asked questions</h2>
+
+      <details>
+        <summary>What's actually different between html-to-image and SnapDOM?</summary>
+        <p>Both clone the DOM and render via <code>foreignObject</code>. SnapDOM adds a plugin system with lifecycle hooks, native Shadow DOM walking, CSS counter resolution, line-clamp support, and ships first-party plugins for filters, color tint, timestamp watermark, ASCII export, PDF export and replace-text.</p>
+      </details>
+
+      <details>
+        <summary>Does SnapDOM render web fonts better than html-to-image?</summary>
+        <p>Both libraries can embed <code>@font-face</code> declarations into the SVG output. SnapDOM exposes <code>embedFonts</code> as a one-line opt-in and additionally supports <code>localFonts</code> and <code>excludeFonts</code> for fine-grained control over which fonts are embedded.</p>
+      </details>
+
+      <details>
+        <summary>Can I add a watermark or filter without forking the library?</summary>
+        <p>Yes — that's exactly what the SnapDOM plugin system is for. Use the <code>colorTint</code>, <code>filter</code> or <code>timestampOverlay</code> plugins, or write your own with two callbacks (<code>afterClone</code> / <code>beforeExport</code>). Browse the <a href="../../plugins.html">plugins page</a> for the full list.</p>
+      </details>
+
+      <details>
+        <summary>How do I export to PDF?</summary>
+        <p>Use the <code>pdfImage</code> plugin. It adds a <code>toPdfImage()</code> method to the result object. See the <a href="../../how-to/html-to-png/">html-to-png how-to</a> for the same pattern with images.</p>
+      </details>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../dom-to-image/">snapdom vs dom-to-image <span class="arrow">→</span></a>
+        <a class="related-card" href="../../guides/vue/">SnapDOM in Vue <span class="arrow">→</span></a>
+        <a class="related-card" href="../../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Ready to try SnapDOM?</h2>
+        <p>Drop it into your project and capture your first element in seconds.</p>
+        <a href="../../" class="btn btn-primary" data-umami-event="Cmp h2i cta home">Open the demo</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp h2i cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../../">Showcase</a>
+    <a href="../../plugins.html">Plugins</a>
+    <a href="../" class="current">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html">Labs</a>
+  </nav>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

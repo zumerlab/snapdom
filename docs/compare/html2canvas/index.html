@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapDOM vs html2canvas — A Modern html2canvas Alternative</title>
+  <meta name="description" content="SnapDOM vs html2canvas compared head-to-head: pseudo-elements, web fonts, Shadow DOM, plugins and benchmarks. Includes a 1:1 migration snippet." />
+  <meta name="keywords" content="snapdom vs html2canvas, html2canvas alternative, html2canvas pseudo elements, html2canvas web fonts, html2canvas shadow dom" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/compare/html2canvas/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="SnapDOM vs html2canvas — A Modern Alternative" />
+  <meta property="og:description" content="Pseudo-elements, web fonts and Shadow DOM with full fidelity. Side-by-side comparison and migration guide." />
+  <meta property="og:url" content="https://snapdom.dev/compare/html2canvas/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/hero.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SnapDOM vs html2canvas" />
+  <meta name="twitter:description" content="A modern html2canvas alternative with full CSS fidelity, plugins, and zero dependencies." />
+  <meta name="twitter:image" content="https://snapdom.dev/assets/hero.png" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "SnapDOM vs html2canvas — A Modern html2canvas Alternative",
+    "description": "Side-by-side comparison of SnapDOM and html2canvas: feature matrix, code examples, and migration guide.",
+    "url": "https://snapdom.dev/compare/html2canvas/",
+    "image": "https://snapdom.dev/assets/hero.png",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
+    "mainEntityOfPage": "https://snapdom.dev/compare/html2canvas/"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is SnapDOM a drop-in replacement for html2canvas?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Almost. The API surface is intentionally similar (toPng, toJpg, toBlob, toCanvas) so swapping the import and the call covers most use cases. SnapDOM returns an HTMLImageElement instead of a Canvas by default — wrap with toCanvas() if you need the canvas object."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SnapDOM render pseudo-elements like ::before and ::after?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. SnapDOM resolves ::before, ::after, CSS counters and counter() / counters() functions and inlines them in the captured tree, which is something html2canvas historically struggles with."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can SnapDOM capture Shadow DOM and web fonts?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. SnapDOM walks Shadow DOM trees during cloning and supports embedFonts to inline @font-face declarations into the SVG output for full font fidelity."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SnapDOM have any dependencies?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. SnapDOM has zero runtime dependencies and ships as an ES module under 30 KB minified+gzipped."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Library Comparison</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Cmp h2c github">
+      <i class="fab fa-github"></i>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+    </a>
+    <h1>SnapDOM vs <span class="accent">html2canvas</span></h1>
+    <p class="lead">A side-by-side look at the two most-used DOM-to-image libraries. Where each one wins, where each one breaks, and how to switch in five minutes.</p>
+    <div class="hero-actions">
+      <a href="#matrix" class="btn btn-primary" data-umami-event="Cmp h2c hero matrix">Feature matrix</a>
+      <a href="#migrate" class="btn btn-ghost" data-umami-event="Cmp h2c hero migrate">Migration snippet</a>
+    </div>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p><strong>html2canvas</strong> is the long-standing default and works fine for plain layouts. <strong>SnapDOM</strong> is the better choice when you need pseudo-elements, web fonts, Shadow DOM, CSS variables or a plugin pipeline — and when you care about bundle size and speed. Both are MIT-licensed and run client-side.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="overview">A quick overview</h2>
+      <p><a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> works by reading the DOM and re-painting every element onto a <code>&lt;canvas&gt;</code> using its own CSS engine. It has been around since 2012, has wide adoption, and a long backlog of edge cases that come from re-implementing the browser's renderer.</p>
+      <p><strong>SnapDOM</strong> takes a different approach: it deep-clones the DOM, inlines the styles, fonts and images, and wraps the clone in an SVG <code>&lt;foreignObject&gt;</code>. The browser does the actual rendering, which means anything the browser can paint, SnapDOM can capture — including pseudo-elements, CSS variables, custom counters and Shadow DOM.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="matrix">Feature matrix</h2>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>Feature</th><th>SnapDOM</th><th>html2canvas</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="feature">Pseudo-elements (<code>::before</code> / <code>::after</code>)</td><td class="yes">Full</td><td class="partial">Partial</td></tr>
+          <tr><td class="feature">Web fonts (<code>@font-face</code>)</td><td class="yes">Embedded</td><td class="partial">Best-effort</td></tr>
+          <tr><td class="feature">Shadow DOM</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">CSS variables</td><td class="yes">Yes</td><td class="partial">Partial</td></tr>
+          <tr><td class="feature">CSS <code>counter()</code> / <code>counters()</code></td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Same-origin <code>&lt;iframe&gt;</code> capture</td><td class="yes">Yes</td><td class="partial">Limited</td></tr>
+          <tr><td class="feature">Line-clamp / multi-line ellipsis</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Plugin system</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Output formats</td><td class="num">SVG · PNG · JPG · WebP · Canvas · Blob</td><td class="num">Canvas → PNG/JPG</td></tr>
+          <tr><td class="feature">Runtime dependencies</td><td class="num">0</td><td class="num">0</td></tr>
+          <tr><td class="feature">Approach</td><td class="num">Clone + foreignObject (browser renders)</td><td class="num">Re-implements CSS painter</td></tr>
+          <tr><td class="feature">License</td><td class="num">MIT</td><td class="num">MIT</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Run the live benchmark suite locally with <code>npm run test:benchmark</code> to reproduce the numbers on your hardware — performance varies a lot depending on element complexity, fonts and image content.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="when">When to use which</h2>
+      <div class="verdict-grid">
+        <div class="verdict-card snapdom">
+          <h4>Choose SnapDOM when…</h4>
+          <ul>
+            <li>You use modern CSS: variables, <code>::before/::after</code>, gradients, transforms, line-clamp.</li>
+            <li>Your UI uses Web Components or Shadow DOM.</li>
+            <li>You need to embed custom fonts in the output.</li>
+            <li>You want to pipe the capture through plugins (filters, watermarks, OCR-friendly output, ASCII, PDF…).</li>
+            <li>You care about bundle size and zero dependencies.</li>
+          </ul>
+        </div>
+        <div class="verdict-card other">
+          <h4>html2canvas might still fit when…</h4>
+          <ul>
+            <li>You're patching an existing project and the migration cost outweighs the gains.</li>
+            <li>Your target page is plain HTML with no pseudo-elements, custom fonts or Shadow DOM.</li>
+            <li>You need a battle-tested community footprint and don't mind the known fidelity gaps.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2 id="code">Same task, side by side</h2>
+      <p>Capturing <code>#card</code> as a PNG and inserting the resulting image into the page:</p>
+
+      <h4>html2canvas</h4>
+      <pre class="code-block"><span class="kw">import</span> html2canvas <span class="kw">from</span> <span class="str">'html2canvas'</span>;
+
+<span class="kw">const</span> <span class="op">canvas</span> = <span class="kw">await</span> <span class="fn">html2canvas</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
+<span class="kw">const</span> <span class="op">img</span> = <span class="kw">new</span> <span class="fn">Image</span>();
+img.src = canvas.<span class="fn">toDataURL</span>(<span class="str">'image/png'</span>);
+document.body.<span class="fn">appendChild</span>(img);</pre>
+
+      <h4>SnapDOM</h4>
+      <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">const</span> <span class="op">img</span> = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
+document.body.<span class="fn">appendChild</span>(img);</pre>
+
+      <p>SnapDOM returns the <code>HTMLImageElement</code> ready to be appended — no manual <code>toDataURL</code>, no intermediate canvas. If you do need a canvas, call <code>snapdom.toCanvas(el)</code> instead.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="migrate">Migration in 5 minutes</h2>
+      <p>The two libraries cover the same surface for the most common operations. Here's the 1:1 mapping:</p>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>html2canvas</th><th>SnapDOM</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">html2canvas(el)</td><td class="num">snapdom.toCanvas(el)</td></tr>
+          <tr><td class="num">canvas.toDataURL('image/png')</td><td class="num">snapdom.toPng(el)</td></tr>
+          <tr><td class="num">canvas.toDataURL('image/jpeg', 0.9)</td><td class="num">snapdom.toJpg(el, { quality: 0.9 })</td></tr>
+          <tr><td class="num">canvas.toBlob(cb, 'image/png')</td><td class="num">await snapdom.toBlob(el)</td></tr>
+          <tr><td class="num">{ scale: 2 }</td><td class="num">{ scale: 2 }</td></tr>
+          <tr><td class="num">{ backgroundColor: '#fff' }</td><td class="num">{ backgroundColor: '#fff' }</td></tr>
+          <tr><td class="num">{ ignoreElements: el =&gt; … }</td><td class="num">{ exclude: ['.skip'] }</td></tr>
+          <tr><td class="num">— (not supported)</td><td class="num">{ embedFonts: true }</td></tr>
+        </tbody>
+      </table>
+
+      <p>A typical migration boils down to a one-line change:</p>
+      <pre class="code-block"><span class="cm">// Before</span>
+<span class="kw">import</span> html2canvas <span class="kw">from</span> <span class="str">'html2canvas'</span>;
+<span class="kw">const</span> canvas = <span class="kw">await</span> <span class="fn">html2canvas</span>(el, { scale: <span class="num">2</span> });
+
+<span class="cm">// After</span>
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+<span class="kw">const</span> canvas = <span class="kw">await</span> snapdom.<span class="fn">toCanvas</span>(el, { scale: <span class="num">2</span> });</pre>
+    </section>
+
+    <section class="prose faq">
+      <h2 id="faq">Frequently asked questions</h2>
+
+      <details>
+        <summary>Is SnapDOM a drop-in replacement for html2canvas?</summary>
+        <p>Almost. The API surface is intentionally similar (<code>toPng</code>, <code>toJpg</code>, <code>toBlob</code>, <code>toCanvas</code>) so swapping the import and the call covers most use cases.</p>
+        <p>The main difference is that <code>snapdom.toPng()</code> returns an <code>HTMLImageElement</code> directly. If your existing code expects a <code>HTMLCanvasElement</code>, use <code>snapdom.toCanvas()</code> instead.</p>
+      </details>
+
+      <details>
+        <summary>Does SnapDOM render <code>::before</code> and <code>::after</code> pseudo-elements?</summary>
+        <p>Yes — and CSS counters too. SnapDOM materialises pseudo-elements as real elements during the clone phase and resolves <code>counter()</code> / <code>counters()</code> values, so they end up in the final image exactly as the browser paints them.</p>
+      </details>
+
+      <details>
+        <summary>Will my custom <code>@font-face</code> fonts render correctly?</summary>
+        <p>Yes, when you opt in. Pass <code>{ embedFonts: true }</code> and SnapDOM will inline the relevant <code>@font-face</code> declarations into the SVG output so the captured image uses your real fonts instead of falling back to system ones.</p>
+      </details>
+
+      <details>
+        <summary>Can SnapDOM capture content inside Shadow DOM / Web Components?</summary>
+        <p>Yes. The cloner walks open Shadow DOM trees during capture, so Web Components render the same way they do in the live page. This is one of the largest practical gaps when migrating from html2canvas.</p>
+      </details>
+
+      <details>
+        <summary>How big is SnapDOM?</summary>
+        <p>The core ES module is under 30 KB minified + gzipped, with zero runtime dependencies. Plugins are imported separately so you only pay for what you use.</p>
+      </details>
+
+      <details>
+        <summary>Does SnapDOM work in React / Vue / Next.js / Svelte?</summary>
+        <p>Yes — it's framework-agnostic. See the dedicated framework guides for <a href="../../guides/react/">React</a>, <a href="../../guides/vue/">Vue</a> and <a href="../../guides/nextjs/">Next.js</a>.</p>
+      </details>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../dom-to-image/">snapdom vs dom-to-image <span class="arrow">→</span></a>
+        <a class="related-card" href="../html-to-image/">snapdom vs html-to-image <span class="arrow">→</span></a>
+        <a class="related-card" href="../../guides/react/">SnapDOM in React <span class="arrow">→</span></a>
+        <a class="related-card" href="../../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Ready to switch?</h2>
+        <p>Drop SnapDOM into your project, capture your first element, and decide for yourself.</p>
+        <a href="../../" class="btn btn-primary" data-umami-event="Cmp h2c cta home">Open the demo</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp h2c cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../../">Showcase</a>
+    <a href="../../plugins.html">Plugins</a>
+    <a href="../" class="current">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html">Labs</a>
+  </nav>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('snapdom-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function updateIcon() {
+      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+    }
+    updateIcon();
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      updateIcon();
+    });
+  </script>
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>
