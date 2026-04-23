@@ -352,17 +352,38 @@ export function getUnscaledDimensions(el) {
 /**
  * Temporarily pin the iframe's internal viewport to (w, h) CSS px.
  * Injects a <style> into the iframe doc and returns a cleanup function.
+ *
+ * #393: `overflow: hidden` clamps the iframe's root scroll position to 0. Removing
+ * the style later doesn't restore it, so the live iframe ends up scrolled to (0,0).
+ * Snapshot scroll state before pinning and restore it after unpinning.
+ *
  * @param {Document} doc
  * @param {number} w
  * @param {number} h
  * @returns {() => void}
  */
-function pinIframeViewport(doc, w, h) {
+export function pinIframeViewport(doc, w, h) {
+  const win = doc.defaultView
+  const sx = win ? win.scrollX : 0
+  const sy = win ? win.scrollY : 0
+  const bsl = doc.body ? doc.body.scrollLeft : 0
+  const bst = doc.body ? doc.body.scrollTop : 0
+  const hsl = doc.documentElement ? doc.documentElement.scrollLeft : 0
+  const hst = doc.documentElement ? doc.documentElement.scrollTop : 0
+
   const style = doc.createElement('style')
   style.setAttribute('data-sd-iframe-pin', '')
   style.textContent = `html, body {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style)
-  return () => { try { style.remove() } catch { } }
+
+  return () => {
+    try { style.remove() } catch { }
+    try {
+      if (win && typeof win.scrollTo === 'function') win.scrollTo(sx, sy)
+      if (doc.body) { doc.body.scrollLeft = bsl; doc.body.scrollTop = bst }
+      if (doc.documentElement) { doc.documentElement.scrollLeft = hsl; doc.documentElement.scrollTop = hst }
+    } catch { }
+  }
 }
 
 /**
