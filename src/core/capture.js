@@ -349,8 +349,13 @@ export async function captureDOM(element, options) {
 
       const styleTag = document.createElement('style')
       // #349/#351: handled per-element in inlineAllStyles (#406) instead of blanket foreignObject rules
+      // #327: disable WebKit text autosizer inside the foreignObject. iOS WebKit re-applies
+      // text-size-adjust during drawImage, inflating font-size while inlined container heights
+      // stay fixed → text crowding. Rule form (not inline) because WebKit expands `all:initial`
+      // on the container last and clobbers inline overrides. 100% (not `none`) preserves zoom.
       const foNormalize =
-        'svg{overflow:visible;} foreignObject{overflow:visible;}'
+        'svg{overflow:visible;} foreignObject{overflow:visible;} ' +
+        'foreignObject>div{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;}'
       styleTag.textContent =
         (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + foNormalize + state.classCSS
       fo.appendChild(styleTag)
