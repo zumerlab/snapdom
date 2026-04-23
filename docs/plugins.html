@@ -282,7 +282,13 @@
                 <span>🚀</span><span>✨</span><span>🧠</span><span>🖼️</span><span>🎛️</span><span>🧪</span>
                 <span>💡</span><span>🧩</span><span>📦</span><span>🧭</span><span>⚙️</span><span>🛡️</span>
               </div>
-              <span class="pg-tag" style="margin-top:10px; background:rgba(255,255,255,0.1); color:#00e0a0;">Live content</span>
+              <div style="display:flex; gap:6px; margin-top:10px; align-items:center; flex-wrap:wrap;">
+                <button type="button" aria-label="Primary action" style="padding:4px 10px; border-radius:6px; border:0; background:#00e0a0; color:#0d0f12; font-size:12px; cursor:pointer;">Capture</button>
+                <button type="button" aria-label="Download capture" style="padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:#fff; font-size:12px; cursor:pointer;">Download</button>
+                <a href="#" style="color:#00e0a0; font-size:12px; text-decoration:none;">docs</a>
+                <input type="text" placeholder="filename" aria-label="Output filename" style="padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.3); color:#fff; font-size:12px; width:110px;">
+                <span class="pg-tag" style="background:rgba(255,255,255,0.1); color:#00e0a0;">Live content</span>
+              </div>
             </div>
           </div>
           <div class="pg-panel">
@@ -376,6 +382,25 @@
                       <option value="portrait">portrait</option>
                       <option value="landscape">landscape</option>
                     </select>
+                  </div>
+                </div>
+              </div>
+              <div class="pg-plugin" data-pg="prompt">
+                <div class="pg-plugin-header">
+                  <input type="checkbox" id="pgChkPrompt">
+                  <span>prompt-export</span>
+                </div>
+                <div class="pg-plugin-opts">
+                  <div class="pg-opt">
+                    <label for="pgPromptAnnotate">Annotate</label>
+                    <select id="pgPromptAnnotate">
+                      <option value="true">on</option>
+                      <option value="false">off</option>
+                    </select>
+                  </div>
+                  <div class="pg-opt">
+                    <label for="pgPromptMaxW">Max width</label>
+                    <input type="text" id="pgPromptMaxW" value="1024" placeholder="px">
                   </div>
                 </div>
               </div>
@@ -529,6 +554,15 @@
         <p>Uses the experimental WICG drawElementImage API for direct DOM-to-canvas rendering where supported.</p>
         <div class="hooks"><span class="hook-badge">beforeRender</span><span class="hook-badge">afterRender</span><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-in-canvas.js" data-umami-event="Plugins source html-in-canvas">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- prompt-export -->
+      <div class="plugin-card" data-category="export" data-plugin="prompt-export">
+        <div class="card-top"><div class="plugin-icon">L</div><span class="category-tag">export</span></div>
+        <h3>prompt-export</h3>
+        <p>Adds a toPrompt() method that returns an LLM-ready package: annotated screenshot, element map with bounding boxes, and a formatted prompt text.</p>
+        <div class="hooks"><span class="hook-badge">afterClone</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/prompt-export.js" data-umami-event="Plugins source prompt-export">Source</a><span class="expand-hint">details</span></div>
       </div>
 
     </div>
@@ -699,6 +733,21 @@
         options: [],
         note: 'Requires Chrome with chrome://flags/#canvas-draw-element enabled.',
         usage: `import { htmlInCanvasPlugin } from '@zumer/snapdom-plugins/html-in-canvas';\n\nconst result = await snapdom(el, {\n  plugins: [htmlInCanvasPlugin()]\n});\nconst canvas = await result.htmlInCanvas({ scale: 2 });`
+      },
+      'prompt-export': {
+        icon: 'L', category: 'export',
+        desc: 'Adds a toPrompt() method that returns an LLM-ready package: annotated screenshot, structured element map with bounding boxes, and pre-formatted prompt text.',
+        hooks: ['afterClone', 'defineExports'],
+        options: [
+          ['annotate', 'boolean', 'true', 'Overlay numbered badges on interactive elements'],
+          ['imageFormat', 'string', "'png'", "'png' | 'jpg' | 'webp'"],
+          ['imageQuality', 'number', '0.8', 'Quality for lossy formats (0-1)'],
+          ['maxImageWidth', 'number', '1024', 'Max output width in px; downscales and rescales bboxes'],
+          ['interactiveSelector', 'string', 'see docs', 'CSS selector for the interactive element set'],
+          ['semanticSelector', 'string', 'see docs', 'CSS selector for the semantic element set'],
+          ['labelStyle', 'object', '{}', 'Override styles for the numbered badges'],
+        ],
+        usage: `import { promptExport } from '@zumer/snapdom-plugins/prompt-export';\n\nconst result = await snapdom(el, {\n  plugins: [promptExport({ annotate: true, maxImageWidth: 1024 })]\n});\nconst { image, elements, dimensions, prompt } = await result.toPrompt();`
       },
     };
 
@@ -1090,6 +1139,162 @@
       };
     }
 
+    // prompt-export — LLM-ready package: annotated image + element map + prompt text
+    function promptExportPlugin(options = {}) {
+      const {
+        annotate = true,
+        imageFormat = 'png',
+        imageQuality = 0.8,
+        maxImageWidth = 1024,
+        labelStyle = {},
+      } = options;
+      const INTERACTIVE = 'a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="checkbox"], [role="radio"], [tabindex]:not([tabindex="-1"]), summary, [contenteditable="true"]';
+      const SEMANTIC = 'h1, h2, h3, h4, h5, h6, p, li, img[alt], nav, main, article, section, header, footer, label, td, th, figcaption, blockquote, legend';
+      const COLLECTED_ATTRS = ['role', 'aria-label', 'aria-expanded', 'aria-checked', 'aria-disabled', 'alt', 'href', 'placeholder', 'name', 'type', 'value', 'title', 'disabled'];
+
+      function buildEntry(el, rootRect, id, type) {
+        const rect = el.getBoundingClientRect();
+        const bbox = {
+          x: Math.round(rect.left - rootRect.left),
+          y: Math.round(rect.top - rootRect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        };
+        if (bbox.width <= 0 && bbox.height <= 0) return null;
+        const tag = el.tagName.toLowerCase();
+        const text = (el.textContent || '').trim().slice(0, 200);
+        const attributes = {};
+        for (const attr of COLLECTED_ATTRS) {
+          const val = el.getAttribute(attr);
+          if (val != null) attributes[attr] = val;
+        }
+        return { id, tag, type, text, bbox, attributes };
+      }
+      function extractMetadata(element) {
+        const rootRect = element.getBoundingClientRect();
+        const elements = [];
+        let id = 0;
+        const tracked = new Set();
+        for (const el of element.querySelectorAll(INTERACTIVE)) {
+          const entry = buildEntry(el, rootRect, id, 'interactive');
+          if (entry) { elements.push(entry); tracked.add(el); id++; }
+        }
+        for (const el of element.querySelectorAll(SEMANTIC)) {
+          if (tracked.has(el)) continue;
+          const entry = buildEntry(el, rootRect, id, 'semantic');
+          if (entry) { elements.push(entry); id++; }
+        }
+        return { elements, dimensions: { width: rootRect.width, height: rootRect.height } };
+      }
+      function addAnnotations(clone, elements) {
+        const interactive = elements.filter(e => e.type === 'interactive');
+        if (!interactive.length) return;
+        const overlay = document.createElement('div');
+        Object.assign(overlay.style, {
+          position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
+          pointerEvents: 'none', zIndex: '2147483647', overflow: 'visible',
+        });
+        for (const el of interactive) {
+          const badge = document.createElement('span');
+          badge.textContent = String(el.id);
+          Object.assign(badge.style, {
+            position: 'absolute', left: el.bbox.x + 'px', top: el.bbox.y + 'px',
+            transform: 'translate(-50%, -50%)', minWidth: '18px', height: '18px',
+            lineHeight: '18px', fontSize: '11px', fontWeight: '700',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            color: '#fff', backgroundColor: 'rgba(220, 38, 38, 0.92)',
+            borderRadius: '9px', textAlign: 'center', padding: '0 4px',
+            boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            ...labelStyle,
+          });
+          overlay.appendChild(badge);
+        }
+        clone.style.position = 'relative';
+        clone.appendChild(overlay);
+      }
+      function formatPromptText(elements, dim) {
+        const lines = [`Screenshot of a web page (${dim.width}×${dim.height}px).`, ''];
+        const interactive = elements.filter(e => e.type === 'interactive');
+        const semantic = elements.filter(e => e.type === 'semantic');
+        if (interactive.length) {
+          lines.push('Interactive elements:');
+          for (const el of interactive) {
+            const attrParts = Object.entries(el.attributes).map(([k, v]) => `${k}="${v}"`);
+            const text = el.text ? ` "${el.text.length > 60 ? el.text.slice(0, 59) + '…' : el.text}"` : '';
+            const pos = `(${el.bbox.x},${el.bbox.y} ${el.bbox.width}×${el.bbox.height})`;
+            const attrs = attrParts.length ? ' ' + attrParts.join(' ') : '';
+            lines.push(`  [${el.id}] <${el.tag}>${text} ${pos}${attrs}`);
+          }
+          lines.push('');
+        }
+        if (semantic.length) {
+          lines.push('Semantic structure:');
+          for (const el of semantic) {
+            const text = el.text ? ` "${el.text.length > 80 ? el.text.slice(0, 79) + '…' : el.text}"` : '';
+            const attrParts = [];
+            if (el.attributes.alt) attrParts.push(`alt="${el.attributes.alt}"`);
+            if (el.attributes.role) attrParts.push(`role="${el.attributes.role}"`);
+            const attrs = attrParts.length ? ' ' + attrParts.join(' ') : '';
+            lines.push(`  [${el.id}] <${el.tag}>${text}${attrs}`);
+          }
+        }
+        return lines.join('\n');
+      }
+
+      return {
+        name: 'prompt-export',
+        afterClone(ctx) {
+          const meta = extractMetadata(ctx.element);
+          // snapdom spreads a fresh ctx for the export phase from ctx.options,
+          // so stash on both so the prompt() call below can read it.
+          ctx.__promptMetadata = meta;
+          if (ctx.options) ctx.options.__promptMetadata = meta;
+          if (annotate) addAnnotations(ctx.clone, meta.elements);
+        },
+        defineExports() {
+          return {
+            prompt: async (ctx, opts = {}) => {
+              const meta = ctx.__promptMetadata;
+              if (!meta || !meta.elements.length) {
+                return { image: ctx.export.url, elements: [], dimensions: { width: 0, height: 0 }, prompt: '' };
+              }
+              const fmt = opts.imageFormat || imageFormat;
+              const q = opts.imageQuality || imageQuality;
+              const maxW = opts.maxImageWidth || maxImageWidth;
+              const img = new Image();
+              img.src = ctx.export.url;
+              await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+              const ratio = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1;
+              const w = Math.round(img.naturalWidth * ratio);
+              const h = Math.round(img.naturalHeight * ratio);
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              const mime = fmt === 'jpg' || fmt === 'jpeg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
+              const dataURL = canvas.toDataURL(mime, q);
+              const sx = w / (meta.dimensions.width || 1);
+              const sy = h / (meta.dimensions.height || 1);
+              const elements = meta.elements.map(el => ({
+                ...el,
+                bbox: {
+                  x: Math.round(el.bbox.x * sx),
+                  y: Math.round(el.bbox.y * sy),
+                  width: Math.round(el.bbox.width * sx),
+                  height: Math.round(el.bbox.height * sy),
+                },
+              }));
+              return {
+                image: dataURL,
+                elements,
+                dimensions: { width: w, height: h },
+                prompt: formatPromptText(elements, { width: w, height: h }),
+              };
+            },
+          };
+        },
+      };
+    }
+
     // ── DOM refs ──
     const $ = id => document.getElementById(id);
     const pgTarget = $('pgTarget');
@@ -1131,6 +1336,8 @@
       const calls = [];
       let hasAscii = false;
       let hasPdf = false;
+      let hasPrompt = false;
+      let promptOpts = null;
 
       if ($('pgChkFilter').checked) {
         const preset = $('pgFilterPreset').value;
@@ -1173,11 +1380,23 @@
         calls.push(orient !== 'portrait' ? `pdfImage({ orientation: '${orient}' })` : `pdfImage()`);
         hasPdf = true;
       }
-      return { plugins, imports, calls, hasAscii, hasPdf };
+      if ($('pgChkPrompt').checked) {
+        const annotate = $('pgPromptAnnotate').value === 'true';
+        const maxW = parseInt($('pgPromptMaxW').value, 10) || 1024;
+        promptOpts = { annotate, maxImageWidth: maxW };
+        plugins.push(promptExportPlugin(promptOpts));
+        imports.push(`import { promptExport } from '@zumer/snapdom-plugins/prompt-export';`);
+        const parts = [];
+        if (!annotate) parts.push('annotate: false');
+        if (maxW !== 1024) parts.push(`maxImageWidth: ${maxW}`);
+        calls.push(parts.length ? `promptExport({ ${parts.join(', ')} })` : `promptExport()`);
+        hasPrompt = true;
+      }
+      return { plugins, imports, calls, hasAscii, hasPdf, hasPrompt, promptOpts };
     }
 
     function updateCode() {
-      const { imports, calls, hasAscii, hasPdf } = getActivePlugins();
+      const { imports, calls, hasAscii, hasPdf, hasPrompt } = getActivePlugins();
       if (!calls.length) {
         pgCode.textContent = '// Select plugins to see the code';
         return;
@@ -1193,6 +1412,7 @@
         `const png = await result.toPng();`;
       if (hasAscii) code += `\nconst ascii = await result.toAscii();`;
       if (hasPdf) code += `\nawait result.toPdfImage(); // downloads PDF`;
+      if (hasPrompt) code += `\nconst { image, elements, prompt } = await result.toPrompt();`;
       pgCode.textContent = code;
     }
 
@@ -1202,11 +1422,37 @@
       pgStatus.textContent = 'Capturing...';
       try {
         const t0 = performance.now();
-        const { plugins, calls, hasAscii, hasPdf } = getActivePlugins();
+        const { plugins, calls, hasAscii, hasPdf, hasPrompt } = getActivePlugins();
         const result = await snapdom(pgTarget, { plugins });
         pgOutput.innerHTML = '';
 
-        if (hasAscii) {
+        if (hasPrompt) {
+          // prompt-export mode — show annotated image + formatted prompt + elements JSON
+          const { image, elements, prompt } = await result.toPrompt();
+          const wrap = document.createElement('div');
+          wrap.style.cssText = 'display:flex;flex-direction:column;gap:12px;width:100%;';
+          const img = document.createElement('img');
+          img.src = image;
+          img.alt = 'Annotated capture';
+          img.style.cssText = 'max-width:100%;border-radius:6px;display:block;';
+          wrap.appendChild(img);
+          const promptBox = document.createElement('pre');
+          promptBox.textContent = prompt;
+          promptBox.style.cssText = 'margin:0;padding:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:11px;line-height:1.45;font-family:ui-monospace,Menlo,monospace;color:#cfd8dc;overflow:auto;max-height:260px;white-space:pre-wrap;';
+          wrap.appendChild(promptBox);
+          const elementsBox = document.createElement('details');
+          elementsBox.style.cssText = 'font-size:11px;color:#8b97a5;';
+          const summary = document.createElement('summary');
+          summary.textContent = `elements JSON — ${elements.length} items`;
+          summary.style.cssText = 'cursor:pointer;padding:4px 0;';
+          elementsBox.appendChild(summary);
+          const elementsPre = document.createElement('pre');
+          elementsPre.textContent = JSON.stringify(elements, null, 2);
+          elementsPre.style.cssText = 'margin:8px 0 0 0;padding:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:11px;line-height:1.45;font-family:ui-monospace,Menlo,monospace;color:#cfd8dc;overflow:auto;max-height:200px;';
+          elementsBox.appendChild(elementsPre);
+          wrap.appendChild(elementsBox);
+          pgOutput.appendChild(wrap);
+        } else if (hasAscii) {
           // ASCII mode — call toAscii directly (same pattern as docs/index.html)
           const cols = parseInt($('pgAsciiW').value) || 100;
           const asciiHTML = await result.toAscii({ cols, invert: true });
