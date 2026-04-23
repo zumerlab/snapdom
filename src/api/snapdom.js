@@ -145,9 +145,11 @@ snapdom.capture = async (el, context, _token) => {
   const _defineCtx = { ...context, export: { url }, exports: _pluginExports }
 
   const providedMaps = await runAll('defineExports', _defineCtx)
-  const provided = Object.assign({}, ...providedMaps.filter(x => x && typeof x === 'object'))
+  // Local-first: earlier plugins in the list (locals) win over later (globals).
+  // Object.assign applies last-wins, so reverse before merging.
+  const provided = Object.assign({}, ...providedMaps.filter(x => x && typeof x === 'object').reverse())
 
-  // Merge (plugins pueden overridear core)
+  // Plugin exports override core (plugin > core by name).
   const exportsMap = { ...coreExports, ...provided }
 
   // —— Alias: jpg → jpeg (para toJpg y to('jpg')) ——

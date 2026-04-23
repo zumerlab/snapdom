@@ -131,6 +131,8 @@ const result = await snapdom(element, { plugins: [pdfExport()] });
 const blob = await result.toPdf({ width: 800 });
 ```
 
+**Priority.** When multiple sources define the same export key, resolution is **local plugin > global plugin > core**. So a plugin passed via `snapdom(el, { plugins: [...] })` can override `toPng`, `toJpg`, `toCanvas`, etc., and a per-capture plugin beats a globally-registered one with the same key. Use this to swap a core exporter for a plugin implementation (e.g. a plugin-provided `png` that reuses the existing SVG via `ctx.export.url`).
+
 ## Distribution
 
 ### Official plugins
