@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.9.0](https://github.com/zumerlab/snapdom/compare/v2.8.0...v2.9.0)
+
+> 23 April 2026
+
+- fix(toCanvas): wait for compositing after decode on Safari. Fixes #394 [`#394`](https://github.com/zumerlab/snapdom/issues/394)
+- fix(iframe): restore live iframe scroll position after capture. Closes #393 [`#393`](https://github.com/zumerlab/snapdom/issues/393)
+- fix(capture): preserve mask-mode and mask-composite through shorthand inlining. [`#402`](https://github.com/zumerlab/snapdom/issues/402)
+- fix(capture): phantom whitespace in inline-flex + gap elements. Fixes #406 [`#406`](https://github.com/zumerlab/snapdom/issues/406)
+- docs(site): add prompt-export to the plugins page + live demo [`b451415`](https://github.com/zumerlab/snapdom/commit/b4514152d9b03108330e50ef6c4c7eeb62df8c06)
+- fix(plugins): enforce local-first priority for plugin-provided exports. See #401 [`ed272f4`](https://github.com/zumerlab/snapdom/commit/ed272f44599b92c70f0b86aa87d3c4d2308d6ab4)
+- fix(capture): drop invisible border props from style snapshot. See #390 [`8942fd4`](https://github.com/zumerlab/snapdom/commit/8942fd47a9884addb88b0a3667e4da72bd959455)
+- docs(plugins): add prompt-export section to plugins README [`f9743db`](https://github.com/zumerlab/snapdom/commit/f9743db21e4e13830a72303e0bfd54465866e8b1)
+- fix(capture): disable WebKit text autosizer inside foreignObject. See #327 [`9c49d6a`](https://github.com/zumerlab/snapdom/commit/9c49d6a592a4c85c1faf07d5922e783893f01b4f)
+- fix(images): increase batch size for processing images to 6 to optimize HTTP/1.1 connection limits [`311c9e4`](https://github.com/zumerlab/snapdom/commit/311c9e4ff84f6750c68242ed8dcb5168ba6c6703)
+- fix(plugin: prompt-export): flow metadata to the toPrompt() export [`b94b589`](https://github.com/zumerlab/snapdom/commit/b94b5895bf55a97512907b016bba64ea67a8000e)
+- Merge pull request #398 from kohaiy/patch-2 [`da438d5`](https://github.com/zumerlab/snapdom/commit/da438d53418568a47e222d2be3f16e596dfb23ce)
 
 #### [v2.8.0](https://github.com/zumerlab/snapdom/compare/v2.7.0...v2.8.0)
 
