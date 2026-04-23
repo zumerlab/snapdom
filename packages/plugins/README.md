@@ -170,6 +170,59 @@ snapdom(el, { plugins: [htmlInCanvas()] });
 
 ---
 
+### `prompt-export`
+
+Adds a `toPrompt()` export method that returns an LLM-ready package: an annotated screenshot, a structured element map with bounding boxes, and a pre-formatted text description. Useful for vision-language models, browser-agent pipelines, visual QA, and any workflow that pairs a capture with structured metadata.
+
+```js
+import { promptExport } from '@zumer/snapdom-plugins/prompt-export';
+
+const result = await snapdom(el, { plugins: [promptExport()] });
+const { image, elements, dimensions, prompt } = await result.toPrompt();
+```
+
+The returned object:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `image` | `string` | Data URL of the (optionally annotated) screenshot |
+| `elements` | `Array` | One entry per detected element: `{ id, tag, type, text, bbox, attributes }` |
+| `dimensions` | `{width, height}` | Image dimensions after `maxImageWidth` scaling |
+| `prompt` | `string` | Pre-formatted text describing interactive + semantic elements |
+
+`elements` is split into two `type`s:
+- `'interactive'` — buttons, links, inputs, `[role]`/`[tabindex]` targets. These get numbered badges overlaid on the screenshot when `annotate` is on.
+- `'semantic'` — headings, paragraphs, `<nav>`, `<main>`, images with `alt`, table cells, etc. Structural context, not overlaid.
+
+Each `bbox` is in pixel coordinates of the returned image (scaled against `maxImageWidth`).
+
+```js
+// Example — feed a vision-capable LLM
+const { image, elements } = await result.toPrompt({ maxImageWidth: 1024 });
+
+// image is a data URL → pass as image input
+// elements is JSON → pass as structured context alongside the image
+// "Click element [3]" → look up elements[3].bbox for real coordinates
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `annotate` | `boolean` | `true` | Overlay numbered badges on interactive elements |
+| `imageFormat` | `'png' \| 'jpg' \| 'webp'` | `'png'` | Output image format |
+| `imageQuality` | `number` | `0.8` | Quality for lossy formats (0–1) |
+| `maxImageWidth` | `number` | `1024` | Max width in px; downscales and rescales bboxes if larger |
+| `interactiveSelector` | `string` | see below | CSS selector for the interactive element set |
+| `semanticSelector` | `string` | see below | CSS selector for the semantic element set |
+| `labelStyle` | `object` | `{}` | Override styles for the numbered badges (`position`, `color`, `backgroundColor`, etc.) |
+
+Defaults:
+- **interactive**: `a[href], button, input, select, textarea, [role="button"|"link"|"tab"|"menuitem"|"checkbox"|"radio"], [tabindex]:not([tabindex="-1"]), summary, [contenteditable="true"]`
+- **semantic**: `h1–h6, p, li, img[alt], nav, main, article, section, header, footer, label, td, th, figcaption, blockquote, legend`
+
+Both per-call options (`opts.imageFormat`, etc.) and constructor options are supported; per-call wins.
+
+---
+
 ## Plugin registration
 
 **Global** (applies to all captures):
