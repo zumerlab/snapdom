@@ -359,6 +359,8 @@ export function parseContent(content) {
   return clean
 }
 
+const BORDER_SIDES = ['top', 'right', 'bottom', 'left']
+
 /**
  * @export
  * @param {CSSStyleDeclaration} style
@@ -368,6 +370,19 @@ export function snapshotComputedStyle(style) {
   const snap = {}
   for (let prop of style) {
     snap[prop] = style.getPropertyValue(prop)
+  }
+  // #390: drop border props on sides that don't paint (style:none/hidden or width:0).
+  // Serializing "0px none rgb(0,0,0)" in the foreignObject triggers faint borders on
+  // some engines (seen on <canvas> at high scale). Dropping them is safe because
+  // defaults (all:initial) already resolve border-style to none.
+  for (const side of BORDER_SIDES) {
+    const sty = snap[`border-${side}-style`]
+    const wid = snap[`border-${side}-width`]
+    if (sty === 'none' || sty === 'hidden' || wid === '0px') {
+      delete snap[`border-${side}-style`]
+      delete snap[`border-${side}-width`]
+      delete snap[`border-${side}-color`]
+    }
   }
   return snap
 }
