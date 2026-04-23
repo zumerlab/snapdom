@@ -43,7 +43,12 @@ export function promptExport(options = {}) {
 
     afterClone(ctx) {
       const meta = extractMetadata(ctx.element, interactiveSelector, semanticSelector);
+      // The ctx passed to afterClone is NOT the same object passed to the
+      // prompt() export later — snapdom spreads from ctx.options there. Stash
+      // on both so (a) standalone tests that pass a minimal ctx still see it
+      // and (b) the prompt() call can read it through the shared options ref.
       ctx.__promptMetadata = meta;
+      if (ctx.options) ctx.options.__promptMetadata = meta;
 
       if (annotate) {
         addAnnotations(ctx.clone, meta.elements, labelStyle);
