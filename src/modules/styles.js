@@ -241,6 +241,17 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
 
   const snap = getSnapshot(source, pre, ctx.options)
 
+  // #406: foreignObject may resolve min-width:auto differently than normal DOM
+  // for flex/grid items. Explicitly set min-width:0 on flex/grid items that have
+  // the default auto value, so the generated CSS class includes it and we don't
+  // need a blanket foreignObject *{min-width:0} rule (which breaks inline-flex+gap).
+  if (isFlexOrGridItem(source)) {
+    const mw = pre.getPropertyValue('min-width')
+    if (!mw || mw === 'auto' || mw === '0px') {
+      snap['min-width'] = '0px'
+    }
+  }
+
   const sig = styleSignature(snap)
   let key = persist.snapshotKeyCache.get(sig)
   if (!key) {

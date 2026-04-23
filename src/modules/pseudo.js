@@ -420,6 +420,10 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
 
       if (pseudo === '::first-letter') {
         const normal = getStyle(source)
+        // #406: wrapping the first letter in a <span> inside a flex/grid container
+        // creates a new flex item; gap then inserts unwanted space (e.g. "S end Invite").
+        const disp = (normal?.display || '').toLowerCase()
+        if (disp.includes('flex') || disp.includes('grid')) continue
         const isMeaningful =
           style.color !== normal.color ||
           style.fontSize !== normal.fontSize ||
