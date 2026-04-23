@@ -52,15 +52,20 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     'border-image-source',
   ]
 
-  /** Mask longhands to preserve spatial layout (copy as-is) */
+  /** Mask longhands to preserve spatial layout (copy as-is).
+   * Must run AFTER the `mask` shorthand in URL_PROPS — setting the shorthand
+   * resets every longhand to its initial value (#402: lost mask-mode/composite). */
   const MASK_LAYOUT_PROPS = [
     'mask-position',
     'mask-size',
     'mask-repeat',
+    'mask-mode',
+    'mask-composite',
     // WebKit variants
     '-webkit-mask-position',
     '-webkit-mask-size',
     '-webkit-mask-repeat',
+    '-webkit-mask-composite',
     // Extra (optional but helpful across engines)
     'mask-origin',
     'mask-clip',
