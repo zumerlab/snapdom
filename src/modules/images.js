@@ -113,8 +113,12 @@ export async function inlineImages(clone, options = {}) {
     }
   }
 
-  for (let i = 0; i < imgs.length; i += 4) {
-    const group = imgs.slice(i, i + 4).map(processImg)
+  // Batch size 6 matches the typical per-origin HTTP/1.1 connection limit;
+  // raising it further doesn't help once the connection pool is saturated
+  // and could degrade other in-flight requests on the page.
+  const BATCH = 6
+  for (let i = 0; i < imgs.length; i += BATCH) {
+    const group = imgs.slice(i, i + BATCH).map(processImg)
     await Promise.allSettled(group)
   }
 
@@ -131,8 +135,8 @@ export async function inlineImages(clone, options = {}) {
       if (typeof el.removeAttributeNS === 'function') el.removeAttributeNS(XLINK_NS, 'href')
     }
   }
-  for (let i = 0; i < svgImages.length; i += 4) {
-    const group = svgImages.slice(i, i + 4).map(processSvgImage)
+  for (let i = 0; i < svgImages.length; i += BATCH) {
+    const group = svgImages.slice(i, i + BATCH).map(processSvgImage)
     await Promise.allSettled(group)
   }
 }
