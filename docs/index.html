@@ -1098,6 +1098,40 @@
         transform: rotateX(-35deg) rotateY(-35deg);
       }
     }
+
+    /* NEW! badge — reused in demo menu & section headings */
+    .new-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      border-radius: 999px;
+      color: #052018;
+      background: var(--sd-gradient);
+      box-shadow: 0 0 8px rgba(0,224,160,0.3);
+      animation: new-pulse 2s ease-in-out infinite;
+      vertical-align: middle;
+    }
+    .new-badge::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #052018;
+      animation: blink-dot 1.2s step-end infinite;
+    }
+    h2 .new-badge { margin-left: 8px; font-size: 0.55rem; transform: translateY(-2px); }
+    nav.demo-menu a .new-badge { padding: 1px 5px; font-size: 0.5rem; gap: 3px; margin-left: 4px; }
+    nav.demo-menu a .new-badge::before { width: 4px; height: 4px; }
+    @keyframes new-pulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(0,224,160,0.3); }
+      50% { box-shadow: 0 0 18px rgba(0,224,160,0.55); }
+    }
   </style>
 </head>
 
@@ -1122,6 +1156,7 @@
     </div>
     <div id="menu-container" class="nav-collapsible">
       <nav id="demo-menu" class="demo-menu">
+        <a href="#video">Video <span class="new-badge">New</span></a>
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
         <a href="#transition">Transition</a>
@@ -1144,6 +1179,28 @@
   </header>
 
   <main>
+
+    <!-- Video Frame -->
+    <section id="video">
+      <h2>🎬 Video Frame <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">
+        <code>&lt;video&gt;</code> pixels are painted by the GPU compositor and don't serialize into <code>&lt;foreignObject&gt;</code>. The pattern: draw the current frame into a <code>&lt;canvas&gt;</code>, then let SnapDOM capture it like any other node. Press play, then capture any frame. The clip is an MDN CC0 sample served with CORS so the canvas isn't tainted.
+      </p>
+      <div class="card" id="video-box" style="text-align:center; padding:12px;">
+        <video id="demo-video"
+          src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+          crossorigin="anonymous"
+          muted
+          playsinline
+          loop
+          controls
+          preload="metadata"
+          style="max-width:100%; max-height:320px; border-radius:8px;"></video>
+      </div>
+      <button data-umami-event="Capture video frame" onclick="captureVideoFrame(this)">Capture Frame</button>
+      <button data-umami-event="Download video frame" onclick="downloadVideoFrame(this)">Download</button>
+      <div class="output" id="video-output"></div>
+    </section>
 
     <!-- Benchmark -->
     <section id="benchmark">
@@ -1713,6 +1770,67 @@
         outerTransforms: true,
         outerShadows: false
       })
+    }
+
+    function paintVideoFrame(video) {
+      if (!video.videoWidth || !video.videoHeight) return null
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      canvas.style.maxWidth = '100%'
+      canvas.style.height = 'auto'
+      canvas.style.borderRadius = '8px'
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+      return canvas
+    }
+
+    async function withFrameInBox(video, box, fn) {
+      const canvas = paintVideoFrame(video)
+      if (!canvas) return null
+      const prevDisplay = video.style.display
+      video.style.display = 'none'
+      box.appendChild(canvas)
+      try {
+        return await fn(box)
+      } finally {
+        canvas.remove()
+        video.style.display = prevDisplay
+      }
+    }
+
+    async function captureVideoFrame(btn) {
+      const video = document.getElementById('demo-video')
+      const box = document.getElementById('video-box')
+      const output = document.getElementById('video-output')
+      if (!video || !box || !output) return
+      if (btn) btn.disabled = true
+      output.innerHTML = ''
+      try {
+        const img = await withFrameInBox(video, box, (el) => snapdom.toImg(el, { cache: 'disabled' }))
+        if (!img) {
+          output.innerHTML = '<div style="padding:1rem;color:#c00">Video not ready. Press play first, then capture.</div>'
+          return
+        }
+        output.appendChild(img)
+      } catch (e) {
+        output.innerHTML = '<div style="padding:1rem;color:#c00">Capture failed: ' + (e && e.message ? e.message : e) + '</div>'
+      } finally {
+        if (btn) btn.disabled = false
+      }
+    }
+
+    async function downloadVideoFrame(btn) {
+      const video = document.getElementById('demo-video')
+      const box = document.getElementById('video-box')
+      if (!video || !box) return
+      if (btn) btn.disabled = true
+      try {
+        await withFrameInBox(video, box, (el) =>
+          snapdom.download(el, { format: 'png', name: 'video-frame', cache: 'disabled' })
+        )
+      } finally {
+        if (btn) btn.disabled = false
+      }
     }
 
     async function captureOptsTarget(btn) {
