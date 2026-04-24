@@ -244,15 +244,16 @@ Both per-call options (`opts.include`, `opts.imageFormat`, etc.) and constructor
 
 #### Why the default excludes the image
 
-Across 5 real pages (GitHub repo header, HN front page, Wikipedia article, Stripe pricing, snapdom.dev) with 15 UI-inspection questions total, the structured text+JSON map alone (`['elements','prompt']`) answered **15/15** at ~7,900 total input tokens. The raw screenshot alone scored 7.5/15 at ~20,000 tokens (vision fails on dense-text UIs at typical resolutions). The full package (`['image','elements','prompt']`) also scored 15/15 but at ~115,000 tokens — ~14× the cost for no accuracy gain on UI inspection tasks.
+Across 5 real pages (GitHub repo header, HN front page, Wikipedia article, Stripe pricing, snapdom.dev) with 15 UI-inspection questions total, we fed each capture to a VLM in four shapes and scored the answers:
 
-| Method | Score | Tokens |
-|--------|-------|--------|
+| Method | Score | Total input tokens |
+|--------|-------|--------------------|
 | Raw PNG only | 7.5/15 | ~20,000 |
-| WebFetch (Anthropic default) | 13/15 | variable |
-| `toPrompt()` full (image + elements + prompt) | 15/15 | ~115,000 |
-| `toPrompt()` default (elements + prompt) | 15/15 | ~100,000 |
-| **`toPrompt()` text only (`include: ['prompt']`)** | **15/15** | **~7,900** |
+| `toPrompt()` full — `['image','elements','prompt']` | 15/15 | ~115,000 |
+| `toPrompt()` — `['elements','prompt']` (new default) | 15/15 | ~100,000 |
+| **`toPrompt()` text only — `['prompt']`** | **15/15** | **~7,900** |
+
+Vision-only (raw PNG) fails on dense-text UIs at typical capture resolutions — the text is simply too small to read reliably. Adding the structured text + JSON map recovers full accuracy. Adding the image *on top* of that doesn't improve accuracy on UI-inspection tasks, it just costs ~14× more tokens.
 
 The image still belongs in the output when the task truly depends on vision (reading a chart, judging layout, diffing visual regressions). Opt in per call:
 
