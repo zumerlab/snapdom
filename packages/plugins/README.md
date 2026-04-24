@@ -244,16 +244,19 @@ Both per-call options (`opts.include`, `opts.imageFormat`, etc.) and constructor
 
 #### Why the default excludes the image
 
-Across 5 real pages (GitHub repo header, HN front page, Wikipedia article, Stripe pricing, snapdom.dev) with 15 UI-inspection questions total, we fed each capture to a VLM in four shapes and scored the answers:
+Across 5 real pages (GitHub repo header, HN front page, Wikipedia article, Stripe pricing, snapdom.dev) with 15 UI-inspection questions total, we fed each capture to a VLM in five shapes and scored the answers:
 
 | Method | Score | Total input tokens |
 |--------|-------|--------------------|
 | Raw PNG only | 7.5/15 | ~20,000 |
+| Anthropic WebFetch tool¹ | 13/15 | ~850 |
 | `toPrompt()` full — `['image','elements','prompt']` | 15/15 | ~115,000 |
 | `toPrompt()` — `['elements','prompt']` (new default) | 15/15 | ~100,000 |
 | **`toPrompt()` text only — `['prompt']`** | **15/15** | **~7,900** |
 
 Vision-only (raw PNG) fails on dense-text UIs at typical capture resolutions — the text is simply too small to read reliably. Adding the structured text + JSON map recovers full accuracy. Adding the image *on top* of that doesn't improve accuracy on UI-inspection tasks, it just costs ~14× more tokens.
+
+¹ WebFetch tokens measure the summary response returned to the model; Anthropic handles the fetch and summarization server-side, so the dev doesn't pay for the raw HTML (~100k tokens across these 5 pages). The lower token count is real, but so are the trade-offs: the summary is a black box that can miss details, it hallucinated a CTA label on snapdom.dev ("Browse Demos" doesn't exist on the page), and for live UIs it can return a different snapshot than what the dev captured (HN's front page reordered between our capture and the WebFetch call, giving points/comment counts that didn't match what was on screen). `toPrompt` captures the exact live DOM from inside the browser, so there's no drift.
 
 The image still belongs in the output when the task truly depends on vision (reading a chart, judging layout, diffing visual regressions). Opt in per call:
 
