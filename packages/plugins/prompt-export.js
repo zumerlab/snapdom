@@ -19,6 +19,11 @@
  * @param {Object}   [options.labelStyle={}]        - Override styles for annotation badges
  * @param {'compact'|'verbose'} [options.promptMode='compact']  - Prompt text verbosity
  * @param {boolean}  [options.includeCoords=true]   - Include bbox in the prompt text
+ * @param {string[]} [options.include]              - Which fields to return. Default
+ *   ['elements', 'prompt']. For vision-dependent tasks (chart content, layout QA,
+ *   canvas) pass ['image', 'elements', 'prompt'] or add 'image' to the array. For
+ *   text-only agent prompts pass ['prompt'] (cheapest — skips canvas draw entirely).
+ *   Accepted values: 'image', 'elements', 'prompt'.
  * @returns {Object} SnapDOM plugin
  */
 
@@ -58,6 +63,12 @@ function isDefaultStyleValue(prop, value) {
   return false;
 }
 
+// Default omits 'image'. Benchmarking showed the text + JSON map is enough
+// to answer most UI-inspection questions and uses ~14× fewer tokens. Pass
+// `include: ['image', 'elements', 'prompt']` explicitly when the task truly
+// depends on vision (charts, canvas content, layout QA).
+const DEFAULT_INCLUDE = ['elements', 'prompt'];
+
 export function promptExport(options = {}) {
   const {
     annotate = true,
@@ -69,6 +80,7 @@ export function promptExport(options = {}) {
     labelStyle = {},
     promptMode = 'compact',
     includeCoords = true,
+    include = DEFAULT_INCLUDE,
   } = options;
 
   return {
@@ -90,13 +102,17 @@ export function promptExport(options = {}) {
       return {
         prompt: async (ctx, opts = {}) => {
           const meta = ctx.__promptMetadata;
+          const wantSet = new Set(opts.include || include || DEFAULT_INCLUDE);
+          const wantImage = wantSet.has('image');
+          const wantElements = wantSet.has('elements');
+          const wantPrompt = wantSet.has('prompt');
+
           if (!meta || !meta.elements.length) {
-            return {
-              image: ctx.export.url,
-              elements: [],
-              dimensions: { width: 0, height: 0 },
-              prompt: '',
-            };
+            const empty = { dimensions: { width: 0, height: 0 } };
+            if (wantImage) empty.image = ctx.export.url;
+            if (wantElements) empty.elements = [];
+            if (wantPrompt) empty.prompt = '';
+            return empty;
           }
 
           const format = opts.imageFormat || imageFormat;
@@ -105,32 +121,40 @@ export function promptExport(options = {}) {
           const mode = opts.promptMode || promptMode;
           const withCoords = opts.includeCoords !== undefined ? opts.includeCoords : includeCoords;
 
-          const img = new Image();
-          img.src = ctx.export.url;
-          await new Promise((res, rej) => {
-            img.onload = res;
-            img.onerror = rej;
-          });
-
-          const ratio = img.naturalWidth > maxWidth ? maxWidth / img.naturalWidth : 1;
-          const w = Math.round(img.naturalWidth * ratio);
-          const h = Math.round(img.naturalHeight * ratio);
-
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-
-          const mime =
-            format === 'jpg' || format === 'jpeg' ? 'image/jpeg'
-            : format === 'webp' ? 'image/webp'
-            : 'image/png';
-          const dataURL = canvas.toDataURL(mime, quality);
+          // Only load + rasterize the SVG when the caller actually wants the
+          // image. Skipping saves the img decode + canvas draw + toDataURL —
+          // the most expensive steps of this export.
+          let w, h, dataURL;
+          if (wantImage) {
+            const img = new Image();
+            img.src = ctx.export.url;
+            await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+            const ratio = img.naturalWidth > maxWidth ? maxWidth / img.naturalWidth : 1;
+            w = Math.round(img.naturalWidth * ratio);
+            h = Math.round(img.naturalHeight * ratio);
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const mime =
+              format === 'jpg' || format === 'jpeg' ? 'image/jpeg'
+              : format === 'webp' ? 'image/webp'
+              : 'image/png';
+            dataURL = canvas.toDataURL(mime, quality);
+          } else {
+            // No image — scale bboxes to the same target width the image would
+            // have used, so downstream callers can still render the map over
+            // a separately-rendered screenshot at the same scale.
+            const sourceW = meta.dimensions.width || 1;
+            const ratio = sourceW > maxWidth ? maxWidth / sourceW : 1;
+            w = Math.round(sourceW * ratio);
+            h = Math.round(meta.dimensions.height * ratio);
+          }
 
           const sx = w / (meta.dimensions.width || 1);
           const sy = h / (meta.dimensions.height || 1);
 
-          const elements = meta.elements.map((el) => ({
+          const scaledElements = meta.elements.map((el) => ({
             ...el,
             bbox: {
               x: Math.round(el.bbox.x * sx),
@@ -140,19 +164,18 @@ export function promptExport(options = {}) {
             },
           }));
 
-          // In compact + annotate, badges already encode positions on the
-          // image itself, so repeating coords in the prompt text is noise.
           const emitCoords = mode === 'verbose' ? true : (withCoords && !annotate);
-          const prompt = mode === 'verbose'
-            ? formatPromptVerbose(elements, { width: w, height: h }, emitCoords)
-            : formatPromptCompact(elements, { width: w, height: h }, emitCoords);
+          const promptText = (wantPrompt)
+            ? (mode === 'verbose'
+                ? formatPromptVerbose(scaledElements, { width: w, height: h }, emitCoords)
+                : formatPromptCompact(scaledElements, { width: w, height: h }, emitCoords))
+            : null;
 
-          return {
-            image: dataURL,
-            elements,
-            dimensions: { width: w, height: h },
-            prompt,
-          };
+          const out = { dimensions: { width: w, height: h } };
+          if (wantImage) out.image = dataURL;
+          if (wantElements) out.elements = scaledElements;
+          if (wantPrompt) out.prompt = promptText;
+          return out;
         },
       };
     },

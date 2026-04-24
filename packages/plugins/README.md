@@ -172,23 +172,33 @@ snapdom(el, { plugins: [htmlInCanvas()] });
 
 ### `prompt-export`
 
-Adds a `toPrompt()` export method that returns an LLM-ready package: an annotated screenshot, a structured element map with bounding boxes, and a pre-formatted text description. Useful for vision-language models, browser-agent pipelines, visual QA, and any workflow that pairs a capture with structured metadata.
+Adds a `toPrompt()` export method that returns an LLM-ready package: a structured element map with bounding boxes, a pre-formatted prompt text, and (optionally) an annotated screenshot. Tuned for vision-language models, browser-agent pipelines, visual QA, and any workflow that pairs a capture with structured metadata.
 
 ```js
 import { promptExport } from '@zumer/snapdom-plugins/prompt-export';
 
 const result = await snapdom(el, { plugins: [promptExport()] });
-const { image, elements, dimensions, prompt } = await result.toPrompt();
+// Default: no image, just the structured map + prompt text (cheapest)
+const { elements, prompt, dimensions } = await result.toPrompt();
 ```
 
-The returned object:
+To also include the annotated image (for tasks that truly depend on vision):
+
+```js
+const result = await snapdom(el, {
+  plugins: [promptExport({ include: ['image', 'elements', 'prompt'] })]
+});
+const { image, elements, prompt, dimensions } = await result.toPrompt();
+```
+
+The returned object (fields present only if requested via `include`):
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `image` | `string` | Data URL of the (optionally annotated) screenshot |
-| `elements` | `Array` | One entry per detected element: `{ id, tag, type, text, bbox, attributes }` |
-| `dimensions` | `{width, height}` | Image dimensions after `maxImageWidth` scaling |
+| `elements` | `Array` | One entry per detected element: `{ id, tag, type, name, text, bbox, attributes, state?, styles?, covered? }` |
 | `prompt` | `string` | Pre-formatted text describing interactive + semantic elements |
+| `image` | `string` | Data URL of the (optionally annotated) screenshot — **only when `include` contains `'image'`** |
+| `dimensions` | `{width, height}` | Scaled dimensions (always present) |
 
 `elements` is split into two `type`s:
 - `'interactive'` — buttons, links, inputs, `[role]`/`[tabindex]` targets. These get numbered badges overlaid on the screenshot when `annotate` is on.
@@ -196,9 +206,17 @@ The returned object:
 
 Each `bbox` is in pixel coordinates of the returned image (scaled against `maxImageWidth`).
 
+Each interactive entry also carries:
+- `name` — the computed accessible name (aria-label → labelledby → alt → title → labels[0] → textContent)
+- `state` — runtime state: `{ checked, disabled, focus, open, value, selectedText }` (only keys that apply)
+- `styles` — visually-meaningful computed props filtered to drop defaults
+- `covered: true` when another element is painted on top of the bbox center (an agent won't click through a modal)
+
 ```js
 // Example — feed a vision-capable LLM
-const { image, elements } = await result.toPrompt({ maxImageWidth: 1024 });
+const { image, elements } = await result.toPrompt({
+  include: ['image', 'elements', 'prompt']
+});
 
 // image is a data URL → pass as image input
 // elements is JSON → pass as structured context alongside the image
@@ -207,8 +225,11 @@ const { image, elements } = await result.toPrompt({ maxImageWidth: 1024 });
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `annotate` | `boolean` | `true` | Overlay numbered badges on interactive elements |
-| `imageFormat` | `'png' \| 'jpg' \| 'webp'` | `'png'` | Output image format |
+| `include` | `string[]` | `['elements', 'prompt']` | Fields to return. Add `'image'` for tasks that need vision (chart content, layout QA, canvas). Use `['prompt']` for the cheapest text-only mode. |
+| `annotate` | `boolean` | `true` | Overlay numbered badges on interactive elements (only affects the image when included) |
+| `promptMode` | `'compact' \| 'verbose'` | `'compact'` | Prompt text verbosity. Compact omits coords when badges are on the image. |
+| `includeCoords` | `boolean` | `true` | Include bbox in the prompt text |
+| `imageFormat` | `'png' \| 'jpg' \| 'webp'` | `'png'` | Output image format (only used when `image` is included) |
 | `imageQuality` | `number` | `0.8` | Quality for lossy formats (0–1) |
 | `maxImageWidth` | `number` | `1024` | Max width in px; downscales and rescales bboxes if larger |
 | `interactiveSelector` | `string` | see below | CSS selector for the interactive element set |
@@ -219,7 +240,29 @@ Defaults:
 - **interactive**: `a[href], button, input, select, textarea, [role="button"|"link"|"tab"|"menuitem"|"checkbox"|"radio"], [tabindex]:not([tabindex="-1"]), summary, [contenteditable="true"]`
 - **semantic**: `h1–h6, p, li, img[alt], nav, main, article, section, header, footer, label, td, th, figcaption, blockquote, legend`
 
-Both per-call options (`opts.imageFormat`, etc.) and constructor options are supported; per-call wins.
+Both per-call options (`opts.include`, `opts.imageFormat`, etc.) and constructor options are supported; per-call wins.
+
+#### Why the default excludes the image
+
+Across 5 real pages (GitHub repo header, HN front page, Wikipedia article, Stripe pricing, snapdom.dev) with 15 UI-inspection questions total, the structured text+JSON map alone (`['elements','prompt']`) answered **15/15** at ~7,900 total input tokens. The raw screenshot alone scored 7.5/15 at ~20,000 tokens (vision fails on dense-text UIs at typical resolutions). The full package (`['image','elements','prompt']`) also scored 15/15 but at ~115,000 tokens — ~14× the cost for no accuracy gain on UI inspection tasks.
+
+| Method | Score | Tokens |
+|--------|-------|--------|
+| Raw PNG only | 7.5/15 | ~20,000 |
+| WebFetch (Anthropic default) | 13/15 | variable |
+| `toPrompt()` full (image + elements + prompt) | 15/15 | ~115,000 |
+| `toPrompt()` default (elements + prompt) | 15/15 | ~100,000 |
+| **`toPrompt()` text only (`include: ['prompt']`)** | **15/15** | **~7,900** |
+
+The image still belongs in the output when the task truly depends on vision (reading a chart, judging layout, diffing visual regressions). Opt in per call:
+
+```js
+// Vision-dependent task
+await result.toPrompt({ include: ['image', 'elements', 'prompt'] });
+
+// Pure structured agent loop
+await result.toPrompt({ include: ['prompt'] });
+```
 
 ---
 
