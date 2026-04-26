@@ -146,4 +146,5 @@ __tests__/__screenshots__
 .vscode/
 .claude/
 .cursor/
+bench/
 
