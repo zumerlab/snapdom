@@ -5,7 +5,7 @@
 
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
-import { resolveCSSVars } from '../modules/CSSVar.js'
+import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
 import { debugWarn } from '../utils/index.js'
 import {
   idleCallback,
@@ -378,12 +378,18 @@ export async function deepClone(node, sessionCache, options) {
     const ariaInvalid = node.getAttribute('aria-invalid')
     if (ariaInvalid !== null) clone.setAttribute('aria-invalid', ariaInvalid)
   }
-  inlineAllStyles(node, clone, sessionCache, options)
+  // #408: descendants of <symbol>/<defs>/etc. are templates rendered via <use>/url(#…).
+  // Snapshotting their computed style here would freeze var() to the (dead) fallback.
+  if (!isInSvgTemplate(node)) {
+    inlineAllStyles(node, clone, sessionCache, options)
+  }
   if (applyInputVisual) { applyInputVisual() }
   // #365: SVG painting elements — CSS rules override presentation attributes but aren't captured
   // via the class-based mechanism (NO_DEFAULTS_TAGS returns '' key). Copy key SVG presentation
   // properties from computed style as inline styles to ensure CSS-driven fills/strokes survive.
-  if (node instanceof SVGElement) {
+  // #408: skip descendants of <symbol>/<defs>/etc. — their var() must resolve at the <use> site,
+  // not be materialized to the (dead) template's fallback computed value.
+  if (node instanceof SVGElement && !isInSvgTemplate(node)) {
     const SVG_PAINT_PROPS = [
       'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset',
       'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'opacity',

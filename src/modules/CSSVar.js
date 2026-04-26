@@ -3,6 +3,26 @@
 /** Props donde típicamente aparece var() y conviene “materializar” si difieren del baseline */
 const KEY_PROPS = ['fill', 'stroke', 'color', 'background-color', 'stop-color']
 
+/** SVG container elements that act as templates: their descendants are rendered
+ *  virtually via <use> / url(#...). CSS custom properties on the use site cascade
+ *  into the rendered shadow tree, so any var() inside these containers must be
+ *  preserved (NOT materialized at clone time) — otherwise we'd freeze the var()
+ *  to whatever it resolves to in the dead template context (usually the fallback). */
+const SVG_TEMPLATE_TAGS = new Set([
+  'symbol', 'defs', 'pattern', 'mask', 'clipPath', 'marker',
+  'linearGradient', 'radialGradient', 'filter'
+])
+export function isInSvgTemplate(el) {
+  let p = el
+  while (p && p.nodeType === 1) {
+    if (p.namespaceURI === 'http://www.w3.org/2000/svg' && SVG_TEMPLATE_TAGS.has(p.localName)) {
+      return true
+    }
+    p = p.parentNode
+  }
+  return false
+}
+
 /** Cache de estilos base por (namespaceURI + tagName) */
 const __BASELINE_CACHE = new Map()
 
@@ -42,6 +62,10 @@ function getBaselineComputed(tagName, ns) {
  */
 export function resolveCSSVars(sourceEl, cloneEl) {
   if (!(sourceEl instanceof Element) || !(cloneEl instanceof Element)) return
+
+  // #408: descendants of <symbol>/<defs>/<pattern>/etc. render through <use>/url(#…),
+  // where the cascade lives. Materializing var() here freezes the fallback.
+  if (isInSvgTemplate(sourceEl)) return
 
   // --- 0) Pre-chequeo ultra barato
   const styleAttr = sourceEl.getAttribute?.('style')
