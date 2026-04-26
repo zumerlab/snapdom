@@ -3,32 +3,6 @@
    "Mr SnapDOM" retro design system
    ═══════════════════════════════════════════════ */
 
-/* ── Theme toggle ── */
-.theme-toggle {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 9999;
-  background: var(--surface, var(--sd-surface, #FFFCF4));
-  border: 2px solid var(--border, var(--sd-border, #0F1E4D));
-  border-radius: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-  color: var(--text, var(--sd-text, #0F1E4D));
-  font-size: 18px;
-  line-height: 1;
-  box-shadow: 3px 3px 0 var(--border, var(--sd-border, #0F1E4D));
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-.theme-toggle:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
-}
-.theme-toggle:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--border, var(--sd-border, #0F1E4D));
-}
-
 /* ── GitHub badge ── */
 .github-badge {
   display: inline-flex;

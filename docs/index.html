@@ -102,27 +102,6 @@
       --halftone-dot: 1.3px;
       --halftone-offset: 8px;
     }
-    html.dark {
-      --sd-primary: #F5EFE3;
-      --sd-primary-light: #FBF3DF;
-      --sd-accent: #5C7CFF;
-      --sd-accent-hover: #8AA0FF;
-      --sd-accent-soft: rgba(92,124,255,0.18);
-      --sd-gradient: linear-gradient(135deg, #5C7CFF 0%, #8AA0FF 100%);
-      --sd-surface: #182A5C;
-      --sd-surface-elevated: #1E3470;
-      --sd-text: #F5EFE3;
-      --sd-text-muted: #A8B4D4;
-      --sd-border: #F5EFE3;
-      --sd-border-soft: rgba(245,239,227,0.22);
-      --sd-shadow: 3px 3px 0 #F5EFE3;
-      --sd-shadow-hover: 5px 5px 0 #F5EFE3;
-      --sd-shadow-lg: 6px 6px 0 #F5EFE3;
-      --sd-body-bg: #0F1E4D;
-      --sd-grid-color: rgba(245,239,227,0.05);
-      --halftone-color: #F5EFE3;
-    }
-
     /* ── Halftone newsprint shadow (retro print effect) ── */
     section,
     .card,
@@ -155,18 +134,7 @@
       pointer-events: none;
     }
     .card:hover::after { transform: translate(calc(var(--halftone-offset) + 3px), calc(var(--halftone-offset) + 3px)); }
-    /* Dark mode overrides for demo sections */
-    html.dark .card.black { background: #050E2A; }
-    html.dark .progress-message { color: var(--sd-text-muted); }
-    html.dark .result-message { background: var(--sd-accent-soft); color: var(--sd-text); }
-    html.dark .winner-message { background: var(--sd-accent-soft); color: var(--sd-text); }
-    html.dark .benchmark-output { border-color: var(--sd-border); background: var(--sd-surface); }
-    html.dark .proxy-card { background: var(--sd-surface); border-color: var(--sd-border); }
-    html.dark .proxy-hero { background-color: var(--sd-surface-elevated); border-color: var(--sd-border); }
-    html.dark .mask-label { background: rgba(15,30,77,0.85); color: var(--sd-text); }
-    html.dark .iframe-wrap { border-color: var(--sd-border); }
-    html.dark .form-demo input, html.dark .form-demo select, html.dark .form-demo textarea { background: var(--sd-surface); color: var(--sd-text); border-color: var(--sd-border); }
-    /* Theme toggle, Page nav, GitHub badge → shared.css */
+    /* Page nav, GitHub badge → shared.css */
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -1169,7 +1137,6 @@
 </head>
 
 <body>
-  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
   <header class="hero-block">
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
       <i class="fab fa-github"></i>
@@ -2216,22 +2183,6 @@
     <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
     <a href="./labs.html" data-umami-event="Nav labs">Labs</a>
   </nav>
-
-  <script>
-    // Theme toggle (synced with plugins/labs pages via localStorage)
-    const toggle = document.getElementById('themeToggle');
-    const saved = localStorage.getItem('snapdom-theme');
-    if (saved === 'dark') document.documentElement.classList.add('dark');
-    function updateIcon() {
-      toggle.innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;' : '&#9790;';
-    }
-    updateIcon();
-    toggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('dark');
-      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-      updateIcon();
-    });
-  </script>
 
   <script>
     async function updateGitHubStars() {

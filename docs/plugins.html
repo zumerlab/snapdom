@@ -50,35 +50,6 @@
       --halftone-dot: 1.3px;
       --halftone-offset: 8px;
     }
-    html.dark {
-      --bg: #0F1E4D;
-      --surface: #182A5C;
-      --surface-hover: #1E3470;
-      --border: #F5EFE3;
-      --border-soft: rgba(245,239,227,0.22);
-      --text: #F5EFE3;
-      --text-muted: #A8B4D4;
-      --accent: #5C7CFF;
-      --accent-hover: #8AA0FF;
-      --accent-soft: rgba(92,124,255,0.18);
-      --green: #4ADE94;
-      --green-soft: rgba(74,222,148,0.18);
-      --amber: #FBBF24;
-      --amber-ink: #FBBF24;
-      --amber-soft: rgba(251,191,36,0.18);
-      --rose: #FF6B7A;
-      --rose-soft: rgba(255,107,122,0.18);
-      --cyan: #5BD4F0;
-      --cyan-soft: rgba(91,212,240,0.18);
-      --code-bg: #050E2A;
-      --code-text: #F5EFE3;
-      --shadow-sticker: 4px 4px 0 #F5EFE3;
-      --shadow-sticker-sm: 3px 3px 0 #F5EFE3;
-      --shadow-sticker-lg: 6px 6px 0 #F5EFE3;
-      --grid-color: rgba(245,239,227,0.05);
-      --halftone-color: #F5EFE3;
-    }
-
     /* ── Halftone newsprint shadow ── */
     .playground-card,
     .pg-panel,
@@ -306,8 +277,6 @@
   </style>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode" data-umami-event="Plugins toggle theme">&#9790;</button>
-
   <!-- ── Hero ── -->
   <section class="hero" id="top">
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Plugins github repo">
@@ -675,22 +644,6 @@
     <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
     <a href="./labs.html" data-umami-event="Nav labs">Labs</a>
   </nav>
-
-  <!-- Theme toggle -->
-  <script>
-    const toggle = document.getElementById('themeToggle');
-    const saved = localStorage.getItem('snapdom-theme');
-    if (saved === 'dark') document.documentElement.classList.add('dark');
-    function updateIcon() {
-      toggle.innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;' : '&#9790;';
-    }
-    updateIcon();
-    toggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('dark');
-      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-      updateIcon();
-    });
-  </script>
 
   <script>
     async function updateGitHubStars() {

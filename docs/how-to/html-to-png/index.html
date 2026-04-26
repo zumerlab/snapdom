@@ -105,8 +105,6 @@
   </script>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
-
   <section class="hero">
     <div class="hero-badge"><span class="dot"></span> How-To Recipe</div>
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Howto png github">
@@ -259,20 +257,6 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
     <a href="../../labs.html" data-umami-event="Nav labs">Labs</a>
   </nav>
 
-  <script>
-    const toggle = document.getElementById('themeToggle');
-    const saved = localStorage.getItem('snapdom-theme');
-    if (saved === 'dark') document.documentElement.classList.add('dark');
-    function updateIcon() {
-      toggle.innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;' : '&#9790;';
-    }
-    updateIcon();
-    toggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('dark');
-      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-      updateIcon();
-    });
-  </script>
   <script>
     (async function(){
       try {

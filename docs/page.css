@@ -41,35 +41,6 @@
   --halftone-dot: 1.3px;
   --halftone-offset: 8px;
 }
-html.dark {
-  --bg: #0F1E4D;
-  --surface: #182A5C;
-  --surface-hover: #1E3470;
-  --border: #F5EFE3;
-  --border-soft: rgba(245,239,227,0.22);
-  --text: #F5EFE3;
-  --text-muted: #A8B4D4;
-  --accent: #5C7CFF;
-  --accent-hover: #8AA0FF;
-  --accent-soft: rgba(92,124,255,0.18);
-  --accent-ink: #C8D4FF;
-  --green: #4ADE94;
-  --green-soft: rgba(74,222,148,0.18);
-  --amber: #FBBF24;
-  --amber-soft: rgba(251,191,36,0.18);
-  --amber-ink: #FBBF24;
-  --rose: #FF6B7A;
-  --rose-soft: rgba(255,107,122,0.18);
-  --cyan: #5BD4F0;
-  --code-bg: #050E2A;
-  --code-text: #F5EFE3;
-  --shadow-sticker: 4px 4px 0 #F5EFE3;
-  --shadow-sticker-sm: 3px 3px 0 #F5EFE3;
-  --shadow-sticker-lg: 6px 6px 0 #F5EFE3;
-  --grid-color: rgba(245,239,227,0.05);
-  --halftone-color: #F5EFE3;
-}
-
 /* ── Halftone newsprint shadow (retro print effect) ── */
 .card,
 .tldr,
@@ -193,7 +164,6 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 100px; }
 .cmp-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 16px 0 28px; background: var(--surface); border: 2px solid var(--border); border-radius: 10px; overflow: hidden; }
 .cmp-table th, .cmp-table td { padding: 12px 16px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--border-soft); }
 .cmp-table thead th { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #FFFCF4; background: var(--border); font-weight: 700; }
-html.dark .cmp-table thead th { color: var(--bg); background: var(--border); }
 .cmp-table tbody tr:last-child td { border-bottom: none; }
 .cmp-table tbody tr:hover { background: var(--surface-hover); }
 .cmp-table td.feature { color: var(--text); font-weight: 600; }
