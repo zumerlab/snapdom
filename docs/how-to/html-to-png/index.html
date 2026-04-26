@@ -22,7 +22,7 @@
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
   <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
-  <meta name="theme-color" content="#060d12">
+  <meta name="theme-color" content="#F5EFE3">
 
   <script type="application/ld+json">
   {
@@ -84,7 +84,7 @@
         "name": "What about high-DPI / retina output?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Pass the scale option, e.g. snapdom.toPng(el, { scale: 2 }), to render the PNG at twice the resolution."
+          "text": "SnapDOM auto-detects the device pixel ratio via the dpr option, so retina screens already render sharp. To force a specific density, pass dpr: 2 (or any value). The scale option is different — it multiplies the captured size (zoom)."
         }
       }
     ]
@@ -186,11 +186,12 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
     <section class="prose">
       <h2 id="hi-dpi">High-DPI / retina output</h2>
-      <p>Pass the <code>scale</code> option to render at higher resolution. <code>scale: 2</code> doubles the pixel dimensions of the output PNG, which is what you want for retina displays:</p>
-      <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, { scale: <span class="num">2</span> });</pre>
-      <p>Combine with <code>backgroundColor</code> to fill transparent areas:</p>
+      <p>SnapDOM picks up the device's <code>devicePixelRatio</code> automatically through the <code>dpr</code> option, so retina screens already get sharp output without configuration. Override it with <code>dpr</code> when you want a fixed pixel density (e.g. exporting a 2× asset on a non-retina machine):</p>
+      <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, { dpr: <span class="num">2</span> });</pre>
+      <p><code>scale</code> is different — it multiplies the captured size (zoom). Use <code>scale</code> when you want a larger image; use <code>dpr</code> when you want the same logical size at higher pixel density. They can be combined:</p>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, {
-  scale: <span class="num">2</span>,
+  dpr: <span class="num">2</span>,            <span class="cm">// retina pixel density</span>
+  scale: <span class="num">1.5</span>,        <span class="cm">// zoom 1.5×</span>
   backgroundColor: <span class="str">'#ffffff'</span>,
 });</pre>
     </section>
@@ -261,14 +262,14 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
   <script>
     const toggle = document.getElementById('themeToggle');
     const saved = localStorage.getItem('snapdom-theme');
-    if (saved === 'light') document.documentElement.classList.add('light');
+    if (saved === 'dark') document.documentElement.classList.add('dark');
     function updateIcon() {
-      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+      toggle.innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;' : '&#9790;';
     }
     updateIcon();
     toggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('light');
-      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       updateIcon();
     });
   </script>

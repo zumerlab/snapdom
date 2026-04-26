@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════
    shared.css — Common styles for all SnapDOM docs
-   "Capture Studio" design system
+   "Mr SnapDOM" retro design system
    ═══════════════════════════════════════════════ */
 
 /* ── Theme toggle ── */
@@ -9,22 +9,24 @@
   top: 16px;
   right: 16px;
   z-index: 9999;
-  background: var(--surface, var(--sd-surface, rgba(10,16,20,0.85)));
-  border: 1px solid var(--border, var(--sd-border, rgba(0,224,160,0.15)));
+  background: var(--surface, var(--sd-surface, #FFFCF4));
+  border: 2px solid var(--border, var(--sd-border, #0F1E4D));
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   cursor: pointer;
-  color: var(--text-muted, var(--sd-text-muted, #6b8a80));
+  color: var(--text, var(--sd-text, #0F1E4D));
   font-size: 18px;
   line-height: 1;
-  transition: all 0.25s;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 3px 3px 0 var(--border, var(--sd-border, #0F1E4D));
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 .theme-toggle:hover {
-  border-color: var(--accent, var(--sd-accent, #00e0a0));
-  color: var(--accent, var(--sd-accent, #00e0a0));
-  box-shadow: 0 0 20px rgba(0,224,160,0.15);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
+}
+.theme-toggle:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--border, var(--sd-border, #0F1E4D));
 }
 
 /* ── GitHub badge ── */
@@ -33,35 +35,37 @@
   align-items: center;
   gap: 8px;
   text-decoration: none;
-  color: var(--text, var(--sd-text, #e0ece8));
+  color: var(--text, var(--sd-text, #0F1E4D));
   font-weight: 700;
   font-size: 13px;
-  background: var(--surface, var(--sd-surface, rgba(10,16,20,0.85)));
-  padding: 6px 14px;
+  background: var(--surface, var(--sd-surface, #FFFCF4));
+  padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border, var(--sd-border, rgba(0,224,160,0.15)));
-  transition: all 0.25s;
+  border: 2px solid var(--border, var(--sd-border, #0F1E4D));
+  box-shadow: 3px 3px 0 var(--border, var(--sd-border, #0F1E4D));
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 .github-badge:hover {
-  border-color: var(--accent, var(--sd-accent, #00e0a0));
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(0,224,160,0.12);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
+}
+.github-badge:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--border, var(--sd-border, #0F1E4D));
 }
 .github-stars {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(251,191,36,0.12);
+  background: var(--amber-soft, rgba(245,166,35,0.18));
   padding: 2px 8px;
   border-radius: 6px;
   font-weight: 800;
-  color: var(--amber, var(--sd-star, #fbbf24));
+  color: var(--amber-ink, #8A4F00);
   font-size: 12px;
 }
-.github-stars i { color: var(--amber, var(--sd-star, #fbbf24)); font-size: 11px; }
+.github-stars i { color: var(--amber-ink, #8A4F00); font-size: 11px; }
 
 /* ── Page nav ── */
 .page-nav {
@@ -72,32 +76,29 @@
   z-index: 9998;
   display: flex;
   gap: 2px;
-  background: var(--surface, var(--sd-surface-elevated, rgba(10,16,20,0.92)));
-  border: 1px solid var(--border, var(--sd-border, rgba(0,224,160,0.15)));
+  background: var(--surface, var(--sd-surface, #FFFCF4));
+  border: 2px solid var(--border, var(--sd-border, #0F1E4D));
   border-radius: 10px;
   padding: 4px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 .page-nav a {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
-  color: var(--text-muted, var(--sd-text-muted, #6b8a80));
+  color: var(--text-muted, var(--sd-text-muted, #5A6478));
   text-decoration: none;
   padding: 6px 14px;
-  border-radius: 7px;
-  transition: all 0.2s;
-  font-weight: 600;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  font-weight: 700;
   letter-spacing: 0.3px;
 }
 .page-nav a:hover {
-  color: var(--accent, var(--sd-accent, #00e0a0));
-  background: rgba(0,224,160,0.08);
+  color: var(--accent, var(--sd-accent, #2D5BFF));
+  background: var(--accent-soft, rgba(45,91,255,0.10));
 }
 .page-nav a.current {
-  color: #fff;
-  background: var(--accent, var(--sd-accent, #00e0a0));
-  box-shadow: 0 2px 8px rgba(0,224,160,0.3);
+  color: #FFFCF4;
+  background: var(--accent, var(--sd-accent, #2D5BFF));
 }

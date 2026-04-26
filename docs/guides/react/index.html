@@ -22,7 +22,7 @@
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
   <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
-  <meta name="theme-color" content="#060d12">
+  <meta name="theme-color" content="#F5EFE3">
 
   <script type="application/ld+json">
   {
@@ -272,14 +272,14 @@
   <script>
     const toggle = document.getElementById('themeToggle');
     const saved = localStorage.getItem('snapdom-theme');
-    if (saved === 'light') document.documentElement.classList.add('light');
+    if (saved === 'dark') document.documentElement.classList.add('dark');
     function updateIcon() {
-      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+      toggle.innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;' : '&#9790;';
     }
     updateIcon();
     toggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('light');
-      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       updateIcon();
     });
   </script>

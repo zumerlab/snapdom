@@ -22,7 +22,7 @@
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
   <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
-  <meta name="theme-color" content="#060d12">
+  <meta name="theme-color" content="#F5EFE3">
 
   <script type="application/ld+json">
   {
@@ -208,7 +208,8 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
     <section class="prose">
       <h2 id="options">Useful options</h2>
       <ul>
-        <li><code>scale: 2</code> — capture at 2× resolution for retina displays.</li>
+        <li><code>dpr: 2</code> — pixel density (auto-detects <code>window.devicePixelRatio</code> for retina; override here when you need a fixed value).</li>
+        <li><code>scale: 2</code> — multiply the captured size (zoom). Different from <code>dpr</code>: <code>scale</code> makes the output bigger, <code>dpr</code> makes it sharper at the same logical size.</li>
         <li><code>backgroundColor: '#fff'</code> — fill transparent areas with a colour.</li>
         <li><code>embedFonts: true</code> — inline <code>@font-face</code> declarations so custom fonts render correctly.</li>
         <li><code>exclude: ['.skip']</code> — skip any element matching the selector.</li>
@@ -241,7 +242,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>How big is the library?</summary>
-        <p>Under 30 KB minified + gzipped, with zero runtime dependencies.</p>
+        <p>Around 39 KB minified + gzipped, with zero runtime dependencies.</p>
       </details>
     </section>
 
@@ -277,14 +278,14 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
   <script>
     const toggle = document.getElementById('themeToggle');
     const saved = localStorage.getItem('snapdom-theme');
-    if (saved === 'light') document.documentElement.classList.add('light');
+    if (saved === 'dark') document.documentElement.classList.add('dark');
     function updateIcon() {
-      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+      toggle.innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;' : '&#9790;';
     }
     updateIcon();
     toggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('light');
-      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       updateIcon();
     });
   </script>

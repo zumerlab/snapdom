@@ -22,7 +22,7 @@
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
   <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
-  <meta name="theme-color" content="#060d12">
+  <meta name="theme-color" content="#F5EFE3">
 
   <script type="application/ld+json">
   {
@@ -190,7 +190,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
           <tr><td class="num">toCanvas(el)</td><td class="num">snapdom.toCanvas(el)</td></tr>
           <tr><td class="num">toSvg(el)</td><td class="num">(await snapdom(el)).toSvg()</td></tr>
           <tr><td class="num">{ backgroundColor: '#fff' }</td><td class="num">{ backgroundColor: '#fff' }</td></tr>
-          <tr><td class="num">{ pixelRatio: 2 }</td><td class="num">{ scale: 2 }</td></tr>
+          <tr><td class="num">{ pixelRatio: 2 }</td><td class="num">{ dpr: 2 }</td></tr>
           <tr><td class="num">{ filter: node =&gt; … }</td><td class="num">{ filter: node =&gt; … }</td></tr>
           <tr><td class="num">{ fontEmbedCSS }</td><td class="num">{ embedFonts: true }</td></tr>
           <tr><td class="num">— (not supported)</td><td class="num">{ plugins: [...] }</td></tr>
@@ -262,14 +262,14 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
   <script>
     const toggle = document.getElementById('themeToggle');
     const saved = localStorage.getItem('snapdom-theme');
-    if (saved === 'light') document.documentElement.classList.add('light');
+    if (saved === 'dark') document.documentElement.classList.add('dark');
     function updateIcon() {
-      toggle.innerHTML = document.documentElement.classList.contains('light') ? '&#9728;' : '&#9790;';
+      toggle.innerHTML = document.documentElement.classList.contains('dark') ? '&#9728;' : '&#9790;';
     }
     updateIcon();
     toggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('light');
-      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('snapdom-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       updateIcon();
     });
   </script>
