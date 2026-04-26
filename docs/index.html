@@ -885,7 +885,7 @@
       width: 100%;
       height: 250px;
       overflow: auto;
-      border: 1px solid var(--sd-border);
+      border: 2px solid var(--sd-border);
       border-radius: 8px;
       padding: 10px;
       background: var(--sd-accent-soft);
@@ -1916,8 +1916,7 @@
       function setOpen(open) {
         toggle.setAttribute('aria-expanded', String(open));
         panel.classList.toggle('open', open);
-        if (open) panel.scrollTop = 0;            // <--- NUEVO: asegura ver todos los items
-        document.body.style.overflow = open ? 'hidden' : '';
+        if (open) panel.scrollTop = 0;
       }
 
       function toggleMenu() {

@@ -49,6 +49,7 @@
   transform: translateX(-50%);
   z-index: 9998;
   display: flex;
+  flex-wrap: nowrap;
   gap: 2px;
   background: var(--surface, var(--sd-surface, #FFFCF4));
   border: 2px solid var(--border, var(--sd-border, #0F1E4D));
@@ -56,7 +57,13 @@
   padding: 4px;
   box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.page-nav::-webkit-scrollbar { display: none; }
 .page-nav a {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
@@ -67,6 +74,8 @@
   transition: background 0.15s, color 0.15s;
   font-weight: 700;
   letter-spacing: 0.3px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .page-nav a:hover {
   color: var(--accent, var(--sd-accent, #2D5BFF));
