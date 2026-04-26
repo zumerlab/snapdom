@@ -9,13 +9,21 @@
 
 const PLUGIN_NAME = 'html-in-canvas'
 
-function isDrawElementImageAvailable() {
+/**
+ * The WICG canvas-place-element spec evolved: Chrome ~130+ exposes drawElement(),
+ * earlier flagged builds shipped drawElementImage(). Detect either.
+ * @returns {'drawElement'|'drawElementImage'|null}
+ */
+function detectDrawApi() {
   try {
     const c = document.createElement('canvas')
     const ctx = c.getContext('2d')
-    return ctx && typeof ctx.drawElementImage === 'function'
+    if (!ctx) return null
+    if (typeof ctx.drawElement === 'function') return 'drawElement'
+    if (typeof ctx.drawElementImage === 'function') return 'drawElementImage'
+    return null
   } catch {
-    return false
+    return null
   }
 }
 
@@ -23,9 +31,10 @@ function isDrawElementImageAvailable() {
  * @returns {import('../../src/core/plugins.js').Plugin}
  */
 export function htmlInCanvasPlugin() {
-  const available = isDrawElementImageAvailable()
+  const drawApi = detectDrawApi()
+  const available = !!drawApi
   if (!available) {
-    console.warn('[snapdom] html-in-canvas plugin: drawElementImage not available. Enable chrome://flags/#canvas-draw-element')
+    console.warn('[snapdom] html-in-canvas plugin: drawElement / drawElementImage not available. Enable chrome://flags/#canvas-draw-element')
   }
 
   return {
@@ -92,27 +101,34 @@ export function htmlInCanvasPlugin() {
 
           canvas.appendChild(wrapper)
 
-          const container = document.createElement('div')
-          container.id = 'snapdom-html-in-canvas-temp'
-          container.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;'
-          container.appendChild(canvas)
-          document.body.appendChild(container)
+          // Append directly to body, taken out of flow with position:fixed + z-index:-1
+          // so it sits behind the page's content (covered by body/main backgrounds)
+          // while still being painted. visibility:hidden / opacity:0 / left:-9999px
+          // skip the paint pass and trigger "No cached paint record".
+          canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:-1;'
+          document.body.appendChild(canvas)
 
           try {
-            await new Promise(r => requestAnimationFrame(r))
+            canvas.getBoundingClientRect()
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
             const ctx2d = canvas.getContext('2d')
-            if (!ctx2d || typeof ctx2d.drawElementImage !== 'function') {
-              throw new Error('drawElementImage not available')
+            const fn = ctx2d && (ctx2d[drawApi] || ctx2d.drawElement || ctx2d.drawElementImage)
+            if (typeof fn !== 'function') {
+              throw new Error('drawElement / drawElementImage not available on this canvas context')
             }
             ctx2d.save()
             ctx2d.scale(dpr * scale, dpr * scale)
-            ctx2d.drawElementImage(wrapper, 0, 0, width, height)
+            fn.call(ctx2d, wrapper, 0, 0, width, height)
             ctx2d.restore()
             return canvas
+          } catch (e) {
+            if (e && /paint record/i.test(e.message || '')) {
+              throw new Error('Browser had no paint record for the element. Make sure the document is fully loaded and visible before calling html-in-canvas (drawElement requires a real paint pass).')
+            }
+            throw e
           } finally {
-            try {
-              document.body.removeChild(container)
-            } catch {}
+            try { canvas.remove() } catch {}
           }
         }
       }
