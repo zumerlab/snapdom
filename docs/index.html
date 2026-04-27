@@ -349,7 +349,6 @@
       color: var(--sd-accent);
     }
 
-    .github-badge { margin-bottom: 20px; }
     h1 .accent { color: var(--sd-accent); }
     h1 .accent-ink { color: var(--sd-text); }
 
@@ -1138,11 +1137,17 @@
 
 <body>
   <header class="hero-block">
-    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
-      <i class="fab fa-github"></i>
-      <span class="repo-link">zumerlab/snapdom</span>
-      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
-    </a>
+    <div class="social-badges">
+      <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
+        <i class="fab fa-github"></i>
+        <span class="repo-link">zumerlab/snapdom</span>
+        <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+      </a>
+      <a href="https://x.com/snapdomjs" class="x-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM X">
+        <i class="fab fa-x-twitter"></i>
+        <span class="x-handle">@snapdomjs</span>
+      </a>
+    </div>
     <img src="./assets/mrsnapdom-run.png" alt="Mr SnapDOM" class="hero-mascot" width="200" height="144" />
     <h1><span class="accent">Snap</span><span class="accent-ink">DOM</span></h1>
     <p class="hero-tagline">DOM to <em>anything</em> engine — fast, modular, extensible.</p>

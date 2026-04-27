@@ -3,6 +3,14 @@
    "Mr SnapDOM" retro design system
    ═══════════════════════════════════════════════ */
 
+/* ── Social badges ── */
+.social-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
 /* ── GitHub badge ── */
 .github-badge {
   display: inline-flex;
@@ -40,6 +48,32 @@
   font-size: 12px;
 }
 .github-stars i { color: var(--amber-ink, #8A4F00); font-size: 11px; }
+
+/* ── X badge ── */
+.x-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text, var(--sd-text, #0F1E4D));
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--surface, var(--sd-surface, #FFFCF4));
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid var(--border, var(--sd-border, #0F1E4D));
+  box-shadow: 3px 3px 0 var(--border, var(--sd-border, #0F1E4D));
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.x-badge:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
+}
+.x-badge:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--border, var(--sd-border, #0F1E4D));
+}
 
 /* ── Page nav ── */
 .page-nav {
