@@ -955,7 +955,7 @@ For detailed guidelines, see [CONTRIBUTING](https://github.com/zumerlab/snapdom/
 
 ## Sponsors
 
-Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), [@reynaldichernando](https://github.com/reynaldichernando), [@gamma-app](https://github.com/gamma-app) and [@jrjohnson](https://github.com/jrjohnson),for supporting this project!
+Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), [@reynaldichernando](https://github.com/reynaldichernando), [@gamma-app](https://github.com/gamma-app), [@jrjohnson](https://github.com/jrjohnson), and [@ryanander](https://github.com/ryanander) for supporting this project!
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 

@@ -953,7 +953,7 @@ npm run test:benchmark
 
 ## 💖 赞助者
 
-特别感谢 [@megaphonecolin](https://github.com/megaphonecolin)、[@sdraper69](https://github.com/sdraper69)、[@reynaldichernando](https://github.com/reynaldichernando) 和 [@gamma-app](https://github.com/gamma-app)，感谢他们对本项目的支持！
+特别感谢 [@megaphonecolin](https://github.com/megaphonecolin)、[@sdraper69](https://github.com/sdraper69)、[@reynaldichernando](https://github.com/reynaldichernando)、[@gamma-app](https://github.com/gamma-app)、[@jrjohnson](https://github.com/jrjohnson) 和 [@ryanander](https://github.com/ryanander) 对本项目的支持！
 
 如果您也想支持这个项目，您可以[成为赞助者](https://github.com/sponsors/tinchox5)。
 
