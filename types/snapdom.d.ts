@@ -58,6 +58,8 @@ export interface SnapdomOptions {
   backgroundColor?: string;
   /** Quality for JPEG/WebP (0..1). Default 1. */
   quality?: number;
+  /** Output format for capture/export helpers. Default "png". */
+  format?: BlobType;
 
   /** Cross-origin proxy prefix (used as a fallback when CORS blocks). */
   useProxy?: string;
@@ -214,6 +216,8 @@ export type PluginUse =
 
 export interface DownloadOptions {
   filename?: string;
+  /** Output format for the downloaded file. Default "png". */
+  format?: BlobType;
   /** Override default blob type for this download. */
   type?: BlobType;
   /** Quality hint for raster formats. */
