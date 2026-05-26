@@ -141,7 +141,6 @@ drafts/
 
 demos/
 
-__tests__/__screenshots__
 __snapshots__
 
 .vscode/
