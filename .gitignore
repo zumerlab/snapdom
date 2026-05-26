@@ -148,3 +148,4 @@ __snapshots__
 .cursor/
 bench/
 AGENTS.md
+__tests__/__screenshots__/
