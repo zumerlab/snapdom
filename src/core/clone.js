@@ -345,7 +345,7 @@ export async function deepClone(node, sessionCache, options) {
     }
   }
 
-  // #315: Preserve placeholder for inputs/textareas showing placeholder text
+  // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
   if ((node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) && !node.value && node.placeholder) {
     try {
       const phStyle = window.getComputedStyle(node, '::placeholder')
