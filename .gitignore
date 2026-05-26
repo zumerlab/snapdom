@@ -141,6 +141,7 @@ drafts/
 
 demos/
 
+__tests__/__screenshots__
 __snapshots__
 
 .vscode/
@@ -148,4 +149,3 @@ __snapshots__
 .cursor/
 bench/
 AGENTS.md
-__tests__/__screenshots__/
