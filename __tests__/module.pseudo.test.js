@@ -401,4 +401,100 @@ describe('inlinePseudoElements', () => {
     ol.remove()
     style.remove()
   })
+
+  // #419: a single-side border (border-bottom) on a pseudo must be rendered. The shorthand
+  // border-width "0px 0px 1px 0px" parsed as parseFloat→0 made the pseudo look border-less,
+  // so an empty-content pseudo (no other reason to render) was dropped entirely.
+  it('renders an empty-content pseudo that only has a border-bottom', async () => {
+    const el = document.createElement('div')
+    el.className = 'b419-empty'
+    el.textContent = 'host'
+    document.body.appendChild(el)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .b419-empty::before {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        border-bottom: 1px solid red;
+      }
+    `
+    document.head.appendChild(style)
+
+    const clone = el.cloneNode(true)
+    await inlinePseudoElements(el, clone, { styleMap: new Map(), styleCache: new WeakMap() }, {})
+
+    const before = clone.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy() // was dropped before the fix
+
+    el.remove()
+    style.remove()
+  })
+
+  it('keeps the border-bottom in the snapshot of a content+border pseudo', async () => {
+    const el = document.createElement('div')
+    el.className = 'b419-text'
+    el.textContent = 'host'
+    document.body.appendChild(el)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .b419-text::before {
+        content: "B";
+        border-bottom: 1px solid red;
+      }
+    `
+    document.head.appendChild(style)
+
+    const sessionCache2 = { styleMap: new Map(), styleCache: new WeakMap() }
+    const clone = el.cloneNode(true)
+    await inlinePseudoElements(el, clone, sessionCache2, {})
+
+    const before = clone.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy()
+    const key = sessionCache2.styleMap.get(before) || ''
+    expect(key).toMatch(/border-bottom-width:\s*1px/)
+    expect(key).toMatch(/border-bottom-style:\s*solid/)
+
+    el.remove()
+    style.remove()
+  })
+
+  // #418: antd centers a modal with an empty `::before` spacer (display:inline-block;
+  // height:100%; vertical-align:middle). It paints nothing, so it was dropped and the
+  // vertical centering collapsed. A box-generating pseudo with real size must be kept.
+  it('keeps an empty box-generating pseudo used as a layout spacer', async () => {
+    const wrap = document.createElement('div')
+    wrap.className = 'centerer'
+    wrap.textContent = 'modal'
+    document.body.appendChild(wrap)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .centerer { height: 200px; text-align: center; }
+      .centerer::before {
+        content: "";
+        display: inline-block;
+        width: 0;
+        height: 100%;
+        vertical-align: middle;
+      }
+    `
+    document.head.appendChild(style)
+
+    const sessionCache3 = { styleMap: new Map(), styleCache: new WeakMap() }
+    const clone = wrap.cloneNode(true)
+    await inlinePseudoElements(wrap, clone, sessionCache3, {})
+
+    const before = clone.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy() // was dropped before the fix → centering collapsed
+    const key = sessionCache3.styleMap.get(before) || ''
+    expect(key).toMatch(/display:\s*inline-block/)
+    expect(key).toMatch(/vertical-align:\s*middle/)
+
+    wrap.remove()
+    style.remove()
+  })
 })
