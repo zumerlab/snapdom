@@ -1178,6 +1178,9 @@
     </div>
     <div id="menu-container" class="nav-collapsible">
       <nav id="demo-menu" class="demo-menu">
+        <a href="#html-export-demo">toHtml <span class="new-badge">New</span></a>
+        <a href="#gif-export-demo">toGif <span class="new-badge">New</span></a>
+        <a href="#video-export-demo">toMp4 <span class="new-badge">New</span></a>
         <a href="#video">Video <span class="new-badge">New</span></a>
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
@@ -1201,6 +1204,50 @@
   </header>
 
   <main>
+
+    <!-- ── Export plugins (live demos) ── -->
+    <style>
+      .xp-card { background: linear-gradient(135deg, #2b5876, #4e4376); color: #f3f1ea; max-width: 340px; }
+      .xp-card h3 { margin: 0 0 6px; }
+      .xp-pill { display: inline-block; white-space: nowrap; padding: 5px 12px 5px 24px; position: relative; border-radius: 999px; background: rgba(255,255,255,.14); font: 700 11px/1.4 var(--font-mono, monospace); }
+      .xp-pill::before { content: ''; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #2ee6a6; box-shadow: 0 0 8px #2ee6a6; }
+      .xp-anim { max-width: 260px; height: 150px; display: grid; place-items: center; position: relative; }
+      .xp-ring { width: 80px; height: 80px; border-radius: 50%; border: 6px solid #5c7cff; border-top-color: #ffd166; animation: xp-spin 1.1s linear infinite; }
+      .xp-count { position: absolute; bottom: 10px; right: 14px; font: 800 26px/1 var(--font-mono, monospace); color: #ffd166; }
+      @keyframes xp-spin { to { transform: rotate(360deg); } }
+    </style>
+
+    <section id="html-export-demo">
+      <h2>🧬 toHtml() <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">The <code>html-export</code> plugin returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels. The preview renders it inside a sandboxed <code>&lt;iframe&gt;</code> to prove it stands alone.</p>
+      <div class="card xp-card" id="xp-html-src">
+        <h3>Provisioning manifest</h3>
+        <p style="margin:0 0 12px; opacity:.85">A surface with <strong style="color:#ffd166">varied</strong> controls and a pseudo-element dot.</p>
+        <span class="xp-pill">SHF · 2.4 GHz</span>
+      </div>
+      <button data-umami-event="Plugin toHtml" onclick="exportToHtml(this)">Export to HTML</button>
+      <div class="output" id="xp-html-out"></div>
+    </section>
+
+    <section id="gif-export-demo">
+      <h2>🎞️ toGif() <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">The <code>gif-export</code> plugin records an animating element frame by frame and encodes an animated GIF (median-cut palette + LZW, no dependencies). The spinner and counter make the motion visible.</p>
+      <div class="card xp-anim" id="xp-gif-src">
+        <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
+      </div>
+      <button data-umami-event="Plugin toGif" onclick="recordGif(this)">Record GIF</button>
+      <div class="output" id="xp-gif-out"></div>
+    </section>
+
+    <section id="video-export-demo">
+      <h2>📹 toMp4() <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">The <code>video-export</code> plugin records via the native <code>MediaRecorder</code>. Safari produces MP4 (H.264); Chromium and Firefox typically produce WebM (auto-fallback). The returned <code>Blob.type</code> reflects what was produced.</p>
+      <div class="card xp-anim" id="xp-vid-src">
+        <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
+      </div>
+      <button data-umami-event="Plugin toMp4" onclick="recordVideo(this)">Record video</button>
+      <div class="output" id="xp-vid-out"></div>
+    </section>
 
     <!-- Video Frame -->
     <section id="video">
@@ -1980,6 +2027,86 @@
 
 
     window.snapdom = snapdom;
+
+    // ── Export plugin demos ──
+    // Plugins are lazy-loaded from npm (via esm.sh) on first click, so an
+    // unpublished/offline CDN only breaks its own demo, never the whole page.
+    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins';
+    let _xpCount = 0;
+    setInterval(() => {
+      const s = String((_xpCount = (_xpCount + 1) % 100)).padStart(2, '0');
+      const g = document.getElementById('xp-gif-count'); if (g) g.textContent = s;
+      const v = document.getElementById('xp-vid-count'); if (v) v.textContent = s;
+    }, 80);
+
+    function xpError(out, e) { out.innerHTML = `<div class="progress-message">⚠︎ ${String(e && (e.message || e))}</div>`; }
+
+    function xpDownloadBtn(blob, filename) {
+      const b = document.createElement('button');
+      b.textContent = 'Download';
+      b.style.marginTop = '10px';
+      b.onclick = () => {
+        const u = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = u; a.download = filename; a.click();
+        setTimeout(() => URL.revokeObjectURL(u), 4000);
+      };
+      return b;
+    }
+
+    window.exportToHtml = async function (btn) {
+      const out = document.getElementById('xp-html-out');
+      btn.disabled = true; out.innerHTML = '<div class="progress-message">Exporting…</div>';
+      try {
+        const { htmlExport } = await import(`${PLUGIN_CDN}/html-export`);
+        const result = await snapdom(document.getElementById('xp-html-src'), { plugins: [htmlExport()] });
+        const html = await result.toHtml();
+        const iframe = document.createElement('iframe');
+        iframe.title = 'exported document';
+        iframe.style.cssText = 'width:100%;height:240px;border:0;border-radius:8px;background:#fff';
+        iframe.srcdoc = html;
+        out.innerHTML = '';
+        out.appendChild(iframe);
+        out.appendChild(xpDownloadBtn(new Blob([html], { type: 'text/html' }), 'capture.html'));
+      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
+    };
+
+    window.recordGif = async function (btn) {
+      const out = document.getElementById('xp-gif-out');
+      btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording frames…</div>';
+      try {
+        const { gifExport } = await import(`${PLUGIN_CDN}/gif-export`);
+        const result = await snapdom(document.getElementById('xp-gif-src'), { plugins: [gifExport()] });
+        const blob = await result.toGif({ fps: 12, duration: 1500 });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.style.cssText = 'max-width:100%;border-radius:8px;background:#fff';
+        img.onload = () => URL.revokeObjectURL(url);
+        img.src = url;
+        out.innerHTML = '';
+        out.appendChild(img);
+        out.appendChild(document.createElement('br'));
+        out.appendChild(xpDownloadBtn(blob, 'capture.gif'));
+      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
+    };
+
+    window.recordVideo = async function (btn) {
+      const out = document.getElementById('xp-vid-out');
+      btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording…</div>';
+      try {
+        const { videoExport } = await import(`${PLUGIN_CDN}/video-export`);
+        const result = await snapdom(document.getElementById('xp-vid-src'), { plugins: [videoExport()] });
+        const blob = await result.toMp4({ fps: 12, duration: 2000 });
+        const v = document.createElement('video');
+        v.controls = true; v.loop = true; v.muted = true; v.playsInline = true;
+        v.style.cssText = 'max-width:100%;border-radius:8px';
+        v.src = URL.createObjectURL(blob);
+        out.innerHTML = '';
+        out.appendChild(v);
+        out.appendChild(document.createElement('br'));
+        out.appendChild(xpDownloadBtn(blob, blob.type.includes('mp4') ? 'capture.mp4' : 'capture.webm'));
+        v.play().catch(() => {});
+      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
+    };
 
     // html2canvas carga solo al hacer benchmark (evita bloqueo en Safari por ESM)
     let html2canvas = null;

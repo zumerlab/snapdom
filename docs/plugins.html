@@ -595,6 +595,33 @@
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/prompt-export.js" data-umami-event="Plugins source prompt-export">Source</a><span class="expand-hint">details</span></div>
       </div>
 
+      <!-- html-export -->
+      <div class="plugin-card" data-category="export" data-plugin="html-export">
+        <div class="card-top"><div class="plugin-icon">M</div><span class="category-tag">export</span></div>
+        <h3>html-export</h3>
+        <p>Adds a toHtml() method that returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels.</p>
+        <div class="hooks"><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-export.js" data-umami-event="Plugins source html-export">Source</a><a href="./index.html#html-export-demo" data-umami-event="Plugins demo html-export">Demo</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- gif-export -->
+      <div class="plugin-card" data-category="export" data-plugin="gif-export">
+        <div class="card-top"><div class="plugin-icon">G</div><span class="category-tag">export</span></div>
+        <h3>gif-export</h3>
+        <p>Adds a toGif() method that records an animating element frame by frame into an animated GIF (median-cut palette + LZW, no dependencies).</p>
+        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/gif-export.js" data-umami-event="Plugins source gif-export">Source</a><a href="./index.html#gif-export-demo" data-umami-event="Plugins demo gif-export">Demo</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- video-export -->
+      <div class="plugin-card" data-category="export" data-plugin="video-export">
+        <div class="card-top"><div class="plugin-icon">V</div><span class="category-tag">export</span></div>
+        <h3>video-export</h3>
+        <p>Adds a toMp4() method that records an animating element to video via the native MediaRecorder (MP4 on Safari, WebM on Chromium/Firefox).</p>
+        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/video-export.js" data-umami-event="Plugins source video-export">Source</a><a href="./index.html#video-export-demo" data-umami-event="Plugins demo video-export">Demo</a><span class="expand-hint">details</span></div>
+      </div>
+
     </div>
   </section>
 
@@ -763,6 +790,44 @@
           ['labelStyle', 'object', '{}', 'Override styles for the numbered badges'],
         ],
         usage: `import { promptExport } from '@zumer/snapdom-plugins/prompt-export';\n\nconst result = await snapdom(el, {\n  plugins: [promptExport({ annotate: true, maxImageWidth: 1024 })]\n});\nconst { image, elements, dimensions, prompt } = await result.toPrompt();`
+      },
+      'html-export': {
+        icon: 'M', category: 'export',
+        desc: 'Adds a toHtml() method that returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels.',
+        hooks: ['defineExports'],
+        options: [
+          ['fullDocument', 'boolean', 'true', 'Wrap in a full <!DOCTYPE html>; false returns a <style> + fragment'],
+          ['filename', 'string', "'capture.html'", 'Download filename when opts.download is set'],
+        ],
+        usage: `import { htmlExport } from '@zumer/snapdom-plugins/html-export';\n\nconst result = await snapdom(el, {\n  plugins: [htmlExport()]\n});\nconst html = await result.toHtml();        // self-contained document\n// result.toHtml({ fullDocument: false })  // → <style> + fragment\n// result.toHtml({ download: 'card.html' })`
+      },
+      'gif-export': {
+        icon: 'G', category: 'export',
+        desc: 'Adds a toGif() method that records an animating element frame by frame into an animated GIF (median-cut palette + LZW, no dependencies).',
+        hooks: ['beforeSnap', 'defineExports'],
+        options: [
+          ['fps', 'number', '10', 'Frames per second'],
+          ['duration', 'number', '2000', 'Total duration in ms (ignored if frames is set)'],
+          ['frames', 'number', '—', 'Explicit frame count (overrides duration)'],
+          ['maxColors', 'number', '256', 'Palette size per frame (2-256)'],
+          ['background', 'string', "'#ffffff'", 'Color composited under transparent pixels'],
+          ['repeat', 'number', '0', 'Loop count (0 = forever, -1 = play once)'],
+        ],
+        usage: `import { gifExport } from '@zumer/snapdom-plugins/gif-export';\n\nconst result = await snapdom(el, {\n  plugins: [gifExport()]\n});\nconst blob = await result.toGif({ fps: 12, duration: 1500 });\n// result.toGif({ download: 'spinner.gif' })`
+      },
+      'video-export': {
+        icon: 'V', category: 'export',
+        desc: 'Adds a toMp4() method that records an animating element to video via the native MediaRecorder. Safari produces MP4; Chromium/Firefox typically produce WebM (auto-fallback).',
+        hooks: ['beforeSnap', 'defineExports'],
+        options: [
+          ['fps', 'number', '10', 'Frames per second'],
+          ['duration', 'number', '2000', 'Total duration in ms (ignored if frames is set)'],
+          ['frames', 'number', '—', 'Explicit frame count (overrides duration)'],
+          ['background', 'string', "'#ffffff'", 'Color composited under transparent pixels'],
+          ['bitrate', 'number', '—', 'videoBitsPerSecond passed to MediaRecorder'],
+        ],
+        note: 'Output container depends on the browser: MP4 (H.264) on Safari, WebM on Chromium/Firefox. Blob.type reflects what was produced.',
+        usage: `import { videoExport } from '@zumer/snapdom-plugins/video-export';\n\nconst result = await snapdom(el, {\n  plugins: [videoExport()]\n});\nconst blob = await result.toMp4({ fps: 12, duration: 2000 });\n// blob.type is video/mp4 (Safari) or video/webm (Chromium/FF)`
       },
     };
 
