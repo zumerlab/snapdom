@@ -222,6 +222,22 @@ export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc))
 
 /** Acumulador de contadores por padre para propagar increments en pseudos entre hermanos */
 var __siblingCounters = new WeakMap() // parentElement -> Map<counterName, number>
+
+/**
+ * True if any single side paints a border. The `border-width`/`border-style` shorthands
+ * can't be parsed with parseFloat: a `border-bottom` resolves to "0px 0px 1px 0px", whose
+ * first token (top) is 0, so single-side borders were wrongly read as absent (#419).
+ * @param {CSSStyleDeclaration} style
+ * @returns {boolean}
+ */
+function hasPaintedBorder(style) {
+  for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+    const w = parseFloat(style[`border${side}Width`]) || 0
+    const s = style[`border${side}Style`]
+    if (w > 0 && s && s !== 'none' && s !== 'hidden') return true
+  }
+  return false
+}
 var __pseudoEpoch = -1
 
 /**
@@ -421,7 +437,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         style.content === 'none' &&
         style.backgroundImage === 'none' &&
         style.backgroundColor === 'transparent' &&
-        (style.borderStyle === 'none' || parseFloat(style.borderWidth) === 0) &&
+        !hasPaintedBorder(style) &&
         (!style.transform || style.transform === 'none') &&
         style.display === 'inline'
 
@@ -488,8 +504,6 @@ const { text: cleanContent, incs } =
       const fontSize = parseInt(style.fontSize) || 32
       const fontWeight = parseInt(style.fontWeight) || false
       const color = style.color || '#000'
-      const borderStyle = style.borderStyle
-      const borderWidth = parseFloat(style.borderWidth)
       const transform = style.transform
 
       const isIconFont2 = isIconFont(fontFamily)
@@ -498,8 +512,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasBg = bg && bg !== 'none'
       const hasBgColor =
         bgColor && bgColor !== 'transparent' && bgColor !== 'rgba(0, 0, 0, 0)'
-      const hasBorder =
-        borderStyle && borderStyle !== 'none' && borderWidth > 0
+      const hasBorder = hasPaintedBorder(style)
       const hasTransform = transform && transform !== 'none'
 
       const shouldRender =

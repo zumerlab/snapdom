@@ -401,4 +401,64 @@ describe('inlinePseudoElements', () => {
     ol.remove()
     style.remove()
   })
+
+  // #419: a single-side border (border-bottom) on a pseudo must be rendered. The shorthand
+  // border-width "0px 0px 1px 0px" parsed as parseFloat→0 made the pseudo look border-less,
+  // so an empty-content pseudo (no other reason to render) was dropped entirely.
+  it('renders an empty-content pseudo that only has a border-bottom', async () => {
+    const el = document.createElement('div')
+    el.className = 'b419-empty'
+    el.textContent = 'host'
+    document.body.appendChild(el)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .b419-empty::before {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        border-bottom: 1px solid red;
+      }
+    `
+    document.head.appendChild(style)
+
+    const clone = el.cloneNode(true)
+    await inlinePseudoElements(el, clone, { styleMap: new Map(), styleCache: new WeakMap() }, {})
+
+    const before = clone.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy() // was dropped before the fix
+
+    el.remove()
+    style.remove()
+  })
+
+  it('keeps the border-bottom in the snapshot of a content+border pseudo', async () => {
+    const el = document.createElement('div')
+    el.className = 'b419-text'
+    el.textContent = 'host'
+    document.body.appendChild(el)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .b419-text::before {
+        content: "B";
+        border-bottom: 1px solid red;
+      }
+    `
+    document.head.appendChild(style)
+
+    const sessionCache2 = { styleMap: new Map(), styleCache: new WeakMap() }
+    const clone = el.cloneNode(true)
+    await inlinePseudoElements(el, clone, sessionCache2, {})
+
+    const before = clone.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy()
+    const key = sessionCache2.styleMap.get(before) || ''
+    expect(key).toMatch(/border-bottom-width:\s*1px/)
+    expect(key).toMatch(/border-bottom-style:\s*solid/)
+
+    el.remove()
+    style.remove()
+  })
 })
