@@ -157,10 +157,18 @@ snapdom.capture = async (el, context, _token) => {
     exportsMap.jpg = (ctx, opts) => exportsMap.jpeg(ctx, opts)
   }
 
-  // —— Normalizador para opciones por tipo (p.ej. JPEG: fondo blanco) ——
+  // —— Normalizador para opciones por tipo (p.ej. JPEG/WebP: fondo blanco) ——
   function normalizeExportOptions(type, opts) {
     const next = { ...context, ...(opts || {}) }
-    if (type === 'jpeg' || type === 'jpg') {
+    // `type` aquí es el NOMBRE del export ('blob'/'canvas'/'download'/'jpeg'/…), no el formato
+    // de imagen: en toBlob/toCanvas/download el formato viaja en opts.format/opts.type. Resolver
+    // el formato real (jpg→jpeg) para aplanar el fondo igual que createContext (context.js:84),
+    // o JPEG codificaría las zonas transparentes en negro.
+    const lossy = (s) => s === 'jpeg' || s === 'jpg' || s === 'webp'
+    const fmt = [type, next.format, next.type]
+      .map(v => (typeof v === 'string' ? v.toLowerCase() : ''))
+      .find(lossy)
+    if (fmt) {
       const noBg = next.backgroundColor == null || next.backgroundColor === 'transparent'
       if (noBg) next.backgroundColor = '#ffffff'
     }
