@@ -238,6 +238,88 @@ Because it runs entirely in the browser, it works in contexts where Playwright /
 
 ---
 
+### `html-export`
+
+Adds a `toHtml()` export that returns the capture as a self-contained, **re-renderable HTML document** (clone + inlined styles/fonts) instead of pixels. It unwraps the SVG `<foreignObject>` SnapDOM already produced, so the markup and CSS match the capture byte-for-byte — nothing is rasterized.
+
+```js
+import { htmlExport } from '@zumer/snapdom-plugins/html-export';
+
+const result = await snapdom(el, { plugins: [htmlExport()] });
+const html = await result.toHtml();              // full <!DOCTYPE html> string
+
+// Or download a .html file:
+await result.toHtml({ download: 'snapshot.html' });
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `fullDocument` | `boolean` | `true` | Wrap output in `<!DOCTYPE html>…`; if `false`, return just `<style>` + the fragment |
+| `filename` | `string` | `'capture.html'` | Download filename when `opts.download` is `true` |
+
+Per-call `opts`: `download` (`boolean \| string` — `true` triggers download, a string sets the filename), plus `fullDocument` / `filename` overrides. Returns the HTML `string`.
+
+---
+
+### `gif-export`
+
+Adds a `toGif()` export that records an **animated GIF** by re-capturing the live element over time and encoding the frames. The GIF89a encoder (median-cut quantization + LZW) is built in — no dependencies. Returns a `Blob` (`image/gif`).
+
+```js
+import { gifExport } from '@zumer/snapdom-plugins/gif-export';
+
+const result = await snapdom(el, { plugins: [gifExport({ fps: 12, duration: 3000 })] });
+const blob = await result.toGif();
+
+// Or download directly:
+await result.toGif({ download: 'animation.gif' });
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `fps` | `number` | `10` | Frames per second |
+| `duration` | `number` | `2000` | Total duration in ms (ignored if `frames` is set) |
+| `frames` | `number` | — | Explicit frame count (overrides `duration`) |
+| `maxColors` | `number` | `256` | Palette size per frame (2–256) |
+| `background` | `string` | `'#ffffff'` | Color composited under transparent pixels |
+| `scale` | `number` | `1` | Capture scale |
+| `repeat` | `number` | `0` | Loop count (`0` = forever, `-1` = play once) |
+| `filename` | `string` | `'capture.gif'` | Download filename |
+
+Per-call `opts` override any constructor option, plus `download` (`boolean \| string`). Each frame is captured live, so CSS animations / dynamic content are recorded as they play.
+
+---
+
+### `video-export`
+
+Adds a `toMp4()` export that records a **video** by re-capturing the live element over time and encoding the frames with the native `MediaRecorder`. Returns a `Blob` whose type reflects what was actually produced.
+
+```js
+import { videoExport } from '@zumer/snapdom-plugins/video-export';
+
+const result = await snapdom(el, { plugins: [videoExport({ fps: 30, duration: 4000 })] });
+const blob = await result.toMp4();
+
+// Or download directly:
+await result.toMp4({ download: true });
+```
+
+> **Codec reality:** `MediaRecorder` output depends on the browser. Safari produces MP4 (H.264); Chromium typically produces WebM (VP8/VP9). When MP4 isn't supported the plugin falls back to WebM, warns in the console, and the downloaded file extension is set to `.mp4` / `.webm` accordingly.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `fps` | `number` | `10` | Frames per second |
+| `duration` | `number` | `2000` | Total duration in ms (ignored if `frames` is set) |
+| `frames` | `number` | — | Explicit frame count (overrides `duration`) |
+| `background` | `string` | `'#ffffff'` | Color composited under transparent pixels |
+| `scale` | `number` | `1` | Capture scale |
+| `bitrate` | `number` | — | `videoBitsPerSecond` passed to `MediaRecorder` |
+| `filename` | `string` | — | Download filename (extension auto-set to `.mp4` / `.webm`) |
+
+Requires `MediaRecorder` (unavailable in some headless environments). Per-call `opts` override any constructor option, plus `download` (`boolean \| string`).
+
+---
+
 ## Plugin registration
 
 **Global** (applies to all captures):
