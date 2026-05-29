@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.12.1](https://github.com/zumerlab/snapdom/compare/v2.12.0...v2.12.1)
+
+> 28 May 2026
+
+- Fix for placeholder colors not being copied over on webkit browsers [`#420`](https://github.com/zumerlab/snapdom/pull/420)
+- fix(pseudo): support counter-set; drop divergent dead counter duplicates [`eb8bdb7`](https://github.com/zumerlab/snapdom/commit/eb8bdb793149ec6c278ef92cfa594e4acfb6a38d)
+- fix: proxy-keyed bg cache, case-insensitive font match, nodeMap icon pairing [`0623bcd`](https://github.com/zumerlab/snapdom/commit/0623bcddd818d0f34bb285c0cc01ee6d04bc469f)
+- fix(bbox): correct bleed/transform math for inset shadows, blur chains, root scale [`1c43605`](https://github.com/zumerlab/snapdom/commit/1c43605367b1c661602d866b54bbdfca31e5d6b4)
+- perf: trim redundant per-node work on the capture hot path [`6d1ad72`](https://github.com/zumerlab/snapdom/commit/6d1ad72548082037b9ab0132794f644fe04354f7)
+- fix(capture): stop mutating the live DOM during capture (non-destructive) [`db69e78`](https://github.com/zumerlab/snapdom/commit/db69e7850d1986c5e3cccfd2c5ba283156f45afe)
+- fix(export): flatten jpeg/webp background by resolved format, not export name [`1dcfbcd`](https://github.com/zumerlab/snapdom/commit/1dcfbcd73b29cae9fcc2373340bcdb71c26a0903)
+- fix(cache): invalidate snapshot on option change, reset measureHints on disabled [`0b8d697`](https://github.com/zumerlab/snapdom/commit/0b8d6975cd66b91ed7b37d674ee3bad879d4a5d3)
+- add SnapDIFF [`9bda342`](https://github.com/zumerlab/snapdom/commit/9bda3422821ee8ea7e11803a4a3e59ecaad427cd)
+- test(precache): align cache.background keys with proxy-prefixed contract [`064b004`](https://github.com/zumerlab/snapdom/commit/064b004b702933849b77a5f668ec26e405168eef)
+- fix(clone): ensure placeholder color is correctly rendered in SVG [`44899b3`](https://github.com/zumerlab/snapdom/commit/44899b349499c350f33fc67eca5d77c3f17b83e2)
+- chore: update contributors list [`73358a1`](https://github.com/zumerlab/snapdom/commit/73358a10c32b121e6e28d38cf1c19a8057890aeb)
+- Fix download format option types [`2f93d39`](https://github.com/zumerlab/snapdom/commit/2f93d39181c6d6ca233f7d7c9bce227f05a5c761)
+- add sponsor [`70c4140`](https://github.com/zumerlab/snapdom/commit/70c41406afdebe69916b5fabd4fbc97326fdab78)
+- chore: revert .gitignore to main [`3091154`](https://github.com/zumerlab/snapdom/commit/3091154b18c9a4989b06aec445c4a8ed22efe3e4)
+- fix(clone): restore original placeholder logic and styles [`efe1dd9`](https://github.com/zumerlab/snapdom/commit/efe1dd9ff1db002fb01d31ad1ff9d27307aaaefc)
+- chore: exclude screenshots folder in .gitignore [`d364607`](https://github.com/zumerlab/snapdom/commit/d364607d860f035b9a66f80b8b614964f5019112)
+- Merge pull request #417 from puneetdixit200/fix-download-format-types [`be6bc02`](https://github.com/zumerlab/snapdom/commit/be6bc02b0b7f1efc41351ba4d523dcbad6c52cae)
+
 #### [v2.12.0](https://github.com/zumerlab/snapdom/compare/v2.9.0...v2.12.0)
 
 > 5 May 2026
