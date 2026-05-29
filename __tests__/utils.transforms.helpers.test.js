@@ -40,6 +40,27 @@ describe('parseBoxShadow', () => {
     expect(res.top).toBeGreaterThanOrEqual(0)
     expect(res.right).toBeGreaterThanOrEqual(0)
   })
+
+  it('ignores inset shadows (no outer bleed)', () => {
+    const div = document.createElement('div')
+    div.style.boxShadow = 'inset 10px 10px 5px 2px rgba(0,0,0,0.5)'
+    document.body.appendChild(div)
+    const res = parseBoxShadow(getComputedStyle(div))
+    expect(res).toEqual({ top: 0, right: 0, bottom: 0, left: 0 })
+  })
+
+  it('counts only the outer layer when mixed with an inset layer', () => {
+    const div = document.createElement('div')
+    div.style.boxShadow = 'inset 0 0 40px red, 6px 6px 0 0 blue'
+    document.body.appendChild(div)
+    const res = parseBoxShadow(getComputedStyle(div))
+    // The inset 40px blur must not leak into the bleed (the bug counted it everywhere);
+    // only the 6px outer layer contributes — right/bottom = |6|+6 = 12, all sides << 40.
+    expect(res.right).toBe(12)
+    expect(res.bottom).toBe(12)
+    expect(res.top).toBeLessThanOrEqual(12)
+    expect(res.left).toBeLessThanOrEqual(12)
+  })
 })
 
 describe('parseFilterBlur', () => {
@@ -56,7 +77,16 @@ describe('parseFilterBlur', () => {
     document.body.appendChild(div)
     const cs = getComputedStyle(div)
     const res = parseFilterBlur(cs)
+    // Also guards against double-counting when the engine mirrors filter into webkitFilter.
     expect(res.top).toBe(5)
+  })
+
+  it('sums multiple blur() in the chain (combined spread)', () => {
+    const div = document.createElement('div')
+    div.style.filter = 'blur(2px) blur(3px)'
+    document.body.appendChild(div)
+    const res = parseFilterBlur(getComputedStyle(div))
+    expect(res).toEqual({ top: 5, right: 5, bottom: 5, left: 5 })
   })
 })
 
@@ -222,5 +252,17 @@ describe('normalizeRootTransforms', () => {
     const res = normalizeRootTransforms(orig, clone)
     expect(res).not.toBeNull()
     expect(res.a).toBe(2)
+  })
+
+  it('captures the individual `scale` property when transform is none', () => {
+    const orig = document.createElement('div')
+    orig.style.scale = '2'           // individual property, NOT transform
+    const clone = document.createElement('div')
+    document.body.appendChild(orig)
+    const res = normalizeRootTransforms(orig, clone)
+    // The viewBox must expand by the scale, otherwise the scaled clone gets clipped.
+    expect(res).not.toBeNull()
+    expect(res.a).toBeCloseTo(2, 5)
+    expect(res.d).toBeCloseTo(2, 5)
   })
 })

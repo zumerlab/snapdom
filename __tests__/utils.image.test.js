@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { inlineSingleBackgroundEntry } from '../src/utils/image.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
+import { safeEncodeURI, resolveURL } from '../src/utils/helpers.js'
 import { cache } from '../src/core/cache.js'
 
 // Silence our intentional rejections so Vitest doesn't flag them as unhandled
@@ -66,9 +67,32 @@ describe('inlineSingleBackgroundEntry', () => {
   it('returns cached data URL when present in cache.background', async () => {
     const url = 'https://example.com/img.png'
     const data = 'data:image/png;base64,AAA'
-    cache.background.set(url, data)
+    // Cache key is `<proxy>|<url>` (no proxy here → empty prefix).
+    cache.background.set(`|${url}`, data)
     const out = await inlineSingleBackgroundEntry(`url("${url}")`)
     expect(out).toBe(`url("${data}")`)
+  })
+
+  it('a no-proxy failure does not poison a later capture using a proxy (#8)', async () => {
+    const url = 'https://cors.example.com/img.png'
+    const encoded = safeEncodeURI(resolveURL(url))
+
+    // No-proxy attempt previously failed → null remembered under the no-proxy key.
+    cache.background.set(`|${encoded}`, null)
+
+    // The no-proxy path still short-circuits to 'none' from its own cached failure.
+    expect(await inlineSingleBackgroundEntry(`url("${url}")`)).toBe('none')
+
+    // A capture WITH a working proxy uses a distinct key, so it fetches fresh instead of
+    // inheriting the poisoned null — the recoverable image is not silently dropped.
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], { type: 'image/png' }),
+    }))
+    const out = await inlineSingleBackgroundEntry(`url("${url}")`, { useProxy: 'https://proxy/?u=' })
+    expect(out).not.toBe('none')
+    expect(out).toMatch(/^url\("data:image\/png/)
   })
 
   it('inlines via snapFetch on success (raster path → Image onload)', async () => {

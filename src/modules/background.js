@@ -103,10 +103,22 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
       const bis = style.getPropertyValue('border-image-source')
       return (bi && bi !== 'none') || (bis && bis !== 'none')
     })()
-    for (const prop of BG_LAYOUT_PROPS) {
-      const v = style.getPropertyValue(prop)
-      if (!v) continue
-      cloneNode.style.setProperty(prop, v)
+    // Background layout longhands (position/size/repeat/origin/clip/...) are inert without a
+    // background, yet are never empty, so copying them onto every node bloated the markup and
+    // rasterization cost. Copy only when a background actually exists. background-color is
+    // included so the background-clip:text trick (color clipped to text) still works.
+    const bgImage = style.getPropertyValue('background-image')
+    const bgColor = style.getPropertyValue('background-color')
+    const hasBg =
+      (bgImage && bgImage !== 'none') ||
+      (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') ||
+      /url\s*\(|gradient\s*\(/i.test(style.getPropertyValue('background') || '')
+    if (hasBg) {
+      for (const prop of BG_LAYOUT_PROPS) {
+        const v = style.getPropertyValue(prop)
+        if (!v) continue
+        cloneNode.style.setProperty(prop, v)
+      }
     }
     // 1) Inline URL-bearing properties
     for (const prop of URL_PROPS) {

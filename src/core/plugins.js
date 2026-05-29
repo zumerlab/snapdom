@@ -63,8 +63,7 @@ export function registerPlugins(...defs) {
  * @returns {readonly any[]}
  */
 function getContextPlugins(context) {
-  const arr = context && Array.isArray(context.plugins) ? context.plugins : __plugins
-  return arr || __plugins
+  return context && Array.isArray(context.plugins) ? context.plugins : __plugins
 }
 
 /**
@@ -105,12 +104,6 @@ export async function runAll(name, context, payload) {
   }
   return outs
 }
-
-/**
- * Return a shallow copy of currently registered global plugins.
- * @returns {any[]}
- */
-export function pluginsList() { return __plugins.slice() }
 
 /** Clear all globally registered plugins (mostly for tests). */
 export function clearPlugins() { __plugins.length = 0 }

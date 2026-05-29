@@ -41,18 +41,22 @@ export async function prepareClone(element, options = {}) {
   const undoContentVisibility = forceContentVisibility(element)
 
   try {
-    inlineExternalDefsAndSymbols(element)
-  } catch (e) {
-    console.warn('inlineExternal defs or symbol failed:', e)
-  }
-
-  try {
     clone = await deepClone(element, sessionCache, options)
   } catch (e) {
     console.warn('deepClone failed:', e)
     throw e
   } finally {
     undoContentVisibility()
+  }
+
+  // Inline external <defs>/<symbol> into the CLONE, not the live source. Operating on the
+  // source mutated the user's DOM (a hidden <svg> was inserted as firstChild and never
+  // removed) and shifted :first-child/nth-child matches while deepClone read computed
+  // styles. The clone is detached; external refs are still resolved from the live document.
+  try {
+    inlineExternalDefsAndSymbols(clone)
+  } catch (e) {
+    console.warn('inlineExternal defs or symbol failed:', e)
   }
   try {
     await inlinePseudoElements(element, clone, sessionCache, options)

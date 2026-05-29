@@ -52,3 +52,39 @@ describe('isIconFont (defaults)', () => {
     expect(isIconFont('Font Awesome 6 Pro')).toBe(true) // match por defaultIconFonts
   })
 })
+
+describe('ligatureIconToImage source pairing (#6)', () => {
+  it('reads styles from the nodeMap-mapped source, not the positional index', async () => {
+    const { ligatureIconToImage } = mod
+    const { cache } = await import('../src/core/cache.js')
+
+    // Source: two material icons with distinct font-sizes.
+    const source = document.createElement('div')
+    const s1 = document.createElement('span')
+    s1.className = 'material-icons'; s1.style.fontFamily = 'Material Icons'; s1.style.fontSize = '99px'; s1.textContent = 'home'
+    const s2 = document.createElement('span')
+    s2.className = 'material-icons'; s2.style.fontFamily = 'Material Icons'; s2.style.fontSize = '24px'; s2.textContent = 'star'
+    source.append(s1, s2)
+    document.body.appendChild(source)
+
+    // Clone: the first icon was dropped (excludeMode:'remove'); only the second survives, so a
+    // positional pairing would wrongly read s1 (99px) for it.
+    const clone = document.createElement('div')
+    const c2 = document.createElement('span')
+    c2.className = 'material-icons'; c2.textContent = 'star'
+    clone.appendChild(c2)
+    document.body.appendChild(clone)
+
+    cache.session.nodeMap = new Map([[c2, s2]])
+
+    await ligatureIconToImage(clone, source)
+
+    const img = c2.querySelector('img')
+    expect(img).toBeTruthy()
+    // Height derives from the mapped source's font-size (24), not index-0's (99).
+    expect(img.style.height).toBe('24px')
+
+    source.remove()
+    clone.remove()
+  })
+})

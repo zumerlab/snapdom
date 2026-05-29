@@ -369,4 +369,36 @@ describe('inlinePseudoElements', () => {
     expect(before).toBeTruthy()
     expect(before.textContent).toBe('1)')
   })
+
+  // #19: a pseudo's own counter-set must override the counter value before resolving content.
+  it('applies counter-set on a pseudo element', async () => {
+    const ol = document.createElement('ol')
+    ol.className = 'cset-ol'
+    const li = document.createElement('li')
+    li.className = 'cset-li'
+    li.textContent = 'x'
+    ol.appendChild(li)
+    document.body.appendChild(ol)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .cset-ol { counter-reset: item; list-style: none; }
+      .cset-li::before {
+        counter-set: item 41;
+        content: counter(item);
+      }
+    `
+    document.head.appendChild(style)
+
+    const cloneOl = ol.cloneNode(true)
+    const cloneLi = cloneOl.firstElementChild
+    await inlinePseudoElements(li, cloneLi, sessionCache, {})
+
+    const before = cloneLi.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy()
+    expect(before.textContent).toBe('41')
+
+    ol.remove()
+    style.remove()
+  })
 })

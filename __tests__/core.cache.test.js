@@ -13,6 +13,7 @@ function snapshotRefs() {
     defaultStyle: cache.defaultStyle,
     baseStyle: cache.baseStyle,
     computedStyle: cache.computedStyle,
+    measureHints: cache.measureHints,
     font: cache.font,
     session_styleMap: cache.session.styleMap,
     session_styleCache: cache.session.styleCache,
@@ -27,6 +28,7 @@ function seedSomeData() {
   cache.defaultStyle.set('d', 4)
   cache.baseStyle.set('bs', 5)
   cache.computedStyle.set({}, { c: 6 })
+  cache.measureHints.set({}, { cssLen: 1, w0: 2, csh: 3, csw: 4 })
   cache.font.add('Inter__400')
   cache.session.styleMap.set('x', 'y')
   cache.session.styleCache.set({}, { sc: 1 })
@@ -57,6 +59,7 @@ describe('applyCachePolicy', () => {
     cache.defaultStyle = new Map()
     cache.baseStyle = new Map()
     cache.computedStyle = new WeakMap()
+    cache.measureHints = new WeakMap()
     cache.font = new Set()
     cache.session.styleMap = new Map()
     cache.session.styleCache = new WeakMap()
@@ -152,6 +155,7 @@ describe('applyCachePolicy', () => {
     expect(after.defaultStyle).not.toBe(before.defaultStyle)
     expect(after.baseStyle).not.toBe(before.baseStyle)
     expect(after.computedStyle).not.toBe(before.computedStyle)
+    expect(after.measureHints).not.toBe(before.measureHints)
     expect(after.font).not.toBe(before.font)
     expect(after.session_styleMap).not.toBe(before.session_styleMap)
     expect(after.session_styleCache).not.toBe(before.session_styleCache)

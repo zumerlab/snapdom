@@ -50,8 +50,9 @@ describe('preCache – extra coverage', () => {
   // (2) Con proxy activo, NO hay intentos directos en el nuevo snapFetch
   expect(directCalls.length).toBe(0)
 
-  // (3) Dedupe en cache.background: una sola entrada para ese URL
-  const key = safeEncodeURI(DIRECT)
+  // (3) Dedupe en cache.background: una sola entrada para ese URL.
+  // La clave incluye el proxy (evita que un fallo sin-proxy envenene otra config).
+  const key = PROXY + '|' + safeEncodeURI(DIRECT)
   expect(cache.background.has(key)).toBe(true)
   expect([...cache.background.keys()].filter(k => k === key).length).toBe(1)
 
@@ -78,7 +79,8 @@ describe('preCache – extra coverage', () => {
     await preCache(el)
 
     // Verificamos que SOLO la capa url(...) fue procesada y quedó cacheada
-    const key = safeEncodeURI(URL)
+    // (clave con prefijo de proxy vacío, sin useProxy)
+    const key = '|' + safeEncodeURI(URL)
     expect(cache.background.has(key)).toBe(true)
 
     // No exigimos conteo de fetch: puede ser 0 si fuese raster.
@@ -105,8 +107,8 @@ describe('preCache – extra coverage', () => {
 
     await preCache(root)
 
-    // Comprobamos que el hijo fue visto y cacheado
-    const key = safeEncodeURI(CHILD_URL)
+    // Comprobamos que el hijo fue visto y cacheado (clave con prefijo de proxy vacío)
+    const key = '|' + safeEncodeURI(CHILD_URL)
     expect(cache.background.has(key)).toBe(true)
 
     document.body.removeChild(root)

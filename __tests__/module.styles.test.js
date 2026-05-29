@@ -169,6 +169,32 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(key).not.toMatch(/font-size:/)
   })
 
+  it('#348: snapshot cache invalidates when excludeStyleProps changes between captures', async () => {
+    const inlineAllStyles = await loadInlineAllStylesFresh()
+
+    const src = document.createElement('div')
+    src.style.color = 'red'
+    src.style.fontSize = '13.37px'
+    document.body.appendChild(src)
+
+    // First capture excludes `color`.
+    const clone1 = document.createElement('div')
+    const session1 = freshSession()
+    await inlineAllStyles(src, clone1, session1, { cache: 'auto', excludeStyleProps: /^color$/ })
+    expect(session1.styleMap.get(clone1)).not.toMatch(/(?:^|;)color:/)
+
+    // Second capture of the SAME element without exclusion. MutationObserver is stubbed so
+    // __epoch is frozen → the per-element snapshot cache would be hit. It must not reuse the
+    // stale snapshot that dropped `color`.
+    const clone2 = document.createElement('div')
+    const session2 = freshSession()
+    await inlineAllStyles(src, clone2, session2, { cache: 'auto' })
+    const key2 = session2.styleMap.get(clone2)
+
+    document.body.removeChild(src)
+    expect(key2).toMatch(/(?:^|;)color:/)
+  })
+
   it('#362: border: 0 solid normalizes to border: none in snapshot', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 

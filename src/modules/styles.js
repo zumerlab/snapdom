@@ -1,4 +1,4 @@
-import { getStyleKey, shouldIgnoreProp } from '../utils/index.js'
+import { getStyleKey, shouldIgnoreProp, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -149,11 +149,17 @@ function styleSignature(snap) {
 }
 function getSnapshot(el, preStyle = null, options = {}) {
   const rec = snapshotCache.get(el)
-  if (rec && rec.epoch === __epoch) return rec.snapshot
+  // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
+  // (skipped props), but __epoch only bumps on DOM/font mutation — not option changes.
+  // Capturing the same element twice with different options must not reuse the snapshot
+  // (#348). excludeStyleProps is compared by reference: a fresh value misses safely.
+  const ef = !!(options && options.embedFonts)
+  const ex = (options && options.excludeStyleProps) || null
+  if (rec && rec.epoch === __epoch && rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
   const style = preStyle || getComputedStyle(el)
   const snap = snapshotComputedStyleFull(style, options)
   stripHeightForWrappers(el, style, snap)
-  snapshotCache.set(el, { epoch: __epoch, snapshot: snap })
+  snapshotCache.set(el, { epoch: __epoch, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
   return snap
 }
 
@@ -297,7 +303,9 @@ function hasBox(cs) {
 function isFlexOrGridItem(el) {
   const p = el.parentElement
   if (!p) return false
-  const pd = getComputedStyle(p).display || ''
+  // getStyle memoizes in cache.computedStyle; raw getComputedStyle forced a fresh resolution
+  // per node on every capture (even on snapshot-cache hits).
+  const pd = getStyle(p).display || ''
   return pd.includes('flex') || pd.includes('grid')
 }
 
