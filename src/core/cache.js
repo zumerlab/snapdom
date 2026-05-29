@@ -35,8 +35,8 @@ export const cache = {
   baseStyle: new EvictingMap(MAX_BASE_STYLE),
   computedStyle: new WeakMap(),
   /** Persistent cache for clone-in-document layout measurements (PERF-3).
-   *  Key: Element. Value: { h, w, cssLen } — cssLen is the total injected CSS length,
-   *  used as a cheap invalidation key when styles change between captures. */
+   *  Key: Element. Value: { cssLen, w0, csh, csw } — cssLen is the total injected CSS
+   *  length, used together with w0 as a cheap invalidation key when styles change. */
   measureHints: new WeakMap(),
   font: new Set(),
   session: {
@@ -96,6 +96,7 @@ export function applyCachePolicy(policy = 'soft') {
       cache.session.styleCache = new WeakMap()
 
       cache.computedStyle = new WeakMap()
+      cache.measureHints  = new WeakMap()
       cache.baseStyle     = new EvictingMap(MAX_BASE_STYLE)
       cache.defaultStyle  = new EvictingMap(MAX_DEFAULT_STYLE)
       cache.image         = new EvictingMap(MAX_IMAGE)
