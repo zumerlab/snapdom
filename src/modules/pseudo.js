@@ -515,8 +515,16 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasBorder = hasPaintedBorder(style)
       const hasTransform = transform && transform !== 'none'
 
+      // A box-generating pseudo (content not none/normal) with real width/height occupies
+      // layout space even with no visible paint — e.g. antd's `::before { content:'';
+      // display:inline-block; height:100%; vertical-align:middle }` that vertically centers a
+      // modal. Dropping it collapses the layout it controls (#418).
+      const boxGenerating = rawContent !== 'none' && rawContent !== 'normal'
+      const hasLayoutBox = boxGenerating &&
+        ((parseFloat(style.width) || 0) > 0 || (parseFloat(style.height) || 0) > 0)
+
       const shouldRender =
-        hasExplicitContent || hasBg || hasBgColor || hasBorder || hasTransform
+        hasExplicitContent || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox
 
       if (!shouldRender) {
         // Aun si no renderizamos caja, si el pseudo tenía increments, propagar a hermanos
@@ -631,7 +639,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasContent2 =
         pseudoEl.childNodes.length > 0 || (pseudoEl.textContent?.trim() !== '')
       const hasVisibleBox =
-        hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform
+        hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox
 
       // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
       if (incs && incs.length && source.parentElement) {

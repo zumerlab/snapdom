@@ -461,4 +461,40 @@ describe('inlinePseudoElements', () => {
     el.remove()
     style.remove()
   })
+
+  // #418: antd centers a modal with an empty `::before` spacer (display:inline-block;
+  // height:100%; vertical-align:middle). It paints nothing, so it was dropped and the
+  // vertical centering collapsed. A box-generating pseudo with real size must be kept.
+  it('keeps an empty box-generating pseudo used as a layout spacer', async () => {
+    const wrap = document.createElement('div')
+    wrap.className = 'centerer'
+    wrap.textContent = 'modal'
+    document.body.appendChild(wrap)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .centerer { height: 200px; text-align: center; }
+      .centerer::before {
+        content: "";
+        display: inline-block;
+        width: 0;
+        height: 100%;
+        vertical-align: middle;
+      }
+    `
+    document.head.appendChild(style)
+
+    const sessionCache3 = { styleMap: new Map(), styleCache: new WeakMap() }
+    const clone = wrap.cloneNode(true)
+    await inlinePseudoElements(wrap, clone, sessionCache3, {})
+
+    const before = clone.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy() // was dropped before the fix → centering collapsed
+    const key = sessionCache3.styleMap.get(before) || ''
+    expect(key).toMatch(/display:\s*inline-block/)
+    expect(key).toMatch(/vertical-align:\s*middle/)
+
+    wrap.remove()
+    style.remove()
+  })
 })
