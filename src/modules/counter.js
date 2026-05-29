@@ -15,11 +15,6 @@ export function hasCounters(input) {
   return /\bcounter\s*\(|\bcounters\s*\(/.test(input || '')
 }
 
-/** Replace every CSS string token "..." with its raw content (keeps single quotes). */
-export function unquoteDoubleStrings(s) {
-  return (s || '').replace(/"([^"]*)"/g, '$1')
-}
-
 /**
  * a, b, ..., z, aa, ab, ...
  * @param {number} n
@@ -255,9 +250,8 @@ export function buildCounterContext(root) {
 /**
  * Resolves counter()/counters() calls inside a content string for a specific node,
  * returning the content with counter() expanded but quoted-string tokens preserved.
- * The caller is responsible for joining tokens (see pseudo.js collapseCssContent)
- * or stripping quotes (see resolvePseudoContent below) — keeping quotes here lets
- * collapseCssContent tokenize properly so source whitespace between adjacent
+ * The caller (pseudo.js) is responsible for joining tokens and stripping quotes —
+ * keeping quotes here lets its tokenizer work so source whitespace between adjacent
  * tokens (e.g. `counter(x) ")"`) doesn't leak into the rendered text.
  *
  * @param {string} raw
@@ -288,102 +282,4 @@ export function resolveCountersInContent(raw, node, ctx) {
   } catch {
     return '- '
   }
-}
-
-/**
- * Create a derived counter context that applies a pseudo's counter-reset /
- * counter-increment *for this node only*, before resolving content.
- * Works with ::before / ::after (and any pseudo with content).
- *
- * @param {Element} node
- * @param {CSSStyleDeclaration|null} pseudoStyle getComputedStyle(node, '::before' | '::after')
- * @param {{get(node: Element, name: string): number, getStack(node: Element, name: string): number[]}} baseCtx
- */
-export function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
-  const modStacks = new Map()
-
-  /** Parse "a 1, b -2" -> [{name:'a', num:1}, {name:'b', num:-2}] */
-  function parseListDecl(value) {
-    const out = []
-    if (!value || value === 'none') return out
-    for (const part of String(value).split(',')) {
-      const toks = part.trim().split(/\s+/)
-      const name = toks[0]
-      const num = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : undefined
-      if (name) out.push({ name, num })
-    }
-    return out
-  }
-
-  const resets = parseListDecl(pseudoStyle?.counterReset)
-  const sets   = parseListDecl(pseudoStyle?.counterSet)
-  const incs   = parseListDecl(pseudoStyle?.counterIncrement)
-
-  function getStackDerived(name) {
-    if (modStacks.has(name)) return modStacks.get(name).slice()
-
-    // base stack at this node from the element context
-    let stack = baseCtx.getStack(node, name)
-    stack = stack.length ? stack.slice() : []
-
-    // counter-reset (push if exists, replace if not)
-    const r = resets.find(x => x.name === name)
-    if (r) {
-      const val = Number.isFinite(r.num) ? r.num : 0
-      if (stack.length) {
-        stack = stack.slice()
-        stack.push(val)
-      } else {
-        stack = [val]
-      }
-    }
-
-    // counter-set (set top value without creating a new scope)
-    const s = sets.find(x => x.name === name)
-    if (s) {
-      const val = Number.isFinite(s.num) ? s.num : 0
-      if (stack.length === 0) stack = [0]
-      stack[stack.length - 1] = val
-    }
-
-    // counter-increment (on top; create top=0 if missing)
-    const inc = incs.find(x => x.name === name)
-    if (inc) {
-      const by = Number.isFinite(inc.num) ? inc.num : 1
-      if (stack.length === 0) stack = [0]
-      stack[stack.length - 1] += by
-    }
-
-    modStacks.set(name, stack.slice())
-    return stack
-  }
-
-  return {
-    get(_node, name) {
-      const s = getStackDerived(name)
-      return s.length ? s[s.length - 1] : 0
-    },
-    getStack(_node, name) {
-      return getStackDerived(name)
-    }
-  }
-}
-
-/**
- * Convenience helper: resolve the final text to render for a pseudo's `content`,
- * correctly applying the pseudo's own counter-reset/increment before evaluation.
- *
- * @param {Element} node
- * @param {'::before'|'::after'} pseudo
- * @param {{get(node: Element, name: string): number, getStack(node: Element, name: string): number[]}} baseCtx
- * @returns {string} resolved content (without surrounding double quotes)
- */
-export function resolvePseudoContent(node, pseudo, baseCtx) {
-  let ps
-  try { ps = getComputedStyle(node, pseudo) } catch {}
-  const raw = ps?.content
-  if (!raw || raw === 'none' || raw === 'normal') return ''
-  const derived = deriveCounterCtxForPseudo(node, ps, baseCtx)
-  let out = resolveCountersInContent(raw, node, derived)
-  return unquoteDoubleStrings(out)
 }

@@ -299,6 +299,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
   }
 
   const resets = parseListDecl(pseudoStyle?.counterReset)
+  const sets = parseListDecl(pseudoStyle?.counterSet)
   const incs = parseListDecl(pseudoStyle?.counterIncrement)
 
   function getStackDerived(name) {
@@ -311,6 +312,14 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
     if (r) {
       const val = Number.isFinite(r.num) ? r.num : 0
       stack = stack.length ? [...stack, val] : [val]
+    }
+
+    // counter-set: fija el valor del top sin crear scope (orden CSS: reset → set → increment)
+    const s = sets.find(x => x.name === name)
+    if (s) {
+      const val = Number.isFinite(s.num) ? s.num : 0
+      if (stack.length === 0) stack = [0]
+      stack[stack.length - 1] = val
     }
 
     // increment: sobre el top, crear top=0 si no existe

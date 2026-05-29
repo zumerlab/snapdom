@@ -2,11 +2,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   hasCounters,
-  unquoteDoubleStrings,
   buildCounterContext,
-  resolveCountersInContent,
-  deriveCounterCtxForPseudo,
-  resolvePseudoContent
+  resolveCountersInContent
 } from '../src/modules/counter.js'
 
 beforeEach(() => {
@@ -30,17 +27,6 @@ describe('hasCounters', () => {
     expect(hasCounters('content: "foo"')).toBe(false)
     expect(hasCounters('')).toBe(false)
     expect(hasCounters(null)).toBe(false)
-  })
-})
-
-describe('unquoteDoubleStrings', () => {
-  it('removes double quotes from strings', () => {
-    expect(unquoteDoubleStrings('"hello"')).toBe('hello')
-    expect(unquoteDoubleStrings('before "mid" after')).toBe('before mid after')
-  })
-  it('handles null/empty', () => {
-    expect(unquoteDoubleStrings(null)).toBe('')
-    expect(unquoteDoubleStrings('')).toBe('')
   })
 })
 
@@ -121,30 +107,6 @@ describe('resolveCountersInContent', () => {
     document.body.appendChild(root)
     const ctx = buildCounterContext(root)
     expect(resolveCountersInContent('counters(x, ". ")', inner, ctx)).toBe('2')
-  })
-})
-
-describe('deriveCounterCtxForPseudo', () => {
-  it('applies pseudo counter-reset/increment', () => {
-    const span = document.createElement('span')
-    span.style.counterReset = 'item 0'
-    document.body.appendChild(span)
-    const baseCtx = buildCounterContext(span)
-    const pseudoStyle = {
-      counterReset: 'item 5',
-      counterIncrement: 'item'
-    }
-    const derived = deriveCounterCtxForPseudo(span, pseudoStyle, baseCtx)
-    expect(derived.get(span, 'item')).toBe(6)
-  })
-})
-
-describe('resolvePseudoContent', () => {
-  it('returns empty for none/normal', () => {
-    const span = document.createElement('span')
-    document.body.appendChild(span)
-    const ctx = buildCounterContext(span)
-    expect(resolvePseudoContent(span, '::before', ctx)).toBe('')
   })
 })
 
