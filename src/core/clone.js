@@ -344,6 +344,7 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
+
   // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
   if ((node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) && !node.value && node.placeholder) {
     try {
@@ -353,11 +354,12 @@ export async function deepClone(node, sessionCache, options) {
         const uid = 'snapdom-ph-' + (Math.random() * 1e6 | 0)
         clone.classList.add(uid)
         const styleEl = document.createElement('style')
-        styleEl.textContent = `.${uid}::placeholder{color:${phColor}!important;opacity:${phStyle.opacity || '1'}!important;}`
+        styleEl.textContent = `.${uid}::placeholder{color:${phColor}!important;opacity:${phStyle.opacity || '1'}!important;-webkit-text-fill-color:${phColor}!important;}`
         clone.prepend(styleEl)
       }
     } catch { /* non-blocking */ }
   }
+
   if (node instanceof HTMLSelectElement) {
     pendingSelectValue = node.value
   }
@@ -490,7 +492,6 @@ export async function deepClone(node, sessionCache, options) {
   }
   if (pendingTextAreaValue !== null && clone instanceof HTMLTextAreaElement) {
     clone.textContent = pendingTextAreaValue
-
   }
   return clone
 }
