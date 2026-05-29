@@ -4,6 +4,7 @@
  */
 
 import { limitDecimals } from './capture.helpers.js'
+import { getStyle } from './css.js'
 
 /**
  * Parse box-shadow and calculate bleed dimensions
@@ -396,7 +397,9 @@ export function readTotalTransformMatrix(t) {
  * @param {Element} el
  */
 export function hasBBoxAffectingTransform(el) {
-  const cs = getComputedStyle(el)
+  // getStyle is cached (cache.computedStyle); on the root this reuses the csEl already read by
+  // captureDOM instead of forcing a fresh resolution per call (twice on Safari defaults).
+  const cs = getStyle(el)
   const t = cs.transform || 'none'
 
   // Matrix identity or none => might still have individual transforms

@@ -1,4 +1,4 @@
-import { getStyleKey, shouldIgnoreProp } from '../utils/index.js'
+import { getStyleKey, shouldIgnoreProp, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -303,7 +303,9 @@ function hasBox(cs) {
 function isFlexOrGridItem(el) {
   const p = el.parentElement
   if (!p) return false
-  const pd = getComputedStyle(p).display || ''
+  // getStyle memoizes in cache.computedStyle; raw getComputedStyle forced a fresh resolution
+  // per node on every capture (even on snapshot-cache hits).
+  const pd = getStyle(p).display || ''
   return pd.includes('flex') || pd.includes('grid')
 }
 

@@ -39,10 +39,10 @@ const CSS_RULE_SCAN_BUDGET = 1000
  */
 function preflightWithFp(doc, sessionCache) {
   const fp = styleFingerprint(doc)
-  if (!sessionCache) return shouldProcessPseudos(doc)
+  if (!sessionCache) return shouldProcessPseudos(doc, fp)
   // Recompute when the fingerprint changes
   if (sessionCache.__pseudoPreflightFp !== fp) {
-    sessionCache.__pseudoPreflight = shouldProcessPseudos(doc)
+    sessionCache.__pseudoPreflight = shouldProcessPseudos(doc, fp)
     sessionCache.__pseudoPreflightFp = fp
   }
   return !!sessionCache.__pseudoPreflight
@@ -153,8 +153,7 @@ function sheetHasNeedles(sheet, needles, state) {
  * @param {Document} doc
  * @returns {boolean}
  */
-export function shouldProcessPseudos(doc = document) {
-  const fp = styleFingerprint(doc)
+export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc)) {
   const memo = __preflightMemo.get(doc)
   if (memo && memo.fingerprint === fp) return memo.result
 
