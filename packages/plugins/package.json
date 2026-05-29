@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Official plugins for SnapDOM",
   "type": "module",
   "exports": {
@@ -39,6 +39,6 @@
   },
   "homepage": "https://zumerlab.github.io/snapdom/",
   "peerDependencies": {
-    "@zumer/snapdom": ">=2.7.0"
+    "@zumer/snapdom": ">=2.12.1"
   }
 }
