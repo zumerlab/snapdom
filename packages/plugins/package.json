@@ -12,7 +12,10 @@
     "./color-tint": "./color-tint.js",
     "./html-in-canvas": "./html-in-canvas.js",
     "./pdf-image": "./pdf-image.js",
-    "./agent-map": "./agent-map.js"
+    "./agent-map": "./agent-map.js",
+    "./html-export": "./html-export.js",
+    "./gif-export": "./gif-export.js",
+    "./video-export": "./video-export.js"
   },
   "files": [
     "*.js",

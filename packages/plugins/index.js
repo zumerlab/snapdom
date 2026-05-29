@@ -13,4 +13,7 @@ export { filter } from './filter.js';
 export { colorTint } from './color-tint.js';
 export { pdfImage } from './pdf-image.js';
 export { agentMap } from './agent-map.js';
-// export { htmlInCanvas } from './html-in-canvas.js';
+export { htmlExport } from './html-export.js';
+export { gifExport } from './gif-export.js';
+export { videoExport } from './video-export.js';
+export { htmlInCanvas } from './html-in-canvas.js';
