@@ -106,6 +106,38 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
     await expect(prepareClone(el)).resolves.toBeTruthy()
   })
 
+  it('inlines external SVG defs into the clone without mutating the source DOM', async () => {
+    const SVG_NS = 'http://www.w3.org/2000/svg'
+    // External symbol living elsewhere in the document.
+    const gsvg = document.createElementNS(SVG_NS, 'svg')
+    const sym = document.createElementNS(SVG_NS, 'symbol')
+    sym.setAttribute('id', 'ext-star')
+    sym.appendChild(document.createElementNS(SVG_NS, 'path'))
+    gsvg.appendChild(sym)
+    document.body.appendChild(gsvg)
+
+    // Source references the external symbol via <use>.
+    const src = document.createElement('div')
+    const svg = document.createElementNS(SVG_NS, 'svg')
+    const use = document.createElementNS(SVG_NS, 'use')
+    use.setAttribute('href', '#ext-star')
+    svg.appendChild(use)
+    src.appendChild(svg)
+    document.body.appendChild(src)
+
+    const { clone } = await prepareClone(src)
+
+    // Live source must be left untouched (non-destructive capture).
+    expect(src.querySelector('svg.inline-defs-container')).toBeNull()
+    // The clone carries the inlined defs so the serialized SVG resolves the <use>.
+    const container = clone.querySelector('svg.inline-defs-container')
+    expect(container).toBeTruthy()
+    expect(container.querySelector('symbol#ext-star')).toBeTruthy()
+
+    src.remove()
+    gsvg.remove()
+  })
+
   it('handles error in inlinePseudoElements (logs and continues)', async () => {
     const el = document.createElement('div')
     vi.mocked(pseudo.inlinePseudoElements).mockImplementationOnce(() => {

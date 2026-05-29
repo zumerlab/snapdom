@@ -736,6 +736,9 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!hasLink) importUrls.push(u)
     }
   }
+  // @import font URLs with no matching <link> are made reachable by injecting a temporary
+  // <link>. These are tracked and removed below so the capture never mutates the user's DOM.
+  const injectedLinks = []
   if (importUrls.length) {
     await Promise.all(importUrls.map((u) => new Promise((resolve) => {
       if (document.querySelector(`link[rel="stylesheet"][href="${u}"]`)) return resolve(null)
@@ -746,13 +749,17 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       link.onload = () => resolve(link)
       link.onerror = () => resolve(null)
       document.head.appendChild(link)
+      injectedLinks.push(link)
     })))
   }
 
   let finalCSS = ''
 
   // ---------- 1) External <link rel="stylesheet"> ----------
+  // Snapshot BEFORE detaching the injected links so their @import'd font CSS is still
+  // collected below, then remove them from <head> to keep the capture non-destructive.
   const linkNodes = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(l => !!l.href)
+  for (const l of injectedLinks) { try { l.remove() } catch { /* ok */ } }
 
   for (const link of linkNodes) {
     try {

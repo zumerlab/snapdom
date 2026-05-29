@@ -193,7 +193,7 @@ describe('embedCustomFonts - cache hits & fetch errors', () => {
 
 /* ----------------- @import injection & dedupe ------------------ */
 describe('embedCustomFonts - @import injection & dedupe', () => {
-  it('injects <link rel="stylesheet"> for @import urls and does not duplicate', async () => {
+  it('reaches @import urls via a temporary <link> that is removed afterwards (non-destructive)', async () => {
     const imported = 'https://fonts.googleapis.com/css2?family=Inter:wght@400'
     addStyle(`@import url("${imported}");`)
 
@@ -220,9 +220,10 @@ describe('embedCustomFonts - @import injection & dedupe', () => {
       usedCodepoints: cps('A'),
     })
 
+    // The temporary <link> injected to reach the @import must be gone afterwards: the
+    // capture collected the font CSS but left the user's <head> untouched (#non-destructive).
     const links = [...document.querySelectorAll(`link[rel="stylesheet"][href="${imported}"]`)]
-    expect(links.length).toBe(1)
-    expect(links[0].getAttribute('data-snapdom')).toBe('injected-import')
+    expect(links.length).toBe(0)
 
     expect(css).toMatch(/font-family:\s*['"]?Inter['"]?/)
     expect(css).toMatch(/url\(["']?data:/)
