@@ -136,6 +136,12 @@ export async function prepareClone(element, options = {}) {
       } catch { /* non-blocking */ }
 
       const inner = document.createElement('div')
+      // #413: baseCSS emits a `div{white-space:normal;font-family:…}` rule (from the tag's
+      // all:initial defaults) that directly targets this wrapper and overrides the inherited
+      // text formatting of the scrolled element (e.g. a <pre>'s pre-wrap/monospace). `all:unset`
+      // lets inherited props flow from the parent again (inline style beats the type selector)
+      // while keeping non-inherited props at initial, so the wrapper stays visually transparent.
+      inner.style.all = 'unset'
       inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`
       inner.style.willChange = 'transform'
       inner.style.display = 'inline-block'
