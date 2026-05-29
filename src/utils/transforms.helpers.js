@@ -13,9 +13,22 @@ import { limitDecimals } from './capture.helpers.js'
 export function parseBoxShadow(cs) {
   const v = cs.boxShadow || ''
   if (!v || v === 'none') return { top: 0, right: 0, bottom: 0, left: 0 }
-  const parts = v.split(/\),(?=(?:[^()]*\([^()]*\))*[^()]*$)/).map((s) => s.trim())
+  // Split into layers on top-level commas only (commas inside rgb()/rgba() must not split).
+  // A regex on `),` fails for computed values, which put the color first (color()-last is
+  // author syntax) — so a multi-layer shadow would not be separated.
+  const parts = []
+  let buf = '', depth = 0
+  for (let i = 0; i < v.length; i++) {
+    const ch = v[i]
+    if (ch === '(') depth++
+    else if (ch === ')') depth = Math.max(0, depth - 1)
+    if (ch === ',' && depth === 0) { parts.push(buf); buf = '' } else buf += ch
+  }
+  if (buf.trim()) parts.push(buf)
   let t = 0, r = 0, b2 = 0, l = 0
   for (const part of parts) {
+    // inset shadows are clipped to the padding box and contribute no outer bleed.
+    if (/\binset\b/i.test(part)) continue
     const nums = part.match(/-?\d+(\.\d+)?px/g)?.map((n) => parseFloat(n)) || []
     if (nums.length < 2) continue
     const [ox2, oy2, blur = 0, spread = 0] = nums
@@ -35,8 +48,15 @@ export function parseBoxShadow(cs) {
  * @returns {{top: number, right: number, bottom: number, left: number}}
  */
 export function parseFilterBlur(cs) {
-  const m = (cs.filter || '').match(/blur\(\s*([0-9.]+)px\s*\)/)
-  const b2 = m ? Math.ceil(parseFloat(m[1]) || 0) : 0
+  // Read the standard `filter`, falling back to `-webkit-filter` when filter is unset, so
+  // WebKit-only blurs still expand the bleed. Use the standard one alone when present to
+  // avoid double-counting (browsers often mirror filter into webkitFilter). Sum every
+  // blur() in the chosen list to cover the rare multi-blur case.
+  const raw = (cs.filter && cs.filter !== 'none') ? cs.filter : (cs.webkitFilter || '')
+  const re = /blur\(\s*([0-9.]+)px\s*\)/gi
+  let total = 0, m
+  while ((m = re.exec(raw))) total += parseFloat(m[1]) || 0
+  const b2 = Math.ceil(total)
   return { top: b2, right: b2, bottom: b2, left: b2 }
 }
 
@@ -115,15 +135,21 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
 
   const tr = cs.transform || 'none'
   if (!tr || tr === 'none') {
-    // May still have individual scale; let computed matrix capture it
-    try {
-      const M = matrixFromComputed(originalEl)
-      // If identity, nothing to apply
-      if ((M.a === 1 && M.b === 0 && M.c === 0 && M.d === 1)) {
-        cloneRoot.style.transform = 'none'
-        return { a: 1, b: 0, c: 0, d: 1 }
-      }
-    } catch { }
+    // No `transform`, but the element may still use the individual `scale` property, which
+    // composes separately from `transform` (matrixFromComputed only reads `transform`, so it
+    // would miss it and leave the viewBox unscaled, clipping the content). translate/rotate
+    // were already stripped from the clone above and the clone keeps `scale`, so report the
+    // scale matrix for bbox expansion — do NOT write it to transform or scale applies twice.
+    let scaleStr = null
+    try { scaleStr = readIndividualTransforms(originalEl).scale } catch { }
+    try { cloneRoot.style.transform = 'none' } catch { }
+    if (!scaleStr) return { a: 1, b: 0, c: 0, d: 1 }
+    // `scale` is unitless: "sx" or "sx sy". Parse straight to a diagonal matrix — it does not
+    // surface in computed `transform`, so a temp-element round-trip would read back identity.
+    const sv = scaleStr.trim().split(/\s+/).map(parseFloat)
+    const sx = Number.isFinite(sv[0]) ? sv[0] : 1
+    const sy = Number.isFinite(sv[1]) ? sv[1] : sx
+    return { a: sx, b: 0, c: 0, d: sy }
   }
 
   // Helper: decompose 2D matrix components (a,b,c,d) into scale+shear without rotation
