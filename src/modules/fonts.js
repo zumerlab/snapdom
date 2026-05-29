@@ -627,14 +627,17 @@ export async function embedCustomFonts({
   if (!(required instanceof Set)) required = new Set()
   if (!(usedCodepoints instanceof Set)) usedCodepoints = new Set()
 
-  // Build index: family -> [{w,s,st}]
+  // Build index: family -> [{w,s,st}]. CSS font-family names are case-insensitive, so the
+  // index is keyed lowercase and every lookup lowercases too — otherwise a page using
+  // `Roboto` against `@font-face { font-family: roboto }` would silently fail to embed.
   const requiredIndex = new Map()
   for (const key of required) {
     const [fam, w, s, st] = String(key).split('__')
     if (!fam) continue
-    const arr = requiredIndex.get(fam) || []
+    const famKey = fam.toLowerCase()
+    const arr = requiredIndex.get(famKey) || []
     arr.push({ w: parseInt(w, 10), s, st: parseInt(st, 10) })
-    requiredIndex.set(fam, arr)
+    requiredIndex.set(famKey, arr)
   }
 
   /**
@@ -655,9 +658,10 @@ export async function embedCustomFonts({
  * @param {string} stretchSpec font-stretch desde @font-face (p.ej. "100%")
  */
 function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
-  if (!requiredIndex.has(fam)) return false
+  const famKey = String(fam).toLowerCase()
+  if (!requiredIndex.has(famKey)) return false
 
-  const need = requiredIndex.get(fam)
+  const need = requiredIndex.get(famKey)
   const ws = parseWeightSpec(weightSpec)
   const ss = parseStyleSpec(styleSpec)
   const ts = parseStretchSpec(stretchSpec)
@@ -860,7 +864,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!f || !f.family || f.status !== 'loaded' || !f._snapdomSrc) continue
       const fam = String(f.family).replace(/^['"]+|['"]+$/g, '')
       if (isIconFont(fam)) continue
-      if (!requiredIndex.has(fam)) continue
+      if (!requiredIndex.has(fam.toLowerCase())) continue
 
       if (exclude?.families && exclude.families.some(n => String(n).toLowerCase() === fam.toLowerCase())) {
         continue
@@ -896,7 +900,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     if (!font || typeof font !== 'object') continue
     const family = String(font.family || '').replace(/^['"]+|['"]+$/g, '')
     if (!family || isIconFont(family)) continue
-    if (!requiredIndex.has(family)) continue
+    if (!requiredIndex.has(family.toLowerCase())) continue
     if (exclude?.families && exclude.families.some(n => String(n).toLowerCase() === family.toLowerCase())) continue
 
     const weight = font.weight != null ? String(font.weight) : 'normal'

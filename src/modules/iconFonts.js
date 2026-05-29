@@ -1,4 +1,5 @@
 // iconFonts.js
+import { cache } from '../core/cache.js'
 
 // ---------------------------------------------------------------------------
 // Detection / configuration (kept as-is + extensible)
@@ -235,6 +236,10 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot) {
 
   if (cloneNodes.length === 0) return 0
 
+  // Map each clone node to its exact source via the clone→source nodeMap built by deepClone.
+  // Pairing the two trees positionally breaks when excludeMode:'remove' drops nodes from the
+  // clone but not the source: indices shift and we read the wrong source's color/size/variation.
+  const nodeMap = cache.session.nodeMap
   const sourceNodes = (sourceRoot instanceof Element)
     ? Array.from(sourceRoot.querySelectorAll(selector)).filter(n => n && n.textContent && n.textContent.trim())
     : []
@@ -243,7 +248,7 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot) {
 
   for (let i = 0; i < cloneNodes.length; i++) {
     const el = cloneNodes[i]
-    const src = sourceNodes[i] || null
+    const src = (nodeMap && nodeMap.get(el)) || sourceNodes[i] || null
 
     try {
       const cs = src ? getComputedStyle(src) : getComputedStyle(el)
