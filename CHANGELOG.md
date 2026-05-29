@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.12.2](https://github.com/zumerlab/snapdom/compare/v2.12.1...v2.12.2)
+
+> 29 May 2026
+
+- fix(pseudo): render bordered + layout-spacer pseudo-elements (#418, #419) [`#423`](https://github.com/zumerlab/snapdom/pull/423)
+- fix(pseudo): keep empty box-generating pseudos used as layout spacers [`#418`](https://github.com/zumerlab/snapdom/pull/418)
+- fix(pseudo): render pseudo-elements with a single-side border [`#419`](https://github.com/zumerlab/snapdom/pull/419)
+- Add new super power plugins [`88cb353`](https://github.com/zumerlab/snapdom/commit/88cb353802e4cc22b2c52f230b072801fef970e4)
+- chore(plugins): v2.2.0 — gif/video/html [`9c84259`](https://github.com/zumerlab/snapdom/commit/9c8425999d0afc9b55bb8f0fb9642ada19049049)
+
 #### [v2.12.1](https://github.com/zumerlab/snapdom/compare/v2.12.0...v2.12.1)
 
 > 28 May 2026
