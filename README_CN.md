@@ -32,8 +32,8 @@
 
 # snapDOM
 
-**SnapDOM** 是新一代的 **DOM 捕获引擎（DOM Capture Engine）**——超高速、模块化、可扩展。  
-它可以将任意 DOM 子树转换为自包含的结构，并导出为 SVG、PNG、JPG、WebP、Canvas、Blob，或通过插件系统生成 **任何自定义格式**。
+**SnapDOM** 是新一代的 **DOM 捕获引擎（DOM Capture Engine）**——是 **html2canvas**、**dom-to-image** 和 **html-to-image** 的快速、现代替代方案。  
+它可以将任意 DOM 子树转换为自包含的结构，并导出为 SVG、PNG、JPG、WebP、Canvas、Blob，或通过插件系统生成 **任何自定义格式**——超高速、模块化、可扩展、零依赖。
 
 SnapDOM 会保留样式、字体、背景图像、伪元素、Shadow DOM 等所有视觉特性，并通过可扩展的架构实现强大的灵活性和最高级别的捕获质量。
 

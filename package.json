@@ -1,7 +1,7 @@
 {
   "name": "@zumer/snapdom",
   "version": "2.12.2",
-  "description": "snapDOM captures HTML elements to images with exceptional speed and accuracy.",
+  "description": "Fast, modern alternative to html2canvas — captures HTML elements to images (PNG, JPG, SVG, WebP) with exceptional speed and accuracy.",
   "type": "module",
   "main": "./dist/snapdom.js",
   "module": "./dist/snapdom.mjs",
@@ -48,6 +48,10 @@
   "keywords": [
     "zumerlab",
     "snapDOM",
+    "html2canvas",
+    "html2canvas alternative",
+    "dom-to-image alternative",
+    "html-to-image",
     "screenshot",
     "engine",
     "html capture",
