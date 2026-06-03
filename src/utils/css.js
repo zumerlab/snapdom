@@ -156,7 +156,12 @@ export function getStyleKey(snapshot, tagName) {
   // Tags that size to text content; grid/flex blockify them but we should not constrain
   // width (causes wrap when font-weight makes text wider than captured width, e.g. "Timestamp demo")
   const INLINE_SIZED_TAGS = new Set(['span', 'small', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
-  const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName)
+  // #429: table cells get their used width from the table layout algorithm, not from CSS.
+  // getComputedStyle reports that fractional used width (e.g. 113.484px); freezing it as an
+  // explicit width pins the auto-sized cell, so any sub-pixel rendering difference in the clone
+  // (dpr=2 rounding, font metrics) no longer fits and the text wraps. Let the table size cells.
+  const TABLE_CELL_TAGS = new Set(['td', 'th'])
+  const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName) || TABLE_CELL_TAGS.has(tagName)
   for (let [prop, value] of Object.entries(snapshot)) {
     if (shouldIgnoreProp(prop)) continue
     if (skipWidth && (prop === 'width' || prop === 'min-width' || prop === 'max-width')) continue
