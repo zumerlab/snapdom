@@ -25,6 +25,12 @@ if (Object.keys(demos).length === 0) {
 } else defineDemoSuite({
   demos,
 
+  // snapdiff's own readUpdateFlag() reads process.env.UPDATE_VISUAL, but this suite runs in the
+  // browser (vitest browser mode) where `process` doesn't exist — so UPDATE_VISUAL never reaches
+  // it. Vite DOES expose VITE_-prefixed vars to import.meta.env in the browser, so re-record
+  // baselines with: `VITE_UPDATE_VISUAL=1 npm test` (or =true).
+  updateBaselines: ['1', 'true', 'yes'].includes(String(import.meta.env.VITE_UPDATE_VISUAL || '').toLowerCase()),
+
   baseDir: '__snapshots__/visual',
   threshold: 0.1,
   failureRatio: 0.005, // tolerate 0.1% drift from font-hinting jitter
