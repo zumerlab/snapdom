@@ -35,12 +35,12 @@ describe('#429 table cell width is not frozen', () => {
     for (const tag of tds) {
       // no inline width frozen on the tag
       const inline = (tag.match(/style="([^"]*)"/) || [])[1] || ''
-      expect(/(?:^|;)\s*(min-|max-)?width\s*:/.test(inline)).toBe(false)
+      expect(/(?:^|;)\s*(min-|max-)?(width|inline-size)\s*:/.test(inline)).toBe(false)
       // no width in the generated class either
       const cls = (tag.match(/class="([^"]*)"/) || [])[1] || ''
       for (const c of cls.split(/\s+/).filter(Boolean)) {
         const body = rules[c] || ''
-        expect(/(?:^|;)\s*(min-|max-)?width\s*:/.test(body)).toBe(false)
+        expect(/(?:^|;)\s*(min-|max-)?(width|inline-size)\s*:/.test(body)).toBe(false)
       }
     }
   })

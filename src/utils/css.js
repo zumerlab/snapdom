@@ -156,15 +156,22 @@ export function getStyleKey(snapshot, tagName) {
   // Tags that size to text content; grid/flex blockify them but we should not constrain
   // width (causes wrap when font-weight makes text wider than captured width, e.g. "Timestamp demo")
   const INLINE_SIZED_TAGS = new Set(['span', 'small', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
-  // #429: table cells get their used width from the table layout algorithm, not from CSS.
-  // getComputedStyle reports that fractional used width (e.g. 113.484px); freezing it as an
-  // explicit width pins the auto-sized cell, so any sub-pixel rendering difference in the clone
-  // (dpr=2 rounding, font metrics) no longer fits and the text wraps. Let the table size cells.
-  const TABLE_CELL_TAGS = new Set(['td', 'th'])
-  const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName) || TABLE_CELL_TAGS.has(tagName)
+  // #429: the table box tree (table / row groups / rows / cells) gets its width from the table
+  // layout algorithm, not from CSS. getComputedStyle reports that resolved used width (e.g.
+  // 113.484px). Freezing it pins the auto table, so when the rasterized SVG falls back to a
+  // wider font (system-ui isn't available when an SVG renders as an <img>), the content no longer
+  // fits and wraps (e.g. "✅ 2024-09-16" breaks at the space). Letting the cloned table re-run
+  // its own layout keeps cells sized to their content. Column widths set via the `width`
+  // attribute / <col> still survive (they're attributes, not computed CSS).
+  const TABLE_TAGS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'])
+  const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName) || TABLE_TAGS.has(tagName)
+  // Skip the physical AND logical width longhands — getComputedStyle emits both `width` and
+  // `inline-size`; dropping only one leaves the other to re-freeze the box.
+  const isWidthProp = (p) => p === 'width' || p === 'min-width' || p === 'max-width' ||
+    p === 'inline-size' || p === 'min-inline-size' || p === 'max-inline-size'
   for (let [prop, value] of Object.entries(snapshot)) {
     if (shouldIgnoreProp(prop)) continue
-    if (skipWidth && (prop === 'width' || prop === 'min-width' || prop === 'max-width')) continue
+    if (skipWidth && isWidthProp(prop)) continue
     const def = defaults[prop]
     if (value && value !== def) entries.push(`${prop}:${value}`)
   }
