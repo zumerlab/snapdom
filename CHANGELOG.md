@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.12.8](https://github.com/zumerlab/snapdom/compare/v2.12.2...v2.12.8)
+
+> 3 June 2026
+
+- fix: root margin-collapse clipping (#426) and oversized-raster decode failure [`#425`](https://github.com/zumerlab/snapdom/pull/425)
+- fix(#425): strip XML-invalid control chars before serializing the clone [`880376b`](https://github.com/zumerlab/snapdom/commit/880376b196bd4bcf14e8fbd31273ee77340ef1c5)
+- fix(#429): don't freeze auto-sized table cell widths [`33b81eb`](https://github.com/zumerlab/snapdom/commit/33b81eb5922e9abfc90c61360af4ceb94eb13b90)
+- fix: honor the localFonts option in the capture path [`9122152`](https://github.com/zumerlab/snapdom/commit/9122152f25ee9051f4f4d79d86cd6a20cea817ed)
+- fix(#429): also skip the logical inline-size and the rest of the table box tree [`69400a6`](https://github.com/zumerlab/snapdom/commit/69400a60e9e2ac9a1ee36373e9c44d9be1d7a0b2)
+
+
 #### [v2.12.2](https://github.com/zumerlab/snapdom/compare/v2.12.1...v2.12.2)
 
 > 29 May 2026
