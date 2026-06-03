@@ -158,6 +158,7 @@ export async function captureDOM(element, options) {
           usedCodepoints,
           preCached: false,
           exclude: state.options.excludeFonts,
+          localFonts: state.options.localFonts,
           useProxy: state.options.useProxy,
           fontStylesheetDomains: state.options.fontStylesheetDomains
         })
