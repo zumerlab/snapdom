@@ -1,6 +1,49 @@
 // src/exporters/toCanvas.js
 import { isSafari } from '../utils/browser'
 
+// #425: browsers cap how large an image they will decode and how large a canvas they
+// will back. Chrome/Firefox reject > 16384px on a side and a total decoded-image area
+// (~268M px). An oversized capture (large element × scale × dpr — and dpr silently
+// doubles on Retina) throws an opaque async "EncodingError: The source image cannot be
+// decoded" deep in img.decode(). We clamp instead so the capture still succeeds (slightly
+// downscaled) and warn, naming the knobs to adjust.
+const MAX_RASTER_SIDE = 16384
+const MAX_RASTER_AREA = 16384 * 16384
+
+/**
+ * Downscale an SVG data URL whose intrinsic width/height exceed the decode limits.
+ * The SVG carries a viewBox, so shrinking width/height just renders the same content at a
+ * lower resolution (no clipping). Returns the original url when it already fits or on parse
+ * failure. @param {string} url @returns {string}
+ */
+function clampSvgRasterSize(url) {
+  if (!isSvgDataURL(url)) return url
+  try {
+    const svg = decodeSvgFromDataURL(url)
+    const head = svg.match(/<svg\b[^>]*>/i)
+    if (!head) return url
+    const tag = head[0]
+    const w = parseFloat((tag.match(/\bwidth="([\d.]+)/i) || [])[1])
+    const h = parseFloat((tag.match(/\bheight="([\d.]+)/i) || [])[1])
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return url
+    const f = Math.min(1, MAX_RASTER_SIDE / w, MAX_RASTER_SIDE / h, Math.sqrt(MAX_RASTER_AREA / (w * h)))
+    if (f >= 1) return url
+    const nw = Math.max(1, Math.floor(w * f))
+    const nh = Math.max(1, Math.floor(h * f))
+    console.warn(
+      `[snapDOM] Capture ${Math.round(w)}×${Math.round(h)}px exceeds the browser image-decode ` +
+      `limit (${MAX_RASTER_SIDE}px/side); downscaling to ${nw}×${nh}px. Lower \`scale\` or set ` +
+      '`width`/`height` to control output size.'
+    )
+    const fixed = svg.replace(tag, tag
+      .replace(/(\bwidth=")[\d.]+/i, `$1${nw}`)
+      .replace(/(\bheight=")[\d.]+/i, `$1${nh}`))
+    return encodeSvgToDataURL(fixed)
+  } catch {
+    return url
+  }
+}
+
 /**
  * Converts a data URL to a Canvas element.
  * Safari: render offscreen in a per-call temporary slot to avoid flicker, then remove it.
@@ -130,6 +173,7 @@ function maybeConvertBoxShadowForSafari(url) {
 export async function toCanvas(url, options) {
   let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor } = options
   url = maybeConvertBoxShadowForSafari(url)
+  url = clampSvgRasterSize(url) // #425: keep the SVG within decode limits
 
   const img = new Image()
   img.loading = 'eager'
@@ -179,6 +223,20 @@ export async function toCanvas(url, options) {
 
   outW = outW * scale
   outH = outH * scale
+
+  // #425: the device canvas is outW*dpr × outH*dpr; dpr (which defaults to devicePixelRatio,
+  // i.e. 2 on Retina) can push a within-decode-limit capture past the canvas cap. Clamp the
+  // whole draw so allocation/drawImage don't fail, preserving aspect ratio.
+  const devW = outW * dpr, devH = outH * dpr
+  const over = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
+  if (over > 1) {
+    console.warn(
+      `[snapDOM] Output ${Math.round(devW)}×${Math.round(devH)}px exceeds the browser canvas ` +
+      `limit (${MAX_RASTER_SIDE}px/side); downscaling. Lower \`scale\`/\`dpr\` or set \`width\`/\`height\`.`
+    )
+    outW /= over
+    outH /= over
+  }
 
   const canvas = document.createElement('canvas')
   canvas.width = outW * dpr

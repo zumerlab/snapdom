@@ -15,6 +15,7 @@ import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { runPictureResolverBeforeClone } from '../modules/pictureResolver.js'
 import {
   stripRootShadows,
+  neutralizeRootMarginCollapse,
   sanitizeCloneForXHTML,
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
@@ -100,6 +101,11 @@ export async function captureDOM(element, options) {
     }
     if (!outerShadows && clone) {
       stripRootShadows(state.element, clone, state.options)
+    }
+    // #426: zero margins that collapse through the root edge so the clone's
+    // content sits flush like the captured border box (no clipping / no offset).
+    if (clone) {
+      neutralizeRootMarginCollapse(state.element, clone)
     }
   } finally {
     undoClamp()

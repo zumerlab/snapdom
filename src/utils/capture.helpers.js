@@ -29,6 +29,105 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
   }
 }
 
+/**
+ * True if the element establishes a new block formatting context, which stops
+ * margins from collapsing through its top/bottom edges.
+ * @param {CSSStyleDeclaration} cs
+ */
+function establishesBFC(cs) {
+  const disp = cs.display || ''
+  if (disp.includes('flex') || disp.includes('grid') || disp.startsWith('table') ||
+      disp === 'inline-block' || disp === 'flow-root') return true
+  if (cs.position === 'absolute' || cs.position === 'fixed') return true
+  if (cs.float && cs.float !== 'none') return true
+  const ox = cs.overflowX || cs.overflow || 'visible'
+  const oy = cs.overflowY || cs.overflow || 'visible'
+  if (ox !== 'visible' || oy !== 'visible') return true
+  if (cs.contain && /\b(layout|content|paint|strict)\b/.test(cs.contain)) return true
+  return false
+}
+
+/**
+ * First child element that participates in margin-collapsing through `el`'s edge.
+ * Returns null when inline/text content precedes it (which opens an inline
+ * formatting context and prevents collapse-through).
+ * @param {Element} el
+ * @param {'top'|'bottom'} side
+ */
+function firstInFlowBlockChild(el, side) {
+  const kids = Array.from(el.childNodes)
+  const ordered = side === 'top' ? kids : kids.reverse()
+  for (const n of ordered) {
+    if (n.nodeType === Node.TEXT_NODE) {
+      if (/\S/.test(n.textContent || '')) return null // inline content → no collapse
+      continue
+    }
+    if (n.nodeType !== Node.ELEMENT_NODE) continue
+    const cs = getComputedStyle(n)
+    const disp = String(cs.display || '')
+    if (disp === 'none' || disp === 'contents') continue
+    if (cs.position === 'absolute' || cs.position === 'fixed') continue
+    if (cs.float && cs.float !== 'none') return null
+    // Only block-level boxes collapse margins with the parent. Inline-level boxes
+    // (inline, inline-block, inline-flex…) open an inline formatting context instead,
+    // which prevents collapse-through entirely.
+    if (disp.startsWith('inline')) return null
+    return n
+  }
+  return null
+}
+
+/**
+ * #426: When margins of in-flow children collapse *through* the captured root's
+ * top/bottom edge, that margin lands outside the root's border box — exactly the
+ * region `element.getBoundingClientRect()`/`offsetHeight` excludes. The clone,
+ * isolated inside an `all:initial` wrapper, no longer collapses those margins out,
+ * so the content is pushed in and the opposite edge is clipped.
+ *
+ * Mirror the browser: walk the collapse-through chain from each open edge and zero
+ * the leading/trailing margin on the CLONE so content sits flush, matching what the
+ * captured border box actually shows. Source tree drives the decision; clone tree is
+ * mutated in parallel (same ordering as deepClone).
+ *
+ * @param {Element} originalEl
+ * @param {HTMLElement} cloneRoot
+ */
+export function neutralizeRootMarginCollapse(originalEl, cloneRoot) {
+  if (!originalEl || !cloneRoot || !cloneRoot.style) return
+  const rootCS = getComputedStyle(originalEl)
+  // Replaced elements and BFC roots never collapse margins with their children.
+  if (establishesBFC(rootCS)) return
+
+  for (const side of /** @type {const} */ (['top', 'bottom'])) {
+    const Side = side === 'top' ? 'Top' : 'Bottom'
+    // Edge must be "open": no border or padding separating root from child.
+    if ((parseFloat(rootCS[`border${Side}Width`]) || 0) > 0) continue
+    if ((parseFloat(rootCS[`padding${Side}`]) || 0) > 0) continue
+
+    let src = originalEl
+    let cln = cloneRoot
+    // Walk the chain of first/last in-flow block children whose margins all
+    // collapse together through the root edge.
+    while (src && cln) {
+      const childSrc = firstInFlowBlockChild(src, side)
+      if (!childSrc) break
+      const idx = Array.from(src.children).indexOf(childSrc)
+      const childCln = idx >= 0 ? cln.children[idx] : null
+      const childCS = getComputedStyle(childSrc)
+      const m = parseFloat(childCS[`margin${Side}`]) || 0
+      if (childCln && childCln.style && m > 0) {
+        childCln.style[`margin${Side}`] = '0px'
+      }
+      // Collapse continues into this child only if its matching edge is also open.
+      if (establishesBFC(childCS)) break
+      if ((parseFloat(childCS[`border${Side}Width`]) || 0) > 0) break
+      if ((parseFloat(childCS[`padding${Side}`]) || 0) > 0) break
+      src = childSrc
+      cln = childCln
+    }
+  }
+}
+
 /** Remove all HTML comments (prevents invalid XML like "--") */
 export function removeAllComments(root) {
   const it = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
