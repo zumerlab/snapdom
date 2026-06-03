@@ -180,10 +180,52 @@ export function sanitizeAttributesForXHTML(root, opts = {}) {
   }
 }
 
+/* eslint-disable no-control-regex */
+/**
+ * Characters that are illegal in XML 1.0 even though browsers accept them in live HTML:
+ * C0 controls except TAB (\x09), LF (\x0A), CR (\x0D), plus the noncharacters U+FFFE/U+FFFF.
+ * If any survive into the serialized SVG, the data: URL fails to parse and the browser throws
+ * "EncodingError: The source image cannot be decoded" at img.decode() time.
+ */
+const INVALID_XML_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/g
+/* eslint-enable no-control-regex */
+
+/**
+ * #425: strip XML-1.0-invalid characters from every attribute value AND text node in the
+ * clone. clone.js already scrubs attributes during cloning, but values re-applied afterwards
+ * (e.g. `input.setAttribute('value', node.value)` for form fields — ExtJS hidden inputs use
+ * U+0003 as a delimiter) and text content were not covered. This runs once over the finished
+ * clone, right before serialization, so no invalid char can reach the SVG.
+ * @param {Element} root
+ */
+export function stripInvalidXMLChars(root) {
+  if (!root) return
+  const clean = (node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.attributes) {
+        for (const attr of Array.from(node.attributes)) {
+          const cv = attr.value.replace(INVALID_XML_CHARS, '')
+          if (cv !== attr.value) {
+            try { node.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
+          }
+        }
+      }
+    } else if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.CDATA_SECTION_NODE) {
+      const cv = node.data.replace(INVALID_XML_CHARS, '')
+      if (cv !== node.data) node.data = cv
+    }
+  }
+  clean(root)
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
+  let n
+  while ((n = walker.nextNode())) clean(n)
+}
+
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
   sanitizeAttributesForXHTML(root, opts)
   removeAllComments(root)
+  stripInvalidXMLChars(root)
 }
 
 /**
