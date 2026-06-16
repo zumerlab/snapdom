@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.12.9](https://github.com/zumerlab/snapdom/compare/v2.12.8...v2.12.9)
+
+> 16 June 2026
+
+- fix: emit captured width as a min-width floor instead of dropping it
+- fix(#432): escape U+FFFE/U+FFFF noncharacters in sanitize regex
+
 #### [v2.12.8](https://github.com/zumerlab/snapdom/compare/v2.12.2...v2.12.8)
 
 > 3 June 2026
