@@ -5,6 +5,7 @@
  */
 
 import { snapFetch } from './snapFetch.js'
+import { cache } from '../core/cache.js'
 
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
 
@@ -59,9 +60,21 @@ export async function inlineImages(clone, options = {}) {
     const src = img.src || ''
     if (!src) return
 
+    // Reuse a dataURL prefetched by preCache (keyed by the same resolved src) so the capture
+    // path doesn't re-fetch it. snapFetch doesn't cache successes, so without this the prefetch
+    // bought nothing.
+    const cached = cache.image?.get(src)
+    if (cached) {
+      img.src = cached
+      if (!img.width) img.width = img.naturalWidth || 100
+      if (!img.height) img.height = img.naturalHeight || 100
+      return
+    }
+
     const r = await snapFetch(src, { as: 'dataURL', useProxy: options.useProxy })
     if (r.ok && typeof r.data === 'string' && r.data.startsWith('data:')) {
       // Success path: inline DataURL and ensure dimensions for layout fidelity
+      cache.image?.set(src, r.data)
       img.src = r.data
       if (!img.width) img.width = img.naturalWidth || 100
       if (!img.height) img.height = img.naturalHeight || 100
