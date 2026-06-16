@@ -13,6 +13,7 @@ import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { runPictureResolverBeforeClone } from '../modules/pictureResolver.js'
+import { compressClonedImages } from '../modules/compress.js'
 import {
   stripRootShadows,
   neutralizeRootMarginCollapse,
@@ -61,6 +62,7 @@ function hasPictureResolverPlugin(options) {
  * @param {Function} [options.filter] - Custom filter function
  * @param {boolean} [options.outerTransforms=false] - Normalize root by removing translate/rotate (keep scale/skew)
  * @param {boolean} [options.outerShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
+ * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 export async function captureDOM(element, options) {
@@ -141,6 +143,16 @@ export async function captureDOM(element, options) {
       resolve()
     }, { fast })
   })
+
+  // Perceptual image downsampling (opt-in via `compress`). No-op when off.
+  if (options.compress) {
+    await new Promise((resolve) => {
+      idle(async () => {
+        await compressClonedImages(state.clone, state.options)
+        resolve()
+      }, { fast })
+    })
+  }
 
   if (options.embedFonts) {
     await new Promise((resolve) => {
