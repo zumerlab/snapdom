@@ -184,9 +184,11 @@ snapdom.capture = async (el, context, _token) => {
       if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, opts)
       const ctx = { ...context, export: { type, options: nextOpts, url } }
-      await runHook('beforeExport', ctx)
+      // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
+      // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
+      await runHook('beforeExport', ctx, { format: type, options: nextOpts })
       const result2 = await work(ctx, nextOpts)
-      await runHook('afterExport', ctx, result2)
+      await runHook('afterExport', ctx, { format: type, options: nextOpts, result: result2 })
       if (!afterSnapFired) {
         afterSnapFired = true
         await runHook('afterSnap', context)
