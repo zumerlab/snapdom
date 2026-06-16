@@ -153,27 +153,38 @@ export function getStyleKey(snapshot, tagName) {
   const defaults = getDefaultStyleForTag(tagName)
   const display = (snapshot.display || '').toLowerCase()
   const isInline = display === 'inline'
-  // Tags that size to text content; grid/flex blockify them but we should not constrain
-  // width (causes wrap when font-weight makes text wider than captured width, e.g. "Timestamp demo")
+  // Tags that size to text content; grid/flex blockify them, so a frozen used width wraps
+  // the text when the raster falls back to a wider font (e.g. "Timestamp demo").
   const INLINE_SIZED_TAGS = new Set(['span', 'small', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
-  // #429: the table box tree (table / row groups / rows / cells) gets its width from the table
-  // layout algorithm, not from CSS. getComputedStyle reports that resolved used width (e.g.
-  // 113.484px). Freezing it pins the auto table, so when the rasterized SVG falls back to a
-  // wider font (system-ui isn't available when an SVG renders as an <img>), the content no longer
-  // fits and wraps (e.g. "✅ 2024-09-16" breaks at the space). Letting the cloned table re-run
-  // its own layout keeps cells sized to their content. Column widths set via the `width`
-  // attribute / <col> still survive (they're attributes, not computed CSS).
+  // #429: the table box tree gets its used width from the table layout algorithm, not from
+  // CSS. Freezing that resolved width (e.g. 113.484px) pins the auto table, so when the SVG
+  // falls back to a wider font the content wraps (e.g. "✅ 2024-09-16" breaks at the space).
   const TABLE_TAGS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'])
-  const skipWidth = isInline || INLINE_SIZED_TAGS.has(tagName) || TABLE_TAGS.has(tagName)
-  // Skip the physical AND logical width longhands — getComputedStyle emits both `width` and
-  // `inline-size`; dropping only one leaves the other to re-freeze the box.
+  // Replaced elements honor an explicit width even when display:inline, so they must keep it
+  // (#436: an inline <img> with object-fit lost its width and rendered empty).
+  const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed', 'object', 'input', 'textarea', 'select'])
+  const isReplaced = REPLACED_TAGS.has(tagName)
+  // For these boxes we DON'T freeze the used width as a hard `width` (it wraps text / pins the
+  // table). But fully dropping it collapses boxes whose size comes from CSS classes, not content
+  // (#433 inline-block span sized by a class; #434 table cell with width:100px; ExtJS button-icon
+  // spans). So we re-emit the captured width as a `min-width` floor: the box keeps its size but
+  // can still grow when the raster font is wider — no wrap, no collapse.
+  const softenWidth = !isReplaced && (isInline || INLINE_SIZED_TAGS.has(tagName) || TABLE_TAGS.has(tagName))
+  // Both the physical (`width`) and logical (`inline-size`) longhands — getComputedStyle emits
+  // both; dropping only one leaves the other to re-freeze the box.
   const isWidthProp = (p) => p === 'width' || p === 'min-width' || p === 'max-width' ||
     p === 'inline-size' || p === 'min-inline-size' || p === 'max-inline-size'
   for (let [prop, value] of Object.entries(snapshot)) {
     if (shouldIgnoreProp(prop)) continue
-    if (skipWidth && isWidthProp(prop)) continue
+    if (softenWidth && isWidthProp(prop)) continue
     const def = defaults[prop]
     if (value && value !== def) entries.push(`${prop}:${value}`)
+  }
+  // Re-add the captured width as a min-width floor. Skipped for real `display:inline` boxes,
+  // where width has no effect and the declaration would be dead weight.
+  if (softenWidth && !isInline) {
+    const w = snapshot.width
+    if (w && w !== 'auto' && w !== defaults.width) entries.push(`min-width:${w}`)
   }
   entries.sort()
   return entries.join(';')
