@@ -404,7 +404,9 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
       out = out.replace(m[0], `url(${cache.resource.get(abs)})`)
       continue
     }
-    if (cache.font?.has(abs)) continue
+    // Don't skip on `cache.font.has(abs)` alone: `cache.font` is an unbounded "seen" Set but
+    // `cache.resource` (the base64) is FIFO-capped. A seen font whose resource was evicted must
+    // be re-fetched here, not left as a live url() that silently fails to embed.
 
     try {
       const r = await snapFetch(abs, { as: 'dataURL', useProxy, silent: true })
