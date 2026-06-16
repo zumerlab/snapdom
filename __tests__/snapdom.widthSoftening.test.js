@@ -37,14 +37,13 @@ describe('#433 inline-block span sized by a class keeps its width', () => {
   })
   afterEach(() => { host.remove(); style.remove() })
 
-  it('emits a min-width floor so the empty span does not collapse', async () => {
+  it('keeps the width on an empty class-sized span so it does not collapse', async () => {
     host.innerHTML = '<span class="box"></span>'
     const span = host.querySelector('.box')
     const svg = svgOf(await snapdom.toRaw(span))
     const rule = ruleFor(svg, span)
-    expect(rule).toMatch(/min-width:\s*20px/)
-    // never a hard width that an author class width should not have been turned into either way
-    expect(/(?:^|;)\s*width\s*:/.test(rule)).toBe(false)
+    // empty box is sized by the class, not content → width is kept verbatim
+    expect(rule).toMatch(/(?:^|;)\s*width:\s*20px/)
   })
 
   it('keeps a background-image icon span visible (ExtJS button-icon case)', async () => {
@@ -54,8 +53,52 @@ describe('#433 inline-block span sized by a class keeps its width', () => {
     const icon = host.querySelector('.icon')
     const svg = svgOf(await snapdom.toRaw(icon))
     const rule = ruleFor(svg, icon)
-    expect(rule).toMatch(/min-width:\s*16px/)
+    expect(rule).toMatch(/(?:^|;)\s*width:\s*16px/)
     expect(rule).toMatch(/background-image/)
+  })
+
+  it('softens width on a class-sized span that DOES have text content', async () => {
+    style.textContent += '.tag{display:inline-block;width:200px;height:20px}'
+    host.innerHTML = '<span class="tag">a label that is wider in the raster font</span>'
+    const span = host.querySelector('.tag')
+    const svg = svgOf(await snapdom.toRaw(span))
+    const rule = ruleFor(svg, span)
+    // content-sized → no hard width (would wrap), but a min-width floor keeps the size
+    expect(/(?:^|;)\s*width:\s*200px/.test(rule)).toBe(false)
+    expect(rule).toMatch(/min-width:\s*200px/)
+  })
+})
+
+// #406 — flex/grid items get min-width:0 (styles.js) so they can shrink. The width-softening
+// must not clobber that, and must not collapse an empty flex item sized by a class.
+describe('#406 min-width:0 on flex items survives width softening', () => {
+  let host, style
+  beforeEach(() => {
+    host = document.createElement('div'); host.style.display = 'flex'; document.body.appendChild(host)
+    style = document.createElement('style')
+    document.head.appendChild(style)
+  })
+  afterEach(() => { host.remove(); style.remove() })
+
+  it('keeps width on an empty flex-item box so it does not collapse', async () => {
+    style.textContent = '.fbox{width:40px;height:20px;background:teal}'
+    host.innerHTML = '<span class="fbox"></span>'
+    const box = host.querySelector('.fbox')
+    const svg = svgOf(await snapdom.toRaw(host))
+    const rule = ruleFor(svg, box)
+    expect(rule).toMatch(/(?:^|;)\s*width:\s*40px/) // empty box keeps its size
+  })
+
+  it('does NOT add a min-width floor to a flex-item span with text (stays shrinkable)', async () => {
+    style.textContent = '.ftext{height:20px}'
+    host.innerHTML = '<span class="ftext">some shrinkable flex text content</span>'
+    const span = host.querySelector('.ftext')
+    const svg = svgOf(await snapdom.toRaw(host))
+    const rule = ruleFor(svg, span)
+    // a flex item must keep its natural ability to shrink — no synthesized numeric min-width floor
+    expect(/(?:min-width|min-inline-size):\s*\d/.test(rule)).toBe(false)
+    // and the content width is not frozen as a hard width either
+    expect(/(?:^|;)\s*(?:width|inline-size):\s*\d/.test(rule)).toBe(false)
   })
 })
 

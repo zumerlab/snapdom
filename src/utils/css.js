@@ -119,6 +119,11 @@ const NO_PAINT_EXACT = new Set([
   'zoom',
 ])
 
+/** Memo of shouldIgnoreProp by property name. The verdict depends only on the name, and the set
+ * of CSS property names is small and fixed — but this runs ~350×/node, so caching turns 1M+
+ * regex tests per large capture into Map lookups. */
+const _ignorePropCache = new Map()
+
 /**
  * Returns true if a CSS property should be ignored because it does not affect
  * the static pixel output of a frame capture.
@@ -128,22 +133,57 @@ const NO_PAINT_EXACT = new Set([
  * @returns {boolean}
  */
 export function shouldIgnoreProp(prop /*, tag */) {
-  const p = String(prop).toLowerCase()
-  if (NO_PAINT_EXACT.has(p)) return true
-  if (NO_PAINT_PREFIX.test(p)) return true // --*, view/scroll-timeline*, offset-*, position-try*, etc.
-  if (NO_PAINT_TOKEN.test(p)) return true  // …-animation…, …-transition… (incluye caret/trigger)
-  return false
+  // Cache by the raw name (computed-style iteration already yields canonical lowercase), so hits
+  // skip both the regex tests and the toLowerCase — this runs ~350×/node on cold captures.
+  let r = _ignorePropCache.get(prop)
+  if (r === undefined) {
+    const p = String(prop).toLowerCase()
+    r = NO_PAINT_EXACT.has(p) || NO_PAINT_PREFIX.test(p) || NO_PAINT_TOKEN.test(p)
+    _ignorePropCache.set(prop, r)
+  }
+  return r
 }
 
 // -----------------------------------------------------------------------------
 // 3) getStyleKey → si NO_DEFAULTS_TAGS: "", así no hay clase auto
 // -----------------------------------------------------------------------------
+// Tags that size to text content; grid/flex blockify them, so a frozen used width wraps the
+// text when the raster falls back to a wider font (e.g. the "Timestamp demo").
+const INLINE_SIZED_TAGS = new Set(['span', 'small', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
+// #429: the table box tree gets its used width from the table layout algorithm, not from CSS.
+// Freezing that resolved width (e.g. 113.484px) pins the auto table, so when the SVG falls back
+// to a wider font the content wraps (e.g. "✅ 2024-09-16" breaks at the space).
+const TABLE_TAGS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'])
+// Replaced elements honor an explicit width even when display:inline (#436: an inline <img>
+// with object-fit lost its width and rendered empty), so they are never softened.
+const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed', 'object', 'input', 'textarea', 'select'])
+// Width longhands we never freeze as a hard value when softening (physical + logical).
+const HARD_WIDTH_PROPS = new Set(['width', 'max-width', 'inline-size', 'max-inline-size'])
+// Min-width longhands: kept verbatim when authored (or set to 0 by #406 on flex/grid items).
+const MIN_WIDTH_PROPS = new Set(['min-width', 'min-inline-size'])
+
+/**
+ * Whether getStyleKey softens the width for this tag/display (inline-sized text tags, the table
+ * box tree, or any real inline box; never replaced elements). Exposed so the caller can skip the
+ * per-node content/flex bookkeeping for the vast majority of nodes that aren't affected.
+ * @param {string} tagName
+ * @param {string} display computed display (lowercase)
+ */
+export function softensWidth(tagName, display) {
+  return !REPLACED_TAGS.has(tagName) &&
+    (display === 'inline' || INLINE_SIZED_TAGS.has(tagName) || TABLE_TAGS.has(tagName))
+}
+
 /**
  * Builds a style key from a snapshot; returns "" for tags in NO_DEFAULTS_TAGS.
  * @param {Record<string,string>} snapshot
  * @param {string} tagName
+ * @param {boolean} [sizedByContent=true] whether the element is sized by its own content
+ *   (text / child elements). Empty boxes sized by a CSS class keep their width verbatim.
+ * @param {boolean} [isFlexItem=false] whether the element is a flex/grid item — those must keep
+ *   their natural ability to shrink (#406), so we never give them a synthesized min-width floor.
  */
-export function getStyleKey(snapshot, tagName) {
+export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem = false) {
   tagName = String(tagName || '').toLowerCase()
   if (NO_DEFAULTS_TAGS.has(tagName)) {
     return '' // no key => no class
@@ -153,36 +193,34 @@ export function getStyleKey(snapshot, tagName) {
   const defaults = getDefaultStyleForTag(tagName)
   const display = (snapshot.display || '').toLowerCase()
   const isInline = display === 'inline'
-  // Tags that size to text content; grid/flex blockify them, so a frozen used width wraps
-  // the text when the raster falls back to a wider font (e.g. "Timestamp demo").
-  const INLINE_SIZED_TAGS = new Set(['span', 'small', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
-  // #429: the table box tree gets its used width from the table layout algorithm, not from
-  // CSS. Freezing that resolved width (e.g. 113.484px) pins the auto table, so when the SVG
-  // falls back to a wider font the content wraps (e.g. "✅ 2024-09-16" breaks at the space).
-  const TABLE_TAGS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'])
-  // Replaced elements honor an explicit width even when display:inline, so they must keep it
-  // (#436: an inline <img> with object-fit lost its width and rendered empty).
-  const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed', 'object', 'input', 'textarea', 'select'])
-  const isReplaced = REPLACED_TAGS.has(tagName)
-  // For these boxes we DON'T freeze the used width as a hard `width` (it wraps text / pins the
-  // table). But fully dropping it collapses boxes whose size comes from CSS classes, not content
-  // (#433 inline-block span sized by a class; #434 table cell with width:100px; ExtJS button-icon
-  // spans). So we re-emit the captured width as a `min-width` floor: the box keeps its size but
-  // can still grow when the raster font is wider — no wrap, no collapse.
-  const softenWidth = !isReplaced && (isInline || INLINE_SIZED_TAGS.has(tagName) || TABLE_TAGS.has(tagName))
-  // Both the physical (`width`) and logical (`inline-size`) longhands — getComputedStyle emits
-  // both; dropping only one leaves the other to re-freeze the box.
-  const isWidthProp = (p) => p === 'width' || p === 'min-width' || p === 'max-width' ||
-    p === 'inline-size' || p === 'min-inline-size' || p === 'max-inline-size'
-  for (let [prop, value] of Object.entries(snapshot)) {
+  const softenTag = softensWidth(tagName, display)
+  // Only soften when the box is sized by its content: a frozen used width then wraps the text
+  // (#429) / pins the table (#434). An empty box sized by a CSS class (#433 inline-block span,
+  // ExtJS button-icon spans) must keep its width.
+  const soften = softenTag && sizedByContent
+
+  let keptMinWidth = false
+  for (const prop in snapshot) {
     if (shouldIgnoreProp(prop)) continue
-    if (softenWidth && isWidthProp(prop)) continue
-    const def = defaults[prop]
-    if (value && value !== def) entries.push(`${prop}:${value}`)
+    const value = snapshot[prop]
+    if (soften) {
+      if (HARD_WIDTH_PROPS.has(prop)) continue // never freeze a content/algorithm width
+      if (MIN_WIDTH_PROPS.has(prop)) {         // keep an authored min-width verbatim
+        if (value && value !== defaults[prop]) {
+          entries.push(`${prop}:${value}`)
+          // Only a real length is an author floor that should suppress the synthesized one;
+          // `auto` is just the (logical) default and must not block the floor on table cells.
+          if (value !== 'auto') keptMinWidth = true
+        }
+        continue
+      }
+    }
+    if (value && value !== defaults[prop]) entries.push(`${prop}:${value}`)
   }
-  // Re-add the captured width as a min-width floor. Skipped for real `display:inline` boxes,
-  // where width has no effect and the declaration would be dead weight.
-  if (softenWidth && !isInline) {
+  // Re-add the captured width as a min-width floor so the softened box keeps its size but can
+  // still grow to fit a wider raster font (no wrap #429, no collapse #434). Skipped for flex/grid
+  // items (they must stay shrinkable, #406), for an authored min-width, and for real inline.
+  if (soften && !isInline && !isFlexItem && !keptMinWidth) {
     const w = snapshot.width
     if (w && w !== 'auto' && w !== defaults.width) entries.push(`min-width:${w}`)
   }

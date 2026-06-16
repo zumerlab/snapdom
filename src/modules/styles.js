@@ -1,4 +1,4 @@
-import { getStyleKey, shouldIgnoreProp, getStyle } from '../utils/index.js'
+import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -138,6 +138,19 @@ function snapshotComputedStyleFull(style, options = {}) {
 
   return out
 }
+/**
+ * Cheap "is this box sized by its own content?" check: any child element or non-whitespace
+ * direct text node. O(1) amortized (firstElementChild short-circuits); never reads textContent
+ * so it can't go O(n²) on deep trees.
+ * @param {Element} el
+ */
+function hasRenderedContent(el) {
+  if (el.firstElementChild) return true
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3 && /\S/.test(n.nodeValue || '')) return true
+  }
+  return false
+}
 const __snapshotSig = new WeakMap()
 function styleSignature(snap) {
   let sig = __snapshotSig.get(snap)
@@ -247,22 +260,34 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
 
   const snap = getSnapshot(source, pre, ctx.options)
 
+  const flexItem = isFlexOrGridItem(source)
+
   // #406: foreignObject may resolve min-width:auto differently than normal DOM
   // for flex/grid items. Explicitly set min-width:0 on flex/grid items that have
   // the default auto value, so the generated CSS class includes it and we don't
   // need a blanket foreignObject *{min-width:0} rule (which breaks inline-flex+gap).
-  if (isFlexOrGridItem(source)) {
+  if (flexItem) {
     const mw = pre.getPropertyValue('min-width')
     if (!mw || mw === 'auto' || mw === '0px') {
       snap['min-width'] = '0px'
     }
   }
 
-  const sig = styleSignature(snap)
+  const tag = source.tagName?.toLowerCase() || 'div'
+  // getStyleKey only softens width for inline-sized / table / inline boxes, and only there does
+  // its output depend on content/flex-item-ness. For every other node (the vast majority — divs,
+  // headings, paragraphs…) skip that bookkeeping entirely so the hot path stays untouched.
+  let sig = styleSignature(snap)
+  let sizedByContent = true
+  if (softensWidth(tag, (snap.display || '').toLowerCase())) {
+    sizedByContent = hasRenderedContent(source)
+    // Fold tag/content/flex into the cache key so soften-eligible elements with identical styles
+    // but different shape don't collide on the shared snapshotKeyCache.
+    sig = `${sig}|${tag}${sizedByContent ? '|c' : ''}${flexItem ? '|f' : ''}`
+  }
   let key = persist.snapshotKeyCache.get(sig)
-  if (!key) {
-    const tag = source.tagName?.toLowerCase() || 'div'
-    key = getStyleKey(snap, tag)
+  if (key === undefined) {
+    key = getStyleKey(snap, tag, sizedByContent, flexItem)
     persist.snapshotKeyCache.set(sig, key)
   }
   session.styleMap.set(clone, key)
