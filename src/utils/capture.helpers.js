@@ -187,7 +187,7 @@ export function sanitizeAttributesForXHTML(root, opts = {}) {
  * If any survive into the serialized SVG, the data: URL fails to parse and the browser throws
  * "EncodingError: The source image cannot be decoded" at img.decode() time.
  */
-const INVALID_XML_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/g
+const INVALID_XML_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g
 /* eslint-enable no-control-regex */
 
 /**
