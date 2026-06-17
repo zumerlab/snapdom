@@ -1,8 +1,11 @@
 // Perceptual image compression (`compress: true`). Runs in real Chromium (vitest browser).
 // Verifies BOTH halves of the promise: smaller/faster output AND no fidelity loss.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { downsampleDataURL, compressClonedImages } from '../src/modules/compress.js'
+import { downsampleDataURL, compressClonedImages, compressClonedBackgrounds, compressClonedSvgImages } from '../src/modules/compress.js'
+import { cache } from '../src/core/cache.js'
 import { snapdom } from '../src/index.js'
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
 
 // A real raster data URL (photo-like, hard to trivially compress) at a given size + codec.
 function bigPhoto(w, h, seed = 1, mime = 'image/png', alpha = false) {
@@ -99,6 +102,53 @@ describe('compressClonedImages', () => {
     const stats = await compressClonedImages(clone, { scale: 1, dpr: 1, compress: false })
     expect(stats.count).toBe(0)
     expect(img.getAttribute('src')).toBe(before)
+  })
+})
+
+describe('compressClonedBackgrounds', () => {
+  let orig
+  beforeEach(() => { orig = document.createElement('div'); document.body.appendChild(orig) })
+  afterEach(() => orig.remove())
+
+  it('downsamples a no-repeat background-image to the element box', async () => {
+    orig.style.cssText = 'width:120px;height:90px;background-repeat:no-repeat'
+    const cloneEl = document.createElement('div')
+    cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 11)}")`
+    const before = cloneEl.style.backgroundImage.length
+    cache.session.nodeMap.set(cloneEl, orig)
+
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true })
+    expect(r.count).toBe(1)
+    expect(cloneEl.style.backgroundImage.length).toBeLessThan(before)
+    expect(cloneEl.style.backgroundImage).toContain('data:image')
+  })
+
+  it('skips repeating (tiled) backgrounds — they need natural tile resolution', async () => {
+    orig.style.cssText = 'width:120px;height:90px;background-repeat:repeat'
+    const cloneEl = document.createElement('div')
+    cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 12)}")`
+    const before = cloneEl.style.backgroundImage
+    cache.session.nodeMap.set(cloneEl, orig)
+
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true })
+    expect(r.count).toBe(0)
+    expect(cloneEl.style.backgroundImage).toBe(before)
+  })
+})
+
+describe('compressClonedSvgImages', () => {
+  it('downsamples an oversized SVG <image href> to its rendered size', async () => {
+    const svg = document.createElementNS(SVG_NS, 'svg')
+    const image = document.createElementNS(SVG_NS, 'image')
+    image.setAttribute('href', bigPhoto(1600, 1200, 13))
+    image.setAttribute('width', '160')
+    image.setAttribute('height', '120')
+    svg.appendChild(image)
+    const before = image.getAttribute('href').length
+
+    const r = await compressClonedSvgImages(svg, { scale: 1, dpr: 1, compress: true })
+    expect(r.count).toBe(1)
+    expect(image.getAttribute('href').length).toBeLessThan(before)
   })
 })
 

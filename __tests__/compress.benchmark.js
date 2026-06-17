@@ -59,3 +59,34 @@ describe('compress: image gallery (toCanvas, scale 2)', () => {
     await snapdom.toCanvas(container, { ...opts, compress: true })
   }, benchOpts)
 })
+
+// CSS background-image gallery — exercises the background downsampling pass (no-repeat / cover).
+const BG = [1, 2, 3, 4].map(s => bigPhoto(1500, 1100, s + 20))
+let bgC
+function setupBg() {
+  if (bgC && document.body.contains(bgC)) return
+  bgC = document.createElement('div')
+  bgC.style.cssText = 'width:520px;font-family:system-ui'
+  bgC.innerHTML =
+    `<div style="width:520px;height:220px;background-repeat:no-repeat;background-size:cover;background-image:url('${bigPhoto(2600, 1200, 40)}')"></div>` +
+    '<div class="g" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px"></div>'
+  const g = bgC.querySelector('.g')
+  BG.forEach(src => {
+    const d = document.createElement('div')
+    d.style.cssText = `height:120px;border-radius:8px;background-repeat:no-repeat;background-size:cover;background-image:url('${src}')`
+    g.appendChild(d)
+  })
+  document.body.appendChild(bgC)
+}
+
+describe('compress: background-image gallery (toCanvas, scale 2)', () => {
+  bench('baseline (compress OFF)', async () => {
+    setupBg()
+    await snapdom.toCanvas(bgC, { ...opts, compress: false })
+  }, benchOpts)
+
+  bench('compress: true', async () => {
+    setupBg()
+    await snapdom.toCanvas(bgC, { ...opts, compress: true })
+  }, benchOpts)
+})
