@@ -74,6 +74,16 @@ describe('downsampleDataURL', () => {
     const out = await downsampleDataURL(src, 160, 120)
     expect(out.startsWith('data:image/png')).toBe(true)
   })
+
+  it('targets below the visible resolution (aggression factor) for oversized images', async () => {
+    // 1000² shown at 500² → plain cover would be 500px; the aggression factor trims further.
+    const src = bigPhoto(1000, 1000, 14)
+    const out = await downsampleDataURL(src, 500, 500)
+    const { w, h } = await imageSize(out)
+    expect(w).toBeLessThan(500)    // strictly below the plain visible target → aggression applied
+    expect(w).toBeGreaterThan(150) // but still sane
+    expect(Math.abs(w - h)).toBeLessThanOrEqual(2)
+  })
 })
 
 describe('compressClonedImages', () => {

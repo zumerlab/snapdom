@@ -24,6 +24,12 @@ import { cache } from '../core/cache.js'
 // ignores it. High enough that the re-encode is imperceptible on top of the downscale.
 const LOSSY_QUALITY = 0.92
 
+// Aggression: oversized images are downsampled to BELOW their visible resolution. Heavily-oversized
+// images (the common case — big photos shown small) lose nothing perceptible; the loss only starts
+// to show on barely-oversized sharp content. Only applied to images that pass the oversize guard —
+// never to images already at/below their visible size. Lower = smaller/faster, more aggressive.
+const RES_FACTOR = 0.6
+
 // Prefer decode() over onload: onload can fire before the pixels are decodable, so drawing in the
 // same tick may produce a blank/partial canvas for large images. decode() guarantees drawable pixels.
 async function loadImage(src) {
@@ -65,9 +71,11 @@ export async function downsampleDataURL(dataURL, targetW, targetH) {
   if (!nw || !nh) return null
 
   // Scale factor that still covers the visible box, capped at 1 (no upscaling). The 0.95 guard
-  // band avoids re-encoding for a negligible pixel saving.
-  const factor = Math.min(1, Math.max(targetW / nw, targetH / nh))
-  if (!(factor > 0) || factor >= 0.95) return null
+  // band avoids re-encoding for a negligible pixel saving — gauged on the visible target, before
+  // the aggression trim.
+  const raw = Math.min(1, Math.max(targetW / nw, targetH / nh))
+  if (!(raw > 0) || raw >= 0.95) return null
+  const factor = raw * RES_FACTOR
 
   const ow = Math.max(1, Math.round(nw * factor))
   const oh = Math.max(1, Math.round(nh * factor))

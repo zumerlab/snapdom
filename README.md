@@ -370,7 +370,7 @@ await snapdom.toPng(el, { debug: true });
 
 ### compress
 
-Inlined raster images are embedded at their full natural resolution even when shown in a small box — pixels the output can never display, which only bloat the payload and slow rasterization. With `compress` (on by default) SnapDOM downsamples each `<img>` to the resolution actually visible (`display box × scale × dpr`), preserving aspect ratio and never upscaling. The source codec is kept, so PNGs stay lossless and fidelity is preserved.
+Inlined raster images are embedded at their full natural resolution even when shown in a small box — pixels the output can never display, which only bloat the payload and slow rasterization. With `compress` (on by default) SnapDOM downsamples each oversized raster to (a touch below) the resolution actually visible (`display box × scale × dpr`), preserving aspect ratio and never upscaling. The source codec is kept (PNGs stay lossless), and because the image was already shown far smaller than its natural size the quality loss is imperceptible in practice. Images already at or below their visible size are left untouched. Covers `<img>` (incl. cloned canvas/video), non-repeating CSS `background-image`, and SVG `<image>`.
 
 The benefit depends on the export:
 
