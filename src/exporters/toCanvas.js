@@ -153,12 +153,12 @@ function rewriteSvgBoxShadowToDropShadow(svgText) {
  * them anyway; we just guarantee completion before drawImage instead of racing it.
  * No-op when the capture has no embedded rasters (regex finds nothing → ~free).
  * @param {string} url - SVG data URL
- * @returns {Promise<void>}
+ * @returns {Promise<number>} number of unique embedded raster data URLs found
  */
 async function decodeEmbeddedRasters(url) {
-  if (!isSvgDataURL(url)) return
+  if (!isSvgDataURL(url)) return 0
   let svg
-  try { svg = decodeSvgFromDataURL(url) } catch { return }
+  try { svg = decodeSvgFromDataURL(url) } catch { return 0 }
   const re = /data:image\/(?:png|jpeg|jpg|webp|gif|bmp|avif)[^"')\s]+/gi
   const seen = new Set()
   const tasks = []
@@ -172,6 +172,7 @@ async function decodeEmbeddedRasters(url) {
     if (typeof img.decode === 'function') tasks.push(img.decode().catch(() => {}))
   }
   if (tasks.length) await Promise.all(tasks)
+  return seen.size
 }
 
 function maybeConvertBoxShadowForSafari(url) {
@@ -206,7 +207,7 @@ export async function toCanvas(url, options) {
 
   // #394: warm the decode cache for images embedded in the foreignObject before drawing the SVG,
   // so nested rasters don't come out blank when the outer decode() wins the race.
-  await decodeEmbeddedRasters(url)
+  const rasterCount = await decodeEmbeddedRasters(url)
 
   const img = new Image()
   img.loading = 'eager'
@@ -215,10 +216,12 @@ export async function toCanvas(url, options) {
   img.src = url
   await img.decode()
 
-  // #394: on Safari, img.decode() resolves before <img> tags nested in the
-  // foreignObject finish compositing, producing blank raster exports. Attach
-  // offscreen and wait two animation frames so the compositor catches up.
-  if (isSafari()) {
+  // #394: img.decode() resolves before the <img> tags nested in the foreignObject finish
+  // *compositing*, producing blank raster exports — decode-readiness alone doesn't fix it.
+  // Attach offscreen and wait two animation frames so the compositor paints the nested images
+  // before drawImage. Always on Safari; on other engines only when the capture actually has
+  // embedded rasters (text/shape-only captures keep the fast path and pay nothing).
+  if (isSafari() || rasterCount > 0) {
     img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
     document.body.appendChild(img)
     try {
