@@ -18,16 +18,6 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
-/**
- * Perceptual image compression: downsample inlined raster images to their visible resolution.
- * `format: "auto"` (default) keeps the source codec (PNG stays lossless); `"webp"`/`"jpeg"`
- * trade a little fidelity for smaller payloads. `quality` (0..1) applies to lossy formats.
- */
-export interface CompressOptions {
-  quality?: number;
-  format?: "auto" | "webp" | "jpeg" | "png";
-}
-
 /* =========================
  * Font & proxy declarations
  * ========================= */
@@ -99,11 +89,11 @@ export interface SnapdomOptions {
   outerShadows?: boolean;
 
   /**
-   * Downsample inlined raster images to their visible resolution (display box × scale × dpr).
-   * Opt-in; off by default (output is byte-identical to omitting it). `true` keeps the source
-   * codec (lossless PNG stays lossless); pass an object for lossy formats. See CompressOptions.
+   * Downsample inlined raster images to their visible resolution (display box × scale × dpr),
+   * preserving the source codec (lossless PNG stays lossless). Opt-in; off by default — output is
+   * byte-identical to omitting it.
    */
-  compress?: boolean | CompressOptions;
+  compress?: boolean;
 
   /** Inline non-icon fonts actually used within the subtree. */
   embedFonts?: boolean;

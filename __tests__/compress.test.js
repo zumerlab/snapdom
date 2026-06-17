@@ -1,4 +1,4 @@
-// Perceptual image compression (`compress` option). Runs in real Chromium (vitest browser).
+// Perceptual image compression (`compress: true`). Runs in real Chromium (vitest browser).
 // Verifies BOTH halves of the promise: smaller/faster output AND no fidelity loss.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { downsampleDataURL, compressClonedImages } from '../src/modules/compress.js'
@@ -47,7 +47,7 @@ function meanChannelDiff(a, b) {
 describe('downsampleDataURL', () => {
   it('shrinks a large raster to the visible box (fewer bytes + fewer pixels, aspect preserved)', async () => {
     const src = bigPhoto(2000, 1500, 2)
-    const out = await downsampleDataURL(src, 200, 150, { format: 'webp', quality: 0.85 })
+    const out = await downsampleDataURL(src, 200, 150)
     expect(out).toBeTruthy()
     expect(out.length).toBeLessThan(src.length)
     const { w, h } = await imageSize(out)
@@ -58,17 +58,17 @@ describe('downsampleDataURL', () => {
 
   it('never upscales — returns null when the box is already >= natural', async () => {
     const src = bigPhoto(120, 90, 3)
-    expect(await downsampleDataURL(src, 800, 600, { format: 'webp' })).toBeNull()
+    expect(await downsampleDataURL(src, 800, 600)).toBeNull()
   })
 
   it('skips SVG data URLs (vectors must not be rasterized)', async () => {
     const svg = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22999%22 height=%22999%22%3E%3C/svg%3E'
-    expect(await downsampleDataURL(svg, 10, 10, {})).toBeNull()
+    expect(await downsampleDataURL(svg, 10, 10)).toBeNull()
   })
 
-  it("format:'auto' keeps the source codec lossless (PNG stays PNG)", async () => {
+  it('preserves the source codec (PNG stays PNG lossless)', async () => {
     const src = bigPhoto(1600, 1200, 4, 'image/png')
-    const out = await downsampleDataURL(src, 160, 120, { format: 'auto' })
+    const out = await downsampleDataURL(src, 160, 120)
     expect(out.startsWith('data:image/png')).toBe(true)
   })
 })
@@ -82,9 +82,7 @@ describe('compressClonedImages', () => {
     img.dataset.snapdomHeight = '120'
     clone.appendChild(img)
     const before = img.getAttribute('src').length
-    const stats = await compressClonedImages(clone, {
-      scale: 1, dpr: 1, compress: { format: 'webp', quality: 0.85 }
-    })
+    const stats = await compressClonedImages(clone, { scale: 1, dpr: 1, compress: true })
     expect(stats.count).toBe(1)
     expect(stats.after).toBeLessThan(stats.before)
     expect(img.getAttribute('src').length).toBeLessThan(before)
@@ -98,7 +96,7 @@ describe('compressClonedImages', () => {
     img.dataset.snapdomHeight = '120'
     clone.appendChild(img)
     const before = img.getAttribute('src')
-    const stats = await compressClonedImages(clone, { scale: 1, dpr: 1, compress: null })
+    const stats = await compressClonedImages(clone, { scale: 1, dpr: 1, compress: false })
     expect(stats.count).toBe(0)
     expect(img.getAttribute('src')).toBe(before)
   })
@@ -117,7 +115,7 @@ describe('compress — end-to-end speed/size', () => {
     await img.decode().catch(() => {})
 
     const plain = await snapdom.toRaw(host, { scale: 1, dpr: 1 })
-    const small = await snapdom.toRaw(host, { scale: 1, dpr: 1, compress: { format: 'webp', quality: 0.8 } })
+    const small = await snapdom.toRaw(host, { scale: 1, dpr: 1, compress: true })
 
     expect(plain.startsWith('data:image/svg+xml')).toBe(true)
     expect(small.startsWith('data:image/svg+xml')).toBe(true)
@@ -130,7 +128,7 @@ describe('compress — fidelity (the capture must still match)', () => {
   beforeEach(() => { host = document.createElement('div'); host.style.width = '300px'; document.body.appendChild(host) })
   afterEach(() => host.remove())
 
-  it('default (auto/lossless) is visually ~identical to the uncompressed capture', async () => {
+  it('is visually ~identical to the uncompressed capture', async () => {
     const img = document.createElement('img')
     img.src = bigPhoto(2400, 1600, 8, 'image/png')
     img.style.cssText = 'width:300px;height:200px;object-fit:cover;display:block'
@@ -139,10 +137,10 @@ describe('compress — fidelity (the capture must still match)', () => {
 
     const opts = { scale: 2, dpr: 1 }
     const plain = await snapdom.toCanvas(host, { ...opts })
-    const comp = await snapdom.toCanvas(host, { ...opts, compress: true }) // format:auto → PNG lossless
+    const comp = await snapdom.toCanvas(host, { ...opts, compress: true })
 
     const diff = meanChannelDiff(plain, comp)
-    // Only difference is one-step vs two-step high-quality downscale of the same pixels.
+    // Only difference is one-step vs two-step high-quality downscale of the same (lossless) pixels.
     expect(diff).toBeLessThan(3)
   })
 
@@ -159,14 +157,14 @@ describe('compress — fidelity (the capture must still match)', () => {
     expect(comp).toBe(plain)
   })
 
-  it('preserves transparency (alpha) under default compression', async () => {
+  it('preserves transparency (alpha)', async () => {
     const img = document.createElement('img')
     img.src = bigPhoto(1600, 1600, 10, 'image/png', true) // transparent background + opaque blobs
     img.style.cssText = 'width:160px;height:160px;display:block'
     host.appendChild(img)
     await img.decode().catch(() => {})
 
-    const out = await downsampleDataURL(img.src, 320, 320, { format: 'auto' })
+    const out = await downsampleDataURL(img.src, 320, 320)
     expect(out.startsWith('data:image/png')).toBe(true)
     const probe = await snapdom.toCanvas(host, { scale: 1, dpr: 1, compress: true })
     const data = probe.getContext('2d').getImageData(0, 0, probe.width, probe.height).data

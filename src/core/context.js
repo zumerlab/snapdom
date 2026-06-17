@@ -35,24 +35,9 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
  * @param {boolean} [options.resolvePicturePlaceholders] - Resolve &lt;picture&gt; placeholders / lazy data-src before clone (default true)
  * @param {{ timeout?: number, concurrency?: number, resolveLazySrc?: boolean, silent?: boolean }} [options.pictureResolver] - Fine-tune built-in picture resolver
- * @param {boolean|{quality?:number, format?:('auto'|'webp'|'jpeg'|'png')}} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr). `true` keeps the source codec (lossless PNG stays lossless); pass `{format:'webp'}` for smaller, lossy payloads.
+ * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. Off by default.
  * @returns {Object}
  */
-
-/**
- * Normalize the `compress` option (perceptual image downsampling). See src/modules/compress.js.
- * @param {boolean|object|undefined} c
- * @returns {null|{quality:number, format:string}}
- */
-function normalizeCompress(c) {
-  if (!c) return null
-  const o = typeof c === 'object' ? c : {}
-  return {
-    quality: typeof o.quality === 'number' ? o.quality : 0.85,
-    format: o.format || 'auto'
-  }
-}
-
 export function createContext(options = {}) {
   let resolvedFormat = options.format ?? 'png'
   if (resolvedFormat === 'jpg') resolvedFormat = 'jpeg'
@@ -104,8 +89,8 @@ export function createContext(options = {}) {
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
 
-    // Perceptual image downsampling (opt-in). null = off.
-    compress: normalizeCompress(options.compress),
+    // Perceptual image downsampling (opt-in). Off by default.
+    compress: options.compress === true,
 
     // Safari warmup (WebKit #219770): iterations to prime font/decode pipeline. 1–3.
     safariWarmupAttempts: Math.min(3, Math.max(1, (options.safariWarmupAttempts ?? 3) | 0)),

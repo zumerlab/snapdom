@@ -1,6 +1,6 @@
 /**
- * Perceptual image compression for captures. Opt-in via the `compress` option; a no-op when off,
- * so the default hot path is untouched.
+ * Perceptual image compression for captures. Opt-in via `compress: true`; a no-op when off, so the
+ * default hot path is untouched.
  *
  * Inlined raster images are embedded at their full natural resolution even when shown in a tiny
  * box — those extra pixels can never be seen in the output, they only bloat the SVG payload and
@@ -8,12 +8,15 @@
  * (display box × scale × dpr), preserving aspect ratio and never upscaling. Like dropping inaudible
  * frequencies in an MP3: we discard only what the output can't show.
  *
- * Default `format: 'auto'` keeps the source codec (PNG stays lossless), so the win comes from
- * resolution alone — fidelity-neutral. `format: 'webp'|'jpeg'` trades a little fidelity for smaller
- * payloads.
+ * The source codec is preserved (PNG stays lossless), so the win comes from resolution alone —
+ * fidelity-neutral.
  *
  * @module compress
  */
+
+// Quality used only when the source codec is lossy (JPEG/WebP); PNG re-encodes losslessly and
+// ignores it. High enough that the re-encode is imperceptible on top of the downscale.
+const LOSSY_QUALITY = 0.92
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -31,17 +34,16 @@ function sourceMime(dataURL) {
 
 /**
  * Downsample a raster data URL to the largest resolution the target box can show, preserving the
- * source aspect ratio (so object-fit:cover still has enough pixels). Never upscales. Returns a new
- * data URL, or null when downsampling wouldn't help (vector, already small, or the re-encode grew
- * the string).
+ * source aspect ratio (so object-fit:cover still has enough pixels) and codec. Never upscales.
+ * Returns a new data URL, or null when downsampling wouldn't help (vector, already small, or the
+ * re-encode grew the string).
  *
  * @param {string} dataURL
  * @param {number} targetW - visible box width in device pixels (cssW × scale × dpr)
  * @param {number} targetH - visible box height in device pixels
- * @param {{format?:string, quality?:number}} [opts]
  * @returns {Promise<string|null>}
  */
-export async function downsampleDataURL(dataURL, targetW, targetH, opts = {}) {
+export async function downsampleDataURL(dataURL, targetW, targetH) {
   if (typeof dataURL !== 'string' || !dataURL.startsWith('data:image')) return null
   // SVG data URLs are vectors — rasterizing them here would *lose* fidelity, not save bytes.
   if (dataURL.startsWith('data:image/svg')) return null
@@ -69,17 +71,12 @@ export async function downsampleDataURL(dataURL, targetW, targetH, opts = {}) {
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(img, 0, 0, ow, oh)
 
-  let format = opts.format || 'auto'
-  if (format === 'auto') {
-    const sm = sourceMime(dataURL)
-    // Keep the source codec so lossless stays lossless; fall back to PNG for anything exotic.
-    format = sm === 'image/jpeg' ? 'jpeg' : sm === 'image/webp' ? 'webp' : 'png'
-  }
-  const quality = typeof opts.quality === 'number' ? opts.quality : 0.85
-  const mime = format === 'png' ? 'image/png' : format === 'jpeg' ? 'image/jpeg' : 'image/webp'
+  // Preserve the source codec so lossless stays lossless; fall back to PNG for anything exotic.
+  const sm = sourceMime(dataURL)
+  const mime = sm === 'image/jpeg' ? 'image/jpeg' : sm === 'image/webp' ? 'image/webp' : 'image/png'
   try {
     // PNG ignores the quality arg (lossless); JPEG/WebP honor it.
-    const out = canvas.toDataURL(mime, quality)
+    const out = canvas.toDataURL(mime, LOSSY_QUALITY)
     // Only adopt the re-encoded form if it's actually smaller (a small icon re-encoded can grow).
     if (typeof out === 'string' && out.startsWith('data:image') && out.length < dataURL.length) return out
   } catch { /* tainted canvas / unsupported mime */ }
@@ -94,8 +91,7 @@ export async function downsampleDataURL(dataURL, targetW, targetH, opts = {}) {
  * @returns {Promise<{count:number, before:number, after:number}>} bytes before/after (for debug)
  */
 export async function compressClonedImages(clone, options) {
-  const cfg = options.compress
-  if (!cfg) return { count: 0, before: 0, after: 0 }
+  if (!options.compress) return { count: 0, before: 0, after: 0 }
   const eff = (options.scale || 1) * (options.dpr || 1)
   const imgs = Array.from(clone.querySelectorAll('img'))
   let count = 0, before = 0, after = 0
@@ -106,10 +102,7 @@ export async function compressClonedImages(clone, options) {
     const cssW = parseFloat(img.dataset.snapdomWidth) || parseFloat(img.style.width) || img.width || 0
     const cssH = parseFloat(img.dataset.snapdomHeight) || parseFloat(img.style.height) || img.height || 0
     if (!cssW || !cssH) return
-    const out = await downsampleDataURL(src, cssW * eff, cssH * eff, {
-      format: cfg.format,
-      quality: cfg.quality
-    })
+    const out = await downsampleDataURL(src, cssW * eff, cssH * eff)
     if (out) {
       count++
       before += src.length

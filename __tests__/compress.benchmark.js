@@ -54,13 +54,8 @@ describe('compress: image gallery (toCanvas, scale 2)', () => {
     await snapdom.toCanvas(container, { ...opts })
   }, benchOpts)
 
-  bench('compress: true (auto/lossless)', async () => {
+  bench('compress: true', async () => {
     setupContainer()
     await snapdom.toCanvas(container, { ...opts, compress: true })
-  }, benchOpts)
-
-  bench('compress: webp 0.85', async () => {
-    setupContainer()
-    await snapdom.toCanvas(container, { ...opts, compress: { format: 'webp', quality: 0.85 } })
   }, benchOpts)
 })
