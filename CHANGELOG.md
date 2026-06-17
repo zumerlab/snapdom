@@ -12,7 +12,6 @@ All notable changes to this project will be documented in this file.
 - fix: content-aware width softening [`0832e72`](https://github.com/zumerlab/snapdom/commit/0832e72481213d27bfeb341b62cd84d85c0c8820)
 - feat(compress): enable image downsampling by default + docs + image benchmark [`7148c74`](https://github.com/zumerlab/snapdom/commit/7148c74bbacc279ee3838f06e67cbbfb5af12d4d)
 - refactor: simplify compress to a boolean option [`39e8714`](https://github.com/zumerlab/snapdom/commit/39e87142f0a008b22e88e79d3c4770a053d90aa9)
-- revert: drop cross-browser #394 settle/decode (added time cost, didn't fix it) [`c143d2f`](https://github.com/zumerlab/snapdom/commit/c143d2ff9a5b0b16edf704d32562cf3ebad9e0c7)
 - fix(#394): pre-decode foreignObject images before raster (cross-browser) [`9895218`](https://github.com/zumerlab/snapdom/commit/9895218f5a17c321f495abcf76abd9dd4d21b6ad)
 - feat(compress): downsample oversized images below visible resolution (0.6 factor) [`47b9ed7`](https://github.com/zumerlab/snapdom/commit/47b9ed7f3b196ec0edc1ed52e4187a6e7a7f491c)
 - fix(#394): wait for foreignObject image compositing on all browsers [`25279e9`](https://github.com/zumerlab/snapdom/commit/25279e9a1f965be4197fd544c15b4ebe9eea7c88)
