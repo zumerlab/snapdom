@@ -35,7 +35,7 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
  * @param {boolean} [options.resolvePicturePlaceholders] - Resolve &lt;picture&gt; placeholders / lazy data-src before clone (default true)
  * @param {{ timeout?: number, concurrency?: number, resolveLazySrc?: boolean, silent?: boolean }} [options.pictureResolver] - Fine-tune built-in picture resolver
- * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. Off by default.
+ * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. On by default; pass `false` to embed images verbatim.
  * @returns {Object}
  */
 export function createContext(options = {}) {
@@ -89,8 +89,9 @@ export function createContext(options = {}) {
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
 
-    // Perceptual image downsampling (opt-in). Off by default.
-    compress: options.compress === true,
+    // Perceptual image downsampling. On by default (big speed win on image-heavy raster captures,
+    // ~free on the common case, fidelity-neutral). Pass `compress: false` to embed images verbatim.
+    compress: options.compress !== false,
 
     // Safari warmup (WebKit #219770): iterations to prime font/decode pipeline. 1–3.
     safariWarmupAttempts: Math.min(3, Math.max(1, (options.safariWarmupAttempts ?? 3) | 0)),

@@ -360,6 +360,7 @@ const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });
 | `outerTransforms`      | boolean  | `true`  | 当为 `false` 时移除 `translate/rotate` 但保留 `scale/skew`，产生扁平、可复用的捕获 |
 | `outerShadows`       | boolean  | `false`  | 不为根元素的阴影/模糊/轮廓扩展边界框，并从克隆的根元素中移除这些视觉效果 |
 | `safariWarmupAttempts` | number   | `3`      | 仅 Safari：预热的迭代次数（WebKit #219770）。若 3 次过慢可设为 `1` |
+| `compress`        | boolean  | `true`   | 将内嵌位图缩减到实际可见分辨率。光栅捕获更快、SVG 输出更小，且保真度不变。设为 `false` 可原样内嵌图片 |
 
 ### debug
 
@@ -367,6 +368,25 @@ const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });
 
 ```js
 await snapdom.toPng(el, { debug: true });
+```
+
+### compress
+
+即使图片显示在很小的区域内，内嵌的位图也会以其完整的原始分辨率嵌入——这些像素在输出中根本无法显示，只会增大体积并拖慢光栅化。启用 `compress`（默认开启）后，SnapDOM 会将每个 `<img>` 缩减到实际可见的分辨率（`显示尺寸 × scale × dpr`），保持宽高比且绝不放大。源编码格式保持不变，因此 PNG 仍然无损，保真度不受影响。
+
+收益取决于导出格式：
+
+- **光栅**（`toPng` / `toJpg` / `toCanvas` / `toBlob`）：**快得多**——浏览器解码/合成的是小图而非大图。输出体积基本不变（最终位图就是可见的那些像素）。
+- **SVG**（`toSvg` / 原始）：输出**小得多**——缩减后的图片被嵌入 SVG。
+
+对于已按原始分辨率（或更小）显示的图片，它是空操作，因此常见场景几乎没有开销。传入 `compress: false` 可原样内嵌图片（例如你之后打算放大该 SVG）。
+
+```js
+// 默认：图片缩减到可见分辨率
+await snapdom.toPng(el);
+
+// 保持图片完整分辨率
+await snapdom.toPng(el, { compress: false });
 ```
 
 ### `<img>` 加载失败时的备用图片
@@ -650,7 +670,7 @@ const out = await snapdom(element, {
 每个钩子都接收一个包含规范化捕获状态的 `context` 对象：
 
 * **输入和选项：**
-  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `outerTransforms`, `outerShadows`, `safariWarmupAttempts`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`。
+  `element`, `debug`, `fast`, `scale`, `dpr`, `width`, `height`, `backgroundColor`, `quality`, `useProxy`, `cache`, `outerTransforms`, `outerShadows`, `safariWarmupAttempts`, `compress`, `embedFonts`, `localFonts`, `iconFonts`, `excludeFonts`, `exclude`, `excludeMode`, `filter`, `filterMode`, `fallbackURL`。
 
 * **中间值（取决于阶段）：**
   `clone`, `classCSS`, `styleCache`, `fontsCSS`, `baseCSS`, `svgString`, `dataURL`。

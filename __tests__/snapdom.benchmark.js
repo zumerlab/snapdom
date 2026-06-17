@@ -140,3 +140,74 @@ for (const size of sizes) {
     })
   })
 }
+
+// ── Image-heavy scenario (rasterized PNG) ───────────────────────────────────
+// Captures with large raster images shown small — the case where snapdom's `compress` pays off.
+// Rasterizing (toPng) is where the win lands: smaller embedded images decode/composite faster.
+// Compares snapDOM (compress off vs on) against the other libraries on the same scene.
+function bigPhoto(w, h, seed) {
+  const c = document.createElement('canvas')
+  c.width = w; c.height = h
+  const x = c.getContext('2d')
+  const g = x.createLinearGradient(0, 0, w, h)
+  g.addColorStop(0, `hsl(${(seed * 47) % 360} 80% 55%)`)
+  g.addColorStop(1, `hsl(${(seed * 47 + 120) % 360} 80% 35%)`)
+  x.fillStyle = g; x.fillRect(0, 0, w, h)
+  for (let i = 0; i < 200; i++) {
+    x.beginPath()
+    x.arc((i * 97 + seed * 13) % w, (i * 53 + seed * 29) % h, ((i * 11) % 60) + 6, 0, Math.PI * 2)
+    x.fillStyle = `hsla(${(i * 17) % 360} 90% 70% / 0.4)`; x.fill()
+  }
+  return c.toDataURL('image/png')
+}
+
+describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
+  let container
+
+  async function setupContainer() {
+    if (container && document.body.contains(container)) return
+    container = document.createElement('div')
+    container.style.cssText = 'width:960px;background:#fff;font-family:Arial,sans-serif'
+    container.innerHTML =
+      '<div style="width:960px;height:360px;overflow:hidden;border-radius:12px">' +
+      `<img style="width:100%;height:100%;object-fit:cover;display:block" src="${bigPhoto(3000, 1400, 1)}"></div>` +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px"></div>'
+    const grid = container.querySelector('div:last-child')
+    for (let i = 0; i < 8; i++) {
+      const cell = document.createElement('div')
+      cell.style.cssText = 'height:130px;overflow:hidden;border-radius:8px'
+      cell.innerHTML = `<img style="width:100%;height:100%;object-fit:cover;display:block" src="${bigPhoto(1500, 1000, i + 2)}">`
+      grid.appendChild(cell)
+    }
+    document.body.appendChild(container)
+    await Promise.allSettled(Array.from(container.querySelectorAll('img')).map(im => im.decode?.()))
+  }
+
+  afterEach(() => { if (container) { container.remove(); container = null } })
+
+  bench('snapDOM toPng (compress OFF)', async () => {
+    await setupContainer()
+    await snapdom.toPng(container, { scale: 2, dpr: 1, compress: false })
+  })
+
+  bench('snapDOM toPng (compress ON)', async () => {
+    await setupContainer()
+    await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true })
+  })
+
+  bench('html2canvas', async () => {
+    await setupContainer()
+    const canvas = await window.html2canvas(container, { logging: false, scale: 2 })
+    await canvas.toDataURL('image/png')
+  })
+
+  bench('modern-screenshot', async () => {
+    await setupContainer()
+    await domToDataUrl(container, { scale: 2 })
+  })
+
+  bench('html-to-image', async () => {
+    await setupContainer()
+    await htmlToImage.toPng(container, { pixelRatio: 2 })
+  })
+})

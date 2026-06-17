@@ -114,7 +114,7 @@ describe('compress — end-to-end speed/size', () => {
     host.appendChild(img)
     await img.decode().catch(() => {})
 
-    const plain = await snapdom.toRaw(host, { scale: 1, dpr: 1 })
+    const plain = await snapdom.toRaw(host, { scale: 1, dpr: 1, compress: false })
     const small = await snapdom.toRaw(host, { scale: 1, dpr: 1, compress: true })
 
     expect(plain.startsWith('data:image/svg+xml')).toBe(true)
@@ -136,7 +136,7 @@ describe('compress — fidelity (the capture must still match)', () => {
     await img.decode().catch(() => {})
 
     const opts = { scale: 2, dpr: 1 }
-    const plain = await snapdom.toCanvas(host, { ...opts })
+    const plain = await snapdom.toCanvas(host, { ...opts, compress: false })
     const comp = await snapdom.toCanvas(host, { ...opts, compress: true })
 
     const diff = meanChannelDiff(plain, comp)
@@ -151,7 +151,7 @@ describe('compress — fidelity (the capture must still match)', () => {
     host.appendChild(img)
     await img.decode().catch(() => {})
 
-    const plain = await snapdom.toRaw(host, { scale: 1, dpr: 1 })
+    const plain = await snapdom.toRaw(host, { scale: 1, dpr: 1, compress: false })
     const comp = await snapdom.toRaw(host, { scale: 1, dpr: 1, compress: true })
     // Nothing to downsample → byte-identical output.
     expect(comp).toBe(plain)
