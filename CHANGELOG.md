@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.15.0-dev.0](https://github.com/zumerlab/snapdom/compare/v2.12.9...v2.15.0-dev.0)
+
+> 17 June 2026
+
+- feat: opt-in perceptual image downsampling (compress option) [`e353569`](https://github.com/zumerlab/snapdom/commit/e353569b4c622324e4e721f314b7bb583ff2c57e)
+- chore: remove unused exporters registry [`711d591`](https://github.com/zumerlab/snapdom/commit/711d5914220a991520d04a5df9df028d9e1e66cc)
+- feat(compress): downsample CSS backgrounds and SVG &lt;image&gt; too [`6666f59`](https://github.com/zumerlab/snapdom/commit/6666f59d7de1e2f204344e8872356d93b79626f4)
+- fix: content-aware width softening [`0832e72`](https://github.com/zumerlab/snapdom/commit/0832e72481213d27bfeb341b62cd84d85c0c8820)
+- feat(compress): enable image downsampling by default + docs + image benchmark [`7148c74`](https://github.com/zumerlab/snapdom/commit/7148c74bbacc279ee3838f06e67cbbfb5af12d4d)
+- refactor: simplify compress to a boolean option [`39e8714`](https://github.com/zumerlab/snapdom/commit/39e87142f0a008b22e88e79d3c4770a053d90aa9)
+- revert: drop cross-browser #394 settle/decode (added time cost, didn't fix it) [`c143d2f`](https://github.com/zumerlab/snapdom/commit/c143d2ff9a5b0b16edf704d32562cf3ebad9e0c7)
+- fix(#394): pre-decode foreignObject images before raster (cross-browser) [`9895218`](https://github.com/zumerlab/snapdom/commit/9895218f5a17c321f495abcf76abd9dd4d21b6ad)
+- feat(compress): downsample oversized images below visible resolution (0.6 factor) [`47b9ed7`](https://github.com/zumerlab/snapdom/commit/47b9ed7f3b196ec0edc1ed52e4187a6e7a7f491c)
+- fix(#394): wait for foreignObject image compositing on all browsers [`25279e9`](https://github.com/zumerlab/snapdom/commit/25279e9a1f965be4197fd544c15b4ebe9eea7c88)
+- fix(compress): decode images before drawing to avoid blank downsamples [`5aedeca`](https://github.com/zumerlab/snapdom/commit/5aedeca184eef99179b43be32764b4a3033844ae)
+- types: add compress option to SnapdomOptions [`495a089`](https://github.com/zumerlab/snapdom/commit/495a089fe499d37d1820fc1399be7d1407e311d8)
+- fix: reuse preCache image dataURLs in the capture path [`37d99a5`](https://github.com/zumerlab/snapdom/commit/37d99a50e756d0554c0f9bdcb2ef35933c05405c)
+- fix: pass the documented payload to before/afterExport hooks [`1a14fd0`](https://github.com/zumerlab/snapdom/commit/1a14fd0e0a8cee97285e026e70982762dd63a74f)
+- fix: re-fetch a font when its resource cache entry was evicted [`2e938a4`](https://github.com/zumerlab/snapdom/commit/2e938a445b00efb13d66ff7cc8e5e12e1857436c)
+- chore(deps): bump esbuild to ^0.28.1 (fixes Dependabot high alert) [`3d9a8e6`](https://github.com/zumerlab/snapdom/commit/3d9a8e63969192b01520961cf50f017708623f44)
+
 #### [v2.12.9](https://github.com/zumerlab/snapdom/compare/v2.12.8...v2.12.9)
 
 > 16 June 2026
