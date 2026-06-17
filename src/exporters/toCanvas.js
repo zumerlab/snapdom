@@ -145,6 +145,35 @@ function rewriteSvgBoxShadowToDropShadow(svgText) {
   )
   return svgText
 }
+/**
+ * #394: when the SVG is rasterized via `<img>` + drawImage, the outer `img.decode()` can resolve
+ * before the raster images embedded inside the foreignObject are decoded, leaving them blank in the
+ * output. Pre-decode every embedded raster data URL so the bitmaps are warm in the image cache by
+ * the time the SVG is drawn. Awaiting these is not extra decode work — the SVG render would decode
+ * them anyway; we just guarantee completion before drawImage instead of racing it.
+ * No-op when the capture has no embedded rasters (regex finds nothing → ~free).
+ * @param {string} url - SVG data URL
+ * @returns {Promise<void>}
+ */
+async function decodeEmbeddedRasters(url) {
+  if (!isSvgDataURL(url)) return
+  let svg
+  try { svg = decodeSvgFromDataURL(url) } catch { return }
+  const re = /data:image\/(?:png|jpeg|jpg|webp|gif|bmp|avif)[^"')\s]+/gi
+  const seen = new Set()
+  const tasks = []
+  let m
+  while ((m = re.exec(svg))) {
+    const u = m[0]
+    if (seen.has(u)) continue
+    seen.add(u)
+    const img = new Image()
+    img.src = u
+    if (typeof img.decode === 'function') tasks.push(img.decode().catch(() => {}))
+  }
+  if (tasks.length) await Promise.all(tasks)
+}
+
 function maybeConvertBoxShadowForSafari(url) {
   if (!isSafari() || !isSvgDataURL(url)) return url
   try {
@@ -174,6 +203,10 @@ export async function toCanvas(url, options) {
   let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor } = options
   url = maybeConvertBoxShadowForSafari(url)
   url = clampSvgRasterSize(url) // #425: keep the SVG within decode limits
+
+  // #394: warm the decode cache for images embedded in the foreignObject before drawing the SVG,
+  // so nested rasters don't come out blank when the outer decode() wins the race.
+  await decodeEmbeddedRasters(url)
 
   const img = new Image()
   img.loading = 'eager'
