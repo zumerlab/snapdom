@@ -18,13 +18,17 @@
 // ignores it. High enough that the re-encode is imperceptible on top of the downscale.
 const LOSSY_QUALITY = 0.92
 
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
+// Prefer decode() over onload: onload can fire before the pixels are decodable, so drawing in the
+// same tick may produce a blank/partial canvas for large images. decode() guarantees drawable pixels.
+async function loadImage(src) {
+  const img = new Image()
+  img.decoding = 'sync'
+  img.src = src
+  if (typeof img.decode === 'function') {
+    try { await img.decode(); return img } catch { /* fall back to onload */ }
+  }
+  await new Promise((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject })
+  return img
 }
 
 function sourceMime(dataURL) {
