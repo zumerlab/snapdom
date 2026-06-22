@@ -4,6 +4,7 @@
  */
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
+import { cache } from '../core/cache.js'
 
 /**
  * Recursively inlines background-related images and masks from the source element to its clone.
@@ -159,23 +160,23 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
         cloneNode.style.setProperty(prop, val)
       }
     }
-    // 4) Recurse
-    // Fix: When srcNode is a shadow DOM host, its light DOM children are empty
-    // (content lives in shadowRoot). Use shadowRoot.children instead, filtering
-    // out <style> elements which are skipped during shadow DOM cloning.
-    const sChildren = srcNode.shadowRoot
-      ? Array.from(srcNode.shadowRoot.children).filter(el => el.tagName !== 'STYLE')
-      : Array.from(srcNode.children)
-    const cChildren = Array.from(cloneNode.children)
-      .filter(el => {
-        if (el.dataset?.snapdomPseudo) return false
-        // Only exclude injected <style data-sd> tags, not shadow DOM host elements
-        if (el.tagName === 'STYLE' && el.dataset?.sd) return false
-        return true
-      })
-
-    for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-      queue.push([sChildren[i], cChildren[i]])
+    // 4) Recurse — use nodeMap (clone→source) for child alignment instead of
+    //    index-based pairing, which breaks when clone-only elements (e.g.
+    //    svg.inline-defs-container) shift indices (#439).
+    if (srcNode.shadowRoot) {
+      const sChildren = Array.from(srcNode.shadowRoot.children).filter(el => el.tagName !== 'STYLE')
+      const cChildren = Array.from(cloneNode.children)
+        .filter(el => !el.dataset?.snapdomPseudo && !(el.tagName === 'STYLE' && el.dataset?.sd))
+      for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
+        queue.push([sChildren[i], cChildren[i]])
+      }
+    } else {
+      const nodeMap = cache.session.nodeMap
+      for (const cChild of cloneNode.children) {
+        const srcChild = nodeMap.get(cChild)
+        if (!srcChild) continue
+        queue.push([srcChild, cChild])
+      }
     }
   }
 }
