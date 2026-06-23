@@ -81,8 +81,8 @@ describe('inlineBackgroundImages', () => {
       link(cln, src); link(cln1, src1); link(cln2, src2)
       await inlineBackgroundImages(src, cln, new WeakMap())
 
-      expect(cln1.style.backgroundImage).toContain('green')
-      expect(cln2.style.backgroundImage).toContain('purple')
+      expect(cln1.style.backgroundImage).toContain('rgb(0, 128, 0)')
+      expect(cln2.style.backgroundImage).toContain('rgb(128, 0, 128)')
     })
 
     it('skips multiple injected elements at various positions', async () => {

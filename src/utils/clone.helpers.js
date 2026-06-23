@@ -420,11 +420,23 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
+  // The nested capture below runs its own captureDOM → applyCachePolicy, which REASSIGNS
+  // cache.session.{nodeMap,styleMap,styleCache} to fresh instances. That orphans every entry
+  // the parent capture cloned before reaching this iframe, so the parent's later
+  // inlineBackgroundImages/pseudo recursion (which resolve clone→source via cache.session.nodeMap)
+  // skip those subtrees — e.g. a remote background/mask on a sibling of the iframe is silently
+  // dropped. Snapshot and restore the parent session around the nested call so it stays intact.
+  const parentNodeMap = cache.session.nodeMap
+  const parentStyleMap = cache.session.styleMap
+  const parentStyleCache = cache.session.styleCache
   let imgEl
   try {
     imgEl = await snap.toPng(doc.documentElement, nested)
   } finally {
     unpin()
+    cache.session.nodeMap = parentNodeMap
+    cache.session.styleMap = parentStyleMap
+    cache.session.styleCache = parentStyleCache
   }
 
   // Build <img> (bitmap) sized to content box
