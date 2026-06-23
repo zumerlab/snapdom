@@ -28,7 +28,7 @@ const LOSSY_QUALITY = 0.92
 // images (the common case — big photos shown small) lose nothing perceptible; the loss only starts
 // to show on barely-oversized sharp content. Only applied to images that pass the oversize guard —
 // never to images already at/below their visible size. Lower = smaller/faster, more aggressive.
-const RES_FACTOR = 0.6
+const RES_FACTOR = 0.95
 
 // Prefer decode() over onload: onload can fire before the pixels are decodable, so drawing in the
 // same tick may produce a blank/partial canvas for large images. decode() guarantees drawable pixels.
