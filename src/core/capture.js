@@ -157,13 +157,15 @@ export async function captureDOM(element, options) {
   if (options.embedFonts) {
     await new Promise((resolve) => {
       idle(async () => {
+        // #441: read fonts from the element's own document (same-origin iframe support)
+        const ownerDoc = state.element.ownerDocument || document
         const required = collectUsedFontVariants(state.element)
         const usedCodepoints = collectUsedCodepoints(state.element)
         if (isSafari()) {
           const families = new Set(
             Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
           )
-          await ensureFontsReady(families, 1)
+          await ensureFontsReady(families, 1, ownerDoc)
         }
         fontsCSS = await embedCustomFonts({
           required,
@@ -172,7 +174,8 @@ export async function captureDOM(element, options) {
           exclude: state.options.excludeFonts,
           localFonts: state.options.localFonts,
           useProxy: state.options.useProxy,
-          fontStylesheetDomains: state.options.fontStylesheetDomains
+          fontStylesheetDomains: state.options.fontStylesheetDomains,
+          doc: ownerDoc
         })
         resolve()
       }, { fast })

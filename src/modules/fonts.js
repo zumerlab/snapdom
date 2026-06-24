@@ -615,6 +615,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
  * @param {Array<{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}>} [options.localFonts=[]]
  * @param {string}  [options.useProxy=""]
  * @param {string[]} [options.fontStylesheetDomains=[]]      // extra domains to fetch cross-origin CSS from (#309)
+ * @param {Document} [options.doc=document]                  // document to scan for @font-face sources (the element's ownerDocument for iframe support, #441)
  * @returns {Promise<string>} inlined @font-face CSS
  */
 export async function embedCustomFonts({
@@ -624,6 +625,7 @@ export async function embedCustomFonts({
   localFonts = [],
   useProxy = '',
   fontStylesheetDomains = [],
+  doc = document,
 } = {}) {
   // ---------- Normalize inputs ----------
   if (!(required instanceof Set)) required = new Set()
@@ -733,12 +735,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   const importUrls = []
   const IMPORT_ANY_RE_LOCAL = IMPORT_ANY_RE
 
-  for (const styleTag of document.querySelectorAll('style')) {
+  for (const styleTag of doc.querySelectorAll('style')) {
     const cssText = styleTag.textContent || ''
     for (const m of cssText.matchAll(IMPORT_ANY_RE_LOCAL)) {
       const u = (m[2] || m[4] || '').trim()
       if (!u || isIconFont(u)) continue
-      const hasLink = !!document.querySelector(`link[rel="stylesheet"][href="${u}"]`)
+      const hasLink = !!doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)
       if (!hasLink) importUrls.push(u)
     }
   }
@@ -747,14 +749,14 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   const injectedLinks = []
   if (importUrls.length) {
     await Promise.all(importUrls.map((u) => new Promise((resolve) => {
-      if (document.querySelector(`link[rel="stylesheet"][href="${u}"]`)) return resolve(null)
-      const link = document.createElement('link')
+      if (doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)) return resolve(null)
+      const link = doc.createElement('link')
       link.rel = 'stylesheet'
       link.href = u
       link.setAttribute('data-snapdom', 'injected-import')
       link.onload = () => resolve(link)
       link.onerror = () => resolve(null)
-      document.head.appendChild(link)
+      doc.head.appendChild(link)
       injectedLinks.push(link)
     })))
   }
@@ -764,7 +766,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   // ---------- 1) External <link rel="stylesheet"> ----------
   // Snapshot BEFORE detaching the injected links so their @import'd font CSS is still
   // collected below, then remove them from <head> to keep the capture non-destructive.
-  const linkNodes = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(l => !!l.href)
+  const linkNodes = Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).filter(l => !!l.href)
   for (const l of injectedLinks) { try { l.remove() } catch { /* ok */ } }
 
   for (const link of linkNodes) {
@@ -781,7 +783,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       }
 
       if (sameOrigin) {
-        const sheet = Array.from(document.styleSheets).find(s => s.href === link.href)
+        const sheet = Array.from(doc.styleSheets).find(s => s.href === link.href)
         if (sheet) {
           try {
             const rules = sheet.cssRules || []
@@ -844,7 +846,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     depth: 0
   }
 
-  for (const sheet of document.styleSheets) {
+  for (const sheet of doc.styleSheets) {
     if (sheet.href && linkNodes.some(l => l.href === sheet.href)) continue
     try {
       const rootHref = sheet.href || (location.origin + '/')
@@ -862,7 +864,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   // ---------- 3) document.fonts with _snapdomSrc ----------
   try {
-    for (const f of document.fonts || []) {
+    for (const f of doc.fonts || []) {
       if (!f || !f.family || f.status !== 'loaded' || !f._snapdomSrc) continue
       const fam = String(f.family).replace(/^['"]+|['"]+$/g, '')
       if (isIconFont(fam)) continue
@@ -1028,20 +1030,21 @@ export function collectUsedCodepoints(root) {
  *
  * @param {Set<string>|string[]} families - Plain family names (e.g., "Mansalva", "Unbounded")
  * @param {number} [warmupRepetitions=2] - How many times to warm-up each family
+ * @param {Document} [doc=document] - Document whose fonts to await and warm up (the element's ownerDocument for iframe support)
  * @returns {Promise<void>}
  */
-export async function ensureFontsReady(families, warmupRepetitions = 2) {
-  try { await document.fonts.ready } catch {}
+export async function ensureFontsReady(families, warmupRepetitions = 2, doc = document) {
+  try { await doc.fonts.ready } catch {}
 
   const fams = Array.from(families || []).filter(Boolean)
   if (fams.length === 0) return
 
   const warmupOnce = () => {
-    const container = document.createElement('div')
+    const container = doc.createElement('div')
     container.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;opacity:0!important;pointer-events:none!important;contain:layout size style;'
 
     for (const fam of fams) {
-      const span = document.createElement('span')
+      const span = doc.createElement('span')
       span.textContent = 'AaBbGg1234ÁÉÍÓÚçñ—∞'
       span.style.fontFamily = `"${fam}"`
       span.style.fontWeight = '700'
@@ -1054,10 +1057,10 @@ export async function ensureFontsReady(families, warmupRepetitions = 2) {
       container.appendChild(span)
     }
 
-    document.body.appendChild(container)
+    doc.body.appendChild(container)
     // Force layout
     container.offsetWidth
-    document.body.removeChild(container)
+    doc.body.removeChild(container)
   }
 
   for (let i = 0; i < Math.max(1, warmupRepetitions); i++) {
