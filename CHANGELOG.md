@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.15.0-dev.1](https://github.com/zumerlab/snapdom/compare/v2.15.0-dev.0...v2.15.0-dev.1)
+
+> 24 June 2026
+
+- fix(fonts): scan the capture element's ownerDocument so iframe fonts embed (#441) [`#442`](https://github.com/zumerlab/snapdom/pull/442)
+- fix(fonts): scan the capture element's ownerDocument for fonts [`#441`](https://github.com/zumerlab/snapdom/pull/441)
+- fix: use nodeMap for source/clone child alignment in inlineBackgroundImages [`#440`](https://github.com/zumerlab/snapdom/pull/440)
+- Delete .github/workflows/issue-triage.yml [`ab5b36f`](https://github.com/zumerlab/snapdom/commit/ab5b36f5b74f62dd38be211687f036bec965cc41)
+- Delete .github/workflows/label-sync.yml [`7366d5a`](https://github.com/zumerlab/snapdom/commit/7366d5a95c78c48f295ffeb46fb31ce421ba82df)
+- fix(capture): preserve parent session across nested iframe capture [`cb0ece1`](https://github.com/zumerlab/snapdom/commit/cb0ece12bcba812dcd16a2f133561458e541973c)
+- chore: update contributors list [`f18dee0`](https://github.com/zumerlab/snapdom/commit/f18dee05a16681ff41f4db48098eafd3198617a3)
+- chore(compress): raise RES_FACTOR to 0.95 [`0bd87d7`](https://github.com/zumerlab/snapdom/commit/0bd87d7e67aa2f12f3e9cfdd83847404555fe58f)
+- update [`b541784`](https://github.com/zumerlab/snapdom/commit/b5417842e5ffcc788fcf66316f34980b5871b574)
+
 #### [v2.15.0-dev.0](https://github.com/zumerlab/snapdom/compare/v2.12.9...v2.15.0-dev.0)
 
 > 17 June 2026
