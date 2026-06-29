@@ -39,7 +39,7 @@
   color: var(--amber-ink, #8A4F00);
   font-size: 12px;
 }
-.github-stars i { color: var(--amber-ink, #8A4F00); font-size: 11px; }
+.github-stars svg { color: var(--amber-ink, #8A4F00); font-size: 11px; }
 
 /* ── Page nav ── */
 .page-nav {

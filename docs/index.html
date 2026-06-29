@@ -4,9 +4,9 @@
   <!-- === Meta básicos === -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM: Next-Generation DOM Capture Engine for fast and accurate HTML Conversion</title>
+  <title>SnapDOM: DOM-to-Image Capture — html2canvas Alternative</title>
 
-  <meta name="description" content="Snapdom is a powerful alternative to html2canvas and similar tools, offering extreme precision when capturing DOM elements, including pseudo-elements, web fonts, and shadow DOM.">
+  <meta name="description" content="SnapDOM captures any DOM element to image (SVG, PNG, JPG, WebP) with high fidelity: pseudo-elements, web fonts, and Shadow DOM. A fast html2canvas alternative.">
   <meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity, plugins">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
@@ -21,12 +21,12 @@
   <meta property="og:title" content="snapDOM – serious alternative to html2canvas">
   <meta property="og:description" content="Capture any web UI with high accuracy and speed, including details that html2canvas misses. Try the demo and see the difference.">
   <meta property="og:url" content="https://snapdom.dev/">
-  <meta property="og:image" content="https://snapdom.dev/assets/hero.png">
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="snapdom – HTML capture reinvented">
   <meta name="twitter:description" content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support.">
-  <meta name="twitter:image" content="https://snapdom.dev/assets/hero.png">
+  <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
 
   <!-- === Favicons === -->
   <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96">
@@ -41,18 +41,50 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://snapdom.dev/#organization",
+    "name": "Zumerlab",
+    "url": "https://github.com/zumerlab",
+    "sameAs": ["https://github.com/zumerlab"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://snapdom.dev/#website",
+    "name": "snapDOM",
+    "url": "https://snapdom.dev/",
+    "description": "Documentation and demos for snapDOM — the DOM-to-image capture library.",
+    "publisher": { "@id": "https://snapdom.dev/#organization" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "SnapDOM",
+    "name": "snapDOM",
+    "alternateName": "@zumer/snapdom",
     "applicationCategory": "DeveloperApplication",
-    "description": "Next-generation DOM capture engine. Convert any DOM subtree to SVG, PNG, JPG, WebP. High-fidelity alternative to html2canvas.",
-    "url": "https://snapdom.dev",
     "operatingSystem": "Web",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    "description": "Next-generation DOM capture engine. Convert any DOM subtree to SVG, PNG, JPG, or WebP with full CSS fidelity — including pseudo-elements, web fonts, and Shadow DOM.",
+    "url": "https://snapdom.dev/",
+    "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
+    "softwareVersion": "2.12.9",
+    "codeRepository": "https://github.com/zumerlab/snapdom",
+    "license": "https://spdx.org/licenses/MIT.html",
+    "image": "https://snapdom.dev/assets/og-card.jpg",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@id": "https://snapdom.dev/#organization" },
+    "publisher": { "@id": "https://snapdom.dev/#organization" },
+    "sameAs": [
+      "https://github.com/zumerlab/snapdom",
+      "https://www.npmjs.com/package/@zumer/snapdom"
+    ]
   }
   </script>
 
   <!-- Preconnect to critical origins only (reduces DNS/TLS overhead) -->
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://api.github.com">
@@ -60,7 +92,6 @@
   <!-- === Stylesheets === -->
   <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous">
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Mansalva&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="./shared.css">
 
@@ -1161,9 +1192,9 @@
 <body>
   <header class="hero-block">
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
-      <i class="fab fa-github"></i>
+      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
       <span class="repo-link">zumerlab/snapdom</span>
-      <span class="github-stars"><i class="fas fa-star"></i><span id="star-count">…</span></span>
+      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <img src="./assets/mrsnapdom-run.png" alt="Mr SnapDOM" class="hero-mascot" width="200" height="144" />
     <h1><span class="accent">Snap</span><span class="accent-ink">DOM</span></h1>
@@ -1171,10 +1202,10 @@
 
     <div class="hero-actions">
       <button id="menu-toggle" class="sd-btn sd-btn-primary" aria-expanded="false" aria-controls="demo-menu">
-        <i class="fas fa-play" style="font-size:0.8em"></i> Browse Demos
+        <svg class="fas fa-play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em;font-size:0.8em"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg> Browse Demos
       </button>
-      <a href="./plugins.html" class="sd-btn sd-btn-ghost"><i class="fas fa-puzzle-piece" style="font-size:0.8em"></i> Plugins</a>
-      <a href="./labs.html" class="sd-btn sd-btn-ghost"><i class="fas fa-flask" style="font-size:0.8em"></i> Labs</a>
+      <a href="./plugins.html" class="sd-btn sd-btn-ghost"><svg class="fas fa-puzzle-piece" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em;font-size:0.8em"><path d="M192 104.8c0-9.2-5.8-17.3-13.2-22.8C167.2 73.3 160 61.3 160 48c0-26.5 28.7-48 64-48s64 21.5 64 48c0 13.3-7.2 25.3-18.8 34c-7.4 5.5-13.2 13.6-13.2 22.8c0 12.8 10.4 23.2 23.2 23.2H336c26.5 0 48 21.5 48 48v56.8c0 12.8 10.4 23.2 23.2 23.2c9.2 0 17.3-5.8 22.8-13.2c8.7-11.6 20.7-18.8 34-18.8c26.5 0 48 28.7 48 64s-21.5 64-48 64c-13.3 0-25.3-7.2-34-18.8c-5.5-7.4-13.6-13.2-22.8-13.2c-12.8 0-23.2 10.4-23.2 23.2V464c0 26.5-21.5 48-48 48H279.2c-12.8 0-23.2-10.4-23.2-23.2c0-9.2 5.8-17.3 13.2-22.8c11.6-8.7 18.8-20.7 18.8-34c0-26.5-28.7-48-64-48s-64 21.5-64 48c0 13.3 7.2 25.3 18.8 34c7.4 5.5 13.2 13.6 13.2 22.8c0 12.8-10.4 23.2-23.2 23.2H48c-26.5 0-48-21.5-48-48V343.2C0 330.4 10.4 320 23.2 320c9.2 0 17.3 5.8 22.8 13.2C54.7 344.8 66.7 352 80 352c26.5 0 48-28.7 48-64s-21.5-64-48-64c-13.3 0-25.3 7.2-34 18.8C40.5 250.2 32.4 256 23.2 256C10.4 256 0 245.6 0 232.8V176c0-26.5 21.5-48 48-48H168.8c12.8 0 23.2-10.4 23.2-23.2z"/></svg> Plugins</a>
+      <a href="./labs.html" class="sd-btn sd-btn-ghost"><svg class="fas fa-flask" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em;font-size:0.8em"><path d="M288 0H160 128C110.3 0 96 14.3 96 32s14.3 32 32 32V196.8c0 11.8-3.3 23.5-9.5 33.5L10.3 406.2C3.6 417.2 0 429.7 0 442.6C0 480.9 31.1 512 69.4 512H378.6c38.3 0 69.4-31.1 69.4-69.4c0-12.8-3.6-25.4-10.3-36.4L329.5 230.4c-6.2-10.1-9.5-21.7-9.5-33.5V64c17.7 0 32-14.3 32-32s-14.3-32-32-32H288zM192 196.8V64h64V196.8c0 23.7 6.6 46.9 19 67.1L309.5 320h-171L173 263.9c12.4-20.2 19-43.4 19-67.1z"/></svg> Labs</a>
     </div>
     <div id="menu-container" class="nav-collapsible">
       <nav id="demo-menu" class="demo-menu">
@@ -1679,7 +1710,7 @@
 
         <div class="proxy-ctrls">
           <input id="proxy-url" type="text" placeholder="Paste an image URL (one that usually fails CORS)"
-            value="https://cdn.sstatic.net/Sites/stackoverflow/company/img/logos/so/so-logo.png" />
+            value="https://www.gstatic.com/webp/gallery/1.jpg" />
           <button id="enable-proxy-btn">Enable proxy</button>
           <button id="disable-proxy-btn">Disable</button>
         </div>

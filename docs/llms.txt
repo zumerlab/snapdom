@@ -2,7 +2,7 @@
 
 > Ultra-fast, zero-dependency DOM-to-image capture engine for the browser.
 
-snapDOM (`@zumer/snapdom` v2.7.0) captures any HTML element as a self-contained image (SVG, PNG, JPEG, WebP, Canvas, Blob) with full CSS fidelity: pseudo-elements, custom fonts, CSS variables, Shadow DOM, transforms, counters, and more. Extensible via a plugin system.
+snapDOM (`@zumer/snapdom` v2.12.9) captures any HTML element as a self-contained image (SVG, PNG, JPEG, WebP, Canvas, Blob) with full CSS fidelity: pseudo-elements, custom fonts, CSS variables, Shadow DOM, transforms, counters, and more. Extensible via a plugin system.
 
 ## Quick Start
 
