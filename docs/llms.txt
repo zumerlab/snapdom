@@ -21,7 +21,12 @@ document.body.appendChild(img);
 
 - Full documentation for LLMs: https://snapdom.dev/llms-full.txt
 - Website: https://snapdom.dev
-- Plugins page: https://snapdom.dev/plugins.html
+- Documentation: https://snapdom.dev/docs/
+- API reference: https://snapdom.dev/docs/api/
+- Options reference: https://snapdom.dev/docs/options/
+- Plugins guide: https://snapdom.dev/docs/plugins/
+- Cache & preCache: https://snapdom.dev/docs/cache/
+- Plugins showcase: https://snapdom.dev/plugins.html
 - GitHub: https://github.com/zumerlab/snapdom
 - npm: https://www.npmjs.com/package/@zumer/snapdom
 

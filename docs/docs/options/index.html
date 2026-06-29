@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapDOM Options — Every Capture Option Explained</title>
+  <meta name="description" content="Complete reference for every SnapDOM capture option: scale, dpr, width, height, embedFonts, localFonts, useProxy, exclude, filter, compress, outerTransforms, outerShadows, cache and more." />
+  <meta name="keywords" content="snapdom options, snapdom embedfonts, snapdom useproxy, snapdom scale, snapdom exclude, snapdom compress, snapdom outertransforms" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/docs/options/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="SnapDOM Options Reference" />
+  <meta property="og:description" content="Full API reference, every capture option, the plugin system, and cache control for SnapDOM." />
+  <meta property="og:url" content="https://snapdom.dev/docs/options/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SnapDOM Options Reference" />
+  <meta name="twitter:description" content="API reference, options, plugins and cache control for the fast html2canvas alternative." />
+  <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F5EFE3">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "SnapDOM Options Reference",
+    "description": "Complete reference for every SnapDOM capture option: scale, dpr, width, height, embedFonts, localFonts, useProxy, exclude, filter, compress, outerTransforms, outerShadows, cache and more.",
+    "url": "https://snapdom.dev/docs/options/",
+    "image": "https://snapdom.dev/assets/og-card.jpg",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
+    "mainEntityOfPage": "https://snapdom.dev/docs/options/"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://snapdom.dev/docs/" },
+      { "@type": "ListItem", "position": 3, "name": "Options", "item": "https://snapdom.dev/docs/options/" }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Documentation</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Docs options github">
+      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
+    </a>
+    <h1>SnapDOM <span class="accent">Options</span></h1>
+    <p class="lead">Every capture option SnapDOM accepts, explained one by one — scale and DPR, font embedding, cross-origin proxying, node filtering, image compression, and the transform/shadow bleed controls.</p>
+    <div class="hero-actions">
+      <a href="#all-options" class="btn btn-primary" data-umami-event="Docs options all">All options</a>
+      <a href="../api/" class="btn btn-ghost" data-umami-event="Docs options api">API reference</a>
+    </div>
+  </section>
+
+  <main class="page">
+    <section class="prose">
+      <h2 id="all-options">All options</h2>
+      <p>All capture methods accept an <code>options</code> object.</p>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">debug</td><td class="num">boolean</td><td class="num">false</td><td>When <code>true</code>, logs suppressed errors to <code>console.warn</code> for troubleshooting</td></tr>
+          <tr><td class="num">fast</td><td class="num">boolean</td><td class="num">true</td><td>Skips small idle delays for faster results</td></tr>
+          <tr><td class="num">embedFonts</td><td class="num">boolean</td><td class="num">false</td><td>Inlines non-icon fonts (icon fonts always on)</td></tr>
+          <tr><td class="num">localFonts</td><td class="num">array</td><td class="num">[]</td><td>Local fonts <code>{ family, src, weight?, style? }</code></td></tr>
+          <tr><td class="num">iconFonts</td><td class="num">string | RegExp | Array</td><td class="num">[]</td><td>Extra icon font matchers</td></tr>
+          <tr><td class="num">excludeFonts</td><td class="num">object</td><td class="num">{}</td><td>Exclude families/domains/subsets during embedding</td></tr>
+          <tr><td class="num">scale</td><td class="num">number</td><td class="num">1</td><td>Output scale multiplier</td></tr>
+          <tr><td class="num">dpr</td><td class="num">number</td><td class="num">devicePixelRatio</td><td>Device pixel ratio</td></tr>
+          <tr><td class="num">width</td><td class="num">number</td><td class="num">-</td><td>Output width</td></tr>
+          <tr><td class="num">height</td><td class="num">number</td><td class="num">-</td><td>Output height</td></tr>
+          <tr><td class="num">backgroundColor</td><td class="num">string</td><td class="num">"#fff"</td><td>Fallback color for JPG/WebP</td></tr>
+          <tr><td class="num">quality</td><td class="num">number</td><td class="num">1</td><td>Quality for JPG/WebP (0 to 1)</td></tr>
+          <tr><td class="num">useProxy</td><td class="num">string</td><td class="num">''</td><td>Proxy base for CORS fallbacks</td></tr>
+          <tr><td class="num">exclude</td><td class="num">string[]</td><td class="num">-</td><td>CSS selectors to exclude</td></tr>
+          <tr><td class="num">excludeMode</td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>How <code>exclude</code> is applied</td></tr>
+          <tr><td class="num">filter</td><td class="num">function</td><td class="num">-</td><td>Custom predicate <code>(el) =&gt; boolean</code></td></tr>
+          <tr><td class="num">filterMode</td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>How <code>filter</code> is applied</td></tr>
+          <tr><td class="num">cache</td><td class="num">string</td><td class="num">"soft"</td><td><code>disabled</code> | <code>soft</code> | <code>auto</code> | <code>full</code></td></tr>
+          <tr><td class="num">placeholders</td><td class="num">boolean</td><td class="num">true</td><td>Show placeholders for images/CORS iframes</td></tr>
+          <tr><td class="num">fallbackURL</td><td class="num">string | function</td><td class="num">-</td><td>Fallback image for <code>&lt;img&gt;</code> load failure</td></tr>
+          <tr><td class="num">outerTransforms</td><td class="num">boolean</td><td class="num">true</td><td>When <code>false</code> removes <code>translate/rotate</code> but preserves <code>scale/skew</code>, producing a flat, reusable capture</td></tr>
+          <tr><td class="num">outerShadows</td><td class="num">boolean</td><td class="num">false</td><td>Do not expand the root's bounding box for shadows/blur/outline, and strip those visual effects from the cloned root</td></tr>
+          <tr><td class="num">safariWarmupAttempts</td><td class="num">number</td><td class="num">3</td><td>Safari only: iterations to prime font/decode (WebKit #219770). Use <code>1</code> if 3 causes lag</td></tr>
+          <tr><td class="num">compress</td><td class="num">boolean</td><td class="num">true</td><td>Downsample inlined raster images to their visible resolution. Faster raster captures + smaller SVG output, fidelity-neutral. Set <code>false</code> to embed images verbatim</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="prose">
+      <h2 id="debug">debug</h2>
+      <p>When <code>debug: true</code>, SnapDOM logs normally suppressed errors to <code>console.warn</code> (with the <code>[snapdom]</code> prefix). Useful for troubleshooting capture issues (canvas failures, blob resolution, style stripping, etc.) without noisy output in production.</p>
+      <pre class="code-block">await snapdom.toPng(el, { debug: true });</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="compress">compress</h2>
+      <p>Inlined raster images are embedded at their full natural resolution even when shown in a small box — pixels the output can never display, which only bloat the payload and slow rasterization. With <code>compress</code> (on by default) SnapDOM downsamples each oversized raster to (a touch below) the resolution actually visible (<code>display box × scale × dpr</code>), preserving aspect ratio and never upscaling. The source codec is kept (PNGs stay lossless), and because the image was already shown far smaller than its natural size the quality loss is imperceptible in practice. Images already at or below their visible size are left untouched. Covers <code>&lt;img&gt;</code> (incl. cloned canvas/video), non-repeating CSS <code>background-image</code>, and SVG <code>&lt;image&gt;</code>.</p>
+      <p>The benefit depends on the export:</p>
+      <ul>
+        <li><strong>Raster</strong> (<code>toPng</code> / <code>toJpg</code> / <code>toCanvas</code> / <code>toBlob</code>): <strong>much faster</strong> — the browser decodes/composites small images instead of huge ones. Output size is essentially unchanged (the final bitmap is the same visible pixels).</li>
+        <li><strong>SVG</strong> (<code>toSvg</code> / raw): <strong>much smaller</strong> output — the downsampled images are embedded in the SVG.</li>
+      </ul>
+      <p>It is a no-op for images already shown at (or below) their natural resolution, so the common case pays virtually nothing. Pass <code>compress: false</code> to embed images verbatim (e.g. if you intend to scale the SVG up later).</p>
+      <pre class="code-block">// default: images downsampled to visible resolution
+await snapdom.toPng(el);
+
+// keep images at full resolution
+await snapdom.toPng(el, { compress: false });</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="fallback">Fallback image on &lt;img&gt; load failure</h2>
+      <p>Provide a default image for failed <code>&lt;img&gt;</code> loads. You can pass a fixed URL or a callback that receives measured dimensions and returns a URL (handy to generate dynamic placeholders).</p>
+      <pre class="code-block">// 1) Fixed URL fallback
+await snapdom.toSvg(element, {
+  fallbackURL: '/images/fallback.png'
+});
+
+// 2) Dynamic placeholder via callback
+await snapdom.toSvg(element, {
+  fallbackURL: ({ width: 300, height: 150 }) =&gt;
+    `https://placehold.co/${width}x${height}`
+});
+
+// 3) With proxy (if your fallback host has no CORS)
+await snapdom.toSvg(element, {
+  fallbackURL: ({ width = 300, height = 150 }) =&gt;
+    `https://dummyimage.com/${width}x${height}/cccccc/666.png&amp;text=img`,
+  useProxy: 'https://proxy.corsfix.com/?'
+});</pre>
+      <p>Notes:</p>
+      <ul>
+        <li>If the fallback image also fails to load, snapDOM replaces the <code>&lt;img&gt;</code> with a placeholder block preserving width/height.</li>
+        <li>Width/height used by the callback are gathered from the original element (dataset, style/attrs, etc.) when available.</li>
+      </ul>
+    </section>
+
+    <section class="prose">
+      <h2 id="dimensions">Dimensions (scale, width, height)</h2>
+      <ul>
+        <li>If <code>scale</code> is provided, it <strong>takes precedence</strong> over <code>width</code>/<code>height</code>.</li>
+        <li>If only <code>width</code> is provided, height scales proportionally (and vice versa).</li>
+        <li>Providing both <code>width</code> and <code>height</code> forces an exact size (may distort).</li>
+      </ul>
+    </section>
+
+    <section class="prose">
+      <h2 id="useproxy">Cross-Origin Images &amp; Fonts (useProxy)</h2>
+      <p>By default snapDOM tries <code>crossOrigin="anonymous"</code> (or <code>use-credentials</code> for same-origin). If an asset is CORS-blocked, you can set <code>useProxy</code> to a prefix URL that forwards the actual <code>src</code>:</p>
+      <pre class="code-block">await snapdom.toPng(el, {
+  useProxy: 'https://proxy.corsfix.com/?' // Note: Any cors proxy could be used 'https://proxy.corsfix.com/?'
+});</pre>
+      <ul>
+        <li>The proxy is only used as a <strong>fallback</strong>; same-origin and CORS-enabled assets skip it.</li>
+      </ul>
+    </section>
+
+    <section class="prose">
+      <h2 id="fonts">Fonts</h2>
+
+      <h3 id="embedfonts">embedFonts</h3>
+      <p>When <code>true</code>, snapDOM embeds <strong>non-icon</strong> <code>@font-face</code> rules detected as used within the captured subtree. Icon fonts (Font Awesome, Material Icons, etc.) are embedded <strong>always</strong>.</p>
+
+      <h3 id="localfonts">localFonts</h3>
+      <p>If you serve fonts yourself or have data URLs, you can declare them here to avoid extra CSS discovery:</p>
+      <pre class="code-block">await snapdom.toPng(el, {
+  embedFonts: true,
+  localFonts: [
+    { family: 'Inter', src: '/fonts/Inter-Variable.woff2', weight: 400, style: 'normal' },
+    { family: 'Inter', src: '/fonts/Inter-Italic.woff2', style: 'italic' }
+  ]
+});</pre>
+
+      <h3 id="iconfonts">iconFonts</h3>
+      <p>Add custom icon families (names or regex matchers). Useful for private icon sets:</p>
+      <pre class="code-block">await snapdom.toPng(el, {
+  iconFonts: ['MyIcons', /^(Remix|Feather) Icons?$/i]
+});</pre>
+
+      <h3 id="excludefonts">excludeFonts</h3>
+      <p>Skip specific non-icon fonts to speed up capture or avoid unnecessary downloads.</p>
+      <pre class="code-block">await snapdom.toPng(el, {
+  embedFonts: true,
+  excludeFonts: {
+    families: ['Noto Serif', 'SomeHeavyFont'],     // skip by family name
+    domains: ['fonts.gstatic.com', 'cdn.example'], // skip by source host
+    subsets: ['cyrillic-ext']                      // skip by unicode-range subset tag
+  }
+});</pre>
+      <p><em>Notes</em></p>
+      <ul>
+        <li><code>excludeFonts</code> only applies to <strong>non-icon</strong> fonts. Icon fonts are always embedded.</li>
+        <li>Matching is case-insensitive for <code>families</code>. Hosts are matched by substring against the resolved URL.</li>
+      </ul>
+    </section>
+
+    <section class="prose">
+      <h2 id="filtering">Filtering nodes: exclude vs filter</h2>
+      <ul>
+        <li><code>exclude</code>: remove by <strong>selector</strong>.</li>
+        <li><code>excludeMode</code>: <code>hide</code> applies <code>visibility:hidden</code> CSS rule on excluded nodes and the layout remains as the original. <code>remove</code> do not clone excluded nodes at all.</li>
+        <li><code>filter</code>: advanced predicate per element (return <code>false</code> to drop).</li>
+        <li><code>filterMode</code>: <code>hide</code> applies <code>visibility:hidden</code> CSS rule on filtered nodes and the layout remains as the original. <code>remove</code> do not clone filtered nodes at all.</li>
+      </ul>
+      <p><strong>Example: filter out elements with <code>display:none</code>:</strong></p>
+      <pre class="code-block">/**
+ * Example filter: skip elements with display:none
+ * @param {Element} el
+ * @returns {boolean} true = keep, false = exclude
+ */
+function filterHidden(el) {
+  const cs = window.getComputedStyle(el);
+  if (cs.display === 'none') return false;
+  return true;
+}
+
+await snapdom.toPng(document.body, { filter: filterHidden });</pre>
+      <p><strong>Example with <code>exclude</code>:</strong> remove banners or tooltips by selector</p>
+      <pre class="code-block">await snapdom.toPng(el, {
+  exclude: ['.cookie-banner', '.tooltip', '[data-test="debug"]']
+});</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="outertransforms">outerTransforms</h2>
+      <p>When capturing rotated or translated elements, you may want use <strong>outerTransforms: false</strong> option if you want to eliminate those external transforms. So, the output is <strong>flat, upright, and ready</strong> to use elsewhere.</p>
+      <ul>
+        <li><strong><code>outerTransforms: true (default)</code></strong> — <strong>Keeps the original <code>transforms</code> and <code>rotate</code></strong>.</li>
+      </ul>
+    </section>
+
+    <section class="prose">
+      <h2 id="outershadows">outerShadows</h2>
+      <ul>
+        <li><strong><code>outerShadows: false (default)</code></strong> — Prevents expanding the bounding box for shadows, blur, or outline on the root, and also strips <code>box-shadow</code>, <code>text-shadow</code>, <code>filter: blur()/drop-shadow()</code>, and <code>outline</code> from the cloned root.</li>
+      </ul>
+      <p class="muted">💡 <strong>Tip:</strong> Using both (<code>outerTransforms: false</code> + <code>outerShadows: false</code>) produces a strict, minimal bounding box with no visual bleed.</p>
+      <p><strong>Example</strong></p>
+      <pre class="code-block">// outerTransforms and remove shadow bleed
+await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../api/" data-umami-event="Docs options card api">API reference — methods &amp; exporters <span class="arrow">→</span></a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCache — performance <span class="arrow">→</span></a>
+        <a class="related-card" href="../plugins/" data-umami-event="Docs options card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs options card h2c">SnapDOM vs html2canvas <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Ready to capture?</h2>
+        <p>Drop SnapDOM into your project and capture your first element in one line.</p>
+        <a href="../../" class="btn btn-primary" data-umami-event="Docs options cta home">Open the demo</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs options cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
+    <a href="../" class="current" data-umami-event="Nav docs">Docs</a>
+    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
+    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
+    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
+    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
+    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a>
+    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
+  </nav>
+
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

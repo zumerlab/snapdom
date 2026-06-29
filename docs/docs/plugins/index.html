@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapDOM Plugins — Build &amp; Register Plugins (Lifecycle, Hooks, Custom Exports)</title>
+  <meta name="description" content="Build SnapDOM plugins: lifecycle hooks (beforeClone, afterClone, beforeRender, afterExport...), the context object, registering plugins, and adding custom export formats." />
+  <meta name="keywords" content="snapdom plugins, snapdom plugin api, snapdom lifecycle hooks, snapdom custom export, snapdom plugin tutorial" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/docs/plugins/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="SnapDOM Plugins Guide" />
+  <meta property="og:description" content="Build SnapDOM plugins: lifecycle hooks, the context object, registering plugins, and adding custom export formats." />
+  <meta property="og:url" content="https://snapdom.dev/docs/plugins/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SnapDOM Plugins Guide" />
+  <meta name="twitter:description" content="Build SnapDOM plugins: lifecycle hooks, the context object, registering plugins, and adding custom export formats." />
+  <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F5EFE3">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "SnapDOM Plugins Guide",
+    "description": "Build SnapDOM plugins: lifecycle hooks, the context object, registering plugins, and adding custom export formats.",
+    "url": "https://snapdom.dev/docs/plugins/",
+    "image": "https://snapdom.dev/assets/og-card.jpg",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
+    "mainEntityOfPage": "https://snapdom.dev/docs/plugins/"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://snapdom.dev/docs/" },
+      { "@type": "ListItem", "position": 3, "name": "Plugins", "item": "https://snapdom.dev/docs/plugins/" }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.github.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span> Documentation</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Docs plugins github">
+      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
+    </a>
+    <h1>SnapDOM <span class="accent">Plugins</span></h1>
+    <p class="lead">The developer guide to extending SnapDOM. Build a plugin, hook into any stage of the capture pipeline, read the shared context object, and add your own export formats — without touching the core library.</p>
+    <div class="hero-actions">
+      <a href="#build" class="btn btn-primary" data-umami-event="Docs plugins hero build">Build a plugin</a>
+      <a href="../../plugins.html" class="btn btn-ghost" data-umami-event="Docs plugins hero browse">Browse plugins</a>
+    </div>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">What is a SnapDOM plugin</div>
+      <p>SnapDOM includes a lightweight <strong>plugin system</strong> that lets you extend or override behavior at any stage of the capture and export process — without touching the core library. A plugin is a plain object with a unique <code>name</code> and one or more lifecycle <strong>hooks</strong>. Hooks can be synchronous or <code>async</code>, and they all receive a shared <strong><code>context</code></strong> object. Looking for ready-made plugins to install? See the <a href="../../plugins.html">community plugin showcase</a>.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="official">Official plugins</h2>
+      <p>Install the official plugin package:</p>
+      <pre class="code-block">npm install @zumer/snapdom-plugins</pre>
+      <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';
+import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pre>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>Plugin</th><th>Category</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">picture-resolver</td><td class="feature">Capture</td><td>Resolves lazy-loaded <code>&lt;picture&gt;</code> placeholders. Detects base64 stubs and fetches the real image before capture.</td></tr>
+          <tr><td class="num">timestamp-overlay</td><td class="feature">Transform</td><td>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</td></tr>
+          <tr><td class="num">filter</td><td class="feature">Transform</td><td>Applies CSS filter effects to captures. Ships with presets: <code>grayscale</code>, <code>sepia</code>, <code>blur</code>, <code>vintage</code>, <code>dramatic</code>.</td></tr>
+          <tr><td class="num">replace-text</td><td class="feature">Transform</td><td>Find-and-replace text in the captured clone. Supports strings and regex patterns.</td></tr>
+          <tr><td class="num">color-tint</td><td class="feature">Transform</td><td>Tints the entire capture to a specified color using an overlay with <code>mix-blend-mode</code>.</td></tr>
+          <tr><td class="num">ascii-export</td><td class="feature">Export</td><td>Adds a <code>toAscii()</code> method that converts captures to ASCII art. Configurable width, charset, and luminance.</td></tr>
+          <tr><td class="num">pdf-image</td><td class="feature">Export</td><td>Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.</td></tr>
+          <tr><td class="num">html-in-canvas</td><td class="feature">Export</td><td>Uses the experimental WICG <code>drawElementImage</code> API for direct DOM-to-canvas rendering where supported.</td></tr>
+          <tr><td class="num">prompt-export</td><td class="feature">Export</td><td>LLM-friendly capture: adds a <code>toPrompt()</code> method that returns an annotated screenshot, structured element map with bounding boxes, and a pre-formatted text prompt.</td></tr>
+        </tbody>
+      </table>
+      <p>Community plugins are listed on the <a href="../../plugins.html">plugins showcase page</a>. To submit your plugin, open a PR adding one line to <code>community-plugins.md</code> (see <code>CONTRIBUTING_PLUGINS.md</code>).</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="build">Build a plugin in 5 minutes</h2>
+      <p>SnapDOM's hook system gives you full control over every stage of the capture pipeline:</p>
+      <ol>
+        <li><strong>Clone the template</strong> — <code>npx degit zumerlab/snapdom/packages/plugin-template my-plugin</code></li>
+        <li><strong>Write your hook logic</strong> — <code>export function myPlugin() {}</code></li>
+        <li><strong>Get listed</strong> — open a PR adding one line to <code>community-plugins.md</code></li>
+      </ol>
+      <p>See <code>PLUGIN_SPEC.md</code> for the full specification and <code>CONTRIBUTING_PLUGINS.md</code> for submission guidelines.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="register">Registering plugins</h2>
+      <p><strong>Global registration</strong> (applies to all captures):</p>
+      <pre class="code-block">import { snapdom } from '@zumer/snapdom';
+
+// You can register instances, factories, or [factory, options]
+snapdom.plugins(
+  myPluginInstance,
+  [myPluginFactory, { optionA: true }],
+  { plugin: anotherFactory, options: { level: 2 } }
+);</pre>
+      <p><strong>Per-capture registration</strong> (only for that specific call):</p>
+      <pre class="code-block">const out = await snapdom(element, {
+  plugins: [
+    [overlayFilterPlugin, { color: 'rgba(0,0,0,0.25)' }],
+    [myFullPlugin, { providePdf: true }]
+  ]
+});</pre>
+      <ul>
+        <li><strong>Execution order = registration order</strong> (first registered, first executed).</li>
+        <li><strong>Per-capture plugins</strong> run <strong>before</strong> global ones.</li>
+        <li>Duplicates are automatically skipped by <code>name</code>; a per-capture plugin with the same <code>name</code> overrides its global version.</li>
+      </ul>
+    </section>
+
+    <section class="prose">
+      <h2 id="hooks">Lifecycle hooks</h2>
+      <p>Hooks run in capture order (see the <a href="../#capture-flow">capture flow</a>):</p>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>Hook</th><th>Stage</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">beforeSnap</td><td class="feature">Start</td><td>Adjust options before any work.</td></tr>
+          <tr><td class="num">beforeClone</td><td class="feature">Pre-clone</td><td>Before DOM clone (modify live DOM carefully).</td></tr>
+          <tr><td class="num">afterClone</td><td class="feature">Post-clone</td><td>Modify cloned tree safely (e.g. inject overlay).</td></tr>
+          <tr><td class="num">beforeRender</td><td class="feature">Pre-serialize</td><td>Right before SVG → data URL.</td></tr>
+          <tr><td class="num">afterRender</td><td class="feature">Post-serialize</td><td>Inspect <code>context.svgString</code> / <code>context.dataURL</code>.</td></tr>
+          <tr><td class="num">beforeExport</td><td class="feature">Per export</td><td>Before each <code>toPng</code>, <code>toSvg</code>, etc.</td></tr>
+          <tr><td class="num">afterExport</td><td class="feature">Per export</td><td>Transform returned result.</td></tr>
+          <tr><td class="num">afterSnap</td><td class="feature">Once</td><td>After first export; cleanup.</td></tr>
+          <tr><td class="num">defineExports</td><td class="feature">Setup</td><td>Add custom exporters (e.g. <code>toPdf</code>).</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Hook order: <code>beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport</code> (with <code>afterSnap</code> firing once after the first export). Returned values from <code>afterExport</code> are chained to the next plugin (transform pipeline).</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="context">Context object</h2>
+      <p>Every hook receives a single <code>context</code> object that contains normalized capture state:</p>
+      <ul>
+        <li><strong>Input &amp; options:</strong> <code>element</code>, <code>debug</code>, <code>fast</code>, <code>scale</code>, <code>dpr</code>, <code>width</code>, <code>height</code>, <code>backgroundColor</code>, <code>quality</code>, <code>useProxy</code>, <code>cache</code>, <code>outerTransforms</code>, <code>outerShadows</code>, <code>safariWarmupAttempts</code>, <code>compress</code>, <code>embedFonts</code>, <code>localFonts</code>, <code>iconFonts</code>, <code>excludeFonts</code>, <code>exclude</code>, <code>excludeMode</code>, <code>filter</code>, <code>filterMode</code>, <code>fallbackURL</code>.</li>
+        <li><strong>Intermediate values</strong> (depending on stage): <code>clone</code>, <code>classCSS</code>, <code>styleCache</code>, <code>fontsCSS</code>, <code>baseCSS</code>, <code>svgString</code>, <code>dataURL</code>.</li>
+        <li><strong>During export:</strong> <code>context.export = { type, options, url }</code> where <code>type</code> is the exporter name (<code>"png"</code>, <code>"jpeg"</code>, <code>"svg"</code>, <code>"blob"</code>, etc.), and <code>url</code> is the serialized SVG base.</li>
+      </ul>
+      <p class="muted">You may safely modify <code>context</code> (e.g. override <code>backgroundColor</code> or <code>quality</code>) — but do so early (<code>beforeSnap</code>) for global effects or in <code>beforeExport</code> for single-export changes.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="custom-exports">Custom exports via plugins</h2>
+      <p>Plugins can add new exports using <code>defineExports(context)</code>. For each export key you return (e.g. <code>"pdf"</code>), SnapDOM automatically exposes a helper method named <code>toPdf()</code> on the capture result.</p>
+      <p><strong>Register the plugin</strong> (global or per capture):</p>
+      <pre class="code-block">import { snapdom } from '@zumer/snapdom';
+
+// global
+snapdom.plugins(pdfExportPlugin());
+
+// or per capture
+const out = await snapdom(element, { plugins: [pdfExportPlugin()] });</pre>
+      <p><strong>Call the custom export:</strong></p>
+      <pre class="code-block">const out = await snapdom(document.querySelector('#report'));
+
+// because the plugin returns { pdf: async (ctx, opts) =&gt; ... }
+const pdfBlob = await out.toPdf({
+  // exporter-specific options (width, height, quality, filename, etc.)
+});</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="example">Example: overlay filter plugin</h2>
+      <p>Adds a translucent overlay or color filter <strong>only</strong> to the captured clone (not your live DOM). Useful for highlighting or dimming sections before export.</p>
+      <pre class="code-block">/**
+ * Ultra-simple overlay filter for SnapDOM (HTML-only).
+ * Inserts a full-size &lt;div&gt; overlay on the cloned root.
+ *
+ * @param {{ color?: string; blur?: number }} [options]
+ *   color: overlay color (rgba/hex/hsl). Default: 'rgba(0,0,0,0.25)'
+ *   blur: optional blur in px (default: 0)
+ */
+export function overlayFilterPlugin(options = {}) {
+  const color = options.color ?? 'rgba(0,0,0,0.25)';
+  const blur = Math.max(0, options.blur ?? 0);
+
+  return {
+    name: 'overlay-filter',
+
+    /**
+     * Add a full-coverage overlay to the cloned HTML root.
+     * @param {any} context
+     */
+    async afterClone(context) {
+      const root = context.clone;
+      if (!(root instanceof HTMLElement)) return; // HTML-only
+
+      // Ensure containing block so absolute overlay anchors to the root
+      if (getComputedStyle(root).position === 'static') {
+        root.style.position = 'relative';
+      }
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'absolute';
+      overlay.style.left = '0';
+      overlay.style.top = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.background = color;
+      overlay.style.pointerEvents = 'none';
+      if (blur) overlay.style.filter = `blur(${blur}px)`;
+
+      root.appendChild(overlay);
+    }
+  };
+}</pre>
+      <p><strong>Usage:</strong></p>
+      <pre class="code-block">import { snapdom } from '@zumer/snapdom';
+
+// Global registration
+snapdom.plugins([overlayFilterPlugin, { color: 'rgba(0,0,0,0.3)', blur: 2 }]);
+
+// Per-capture
+const out = await snapdom(document.querySelector('#card'), {
+  plugins: [[overlayFilterPlugin, { color: 'rgba(255,200,0,0.15)' }]]
+});
+
+const png = await out.toPng();
+document.body.appendChild(png);</pre>
+      <p class="muted">The overlay is injected <strong>only in the cloned tree</strong>, never in your live DOM, ensuring perfect fidelity and zero flicker.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="template">Full plugin template</h2>
+      <p>Use this as a starting point for custom logic or exporters.</p>
+      <pre class="code-block">export function myPlugin(options = {}) {
+  return {
+    /** Unique name used for de-duplication/overrides */
+    name: 'my-plugin',
+
+    /** Early adjustments before any clone/style work. */
+    async beforeSnap(context) {},
+
+    /** Before subtree cloning (use sparingly if touching the live DOM). */
+    async beforeClone(context) {},
+
+    /** After subtree cloning (safe to modify the cloned tree). */
+    async afterClone(context) {},
+
+    /** Right before serialization (SVG/dataURL). */
+    async beforeRender(context) {},
+
+    /** After serialization; inspect context.svgString/context.dataURL if needed. */
+    async afterRender(context) {},
+
+    /** Before EACH export call (toPng/toSvg/toBlob/...). */
+    async beforeExport(context) {},
+
+    /**
+     * After EACH export call.
+     * If you return a value, it becomes the result for the next plugin (chaining).
+     */
+    async afterExport(context, result) { return result; },
+
+    /**
+     * Define custom exporters (auto-added as helpers like out.toPdf()).
+     * Return a map { [key: string]: (ctx:any, opts:any) =&gt; Promise&lt;any&gt; }.
+     */
+    async defineExports(context) { return {}; },
+
+    /** Runs ONCE after the FIRST export finishes (cleanup). */
+    async afterSnap(context) {}
+  };
+}</pre>
+      <p><strong>Quick recap:</strong></p>
+      <ul>
+        <li>Plugins can modify capture behavior (<code>beforeSnap</code>, <code>afterClone</code>, etc.).</li>
+        <li>You can inject visuals or transformations safely into the cloned tree.</li>
+        <li>New exporters defined in <code>defineExports()</code> automatically become helpers like <code>out.toPdf()</code>.</li>
+        <li>All hooks can be asynchronous, run in order, and share the same <code>context</code>.</li>
+      </ul>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../api/" data-umami-event="Docs plugins card api">API reference — methods &amp; exporters <span class="arrow">→</span></a>
+        <a class="related-card" href="../options/" data-umami-event="Docs plugins card options">Options — every capture option <span class="arrow">→</span></a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs plugins card cache">Cache &amp; preCache — performance <span class="arrow">→</span></a>
+        <a class="related-card" href="../../plugins.html" data-umami-event="Docs plugins card showcase">Browse community plugins <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Ready to build?</h2>
+        <p>Clone the plugin template, write a hook, and ship a SnapDOM plugin in minutes.</p>
+        <a href="../../plugins.html" class="btn btn-primary" data-umami-event="Docs plugins cta browse">Browse plugins</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs plugins cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav">
+    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
+    <a href="../" class="current" data-umami-event="Nav docs">Docs</a>
+    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
+    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
+    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
+    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
+    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a>
+    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
+  </nav>
+
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+</body>
+</html>

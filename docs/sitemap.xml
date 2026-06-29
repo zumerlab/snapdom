@@ -60,4 +60,24 @@
     <loc>https://snapdom.dev/compare/modern-screenshot/</loc>
     <lastmod>2026-06-29</lastmod>
   </url>
+  <url>
+    <loc>https://snapdom.dev/docs/</loc>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/docs/api/</loc>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/docs/options/</loc>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/docs/plugins/</loc>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/docs/cache/</loc>
+    <lastmod>2026-06-29</lastmod>
+  </url>
 </urlset>
