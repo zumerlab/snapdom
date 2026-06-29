@@ -1,11 +1,14 @@
 <p align="center">
-  <a href="http://zumerlab.github.io/snapdom">
+  <a href="https://snapdom.dev">
     <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/newhero.png" width="80%">
   </a>
 </p>
 
 <p align="center">
- <a href="https://www.npmjs.com/package/@zumer/snapdom">
+ <a href="https://snapdom.dev">
+    <img alt="Website" src="https://img.shields.io/badge/Website-snapdom.dev-2ea44f?style=flat-square">
+  </a>
+  <a href="https://www.npmjs.com/package/@zumer/snapdom">
     <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=Version">
   </a>
   <a href="https://www.npmjs.com/package/@zumer/snapdom">
@@ -37,6 +40,8 @@
 
 SnapDOM 会保留样式、字体、背景图像、伪元素、Shadow DOM 等所有视觉特性，并通过可扩展的架构实现强大的灵活性和最高级别的捕获质量。
 
+> 📖 **[文档、指南与在线演示 → snapdom.dev](https://snapdom.dev)**
+
 
 * 完整的 DOM 捕获
 * 内嵌样式、伪元素和字体
@@ -47,7 +52,7 @@ SnapDOM 会保留样式、字体、背景图像、伪元素、Shadow DOM 等所�
 * 支持 CSS counter() 和 CSS counters()
 * 支持 `...` 文本截断（line-clamp）
 
-## 演示
+## 官网与在线演示
 
 [https://snapdom.dev](https://snapdom.dev)
 
@@ -605,7 +610,7 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';
 
 ### 社区插件
 
-社区插件列在[插件页面](https://zumerlab.github.io/snapdom/plugins.html)。要提交您的插件，请开一个 PR，在 `community-plugins.md` 中添加一行。详见 [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md)。
+社区插件列在[插件页面](https://snapdom.dev/plugins.html)。要提交您的插件，请开一个 PR，在 `community-plugins.md` 中添加一行。详见 [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md)。
 
 ### 5 分钟构建插件
 

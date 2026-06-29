@@ -1,11 +1,14 @@
 <p align="center">
-  <a href="http://zumerlab.github.io/snapdom">
+  <a href="https://snapdom.dev">
     <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/newhero.png" width="80%">
   </a>
 </p>
 
 <p align="center">
- <a href="https://www.npmjs.com/package/@zumer/snapdom">
+ <a href="https://snapdom.dev">
+    <img alt="Website" src="https://img.shields.io/badge/Website-snapdom.dev-2ea44f?style=flat-square">
+  </a>
+  <a href="https://www.npmjs.com/package/@zumer/snapdom">
     <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=Version">
   </a>
   <a href="https://www.npmjs.com/package/@zumer/snapdom">
@@ -36,6 +39,8 @@
 **SnapDOM** is a next-generation **DOM Capture Engine** — the fast, modern alternative to **html2canvas**, **dom-to-image**, and **html-to-image**.  
 It converts any DOM subtree into a self-contained representation that can be exported to SVG, PNG, JPG, WebP, Canvas, Blob, or **any custom format** through plugins — ultra-fast, modular, extensible, and dependency-free.
 
+> 📖 **[Documentation, guides & live demos → snapdom.dev](https://snapdom.dev)**
+
 * Full DOM capture
 * Embedded styles, pseudo-elements, and fonts
 * Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
@@ -45,7 +50,7 @@ It converts any DOM subtree into a self-contained representation that can be exp
 * Support CSS counter() and CSS counters()
 * Support `...` line-clamp
 
-## Demo
+## Website & Live Demos
 
 [https://snapdom.dev](https://snapdom.dev)
 
@@ -605,7 +610,7 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';
 
 ### Community Plugins
 
-Community plugins are listed on the [Plugins page](https://zumerlab.github.io/snapdom/plugins.html). To submit your plugin, open a PR adding one line to `community-plugins.md`. See [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md).
+Community plugins are listed on the [Plugins page](https://snapdom.dev/plugins.html). To submit your plugin, open a PR adding one line to `community-plugins.md`. See [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md).
 
 ### Build a Plugin in 5 Minutes
 
