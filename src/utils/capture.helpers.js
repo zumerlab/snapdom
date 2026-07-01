@@ -152,6 +152,8 @@ export function sanitizeAttributesForXHTML(root, opts = {}) {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name
 
+      if (name.startsWith('*')) { el.removeAttribute(name); continue }
+
       // "@": never valid in XML attribute names
       if (name.includes('@')) { el.removeAttribute(name); continue }
 
