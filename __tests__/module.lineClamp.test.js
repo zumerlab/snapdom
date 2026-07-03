@@ -52,6 +52,26 @@ describe('lineClamp', () => {
     expect(div.textContent).toBe(longText)
   })
 
+  it('clamps to the right line count when line-height is below the font strut (#443)', () => {
+    // In a -webkit-box the line box never shrinks below the font metrics, so a
+    // line-height smaller than the glyph height must not over-truncate. The clamp
+    // must keep as much text as a comfortably-sized line-height with the same
+    // width/font would (both fit the same 2 lines) — the old fs-based guess cut
+    // this down to a single line.
+    const make = (lineHeight) => {
+      const div = document.createElement('div')
+      div.style.cssText = `width:200px;font-size:20px;line-height:${lineHeight};word-break:break-word;display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical`
+      div.textContent = 'Long Long Long Long Long Long Long Long Long Text.'
+      document.body.appendChild(div)
+      lineClamp(div)
+      return div.textContent
+    }
+    const small = make('18px')
+    const normal = make('24px')
+    expect(small).toContain('…')
+    expect(small).toBe(normal)
+  })
+
   it('returns no-op when content fits in N lines', () => {
     const div = document.createElement('div')
     div.style.webkitLineClamp = '5'

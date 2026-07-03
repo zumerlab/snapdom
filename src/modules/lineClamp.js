@@ -37,11 +37,22 @@ export function lineClamp(el) {
   if (!isPlainTextContainer(el)) return () => {}
 
   const cs = getComputedStyle(el)
-  const targetH = Math.round(usedLineHeightPx(cs) * lines + vpad(cs))
 
   const original = el.textContent ?? ''
   // Guarda para restaurar
   const prevText = original
+
+  // Measure the REAL rendered line height instead of guessing from CSS.
+  // `line-height: normal` is font-metric dependent, and inside a -webkit-box the
+  // line box never shrinks below the font strut, so a value smaller than the
+  // glyph height (e.g. line-height:18px on 20px text) still lays out taller. A
+  // fs*1.2 / raw-CSS guess mis-sizes targetH and clamps to the wrong line count (#443).
+  const pad = vpad(cs)
+  el.textContent = 'X'
+  const perLine = el.scrollHeight - pad
+  el.textContent = original
+  const lineH = perLine > 0 ? perLine : usedLineHeightPx(cs)
+  const targetH = Math.round(lineH * lines + pad)
 
   // Si ya entra completo en N líneas, no hacemos nada (igual que el clamp nativo)
   if (el.scrollHeight <= targetH + 0.5) {
