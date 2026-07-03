@@ -41,14 +41,11 @@ It converts any DOM subtree into a self-contained representation that can be exp
 
 > 📖 **[Documentation, guides & live demos → snapdom.dev](https://snapdom.dev)**
 
-* Full DOM capture
-* Embedded styles, pseudo-elements, and fonts
-* Export to SVG, PNG, JPG, WebP, `canvas`, or Blob
-* ⚡ Ultra fast, no dependencies
-* 100% based on standard Web APIs
-* Support same-origin `ìframe`
-* Support CSS counter() and CSS counters()
-* Support `...` line-clamp
+## Features
+
+Full DOM capture with embedded styles, pseudo-elements and fonts; export to SVG, PNG, JPG, WebP, `canvas` or Blob — ultra fast, dependency-free, and 100% based on standard Web APIs.
+
+👉 **See the complete technical feature list in [FEATURES.md](FEATURES.md).**
 
 ## Website & Live Demos
 
@@ -77,51 +74,16 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 ---
 
-## Capture Flow
-
-SnapDOM transforms your DOM element through these stages:
-
-```
-DOM Element
-    ↓
-Clone
-    ↓
-Styles & Pseudo
-    ↓
-Images & Backgrounds
-    ↓
-Fonts
-    ↓
-SVG foreignObject
-    ↓
-data:image/svg+xml
-    ↓
-toPng / toSvg / toBlob / download
-```
-
-| Stage | What happens |
-|-------|--------------|
-| **Clone** | Deep clone with styles, Shadow DOM, iframes. Exclude/filter nodes. |
-| **Styles & Pseudo** | Inline `::before`/`::after` as elements, resolve `counter()`/`counters()`. |
-| **Images & Backgrounds** | Fetch and inline external images/backgrounds as data URLs. |
-| **Fonts** | Embed `@font-face` (optional) and icon fonts. |
-| **SVG** | Wrap clone in `<foreignObject>`, serialize to `data:image/svg+xml`. |
-| **Export** | Convert SVG to PNG/JPG/WebP/Blob or trigger download. |
-
-Plugin hooks: `beforeSnap` → `beforeClone` → `afterClone` → `beforeRender` → `afterRender` → `beforeExport` → `afterExport`.
-
-
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [Capture Flow](#capture-flow)
+- [Features](#features)
 - [Installation](#installation)
 - [Build Outputs](#build-outputs)
 - [Usage](#usage)
 - [Documentation](#documentation) — full API, Options, Plugins & Cache reference on [snapdom.dev/docs](https://snapdom.dev/docs/)
 - [Limitations](#limitations)
 - [Performance Benchmarks](#performance-benchmarks)
-- [Roadmap](#roadmap)
 - [Development](#development)
 - [Contributors](#contributors)
 - [Sponsors](#sponsors)
@@ -296,35 +258,6 @@ cd snapdom
 npm install
 npm run test:benchmark
 ```
-
-
-## Roadmap
-
-Planned improvements for future versions of SnapDOM:
-
-* [X] **Implement plugin system**
-  SnapDOM will support external plugins to extend or override internal behavior (e.g. custom node transformers, exporters, or filters).
-
-* [ ] **Refactor to modular architecture**
-  Internal logic will be split into smaller, focused modules to improve maintainability and code reuse.
-
-* [X] **Decouple internal logic from global options**
-  Functions will be redesigned to avoid relying directly on `options`. A centralized capture context will improve clarity, autonomy, and testability. See [`next` branch](https://github.com/zumerlab/snapdom/tree/main)
-
-* [X] **Expose cache control**
-  Users will be able to manually clear image and font caches or configure their own caching strategies.
-
-* [X] **Auto font preloading**
-  Required fonts will be automatically detected and preloaded before capture, reducing the need for manual `preCache()` calls.
-
-* [X] **Document plugin development**
-  A full guide will be provided for creating and registering custom SnapDOM plugins.
-
-* [ ] **Make export utilities tree-shakeable**
-  Export functions like `toPng`, `toJpg`, `toBlob`, etc. will be restructured into independent modules to support tree shaking and minimal builds.
-
-Have ideas or feature requests?
-Feel free to share suggestions or feedback in [GitHub Discussions](https://github.com/zumerlab/snapdom/discussions).
 
 
 ## Development
