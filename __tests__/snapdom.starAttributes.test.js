@@ -7,23 +7,16 @@ describe('*-prefixed HTML attributes', () => {
   afterEach(() => host.remove())
 
   it('does not throw EncodingError when an element has an *-prefixed attribute', async () => {
-    const el = document.createElement('div')
-    el.setAttribute('*ngIf', 'true')
-    el.setAttribute('*ngFor', 'let item of items')
-    el.setAttribute('*data-custom', 'value')
-    el.textContent = 'inside'
-    host.appendChild(el)
+    // *-prefixed names are illegal via setAttribute but the HTML parser accepts
+    // them (this is how Angular structural directives actually reach the DOM).
+    host.innerHTML = '<div *ngIf="true" *ngFor="let item of items" *data-custom="value">inside</div>'
 
     const canvas = await snapdom.toCanvas(host, { scale: 1, dpr: 1 })
     expect(canvas).toBeInstanceOf(HTMLCanvasElement)
   })
 
   it('produces an SVG with no *-prefixed attributes', async () => {
-    const el = document.createElement('span')
-    el.setAttribute('*ngIf', 'true')
-    el.setAttribute('*custom-attr', 'value')
-    el.textContent = 'hi'
-    host.appendChild(el)
+    host.innerHTML = '<span *ngIf="true" *custom-attr="value">hi</span>'
 
     const raw = await snapdom.toRaw(host)
     const svg = decodeURIComponent(raw.replace(/^data:image\/svg\+xml;charset=utf-8,/, ''))
