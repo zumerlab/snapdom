@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.15.0](https://github.com/zumerlab/snapdom/compare/v2.15.0-dev.1...v2.15.0)
+
+> 3 July 2026
+
+- fix(capture): drop *-prefixed attributes to keep XMLSerializer output well-formed [`#445`](https://github.com/zumerlab/snapdom/pull/445)
+- refactor(tests): simplify tests for *-prefixed HTML attributes [`0a818bf`](https://github.com/zumerlab/snapdom/commit/0a818bf6dff1b032bbac26591525d45245532c0f)
+
 #### [v2.15.0-dev.1](https://github.com/zumerlab/snapdom/compare/v2.15.0-dev.0...v2.15.0-dev.1)
 
 > 24 June 2026
