@@ -1,8 +1,11 @@
 // src/core/lineClamp.js
 
 /**
- * Apply line-clamp to element AND all descendants that have -webkit-line-clamp.
- * Fixes #386: ellipsis now renders for nested elements, not just the root.
+ * Bake text truncation for the element AND all descendants that CSS would
+ * truncate: multi-line `-webkit-line-clamp` and single-line
+ * `text-overflow: ellipsis`. Firefox and Safari don't honour either inside a
+ * `<foreignObject>`, so we resolve the ellipsis into the text up front.
+ * Fixes #386 (nested clamp) and #431 (single-line ellipsis on Safari/Firefox).
  *
  * @param {Element} el - Root element (and its subtree) to process
  * @returns {() => void} Combined undo function
@@ -11,8 +14,12 @@ export function lineClampTree(el) {
   if (!el) return () => {}
   const undos = []
   function walk(node) {
-    const undo = lineClamp(node)
-    if (undo) undos.push(undo)
+    // One computed-style read per node, shared by both passes (hot path).
+    const cs = getComputedStyle(node)
+    const u1 = lineClamp(node, cs)
+    if (u1) undos.push(u1)
+    const u2 = textEllipsis(node, cs)
+    if (u2) undos.push(u2)
     for (const child of node.children || []) walk(child)
   }
   walk(el)
@@ -26,17 +33,17 @@ export function lineClampTree(el) {
  * then returns an undo() that restores everything right after cloning.
  *
  * @param {Element} el
+ * @param {CSSStyleDeclaration} [cs]
  * @returns {() => void} undo function (no-op if nothing changed)
  */
-export function lineClamp(el) {
+export function lineClamp(el, cs) {
   if (!el) return () => {}
+  cs = cs || getComputedStyle(el)
 
-  const lines = getClamp(el)
+  const lines = getClamp(cs)
   if (lines <= 0) return () => {}
 
   if (!isPlainTextContainer(el)) return () => {}
-
-  const cs = getComputedStyle(el)
 
   const original = el.textContent ?? ''
   // Guarda para restaurar
@@ -81,10 +88,54 @@ export function lineClamp(el) {
   }
 }
 
+/**
+ * Bake a single-line `text-overflow: ellipsis`. Same strategy as lineClamp but
+ * on the horizontal axis: only when the element is a nowrap, overflow-clipped
+ * plain-text container whose content overflows. Firefox/Safari skip this in a
+ * <foreignObject>, so we resolve it here for every engine (#431).
+ *
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} [cs]
+ * @returns {() => void} undo function (no-op if nothing changed)
+ */
+export function textEllipsis(el, cs) {
+  if (!el) return () => {}
+  cs = cs || getComputedStyle(el)
+
+  if (cs.textOverflow !== 'ellipsis') return () => {}
+  // Single-line ellipsis: content must not wrap and must be clipped.
+  if (cs.whiteSpace !== 'nowrap' && cs.whiteSpace !== 'pre') return () => {}
+  if (cs.overflowX !== 'hidden' && cs.overflowX !== 'clip') return () => {}
+
+  if (!isPlainTextContainer(el)) return () => {}
+
+  // Ya entra completo → el clamp nativo tampoco haría nada.
+  if (el.scrollWidth <= el.clientWidth + 0.5) return () => {}
+
+  const original = el.textContent ?? ''
+  const prevText = original
+
+  let lo = 0, hi = original.length, best = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    el.textContent = original.slice(0, mid) + '…'
+    if (el.scrollWidth <= el.clientWidth + 0.5) {
+      best = mid; lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+
+  el.textContent = (best >= 0 ? original.slice(0, best) : '') + '…'
+
+  return () => {
+    el.textContent = prevText
+  }
+}
+
 /* ---------------- helpers: idénticos a tu snippet ---------------- */
 
-function getClamp(el) {
-  const cs = getComputedStyle(el)
+function getClamp(cs) {
   let v = cs.getPropertyValue('-webkit-line-clamp') || cs.getPropertyValue('line-clamp')
   v = (v || '').trim()
   const n = parseInt(v, 10)

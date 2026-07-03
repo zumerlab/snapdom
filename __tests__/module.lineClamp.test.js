@@ -1,6 +1,6 @@
 // __tests__/module.lineClamp.test.js – lineClamp coverage
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { lineClamp, lineClampTree } from '../src/modules/lineClamp.js'
+import { lineClamp, lineClampTree, textEllipsis } from '../src/modules/lineClamp.js'
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -81,6 +81,69 @@ describe('lineClamp', () => {
     document.body.appendChild(div)
     lineClamp(div)
     expect(div.textContent).toBe('Short')
+  })
+})
+
+describe('textEllipsis (#431)', () => {
+  const truncated = (whiteSpace, overflow) => {
+    const div = document.createElement('div')
+    div.style.cssText = `inline-size:200px;font-size:16px;text-overflow:ellipsis;white-space:${whiteSpace};overflow:${overflow}`
+    const longText = 'Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
+    div.textContent = longText
+    document.body.appendChild(div)
+    return { div, longText, undo: textEllipsis(div) }
+  }
+
+  it('bakes a single-line ellipsis when text overflows', () => {
+    const { div, longText, undo } = truncated('nowrap', 'hidden')
+    expect(div.textContent).toContain('…')
+    expect(div.textContent.length).toBeLessThan(longText.length)
+    undo()
+    expect(div.textContent).toBe(longText)
+  })
+
+  it('is a no-op without text-overflow:ellipsis', () => {
+    const div = document.createElement('div')
+    div.style.cssText = 'inline-size:200px;white-space:nowrap;overflow:hidden'
+    div.textContent = 'Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor.'
+    document.body.appendChild(div)
+    const before = div.textContent
+    textEllipsis(div)
+    expect(div.textContent).toBe(before)
+  })
+
+  it('is a no-op when the text is not clipped to a single line', () => {
+    // wrapping text (white-space:normal) is not single-line ellipsis
+    const div = document.createElement('div')
+    div.style.cssText = 'inline-size:200px;text-overflow:ellipsis;white-space:normal;overflow:hidden'
+    div.textContent = 'Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor.'
+    document.body.appendChild(div)
+    const before = div.textContent
+    textEllipsis(div)
+    expect(div.textContent).toBe(before)
+  })
+
+  it('is a no-op when content fits', () => {
+    const div = document.createElement('div')
+    div.style.cssText = 'inline-size:200px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden'
+    div.textContent = 'Short'
+    document.body.appendChild(div)
+    textEllipsis(div)
+    expect(div.textContent).toBe('Short')
+  })
+
+  it('lineClampTree bakes single-line ellipsis on descendants', () => {
+    const outer = document.createElement('div')
+    const inner = document.createElement('div')
+    inner.style.cssText = 'inline-size:200px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden'
+    const longText = 'Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt.'
+    inner.textContent = longText
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+    const undo = lineClampTree(outer)
+    expect(inner.textContent).toContain('…')
+    undo()
+    expect(inner.textContent).toBe(longText)
   })
 })
 
