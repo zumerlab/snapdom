@@ -248,6 +248,41 @@ export async function deepClone(node, sessionCache, options) {
     return img
   }
 
+  if (node.tagName === 'AUDIO' && node.controls) {
+    // The native <audio controls> UI is a UA shadow-DOM widget that can't be
+    // serialized, so a plain clone renders blank. Draw a representative player
+    // sized to the element (#444). Without `controls` the native element is
+    // display:none, so we leave those to the generic (invisible) clone.
+    const { width, height } = getUnscaledDimensions(node)
+    const w = Math.round(width || node.offsetWidth || 300)
+    const h = Math.round(height || node.offsetHeight || 54)
+    const cy = h / 2
+    const tri = Math.max(4, h * 0.16)
+    const px = h * 0.34
+    const rTime = w - h * 0.34
+    const trackX = px + tri + h * 0.55
+    const trackW = Math.max(0, rTime - h * 0.7 - trackX)
+    const fs = Math.max(9, Math.round(h * 0.24))
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+      `<rect width="${w}" height="${h}" rx="${Math.min(h / 2, 10)}" fill="#f1f3f4"/>` +
+      `<path d="M ${px} ${cy - tri} L ${px + tri} ${cy} L ${px} ${cy + tri} Z" fill="#5f6368"/>` +
+      `<rect x="${trackX}" y="${cy - 1.5}" width="${trackW}" height="3" rx="1.5" fill="#bdc1c6"/>` +
+      `<circle cx="${trackX}" cy="${cy}" r="${Math.max(3, h * 0.09)}" fill="#5f6368"/>` +
+      `<text x="${rTime}" y="${cy}" fill="#5f6368" font-family="sans-serif" font-size="${fs}" text-anchor="end" dominant-baseline="central">0:00</text>` +
+      '</svg>'
+    const img = document.createElement('img')
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+    img.width = w
+    img.height = h
+    img.style.width = `${w}px`
+    img.style.height = `${h}px`
+    sessionCache.nodeMap.set(img, node)
+    inlineAllStyles(node, img, sessionCache, options)
+    return img
+  }
+
   let clone
   try {
     clone = node.cloneNode(false)

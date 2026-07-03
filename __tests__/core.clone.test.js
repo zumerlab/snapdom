@@ -37,6 +37,24 @@ describe('deepClone', () => {
     expect(clone.src.startsWith('data:image/')).toBe(true)
   })
 
+  it('renders <audio controls> as a player image (#444)', async () => {
+    const audio = document.createElement('audio')
+    audio.controls = true
+    document.body.appendChild(audio)
+    const clone = await runClone(audio)
+    document.body.removeChild(audio)
+    expect(clone.tagName).toBe('IMG')
+    expect(clone.src.startsWith('data:image/svg+xml')).toBe(true)
+  })
+
+  it('leaves <audio> without controls to the generic clone (#444)', async () => {
+    const audio = document.createElement('audio')
+    document.body.appendChild(audio)
+    const clone = await runClone(audio)
+    document.body.removeChild(audio)
+    expect(clone.tagName).toBe('AUDIO')
+  })
+
   it('deepClone handles data-capture="exclude"', async () => {
     const el = document.createElement('div')
     el.setAttribute('data-capture', 'exclude')
