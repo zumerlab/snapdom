@@ -141,7 +141,10 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 100px; }
 .prose code { font-family: var(--font-mono); font-size: 13px; color: var(--amber-ink); background: var(--amber-soft); padding: 2px 6px; border-radius: 4px; font-weight: 600; }
 
 /* ── Code blocks ── */
-.code-block { background: var(--code-bg); border: 2px solid var(--border); border-radius: 10px; padding: 20px 24px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.7; color: var(--code-text); margin: 16px 0 24px; white-space: pre; }
+.code-block { background: var(--code-bg); border: 2px solid var(--border); border-radius: 10px; padding: 20px 64px 20px 24px; overflow: visible; font-family: var(--font-mono); font-size: 13px; line-height: 1.7; color: var(--code-text); margin: 16px 0 24px; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; }
+.code-copy { position: absolute; top: 10px; right: 10px; z-index: 2; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: var(--code-text); background: rgba(245, 239, 227, 0.1); border: 1px solid rgba(245, 239, 227, 0.25); border-radius: 6px; padding: 4px 10px; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.code-copy:hover { background: rgba(245, 239, 227, 0.2); border-color: rgba(245, 239, 227, 0.45); }
+.code-copy.copied { color: #4ADE94; border-color: #4ADE94; background: rgba(74, 222, 148, 0.12); }
 .code-block .kw { color: #FF8AB0; }
 .code-block .str { color: #4ADE94; }
 .code-block .fn { color: #5BD4F0; }
