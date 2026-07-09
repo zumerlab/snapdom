@@ -374,6 +374,9 @@
     .benchmark-star { margin: 0.9rem auto 0; max-width: 460px; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 400; line-height: 1.5; color: var(--sd-text-muted); }
     .benchmark-star a { color: var(--sd-accent); text-decoration: none; border-bottom: 1px solid rgba(45,91,255,0.35); white-space: nowrap; }
     .benchmark-star a:hover { color: var(--sd-accent-hover); }
+    .demo-star { margin-top: 12px; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.5; color: var(--sd-text-muted); }
+    .demo-star a { color: var(--sd-accent); text-decoration: none; border-bottom: 1px solid rgba(45,91,255,0.35); white-space: nowrap; }
+    .demo-star a:hover { color: var(--sd-accent-hover); }
     .benchmark-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
     .benchmark-column { flex: 1; min-width: 100px; max-width: calc(50% - 1rem); }
     .benchmark-output { width: 100%; height: 250px; overflow: auto; border: 1px solid var(--sd-border-soft); border-radius: 0; padding: 10px; background: var(--sd-surface-elevated); display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -1539,6 +1542,20 @@
       return b;
     }
 
+    // Post-demo gratitude CTA: fires the success metric every time,
+    // shows a discreet star prompt at most once per session, below the result.
+    function sdExportStar(out, kind) {
+      try { if (window.umami) umami.track('demo_export_success', { kind: kind }); } catch (e) {}
+      try {
+        if (sessionStorage.getItem('sd_export_star')) return;
+        sessionStorage.setItem('sd_export_star', '1');
+      } catch (e) {}
+      const cta = document.createElement('div');
+      cta.className = 'demo-star';
+      cta.innerHTML = 'Saved you time? <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="demo_star_click">★ Star snapDOM</a>';
+      out.appendChild(cta);
+    }
+
     window.exportToHtml = async function (btn) {
       const out = document.getElementById('xp-html-out');
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Exporting…</div>';
@@ -1553,6 +1570,7 @@
         out.innerHTML = '';
         out.appendChild(iframe);
         out.appendChild(xpDownloadBtn(new Blob([html], { type: 'text/html' }), 'capture.html'));
+        sdExportStar(out, 'html');
       } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
     };
 
@@ -1574,6 +1592,7 @@
         out.appendChild(img);
         out.appendChild(document.createElement('br'));
         out.appendChild(xpDownloadBtn(blob, 'capture.gif'));
+        sdExportStar(out, 'gif');
       } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
     };
 
@@ -1594,6 +1613,7 @@
         out.appendChild(v);
         out.appendChild(document.createElement('br'));
         out.appendChild(xpDownloadBtn(blob, blob.type.includes('mp4') ? 'capture.mp4' : 'capture.webm'));
+        sdExportStar(out, 'video');
         v.play().catch(() => {});
       } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
     };

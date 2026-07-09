@@ -343,8 +343,7 @@ Shipping something built with snapDOM? Add the badge to your README:
 
 ### Projects using snapDOM
 
-- [Orbit](https://github.com/zumerlab/orbit) — CSS toolkit for radial layouts *(by Zumerlab)*
-- [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing *(by Zumerlab)*
+- [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing, powered by snapDOM *(by Zumerlab)*
 
 Using snapDOM in production? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project — real, verifiable projects only.
 
