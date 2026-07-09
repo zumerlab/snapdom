@@ -87,13 +87,24 @@
   <!-- Preconnect to critical origins only (reduces DNS/TLS overhead) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
   <link rel="preconnect" href="https://api.github.com">
-  
-  <!-- === Stylesheets === -->
-  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
 
-  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Mansalva&display=swap">
+  <!-- === Stylesheets ===
+       Third-party CSS is loaded non-render-blocking (media=print → onload swap) so first paint
+       isn't gated on external round-trips. Fonts use display=swap: text paints immediately in a
+       fallback and swaps in when the webface loads (CLS stays 0 — the swap already reserves space).
+       Orbit CSS is only used by the Orbit demo far below the fold. -->
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Mansalva&display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Mansalva&display=swap">
+    <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous">
+  </noscript>
   <link rel="stylesheet" href="./shared.css">
 
   <!-- Analytics: loaded after interactive to avoid LCP penalty -->
