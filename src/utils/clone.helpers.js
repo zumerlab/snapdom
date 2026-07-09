@@ -357,6 +357,12 @@ export function getUnscaledDimensions(el) {
  * the style later doesn't restore it, so the live iframe ends up scrolled to (0,0).
  * Snapshot scroll state before pinning and restore it after unpinning.
  *
+ * #448: pinning body to (w, h) is what makes its background fill the content box
+ * (the browser propagates body background to the viewport). But hard-zeroing body
+ * margin/padding drops the content inset. Instead fold the original body margin into
+ * its padding: body still fills the box (background propagation preserved) while the
+ * content keeps its live offset from the viewport edge.
+ *
  * @param {Document} doc
  * @param {number} w
  * @param {number} h
@@ -371,9 +377,22 @@ export function pinIframeViewport(doc, w, h) {
   const hsl = doc.documentElement ? doc.documentElement.scrollLeft : 0
   const hst = doc.documentElement ? doc.documentElement.scrollTop : 0
 
+  // Fold body margin into padding so content keeps its live inset while body fills the box.
+  let pt = 0, pr = 0, pb = 0, pl = 0
+  try {
+    const cs = win && doc.body ? win.getComputedStyle(doc.body) : null
+    if (cs) {
+      pt = (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.paddingTop) || 0)
+      pr = (parseFloat(cs.marginRight) || 0) + (parseFloat(cs.paddingRight) || 0)
+      pb = (parseFloat(cs.marginBottom) || 0) + (parseFloat(cs.paddingBottom) || 0)
+      pl = (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.paddingLeft) || 0)
+    }
+  } catch { }
+
   const style = doc.createElement('style')
   style.setAttribute('data-sd-iframe-pin', '')
-  style.textContent = `html, body {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
+  style.textContent = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
+    `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style)
 
   return () => {

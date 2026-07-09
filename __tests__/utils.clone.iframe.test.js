@@ -47,4 +47,28 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     unpin()
     expect(doc.querySelector('style[data-sd-iframe-pin]')).toBeNull()
   })
+
+  // #448: pinning must not hard-zero body margin/padding — the content inset was lost.
+  // Body margin is folded into padding so content keeps its live offset while body still
+  // fills the box (background propagation preserved).
+  it('folds body margin into padding instead of zeroing it (#448)', () => {
+    iframe = document.createElement('iframe')
+    iframe.style.cssText = 'width:400px;height:150px;border:0'
+    document.body.appendChild(iframe)
+    const doc = iframe.contentDocument
+    doc.open()
+    doc.write('<html><body style="margin:24px;padding:16px;background:#eef"><p>hi</p></body></html>')
+    doc.close()
+
+    const unpin = pinIframeViewport(doc, 400, 150)
+    const cs = doc.defaultView.getComputedStyle(doc.body)
+    // margin collapsed to 0, but margin(24)+padding(16)=40 preserved as padding
+    expect(parseFloat(cs.marginTop)).toBe(0)
+    expect(parseFloat(cs.paddingTop)).toBe(40)
+    expect(parseFloat(cs.paddingLeft)).toBe(40)
+    // body still fills the pinned viewport so its background propagates
+    expect(parseFloat(cs.width)).toBe(400)
+    expect(parseFloat(cs.height)).toBe(150)
+    unpin()
+  })
 })
