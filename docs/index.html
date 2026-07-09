@@ -186,6 +186,14 @@
     .npm-line { display: inline-flex; align-items: center; gap: 14px; border: 1px solid var(--sd-border-soft); padding: 12px 16px; font-family: var(--font-mono); font-size: 13px; color: var(--sd-text); align-self: flex-start; background: var(--sd-surface); }
     .npm-prompt { color: var(--sd-text-muted); }
     #npm-copy { border: 0; background: none; cursor: pointer; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--sd-accent); padding: 4px 0 4px 14px; border-left: 1px solid var(--sd-border-soft); text-transform: uppercase; }
+    .hero-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 11px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.2px; color: var(--sd-text-muted); }
+    .hero-proof a { display: inline-flex; align-items: center; gap: 5px; color: var(--sd-text-muted); text-decoration: none; border-bottom: 1px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    .hero-proof a:hover { color: var(--sd-accent); border-color: rgba(45,91,255,0.35); }
+    .hero-proof b { color: var(--sd-text); font-weight: 700; }
+    .hero-proof .sep { opacity: 0.4; }
+    .hero-proof svg { color: var(--sd-star); height: 0.95em; width: auto; }
+    .sd-btn.hero-star { gap: 7px; }
+    .sd-btn.hero-star svg { color: var(--sd-star); height: 1em; width: auto; }
     #npm-copy:hover { color: var(--sd-accent-hover); }
 
     /* Viewfinder stage */
@@ -363,6 +371,9 @@
     .benchmark-cta:hover { background: var(--sd-accent); color: #FFFFFF; transform: none; }
     .benchmark-cta span { margin-left: 0.3rem; transition: margin-left 0.15s; }
     .benchmark-cta:hover span { margin-left: 0.55rem; }
+    .benchmark-star { margin: 0.9rem auto 0; max-width: 460px; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 400; line-height: 1.5; color: var(--sd-text-muted); }
+    .benchmark-star a { color: var(--sd-accent); text-decoration: none; border-bottom: 1px solid rgba(45,91,255,0.35); white-space: nowrap; }
+    .benchmark-star a:hover { color: var(--sd-accent-hover); }
     .benchmark-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
     .benchmark-column { flex: 1; min-width: 100px; max-width: calc(50% - 1rem); }
     .benchmark-output { width: 100%; height: 250px; overflow: auto; border: 1px solid var(--sd-border-soft); border-radius: 0; padding: 10px; background: var(--sd-surface-elevated); display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -588,9 +599,22 @@
         <div class="hero-eyebrow"><span class="rec-dot"></span><span class="sd-version">v2.15.0</span><span>· MIT · zero dependencies</span></div>
         <h1>Capture<br>the DOM.</h1>
         <p class="hero-tagline">snapdom turns any element into SVG, PNG, JPG, WebP, GIF, MP4 — even standalone HTML. Fonts, pseudo-elements and shadow roots included. <em>In milliseconds.</em></p>
+        <div class="hero-proof" aria-label="Project stats">
+          <a href="https://github.com/zumerlab/snapdom/stargazers" id="proof-stars-wrap" target="_blank" rel="noopener">
+            <svg viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg>
+            <b id="proof-stars">—</b>&nbsp;stars
+          </a>
+          <span class="sep" aria-hidden="true">·</span>
+          <span id="proof-dl-wrap"><b id="proof-downloads">—</b>&nbsp;downloads/mo</span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span>Zero dependencies</span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span>~42&nbsp;KB gzip</span>
+        </div>
         <div class="hero-actions">
           <a href="./docs/" class="sd-btn sd-btn-primary" data-umami-event="Hero docs">Get started</a>
           <a href="#demo-index" class="sd-btn sd-btn-ghost" data-umami-event="Hero browse demos">Browse the demos</a>
+          <a href="https://github.com/zumerlab/snapdom" class="sd-btn sd-btn-ghost hero-star" target="_blank" rel="noopener" data-umami-event="hero_star_click" title="Useful? Star snapDOM on GitHub"><svg viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg>Star on GitHub</a>
           <button id="menu-toggle" class="sd-btn sd-btn-ghost" aria-expanded="false" aria-controls="demo-menu">Demo index</button>
         </div>
         <div class="npm-line"><span class="npm-prompt">$</span><span>npm i @zumer/snapdom</span><button type="button" id="npm-copy" data-umami-event="Copy npm install">copy</button></div>
@@ -1652,16 +1676,24 @@
         h2cContainer.insertAdjacentHTML('beforeend', '<div class="result-message">Average: ' + h2cAvg.toFixed(1) + ' ms</div>');
       }
 
+      const snapWon = h2c && snapAvg < h2cAvg;
+      const factor = snapWon ? (h2cAvg / snapAvg).toFixed(1) : null;
       const winnerMessage = !h2c
         ? 'snapDOM benchmark complete (html2canvas unavailable)'
         : (snapAvg < h2cAvg
-          ? 'snapDOM wins! (' + (h2cAvg / snapAvg).toFixed(1) + 'x faster)'
+          ? 'snapDOM wins! (' + factor + 'x faster)'
           : 'html2canvas wins! (' + (snapAvg / h2cAvg).toFixed(1) + 'x faster)');
       resultText.innerHTML =
         '<div class="winner-message">' + winnerMessage + '</div>' +
         '<a class="benchmark-cta" href="./compare/html2canvas/" data-umami-event="Benchmark CTA compare">' +
           'Why you should stop using html2canvas now <span aria-hidden="true">→</span>' +
-        '</a>';
+        '</a>' +
+        (snapWon
+          ? '<div class="benchmark-star">snapDOM was ' + factor + '× faster here. If that helped, ' +
+            '<a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="benchmark_star_click">star the project ★</a>.</div>'
+          : '');
+
+      try { if (window.umami) umami.track('benchmark_completed', { winner: snapWon ? 'snapdom' : (h2c ? 'html2canvas' : 'na'), factor: factor }); } catch (e) {}
 
       snapContainer.classList.toggle('winner-glow', !h2c || snapAvg < h2cAvg);
       h2cContainer.classList.toggle('winner-glow', h2c && h2cAvg < snapAvg);
@@ -1816,19 +1848,34 @@
   </nav>
 
   <script>
-    async function updateGitHubStars() {
-      try {
-        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom')
-        if (!res.ok) throw new Error('No stars')
-        const data = await res.json()
-        const stars = data.stargazers_count
-        document.getElementById('star-count').textContent = stars
-      } catch (e) {
-        document.getElementById('star-count').textContent = ''
+    // Social proof: GitHub stars + npm monthly downloads, cached 24h in localStorage.
+    ;(function () {
+      const TTL = 24 * 60 * 60 * 1000
+      async function cachedJSON(key, url) {
+        try {
+          const raw = localStorage.getItem(key)
+          if (raw) { const o = JSON.parse(raw); if (o && (Date.now() - o.t) < TTL) return o.v }
+        } catch (e) {}
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('fetch failed')
+        const v = await res.json()
+        try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), v })) } catch (e) {}
+        return v
       }
-    }
-    updateGitHubStars()
-    setInterval(updateGitHubStars, 60000)
+      const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
+      const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none' }
+      const compact = (n) => {
+        n = Number(n) || 0
+        if (n >= 1000) { const k = n / 1000; return (k >= 10 ? Math.round(k) : Number(k.toFixed(1))) + 'k' }
+        return String(n)
+      }
+      cachedJSON('sd_gh_repo', 'https://api.github.com/repos/zumerlab/snapdom')
+        .then(d => { const s = compact(d.stargazers_count); setText('star-count', s); setText('proof-stars', s) })
+        .catch(() => { setText('star-count', ''); hide('proof-stars-wrap') })
+      cachedJSON('sd_npm_dl', 'https://api.npmjs.org/downloads/point/last-month/@zumer/snapdom')
+        .then(d => setText('proof-downloads', compact(d.downloads)))
+        .catch(() => hide('proof-dl-wrap'))
+    })()
 
     // Live version from the published package.json (npm registry)
     ;(async function updateVersion() {

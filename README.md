@@ -329,6 +329,25 @@ Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdrape
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).
 
+## Show your support
+
+If snapDOM saved you time, a ⭐ on GitHub helps other developers find it — that's the whole ask.
+
+Shipping something built with snapDOM? Add the badge to your README:
+
+[![Built with snapDOM](https://img.shields.io/badge/built%20with-snapDOM-blue)](https://snapdom.dev)
+
+```md
+[![Built with snapDOM](https://img.shields.io/badge/built%20with-snapDOM-blue)](https://snapdom.dev)
+```
+
+### Projects using snapDOM
+
+- [Orbit](https://github.com/zumerlab/orbit) — CSS toolkit for radial layouts *(by Zumerlab)*
+- [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing *(by Zumerlab)*
+
+Using snapDOM in production? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project — real, verifiable projects only.
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=zumerlab/snapdom&type=Date)](https://www.star-history.com/#zumerlab/snapdom&Date)
