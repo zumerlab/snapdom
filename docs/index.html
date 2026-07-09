@@ -205,6 +205,14 @@
     .hero-proof svg { color: var(--sd-star); height: 0.95em; width: auto; }
     .sd-btn.hero-star { gap: 7px; }
     .sd-btn.hero-star svg { color: var(--sd-star); height: 1em; width: auto; }
+    .trusted-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--sd-hairline); }
+    .trusted-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--sd-annot); }
+    .trusted-item { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 12.5px; color: var(--sd-text-muted); text-decoration: none; transition: color 0.15s; }
+    .trusted-logo { width: 20px; height: 20px; border-radius: 5px; object-fit: cover; filter: grayscale(1); opacity: 0.72; transition: filter 0.15s, opacity 0.15s; }
+    .trusted-item:hover { color: var(--sd-text); }
+    .trusted-item:hover .trusted-logo { filter: grayscale(0); opacity: 1; }
+    .trusted-more { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.5px; color: var(--sd-accent); text-decoration: none; }
+    .trusted-more:hover { color: var(--sd-accent-hover); }
     #npm-copy:hover { color: var(--sd-accent-hover); }
 
     /* Viewfinder stage */
@@ -599,6 +607,7 @@
         <a href="./plugins.html" data-umami-event="Top plugins">Plugins</a>
         <a href="./guides/" data-umami-event="Top guides">Guides</a>
         <a href="./compare/" data-umami-event="Top compare">Compare</a>
+        <a href="./made-with/" data-umami-event="Top made-with">Made with</a>
         <a href="./labs.html" data-umami-event="Top labs">Labs</a>
       </nav>
       <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
@@ -661,6 +670,19 @@
           <div class="hero-tray" id="hero-tray" aria-live="polite"></div>
         </div>
       </div>
+    </div>
+
+    <div class="trusted-strip">
+      <span class="trusted-label">Used in production by</span>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/lobehub.png" alt="" width="20" height="20" loading="lazy">LobeHub</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/TriliumNext.png" alt="" width="20" height="20" loading="lazy">Trilium</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/labring.png" alt="" width="20" height="20" loading="lazy">Sealos</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/Tencent.png" alt="" width="20" height="20" loading="lazy">Tencent</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/seek-oss.png" alt="" width="20" height="20" loading="lazy">SEEK</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/antvis.png" alt="" width="20" height="20" loading="lazy">AntV</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/RabbyHub.png" alt="" width="20" height="20" loading="lazy">Rabby</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/metabrainz.png" alt="" width="20" height="20" loading="lazy">MetaBrainz</a>
+      <a class="trusted-more" href="./made-with/" data-umami-event="hero_trusted_click">+ more →</a>
     </div>
 
     <div id="menu-container" class="nav-collapsible">

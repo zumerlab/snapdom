@@ -343,9 +343,20 @@ Shipping something built with snapDOM? Add the badge to your README:
 
 ### Projects using snapDOM
 
-- [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing, powered by snapDOM *(by Zumerlab)*
+snapDOM runs in production across 290+ public repositories ([GitHub dependents graph](https://github.com/zumerlab/snapdom/network/dependents)). A few notable ones, each verified from its own `package.json`:
 
-Using snapDOM in production? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project — real, verifiable projects only.
+- [LobeHub](https://github.com/lobehub/lobehub) — platform for operating AI agents
+- [Trilium Notes](https://github.com/TriliumNext/Trilium) — hierarchical personal knowledge base
+- [Sealos](https://github.com/labring/sealos) — AI-native cloud operating system
+- [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — low-code page editor
+- [Playroom](https://github.com/seek-oss/playroom) — JSX design tool by SEEK
+- [GPT-Vis](https://github.com/antvis/GPT-Vis) — AI-friendly data viz by Ant Group's AntV
+- [Rabby Wallet](https://github.com/RabbyHub/Rabby) — browser wallet for EVM chains
+- [uMap](https://github.com/umap-project/umap) — OpenStreetMap map builder
+- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — music tracker by MetaBrainz
+- [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing *(by Zumerlab)*
+
+See the full gallery at **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**. Shipping snapDOM? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project — real, verifiable projects only.
 
 ## Star History
 
