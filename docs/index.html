@@ -35,7 +35,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="SnapDOM">
   <link rel="manifest" href="./assets/favicon/site.webmanifest">
-  <meta name="theme-color" content="#F5EFE3">
+  <meta name="theme-color" content="#F7F9FC">
 
   <!-- === JSON-LD Structured Data === -->
   <script type="application/ld+json">
@@ -70,7 +70,7 @@
     "description": "Next-generation DOM capture engine. Convert any DOM subtree to SVG, PNG, JPG, or WebP with full CSS fidelity — including pseudo-elements, web fonts, and Shadow DOM.",
     "url": "https://snapdom.dev/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
-    "softwareVersion": "2.12.9",
+    "softwareVersion": "2.15.0",
     "codeRepository": "https://github.com/zumerlab/snapdom",
     "license": "https://spdx.org/licenses/MIT.html",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -92,7 +92,8 @@
   <!-- === Stylesheets === -->
   <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous">
 
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Mansalva&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Mansalva&display=swap">
   <link rel="stylesheet" href="./shared.css">
 
   <!-- Analytics: loaded after interactive to avoid LCP penalty -->
@@ -106,76 +107,41 @@
       --sd-primary: #0F1E4D;
       --sd-primary-light: #1E3470;
       --sd-accent: #2D5BFF;
-      --sd-accent-hover: #1E40FF;
-      --sd-accent-soft: rgba(45,91,255,0.10);
-      --sd-gradient: linear-gradient(135deg, #2D5BFF 0%, #5C7CFF 100%);
-      --sd-gradient-alt: linear-gradient(90deg, #E63946 0%, #F5A623 100%);
-      --sd-surface: #FFFCF4;
-      --sd-surface-elevated: #FBF3DF;
+      --sd-accent-hover: #1D3FD8;
+      --sd-accent-soft: rgba(45,91,255,0.08);
+      --sd-gradient: linear-gradient(135deg, #2D5BFF, #2D5BFF);
+      --sd-gradient-alt: linear-gradient(90deg, #2D5BFF, #2D5BFF);
+      --sd-surface: #FFFFFF;
+      --sd-surface-elevated: #F0F4FB;
       --sd-text: #0F1E4D;
-      --sd-text-muted: #5A6478;
+      --sd-text-muted: #55617C;
+      --sd-annot: #6B7590;
       --sd-border: #0F1E4D;
-      --sd-border-soft: rgba(15,30,77,0.18);
-      --sd-shadow: 3px 3px 0 #0F1E4D;
-      --sd-shadow-hover: 5px 5px 0 #0F1E4D;
-      --sd-shadow-lg: 6px 6px 0 #0F1E4D;
-      --sd-radius: 10px;
-      --sd-radius-sm: 8px;
+      --sd-border-soft: rgba(15,30,77,0.16);
+      --sd-hairline: rgba(15,30,77,0.12);
+      --sd-shadow: none;
+      --sd-shadow-hover: none;
+      --sd-shadow-lg: none;
+      --sd-radius: 0;
+      --sd-radius-sm: 0;
       --sd-star: #F5A623;
-      --sd-body-bg: #F5EFE3;
-      --sd-grid-color: rgba(15,30,77,0.05);
-      --font-display: 'Unbounded', sans-serif;
-      --font-body: 'DM Sans', sans-serif;
+      --sd-body-bg: #F7F9FC;
+      --sd-grid-color: transparent;
+      --font-display: 'Tanker', 'Switzer', sans-serif;
+      --font-body: 'Switzer', sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
-      --font-hand: 'Mansalva', cursive;
-      --halftone-color: #0F1E4D;
+      --font-hand: 'Switzer', sans-serif;
+      --halftone-color: transparent;
       --halftone-size: 5px;
-      --halftone-dot: 1.3px;
-      --halftone-offset: 8px;
+      --halftone-dot: 0px;
+      --halftone-offset: 0px;
     }
-    /* ── Halftone newsprint shadow (retro print effect) ── */
-    section,
-    .card,
-    .card.black,
-    .winner-message,
-    .benchmark-output,
-    .proxy-card {
-      position: relative;
-    }
-    section::after,
-    .card::after,
-    .card.black::after,
-    .winner-message::after,
-    .benchmark-output::after,
-    .proxy-card::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(circle, var(--halftone-color) var(--halftone-dot), transparent calc(var(--halftone-dot) + 0.4px));
-      background-size: var(--halftone-size) var(--halftone-size);
-      transform: translate(var(--halftone-offset), var(--halftone-offset));
-      clip-path: polygon(
-        calc(100% - var(--halftone-offset)) 0,
-        100% 0,
-        100% 100%,
-        0 100%,
-        0 calc(100% - var(--halftone-offset)),
-        calc(100% - var(--halftone-offset)) calc(100% - var(--halftone-offset))
-      );
-      pointer-events: none;
-    }
-    .card:hover::after { transform: translate(calc(var(--halftone-offset) + 3px), calc(var(--halftone-offset) + 3px)); }
-    /* Page nav, GitHub badge → shared.css */
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       font-family: var(--font-body);
       background: var(--sd-body-bg);
-      background-image:
-        repeating-linear-gradient(0deg, var(--sd-grid-color) 0px, var(--sd-grid-color) 1px, transparent 1px, transparent 60px),
-        repeating-linear-gradient(90deg, var(--sd-grid-color) 0px, var(--sd-grid-color) 1px, transparent 1px, transparent 60px);
-      background-attachment: fixed;
       color: var(--sd-text);
       -webkit-font-smoothing: antialiased;
       min-height: 100vh;
@@ -183,871 +149,296 @@
       flex-direction: column;
       align-items: center;
       padding: 0;
+      counter-reset: spec;
     }
+    ::selection { background: rgba(45,91,255,0.18); }
 
-    h1 {
-      font-family: var(--font-display);
-      color: var(--sd-primary);
-      font-size: clamp(1.75rem, 4vw, 2.5rem);
-      margin-bottom: 0.75rem;
-      text-align: center;
-      letter-spacing: -0.03em;
-      font-weight: 900;
-    }
+    @keyframes sd-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+    @keyframes sd-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes sd-print-in { 0% { opacity: 0; translate: 0 -22px; } 100% { opacity: 1; translate: 0 0; } }
 
-    h2 {
-      font-family: var(--font-display);
-      font-size: clamp(1.15rem, 2.5vw, 1.35rem);
-      color: var(--sd-primary);
-      margin-top: 0;
-      margin-bottom: 1rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
+    /* ═══ Hero — the capture instrument ═══ */
+    .hero-block { width: 100%; max-width: 1200px; padding: 20px 32px 0; margin-bottom: 8px; position: relative; text-align: left; }
+    .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--sd-hairline); margin-bottom: 56px; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
+    .brand-mark { width: 12px; height: 12px; background: var(--sd-accent); flex: 0 0 auto; }
+    .brand-name { font-family: var(--font-display); font-weight: 400; font-size: 25px; color: var(--sd-text); letter-spacing: 0.5px; line-height: 1; }
+    .top-links { display: flex; align-items: center; gap: 26px; }
+    .top-links a { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--sd-text-muted); text-decoration: none; transition: color 0.15s; }
+    .top-links a:hover { color: var(--sd-accent); }
+    .hero-top .github-badge { margin: 0; }
 
+    .hero-grid { display: grid; grid-template-columns: 1.02fr 0.98fr; gap: 56px; align-items: start; }
+    .hero-copy { display: flex; flex-direction: column; gap: 26px; padding-top: 10px; }
+    .hero-eyebrow { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--sd-text-muted); text-transform: uppercase; }
+    .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sd-accent); animation: sd-blink 1.8s infinite; flex: 0 0 auto; }
+    .hero-block h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(56px, 6.4vw, 92px); line-height: 0.94; letter-spacing: 0.5px; color: var(--sd-text); margin: 0; text-align: left; }
+    .hero-tagline { font-size: 18px; color: #3A4358; margin: 0; max-width: 500px; line-height: 1.6; }
+    .hero-tagline em { font-style: normal; font-weight: 700; color: var(--sd-text); }
+    .hero-actions { display: flex; gap: 14px; justify-content: flex-start; flex-wrap: wrap; margin-top: 0; }
+    .sd-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 26px; border-radius: 999px; font-size: 15px; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer; border: 1.5px solid transparent; transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; font-family: var(--font-body); letter-spacing: 0; box-shadow: none; }
+    .sd-btn:hover { transform: translateY(-1px); box-shadow: none; }
+    .sd-btn:active { transform: translateY(0); box-shadow: none; }
+    .sd-btn-primary { background: var(--sd-accent); color: #FFFFFF !important; }
+    .sd-btn-primary:hover { background: var(--sd-accent-hover); }
+    .sd-btn-ghost { background: transparent; color: var(--sd-text) !important; border-color: rgba(15,30,77,0.28); }
+    .sd-btn-ghost:hover { border-color: var(--sd-border); color: var(--sd-text) !important; }
+    .npm-line { display: inline-flex; align-items: center; gap: 14px; border: 1px solid var(--sd-border-soft); padding: 12px 16px; font-family: var(--font-mono); font-size: 13px; color: var(--sd-text); align-self: flex-start; background: var(--sd-surface); }
+    .npm-prompt { color: var(--sd-text-muted); }
+    #npm-copy { border: 0; background: none; cursor: pointer; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--sd-accent); padding: 4px 0 4px 14px; border-left: 1px solid var(--sd-border-soft); text-transform: uppercase; }
+    #npm-copy:hover { color: var(--sd-accent-hover); }
 
-    button:not(.theme-toggle):not(.sd-btn), button#capture, .run-benchmark-button {
-      background: var(--sd-accent);
-      color: #FFFCF4 !important;
-      border: 2px solid var(--sd-border);
-      border-radius: 8px;
-      padding: 0.55rem 1.25rem;
-      font-size: 0.9rem;
+    /* Viewfinder stage */
+    .hero-stagewrap { display: flex; flex-direction: column; gap: 16px; }
+    .stage { position: relative; height: 470px; border: 1.5px solid var(--sd-border); background: #FFFFFF; overflow: hidden; }
+    .stage-third { position: absolute; background: rgba(15,30,77,0.07); pointer-events: none; }
+    .stage-third.v { top: 0; bottom: 0; width: 1px; }
+    .stage-third.h { left: 0; right: 0; height: 1px; }
+    .stage-cross { position: absolute; transform: translate(-50%, -50%); font-family: var(--font-mono); font-size: 13px; color: rgba(15,30,77,0.25); pointer-events: none; }
+    .stage-bracket { position: absolute; width: 26px; height: 26px; pointer-events: none; }
+    .stage-bracket.tl { top: 14px; left: 14px; border-top: 3px solid var(--sd-accent); border-left: 3px solid var(--sd-accent); }
+    .stage-bracket.tr { top: 14px; right: 14px; border-top: 3px solid var(--sd-accent); border-right: 3px solid var(--sd-accent); }
+    .stage-bracket.bl { bottom: 14px; left: 14px; border-bottom: 3px solid var(--sd-accent); border-left: 3px solid var(--sd-accent); }
+    .stage-bracket.br { bottom: 14px; right: 14px; border-bottom: 3px solid var(--sd-accent); border-right: 3px solid var(--sd-accent); }
+    .stage-mascot { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); height: 74%; width: auto; }
+    .stage-annot { position: absolute; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--sd-annot); text-transform: uppercase; white-space: nowrap; }
+    .stage-annot.vert { writing-mode: vertical-rl; }
+    #hero-flash { position: absolute; inset: 0; background: #FFFFFF; opacity: 0; pointer-events: none; z-index: 5; }
+    #hero-flash.flashing { animation: sd-flash 0.55s ease-out both; }
+
+    .stage-row { display: flex; align-items: flex-start; gap: 22px; min-height: 150px; }
+    .shutter-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .shutter { width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--sd-border); background: #FFFFFF; display: grid; place-items: center; cursor: pointer; padding: 0; transition: transform 0.12s; }
+    .shutter span { display: block; width: 38px; height: 38px; border-radius: 50%; background: var(--sd-accent); transition: background 0.15s; }
+    .shutter:hover span { background: var(--sd-accent-hover); }
+    .shutter:active { transform: scale(0.92); }
+    .shutter:disabled { opacity: 0.55; cursor: wait; }
+    .shutter-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.2px; color: var(--sd-annot); }
+    .hero-tray { display: flex; gap: 14px; align-items: flex-start; flex: 1; min-width: 0; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+    .hero-tray::-webkit-scrollbar { display: none; }
+    .hero-tray:empty::before { content: 'PRINTS LAND HERE — PRESS THE SHUTTER'; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; color: var(--sd-annot); opacity: 0.7; padding-top: 24px; }
+    .print { background: #FFFFFF; border: 1px solid rgba(15,30,77,0.2); padding: 7px 7px 8px; display: flex; flex-direction: column; gap: 6px; animation: sd-print-in 0.5s cubic-bezier(0.2,0.9,0.3,1) both; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); flex: 0 0 auto; }
+    .print img { display: block; width: 178px; height: auto; background: #fff; border: 0 !important; padding: 0 !important; box-shadow: none !important; }
+    .print-cap { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.8px; color: var(--sd-text-muted); }
+    .print.r1 { transform: rotate(1.8deg); }
+    .print.r2 { transform: rotate(-2.2deg); }
+    .print.r3 { transform: rotate(1.1deg); }
+
+    /* ═══ Contact sheet (demo index) ═══ */
+    .nav-collapsible { overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+    .nav-collapsible.open { max-height: 75vh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1rem 0 0.5rem; margin-top: 0.75rem; scrollbar-width: thin; }
+    .menu-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--sd-annot); margin: 48px 0 14px; text-transform: uppercase; }
+    nav.demo-menu { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: rgba(15,30,77,0.14); border: 1px solid rgba(15,30,77,0.14); counter-reset: demo; padding: 0; margin: 0; }
+    nav.demo-menu a { position: relative; counter-increment: demo; display: flex; flex-direction: column; gap: 14px; background: var(--sd-surface); color: var(--sd-text); text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; letter-spacing: 0.3px; padding: 13px 13px 11px; border: 0; border-radius: 0; transition: background 0.15s, color 0.15s; min-height: 74px; }
+    nav.demo-menu a::before { content: counter(demo, decimal-leading-zero); display: block; font-size: 10px; opacity: 0.45; }
+    nav.demo-menu a:hover { background: var(--sd-border); color: #FFFFFF; border-color: transparent; }
+    nav.demo-menu::after { content: ''; background: var(--sd-surface); grid-column: span 3; }
+    @media (min-width: 1081px) { nav.demo-menu::after { display: none; } }
+    @media (max-width: 600px) { nav.demo-menu::after { grid-column: span 1; } }
+
+    section a { color: var(--sd-accent); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(45,91,255,0.35); transition: all 0.2s; }
+    section a:hover { border-bottom-color: var(--sd-accent); color: var(--sd-accent-hover); }
+
+    /* ═══ Sections as specimens ═══ */
+    main { width: 100%; max-width: 820px; padding: 0 24px; }
+    section { margin-bottom: 0; padding: 54px 0 44px; border: 0; border-top: 1px solid var(--sd-hairline); border-radius: 0; background: transparent; counter-increment: spec; }
+    main > section:first-of-type, main section:first-child { border-top: 0; }
+    h1 { font-family: var(--font-display); color: var(--sd-text); font-size: clamp(1.75rem, 4vw, 2.5rem); margin-bottom: 0.75rem; letter-spacing: 0.3px; font-weight: 400; }
+    h2 { font-family: var(--font-display); font-size: 27px; color: var(--sd-text); margin-top: 0; margin-bottom: 1.1rem; font-weight: 400; letter-spacing: 0.3px; }
+    section > h2::before { content: 'SPECIMEN ' counter(spec, decimal-leading-zero); display: block; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 2.5px; color: var(--sd-accent); margin-bottom: 12px; }
+    #powered-by > h2::before { content: 'ECOSYSTEM'; }
+    h3 { font-family: var(--font-body); font-weight: 700; }
+
+    /* Buttons (demo controls) */
+    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(#npm-copy), button#capture, .run-benchmark-button {
+      background: transparent;
+      color: var(--sd-text) !important;
+      border: 1.5px solid var(--sd-border);
+      border-radius: 999px;
+      padding: 0.6rem 1.3rem;
+      font-size: 0.72rem;
       font-weight: 700;
       font-family: var(--font-mono);
-      letter-spacing: 0.3px;
-      box-shadow: var(--sd-shadow);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      box-shadow: none;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
       margin: 0 0.5em 0.5em 0;
     }
-
-    button:not(.theme-toggle):not(.sd-btn):hover:not(:disabled), button#capture:hover, .run-benchmark-button:hover {
-      background: var(--sd-accent-hover);
-      transform: translate(-1px, -1px);
-      box-shadow: var(--sd-shadow-hover);
+    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(#npm-copy):hover:not(:disabled), button#capture:hover, .run-benchmark-button:hover:not(:disabled) {
+      background: var(--sd-border);
+      color: #FFFFFF !important;
+      transform: none;
+      box-shadow: none;
     }
-    button:not(.theme-toggle):not(.sd-btn):active:not(:disabled), button#capture:active, .run-benchmark-button:active {
-      transform: translate(2px, 2px);
-      box-shadow: 1px 1px 0 var(--sd-border);
-    }
+    .run-benchmark-button { background: var(--sd-accent); border-color: var(--sd-accent); color: #FFFFFF !important; }
+    .run-benchmark-button:hover:not(:disabled) { background: var(--sd-accent-hover); border-color: var(--sd-accent-hover); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    .demo-explanation { font-size: 15px; color: var(--sd-text-muted); margin: -0.35rem 0 1.2rem; line-height: 1.6; max-width: 660px; }
+    .demo-explanation code, section p code { background: var(--sd-accent-soft); padding: 0.15rem 0.4rem; border-radius: 0; font-size: 0.9em; font-family: var(--font-mono); color: #1D3FD8; }
 
-    /* Hero badge */
-    @keyframes blink-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .card { background: var(--sd-surface); padding: 1.5em; border: 1px solid var(--sd-border-soft); border-radius: 0; margin-bottom: 1.4em; transition: none; }
+    .card:hover { transform: none; }
+    .card.black { background: #050E2A; padding: 1.5em; border: 1px solid var(--sd-border); border-radius: 0; margin-bottom: 1.4em; }
+    .card.shadow-demo { width: 100%; max-width: 400px; }
 
-    /* Hero action buttons */
-    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
-    .sd-btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; border: 2px solid var(--sd-border); transition: transform 0.15s, box-shadow 0.15s; font-family: var(--font-mono); letter-spacing: 0.3px; box-shadow: var(--sd-shadow); }
-    .sd-btn:hover { transform: translate(-1px, -1px); box-shadow: var(--sd-shadow-hover); }
-    .sd-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--sd-border); }
-    .sd-btn-primary { background: var(--sd-accent); color: #FFFCF4 !important; }
-    .sd-btn-primary:hover { background: var(--sd-accent-hover); }
-    .sd-btn-ghost { background: var(--sd-surface); color: var(--sd-text) !important; }
-    .sd-btn-ghost:hover { color: var(--sd-accent) !important; }
+    /* Captures come out as prints */
+    .output { margin-top: 1.3rem; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+    .output img, .output canvas, .output iframe { max-width: 100%; border: 1px solid rgba(15,30,77,0.2); background: #fff; padding: 6px; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); }
 
-    /* === Hero: título + badge + menú === */
-    .hero-block {
-      width: 100%;
-      max-width: 720px;
-      text-align: center;
-      padding: 2rem 1.25rem 1.5rem;
-      margin-bottom: 0.5rem;
-      position: relative;
-    }
-    .hero-mascot {
-      display: block;
-      margin: 16px auto 8px;
-      width: clamp(140px, 24vw, 200px);
-      height: auto;
-      filter: drop-shadow(3px 3px 0 var(--sd-border));
-    }
-
-    .hero-block h1 {
-      margin-bottom: 0.35rem;
-      font-size: clamp(2.4rem, 7vw, 3.6rem);
-      letter-spacing: -2px;
-    }
-
-    .hero-tagline {
-      font-size: 1.1rem;
-      color: var(--sd-text-muted);
-      margin: 0 auto 1.5rem;
-      max-width: 520px;
-      line-height: 1.5;
-    }
-    .hero-tagline em {
-      font-style: normal;
-      color: var(--sd-text);
-      font-family: var(--font-hand);
-      font-size: 1.2em;
-      font-weight: 400;
-    }
-
-
-    .nav-collapsible {
-      overflow: hidden;
-      max-height: 0;
-      transition: max-height 0.3s ease;
-      border-radius: var(--sd-radius-sm);
-    }
-
-    .nav-collapsible.open {
-      max-height: 75vh;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding: 1rem 0 0.5rem;
-      margin-top: 0.75rem;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
-    }
-
-    nav.demo-menu {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.4rem;
-      padding: 0;
-      margin-top: 0.5rem;
-    }
-
-    nav.demo-menu a {
-      color: var(--sd-text-muted);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.75rem;
-      font-family: var(--font-mono);
-      padding: 0.35rem 0.7rem;
-      border-radius: 6px;
-      border: 1px solid var(--sd-border);
-      transition: all 0.25s;
-      letter-spacing: 0.3px;
-    }
-
-    nav.demo-menu a:hover {
-      background: var(--sd-accent-soft);
-      color: var(--sd-accent);
-      border-color: var(--sd-accent);
-    }
-
-    section a {
-      color: var(--sd-accent);
-      text-decoration: none;
-      font-weight: 600;
-      border-bottom: 1px solid var(--sd-border-soft);
-      transition: all 0.2s;
-    }
-
-    section a:hover {
-      border-bottom-color: var(--sd-accent);
-      color: var(--sd-accent-hover);
-    }
-
-    main {
-      width: 100%;
-      max-width: 720px;
-    }
-
-    section {
-      margin-bottom: 2.5rem;
-      padding: 1.5rem;
-      border-radius: var(--sd-radius);
-      background: var(--sd-surface);
-      border: 2px solid var(--sd-border);
-    }
-
-    section:target::after {
-      transform: translate(calc(var(--halftone-offset) + 4px), calc(var(--halftone-offset) + 4px));
-    }
-
-    .demo-explanation {
-      font-size: 0.95rem;
-      color: var(--sd-text-muted);
-      margin: -0.5rem 0 1rem;
-      line-height: 1.5;
-    }
-
-    .demo-explanation code {
-      background: var(--sd-accent-soft);
-      padding: 0.15rem 0.4rem;
-      border-radius: 4px;
-      font-size: 0.9em;
-      font-family: var(--font-mono);
-      color: var(--sd-accent);
-    }
-
-    .github-badge { margin-bottom: 20px; }
-    h1 .accent { color: var(--sd-accent); }
-    h1 .accent-ink { color: var(--sd-text); }
-
-    .card {
-      background: var(--sd-surface);
-      padding: 1.5em;
-      border: 2px solid var(--sd-border);
-      border-radius: var(--sd-radius);
-      margin-bottom: 1.5em;
-      transition: transform 0.15s;
-    }
-
-    .card.black {
-      background: #050E2A;
-      padding: 1.5em;
-      border: 2px solid var(--sd-border);
-      border-radius: var(--sd-radius);
-      margin-bottom: 1.5em;
-    }
-
-    .card:hover {
-      transform: translate(-2px, -2px);
-    }
-
-    .transition-box {
-      background: linear-gradient(to right, #43cea2, #185a9d);
-      color: rgb(30, 27, 27);
-      text-align: center;
-      font-size: 1.2em;
-      padding: 2em;
-      border-radius: 16px;
-      animation: bounceColor 5s infinite ease-in-out;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    }
-
+    /* Transition demo (capture subject keeps its party) */
+    .transition-box { background: linear-gradient(to right, #43cea2, #185a9d); color: rgb(30, 27, 27); text-align: center; font-size: 1.2em; padding: 2em; border-radius: 16px; animation: bounceColor 5s infinite ease-in-out; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
     @keyframes bounceColor {
-      0% {
-        transform: rotate(0deg) scale(1) translateY(0);
-        background: radial-gradient(circle at center, #4facfe, #00f2fe);
-        filter: brightness(1);
-      }
-
-      20% {
-        transform: rotate(-1deg) scale(1.08) translateY(4px);
-        background: radial-gradient(circle at 40% 60%, #fa709a, #fee140);
-        filter: brightness(1.12) hue-rotate(20deg);
-      }
-
-      50% {
-        transform: rotate(2deg) scale(0.9) translateY(-6px);
-        background: radial-gradient(circle at 70% 30%, #30cfd0, #330867);
-        filter: brightness(1.1) hue-rotate(-20deg);
-      }
-
-      70% {
-        transform: rotate(-3deg) scale(1) translateY(6px);
-        background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751);
-        filter: brightness(1.15) saturate(1.2);
-      }
-
-      100% {
-        transform: rotate(0deg) scale(0.95) translateY(0);
-        background: radial-gradient(circle at center, #4facfe, #00f2fe);
-        filter: brightness(1);
-      }
+      0% { transform: rotate(0deg) scale(1) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
+      20% { transform: rotate(-1deg) scale(1.08) translateY(4px); background: radial-gradient(circle at 40% 60%, #fa709a, #fee140); filter: brightness(1.12) hue-rotate(20deg); }
+      50% { transform: rotate(2deg) scale(0.9) translateY(-6px); background: radial-gradient(circle at 70% 30%, #30cfd0, #330867); filter: brightness(1.1) hue-rotate(-20deg); }
+      70% { transform: rotate(-3deg) scale(1) translateY(6px); background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751); filter: brightness(1.15) saturate(1.2); }
+      100% { transform: rotate(0deg) scale(0.95) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
     }
-
-    .export-text {
-      font-size: 1.1rem;
-      color: var(--sd-text);
-      text-align: center;
-    }
-
-    .export-format {
-      font-weight: bold;
-      padding: 0.2rem 0.4rem;
-      border-radius: 4px;
-      background: var(--sd-accent-soft);
-      color: var(--sd-accent);
-      margin: 0 0.2rem;
-      font-family: var(--font-mono);
-      font-size: 0.9em;
-    }
-
-    .pseudo-box::before {
-      content: '★ ';
-      color: gold;
-      font-size: 1.2em;
-    }
-
-    .pseudo-box::after {
-      content: ' ✨';
-      color: violet;
-      font-size: 1.2em;
-    }
-
-    .clip-card {
-      clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
-      background: linear-gradient(120deg, #2D5BFF 0%, #5C7CFF 100%);
-      color: #fff;
-      font-weight: bold;
-      text-align: center;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
-
-    .blend-card {
-      /* Real photo + color overlay with background-blend-mode: multiply */
-      background-image: url("https://picsum.photos/id/15/800/400");
-      background-color: rgba(0, 60, 50, 0.65);
-      background-blend-mode: multiply;
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      color: white;
-      padding: 2.5em 2em;
-      font-weight: bold;
-      border-radius: 16px;
-      text-align: center;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-      min-height: 180px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .dancers {
-      display: inline-block;
-      font-size: 2.2rem;
-      animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
-      will-change: transform, filter;
-    }
-
+    .dancers { display: inline-block; font-size: 2.2rem; animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55); will-change: transform, filter; }
     @keyframes dance-move {
-      0% {
-        transform: rotate(-10deg) scale(1) translateY(0);
-        filter: brightness(1) drop-shadow(0 0 0 #fff0);
-      }
-
-      10% {
-        transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg);
-        filter: brightness(1.1) drop-shadow(0 2px 4px #ffe25988);
-      }
-
-      20% {
-        transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg);
-        filter: brightness(1.15) drop-shadow(0 4px 8px #fa709a66);
-      }
-
-      30% {
-        transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg);
-        filter: brightness(1.1) drop-shadow(0 2px 4px #43e97b66);
-      }
-
-      40% {
-        transform: rotate(-8deg) scale(1.02, 1.02) translateY(2px) skewY(6deg);
-        filter: brightness(1.08) drop-shadow(0 2px 4px #38f9d766);
-      }
-
-      50% {
-        transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg);
-        filter: brightness(1.2) drop-shadow(0 4px 8px #fee14066);
-      }
-
-      60% {
-        transform: rotate(-10deg) scale(0.96, 1.08) translateY(6px) skewY(10deg);
-        filter: brightness(1.1) drop-shadow(0 2px 4px #30cfd066);
-      }
-
-      70% {
-        transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg);
-        filter: brightness(1.12) drop-shadow(0 2px 4px #33086766);
-      }
-
-      80% {
-        transform: rotate(-12deg) scale(1, 1) translateY(0) skewY(0deg);
-        filter: brightness(1.05) drop-shadow(0 0 0 #fff0);
-      }
-
-      100% {
-        transform: rotate(-10deg) scale(1) translateY(0);
-        filter: brightness(1) drop-shadow(0 0 0 #fff0);
-      }
+      0% { transform: rotate(-10deg) scale(1) translateY(0); }
+      10% { transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg); }
+      20% { transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg); }
+      30% { transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg); }
+      50% { transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg); }
+      70% { transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg); }
+      100% { transform: rotate(-10deg) scale(1) translateY(0); }
     }
 
-    .output {
-      margin-top: 1.3rem;
-    }
+    .export-text { font-size: 1.1rem; color: var(--sd-text); text-align: center; }
+    .export-format { font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 0; background: var(--sd-accent-soft); color: #1D3FD8; margin: 0 0.2rem; font-family: var(--font-mono); font-size: 0.9em; }
 
-    #orbit-box {
-      font-family: sans-serif;
-      font-optical-sizing: auto;
-      background-color: rgb(16, 16, 16) !important;
-      color: rgba(255, 255, 255, 0.451);
-    }
+    .pseudo-box::before { content: '★ '; color: var(--sd-star); font-size: 1.2em; }
+    .pseudo-box::after { content: ' ✨'; color: var(--sd-accent); font-size: 1.2em; }
 
+    .clip-card { clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%); background: linear-gradient(120deg, #2D5BFF 0%, #5C7CFF 100%); color: #fff; font-weight: bold; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 
-    /* === Mask demos === */
-    .mask-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1rem;
-    }
+    .blend-card { background-image: url("https://picsum.photos/id/15/800/400"); background-color: rgba(0, 60, 50, 0.65); background-blend-mode: multiply; background-size: cover; background-position: center; background-repeat: no-repeat; color: white; padding: 2.5em 2em; font-weight: bold; border-radius: 16px; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.3); min-height: 180px; display: flex; align-items: center; justify-content: center; }
 
-    .mask-card {
-      position: relative;
-      min-height: 180px;
-      display: grid;
-      place-items: center;
-      border-radius: 16px;
-      overflow: hidden;
-    }
+    #orbit-box { font-family: sans-serif; font-optical-sizing: auto; background-color: rgb(16, 16, 16) !important; color: rgba(255, 255, 255, 0.451); }
 
-    .mask-bg {
-      position: absolute;
-      inset: 0;
-      background: url("https://picsum.photos/id/29/600/400") no-repeat center/cover;
-    }
-
-    .mask-label {
-      position: relative;
-      z-index: 2;
-      background: rgba(255, 255, 255, .75);
-      padding: .3rem .6rem;
-      border-radius: 8px;
-      font-weight: 700;
-    }
-
-    /* CSS mask-image (radial spotlight) */
-    .mask-radial .mask-bg {
-      mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%);
-      -webkit-mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%);
-    }
-
-    /* PNG/SVG circle via mask (inline data URL, no 404/CORS) */
-    /* PNG/SVG circle mask — longhands + base64 for robust capture */
+    /* Mask demos */
+    .mask-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .mask-card { position: relative; min-height: 180px; display: grid; place-items: center; border-radius: 0; overflow: hidden; border: 1px solid var(--sd-border-soft); }
+    .mask-bg { position: absolute; inset: 0; background: url("https://picsum.photos/id/29/600/400") no-repeat center/cover; }
+    .mask-label { position: relative; z-index: 2; background: rgba(255, 255, 255, 0.9); padding: 0.3rem 0.7rem; border-radius: 0; font-weight: 600; font-family: var(--font-mono); font-size: 12px; }
+    .mask-radial .mask-bg { mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%); -webkit-mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%); }
     .mask-png .mask-bg {
-      /* Standard longhands */
       mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-      mask-position: center;
-      mask-size: 60% 60%;
-      mask-repeat: no-repeat;
-
-      /* WebKit longhands (Safari) */
+      mask-position: center; mask-size: 60% 60%; mask-repeat: no-repeat;
       -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-      -webkit-mask-position: center;
-      -webkit-mask-size: 60% 60%;
-      -webkit-mask-repeat: no-repeat;
+      -webkit-mask-position: center; -webkit-mask-size: 60% 60%; -webkit-mask-repeat: no-repeat;
     }
+    .mask-svg { background: #1a1a2e; }
+    .mask-svg .masked-box { width: 100%; height: 100%; background: url("https://picsum.photos/id/37/600/400") center/cover no-repeat; mask: url(#svg-blob-mask); -webkit-mask: url(#svg-blob-mask); }
 
-
-    /* SVG mask inline */
-    .mask-svg {
-      background: #1a1a2e;
+    /* Forms */
+    .form-demo { display: grid; gap: 0.8rem; width: 100%; }
+    .form-row { display: grid; gap: 0.35rem; }
+    .form-row.inline { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .form-demo label { font-size: 13px; font-weight: 600; color: var(--sd-text-muted); }
+    .form-demo input[type="text"], .form-demo input[type="email"], .form-demo select, .form-demo textarea {
+      width: 100%; box-sizing: border-box; border: 1px solid rgba(15,30,77,0.3); border-radius: 0; padding: 0.55rem 0.7rem; font-size: 1rem; font-family: var(--font-body); background: #fff; box-shadow: none; min-height: 42px; color: var(--sd-text);
     }
+    .form-demo input:focus, .form-demo select:focus, .form-demo textarea:focus { outline: none; border-color: var(--sd-accent); }
+    .form-demo textarea { display: block; resize: vertical; }
 
-    .mask-svg .masked-box {
-      width: 100%;
-      height: 100%;
-      background: url("https://picsum.photos/id/37/600/400") center/cover no-repeat;
-      mask: url(#svg-blob-mask);
-      -webkit-mask: url(#svg-blob-mask);
-    }
+    /* Iframe demo */
+    .iframe-wrap { border-radius: 0; overflow: hidden; border: 1px solid var(--sd-border-soft); }
+    .iframe-wrap iframe { display: block; width: 100%; height: 240px; background: white; }
 
-    /* Forms: asegurar sizing y ancho */
-    .form-demo {
-      display: grid;
-      gap: .8rem;
-      width: 100%;
-    }
-
-    .form-row {
-      display: grid;
-      gap: .35rem;
-    }
-
-    .form-row.inline {
-      grid-template-columns: 1fr 1fr;
-      /* desktop: dos columnas */
-      gap: .6rem;
-    }
-
-    .form-demo input[type="text"],
-    .form-demo input[type="email"],
-    .form-demo select,
-    .form-demo textarea {
-      width: 100%;
-      box-sizing: border-box;
-      border: 2px solid var(--sd-accent);
-      border-radius: 10px;
-      padding: .55rem .7rem;
-      font-size: 1rem;
-      background: #fff;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, .05);
-      min-height: 42px;
-      /* mejora tap target en mobile */
-    }
-
-    .form-demo textarea {
-      display: block;
-      resize: vertical;
-    }
-
-    /* Mobile: apilar filas inline y evitar overflow */
-    @media (max-width: 600px) {
-      .form-row.inline {
-        grid-template-columns: 1fr !important;
-        /* una columna en mobile */
-      }
-
-      .form-demo input[type="text"],
-      .form-demo input[type="email"],
-      .form-demo select,
-      .form-demo textarea {
-        font-size: 16px;
-        /* evita zoom automático en iOS */
-      }
-    }
-
-
-    /* === Iframe demo === */
-    .iframe-wrap {
-      border-radius: var(--sd-radius);
-      overflow: hidden;
-      border: 2px solid var(--sd-border);
-    }
-
-    .iframe-wrap iframe {
-      display: block;
-      width: 100%;
-      height: 240px;
-      background: white;
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 0.75rem;
-      }
-
-      h1 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-      }
-
-      .hero-desc {
-        font-size: 0.95rem;
-        margin-bottom: 1.25rem;
-      }
-
-      main {
-        max-width: 100%;
-        padding: 0;
-      }
-
-      section {
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-      }
-
-      .hero-block {
-        padding: 1.25rem 1rem 1rem;
-      }
-
-      .hero-actions { gap: 8px; }
-      .sd-btn { padding: 10px 16px; font-size: 13px; }
-      .nav-collapsible.open { max-height: 50vh; }
-
-      .github-badge {
-        font-size: 12px;
-        padding: 4px 10px;
-      }
-
-      .repo-link {
-        display: none;
-      }
-
-      nav.demo-menu {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.35rem;
-      }
-
-      nav.demo-menu a {
-        padding: 0.4rem 0.5rem;
-        font-size: 0.75rem;
-        text-align: center;
-      }
-
-      .card,
-      .card.black {
-        padding: 1em;
-        font-size: 0.9em;
-        border-radius: var(--sd-radius-sm);
-      }
-
-      .output {
-        margin-top: 0.7rem;
-      }
-
-      .blend-card {
-        padding: 1em;
-        font-size: 0.85em;
-      }
-
-      .transition-box {
-        padding: 1em;
-        font-size: 0.9em;
-      }
-
-      .dancers {
-        font-size: 1.3rem;
-      }
-
-      button#capture,
-      button:not(.sd-btn):not(.theme-toggle) {
-        font-size: 0.9em;
-        padding: 0.5em 1em;
-        margin-bottom: 0.5em;
-      }
-
-      .export-text {
-        font-size: 1em;
-      }
-
-      .clip-card {
-        font-size: 1em;
-      }
-
-      .pseudo-box {
-        font-size: 1em;
-      }
-
-      #orbit-box {
-        height: 220px !important;
-        min-width: 0;
-        font-size: 0.8em;
-      }
-
-      .mask-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .benchmark-output {
-        height: 200px;
-      }
-
-      .benchmark-container {
-        gap: 1rem;
-        flex-direction: column;
-      }
-
-      .benchmark-column {
-        max-width: 100%;
-      }
-    }
-
-    .comparison-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      margin-top: 1rem;
-      flex-direction: row;
-    }
-
-    .comparison-row>div {
-      flex: 1;
-      min-width: 300px;
-      text-align: center;
-    }
-
-    .label {
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-    }
-
-    .winner-glow {
-      animation: glow 1.2s infinite alternate ease-in-out;
-      border-radius: 20px;
-    }
-
-    .progress-message {
-      margin: 1rem 0;
-      font-size: 0.9rem;
-      color: var(--sd-text-muted);
-      font-weight: bold;
-    }
-
-    .result-message {
-      margin-top: 0.5rem;
-      font-weight: bold;
-      background: rgba(0, 0, 0, 0.05);
-      padding: 0.3rem;
-      border-radius: 4px;
-    }
-
-    .winner-message {
-      font-size: 1.3rem;
-      font-family: var(--font-mono);
-      margin: 1rem 0;
-      padding: 0.8rem 1.2rem;
-      border-radius: 8px;
-      background: var(--sd-accent-soft);
-      border: 2px solid var(--sd-border);
-      display: inline-block;
-    }
-
-    .winner-message .speed-badge {
-      display: inline-block;
-      background: var(--sd-accent);
-      color: #FFFCF4;
-      padding: 0.2rem 0.6rem;
-      border-radius: 6px;
-      font-weight: bold;
-      margin-left: 0.5rem;
-    }
-
-    .benchmark-cta {
-      display: inline-block;
-      margin: 0.9rem 0 0;
-      padding: 0.55rem 1rem;
-      font-family: var(--font-mono);
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--sd-accent);
-      background: transparent;
-      border: 2px solid var(--sd-accent);
-      border-radius: 8px;
-      text-decoration: none;
-      transition: transform 0.15s, background 0.15s, color 0.15s;
-    }
-    .benchmark-cta:hover {
-      background: var(--sd-accent);
-      color: #FFFCF4;
-      transform: translate(-1px, -1px);
-    }
+    /* Benchmark */
+    .comparison-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; margin-top: 1rem; flex-direction: row; }
+    .comparison-row > div { flex: 1; min-width: 300px; text-align: center; }
+    .label { font-weight: 700; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+    .winner-glow { animation: glow 1.2s infinite alternate ease-in-out; border-radius: 0; }
+    .progress-message { margin: 1rem 0; font-size: 0.85rem; color: var(--sd-text-muted); font-weight: 600; font-family: var(--font-mono); }
+    .result-message { margin-top: 0.5rem; font-weight: 700; background: var(--sd-accent-soft); padding: 0.3rem; border-radius: 0; font-family: var(--font-mono); font-size: 0.85rem; }
+    .winner-message { font-size: 1.1rem; font-family: var(--font-mono); margin: 1rem 0; padding: 0.8rem 1.2rem; border-radius: 0; background: var(--sd-surface); border: 1px solid var(--sd-border); display: inline-block; }
+    .winner-message .speed-badge { display: inline-block; background: var(--sd-accent); color: #FFFFFF; padding: 0.2rem 0.7rem; border-radius: 999px; font-weight: 700; margin-left: 0.5rem; }
+    .benchmark-cta { display: inline-block; margin: 0.9rem 0 0; padding: 0.6rem 1.2rem; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sd-accent); background: transparent; border: 1.5px solid var(--sd-accent); border-radius: 999px; text-decoration: none; transition: background 0.15s, color 0.15s; }
+    .benchmark-cta:hover { background: var(--sd-accent); color: #FFFFFF; transform: none; }
     .benchmark-cta span { margin-left: 0.3rem; transition: margin-left 0.15s; }
     .benchmark-cta:hover span { margin-left: 0.55rem; }
-
-    .benchmark-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 2rem;
-      width: 100%;
-    }
-
-    .benchmark-column {
-      flex: 1;
-      min-width: 100px;
-      max-width: calc(50% - 1rem);
-    }
-
-    .benchmark-output {
-      width: 100%;
-      height: 250px;
-      overflow: auto;
-      border: 2px solid var(--sd-border);
-      border-radius: 8px;
-      padding: 10px;
-      background: var(--sd-accent-soft);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .benchmark-output img,
-    .benchmark-output canvas {
-      max-width: 100%;
-      max-height: 200px;
-      object-fit: contain;
-      margin: 0 auto;
-      display: block;
-    }
-
+    .benchmark-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
+    .benchmark-column { flex: 1; min-width: 100px; max-width: calc(50% - 1rem); }
+    .benchmark-output { width: 100%; height: 250px; overflow: auto; border: 1px solid var(--sd-border-soft); border-radius: 0; padding: 10px; background: var(--sd-surface-elevated); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .benchmark-output img, .benchmark-output canvas { max-width: 100%; max-height: 200px; object-fit: contain; margin: 0 auto; display: block; }
     @keyframes glow {
-      from {
-        box-shadow: 0 0 8px 2px var(--sd-border-soft);
-        transform: scale(1.01);
-      }
-
-      to {
-        box-shadow: 0 0 14px 4px rgba(45,91,255,0.45);
-        transform: scale(1.02);
-      }
+      from { box-shadow: 0 0 0 1px rgba(45,91,255,0.25); }
+      to { box-shadow: 0 0 0 3px rgba(45,91,255,0.55); }
     }
+
+    /* CORS proxy demo */
+    .proxy-card { position: relative; border-radius: 0; padding: 1rem; background: var(--sd-surface); border: 1px solid var(--sd-border-soft); }
+    .proxy-hero { height: 120px; border-radius: 0; background-repeat: no-repeat; background-size: contain; background-position: center; border: 1px solid var(--sd-hairline); display: grid; place-items: center; overflow: hidden; background-color: var(--sd-surface-elevated); }
+    .proxy-ctrls { display: grid; grid-template-columns: 1fr auto auto; gap: 0.5rem; margin-top: 0.75rem; align-items: center; }
+    .proxy-ctrls input[type="text"] { width: 100%; box-sizing: border-box; border: 1px solid rgba(15,30,77,0.3); border-radius: 0; padding: 0.55rem 0.7rem; font-size: 0.85rem; font-family: var(--font-mono); background: #fff; color: var(--sd-text); }
+    .proxy-ctrls input[type="text"]:focus { outline: none; border-color: var(--sd-accent); }
+    .proxy-credit { margin-top: 0.6rem; font-size: 0.8rem; color: var(--sd-text-muted); opacity: 0.9; text-align: right; font-family: var(--font-mono); }
+
+    /* Site footer */
+    .site-footer { width: 100%; max-width: 1200px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 26px 32px 96px; border-top: 1px solid var(--sd-hairline); margin-top: 40px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1.5px; color: var(--sd-annot); text-transform: uppercase; }
+    .site-footer a { color: var(--sd-annot); text-decoration: none; }
+    .site-footer a:hover { color: var(--sd-accent); }
+    .site-footer .f-links { display: flex; gap: 20px; }
+
+    [id] { scroll-margin-top: 1rem; }
+    .hidden { display: none !important; }
 
     @media (min-width: 601px) {
-      .nav-collapsible {
-        max-height: none !important;
-        padding: 0;
-        margin-top: 0;
-      }
+      .nav-collapsible { max-height: none !important; padding: 0; margin-top: 0; }
       #menu-toggle { display: none !important; }
     }
-
-    [id] {
-      scroll-margin-top: 1rem;
+    @media (max-width: 1080px) {
+      nav.demo-menu { grid-template-columns: repeat(4, 1fr); }
     }
-
-    .card.shadow-demo {
-      width: 100%;
-      max-width: 400px;
+    @media (max-width: 1150px) {
+      .stage-annot { font-size: 9px; letter-spacing: 1px; }
     }
-
+    @media (max-width: 900px) {
+      .top-links { display: none; }
+      .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+      .stage { height: 400px; }
+    }
     @media (max-width: 600px) {
-      .benchmark-column {
-        max-width: 100%;
-        min-width: 0;
-      }
-
-      .proxy-ctrls {
-        grid-template-columns: 1fr;
-      }
+      body { padding: 0; }
+      .hero-block { padding: 12px 20px 0; }
+      .hero-top { margin-bottom: 32px; }
+      .hero-block h1 { font-size: 52px; }
+      .hero-tagline { font-size: 16px; }
+      .sd-btn { padding: 12px 20px; font-size: 14px; }
+      .npm-line { font-size: 11.5px; padding: 10px 12px; gap: 10px; }
+      .stage { height: 330px; }
+      .stage-annot.vert { display: none; }
+      .print img { width: 140px; }
+      main { padding: 0 20px; }
+      section { padding: 40px 0 34px; }
+      h2 { font-size: 23px; }
+      .menu-label { margin-top: 12px; }
+      nav.demo-menu { grid-template-columns: repeat(2, 1fr); }
+      .nav-collapsible.open { max-height: 60vh; }
+      .github-badge { font-size: 10.5px; padding: 6px 10px; }
+      .repo-link { display: none; }
+      .card, .card.black { padding: 1em; font-size: 0.9em; }
+      .output { margin-top: 0.7rem; }
+      .blend-card { padding: 1em; font-size: 0.85em; }
+      .transition-box { padding: 1em; font-size: 0.9em; }
+      .dancers { font-size: 1.3rem; }
+      .export-text { font-size: 1em; }
+      #orbit-box { height: 220px !important; min-width: 0; font-size: 0.8em; }
+      .mask-grid { grid-template-columns: 1fr; }
+      .benchmark-output { height: 200px; }
+      .benchmark-container { gap: 1rem; }
+      .benchmark-column { max-width: 100%; min-width: 0; }
+      .proxy-ctrls { grid-template-columns: 1fr; }
+      .form-row.inline { grid-template-columns: 1fr !important; }
+      .form-demo input[type="text"], .form-demo input[type="email"], .form-demo select, .form-demo textarea { font-size: 16px; }
+      .site-footer { padding: 20px 20px 96px; }
     }
-
-    /* CORS Proxy demo */
-    .proxy-card {
-      position: relative;
-      border-radius: var(--sd-radius);
-      padding: 1rem;
-      background: var(--sd-surface);
-      border: 2px solid var(--sd-border);
-    }
-
-    .proxy-hero {
-      height: 120px;
-      border-radius: 8px;
-      background-repeat: no-repeat;
-      background-size: contain;
-      background-position: center;
-      border: 1px solid var(--sd-border);
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background-color: var(--sd-surface-elevated);
-    }
-
-    .proxy-ctrls {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: .5rem;
-      margin-top: .75rem;
-      align-items: center;
-    }
-
-    .proxy-ctrls input[type="text"] {
-      width: 100%;
-      box-sizing: border-box;
-      border: 1px solid var(--sd-border);
-      border-radius: 8px;
-      padding: .5rem .7rem;
-      font-size: 0.9rem;
-      font-family: var(--font-mono);
-      background: var(--sd-surface-elevated);
-      color: var(--sd-text);
-    }
-
-    .proxy-credit {
-      margin-top: .6rem;
-      font-size: .9rem;
-      color: var(--sd-text-muted);
-      opacity: .9;
-      text-align: right;
-    }
-
   </style>
   <style>
     .container-gyro {
@@ -1152,63 +543,90 @@
       }
     }
 
-    /* NEW! badge — reused in demo menu & section headings */
+    /* NEW badge — demo menu & section headings */
     .new-badge {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 2px 8px;
+      padding: 2px 7px;
       font-family: var(--font-mono);
-      font-size: 0.6rem;
+      font-size: 0.55rem;
       font-weight: 700;
       letter-spacing: 1.2px;
       text-transform: uppercase;
-      border-radius: 999px;
-      color: #FFFCF4;
-      background: var(--sd-accent);
-      border: 2px solid var(--sd-border);
-      box-shadow: 2px 2px 0 var(--sd-border);
-      animation: new-pulse 2s ease-in-out infinite;
+      border-radius: 0;
+      color: var(--sd-accent);
+      background: transparent;
+      border: 1px solid var(--sd-accent);
       vertical-align: middle;
     }
-    .new-badge::before {
-      content: '';
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: #FFFCF4;
-      animation: blink-dot 1.2s step-end infinite;
-    }
-    h2 .new-badge { margin-left: 8px; font-size: 0.55rem; transform: translateY(-2px); }
-    nav.demo-menu a .new-badge { padding: 1px 5px; font-size: 0.5rem; gap: 3px; margin-left: 4px; }
-    nav.demo-menu a .new-badge::before { width: 4px; height: 4px; }
-    @keyframes new-pulse {
-      0%, 100% { transform: translate(0, 0); box-shadow: 2px 2px 0 var(--sd-border); }
-      50% { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--sd-border); }
-    }
+    h2 .new-badge { margin-left: 10px; transform: translateY(-3px); }
+    nav.demo-menu a .new-badge { position: absolute; top: 10px; right: 10px; padding: 2px 5px; font-size: 0.5rem; margin-left: 0; }
+    nav.demo-menu a:hover .new-badge { color: #FFFFFF; border-color: rgba(255,255,255,0.6); }
   </style>
 </head>
 
 <body>
   <header class="hero-block">
-    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
+    <div class="hero-top">
+      <a class="brand" href="./" aria-label="snapdom home"><span class="brand-mark"></span><span class="brand-name">snapdom</span></a>
+      <nav class="top-links" aria-label="Site">
+        <a href="./docs/" data-umami-event="Top docs">Docs</a>
+        <a href="./plugins.html" data-umami-event="Top plugins">Plugins</a>
+        <a href="./guides/" data-umami-event="Top guides">Guides</a>
+        <a href="./compare/" data-umami-event="Top compare">Compare</a>
+        <a href="./labs.html" data-umami-event="Top labs">Labs</a>
+      </nav>
+      <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
       <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
       <span class="repo-link">zumerlab/snapdom</span>
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
-    <img src="./assets/mrsnapdom-run.png" alt="Mr SnapDOM" class="hero-mascot" width="200" height="144" />
-    <h1><span class="accent">Snap</span><span class="accent-ink">DOM</span></h1>
-    <p class="hero-tagline">DOM to <em>anything</em> engine — fast, modular, extensible.</p>
-
-    <div class="hero-actions">
-      <button id="menu-toggle" class="sd-btn sd-btn-primary" aria-expanded="false" aria-controls="demo-menu">
-        <svg class="fas fa-play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em;font-size:0.8em"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg> Browse Demos
-      </button>
-      <a href="./docs/" class="sd-btn sd-btn-ghost" data-umami-event="Hero docs"><svg class="fas fa-book" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em;font-size:0.8em"><path d="M96 0C43 0 0 43 0 96V416c0 53 43 96 96 96H384h32c17.7 0 32-14.3 32-32s-14.3-32-32-32V384c17.7 0 32-14.3 32-32V32c0-17.7-14.3-32-32-32H384 96zm0 384H352v64H96c-17.7 0-32-14.3-32-32s14.3-32 32-32zm32-240c0-8.8 7.2-16 16-16H336c8.8 0 16 7.2 16 16s-7.2 16-16 16H144c-8.8 0-16-7.2-16-16zm16 48H336c8.8 0 16 7.2 16 16s-7.2 16-16 16H144c-8.8 0-16-7.2-16-16s7.2-16 16-16z"/></svg> Docs</a>
-      <a href="./plugins.html" class="sd-btn sd-btn-ghost"><svg class="fas fa-puzzle-piece" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em;font-size:0.8em"><path d="M192 104.8c0-9.2-5.8-17.3-13.2-22.8C167.2 73.3 160 61.3 160 48c0-26.5 28.7-48 64-48s64 21.5 64 48c0 13.3-7.2 25.3-18.8 34c-7.4 5.5-13.2 13.6-13.2 22.8c0 12.8 10.4 23.2 23.2 23.2H336c26.5 0 48 21.5 48 48v56.8c0 12.8 10.4 23.2 23.2 23.2c9.2 0 17.3-5.8 22.8-13.2c8.7-11.6 20.7-18.8 34-18.8c26.5 0 48 28.7 48 64s-21.5 64-48 64c-13.3 0-25.3-7.2-34-18.8c-5.5-7.4-13.6-13.2-22.8-13.2c-12.8 0-23.2 10.4-23.2 23.2V464c0 26.5-21.5 48-48 48H279.2c-12.8 0-23.2-10.4-23.2-23.2c0-9.2 5.8-17.3 13.2-22.8c11.6-8.7 18.8-20.7 18.8-34c0-26.5-28.7-48-64-48s-64 21.5-64 48c0 13.3 7.2 25.3 18.8 34c7.4 5.5 13.2 13.6 13.2 22.8c0 12.8-10.4 23.2-23.2 23.2H48c-26.5 0-48-21.5-48-48V343.2C0 330.4 10.4 320 23.2 320c9.2 0 17.3 5.8 22.8 13.2C54.7 344.8 66.7 352 80 352c26.5 0 48-28.7 48-64s-21.5-64-48-64c-13.3 0-25.3 7.2-34 18.8C40.5 250.2 32.4 256 23.2 256C10.4 256 0 245.6 0 232.8V176c0-26.5 21.5-48 48-48H168.8c12.8 0 23.2-10.4 23.2-23.2z"/></svg> Plugins</a>
-      <a href="./labs.html" class="sd-btn sd-btn-ghost"><svg class="fas fa-flask" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em;font-size:0.8em"><path d="M288 0H160 128C110.3 0 96 14.3 96 32s14.3 32 32 32V196.8c0 11.8-3.3 23.5-9.5 33.5L10.3 406.2C3.6 417.2 0 429.7 0 442.6C0 480.9 31.1 512 69.4 512H378.6c38.3 0 69.4-31.1 69.4-69.4c0-12.8-3.6-25.4-10.3-36.4L329.5 230.4c-6.2-10.1-9.5-21.7-9.5-33.5V64c17.7 0 32-14.3 32-32s-14.3-32-32-32H288zM192 196.8V64h64V196.8c0 23.7 6.6 46.9 19 67.1L309.5 320h-171L173 263.9c12.4-20.2 19-43.4 19-67.1z"/></svg> Labs</a>
     </div>
+
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="hero-eyebrow"><span class="rec-dot"></span><span class="sd-version">v2.15.0</span><span>· MIT · zero dependencies</span></div>
+        <h1>Capture<br>the DOM.</h1>
+        <p class="hero-tagline">snapdom turns any element into SVG, PNG, JPG, WebP, GIF, MP4 — even standalone HTML. Fonts, pseudo-elements and shadow roots included. <em>In milliseconds.</em></p>
+        <div class="hero-actions">
+          <a href="./docs/" class="sd-btn sd-btn-primary" data-umami-event="Hero docs">Get started</a>
+          <a href="#demo-index" class="sd-btn sd-btn-ghost" data-umami-event="Hero browse demos">Browse the demos</a>
+          <button id="menu-toggle" class="sd-btn sd-btn-ghost" aria-expanded="false" aria-controls="demo-menu">Demo index</button>
+        </div>
+        <div class="npm-line"><span class="npm-prompt">$</span><span>npm i @zumer/snapdom</span><button type="button" id="npm-copy" data-umami-event="Copy npm install">copy</button></div>
+      </div>
+
+      <div class="hero-stagewrap">
+        <div class="stage" id="hero-stage">
+          <div class="stage-third v" style="left:33.33%"></div>
+          <div class="stage-third v" style="left:66.66%"></div>
+          <div class="stage-third h" style="top:33.33%"></div>
+          <div class="stage-third h" style="top:66.66%"></div>
+          <span class="stage-cross" style="left:33.33%; top:33.33%">+</span>
+          <span class="stage-cross" style="left:66.66%; top:66.66%">+</span>
+          <div class="stage-bracket tl"></div>
+          <div class="stage-bracket tr"></div>
+          <div class="stage-bracket bl"></div>
+          <div class="stage-bracket br"></div>
+          <img class="stage-mascot" src="./assets/mrsnapdom-pose.png" alt="Mr. Snapdom, moments before capture" width="485" height="418" />
+          <span class="stage-annot" style="top:20px; left:52px">Subject: Mr. Snapdom — cooperative</span>
+          <span class="stage-annot" style="bottom:20px; right:52px">AF · locked</span>
+          <span class="stage-annot vert" style="top:50%; right:20px; transform:translateY(-50%)">Live DOM — not a screenshot</span>
+          <span class="stage-annot" style="bottom:20px; left:52px">Fig. 01 — the hero, moments before capture</span>
+          <div id="hero-flash"></div>
+        </div>
+        <div class="stage-row">
+          <div class="shutter-wrap">
+            <button type="button" class="shutter" onclick="captureHeroStage(this)" aria-label="Capture the hero with snapdom" data-umami-event="Hero shutter"><span></span></button>
+            <span class="shutter-label">CAPTURE()</span>
+          </div>
+          <div class="hero-tray" id="hero-tray" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="menu-container" class="nav-collapsible">
+      <div class="menu-label" id="demo-index">Contact sheet — 21 live demos, every cell runs the real library</div>
       <nav id="demo-menu" class="demo-menu">
         <a href="#html-export-demo">toHtml <span class="new-badge">New</span></a>
         <a href="#gif-export-demo">toGif <span class="new-badge">New</span></a>
@@ -1250,7 +668,7 @@
     </style>
 
     <section id="html-export-demo">
-      <h2>🧬 toHtml() <span class="new-badge">New</span></h2>
+      <h2>toHtml() <span class="new-badge">New</span></h2>
       <p class="demo-explanation">The <code>html-export</code> plugin returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels. The preview renders it inside a sandboxed <code>&lt;iframe&gt;</code> to prove it stands alone.</p>
       <div class="card xp-card" id="xp-html-src">
         <h3>Provisioning manifest</h3>
@@ -1262,7 +680,7 @@
     </section>
 
     <section id="gif-export-demo">
-      <h2>🎞️ toGif() <span class="new-badge">New</span></h2>
+      <h2>toGif() <span class="new-badge">New</span></h2>
       <p class="demo-explanation">The <code>gif-export</code> plugin records an animating element frame by frame and encodes an animated GIF (median-cut palette + LZW, no dependencies). The spinner and counter make the motion visible.</p>
       <div class="card xp-anim" id="xp-gif-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
@@ -1272,7 +690,7 @@
     </section>
 
     <section id="video-export-demo">
-      <h2>📹 toMp4() <span class="new-badge">New</span></h2>
+      <h2>toMp4() <span class="new-badge">New</span></h2>
       <p class="demo-explanation">The <code>video-export</code> plugin records via the native <code>MediaRecorder</code>. Safari produces MP4 (H.264); Chromium and Firefox typically produce WebM (auto-fallback). The returned <code>Blob.type</code> reflects what was produced.</p>
       <div class="card xp-anim" id="xp-vid-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
@@ -1283,7 +701,7 @@
 
     <!-- Video Frame -->
     <section id="video">
-      <h2>🎬 Video Frame <span class="new-badge">New</span></h2>
+      <h2>Video frame <span class="new-badge">New</span></h2>
       <p class="demo-explanation">
         <code>&lt;video&gt;</code> pixels are painted by the GPU compositor and don't serialize into <code>&lt;foreignObject&gt;</code>. The pattern: draw the current frame into a <code>&lt;canvas&gt;</code>, then let SnapDOM capture it like any other node. Press play, then capture any frame. The clip is an MDN CC0 sample served with CORS so the canvas isn't tainted.
       </p>
@@ -1305,7 +723,7 @@
 
     <!-- Benchmark -->
     <section id="benchmark">
-      <h2>🏁 Benchmark: snapDOM vs html2canvas</h2>
+      <h2>Benchmark — snapdom vs html2canvas</h2>
       <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
         Each library will capture the same DOM element to canvas 5 times. We'll calculate average speed and show the
         winner.
@@ -1348,7 +766,7 @@
 
     <!-- Basic -->
     <section id="basic">
-      <h2>📦 Basic</h2>
+      <h2>Basic capture</h2>
       <div class="card" id="basic-box">
         <h3>Hello SnapDOM!</h3>
       </div>
@@ -1359,7 +777,7 @@
 
     <!-- Transforms & Shadows (isolated target only) -->
     <section id="opts-demo">
-      <h2>Transforms & Shadows</h2>
+      <h2>Transforms &amp; shadows</h2>
 
       <div style="max-width:440px; margin-inline:auto;">
         <div id="opts-target" style="
@@ -1404,7 +822,7 @@
 </style>
     <!-- Transition -->
     <section id="transition">
-      <h2>🚀 Fun Transition</h2>
+      <h2>Animated transition</h2>
       <div class="card transition-box" id="transition-box">
         <div class="dancers">🕺💃</div>
         <p style="margin: 0; font-weight: bold">I'm dancing and changing color!</p>
@@ -1498,10 +916,10 @@
 
     <!-- Fonts -->
     <section id="fonts-demo">
-      <h2>🔤 Google Fonts</h2>
+      <h2>Web fonts</h2>
       <div class="card" id="fonts-box">
         <h3 style="font-family: 'Mansalva', cursive">Unique Typography!</h3>
-        <p style="font-family: 'Unbounded', cursive">Google Fonts with <code>embedFonts: true</code>.</p>
+        <p style="font-family: 'Tanker', sans-serif; font-size: 1.2em;">Web fonts with <code>embedFonts: true</code>.</p>
       </div>
       <button data-umami-event="Capture fonts" onclick="captureDemo('fonts-box', 'fonts-output', this)">Capture</button>
       <button data-umami-event="Download fonts" onclick="downloadDemo('fonts-box')">Download</button>
@@ -1510,7 +928,7 @@
 
     <!-- Shadow DOM -->
     <section id="shadow">
-      <h2>🧱 Shadow DOM</h2>
+      <h2>Shadow DOM</h2>
       <div class="card" id="shadow-host"></div>
       <button data-umami-event="Capture shadow"
         onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
@@ -1520,7 +938,7 @@
 
     <!-- Canvas -->
     <section id="canvas">
-      <h2>🎨 Canvas</h2>
+      <h2>Canvas</h2>
       <div class="card"><canvas id="myCanvas" width="160" height="160" style="border: 1px solid #000"></canvas></div>
       <button data-umami-event="Capture canvas"
         onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
@@ -1530,9 +948,9 @@
 
     <!-- Export -->
     <section id="export">
-      <h2>📁 Export Formats</h2>
+      <h2>Export formats</h2>
       <div class="card" id="export-box">
-        <div class="export-text"><strong>📤 Export as</strong><br /><span class="export-format">PNG</span>, <span
+        <div class="export-text"><strong>Export as</strong><br /><span class="export-format">PNG</span>, <span
             class="export-format">JPG</span> & <span class="export-format">WebP</span>.</div>
       </div>
       <button data-umami-event="Export formats" onclick="exportFormats('export-box')">Export</button>
@@ -1541,7 +959,7 @@
 
     <!-- Pseudo -->
     <section id="pseudo">
-      <h2>✨ Pseudo Elements</h2>
+      <h2>Pseudo-elements</h2>
       <div class="card pseudo-box" id="pseudo-box">This element has pseudo-elements.</div>
       <button data-umami-event="Capture pseudo"
         onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
@@ -1551,7 +969,7 @@
 
     <!-- Clip-Path -->
     <section id="clip">
-      <h2>✂️ Clip-Path Demo</h2>
+      <h2>Clip-path</h2>
       <div class="card clip-card" id="clip-box">This shape uses clip-path</div>
       <button data-umami-event="Capture clip path"
         onclick="captureDemo('clip-box', 'clip-output', this)">Capture</button>
@@ -1561,7 +979,7 @@
 
     <!-- Blend -->
     <section id="blend">
-      <h2>🌀 Mix Blend Mode</h2>
+      <h2>Mix blend mode</h2>
       <p class="demo-explanation">CSS <code>background-blend-mode: multiply</code> — a gradient image (sky + grass) blended with a blue overlay. SnapDOM captures the final rendered result.</p>
       <div class="card blend-card" id="blend-box">Gradient × blue overlay = tinted result</div>
       <button data-umami-event="Capture blend" onclick="captureDemo('blend-box', 'blend-output', this)">Capture</button>
@@ -1571,25 +989,25 @@
 
     <!-- NEW: Iframe same-origin -->
     <section id="iframe">
-      <h2>🧩 Iframe (same-origin)</h2>
+      <h2>Iframe (same-origin)</h2>
       <div class="card iframe-wrap">
         <iframe id="demo-iframe" title="Same-origin demo" loading="lazy" sandbox="allow-same-origin allow-scripts" srcdoc="<!DOCTYPE html>
 <html>
 <head>
 <meta charset='utf-8'>
 <style>
-  body { font-family: system-ui, Arial; margin: 0; padding: 16px; background: #FBF3DF; color: #0F1E4D; }
-  .box { padding: 14px; border-radius: 10px; background: #FFFCF4; border: 2px solid #0F1E4D; box-shadow: 3px 3px 0 #0F1E4D; position: relative; }
-  .box::before { content: 'iframe:'; position: absolute; top: -10px; left: 12px; background: #2D5BFF; color: #FFFCF4; font-weight: 700; font-size: 12px; padding: 2px 6px; border-radius: 6px; border: 1px solid #0F1E4D; }
+  body { font-family: system-ui, Arial; margin: 0; padding: 16px; background: #F0F4FB; color: #0F1E4D; }
+  .box { padding: 14px; background: #FFFFFF; border: 1px solid #0F1E4D; position: relative; }
+  .box::before { content: 'iframe:'; position: absolute; top: -10px; left: 12px; background: #2D5BFF; color: #FFFFFF; font-weight: 700; font-size: 12px; padding: 2px 6px; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-  .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; background: rgba(45,91,255,0.1); border: 1px solid #0F1E4D; font-weight: 700; }
+  .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(45,91,255,0.08); border: 1px solid #2D5BFF; color: #1D3FD8; font-weight: 700; }
 </style>
 <body>
   <div class='box'>
     <h4>Same-origin content</h4>
     <div class='row'><span class='pill'>pseudo-elements</span><span class='pill'>grid</span></div>
   </div>
-  <script defer src="/copy-code.js"></script>
+  <script defer src='/copy-code.js'></script>
 </body>
 </html>">
         </iframe>
@@ -1602,7 +1020,7 @@
 
     <!-- NEW: Inputs & Textarea -->
     <section id="forms">
-      <h2>⌨️ Inputs & Textarea</h2>
+      <h2>Inputs &amp; textarea</h2>
       <div class="card" id="forms-box">
         <form class="form-demo" onsubmit="return false;">
           <div class="form-row inline">
@@ -1651,7 +1069,7 @@
 
     <!-- NEW: Masking Effects -->
     <section id="mask">
-      <h2>🎭 Masking Effects</h2>
+      <h2>Masking effects</h2>
 
       <!-- SVG defs for mask -->
       <svg width="0" height="0" style="position:absolute;">
@@ -1702,7 +1120,7 @@
     </section>
     <!-- CORS Proxy -->
    <section id="cors">
-      <h2>🌐 CORS Proxy (useProxy)</h2>
+      <h2>CORS proxy (useProxy)</h2>
       <div class="proxy-card">
         <div id="proxy-hero" class="proxy-hero">
           <span style="font-weight:600;color:#567; padding: .4rem .6rem; background:#eef4ff; border-radius:8px;">
@@ -1730,7 +1148,7 @@
 
     <!-- Full Page -->
     <section id="fullbody">
-      <h2>🧾 Full Page Capture</h2>
+      <h2>Full-page capture</h2>
       <button data-umami-event="Capture full" onclick="captureDemo('body', 'fullbody-output', this)">Capture</button>
       <button data-umami-event="Download full" onclick="downloadDemo('body')">Download</button>
       <div class="output" id="fullbody-output"></div>
@@ -1738,7 +1156,7 @@
 
     <!-- Powered by snapDOM -->
     <section id="powered-by">
-      <h2>⚡ Powered by snapDOM</h2>
+      <h2>Powered by snapdom</h2>
       <div class="card">
         <h3><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="To snapdiff site" target="_blank">SnapDIFF</a></h3>
         <p>Visual regression testing that runs in the browser — captures DOM elements with snapDOM, compares them to saved baselines, and shows what changed. <a href="https://github.com/zumerlab/snapdiff?utm_source=snapdom" data-umami-event="To snapdiff repo" target="_blank">Go to repo</a>.</p>
@@ -1746,6 +1164,17 @@
     </section>
 
   </main>
+
+  <footer class="site-footer">
+    <span>MIT © <a href="https://github.com/zumerlab" target="_blank" rel="noopener">Zumerlab</a></span>
+    <span>DOM → anything</span>
+    <span class="f-links">
+      <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="Footer github">GitHub</a>
+      <a href="https://www.npmjs.com/package/@zumer/snapdom" target="_blank" rel="noopener" data-umami-event="Footer npm">npm</a>
+      <a href="./llms.txt" data-umami-event="Footer llms">llms.txt</a>
+    </span>
+  </footer>
+
 
   <script>
     // Crear componente con shadow DOM
@@ -1783,7 +1212,7 @@
       if (host && !host.shadowRoot) {
         const shadow = host.attachShadow({ mode: 'open' })
         shadow.innerHTML =
-          `<div style='padding: 1.2em; background: linear-gradient(135deg, #2D5BFF 0%, #5C7CFF 100%); border-radius: 10px; font-weight:bold; text-align:center; color:#FFFCF4; text-shadow:0 1px 2px rgba(15,30,77,0.3);'>Inside the <strong>Shadow DOM</strong> 🎩✨</div>`
+          `<div style='padding: 1.2em; background: #0F1E4D; font-weight: 600; text-align: center; color: #FFFFFF;'>Inside the <strong style="color:#8FB5FF">Shadow DOM</strong> — styles scoped, capture intact</div>`
       }
       // await preCache()
     })
@@ -2108,11 +1537,13 @@
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording frames…</div>';
       try {
         const { gifExport } = await import(`${PLUGIN_CDN}/gif-export`);
-        const result = await snapdom(document.getElementById('xp-gif-src'), { plugins: [gifExport()] });
+        const src = document.getElementById('xp-gif-src');
+        const result = await snapdom(src, { plugins: [gifExport()] });
         const blob = await result.toGif({ fps: 12, duration: 1500 });
         const url = URL.createObjectURL(blob);
         const img = new Image();
-        img.style.cssText = 'max-width:100%;border-radius:8px;background:#fff';
+        const w = Math.round(src.getBoundingClientRect().width);
+        img.style.cssText = `width:100%;max-width:${w}px;height:auto;border-radius:8px;background:#fff`;
         img.onload = () => URL.revokeObjectURL(url);
         img.src = url;
         out.innerHTML = '';
@@ -2127,11 +1558,13 @@
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording…</div>';
       try {
         const { videoExport } = await import(`${PLUGIN_CDN}/video-export`);
-        const result = await snapdom(document.getElementById('xp-vid-src'), { plugins: [videoExport()] });
+        const src = document.getElementById('xp-vid-src');
+        const result = await snapdom(src, { plugins: [videoExport()] });
         const blob = await result.toMp4({ fps: 12, duration: 2000 });
         const v = document.createElement('video');
         v.controls = true; v.loop = true; v.muted = true; v.playsInline = true;
-        v.style.cssText = 'max-width:100%;border-radius:8px';
+        const w = Math.round(src.getBoundingClientRect().width);
+        v.style.cssText = `width:100%;max-width:${w}px;height:auto;border-radius:8px`;
         v.src = URL.createObjectURL(blob);
         out.innerHTML = '';
         out.appendChild(v);
@@ -2396,6 +1829,66 @@
     }
     updateGitHubStars()
     setInterval(updateGitHubStars, 60000)
+
+    // Live version from the published package.json (npm registry)
+    ;(async function updateVersion() {
+      try {
+        const res = await fetch('https://registry.npmjs.org/@zumer/snapdom/latest')
+        if (!res.ok) return
+        const data = await res.json()
+        if (data && data.version) {
+          document.querySelectorAll('.sd-version').forEach(el => { el.textContent = 'v' + data.version })
+        }
+      } catch (e) { /* keep fallback */ }
+    })()
+
+    // npm install copy
+    ;(function () {
+      const btn = document.getElementById('npm-copy')
+      if (!btn) return
+      btn.addEventListener('click', () => {
+        try { navigator.clipboard.writeText('npm i @zumer/snapdom') } catch (e) {}
+        btn.textContent = 'copied'
+        setTimeout(() => { btn.textContent = 'copy' }, 1500)
+      })
+    })()
+
+    // Hero shutter — captures the viewfinder with the real library
+    let heroBusy = false
+    async function captureHeroStage(btn) {
+      if (heroBusy) return
+      heroBusy = true
+      const stage = document.getElementById('hero-stage')
+      const tray = document.getElementById('hero-tray')
+      const flash = document.getElementById('hero-flash')
+      if (btn) btn.disabled = true
+      try {
+        if (flash) { flash.classList.remove('flashing'); void flash.offsetWidth; flash.classList.add('flashing') }
+        const t0 = performance.now()
+        let waited = 0
+        while (!window.snapdom && waited < 12000) { await new Promise(r => setTimeout(r, 120)); waited += 120 }
+        if (!window.snapdom) return
+        const img = await window.snapdom.toImg(stage, { scale: 0.32, embedFonts: false, cache: 'auto', exclude: ['#hero-flash'] })
+        const ms = Math.max(1, Math.round(performance.now() - t0 - Math.min(waited, t0)))
+        const print = document.createElement('div')
+        print.className = 'print r' + ((tray.childElementCount % 2) + 1)
+        img.draggable = false
+        img.alt = 'hero capture'
+        const cap = document.createElement('div')
+        cap.className = 'print-cap'
+        cap.textContent = 'hero.png · ' + ms + ' ms'
+        print.appendChild(img)
+        print.appendChild(cap)
+        tray.prepend(print)
+        while (tray.childElementCount > 2) tray.lastElementChild.remove()
+      } catch (e) {
+        console.warn('hero capture failed', e)
+      } finally {
+        heroBusy = false
+        if (btn) btn.disabled = false
+      }
+    }
+    window.captureHeroStage = captureHeroStage
   </script>
   <script src="https://unpkg.com/@zumer/orbit/dist/orbit.min.js" crossorigin></script>
 </body>

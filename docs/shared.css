@@ -1,47 +1,44 @@
 /* ═══════════════════════════════════════════════
    shared.css — Common styles for all SnapDOM docs
-   "Mr SnapDOM" retro design system
+   "Capture instrument" design system
+   Tanker (display) · Switzer (body) · JetBrains Mono (annotations)
+   Paper #F7F9FC · Ink #0F1E4D · Electric #2D5BFF
    ═══════════════════════════════════════════════ */
 
 /* ── GitHub badge ── */
 .github-badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   text-decoration: none;
   color: var(--text, var(--sd-text, #0F1E4D));
   font-weight: 700;
-  font-size: 13px;
-  background: var(--surface, var(--sd-surface, #FFFCF4));
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 2px solid var(--border, var(--sd-border, #0F1E4D));
-  box-shadow: 3px 3px 0 var(--border, var(--sd-border, #0F1E4D));
+  font-size: 11.5px;
+  background: var(--surface, var(--sd-surface, #FFFFFF));
+  padding: 8px 14px;
+  border-radius: 0;
+  border: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.3)));
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.3px;
+  transition: border-color 0.15s;
 }
 .github-badge:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
-}
-.github-badge:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--border, var(--sd-border, #0F1E4D));
+  border-color: var(--border, var(--sd-border, #0F1E4D));
+  color: var(--text, var(--sd-text, #0F1E4D));
 }
 .github-stars {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: var(--amber-soft, rgba(245,166,35,0.18));
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-weight: 800;
-  color: var(--amber-ink, #8A4F00);
-  font-size: 12px;
+  gap: 5px;
+  font-weight: 700;
+  color: var(--text, var(--sd-text, #0F1E4D));
+  font-size: 11.5px;
+  border-left: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.2)));
+  padding-left: 10px;
 }
-.github-stars svg { color: var(--amber-ink, #8A4F00); font-size: 11px; }
+.github-stars svg { color: #F5A623; font-size: 11px; }
 
-/* ── Page nav ── */
+/* ── Page nav (floating instrument dial) ── */
 .page-nav {
   position: fixed;
   bottom: 16px;
@@ -51,11 +48,11 @@
   display: flex;
   flex-wrap: nowrap;
   gap: 2px;
-  background: var(--surface, var(--sd-surface, #FFFCF4));
-  border: 2px solid var(--border, var(--sd-border, #0F1E4D));
-  border-radius: 10px;
+  background: var(--surface, var(--sd-surface, #FFFFFF));
+  border: 1px solid var(--border, var(--sd-border, #0F1E4D));
+  border-radius: 999px;
   padding: 4px;
-  box-shadow: 4px 4px 0 var(--border, var(--sd-border, #0F1E4D));
+  box-shadow: 0 12px 32px -12px rgba(15, 30, 77, 0.35);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   max-width: calc(100vw - 24px);
   overflow-x: auto;
@@ -66,22 +63,23 @@
 .page-nav::-webkit-scrollbar { display: none; }
 .page-nav a {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 11px;
-  color: var(--text-muted, var(--sd-text-muted, #5A6478));
+  font-size: 10px;
+  color: var(--text-muted, var(--sd-text-muted, #55617C));
   text-decoration: none;
-  padding: 6px 14px;
-  border-radius: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
   transition: background 0.15s, color 0.15s;
   font-weight: 700;
-  letter-spacing: 0.3px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
   white-space: nowrap;
   flex: 0 0 auto;
 }
 .page-nav a:hover {
   color: var(--accent, var(--sd-accent, #2D5BFF));
-  background: var(--accent-soft, rgba(45,91,255,0.10));
+  background: var(--accent-soft, var(--sd-accent-soft, rgba(45,91,255,0.08)));
 }
 .page-nav a.current {
-  color: #FFFCF4;
-  background: var(--accent, var(--sd-accent, #2D5BFF));
+  color: #FFFFFF;
+  background: var(--border, var(--sd-border, #0F1E4D));
 }
