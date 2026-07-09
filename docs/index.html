@@ -1921,6 +1921,7 @@
       const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none' }
       const compact = (n) => {
         n = Number(n) || 0
+        if (n >= 1e6) { const m = n / 1e6; return (m >= 10 ? Math.round(m) : Number(m.toFixed(1))) + 'M' }
         if (n >= 1000) { const k = n / 1000; return (k >= 10 ? Math.round(k) : Number(k.toFixed(1))) + 'k' }
         return String(n)
       }

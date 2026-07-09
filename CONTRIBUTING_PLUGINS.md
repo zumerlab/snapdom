@@ -87,6 +87,10 @@ The plugin directory page loads this file automatically — no HTML editing need
 
 Provide: plugin name, npm link, GitHub link, category, one-line description.
 
+### Make it discoverable
+
+Add the [`snapdom-plugin`](https://github.com/topics/snapdom-plugin) **GitHub topic** to your repository (repo home → ⚙️ next to *About* → Topics). Every plugin that carries the topic shows up on the shared [github.com/topics/snapdom-plugin](https://github.com/topics/snapdom-plugin) page — a zero-maintenance directory that complements the curated list on the site.
+
 ## Quality Guidelines
 
 1. Works with `snapdom@latest` and `snapdom@dev`.
