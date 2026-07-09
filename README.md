@@ -78,6 +78,7 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 - [Quick Start](#quick-start)
 - [Features](#features)
+- [Website & Live Demos](#website--live-demos)
 - [Installation](#installation)
 - [Build Outputs](#build-outputs)
 - [Usage](#usage)
@@ -87,6 +88,8 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 - [Development](#development)
 - [Contributors](#contributors)
 - [Sponsors](#sponsors)
+- [Show your support](#show-your-support)
+- [Star History](#star-history)
 - [License](#license)
 
 ## Installation

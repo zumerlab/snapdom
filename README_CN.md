@@ -79,6 +79,7 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 - [快速开始](#快速开始)
 - [功能特性](#功能特性)
+- [官网与在线演示](#官网与在线演示)
 - [安装](#安装)
 - [构建产物](#构建产物)
 - [基本用法](#基本用法)
@@ -88,6 +89,8 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 - [开发](#开发)
 - [贡献者](#贡献者)
 - [赞助者](#赞助者)
+- [支持我们](#支持我们)
+- [Star 历史](#star-历史)
 - [许可证](#许可证)
 
 ## 安装
@@ -224,7 +227,7 @@ document.body.appendChild(png);
 * **自定义滚动条样式**（`::-webkit-scrollbar`）：仅在元素*未滚动*时生效。若已滚动，将捕获视口内容且不显示滚动条。
 
 
-## ⚡ 性能基准测试（Chromium）
+## 性能基准测试
 
 **设置说明。** 在 Chromium 上使用 Vitest 基准测试，仓库测试。硬件可能影响结果。
 数值为**平均捕获时间（毫秒）** → 越低越好。
@@ -289,7 +292,7 @@ npm run test:benchmark
 详细指南请参阅 [CONTRIBUTING](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING.md)。
 
 
-## 贡献者 🙌
+## 贡献者
 
 <!-- CONTRIBUTORS:START -->
 <p>
@@ -324,11 +327,40 @@ npm run test:benchmark
 </p>
 <!-- CONTRIBUTORS:END -->
 
-## 💖 赞助者
+## 赞助者
 
 特别感谢 [@megaphonecolin](https://github.com/megaphonecolin)、[@sdraper69](https://github.com/sdraper69)、[@reynaldichernando](https://github.com/reynaldichernando)、[@gamma-app](https://github.com/gamma-app)、[@jrjohnson](https://github.com/jrjohnson) 和 [@ryanander](https://github.com/ryanander) 对本项目的支持！
 
 如果您也想支持这个项目，您可以[成为赞助者](https://github.com/sponsors/tinchox5)。
+
+## 支持我们
+
+如果 snapDOM 为您节省了时间，欢迎在 GitHub 上点一个 ⭐ —— 这能帮助其他开发者发现它，这就是我们唯一的请求。
+
+用 snapDOM 做了点东西？把徽章添加到您的 README 中：
+
+[![Built with snapDOM](https://img.shields.io/badge/built%20with-snapDOM-blue)](https://snapdom.dev)
+
+```md
+[![Built with snapDOM](https://img.shields.io/badge/built%20with-snapDOM-blue)](https://snapdom.dev)
+```
+
+### 使用 snapDOM 的项目
+
+snapDOM 已在 290+ 个公开仓库的生产环境中运行（[GitHub 依赖关系图](https://github.com/zumerlab/snapdom/network/dependents)）。以下是一些值得关注的项目，每一个都已通过其自身的 `package.json` 验证：
+
+- [LobeHub](https://github.com/lobehub/lobehub) — 运营 AI 智能体的平台
+- [Trilium Notes](https://github.com/TriliumNext/Trilium) — 层级式个人知识库
+- [Sealos](https://github.com/labring/sealos) — AI 原生云操作系统
+- [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — 低代码页面编辑器
+- [Playroom](https://github.com/seek-oss/playroom) — SEEK 出品的 JSX 设计工具
+- [GPT-Vis](https://github.com/antvis/GPT-Vis) — 蚂蚁集团 AntV 出品的 AI 友好数据可视化
+- [Rabby Wallet](https://github.com/RabbyHub/Rabby) — 面向 EVM 链的浏览器钱包
+- [uMap](https://github.com/umap-project/umap) — OpenStreetMap 地图构建工具
+- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — MetaBrainz 出品的音乐追踪工具
+- [SnapDIFF](https://zumerlab.com/snapdiff/) — 浏览器内的视觉回归测试工具 *(Zumerlab 出品)*
+
+完整展示请见 **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**。用了 snapDOM？欢迎[提交 PR](https://github.com/zumerlab/snapdom/pulls) 添加您的项目——仅限真实、可验证的项目。
 
 ## Star 历史
 
