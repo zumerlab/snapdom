@@ -1,11 +1,11 @@
 /**
  * snapDOM – ultra-fast DOM-to-image capture
- * TypeScript definitions (v1.9.14)
+ * TypeScript definitions (v2.16)
  *
  * Notes:
  * - Style compression is internal (no public option).
  * - Icon fonts are always embedded; `embedFonts` controls non-icon fonts only.
- * - This file preserves backward compatibility with earlier 1.9.x defs.
+ * - This file preserves backward compatibility with earlier defs.
  */
 
 /* =========================
@@ -27,6 +27,8 @@ export interface LocalFont {
   src: string;            // URL or data: URL
   weight?: string | number;
   style?: string;
+  /** font-stretch as a percentage (e.g. 100). Default 100. */
+  stretchPct?: number;
 }
 
 export interface ExcludeFonts {
@@ -54,9 +56,9 @@ export interface SnapdomOptions {
   /** Target height of the export (keeps aspect if only one dimension is provided). */
   height?: number;
 
-  /** Background fallback color (used esp. for JPEG). Default "#fff". */
+  /** Background fallback color. Default: `"#ffffff"` for JPEG/WebP, `null` (transparent) otherwise. */
   backgroundColor?: string;
-  /** Quality for JPEG/WebP (0..1). Default 1. */
+  /** Quality for JPEG/WebP (0..1). Default 0.92. */
   quality?: number;
   /** Output format for capture/export helpers. Default "png". */
   format?: BlobType;
@@ -90,8 +92,8 @@ export interface SnapdomOptions {
 
   /**
    * Downsample inlined raster images to their visible resolution (display box × scale × dpr),
-   * preserving the source codec (lossless PNG stays lossless). Opt-in; off by default — output is
-   * byte-identical to omitting it.
+   * preserving the source codec (lossless PNG stays lossless). On by default; pass `false`
+   * to embed images verbatim.
    */
   compress?: boolean;
 
@@ -103,6 +105,23 @@ export interface SnapdomOptions {
   iconFonts?: IconFontMatcher | IconFontMatcher[];
   /** Skip specific non-icon fonts (by family/domain/subset). */
   excludeFonts?: ExcludeFonts;
+  /** Extra domains allowed for cross-origin font stylesheet fetches (e.g. self-hosted CDNs). */
+  fontStylesheetDomains?: string[];
+
+  /**
+   * Skip style properties when snapshotting computed styles (e.g. `/^--/` to exclude
+   * CSS variables on pages with thousands of custom props).
+   */
+  excludeStyleProps?: RegExp | ((prop: string) => boolean);
+
+  /** Safari warmup iterations for WebKit #219770 (1..3). Default 3. */
+  safariWarmupAttempts?: number;
+
+  /** Verbose diagnostics via console.warn. Default false. */
+  debug?: boolean;
+
+  /** Default filename (without extension) for download(). Default "snapDOM". */
+  filename?: string;
 
   /**
    * Fallback image when <img> fails to load.
@@ -245,6 +264,12 @@ export interface CaptureResult {
   /** Canonical data URL of the SVG snapshot (when available). */
   url: string;
 
+  /** Returns the raw SVG data URL (same as `url`). */
+  toRaw(): string;
+
+  /** Run any registered export by name (core or plugin), e.g. `to("png")`. */
+  to(type: string, options?: any): Promise<any>;
+
   /**
    * @deprecated Use `toSvg()` for an <img> that renders the SVG snapshot.
    * Historical alias kept for compatibility.
@@ -300,6 +325,12 @@ export declare namespace snapdom {
   function plugins(...defs: PluginUse[]): typeof snapdom;
 
   /** Shortcut helpers that run a one-off capture+export. */
+
+  /** Returns the raw SVG data URL of a one-off capture. */
+  function toRaw(
+    element: Element,
+    options?: SnapdomOptions
+  ): Promise<string>;
 
   /** @deprecated Returns an SVG <img>; prefer `toSvg`. */
   function toImg(
