@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { pinIframeViewport } from '../src/utils/clone.helpers.js'
+import { pinIframeViewport, rasterizeIframe } from '../src/utils/clone.helpers.js'
+import { snapdom } from '../src/api/snapdom.js'
+import { cache } from '../src/core/cache.js'
 
 // #393: pinIframeViewport applies `overflow: hidden` to the iframe html/body,
 // which clamps the scroll position to 0. The live page must be left untouched
@@ -70,5 +72,35 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     expect(parseFloat(cs.width)).toBe(400)
     expect(parseFloat(cs.height)).toBe(150)
     unpin()
+  })
+
+  // #449: a doc taller than its iframe was captured at full scrollHeight and then squeezed
+  // into the iframe box by the <img> height → vertically compressed. The bitmap must match
+  // the iframe viewport.
+  it('rasterizes a long iframe doc at viewport size, not full page height (#449)', async () => {
+    iframe = document.createElement('iframe')
+    iframe.style.cssText = 'width:300px;height:200px;border:0'
+    document.body.appendChild(iframe)
+    const doc = iframe.contentDocument
+    doc.open()
+    doc.write('<html><body style="margin:0"><div style="height:2000px;background:linear-gradient(red,blue)">TOP</div></body></html>')
+    doc.close()
+    expect(doc.documentElement.scrollHeight).toBeGreaterThan(1000)
+
+    const session = {
+      styleMap: cache.session.styleMap,
+      styleCache: cache.session.styleCache,
+      nodeMap: cache.session.nodeMap,
+    }
+    const wrapper = await rasterizeIframe(iframe, session, { snap: snapdom })
+    const img = wrapper.querySelector('img')
+    await new Promise((resolve) => {
+      if (img.complete && img.naturalHeight) resolve()
+      else img.onload = resolve
+    })
+    expect(img.naturalWidth).toBe(300)
+    expect(img.naturalHeight).toBe(200)
+    // and the live doc is left clean
+    expect(doc.documentElement.hasAttribute('data-sd-pinned')).toBe(false)
   })
 })

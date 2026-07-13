@@ -389,6 +389,9 @@ export function pinIframeViewport(doc, w, h) {
     }
   } catch { }
 
+  // #449: flags the doc as viewport-pinned so captureDOM skips its full-page (scrollHeight) expansion
+  try { doc.documentElement.setAttribute('data-sd-pinned', '') } catch { }
+
   const style = doc.createElement('style')
   style.setAttribute('data-sd-iframe-pin', '')
   style.textContent = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
@@ -397,6 +400,7 @@ export function pinIframeViewport(doc, w, h) {
 
   return () => {
     try { style.remove() } catch { }
+    try { doc.documentElement.removeAttribute('data-sd-pinned') } catch { }
     try {
       if (win && typeof win.scrollTo === 'function') win.scrollTo(sx, sy)
       if (doc.body) { doc.body.scrollLeft = bsl; doc.body.scrollTop = bst }

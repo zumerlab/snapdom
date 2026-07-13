@@ -210,7 +210,11 @@ export async function captureDOM(element, options) {
       // body/documentElement: measure clone in-document to get true content height (Chrome clamps offset/scroll)
       // Use element's ownerDocument for iframe support (#371)
       const elDoc = state.element.ownerDocument || document
-      const isRoot = state.element === elDoc.body || state.element === elDoc.documentElement
+      // #449: an iframe doc pinned by rasterizeIframe must be captured at its viewport size.
+      // Expanding to scrollHeight there yields a full-page bitmap that gets squashed into the
+      // iframe box (overflow:hidden still reports the full scrollable extent).
+      const isRoot = (state.element === elDoc.body || state.element === elDoc.documentElement) &&
+        !elDoc.documentElement.hasAttribute('data-sd-pinned')
       if (isRoot) {
         const docH = Math.max(
           state.element.scrollHeight || 0,
