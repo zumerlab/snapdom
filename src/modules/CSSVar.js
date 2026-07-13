@@ -41,6 +41,7 @@ function getBaselineComputed(tagName, ns) {
   // Lo insertamos de forma que el UA pueda computar estilos, pero sin afectar layout
   // (un shadowRoot vacío temporal funciona bien)
   const holder = doc.createElement('div')
+  holder.setAttribute('data-snapdom-internal', '')
   holder.style.cssText = 'position:absolute;left:-99999px;top:-99999px;contain:strict;display:block;'
   holder.appendChild(el)
   doc.documentElement.appendChild(holder)

@@ -186,6 +186,7 @@ export async function toCanvas(url, options) {
   // foreignObject finish compositing, producing blank raster exports. Attach
   // offscreen and wait two animation frames so the compositor catches up.
   if (isSafari()) {
+    img.setAttribute('data-snapdom-internal', '')
     img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
     document.body.appendChild(img)
     try {

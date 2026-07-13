@@ -240,6 +240,7 @@ export async function captureDOM(element, options) {
             if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
           } else {
             const wrap = elDoc.createElement('div')
+            wrap.setAttribute('data-snapdom-internal', '')
             wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
             const styleNode = elDoc.createElement('style')
             styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS

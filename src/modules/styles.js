@@ -16,16 +16,40 @@ function bumpEpoch() {
 
 export function notifyStyleEpoch() { bumpEpoch() }
 
+/** Mutations on snapdom-owned helper nodes (sandbox, measure wrapper, warmup img, injected font
+ *  links, …) must NOT invalidate the style epoch: every capture creates and removes them, so
+ *  without this filter each capture poisons the snapshot cache for the next one — repeated
+ *  captures (gif/video export, cached sessions) paid a full re-snapshot every time. */
+const OWNED_SELECTOR = '[data-snapdom-sandbox],[data-snapdom-internal],[data-snapdom]'
+function isOwnedNode(node) {
+  const el = node && (node.nodeType === 1 ? node : node.parentElement)
+  return !!(el && el.closest && el.closest(OWNED_SELECTOR))
+}
+function hasExternalMutation(records) {
+  for (const rec of records) {
+    if (isOwnedNode(rec.target)) continue
+    if (rec.type === 'childList') {
+      let allOwned = true
+      for (const n of rec.addedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
+      if (allOwned) for (const n of rec.removedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
+      if (allOwned) continue
+    }
+    return true
+  }
+  return false
+}
+
 let __wired = false
 function setupInvalidationOnce(root = document.documentElement) {
   if (__wired) return
   __wired = true
+  const onRecords = (records) => { if (hasExternalMutation(records)) bumpEpoch() }
   try {
-    const domObs = new MutationObserver(() => bumpEpoch())
+    const domObs = new MutationObserver(onRecords)
     domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
-    const headObs = new MutationObserver(() => bumpEpoch())
+    const headObs = new MutationObserver(onRecords)
     headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {

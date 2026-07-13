@@ -26,6 +26,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   try { await document.fonts.ready } catch {}
 
   const span = document.createElement('span')
+  span.setAttribute('data-snapdom-internal', '')
   span.textContent = unicodeChar
   span.style.position = 'absolute'
   span.style.visibility = 'hidden'
@@ -1041,6 +1042,7 @@ export async function ensureFontsReady(families, warmupRepetitions = 2, doc = do
 
   const warmupOnce = () => {
     const container = doc.createElement('div')
+    container.setAttribute('data-snapdom-internal', '')
     container.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;opacity:0!important;pointer-events:none!important;contain:layout size style;'
 
     for (const fam of fams) {

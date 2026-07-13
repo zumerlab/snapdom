@@ -459,6 +459,20 @@ function collectScrollbarRulesFromRules(rules, seen = new Set()) {
   return out
 }
 
+/** Memo per document: scanning every rule's cssText on each capture is O(stylesheet size).
+ *  The fingerprint (href + rule count per sheet) is O(#sheets) and catches inserts/removals. */
+const _scrollbarCSSMemo = new WeakMap()
+
+function scrollbarFingerprint(doc) {
+  let fp = ''
+  for (const sheet of doc.styleSheets) {
+    let n = -1
+    try { n = sheet.cssRules ? sheet.cssRules.length : -1 } catch { /* cross-origin */ }
+    fp += (sheet.href || 'inline') + ':' + n + '|'
+  }
+  return fp
+}
+
 /**
  * Extract ::-webkit-scrollbar rules from the document's stylesheets.
  * Used so custom scrollbar styling appears in capture (#334).
@@ -467,6 +481,9 @@ function collectScrollbarRulesFromRules(rules, seen = new Set()) {
  */
 export function collectScrollbarCSS(doc) {
   if (!doc || !doc.styleSheets) return ''
+  const fp = scrollbarFingerprint(doc)
+  const memo = _scrollbarCSSMemo.get(doc)
+  if (memo && memo.fp === fp) return memo.css
   const seen = new Set()
   let out = ''
   for (const sheet of Array.from(doc.styleSheets)) {
@@ -477,5 +494,6 @@ export function collectScrollbarCSS(doc) {
       // Cross-origin stylesheet; cannot read cssRules
     }
   }
+  _scrollbarCSSMemo.set(doc, { fp, css: out })
   return out
 }
