@@ -21,7 +21,7 @@ import {
   getUnscaledDimensions,
   createCheckboxRadioReplacement
 } from '../utils/clone.helpers.js'
-import { isFirefox } from '../utils/browser.js'
+import { isFirefox, isSafari } from '../utils/browser.js'
 
 // helper implementations moved to ../utils/clone.helpers.js
 
@@ -164,7 +164,11 @@ export async function deepClone(node, sessionCache, options) {
     try {
       const ctx = node.getContext('2d', { willReadFrequently: true })
       try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
-      await new Promise(r => requestAnimationFrame(r)) // deja materializar el frame
+      // WebKit needs a frame for the poke to materialize the buffer; on other engines
+      // toDataURL is synchronous with issued commands, so an unconditional rAF cost a
+      // serialized frame (≥16ms) per canvas — dashboards with N charts paid N frames.
+      // The blank-result retry below still covers any engine that returns an empty frame.
+      if (isSafari()) await new Promise(r => requestAnimationFrame(r))
 
       url = node.toDataURL('image/png')
 
