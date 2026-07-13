@@ -407,6 +407,10 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
  */
 export async function inlinePseudoElements(source, clone, sessionCache, options) {
   if (!(source instanceof Element) || !(clone instanceof Element)) return
+  // #447: a textarea's value is its *child text content*, so wrapping characters in a
+  // <span> (as the ::first-letter path does) drops them from the rendered value.
+  // Browsers don't render pseudo-elements on textarea anyway.
+  if (source instanceof HTMLTextAreaElement) return
   // --- NEW: preflight once per session/doc ---
   const doc = source.ownerDocument || document
   if (!preflightWithFp(doc, sessionCache)) {

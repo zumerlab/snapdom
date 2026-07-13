@@ -319,6 +319,20 @@ describe('inlinePseudoElements', () => {
     expect(firstLetterEl.textContent.length).toBeGreaterThan(0)
   })
 
+  it('#447: does not wrap the first letter of a textarea (would drop it from the value)', async () => {
+    const ta = document.createElement('textarea')
+    ta.value = 'ajdalfjllalkj'
+    document.body.appendChild(ta)
+    const style = document.createElement('style')
+    style.textContent = 'li::before { content: "x"; }'
+    document.head.appendChild(style)
+    const clone = ta.cloneNode(true)
+    clone.textContent = ta.value
+    await inlinePseudoElements(ta, clone, sessionCache, {})
+    expect(clone.querySelector('[data-snapdom-pseudo]')).toBeNull()
+    expect(clone.value).toBe('ajdalfjllalkj')
+  })
+
   it('should inline background-image entries for pseudo-element', async () => {
     const el = document.createElement('div')
     document.body.appendChild(el)
