@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.16.0](https://github.com/zumerlab/snapdom/compare/v2.15.0...v2.16.0)
+
+> 13 July 2026
+
+- fix(iframe): rasterize long iframe documents and pin them to the viewport to prevent full expansion during capture [`#449`](https://github.com/zumerlab/snapdom/issues/449) [`c610d4a`](https://github.com/zumerlab/snapdom/commit/c610d4a05acc0c2f2f68bf26297bca1eb8f4fe74)
+- fix(textarea): first letter issue expanded to textarea [`#447`](https://github.com/zumerlab/snapdom/issues/447) [`bc5ce38`](https://github.com/zumerlab/snapdom/commit/bc5ce38ed096b1560b8294e2a382aa77f0cbf27a)
+- fix(iframe): improve margin and padding handling in pinIframeViewport to preserve content offset [`#448`](https://github.com/zumerlab/snapdom/issues/448) [`6a78d3b`](https://github.com/zumerlab/snapdom/commit/6a78d3bbf9b88d317e6881ab7fae90f0b4591f12)
+
+
 #### [v2.15.0](https://github.com/zumerlab/snapdom/compare/v2.15.0-dev.1...v2.15.0)
 
 > 3 July 2026
