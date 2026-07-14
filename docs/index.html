@@ -237,13 +237,21 @@
 
     .stage-row { display: flex; align-items: flex-start; gap: 22px; min-height: 150px; }
     .shutter-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
-    .shutter { width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--sd-border); background: #FFFFFF; display: grid; place-items: center; cursor: pointer; padding: 0; transition: transform 0.12s; }
+    .shutter { width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--sd-border); background: #FFFFFF; display: grid; place-items: center; cursor: pointer; padding: 0; transition: transform 0.12s; touch-action: manipulation; }
     .shutter span { display: block; width: 38px; height: 38px; border-radius: 50%; background: var(--sd-accent); transition: background 0.15s; }
     .shutter:hover span { background: var(--sd-accent-hover); }
     .shutter:active { transform: scale(0.92); }
     .shutter:disabled { opacity: 0.55; cursor: wait; }
     .shutter-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.2px; color: var(--sd-annot); }
-    .hero-tray { display: flex; gap: 14px; align-items: flex-start; flex: 1; min-width: 0; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+    .hero-tray { position: relative; display: flex; gap: 14px; align-items: flex-start; flex: 1; min-width: 0; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+    .star-overlay { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; }
+    .star-overlay::before { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--sd-body-bg) 62%, transparent); backdrop-filter: blur(2px); }
+    .star-card { position: relative; background: #FFFFFF; border: 1px solid rgba(15,30,77,0.2); box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); transform: rotate(-2deg); animation: sd-print-in 0.5s cubic-bezier(0.2,0.9,0.3,1) both; }
+    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 44px 22px; font-family: var(--font-mono); font-size: 17px; font-weight: 700; letter-spacing: 2px; line-height: 1.5; color: var(--sd-primary); text-decoration: none; text-align: center; transition: color 0.15s; }
+    .star-card a:hover { color: var(--sd-accent); }
+    .star-card .star-big { font-size: 46px; line-height: 1; color: var(--sd-star); }
+    .star-close { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(15,30,77,0.2); background: #FFFFFF; color: var(--sd-text-muted); font-family: var(--font-mono); font-size: 16px; line-height: 1; padding: 0; cursor: pointer; display: grid; place-items: center; box-shadow: 0 4px 10px -6px rgba(15,30,77,0.45); touch-action: manipulation; }
+    .star-close:hover { color: var(--sd-primary); }
     .hero-tray::-webkit-scrollbar { display: none; }
     .hero-tray:empty::before { content: 'PRINTS LAND HERE — PRESS THE SHUTTER'; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; color: var(--sd-annot); opacity: 0.7; padding-top: 24px; }
     .print { background: #FFFFFF; border: 1px solid rgba(15,30,77,0.2); padding: 7px 7px 8px; display: flex; flex-direction: column; gap: 6px; animation: sd-print-in 0.5s cubic-bezier(0.2,0.9,0.3,1) both; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); flex: 0 0 auto; }
@@ -278,7 +286,7 @@
     h3 { font-family: var(--font-body); font-weight: 700; }
 
     /* Buttons (demo controls) */
-    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy), button#capture, .run-benchmark-button {
+    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close), button#capture, .run-benchmark-button {
       background: transparent;
       color: var(--sd-text) !important;
       border: 1.5px solid var(--sd-border);
@@ -294,7 +302,7 @@
       transition: background 0.15s, color 0.15s, border-color 0.15s;
       margin: 0 0.5em 0.5em 0;
     }
-    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):hover:not(:disabled), button#capture:hover, .run-benchmark-button:hover:not(:disabled) {
+    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close):hover:not(:disabled), button#capture:hover, .run-benchmark-button:hover:not(:disabled) {
       background: var(--sd-border);
       color: #FFFFFF !important;
       transform: none;
@@ -445,6 +453,8 @@
       .stage { height: 330px; }
       .stage-annot.vert { display: none; }
       .print img { width: 140px; }
+      .star-card a { font-size: 13px; padding: 16px 22px 14px; letter-spacing: 1.4px; }
+      .star-card .star-big { font-size: 34px; }
       main { padding: 0 20px; }
       section { padding: 40px 0 34px; }
       h2 { font-size: 23px; }
@@ -1934,6 +1944,7 @@
     let heroBusy = false
     let heroShots = 0
     let lastRoll = -1
+    let starAsked = false
 
     function rollHeroPlugin() {
       if (heroShots++ === 0) return null
@@ -1944,7 +1955,7 @@
     }
 
     async function captureHeroStage(btn) {
-      if (heroBusy) return
+      if (heroBusy || document.querySelector('.star-overlay')) return
       heroBusy = true
       const stage = document.getElementById('hero-stage')
       const tray = document.getElementById('hero-tray')
@@ -1987,11 +1998,25 @@
         print.append(img, cap, plug)
         tray.prepend(print)
         while (tray.childElementCount > 2) tray.lastElementChild.remove()
+
+        // After the 7th shot a star-ask lands over the prints — the visitor has
+        // clearly had fun by then, so that's when we make the pitch. Shown once;
+        // it blocks the shutter until dismissed via the close button or the link.
+        if (heroShots >= 7 && !starAsked) {
+          starAsked = true
+          const ov = document.createElement('div')
+          ov.className = 'star-overlay'
+          ov.innerHTML = '<div class="star-card"><a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="Hero star prompt"><span class="star-big">&#9733;</span>ENJOYING IT?<br>STAR THE REPO</a><button type="button" class="star-close" aria-label="Close">&times;</button></div>'
+          const close = () => { ov.remove(); const sh = document.querySelector('.shutter'); if (sh) sh.disabled = false }
+          ov.querySelector('.star-close').addEventListener('click', close)
+          ov.querySelector('a').addEventListener('click', close)
+          tray.append(ov)
+        }
       } catch (e) {
         console.warn('hero capture failed', e)
       } finally {
         heroBusy = false
-        if (btn) btn.disabled = false
+        if (btn) btn.disabled = !!document.querySelector('.star-overlay')
       }
     }
     window.captureHeroStage = captureHeroStage
