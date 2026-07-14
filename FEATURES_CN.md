@@ -32,7 +32,7 @@
 - **`<img>`** —— 冻结 `srcset`，记录变换前尺寸，作者使用 `%`/`auto` 时冻结像素尺寸，保留 `object-fit` / `object-position`。
 - **SVG** —— 将绘制属性（fill、stroke 及其各长写、opacity 变体、fill/clip 规则、markers、visibility、display）复制为内联样式；被 `<use>` 引用的外部 `<defs>` / `<symbol>` 会被内联，使 `var()` 在使用处解析。
 - **滚动位置** —— 对已滚动的容器，通过平移内部内容并裁剪溢出来还原；调整 fixed/absolute 后代，并冻结 sticky 页眉/页脚。
-- **按设计跳过** —— `meta`、`script`、`noscript`、`title`、`link`、`template`、SnapDOM 沙箱以及嵌套的 `<foreignObject>`。
+- **有意跳过** —— `meta`、`script`、`noscript`、`title`、`link`、`template`、SnapDOM 沙箱以及嵌套的 `<foreignObject>`。
 
 不可渲染内容会被妥善处理：剔除非法 XML 控制字符、强制 `content-visibility` 为可见以捕获屏幕外内容、并中和根元素外边距。
 
