@@ -33,18 +33,16 @@
 </p>
 <p align="center"><a href="README.md">English</a> | 简体中文</p>
 
-# snapDOM
+# SnapDOM
 
-**SnapDOM** 是新一代的 **DOM 捕获引擎（DOM Capture Engine）**——是 **html2canvas**、**dom-to-image** 和 **html-to-image** 的快速、现代替代方案。  
-它可以将任意 DOM 子树转换为自包含的结构，并导出为 SVG、PNG、JPG、WebP、Canvas、Blob，或通过插件系统生成 **任何自定义格式**——超高速、模块化、可扩展、零依赖。
-
-SnapDOM 会保留样式、字体、背景图像、伪元素、Shadow DOM 等所有视觉特性，并通过可扩展的架构实现强大的灵活性和最高级别的捕获质量。
+**SnapDOM** 是新一代的 **DOM 截图引擎**，也是 **html2canvas**、**dom-to-image** 和 **html-to-image** 的快速、现代替代方案。
+它能把任意 DOM 子树连同浏览器实际渲染出的样式、字体、图片和伪元素一起打包，生成不依赖原页面的结果，再导出为 SVG、PNG、JPG、WebP、Canvas 或 Blob；还可以通过插件导出为**任意自定义格式**。整个引擎速度快、模块化、易扩展，而且零依赖。
 
 > 📖 **[文档、指南与在线演示 → snapdom.dev](https://snapdom.dev)**
 
 ## 功能特性
 
-完整的 DOM 捕获，内嵌样式、伪元素和字体；导出为 SVG、PNG、JPG、WebP、`canvas` 或 Blob——超快速度、零依赖，100% 基于标准 Web API。
+完整捕获 DOM，并嵌入样式、伪元素和字体；可导出为 SVG、PNG、JPG、WebP、`canvas` 或 Blob。速度快、零依赖，完全基于标准 Web API。
 
 👉 **完整的技术功能清单见 [FEATURES_CN.md](FEATURES_CN.md)。**
 
@@ -90,48 +88,48 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 - [贡献者](#贡献者)
 - [赞助者](#赞助者)
 - [支持我们](#支持我们)
-- [Star 历史](#star-历史)
+- [Star 趋势](#star-趋势)
 - [许可证](#许可证)
 
 ## 安装
 
-### NPM / Yarn (稳定版)
+### NPM / Yarn（稳定版）
 
 ```bash
 npm i @zumer/snapdom
 yarn add @zumer/snapdom
 ```
 
-### NPM / Yarn (开发版)
+### NPM / Yarn（开发版）
 
-想要提前体验新功能和修复：
+如需提前体验新功能和修复：
 
 ```bash
 npm i @zumer/snapdom@dev
 yarn add @zumer/snapdom@dev
 ```
 
-⚠️ `@dev` 标签通常包含在正式发布前的改进，但可能不够稳定。
+⚠️ `@dev` 标签通常会提前包含尚未发布的改进，但稳定性可能不及正式版。
 
-### CDN (稳定版)
+### CDN（稳定版）
 
 ```html
-<!-- 压缩的 构建 -->
+<!-- 压缩版 -->
 <script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
 
-<!-- ES 模块构建 -->
+<!-- 压缩版 ES Module -->
 <script type="module">
   import { snapdom } from "https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs";
 </script>
 ```
 
-### CDN (开发版)
+### CDN（开发版）
 
 ```html
-<!-- 压缩的 UMD 构建（开发版） -->
+<!-- 压缩版（开发版） -->
 <script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.js"></script>
 
-<!-- ES 模块构建（开发版） -->
+<!-- 压缩版 ES Module（开发版） -->
 <script type="module">
   import { snapdom } from "https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs";
 </script>
@@ -142,21 +140,21 @@ yarn add @zumer/snapdom@dev
 
 | 变体 | 文件 | 使用场景 |
 |------|------|----------|
-| **ESM**（可摇树） | `dist/snapdom.mjs` | 打包工具（Vite、webpack），`import` |
-| **IIFE**（全局） | `dist/snapdom.js` | script 标签、传统 `require` |
+| **ESM**（支持 Tree Shaking） | `dist/snapdom.mjs` | 打包工具（Vite、webpack）、`import` |
+| **IIFE**（全局变量） | `dist/snapdom.js` | `<script>` 标签、传统 `require` |
 
-**打包工具 (npm)：**
+**打包工具（npm）：**
 ```js
 import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 ```
 
-**script 标签 (CDN)：**
+**`<script>` 标签（CDN）：**
 ```html
 <script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
 <script> snapdom.toPng(document.body).then(img => document.body.appendChild(img)); </script>
 ```
 
-**子路径导入**（仅需部分功能时可减小体积）：
+**子路径导入**（只使用部分功能时，打包体积更小）：
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
 import { plugins } from '@zumer/snapdom/plugins';
@@ -167,12 +165,12 @@ import { plugins } from '@zumer/snapdom/plugins';
 
 | 模式 | 适用场景 |
 |------|----------|
-| **可复用** `snapdom(el)` | 一次克隆 → 多次导出（PNG + JPG + 下载）。 |
-| **快捷** `snapdom.toPng(el)` | 单次导出，代码更简洁。 |
+| **可复用调用** `snapdom(el)` | 克隆一次，多次导出（如 PNG、JPG 和下载）。 |
+| **快捷方法** `snapdom.toPng(el)` | 只导出一次，代码更简洁。 |
 
-### 可复用的捕获
+### 可复用捕获
 
-一次捕获，多次导出（不会重新克隆）：
+捕获一次，多次导出（无需重复克隆）：
 
 ```js
 const el = document.querySelector('#target');
@@ -183,9 +181,9 @@ document.body.appendChild(img);
 await result.download({ format: 'jpg', filename: 'my-capture.jpg' });
 ```
 
-### 一步式快捷方法
+### 一次性快捷方法
 
-直接导出单一格式：
+只需要一种格式时，可直接导出：
 
 ```js
 const png = await snapdom.toPng(el);
@@ -195,12 +193,12 @@ document.body.appendChild(png);
 
 ## 文档
 
-完整参考托管在 **[snapdom.dev/docs](https://snapdom.dev/docs/)**，以保持同步且可搜索：
+完整参考文档位于 **[snapdom.dev/docs](https://snapdom.dev/docs/)**，会随版本同步更新，也支持站内搜索：
 
-- **[API 参考](https://snapdom.dev/docs/api/)** — `snapdom()` 可复用对象、快捷方法和导出器专用选项。
-- **[选项](https://snapdom.dev/docs/options/)** — 每个捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`/`filter`、`compress`、`outerTransforms`、`outerShadows`、`cache`…）均附示例说明。
-- **[插件](https://snapdom.dev/docs/plugins/)** — 构建、注册并发布自定义插件和导出格式。社区插件见[插件页面](https://snapdom.dev/plugins.html)。
-- **[缓存与 preCache](https://snapdom.dev/docs/cache/)** — 控制捕获之间的缓存并预加载资源。
+- **[API 参考](https://snapdom.dev/docs/api/)** — `snapdom()` 返回的可复用对象、快捷方法，以及各导出方法的专用选项。
+- **[选项](https://snapdom.dev/docs/options/)** — 逐项介绍所有捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`/`filter`、`compress`、`outerTransforms`、`outerShadows`、`cache`……），并附有示例。
+- **[插件](https://snapdom.dev/docs/plugins/)** — 如何构建、注册和发布自定义插件及导出格式。社区插件见[插件页面](https://snapdom.dev/plugins.html)。
+- **[缓存与 preCache](https://snapdom.dev/docs/cache/)** — 控制多次捕获之间的缓存，并通过 `preCache` 提前加载所需资源。
 
 ### API 速览
 
@@ -208,9 +206,9 @@ document.body.appendChild(png);
 
 | 方法 | 说明 |
 | ------------------------------ | --------------------------------- |
-| `snapdom.toSvg(el, options?)`  | 返回 SVG `HTMLImageElement` |
-| `snapdom.toCanvas(el, options?)` | 返回 `Canvas`                    |
-| `snapdom.toBlob(el, options?)` | 返回 SVG 或栅格 `Blob`            |
+| `snapdom.toSvg(el, options?)`  | 返回包含 SVG 的 `HTMLImageElement` |
+| `snapdom.toCanvas(el, options?)` | 返回 `HTMLCanvasElement`        |
+| `snapdom.toBlob(el, options?)` | 返回包含 SVG 或位图数据的 `Blob`  |
 | `snapdom.toPng(el, options?)`  | 返回 PNG 图片                     |
 | `snapdom.toJpg(el, options?)`  | 返回 JPG 图片                     |
 | `snapdom.toWebp(el, options?)` | 返回 WebP 图片                    |
@@ -220,38 +218,38 @@ document.body.appendChild(png);
 
 ## 限制
 
-* 外部图片应该是 CORS 可访问的（使用 `useProxy` 选项处理 CORS 拒绝）
-* 在 Safari 上使用 WebP 格式时，将回退到 PNG 渲染。
-* `@font-face` CSS 规则得到良好支持，但如果需要使用 JS `FontFace()`，请参阅此解决方案 [`#43`](https://github.com/zumerlab/snapdom/issues/43)
-* **Safari**：启用 `embedFonts` 或包含背景/蒙版图片的捕获会较慢，因 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770)（字体解码时机）。SnapDOM 通过预捕获和 `drawImage` 预热管道；可通过 `safariWarmupAttempts` 调整（默认 3）。
-* **自定义滚动条样式**（`::-webkit-scrollbar`）：仅在元素*未滚动*时生效。若已滚动，将捕获视口内容且不显示滚动条。
+* 外部图片需要允许跨源访问；如果被跨源拦截，可使用 `useProxy` 选项。
+* Safari 不支持以 WebP 导出时，会回退为 PNG。
+* SnapDOM 对 `@font-face` CSS 规则的支持较完善；如需使用 JavaScript `FontFace()`，请参阅 [`#43`](https://github.com/zumerlab/snapdom/issues/43) 中的解决方案。
+* **Safari**：启用 `embedFonts`，或待捕获元素包含背景图/蒙版图时，受 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770)（字体解码时机）影响，捕获速度会变慢。SnapDOM 会预先执行少量捕获并调用 `drawImage` 来预热渲染流程；预热次数可通过 `safariWarmupAttempts` 调整（默认为 3）。
+* **自定义滚动条样式**（`::-webkit-scrollbar`）：仅当元素**尚未滚动**时保留。元素滚动后，SnapDOM 会捕获当前视口中的内容，但不会包含滚动条。
 
 
 ## 性能基准测试
 
-**设置说明。** 在 Chromium 上使用 Vitest 基准测试，仓库测试。硬件可能影响结果。
-数值为**平均捕获时间（毫秒）** → 越低越好。
+**测试环境：**在 Chromium 中运行仓库内的 Vitest 基准测试。实际结果可能受硬件影响。
+表中数值为**平均捕获耗时（毫秒）**，越低越好。
 
 ### 简单元素
 
-| 场景                 | SnapDOM 当前版本 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| 场景                 | SnapDOM 当前版 | SnapDOM v1.9.9 | html2canvas | html-to-image |
 | ------------------------ | --------------- | -------------- | ----------- | ------------- |
-| 小尺寸 (200×100)          | **0.5 ms**      | 0.8 ms         | 67.7 ms     | 3.1 ms        |
-| 模态框 (400×300)          | **0.5 ms**      | 0.8 ms         | 75.5 ms     | 3.6 ms        |
-| 页面视图 (1200×800)     | **0.5 ms**      | 0.8 ms         | 114.2 ms    | 3.3 ms        |
-| 大滚动 (2000×1500) | **0.5 ms**      | 0.8 ms         | 186.3 ms    | 3.2 ms        |
-| 超大尺寸 (4000×2000)   | **0.5 ms**      | 0.9 ms         | 425.9 ms    | 3.3 ms        |
+| 小尺寸（200×100）          | **0.5 ms**      | 0.8 ms         | 67.7 ms     | 3.1 ms        |
+| 模态框（400×300）          | **0.5 ms**      | 0.8 ms         | 75.5 ms     | 3.6 ms        |
+| 页面视图（1200×800）     | **0.5 ms**      | 0.8 ms         | 114.2 ms    | 3.3 ms        |
+| 大型滚动区域（2000×1500） | **0.5 ms**      | 0.8 ms         | 186.3 ms    | 3.2 ms        |
+| 超大尺寸（4000×2000）   | **0.5 ms**      | 0.9 ms         | 425.9 ms    | 3.3 ms        |
 
 
 ### 复杂元素
 
-| 场景                 | SnapDOM 当前版本 | SnapDOM v1.9.9 | html2canvas | html-to-image |
+| 场景                 | SnapDOM 当前版 | SnapDOM v1.9.9 | html2canvas | html-to-image |
 | ------------------------ | --------------- | -------------- | ----------- | ------------- |
-| 小尺寸 (200×100)          | **1.6 ms**      | 3.3 ms         | 68.0 ms     | 14.3 ms       |
-| 模态框 (400×300)          | **2.9 ms**      | 6.8 ms         | 87.5 ms     | 34.8 ms       |
-| 页面视图 (1200×800)     | **17.5 ms**     | 50.2 ms        | 178.0 ms    | 429.0 ms      |
-| 大滚动 (2000×1500) | **54.0 ms**     | 201.8 ms       | 735.2 ms    | 984.2 ms      |
-| 超大尺寸 (4000×2000)   | **171.4 ms**    | 453.7 ms       | 1,800.4 ms  | 2,611.9 ms    |
+| 小尺寸（200×100）          | **1.6 ms**      | 3.3 ms         | 68.0 ms     | 14.3 ms       |
+| 模态框（400×300）          | **2.9 ms**      | 6.8 ms         | 87.5 ms     | 34.8 ms       |
+| 页面视图（1200×800）     | **17.5 ms**     | 50.2 ms        | 178.0 ms    | 429.0 ms      |
+| 大型滚动区域（2000×1500） | **54.0 ms**     | 201.8 ms       | 735.2 ms    | 984.2 ms      |
+| 超大尺寸（4000×2000）   | **171.4 ms**    | 453.7 ms       | 1,800.4 ms  | 2,611.9 ms    |
 
 
 ### 运行基准测试
@@ -267,11 +265,11 @@ npm run test:benchmark
 ## 开发
 
 **源码结构：**
-- `src/api/` – 公共 API（`snapdom`、`preCache`）
-- `src/core/` – 捕获流程、克隆、准备、插件
-- `src/modules/` – 图片、字体、伪元素、背景、SVG
-- `src/exporters/` – toPng、toSvg、toBlob 等
-- `dist/` – 构建产物（`snapdom.js`、`snapdom.mjs`、`preCache.mjs`、`plugins.mjs`）
+- `src/api/` — 公开 API（`snapdom`、`preCache`）
+- `src/core/` — 捕获流程、克隆、预处理与插件
+- `src/modules/` — 图片、字体、伪元素、背景与 SVG
+- `src/exporters/` — `toPng`、`toSvg`、`toBlob` 等导出方法
+- `dist/` — 构建产物（`snapdom.js`、`snapdom.mjs`、`preCache.mjs`、`plugins.mjs`）
 
 **构建：**
 ```sh
@@ -284,7 +282,7 @@ npm run compile
 
 **测试：**
 ```sh
-npx playwright install   # 浏览器测试所需
+npx playwright install   # 浏览器测试需要
 npm test
 npm run test:benchmark
 ```
@@ -306,6 +304,7 @@ npm run test:benchmark
 <a href="https://github.com/airamhr9" title="airamhr9"><img src="https://avatars.githubusercontent.com/u/57371081?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="airamhr9"/></a>
 <a href="https://github.com/jswhisperer" title="jswhisperer"><img src="https://avatars.githubusercontent.com/u/1177690?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jswhisperer"/></a>
 <a href="https://github.com/K1ender" title="K1ender"><img src="https://avatars.githubusercontent.com/u/146767945?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="K1ender"/></a>
+<a href="https://github.com/mosuzi" title="mosuzi"><img src="https://avatars.githubusercontent.com/u/43341701?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="mosuzi"/></a>
 <a href="https://github.com/17biubiu" title="17biubiu"><img src="https://avatars.githubusercontent.com/u/13295895?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="17biubiu"/></a>
 <a href="https://github.com/av01d" title="av01d"><img src="https://avatars.githubusercontent.com/u/6247646?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="av01d"/></a>
 <a href="https://github.com/CHOYSEN" title="CHOYSEN"><img src="https://avatars.githubusercontent.com/u/25995358?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="CHOYSEN"/></a>
@@ -321,9 +320,8 @@ npm run test:benchmark
 <a href="https://github.com/simon1uo" title="simon1uo"><img src="https://avatars.githubusercontent.com/u/60037549?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="simon1uo"/></a>
 <a href="https://github.com/titoBouzout" title="titoBouzout"><img src="https://avatars.githubusercontent.com/u/64156?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="titoBouzout"/></a>
 <a href="https://github.com/ZiuChen" title="ZiuChen"><img src="https://avatars.githubusercontent.com/u/64892985?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="ZiuChen"/></a>
+<a href="https://github.com/adajoy" title="adajoy"><img src="https://avatars.githubusercontent.com/u/26210079?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="adajoy"/></a>
 <a href="https://github.com/harshasiddartha" title="harshasiddartha"><img src="https://avatars.githubusercontent.com/u/147021873?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="harshasiddartha"/></a>
-<a href="https://github.com/karasHou" title="karasHou"><img src="https://avatars.githubusercontent.com/u/27048083?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="karasHou"/></a>
-<a href="https://github.com/jhbae200" title="jhbae200"><img src="https://avatars.githubusercontent.com/u/20170610?v=4&s=100" style="border-radius:10px; width:60px; height:60px; object-fit:cover; margin:5px;" alt="jhbae200"/></a>
 </p>
 <!-- CONTRIBUTORS:END -->
 
@@ -331,13 +329,13 @@ npm run test:benchmark
 
 特别感谢 [@megaphonecolin](https://github.com/megaphonecolin)、[@sdraper69](https://github.com/sdraper69)、[@reynaldichernando](https://github.com/reynaldichernando)、[@gamma-app](https://github.com/gamma-app)、[@jrjohnson](https://github.com/jrjohnson) 和 [@ryanander](https://github.com/ryanander) 对本项目的支持！
 
-如果您也想支持这个项目，您可以[成为赞助者](https://github.com/sponsors/tinchox5)。
+如果你也愿意支持这个项目，可以[成为赞助者](https://github.com/sponsors/tinchox5)。
 
 ## 支持我们
 
-如果 snapDOM 为您节省了时间，欢迎在 GitHub 上点一个 ⭐ —— 这能帮助其他开发者发现它，这就是我们唯一的请求。
+如果 snapDOM 帮你节省了时间，欢迎在 GitHub 上点一个 ⭐。这能让更多开发者发现它，也是我们唯一的请求。
 
-用 snapDOM 做了点东西？把徽章添加到您的 README 中：
+用 snapDOM 构建了项目？欢迎把这个徽章添加到你的 README：
 
 [![Built with snapDOM](https://img.shields.io/badge/built%20with-snapDOM-blue)](https://snapdom.dev)
 
@@ -347,22 +345,22 @@ npm run test:benchmark
 
 ### 使用 snapDOM 的项目
 
-snapDOM 已在 290+ 个公开仓库的生产环境中运行（[GitHub 依赖关系图](https://github.com/zumerlab/snapdom/network/dependents)）。以下是一些值得关注的项目，每一个都已通过其自身的 `package.json` 验证：
+snapDOM 已用于 290 多个公开仓库的生产环境（见 [GitHub 依赖关系图](https://github.com/zumerlab/snapdom/network/dependents)）。以下列出部分有代表性的项目，每个项目都已通过其自身的 `package.json` 核实：
 
-- [LobeHub](https://github.com/lobehub/lobehub) — 运营 AI 智能体的平台
+- [LobeHub](https://github.com/lobehub/lobehub) — AI 智能体平台
 - [Trilium Notes](https://github.com/TriliumNext/Trilium) — 层级式个人知识库
 - [Sealos](https://github.com/labring/sealos) — AI 原生云操作系统
 - [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — 低代码页面编辑器
-- [Playroom](https://github.com/seek-oss/playroom) — SEEK 出品的 JSX 设计工具
-- [GPT-Vis](https://github.com/antvis/GPT-Vis) — 蚂蚁集团 AntV 出品的 AI 友好数据可视化
+- [Playroom](https://github.com/seek-oss/playroom) — SEEK 推出的 JSX 设计工具
+- [GPT-Vis](https://github.com/antvis/GPT-Vis) — 蚂蚁集团 AntV 推出的、面向 AI 的数据可视化工具
 - [Rabby Wallet](https://github.com/RabbyHub/Rabby) — 面向 EVM 链的浏览器钱包
-- [uMap](https://github.com/umap-project/umap) — OpenStreetMap 地图构建工具
-- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — MetaBrainz 出品的音乐追踪工具
-- [SnapDIFF](https://zumerlab.com/snapdiff/) — 浏览器内的视觉回归测试工具 *(Zumerlab 出品)*
+- [uMap](https://github.com/umap-project/umap) — OpenStreetMap 地图制作工具
+- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — MetaBrainz 推出的音乐收听记录服务
+- [SnapDIFF](https://zumerlab.com/snapdiff/) — 浏览器内的视觉回归测试工具 *（由 Zumerlab 开发）*
 
-完整展示请见 **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**。用了 snapDOM？欢迎[提交 PR](https://github.com/zumerlab/snapdom/pulls) 添加您的项目——仅限真实、可验证的项目。
+完整案例见 **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**。如果你的项目也在使用 snapDOM，欢迎[提交 PR](https://github.com/zumerlab/snapdom/pulls) 添加到列表中 — 仅收录真实、可验证的项目。
 
-## Star 历史
+## Star 趋势
 
 [![Star History Chart](https://api.star-history.com/svg?repos=zumerlab/snapdom&type=Date)](https://www.star-history.com/#zumerlab/snapdom&Date)
 

@@ -585,7 +585,18 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       pseudoEl.style.pointerEvents = 'none'
       if (pinNowrap) pseudoEl.style.whiteSpace = 'nowrap'
       const snapshot = snapshotComputedStyle(style)
-      const key = getStyleKey(snapshot, 'span')
+      // #452: mirror the styles.js width-softening flags. An empty pseudo box sized by
+      // CSS (width/height, content:'') is the #433 "empty box" case — its width must be
+      // kept verbatim, otherwise a blockified flex-item dot collapses to 0 and a
+      // display:block dot stretches to the host width. The pseudo's parent box is the
+      // host itself, so flex-item-ness comes from the host's display (#406: no floor).
+      const hostDisplay = (getStyle(source).display || '').toLowerCase()
+      const pseudoIsFlexItem = hostDisplay.includes('flex') || hostDisplay.includes('grid')
+      if (pseudoIsFlexItem) {
+        const mw = snapshot['min-width']
+        if (!mw || mw === 'auto' || mw === '0px') snapshot['min-width'] = '0px'
+      }
+      const key = getStyleKey(snapshot, 'span', hasExplicitContent, pseudoIsFlexItem)
       sessionCache.styleMap.set(pseudoEl, key)
 
       // ---- Content handling (icon-font glyphs / url() / text) ----
