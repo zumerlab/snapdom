@@ -417,6 +417,85 @@ export function estimateKeptHeight(container, options) {
 export const limitDecimals = (v, n = 3) =>
   Number.isFinite(v) ? Math.round(v * 10 ** n) / 10 ** n : v
 
+/** Divergence below this (px) is sub-pixel noise, not a layout difference. */
+const RECONCILE_EPS = 0.75
+
+/**
+ * Opt-in layout reconciliation (`reconcile: true`): mount the styled clone in-document,
+ * measure every node, and pin width/height ONLY on the boxes whose size diverges from the
+ * live tree. Measurement instead of heuristics — the class of bugs where the clone's
+ * translated CSS lays out differently than the live DOM (#429/#433/#434 family) gets fixed
+ * per-node with the real values.
+ *
+ * Pins are inline `width`/`height` + `box-sizing:border-box` (rects are border-box), which
+ * beat the generated classes by specificity. Single pass: pinning a box can settle its
+ * descendants on the next layout, but one pass already removes the systematic divergence.
+ *
+ * @param {Element} element - live capture root
+ * @param {HTMLElement} clone - detached clone (mutated: pins applied here)
+ * @param {string} cssText - full capture CSS (base + fonts + classes + scrollbar)
+ * @param {Map} nodeMap - session clone→source map
+ * @param {number} w0 - capture width (unscaled source layout width)
+ * @param {number} h0 - capture height
+ * @returns {number} number of pinned nodes
+ */
+export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
+  const elDoc = element.ownerDocument || document
+  const srcRootRect = element.getBoundingClientRect()
+  // Outer transforms scale every live rect; w0/h0 are unscaled. Derive the factor from the
+  // root and bail on non-uniform scaling (rotation/skew — rect comparison meaningless there).
+  const sx = w0 > 0 && srcRootRect.width > 0 ? srcRootRect.width / w0 : 1
+  const sy = h0 > 0 && srcRootRect.height > 0 ? srcRootRect.height / h0 : 1
+  if (Math.abs(sx - sy) > 0.02) return 0
+
+  const wrap = elDoc.createElement('div')
+  wrap.setAttribute('data-snapdom-internal', '')
+  wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' +
+    w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
+  const styleNode = elDoc.createElement('style')
+  styleNode.textContent = cssText
+  wrap.appendChild(styleNode)
+  const measured = clone.cloneNode(true)
+  wrap.appendChild(measured)
+  elDoc.body.appendChild(wrap)
+
+  let pinned = 0
+  try {
+    // Parallel traversal: `measured` is a deep copy of `clone`, so element structure is
+    // identical; the source comes from the session nodeMap. Root box is sized by the
+    // foreignObject container, so only descendants are pinned.
+    const walk = (cn, mn) => {
+      const cKids = cn.children
+      const mKids = mn.children
+      const n = Math.min(cKids.length, mKids.length)
+      for (let i = 0; i < n; i++) {
+        const c = cKids[i]
+        const m = mKids[i]
+        const src = nodeMap.get(c)
+        if (src instanceof Element && c instanceof HTMLElement && src.isConnected) {
+          const sr = src.getBoundingClientRect()
+          if (sr.width > 0 && sr.height > 0) {
+            const mr = m.getBoundingClientRect()
+            const dw = mr.width - sr.width / sx
+            const dh = mr.height - sr.height / sy
+            if (Math.abs(dw) > RECONCILE_EPS || Math.abs(dh) > RECONCILE_EPS) {
+              c.style.boxSizing = 'border-box'
+              c.style.width = `${limitDecimals(sr.width / sx)}px`
+              c.style.height = `${limitDecimals(sr.height / sy)}px`
+              pinned++
+            }
+          }
+        }
+        walk(c, m)
+      }
+    }
+    walk(clone, measured)
+  } finally {
+    wrap.remove()
+  }
+  return pinned
+}
+
 /** Match ::-webkit-scrollbar and related pseudos (#334) */
 const SCROLLBAR_PSEUDO = /::-webkit-scrollbar(-[a-z]+)?\b/i
 

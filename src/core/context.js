@@ -89,6 +89,10 @@ export function createContext(options = {}) {
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
 
+    // Layout reconciliation: measure the styled clone in-document and pin diverging boxes
+    // to their live size. Opt-in (adds one in-document layout of the clone).
+    reconcile: options.reconcile ?? false,
+
     // Perceptual image downsampling. On by default (big speed win on image-heavy raster captures,
     // ~free on the common case, fidelity-neutral). Pass `compress: false` to embed images verbatim.
     compress: options.compress !== false,

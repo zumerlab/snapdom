@@ -21,7 +21,8 @@ import {
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
   limitDecimals,
-  collectScrollbarCSS
+  collectScrollbarCSS,
+  reconcileCloneLayout
 } from '../utils/capture.helpers.js'
 import {
   parseBoxShadow,
@@ -276,6 +277,18 @@ export async function captureDOM(element, options) {
         }
         // En ancho casi nunca conviene ajustar; si lo necesitás, podés hacer análogo con estimateKeptWidth(...)
       }
+      // Opt-in layout reconciliation: measure the styled clone in-document and pin only the
+      // boxes whose size diverges from the live tree (measurement over heuristics).
+      if (state.options?.reconcile) {
+        try {
+          const cssAll = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS +
+            'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+          reconcileCloneLayout(state.element, state.clone, cssAll, cache.session.nodeMap, w0, h0)
+        } catch (e) {
+          console.warn('[snapdom] reconcile pass failed:', e)
+        }
+      }
+
       const coerceNum = (v, def = NaN) => {
         const n = typeof v === 'string' ? parseFloat(v) : v
         return Number.isFinite(n) ? n : def
