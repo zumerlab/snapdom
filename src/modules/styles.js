@@ -25,7 +25,7 @@ function isOwnedNode(node) {
   const el = node && (node.nodeType === 1 ? node : node.parentElement)
   return !!(el && el.closest && el.closest(OWNED_SELECTOR))
 }
-function hasExternalMutation(records) {
+export function hasExternalMutation(records) {
   for (const rec of records) {
     if (isOwnedNode(rec.target)) continue
     if (rec.type === 'childList') {
