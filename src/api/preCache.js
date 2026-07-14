@@ -1,6 +1,6 @@
 // src/api/preCache.js
 import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
-import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
+import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { cache, applyCachePolicy, EvictingMap } from '../core/cache.js'
 import { inlineBackgroundImages } from '../modules/background.js'
@@ -119,8 +119,7 @@ export async function preCache(root = document, options = {}) {
   // Optional: preload/embed fonts
   if (embedFonts) {
     try {
-      const required = collectUsedFontVariants(root)
-      const usedCodepoints = collectUsedCodepoints(root)
+      const { required, usedCodepoints } = collectFontUsage(root)
 
       // Safari warmup: ensure families are ready before embedding
       const safari = (typeof isSafari === 'function') ? isSafari() : !!isSafari
