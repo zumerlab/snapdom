@@ -46,6 +46,11 @@ if (Object.keys(demos).length === 0) {
     // The snapVisual demo toggles a `body.mutated` class with new bg gradients
     // and pseudo content — large legitimate visual diff, not a snapdom bug.
     'demo': { skip: true },
+    // Real KaTeX from CDN (issue #454 repro) — needs time to load and lay out fonts.
+    'd454-katex-hide-tail': {
+      wait: 2500,
+      setup: async (win) => { try { await win.document.fonts.ready } catch { } }
+    },
     // Examples — adjust to your demos:
     // 'd1':  { target: 'body' },
     // 'd2':  { target: '#target', wait: 1500, snapdomOptions: { embedFonts: true } },
