@@ -11,7 +11,6 @@
   <link rel="canonical" href="https://snapdom.dev/labs.html"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./shared.css">
   <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
   <script>
@@ -46,7 +45,8 @@
       --shadow-sticker-lg: none;
       --font-display: 'Tanker', 'Switzer', sans-serif;
       --font-body: 'Switzer', sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+      --font-mono: Arial, Helvetica, sans-serif;
+      --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
       --font-hand: 'Switzer', sans-serif;
       --grid-color: transparent;
       --halftone-color: transparent;
@@ -88,7 +88,7 @@
     .panel::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 18px; height: 18px; border-bottom: 3px solid var(--accent); border-right: 3px solid var(--accent); pointer-events: none; }
     .panel h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; font-family: var(--font-body); color: var(--text); }
     .panel p { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
-    .panel code { font-family: var(--font-mono); font-size: 12px; color: #1D3FD8; background: var(--accent-soft); padding: 2px 6px; border-radius: 0; font-weight: 600; }
+    .panel code { font-family: var(--font-code); font-size: 12px; color: #1D3FD8; background: var(--accent-soft); padding: 2px 6px; border-radius: 0; font-weight: 600; }
 
     /* ── Demo target (capture subject) ── */
     .demo-target { background: linear-gradient(135deg, #2D5BFF 0%, #5C7CFF 100%); color: #FFFFFF; padding: 20px; border-radius: 10px; margin: 16px 0; border: 0; }
