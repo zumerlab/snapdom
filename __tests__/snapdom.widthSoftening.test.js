@@ -102,6 +102,48 @@ describe('#406 min-width:0 on flex items survives width softening', () => {
   })
 })
 
+// #454 — a span whose only content is out-of-flow (abspos svg) is sized by CSS, not content.
+// KaTeX's `.hide-tail` (width:100%, authored min-width, position:absolute svg inside) lost its
+// width: softening dropped it and the authored min-width suppressed the floor, so the sqrt
+// tail collapsed to min-width and overlapped the radicand.
+describe('#454 span with only out-of-flow content keeps its width', () => {
+  let host, style
+  beforeEach(() => {
+    host = document.createElement('div'); document.body.appendChild(host)
+    style = document.createElement('style')
+    document.head.appendChild(style)
+  })
+  afterEach(() => { host.remove(); style.remove() })
+
+  it('keeps the width when the only child is position:absolute (KaTeX hide-tail)', async () => {
+    style.textContent = `
+      .ktx-box { display:inline-block; width:60px; height:20px; position:relative }
+      .ktx-tail { display:inline-block; width:100%; height:100%; position:relative; overflow:hidden }
+      .ktx-tail svg { display:block; position:absolute; width:100%; height:100% }`
+    host.innerHTML = '<span class="ktx-box"><span class="ktx-tail" style="min-width:11px">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400000 1296" preserveAspectRatio="xMinYMin slice"><rect width="400000" height="1296"/></svg>' +
+      '</span></span>'
+    const svg = svgOf(await snapdom.toRaw(host.querySelector('.ktx-box')))
+    const rules = classRules(svg)
+    const m = svg.match(/<span[^>]*class="([^"]*ktx-tail[^"]*)"/)
+    const rule = ((m || [])[1] || '').split(/\s+/).map(c => rules[c] || '').join(';')
+    // not sized by content (abspos child) → the 100%-resolved width is kept verbatim
+    expect(rule).toMatch(/(?:^|;)\s*width:\s*60px/)
+  })
+
+  it('still softens when there is in-flow content next to an abspos child', async () => {
+    style.textContent = `
+      .mix { display:inline-block; width:200px }
+      .mix i { position:absolute }`
+    host.innerHTML = '<span class="mix">label text<i>x</i></span>'
+    const span = host.querySelector('.mix')
+    const svg = svgOf(await snapdom.toRaw(host))
+    const rule = ruleFor(svg, span)
+    expect(/(?:^|;)\s*width:\s*200px/.test(rule)).toBe(false)
+    expect(rule).toMatch(/min-width:\s*200px/)
+  })
+})
+
 describe('#436 replaced inline <img> keeps its explicit width', () => {
   let host
   beforeEach(() => { host = document.createElement('div'); document.body.appendChild(host) })

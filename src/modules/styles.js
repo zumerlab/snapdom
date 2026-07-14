@@ -145,9 +145,15 @@ function snapshotComputedStyleFull(style, options = {}) {
  * @param {Element} el
  */
 function hasRenderedContent(el) {
-  if (el.firstElementChild) return true
   for (let n = el.firstChild; n; n = n.nextSibling) {
     if (n.nodeType === 3 && /\S/.test(n.nodeValue || '')) return true
+    // #454: an out-of-flow child doesn't size its parent — KaTeX's .hide-tail span
+    // (width:100%, abspos svg inside) is sized by CSS, not content, so its width
+    // must be kept verbatim instead of softened away.
+    if (n.nodeType === 1) {
+      const pos = getStyle(n).position
+      if (pos !== 'absolute' && pos !== 'fixed') return true
+    }
   }
   return false
 }
