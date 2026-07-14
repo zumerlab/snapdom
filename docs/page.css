@@ -2,11 +2,10 @@
    page.css — Shared styles for SnapDOM content
    pages (comparisons, guides, how-tos, hubs).
    "Capture instrument" design system
-   Tanker (display) · Switzer (body) · JetBrains Mono
+   Tanker (display) · Switzer (body) · Arial (annotations)
    ═══════════════════════════════════════════════ */
 
 @import url('https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   --bg: #F7F9FC;
@@ -42,7 +41,8 @@
   --halftone-offset: 0px;
   --font-display: 'Tanker', 'Switzer', sans-serif;
   --font-body: 'Switzer', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: Arial, Helvetica, sans-serif;
+  --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
   --font-hand: 'Switzer', sans-serif;
 }
 
@@ -135,7 +135,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 .prose a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(45,91,255,0.35); transition: border-color 0.2s, color 0.2s; font-weight: 600; }
 .prose a:hover { border-bottom-color: var(--accent); }
 .prose strong { color: var(--text); font-weight: 700; }
-.prose code { font-family: var(--font-mono); font-size: 13px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 6px; border-radius: 0; font-weight: 600; }
+.prose code { font-family: var(--font-code); font-size: 13px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 6px; border-radius: 0; font-weight: 600; }
 
 /* ── Code blocks ── */
 .code-block {
@@ -145,7 +145,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
   border-radius: 0;
   padding: 22px 64px 22px 24px;
   overflow: visible;
-  font-family: var(--font-mono);
+  font-family: var(--font-code);
   font-size: 13px;
   line-height: 1.75;
   color: var(--code-text);
@@ -262,7 +262,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 .faq details[open] summary::after { content: '\2212'; }
 .faq details p { font-size: 14px; color: var(--text); line-height: 1.65; margin: 12px 0 0; }
 .faq details p + p { margin-top: 10px; }
-.faq details code { font-family: var(--font-mono); font-size: 12px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 6px; border-radius: 0; font-weight: 600; }
+.faq details code { font-family: var(--font-code); font-size: 12px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 6px; border-radius: 0; font-weight: 600; }
 
 /* ── Hub grid (cards linking to spokes) ── */
 .hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 16px 0 40px; }

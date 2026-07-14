@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════
    shared.css — Common styles for all SnapDOM docs
    "Capture instrument" design system
-   Tanker (display) · Switzer (body) · JetBrains Mono (annotations)
+   Tanker (display) · Switzer (body) · Arial (annotations)
    Paper #F7F9FC · Ink #0F1E4D · Electric #2D5BFF
    ═══════════════════════════════════════════════ */
 
@@ -18,7 +18,7 @@
   padding: 8px 14px;
   border-radius: 0;
   border: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.3)));
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-family: var(--font-mono, Arial, Helvetica, sans-serif);
   letter-spacing: 0.3px;
   transition: border-color 0.15s;
 }
@@ -53,7 +53,7 @@
   border-radius: 999px;
   padding: 4px;
   box-shadow: 0 12px 32px -12px rgba(15, 30, 77, 0.35);
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-family: var(--font-mono, Arial, Helvetica, sans-serif);
   max-width: calc(100vw - 24px);
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -62,7 +62,7 @@
 }
 .page-nav::-webkit-scrollbar { display: none; }
 .page-nav a {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-family: var(--font-mono, Arial, Helvetica, sans-serif);
   font-size: 10px;
   color: var(--text-muted, var(--sd-text-muted, #55617C));
   text-decoration: none;
