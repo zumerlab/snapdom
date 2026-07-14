@@ -61,6 +61,29 @@ function setupInvalidationOnce(root = document.documentElement) {
   } catch { }
 }
 
+/** URL-bearing props that mean inlineBackgroundImages must visit the node. */
+const BG_INLINE_FLAG_PROPS = [
+  'mask', 'mask-image', '-webkit-mask', '-webkit-mask-image',
+  'mask-source', 'mask-box-image-source', 'mask-border-source', '-webkit-mask-box-image-source',
+  'border-image', 'border-image-source',
+]
+
+/**
+ * Whether the background-inline pass has work on this element, per its cached style snapshot.
+ * Unknown (no fresh snapshot — STYLE tags, SVG template descendants) → true, so callers fall
+ * back to processing the node like before.
+ * @param {Element} source
+ * @returns {boolean}
+ */
+export function needsBackgroundInline(source) {
+  const rec = snapshotCache.get(source)
+  if (rec && rec.epoch === __epoch) {
+    const f = rec.snapshot && rec.snapshot.__needsBgInline
+    if (f !== undefined) return f
+  }
+  return true
+}
+
 function snapshotComputedStyleFull(style, options = {}) {
   const out = {}
   const vis = style.getPropertyValue('visibility')
@@ -133,6 +156,32 @@ function snapshotComputedStyleFull(style, options = {}) {
     const cv = out['content-visibility'] || style.getPropertyValue('content-visibility')
     if (cv === 'hidden') out['visibility'] = 'hidden'
   } catch { /* ignore */ }
+
+  // Flag whether inlineBackgroundImages has any work on this node (bg/mask/border-image or a
+  // background-color that needs its layout longhands for background-clip:text). Read from the
+  // live declaration (not `out`) so excludeStyleProps or the url()→none rewrite can't hide it.
+  // Stored non-enumerable so key generation/signature iteration never sees it.
+  let needsBg = false
+  {
+    const bgi = style.getPropertyValue('background-image')
+    if (bgi && bgi !== 'none') needsBg = true
+    if (!needsBg) {
+      const bgc = style.getPropertyValue('background-color')
+      if (bgc && bgc !== 'rgba(0, 0, 0, 0)' && bgc !== 'transparent') needsBg = true
+    }
+    if (!needsBg) {
+      for (const p of BG_INLINE_FLAG_PROPS) {
+        const v = style.getPropertyValue(p)
+        if (v && v !== 'none') { needsBg = true; break }
+      }
+    }
+    if (!needsBg) {
+      // #343: some engines report background-image:none while the shorthand carries url()
+      const sh = style.getPropertyValue('background')
+      if (sh && /url\s*\(/i.test(sh)) needsBg = true
+    }
+  }
+  Object.defineProperty(out, '__needsBgInline', { value: needsBg, enumerable: false })
 
   // #362: Tailwind's * { border: 0 solid } renders incorrectly in capture.
   // When all border widths are 0, normalize to border: none for unambiguous output.

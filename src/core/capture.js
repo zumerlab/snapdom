@@ -8,7 +8,7 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
-import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
+import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
@@ -153,8 +153,7 @@ export async function captureDOM(element, options) {
     fontsPhase = runIdle(async () => {
       // #441: read fonts from the element's own document (same-origin iframe support)
       const ownerDoc = state.element.ownerDocument || document
-      const required = collectUsedFontVariants(state.element)
-      const usedCodepoints = collectUsedCodepoints(state.element)
+      const { required, usedCodepoints } = collectFontUsage(state.element)
       if (isSafari()) {
         const families = new Set(
           Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
