@@ -51,6 +51,22 @@ function hasPictureResolverPlugin(options) {
 }
 
 /**
+ * Collect per-node resolveNode hooks once per capture, so deepClone pays a single falsy
+ * check per node when no plugin uses them.
+ * @param {object} options
+ * @returns {Array<(node: Node, ctx: object) => any>|null}
+ */
+function collectResolveNodeHooks(options) {
+  const defs = Array.isArray(options.plugins) ? options.plugins : getGlobalPlugins()
+  const hooks = []
+  for (const d of defs) {
+    const inst = normalizePlugin(d)
+    if (inst && typeof inst.resolveNode === 'function') hooks.push(inst.resolveNode.bind(inst))
+  }
+  return hooks.length ? hooks : null
+}
+
+/**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
  * @param {Element} element - DOM element to capture
@@ -68,6 +84,7 @@ function hasPictureResolverPlugin(options) {
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
+  options.__resolveNodeHooks = collectResolveNodeHooks(options)
   const fast = options.fast
   const outerTransforms = options.outerTransforms !== false   // default: true
 

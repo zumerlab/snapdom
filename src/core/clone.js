@@ -25,6 +25,29 @@ import { isFirefox, isSafari } from '../utils/browser.js'
 
 // helper implementations moved to ../utils/clone.helpers.js
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Tag handler registry: per-tag clone strategies for elements whose content
+ * can't be cloned structurally (iframe/canvas/video/audio). A handler returns
+ * a finished clone Node, null to skip the node, or undefined to fall through
+ * to the generic clone path.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** @type {Map<string, (node: Element, sessionCache: object, options: object) => Promise<Node|null|undefined>>} */
+const tagHandlers = new Map()
+
+/** Tags dispatched BEFORE the data-capture="placeholder" branch (an <iframe> placeholder
+ *  clone would render as an empty frame, so iframe handling keeps precedence). */
+const PRE_PLACEHOLDER_TAGS = new Set(['IFRAME'])
+
+/**
+ * Register a clone strategy for a tag (internal extension point).
+ * @param {string} tag
+ * @param {(node: Element, sessionCache: object, options: object) => Promise<Node|null|undefined>} handler
+ */
+export function registerTagHandler(tag, handler) {
+  tagHandlers.set(String(tag).toUpperCase(), handler)
+}
+
 /**
  * Build a hidden, layout-preserving spacer matching a node's unscaled box, used when a node is
  * excluded/filtered in 'hide' mode. Forces at most one getBoundingClientRect (the inline form
@@ -108,43 +131,33 @@ export async function deepClone(node, sessionCache, options) {
       console.warn('Error in filter function:', err)
     }
   }
-  if (node.tagName === 'IFRAME') {
-    let sameOrigin = false
-    try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch (e) {
-      debugWarn(sessionCache, 'iframe same-origin probe failed', e)
-    }
-
-    if (sameOrigin) {
-      try {
-        const wrapper = await rasterizeIframe(node, sessionCache, options)
-        return wrapper
-      } catch (err) {
-        console.warn('[SnapDOM] iframe rasterization failed, fallback:', err)
-        // fall through
+  // Per-node plugin hook: the first plugin whose resolveNode returns a value wins
+  // (Node = finished replacement clone, null = skip node, undefined = continue).
+  // Hooks are collected once per capture in captureDOM; zero cost when unused.
+  if (options.__resolveNodeHooks) {
+    for (const hook of options.__resolveNodeHooks) {
+      let out
+      try { out = await hook(node, options) } catch (e) {
+        debugWarn(sessionCache, 'resolveNode plugin hook failed', e)
+      }
+      if (out === null) return null
+      if (out instanceof Node) {
+        if (out.nodeType === Node.ELEMENT_NODE) {
+          // Same treatment as built-in tag handlers: map to the source and carry its box
+          // styles so the replacement keeps the original layout.
+          sessionCache.nodeMap.set(out, node)
+          inlineAllStyles(node, /** @type {Element} */ (out), sessionCache, options)
+        }
+        return out
       }
     }
+  }
 
-    // NEW-7: warn that this iframe was skipped so callers can react
-    if (!sameOrigin) {
-      console.warn('[snapdom] cross-origin <iframe> skipped (cannot access content). Use options.placeholders to show a placeholder instead.', node)
-    }
-
-    // Fallback actual (placeholder o spacer)
-    if (options.placeholders) {
-      const { width, height } = getUnscaledDimensions(node)
-      const fallback = document.createElement('div')
-      fallback.style.cssText =
-        `width:${width}px;height:${height}px;` +
-        'background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);' +
-        'display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;'
-      inlineAllStyles(node, fallback, sessionCache, options)
-      return fallback
-    } else {
-      const { width, height } = getUnscaledDimensions(node)
-      const spacer = document.createElement('div')
-      spacer.style.cssText = `display:inline-block;width:${width}px;height:${height}px;visibility:hidden;`
-      inlineAllStyles(node, spacer, sessionCache, options)
-      return spacer
+  {
+    const preHandler = PRE_PLACEHOLDER_TAGS.has(node.tagName) && tagHandlers.get(node.tagName)
+    if (preHandler) {
+      const handled = await preHandler(node, sessionCache, options)
+      if (handled !== undefined) return handled
     }
   }
 
@@ -158,133 +171,13 @@ export async function deepClone(node, sessionCache, options) {
     clone2.appendChild(placeholder)
     return clone2
   }
-  if (node.tagName === 'CANVAS') {
-    // Safari-safe snapshot: poke + rAF + retry + scratch fallback
-    let url = ''
-    try {
-      const ctx = node.getContext('2d', { willReadFrequently: true })
-      try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
-      // WebKit needs a frame for the poke to materialize the buffer; on other engines
-      // toDataURL is synchronous with issued commands, so an unconditional rAF cost a
-      // serialized frame (≥16ms) per canvas — dashboards with N charts paid N frames.
-      // The blank-result retry below still covers any engine that returns an empty frame.
-      if (isSafari()) await new Promise(r => requestAnimationFrame(r))
 
-      url = node.toDataURL('image/png')
-
-      if (!url || url === 'data:,') {
-        // reintento rápido
-        try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
-        await new Promise(r => requestAnimationFrame(r))
-        url = node.toDataURL('image/png')
-
-        // último recurso: copiar a un scratch-canvas y leer desde ahí
-        if (!url || url === 'data:,') {
-          const scratch = document.createElement('canvas')
-          scratch.width = node.width
-          scratch.height = node.height
-          const sctx = scratch.getContext('2d')
-          if (sctx) {
-            sctx.drawImage(node, 0, 0)
-            url = scratch.toDataURL('image/png')
-          }
-        }
-      }
-    } catch (e) {
-      debugWarn(sessionCache, 'Canvas toDataURL failed, using empty/fallback', e)
+  {
+    const handler = !PRE_PLACEHOLDER_TAGS.has(node.tagName) && tagHandlers.get(node.tagName)
+    if (handler) {
+      const handled = await handler(node, sessionCache, options)
+      if (handled !== undefined) return handled
     }
-
-    const img = document.createElement('img')
-    try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
-      debugWarn(sessionCache, 'img decoding/loading hints failed', e)
-    }
-    if (url) img.src = url
-
-    // conservar dimensiones intrínsecas del bitmap
-    img.width = node.width
-    img.height = node.height
-
-    // conservar caja CSS para no romper layout usando dimensiones pre-transform
-    const { width, height } = getUnscaledDimensions(node)
-    if (width > 0) img.style.width = `${width}px`
-    if (height > 0) img.style.height = `${height}px`
-
-    sessionCache.nodeMap.set(img, node)
-    inlineAllStyles(node, img, sessionCache, options)
-    return img
-  }
-
-  if (node.tagName === 'VIDEO') {
-    let url = ''
-    try {
-      const canvas = document.createElement('canvas')
-      canvas.width = node.videoWidth || node.offsetWidth || 320
-      canvas.height = node.videoHeight || node.offsetHeight || 240
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
-        url = canvas.toDataURL('image/png')
-        // blank canvas = cross-origin or no frame loaded
-        if (!url || url === 'data:,') url = ''
-      }
-    } catch (e) {
-      debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
-    }
-
-    const img = document.createElement('img')
-    try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
-    if (url) {
-      img.src = url
-    } else if (node.poster) {
-      img.src = node.poster
-    }
-
-    img.width = node.videoWidth || node.offsetWidth || 0
-    img.height = node.videoHeight || node.offsetHeight || 0
-
-    const { width, height } = getUnscaledDimensions(node)
-    if (width > 0) img.style.width = `${width}px`
-    if (height > 0) img.style.height = `${height}px`
-    img.style.objectFit = 'contain'
-
-    sessionCache.nodeMap.set(img, node)
-    inlineAllStyles(node, img, sessionCache, options)
-    return img
-  }
-
-  if (node.tagName === 'AUDIO' && node.controls) {
-    // The native <audio controls> UI is a UA shadow-DOM widget that can't be
-    // serialized, so a plain clone renders blank. Draw a representative player
-    // sized to the element (#444). Without `controls` the native element is
-    // display:none, so we leave those to the generic (invisible) clone.
-    const { width, height } = getUnscaledDimensions(node)
-    const w = Math.round(width || node.offsetWidth || 300)
-    const h = Math.round(height || node.offsetHeight || 54)
-    const cy = h / 2
-    const tri = Math.max(4, h * 0.16)
-    const px = h * 0.34
-    const rTime = w - h * 0.34
-    const trackX = px + tri + h * 0.55
-    const trackW = Math.max(0, rTime - h * 0.7 - trackX)
-    const fs = Math.max(9, Math.round(h * 0.24))
-    const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
-      `<rect width="${w}" height="${h}" rx="${Math.min(h / 2, 10)}" fill="#f1f3f4"/>` +
-      `<path d="M ${px} ${cy - tri} L ${px + tri} ${cy} L ${px} ${cy + tri} Z" fill="#5f6368"/>` +
-      `<rect x="${trackX}" y="${cy - 1.5}" width="${trackW}" height="3" rx="1.5" fill="#bdc1c6"/>` +
-      `<circle cx="${trackX}" cy="${cy}" r="${Math.max(3, h * 0.09)}" fill="#5f6368"/>` +
-      `<text x="${rTime}" y="${cy}" fill="#5f6368" font-family="sans-serif" font-size="${fs}" text-anchor="end" dominant-baseline="central">0:00</text>` +
-      '</svg>'
-    const img = document.createElement('img')
-    try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
-    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-    img.width = w
-    img.height = h
-    img.style.width = `${w}px`
-    img.style.height = `${h}px`
-    sessionCache.nodeMap.set(img, node)
-    inlineAllStyles(node, img, sessionCache, options)
-    return img
   }
 
   let clone
@@ -539,3 +432,182 @@ export async function deepClone(node, sessionCache, options) {
   }
   return clone
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Built-in tag handlers (extracted from the former inline branches)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+async function cloneIframe(node, sessionCache, options) {
+  let sameOrigin = false
+  try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch (e) {
+    debugWarn(sessionCache, 'iframe same-origin probe failed', e)
+  }
+
+  if (sameOrigin) {
+    try {
+      const wrapper = await rasterizeIframe(node, sessionCache, options)
+      return wrapper
+    } catch (err) {
+      console.warn('[SnapDOM] iframe rasterization failed, fallback:', err)
+      // fall through
+    }
+  }
+
+  // NEW-7: warn that this iframe was skipped so callers can react
+  if (!sameOrigin) {
+    console.warn('[snapdom] cross-origin <iframe> skipped (cannot access content). Use options.placeholders to show a placeholder instead.', node)
+  }
+
+  // Fallback actual (placeholder o spacer)
+  if (options.placeholders) {
+    const { width, height } = getUnscaledDimensions(node)
+    const fallback = document.createElement('div')
+    fallback.style.cssText =
+      `width:${width}px;height:${height}px;` +
+      'background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);' +
+      'display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;'
+    inlineAllStyles(node, fallback, sessionCache, options)
+    return fallback
+  } else {
+    const { width, height } = getUnscaledDimensions(node)
+    const spacer = document.createElement('div')
+    spacer.style.cssText = `display:inline-block;width:${width}px;height:${height}px;visibility:hidden;`
+    inlineAllStyles(node, spacer, sessionCache, options)
+    return spacer
+  }
+}
+
+async function cloneCanvas(node, sessionCache, options) {
+  // Safari-safe snapshot: poke + rAF + retry + scratch fallback
+  let url = ''
+  try {
+    const ctx = node.getContext('2d', { willReadFrequently: true })
+    try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
+    // WebKit needs a frame for the poke to materialize the buffer; on other engines
+    // toDataURL is synchronous with issued commands, so an unconditional rAF cost a
+    // serialized frame (≥16ms) per canvas — dashboards with N charts paid N frames.
+    // The blank-result retry below still covers any engine that returns an empty frame.
+    if (isSafari()) await new Promise(r => requestAnimationFrame(r))
+
+    url = node.toDataURL('image/png')
+
+    if (!url || url === 'data:,') {
+      // reintento rápido
+      try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
+      await new Promise(r => requestAnimationFrame(r))
+      url = node.toDataURL('image/png')
+
+      // último recurso: copiar a un scratch-canvas y leer desde ahí
+      if (!url || url === 'data:,') {
+        const scratch = document.createElement('canvas')
+        scratch.width = node.width
+        scratch.height = node.height
+        const sctx = scratch.getContext('2d')
+        if (sctx) {
+          sctx.drawImage(node, 0, 0)
+          url = scratch.toDataURL('image/png')
+        }
+      }
+    }
+  } catch (e) {
+    debugWarn(sessionCache, 'Canvas toDataURL failed, using empty/fallback', e)
+  }
+
+  const img = document.createElement('img')
+  try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
+    debugWarn(sessionCache, 'img decoding/loading hints failed', e)
+  }
+  if (url) img.src = url
+
+  // conservar dimensiones intrínsecas del bitmap
+  img.width = node.width
+  img.height = node.height
+
+  // conservar caja CSS para no romper layout usando dimensiones pre-transform
+  const { width, height } = getUnscaledDimensions(node)
+  if (width > 0) img.style.width = `${width}px`
+  if (height > 0) img.style.height = `${height}px`
+
+  sessionCache.nodeMap.set(img, node)
+  inlineAllStyles(node, img, sessionCache, options)
+  return img
+}
+
+async function cloneVideo(node, sessionCache, options) {
+  let url = ''
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = node.videoWidth || node.offsetWidth || 320
+    canvas.height = node.videoHeight || node.offsetHeight || 240
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
+      url = canvas.toDataURL('image/png')
+      // blank canvas = cross-origin or no frame loaded
+      if (!url || url === 'data:,') url = ''
+    }
+  } catch (e) {
+    debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
+  }
+
+  const img = document.createElement('img')
+  try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+  if (url) {
+    img.src = url
+  } else if (node.poster) {
+    img.src = node.poster
+  }
+
+  img.width = node.videoWidth || node.offsetWidth || 0
+  img.height = node.videoHeight || node.offsetHeight || 0
+
+  const { width, height } = getUnscaledDimensions(node)
+  if (width > 0) img.style.width = `${width}px`
+  if (height > 0) img.style.height = `${height}px`
+  img.style.objectFit = 'contain'
+
+  sessionCache.nodeMap.set(img, node)
+  inlineAllStyles(node, img, sessionCache, options)
+  return img
+}
+
+async function cloneAudio(node, sessionCache, options) {
+  // The native <audio controls> UI is a UA shadow-DOM widget that can't be
+  // serialized, so a plain clone renders blank. Draw a representative player
+  // sized to the element (#444). Without `controls` the native element is
+  // display:none, so we leave those to the generic (invisible) clone.
+  if (!node.controls) return undefined
+  const { width, height } = getUnscaledDimensions(node)
+  const w = Math.round(width || node.offsetWidth || 300)
+  const h = Math.round(height || node.offsetHeight || 54)
+  const cy = h / 2
+  const tri = Math.max(4, h * 0.16)
+  const px = h * 0.34
+  const rTime = w - h * 0.34
+  const trackX = px + tri + h * 0.55
+  const trackW = Math.max(0, rTime - h * 0.7 - trackX)
+  const fs = Math.max(9, Math.round(h * 0.24))
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+    `<rect width="${w}" height="${h}" rx="${Math.min(h / 2, 10)}" fill="#f1f3f4"/>` +
+    `<path d="M ${px} ${cy - tri} L ${px + tri} ${cy} L ${px} ${cy + tri} Z" fill="#5f6368"/>` +
+    `<rect x="${trackX}" y="${cy - 1.5}" width="${trackW}" height="3" rx="1.5" fill="#bdc1c6"/>` +
+    `<circle cx="${trackX}" cy="${cy}" r="${Math.max(3, h * 0.09)}" fill="#5f6368"/>` +
+    `<text x="${rTime}" y="${cy}" fill="#5f6368" font-family="sans-serif" font-size="${fs}" text-anchor="end" dominant-baseline="central">0:00</text>` +
+    '</svg>'
+  const img = document.createElement('img')
+  try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  img.width = w
+  img.height = h
+  img.style.width = `${w}px`
+  img.style.height = `${h}px`
+  sessionCache.nodeMap.set(img, node)
+  inlineAllStyles(node, img, sessionCache, options)
+  return img
+}
+
+registerTagHandler('IFRAME', cloneIframe)
+registerTagHandler('CANVAS', cloneCanvas)
+registerTagHandler('VIDEO', cloneVideo)
+registerTagHandler('AUDIO', cloneAudio)

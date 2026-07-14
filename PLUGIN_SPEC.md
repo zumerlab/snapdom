@@ -67,6 +67,38 @@ Plus `defineExports` for adding custom export methods.
 | `beforeExport` | Before each export call | Modify export options (quality, type) |
 | `afterExport` | After each export call | Transform export output (chained) |
 | `defineExports` | During plugin registration | Add new export formats (toPdf, toAscii) |
+| `resolveNode` | Per node, during cloning | Replace/skip individual nodes (redaction, custom widgets) |
+
+### Per-node hook: `resolveNode(node, ctx)`
+
+Unlike the lifecycle hooks, `resolveNode` runs once **per source node** while the clone is
+built (after `exclude`/`filter`, before built-in handling of iframe/canvas/video/audio).
+The first plugin that returns a value wins:
+
+- Return a **Node** → used as the finished clone for that node (subtree included). SnapDOM
+  maps it to the source and copies the source's computed box styles onto it, so it keeps the
+  original layout.
+- Return **`null`** → the node is skipped entirely.
+- Return **`undefined`** → continue with the normal pipeline.
+
+```js
+export function redactEmails() {
+  return {
+    name: 'redact-emails',
+    resolveNode(node, _ctx) {
+      if (node.nodeType === 1 && node.matches?.('[data-private]')) {
+        const box = document.createElement('div')
+        box.textContent = '███'
+        return box
+      }
+      // undefined → normal cloning
+    },
+  }
+}
+```
+
+Keep it fast: it runs on every node of the captured subtree. Prefer cheap checks
+(`tagName`, an attribute) before anything expensive.
 
 ### Hook Context
 
