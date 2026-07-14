@@ -4,6 +4,7 @@ const MAX_BACKGROUND = 100
 const MAX_RESOURCE = 150
 const MAX_BASE_STYLE = 50
 const MAX_DEFAULT_STYLE = 30
+const MAX_COMPRESS = 50
 
 /**
  * Map that evicts oldest entries when exceeding maxSize. FIFO order.
@@ -33,6 +34,9 @@ export const cache = {
   resource: new EvictingMap(MAX_RESOURCE),
   defaultStyle: new EvictingMap(MAX_DEFAULT_STYLE),
   baseStyle: new EvictingMap(MAX_BASE_STYLE),
+  /** Downsampled data URLs keyed by source fingerprint + target size, so repeated captures
+   *  of the same element don't re-decode + re-encode every inlined image. */
+  compress: new EvictingMap(MAX_COMPRESS),
   computedStyle: new WeakMap(),
   /** Persistent cache for clone-in-document layout measurements (PERF-3).
    *  Key: Element. Value: { cssLen, w0, csh, csw } — cssLen is the total injected CSS
@@ -102,6 +106,7 @@ export function applyCachePolicy(policy = 'soft') {
       cache.image         = new EvictingMap(MAX_IMAGE)
       cache.background    = new EvictingMap(MAX_BACKGROUND)
       cache.resource      = new EvictingMap(MAX_RESOURCE)
+      cache.compress      = new EvictingMap(MAX_COMPRESS)
       cache.font          = new Set()
       return
     }

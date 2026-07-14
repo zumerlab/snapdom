@@ -130,57 +130,51 @@ export async function captureDOM(element, options) {
     await ligatureIconToImage(state.clone, state.element)
   } catch { /* non-blocking */ }
 
-  await new Promise((resolve) => {
-    idle(async () => {
-      await inlineImages(state.clone, state.options)
-      resolve()
-    }, { fast })
+  // Asset phases are network/decode-bound and independent: images ∥ backgrounds ∥ fonts run
+  // concurrently (they were serialized before, stacking their network latencies). Compress
+  // depends on the inlined data URLs, so it waits for images+backgrounds only.
+  const runIdle = (fn) => new Promise((resolve, reject) => {
+    idle(() => { Promise.resolve().then(fn).then(resolve, reject) }, { fast })
   })
 
-  await new Promise((resolve) => {
-    idle(async () => {
-      await inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options)
-      resolve()
-    }, { fast })
-  })
+  const assetsPhase = (async () => {
+    await Promise.all([
+      runIdle(() => inlineImages(state.clone, state.options)),
+      runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options)),
+    ])
+    // Perceptual image downsampling (on by default via `compress`). No-op when off.
+    if (options.compress) {
+      await runIdle(() => compressCloneAssets(state.clone, state.options))
+    }
+  })()
 
-  // Perceptual image downsampling (opt-in via `compress`). No-op when off.
-  if (options.compress) {
-    await new Promise((resolve) => {
-      idle(async () => {
-        await compressCloneAssets(state.clone, state.options)
-        resolve()
-      }, { fast })
-    })
-  }
-
+  let fontsPhase = Promise.resolve()
   if (options.embedFonts) {
-    await new Promise((resolve) => {
-      idle(async () => {
-        // #441: read fonts from the element's own document (same-origin iframe support)
-        const ownerDoc = state.element.ownerDocument || document
-        const required = collectUsedFontVariants(state.element)
-        const usedCodepoints = collectUsedCodepoints(state.element)
-        if (isSafari()) {
-          const families = new Set(
-            Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
-          )
-          await ensureFontsReady(families, 1, ownerDoc)
-        }
-        fontsCSS = await embedCustomFonts({
-          required,
-          usedCodepoints,
-          preCached: false,
-          exclude: state.options.excludeFonts,
-          localFonts: state.options.localFonts,
-          useProxy: state.options.useProxy,
-          fontStylesheetDomains: state.options.fontStylesheetDomains,
-          doc: ownerDoc
-        })
-        resolve()
-      }, { fast })
+    fontsPhase = runIdle(async () => {
+      // #441: read fonts from the element's own document (same-origin iframe support)
+      const ownerDoc = state.element.ownerDocument || document
+      const required = collectUsedFontVariants(state.element)
+      const usedCodepoints = collectUsedCodepoints(state.element)
+      if (isSafari()) {
+        const families = new Set(
+          Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
+        )
+        await ensureFontsReady(families, 1, ownerDoc)
+      }
+      fontsCSS = await embedCustomFonts({
+        required,
+        usedCodepoints,
+        preCached: false,
+        exclude: state.options.excludeFonts,
+        localFonts: state.options.localFonts,
+        useProxy: state.options.useProxy,
+        fontStylesheetDomains: state.options.fontStylesheetDomains,
+        doc: ownerDoc
+      })
     })
   }
+
+  await Promise.all([assetsPhase, fontsPhase])
 
   const usedTags = collectUsedTagNames(state.clone).sort()
   const tagKey = usedTags.join(',')
