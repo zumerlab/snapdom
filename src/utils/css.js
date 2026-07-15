@@ -215,7 +215,19 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
         continue
       }
     }
-    if (value && value !== defaults[prop]) entries.push(`${prop}:${value}`)
+    if (value && value !== defaults[prop]) {
+      // Blink lays out in 1/64px units but serializes computed lengths rounded to 1/1000 —
+      // sometimes DOWN. Freezing a shrink-to-fit box a hair below its true width re-wraps
+      // its text. Round frozen widths UP to the next 1/16px (invisible, guarantees fit).
+      if ((prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
+        const n = parseFloat(value)
+        if (Number.isFinite(n)) {
+          entries.push(`${prop}:${Math.ceil(n * 16) / 16}px`)
+          continue
+        }
+      }
+      entries.push(`${prop}:${value}`)
+    }
   }
   // Re-add the captured width as a min-width floor so the softened box keeps its size but can
   // still grow to fit a wider raster font (no wrap #429, no collapse #434). Skipped for flex/grid
