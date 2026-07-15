@@ -129,9 +129,20 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
     if (cloneEl.style.position === 'absolute') continue
     const r = orig.getBoundingClientRect()
     if (!(r.width > 0 && r.height > 0)) continue
-    // r is the transformed box; the layout box is what width/height must freeze
-    const w = /** @type {HTMLElement} */ (orig).offsetWidth || r.width
-    const h = /** @type {HTMLElement} */ (orig).offsetHeight || r.height
+    // Freeze the EXACT fractional box. offsetWidth rounds to integers — freezing a
+    // fit-content box 0.x px narrower than its content makes inner text re-wrap.
+    // Only when the residual matrix scales/rotates (r = transformed box ≠ layout box)
+    // fall back to the integer layout metrics.
+    const baseT = cs.transform && cs.transform !== 'none' ? cs.transform : ''
+    const ind = readIndividualTransforms(orig)
+    const hasTransform = !!(baseT || ind.rotate !== '0deg' || ind.scale || ind.translate)
+    const M = hasTransform ? composeResidual2D(baseT, ind) : null
+    const identityLinear = !M || !M.is2D || (M.a === 1 && M.b === 0 && M.c === 0 && M.d === 1)
+    let w = r.width, h = r.height
+    if (!identityLinear) {
+      w = /** @type {HTMLElement} */ (orig).offsetWidth || r.width
+      h = /** @type {HTMLElement} */ (orig).offsetHeight || r.height
+    }
     const inShadow = orig.getRootNode && orig.getRootNode() instanceof ShadowRoot
     let baseR = rootR, baseBL = root.clientLeft || 0, baseBT = root.clientTop || 0
     if (inShadow) {
@@ -149,14 +160,11 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
     // translateX(-50%) pattern). Zero the translation and, when rotation/scale/skew
     // remain, shift by the residual matrix's bbox offset so the painted box still lands
     // exactly on the gBCR.
-    const baseT = cs.transform && cs.transform !== 'none' ? cs.transform : ''
-    const ind = readIndividualTransforms(orig)
-    if (baseT || ind.rotate !== '0deg' || ind.scale || ind.translate) {
-      const M = composeResidual2D(baseT, ind)
+    if (hasTransform) {
       cloneEl.style.translate = 'none'
       cloneEl.style.rotate = 'none'
       cloneEl.style.scale = 'none'
-      if (!M || !M.is2D || (M.a === 1 && M.b === 0 && M.c === 0 && M.d === 1)) {
+      if (identityLinear) {
         cloneEl.style.transform = 'none'
       } else {
         cloneEl.style.transform = `matrix(${M.a},${M.b},${M.c},${M.d},0,0)`
@@ -176,11 +184,14 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
       ph.style.boxSizing = 'border-box'
       cloneEl.parentElement?.insertBefore(ph, cloneEl)
     }
+    // System fonts and emoji can't be embedded and drift ~1-2px in the SVG-image render.
+    // A shrink-to-fit box frozen at its exact live width then re-wraps its text on any
+    // sub-pixel of drift — 2px of slack absorbs it and is visually imperceptible.
+    let boxW = w + 2, boxH = h
     // Chromium 148/149 raster bug: an absolute box whose top/left coincides EXACTLY with
     // the output window edge makes a LATER positioned sibling vanish when the SVG is
     // rasterized as an image — and a stuck sticky sits exactly there by definition.
     // Nudge 1px outside the window (the extra px is clipped away) to break the coincidence.
-    let boxW = w, boxH = h
     if (edge) {
       if (Math.abs(top - edge.y) < 0.5) { top -= 1; boxH += 1 }
       if (Math.abs(left - edge.x) < 0.5) { left -= 1; boxW += 1 }
