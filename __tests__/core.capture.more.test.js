@@ -611,4 +611,21 @@ describe('captureDOM – pure translate does not trigger strict path', () => {
       expect(/transform:[^"]*translate\(/.test(svg)).toBe(false)
     }
   })
+
+  it('root translation is not double-compensated in the foreignObject offset', async () => {
+    // fixed-centering pattern: left:50% + translateX(-50%). prepareClone strips the root
+    // translation, so the fo bbox must not shift to compensate it (element rendered cut).
+    const el = document.createElement('div')
+    el.style.cssText = 'position:fixed;left:50%;top:16px;transform:translateX(-50%);width:300px;height:40px;background:teal;'
+    document.body.appendChild(el)
+    try {
+      const { captureDOM } = await import('../src/core/capture.js')
+      const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+      const fo = svg.match(/<foreignObject[^>]* x="(-?[\d.]+)"/)
+      expect(fo).toBeTruthy()
+      expect(Math.abs(parseFloat(fo[1]))).toBeLessThan(1)
+    } finally {
+      el.remove()
+    }
+  })
 })

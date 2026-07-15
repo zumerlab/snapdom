@@ -391,7 +391,12 @@ export async function captureDOM(element, options) {
           })
           const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0)
           const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString())
-          const bb = bboxWithOriginFull(w0, h0, M, ox2, oy2)
+          // prepareClone always strips the root's translation (stripTranslate), so the bbox
+          // must be computed WITHOUT it — otherwise the foreignObject compensates a shift the
+          // clone no longer has and the content renders offset/cut (e.g. the fixed-centering
+          // left:50% + translateX(-50%) pattern captured on its own).
+          const M0 = { a: M.a, b: M.b, c: M.c, d: M.d, e: 0, f: 0 }
+          const bb = bboxWithOriginFull(w0, h0, M0, ox2, oy2)
           minX = limitDecimals(bb.minX)
           minY = limitDecimals(bb.minY)
           maxX = limitDecimals(bb.maxX)
