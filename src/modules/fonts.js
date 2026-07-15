@@ -953,7 +953,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
  * @param {Element} root
  * @returns {Set<string>} keys "family__weight__style__stretchPct"
  */
-export function collectUsedFontVariants(root) {
+export function collectUsedFontVariants(root, keep) {
   const req = /* @__PURE__ */ new Set()
   if (!root) return req
   const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, null)
@@ -974,6 +974,7 @@ export function collectUsedFontVariants(root) {
   if (csAfterRoot && csAfterRoot.content && csAfterRoot.content !== 'none') addFromStyle(csAfterRoot)
   while (tw.nextNode()) {
     const el = /** @type {Element} */ (tw.currentNode)
+    if (keep && !keep(el)) continue
     const cs = getComputedStyle(el)
     addFromStyle(cs)
     const b = getComputedStyle(el, '::before')
@@ -989,7 +990,7 @@ export function collectUsedFontVariants(root) {
  * @param {Element} root
  * @returns {Set<number>}
  */
-export function collectUsedCodepoints(root) {
+export function collectUsedCodepoints(root, keep) {
   const used = /* @__PURE__ */ new Set()
   const pushText = (txt) => {
     if (!txt) return
@@ -999,9 +1000,11 @@ export function collectUsedCodepoints(root) {
   while (walker.nextNode()) {
     const n = walker.currentNode
     if (n.nodeType === Node.TEXT_NODE) {
+      if (keep && n.parentElement && !keep(n.parentElement)) continue
       pushText(n.nodeValue || '')
     } else if (n.nodeType === Node.ELEMENT_NODE) {
       const el = /** @type {Element} */ (n)
+      if (keep && !keep(el)) continue
       for (const pseudo of ['::before', '::after']) {
         const cs = getComputedStyle(el, pseudo)
         const c = cs?.getPropertyValue('content')

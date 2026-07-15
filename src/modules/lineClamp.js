@@ -8,12 +8,25 @@
  * Fixes #386 (nested clamp) and #431 (single-line ellipsis on Safari/Firefox).
  *
  * @param {Element} el - Root element (and its subtree) to process
+ * @param {{left:number,top:number,right:number,bottom:number}|null} [clipRect] - Clip mode:
+ *   prune subtrees painting entirely outside this viewport-coords window (their clamp work
+ *   is discarded with the culled clone anyway).
  * @returns {() => void} Combined undo function
  */
-export function lineClampTree(el) {
+export function lineClampTree(el, clipRect) {
   if (!el) return () => {}
   const undos = []
+  const M = 200
   function walk(node) {
+    if (clipRect) {
+      const r = node.getBoundingClientRect()
+      if (r.width > 0 || r.height > 0) {
+        const right = Math.max(r.right, r.left + (node.scrollWidth || 0))
+        const bottom = Math.max(r.bottom, r.top + (node.scrollHeight || 0))
+        if (right < clipRect.left - M || r.left > clipRect.right + M ||
+            bottom < clipRect.top - M || r.top > clipRect.bottom + M) return
+      }
+    }
     // One computed-style read per node, shared by both passes (hot path).
     const cs = getComputedStyle(node)
     const u1 = lineClamp(node, cs)

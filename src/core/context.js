@@ -32,6 +32,7 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
  * @param {boolean} [options.outerTransforms] // NEW
  * @param {boolean} [options.outerShadows]      // NEW
+ * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
  * @param {boolean} [options.resolvePicturePlaceholders] - Resolve &lt;picture&gt; placeholders / lazy data-src before clone (default true)
  * @param {{ timeout?: number, concurrency?: number, resolveLazySrc?: boolean, silent?: boolean }} [options.pictureResolver] - Fine-tune built-in picture resolver
@@ -88,6 +89,9 @@ export function createContext(options = {}) {
     // NEW flags (user-friendly)
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
+
+    // Region capture: 'viewport' or {x,y,width,height} in page coordinates
+    clip: options.clip ?? null,
 
     // Perceptual image downsampling. On by default (big speed win on image-heavy raster captures,
     // ~free on the common case, fidelity-neutral). Pass `compress: false` to embed images verbatim.

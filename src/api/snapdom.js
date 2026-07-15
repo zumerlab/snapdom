@@ -50,7 +50,9 @@ async function main(element, userOptions) {
   // before font is available. First canvas draw is blank; second+ works. We run
   // pre-captures + drawImage to prime the font/decode pipeline. Fidelity > speed.
   // See: https://bugs.webkit.org/show_bug.cgi?id=219770
-  if (isSafari() && (context.embedFonts === true || hasBackgroundOrMask(element))) {
+  // _safariWarmup first: after the once-per-session warmup fires, skip the
+  // hasBackgroundOrMask full-tree walk on every subsequent capture.
+  if (isSafari() && !_safariWarmup && (context.embedFonts === true || hasBackgroundOrMask(element))) {
     if (context.embedFonts) {
       try {
         const required = collectUsedFontVariants(element)
@@ -233,6 +235,16 @@ snapdom.capture = async (el, context, _token) => {
  * @returns {Promise<string>} Raw data URL.
  */
 snapdom.toRaw = (el, options) => snapdom(el, options).then(result => result.toRaw())
+
+/**
+ * Captures the currently visible viewport. Offscreen content is pruned before styling
+ * and inlining, so this is faster than capturing the full page.
+ * Captures documentElement (not body) so body margins and root-level fixed elements
+ * fall inside the window.
+ * @param {object} [options] - Rendering options (clip is forced to 'viewport').
+ * @returns {Promise<object>} Same exporter object as snapdom(el).
+ */
+snapdom.viewport = (options) => snapdom(document.documentElement, { ...options, clip: 'viewport' })
 
 /**
  * Returns an HTMLImageElement from a captured element.

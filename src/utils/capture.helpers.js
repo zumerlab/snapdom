@@ -3,7 +3,202 @@
  * @module utils/capture.helpers
  */
 
-import { debugWarn } from './index.js'
+import { debugWarn, getStyle } from './index.js'
+import {
+  bboxWithOriginFull,
+  parseTransformOriginPx,
+  readIndividualTransforms
+} from './transforms.helpers.js'
+
+/**
+ * Resolves the `clip` option to a rect in viewport coordinates (same space as
+ * getBoundingClientRect), or null when absent/invalid.
+ * @param {Element} element - capture root (its ownerDocument's window defines the viewport)
+ * @param {"viewport"|{x:number,y:number,width:number,height:number}|null|undefined} clip
+ * @returns {{left:number,top:number,right:number,bottom:number,width:number,height:number}|null}
+ */
+export function resolveClipRect(element, clip) {
+  if (!clip) return null
+  const doc = element.ownerDocument || document
+  const win = doc.defaultView || window
+  let x, y, w, h
+  if (clip === 'viewport') {
+    x = 0
+    y = 0
+    // clientWidth/Height exclude classic scrollbars; innerWidth would add a blank gutter
+    w = doc.documentElement?.clientWidth || win.innerWidth
+    h = doc.documentElement?.clientHeight || win.innerHeight
+  } else if (typeof clip === 'object') {
+    x = (Number(clip.x) || 0) - (win.scrollX || 0)
+    y = (Number(clip.y) || 0) - (win.scrollY || 0)
+    w = Number(clip.width)
+    h = Number(clip.height)
+  } else {
+    return null
+  }
+  if (!(w > 0 && h > 0)) return null
+  return { left: x, top: y, width: w, height: h, right: x + w, bottom: y + h }
+}
+
+/** Shadow-piercing parent (slot/light-tree children resolve via parentElement first). */
+function composedParent(n) {
+  if (n.parentElement) return n.parentElement
+  const rn = n.getRootNode && n.getRootNode()
+  return rn instanceof ShadowRoot ? rn.host : null
+}
+
+function composedContains(root, node) {
+  for (let n = node; n; n = composedParent(n)) if (n === root) return true
+  return false
+}
+
+/**
+ * Nearest composed ancestor that forms a containing block for absolute/fixed boxes in the
+ * clone: positioned, transformed, filtered, perspective, will-change of those, or contain.
+ */
+function findCBAncestor(node, root) {
+  for (let a = composedParent(node); a && a !== root; a = composedParent(a)) {
+    if (!(a instanceof Element)) break
+    const acs = getStyle(a)
+    if (acs.position !== 'static' ||
+        (acs.transform && acs.transform !== 'none') ||
+        (acs.filter && acs.filter !== 'none') ||
+        (acs.backdropFilter && acs.backdropFilter !== 'none') ||
+        (acs.perspective && acs.perspective !== 'none') ||
+        /transform|perspective|filter/.test(acs.willChange || '') ||
+        /layout|paint|strict|content/.test(acs.contain || '')) return a
+  }
+  return null
+}
+
+/**
+ * Residual 2D matrix an element's clone still carries once its translation is discarded:
+ * individual rotate/scale (applied before `transform`, per css-transforms-2) times the
+ * computed transform. Direct composition — no DOM round-trip, and unlike reading back a
+ * computed style, individual props aren't silently lost. Returns null on parse failure.
+ * @param {string} baseTransform - computed transform ('' when none)
+ * @param {{rotate:string, scale:any, translate:any}} ind
+ * @returns {DOMMatrix|null}
+ */
+export function composeResidual2D(baseTransform, ind) {
+  try {
+    let M = new DOMMatrix()
+    if (ind && ind.rotate && ind.rotate !== '0deg') M = M.multiply(new DOMMatrix(`rotate(${ind.rotate})`))
+    if (ind && ind.scale) {
+      const parts = String(ind.scale).trim().split(/\s+/).filter(Boolean)
+      if (parts.length && parts.every(p => Number.isFinite(Number(p)))) {
+        M = M.multiply(new DOMMatrix(`scale(${parts.join(',')})`))
+      }
+    }
+    if (baseTransform) M = M.multiply(new DOMMatrix(baseTransform))
+    return M
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Clip mode: re-anchor fixed and sticky clones to their painted position.
+ * In the static clone their layout position wins (sticky un-sticks, fixed anchors to the
+ * page origin), which is wrong when the output window is the scrolled viewport. Converts
+ * them to absolute at gBCR-derived, root-relative coordinates and HOISTS them to the clone
+ * root — escaping #364 scroll wrappers, ancestor overflow clipping, and CB-forming
+ * ancestors in one move (every clone node carries its full computed snapshot, so
+ * inheritance doesn't change). Sticky leaves an invisible in-flow placeholder so its flow
+ * slot doesn't shift. Shadow-scoped clones depend on [data-sd] descendant selectors, so
+ * they freeze in place relative to their composed containing-block ancestor instead.
+ * @param {Element} root - original capture root
+ * @param {Element} cloneRoot
+ * @param {Map<Node, Node>} nodeMap - clone → original
+ * @param {WeakMap<Element, CSSStyleDeclaration>} styleCache
+ * @param {{x:number, y:number}} [edge] - window origin in root coords (clip window or 0,0)
+ */
+export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, edge) {
+  const rootR = root.getBoundingClientRect()
+  if (cloneRoot instanceof HTMLElement && getStyle(root).position === 'static') {
+    cloneRoot.style.position = 'relative'
+  }
+  const hoisted = []
+  for (const [cloneEl, orig] of nodeMap) {
+    if (!(cloneEl instanceof HTMLElement) || !(orig instanceof Element)) continue
+    if (orig === root || !composedContains(root, orig)) continue
+    const cs = styleCache.get(orig) || getStyle(orig)
+    const pos = cs.position
+    if (pos !== 'fixed' && pos !== 'sticky' && pos !== '-webkit-sticky') continue
+    // already frozen by freezeSticky / the scrolled-container pass (#364)
+    if (cloneEl.style.position === 'absolute') continue
+    const r = orig.getBoundingClientRect()
+    if (!(r.width > 0 && r.height > 0)) continue
+    // r is the transformed box; the layout box is what width/height must freeze
+    const w = /** @type {HTMLElement} */ (orig).offsetWidth || r.width
+    const h = /** @type {HTMLElement} */ (orig).offsetHeight || r.height
+    const inShadow = orig.getRootNode && orig.getRootNode() instanceof ShadowRoot
+    let baseR = rootR, baseBL = root.clientLeft || 0, baseBT = root.clientTop || 0
+    if (inShadow) {
+      const cb = findCBAncestor(orig, root)
+      if (cb) {
+        baseR = cb.getBoundingClientRect()
+        baseBL = cb.clientLeft || 0
+        baseBT = cb.clientTop || 0
+      }
+    }
+    let left = r.left - baseR.left - baseBL
+    let top = r.top - baseR.top - baseBT
+    // The gBCR-derived left/top already include the element's transform; the clone keeps
+    // that transform via its class, so it would apply twice (e.g. the fixed-centering
+    // translateX(-50%) pattern). Zero the translation and, when rotation/scale/skew
+    // remain, shift by the residual matrix's bbox offset so the painted box still lands
+    // exactly on the gBCR.
+    const baseT = cs.transform && cs.transform !== 'none' ? cs.transform : ''
+    const ind = readIndividualTransforms(orig)
+    if (baseT || ind.rotate !== '0deg' || ind.scale || ind.translate) {
+      const M = composeResidual2D(baseT, ind)
+      cloneEl.style.translate = 'none'
+      cloneEl.style.rotate = 'none'
+      cloneEl.style.scale = 'none'
+      if (!M || !M.is2D || (M.a === 1 && M.b === 0 && M.c === 0 && M.d === 1)) {
+        cloneEl.style.transform = 'none'
+      } else {
+        cloneEl.style.transform = `matrix(${M.a},${M.b},${M.c},${M.d},0,0)`
+        const { ox, oy } = parseTransformOriginPx(cs, w, h)
+        const bb = bboxWithOriginFull(w, h, { a: M.a, b: M.b, c: M.c, d: M.d, e: 0, f: 0 }, ox, oy)
+        left -= bb.minX
+        top -= bb.minY
+      }
+    }
+    if (pos !== 'fixed') {
+      const ph = cloneEl.cloneNode(false)
+      ph.setAttribute('data-snap-ph', '1')
+      ph.style.position = 'static'
+      ph.style.visibility = 'hidden'
+      ph.style.width = `${w}px`
+      ph.style.height = `${h}px`
+      ph.style.boxSizing = 'border-box'
+      cloneEl.parentElement?.insertBefore(ph, cloneEl)
+    }
+    // Chromium 148/149 raster bug: an absolute box whose top/left coincides EXACTLY with
+    // the output window edge makes a LATER positioned sibling vanish when the SVG is
+    // rasterized as an image — and a stuck sticky sits exactly there by definition.
+    // Nudge 1px outside the window (the extra px is clipped away) to break the coincidence.
+    let boxW = w, boxH = h
+    if (edge) {
+      if (Math.abs(top - edge.y) < 0.5) { top -= 1; boxH += 1 }
+      if (Math.abs(left - edge.x) < 0.5) { left -= 1; boxW += 1 }
+    }
+    cloneEl.style.position = 'absolute'
+    cloneEl.style.left = `${left}px`
+    cloneEl.style.top = `${top}px`
+    cloneEl.style.right = 'auto'
+    cloneEl.style.bottom = 'auto'
+    cloneEl.style.margin = '0'
+    cloneEl.style.width = `${boxW}px`
+    cloneEl.style.height = `${boxH}px`
+    // offset* are border-box; content-box elements with padding/border would inflate
+    cloneEl.style.boxSizing = 'border-box'
+    if (!inShadow) hoisted.push(cloneEl)
+  }
+  for (const el of hoisted) cloneRoot.appendChild(el)
+}
 
 /**
  * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, blur()/drop-shadow()).
