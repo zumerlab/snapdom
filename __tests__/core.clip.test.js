@@ -78,11 +78,11 @@ describe('clip option (region capture)', () => {
     expect(px[3]).toBeGreaterThan(200)
   })
 
-  it('snapdom.viewport() outputs viewport-sized SVG and prunes far content', async () => {
+  it("clip: 'viewport' outputs viewport-sized SVG and prunes far content", async () => {
     const wrap = mount(buildBlocks(30, 400))
     wrap.children[0].textContent = 'NEAR_TOP_MARKER'
     wrap.children[29].textContent = 'FAR_BOTTOM_MARKER'
-    const result = await snapdom.viewport()
+    const result = await snapdom(document.documentElement, { clip: 'viewport' })
     const svg = decodeSvg(result.url)
 
     expect(svg).toMatch(new RegExp(`<svg [^>]*width="${window.innerWidth}"`))
@@ -242,12 +242,12 @@ describe('clip option (region capture)', () => {
     expect(svg).toMatch(/height="100"/)
   })
 
-  it('snapdom.viewport() covers body margins (documentElement capture)', async () => {
+  it("clip: 'viewport' on documentElement covers body margins", async () => {
     document.body.style.margin = '20px'
     try {
       const block = mount(document.createElement('div'))
       block.style.cssText = 'width:100px;height:100px;background:rgb(255,0,255);margin:0;'
-      const canvas = await (await snapdom.viewport({ dpr: 1 })).toCanvas({ dpr: 1 })
+      const canvas = await snapdom.toCanvas(document.documentElement, { clip: 'viewport', dpr: 1 })
       const ctx = canvas.getContext('2d')
       const r = block.getBoundingClientRect()
       const sx = canvas.width / document.documentElement.clientWidth
