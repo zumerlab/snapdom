@@ -444,8 +444,10 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
     )
   }
 
-  // Avoid double scaling; parent capture decides final scale
-  const nested = { ...options, scale: 1 }
+  // Avoid double scaling; parent capture decides final scale. Drop clip: a visible iframe
+  // is captured whole (offscreen ones were already culled), and 'viewport' would re-resolve
+  // against the iframe's own window.
+  const nested = { ...options, scale: 1, clip: null }
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)

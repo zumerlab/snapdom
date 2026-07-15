@@ -956,9 +956,10 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
  * (element + ::before + ::after per node); this fused version does a single walk on the
  * memoized getStyle cache, shared with the clone pass and across captures.
  * @param {Element} root
+ * @param {((el: Element) => boolean)|null} [keep] - Clip mode: skip elements outside the window
  * @returns {{required: Set<string>, usedCodepoints: Set<number>}}
  */
-export function collectFontUsage(root) {
+export function collectFontUsage(root, keep) {
   const required = /* @__PURE__ */ new Set()
   const usedCodepoints = /* @__PURE__ */ new Set()
   if (!root) return { required, usedCodepoints }
@@ -1001,8 +1002,10 @@ export function collectFontUsage(root) {
   while (walker.nextNode()) {
     const n = walker.currentNode
     if (n.nodeType === Node.TEXT_NODE) {
+      if (keep && n.parentElement && !keep(n.parentElement)) continue
       pushText(n.nodeValue || '')
     } else {
+      if (keep && !keep(/** @type {Element} */ (n))) continue
       visitElement(/** @type {Element} */ (n))
     }
   }
@@ -1014,8 +1017,8 @@ export function collectFontUsage(root) {
  * @param {Element} root
  * @returns {Set<string>} keys "family__weight__style__stretchPct"
  */
-export function collectUsedFontVariants(root) {
-  return collectFontUsage(root).required
+export function collectUsedFontVariants(root, keep) {
+  return collectFontUsage(root, keep).required
 }
 
 /**
@@ -1023,8 +1026,8 @@ export function collectUsedFontVariants(root) {
  * @param {Element} root
  * @returns {Set<number>}
  */
-export function collectUsedCodepoints(root) {
-  return collectFontUsage(root).usedCodepoints
+export function collectUsedCodepoints(root, keep) {
+  return collectFontUsage(root, keep).usedCodepoints
 }
 
 /**

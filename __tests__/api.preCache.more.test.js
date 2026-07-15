@@ -19,6 +19,10 @@ vi.mock('../src/modules/background.js', () => ({
 
 vi.mock('../src/modules/fonts.js', () => ({
   embedCustomFonts: vi.fn(async () => ''),
+  collectFontUsage: vi.fn(() => ({
+    required: new Set(['Mansalva__700__italic__100']),
+    usedCodepoints: new Set([65]),
+  })),
   collectUsedFontVariants: vi.fn(() => new Set(['Mansalva__700__italic__100'])),
   collectUsedCodepoints: vi.fn(() => new Set([65])),
   ensureFontsReady: vi.fn(async () => {}),

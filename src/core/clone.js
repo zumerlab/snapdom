@@ -6,7 +6,7 @@
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
-import { debugWarn } from '../utils/index.js'
+import { debugWarn, getStyle } from '../utils/index.js'
 import {
   idleCallback,
   rewriteShadowCSS,
@@ -66,6 +66,103 @@ function makeHideSpacer(node) {
   const spacer = document.createElement('div')
   spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
   return spacer
+}
+
+/** Extra px around the clip rect kept alive so partially-bleeding effects (shadows, blur,
+ *  overhanging glyphs) of near-edge elements still paint into the window. */
+const CLIP_CULL_MARGIN = 200
+
+/** Replaced elements are atomic inline boxes, so a fixed-size husk holds their flow slot
+ *  even at display:inline — and culling offscreen <img>/<canvas> skips fetch/encode work. */
+const CLIP_REPLACED_TAGS = new Set(['img', 'canvas', 'video', 'iframe', 'object', 'embed'])
+
+/**
+ * @param {{left:number,top:number,right:number,bottom:number}} b
+ * @param {{left:number,top:number,right:number,bottom:number}} rect
+ */
+function intersectsClip(b, rect) {
+  return b.right >= rect.left - CLIP_CULL_MARGIN && b.left <= rect.right + CLIP_CULL_MARGIN &&
+         b.bottom >= rect.top - CLIP_CULL_MARGIN && b.top <= rect.bottom + CLIP_CULL_MARGIN
+}
+
+/**
+ * Clip mode: true when the node paints entirely outside the clip window and its whole
+ * subtree can be pruned. Conservative: keeps zero-sized boxes (display:contents, anchors),
+ * non-replaced inline boxes (no fixed-size husk can hold their flow slot), extends the box
+ * by scroll overflow in the writing direction, and scans descendants' painted boxes so
+ * out-of-flow escapees (fixed widgets, portal-less modals, negative offsets, transforms)
+ * keep their ancestor chain alive.
+ * @param {Element} node
+ * @param {{rect: {left:number,top:number,right:number,bottom:number}, root: Element}} clip
+ * @returns {boolean}
+ */
+function isOutsideClip(node, clip) {
+  if (node === clip.root) return false
+  let r
+  try { r = node.getBoundingClientRect() } catch { return false }
+  if (r.width === 0 && r.height === 0) return false
+  const cs = getStyle(node)
+  if (cs.display === 'inline' && !CLIP_REPLACED_TAGS.has((node.localName || '').toLowerCase())) return false
+  const rect = clip.rect
+  // Scroll overflow grows right/down in horizontal-ltr; mirror for rtl / vertical modes.
+  const sw = node.scrollWidth || 0
+  const sh = node.scrollHeight || 0
+  const box = {
+    left: cs.direction === 'rtl' ? Math.min(r.left, r.right - sw) : r.left,
+    top: r.top,
+    right: Math.max(r.right, r.left + sw),
+    bottom: Math.max(r.bottom, r.top + sh)
+  }
+  const wm = cs.writingMode || ''
+  if (wm.startsWith('vertical') || wm.startsWith('sideways')) {
+    box.top = Math.min(r.top, r.bottom - sh)
+    box.left = Math.min(box.left, r.right - sw)
+  }
+  if (intersectsClip(box, rect)) return false
+  // Escape scan: any descendant whose painted box reaches the window (gBCR reads only —
+  // no style/clone/inline work) vetoes the cull; deeper levels then cull its siblings.
+  const tw = (node.ownerDocument || document).createTreeWalker(node, NodeFilter.SHOW_ELEMENT)
+  while (tw.nextNode()) {
+    const dr = /** @type {Element} */ (tw.currentNode).getBoundingClientRect()
+    if ((dr.width > 0 || dr.height > 0) && intersectsClip(dr, rect)) return false
+  }
+  return true
+}
+
+/**
+ * Layout-preserving stand-in for a culled subtree: shallow clone with the original's
+ * computed styles (so display/margin/flex/grid participation is identical) and a frozen
+ * box, hidden and emptied. Deliberately NOT registered in sessionCache.nodeMap so the
+ * pseudo/background walkers skip the pruned subtree.
+ * @param {Element} node
+ * @param {Object} sessionCache
+ * @param {Object} options
+ * @returns {Element}
+ */
+function makeClipHusk(node, sessionCache, options) {
+  const husk = node.cloneNode(false)
+  if (node.tagName === 'IMG') {
+    husk.removeAttribute('src')
+    husk.removeAttribute('srcset')
+    husk.removeAttribute('sizes')
+  }
+  inlineAllStyles(node, husk, sessionCache, options)
+  const { width, height } = getUnscaledDimensions(node)
+  if (width > 0) {
+    husk.style.width = `${width}px`
+    husk.style.minWidth = `${width}px`
+    husk.style.maxWidth = `${width}px`
+  }
+  if (height > 0) {
+    husk.style.height = `${height}px`
+    husk.style.minHeight = `${height}px`
+    husk.style.maxHeight = `${height}px`
+  }
+  husk.style.visibility = 'hidden'
+  husk.style.overflow = 'hidden'
+  // offset* are border-box; content-box elements with padding/border would inflate
+  husk.style.boxSizing = 'border-box'
+  return husk
 }
 
 export async function deepClone(node, sessionCache, options) {
@@ -130,6 +227,11 @@ export async function deepClone(node, sessionCache, options) {
     } catch (err) {
       console.warn('Error in filter function:', err)
     }
+  }
+  // Clip mode: prune subtrees painting entirely outside the window (before any plugin
+  // hooks or tag handlers — no per-node work is spent on culled content).
+  if (sessionCache.clip && isOutsideClip(node, sessionCache.clip)) {
+    return makeClipHusk(node, sessionCache, options)
   }
   // Per-node plugin hook: the first plugin whose resolveNode returns a value wins
   // (Node = finished replacement clone, null = skip node, undefined = continue).

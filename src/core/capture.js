@@ -22,7 +22,9 @@ import {
   estimateKeptHeight,
   limitDecimals,
   collectScrollbarCSS,
-  reconcileCloneLayout
+  reconcileCloneLayout,
+  resolveClipRect,
+  composeResidual2D
 } from '../utils/capture.helpers.js'
 import {
   parseBoxShadow,
@@ -90,9 +92,13 @@ export async function captureDOM(element, options) {
   const outerTransforms = options.outerTransforms !== false   // default: true
 
   const outerShadows = !!options.outerShadows
+  // Region capture (clip: 'viewport' | {x,y,width,height}). The GEOMETRY window is resolved
+  // once, inside prepareClone (same instant as culling), and returned as clipWindow in
+  // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
+  const preClipRect = options.clip ? resolveClipRect(element, options.clip) : null
   let state = { element, options, plugins: options.plugins }
 
-  let clone, classCSS, styleCache
+  let clone, classCSS, styleCache, clipWindow
   let fontsCSS = ''
   let baseCSS = ''
   let dataURL
@@ -110,9 +116,9 @@ export async function captureDOM(element, options) {
 
   // BEFORECLONE
   await runHook('beforeClone', state)
-  const undoClamp = lineClampTree(state.element)
+  const undoClamp = lineClampTree(state.element, preClipRect)
   try {
-    ({ clone, classCSS, styleCache } = await prepareClone(state.element, state.options))
+    ({ clone, classCSS, styleCache, clipWindow } = await prepareClone(state.element, state.options))
 
     // state = {clone, classCSS, styleCache, ...state}
 
@@ -171,7 +177,16 @@ export async function captureDOM(element, options) {
     fontsPhase = runIdle(async () => {
       // #441: read fonts from the element's own document (same-origin iframe support)
       const ownerDoc = state.element.ownerDocument || document
-      const { required, usedCodepoints } = collectFontUsage(state.element)
+      // Clip mode: culled content embeds no text, so only collect fonts/codepoints from
+      // elements near the window — skips the per-element style work for offscreen content.
+      const clipKeep = preClipRect ? (el) => {
+        try {
+          const r = el.getBoundingClientRect()
+          return r.right >= preClipRect.left - 200 && r.left <= preClipRect.right + 200 &&
+                 r.bottom >= preClipRect.top - 200 && r.top <= preClipRect.bottom + 200
+        } catch { return true }
+      } : null
+      const { required, usedCodepoints } = collectFontUsage(state.element, clipKeep)
       if (isSafari()) {
         const families = new Set(
           Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
@@ -224,7 +239,10 @@ export async function captureDOM(element, options) {
       // #449: an iframe doc pinned by rasterizeIframe must be captured at its viewport size.
       // Expanding to scrollHeight there yields a full-page bitmap that gets squashed into the
       // iframe box (overflow:hidden still reports the full scrollable extent).
-      const isRoot = (state.element === elDoc.body || state.element === elDoc.documentElement) &&
+      // Clip mode: the viewBox is windowed to the clip rect, so the exact full content
+      // height is irrelevant — skip the scrollHeight expansion AND the expensive
+      // clone-in-document measurement round-trip entirely.
+      const isRoot = !clipWindow && (state.element === elDoc.body || state.element === elDoc.documentElement) &&
         !elDoc.documentElement.hasAttribute('data-sd-pinned')
       if (isRoot) {
         const docH = Math.max(
@@ -296,11 +314,15 @@ export async function captureDOM(element, options) {
 
       const optW = coerceNum(state.options.width)
       const optH = coerceNum(state.options.height)
-      let w = w0, h = h0
+      // Output basis: the element box, or the clip window in clip mode (width/height
+      // options and the default output size scale against what will be shown).
+      const baseW = clipWindow ? limitDecimals(clipWindow.width) : w0
+      const baseH = clipWindow ? limitDecimals(clipWindow.height) : h0
+      let w = baseW, h = baseH
 
       const hasW = Number.isFinite(optW)
       const hasH = Number.isFinite(optH)
-      const aspect0 = h0 > 0 ? w0 / h0 : 1
+      const aspect0 = baseH > 0 ? baseW / baseH : 1
 
       if (hasW && hasH) {
         w = Math.max(1, limitDecimals(optW))
@@ -311,16 +333,38 @@ export async function captureDOM(element, options) {
       } else if (hasH) {
         h = Math.max(1, limitDecimals(optH))
         w = Math.max(1, limitDecimals(h * (aspect0 || 1)))
-      } else {
-        w = w0
-        h = h0
       }
 
       // ——— BBOX ———
       let minX = 0, minY = 0, maxX = w0, maxY = h0
 
-      // NEW: if outerTransforms => expand bbox using the post-normalization 2D matrix
-      if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
+      if (clipWindow) {
+        // clipWindow is already element-local (frozen at cull time). When the root carries
+        // a bbox-affecting transform, its gBCR (used to derive the window) includes the
+        // transform's bbox offset while the clone re-applies the residual linear part —
+        // shift the window origin by that residual bbox so it isn't applied twice.
+        let offX = 0, offY = 0
+        if (hasTFBBox(state.element)) {
+          let M0 = null
+          if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
+            M0 = { a: rootTransform2D.a, b: rootTransform2D.b || 0, c: rootTransform2D.c || 0, d: rootTransform2D.d || 1, e: 0, f: 0 }
+          } else {
+            const indR = readIndividualTransforms(state.element)
+            const MR = composeResidual2D(csEl.transform && csEl.transform !== 'none' ? csEl.transform : '', indR)
+            if (MR && MR.is2D) M0 = { a: MR.a, b: MR.b, c: MR.c, d: MR.d, e: 0, f: 0 }
+          }
+          if (M0 && !(M0.a === 1 && M0.b === 0 && M0.c === 0 && M0.d === 1)) {
+            const { ox: cox, oy: coy } = parseTransformOriginPx(csEl, w0, h0)
+            const bbR = bboxWithOriginFull(w0, h0, M0, cox, coy)
+            offX = bbR.minX
+            offY = bbR.minY
+          }
+        }
+        minX = limitDecimals(clipWindow.x + offX)
+        minY = limitDecimals(clipWindow.y + offY)
+        maxX = limitDecimals(minX + clipWindow.width)
+        maxY = limitDecimals(minY + clipWindow.height)
+      } else if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
         const M2 = {
           a: rootTransform2D.a,
           b: rootTransform2D.b || 0,
@@ -361,7 +405,8 @@ export async function captureDOM(element, options) {
       const bleedOutline = parseOutline(csEl)
       const drop = parseFilterDropShadows(csEl)
 
-      const bleed = (!outerShadows)
+      // A region capture defines its own exact edges — never expand it for root bleed.
+      const bleed = (!outerShadows || clipWindow)
         ? { top: 0, right: 0, bottom: 0, left: 0 }
         : {
           top: limitDecimals(bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top),
@@ -377,8 +422,8 @@ export async function captureDOM(element, options) {
 
       const vbW0 = Math.max(1, limitDecimals(maxX - minX))
       const vbH0 = Math.max(1, limitDecimals(maxY - minY))
-      const scaleW = (hasW || hasH) ? limitDecimals(w / w0) : 1
-      const scaleH = (hasH || hasW) ? limitDecimals(h / h0) : 1
+      const scaleW = (hasW || hasH) ? limitDecimals(w / baseW) : 1
+      const scaleH = (hasH || hasW) ? limitDecimals(h / baseH) : 1
       const outW = Math.max(1, limitDecimals(vbW0 * scaleW))
       const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
 
@@ -393,8 +438,13 @@ export async function captureDOM(element, options) {
       const vbMinY = limitDecimals(minY)
       fo.setAttribute('x', String(limitDecimals(-(vbMinX - pad))))
       fo.setAttribute('y', String(limitDecimals(-(vbMinY - pad))))
-      fo.setAttribute('width', String(limitDecimals(w0 + pad * 2)))
-      fo.setAttribute('height', String(limitDecimals(h0 + pad * 2)))
+      // Clip mode: the window can lie beyond the element's reported box (Chrome clamps
+      // documentElement offsetHeight to the viewport) and browsers don't reliably paint
+      // foreignObject overflow — size the fo to reach the window's far edge.
+      const foW = clipWindow ? Math.max(w0, maxX) : w0
+      const foH = clipWindow ? Math.max(h0, maxY) : h0
+      fo.setAttribute('width', String(limitDecimals(foW + pad * 2)))
+      fo.setAttribute('height', String(limitDecimals(foH + pad * 2)))
       fo.style.overflow = 'visible'
 
       const styleTag = document.createElement('style')
@@ -427,7 +477,7 @@ export async function captureDOM(element, options) {
       const vbH = limitDecimals(vbH0 + pad * 2)
       const wantsSize = hasW || hasH
 
-      options.meta = { w0, h0, vbW, vbH, targetW: w, targetH: h }
+      options.meta = { w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h }
 
       const svgOutW = (isSafari() && wantsSize)
         ? vbW

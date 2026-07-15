@@ -247,6 +247,16 @@ snapdom.capture = async (el, context, _token) => {
 snapdom.toRaw = (el, options) => snapdom(el, options).then(result => result.toRaw())
 
 /**
+ * Captures the currently visible viewport. Offscreen content is pruned before styling
+ * and inlining, so this is faster than capturing the full page.
+ * Captures documentElement (not body) so body margins and root-level fixed elements
+ * fall inside the window.
+ * @param {object} [options] - Rendering options (clip is forced to 'viewport').
+ * @returns {Promise<object>} Same exporter object as snapdom(el).
+ */
+snapdom.viewport = (options) => snapdom(document.documentElement, { ...options, clip: 'viewport' })
+
+/**
  * Returns an HTMLImageElement from a captured element.
  * @param {HTMLElement} el - DOM element to capture.
  * @param {object} [options] - Rendering options.

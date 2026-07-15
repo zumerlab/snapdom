@@ -8,9 +8,9 @@ import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { cache } from '../core/cache.js'
-import { freezeSticky } from '../modules/changeCSS.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
+import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
 
 /**
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
@@ -31,14 +31,33 @@ export async function prepareClone(element, options = {}) {
     options
   }
 
+  let clipWindow = null
+  if (options.clip) {
+    const rect = resolveClipRect(element, options.clip)
+    if (rect) {
+      sessionCache.clip = { rect, root: element }
+      // Freeze the window in element-local coords NOW, at the same instant culling reads
+      // gBCRs — re-deriving it from a fresh gBCR at render time races user scroll.
+      const elR = element.getBoundingClientRect()
+      clipWindow = {
+        x: rect.left - elR.left,
+        y: rect.top - elR.top,
+        width: rect.width,
+        height: rect.height
+      }
+    }
+  }
+
   let clone
   let classCSS = ''
   let shadowScopedCSS = ''
 
   stabilizeLayout(element)
 
-  // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements
-  const undoContentVisibility = forceContentVisibility(element)
+  // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
+  // Clip mode skips this O(page) walk: on-screen cv:auto content is already rendered by the
+  // browser, and offscreen content gets culled anyway (cv's placeholder box culls correctly).
+  const undoContentVisibility = sessionCache.clip ? () => {} : forceContentVisibility(element)
 
   try {
     clone = await deepClone(element, sessionCache, options)
@@ -109,7 +128,26 @@ export async function prepareClone(element, options = {}) {
     }
   }
 
+  // Re-anchor fixed/sticky clones to their painted position — in clip mode (the window is
+  // what the user sees) and whenever the capture root is itself scrolled (stuck stickies
+  // must freeze where they're stuck: header/footer/left-sidebar, horizontal included).
+  // Must run after class application (the sticky placeholder inherits the twin's class)
+  // and BEFORE the scrolled-container wrapper below — its fixed/absolute adjustment
+  // (+scrollY) is what cancels the wrapper's translate for these now-absolute elements.
+  if ((sessionCache.clip || element.scrollTop || element.scrollLeft) && clone instanceof Element) {
+    try {
+      const edge = sessionCache.clip && clipWindow ? { x: clipWindow.x, y: clipWindow.y } : { x: 0, y: 0 }
+      freezeViewportPositioned(element, clone, sessionCache.nodeMap, sessionCache.styleCache, edge)
+    } catch (e) {
+      debugWarn(sessionCache, 'freezeViewportPositioned failed', e)
+    }
+  }
+
   for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
+    // Clip mode: the window is derived from gBCRs, which already encode the root's own
+    // scroll — un-scrolling the root here would compensate twice (blank output when
+    // capturing a scrolled documentElement).
+    if (sessionCache.clip && originalNode === element) continue
     const scrollX = originalNode.scrollLeft
     const scrollY = originalNode.scrollTop
     const hasScroll = scrollX || scrollY
@@ -152,15 +190,6 @@ export async function prepareClone(element, options = {}) {
       cloneNode.appendChild(inner)
     }
   }
-  const contentRoot =
-  (clone instanceof HTMLElement && clone.firstElementChild instanceof HTMLElement)
-    ? clone.firstElementChild
-    : clone
-
-  // Congela header/footer: header => top = topInit + scrollTop
-  //                        footer => bottom = bottomInit - scrollTop
-  freezeSticky(element, contentRoot)
-
   if (element === sessionCache.nodeMap.get(clone)) {
     const computed = sessionCache.styleCache.get(element) || getStyle(element)
     sessionCache.styleCache.set(element, computed)
@@ -186,7 +215,7 @@ export async function prepareClone(element, options = {}) {
       cloneNode.style.marginBlockStart = '0'
     }
   }
-  return { clone, classCSS, styleCache: sessionCache.styleCache }
+  return { clone, classCSS, styleCache: sessionCache.styleCache, clipWindow }
 }
 
 // helpers (stabilizeLayout, resolveBlobUrlsInTree) ahora vienen de utils; bloque antiguo eliminado.
