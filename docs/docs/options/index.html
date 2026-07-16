@@ -45,7 +45,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://snapdom.dev/docs/" },
       { "@type": "ListItem", "position": 3, "name": "Options", "item": "https://snapdom.dev/docs/options/" }
     ]
@@ -161,7 +161,7 @@ await snapdom.toSvg(element, {
 });</pre>
       <p>Notes:</p>
       <ul>
-        <li>If the fallback image also fails to load, snapDOM replaces the <code>&lt;img&gt;</code> with a placeholder block preserving width/height.</li>
+        <li>If the fallback image also fails to load, SnapDOM replaces the <code>&lt;img&gt;</code> with a placeholder block preserving width/height.</li>
         <li>Width/height used by the callback are gathered from the original element (dataset, style/attrs, etc.) when available.</li>
       </ul>
     </section>
@@ -177,7 +177,7 @@ await snapdom.toSvg(element, {
 
     <section class="prose">
       <h2 id="useproxy">Cross-Origin Images &amp; Fonts (useProxy)</h2>
-      <p>By default snapDOM tries <code>crossOrigin="anonymous"</code> (or <code>use-credentials</code> for same-origin). If an asset is CORS-blocked, you can set <code>useProxy</code> to a prefix URL that forwards the actual <code>src</code>:</p>
+      <p>By default SnapDOM tries <code>crossOrigin="anonymous"</code> (or <code>use-credentials</code> for same-origin). If an asset is CORS-blocked, you can set <code>useProxy</code> to a prefix URL that forwards the actual <code>src</code>:</p>
       <pre class="code-block">await snapdom.toPng(el, {
   useProxy: 'https://proxy.corsfix.com/?' // Note: Any cors proxy could be used 'https://proxy.corsfix.com/?'
 });</pre>
@@ -190,7 +190,7 @@ await snapdom.toSvg(element, {
       <h2 id="fonts">Fonts</h2>
 
       <h3 id="embedfonts">embedFonts</h3>
-      <p>When <code>true</code>, snapDOM embeds <strong>non-icon</strong> <code>@font-face</code> rules detected as used within the captured subtree. Icon fonts (Font Awesome, Material Icons, etc.) are embedded <strong>always</strong>.</p>
+      <p>When <code>true</code>, SnapDOM embeds <strong>non-icon</strong> <code>@font-face</code> rules detected as used within the captured subtree. Icon fonts (Font Awesome, Material Icons, etc.) are embedded <strong>always</strong>.</p>
 
       <h3 id="localfonts">localFonts</h3>
       <p>If you serve fonts yourself or have data URLs, you can declare them here to avoid extra CSS discovery:</p>

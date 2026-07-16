@@ -88,7 +88,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "Compare", "item": "https://snapdom.dev/compare/" },
       { "@type": "ListItem", "position": 3, "name": "SnapDOM vs html-to-image", "item": "https://snapdom.dev/compare/html-to-image/" }
     ]
@@ -116,6 +116,33 @@
       <div class="tldr-label">TL;DR</div>
       <p><strong>html-to-image</strong> is a popular, well-maintained fork of dom-to-image with TypeScript support. <strong>SnapDOM</strong> takes the same idea further with a plugin pipeline, native Shadow DOM walking, and out-of-the-box support for CSS counters, line-clamp and CSS variables.</p>
     </div>
+
+    <section class="bench-section" id="benchmark">
+      <div class="section-label">Live benchmark — runs in your browser</div>
+      <h2>SnapDOM vs html-to-image, head to head</h2>
+      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine — the gap is hardware- and content-dependent.</p>
+      <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
+      <div class="bench-actions">
+        <button type="button" class="btn btn-primary run-benchmark-button"
+                data-lib="html-to-image"
+                data-target="bench-target"
+                data-snap="bench-snapdom"
+                data-other="bench-other"
+                data-result="bench-result"
+                data-umami-event="Cmp h2i run benchmark">Run benchmark</button>
+      </div>
+      <div class="bench-result" id="bench-result"></div>
+      <div class="bench-grid">
+        <div class="bench-col">
+          <div class="label">SnapDOM</div>
+          <div class="bench-output" id="bench-snapdom"><div class="progress-message">Waiting to start…</div></div>
+        </div>
+        <div class="bench-col">
+          <div class="label">html-to-image</div>
+          <div class="bench-output" id="bench-other"><div class="progress-message">Waiting to start…</div></div>
+        </div>
+      </div>
+    </section>
 
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
@@ -159,10 +186,11 @@
           </ul>
         </div>
         <div class="verdict-card other">
-          <h4>html-to-image might still fit when…</h4>
+          <h4>What you give up with html-to-image…</h4>
           <ul>
-            <li>You're already using it and it works for your case — there's no urgent reason to switch.</li>
-            <li>You don't need a plugin pipeline and your captures are simple HTML/CSS.</li>
+            <li>No plugin pipeline — watermarks, filters, PDF or ASCII exports are code you write yourself.</li>
+            <li>Shadow DOM needs manual handling; CSS counters and line-clamp aren't captured.</li>
+            <li>No WebP output, and font control stops at a single embed option.</li>
           </ul>
         </div>
       </div>
@@ -213,7 +241,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
 <span class="cm">// After</span>
 <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
-<span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, { scale: <span class="num">2</span> });</pre>
+<span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, { dpr: <span class="num">2</span> });</pre>
     </section>
 
     <section class="prose faq">
@@ -284,5 +312,6 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
     })();
   </script>
   <script defer src="/copy-code.js"></script>
+  <script type="module" src="../bench.js"></script>
 </body>
 </html>

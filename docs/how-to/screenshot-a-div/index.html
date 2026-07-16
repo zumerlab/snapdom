@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "headline": "How to Screenshot a Div in JavaScript with SnapDOM",
-    "description": "Capture any div as an image directly in the browser — no server, no tainted canvas — using snapDOM.",
+    "description": "Capture any div as an image directly in the browser — no server, no tainted canvas — using SnapDOM.",
     "url": "https://snapdom.dev/how-to/screenshot-a-div/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "datePublished": "2026-04-09",
@@ -38,7 +38,7 @@
     "publisher": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
     "mainEntityOfPage": "https://snapdom.dev/how-to/screenshot-a-div/",
     "proficiencyLevel": "Beginner",
-    "dependencies": "snapDOM (@zumer/snapdom)",
+    "dependencies": "SnapDOM (@zumer/snapdom)",
     "isPartOf": { "@id": "https://snapdom.dev/#website" }
   }
   </script>
@@ -91,7 +91,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "How-To", "item": "https://snapdom.dev/how-to/" },
       { "@type": "ListItem", "position": 3, "name": "Screenshot a Div", "item": "https://snapdom.dev/how-to/screenshot-a-div/" }
     ]
@@ -138,7 +138,7 @@
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
 <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el);</pre>
-      <p>The returned <code>img</code> is a real <code>HTMLImageElement</code> with the captured content as its <code>src</code> (a base64-encoded SVG/PNG data URL).</p>
+      <p>The returned <code>img</code> is a real <code>HTMLImageElement</code> with the captured content as its <code>src</code> (a PNG data URL).</p>
     </section>
 
     <section class="prose">
@@ -153,7 +153,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
 
       <h4>Get a Blob to upload to a server</h4>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(el);
+      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(el, { type: <span class="str">'png'</span> });
 
 <span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
 form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'screenshot.png'</span>);
@@ -182,6 +182,24 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
   <span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
 <span class="op">&lt;/</span><span class="kw">body</span><span class="op">&gt;</span>
 <span class="op">&lt;/</span><span class="kw">html</span><span class="op">&gt;</span></pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Or try it right here</h2>
+      <p>The example above, running on this page — same div, same <code>snapdom.toPng</code> call:</p>
+      <div class="demo-box">
+        <div class="demo-stage">
+          <div id="demo-card" style="padding:24px;background:#6366f1;color:#fff;border-radius:12px;max-width:320px;">
+            <h2 style="margin:0 0 8px;font-size:20px;">Hello SnapDOM</h2>
+            <p style="margin:0;font-size:14px;">This entire div is about to become a PNG.</p>
+          </div>
+        </div>
+        <div class="demo-actions">
+          <button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-card" data-demo-output="demo-output" data-umami-event="Howto div demo capture">Capture</button>
+          <button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-card" data-demo-output="demo-output" data-demo-filename="screenshot" data-umami-event="Howto div demo download">Download</button>
+        </div>
+        <div class="demo-output" id="demo-output"><span class="demo-hint">The captured PNG will appear here.</span></div>
+      </div>
     </section>
 
     <section class="prose">
@@ -221,7 +239,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>How big is the library?</summary>
-        <p>Around 42 KB minified + gzipped, with zero runtime dependencies.</p>
+        <p>Around 45 KB minified + gzipped, with zero runtime dependencies.</p>
       </details>
     </section>
 
@@ -269,5 +287,6 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
     })();
   </script>
   <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
 </body>
 </html>

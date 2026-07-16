@@ -49,7 +49,7 @@
         "name": "Is dom-to-image still maintained?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The original dom-to-image package on npm has not received a release in years. The community-maintained fork dom-to-image-more is more active, and html-to-image is another popular fork. SnapDOM is a from-scratch alternative under active development."
+          "text": "The original dom-to-image package on npm has not received a release in years. SnapDOM is a from-scratch, actively maintained implementation of the same foreignObject idea, with web fonts, Shadow DOM, plugins and full pseudo-element support on top."
         }
       },
       {
@@ -57,7 +57,7 @@
         "name": "How do I migrate from dom-to-image to SnapDOM?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Replace the import with @zumer/snapdom and call snapdom.toPng(element). The most common dom-to-image options (filter, bgcolor, width, height, style) have direct SnapDOM equivalents."
+          "text": "Replace the import with @zumer/snapdom and call snapdom.toPng(element). The most common dom-to-image options (filter, bgcolor, width, height) have direct SnapDOM equivalents."
         }
       },
       {
@@ -88,7 +88,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "Compare", "item": "https://snapdom.dev/compare/" },
       { "@type": "ListItem", "position": 3, "name": "SnapDOM vs dom-to-image", "item": "https://snapdom.dev/compare/dom-to-image/" }
     ]
@@ -116,6 +116,33 @@
       <div class="tldr-label">TL;DR</div>
       <p><strong>dom-to-image</strong> was the first library to popularise the SVG <code>foreignObject</code> trick for capturing the DOM, but its original package hasn't been actively maintained for years. <strong>SnapDOM</strong> picks up the same approach, modernises it, and adds web fonts, Shadow DOM, plugins and full pseudo-element support.</p>
     </div>
+
+    <section class="bench-section" id="benchmark">
+      <div class="section-label">Live benchmark — runs in your browser</div>
+      <h2>SnapDOM vs dom-to-image, head to head</h2>
+      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine — the gap is hardware- and content-dependent.</p>
+      <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
+      <div class="bench-actions">
+        <button type="button" class="btn btn-primary run-benchmark-button"
+                data-lib="dom-to-image"
+                data-target="bench-target"
+                data-snap="bench-snapdom"
+                data-other="bench-other"
+                data-result="bench-result"
+                data-umami-event="Cmp d2i run benchmark">Run benchmark</button>
+      </div>
+      <div class="bench-result" id="bench-result"></div>
+      <div class="bench-grid">
+        <div class="bench-col">
+          <div class="label">SnapDOM</div>
+          <div class="bench-output" id="bench-snapdom"><div class="progress-message">Waiting to start…</div></div>
+        </div>
+        <div class="bench-col">
+          <div class="label">dom-to-image</div>
+          <div class="bench-output" id="bench-other"><div class="progress-message">Waiting to start…</div></div>
+        </div>
+      </div>
+    </section>
 
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
@@ -160,10 +187,11 @@
           </ul>
         </div>
         <div class="verdict-card other">
-          <h4>dom-to-image might still fit when…</h4>
+          <h4>What staying on dom-to-image costs you…</h4>
           <ul>
-            <li>You're maintaining a legacy CommonJS project that's already using it and works fine.</li>
-            <li>Your captures are simple and you prefer not to introduce any new dependencies.</li>
+            <li>No maintenance: bugs with modern flexbox/grid layouts stay unfixed.</li>
+            <li>Web fonts, Shadow DOM, CSS counters and line-clamp simply don't capture.</li>
+            <li>CommonJS-era packaging and no bundled TypeScript types.</li>
           </ul>
         </div>
       </div>
@@ -223,12 +251,12 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>Is dom-to-image still maintained?</summary>
-        <p>The original <code>dom-to-image</code> package on npm has not received a release in years. The community-maintained fork <code>dom-to-image-more</code> is more active, and <a href="../html-to-image/">html-to-image</a> is another popular fork. SnapDOM is a from-scratch alternative under active development.</p>
+        <p>The original <code>dom-to-image</code> package on npm has not received a release in years. SnapDOM is a from-scratch, actively maintained implementation of the same <code>foreignObject</code> idea — with web fonts, Shadow DOM, plugins and full pseudo-element support on top, and a 1:1 migration path (see the table above).</p>
       </details>
 
       <details>
         <summary>How do I migrate from dom-to-image to SnapDOM?</summary>
-        <p>Replace the import with <code>@zumer/snapdom</code> and call <code>snapdom.toPng(element)</code>. Most options (<code>filter</code>, <code>bgcolor</code>, <code>width</code>, <code>height</code>, <code>style</code>) have a direct SnapDOM equivalent — see the migration table above.</p>
+        <p>Replace the import with <code>@zumer/snapdom</code> and call <code>snapdom.toPng(element)</code>. Most options (<code>filter</code>, <code>bgcolor</code>, <code>width</code>, <code>height</code>) have a direct SnapDOM equivalent — see the migration table above.</p>
       </details>
 
       <details>
@@ -286,5 +314,6 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
     })();
   </script>
   <script defer src="/copy-code.js"></script>
+  <script type="module" src="../bench.js"></script>
 </body>
 </html>
