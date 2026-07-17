@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture a DOM Element Without Puppeteer — SnapDOM</title>
+  <meta name="description" content="Capture a DOM element in the user browser without running Puppeteer, Playwright, Chromium or a screenshot server." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/capture-element-without-puppeteer/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture a DOM Element Without Puppeteer" />
+  <meta property="og:description" content="Capture a DOM element in the user browser without running Puppeteer, Playwright, Chromium or a screenshot server." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/capture-element-without-puppeteer/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture an element without Puppeteer","description":"Capture a DOM element in the user browser without running Puppeteer, Playwright, Chromium or a screenshot server.","url":"https://snapdom.dev/how-to/capture-element-without-puppeteer/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is SnapDOM a replacement for every Puppeteer screenshot?","acceptedAnswer":{"@type":"Answer","text":"No. It replaces client-side element export, not server-side URL rendering or browser automation."}},{"@type":"Question","name":"Does it work offline?","acceptedAnswer":{"@type":"Answer","text":"The capture can work offline once the page and required assets are locally available; uncached remote fonts or images cannot be fetched without a network."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture an element without Puppeteer","item":"https://snapdom.dev/how-to/capture-element-without-puppeteer/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture an element <span class="accent">without Puppeteer</span></h1><p class="lead">When the element already exists in the user’s browser, export it locally instead of sending HTML to a headless-browser service.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Use SnapDOM client-side when you need a user-triggered export of an existing DOM element.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
+
+const element = document.querySelector('#shareable')
+await snapdom.download(element, {
+  format: 'png',
+  filename: 'shareable',
+  dpr: 2,
+})</pre></section><section class="prose"><h2>Why this pattern works</h2><p>No browser process needs to be launched because the page’s existing browser performs the capture. This removes a server round trip and avoids operating a Chromium worker for user-facing exports.</p></section><section class="prose"><h2 id="live-demo">Capture locally—no browser worker</h2><p>Click capture: the element is processed in this page without sending its DOM to a screenshot server.</p><div class="demo-box"><div class="demo-stage"><div id="demo-no-puppeteer" style="width:340px;padding:24px;background:#F0F4FB;border:1px solid #0F1E4D"><div style="display:flex;gap:12px;align-items:center"><span style="width:42px;height:42px;background:#2D5BFF;color:#fff;display:grid;place-items:center;font-weight:700">JS</span><div><strong style="display:block">Client-side capture</strong><small style="color:#55617C">No Puppeteer · no Playwright · no upload</small></div></div></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-no-puppeteer" data-demo-output="demo-no-puppeteer-output" data-demo-filename="no-puppeteer">Capture in browser</button><button type="button" class="btn btn-ghost" data-demo-action="blob" data-demo-target="demo-no-puppeteer" data-demo-output="demo-no-puppeteer-output" data-demo-filename="no-puppeteer">Create local Blob</button></div><div class="demo-output" id="demo-no-puppeteer-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Use Puppeteer or Playwright when rendering must happen without a user browser, must use a controlled engine, or must capture arbitrary external pages. SnapDOM captures accessible DOM, not remote URLs.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Is SnapDOM a replacement for every Puppeteer screenshot?</summary><p>No. It replaces client-side element export, not server-side URL rendering or browser automation.</p></details><details><summary>Does it work offline?</summary><p>The capture can work offline once the page and required assets are locally available; uncached remote fonts or images cannot be fetched without a network.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../compare/puppeteer/">SnapDOM vs Puppeteer <span class="arrow">→</span></a><a class="related-card" href="../../compare/playwright/">SnapDOM vs Playwright <span class="arrow">→</span></a><a class="related-card" href="../screenshot-a-div/">Screenshot a div <span class="arrow">→</span></a><a class="related-card" href="../capture-full-page/">Capture a full page <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

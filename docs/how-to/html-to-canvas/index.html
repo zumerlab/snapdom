@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Render HTML to Canvas in JavaScript — SnapDOM</title>
+  <meta name="description" content="Render a DOM element to an HTML canvas in the browser with SnapDOM, preserving CSS, fonts and pseudo-elements." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/html-to-canvas/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Render HTML to Canvas in JavaScript" />
+  <meta property="og:description" content="Render a DOM element to an HTML canvas in the browser with SnapDOM, preserving CSS, fonts and pseudo-elements." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/html-to-canvas/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Render HTML to Canvas","description":"Render a DOM element to an HTML canvas in the browser with SnapDOM, preserving CSS, fonts and pseudo-elements.","url":"https://snapdom.dev/how-to/html-to-canvas/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does SnapDOM draw every CSS property manually?","acceptedAnswer":{"@type":"Answer","text":"No. It serializes the styled clone and lets the browser render it before rasterizing to canvas."}},{"@type":"Question","name":"How do I export the canvas as PNG?","acceptedAnswer":{"@type":"Answer","text":"Call snapdom.toPng(element), or use canvas.toBlob after toCanvas when you need custom canvas processing first."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Render HTML to Canvas","item":"https://snapdom.dev/how-to/html-to-canvas/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Render <span class="accent">HTML to Canvas</span></h1><p class="lead">Turn an existing DOM element into an HTMLCanvasElement for compositing, encoding or further drawing.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p><code>const canvas = await snapdom.toCanvas(element)</code> returns a canvas ready for <code>drawImage</code> or <code>toDataURL</code>.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
+
+const element = document.querySelector('#dashboard')
+const canvas = await snapdom.toCanvas(element, { dpr: 2 })
+document.body.appendChild(canvas)</pre></section><section class="prose"><h2>Why this pattern works</h2><p>A canvas is useful when you need to composite the capture with other pixels, inspect pixel data, encode it yourself, or feed it into another browser API.</p><p>SnapDOM captures through its SVG pipeline first and rasterizes only for the canvas export.</p></section><section class="prose"><h2 id="live-demo">Render this element to Canvas</h2><p>The output below is a real HTMLCanvasElement, ready for more drawing or encoding.</p><div class="demo-box"><div class="demo-stage"><div id="demo-html-canvas" style="width:320px;padding:24px;background:linear-gradient(135deg,#2D5BFF,#2BA8C9);color:#fff"><div style="font-size:34px;font-weight:700">Canvas</div><div style="height:8px;margin:14px 0;background:rgba(255,255,255,.85);width:72%"></div><p style="margin:0;color:#fff">Rendered by the browser from a live DOM element.</p></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="canvas" data-demo-target="demo-html-canvas" data-demo-output="demo-html-canvas-output" data-demo-filename="html-canvas">Render to Canvas</button><button type="button" class="btn btn-ghost" data-demo-action="png" data-demo-target="demo-html-canvas" data-demo-output="demo-html-canvas-output" data-demo-filename="html-canvas">Compare PNG</button></div><div class="demo-output" id="demo-html-canvas-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Canvas is a bitmap. Increasing <code>dpr</code> creates more pixels and sharper output, but also uses more memory. Cross-origin images still need valid CORS headers or a configured proxy.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does SnapDOM draw every CSS property manually?</summary><p>No. It serializes the styled clone and lets the browser render it before rasterizing to canvas.</p></details><details><summary>How do I export the canvas as PNG?</summary><p>Call snapdom.toPng(element), or use canvas.toBlob after toCanvas when you need custom canvas processing first.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../html-to-svg/">Convert HTML to SVG <span class="arrow">→</span></a><a class="related-card" href="../html-to-png/">Convert HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">High-resolution capture <span class="arrow">→</span></a><a class="related-card" href="../../compare/html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

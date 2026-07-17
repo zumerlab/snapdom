@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture a Svelte Component as an Image — SnapDOM</title>
+  <meta name="description" content="Capture a Svelte component as PNG or SVG with SnapDOM using bind:this and the correct browser lifecycle." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/guides/svelte/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture a Svelte Component as an Image" />
+  <meta property="og:description" content="Capture a Svelte component as PNG or SVG with SnapDOM using bind:this and the correct browser lifecycle." />
+  <meta property="og:url" content="https://snapdom.dev/guides/svelte/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture a Svelte component","description":"Capture a Svelte component as PNG or SVG with SnapDOM using bind:this and the correct browser lifecycle.","url":"https://snapdom.dev/guides/svelte/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does SnapDOM have a Svelte-specific package?","acceptedAnswer":{"@type":"Answer","text":"No. SnapDOM captures the browser DOM, so the same @zumer/snapdom package works across frameworks."}},{"@type":"Question","name":"When should capture run in Svelte?","acceptedAnswer":{"@type":"Answer","text":"Run it in the browser after tick() and after important fonts, images and asynchronous data are ready."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://snapdom.dev/guides/"},{"@type":"ListItem","position":3,"name":"Capture a Svelte component","item":"https://snapdom.dev/guides/svelte/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> Framework Guide · Svelte 5</div><h1>Capture a <span class="accent">Svelte component</span></h1><p class="lead">Export a rendered Svelte component as PNG, SVG or Canvas with the framework’s native element reference.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Get the rendered element with <code>bind:this</code>, wait for <code>tick()</code>, then call SnapDOM.</p></div><section class="prose"><h2>Install and use SnapDOM in Svelte</h2><pre class="code-block">&lt;script&gt;
+  import { tick } from 'svelte'
+  import { snapdom } from '@zumer/snapdom'
+  let card
+  async function save() {
+    await tick()
+    await snapdom.download(card, { format: 'png', filename: 'card' })
+  }
+&lt;/script&gt;
+
+&lt;article bind:this={card}&gt;Your component&lt;/article&gt;
+&lt;button on:click={save}&gt;Download PNG&lt;/button&gt;</pre></section><section class="prose"><h2>Lifecycle and fidelity</h2><p>SnapDOM captures the DOM Svelte has already rendered. Keep the capture attached to the component instance, wait for updates to settle, and use <code>embedFonts: true</code> when the output must travel independently.</p></section><section class="prose"><h2>Browser-only boundary</h2><p>Run capture from client-side interaction. SnapDOM needs layout, computed styles, SVG and Canvas APIs, so it does not execute during server rendering.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does SnapDOM have a Svelte-specific package?</summary><p>No. SnapDOM captures the browser DOM, so the same @zumer/snapdom package works across frameworks.</p></details><details><summary>When should capture run in Svelte?</summary><p>Run it in the browser after tick() and after important fonts, images and asynchronous data are ready.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../how-to/export-react-component-as-image/">Component export pattern <span class="arrow">→</span></a><a class="related-card" href="../../how-to/html-to-png/">HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../react/">SnapDOM in React <span class="arrow">→</span></a><a class="related-card" href="../../docs/api/">Export API <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/" class="current">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+</body>
+</html>

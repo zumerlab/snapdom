@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Capture an Iframe as an Image — SnapDOM</title>
+  <meta name="description" content="Capture a same-origin iframe as part of a DOM screenshot and understand the browser limits for cross-origin frames." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/capture-iframe/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Capture an Iframe as an Image" />
+  <meta property="og:description" content="Capture a same-origin iframe as part of a DOM screenshot and understand the browser limits for cross-origin frames." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/capture-iframe/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture an iframe as an image","description":"Capture a same-origin iframe as part of a DOM screenshot and understand the browser limits for cross-origin frames.","url":"https://snapdom.dev/how-to/capture-iframe/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can I capture a YouTube or third-party iframe?","acceptedAnswer":{"@type":"Answer","text":"Not directly when it is cross-origin. The browser blocks access to its document."}},{"@type":"Question","name":"What happens to inaccessible frames?","acceptedAnswer":{"@type":"Answer","text":"Enable placeholders to preserve their layout while making the unavailable content explicit."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture an iframe as an image","item":"https://snapdom.dev/how-to/capture-iframe/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture an <span class="accent">iframe</span> as an image</h1><p class="lead">Include a same-origin iframe in an element capture while preserving the frame’s visible viewport and surrounding styles.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Capture the parent container normally. Same-origin iframe documents are accessible; cross-origin iframe contents are not.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">const panel = document.querySelector('#panel-with-frame')
+const image = await snapdom.toPng(panel, {
+  placeholders: true,
+  embedFonts: true,
+})
+document.body.appendChild(image)</pre></section><section class="prose"><h2>Why this pattern works</h2><p>SnapDOM reads an accessible iframe document, captures its visible content and places the result back into the parent snapshot.</p></section><section class="prose"><h2 id="live-demo">Capture a same-origin iframe</h2><p>The embedded srcdoc frame is same-origin and can be included in the parent capture.</p><div class="demo-box"><div class="demo-stage"><div id="demo-iframe" style="width:360px;padding:12px;background:#0F1E4D"><div style="color:#D9E2F7;font-size:11px;margin:0 0 8px">SAME-ORIGIN FRAME</div><iframe title="Capture demo" srcdoc="<style>body{margin:0;padding:20px;font-family:Arial;background:#fff;color:#0F1E4D}b{color:#2D5BFF}</style><b>Inside iframe</b><p>This document can be read and captured.</p>" style="display:block;width:100%;height:120px;border:0"></iframe></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-iframe" data-demo-output="demo-iframe-output" data-demo-filename="iframe">Capture iframe panel</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-iframe" data-demo-output="demo-iframe-output" data-demo-filename="iframe">Download panel</button></div><div class="demo-output" id="demo-iframe-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>The same-origin policy prevents JavaScript from reading arbitrary third-party iframe documents. A client-side library cannot bypass that boundary.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Can I capture a YouTube or third-party iframe?</summary><p>Not directly when it is cross-origin. The browser blocks access to its document.</p></details><details><summary>What happens to inaccessible frames?</summary><p>Enable placeholders to preserve their layout while making the unavailable content explicit.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../capture-full-page/">Capture a full page <span class="arrow">→</span></a><a class="related-card" href="../screenshot-a-div/">Screenshot a div <span class="arrow">→</span></a><a class="related-card" href="../../docs/options/">Capture options <span class="arrow">→</span></a><a class="related-card" href="../capture-element-without-puppeteer/">Capture without Puppeteer <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

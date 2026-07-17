@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Capture a DOM Element in High Resolution — SnapDOM</title>
+  <meta name="description" content="Export a DOM element as a sharp high-resolution PNG by controlling DPR, scale and output dimensions." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/high-resolution-element/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Capture a DOM Element in High Resolution" />
+  <meta property="og:description" content="Export a DOM element as a sharp high-resolution PNG by controlling DPR, scale and output dimensions." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/high-resolution-element/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture an element in high resolution","description":"Export a DOM element as a sharp high-resolution PNG by controlling DPR, scale and output dimensions.","url":"https://snapdom.dev/how-to/high-resolution-element/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Should I use DPR or scale?","acceptedAnswer":{"@type":"Answer","text":"Use DPR for sharper raster output at the same CSS size; use scale to enlarge the capture itself."}},{"@type":"Question","name":"Does SVG need a high DPR?","acceptedAnswer":{"@type":"Answer","text":"No. SVG remains scalable until it is rasterized. DPR matters for PNG, JPEG, WebP and Canvas exports."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture an element in high resolution","item":"https://snapdom.dev/how-to/high-resolution-element/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture an element in <span class="accent">high resolution</span></h1><p class="lead">Control pixel density and output size without changing the live component’s CSS.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Use <code>dpr</code> for pixel density and <code>scale</code> when the logical capture itself should be enlarged.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">const image = await snapdom.toPng(element, {
+  dpr: 2,
+  scale: 1.5,
+  backgroundColor: '#ffffff',
+  embedFonts: true,
+})</pre></section><section class="prose"><h2>Why this pattern works</h2><p><code>dpr</code> changes raster density; <code>scale</code> changes captured dimensions. Prefer the smallest values that meet the destination requirement to control memory and encode time.</p></section><section class="prose"><h2 id="live-demo">Compare normal and 2× output</h2><p>Capture the same target with the default settings or fixed DPR 2 and compare pixel dimensions.</p><div class="demo-box"><div class="demo-stage"><div id="demo-high-resolution" style="width:320px;padding:24px;background:#fff;border:1px solid #0F1E4D"><div style="font-size:44px;line-height:1;color:#2D5BFF;font-weight:700">2×</div><h3 style="margin:8px 0">Resolution test</h3><p style="margin:0;color:#55617C">Fine text and one-pixel rules reveal the output density.</p><div style="height:1px;background:#0F1E4D;margin-top:18px"></div></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-high-resolution" data-demo-output="demo-high-resolution-output" data-demo-filename="high-resolution">Default capture</button><button type="button" class="btn btn-ghost" data-demo-action="png" data-demo-target="demo-high-resolution" data-demo-output="demo-high-resolution-output" data-demo-options="{&quot;dpr&quot;:2}" data-demo-filename="high-resolution">Capture at DPR 2</button></div><div class="demo-output" id="demo-high-resolution-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Doubling width and height produces four times as many pixels. Very high DPR values can exceed browser canvas limits on large elements.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Should I use DPR or scale?</summary><p>Use DPR for sharper raster output at the same CSS size; use scale to enlarge the capture itself.</p></details><details><summary>Does SVG need a high DPR?</summary><p>No. SVG remains scalable until it is rasterized. DPR matters for PNG, JPEG, WebP and Canvas exports.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../html-to-png/">Convert HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../html-to-svg/">Convert HTML to SVG <span class="arrow">→</span></a><a class="related-card" href="../export-dashboard-as-image/">Export a dashboard <span class="arrow">→</span></a><a class="related-card" href="../../docs/options/">Capture options <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

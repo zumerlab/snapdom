@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generate a Social or Open Graph Card from HTML — SnapDOM</title>
+  <meta name="description" content="Generate a social sharing card from a rendered HTML component in the browser and export it as PNG." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/generate-social-card-from-html/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Generate a Social or Open Graph Card from HTML" />
+  <meta property="og:description" content="Generate a social sharing card from a rendered HTML component in the browser and export it as PNG." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/generate-social-card-from-html/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Generate a social card from HTML","description":"Generate a social sharing card from a rendered HTML component in the browser and export it as PNG.","url":"https://snapdom.dev/how-to/generate-social-card-from-html/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can SnapDOM generate OG images on a Node server?","acceptedAnswer":{"@type":"Answer","text":"No. SnapDOM requires a real browser DOM. Use a browser worker or a server-side renderer for build-time generation."}},{"@type":"Question","name":"What size should an Open Graph card be?","acceptedAnswer":{"@type":"Answer","text":"A common target is 1200 by 630 pixels, but verify the requirements of each destination."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Generate a social card from HTML","item":"https://snapdom.dev/how-to/generate-social-card-from-html/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Generate a <span class="accent">social card from HTML</span></h1><p class="lead">Design the card with ordinary HTML and CSS, preview it live, then export the rendered component as a shareable image.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Render a fixed-size card, wait for fonts and images, then export a PNG with SnapDOM.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">await document.fonts.ready
+const card = document.querySelector('#social-card')
+const image = await snapdom.toPng(card, {
+  width: 1200,
+  height: 630,
+  embedFonts: true,
+  backgroundColor: '#ffffff',
+})
+document.querySelector('#preview').appendChild(image)</pre></section><section class="prose"><h2>Why this pattern works</h2><p>This pattern works well for user-created share cards inside browser apps because the exported image matches the card preview. Upload the resulting Blob when a permanent public URL is required.</p></section><section class="prose"><h2 id="live-demo">Generate a social card</h2><p>Edit the headline inside the card, then export the exact browser-rendered result.</p><div class="demo-box"><div class="demo-stage"><div id="demo-social-card" style="width:min(100%,520px);aspect-ratio:1.904/1;padding:28px;background:linear-gradient(135deg,#0F1E4D 0 58%,#2D5BFF 58%);color:#fff;display:flex;flex-direction:column;justify-content:space-between"><span style="font-size:12px;letter-spacing:2px">SNAPDOM.DEV</span><h3 contenteditable="true" style="max-width:360px;margin:0;color:#fff;font-size:28px;line-height:1.08;outline:none">Edit this headline, then capture your social card</h3><span style="font-size:13px;color:#D9E2F7">HTML + CSS → shareable PNG</span></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-social-card" data-demo-output="demo-social-card-output" data-demo-filename="social-card">Generate card</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-social-card" data-demo-output="demo-social-card-output" data-demo-filename="social-card">Download card</button></div><div class="demo-output" id="demo-social-card-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Open Graph crawlers cannot run a user’s browser capture on demand. Your application still needs to store the generated image at a public URL and reference it from <code>og:image</code>.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Can SnapDOM generate OG images on a Node server?</summary><p>No. SnapDOM requires a real browser DOM. Use a browser worker or a server-side renderer for build-time generation.</p></details><details><summary>What size should an Open Graph card be?</summary><p>A common target is 1200 by 630 pixels, but verify the requirements of each destination.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../export-react-component-as-image/">Export a React component <span class="arrow">→</span></a><a class="related-card" href="../html-to-png/">HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">High-resolution capture <span class="arrow">→</span></a><a class="related-card" href="../../guides/nextjs/">SnapDOM in Next.js <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Export a Dashboard as an Image — SnapDOM</title>
+  <meta name="description" content="Export a browser dashboard as PNG with charts, labels, filters, fonts and surrounding UI using SnapDOM." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/export-dashboard-as-image/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Export a Dashboard as an Image" />
+  <meta property="og:description" content="Export a browser dashboard as PNG with charts, labels, filters, fonts and surrounding UI using SnapDOM." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/export-dashboard-as-image/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Export a dashboard as an image","description":"Export a browser dashboard as PNG with charts, labels, filters, fonts and surrounding UI using SnapDOM.","url":"https://snapdom.dev/how-to/export-dashboard-as-image/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can SnapDOM capture canvas-based charts?","acceptedAnswer":{"@type":"Answer","text":"Yes. Canvas elements are captured as part of the DOM snapshot, subject to normal cross-origin canvas security rules."}},{"@type":"Question","name":"How do I hide export buttons?","acceptedAnswer":{"@type":"Answer","text":"Pass exclude: ['.export-controls'] or mark controls with a dedicated class used only for capture."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Export a dashboard as an image","item":"https://snapdom.dev/how-to/export-dashboard-as-image/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Export a <span class="accent">dashboard as an image</span></h1><p class="lead">Capture the complete dashboard users see—not just an individual chart canvas—and download a sharp PNG.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Capture the dashboard container after charts and fonts finish rendering, then use <code>download({ format: 'png' })</code>.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
+
+await document.fonts.ready
+const dashboard = document.querySelector('#dashboard')
+const capture = await snapdom(dashboard, { embedFonts: true })
+await capture.download({ format: 'png', filename: 'dashboard', dpr: 2 })</pre></section><section class="prose"><h2>Why this pattern works</h2><p>Target the shared dashboard wrapper so headings, legends, KPI cards and HTML controls are included with the charts. Wait for asynchronous chart animation and data loading before capture.</p></section><section class="prose"><h2 id="live-demo">Capture a live dashboard</h2><p>This target combines HTML KPI cards, labels and CSS bars in one export.</p><div class="demo-box"><div class="demo-stage"><div id="demo-dashboard" style="width:min(100%,520px);padding:20px;background:#fff;border:1px solid #0F1E4D"><div style="display:flex;justify-content:space-between;align-items:end;margin-bottom:16px"><div><small style="color:#55617C">WEEKLY OVERVIEW</small><h3 style="margin:2px 0">Product health</h3></div><strong style="color:#1E9F6E">+18.4%</strong></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px"><div style="padding:10px;background:#F0F4FB"><small>Users</small><b style="display:block">12.8k</b></div><div style="padding:10px;background:#F0F4FB"><small>MRR</small><b style="display:block">$42k</b></div><div style="padding:10px;background:#F0F4FB"><small>NPS</small><b style="display:block">68</b></div></div><div style="display:flex;height:90px;align-items:end;gap:10px"><i style="display:block;flex:1;height:42%;background:#AFC1FF"></i><i style="display:block;flex:1;height:68%;background:#AFC1FF"></i><i style="display:block;flex:1;height:53%;background:#AFC1FF"></i><i style="display:block;flex:1;height:82%;background:#AFC1FF"></i><i style="display:block;flex:1;height:64%;background:#AFC1FF"></i><i style="display:block;flex:1;height:92%;background:#2D5BFF"></i><i style="display:block;flex:1;height:76%;background:#AFC1FF"></i></div></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-dashboard" data-demo-output="demo-dashboard-output" data-demo-filename="dashboard">Capture dashboard</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-dashboard" data-demo-output="demo-dashboard-output" data-demo-filename="dashboard">Download dashboard</button></div><div class="demo-output" id="demo-dashboard-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Temporarily render virtualized or scroll-hidden content before capture if it must appear in the export. Exclude interactive controls with <code>exclude</code> when they should not be present in the final image.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Can SnapDOM capture canvas-based charts?</summary><p>Yes. Canvas elements are captured as part of the DOM snapshot, subject to normal cross-origin canvas security rules.</p></details><details><summary>How do I hide export buttons?</summary><p>Pass exclude: ['.export-controls'] or mark controls with a dedicated class used only for capture.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../save-chart-js-as-png/">Save Chart.js as PNG <span class="arrow">→</span></a><a class="related-card" href="../export-chart-as-svg/">Export a chart as SVG <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">High-resolution capture <span class="arrow">→</span></a><a class="related-card" href="../../guides/react/">SnapDOM in React <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

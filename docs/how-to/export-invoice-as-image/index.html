@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Export an Invoice or Report as an Image — SnapDOM</title>
+  <meta name="description" content="Export an invoice, receipt, certificate or browser report as a high-resolution image with SnapDOM." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/export-invoice-as-image/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Export an Invoice or Report as an Image" />
+  <meta property="og:description" content="Export an invoice, receipt, certificate or browser report as a high-resolution image with SnapDOM." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/export-invoice-as-image/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Export an invoice or report","description":"Export an invoice, receipt, certificate or browser report as a high-resolution image with SnapDOM.","url":"https://snapdom.dev/how-to/export-invoice-as-image/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can I create a PDF?","acceptedAnswer":{"@type":"Answer","text":"The pdfImage plugin can wrap a capture in a single-page image PDF. It is not a full paginated document engine."}},{"@type":"Question","name":"Should invoices use JPEG?","acceptedAnswer":{"@type":"Answer","text":"PNG keeps text and fine rules crisp. JPEG can be smaller for photo-heavy reports but introduces compression artifacts."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Export an invoice or report","item":"https://snapdom.dev/how-to/export-invoice-as-image/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Export an <span class="accent">invoice or report</span></h1><p class="lead">Create a shareable snapshot of a printable browser component while preserving its exact CSS and fonts.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Capture the printable component with a white background and fixed DPR, then download PNG or JPEG.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">const invoice = document.querySelector('#invoice')
+const capture = await snapdom(invoice, {
+  backgroundColor: '#ffffff',
+  embedFonts: true,
+  dpr: 2,
+  exclude: ['.invoice-actions'],
+})
+await capture.download({ format: 'png', filename: 'invoice-1042' })</pre></section><section class="prose"><h2>Why this pattern works</h2><p>A dedicated invoice wrapper keeps export dimensions and styling predictable. Hide editing and payment controls from the capture while leaving the live UI intact.</p></section><section class="prose"><h2 id="live-demo">Export this invoice preview</h2><p>The action controls stay outside the target, exactly as they should in a production invoice UI.</p><div class="demo-box"><div class="demo-stage"><div id="demo-invoice" style="width:360px;padding:24px;background:#fff;border:1px solid #0F1E4D"><div style="display:flex;justify-content:space-between"><strong>INVOICE #1042</strong><span style="color:#1E9F6E">PAID</span></div><p style="color:#55617C;font-size:13px">SnapDOM Labs · July 16, 2026</p><hr style="border:0;border-top:1px solid #D7DDEA;margin:18px 0"><div style="display:flex;justify-content:space-between"><span>DOM capture integration</span><b>$480.00</b></div><div style="display:flex;justify-content:space-between;margin-top:8px"><span>Performance audit</span><b>$120.00</b></div><hr style="border:0;border-top:2px solid #0F1E4D;margin:18px 0"><div style="display:flex;justify-content:space-between;font-size:18px"><strong>Total</strong><strong>$600.00</strong></div></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-invoice" data-demo-output="demo-invoice-output" data-demo-filename="invoice">Preview invoice</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-invoice" data-demo-output="demo-invoice-output" data-demo-filename="invoice">Download invoice</button></div><div class="demo-output" id="demo-invoice-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>SnapDOM produces an image snapshot. For selectable text, multiple pages, repeated headers or print pagination, use a dedicated HTML-to-PDF workflow instead.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Can I create a PDF?</summary><p>The pdfImage plugin can wrap a capture in a single-page image PDF. It is not a full paginated document engine.</p></details><details><summary>Should invoices use JPEG?</summary><p>PNG keeps text and fine rules crisp. JPEG can be smaller for photo-heavy reports but introduces compression artifacts.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../html-to-png/">Convert HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">High-resolution capture <span class="arrow">→</span></a><a class="related-card" href="../capture-before-pdf/">Capture before PDF <span class="arrow">→</span></a><a class="related-card" href="../../plugins.html">PDF image plugin <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Export a React Component as an Image — SnapDOM</title>
+  <meta name="description" content="Save a React component as PNG, SVG or Canvas using a ref and SnapDOM, with no server or headless browser." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/export-react-component-as-image/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Export a React Component as an Image" />
+  <meta property="og:description" content="Save a React component as PNG, SVG or Canvas using a ref and SnapDOM, with no server or headless browser." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/export-react-component-as-image/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Export a React component as an image","description":"Save a React component as PNG, SVG or Canvas using a ref and SnapDOM, with no server or headless browser.","url":"https://snapdom.dev/how-to/export-react-component-as-image/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does this work with React Server Components?","acceptedAnswer":{"@type":"Answer","text":"The component may originate on the server, but capture must run from a client component after a real DOM element exists."}},{"@type":"Question","name":"Can I export SVG instead?","acceptedAnswer":{"@type":"Answer","text":"Yes. Replace download format png with svg, or call snapdom.toSvg(ref.current)."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Export a React component as an image","item":"https://snapdom.dev/how-to/export-react-component-as-image/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Export a <span class="accent">React component</span> as an image</h1><p class="lead">Attach a ref to the rendered component and capture the real browser DOM in a click handler.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Use a React <code>ref</code>, then call <code>snapdom.toPng(ref.current)</code> after the component has rendered.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { useRef } from 'react'
+import { snapdom } from '@zumer/snapdom'
+
+export function ShareCard() {
+  const cardRef = useRef(null)
+  const save = async () =&gt; {
+    const capture = await snapdom(cardRef.current, { embedFonts: true })
+    await capture.download({ format: 'png', filename: 'share-card' })
+  }
+  return &lt;&gt;
+    &lt;article ref={cardRef}&gt;Your component&lt;/article&gt;
+    &lt;button onClick={save}&gt;Download PNG&lt;/button&gt;
+  &lt;/&gt;
+}</pre></section><section class="prose"><h2>Why this pattern works</h2><p>SnapDOM is framework-agnostic: React renders the component and SnapDOM captures the resulting DOM. A ref is more reliable than a global selector and stays scoped to the component instance.</p></section><section class="prose"><h2 id="live-demo">Edit and capture component state</h2><p>Change the text directly, then capture the rendered state a React ref would point to.</p><div class="demo-box"><div class="demo-stage"><article id="demo-react-component" contenteditable="true" style="width:320px;padding:24px;background:#fff;border:2px solid #2D5BFF;outline:none"><span style="color:#2D5BFF;font-size:12px;font-weight:700">EDIT ME</span><h3 style="margin:8px 0">React component state</h3><p style="margin:0;color:#55617C">Click this text, change it, then capture the current DOM.</p></article></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-react-component" data-demo-output="demo-react-component-output" data-demo-filename="react-component">Capture current state</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-react-component" data-demo-output="demo-react-component-output" data-demo-filename="react-component">Download PNG</button></div><div class="demo-output" id="demo-react-component-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Call capture in the browser, not during server rendering. Wait for Suspense data, images and fonts if they materially affect the component.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does this work with React Server Components?</summary><p>The component may originate on the server, but capture must run from a client component after a real DOM element exists.</p></details><details><summary>Can I export SVG instead?</summary><p>Yes. Replace download format png with svg, or call snapdom.toSvg(ref.current).</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../guides/react/">Complete React guide <span class="arrow">→</span></a><a class="related-card" href="../../guides/nextjs/">SnapDOM in Next.js <span class="arrow">→</span></a><a class="related-card" href="../html-to-png/">Convert HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../generate-social-card-from-html/">Generate social cards <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

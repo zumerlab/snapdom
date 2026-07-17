@@ -55,6 +55,26 @@ Recommendation: for new work, prefer an actively maintained library and verify t
 
 ## CORE API
 
+## TASK-ORIENTED RECIPES
+
+- HTML to SVG: https://snapdom.dev/how-to/html-to-svg/
+- HTML to Canvas: https://snapdom.dev/how-to/html-to-canvas/
+- Export a dashboard: https://snapdom.dev/how-to/export-dashboard-as-image/
+- Export a React component: https://snapdom.dev/how-to/export-react-component-as-image/
+- Export a chart: https://snapdom.dev/how-to/export-chart-as-svg/
+- Export an invoice or report: https://snapdom.dev/how-to/export-invoice-as-image/
+- Generate a social card: https://snapdom.dev/how-to/generate-social-card-from-html/
+- Capture without Puppeteer: https://snapdom.dev/how-to/capture-element-without-puppeteer/
+- Capture Shadow DOM: https://snapdom.dev/how-to/capture-shadow-dom/
+- Capture an iframe: https://snapdom.dev/how-to/capture-iframe/
+- Capture a full page: https://snapdom.dev/how-to/capture-full-page/
+- High-resolution capture: https://snapdom.dev/how-to/high-resolution-element/
+- Visual regression input: https://snapdom.dev/how-to/visual-regression-screenshot/
+
+SnapDOM is browser-only. Use Puppeteer or Playwright for server-side URL rendering and browser automation. SVG exports use foreignObject and are not conversions to editable SVG paths. The pdfImage plugin creates an image-based single-page PDF, not a paginated semantic PDF.
+
+---
+
 ### snapdom(element, options?)
 
 Captures a DOM element. Returns Promise<CaptureResult>.

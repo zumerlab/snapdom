@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture a Component for Visual Regression Testing — SnapDOM</title>
+  <meta name="description" content="Create deterministic component screenshots in the browser for a visual regression comparison workflow." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/visual-regression-screenshot/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture a Component for Visual Regression Testing" />
+  <meta property="og:description" content="Create deterministic component screenshots in the browser for a visual regression comparison workflow." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/visual-regression-screenshot/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture a visual regression screenshot","description":"Create deterministic component screenshots in the browser for a visual regression comparison workflow.","url":"https://snapdom.dev/how-to/visual-regression-screenshot/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is SnapDOM a complete visual testing framework?","acceptedAnswer":{"@type":"Answer","text":"No. It provides the capture step, not test orchestration, baseline storage or pixel-diff assertions."}},{"@type":"Question","name":"Why use dpr: 1?","acceptedAnswer":{"@type":"Answer","text":"A fixed DPR prevents test machines with different display densities from producing different bitmap dimensions."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture a visual regression screenshot","item":"https://snapdom.dev/how-to/visual-regression-screenshot/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture a <span class="accent">visual regression</span> screenshot</h1><p class="lead">Produce the input image for a visual diff after fonts, data, animations and layout are stable.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Stabilize the component state, capture to PNG, then compare it with a baseline using a dedicated diff tool.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">await document.fonts.ready
+document.documentElement.classList.add('test-mode')
+
+const blob = await snapdom.toBlob(
+  document.querySelector('[data-visual-test="profile-card"]'),
+  { type: 'png', dpr: 1, cache: 'disabled' },
+)
+
+// Store or submit blob to your baseline/diff workflow.</pre></section><section class="prose"><h2>Why this pattern works</h2><p>Fix viewport, data, time, fonts and animation state before capture. SnapDOM creates the screenshot; a runner or service remains responsible for baselines, thresholds and failure reporting.</p></section><section class="prose"><h2 id="live-demo">Capture a stable visual fixture</h2><p>Toggle the fixture state, capture it, then toggle again to see why baselines require deterministic input.</p><div class="demo-box"><div class="demo-stage"><div id="demo-visual-regression" style="width:340px;padding:22px;background:#fff;border:1px solid #0F1E4D"><div style="display:flex;justify-content:space-between;align-items:center"><div><strong>Profile card</strong><small style="display:block;color:#55617C">Fixture state: stable</small></div><span style="width:46px;height:46px;border-radius:50%;background:#2D5BFF"></span></div><div style="height:8px;width:78%;background:#D7DDEA;margin-top:18px"></div><div style="height:8px;width:54%;background:#D7DDEA;margin-top:8px"></div></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-visual-regression" data-demo-output="demo-visual-regression-output" data-demo-filename="visual-regression">Capture fixture</button><button type="button" class="btn btn-ghost" data-demo-action="blob" data-demo-target="demo-visual-regression" data-demo-output="demo-visual-regression-output" data-demo-filename="visual-regression">Create baseline Blob</button></div><div class="demo-output" id="demo-visual-regression-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Output can vary when browser engines, fonts or device pixel ratios differ. Run comparisons in a controlled browser configuration when reproducibility matters.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Is SnapDOM a complete visual testing framework?</summary><p>No. It provides the capture step, not test orchestration, baseline storage or pixel-diff assertions.</p></details><details><summary>Why use dpr: 1?</summary><p>A fixed DPR prevents test machines with different display densities from producing different bitmap dimensions.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="https://zumerlab.com/snapdiff/?utm_source=snapdom">Compare with SnapDIFF <span class="arrow">→</span></a><a class="related-card" href="../capture-element-without-puppeteer/">Capture without Puppeteer <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">Resolution and DPR <span class="arrow">→</span></a><a class="related-card" href="../../docs/cache/">Cache control <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>
