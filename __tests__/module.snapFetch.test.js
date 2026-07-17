@@ -262,3 +262,48 @@ describe('snapFetch (proxy & credentials)', () => {
      errSpy.mockRestore()
    })
  })
+
+describe('snapFetch (about:blank scheme)', () => {
+  it('returns a 1x1 png dataURL for as:"dataURL"', async () => {
+    const { snapFetch } = await importFresh()
+    const r = await snapFetch('about:blank', { as: 'dataURL' })
+    expect(r.ok).toBe(true)
+    expect(r.status).toBe(200)
+    expect(r.mime).toBe('image/png')
+    expect(String(r.data).startsWith('data:image/png;base64,')).toBe(true)
+  })
+
+  it('returns an empty string for as:"text"', async () => {
+    const { snapFetch } = await importFresh()
+    const r = await snapFetch('about:blank', { as: 'text' })
+    expect(r.ok).toBe(true)
+    expect(r.data).toBe('')
+  })
+
+  it('returns an empty Blob for the default blob mode', async () => {
+    const { snapFetch } = await importFresh()
+    const r = await snapFetch('about:blank')
+    expect(r.ok).toBe(true)
+    expect(r.data).toBeInstanceOf(Blob)
+    expect(r.data.size).toBe(0)
+  })
+
+  it('does not go through fetch for about:blank', async () => {
+    const { snapFetch } = await importFresh()
+    const spy = vi.fn()
+    globalThis.fetch = spy
+    await snapFetch('about:blank', { as: 'dataURL' })
+    expect(spy).not.toHaveBeenCalled()
+  })
+})
+
+describe('snapFetch (credential inference fallback)', () => {
+  it('falls back to credentials:"omit" when the URL cannot be parsed', async () => {
+    const { snapFetch } = await importFresh()
+    // Absolute scheme with an empty host → `new URL()` throws in the credential-inference
+    // block, exercising the catch that defaults credentials to "omit".
+    mockFetchNetworkError()
+    const r = await snapFetch('https://', { as: 'blob', timeout: 200, silent: true })
+    expect(r.ok).toBe(false)
+  })
+})

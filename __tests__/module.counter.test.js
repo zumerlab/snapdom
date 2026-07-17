@@ -5,6 +5,7 @@ import {
   buildCounterContext,
   resolveCountersInContent
 } from '../src/modules/counter.js'
+import { cache } from '../src/core/cache.js'
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -107,6 +108,42 @@ describe('resolveCountersInContent', () => {
     document.body.appendChild(root)
     const ctx = buildCounterContext(root)
     expect(resolveCountersInContent('counters(x, ". ")', inner, ctx)).toBe('2')
+  })
+
+  it('returns empty string for counters() when the stack is empty', () => {
+    const node = document.createElement('span')
+    document.body.appendChild(node)
+    const ctx = buildCounterContext(node)
+    // No counter named "missing" anywhere → empty stack → '' (no trailing separator)
+    expect(resolveCountersInContent('counters(missing, ".")', node, ctx)).toBe('')
+  })
+
+  it('falls back to "- " when the counter context throws', () => {
+    const node = document.createElement('span')
+    document.body.appendChild(node)
+    const throwingCtx = { get() { throw new Error('boom') }, getStack() { throw new Error('boom') } }
+    expect(resolveCountersInContent('counter(x)', node, throwingCtx)).toBe('- ')
+  })
+})
+
+describe('buildCounterContext – epoch invalidation', () => {
+  it('rebuilds the map when the session counter epoch changes', () => {
+    const root = document.createElement('div')
+    const inner = document.createElement('span')
+    inner.style.counterReset = 'x 5'
+    root.appendChild(inner)
+    document.body.appendChild(root)
+
+    cache.session = cache.session || {}
+    cache.session.__counterEpoch = 1
+    const ctx = buildCounterContext(root)
+    expect(ctx.get(inner, 'x')).toBe(5)
+
+    // Mutate the DOM and bump the epoch: the next query must rebuild from the live tree.
+    inner.style.counterReset = 'x 9'
+    cache.session.__counterEpoch = 2
+    expect(ctx.get(inner, 'x')).toBe(9)
+    expect(ctx.getStack(inner, 'x')).toEqual([9])
   })
 })
 

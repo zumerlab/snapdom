@@ -48,3 +48,25 @@ describe('snapdom – result helpers', () => {
     expect(typeof result.download).toBe('function')
   })
 })
+
+describe('snapdom – Safari warmup path', () => {
+  it('runs the warmup once when isSafari and the element has background/canvas', async () => {
+    vi.mocked(browser.isSafari).mockReturnValue(true)
+
+    const el = document.createElement('div')
+    el.style.width = '40px'
+    el.style.height = '40px'
+    el.style.backgroundImage =
+      'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==")'
+    const canvas = document.createElement('canvas')
+    canvas.width = 4
+    canvas.height = 4
+    el.appendChild(canvas)
+    document.body.appendChild(el)
+
+    // safariWarmupAttempts: 1 keeps the (real) warmup capture to a single pass.
+    const result = await snapdom(el, { safariWarmupAttempts: 1 })
+    expect(typeof result.url).toBe('string')
+    expect(result.url.startsWith('data:image/svg+xml')).toBe(true)
+  })
+})

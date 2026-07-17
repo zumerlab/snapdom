@@ -90,6 +90,51 @@ describe('preCache – extra coverage', () => {
     document.body.removeChild(el)
   })
 
+  it('prefetches <img src> into cache.image as a dataURL', async () => {
+    const PNG = 'https://cdn.example.com/photo.png'
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'image/png' },
+      blob: () => Promise.resolve(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })),
+    })
+
+    const root = document.createElement('div')
+    const img = document.createElement('img')
+    img.src = PNG
+    root.appendChild(img)
+    document.body.appendChild(root)
+
+    await preCache(root, { embedFonts: false })
+
+    const resolved = img.currentSrc || img.src
+    expect(cache.image.has(resolved)).toBe(true)
+    expect(cache.image.get(resolved)).toMatch(/^data:/)
+
+    document.body.removeChild(root)
+  })
+
+  it('captures the root itself when it is an <img>', async () => {
+    const PNG = 'https://cdn.example.com/root.png'
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'image/png' },
+      blob: () => Promise.resolve(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })),
+    })
+
+    const img = document.createElement('img')
+    img.src = PNG
+    document.body.appendChild(img)
+
+    await preCache(img, { embedFonts: false })
+
+    const resolved = img.currentSrc || img.src
+    expect(cache.image.has(resolved)).toBe(true)
+
+    document.body.removeChild(img)
+  })
+
   it('walks the subtree and preloads child backgrounds', async () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
     globalThis.fetch = vi.fn().mockResolvedValue({

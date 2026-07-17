@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getStyle, parseContent, snapshotComputedStyle, stripTranslate, shouldIgnoreProp } from '../src/utils'
+import { splitBackgroundImage, getStyleKey } from '../src/utils/css.js'
 
 describe('getStyle', () => {
   it('returns a CSSStyleDeclaration', () => {
@@ -92,5 +93,59 @@ describe('stripTranslate edge cases', () => {
   it('returns original for malformed matrix', () => {
     expect(stripTranslate('matrix(1,2,3)')).toBe('matrix(1,2,3)')
     expect(stripTranslate('matrix3d(1,2,3)')).toBe('matrix3d(1,2,3)')
+  })
+})
+
+describe('splitBackgroundImage', () => {
+  it('returns a single layer unchanged', () => {
+    expect(splitBackgroundImage('url(a.png)')).toEqual(['url(a.png)'])
+  })
+
+  it('splits top-level layers but keeps commas inside functions intact', () => {
+    const bg = 'url(a.png), linear-gradient(90deg, red, blue)'
+    const parts = splitBackgroundImage(bg)
+    expect(parts).toEqual(['url(a.png)', 'linear-gradient(90deg, red, blue)'])
+  })
+
+  it('handles nested parentheses across several layers', () => {
+    const bg = 'linear-gradient(rgba(0,0,0,0.5), rgba(255,255,255,0.2)), url(b.png)'
+    const parts = splitBackgroundImage(bg)
+    expect(parts).toHaveLength(2)
+    expect(parts[1]).toBe('url(b.png)')
+  })
+})
+
+describe('getStyleKey – width softening (#429/#434/#436)', () => {
+  it('returns "" for tags that must not produce a class', () => {
+    expect(getStyleKey({ display: 'block' }, 'path')).toBe('')
+  })
+
+  it('rounds a fractional frozen width UP to 1/16px for non-softened tags', () => {
+    // block div is never softened → width is frozen, and a sub-pixel value is ceil-rounded to 1/16px.
+    const key = getStyleKey({ display: 'block', width: '100.03px' }, 'div')
+    expect(key).toContain('width:100.0625px') // ceil(100.03 * 16) / 16
+  })
+
+  it('drops the used width and synthesizes a min-width floor for a table cell', () => {
+    const key = getStyleKey({ display: 'table-cell', width: '113.484px' }, 'td')
+    expect(key).toContain('min-width:113.484px')
+    expect(key).not.toMatch(/(^|;)width:/) // the hard used width longhand must not be frozen
+  })
+
+  it('keeps an authored min-width verbatim and suppresses the synthesized floor', () => {
+    const key = getStyleKey({ display: 'table-cell', 'min-width': '50px', width: '80px' }, 'td')
+    expect(key).toContain('min-width:50px')
+    expect(key.match(/min-width:/g)).toHaveLength(1) // no duplicate synthesized floor
+  })
+
+  it('never synthesizes a floor for a flex/grid item (#406)', () => {
+    const key = getStyleKey({ display: 'table-cell', width: '80px' }, 'td', true, true)
+    expect(key).not.toContain('min-width')
+  })
+
+  it('keeps the width verbatim when the box is NOT sized by content (#433)', () => {
+    // inline-block span sized by a CSS class → width must be preserved, not softened.
+    const key = getStyleKey({ display: 'inline-block', width: '80px' }, 'span', false)
+    expect(key).toContain('width:80px')
   })
 })
