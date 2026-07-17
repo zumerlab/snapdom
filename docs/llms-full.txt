@@ -115,7 +115,7 @@ snapdom.plugins(...defs) → snapdom  // chainable, global
 | pictureResolver | object | {} | {timeout?, concurrency?, resolveLazySrc?, silent?} |
 | plugins | PluginUse[] | undefined | Per-capture plugins (override globals by name) |
 | format | string | 'png' | Default format: png, jpeg, webp, svg |
-| filename | string | 'SnapDOM' | Default download filename |
+| filename | string | 'snapDOM' | Default download filename |
 | type | string | 'svg' | Default Blob type for toBlob() |
 | excludeStyleProps | RegExp|function | null | Skip CSS properties during snapshot |
 
