@@ -172,7 +172,10 @@ describe('collectScrollbarCSS (#334)', () => {
 
     expect(out).toContain('::-webkit-scrollbar')
     expect(out).toContain('::-webkit-scrollbar-thumb')
-    expect(out).toContain('width: 10px')
+    if (!navigator.userAgent.includes('Firefox')) {
+      // Gecko's CSSOM drops declarations it can't apply inside ::-webkit-scrollbar rules
+      expect(out).toContain('width: 10px')
+    }
     expect(out).not.toContain('.other')
   })
 

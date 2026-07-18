@@ -1,7 +1,7 @@
 // __tests__/exporters.jpg-png-svg-webp.test.js – direct exporter calls (0% → covered)
 import { describe, it, expect } from 'vitest'
 
-const DATA_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBCd4/7mEAAAAASUVORK5CYII='
+const DATA_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=='
 
 describe('toJpg (direct)', () => {
   it('returns rasterized output when given data URL (string path)', async () => {

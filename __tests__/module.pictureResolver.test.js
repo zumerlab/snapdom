@@ -65,7 +65,7 @@ describe('pictureResolver core', () => {
     const source = document.createElement('source')
     source.setAttribute('srcset', 'https://ex.com/real.png')
     const img = document.createElement('img')
-    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
     picture.appendChild(source)
     picture.appendChild(img)
     container.appendChild(picture)
@@ -100,7 +100,7 @@ describe('pictureResolver core', () => {
 
   it('resolves a lazy data-src placeholder img and undo restores it', async () => {
     const img = document.createElement('img')
-    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
     img.setAttribute('data-src', 'https://ex.com/real-lazy.png')
     container.appendChild(img)
 
@@ -115,7 +115,7 @@ describe('pictureResolver core', () => {
 
   it('pictureResolver() plugin factory mutates on beforeClone and restores on afterClone', async () => {
     const img = document.createElement('img')
-    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
     img.setAttribute('data-src', 'https://ex.com/real-plugin.png')
     container.appendChild(img)
 
@@ -134,7 +134,7 @@ describe('pictureResolver core', () => {
   it('respects resolvePicturePlaceholders: false', async () => {
     const picture = document.createElement('picture')
     const img = document.createElement('img')
-    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
     const src = document.createElement('source')
     src.setAttribute('srcset', 'https://ex.com/x.png')
     picture.appendChild(src)

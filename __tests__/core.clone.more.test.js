@@ -4,6 +4,7 @@ import { deepClone } from '../src/core/clone.js'
 import { cache } from '../src/core/cache.js'
 import { NO_CAPTURE_TAGS } from '../src/utils/css.js'
 import { createCheckboxRadioReplacement } from '../src/utils/clone.helpers.js'
+import { isFirefox } from '../src/utils/browser.js'
 
 // fresh session cache each test
 const makeSession = () => ({
@@ -40,8 +41,8 @@ describe('deepClone – extra coverage', () => {
 
     const clone = await deepClone(img, session, {})
     expect(clone.tagName).toBe('IMG')
-    // chosen copied to src
-    expect(clone.getAttribute('src')).toContain('data:image/')
+    // chosen copied to src (WebKit resolves currentSrc from srcset even detached)
+    expect(clone.getAttribute('src')).toMatch(/^(data:image\/|https?:)/)
     // stripped by freezeImgSrcset
     expect(clone.hasAttribute('srcset')).toBe(false)
     expect(clone.hasAttribute('sizes')).toBe(false)
@@ -57,10 +58,15 @@ describe('deepClone – extra coverage', () => {
     // leave src and currentSrc empty
 
     const clone = await deepClone(img, session, {})
-    // no src chosen => still has original responsive attributes
-    expect(clone.hasAttribute('src')).toBe(false)
-    expect(clone.getAttribute('srcset')).toBe('a.png 1x')
-    expect(clone.getAttribute('sizes')).toBe('100vw')
+    // WebKit/Firefox may resolve a currentSrc from srcset even detached; the invariant
+    // is freeze ⇒ responsive attributes stripped, no freeze ⇒ kept intact.
+    if (clone.hasAttribute('src')) {
+      expect(clone.hasAttribute('srcset')).toBe(false)
+      expect(clone.hasAttribute('sizes')).toBe(false)
+    } else {
+      expect(clone.getAttribute('srcset')).toBe('a.png 1x')
+      expect(clone.getAttribute('sizes')).toBe('100vw')
+    }
   })
 
   it('does not exclude when selector is invalid; only warns', async () => {
@@ -149,10 +155,15 @@ it('exclude by selector with excludeMode = "remove" skips element from clonning'
     input.checked = true
     input.value = 'abc'
     const c1 = await deepClone(input, session, {})
-    expect(c1.value).toBe('abc')
-    expect(c1.checked).toBe(true)
-    expect(c1.getAttribute('value')).toBe('abc')
-    expect(c1.hasAttribute('checked')).toBe(true)
+    if (isFirefox()) {
+      // Firefox can't render input state in foreignObject: deepClone swaps in a visual replacement
+      expect(c1.tagName).not.toBe('INPUT')
+    } else {
+      expect(c1.value).toBe('abc')
+      expect(c1.checked).toBe(true)
+      expect(c1.getAttribute('value')).toBe('abc')
+      expect(c1.hasAttribute('checked')).toBe(true)
+    }
 
     // select
     const sel = document.createElement('select')
@@ -322,11 +333,16 @@ describe('deepClone – targeted branches for coverage gaps', () => {
     input.indeterminate = true
     input.value = 'vv'
     const c = await deepClone(input, session, {})
-    expect(c.value).toBe('vv')
-    expect(c.checked).toBe(false)
-    expect(c.indeterminate).toBe(true)
-    // value attribute mirrored
-    expect(c.getAttribute('value')).toBe('vv')
+    if (isFirefox()) {
+      // Firefox path: visual replacement element instead of a live input
+      expect(c.tagName).not.toBe('INPUT')
+    } else {
+      expect(c.value).toBe('vv')
+      expect(c.checked).toBe(false)
+      expect(c.indeterminate).toBe(true)
+      // value attribute mirrored
+      expect(c.getAttribute('value')).toBe('vv')
+    }
   })
 
   /**

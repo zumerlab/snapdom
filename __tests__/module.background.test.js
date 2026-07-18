@@ -21,7 +21,7 @@ describe('inlineBackgroundImages', () => {
   })
 
   it('processes a valid background-image', async () => {
-    source.style.backgroundImage = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==")'
+    source.style.backgroundImage = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")'
     await expect(inlineBackgroundImages(source, clone, new WeakMap())).resolves.toBeUndefined()
   })
 

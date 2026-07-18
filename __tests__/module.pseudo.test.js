@@ -506,7 +506,8 @@ describe('inlinePseudoElements', () => {
     expect(before).toBeTruthy() // was dropped before the fix → centering collapsed
     const key = sessionCache3.styleMap.get(before) || ''
     expect(key).toMatch(/display:\s*inline-block/)
-    expect(key).toMatch(/vertical-align:\s*middle/)
+    // Gecko: vertical-align es shorthand; la key captura el longhand alignment-baseline
+    expect(key).toMatch(/vertical-align:\s*middle|alignment-baseline:\s*middle/)
 
     wrap.remove()
     style.remove()

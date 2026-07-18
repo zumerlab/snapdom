@@ -57,7 +57,7 @@ describe('snapdom – Safari warmup path', () => {
     el.style.width = '40px'
     el.style.height = '40px'
     el.style.backgroundImage =
-      'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg==")'
+      'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")'
     const canvas = document.createElement('canvas')
     canvas.width = 4
     canvas.height = 4

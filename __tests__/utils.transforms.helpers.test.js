@@ -214,7 +214,7 @@ describe('readIndividualTransforms', () => {
     document.body.appendChild(div)
     const res = readIndividualTransforms(div)
     expect(res.rotate).toBe('45deg')
-    expect(res.scale).toBe('2 2')
+    expect(['2 2', '2']).toContain(res.scale) // Gecko serializa scale uniforme como '2'
   })
 
   it('falls back to the legacy string path when computedStyleMap is unavailable', () => {

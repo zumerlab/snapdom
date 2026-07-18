@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 
+// Firefox/WebKit canvases cannot encode WebP; snapdom falls back to PNG there.
+const supportsWebpEncode = () => document.createElement('canvas').toDataURL('image/webp').startsWith('data:image/webp')
+
 describe('snapdom API (direct)', () => {
   it('throws on null element', async () => {
     await expect(snapdom(null)).rejects.toThrow()
@@ -50,9 +53,14 @@ describe('snapdom API (direct)', () => {
     img.width = 10
     img.height = 10
     img.decode = () => Promise.resolve()
+    const OrigImage = globalThis.Image
     globalThis.Image = function() { return img }
-    const res = await snapdom(el)
-    await res.toImg()
+    try {
+      const res = await snapdom(el)
+      await res.toImg()
+    } finally {
+      globalThis.Image = OrigImage
+    }
     document.body.removeChild(el)
     vi.resetModules()
   })
@@ -96,7 +104,7 @@ describe('snapdom API (direct)', () => {
 
   const webpBlob = await result.toBlob({ type: 'webp', quality: 0.9 })
   expect(webpBlob).toBeInstanceOf(Blob)
-  expect(webpBlob.type).toBe('image/webp')
+  expect(webpBlob.type).toBe(supportsWebpEncode() ? 'image/webp' : 'image/png')
 
   // default fallback
   const svgBlob = await result.toBlob()
@@ -126,7 +134,7 @@ expect(jpgImg.src.startsWith('data:image/jpeg')).toBe(true)
   const webpImg = await snap.toWebp()
   expect(webpImg).toBeInstanceOf(HTMLImageElement)
   expect(typeof webpImg.src).toBe('string')
-expect(webpImg.src.startsWith('data:image/webp')).toBe(true)
+expect(webpImg.src.startsWith(supportsWebpEncode() ? 'data:image/webp' : 'data:image/png')).toBe(true)
   document.body.removeChild(el)
 })
 

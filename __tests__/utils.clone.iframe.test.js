@@ -29,8 +29,8 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     const win = doc.defaultView
     win.scrollTo(500, 400)
     // sanity: scroll took effect
-    expect(win.scrollY).toBe(400)
-    expect(win.scrollX).toBe(500)
+    expect(win.scrollY).toBeCloseTo(400, 0)
+    expect(win.scrollX).toBeCloseTo(500, 0)
 
     const unpin = pinIframeViewport(doc, 200, 150)
     // during pin, overflow:hidden clamps scroll to 0
@@ -38,8 +38,8 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     expect(win.scrollX).toBe(0)
 
     unpin()
-    expect(win.scrollX).toBe(500)
-    expect(win.scrollY).toBe(400)
+    expect(win.scrollX).toBeCloseTo(500, 0)
+    expect(win.scrollY).toBeCloseTo(400, 0)
   })
 
   it('removes the injected <style> on unpin', () => {
