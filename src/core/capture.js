@@ -409,23 +409,38 @@ export async function captureDOM(element, options) {
       const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
 
       const svgNS = 'http://www.w3.org/2000/svg'
-      // Safari workaround: pad only when root has bbox-affecting transforms (avoids edge clipping)
-      const basePad = (isSafari() && hasTFBBox(state.element)) ? 1 : 0
+      // A transformed root's bbox is fractional, so its far edges land flush against the
+      // raster boundary and browsers shave the last 1-2px at some zoom/display scales
+      // (Safari always did; Chrome at zoom ≠ 100%). Pad the viewBox so rotated corners
+      // never touch the edge. Was Safari-only; the shaving is not.
+      const basePad = hasTFBBox(state.element) ? 2 : 0
       const extraPad = !outerTransforms ? 1 : 0
       const pad = limitDecimals(basePad + extraPad)
 
+      // Ceil so a fractional content extent (rotated bbox, fractional bleed) is never
+      // truncated when the svg size is rasterized to whole pixels (bottom/right edge loss).
+      const vbW = Math.ceil(vbW0 + pad * 2)
+      const vbH = Math.ceil(vbH0 + pad * 2)
+
+      // Stable Chrome doesn't paint foreignObject overflow when rasterizing svg-as-image
+      // (headless chromium does — don't trust it): the fo must cover the whole viewBox and
+      // the bbox offset must move the CONTENT. The offset can't be fo x/y (leaves the
+      // top/left band as unpainted overflow) nor position/margin/transform on the fo's
+      // root element (Chrome double-paints those at browser zoom ≠ 100%) — padding on the
+      // container is the one mechanism that survives both.
+      // Negative offsets (clip window right/below the element origin) can't be padding —
+      // there fo x/y is safe: the band it leaves unpainted is exactly the culled region.
+      const offX = limitDecimals(-(limitDecimals(minX) - pad))
+      const offY = limitDecimals(-(limitDecimals(minY) - pad))
+      const padL = Math.max(0, offX)
+      const padT = Math.max(0, offY)
+      const foW = limitDecimals(vbW - Math.min(0, offX))
+      const foH = limitDecimals(vbH - Math.min(0, offY))
       const fo = document.createElementNS(svgNS, 'foreignObject')
-      const vbMinX = limitDecimals(minX)
-      const vbMinY = limitDecimals(minY)
-      fo.setAttribute('x', String(limitDecimals(-(vbMinX - pad))))
-      fo.setAttribute('y', String(limitDecimals(-(vbMinY - pad))))
-      // Clip mode: the window can lie beyond the element's reported box (Chrome clamps
-      // documentElement offsetHeight to the viewport) and browsers don't reliably paint
-      // foreignObject overflow — size the fo to reach the window's far edge.
-      const foW = clipWindow ? Math.max(w0, maxX) : w0
-      const foH = clipWindow ? Math.max(h0, maxY) : h0
-      fo.setAttribute('width', String(limitDecimals(foW + pad * 2)))
-      fo.setAttribute('height', String(limitDecimals(foH + pad * 2)))
+      fo.setAttribute('x', String(Math.min(0, offX)))
+      fo.setAttribute('y', String(Math.min(0, offY)))
+      fo.setAttribute('width', String(foW))
+      fo.setAttribute('height', String(foH))
       fo.style.overflow = 'visible'
 
       const styleTag = document.createElement('style')
@@ -444,9 +459,12 @@ export async function captureDOM(element, options) {
       const container = document.createElement('div')
       container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       // #372: isolate wrapper from iframe CSS cascade (e.g. div { border: 10px solid red })
+      // The container spans the whole fo, so the (rotated/bled) content never overflows
+      // its border-box — standalone-SVG Chromium clips fo content at the container box.
       container.style.cssText =
         'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
-        `width:${limitDecimals(w0)}px;height:${limitDecimals(h0)}px`
+        `width:${foW}px;height:${foH}px` +
+        ((padL !== 0 || padT !== 0) ? `;padding:${padT}px 0 0 ${padL}px` : '')
 
       //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(state.clone)
@@ -454,16 +472,14 @@ export async function captureDOM(element, options) {
 
       const serializer = new XMLSerializer()
       const foString = serializer.serializeToString(fo)
-      const vbW = limitDecimals(vbW0 + pad * 2)
-      const vbH = limitDecimals(vbH0 + pad * 2)
       const wantsSize = hasW || hasH
 
       options.meta = { w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h }
 
-      const svgOutW = (isSafari() && wantsSize)
+      const svgOutW = (!wantsSize || isSafari())
         ? vbW
         : limitDecimals(outW + pad * 2)
-      const svgOutH = (isSafari() && wantsSize)
+      const svgOutH = (!wantsSize || isSafari())
         ? vbH
         : limitDecimals(outH + pad * 2)
 
