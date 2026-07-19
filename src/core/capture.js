@@ -6,6 +6,7 @@
 import { prepareClone } from './prepare.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
+import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
 import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
@@ -149,6 +150,14 @@ export async function captureDOM(element, options) {
       resolve()
     }, { fast })
   })
+
+  // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it
+  // from the already-inlined clone. Non-blocking — a failure just loses the effect.
+  try {
+    emulateBackdropFilters(state.element, state.clone)
+  } catch (e) {
+    console.warn('[snapdom] backdrop-filter emulation failed:', e)
+  }
 
   // Perceptual image downsampling (opt-in via `compress`). No-op when off.
   if (options.compress) {
