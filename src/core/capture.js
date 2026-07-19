@@ -479,7 +479,11 @@ export async function captureDOM(element, options) {
       container.style.cssText =
         'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
         `width:${foW}px;height:${foH}px` +
-        ((padL !== 0 || padT !== 0) ? `;padding:${padT}px 0 0 ${padL}px` : '')
+        // !important: Chromium 140 serializes the `all:initial` expansion with
+        // `padding-inline: initial` AFTER this shorthand, so on data-URL re-parse it
+        // would reset the left/right padding (rotated-root offset) unless it loses
+        // the cascade to importance.
+        ((padL !== 0 || padT !== 0) ? `;padding:${padT}px 0 0 ${padL}px !important` : '')
 
       //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(state.clone)
