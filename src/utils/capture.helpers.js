@@ -212,7 +212,7 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
 }
 
 /**
- * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, blur()/drop-shadow()).
+ * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, drop-shadow()).
  * Children remain intact.
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
@@ -224,10 +224,12 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
   try { cloneRoot.style.boxShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows boxShadow', e) }
   try { cloneRoot.style.textShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows textShadow', e) }
   try { cloneRoot.style.outline = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows outline', e) }
+  // Only drop-shadow() is an outer-shadow effect; blur() is part of the element's
+  // own appearance and must survive (its bleed is always included in the bbox).
   const f = cs.filter || ''
+  // One nesting level: computed drop-shadow() carries an rgb()/rgba() color.
   const cleaned = f
-    .replace(/\bblur\([^()]*\)\s*/gi, '')
-    .replace(/\bdrop-shadow\([^()]*\)\s*/gi, '')
+    .replace(/\bdrop-shadow\((?:[^()]|\([^()]*\))*\)\s*/gi, '')
     .trim()
     .replace(/\s+/g, ' ')
   try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch (e) {

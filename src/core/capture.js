@@ -64,7 +64,7 @@ function hasPictureResolverPlugin(options) {
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {Function} [options.filter] - Custom filter function
  * @param {boolean} [options.outerTransforms=false] - Normalize root by removing translate/rotate (keep scale/skew)
- * @param {boolean} [options.outerShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
+ * @param {boolean} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
@@ -396,14 +396,18 @@ export async function captureDOM(element, options) {
       const drop = parseFilterDropShadows(csEl)
 
       // A region capture defines its own exact edges — never expand it for root bleed.
-      const bleed = (!outerShadows || clipWindow)
+      // blur() is not an outer-shadow effect: the root keeps it, so its bleed is
+      // always included; shadows/outline/drop-shadow only under outerShadows.
+      const bleed = clipWindow
         ? { top: 0, right: 0, bottom: 0, left: 0 }
-        : {
-          top: limitDecimals(bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top),
-          right: limitDecimals(bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right),
-          bottom: limitDecimals(bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
-          left: limitDecimals(bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left)
-        }
+        : outerShadows
+          ? {
+            top: limitDecimals(bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top),
+            right: limitDecimals(bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right),
+            bottom: limitDecimals(bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
+            left: limitDecimals(bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left)
+          }
+          : { top: bleedBlur.top, right: bleedBlur.right, bottom: bleedBlur.bottom, left: bleedBlur.left }
 
       minX = limitDecimals(minX - bleed.left)
       minY = limitDecimals(minY - bleed.top)
