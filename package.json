@@ -37,6 +37,7 @@
     "test:firefox": "BROWSER=firefox npx vitest run --browser.headless --reporter=verbose",
     "test:webkit": "BROWSER=webkit npx vitest run --browser.headless --reporter=verbose",
     "test:full": "npm run lint:fix && BROWSER=all npx vitest run --browser.headless --reporter=verbose",
+    "report:cross": "node scripts/cross-report.mjs",
     "test:coverage": "npx vitest run --browser.headless --coverage",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
     "bump:dry": "npx @zumerbox/bump -d",
