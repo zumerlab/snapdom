@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Export a Chart as SVG or PNG — SnapDOM</title>
+  <meta name="description" content="Export a chart together with its HTML title, legend and container as SVG or PNG using SnapDOM." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/export-chart-as-svg/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Export a Chart as SVG or PNG" />
+  <meta property="og:description" content="Export a chart together with its HTML title, legend and container as SVG or PNG using SnapDOM." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/export-chart-as-svg/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Export a chart as SVG or PNG","description":"Export a chart together with its HTML title, legend and container as SVG or PNG using SnapDOM.","url":"https://snapdom.dev/how-to/export-chart-as-svg/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Will a canvas chart become vector paths?","acceptedAnswer":{"@type":"Answer","text":"No. SnapDOM preserves its visual output but does not reconstruct canvas pixels as SVG geometry."}},{"@type":"Question","name":"When should I export PNG?","acceptedAnswer":{"@type":"Answer","text":"Use PNG for broad portability or when the chart contains raster content and no scalable wrapper is needed."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Export a chart as SVG or PNG","item":"https://snapdom.dev/how-to/export-chart-as-svg/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Export a <span class="accent">chart as SVG</span> or PNG</h1><p class="lead">Capture the complete chart component, including the HTML around canvas or SVG chart output.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Select the chart wrapper—not only its canvas—and call <code>snapdom.toSvg(wrapper)</code>.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
+
+const chart = document.querySelector('.chart-card')
+const svgImage = await snapdom.toSvg(chart, { embedFonts: true })
+document.querySelector('#preview').appendChild(svgImage)</pre></section><section class="prose"><h2>Why this pattern works</h2><p>Capturing the wrapper includes HTML legends, titles, filters and annotations that a chart library’s own exporter may omit.</p></section><section class="prose"><h2 id="live-demo">Export a complete chart card</h2><p>The capture includes the title, HTML legend and chart—not only the plot.</p><div class="demo-box"><div class="demo-stage"><div id="demo-chart-svg" style="width:360px;padding:20px;background:#fff;border:1px solid #0F1E4D"><h3 style="margin:0 0 4px">Revenue by channel</h3><div style="font-size:12px;color:#55617C;margin-bottom:16px"><span style="color:#2D5BFF">●</span> Organic &nbsp; <span style="color:#2BA8C9">●</span> Paid</div><svg viewBox="0 0 320 120" style="display:block;width:100%;height:auto"><path d="M0 105 C50 85 70 92 110 58 S185 82 220 38 S280 32 320 10" fill="none" stroke="#2D5BFF" stroke-width="5"/><path d="M0 95 C55 105 85 68 125 80 S190 45 225 60 S280 48 320 35" fill="none" stroke="#2BA8C9" stroke-width="5"/></svg></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="svg" data-demo-target="demo-chart-svg" data-demo-output="demo-chart-svg-output" data-demo-filename="chart-svg">Capture as SVG</button><button type="button" class="btn btn-ghost" data-demo-action="png" data-demo-target="demo-chart-svg" data-demo-output="demo-chart-svg-output" data-demo-filename="chart-svg">Capture as PNG</button></div><div class="demo-output" id="demo-chart-svg-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>A canvas-based chart remains raster content inside the SVG capture. For editable vector paths, prefer the chart library’s native SVG renderer and exporter.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Will a canvas chart become vector paths?</summary><p>No. SnapDOM preserves its visual output but does not reconstruct canvas pixels as SVG geometry.</p></details><details><summary>When should I export PNG?</summary><p>Use PNG for broad portability or when the chart contains raster content and no scalable wrapper is needed.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../save-chart-js-as-png/">Save Chart.js as PNG <span class="arrow">→</span></a><a class="related-card" href="../export-dashboard-as-image/">Export a dashboard <span class="arrow">→</span></a><a class="related-card" href="../html-to-svg/">HTML to SVG <span class="arrow">→</span></a><a class="related-card" href="../html-to-png/">HTML to PNG <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

@@ -1,14 +1,14 @@
 // __tests__/exporter.toImg.test.js – toImg.js coverage
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('../src/utils', async () => {
-  const actual = await vi.importActual('../src/utils')
+vi.mock('../src/utils', async (importOriginal) => {
+  const actual = await importOriginal()
   return { ...actual, isSafari: vi.fn() }
 })
 import { isSafari } from '../src/utils'
 import { toImg } from '../src/exporters/toImg.js'
 
-const DATA_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBCd4/7mEAAAAASUVORK5CYII='
+const DATA_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=='
 const DATA_SVG = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10"/>')
 
 beforeEach(() => {

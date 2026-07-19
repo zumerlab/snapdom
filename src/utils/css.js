@@ -117,6 +117,10 @@ const NO_PAINT_EXACT = new Set([
   // Capturing zoom in the class causes double-zoom inside SVG foreignObject → blank sections.
   // Excluding zoom prevents this; dimensions are already correct as-is.
   'zoom',
+  // WebKit-only draft prop (CSS Fill & Stroke on text; distinct from SVG `stroke`).
+  // Re-stating its transparent default inside svg-as-image flips WebKit's text paint
+  // path and silently drops text-shadow. Authored usage is nil — never capture it.
+  'stroke-color',
 ])
 
 /** Memo of shouldIgnoreProp by property name. The verdict depends only on the name, and the set

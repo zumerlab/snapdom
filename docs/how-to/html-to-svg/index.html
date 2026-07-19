@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Convert HTML to SVG in JavaScript — SnapDOM</title>
+  <meta name="description" content="Capture an HTML element as a self-contained SVG in the browser, including styles, fonts, pseudo-elements and open Shadow DOM." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/html-to-svg/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Convert HTML to SVG in JavaScript" />
+  <meta property="og:description" content="Capture an HTML element as a self-contained SVG in the browser, including styles, fonts, pseudo-elements and open Shadow DOM." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/html-to-svg/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"How to convert HTML to SVG","description":"Capture an HTML element as a self-contained SVG in the browser, including styles, fonts, pseudo-elements and open Shadow DOM.","url":"https://snapdom.dev/how-to/html-to-svg/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is the result true vector artwork?","acceptedAnswer":{"@type":"Answer","text":"No. Text and HTML remain inside SVG foreignObject; SnapDOM does not trace the DOM into paths."}},{"@type":"Question","name":"Can I get the SVG source?","acceptedAnswer":{"@type":"Answer","text":"Use snapdom.toRaw(element) to get the SVG data URL, or fetch and decode that URL when XML text is required."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"How to convert HTML to SVG","item":"https://snapdom.dev/how-to/html-to-svg/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>How to convert <span class="accent">HTML to SVG</span></h1><p class="lead">Capture a DOM element as a scalable, self-contained SVG image without a server or headless browser.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Use <code>snapdom.toSvg(element)</code> for an SVG image, or <code>snapdom.toRaw(element)</code> when you need the SVG data URL.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
+
+const element = document.querySelector('#card')
+const svg = await snapdom.toSvg(element, { embedFonts: true })
+document.body.appendChild(svg)</pre></section><section class="prose"><h2>Why this pattern works</h2><p>SnapDOM clones the selected DOM subtree, inlines its rendered styles and assets, then serializes it inside SVG <code>&lt;foreignObject&gt;</code>. The browser remains responsible for painting the HTML.</p><p>Use <code>toRaw()</code> when you need the underlying data URL for storage or transport.</p></section><section class="prose"><h2 id="live-demo">Try HTML → SVG live</h2><p>Capture this styled HTML card as an SVG image. The result stays sharp when resized.</p><div class="demo-box"><div class="demo-stage"><div id="demo-html-svg" style="width:320px;padding:24px;background:#0F1E4D;color:#fff;border-left:8px solid #2D5BFF"><span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#9FB4FF">SVG foreignObject</span><h3 style="color:#fff;margin:8px 0">HTML stays HTML</h3><p style="color:#D9E2F7;margin:0">Fonts, gradients and pseudo-ready CSS travel inside a scalable SVG wrapper.</p></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="svg" data-demo-target="demo-html-svg" data-demo-output="demo-html-svg-output" data-demo-filename="html-svg">Capture SVG</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-html-svg" data-demo-output="demo-html-svg-output" data-demo-format="svg" data-demo-filename="html-svg">Download SVG</button></div><div class="demo-output" id="demo-html-svg-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>The output is an SVG container around styled HTML; it is not a conversion to SVG paths. It is ideal for browser display and scalable export, but not for editing individual shapes in Illustrator or Figma.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Is the result true vector artwork?</summary><p>No. Text and HTML remain inside SVG foreignObject; SnapDOM does not trace the DOM into paths.</p></details><details><summary>Can I get the SVG source?</summary><p>Use snapdom.toRaw(element) to get the SVG data URL, or fetch and decode that URL when XML text is required.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../html-to-canvas/">Convert HTML to Canvas <span class="arrow">→</span></a><a class="related-card" href="../html-to-png/">Convert HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../../docs/api/">Export API <span class="arrow">→</span></a><a class="related-card" href="../../compare/html-to-image/">SnapDOM vs html-to-image <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

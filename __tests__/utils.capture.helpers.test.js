@@ -30,6 +30,17 @@ describe('stripRootShadows', () => {
     expect(clone.style.boxShadow).toBe('none')
   })
 
+  it('keeps blur() but strips drop-shadow() from the root filter chain', () => {
+    const orig = document.createElement('div')
+    orig.style.filter = 'blur(4px) grayscale(50%) drop-shadow(2px 2px 2px black)'
+    document.body.appendChild(orig)
+    const clone = document.createElement('div')
+    stripRootShadows(orig, clone)
+    expect(clone.style.filter).toContain('blur(4px)')
+    expect(clone.style.filter).toContain('grayscale')
+    expect(clone.style.filter).not.toContain('drop-shadow')
+  })
+
   it('handles null/undefined gracefully', () => {
     expect(() => stripRootShadows(null, document.createElement('div'))).not.toThrow()
     expect(() => stripRootShadows(document.createElement('div'), null)).not.toThrow()
@@ -172,7 +183,10 @@ describe('collectScrollbarCSS (#334)', () => {
 
     expect(out).toContain('::-webkit-scrollbar')
     expect(out).toContain('::-webkit-scrollbar-thumb')
-    expect(out).toContain('width: 10px')
+    if (!navigator.userAgent.includes('Firefox')) {
+      // Gecko's CSSOM drops declarations it can't apply inside ::-webkit-scrollbar rules
+      expect(out).toContain('width: 10px')
+    }
     expect(out).not.toContain('.other')
   })
 

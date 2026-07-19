@@ -81,7 +81,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://snapdom.dev/guides/" },
       { "@type": "ListItem", "position": 3, "name": "Vue", "item": "https://snapdom.dev/guides/vue/" }
     ]
@@ -140,6 +140,24 @@
     </section>
 
     <section class="prose">
+      <h2 id="live-demo">Try it live</h2>
+      <p>This is the component above, running on this page. The button fires <code>snapdom.toPng(cardRef.value)</code> and the captured PNG appears below. SnapDOM only sees the DOM node, so the call is identical whether Vue, React or plain HTML rendered it.</p>
+      <div class="demo-box">
+        <div class="demo-stage">
+          <div class="card" id="demo-card" style="max-width:320px;">
+            <h3>Hello SnapDOM</h3>
+            <p>This whole div will be captured.</p>
+          </div>
+        </div>
+        <div class="demo-actions">
+          <button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-card" data-demo-output="demo-output" data-umami-event="Guide vue demo capture">Capture</button>
+          <button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-card" data-demo-output="demo-output" data-demo-filename="card" data-umami-event="Guide vue demo download">Download</button>
+        </div>
+        <div class="demo-output" id="demo-output"><span class="demo-hint">The captured PNG will appear here.</span></div>
+      </div>
+    </section>
+
+    <section class="prose">
       <h2 id="download">3. Download instead of appending</h2>
       <pre class="code-block"><span class="kw">async function</span> <span class="fn">download</span>() {
   <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
@@ -160,7 +178,7 @@
 
 <span class="kw">async function</span> <span class="fn">capture</span>() {
   <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
-  <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.value);
+  <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.value, { type: <span class="str">'png'</span> });
   previewUrl.value = URL.<span class="fn">createObjectURL</span>(blob);
 }
 <span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
@@ -278,5 +296,6 @@
     })();
   </script>
   <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
 </body>
 </html>

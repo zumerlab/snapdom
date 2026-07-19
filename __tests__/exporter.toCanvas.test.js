@@ -10,7 +10,7 @@ import { toCanvas } from '../src/exporters/toCanvas.js'
 
 const ONE_BY_ONE_PNG =
   'data:image/png;base64,' +
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBCd4/7mEAAAAASUVORK5CYII='
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=='
 
 beforeEach(() => {
   // clean up DOM between tests

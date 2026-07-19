@@ -3,8 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // ====== Mocks HOISTED-SAFE ======
 // helpers: dejamos extractURL real si querés, pero acá no dependemos de fetchResource.
-vi.mock('../src/utils/helpers', async () => {
-  const actual = await vi.importActual('../src/utils/helpers')
+vi.mock('../src/utils/helpers', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     extractURL: actual.extractURL ?? ((cssUrlFn) => {

@@ -56,7 +56,7 @@ if (typeof window !== 'undefined') {
   it('converts <img> to dataURL if the image loads', async () => {
     const img = document.createElement('img')
     img.src =
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAn8B9p6Q2wAAAABJRU5ErkJggg=='
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=='
     container.appendChild(img)
 
     await inlineImages(container)

@@ -51,7 +51,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "How-To", "item": "https://snapdom.dev/how-to/" }
     ]
   }
@@ -70,6 +70,7 @@
   </section>
 
   <main class="page">
+    <div class="section-label">Convert DOM output</div>
     <div class="hub-grid">
       <a class="hub-card" href="./screenshot-a-div/" data-umami-event="Howto card screenshot-div">
         <span class="tag">Recipe</span>
@@ -81,11 +82,33 @@
         <h3>Convert HTML to PNG</h3>
         <p>Three patterns: append to the page, download to disk, or serialise to a Blob/Base64 for upload.</p>
       </a>
+      <a class="hub-card" href="./html-to-svg/"><span class="tag">SVG</span><h3>Convert HTML to SVG</h3><p>Export a self-contained SVG foreignObject capture and understand when it is—and is not—native vector artwork.</p></a>
+      <a class="hub-card" href="./html-to-canvas/"><span class="tag">Canvas</span><h3>Render HTML to Canvas</h3><p>Get an HTMLCanvasElement for compositing, pixel access or custom encoding.</p></a>
+      <a class="hub-card" href="./high-resolution-element/"><span class="tag">Resolution</span><h3>Capture in high resolution</h3><p>Use DPR, scale and output dimensions without changing the live component.</p></a>
+    </div>
+
+    <div class="section-label">Export real UI</div>
+    <div class="hub-grid">
       <a class="hub-card" href="./save-chart-js-as-png/" data-umami-event="Howto card chartjs-png">
         <span class="tag">Recipe</span>
         <h3>Save a Chart.js chart as a PNG</h3>
         <p>Export the chart <em>with</em> its title, legend and container — not just the bare canvas. Includes the timing gotcha.</p>
       </a>
+      <a class="hub-card" href="./export-dashboard-as-image/"><span class="tag">Dashboard</span><h3>Export a dashboard as an image</h3><p>Capture charts, KPI cards, legends and surrounding UI in one sharp export.</p></a>
+      <a class="hub-card" href="./export-react-component-as-image/"><span class="tag">React</span><h3>Export a React component</h3><p>Use a ref to save a rendered component as PNG, SVG or Canvas.</p></a>
+      <a class="hub-card" href="./export-chart-as-svg/"><span class="tag">Charts</span><h3>Export a chart as SVG or PNG</h3><p>Include HTML titles, legends and annotations around canvas or SVG charts.</p></a>
+      <a class="hub-card" href="./export-invoice-as-image/"><span class="tag">Documents</span><h3>Export an invoice or report</h3><p>Create a crisp snapshot of an invoice, receipt, certificate or browser report.</p></a>
+      <a class="hub-card" href="./generate-social-card-from-html/"><span class="tag">Social</span><h3>Generate a social card</h3><p>Design with HTML and CSS, then export a browser-rendered Open Graph image.</p></a>
+      <a class="hub-card" href="./capture-before-pdf/"><span class="tag">PDF workflow</span><h3>Capture before creating a PDF</h3><p>Flatten a visual component before passing it to a single-page PDF workflow.</p></a>
+    </div>
+
+    <div class="section-label">Capture complex DOM</div>
+    <div class="hub-grid">
+      <a class="hub-card" href="./capture-element-without-puppeteer/"><span class="tag">Client-side</span><h3>Capture without Puppeteer</h3><p>Export an existing browser element without operating a Chromium service.</p></a>
+      <a class="hub-card" href="./capture-shadow-dom/"><span class="tag">Web Components</span><h3>Capture Shadow DOM</h3><p>Capture accessible open shadow roots and their resolved styles.</p></a>
+      <a class="hub-card" href="./capture-iframe/"><span class="tag">Iframe</span><h3>Capture an iframe</h3><p>Include same-origin frame content and handle cross-origin boundaries honestly.</p></a>
+      <a class="hub-card" href="./capture-full-page/"><span class="tag">Full page</span><h3>Capture a full web page</h3><p>Snapshot the document layout beyond the visible viewport.</p></a>
+      <a class="hub-card" href="./visual-regression-screenshot/"><span class="tag">Testing</span><h3>Capture for visual regression</h3><p>Stabilize component state and produce input for a baseline diff workflow.</p></a>
     </div>
 
     <section class="prose">

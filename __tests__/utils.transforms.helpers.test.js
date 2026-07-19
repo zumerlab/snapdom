@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   parseBoxShadow,
+  parseTextShadow,
   parseFilterBlur,
   parseOutline,
   parseFilterDropShadows,
@@ -20,6 +21,25 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.innerHTML = ''
+})
+
+describe('parseTextShadow', () => {
+  it('returns zeros for none', () => {
+    const div = document.createElement('div')
+    document.body.appendChild(div)
+    expect(parseTextShadow(getComputedStyle(div))).toEqual({ top: 0, right: 0, bottom: 0, left: 0 })
+  })
+
+  it('bleeds by offset + blur so a root text-shadow is not clipped', () => {
+    const div = document.createElement('div')
+    div.style.textShadow = '10px 5px 20px rgba(0,0,0,1)'
+    document.body.appendChild(div)
+    const res = parseTextShadow(getComputedStyle(div))
+    expect(res.right).toBeGreaterThanOrEqual(30)
+    expect(res.bottom).toBeGreaterThanOrEqual(25)
+    expect(res.left).toBeGreaterThanOrEqual(10)
+    expect(res.top).toBeGreaterThanOrEqual(15)
+  })
 })
 
 describe('parseBoxShadow', () => {
@@ -169,6 +189,30 @@ describe('parseTransformOriginPx', () => {
     expect(res.ox).toBe(50)
     expect(res.oy).toBe(25)
   })
+
+  it('parses explicit px lengths (mock cs)', () => {
+    const res = parseTransformOriginPx({ transformOrigin: '30px 12px' }, 100, 50)
+    expect(res.ox).toBe(30)
+    expect(res.oy).toBe(12)
+  })
+
+  it('parses unitless numbers as px (mock cs)', () => {
+    const res = parseTransformOriginPx({ transformOrigin: '15 -8' }, 100, 50)
+    expect(res.ox).toBe(15)
+    expect(res.oy).toBe(-8)
+  })
+
+  it('falls back to 0 for unrecognized tokens (mock cs)', () => {
+    const res = parseTransformOriginPx({ transformOrigin: 'foo bar' }, 100, 50)
+    expect(res.ox).toBe(0)
+    expect(res.oy).toBe(0)
+  })
+
+  it('defaults the second axis to the first token (missing oy)', () => {
+    const res = parseTransformOriginPx({ transformOrigin: 'left' }, 100, 50)
+    expect(res.ox).toBe(0)
+    expect(res.oy).toBe(0)
+  })
 })
 
 describe('readIndividualTransforms', () => {
@@ -179,6 +223,32 @@ describe('readIndividualTransforms', () => {
     expect(res.rotate).toBeDefined()
     expect(res).toHaveProperty('scale')
     expect(res).toHaveProperty('translate')
+  })
+
+  it('reads a uniform rotate/scale through the Typed OM path', () => {
+    // This Chromium returns generic CSSStyleValue objects, so the reader coerces via String/Number:
+    // uniform scale and rotate resolve correctly (two-axis scale is not representable this way).
+    const div = document.createElement('div')
+    div.style.rotate = '45deg'
+    div.style.scale = '2'
+    document.body.appendChild(div)
+    const res = readIndividualTransforms(div)
+    expect(res.rotate).toBe('45deg')
+    expect(['2 2', '2']).toContain(res.scale) // Gecko serializa scale uniforme como '2'
+  })
+
+  it('falls back to the legacy string path when computedStyleMap is unavailable', () => {
+    const div = document.createElement('div')
+    div.style.rotate = '30deg'
+    div.style.scale = '2'
+    div.style.translate = '5px 6px'
+    document.body.appendChild(div)
+    // Shadow the prototype method so the Typed OM branch is skipped.
+    Object.defineProperty(div, 'computedStyleMap', { value: undefined, configurable: true })
+    const res = readIndividualTransforms(div)
+    expect(res.rotate).toBe('30deg')
+    expect(res.scale).toBe('2')
+    expect(res.translate).toBe('5px 6px')
   })
 })
 
@@ -195,6 +265,21 @@ describe('readTotalTransformMatrix', () => {
   })
 })
 
+describe('parseFilterBlur – webkit fallback', () => {
+  it('reads -webkit-filter when the standard filter is none (mock cs)', () => {
+    const res = parseFilterBlur({ filter: 'none', webkitFilter: 'blur(4px)' })
+    expect(res).toEqual({ top: 4, right: 4, bottom: 4, left: 4 })
+  })
+})
+
+describe('parseFilterDropShadows – multiple shadows', () => {
+  it('takes the max extent across several drop-shadows', () => {
+    const res = parseFilterDropShadows({ filter: 'drop-shadow(2px 0px 1px black) drop-shadow(0px 8px 2px red)', webkitFilter: '' })
+    expect(res.has).toBe(true)
+    expect(res.bleed.bottom).toBeGreaterThanOrEqual(10) // |8| + 2
+  })
+})
+
 describe('hasBBoxAffectingTransform', () => {
   it('returns false for no transform', () => {
     const div = document.createElement('div')
@@ -208,6 +293,27 @@ describe('hasBBoxAffectingTransform', () => {
     document.body.appendChild(div)
     expect(hasBBoxAffectingTransform(div)).toBe(true)
   })
+
+  it('returns true for a non-identity matrix transform', () => {
+    const div = document.createElement('div')
+    div.style.transform = 'scale(2)'
+    document.body.appendChild(div)
+    expect(hasBBoxAffectingTransform(div)).toBe(true)
+  })
+
+  it('returns true for an individual rotate', () => {
+    const div = document.createElement('div')
+    div.style.rotate = '45deg'
+    document.body.appendChild(div)
+    expect(hasBBoxAffectingTransform(div)).toBe(true)
+  })
+
+  it('returns false for an identity matrix', () => {
+    const div = document.createElement('div')
+    div.style.transform = 'matrix(1, 0, 0, 1, 0, 0)'
+    document.body.appendChild(div)
+    expect(hasBBoxAffectingTransform(div)).toBe(false)
+  })
 })
 
 describe('matrixFromComputed', () => {
@@ -218,6 +324,15 @@ describe('matrixFromComputed', () => {
     expect(M.a).toBe(1)
     expect(M.d).toBe(1)
   })
+
+  it('parses a real computed transform into a DOMMatrix', () => {
+    const div = document.createElement('div')
+    div.style.transform = 'scale(2)'
+    document.body.appendChild(div)
+    const M = matrixFromComputed(div)
+    expect(M.a).toBe(2)
+    expect(M.d).toBe(2)
+  })
 })
 
 describe('bboxWithOriginFull', () => {
@@ -226,6 +341,20 @@ describe('bboxWithOriginFull', () => {
     const res = bboxWithOriginFull(100, 50, M, 0, 0)
     expect(res.width).toBe(100)
     expect(res.height).toBe(50)
+  })
+
+  it('swaps extents under a 90° rotation about the origin', () => {
+    const M = new DOMMatrix().rotate(90)
+    const res = bboxWithOriginFull(100, 50, M, 0, 0)
+    expect(res.width).toBeCloseTo(50, 5)
+    expect(res.height).toBeCloseTo(100, 5)
+  })
+
+  it('applies the matrix translation (e/f) to the bbox origin', () => {
+    const M = new DOMMatrix([1, 0, 0, 1, 5, 7]) // a,b,c,d,e,f
+    const res = bboxWithOriginFull(10, 10, M, 2, 3)
+    expect(res.minX).toBeCloseTo(5, 5)
+    expect(res.minY).toBeCloseTo(7, 5)
   })
 })
 
@@ -264,5 +393,19 @@ describe('normalizeRootTransforms', () => {
     expect(res).not.toBeNull()
     expect(res.a).toBeCloseTo(2, 5)
     expect(res.d).toBeCloseTo(2, 5)
+  })
+
+  it('decomposes a matrix3d transform, keeping scale and dropping translate/rotation', () => {
+    const orig = document.createElement('div')
+    // A real 3D rotation forces the computed value to serialize as matrix3d(...).
+    orig.style.transform = 'rotateY(45deg) scale(2)'
+    const clone = document.createElement('div')
+    document.body.appendChild(orig)
+    const res = normalizeRootTransforms(orig, clone)
+    expect(res).not.toBeNull()
+    expect(res.b).toBe(0) // rotation removed
+    expect(res.a).toBeGreaterThan(0)
+    // the clone's transform is rewritten to a pure 2D matrix with no translation
+    expect(clone.style.transform.startsWith('matrix(')).toBe(true)
   })
 })

@@ -3,8 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { inlinePseudoElements } from '../src/modules/pseudo.js'
 
 // Mock de utils y fonts con importActual para que Vitest Browser no rompa
-vi.mock('../src/utils', async () => {
-  const actual = await vi.importActual('../src/utils')
+vi.mock('../src/utils', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     fetchImage: vi.fn(),
@@ -12,8 +12,8 @@ vi.mock('../src/utils', async () => {
   }
 })
 
-vi.mock('../src/modules/fonts.js', async () => {
-  const actual = await vi.importActual('../src/modules/fonts.js')
+vi.mock('../src/modules/fonts.js', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     iconToImage: vi.fn(),
@@ -506,7 +506,8 @@ describe('inlinePseudoElements', () => {
     expect(before).toBeTruthy() // was dropped before the fix → centering collapsed
     const key = sessionCache3.styleMap.get(before) || ''
     expect(key).toMatch(/display:\s*inline-block/)
-    expect(key).toMatch(/vertical-align:\s*middle/)
+    // Gecko: vertical-align es shorthand; la key captura el longhand alignment-baseline
+    expect(key).toMatch(/vertical-align:\s*middle|alignment-baseline:\s*middle/)
 
     wrap.remove()
     style.remove()

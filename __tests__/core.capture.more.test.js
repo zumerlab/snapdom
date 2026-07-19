@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { isSafari } from '../src/utils/browser.js'
+
+// Safari keeps the natural svg size (export applies width/height later); other engines resize the svg header.
+const sizedW = (w, natural) => `width="${isSafari() ? natural : w}"`
+const sizedH = (h, natural) => `height="${isSafari() ? natural : h}"`
 
 /**
  * Decode the SVG XML text from a data URL returned by captureDOM.
@@ -96,16 +101,16 @@ describe('captureDOM functional', () => {
 
     // width only → el <svg> adopta 200x100; el wrapper interno permanece 100x50 (natural)
     const svg2 = decodeSvg(await captureDOM(el, { fast: true, width: 200, embedFonts: false }))
-    expect(svg2).toContain('width="200"')
-    expect(svg2).toContain('height="100"')
+    expect(svg2).toContain(sizedW(200, 100))
+    expect(svg2).toContain(sizedH(100, 50))
     expect(svg2).toContain('viewBox="0 0 100 50"')
     expect(svg2).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
     expect(svg2).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
 
     // height only → el <svg> adopta 200x100; el wrapper permanece 100x50 (natural)
     const svg3 = decodeSvg(await captureDOM(el, { fast: true, height: 100, embedFonts: false }))
-    expect(svg3).toContain('width="200"')
-    expect(svg3).toContain('height="100"')
+    expect(svg3).toContain(sizedW(200, 100))
+    expect(svg3).toContain(sizedH(100, 50))
     expect(svg3).toContain('viewBox="0 0 100 50"')
     expect(svg3).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
     expect(svg3).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
@@ -163,8 +168,8 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50))
     const el = document.createElement('div')
     const svg = decodeSvg(await captureDOM(el, { fast: true, width: 200, embedFonts: false }))
-    expect(svg).toContain('width="200"')
-    expect(svg).toContain('height="100"')
+    expect(svg).toContain(sizedW(200, 100))
+    expect(svg).toContain(sizedH(100, 50))
     expect(svg).toContain('viewBox="0 0 100 50"')
     expect(svg).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
     expect(svg).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
@@ -175,8 +180,8 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50))
     const el = document.createElement('div')
     const svg = decodeSvg(await captureDOM(el, { fast: true, height: 100, embedFonts: false }))
-    expect(svg).toContain('width="200"')
-    expect(svg).toContain('height="100"')
+    expect(svg).toContain(sizedW(200, 100))
+    expect(svg).toContain(sizedH(100, 50))
     expect(svg).toContain('viewBox="0 0 100 50"')
     expect(svg).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
     expect(svg).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
@@ -428,9 +433,9 @@ describe('captureDOM – width & height together apply size (scale or wrapper si
       embedFonts: false,
     }))
 
-    // SVG header adopta el tamaño pedido
-    expect(svg).toContain('width="150"')
-    expect(svg).toContain('height="120"')
+    // SVG header adopta el tamaño pedido (Safari mantiene el natural y escala al exportar)
+    expect(svg).toContain(sizedW(150, 100))
+    expect(svg).toContain(sizedH(120, 50))
 
     // Implementación puede elegir:
     // A) non-uniform scale en container

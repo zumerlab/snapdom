@@ -304,6 +304,41 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 .cta-card .btn-ghost { color: #FFFFFF; border-color: rgba(255,255,255,0.35); }
 .cta-card .btn-ghost:hover { border-color: #FFFFFF; color: #FFFFFF; }
 
+/* ── Live demo blocks (guides & how-to, powered by /demo.js) ── */
+.demo-box { border: 1px solid var(--border); background: var(--surface); padding: 22px; margin: 18px 0 8px; }
+.demo-stage { display: flex; justify-content: center; margin-bottom: 16px; }
+.demo-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px; }
+.demo-output { min-height: 72px; border: 1px dashed var(--border); background: var(--surface-hover, #F0F4FB); padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+.demo-output img { max-width: 100%; height: auto; display: block; }
+.demo-hint { color: var(--text-muted); font-size: 12.5px; font-family: var(--font-mono); }
+.demo-error { color: var(--rose, #C9264B); }
+
+/* ── Shared live benchmark (compare pages, powered by /compare/bench.js) ── */
+.bench-section { margin: 0 0 40px; }
+.bench-section .section-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; font-weight: 700; }
+.bench-section h2 { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin: 0 0 8px; line-height: 1.25; color: var(--text); }
+.bench-section p.bench-lead { color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0 0 18px; }
+.bench-target { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; max-width: 280px; margin: 0 auto 18px; text-align: center; font-size: 14px; }
+.bench-target::before { content: '◆'; color: var(--accent); margin-right: 6px; }
+.bench-target::after { content: '◆'; color: var(--accent); margin-left: 6px; }
+.bench-actions { text-align: center; margin: 0 0 18px; }
+.bench-result { text-align: center; margin: 0 0 18px; font-family: var(--font-mono); font-weight: 700; font-size: 16px; min-height: 1.4em; }
+.bench-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.bench-col { display: flex; flex-direction: column; }
+.bench-col .label { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; text-align: center; font-weight: 700; }
+.bench-output { width: 100%; height: 240px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 0; padding: 10px; background: var(--surface-hover, #F0F4FB); display: flex; flex-direction: column; }
+.bench-output img, .bench-output canvas { max-width: 100%; max-height: 190px; object-fit: contain; margin: auto; display: block; flex-shrink: 0; background: #fff; outline: 1px solid var(--border-soft); }
+.bench-output .progress-message { font-size: 13px; color: var(--text-muted); font-family: var(--font-mono); font-weight: 700; margin: auto; text-align: center; }
+.bench-output .result-message { margin: 8px auto 0; flex-shrink: 0; font-size: 12px; font-family: var(--font-mono); font-weight: 700; color: var(--text); background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 4px; }
+.bench-crash { width: 100%; padding: 12px; text-align: left; }
+.bench-crash-tag { display: inline-block; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 4px; background: var(--rose, #E63946); color: #FFFCF4; font-weight: 700; margin-bottom: 8px; }
+.bench-crash-msg { font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--rose, #E63946); background: var(--rose-soft, rgba(230,57,70,0.12)); border: 1px solid var(--rose, #E63946); border-radius: 6px; padding: 8px 10px; word-break: break-word; }
+.winner-glow { animation: bench-glow 1.2s infinite alternate ease-in-out; border-radius: 0; }
+@keyframes bench-glow {
+  from { box-shadow: 0 0 0 1px rgba(45,91,255,0.25); }
+  to   { box-shadow: 0 0 0 3px rgba(45,91,255,0.55); }
+}
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .hero { padding: 60px 20px 30px; }
@@ -313,4 +348,5 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
   .cta-card { padding: 32px 20px; }
   .cmp-table { font-size: 12px; }
   .cmp-table th, .cmp-table td { padding: 10px 12px; }
+  .bench-grid { grid-template-columns: 1fr; }
 }

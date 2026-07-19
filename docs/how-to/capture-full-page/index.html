@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Capture a Full Web Page in the Browser — SnapDOM</title>
+  <meta name="description" content="Capture the full document element as PNG or SVG in the browser, including content beyond the visible viewport." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/capture-full-page/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Capture a Full Web Page in the Browser" />
+  <meta property="og:description" content="Capture the full document element as PNG or SVG in the browser, including content beyond the visible viewport." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/capture-full-page/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture a full web page","description":"Capture the full document element as PNG or SVG in the browser, including content beyond the visible viewport.","url":"https://snapdom.dev/how-to/capture-full-page/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is this the same as a viewport screenshot?","acceptedAnswer":{"@type":"Answer","text":"No. A viewport screenshot captures visible screen pixels; this captures the selected DOM subtree and its layout extent."}},{"@type":"Question","name":"Will lazy content be included?","acceptedAnswer":{"@type":"Answer","text":"Only content that exists and has resolved. Load or render lazy sections before starting capture."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture a full web page","item":"https://snapdom.dev/how-to/capture-full-page/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture a <span class="accent">full web page</span></h1><p class="lead">Snapshot the document’s rendered DOM rather than only the visible viewport.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Pass <code>document.documentElement</code> or a dedicated page wrapper to SnapDOM.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">const page = document.documentElement
+const capture = await snapdom(page, {
+  embedFonts: true,
+  outerShadows: true,
+})
+await capture.download({ format: 'png', filename: 'full-page' })</pre></section><section class="prose"><h2>Why this pattern works</h2><p>Capturing the root includes the document’s layout beyond the current viewport. A dedicated content wrapper is often preferable when fixed navigation or overlays should be excluded.</p></section><section class="prose"><h2 id="live-demo">Capture content beyond a viewport</h2><p>This scrollable preview is intentionally tall; capture exports the complete selected DOM subtree.</p><div class="demo-box"><div class="demo-stage"><div id="demo-full-page" style="width:340px;background:#fff;border:1px solid #0F1E4D"><header style="padding:18px;background:#0F1E4D;color:#fff"><strong>Long-form page</strong></header><section style="padding:22px;border-bottom:1px solid #D7DDEA;background:#fff"><small style="color:#2D5BFF">01</small><h3 style="margin:4px 0">Hero section</h3><p style="margin:0;color:#55617C">Content rendered below the initial visible area remains part of this DOM element.</p></section><section style="padding:22px;border-bottom:1px solid #D7DDEA;background:#F0F4FB"><small style="color:#2D5BFF">02</small><h3 style="margin:4px 0">Features</h3><p style="margin:0;color:#55617C">Content rendered below the initial visible area remains part of this DOM element.</p></section><section style="padding:22px;border-bottom:1px solid #D7DDEA;background:#fff"><small style="color:#2D5BFF">03</small><h3 style="margin:4px 0">Customer story</h3><p style="margin:0;color:#55617C">Content rendered below the initial visible area remains part of this DOM element.</p></section><section style="padding:22px;border-bottom:1px solid #D7DDEA;background:#F0F4FB"><small style="color:#2D5BFF">04</small><h3 style="margin:4px 0">Pricing</h3><p style="margin:0;color:#55617C">Content rendered below the initial visible area remains part of this DOM element.</p></section><section style="padding:22px;border-bottom:1px solid #D7DDEA;background:#fff"><small style="color:#2D5BFF">05</small><h3 style="margin:4px 0">Final call to action</h3><p style="margin:0;color:#55617C">Content rendered below the initial visible area remains part of this DOM element.</p></section></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-full-page" data-demo-output="demo-full-page-output" data-demo-filename="full-page">Capture full element</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-full-page" data-demo-output="demo-full-page-output" data-demo-filename="full-page">Download full element</button></div><div class="demo-output" id="demo-full-page-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>Very large pages create large SVG and bitmap surfaces. For huge or virtualized documents, capture logical sections or render hidden items before capture.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Is this the same as a viewport screenshot?</summary><p>No. A viewport screenshot captures visible screen pixels; this captures the selected DOM subtree and its layout extent.</p></details><details><summary>Will lazy content be included?</summary><p>Only content that exists and has resolved. Load or render lazy sections before starting capture.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../capture-iframe/">Capture an iframe <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">High-resolution capture <span class="arrow">→</span></a><a class="related-card" href="../capture-element-without-puppeteer/">Capture without Puppeteer <span class="arrow">→</span></a><a class="related-card" href="../../docs/options/">Capture options <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

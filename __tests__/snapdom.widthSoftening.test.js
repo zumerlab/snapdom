@@ -151,7 +151,7 @@ describe('#436 replaced inline <img> keeps its explicit width', () => {
 
   it('does not soften width on an inline img with object-fit', async () => {
     // 1x1 transparent png
-    const src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    const src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=='
     host.innerHTML = `<div style="width:200px;height:200px"><img style="width:100%;height:100%;object-fit:cover" src="${src}"></div>`
     const img = host.querySelector('img')
     await img.decode().catch(() => {})

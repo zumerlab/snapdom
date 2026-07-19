@@ -55,7 +55,9 @@ describe('snapdom API (lazy exporters + plugins)', () => {
   it('toWebp devuelve HTMLImageElement con data:image/webp', async () => {
     const img = await snapdom.toWebp(el)
     expect(img).toBeInstanceOf(HTMLImageElement)
-    expect(img.src).toMatch(/^data:image\/webp/)
+    expect(img.src).toMatch(document.createElement('canvas').toDataURL('image/webp').startsWith('data:image/webp')
+        ? /^data:image\/webp/
+        : /^data:image\/png/) // engines sin encoder WebP caen a PNG
   })
 
   it('toBlob con { type: "svg" } devuelve Blob image/svg+xml', async () => {

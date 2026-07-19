@@ -6,6 +6,7 @@
 import { prepareClone } from './prepare.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
+import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
@@ -28,6 +29,7 @@ import {
 } from '../utils/capture.helpers.js'
 import {
   parseBoxShadow,
+  parseTextShadow,
   parseFilterBlur,
   parseOutline,
   parseFilterDropShadows,
@@ -80,7 +82,7 @@ function collectResolveNodeHooks(options) {
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {Function} [options.filter] - Custom filter function
  * @param {boolean} [options.outerTransforms=false] - Normalize root by removing translate/rotate (keep scale/skew)
- * @param {boolean} [options.outerShadows=false] - Do not expand bleed for shadows/blur/outline on root (and strip root shadows visually)
+ * @param {boolean} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
@@ -166,6 +168,13 @@ export async function captureDOM(element, options) {
       runIdle(() => inlineImages(state.clone, state.options)),
       runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options)),
     ])
+    // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it
+    // from the already-inlined clone. Non-blocking — a failure just loses the effect.
+    try {
+      emulateBackdropFilters(state.element, state.clone)
+    } catch (e) {
+      console.warn('[snapdom] backdrop-filter emulation failed:', e)
+    }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {
       await runIdle(() => compressCloneAssets(state.clone, state.options))
@@ -406,19 +415,24 @@ export async function captureDOM(element, options) {
 
       // ——— BLEED ———
       const bleedShadow = parseBoxShadow(csEl)
+      const bleedText = parseTextShadow(csEl)
       const bleedBlur = parseFilterBlur(csEl)
       const bleedOutline = parseOutline(csEl)
       const drop = parseFilterDropShadows(csEl)
 
       // A region capture defines its own exact edges — never expand it for root bleed.
-      const bleed = (!outerShadows || clipWindow)
+      // blur() is not an outer-shadow effect: the root keeps it, so its bleed is
+      // always included; shadows/outline/drop-shadow only under outerShadows.
+      const bleed = clipWindow
         ? { top: 0, right: 0, bottom: 0, left: 0 }
-        : {
-          top: limitDecimals(bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top),
-          right: limitDecimals(bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right),
-          bottom: limitDecimals(bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
-          left: limitDecimals(bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left)
-        }
+        : outerShadows
+          ? {
+            top: limitDecimals(Math.max(bleedShadow.top, bleedText.top) + bleedBlur.top + bleedOutline.top + drop.bleed.top),
+            right: limitDecimals(Math.max(bleedShadow.right, bleedText.right) + bleedBlur.right + bleedOutline.right + drop.bleed.right),
+            bottom: limitDecimals(Math.max(bleedShadow.bottom, bleedText.bottom) + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
+            left: limitDecimals(Math.max(bleedShadow.left, bleedText.left) + bleedBlur.left + bleedOutline.left + drop.bleed.left)
+          }
+          : { top: bleedBlur.top, right: bleedBlur.right, bottom: bleedBlur.bottom, left: bleedBlur.left }
 
       minX = limitDecimals(minX - bleed.left)
       minY = limitDecimals(minY - bleed.top)
@@ -433,23 +447,38 @@ export async function captureDOM(element, options) {
       const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
 
       const svgNS = 'http://www.w3.org/2000/svg'
-      // Safari workaround: pad only when root has bbox-affecting transforms (avoids edge clipping)
-      const basePad = (isSafari() && hasTFBBox(state.element)) ? 1 : 0
+      // A transformed root's bbox is fractional, so its far edges land flush against the
+      // raster boundary and browsers shave the last 1-2px at some zoom/display scales
+      // (Safari always did; Chrome at zoom ≠ 100%). Pad the viewBox so rotated corners
+      // never touch the edge. Was Safari-only; the shaving is not.
+      const basePad = hasTFBBox(state.element) ? 2 : 0
       const extraPad = !outerTransforms ? 1 : 0
       const pad = limitDecimals(basePad + extraPad)
 
+      // Ceil so a fractional content extent (rotated bbox, fractional bleed) is never
+      // truncated when the svg size is rasterized to whole pixels (bottom/right edge loss).
+      const vbW = Math.ceil(vbW0 + pad * 2)
+      const vbH = Math.ceil(vbH0 + pad * 2)
+
+      // Stable Chrome doesn't paint foreignObject overflow when rasterizing svg-as-image
+      // (headless chromium does — don't trust it): the fo must cover the whole viewBox and
+      // the bbox offset must move the CONTENT. The offset can't be fo x/y (leaves the
+      // top/left band as unpainted overflow) nor position/margin/transform on the fo's
+      // root element (Chrome double-paints those at browser zoom ≠ 100%) — padding on the
+      // container is the one mechanism that survives both.
+      // Negative offsets (clip window right/below the element origin) can't be padding —
+      // there fo x/y is safe: the band it leaves unpainted is exactly the culled region.
+      const offX = limitDecimals(-(limitDecimals(minX) - pad))
+      const offY = limitDecimals(-(limitDecimals(minY) - pad))
+      const padL = Math.max(0, offX)
+      const padT = Math.max(0, offY)
+      const foW = limitDecimals(vbW - Math.min(0, offX))
+      const foH = limitDecimals(vbH - Math.min(0, offY))
       const fo = document.createElementNS(svgNS, 'foreignObject')
-      const vbMinX = limitDecimals(minX)
-      const vbMinY = limitDecimals(minY)
-      fo.setAttribute('x', String(limitDecimals(-(vbMinX - pad))))
-      fo.setAttribute('y', String(limitDecimals(-(vbMinY - pad))))
-      // Clip mode: the window can lie beyond the element's reported box (Chrome clamps
-      // documentElement offsetHeight to the viewport) and browsers don't reliably paint
-      // foreignObject overflow — size the fo to reach the window's far edge.
-      const foW = clipWindow ? Math.max(w0, maxX) : w0
-      const foH = clipWindow ? Math.max(h0, maxY) : h0
-      fo.setAttribute('width', String(limitDecimals(foW + pad * 2)))
-      fo.setAttribute('height', String(limitDecimals(foH + pad * 2)))
+      fo.setAttribute('x', String(Math.min(0, offX)))
+      fo.setAttribute('y', String(Math.min(0, offY)))
+      fo.setAttribute('width', String(foW))
+      fo.setAttribute('height', String(foH))
       fo.style.overflow = 'visible'
 
       const styleTag = document.createElement('style')
@@ -468,9 +497,16 @@ export async function captureDOM(element, options) {
       const container = document.createElement('div')
       container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       // #372: isolate wrapper from iframe CSS cascade (e.g. div { border: 10px solid red })
+      // The container spans the whole fo, so the (rotated/bled) content never overflows
+      // its border-box — standalone-SVG Chromium clips fo content at the container box.
       container.style.cssText =
         'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
-        `width:${limitDecimals(w0)}px;height:${limitDecimals(h0)}px`
+        `width:${foW}px;height:${foH}px` +
+        // !important: Chromium 140 serializes the `all:initial` expansion with
+        // `padding-inline: initial` AFTER this shorthand, so on data-URL re-parse it
+        // would reset the left/right padding (rotated-root offset) unless it loses
+        // the cascade to importance.
+        ((padL !== 0 || padT !== 0) ? `;padding:${padT}px 0 0 ${padL}px !important` : '')
 
       //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
       container.appendChild(state.clone)
@@ -478,16 +514,14 @@ export async function captureDOM(element, options) {
 
       const serializer = new XMLSerializer()
       const foString = serializer.serializeToString(fo)
-      const vbW = limitDecimals(vbW0 + pad * 2)
-      const vbH = limitDecimals(vbH0 + pad * 2)
       const wantsSize = hasW || hasH
 
       options.meta = { w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h }
 
-      const svgOutW = (isSafari() && wantsSize)
+      const svgOutW = (!wantsSize || isSafari())
         ? vbW
         : limitDecimals(outW + pad * 2)
-      const svgOutH = (isSafari() && wantsSize)
+      const svgOutH = (!wantsSize || isSafari())
         ? vbH
         : limitDecimals(outH + pad * 2)
 

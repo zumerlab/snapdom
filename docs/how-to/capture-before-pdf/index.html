@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture an HTML Component Before Creating a PDF — SnapDOM</title>
+  <meta name="description" content="Capture a styled browser component as a high-resolution image before placing it into a PDF document." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/capture-before-pdf/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture an HTML Component Before Creating a PDF" />
+  <meta property="og:description" content="Capture a styled browser component as a high-resolution image before placing it into a PDF document." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/capture-before-pdf/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture HTML before creating a PDF","description":"Capture a styled browser component as a high-resolution image before placing it into a PDF document.","url":"https://snapdom.dev/how-to/capture-before-pdf/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does SnapDOM convert arbitrary HTML into a paginated PDF?","acceptedAnswer":{"@type":"Answer","text":"No. SnapDOM captures an element as an image; its PDF plugin creates an image-based single-page PDF."}},{"@type":"Question","name":"When is image-based PDF appropriate?","acceptedAnswer":{"@type":"Answer","text":"For bounded visual artifacts such as certificates, tickets, receipts and shareable cards."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture HTML before creating a PDF","item":"https://snapdom.dev/how-to/capture-before-pdf/"}]}</script>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture HTML <span class="accent">before creating a PDF</span></h1><p class="lead">Flatten a complex browser component into a predictable image for a single-page PDF or PDF-generation pipeline.</p></section>
+  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Capture the component to PNG or Blob, then pass that image to your PDF library.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">const component = document.querySelector('#certificate')
+const blob = await snapdom.toBlob(component, {
+  type: 'png',
+  dpr: 2,
+  embedFonts: true,
+  backgroundColor: '#ffffff',
+})
+
+// Pass blob to the PDF library used by your application.</pre></section><section class="prose"><h2>Why this pattern works</h2><p>Image capture is useful for certificates, receipts or complex visual components where exact browser styling matters more than selectable PDF text.</p></section><section class="prose"><h2 id="live-demo">Create an image ready for PDF</h2><p>Generate a PNG Blob from this bounded certificate—the artifact a PDF library would receive.</p><div class="demo-box"><div class="demo-stage"><div id="demo-before-pdf" style="width:390px;padding:28px;background:#FFFDF5;border:8px double #0F1E4D;text-align:center"><small style="letter-spacing:3px;color:#55617C">CERTIFICATE OF COMPLETION</small><h3 style="margin:14px 0;color:#2D5BFF;font-size:24px">DOM Capture Fundamentals</h3><p style="margin:0">Awarded to <strong>SnapDOM Developer</strong></p><div style="width:80px;border-top:1px solid #0F1E4D;margin:28px auto 8px"></div><small>Browser-rendered artifact</small></div></div><div class="demo-actions"><button type="button" class="btn btn-primary" data-demo-action="blob" data-demo-target="demo-before-pdf" data-demo-output="demo-before-pdf-output" data-demo-filename="before-pdf">Create PNG Blob</button><button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-before-pdf" data-demo-output="demo-before-pdf-output" data-demo-filename="before-pdf">Download source image</button></div><div class="demo-output" id="demo-before-pdf-output"><span class="demo-hint">The captured result will appear here.</span></div></div></section>
+    <section class="prose"><h2>Limits and common mistakes</h2><p>The captured content becomes pixels. Accessibility, text selection, pagination and semantic document structure must come from a real HTML-to-PDF workflow instead.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does SnapDOM convert arbitrary HTML into a paginated PDF?</summary><p>No. SnapDOM captures an element as an image; its PDF plugin creates an image-based single-page PDF.</p></details><details><summary>When is image-based PDF appropriate?</summary><p>For bounded visual artifacts such as certificates, tickets, receipts and shareable cards.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../export-invoice-as-image/">Export an invoice <span class="arrow">→</span></a><a class="related-card" href="../../plugins.html">PDF image plugin <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">High-resolution capture <span class="arrow">→</span></a><a class="related-card" href="../html-to-png/">HTML to PNG <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main><nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+  <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

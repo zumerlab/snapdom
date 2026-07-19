@@ -38,7 +38,7 @@
     "publisher": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
     "mainEntityOfPage": "https://snapdom.dev/how-to/html-to-png/",
     "proficiencyLevel": "Beginner",
-    "dependencies": "snapDOM (@zumer/snapdom)",
+    "dependencies": "SnapDOM (@zumer/snapdom)",
     "isPartOf": { "@id": "https://snapdom.dev/#website" }
   }
   </script>
@@ -91,7 +91,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "How-To", "item": "https://snapdom.dev/how-to/" },
       { "@type": "ListItem", "position": 3, "name": "HTML to PNG", "item": "https://snapdom.dev/how-to/html-to-png/" }
     ]
@@ -140,7 +140,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
       <pre class="code-block"><span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
       <p>If you need more control, build the download yourself with a Blob and an anchor tag:</p>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
+      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { type: <span class="str">'png'</span> });
 <span class="kw">const</span> url = URL.<span class="fn">createObjectURL</span>(blob);
 
 <span class="kw">const</span> a = document.<span class="fn">createElement</span>(<span class="str">'a'</span>);
@@ -154,7 +154,7 @@ URL.<span class="fn">revokeObjectURL</span>(url);</pre>
     <section class="prose">
       <h2 id="upload">Pattern 3 — Upload the PNG to a server</h2>
       <p>Capture the element to a Blob, wrap it in <code>FormData</code>, and POST it to your endpoint:</p>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
+      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { type: <span class="str">'png'</span> });
 
 <span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
 form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'card.png'</span>);
@@ -167,6 +167,27 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 <span class="kw">const</span> { url } = <span class="kw">await</span> response.<span class="fn">json</span>();
 <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">'Uploaded to'</span>, url);</pre>
       <p>This is the same pattern you'd use to generate dynamic <code>og:image</code> share cards — capture the rendered card client-side, upload to a CDN, return the URL.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Try the three patterns live</h2>
+      <p>Same element, three buttons — append the PNG, download it, or produce the upload-ready Blob:</p>
+      <div class="demo-box">
+        <div class="demo-stage">
+          <div id="demo-card" style="max-width:320px;padding:22px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6 55%,#ec4899);border:2px dashed rgba(255,255,255,0.5);color:#fff;">
+            <span style="display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,0.22);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">HTML → PNG</span>
+            <h3 style="margin:12px 0 6px;font-size:20px;color:#fff;">Gradients, borders &amp; shadows</h3>
+            <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.9);">Rounded corners, a dashed border, a gradient — captured exactly as rendered.</p>
+            <span style="display:inline-block;padding:8px 14px;border-radius:8px;background:#fff;color:#4f46e5;font-size:13px;font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,0.35);">⚡ Even this shadow</span>
+          </div>
+        </div>
+        <div class="demo-actions">
+          <button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-card" data-demo-output="demo-output" data-umami-event="Howto png demo append">Append PNG</button>
+          <button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-card" data-demo-output="demo-output" data-demo-filename="card" data-umami-event="Howto png demo download">Download</button>
+          <button type="button" class="btn btn-ghost" data-demo-action="blob" data-demo-target="demo-card" data-demo-output="demo-output" data-umami-event="Howto png demo blob">Get Blob</button>
+        </div>
+        <div class="demo-output" id="demo-output"><span class="demo-hint">The result will appear here.</span></div>
+      </div>
     </section>
 
     <section class="prose">
@@ -266,5 +287,6 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
     })();
   </script>
   <script defer src="/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
 </body>
 </html>

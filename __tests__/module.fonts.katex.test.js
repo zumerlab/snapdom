@@ -6,8 +6,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
  * Validates that the isLikelyFontStylesheet function recognizes KaTeX CDN URLs
  */
 
-vi.mock('../src/utils/helpers', async () => {
-  const actual = await vi.importActual('../src/utils/helpers')
+vi.mock('../src/utils/helpers', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     extractURL: actual.extractURL,

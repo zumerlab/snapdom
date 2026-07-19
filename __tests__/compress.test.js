@@ -84,6 +84,27 @@ describe('downsampleDataURL', () => {
     expect(w).toBeGreaterThan(150) // but still sane
     expect(Math.abs(w - h)).toBeLessThanOrEqual(2)
   })
+
+  it('returns null for non-string / non-image inputs', async () => {
+    expect(await downsampleDataURL(null, 10, 10)).toBeNull()
+    expect(await downsampleDataURL('not a data url', 10, 10)).toBeNull()
+    expect(await downsampleDataURL('data:text/plain,hi', 10, 10)).toBeNull()
+  })
+
+  it('returns null when the image cannot be decoded (loadImage rejects)', async () => {
+    // Passes the data:image prefix guard but the bytes are garbage → decode() then onload both fail.
+    const bad = 'data:image/png;base64,zzzznotarealimage'
+    expect(await downsampleDataURL(bad, 50, 50)).toBeNull()
+  })
+
+  it('preserves the WebP codec when the source is WebP', async () => {
+    const src = bigPhoto(1600, 1200, 21, 'image/webp')
+    // Only meaningful if the browser actually produced a WebP source.
+    if (!src.startsWith('data:image/webp')) return
+    const out = await downsampleDataURL(src, 160, 120)
+    expect(out).toBeTruthy()
+    expect(out.startsWith('data:image/webp')).toBe(true)
+  })
 })
 
 describe('compressClonedImages', () => {
@@ -159,6 +180,29 @@ describe('compressClonedSvgImages', () => {
     const r = await compressClonedSvgImages(svg, { scale: 1, dpr: 1, compress: true })
     expect(r.count).toBe(1)
     expect(image.getAttribute('href').length).toBeLessThan(before)
+  })
+
+  it('reads and rewrites a legacy xlink:href when there is no plain href', async () => {
+    const svg = document.createElementNS(SVG_NS, 'svg')
+    const image = document.createElementNS(SVG_NS, 'image')
+    const XLINK = 'http://www.w3.org/1999/xlink'
+    image.setAttributeNS(XLINK, 'xlink:href', bigPhoto(1600, 1200, 22))
+    image.setAttribute('width', '160')
+    image.setAttribute('height', '120')
+    svg.appendChild(image)
+    const before = image.getAttributeNS(XLINK, 'href').length
+
+    const r = await compressClonedSvgImages(svg, { scale: 1, dpr: 1, compress: true })
+    expect(r.count).toBe(1)
+    // href is written from the legacy xlink:href source and shrunk.
+    expect(image.getAttribute('href').startsWith('data:image')).toBe(true)
+    expect(image.getAttribute('href').length).toBeLessThan(before)
+  })
+
+  it('is a no-op when the flag is off', async () => {
+    const svg = document.createElementNS(SVG_NS, 'svg')
+    const r = await compressClonedSvgImages(svg, { compress: false })
+    expect(r).toEqual({ count: 0 })
   })
 })
 

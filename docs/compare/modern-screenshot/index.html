@@ -60,7 +60,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "Compare", "item": "https://snapdom.dev/compare/" },
       { "@type": "ListItem", "position": 3, "name": "SnapDOM vs modern-screenshot", "item": "https://snapdom.dev/compare/modern-screenshot/" }
     ]
@@ -86,8 +86,35 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p>Both are actively maintained, fast, zero-dependency, and use the same <code>foreignObject</code> rendering approach — so basic captures look near-identical. <strong>modern-screenshot</strong> is minimal and TypeScript-first. <strong>SnapDOM</strong> layers on a <a href="https://snapdom.dev/plugins.html" data-umami-event="Cmp ms tldr plugins">plugin system</a>, a broad output API (SVG, PNG, JPG, WebP, Canvas, Blob) and extra fidelity work for tricky CSS. Pick modern-screenshot for a lean dependency; pick SnapDOM when you want extensibility and the widest fidelity net. Both are MIT.</p>
+      <p>Both are actively maintained, fast, zero-dependency, and use the same <code>foreignObject</code> rendering approach — so basic captures look near-identical. <strong>modern-screenshot</strong> is minimal and TypeScript-first. <strong>SnapDOM</strong> layers on a <a href="https://snapdom.dev/plugins.html" data-umami-event="Cmp ms tldr plugins">plugin system</a>, a broad output API (SVG, PNG, JPG, WebP, Canvas, Blob) and extra fidelity work for tricky CSS — at the same zero-dependency footprint, so the extra capability comes for free. Both are MIT.</p>
     </div>
+
+    <section class="bench-section" id="benchmark">
+      <div class="section-label">Live benchmark — runs in your browser</div>
+      <h2>SnapDOM vs modern-screenshot, head to head</h2>
+      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine — the gap is hardware- and content-dependent.</p>
+      <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
+      <div class="bench-actions">
+        <button type="button" class="btn btn-primary run-benchmark-button"
+                data-lib="modern-screenshot"
+                data-target="bench-target"
+                data-snap="bench-snapdom"
+                data-other="bench-other"
+                data-result="bench-result"
+                data-umami-event="Cmp ms run benchmark">Run benchmark</button>
+      </div>
+      <div class="bench-result" id="bench-result"></div>
+      <div class="bench-grid">
+        <div class="bench-col">
+          <div class="label">SnapDOM</div>
+          <div class="bench-output" id="bench-snapdom"><div class="progress-message">Waiting to start…</div></div>
+        </div>
+        <div class="bench-col">
+          <div class="label">modern-screenshot</div>
+          <div class="bench-output" id="bench-other"><div class="progress-message">Waiting to start…</div></div>
+        </div>
+      </div>
+    </section>
 
     <section class="prose">
       <h2 id="overview">Same approach, different scope</h2>
@@ -114,7 +141,7 @@
           <tr><td class="feature">License</td><td class="num">MIT</td><td class="num">MIT</td></tr>
         </tbody>
       </table>
-      <p class="muted">This table reflects emphasis, not a winner-takes-all — modern-screenshot is a capable, well-built library. For anything version-specific (its Shadow DOM and format support evolve), check <a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener" data-umami-event="Cmp ms matrix repo">its docs</a> for the latest.</p>
+      <p class="muted">Feature support in other libraries evolves — for anything version-specific, check <a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener" data-umami-event="Cmp ms matrix repo">their docs</a> for the latest. Or run the live benchmark above and compare the output yourself.</p>
     </section>
 
     <section class="prose">
@@ -130,13 +157,13 @@
           </ul>
         </div>
         <div class="verdict-card other">
-          <h4>Choose modern-screenshot when…</h4>
+          <h4>What a minimal library leaves to you…</h4>
           <ul>
-            <li>You want the leanest possible dependency and a TypeScript-first API.</li>
-            <li>Your captures are straightforward and you don't need a plugin pipeline.</li>
-            <li>You prefer a minimal surface area over breadth of features.</li>
+            <li>Watermarks, filters, PDF and custom exports become code you write and maintain yourself.</li>
+            <li>Shadow DOM and Web Component edge cases are yours to debug.</li>
+            <li>Safari rendering quirks and complex <code>@font-face</code> setups need hand-rolled workarounds.</li>
+            <li>Fewer output formats means extra conversion plumbing in your app.</li>
           </ul>
-          <p style="font-size:13px; color:var(--text-muted); margin: 12px 0 0; line-height:1.55;">It's a solid, maintained library — this isn't a "don't use it" verdict, just a scope trade-off.</p>
         </div>
       </div>
     </section>
@@ -248,5 +275,6 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
     })();
   </script>
   <script defer src="/copy-code.js"></script>
+  <script type="module" src="../bench.js"></script>
 </body>
 </html>

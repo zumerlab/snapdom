@@ -112,10 +112,10 @@
     .bench-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .bench-col { display: flex; flex-direction: column; }
     .bench-col .label { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; text-align: center; font-weight: 700; }
-    .bench-output { width: 100%; height: 240px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 0; padding: 10px; background: var(--surface-hover, #F0F4FB); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 3px 3px 0 var(--border); }
-    .bench-output img, .bench-output canvas { max-width: 100%; max-height: 190px; object-fit: contain; margin: 0 auto; display: block; }
-    .bench-output .progress-message { font-size: 13px; color: var(--text-muted); font-family: var(--font-mono); font-weight: 700; }
-    .bench-output .result-message { margin-top: 8px; font-size: 12px; font-family: var(--font-mono); font-weight: 700; color: var(--text); background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 4px; }
+    .bench-output { width: 100%; height: 240px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 0; padding: 10px; background: var(--surface-hover, #F0F4FB); display: flex; flex-direction: column; }
+    .bench-output img, .bench-output canvas { max-width: 100%; max-height: 190px; object-fit: contain; margin: auto; display: block; flex-shrink: 0; background: #fff; outline: 1px solid var(--border-soft); }
+    .bench-output .progress-message { font-size: 13px; color: var(--text-muted); font-family: var(--font-mono); font-weight: 700; margin: auto; text-align: center; }
+    .bench-output .result-message { margin: 8px auto 0; flex-shrink: 0; font-size: 12px; font-family: var(--font-mono); font-weight: 700; color: var(--text); background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 4px; }
     .h2c-crash { width: 100%; padding: 12px; text-align: left; }
     .h2c-crash-tag { display: inline-block; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 4px; background: var(--rose, #E63946); color: #FFFCF4; font-weight: 700; margin-bottom: 8px; }
     .h2c-crash-msg { font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--rose, #E63946); background: var(--rose-soft, rgba(230,57,70,0.12)); border: 1px solid var(--rose, #E63946); border-radius: 6px; padding: 8px 10px; word-break: break-word; }
@@ -139,7 +139,7 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "snapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
       { "@type": "ListItem", "position": 2, "name": "Compare", "item": "https://snapdom.dev/compare/" },
       { "@type": "ListItem", "position": 3, "name": "SnapDOM vs html2canvas", "item": "https://snapdom.dev/compare/html2canvas/" }
     ]
@@ -289,7 +289,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
           <tr><td class="num">html2canvas(el)</td><td class="num">snapdom.toCanvas(el)</td></tr>
           <tr><td class="num">canvas.toDataURL('image/png')</td><td class="num">snapdom.toPng(el)</td></tr>
           <tr><td class="num">canvas.toDataURL('image/jpeg', 0.9)</td><td class="num">snapdom.toJpg(el, { quality: 0.9 })</td></tr>
-          <tr><td class="num">canvas.toBlob(cb, 'image/png')</td><td class="num">await snapdom.toBlob(el)</td></tr>
+          <tr><td class="num">canvas.toBlob(cb, 'image/png')</td><td class="num">await snapdom.toBlob(el, { type: 'png' })</td></tr>
           <tr><td class="num">{ scale: 2 }</td><td class="num">{ dpr: 2 }</td></tr>
           <tr><td class="num">{ backgroundColor: '#fff' }</td><td class="num">{ backgroundColor: '#fff' }</td></tr>
           <tr><td class="num">{ ignoreElements: el =&gt; … }</td><td class="num">{ exclude: ['.skip'] }</td></tr>
@@ -304,7 +304,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
 <span class="cm">// After</span>
 <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
-<span class="kw">const</span> canvas = <span class="kw">await</span> snapdom.<span class="fn">toCanvas</span>(el, { scale: <span class="num">2</span> });</pre>
+<span class="kw">const</span> canvas = <span class="kw">await</span> snapdom.<span class="fn">toCanvas</span>(el, { dpr: <span class="num">2</span> });</pre>
     </section>
 
     <section class="prose faq">

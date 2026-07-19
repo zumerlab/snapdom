@@ -46,6 +46,16 @@ if (Object.keys(demos).length === 0) {
     // The snapVisual demo toggles a `body.mutated` class with new bg gradients
     // and pseudo content — large legitimate visual diff, not a snapdom bug.
     'demo': { skip: true },
+    // Root translate/rotate stripped + viewBox recomputed from the remaining scale (fix 3241481).
+    'd-root-transform': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, outerTransforms: false } },
+    // Bbox must expand for box-shadow / outline / blur bleed instead of clipping them.
+    'd-outer-shadows': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, outerShadows: true } },
+    // compress:true must downsample each codec (PNG/JPEG/WebP) without corruption. Images are
+    // drawn at load, so wait for them (setup runs after `wait`) before capturing.
+    'd-compress-codecs': {
+      snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, compress: true },
+      setup: async (win) => { try { await win.__ready } catch { /* best-effort */ } },
+    },
     // Real KaTeX from CDN (issue #454 repro) — needs time to load and lay out fonts.
     'd454-katex-hide-tail': {
       wait: 2500,

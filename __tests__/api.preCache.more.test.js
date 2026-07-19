@@ -1,8 +1,8 @@
 // __tests__/api.preCache.more.test.js
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../src/utils', async () => {
-  const actual = await vi.importActual('../src/utils')
+vi.mock('../src/utils', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     fetchImage: vi.fn(async () => 'data:image/png;base64,iVBORw0KGgo='),
