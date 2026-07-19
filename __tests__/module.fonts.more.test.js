@@ -7,8 +7,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
  * - iconFonts: forzado a false (no excluir)
  * - snapFetch: API nueva (no-throw) → devolvemos {ok,data,...}
  */
-vi.mock('../src/utils/helpers', async () => {
-  const actual = await vi.importActual('../src/utils/helpers')
+vi.mock('../src/utils/helpers', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     extractURL: actual.extractURL,

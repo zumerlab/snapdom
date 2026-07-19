@@ -1,8 +1,8 @@
 // __tests__/exporter.toImg.test.js – toImg.js coverage
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('../src/utils', async () => {
-  const actual = await vi.importActual('../src/utils')
+vi.mock('../src/utils', async (importOriginal) => {
+  const actual = await importOriginal()
   return { ...actual, isSafari: vi.fn() }
 })
 import { isSafari } from '../src/utils'

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { prepareClone } from '../src/core/prepare.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
-vi.mock('../src/modules/snapFetch.js', async () => {
-  const actual = await vi.importActual('../src/modules/snapFetch.js')
+vi.mock('../src/modules/snapFetch.js', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     // queda espiable y con la impl. real por defecto
@@ -13,24 +13,24 @@ vi.mock('../src/modules/snapFetch.js', async () => {
 
 // Wrap ESM exports once so we can override per-test with mockImplementationOnce.
 // By default they call through to the actual implementations.
-vi.mock('../src/modules/svgDefs.js', async () => {
-  const actual = await vi.importActual('../src/modules/svgDefs.js')
+vi.mock('../src/modules/svgDefs.js', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     inlineExternalDefsAndSymbols: vi.fn(actual.inlineExternalDefsAndSymbols),
   }
 })
 
-vi.mock('../src/modules/pseudo.js', async () => {
-  const actual = await vi.importActual('../src/modules/pseudo.js')
+vi.mock('../src/modules/pseudo.js', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     inlinePseudoElements: vi.fn(actual.inlinePseudoElements),
   }
 })
 
-vi.mock('../src/utils/index.js', async () => {
-  const actual = await vi.importActual('../src/utils/index.js')
+vi.mock('../src/utils/index.js', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     stripTranslate: vi.fn(actual.stripTranslate),
@@ -39,8 +39,8 @@ vi.mock('../src/utils/index.js', async () => {
 })
 
 // (Optional) allow deepClone error branch without permanent stubbing
-vi.mock('../src/core/clone.js', async () => {
-  const actual = await vi.importActual('../src/core/clone.js')
+vi.mock('../src/core/clone.js', async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     deepClone: vi.fn(actual.deepClone),

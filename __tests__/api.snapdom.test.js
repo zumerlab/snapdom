@@ -39,8 +39,8 @@ describe('snapdom API (direct)', () => {
 
   it('cubre rama Safari en toImg', async () => {
     vi.resetModules()
-    vi.mock('../utils', async () => {
-      const actual = await vi.importActual('../utils')
+    vi.mock('../utils', async (importOriginal) => {
+      const actual = await importOriginal()
       return { ...actual, isSafari: true }
     })
     const { snapdom } = await import('../src/api/snapdom.js')
