@@ -12,7 +12,15 @@ import { getStyle } from './css.js'
  * @returns {{top: number, right: number, bottom: number, left: number}}
  */
 export function parseBoxShadow(cs) {
-  const v = cs.boxShadow || ''
+  return shadowListBleed(cs.boxShadow)
+}
+
+/** text-shadow bleeds like box-shadow (offsets + blur, no spread/inset). */
+export function parseTextShadow(cs) {
+  return shadowListBleed(cs.textShadow)
+}
+
+function shadowListBleed(v) {
   if (!v || v === 'none') return { top: 0, right: 0, bottom: 0, left: 0 }
   // Split into layers on top-level commas only (commas inside rgb()/rgba() must not split).
   // A regex on `),` fails for computed values, which put the color first (color()-last is

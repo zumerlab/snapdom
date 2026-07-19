@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   parseBoxShadow,
+  parseTextShadow,
   parseFilterBlur,
   parseOutline,
   parseFilterDropShadows,
@@ -20,6 +21,25 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.innerHTML = ''
+})
+
+describe('parseTextShadow', () => {
+  it('returns zeros for none', () => {
+    const div = document.createElement('div')
+    document.body.appendChild(div)
+    expect(parseTextShadow(getComputedStyle(div))).toEqual({ top: 0, right: 0, bottom: 0, left: 0 })
+  })
+
+  it('bleeds by offset + blur so a root text-shadow is not clipped', () => {
+    const div = document.createElement('div')
+    div.style.textShadow = '10px 5px 20px rgba(0,0,0,1)'
+    document.body.appendChild(div)
+    const res = parseTextShadow(getComputedStyle(div))
+    expect(res.right).toBeGreaterThanOrEqual(30)
+    expect(res.bottom).toBeGreaterThanOrEqual(25)
+    expect(res.left).toBeGreaterThanOrEqual(10)
+    expect(res.top).toBeGreaterThanOrEqual(15)
+  })
 })
 
 describe('parseBoxShadow', () => {

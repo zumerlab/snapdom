@@ -28,6 +28,7 @@ import {
 } from '../utils/capture.helpers.js'
 import {
   parseBoxShadow,
+  parseTextShadow,
   parseFilterBlur,
   parseOutline,
   parseFilterDropShadows,
@@ -391,6 +392,7 @@ export async function captureDOM(element, options) {
 
       // ——— BLEED ———
       const bleedShadow = parseBoxShadow(csEl)
+      const bleedText = parseTextShadow(csEl)
       const bleedBlur = parseFilterBlur(csEl)
       const bleedOutline = parseOutline(csEl)
       const drop = parseFilterDropShadows(csEl)
@@ -402,10 +404,10 @@ export async function captureDOM(element, options) {
         ? { top: 0, right: 0, bottom: 0, left: 0 }
         : outerShadows
           ? {
-            top: limitDecimals(bleedShadow.top + bleedBlur.top + bleedOutline.top + drop.bleed.top),
-            right: limitDecimals(bleedShadow.right + bleedBlur.right + bleedOutline.right + drop.bleed.right),
-            bottom: limitDecimals(bleedShadow.bottom + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
-            left: limitDecimals(bleedShadow.left + bleedBlur.left + bleedOutline.left + drop.bleed.left)
+            top: limitDecimals(Math.max(bleedShadow.top, bleedText.top) + bleedBlur.top + bleedOutline.top + drop.bleed.top),
+            right: limitDecimals(Math.max(bleedShadow.right, bleedText.right) + bleedBlur.right + bleedOutline.right + drop.bleed.right),
+            bottom: limitDecimals(Math.max(bleedShadow.bottom, bleedText.bottom) + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
+            left: limitDecimals(Math.max(bleedShadow.left, bleedText.left) + bleedBlur.left + bleedOutline.left + drop.bleed.left)
           }
           : { top: bleedBlur.top, right: bleedBlur.right, bottom: bleedBlur.bottom, left: bleedBlur.left }
 
