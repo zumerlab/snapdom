@@ -500,8 +500,21 @@ function dedupeFontFaces(cssText) {
   return cssText.replace(FACE_RE_G, () => out[i++] || '')
 }
 
+// doc identity for the cache key below: same-origin documents (parent + iframe) can share
+// stylesheet hrefs, so the href isn't a safe proxy — assign each Document instance its own id.
+const _docIds = new WeakMap()
+let _nextDocId = 0
+function docCacheId(doc) {
+  let id = _docIds.get(doc)
+  if (id === undefined) {
+    id = _nextDocId++
+    _docIds.set(doc, id)
+  }
+  return id
+}
+
 // ---- cache key per capture signature (avoid cross-pollution between different targets) ----
-function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains) {
+function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc) {
   const req = Array.from(required || []).sort().join('|')
   const ex = exclude ? JSON.stringify({
     families: (exclude.families || []).map(s => String(s).toLowerCase()).sort(),
@@ -514,7 +527,8 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
     .join('|')
   const px = useProxy || ''
   const fd = (fontStylesheetDomains || []).map(s => String(s).toLowerCase()).sort().join('|')
-  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}`
+  const dc = docCacheId(doc || document)
+  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}`
 }
 
 // ----------------------------------------------------------------------------
@@ -724,7 +738,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 
-  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains)
+  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc)
   if (cache.resource?.has(cacheKey)) {
     return cache.resource.get(cacheKey)
   }

@@ -43,8 +43,8 @@ describe('embedCustomFonts — same-origin iframe document (#441)', () => {
   let iframe
 
   beforeEach(() => {
-    // The fonts result cache is keyed by required/exclude/etc. (not by document),
-    // so clear it between cases to keep the parent/iframe runs independent.
+    // Cache key now includes doc identity, but each iframe here is a fresh Document
+    // anyway — clear defensively so state never leaks across other suites' runs.
     cache.font?.clear?.()
     cache.resource?.clear?.()
   })
@@ -79,6 +79,46 @@ describe('embedCustomFonts — same-origin iframe document (#441)', () => {
     })
 
     expect(css).not.toContain(FAMILY)
+  })
+
+  it('does not cross-pollute two same-origin documents that share an identical cache signature', async () => {
+    // Two iframes, same family name + same `required`/exclude/etc signature, but a
+    // DIFFERENT font src each — the pre-fix cache key ignored `doc`, so the second
+    // call would wrongly return the first iframe's cached (and wrong) font CSS.
+    const madeA = makeIframeWithFont()
+    iframe = madeA.iframe
+    const iframeB = document.createElement('iframe')
+    iframeB.style.cssText = 'width:240px;height:120px;border:0'
+    document.body.appendChild(iframeB)
+    const docB = iframeB.contentDocument
+    const otherDataUrl = 'data:font/woff2;base64,BBBB'
+    docB.open()
+    docB.write(
+      '<!doctype html><html><head><style>' +
+      `@font-face{font-family:'${FAMILY}';font-style:normal;font-weight:400;` +
+      `src:url(${otherDataUrl}) format('woff2');}` +
+      '</style></head><body></body></html>'
+    )
+    docB.close()
+
+    try {
+      const cssA = await embedCustomFonts({
+        required: makeRequired(FAMILY),
+        usedCodepoints: makeUsedCodepoints('Hello'),
+        doc: madeA.doc,
+      })
+      const cssB = await embedCustomFonts({
+        required: makeRequired(FAMILY),
+        usedCodepoints: makeUsedCodepoints('Hello'),
+        doc: docB,
+      })
+
+      expect(cssA).toMatch(/data:font\/woff2;base64,AAAA/)
+      expect(cssB).toMatch(/data:font\/woff2;base64,BBBB/)
+      expect(cssB).not.toMatch(/data:font\/woff2;base64,AAAA/)
+    } finally {
+      iframeB.remove()
+    }
   })
 
   it('snapdom(root, { embedFonts: true }) inlines the iframe font into the SVG', async () => {
