@@ -83,7 +83,7 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
     await expect(prepareClone(null)).rejects.toThrow()
   })
 
-  it('applies stabilizeLayout when outline is visible and no border present', async () => {
+  it('applies stabilizeLayout when outline is visible and no border present, then restores it', async () => {
   const el = document.createElement('div')
   el.style.outline = '2px solid red'
   vi.spyOn(window, 'getComputedStyle').mockImplementation(() => ({
@@ -94,7 +94,8 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
     getPropertyValue: () => '', // requerido por inlineAllStyles
   }))
   await prepareClone(el)
-  expect(el.style.border).toContain('transparent') // se setea en stabilizeLayout
+  // #stabilizeLayout is a transient measurement aid, not a permanent mutation of the caller's DOM
+  expect(el.style.border).toBe('')
   window.getComputedStyle.mockRestore()
 })
 

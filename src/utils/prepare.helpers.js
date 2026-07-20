@@ -4,8 +4,10 @@
  */
 
 /**
- * Stabilize layout by adding transparent border if element has outline but no border
+ * Stabilize layout by adding transparent border if element has outline but no border.
+ * Returns an undo function to restore the element's original inline border.
  * @param {Element} element
+ * @returns {() => void}
  */
 export function stabilizeLayout(element) {
   const style = getComputedStyle(element)
@@ -18,8 +20,11 @@ export function stabilizeLayout(element) {
   const borderAbsent = (borderStyle === 'none' || parseFloat(borderWidth) === 0)
 
   if (outlineVisible && borderAbsent) {
+    const original = element.style.border
     element.style.border = `${outlineWidth} solid transparent`
+    return () => { element.style.border = original }
   }
+  return () => {}
 }
 
 /**

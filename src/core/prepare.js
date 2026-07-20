@@ -52,7 +52,7 @@ export async function prepareClone(element, options = {}) {
   let classCSS = ''
   let shadowScopedCSS = ''
 
-  stabilizeLayout(element)
+  const undoStabilizeLayout = stabilizeLayout(element)
 
   // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
   // Clip mode skips this O(page) walk: on-screen cv:auto content is already rendered by the
@@ -66,6 +66,7 @@ export async function prepareClone(element, options = {}) {
     throw e
   } finally {
     undoContentVisibility()
+    undoStabilizeLayout()
   }
 
   // Inline external <defs>/<symbol> into the CLONE, not the live source. Operating on the
