@@ -16,4 +16,4 @@ export { agentMap } from './agent-map.js';
 export { htmlExport } from './html-export.js';
 export { gifExport } from './gif-export.js';
 export { videoExport } from './video-export.js';
-export { htmlInCanvas } from './html-in-canvas.js';
+export { htmlInCanvasPlugin as htmlInCanvas } from './html-in-canvas.js';
