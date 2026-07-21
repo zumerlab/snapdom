@@ -207,7 +207,13 @@ snapdom.capture = async (el, context, _token) => {
       }
       return result2
     }
-    return _exportQueue = _exportQueue.then(job)
+    // A rejected job must reject only for ITS OWN caller, not poison every export
+    // call made afterward: chaining `_exportQueue.then(job)` directly would leave
+    // _exportQueue permanently rejected once any export throws, and `.then()`
+    // with no rejection handler skips `job` entirely on every later call.
+    const run = _exportQueue.then(job)
+    _exportQueue = run.catch(() => {})
+    return run
   }
 
   // —— Helpers esperados por los tests + API azúcar ——

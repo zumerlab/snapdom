@@ -32,6 +32,22 @@ describe('snapdom – result.to()', () => {
     const result = await snapdom(el)
     await expect(result.to('unknownType')).rejects.toThrow(/Unknown export type/)
   })
+
+  // Flexibility punch-list: runExport() serializes calls on a shared _exportQueue
+  // promise chain. A failed export must reject only its own caller, not leave the
+  // queue permanently rejected (which would silently poison every later export
+  // call on the same result — .then() with no rejection handler skips the job).
+  it('does not poison later exports on the same result after one export fails', async () => {
+    const el = document.createElement('div')
+    el.style.width = '10px'
+    el.style.height = '10px'
+    el.textContent = 'x'
+    document.body.appendChild(el)
+    const result = await snapdom(el)
+
+    await expect(result.to('unknownType')).rejects.toThrow(/Unknown export type/)
+    await expect(result.toCanvas()).resolves.toBeInstanceOf(HTMLCanvasElement)
+  })
 })
 
 describe('snapdom – result helpers', () => {
