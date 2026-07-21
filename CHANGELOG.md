@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.18.0](https://github.com/zumerlab/snapdom/compare/v2.16.0...v2.18.0)
+
+> 21 July 2026
+
+feat
+- feat: emulate backdrop-filter at capture time #457
+- feat: clip option + snapdom.viewport() — region capture with offscreen culling 328226b
+
+fix
+- fix: shadow fidelity in WebKit's SVG rasterization b7e9af2
+- Fix rotated-root captures clipped at edges (d31) 64c5a8f
+- fix: key the embedded-fonts cache by document identity 05ef9a9
+- fix: guard content-sized boxes against sub-pixel width truncation (text re-wrap) 4b92392
+- Fix type definitions drift: compress default, quality default, missing options (excludeStyleProps, fontStylesheetDomains, safariWarmupAttempts, debug, filename), toRaw/to on result, LocalFont.stretchPct 7a473c4
+- fix: keep root filter blur() and always expand bbox for its bleed 3f6e6e7
+- fix: stop compensating the root's stripped translation in the viewBox bbox 3241481
+- fix: repair the broken htmlInCanvas re-export in the plugins barrel 1b74a1a
+- fix: stop stabilizeLayout from leaving a permanent border on the source element cf3da9b
+- fix: guard the container padding offset against Chromium 140 all:initial expansion 0b24929
+
+other (docs)
+- FEATURES_CN.md: '按设计跳过' → '有意跳过'. The phrasing fix was independently #453
+- docs: refine Chinese documentation dce83ab
+- docs: add Chinese translation maintenance guide 4e53063
+- Update FEATURES_CN.md to change '按设计跳过' to '有意跳过' 56ff167
+
+other (test)
+- Make the test suite pass on Firefox and WebKit 74de348
+- Add cross-browser test runs (BROWSER=firefox|webkit|all) with per-engine visual baselines f2b72d8
+- test: wait for KaTeX CDN + fonts in the d454 visual demo 8205e1b
+
+other (chore/refactor/merge)
+- chore: add cross-engine visual report (npm run report:cross) 5b6e8cd
+- chore: update snapdom plugins version ed984ff
+- refactor(api): drop snapdom.viewport() — clip: 'viewport' is the one spelling 4a0f301
+- Merge pull request #455 from mosuzi/codex/discussion-450-chinese-docs-review 5b0d149
+
+
 #### [v2.16.0](https://github.com/zumerlab/snapdom/compare/v2.15.0...v2.16.0)
 
 > 13 July 2026
