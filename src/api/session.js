@@ -21,6 +21,7 @@ export function createSession(snap, element, options) {
   let capturing = false
   let last = null
   let disposed = false
+  let inflight = Promise.resolve()
 
   const markDirty = (records) => {
     // Mutations during a capture are the capture's own transient DOM work (line-clamp bake,
@@ -62,16 +63,30 @@ export function createSession(snap, element, options) {
       // Flush queued records first so pre-capture mutations aren't misattributed to the capture.
       for (const o of observers) markDirty(o.takeRecords())
       if (!dirty && last && !overrides) return last
-      capturing = true
-      dirty = false
-      try {
-        const result = await snap(element, { ...options, ...(overrides || {}) })
-        if (!overrides) last = result
-        return result
-      } finally {
-        for (const o of observers) o.takeRecords() // drop the capture's own records
-        capturing = false
+
+      const run = async () => {
+        // Re-check: by the time this runs, a queued capture ahead of it may already
+        // have produced a fresh memoized result — reuse it instead of recapturing.
+        if (!dirty && last && !overrides) return last
+        capturing = true
+        dirty = false
+        try {
+          const result = await snap(element, { ...options, ...(overrides || {}) })
+          if (!overrides) last = result
+          return result
+        } finally {
+          for (const o of observers) o.takeRecords() // drop the capture's own records
+          capturing = false
+        }
       }
+
+      // captureDOM shares the global cache.session bucket, so two in-flight
+      // captures of the same element would race and corrupt each other's
+      // node/style maps. Serialize concurrent capture() calls on one queue;
+      // a failed capture rejects only its own caller, not the whole queue.
+      const next = inflight.then(run, run)
+      inflight = next.catch(() => {})
+      return next
     },
 
     /** Disconnect observers and drop the memoized result. */

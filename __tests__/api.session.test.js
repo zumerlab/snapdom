@@ -21,6 +21,16 @@ describe('snapdom.session', () => {
     s.dispose()
   })
 
+  // Speed/correctness punch-list: two capture() calls fired without awaiting the
+  // first must not run captureDOM concurrently — it shares the global
+  // cache.session bucket, so racing captures corrupt each other's node/style maps.
+  it('serializes concurrent capture() calls instead of racing on shared cache.session', async () => {
+    const s = snapdom.session(makeEl())
+    const [r1, r2] = await Promise.all([s.capture(), s.capture()])
+    expect(r2).toBe(r1)
+    s.dispose()
+  })
+
   it('recaptures after a subtree mutation', async () => {
     const s = snapdom.session(makeEl('before-text'))
     const r1 = await s.capture()
