@@ -331,8 +331,12 @@ export async function toCanvas(url, options) {
   const natW = img.naturalWidth
   const natH = img.naturalHeight
 
-  const refW = Number.isFinite(meta.w0) ? meta.w0 : natW
-  const refH = Number.isFinite(meta.h0) ? meta.h0 : natH
+  // Prefer the rasterized viewBox (vbW/vbH, post-bleed) over the pre-bleed
+  // content box (w0/h0): under outerShadows an asymmetric shadow/blur/outline
+  // bleeds unevenly, so w0/h0's aspect ratio no longer matches the actual
+  // rasterized image and stretches it.
+  const refW = Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : natW
+  const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : natH
 
   let outW, outH
   const hasW = Number.isFinite(optW)

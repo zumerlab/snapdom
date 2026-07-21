@@ -34,6 +34,16 @@ describe('toCanvas – width/height branches', () => {
     const canvas = await toCanvas(ONE_BY_ONE_PNG, { height: 40 })
     expect(canvas.style.height).toBe('40px')
   })
+
+  it('prefers meta.vbW/vbH (post-bleed) over meta.w0/h0 (pre-bleed) so an asymmetric outerShadows bleed does not stretch the output', async () => {
+    // w0/h0 ratio is 2:1 (would give height 25 for width 50); vbW/vbH ratio is
+    // 4:1 (post-bleed, matches what was actually rasterized) → height ~12.5.
+    const canvas = await toCanvas(ONE_BY_ONE_PNG, {
+      width: 50,
+      meta: { w0: 10, h0: 5, vbW: 20, vbH: 5 }
+    })
+    expect(canvas.height).toBe(12)
+  })
 })
 
 describe('toCanvas – backgroundColor', () => {

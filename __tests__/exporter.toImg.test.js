@@ -44,6 +44,14 @@ describe('toImg', () => {
     expect(img.style.height).toBe('25px')
   })
 
+  it('prefers meta.vbW/vbH (post-bleed) over meta.w0/h0 (pre-bleed) so an asymmetric outerShadows bleed does not stretch the output', async () => {
+    // w0/h0 ratio 2:1 would give height 25; vbW/vbH ratio 4:1 (post-bleed,
+    // matches what was actually rasterized) gives height ~12.5 → rounds to 13.
+    const img = await toImg(DATA_PNG, { width: 50, meta: { w0: 10, h0: 5, vbW: 20, vbH: 5 } })
+    expect(img.style.width).toBe('50px')
+    expect(img.style.height).toBe('13px')
+  })
+
   it('uses scale for non-SVG', async () => {
     const img = await toImg(DATA_PNG, { scale: 2 })
     expect(img.style.width).toBe('2px')

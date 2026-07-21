@@ -27,14 +27,18 @@ const img = new Image()
     img.style.width = `${width}px`
     img.style.height = `${height}px`
   } else if (hasW) {
-    const refW = Number.isFinite(meta.w0) ? meta.w0 : img.naturalWidth
-    const refH = Number.isFinite(meta.h0) ? meta.h0 : img.naturalHeight
+    // Prefer the rasterized viewBox (vbW/vbH, post-bleed) over the pre-bleed
+    // content box (w0/h0): under outerShadows an asymmetric shadow/blur/outline
+    // bleeds unevenly, so w0/h0's aspect ratio no longer matches the actual
+    // rasterized image and stretches it.
+    const refW = Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : img.naturalWidth
+    const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : img.naturalHeight
     const k = width / Math.max(1, refW)
     img.style.width = `${width}px`
     img.style.height = `${Math.round(refH * k)}px`
   } else if (hasH) {
-    const refW = Number.isFinite(meta.w0) ? meta.w0 : img.naturalWidth
-    const refH = Number.isFinite(meta.h0) ? meta.h0 : img.naturalHeight
+    const refW = Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : img.naturalWidth
+    const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : img.naturalHeight
     const k = height / Math.max(1, refH)
     img.style.height = `${height}px`
     img.style.width = `${Math.round(refW * k)}px`
