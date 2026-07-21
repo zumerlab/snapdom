@@ -34,6 +34,30 @@ describe('extendIconFonts', () => {
     expect(isIconFont('none')).toBe(false)
   })
 
+  it('dedupes repeated entries instead of growing the list unboundedly (speed punch-list)', () => {
+    const { extendIconFonts, isIconFont } = mod
+    extendIconFonts(['dup-brand', /dup-brand-rx/i])
+    // A non-matching string forces a full scan of every registered pattern
+    // (no early return), so the RegExp.prototype.test call count is a direct
+    // proxy for the candidate list's size.
+    const spy1 = vi.spyOn(RegExp.prototype, 'test')
+    isIconFont('nothing-matches-here')
+    const callsAfterFirstRegistration = spy1.mock.calls.length
+    spy1.mockRestore()
+
+    // Simulates snapdom.js re-calling extendIconFonts with the same option on
+    // every capture (e.g. an animation loop reusing the same iconFonts
+    // array/object). Without dedup this would push 98 more duplicate entries.
+    for (let i = 0; i < 49; i++) extendIconFonts(['dup-brand', /dup-brand-rx/i])
+
+    const spy2 = vi.spyOn(RegExp.prototype, 'test')
+    isIconFont('nothing-matches-here')
+    const callsAfterRepeatedRegistration = spy2.mock.calls.length
+    spy2.mockRestore()
+
+    expect(callsAfterRepeatedRegistration).toBe(callsAfterFirstRegistration)
+  })
+
   it('ignora valores inválidos y hace console.warn', () => {
     const { extendIconFonts, isIconFont } = mod
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

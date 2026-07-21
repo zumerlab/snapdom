@@ -27,17 +27,26 @@ export const ICON_FONT_URLS = Object.assign({
 }, (typeof window !== 'undefined' && window.__SNAPDOM_ICON_FONTS__) || {})
 
 let userIconFonts = []
+const userIconFontKeys = new Set()
 
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
 }
 
+// Callers (e.g. snapdom.js) re-invoke this on every capture with the same
+// `iconFonts` option, so dedup against the module-level list instead of
+// growing it unboundedly across repeated captures (animations, session()).
 export function extendIconFonts(fonts) {
   const list = Array.isArray(fonts) ? fonts : [fonts]
   for (const f of list) {
-    if (f instanceof RegExp) userIconFonts.push(f)
-    else if (typeof f === 'string') userIconFonts.push(new RegExp(escapeRegExp(f), 'i'))
-    else console.warn('[snapdom] Ignored invalid iconFont value:', f)
+    let rx
+    if (f instanceof RegExp) rx = f
+    else if (typeof f === 'string') rx = new RegExp(escapeRegExp(f), 'i')
+    else { console.warn('[snapdom] Ignored invalid iconFont value:', f); continue }
+    const key = `${rx.source}/${rx.flags}`
+    if (userIconFontKeys.has(key)) continue
+    userIconFontKeys.add(key)
+    userIconFonts.push(rx)
   }
 }
 
