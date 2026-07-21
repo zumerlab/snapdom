@@ -20,8 +20,17 @@ vi.mock('../src/modules/fonts.js', async (importOriginal) => {
   }
 })
 
+vi.mock('../src/modules/counter.js', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    buildCounterContext: vi.fn(actual.buildCounterContext),
+  }
+})
+
 import * as helpers from '../src/utils/index.js'
 import * as fonts from '../src/modules/fonts.js'
+import { buildCounterContext } from '../src/modules/counter.js'
 
 const sessionCache = {
   styleMap: new Map(),
@@ -382,6 +391,48 @@ describe('inlinePseudoElements', () => {
     const before = cloneLi.querySelector('[data-snapdom-pseudo="::before"]')
     expect(before).toBeTruthy()
     expect(before.textContent).toBe('1)')
+  })
+
+  // Speed punch-list: buildCounterContext walks the whole document, so it must
+  // only pay that cost when a pseudo actually declares counter-reset/-increment
+  // or a counter()/counters() content value — not on every pseudo-element check.
+  it('never walks the document for counter state when no pseudo uses counters', async () => {
+    const el = document.createElement('div')
+    el.className = 'no-counters-el'
+    document.body.appendChild(el)
+    const style = document.createElement('style')
+    style.textContent = '.no-counters-el::before { content: "plain text"; }'
+    document.head.appendChild(style)
+
+    const localSessionCache = { styleMap: new Map(), styleCache: new WeakMap() }
+    const clone = el.cloneNode(true)
+    await inlinePseudoElements(el, clone, localSessionCache, {})
+
+    expect(buildCounterContext).not.toHaveBeenCalled()
+  })
+
+  it('builds the document counter context lazily, once, only when a pseudo needs it', async () => {
+    const ol = document.createElement('ol')
+    ol.className = 'lazy-ctx-ol'
+    const li1 = document.createElement('li')
+    li1.className = 'lazy-ctx-li'
+    const li2 = document.createElement('li')
+    li2.className = 'lazy-ctx-li'
+    ol.append(li1, li2)
+    document.body.appendChild(ol)
+    const style = document.createElement('style')
+    style.textContent = `
+      .lazy-ctx-ol { counter-reset: item; list-style: none; }
+      .lazy-ctx-li::before { counter-increment: item; content: counter(item); }
+    `
+    document.head.appendChild(style)
+
+    const localSessionCache = { styleMap: new Map(), styleCache: new WeakMap() }
+    const cloneOl = ol.cloneNode(true)
+    await inlinePseudoElements(li1, cloneOl.children[0], localSessionCache, {})
+    await inlinePseudoElements(li2, cloneOl.children[1], localSessionCache, {})
+
+    expect(buildCounterContext).toHaveBeenCalledTimes(1)
   })
 
   // #19: a pseudo's own counter-set must override the counter value before resolving content.

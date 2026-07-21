@@ -241,6 +241,31 @@ function hasPaintedBorder(style) {
 var __pseudoEpoch = -1
 
 /**
+ * Wraps buildCounterContext(doc) — an O(document) walk — behind a memoizing
+ * get/getStack pair so the walk only runs on the first actual counter query,
+ * not on every element's pseudo-element check.
+ * @param {Document} doc
+ * @param {Object} sessionCache
+ * @returns {{get:Function, getStack:Function}}
+ */
+function lazyCounterContext(doc, sessionCache) {
+  let built = null
+  const ensure = () => {
+    if (!built) {
+      try { built = buildCounterContext(doc) } catch (e) {
+        debugWarn(sessionCache, 'buildCounterContext failed', e)
+        built = { get: () => 0, getStack: () => [] }
+      }
+    }
+    return built
+  }
+  return {
+    get(node, name) { return ensure().get(node, name) },
+    getStack(node, name) { return ensure().getStack(node, name) }
+  }
+}
+
+/**
  * Concatena tokens de CSS `content` (cadenas y resultados de counter()/counters())
  * sin el whitespace que los separa en el source — el browser concatena tokens
  * adyacentes sin espacios, así que `counter(x) ")"` debe renderizar `1)` y no `1 )`.
@@ -425,10 +450,12 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
     __pseudoEpoch = epoch
   }
 
+  // buildCounterContext walks the whole document once — defer it behind a lazy
+  // wrapper so that cost is only paid the first time a pseudo actually declares
+  // counter-reset/-increment or a counter()/counters() content value (every real
+  // call site below is already gated that way), not on every element's pseudo check.
   if (!sessionCache.__counterCtx) {
-    try { sessionCache.__counterCtx = buildCounterContext(source.ownerDocument || document) } catch (e) {
-      debugWarn(sessionCache, 'buildCounterContext failed', e)
-    }
+    sessionCache.__counterCtx = lazyCounterContext(source.ownerDocument || document, sessionCache)
   }
   const counterCtx = sessionCache.__counterCtx
 
