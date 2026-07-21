@@ -11,23 +11,21 @@ const MAX_RASTER_SIDE = 16384
 const MAX_RASTER_AREA = 16384 * 16384
 
 /**
- * Downscale an SVG data URL whose intrinsic width/height exceed the decode limits.
+ * Downscale SVG text whose intrinsic width/height exceed the decode limits.
  * The SVG carries a viewBox, so shrinking width/height just renders the same content at a
- * lower resolution (no clipping). Returns the original url when it already fits or on parse
- * failure. @param {string} url @returns {string}
+ * lower resolution (no clipping). Operates on decoded text (no re-encode round trips).
+ * @param {string} svg @returns {string}
  */
-function clampSvgRasterSize(url) {
-  if (!isSvgDataURL(url)) return url
+function clampSvgTextRasterSize(svg) {
   try {
-    const svg = decodeSvgFromDataURL(url)
     const head = svg.match(/<svg\b[^>]*>/i)
-    if (!head) return url
+    if (!head) return svg
     const tag = head[0]
     const w = parseFloat((tag.match(/\bwidth="([\d.]+)/i) || [])[1])
     const h = parseFloat((tag.match(/\bheight="([\d.]+)/i) || [])[1])
-    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return url
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return svg
     const f = Math.min(1, MAX_RASTER_SIDE / w, MAX_RASTER_SIDE / h, Math.sqrt(MAX_RASTER_AREA / (w * h)))
-    if (f >= 1) return url
+    if (f >= 1) return svg
     const nw = Math.max(1, Math.floor(w * f))
     const nh = Math.max(1, Math.floor(h * f))
     console.warn(
@@ -35,12 +33,11 @@ function clampSvgRasterSize(url) {
       `limit (${MAX_RASTER_SIDE}px/side); downscaling to ${nw}×${nh}px. Lower \`scale\` or set ` +
       '`width`/`height` to control output size.'
     )
-    const fixed = svg.replace(tag, tag
+    return svg.replace(tag, tag
       .replace(/(\bwidth=")[\d.]+/i, `$1${nw}`)
       .replace(/(\bheight=")[\d.]+/i, `$1${nh}`))
-    return encodeSvgToDataURL(fixed)
   } catch {
-    return url
+    return svg
   }
 }
 
@@ -59,6 +56,15 @@ function isSvgDataURL(u) {
 function decodeSvgFromDataURL(u) {
   const i = u.indexOf(',')
   return i >= 0 ? decodeURIComponent(u.slice(i + 1)) : ''
+}
+/** Decode only the leading chunk of an SVG data URL — enough to read the <svg ...> header
+ *  without paying a full decodeURIComponent on a multi-MB payload. */
+function peekSvgHeader(u) {
+  const i = u.indexOf(',')
+  if (i < 0) return ''
+  // Trim a trailing incomplete %-escape so decodeURIComponent can't throw on the cut.
+  const chunk = u.slice(i + 1, i + 1201).replace(/%[0-9A-Fa-f]?$/, '')
+  try { return decodeURIComponent(chunk) } catch { return '' }
 }
 function encodeSvgToDataURL(svgText) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`
@@ -232,33 +238,27 @@ function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
 }
 
 /**
- * Safari shadow handling. Returns the (possibly rewritten) url plus whether the
- * svg carries box-/text-shadows: WebKit only rasterizes those consistently at the
- * svg's natural size (any other rasterization scale corrupts offset direction and
- * magnitude, or drops blurred shadows entirely), so the caller must then draw 1:1
- * and resample the raster instead of letting WebKit re-rasterize the svg scaled.
+ * Safari shadow handling on decoded svg text. Returns the (possibly rewritten)
+ * text plus whether it carries box-/text-shadows: WebKit only rasterizes those
+ * consistently at the svg's natural size (any other rasterization scale corrupts
+ * offset direction and magnitude, or drops blurred shadows entirely), so the
+ * caller must then draw 1:1 and resample the raster instead of letting WebKit
+ * re-rasterize the svg scaled.
  */
-async function prepareSafariShadows(url) {
-  if (!isSafari() || !isSvgDataURL(url)) return { url, naturalOnly: false }
-  let svg
-  try {
-    svg = decodeSvgFromDataURL(url)
-  } catch {
-    return { url, naturalOnly: false }
-  }
+async function fixSafariShadows(svg) {
   // Real shadows carry px lengths; `text-shadow:none` defaults must not match.
   const hasShadows = /(?:box-shadow|text-shadow)\s*:[^;"}]*px/i.test(svg)
-  if (!hasShadows) return { url, naturalOnly: false }
+  if (!hasShadows) return { svg, naturalOnly: false }
   const { native, flippedY } = await probeSvgShadowSupport()
   try {
-    let out = svg, changed = false
+    let out = svg
     // No native box-shadow: emulate via drop-shadow (correct Y, ~2x blur → halved).
-    if (!native) { out = rewriteSvgBoxShadowToDropShadow(out); changed = true }
+    if (!native) out = rewriteSvgBoxShadowToDropShadow(out)
     // Flipped Y: pre-negate box-shadow (only while still native) and text-shadow.
-    if (flippedY) { out = rewriteSvgShadowOffsets(out, native); changed = true }
-    return { url: changed ? encodeSvgToDataURL(out) : url, naturalOnly: true }
+    if (flippedY) out = rewriteSvgShadowOffsets(out, native)
+    return { svg: out, naturalOnly: true }
   } catch {
-    return { url, naturalOnly: true }
+    return { svg, naturalOnly: true }
   }
 }
 
@@ -278,21 +278,47 @@ async function prepareSafariShadows(url) {
  */
 export async function toCanvas(url, options) {
   let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor } = options
-  const safariShadows = await prepareSafariShadows(url)
-  url = safariShadows.url
-  url = clampSvgRasterSize(url) // #425: keep the SVG within decode limits
+
+  // SVG payloads: the old path decoded the whole multi-MB data URL just to read the <svg>
+  // header (#425 clamp check) and again for the Safari box-shadow rewrite, re-encoding after
+  // each. Peek the header without decoding the payload; only when a transform is actually
+  // needed (oversize clamp or Safari shadow fix) decode ONCE, transform on text, re-encode ONCE.
+  // NOTE: must stay a data: URL — Chromium taints the canvas when a foreignObject SVG is
+  // drawn from a blob: URL, which would break every toDataURL/toBlob export downstream.
+  let src = url
+  let shadowNaturalOnly = false
+  if (isSvgDataURL(url)) {
+    const head = (peekSvgHeader(url).match(/<svg\b[^>]*>/i) || [])[0] || ''
+    const w = parseFloat((head.match(/\bwidth="([\d.]+)/i) || [])[1])
+    const h = parseFloat((head.match(/\bheight="([\d.]+)/i) || [])[1])
+    const oversized = Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0 &&
+      Math.min(1, MAX_RASTER_SIDE / w, MAX_RASTER_SIDE / h, Math.sqrt(MAX_RASTER_AREA / (w * h))) < 1
+    if (oversized || isSafari()) {
+      try {
+        let svgText = decodeSvgFromDataURL(url)
+        if (isSafari()) {
+          const fixed = await fixSafariShadows(svgText)
+          svgText = fixed.svg
+          shadowNaturalOnly = fixed.naturalOnly
+        }
+        if (oversized) svgText = clampSvgTextRasterSize(svgText) // #425: keep within decode limits
+        src = encodeSvgToDataURL(svgText)
+      } catch { src = url }
+    }
+  }
 
   const img = new Image()
   img.loading = 'eager'
   img.decoding = 'sync'
   img.crossOrigin = 'anonymous'
-  img.src = url
+  img.src = src
   await img.decode()
 
   // #394: on Safari, img.decode() resolves before <img> tags nested in the
   // foreignObject finish compositing, producing blank raster exports. Attach
   // offscreen and wait two animation frames so the compositor catches up.
   if (isSafari()) {
+    img.setAttribute('data-snapdom-internal', '')
     img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
     document.body.appendChild(img)
     try {
@@ -361,7 +387,7 @@ export async function toCanvas(url, options) {
     ctx.restore()
   }
 
-  if (safariShadows.naturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
+  if (shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
     // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
     // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
     // re-rasterize the svg). Trades a bit of sharpness for correct shadows.

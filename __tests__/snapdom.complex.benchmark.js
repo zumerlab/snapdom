@@ -2,6 +2,7 @@ import { bench, describe, afterEach } from 'vitest'
 import { domToDataUrl } from 'https://unpkg.com/modern-screenshot'
 import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
 import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.9.9/dist/snapdom.mjs'
+import { snapdom as sd216 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.16.0/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
 
 let html2canvasLoaded = false
@@ -101,6 +102,11 @@ for (const size of sizes) {
     bench('snapDOM current version', async () => {
       await setupContainer()
       await snapdom.toRaw(container)
+    })
+
+    bench('snapDOM 2.16.0', async () => {
+      await setupContainer()
+      await sd216.toRaw(container)
     })
 
      bench('snapDOM V1.9.9', async () => {

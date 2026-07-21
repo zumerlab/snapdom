@@ -9,7 +9,7 @@ import { inlineBackgroundImages } from '../modules/background.js'
 import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
-import { embedCustomFonts, collectUsedFontVariants, collectUsedCodepoints, ensureFontsReady } from '../modules/fonts.js'
+import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { cache, applyCachePolicy } from '../core/cache.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
@@ -23,6 +23,7 @@ import {
   estimateKeptHeight,
   limitDecimals,
   collectScrollbarCSS,
+  reconcileCloneLayout,
   resolveClipRect,
   composeResidual2D
 } from '../utils/capture.helpers.js'
@@ -55,6 +56,22 @@ function hasPictureResolverPlugin(options) {
 }
 
 /**
+ * Collect per-node resolveNode hooks once per capture, so deepClone pays a single falsy
+ * check per node when no plugin uses them.
+ * @param {object} options
+ * @returns {Array<(node: Node, ctx: object) => any>|null}
+ */
+function collectResolveNodeHooks(options) {
+  const defs = Array.isArray(options.plugins) ? options.plugins : getGlobalPlugins()
+  const hooks = []
+  for (const d of defs) {
+    const inst = normalizePlugin(d)
+    if (inst && typeof inst.resolveNode === 'function') hooks.push(inst.resolveNode.bind(inst))
+  }
+  return hooks.length ? hooks : null
+}
+
+/**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
  * @param {Element} element - DOM element to capture
@@ -72,6 +89,7 @@ function hasPictureResolverPlugin(options) {
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
+  options.__resolveNodeHooks = collectResolveNodeHooks(options)
   const fast = options.fast
   const outerTransforms = options.outerTransforms !== false   // default: true
 
@@ -138,74 +156,66 @@ export async function captureDOM(element, options) {
     await ligatureIconToImage(state.clone, state.element)
   } catch { /* non-blocking */ }
 
-  await new Promise((resolve) => {
-    idle(async () => {
-      await inlineImages(state.clone, state.options)
-      resolve()
-    }, { fast })
+  // Asset phases are network/decode-bound and independent: images ∥ backgrounds ∥ fonts run
+  // concurrently (they were serialized before, stacking their network latencies). Compress
+  // depends on the inlined data URLs, so it waits for images+backgrounds only.
+  const runIdle = (fn) => new Promise((resolve, reject) => {
+    idle(() => { Promise.resolve().then(fn).then(resolve, reject) }, { fast })
   })
 
-  await new Promise((resolve) => {
-    idle(async () => {
-      await inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options)
-      resolve()
-    }, { fast })
-  })
+  const assetsPhase = (async () => {
+    await Promise.all([
+      runIdle(() => inlineImages(state.clone, state.options)),
+      runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options)),
+    ])
+    // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it
+    // from the already-inlined clone. Non-blocking — a failure just loses the effect.
+    try {
+      emulateBackdropFilters(state.element, state.clone)
+    } catch (e) {
+      console.warn('[snapdom] backdrop-filter emulation failed:', e)
+    }
+    // Perceptual image downsampling (on by default via `compress`). No-op when off.
+    if (options.compress) {
+      await runIdle(() => compressCloneAssets(state.clone, state.options))
+    }
+  })()
 
-  // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it
-  // from the already-inlined clone. Non-blocking — a failure just loses the effect.
-  try {
-    emulateBackdropFilters(state.element, state.clone)
-  } catch (e) {
-    console.warn('[snapdom] backdrop-filter emulation failed:', e)
-  }
-
-  // Perceptual image downsampling (opt-in via `compress`). No-op when off.
-  if (options.compress) {
-    await new Promise((resolve) => {
-      idle(async () => {
-        await compressCloneAssets(state.clone, state.options)
-        resolve()
-      }, { fast })
-    })
-  }
-
+  let fontsPhase = Promise.resolve()
   if (options.embedFonts) {
-    await new Promise((resolve) => {
-      idle(async () => {
-        // #441: read fonts from the element's own document (same-origin iframe support)
-        const ownerDoc = state.element.ownerDocument || document
-        // Clip mode: culled content embeds no text, so only collect fonts/codepoints from
-        // elements near the window — skips ~5 style resolutions per offscreen element.
-        const clipKeep = preClipRect ? (el) => {
-          try {
-            const r = el.getBoundingClientRect()
-            return r.right >= preClipRect.left - 200 && r.left <= preClipRect.right + 200 &&
-                   r.bottom >= preClipRect.top - 200 && r.top <= preClipRect.bottom + 200
-          } catch { return true }
-        } : null
-        const required = collectUsedFontVariants(state.element, clipKeep)
-        const usedCodepoints = collectUsedCodepoints(state.element, clipKeep)
-        if (isSafari()) {
-          const families = new Set(
-            Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
-          )
-          await ensureFontsReady(families, 1, ownerDoc)
-        }
-        fontsCSS = await embedCustomFonts({
-          required,
-          usedCodepoints,
-          preCached: false,
-          exclude: state.options.excludeFonts,
-          localFonts: state.options.localFonts,
-          useProxy: state.options.useProxy,
-          fontStylesheetDomains: state.options.fontStylesheetDomains,
-          doc: ownerDoc
-        })
-        resolve()
-      }, { fast })
+    fontsPhase = runIdle(async () => {
+      // #441: read fonts from the element's own document (same-origin iframe support)
+      const ownerDoc = state.element.ownerDocument || document
+      // Clip mode: culled content embeds no text, so only collect fonts/codepoints from
+      // elements near the window — skips the per-element style work for offscreen content.
+      const clipKeep = preClipRect ? (el) => {
+        try {
+          const r = el.getBoundingClientRect()
+          return r.right >= preClipRect.left - 200 && r.left <= preClipRect.right + 200 &&
+                 r.bottom >= preClipRect.top - 200 && r.top <= preClipRect.bottom + 200
+        } catch { return true }
+      } : null
+      const { required, usedCodepoints } = collectFontUsage(state.element, clipKeep)
+      if (isSafari()) {
+        const families = new Set(
+          Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
+        )
+        await ensureFontsReady(families, 1, ownerDoc)
+      }
+      fontsCSS = await embedCustomFonts({
+        required,
+        usedCodepoints,
+        preCached: false,
+        exclude: state.options.excludeFonts,
+        localFonts: state.options.localFonts,
+        useProxy: state.options.useProxy,
+        fontStylesheetDomains: state.options.fontStylesheetDomains,
+        doc: ownerDoc
+      })
     })
   }
+
+  await Promise.all([assetsPhase, fontsPhase])
 
   const usedTags = collectUsedTagNames(state.clone).sort()
   const tagKey = usedTags.join(',')
@@ -268,6 +278,7 @@ export async function captureDOM(element, options) {
             if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
           } else {
             const wrap = elDoc.createElement('div')
+            wrap.setAttribute('data-snapdom-internal', '')
             wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
             const styleNode = elDoc.createElement('style')
             styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
@@ -293,6 +304,18 @@ export async function captureDOM(element, options) {
         }
         // En ancho casi nunca conviene ajustar; si lo necesitás, podés hacer análogo con estimateKeptWidth(...)
       }
+      // Opt-in layout reconciliation: measure the styled clone in-document and pin only the
+      // boxes whose size diverges from the live tree (measurement over heuristics).
+      if (state.options?.reconcile) {
+        try {
+          const cssAll = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS +
+            'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+          reconcileCloneLayout(state.element, state.clone, cssAll, cache.session.nodeMap, w0, h0)
+        } catch (e) {
+          console.warn('[snapdom] reconcile pass failed:', e)
+        }
+      }
+
       const coerceNum = (v, def = NaN) => {
         const n = typeof v === 'string' ? parseFloat(v) : v
         return Number.isFinite(n) ? n : def

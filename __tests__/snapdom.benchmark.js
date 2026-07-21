@@ -3,6 +3,7 @@ import { domToDataUrl } from 'https://unpkg.com/modern-screenshot'
 import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
 //import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js';
 import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.9.9/dist/snapdom.mjs'
+import { snapdom as sd216 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.16.0/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
 
 let html2canvasLoaded = false
@@ -118,6 +119,11 @@ for (const size of sizes) {
       await snapdom.toRaw(container)
     })
 
+    bench('snapDOM 2.16.0', async () => {
+      await setupContainer()
+      await sd216.toRaw(container)
+    })
+
      bench('snapDOM V1.9.9', async () => {
       await setupContainer()
       await sd.toRaw(container)
@@ -193,6 +199,16 @@ describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
   bench('snapDOM toPng (compress ON)', async () => {
     await setupContainer()
     await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true })
+  })
+
+  bench('snapDOM 2.16.0 toPng (compress OFF)', async () => {
+    await setupContainer()
+    await sd216.toPng(container, { scale: 2, dpr: 1, compress: false })
+  })
+
+  bench('snapDOM 2.16.0 toPng (compress ON)', async () => {
+    await setupContainer()
+    await sd216.toPng(container, { scale: 2, dpr: 1, compress: true })
   })
 
   bench('html2canvas', async () => {

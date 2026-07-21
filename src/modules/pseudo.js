@@ -527,8 +527,16 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasLayoutBox = boxGenerating &&
         ((parseFloat(style.width) || 0) > 0 || (parseFloat(style.height) || 0) > 0)
 
+      // A box-generating pseudo can paint with box-shadow/outline alone (no bg, border,
+      // text or size — a zero-size box with a blur/spread shadow still renders a glow).
+      // Gated on boxGenerating: with content:none no box exists and nothing paints live.
+      const hasShadow = boxGenerating && style.boxShadow && style.boxShadow !== 'none'
+      const hasOutline = boxGenerating && style.outlineStyle && style.outlineStyle !== 'none' &&
+        (parseFloat(style.outlineWidth) || 0) > 0
+
       const shouldRender =
-        hasExplicitContent || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox
+        hasExplicitContent || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox ||
+        hasShadow || hasOutline
 
       if (!shouldRender) {
         // Aun si no renderizamos caja, si el pseudo tenía increments, propagar a hermanos
@@ -654,7 +662,8 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasContent2 =
         pseudoEl.childNodes.length > 0 || (pseudoEl.textContent?.trim() !== '')
       const hasVisibleBox =
-        hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox
+        hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox ||
+        hasShadow || hasOutline
 
       // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
       if (incs && incs.length && source.parentElement) {

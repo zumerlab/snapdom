@@ -181,6 +181,7 @@ export async function materialIconToImage(
 
   // Measure with same family used on canvas
   const span = document.createElement('span')
+  span.setAttribute('data-snapdom-internal', '')
   span.textContent = ligatureText
   span.style.position = 'absolute'
   span.style.visibility = 'hidden'

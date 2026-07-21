@@ -64,41 +64,53 @@ export async function downsampleDataURL(dataURL, targetW, targetH) {
   // SVG data URLs are vectors — rasterizing them here would *lose* fidelity, not save bytes.
   if (dataURL.startsWith('data:image/svg')) return null
 
-  let img
-  try { img = await loadImage(dataURL) } catch { return null }
-  const nw = img.naturalWidth || img.width
-  const nh = img.naturalHeight || img.height
-  if (!nw || !nh) return null
+  // Memoize by a cheap fingerprint (length + head/tail) instead of the full string, so the
+  // cache doesn't retain multi-MB keys. Negative results (null) are cached too: they cost a
+  // full decode to establish, and repeated captures of the same element hit them every time.
+  const cacheKey = dataURL.length + ':' + dataURL.slice(0, 64) + dataURL.slice(-64) +
+    ':' + Math.round(targetW) + 'x' + Math.round(targetH)
+  if (cache.compress.has(cacheKey)) return cache.compress.get(cacheKey)
 
-  // Scale factor that still covers the visible box, capped at 1 (no upscaling). The 0.95 guard
-  // band avoids re-encoding for a negligible pixel saving — gauged on the visible target, before
-  // the aggression trim.
-  const raw = Math.min(1, Math.max(targetW / nw, targetH / nh))
-  if (!(raw > 0) || raw >= 0.95) return null
-  const factor = raw * RES_FACTOR
+  const result = await (async () => {
+    let img
+    try { img = await loadImage(dataURL) } catch { return null }
+    const nw = img.naturalWidth || img.width
+    const nh = img.naturalHeight || img.height
+    if (!nw || !nh) return null
 
-  const ow = Math.max(1, Math.round(nw * factor))
-  const oh = Math.max(1, Math.round(nh * factor))
+    // Scale factor that still covers the visible box, capped at 1 (no upscaling). The 0.95 guard
+    // band avoids re-encoding for a negligible pixel saving — gauged on the visible target, before
+    // the aggression trim.
+    const raw = Math.min(1, Math.max(targetW / nw, targetH / nh))
+    if (!(raw > 0) || raw >= 0.95) return null
+    const factor = raw * RES_FACTOR
 
-  const canvas = document.createElement('canvas')
-  canvas.width = ow
-  canvas.height = oh
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return null
-  ctx.imageSmoothingEnabled = true
-  ctx.imageSmoothingQuality = 'high'
-  ctx.drawImage(img, 0, 0, ow, oh)
+    const ow = Math.max(1, Math.round(nw * factor))
+    const oh = Math.max(1, Math.round(nh * factor))
 
-  // Preserve the source codec so lossless stays lossless; fall back to PNG for anything exotic.
-  const sm = sourceMime(dataURL)
-  const mime = sm === 'image/jpeg' ? 'image/jpeg' : sm === 'image/webp' ? 'image/webp' : 'image/png'
-  try {
-    // PNG ignores the quality arg (lossless); JPEG/WebP honor it.
-    const out = canvas.toDataURL(mime, LOSSY_QUALITY)
-    // Only adopt the re-encoded form if it's actually smaller (a small icon re-encoded can grow).
-    if (typeof out === 'string' && out.startsWith('data:image') && out.length < dataURL.length) return out
-  } catch { /* tainted canvas / unsupported mime */ }
-  return null
+    const canvas = document.createElement('canvas')
+    canvas.width = ow
+    canvas.height = oh
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(img, 0, 0, ow, oh)
+
+    // Preserve the source codec so lossless stays lossless; fall back to PNG for anything exotic.
+    const sm = sourceMime(dataURL)
+    const mime = sm === 'image/jpeg' ? 'image/jpeg' : sm === 'image/webp' ? 'image/webp' : 'image/png'
+    try {
+      // PNG ignores the quality arg (lossless); JPEG/WebP honor it.
+      const out = canvas.toDataURL(mime, LOSSY_QUALITY)
+      // Only adopt the re-encoded form if it's actually smaller (a small icon re-encoded can grow).
+      if (typeof out === 'string' && out.startsWith('data:image') && out.length < dataURL.length) return out
+    } catch { /* tainted canvas / unsupported mime */ }
+    return null
+  })()
+
+  cache.compress.set(cacheKey, result)
+  return result
 }
 
 /**

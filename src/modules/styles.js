@@ -16,16 +16,40 @@ function bumpEpoch() {
 
 export function notifyStyleEpoch() { bumpEpoch() }
 
+/** Mutations on snapdom-owned helper nodes (sandbox, measure wrapper, warmup img, injected font
+ *  links, …) must NOT invalidate the style epoch: every capture creates and removes them, so
+ *  without this filter each capture poisons the snapshot cache for the next one — repeated
+ *  captures (gif/video export, cached sessions) paid a full re-snapshot every time. */
+const OWNED_SELECTOR = '[data-snapdom-sandbox],[data-snapdom-internal],[data-snapdom]'
+function isOwnedNode(node) {
+  const el = node && (node.nodeType === 1 ? node : node.parentElement)
+  return !!(el && el.closest && el.closest(OWNED_SELECTOR))
+}
+export function hasExternalMutation(records) {
+  for (const rec of records) {
+    if (isOwnedNode(rec.target)) continue
+    if (rec.type === 'childList') {
+      let allOwned = true
+      for (const n of rec.addedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
+      if (allOwned) for (const n of rec.removedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
+      if (allOwned) continue
+    }
+    return true
+  }
+  return false
+}
+
 let __wired = false
 function setupInvalidationOnce(root = document.documentElement) {
   if (__wired) return
   __wired = true
+  const onRecords = (records) => { if (hasExternalMutation(records)) bumpEpoch() }
   try {
-    const domObs = new MutationObserver(() => bumpEpoch())
+    const domObs = new MutationObserver(onRecords)
     domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
-    const headObs = new MutationObserver(() => bumpEpoch())
+    const headObs = new MutationObserver(onRecords)
     headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
@@ -35,6 +59,29 @@ function setupInvalidationOnce(root = document.documentElement) {
       f.ready?.then(() => bumpEpoch()).catch(() => { })
     }
   } catch { }
+}
+
+/** URL-bearing props that mean inlineBackgroundImages must visit the node. */
+const BG_INLINE_FLAG_PROPS = [
+  'mask', 'mask-image', '-webkit-mask', '-webkit-mask-image',
+  'mask-source', 'mask-box-image-source', 'mask-border-source', '-webkit-mask-box-image-source',
+  'border-image', 'border-image-source',
+]
+
+/**
+ * Whether the background-inline pass has work on this element, per its cached style snapshot.
+ * Unknown (no fresh snapshot — STYLE tags, SVG template descendants) → true, so callers fall
+ * back to processing the node like before.
+ * @param {Element} source
+ * @returns {boolean}
+ */
+export function needsBackgroundInline(source) {
+  const rec = snapshotCache.get(source)
+  if (rec && rec.epoch === __epoch) {
+    const f = rec.snapshot && rec.snapshot.__needsBgInline
+    if (f !== undefined) return f
+  }
+  return true
 }
 
 function snapshotComputedStyleFull(style, options = {}) {
@@ -109,6 +156,32 @@ function snapshotComputedStyleFull(style, options = {}) {
     const cv = out['content-visibility'] || style.getPropertyValue('content-visibility')
     if (cv === 'hidden') out['visibility'] = 'hidden'
   } catch { /* ignore */ }
+
+  // Flag whether inlineBackgroundImages has any work on this node (bg/mask/border-image or a
+  // background-color that needs its layout longhands for background-clip:text). Read from the
+  // live declaration (not `out`) so excludeStyleProps or the url()→none rewrite can't hide it.
+  // Stored non-enumerable so key generation/signature iteration never sees it.
+  let needsBg = false
+  {
+    const bgi = style.getPropertyValue('background-image')
+    if (bgi && bgi !== 'none') needsBg = true
+    if (!needsBg) {
+      const bgc = style.getPropertyValue('background-color')
+      if (bgc && bgc !== 'rgba(0, 0, 0, 0)' && bgc !== 'transparent') needsBg = true
+    }
+    if (!needsBg) {
+      for (const p of BG_INLINE_FLAG_PROPS) {
+        const v = style.getPropertyValue(p)
+        if (v && v !== 'none') { needsBg = true; break }
+      }
+    }
+    if (!needsBg) {
+      // #343: some engines report background-image:none while the shorthand carries url()
+      const sh = style.getPropertyValue('background')
+      if (sh && /url\s*\(/i.test(sh)) needsBg = true
+    }
+  }
+  Object.defineProperty(out, '__needsBgInline', { value: needsBg, enumerable: false })
 
   // #362: Tailwind's * { border: 0 solid } renders incorrectly in capture.
   // When all border widths are 0, normalize to border: none for unambiguous output.

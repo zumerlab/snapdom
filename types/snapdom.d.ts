@@ -82,6 +82,13 @@ export interface SnapdomOptions {
   /** How to apply `filter` ("hide" or "remove"). Default "hide". */
   filterMode?: "hide" | "remove";
 
+  /**
+   * Layout reconciliation: mount the styled clone in-document once, compare every node's
+   * box against the live DOM and pin only diverging sizes. Measurement over heuristics.
+   * Opt-in (adds one in-document layout of the clone). Default false.
+   */
+  reconcile?: boolean;
+
   /** outerTransforms the root: remove translate/rotate, keep scale/skew. */
   outerTransforms?: boolean;
   /**
@@ -224,6 +231,16 @@ export interface SnapdomPlugin {
    */
   defineExports?(context: CaptureContext): ExportMap | Promise<ExportMap>;
 
+  /**
+   * Per-node hook, called for every element while the clone is built (after exclude/filter,
+   * before built-in iframe/canvas/video/audio handling). First plugin returning a value wins:
+   * - Node → used as the finished clone for that node (mapped to source, box styles applied)
+   * - null → skip the node entirely
+   * - undefined → continue with the normal pipeline
+   * Runs on every node: keep checks cheap.
+   */
+  resolveNode?(node: Element, context: CaptureContext): Node | null | undefined | Promise<Node | null | undefined>;
+
   /** Runs ONCE after the FIRST successful export of this capture (good for cleanup). */
   afterSnap?(context: CaptureContext): void | Promise<void>;
 }
@@ -321,8 +338,30 @@ export declare function snapdom(
  * - Execution order = registration order.
  * - Per-capture plugins run before globals and override by `name`.
  */
+/** Session for repeated captures of the same element (see snapdom.session). */
+export interface CaptureSession {
+  /** True when the subtree (or document styles) changed since the last capture. */
+  readonly dirty: boolean;
+  /**
+   * Capture the element. While nothing changed and no overrides are passed, the memoized
+   * result is returned instantly; otherwise a fresh capture runs with warm caches.
+   */
+  capture(overrides?: Partial<SnapdomOptions>): Promise<CaptureResult>;
+  /** Disconnect observers and drop the memoized result. */
+  dispose(): void;
+}
+
 export declare namespace snapdom {
   function plugins(...defs: PluginUse[]): typeof snapdom;
+
+  /**
+   * Create a capture session for repeated captures of the same element (frame loops,
+   * polling previews). Mutations are tracked by a scoped MutationObserver.
+   */
+  function session(
+    element: Element,
+    options?: SnapdomOptions
+  ): CaptureSession;
 
   /** Shortcut helpers that run a one-off capture+export. */
 

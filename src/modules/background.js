@@ -5,178 +5,180 @@
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
 import { cache } from '../core/cache.js'
+import { needsBackgroundInline } from './styles.js'
+
+/** Props that can contain url(...) and may need inlining */
+const URL_PROPS = [
+  'background-image',
+
+  // Mask shorthands & images (both standard and WebKit)
+  'mask',
+  'mask-image',
+  '-webkit-mask',
+  '-webkit-mask-image',
+
+  // Mask sources (rare, but keep)
+  'mask-source',
+  'mask-box-image-source',
+  'mask-border-source',
+  '-webkit-mask-box-image-source',
+
+  // Border image
+  'border-image',
+  'border-image-source',
+]
+
+/** Mask longhands to preserve spatial layout (copy as-is).
+ * Must run AFTER the `mask` shorthand in URL_PROPS — setting the shorthand
+ * resets every longhand to its initial value (#402: lost mask-mode/composite). */
+const MASK_LAYOUT_PROPS = [
+  'mask-position',
+  'mask-size',
+  'mask-repeat',
+  'mask-mode',
+  'mask-composite',
+  // WebKit variants
+  '-webkit-mask-position',
+  '-webkit-mask-size',
+  '-webkit-mask-repeat',
+  '-webkit-mask-composite',
+  // Extra (optional but helpful across engines)
+  'mask-origin',
+  'mask-clip',
+  '-webkit-mask-origin',
+  '-webkit-mask-clip',
+  // Some engines expose X/Y position separately:
+  '-webkit-mask-position-x',
+  '-webkit-mask-position-y',
+]
+const BG_LAYOUT_PROPS = [
+  'background-position', 'background-position-x', 'background-position-y',
+  'background-size', 'background-repeat',
+  'background-origin', 'background-clip',
+  'background-attachment', 'background-blend-mode'
+]
+/** Border-image aux longhands (copy only when active) */
+const BORDER_AUX_PROPS = [
+  'border-image-slice',
+  'border-image-width',
+  'border-image-outset',
+  'border-image-repeat',
+]
 
 /**
- * Recursively inlines background-related images and masks from the source element to its clone.
- *
- * This function walks through the source DOM tree and its clone, copying inline styles for
- * background images, masks, and border images to ensure the clone retains all visual image
- * resources inline (e.g., data URLs), avoiding external dependencies.
- *
- * It also preserves the `background-color` property if it is not transparent.
- *
- * Special handling is done for `border-image` related properties: the
- * `border-image-slice`, `border-image-width`, `border-image-outset`, and `border-image-repeat`
- * are only copied if `border-image` or `border-image-source` are present and active.
- *
- * @param {HTMLElement} source The original source element from which styles are read.
- * @param {HTMLElement} clone The cloned element to which inline styles are applied.
- * @param {Object} [options={}] Optional parameters passed to image inlining functions.
- * @returns {Promise<void>} Resolves when all inlining operations (including async image fetches) complete.
+ * Inline URL-bearing properties (background/mask/border-image) from one source element onto its
+ * clone, plus the layout longhands that keep them positioned (mask position/size, bg layout for
+ * background-clip:text, border-image auxiliaries).
+ * @param {Element} srcNode
+ * @param {HTMLElement} cloneNode
+ * @param {WeakMap} styleCache
+ * @param {Object} options
  */
-/**
- * Inlines URL-bearing properties (background/mask/border-image)
- * and also preserves mask positioning longhands (position/size/repeat).
- * This fixes cases like `mask: url(...) center/60% 60% no-repeat`.
- */
-export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
-  const queue = [[source, clone]]
+async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) {
+  const style = styleCache.get(srcNode) || getStyle(srcNode)
+  if (!styleCache.has(srcNode)) styleCache.set(srcNode, style)
 
-  /** Props that can contain url(...) and may need inlining */
-  const URL_PROPS = [
-    'background-image',
+  // Border-image present?
+  const bi = style.getPropertyValue('border-image')
+  const bis = style.getPropertyValue('border-image-source')
+  const hasBorderImage = (bi && bi !== 'none') || (bis && bis !== 'none')
 
-    // Mask shorthands & images (both standard and WebKit)
-    'mask',
-    'mask-image',
-    '-webkit-mask',
-    '-webkit-mask-image',
-
-    // Mask sources (rare, but keep)
-    'mask-source',
-    'mask-box-image-source',
-    'mask-border-source',
-    '-webkit-mask-box-image-source',
-
-    // Border image
-    'border-image',
-    'border-image-source',
-  ]
-
-  /** Mask longhands to preserve spatial layout (copy as-is).
-   * Must run AFTER the `mask` shorthand in URL_PROPS — setting the shorthand
-   * resets every longhand to its initial value (#402: lost mask-mode/composite). */
-  const MASK_LAYOUT_PROPS = [
-    'mask-position',
-    'mask-size',
-    'mask-repeat',
-    'mask-mode',
-    'mask-composite',
-    // WebKit variants
-    '-webkit-mask-position',
-    '-webkit-mask-size',
-    '-webkit-mask-repeat',
-    '-webkit-mask-composite',
-    // Extra (optional but helpful across engines)
-    'mask-origin',
-    'mask-clip',
-    '-webkit-mask-origin',
-    '-webkit-mask-clip',
-    // Some engines expose X/Y position separately:
-    '-webkit-mask-position-x',
-    '-webkit-mask-position-y',
-  ]
-  const BG_LAYOUT_PROPS = [
-    'background-position', 'background-position-x', 'background-position-y',
-    'background-size', 'background-repeat',
-    'background-origin', 'background-clip',
-    'background-attachment', 'background-blend-mode'
-  ]
-  /** Border-image aux longhands (copy only when active) */
-  const BORDER_AUX_PROPS = [
-    'border-image-slice',
-    'border-image-width',
-    'border-image-outset',
-    'border-image-repeat',
-  ]
-
-  while (queue.length) {
-    const [srcNode, cloneNode] = queue.shift()
-
-    if (!cloneNode) continue
-
-    // Style cache
-    const style = styleCache.get(srcNode) || getStyle(srcNode)
-    if (!styleCache.has(srcNode)) styleCache.set(srcNode, style)
-    // Border-image present?
-    const hasBorderImage = (() => {
-      const bi = style.getPropertyValue('border-image')
-      const bis = style.getPropertyValue('border-image-source')
-      return (bi && bi !== 'none') || (bis && bis !== 'none')
-    })()
-    // Background layout longhands (position/size/repeat/origin/clip/...) are inert without a
-    // background, yet are never empty, so copying them onto every node bloated the markup and
-    // rasterization cost. Copy only when a background actually exists. background-color is
-    // included so the background-clip:text trick (color clipped to text) still works.
-    const bgImage = style.getPropertyValue('background-image')
-    const bgColor = style.getPropertyValue('background-color')
-    const hasBg =
-      (bgImage && bgImage !== 'none') ||
-      (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') ||
-      /url\s*\(|gradient\s*\(/i.test(style.getPropertyValue('background') || '')
-    if (hasBg) {
-      for (const prop of BG_LAYOUT_PROPS) {
-        const v = style.getPropertyValue(prop)
-        if (!v) continue
-        cloneNode.style.setProperty(prop, v)
+  // Background layout longhands (position/size/repeat/origin/clip/...) are inert without a
+  // background, yet are never empty, so copying them onto every node bloated the markup and
+  // rasterization cost. Copy only when a background actually exists. background-color is
+  // included so the background-clip:text trick (color clipped to text) still works.
+  const bgImage = style.getPropertyValue('background-image')
+  const bgColor = style.getPropertyValue('background-color')
+  const hasBg =
+    (bgImage && bgImage !== 'none') ||
+    (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') ||
+    /url\s*\(|gradient\s*\(/i.test(style.getPropertyValue('background') || '')
+  if (hasBg) {
+    for (const prop of BG_LAYOUT_PROPS) {
+      const v = style.getPropertyValue(prop)
+      if (!v) continue
+      cloneNode.style.setProperty(prop, v)
+    }
+  }
+  // 1) Inline URL-bearing properties
+  for (const prop of URL_PROPS) {
+    let val = style.getPropertyValue(prop)
+    // Fallback: when background-image is none/empty, parse url() from background shorthand (#343)
+    if ((prop === 'background-image') && (!val || val === 'none')) {
+      const bgShorthand = style.getPropertyValue('background')
+      if (bgShorthand && /url\s*\(/.test(bgShorthand)) {
+        // Use filter+join to preserve all url() layers, not just the first (#NEW-5)
+        val = splitBackgroundImage(bgShorthand).filter(p => /url\s*\(/.test(p)).join(', ') || val
       }
     }
-    // 1) Inline URL-bearing properties
-    for (const prop of URL_PROPS) {
-      let val = style.getPropertyValue(prop)
-      // Fallback: when background-image is none/empty, parse url() from background shorthand (#343)
-      if ((prop === 'background-image') && (!val || val === 'none')) {
-        const bgShorthand = style.getPropertyValue('background')
-        if (bgShorthand && /url\s*\(/.test(bgShorthand)) {
-          // Use filter+join to preserve all url() layers, not just the first (#NEW-5)
-          val = splitBackgroundImage(bgShorthand).filter(p => /url\s*\(/.test(p)).join(', ') || val
-        }
-      }
-      if (!val || val === 'none') continue
+    if (!val || val === 'none') continue
 
-      // Split multiple layers (comma-separated)
-      const splits = splitBackgroundImage(val)
+    // Split multiple layers (comma-separated)
+    const splits = splitBackgroundImage(val)
 
-      const inlined = await Promise.all(
-        splits.map(entry => inlineSingleBackgroundEntry(entry, options))
-      )
+    const inlined = await Promise.all(
+      splits.map(entry => inlineSingleBackgroundEntry(entry, options))
+    )
 
-      if (inlined.some(p => p && p !== 'none' && !/^url\(undefined/.test(p))) {
-        cloneNode.style.setProperty(prop, inlined.join(', '))
-      }
+    if (inlined.some(p => p && p !== 'none' && !/^url\(undefined/.test(p))) {
+      cloneNode.style.setProperty(prop, inlined.join(', '))
     }
-    // 2) Copy mask layout longhands (position / size / repeat, etc.)
-    for (const prop of MASK_LAYOUT_PROPS) {
+  }
+  // 2) Copy mask layout longhands (position / size / repeat, etc.)
+  for (const prop of MASK_LAYOUT_PROPS) {
+    const val = style.getPropertyValue(prop)
+    // Skip empty/initial defaults to avoid bloating
+    if (!val || val === 'initial') continue
+    cloneNode.style.setProperty(prop, val)
+  }
+  // 3) Copy border-image auxiliaries only if border-image is active
+  if (hasBorderImage) {
+    for (const prop of BORDER_AUX_PROPS) {
       const val = style.getPropertyValue(prop)
-      // Skip empty/initial defaults to avoid bloating
       if (!val || val === 'initial') continue
       cloneNode.style.setProperty(prop, val)
     }
-    // 3) Copy border-image auxiliaries only if border-image is active
-    if (hasBorderImage) {
-      for (const prop of BORDER_AUX_PROPS) {
-        const val = style.getPropertyValue(prop)
-        if (!val || val === 'initial') continue
-        cloneNode.style.setProperty(prop, val)
-      }
+  }
+}
+
+/**
+ * Inlines background-related images and masks from the source tree onto the clone.
+ *
+ * The worklist is built from the session clone→source nodeMap and filtered by the
+ * needsBackgroundInline flag computed during the style snapshot, so the pass no longer
+ * re-reads ~40 computed properties on every node — only flagged nodes do real work.
+ * Walking the clone tree (descending through clone-only wrappers like the scroll-translate
+ * wrapper) also reaches subtrees the old source/clone parallel walk skipped.
+ *
+ * @param {HTMLElement} source The original source element.
+ * @param {HTMLElement} clone The cloned element receiving inline styles.
+ * @param {WeakMap} styleCache
+ * @param {Object} [options={}]
+ * @returns {Promise<void>}
+ */
+export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
+  if (!clone) return
+  const nodeMap = cache.session.nodeMap
+
+  const jobs = []
+  if (source && needsBackgroundInline(source)) jobs.push([source, clone])
+  const stack = [clone]
+  while (stack.length) {
+    const cn = stack.pop()
+    if (!cn.children) continue
+    for (const child of cn.children) {
+      if (child.tagName === 'STYLE') continue
+      const src = nodeMap.get(child)
+      if (src && needsBackgroundInline(src)) jobs.push([src, child])
+      stack.push(child)
     }
-    // 4) Recurse — use nodeMap (clone→source) for child alignment instead of
-    //    index-based pairing, which breaks when clone-only elements (e.g.
-    //    svg.inline-defs-container) shift indices (#439).
-    if (srcNode.shadowRoot) {
-      const sChildren = Array.from(srcNode.shadowRoot.children).filter(el => el.tagName !== 'STYLE')
-      const cChildren = Array.from(cloneNode.children)
-        .filter(el => !el.dataset?.snapdomPseudo && !(el.tagName === 'STYLE' && el.dataset?.sd))
-      for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-        queue.push([sChildren[i], cChildren[i]])
-      }
-    } else {
-      const nodeMap = cache.session.nodeMap
-      for (const cChild of cloneNode.children) {
-        const srcChild = nodeMap.get(cChild)
-        if (!srcChild) continue
-        queue.push([srcChild, cChild])
-      }
-    }
+  }
+
+  // Batch of 6 mirrors inlineImages: bounded fetch concurrency, snapFetch dedupes inflight.
+  const BATCH = 6
+  for (let i = 0; i < jobs.length; i += BATCH) {
+    await Promise.allSettled(
+      jobs.slice(i, i + BATCH).map(([s, c]) => inlineBackgroundForNode(s, c, styleCache, options))
+    )
   }
 }

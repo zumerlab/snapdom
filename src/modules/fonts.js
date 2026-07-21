@@ -4,6 +4,7 @@
  */
 
 import { extractURL } from '../utils/helpers'
+import { getStyle } from '../utils/css.js'
 import { cache } from '../core/cache'
 import { isIconFont } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
@@ -26,6 +27,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   try { await document.fonts.ready } catch {}
 
   const span = document.createElement('span')
+  span.setAttribute('data-snapdom-internal', '')
   span.textContent = unicodeChar
   span.style.position = 'absolute'
   span.style.visibility = 'hidden'
@@ -963,40 +965,74 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 // ----------------------------------------------------------------------------
 
 /**
- * Collects used font variants (family, weight, style, stretch) in subtree.
+ * Collects font variants AND used codepoints in one subtree walk.
+ * The two separate collectors each re-walked the tree with fresh getComputedStyle calls
+ * (element + ::before + ::after per node); this fused version does a single walk on the
+ * memoized getStyle cache, shared with the clone pass and across captures.
  * @param {Element} root
- * @returns {Set<string>} keys "family__weight__style__stretchPct"
+ * @param {((el: Element) => boolean)|null} [keep] - Clip mode: skip elements outside the window
+ * @returns {{required: Set<string>, usedCodepoints: Set<number>}}
  */
-export function collectUsedFontVariants(root, keep) {
-  const req = /* @__PURE__ */ new Set()
-  if (!root) return req
-  const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, null)
+export function collectFontUsage(root, keep) {
+  const required = /* @__PURE__ */ new Set()
+  const usedCodepoints = /* @__PURE__ */ new Set()
+  if (!root) return { required, usedCodepoints }
+
+  const pushText = (txt) => {
+    if (!txt) return
+    for (const ch of txt) usedCodepoints.add(ch.codePointAt(0))
+  }
   const addFromStyle = (cs) => {
     // #357: Register ALL families in the fallback chain, not just the primary one.
     // This ensures that if the first font doesn't have a glyph, the fallback font is also embedded.
     const families = pickAllFamilies(cs.fontFamily)
     if (!families.length) return
     for (const family of families) {
-      const key = (w, s, st) => `${family}__${normWeight(w)}__${normStyle(s)}__${normStretchPct(st)}`
-      req.add(key(cs.fontWeight, cs.fontStyle, cs.fontStretch))
+      required.add(`${family}__${normWeight(cs.fontWeight)}__${normStyle(cs.fontStyle)}__${normStretchPct(cs.fontStretch)}`)
     }
   }
-  addFromStyle(getComputedStyle(root))
-  const csBeforeRoot = getComputedStyle(root, '::before')
-  if (csBeforeRoot && csBeforeRoot.content && csBeforeRoot.content !== 'none') addFromStyle(csBeforeRoot)
-  const csAfterRoot = getComputedStyle(root, '::after')
-  if (csAfterRoot && csAfterRoot.content && csAfterRoot.content !== 'none') addFromStyle(csAfterRoot)
-  while (tw.nextNode()) {
-    const el = /** @type {Element} */ (tw.currentNode)
-    if (keep && !keep(el)) continue
-    const cs = getComputedStyle(el)
-    addFromStyle(cs)
-    const b = getComputedStyle(el, '::before')
-    if (b && b.content && b.content !== 'none') addFromStyle(b)
-    const a = getComputedStyle(el, '::after')
-    if (a && a.content && a.content !== 'none') addFromStyle(a)
+  const visitElement = (el) => {
+    addFromStyle(getStyle(el))
+    for (const pseudo of ['::before', '::after']) {
+      const cs = getStyle(el, pseudo)
+      const c = cs && cs.content
+      if (!c || c === 'none' || c === 'normal') continue
+      addFromStyle(cs)
+      if (/^["']/.test(c)) {
+        pushText(c.slice(1, -1))
+      } else {
+        const matches = c.match(/\\[0-9A-Fa-f]{1,6}/g)
+        if (matches) {
+          for (const m of matches) {
+            try { usedCodepoints.add(parseInt(m.slice(1), 16)) } catch {}
+          }
+        }
+      }
+    }
   }
-  return req
+
+  visitElement(root)
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null)
+  while (walker.nextNode()) {
+    const n = walker.currentNode
+    if (n.nodeType === Node.TEXT_NODE) {
+      if (keep && n.parentElement && !keep(n.parentElement)) continue
+      pushText(n.nodeValue || '')
+    } else {
+      if (keep && !keep(/** @type {Element} */ (n))) continue
+      visitElement(/** @type {Element} */ (n))
+    }
+  }
+  return { required, usedCodepoints }
+}
+
+/**
+ * Collects used font variants (family, weight, style, stretch) in subtree.
+ * @param {Element} root
+ * @returns {Set<string>} keys "family__weight__style__stretchPct"
+ */
+export function collectUsedFontVariants(root, keep) {
+  return collectFontUsage(root, keep).required
 }
 
 /**
@@ -1005,38 +1041,7 @@ export function collectUsedFontVariants(root, keep) {
  * @returns {Set<number>}
  */
 export function collectUsedCodepoints(root, keep) {
-  const used = /* @__PURE__ */ new Set()
-  const pushText = (txt) => {
-    if (!txt) return
-    for (const ch of txt) used.add(ch.codePointAt(0))
-  }
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null)
-  while (walker.nextNode()) {
-    const n = walker.currentNode
-    if (n.nodeType === Node.TEXT_NODE) {
-      if (keep && n.parentElement && !keep(n.parentElement)) continue
-      pushText(n.nodeValue || '')
-    } else if (n.nodeType === Node.ELEMENT_NODE) {
-      const el = /** @type {Element} */ (n)
-      if (keep && !keep(el)) continue
-      for (const pseudo of ['::before', '::after']) {
-        const cs = getComputedStyle(el, pseudo)
-        const c = cs?.getPropertyValue('content')
-        if (!c || c === 'none') continue
-        if (/^"/.test(c) || /^'/.test(c)) {
-          pushText(c.slice(1, -1))
-        } else {
-          const matches = c.match(/\\[0-9A-Fa-f]{1,6}/g)
-          if (matches) {
-            for (const m of matches) {
-              try { used.add(parseInt(m.slice(1), 16)) } catch {}
-            }
-          }
-        }
-      }
-    }
-  }
-  return used
+  return collectFontUsage(root, keep).usedCodepoints
 }
 
 /**
@@ -1058,6 +1063,7 @@ export async function ensureFontsReady(families, warmupRepetitions = 2, doc = do
 
   const warmupOnce = () => {
     const container = doc.createElement('div')
+    container.setAttribute('data-snapdom-internal', '')
     container.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;opacity:0!important;pointer-events:none!important;contain:layout size style;'
 
     for (const fam of fams) {

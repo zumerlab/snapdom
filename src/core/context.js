@@ -90,6 +90,10 @@ export function createContext(options = {}) {
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
 
+    // Layout reconciliation: measure the styled clone in-document and pin diverging boxes
+    // to their live size. Opt-in (adds one in-document layout of the clone).
+    reconcile: options.reconcile ?? false,
+
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 

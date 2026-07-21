@@ -6,11 +6,21 @@ import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
 import { collectUsedFontVariants, ensureFontsReady } from '../modules/fonts.js'
+import { createSession } from './session.js'
 export { preCache } from './preCache.js'
 
 // API pública (registro global de plugins)
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
 export const snapdom = Object.assign(main, { plugins })
+
+/**
+ * Create a capture session for repeated captures of the same element.
+ * capture() memoizes: unchanged subtree → instant cached result; mutations (tracked by a
+ * scoped MutationObserver) trigger a fresh capture with warm caches.
+ * @param {Element} element
+ * @param {object} [options]
+ */
+snapdom.session = (element, options) => createSession(main, element, options)
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
@@ -50,8 +60,8 @@ async function main(element, userOptions) {
   // before font is available. First canvas draw is blank; second+ works. We run
   // pre-captures + drawImage to prime the font/decode pipeline. Fidelity > speed.
   // See: https://bugs.webkit.org/show_bug.cgi?id=219770
-  // _safariWarmup first: after the once-per-session warmup fires, skip the
-  // hasBackgroundOrMask full-tree walk on every subsequent capture.
+  // After the one-shot warmup, skip the whole block: hasBackgroundOrMask walks the tree with
+  // getComputedStyle per node, which is pure overhead once the pipeline is primed.
   if (isSafari() && !_safariWarmup && (context.embedFonts === true || hasBackgroundOrMask(element))) {
     if (context.embedFonts) {
       try {
@@ -331,6 +341,7 @@ async function safariWarmup(element, baseOptions) {
       try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
         debugWarn(baseOptions, 'safariWarmup img hints failed', e)
       }
+      img.setAttribute('data-snapdom-internal', '')
       img.style.cssText =
         'position:fixed;left:0px;top:0px;width:10px;height:10px;opacity:0.01;pointer-events:none;'
       img.src = url

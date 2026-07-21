@@ -17,6 +17,12 @@ import { inlineAllStyles } from '../modules/styles.js'
  * @returns {Promise<(Node|null)[]>}
  */
 export function idleCallback(childList, callback, fast) {
+  if (fast) {
+    // Fast mode ran every child through deal()/idle() anyway (synchronously), paying an extra
+    // promise + two closures per node — tens of thousands of allocations on large trees.
+    // Call straight through; Promise.all keeps the same concurrency and ordering.
+    return Promise.all(childList.map((child) => new Promise((resolve) => callback(child, resolve))))
+  }
   return Promise.all(childList.map((child) => {
     return new Promise((resolve) => {
       function deal() {
