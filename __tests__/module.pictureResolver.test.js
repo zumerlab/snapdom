@@ -131,6 +131,34 @@ describe('pictureResolver core', () => {
     expect(img.getAttribute('src')?.startsWith('data:image/png;base64,iVBOR')).toBe(true)
   })
 
+  // Minimal-code/fidelity punch-list: fetchAsDataUrl now delegates to snapFetch
+  // instead of hand-rolling fetch+proxy+credentials, fixing two fidelity gaps.
+  it('omits credentials for a cross-origin lazy src (was hardcoded "include")', async () => {
+    const img = document.createElement('img')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
+    img.setAttribute('data-src', 'https://cross-origin.example.com/real-cred.png')
+    container.appendChild(img)
+
+    await runPictureResolverBeforeClone(container, { useProxy: '' })
+
+    expect(globalThis.fetch).toHaveBeenCalled()
+    const [, fetchOpts] = globalThis.fetch.mock.calls[0]
+    expect(fetchOpts.credentials).toBe('omit')
+  })
+
+  it('proxies a cross-origin lazy src on the first request instead of only retrying on failure', async () => {
+    const img = document.createElement('img')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
+    img.setAttribute('data-src', 'https://cross-origin.example.com/real-proxy.png')
+    container.appendChild(img)
+
+    await runPictureResolverBeforeClone(container, { useProxy: 'https://proxy.example.com/?url=' })
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+    const [calledUrl] = globalThis.fetch.mock.calls[0]
+    expect(calledUrl).toBe('https://proxy.example.com/?url=' + encodeURIComponent('https://cross-origin.example.com/real-proxy.png'))
+  })
+
   it('respects resolvePicturePlaceholders: false', async () => {
     const picture = document.createElement('picture')
     const img = document.createElement('img')

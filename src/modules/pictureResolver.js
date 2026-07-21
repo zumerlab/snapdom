@@ -5,6 +5,7 @@
  * Fast path: {@link quickProbeMayNeedPictureResolver} avoids scanning when no
  * `<picture>` and (if enabled) no lazy `data-*` hints exist in the subtree.
  */
+import { snapFetch } from './snapFetch.js'
 
 /**
  * @param {string} src
@@ -120,34 +121,8 @@ export async function runPictureResolverBeforeClone(root, options = {}) {
   const tasks = []
 
   async function fetchAsDataUrl(url) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeout)
-    try {
-      let resp = await fetch(url, {
-        credentials: 'include',
-        signal: controller.signal,
-      })
-      if (!resp.ok && useProxy) {
-        const proxyUrl = useProxy.includes('{url}')
-          ? useProxy.replace('{url}', encodeURIComponent(url))
-          : useProxy.endsWith('?')
-            ? `${useProxy}${encodeURIComponent(url)}`
-            : `${useProxy}${useProxy.includes('?') ? '&' : '?'}url=${encodeURIComponent(url)}`
-        resp = await fetch(proxyUrl, { signal: controller.signal })
-      }
-      if (!resp.ok) return null
-      const blob = await resp.blob()
-      return await new Promise((resolve, reject) => {
-        const fr = new FileReader()
-        fr.onload = () => resolve(/** @type {string} */ (fr.result))
-        fr.onerror = reject
-        fr.readAsDataURL(blob)
-      })
-    } catch {
-      return null
-    } finally {
-      clearTimeout(timer)
-    }
+    const res = await snapFetch(url, { as: 'dataURL', timeout, useProxy, silent: true })
+    return res.ok ? /** @type {string} */ (res.data) : null
   }
 
   async function runBatched(taskFns) {
