@@ -8,7 +8,8 @@ import {
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
   limitDecimals,
-  collectScrollbarCSS
+  collectScrollbarCSS,
+  neutralizeRootMarginCollapse
 } from '../src/utils/capture.helpers.js'
 
 beforeEach(() => {
@@ -44,6 +45,40 @@ describe('stripRootShadows', () => {
   it('handles null/undefined gracefully', () => {
     expect(() => stripRootShadows(null, document.createElement('div'))).not.toThrow()
     expect(() => stripRootShadows(document.createElement('div'), null)).not.toThrow()
+  })
+})
+
+describe('neutralizeRootMarginCollapse (#426, nodeMap alignment)', () => {
+  it('resolves the matching clone child via nodeMap instead of a stale index when the clone has an extra leading node absent from source (e.g. an inserted pseudo-element)', () => {
+    const src = document.createElement('div')
+    const targetSrc = document.createElement('div')
+    targetSrc.style.marginTop = '30px'
+    src.appendChild(targetSrc)
+    document.body.appendChild(src)
+
+    // Clone has a clone-only decoy inserted before the real child (mirrors how
+    // ::before pseudo-elements are unshift'd into the clone, never registered
+    // in nodeMap — see clone.js). Index-based matching would zero the DECOY's
+    // margin (idx 0) instead of the real target's.
+    const clone = document.createElement('div')
+    const decoyCln = document.createElement('div')
+    decoyCln.style.marginTop = '5px'
+    const targetCln = document.createElement('div')
+    targetCln.style.marginTop = '30px'
+    clone.appendChild(decoyCln)
+    clone.appendChild(targetCln)
+
+    const nodeMap = new Map([[targetCln, targetSrc]]) // decoyCln intentionally unmapped
+
+    neutralizeRootMarginCollapse(src, clone, nodeMap)
+
+    expect(targetCln.style.marginTop).toBe('0px')
+    expect(decoyCln.style.marginTop).toBe('5px')
+  })
+
+  it('handles null/undefined gracefully', () => {
+    expect(() => neutralizeRootMarginCollapse(null, document.createElement('div'))).not.toThrow()
+    expect(() => neutralizeRootMarginCollapse(document.createElement('div'), null)).not.toThrow()
   })
 })
 

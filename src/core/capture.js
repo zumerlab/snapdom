@@ -133,7 +133,7 @@ export async function captureDOM(element, options) {
     // #426: zero margins that collapse through the root edge so the clone's
     // content sits flush like the captured border box (no clipping / no offset).
     if (clone) {
-      neutralizeRootMarginCollapse(state.element, clone)
+      neutralizeRootMarginCollapse(state.element, clone, cache.session.nodeMap)
     }
   } finally {
     undoClamp()

@@ -294,13 +294,15 @@ function firstInFlowBlockChild(el, side) {
  *
  * Mirror the browser: walk the collapse-through chain from each open edge and zero
  * the leading/trailing margin on the CLONE so content sits flush, matching what the
- * captured border box actually shows. Source tree drives the decision; clone tree is
- * mutated in parallel (same ordering as deepClone).
+ * captured border box actually shows. Source tree drives the decision; the matching
+ * clone node is resolved via the session's clone→source `nodeMap` (not child index,
+ * which misaligns once `exclude`/`filter` drop nodes during cloning — see pseudo.js).
  *
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
+ * @param {Map<Node, Node>} [nodeMap] - clone → original
  */
-export function neutralizeRootMarginCollapse(originalEl, cloneRoot) {
+export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return
   const rootCS = getComputedStyle(originalEl)
   // Replaced elements and BFC roots never collapse margins with their children.
@@ -319,8 +321,9 @@ export function neutralizeRootMarginCollapse(originalEl, cloneRoot) {
     while (src && cln) {
       const childSrc = firstInFlowBlockChild(src, side)
       if (!childSrc) break
-      const idx = Array.from(src.children).indexOf(childSrc)
-      const childCln = idx >= 0 ? cln.children[idx] : null
+      const childCln = nodeMap
+        ? Array.from(cln.children).find((c) => nodeMap.get(c) === childSrc) || null
+        : cln.children[Array.from(src.children).indexOf(childSrc)] || null
       const childCS = getComputedStyle(childSrc)
       const m = parseFloat(childCS[`margin${Side}`]) || 0
       if (childCln && childCln.style && m > 0) {
