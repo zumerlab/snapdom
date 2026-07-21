@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stop Motion — You Choose the Frames — SnapDOM Labs</title>
+  <meta name="description" content="A stop-motion pose flipbook. A tiny SnapDOM plugin's afterRender hook hands back ctx.dataURL for each capture you explicitly ask for — no accumulation, no persisted clone, just data pulled out of a finished render." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/stop-motion/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Stop Motion — You Choose the Frames" />
+  <meta property="og:description" content="A stop-motion pose flipbook — a SnapDOM plugin's afterRender hook hands back the dataURL of each capture you explicitly ask for." />
+  <meta property="og:url" content="https://snapdom.dev/labs/stop-motion/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Stop Motion — you choose the frames","description":"A stop-motion pose flipbook. A tiny SnapDOM plugin's afterRender hook hands back ctx.dataURL for each capture you explicitly ask for — no accumulation, no persisted clone, just data pulled out of a finished render.","url":"https://snapdom.dev/labs/stop-motion/","datePublished":"2026-07-21","dateModified":"2026-07-21","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/labs.html"},{"@type":"ListItem","position":3,"name":"Stop Motion","item":"https://snapdom.dev/labs/stop-motion/"}]}</script>
+  <style>
+    /* ── Scoped to this lab's live demo only ── */
+    .lab-stop-motion { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-stop-motion .stage-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
+    .lab-stop-motion #pose-scene { position: relative; width: min(400px, 90vw); aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border); background: linear-gradient(#dfe9fb 0 66%, #b9c8e6 66%); }
+    .lab-stop-motion #pose-scene::before { content: ''; position: absolute; inset: 0; opacity: 0.4; background: linear-gradient(90deg, transparent 49.5%, rgba(15,30,77,0.18) 50%, transparent 50.5%), linear-gradient(transparent 49.5%, rgba(15,30,77,0.18) 50%, transparent 50.5%); background-size: 40px 40px; }
+    .lab-stop-motion .actor { position: absolute; top: 50%; left: 50%; width: 68px; height: 68px; transform: translate(-50%, -50%); }
+    .lab-stop-motion .actor-body { position: absolute; inset: 0; border: 4px solid var(--border); border-radius: 20% 50% 25% 45%; background: var(--accent); transform: rotate(var(--rotation, 0deg)); }
+    .lab-stop-motion .actor-body::before { content: '★'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 34px; }
+    .lab-stop-motion .actor-shadow { position: absolute; left: 50%; bottom: -12px; width: 74px; height: 12px; border-radius: 50%; background: rgba(15,30,77,0.22); transform: translateX(-50%); }
+    .lab-stop-motion #playback { position: absolute; inset: 0; z-index: 5; display: none; width: 100%; height: 100%; object-fit: cover; background: #dfe9fb; }
+    .lab-stop-motion #playback.visible { display: block; }
+    .lab-stop-motion .sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 400px; margin: 16px auto 0; }
+    .lab-stop-motion .sliders label { color: var(--text-muted); font-size: 10px; font-weight: 700; font-family: var(--font-mono); letter-spacing: 1px; text-align: center; text-transform: uppercase; }
+    .lab-stop-motion .sliders input { display: block; width: 100%; margin-top: 6px; accent-color: var(--accent); }
+    .lab-stop-motion .demo-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+    .lab-stop-motion .filmstrip { display: flex; gap: 6px; max-width: 400px; margin: 0 auto; min-height: 46px; overflow-x: auto; }
+    .lab-stop-motion .filmstrip img { flex: 0 0 auto; width: 58px; height: 44px; border: 1px solid var(--border-soft); object-fit: cover; }
+    .lab-stop-motion .demo-status { text-align: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 10px; }
+
+    /* ── Explainer diagram ── */
+    .flow-strip { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .flow-strip b { color: var(--accent); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>You <span class="accent">choose</span> the frames</h1><p class="lead">No continuous sampling here. You pose an actor, press the shutter, and move on — the sequence is exactly the poses you decided were worth keeping, like a physical stop-motion rig.</p></section>
+  <main class="page">
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A tiny plugin's <code>afterRender</code> hook fires once per capture and hands back <code>ctx.dataURL</code>. Nothing accumulates onto a saved clone — unlike the paint-canvas and target-range labs, each capture here is fully independent. The plugin's only job is to collect the dataURLs you explicitly ask for into an ordered array; the player decides the playback rhythm afterward.</p></div>
+
+    <section class="prose">
+      <h2>What you're looking at</h2>
+      <p>The three sliders position and rotate an actor sprite on a small stage. Nothing you do with them triggers a capture — they just change CSS on a live element. Pressing <strong>Capture pose</strong> runs one SnapDOM capture of that stage and appends the result to a filmstrip. Pressing <strong>Play</strong> flips through the filmstrip at a fixed interval, like a flipbook.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Try it</h2>
+      <p>Drag the sliders to pose the actor, capture a few poses from different positions, then hit play. Every thumbnail in the filmstrip below is a separate, independent PNG capture — there's no shared state between them.</p>
+      <div class="lab-stop-motion">
+        <div class="stage-wrap">
+          <div id="pose-scene">
+            <div class="actor" id="actor"><div class="actor-shadow"></div><div class="actor-body"></div></div>
+            <img id="playback" alt="Pose playback">
+          </div>
+        </div>
+        <div class="sliders">
+          <label>Horizontal<input id="pos-x" type="range" min="15" max="85" value="50"></label>
+          <label>Vertical<input id="pos-y" type="range" min="20" max="80" value="50"></label>
+          <label>Rotation<input id="rotation" type="range" min="-180" max="180" value="0"></label>
+        </div>
+        <div class="demo-actions">
+          <button type="button" class="btn btn-primary" id="add-frame">+ Capture pose</button>
+          <button type="button" class="btn btn-ghost" id="play" disabled>Play</button>
+        </div>
+        <div class="filmstrip" id="filmstrip"></div>
+        <div class="demo-status" id="frame-status">Capture at least two poses.</div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><h4>The plugin factory closes over a counter</h4><p><code>frameCollector(onFrame)</code> returns a plugin holding a private <code>index</code> variable — nothing else. No clone, no DOM reference, no persisted state.</p></li>
+        <li><h4>Moving a slider never captures anything</h4><p>Dragging Horizontal, Vertical, or Rotation just updates inline styles and a CSS custom property on the live <code>#actor</code> element. SnapDOM is not involved yet.</p></li>
+        <li><h4>Capture pose runs one real capture</h4><p>The button calls <code>snapdom(poseScene, { plugins: [collector] })</code> against the current, live state of the stage — whatever pose the sliders are showing right now.</p></li>
+        <li><h4><code>afterRender</code> fires with the finished context</h4><p>Once SnapDOM renders the SVG, the plugin's <code>afterRender(ctx)</code> hook runs, increments its counter, and calls back with <code>{ index, url: ctx.dataURL }</code>.</p></li>
+        <li><h4>The page pushes the URL into an array</h4><p><code>capturedFrames.push(frame.url)</code>, plus a thumbnail appended to the filmstrip. The plugin doesn't know or care that a filmstrip exists — it just handed the URL to a callback.</p></li>
+        <li><h4>Play iterates the array on a timer</h4><p>Pressing Play walks <code>capturedFrames</code> for a few loops, swapping <code>&lt;img id="playback"&gt;.src</code> on an interval. The plugin is done by this point — playback is pure application code.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2>Why this needed a plugin</h2>
+      <p>Contrast this with the accumulation pattern in the paint-canvas and target-range labs: there, a plugin mutates <code>ctx.clone</code> and persists it across calls so the next capture builds on the last one. Here the plugin does neither. It never touches <code>ctx.clone</code>, and it doesn't need to remember anything about the DOM from one capture to the next — each pose is a fresh, self-contained render.</p>
+      <p>What it does need is a way to get data <em>out</em> of a capture that a plain <code>snapdom()</code> call, used only for its side effect of producing an image, wouldn't otherwise return to the caller. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterRender</code></a> hook is documented as firing "After SVG is rendered" to "Post-process rendered output," and by that point <code>ctx.dataURL</code> is already available on the context. This lab uses that hook purely as a tap on the pipeline — proof that plugin hooks aren't only for mutating the DOM before a render; <code>afterRender</code> and <code>afterExport</code> are just as much a seam for pulling values back out once a render has finished.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Copy-paste example</h2>
+      <p>The plugin factory — it has no idea what a "pose" or a "filmstrip" is, it just collects dataURLs:</p>
+      <pre class="code-block">function frameCollector (onFrame) {
+  let index = 0
+
+  return {
+    name: 'frame-collector',
+    afterRender (ctx) {
+      index += 1
+      onFrame({ index, url: ctx.dataURL })
+    },
+    reset () { index = 0 }
+  }
+}</pre>
+      <p>And the usage — capture a pose, read the frame back through the callback:</p>
+      <pre class="code-block">const capturedFrames = []
+
+const collector = frameCollector(frame => {
+  capturedFrames.push(frame.url)
+})
+
+// runs once per "Capture pose" click, against whatever
+// pose the sliders are showing at that moment
+await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</pre>
+      <div class="flow-strip">slider input <b>→</b> live style change (no capture) <b>→</b> Capture pose <b>→</b> snapdom() <b>→</b> afterRender (ctx.dataURL) <b>→</b> capturedFrames.push()</div>
+    </section>
+
+    <section class="prose">
+      <h2>Limits and things to watch</h2>
+      <p>Every pose is a full, independent SnapDOM capture — nothing is diffed or reused between frames — so a large filmstrip means proportionally more capture time, not a fixed cost. And because frames are plain dataURLs held in memory, footprint scales linearly with frame count and resolution. Fine for a dozen poses on a small stage; not a strategy for hundreds of frames or a full-resolution scene.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../paint-canvas/">Paint Canvas — the persistent-clone pattern this demo skips <span class="arrow">→</span></a>
+        <a class="related-card" href="../target-range/">Target Range — same accumulation trick <span class="arrow">→</span></a>
+        <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>afterRender</code>, plus the rest of the <code>beforeSnap → afterSnap</code> pipeline — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+
+  </main>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <script defer src="/copy-code.js"></script>
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+
+    function frameCollector (onFrame) {
+      let index = 0
+
+      return {
+        name: 'frame-collector',
+        afterRender (ctx) {
+          index += 1
+          onFrame({ index, url: ctx.dataURL })
+        },
+        reset () { index = 0 }
+      }
+    }
+
+    const poseScene = document.querySelector('#pose-scene')
+    const actor = document.querySelector('#actor')
+    const playback = document.querySelector('#playback')
+    const filmstrip = document.querySelector('#filmstrip')
+    const addFrame = document.querySelector('#add-frame')
+    const play = document.querySelector('#play')
+    const frameStatus = document.querySelector('#frame-status')
+    const capturedFrames = []
+
+    const collector = frameCollector(frame => {
+      capturedFrames.push(frame.url)
+      const image = document.createElement('img')
+      image.src = frame.url
+      image.alt = `Pose ${frame.index}`
+      filmstrip.append(image)
+      play.disabled = capturedFrames.length < 2
+      frameStatus.textContent = `${capturedFrames.length} pose${capturedFrames.length === 1 ? '' : 's'} captured`
+    })
+
+    function updatePose () {
+      actor.style.left = `${document.querySelector('#pos-x').value}%`
+      actor.style.top = `${document.querySelector('#pos-y').value}%`
+      actor.style.setProperty('--rotation', `${document.querySelector('#rotation').value}deg`)
+    }
+
+    document.querySelectorAll('.sliders input').forEach(input => input.addEventListener('input', updatePose))
+
+    addFrame.addEventListener('click', async () => {
+      addFrame.disabled = true
+      frameStatus.textContent = 'Capturing pose…'
+      try {
+        await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })
+      } finally {
+        addFrame.disabled = false
+      }
+    })
+
+    play.addEventListener('click', async () => {
+      play.disabled = true
+      playback.classList.add('visible')
+      for (let loop = 0; loop < 3; loop++) {
+        for (const frame of capturedFrames) {
+          playback.src = frame
+          await new Promise(resolve => setTimeout(resolve, 180))
+        }
+      }
+      playback.classList.remove('visible')
+      play.disabled = false
+    })
+  </script>
+</body>
+</html>

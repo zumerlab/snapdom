@@ -102,6 +102,13 @@ body {
 .btn-ghost { background: transparent; color: var(--text); border-color: rgba(15,30,77,0.28); }
 .btn-ghost:hover { border-color: var(--border); color: var(--text); }
 .btn-sm { padding: 8px 16px; font-size: 12.5px; }
+/* `.prose a` below has higher specificity than `.btn-primary`/`.btn-ghost` alone
+   (two selectors vs one), so a .btn placed inside .prose — e.g. a capture's
+   download link — would otherwise inherit accent-colored text and an
+   underline instead of its own button styling. */
+.prose a.btn { border-bottom: none; font-weight: 600; }
+.prose a.btn-primary { color: #FFFFFF; }
+.prose a.btn-ghost { color: var(--text); }
 
 /* ── Layout ── */
 main.page { max-width: 880px; margin: 0 auto; padding: 0 24px 110px; }

@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SnapDOM Labs — html-in-canvas Experimental Demo</title>
+  <title>SnapDOM Labs — Plugin Demos &amp; Experimental APIs</title>
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
-  <meta name="description" content="SnapDOM Labs: html-in-canvas capture using the experimental WICG drawElementImage API."/>
+  <meta name="description" content="Six playable SnapDOM plugin demos — paint, shoot, animate and render to WebGL — plus experimental browser API captures like html-in-canvas."/>
   <meta name="robots" content="index, follow"/>
   <link rel="canonical" href="https://snapdom.dev/labs.html"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./shared.css">
+  <link rel="stylesheet" href="./shared.css"><link rel="stylesheet" href="./page.css">
   <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
   <script>
     window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
@@ -131,10 +131,21 @@
     </a>
     <img src="./assets/mrsnapdom-pose.png" alt="Mr SnapDOM pointing up" class="hero-mascot" width="160" height="138" />
     <h1><span class="accent">Snap</span><span class="accent-ink">DOM</span> Labs</h1>
-    <p>Experimental features and bleeding-edge browser APIs.</p>
+    <p>Plugin-powered demos, playable instruments, and experimental browser APIs — each one a working example of what a SnapDOM plugin can actually do.</p>
   </section>
 
-  <main style="max-width:720px; width:100%; padding:0 24px 100px;">
+  <main style="max-width:1040px; width:100%; padding:0 24px 100px;">
+    <div class="section-label">Plugin demos</div>
+    <div class="hub-grid">
+      <a class="hub-card" href="./labs/paint-canvas/" data-umami-event="Labs card paint-canvas"><span class="tag">afterClone · afterRender</span><h3>The PNG is the canvas</h3><p>No &lt;canvas&gt; element anywhere — a plugin accumulates every brush stroke onto the last captured clone.</p></a>
+      <a class="hub-card" href="./labs/target-range/" data-umami-event="Labs card target-range"><span class="tag">afterClone · afterRender</span><h3>Target Range</h3><p>Every shot is a fresh SnapDOM capture layered on top of the last one — the bullet holes live in the clone, not the DOM.</p></a>
+      <a class="hub-card" href="./labs/stop-motion/" data-umami-event="Labs card stop-motion"><span class="tag">afterRender</span><h3>Stop Motion</h3><p>Pose an actor, capture the frame, repeat — a tiny plugin collects the dataURLs into a flipbook you play back.</p></a>
+      <a class="hub-card" href="./labs/webgl-shatter/" data-umami-event="Labs card webgl-shatter"><span class="tag">defineExports</span><h3>A capture, shattered</h3><p>A custom export slices a SnapDOM canvas into a grid and hands the pieces to a WebGL physics sim — plus four more shaders on the same texture.</p></a>
+      <a class="hub-card" href="./labs/webgl-live-mirror/" data-umami-event="Labs card webgl-live-mirror"><span class="tag">defineExports</span><h3>DOM, live on the GPU</h3><p>Type into a contenteditable card and watch a plugin push each capture into a live WebGL texture.</p></a>
+      <a class="hub-card" href="./labs/webgl-seamless-dom/" data-umami-event="Labs card webgl-seamless-dom"><span class="tag">defineExports</span><h3>The text you see isn't text</h3><p>A transparent proxy owns the caret; a hidden element gets captured; a double-buffered WebGL crossfade hides every update.</p></a>
+    </div>
+
+    <div class="section-label">Experimental browser APIs</div>
     <!-- html-in-canvas -->
     <section class="panel" id="demo-htmlcanvas">
       <div class="section-label">WICG html-in-canvas (Issue #172)</div>

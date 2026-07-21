@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paint Canvas — The PNG Is the Canvas — SnapDOM Labs</title>
+  <meta name="description" content="A paint app with no <canvas> element. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on it, so the exported PNG becomes the paint surface itself." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/paint-canvas/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Paint Canvas — The PNG Is the Canvas" />
+  <meta property="og:description" content="A paint app with no <canvas> element — a SnapDOM plugin accumulates every stroke onto the last captured clone." />
+  <meta property="og:url" content="https://snapdom.dev/labs/paint-canvas/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Paint Canvas — the PNG is the canvas","description":"A paint app with no <canvas> element. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on it, so the exported PNG becomes the paint surface itself.","url":"https://snapdom.dev/labs/paint-canvas/","datePublished":"2026-07-21","dateModified":"2026-07-21","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/labs.html"},{"@type":"ListItem","position":3,"name":"Paint Canvas","item":"https://snapdom.dev/labs/paint-canvas/"}]}</script>
+  <style>
+    /* ── Scoped to this lab's live demo only ── */
+    .lab-paint { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-paint .toolbar { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .lab-paint .swatches { display: flex; gap: 6px; }
+    .lab-paint .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border-soft); cursor: pointer; padding: 0; }
+    .lab-paint .swatch.active { border-color: var(--accent); }
+    .lab-paint .toolbar input[type="color"] { width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; cursor: pointer; padding: 0; }
+    .lab-paint .toolbar label { font-size: 12.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
+    .lab-paint .stage { display: flex; justify-content: center; margin-bottom: 16px; }
+    .lab-paint #board { position: relative; width: min(380px, 90vw); height: min(380px, 90vw); border-radius: 0; overflow: hidden; box-shadow: 0 12px 32px rgba(15,30,77,0.25); cursor: none; background: #fff; touch-action: none; user-select: none; border: 1px solid var(--border); }
+    .lab-paint #board img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+    .lab-paint #liveStrokes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+    .lab-paint #brushCursor { position: absolute; border-radius: 50%; border: 1.5px solid rgba(15,30,77,0.6); box-shadow: 0 0 0 1px rgba(255,255,255,0.7); pointer-events: none; opacity: 0; z-index: 5; }
+    .lab-paint .demo-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+    /* ── Explainer diagram ── */
+    .flow-strip { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .flow-strip b { color: var(--accent); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>The PNG <span class="accent">is</span> the canvas</h1><p class="lead">There is no <code>&lt;canvas&gt;</code> element anywhere on this page. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on top of it — every stroke you make becomes the next exported PNG.</p></section>
+  <main class="page">
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM normally re-clones the live element on every capture and forgets the last one. This plugin's <code>afterRender</code> hook saves the clone it just produced; <code>afterClone</code> swaps that saved clone back in on the next call and appends the newest stroke to it. Capture after capture, the output accumulates — the PNG becomes a paint surface instead of a snapshot.</p></div>
+
+    <section class="prose">
+      <h2>What you're looking at</h2>
+      <p>Pick a color and brush size, then drag across the board. What looks like a normal <code>&lt;canvas&gt;</code> painting widget is actually a single hidden <code>&lt;div&gt;</code> holding an empty SVG layer, plus an <code>&lt;img&gt;</code> that gets replaced every time SnapDOM re-renders it. There is no persistent bitmap buffer anywhere in the page's own code — the persistence lives entirely inside the plugin.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Try it</h2>
+      <p>Draw on the board below. The line under your cursor is a local SVG path with zero SnapDOM involvement — it never waits on a capture. Underneath, roughly every 120ms, that same stroke gets folded into the plugin's saved clone and re-exported as a real PNG.</p>
+      <div class="lab-paint">
+        <div class="toolbar">
+          <div class="swatches" id="swatches"></div>
+          <input type="color" id="customColor" value="#111827" title="Custom color">
+          <label>Brush <input type="range" id="brushSize" min="3" max="28" value="10"></label>
+        </div>
+        <div class="stage">
+          <div id="board">
+            <svg id="liveStrokes" viewBox="0 0 420 420" preserveAspectRatio="none"></svg>
+            <div id="brushCursor"></div>
+          </div>
+        </div>
+        <div class="demo-actions">
+          <button type="button" class="btn btn-ghost" id="clearBtn">Clear</button>
+          <a id="downloadLink" class="btn btn-primary" download="snapdom-painting.png">Download painting</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><h4>A hidden source element, never the visible board</h4><p>A 420×420 <code>&lt;div&gt;</code> off-screen holds one empty <code>&lt;svg class="strokes"&gt;</code>. This — not the board you see — is what SnapDOM actually captures.</p></li>
+        <li><h4>The visible line is free</h4><p>While you drag, a local SVG <code>&lt;path&gt;</code> on the visible board follows the pointer using <code>getCoalescedEvents()</code> for smooth sampling. This never touches SnapDOM, so the line itself has zero capture latency.</p></li>
+        <li><h4>The stroke is handed to the plugin periodically</h4><p>Roughly every 120ms, the in-progress stroke's path data is passed to <code>plugin.recordStroke()</code> and <code>snapdom.toPng()</code> runs again on the hidden source.</p></li>
+        <li><h4><code>afterClone</code> restores state, then applies the stroke</h4><p>Instead of cloning the pristine (empty) source, the plugin swaps in the clone it saved from the <em>previous</em> render. It then finds the in-progress stroke's <code>&lt;path&gt;</code> by a <code>data-stroke-id</code> and updates it — or appends a new one if this is a new stroke. One continuous drag stays one <code>&lt;path&gt;</code> element, never hundreds.</p></li>
+        <li><h4><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next capture.</p></li>
+        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download button just points at that same <code>&lt;img&gt;.src</code> — no second capture needed.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2>Why this needed a plugin</h2>
+      <p>SnapDOM's default behavior is stateless by design: every call re-clones the live element and renders exactly what it looks like right now. That's correct for a screenshot tool and wrong for a paint app, which needs the opposite — remember what was drawn a moment ago and add to it.</p>
+      <p>There's no <code>snapdom()</code> option for "accumulate," because accumulation isn't a rendering concern, it's application state — and the plugin system is exactly the seam SnapDOM exposes for that. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks fire on every capture with access to the same closure, so a plugin can hold a private <code>savedClone</code> variable across calls that plain application code has no way to inject into SnapDOM's clone → render pipeline. Two hooks and one closure variable turn a stateless capture function into a stateful one.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Copy-paste example</h2>
+      <p>The plugin factory — swap in your own persistence logic and this pattern works for any "keep building on the last capture" use case, not just painting:</p>
+      <pre class="code-block">function createPaintPlugin (sourceEl) {
+  let savedClone = null
+  let skipNext = false
+  let pendingStroke = null
+
+  function makePath (stroke) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    path.setAttribute('data-stroke-id', stroke.id)
+    path.setAttribute('d', stroke.d)
+    path.setAttribute('fill', 'none')
+    path.setAttribute('stroke', stroke.color)
+    path.setAttribute('stroke-width', stroke.size)
+    path.setAttribute('stroke-linecap', 'round')
+    path.setAttribute('stroke-linejoin', 'round')
+    return path
+  }
+
+  return {
+    name: 'paint',
+    recordStroke (stroke) { pendingStroke = stroke },
+    afterClone (ctx) {
+      if (skipNext) { skipNext = false; pendingStroke = null; return }
+      if (savedClone) ctx.clone = savedClone.cloneNode(true)
+      if (!pendingStroke) return
+      const layer = ctx.clone.querySelector('.strokes')
+      const existing = layer.querySelector(`[data-stroke-id="${pendingStroke.id}"]`)
+      if (existing) existing.setAttribute('d', pendingStroke.d)
+      else layer.append(makePath(pendingStroke))
+    },
+    afterRender (ctx) {
+      savedClone = ctx.clone.cloneNode(true)
+      pendingStroke = null
+    },
+    clear () { skipNext = true }
+  }
+}</pre>
+      <p>And the usage — capture again on every stroke update, plugin included:</p>
+      <pre class="code-block">const plugin = createPaintPlugin(canvasSource)
+
+async function render (stroke) {
+  if (stroke) plugin.recordStroke(stroke)
+  const img = await snapdom.toPng(canvasSource, { plugins: [plugin] })
+  board.replaceChildren(img)
+}
+
+// on clear: plugin.clear() then render() again — skipNext lets SnapDOM
+// clone the pristine live element once, instead of hand-building an
+// empty replacement clone that might miss pipeline setup.</pre>
+      <div class="flow-strip">stroke <b>→</b> recordStroke() <b>→</b> snapdom.toPng() <b>→</b> afterClone (restore + append) <b>→</b> afterRender (checkpoint) <b>→</b> &lt;img&gt;</div>
+    </section>
+
+    <section class="prose">
+      <h2>Limits and things to watch</h2>
+      <p>Every stroke update is a full SnapDOM capture, so the render loop is throttled (120ms here) rather than firing on every <code>pointermove</code> — captures aren't free, and a paint app that tries to snapshot on every mouse event will fall behind. The visible "live" path is what keeps the drawing feeling instant while the real PNG catches up underneath. The <code>skipNext</code> flag matters more than it looks: without it, <code>clear()</code> would need to hand-build an empty clone instead of letting SnapDOM's own cloning pipeline produce one, and any pipeline behavior added later (pseudo-elements, SVG defs inlining, etc.) would silently stop applying to the very first render after a clear.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../target-range/">Target Range — same persistent-clone trick <span class="arrow">→</span></a>
+        <a class="related-card" href="../stop-motion/">Stop Motion — capturing discrete poses <span class="arrow">→</span></a>
+        <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+
+  </main>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <script defer src="/copy-code.js"></script>
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+
+    const SVG_NS = 'http://www.w3.org/2000/svg'
+    const COLORS = ['#111827', '#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ffffff']
+    const CAPTURE_INTERVAL = 120
+
+    function createPaintPlugin (sourceEl) {
+      let savedClone = null
+      let skipNext = false
+      let pendingStroke = null
+
+      function makePath (stroke) {
+        const path = document.createElementNS(SVG_NS, 'path')
+        path.setAttribute('data-stroke-id', stroke.id)
+        path.setAttribute('d', stroke.d)
+        path.setAttribute('fill', 'none')
+        path.setAttribute('stroke', stroke.color)
+        path.setAttribute('stroke-width', stroke.size)
+        path.setAttribute('stroke-linecap', 'round')
+        path.setAttribute('stroke-linejoin', 'round')
+        return path
+      }
+
+      return {
+        name: 'paint',
+        recordStroke (stroke) { pendingStroke = stroke },
+        afterClone (ctx) {
+          if (skipNext) { skipNext = false; pendingStroke = null; return }
+          if (savedClone) ctx.clone = savedClone.cloneNode(true)
+          if (!pendingStroke) return
+          const layer = ctx.clone.querySelector('.strokes')
+          const existing = layer.querySelector(`[data-stroke-id="${pendingStroke.id}"]`)
+          if (existing) existing.setAttribute('d', pendingStroke.d)
+          else layer.append(makePath(pendingStroke))
+        },
+        afterRender (ctx) {
+          savedClone = ctx.clone.cloneNode(true)
+          pendingStroke = null
+        },
+        clear () { skipNext = true }
+      }
+    }
+
+    const board = document.getElementById('board')
+    const liveSvg = document.getElementById('liveStrokes')
+    const brushCursor = document.getElementById('brushCursor')
+    const swatchesEl = document.getElementById('swatches')
+    const customColor = document.getElementById('customColor')
+    const brushSize = document.getElementById('brushSize')
+    const clearBtn = document.getElementById('clearBtn')
+    const downloadLink = document.getElementById('downloadLink')
+
+    const canvasSource = document.createElement('div')
+    canvasSource.style.cssText = 'position:absolute; left:-9999px; top:0; width:420px; height:420px; background:#fff;'
+    canvasSource.innerHTML = '<svg class="strokes" viewBox="0 0 420 420" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;"></svg>'
+    document.body.appendChild(canvasSource)
+
+    const plugin = createPaintPlugin(canvasSource)
+
+    let color = COLORS[0]
+    let size = Number(brushSize.value)
+    let drawing = false
+    let points = []
+    let livePath = null
+    let strokeId = 0
+    let activeStrokeId = 0
+    let lastCaptureTime = 0
+    let pendingStroke = null
+    let rendering = false
+    let pending = false
+
+    COLORS.forEach(c => {
+      const btn = document.createElement('button')
+      btn.className = 'swatch' + (c === color ? ' active' : '')
+      btn.style.background = c
+      btn.addEventListener('click', () => {
+        color = c
+        swatchesEl.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'))
+        btn.classList.add('active')
+      })
+      swatchesEl.appendChild(btn)
+    })
+
+    customColor.addEventListener('input', () => {
+      color = customColor.value
+      swatchesEl.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'))
+    })
+
+    brushSize.addEventListener('input', () => { size = Number(brushSize.value) })
+
+    async function render (stroke) {
+      if (stroke) plugin.recordStroke(stroke)
+      const img = await snapdom.toPng(canvasSource, { plugins: [plugin] })
+      img.style.width = '100%'
+      img.style.height = '100%'
+      board.querySelector('img')?.remove()
+      board.insertBefore(img, liveSvg)
+      downloadLink.href = img.src
+    }
+
+    async function scheduleRender (stroke) {
+      if (stroke) pendingStroke = stroke
+      if (rendering) { pending = true; return }
+      rendering = true
+      do {
+        pending = false
+        const s = pendingStroke
+        pendingStroke = null
+        await render(s)
+      } while (pending)
+      rendering = false
+    }
+
+    function pointFromClient (clientX, clientY) {
+      const rect = board.getBoundingClientRect()
+      return { x: ((clientX - rect.left) / rect.width) * 420, y: ((clientY - rect.top) / rect.height) * 420 }
+    }
+
+    function pathFromPoints (list) {
+      if (list.length < 2) return ''
+      let d = `M ${list[0].x.toFixed(1)} ${list[0].y.toFixed(1)}`
+      for (let i = 1; i < list.length - 1; i++) {
+        const midX = (list[i].x + list[i + 1].x) / 2
+        const midY = (list[i].y + list[i + 1].y) / 2
+        d += ` Q ${list[i].x.toFixed(1)} ${list[i].y.toFixed(1)} ${midX.toFixed(1)} ${midY.toFixed(1)}`
+      }
+      const last = list[list.length - 1]
+      d += ` L ${last.x.toFixed(1)} ${last.y.toFixed(1)}`
+      return d
+    }
+
+    function createLivePath () {
+      const path = document.createElementNS(SVG_NS, 'path')
+      path.setAttribute('fill', 'none')
+      path.setAttribute('stroke', color)
+      path.setAttribute('stroke-width', size)
+      path.setAttribute('stroke-linecap', 'round')
+      path.setAttribute('stroke-linejoin', 'round')
+      liveSvg.append(path)
+      return path
+    }
+
+    function moveBrushCursor (x, y) {
+      brushCursor.style.opacity = 1
+      brushCursor.style.left = `${x}px`
+      brushCursor.style.top = `${y}px`
+      brushCursor.style.width = `${size}px`
+      brushCursor.style.height = `${size}px`
+      brushCursor.style.marginLeft = `${-size / 2}px`
+      brushCursor.style.marginTop = `${-size / 2}px`
+    }
+
+    function captureStroke () {
+      const d = pathFromPoints(points)
+      if (!d) return
+      scheduleRender({ id: activeStrokeId, d, color, size })
+    }
+
+    board.addEventListener('pointerdown', e => {
+      e.preventDefault()
+      board.setPointerCapture(e.pointerId)
+      drawing = true
+      activeStrokeId = ++strokeId
+      lastCaptureTime = performance.now()
+      points = [pointFromClient(e.clientX, e.clientY)]
+      livePath = createLivePath()
+    })
+
+    board.addEventListener('pointermove', e => {
+      const rect = board.getBoundingClientRect()
+      moveBrushCursor(e.clientX - rect.left, e.clientY - rect.top)
+      if (!drawing) return
+      const samples = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]
+      for (const s of samples) points.push(pointFromClient(s.clientX, s.clientY))
+      livePath.setAttribute('d', pathFromPoints(points))
+      const now = performance.now()
+      if (now - lastCaptureTime >= CAPTURE_INTERVAL) {
+        lastCaptureTime = now
+        captureStroke()
+      }
+    })
+
+    function finishDrawing () {
+      if (!drawing) return
+      drawing = false
+      if (points.length < 2) points.push({ x: points[0].x + 0.1, y: points[0].y + 0.1 })
+      captureStroke()
+      liveSvg.replaceChildren()
+    }
+
+    board.addEventListener('pointerup', finishDrawing)
+    board.addEventListener('pointercancel', finishDrawing)
+    board.addEventListener('pointerleave', () => { brushCursor.style.opacity = 0 })
+
+    clearBtn.addEventListener('click', () => {
+      plugin.clear()
+      liveSvg.replaceChildren()
+      scheduleRender()
+    })
+
+    scheduleRender()
+  </script>
+</body>
+</html>

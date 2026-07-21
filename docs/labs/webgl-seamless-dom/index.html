@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seamless DOM → WebGL — The Text You See Isn't Text — SnapDOM Labs</title>
+  <meta name="description" content="A text field where every glyph is a WebGL texture. A transparent contenteditable proxy owns the caret; a hidden DOM element is what SnapDOM actually captures, cross-faded into view by a double-buffered plugin." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/webgl-seamless-dom/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Seamless DOM → WebGL — The Text You See Isn't Text" />
+  <meta property="og:description" content="A transparent contenteditable proxy owns the caret. A hidden DOM element is what SnapDOM actually captures — cross-faded into a WebGL canvas by a double-buffered plugin." />
+  <meta property="og:url" content="https://snapdom.dev/labs/webgl-seamless-dom/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Seamless DOM to WebGL — the text you see isn't text","description":"A transparent contenteditable proxy owns the caret while a hidden DOM element is what SnapDOM actually captures. A plugin double-buffers two WebGL textures and cross-fades between them, so every keystroke updates the canvas without a flicker.","url":"https://snapdom.dev/labs/webgl-seamless-dom/","datePublished":"2026-07-21","dateModified":"2026-07-21","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/labs.html"},{"@type":"ListItem","position":3,"name":"Seamless DOM","item":"https://snapdom.dev/labs/webgl-seamless-dom/"}]}</script>
+  <style>
+    /* ── Scoped to this lab's live demo only ── */
+    .lab-webgl-seamless { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-webgl-seamless .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .lab-webgl-seamless .theme-swatches { display: flex; gap: 6px; }
+    .lab-webgl-seamless .theme { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border-soft); background: var(--color); cursor: pointer; padding: 0; }
+    .lab-webgl-seamless .theme.active { border-color: var(--text); outline: 2px solid var(--color); outline-offset: 2px; }
+    .lab-webgl-seamless .shader-picker { display: flex; align-items: center; gap: 8px; margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); }
+    .lab-webgl-seamless .shader-picker select { font-family: var(--font-body); font-size: 13px; color: var(--text); background: var(--surface); border: 1px solid var(--border-soft); border-radius: 0; padding: 8px 10px; }
+
+    .lab-webgl-seamless .stage-shell { position: relative; width: min(420px, 100%); margin: 0 auto; padding: 20px; border: 1px solid var(--border); background: radial-gradient(circle, #16233f, #060a16 72%); box-shadow: inset 0 0 40px rgba(0,0,0,0.45); }
+    .lab-webgl-seamless .stage { position: relative; width: 100%; aspect-ratio: 4 / 5; }
+    .lab-webgl-seamless #gl { display: block; width: 100%; height: 100%; background: #050810; }
+
+    .lab-webgl-seamless .input-layer { position: absolute; inset: 0; z-index: 3; overflow: hidden; padding: 26px; cursor: text; }
+    .lab-webgl-seamless .proxy-signal { position: relative; color: transparent; font: 700 9px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; pointer-events: none; user-select: none; }
+    .lab-webgl-seamless .input-layer h2, .lab-webgl-seamless .input-layer p { position: relative; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--accent); outline: none; }
+    .lab-webgl-seamless .input-layer h2 { margin-top: 30%; margin-bottom: 14px; font: 400 clamp(28px, 8vw, 42px)/1.02 var(--font-display); letter-spacing: 0.3px; }
+    .lab-webgl-seamless .input-layer p { max-width: 300px; margin-top: 0; font: 15px/1.5 var(--font-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .lab-webgl-seamless .input-layer [contenteditable]::selection { color: transparent; background: rgba(45,91,255,0.35); }
+
+    .lab-webgl-seamless .gpu-label { position: absolute; top: 12px; right: 12px; z-index: 5; padding: 5px 9px; border: 1px solid rgba(45,91,255,0.4); border-radius: 999px; color: #8FB5FF; background: rgba(5,8,16,0.85); font: 700 8px/1 var(--font-mono); letter-spacing: 0.12em; pointer-events: none; }
+    .lab-webgl-seamless .status { display: flex; justify-content: space-between; width: min(420px, 100%); margin: 12px auto 0; color: var(--text-muted); font: 700 10px/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; }
+    .lab-webgl-seamless .status #perf { color: var(--accent); }
+
+    /* ── Off-screen source element (what SnapDOM actually captures) ── */
+    .source-bin { position: fixed; top: 0; left: -200vw; width: 460px; height: 570px; pointer-events: none; }
+    #dom-source { --local-accent: #2D5BFF; position: relative; width: 460px; height: 570px; overflow: hidden; padding: 30px; border: 1px solid color-mix(in srgb, var(--local-accent), white 30%); color: #E7ECFB; background: radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--local-accent), transparent 68%) 0 18%, transparent 18.5%), linear-gradient(150deg, #16233f, #070b16); }
+    #dom-source::before { content: ''; position: absolute; inset: 0; opacity: 0.1; background: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 32px 32px; }
+    .signal { position: relative; color: var(--local-accent); font: 700 9px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; }
+    .signal::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: var(--local-accent); }
+    #dom-source h2 { position: relative; margin: 30% 0 14px; font: 400 42px/1.02 var(--font-display); letter-spacing: 0.3px; }
+    #dom-source p { position: relative; max-width: 300px; margin: 0; color: #B7C2E5; font: 15px/1.5 var(--font-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .source-mark { position: absolute; right: 22px; bottom: 20px; color: var(--local-accent); font: 700 9px/1 var(--font-mono); letter-spacing: 0.1em; }
+
+    /* ── Explainer diagram ── */
+    .flow-strip { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .flow-strip b { color: var(--accent); font-weight: 700; }
+
+    @media (max-width: 480px) { .lab-webgl-seamless .input-layer { padding: 7%; } .lab-webgl-seamless .input-layer h2 { margin-top: 24%; } }
+  </style>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>The text you see <span class="accent">isn't text</span></h1><p class="lead">Click into the box below and type. Every glyph you "see" is a WebGL texture rendered from the last SnapDOM capture — the real, editable DOM is invisible on purpose, and updates cross-fade in so nothing ever pops.</p></section>
+  <main class="page">
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two DOM elements do the work: a transparent <code>contenteditable</code> proxy that exists only to give the browser a real caret and real keystroke handling, and a hidden source element that mirrors the typed text and is what SnapDOM actually captures. A <code>defineExports</code> plugin feeds each capture into a WebGL renderer that double-buffers two textures and cross-fades between them, so updates never visibly pop — you always see the previous frame smoothly blend into the new one.</p></div>
+
+    <section class="prose">
+      <h2>What you're looking at</h2>
+      <p>Clicking into the box and typing feels like a normal text field — you get a blinking caret, text selection, the works. None of that text is being rendered by the browser's text engine, though. Every glyph on screen is a pixel in a WebGL texture, produced by capturing a completely different, hidden DOM element with SnapDOM and mixing the result into the canvas underneath your cursor. Pick a shader from the dropdown to see the same texture pipeline reused for very different visual effects — the capture and the compositing don't change, only what the fragment shader does with the finished frame.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Try it</h2>
+      <p>Type, paste, or hit Enter. The caret and selection are real; the letters are not.</p>
+      <div class="lab-webgl-seamless">
+        <div class="toolbar">
+          <div class="theme-swatches" id="themeSwatches"></div>
+          <label class="shader-picker">Shader <select id="shader">
+            <option value="0">Faithful</option>
+            <option value="1" selected>Hologram</option>
+            <option value="2">CRT</option>
+            <option value="3">Liquid</option>
+            <option value="4">Kaleidoscope</option>
+            <option value="5">Melt</option>
+            <option value="6">Datamosh</option>
+            <option value="7">Neon Edge</option>
+          </select></label>
+        </div>
+        <div class="stage-shell">
+          <div class="stage">
+            <canvas id="gl" aria-label="DOM rendered as a WebGL texture"></canvas>
+            <div class="input-layer">
+              <div class="proxy-signal">Live DOM signal</div>
+              <h2 id="proxy-title" contenteditable="true" spellcheck="false">Type here</h2>
+              <p id="proxy-copy" contenteditable="true" spellcheck="false">This text is real DOM, but you're seeing it as a WebGL texture kept in sync by SnapDOM.</p>
+            </div>
+            <div class="gpu-label">LIVE GPU</div>
+          </div>
+        </div>
+        <div class="status"><span>Hidden DOM → double-buffered texture</span><span id="perf">starting…</span></div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><h4>A transparent proxy owns the caret</h4><p>The <code>.input-layer</code> sits visually on top of the WebGL canvas with fully transparent text and background. It exists only to give the browser something to place a real caret on and to receive real keyboard and paste events — it never renders anything visible itself.</p></li>
+        <li><h4>Every edit is mirrored to a hidden element</h4><p>On every <code>input</code> event — plus paste, plus Enter (a <code>beforeinput</code> override inserts a literal newline instead of letting <code>contenteditable</code> create a new <code>&lt;div&gt;</code>) — the proxy's text is copied into the hidden <code>#dom-source</code> element and <code>refresh()</code> runs.</p></li>
+        <li><h4><code>refresh()</code> coalesces bursts</h4><p>Same <code>dirty</code>/<code>working</code> loop as the live-mirror demo: if a capture is already in flight when new input arrives, it's flagged dirty and picked up by the loop that's already running, instead of stacking up parallel captures. It captures <code>#dom-source</code> with the <code>seamlessWebgl</code> plugin attached.</p></li>
+        <li><h4>The plugin exports into the renderer</h4><p>The plugin's <code>defineExports</code> returns a <code>webgl</code> export. Calling it hands the capture's URL to <code>renderer.update(ctx.export.url)</code> instead of returning an image to the page.</p></li>
+        <li><h4>The idle texture is loaded, not the visible one</h4><p><code>SeamlessRenderer.update()</code> loads the new capture into whichever of its two textures — <code>current</code> or <code>next</code> — isn't currently on screen, then starts a roughly 110ms blend toward it.</p></li>
+        <li><h4>The shader mixes, then the effect applies</h4><p>The render loop's fragment shader mixes <code>beforeImage</code> and <code>afterImage</code> by a <code>blend</code> uniform that ramps 0→1 over that window. Whatever shader is selected in the dropdown runs on top of that already-blended result.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2>Why this needed a plugin</h2>
+      <p>Same argument as the plain live-mirror demo: SnapDOM's core exports return a finished image and stop — they have no concept of "push this into one of two alternating GPU textures for a crossfade." <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md#adding-custom-exports-with-defineexports" target="_blank" rel="noopener"><code>defineExports</code></a> is the seam SnapDOM exposes for exactly that: a plugin can register a named export — here, <code>webgl</code> — that does whatever it wants with the render instead of handing back a PNG.</p>
+      <p>What's different here versus the plain live-mirror demo is architectural, not plugin-API related. Splitting the caret-owning element from the capture-source element is what makes the <em>transition</em> look seamless: the visible surface — the canvas — is never waiting on a capture to know what to show. It's always mid-blend between two textures it already has, while the hidden source quietly gets captured again in the background.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Copy-paste example</h2>
+      <p>The plugin factory — it just forwards a capture's URL to whatever renderer you hand it:</p>
+      <pre class="code-block">function seamlessWebgl (renderer) {
+  let started = 0
+  let elapsed = 0
+  return {
+    name: 'seamless-webgl',
+    beforeSnap () { started = performance.now() },
+    afterRender () { elapsed = performance.now() - started },
+    defineExports () {
+      return {
+        webgl: async ctx => {
+          const canvas = await renderer.update(ctx.export.url)
+          perfLabel.textContent = `${elapsed.toFixed(0)} ms · texture swapped`
+          return canvas
+        }
+      }
+    }
+  }
+}</pre>
+      <p>And the usage — note this calls the plugin's export through the generic <code>capture.to('webgl')</code>, not a generated <code>capture.toWebgl()</code> helper. Both work; <code>.to(name)</code> is what lets a plugin-defined export be invoked without SnapDOM knowing its name ahead of time:</p>
+      <pre class="code-block">const plugin = seamlessWebgl(renderer)
+let dirty = false
+let working = false
+
+async function refresh () {
+  dirty = true
+  if (working) return
+  working = true
+  while (dirty) {
+    dirty = false
+    const capture = await snapdom(source, { plugins: [plugin], cache: 'full', fast: true })
+    await capture.to('webgl')
+  }
+  working = false
+}</pre>
+      <div class="flow-strip">input <b>→</b> sync #dom-source <b>→</b> refresh() <b>→</b> capture.to('webgl') <b>→</b> renderer.update() <b>→</b> blend 0→1 <b>→</b> shader</div>
+    </section>
+
+    <section class="prose">
+      <h2>Limits and things to watch</h2>
+      <p>The transparent-proxy trick only works cleanly for plain text editing. Anything that needs real DOM selection or formatting UI — rich text, IME composition edge cases — needs more care than this demo attempts; the proxy here deliberately strips formatting down to a literal newline on Enter and plain text on paste. Double-buffering also costs one extra WebGL texture's worth of GPU memory compared to the single-texture live-mirror demo — a deliberate trade for the flicker-free feel, and one that only makes sense when the crossfade is actually the point.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../webgl-live-mirror/">WebGL Live Mirror — the single-texture version, no crossfade <span class="arrow">→</span></a>
+        <a class="related-card" href="../webgl-shatter/">WebGL Shatter — a SnapDOM texture driven by physics instead <span class="arrow">→</span></a>
+        <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>beforeSnap</code>, <code>afterRender</code>, and <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+
+  </main>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <div class="source-bin" aria-hidden="true">
+    <article id="dom-source">
+      <div class="signal">Live DOM signal</div>
+      <h2 id="source-title">Type here</h2>
+      <p id="source-copy">This text is real DOM, but you're seeing it as a WebGL texture kept in sync by SnapDOM.</p>
+      <div class="source-mark">SNAPDOM → WEBGL_</div>
+    </article>
+  </div>
+
+  <script defer src="/copy-code.js"></script>
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+
+    const COLORS = ['#2D5BFF', '#1E9F6E', '#E63946']
+
+    class SeamlessRenderer {
+      constructor (canvas) {
+        this.canvas = canvas
+        this.gl = canvas.getContext('webgl', { antialias: true, alpha: false })
+        this.current = 0
+        this.next = 1
+        this.ready = false
+        this.transitioning = false
+        this.blendStart = 0
+        this.effect = 1
+        if (!this.gl) throw new Error('WebGL not available')
+        this.setup()
+        requestAnimationFrame(time => this.render(time))
+      }
+
+      compile (type, source) {
+        const shader = this.gl.createShader(type)
+        this.gl.shaderSource(shader, source)
+        this.gl.compileShader(shader)
+        if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) throw new Error(this.gl.getShaderInfoLog(shader))
+        return shader
+      }
+
+      setup () {
+        const gl = this.gl
+        const vertex = this.compile(gl.VERTEX_SHADER, `attribute vec2 position; attribute vec2 uv; varying vec2 p; void main(){gl_Position=vec4(position,0.,1.);p=uv;}`)
+        // NOTE: fragment shader math for all 8 effects is unmodified from the source demo.
+        const fragment = this.compile(gl.FRAGMENT_SHADER, `
+          precision mediump float;
+          uniform sampler2D beforeImage;
+          uniform sampler2D afterImage;
+          uniform float blend;
+          uniform float time;
+          uniform int effect;
+          uniform vec2 resolution;
+          varying vec2 p;
+          vec4 source(vec2 q){return mix(texture2D(beforeImage,q),texture2D(afterImage,q),blend);}
+          void main(){
+            vec2 q=p;
+            vec4 color=source(q);
+            if(effect==1){
+              float scan=.86+.14*sin((p.y*resolution.y+time*28.)*.34);
+              color.r=source(p+vec2(.0025,0.)).r;
+              color.b=source(p-vec2(.0025,0.)).b;
+              color.rgb=color.rgb*scan+vec3(0.,.055,.05);
+            }
+            if(effect==2){
+              float scan=.72+.28*step(.5,fract(p.y*resolution.y*.5));
+              float vignette=1.-dot(p-.5,p-.5)*.58;
+              color.rgb*=scan*vignette;
+            }
+            if(effect==3){
+              q=p+vec2(sin(p.y*19.+time*1.8),cos(p.x*16.-time*1.35))*.014;
+              color=source(q);
+              color.rgb+=vec3(.02,.065,.06)*sin(q.y*34.+time*2.);
+            }
+            if(effect==4){
+              vec2 center=p-.5;
+              float radius=length(center);
+              float angle=atan(center.y,center.x);
+              float sector=1.0471976;
+              angle=abs(mod(angle,sector)-sector*.5)+time*.045;
+              q=.5+vec2(cos(angle),sin(angle))*radius;
+              color=source(q);
+            }
+            if(effect==5){
+              float drip=.035*sin(p.x*9.+time*1.6)+.014*sin(p.x*31.-time*2.2);
+              q=vec2(p.x,p.y+drip*(.25+p.y));
+              color.g=source(q).g;
+              color.r=source(q+vec2(.008,-.006)).r;
+              color.b=source(q-vec2(.008,-.006)).b;
+            }
+            if(effect==6){
+              float band=floor(p.y*22.);
+              float pulse=step(.76,fract(sin(floor(time*7.)+band*17.)*43758.5453));
+              float shift=(fract(sin(band*91.+floor(time*9.))*2345.23)-.5)*.18*pulse;
+              q=vec2(fract(p.x+shift),p.y);
+              color=source(q);
+              color.r=source(vec2(fract(q.x+.012*pulse),q.y)).r;
+              color.b=source(vec2(fract(q.x-.012*pulse),q.y)).b;
+            }
+            if(effect==7){
+              vec2 px=1./resolution;
+              vec3 base=source(p).rgb;
+              vec3 edge=abs(base-source(p+vec2(px.x*2.,0.)).rgb)+abs(base-source(p+vec2(0.,px.y*2.)).rgb);
+              float glow=clamp(length(edge)*2.4,0.,1.);
+              color.rgb=base*.18+vec3(glow*.2,glow,glow*.82);
+            }
+            gl_FragColor=vec4(color.rgb,1.);
+          }
+        `)
+        this.program = gl.createProgram()
+        gl.attachShader(this.program, vertex)
+        gl.attachShader(this.program, fragment)
+        gl.linkProgram(this.program)
+        gl.useProgram(this.program)
+        const data = new Float32Array([-1, -1, 0, 1, 1, -1, 1, 1, -1, 1, 0, 0, -1, 1, 0, 0, 1, -1, 1, 1, 1, 1, 1, 0])
+        const buffer = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+        gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
+        const position = gl.getAttribLocation(this.program, 'position')
+        const uv = gl.getAttribLocation(this.program, 'uv')
+        gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 16, 0)
+        gl.enableVertexAttribArray(uv); gl.vertexAttribPointer(uv, 2, gl.FLOAT, false, 16, 8)
+        this.blendUniform = gl.getUniformLocation(this.program, 'blend')
+        this.timeUniform = gl.getUniformLocation(this.program, 'time')
+        this.effectUniform = gl.getUniformLocation(this.program, 'effect')
+        this.resolutionUniform = gl.getUniformLocation(this.program, 'resolution')
+        gl.uniform1i(gl.getUniformLocation(this.program, 'beforeImage'), 0)
+        gl.uniform1i(gl.getUniformLocation(this.program, 'afterImage'), 1)
+        this.textures = [this.makeTexture(), this.makeTexture()]
+      }
+
+      makeTexture () {
+        const gl = this.gl
+        const texture = gl.createTexture()
+        gl.bindTexture(gl.TEXTURE_2D, texture)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([8, 10, 22, 255]))
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+        return texture
+      }
+
+      update (url) {
+        return new Promise((resolve, reject) => {
+          const image = new Image()
+          image.onload = () => {
+            const gl = this.gl
+            if (this.transitioning && performance.now() - this.blendStart > 70) this.current = this.next
+            this.next = 1 - this.current
+            gl.bindTexture(gl.TEXTURE_2D, this.textures[this.next])
+            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
+            if (!this.ready) {
+              gl.bindTexture(gl.TEXTURE_2D, this.textures[this.current])
+              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
+              this.ready = true
+            }
+            this.blendStart = performance.now()
+            this.transitioning = true
+            resolve(this.canvas)
+          }
+          image.onerror = reject
+          image.src = url
+        })
+      }
+
+      render (time) {
+        const dpr = Math.min(devicePixelRatio || 1, 2)
+        const width = Math.round(this.canvas.clientWidth * dpr)
+        const height = Math.round(this.canvas.clientHeight * dpr)
+        if (this.canvas.width !== width || this.canvas.height !== height) { this.canvas.width = width; this.canvas.height = height }
+        const gl = this.gl
+        gl.viewport(0, 0, width, height)
+        gl.clearColor(.02, .03, .06, 1); gl.clear(gl.COLOR_BUFFER_BIT)
+        let mix = this.transitioning ? Math.min(1, (performance.now() - this.blendStart) / 110) : 0
+        if (mix === 1) { this.current = this.next; this.transitioning = false; mix = 0 }
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.textures[this.current])
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.textures[this.next])
+        gl.uniform1f(this.blendUniform, mix)
+        gl.uniform1f(this.timeUniform, time * .001)
+        gl.uniform1i(this.effectUniform, this.effect)
+        gl.uniform2f(this.resolutionUniform, width, height)
+        gl.drawArrays(gl.TRIANGLES, 0, 6)
+        requestAnimationFrame(next => this.render(next))
+      }
+    }
+
+    function seamlessWebgl (renderer) {
+      let started = 0
+      let elapsed = 0
+      return {
+        name: 'seamless-webgl',
+        beforeSnap () { started = performance.now() },
+        afterRender () { elapsed = performance.now() - started },
+        defineExports () {
+          return {
+            webgl: async ctx => {
+              const canvas = await renderer.update(ctx.export.url)
+              document.querySelector('#perf').textContent = `${elapsed.toFixed(0)} ms · texture swapped`
+              return canvas
+            }
+          }
+        }
+      }
+    }
+
+    const renderer = new SeamlessRenderer(document.querySelector('#gl'))
+    const plugin = seamlessWebgl(renderer)
+    const source = document.querySelector('#dom-source')
+    const swatchesEl = document.querySelector('#themeSwatches')
+    let dirty = false
+    let working = false
+
+    async function refresh () {
+      dirty = true
+      if (working) return
+      working = true
+      while (dirty) {
+        dirty = false
+        const capture = await snapdom(source, { plugins: [plugin], cache: 'full', fast: true })
+        await capture.to('webgl')
+      }
+      working = false
+    }
+
+    function syncText () {
+      document.querySelector('#source-title').textContent = document.querySelector('#proxy-title').innerText
+      document.querySelector('#source-copy').textContent = document.querySelector('#proxy-copy').innerText
+      refresh()
+    }
+
+    function insertPlainText (text) {
+      const selection = window.getSelection()
+      if (!selection.rangeCount) return
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      const node = document.createTextNode(text)
+      range.insertNode(node)
+      range.setStartAfter(node)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
+    COLORS.forEach((c, i) => {
+      const btn = document.createElement('button')
+      btn.className = 'theme' + (i === 0 ? ' active' : '')
+      btn.style.setProperty('--color', c)
+      btn.setAttribute('aria-label', `Theme ${c}`)
+      btn.addEventListener('click', () => {
+        swatchesEl.querySelector('.theme.active')?.classList.remove('active')
+        btn.classList.add('active')
+        source.style.setProperty('--local-accent', c)
+        refresh()
+      })
+      swatchesEl.appendChild(btn)
+    })
+
+    document.querySelector('#proxy-title').addEventListener('input', syncText)
+    document.querySelector('#proxy-copy').addEventListener('input', syncText)
+    document.querySelector('#proxy-copy').addEventListener('beforeinput', event => {
+      if (event.inputType !== 'insertParagraph' && event.inputType !== 'insertLineBreak') return
+      event.preventDefault()
+      insertPlainText('\n')
+      syncText()
+    })
+    document.querySelector('#proxy-copy').addEventListener('paste', event => {
+      event.preventDefault()
+      insertPlainText(event.clipboardData.getData('text/plain'))
+      syncText()
+    })
+    document.querySelector('#proxy-title').addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); document.querySelector('#proxy-copy').focus() }
+    })
+    document.querySelector('#shader').addEventListener('change', event => { renderer.effect = Number(event.target.value) })
+
+    await refresh()
+    document.querySelector('#proxy-title').focus()
+  </script>
+</body>
+</html>

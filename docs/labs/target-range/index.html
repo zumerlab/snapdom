@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Target Range — Every Shot Hits the Clone — SnapDOM Labs</title>
+  <meta name="description" content="A shooting-gallery demo where bullet holes are never drawn on the live DOM. A SnapDOM plugin holds onto the last captured clone and appends a new hit to it on every shot, so the exported PNG accumulates damage across the whole game." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/target-range/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Target Range — Every Shot Hits the Clone" />
+  <meta property="og:description" content="A shooting-gallery demo where a SnapDOM plugin accumulates bullet holes onto the last captured clone, shot after shot." />
+  <meta property="og:url" content="https://snapdom.dev/labs/target-range/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Target Range — every shot hits the clone","description":"A shooting-gallery demo where bullet holes are never drawn on the live DOM. A SnapDOM plugin holds onto the last captured clone and appends a new hit to it on every shot, so the exported PNG accumulates damage across the whole game.","url":"https://snapdom.dev/labs/target-range/","datePublished":"2026-07-21","dateModified":"2026-07-21","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/labs.html"},{"@type":"ListItem","position":3,"name":"Target Range","item":"https://snapdom.dev/labs/target-range/"}]}</script>
+  <style>
+    /* ── Scoped to this lab's live demo only ── */
+    .lab-target-range { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-target-range .hud { display: flex; justify-content: center; gap: 16px; margin-bottom: 16px; font-variant-numeric: tabular-nums; }
+    .lab-target-range .hud .stat { background: var(--border); border-radius: 0; padding: 10px 20px; min-width: 84px; text-align: center; }
+    .lab-target-range .hud .stat b { display: block; font-size: 1.4em; color: #fff; }
+    .lab-target-range .hud .stat span { font-size: .72em; color: rgba(255,255,255,.65); text-transform: uppercase; letter-spacing: .05em; font-family: var(--font-mono); }
+    .lab-target-range .stage { display: flex; justify-content: center; margin-bottom: 16px; }
+    .lab-target-range #board { position: relative; width: min(340px, 88vw); height: min(340px, 88vw); border-radius: 0; overflow: hidden; box-shadow: 0 12px 32px rgba(15,30,77,0.25), inset 0 0 0 1px rgba(255,255,255,0.06); cursor: none; background: #1e293b; border: 1px solid var(--border); }
+    .lab-target-range #board img { width: 100%; height: 100%; display: block; pointer-events: none; }
+    .lab-target-range #crosshair { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; pointer-events: none; z-index: 5; opacity: 0; }
+    .lab-target-range #crosshair::before, .lab-target-range #crosshair::after { content: ''; position: absolute; background: #ef4444; }
+    .lab-target-range #crosshair::before { left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; }
+    .lab-target-range #crosshair::after { top: 50%; left: 0; right: 0; height: 2px; margin-top: -1px; }
+    .lab-target-range #crosshair .ring { position: absolute; inset: 6px; border: 2px solid #ef4444; border-radius: 50%; }
+    .lab-target-range #crosshair.fire .ring { border-color: #fde047; }
+    .lab-target-range #overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(15,23,42,0.88); text-align: center; padding: 16px; z-index: 10; color: #e2e8f0; }
+    .lab-target-range #overlay.hidden { display: none; }
+    .lab-target-range #overlay h2 { margin: 0; font-size: 1.3em; color: #fff; }
+    .lab-target-range #overlay p { margin: 0; opacity: .8; font-size: .9em; }
+    .lab-target-range .hint { text-align: center; opacity: .7; font-size: .8em; max-width: 420px; margin: 14px auto 0; color: var(--text-muted); font-family: var(--font-mono); }
+
+    /* ── Explainer diagram ── */
+    .flow-strip { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .flow-strip b { color: var(--accent); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>Every shot hits the <span class="accent">clone</span></h1><p class="lead">A bullet hole is never drawn on the live target in the DOM. A SnapDOM plugin holds onto the clone from the last capture and appends a hit marker to it — every shot re-captures on top of every shot before it.</p></section>
+  <main class="page">
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM's <code>afterRender</code> hook saves the clone it just rendered; <code>afterClone</code> swaps that saved clone back in on the next capture and appends a fresh bullet-hole marker to it. The live target element in the DOM is never touched — the accumulation lives entirely in the plugin's closure.</p></div>
+
+    <section class="prose">
+      <h2>What you're looking at</h2>
+      <p>Ten shots, a swaying crosshair, a ring-scoring target — it looks like a canvas-based arcade game. It isn't. The board is a single <code>&lt;img&gt;</code> that gets replaced after every shot with a brand-new <code>snapdom.toPng()</code> result. Nothing in the page's own code remembers where the previous holes landed — that memory lives entirely inside a plugin.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Try it</h2>
+      <p>Aim, click to fire. The reticle drifts and kicks after every shot, and the drift grows as you run out of ammo. Each shot triggers one real SnapDOM capture — the marker you see appear is the actual exported PNG, not an overlay.</p>
+      <div class="lab-target-range">
+        <div class="hud">
+          <div class="stat"><b id="score">0</b><span>Score</span></div>
+          <div class="stat"><b id="shots">10</b><span>Shots</span></div>
+          <div class="stat"><b id="best">0</b><span>Best</span></div>
+        </div>
+        <div class="stage">
+          <div id="board">
+            <div id="crosshair"><div class="ring"></div></div>
+            <div id="overlay">
+              <h2>Ready?</h2>
+              <p>10 shots. The reticle sways and kicks with every shot — compensate for the drift.</p>
+              <button type="button" class="btn btn-primary" id="startBtn">Start</button>
+            </div>
+          </div>
+        </div>
+        <div class="demo-actions">
+          <button type="button" class="btn btn-ghost" id="restartBtn" disabled>Restart</button>
+          <a id="downloadLink" class="btn btn-primary" style="display:none" download="snapdom-target.png">Download target</a>
+        </div>
+        <p class="hint">The download button uses the <code>&lt;img&gt;</code> that the last <code>snapdom.toPng()</code> call returned, directly — no second capture needed.</p>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><h4>A hidden source element, never the visible board</h4><p>A 340×340 <code>&lt;div&gt;</code> off-screen holds one SVG target built once from a ring definition. This — not the board you see — is what SnapDOM actually captures.</p></li>
+        <li><h4>The shot is scored locally, against where the reticle really was</h4><p>On click, the reticle's actual position (after sway and recoil, not the raw mouse position) is converted to a percentage and scored against the ring radii. That <code>{ xPct, yPct, color }</code> is handed to <code>plugin.addHit()</code>.</p></li>
+        <li><h4><code>addHit()</code> appends a marker to the plugin's saved clone</h4><p>If this is the very first shot, the plugin clones the live source once to start from. Every call after that appends a jagged, randomized torn-paper hole — positioned in percentage coordinates so it survives the clone → render round trip — to the clone it already has.</p></li>
+        <li><h4><code>snapdom.toPng()</code> runs again, plugin included</h4><p>The demo doesn't touch the target's own DOM at all. It just calls <code>snapdom.toPng(target, { plugins: [plugin] })</code> again, same as the first shot.</p></li>
+        <li><h4><code>afterClone</code> swaps in the saved clone</h4><p>Instead of letting SnapDOM clone the pristine (hole-free) source, the plugin replaces <code>ctx.clone</code> with the clone it's been building — which already carries every hole from every previous shot.</p></li>
+        <li><h4><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next shot.</p></li>
+        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download link just points at that same <code>&lt;img&gt;.src</code> — it becomes the download source without a second capture.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2>Why this needed a plugin</h2>
+      <p>SnapDOM's default behavior is stateless by design: every call re-clones the live element and renders exactly what it looks like right now. That's correct for a screenshot tool and wrong for a game that needs the opposite — remember every hole that's already there and add one more.</p>
+      <p>There's no <code>snapdom()</code> option for "keep what was captured last time," because accumulation isn't a rendering concern, it's application state — and the plugin system is exactly the seam SnapDOM exposes for that. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks fire on every capture with access to the same closure, so a plugin can hold a private <code>savedClone</code> variable across calls that plain application code has no way to inject into SnapDOM's clone → render pipeline. Two hooks and one closure variable turn a stateless capture function into a stateful one.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Copy-paste example</h2>
+      <p>The plugin factory — the persistent-clone technique works for any "keep building on the last capture" use case, not just bullet holes:</p>
+      <pre class="code-block">function createHitboardPlugin (sourceEl) {
+  let savedClone = null
+
+  return {
+    name: 'hitboard',
+    afterClone (ctx) {
+      if (savedClone) ctx.clone = savedClone.cloneNode(true)
+    },
+    afterRender (ctx) {
+      savedClone = ctx.clone.cloneNode(true)
+    },
+    addHit (xPct, yPct, color) {
+      if (!savedClone) savedClone = sourceEl.cloneNode(true)
+      if (getComputedStyle(savedClone).position === 'static') {
+        savedClone.style.position = 'relative'
+      }
+      const hit = document.createElement('div')
+      hit.style.cssText = `
+        position: absolute; left: ${xPct}%; top: ${yPct}%;
+        width: 24px; height: 24px; margin: -12px 0 0 -12px;
+        pointer-events: none;
+      `
+      hit.innerHTML = bulletHoleMarkup(color)
+      savedClone.appendChild(hit)
+    },
+    reset () { savedClone = null }
+  }
+}</pre>
+      <p>And the usage — score the shot, tell the plugin, capture again:</p>
+      <pre class="code-block">const plugin = createHitboardPlugin(target)
+
+function shoot (xPct, yPct) {
+  const { color } = scoreAt(xPct, yPct)
+  plugin.addHit(xPct, yPct, color)
+  return snapdom.toPng(target, { plugins: [plugin] })
+}
+
+// on restart: plugin = createHitboardPlugin(target) — a fresh closure,
+// not plugin.reset(), so a stale reference from the finished game can't
+// leak a hole into the new one.</pre>
+      <div class="flow-strip">shot <b>→</b> addHit() <b>→</b> snapdom.toPng() <b>→</b> afterClone (restore + append) <b>→</b> afterRender (checkpoint) <b>→</b> &lt;img&gt;</div>
+    </section>
+
+    <section class="prose">
+      <h2>Limits and things to watch</h2>
+      <p><code>addHit()</code> lazily initializes <code>savedClone</code> from the live source the first time it's called, so the plugin never needs to be primed before the first shot. <code>reset()</code> clears it back to <code>null</code>, which lets the very next capture re-clone the pristine source from scratch — a fresh game, fresh holes. That's a simpler shape than <a href="../paint-canvas/">Paint Canvas</a>'s <code>skipNext</code> flag: this demo never needs to "skip one capture" mid-stream, because a restart is a hard state reset rather than a stroke boundary the plugin has to detect and route around.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../paint-canvas/">Paint Canvas — same persistent-clone trick <span class="arrow">→</span></a>
+        <a class="related-card" href="../stop-motion/">Stop Motion — capturing discrete poses <span class="arrow">→</span></a>
+        <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+
+  </main>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <script defer src="/copy-code.js"></script>
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+
+    const RINGS = [
+      { r: 0.10, points: 50, color: '#facc15' },
+      { r: 0.28, points: 30, color: '#ef4444' },
+      { r: 0.50, points: 20, color: '#1d4ed8' },
+      { r: 0.75, points: 10, color: '#0f172a' },
+      { r: 1.00, points: 5,  color: '#f8fafc' },
+    ]
+    const TOTAL_SHOTS = 10
+
+    function buildTargetSvg () {
+      const cx = 100, cy = 100
+      const circles = [...RINGS].reverse().map(ring =>
+        `<circle cx="${cx}" cy="${cy}" r="${ring.r * 100}" fill="${ring.color}" stroke="rgba(0,0,0,.15)" stroke-width="1"/>`
+      ).join('')
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">${circles}</svg>`
+    }
+
+    // Jagged torn-paper hole instead of a flat dot; the thin rim keeps the
+    // score-zone color as feedback. Randomized per hit so the board doesn't
+    // look stamped.
+    function bulletHoleMarkup (color) {
+      const spikes = 9
+      let outer = '', inner = ''
+      for (let i = 0; i < spikes; i++) {
+        const angle = (i / spikes) * Math.PI * 2
+        const rOuter = 7 + Math.random() * 2.5
+        const rInner = rOuter * 0.45
+        outer += `${(10 + Math.cos(angle) * rOuter).toFixed(1)},${(10 + Math.sin(angle) * rOuter).toFixed(1)} `
+        inner += `${(10 + Math.cos(angle) * rInner).toFixed(1)},${(10 + Math.sin(angle) * rInner).toFixed(1)} `
+      }
+      const rotate = Math.floor(Math.random() * 360)
+      return `<svg width="24" height="24" viewBox="0 0 20 20" style="display:block; transform:rotate(${rotate}deg); filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));">
+        <polygon points="${outer.trim()}" fill="rgba(12,12,12,.92)" stroke="${color}" stroke-width="1"/>
+        <polygon points="${inner.trim()}" fill="rgba(0,0,0,.9)"/>
+      </svg>`
+    }
+
+    // The plugin owns a detached clone of the target. `afterRender` saves the
+    // freshly rendered clone; `afterClone` swaps it back in on the next call.
+    // Because the clone (and every hit marker appended to it) persists in this
+    // closure, each snapdom capture builds on the previous one — the live
+    // `target` element in the DOM is never touched.
+    function createHitboardPlugin (sourceEl) {
+      let savedClone = null
+      return {
+        name: 'hitboard',
+        afterClone (ctx) {
+          if (savedClone) ctx.clone = savedClone.cloneNode(true)
+        },
+        afterRender (ctx) {
+          savedClone = ctx.clone.cloneNode(true)
+        },
+        addHit (xPct, yPct, color) {
+          if (!savedClone) savedClone = sourceEl.cloneNode(true)
+          if (getComputedStyle(savedClone).position === 'static') {
+            savedClone.style.position = 'relative'
+          }
+          const hit = document.createElement('div')
+          hit.style.cssText = `
+            position: absolute; left: ${xPct}%; top: ${yPct}%;
+            width: 24px; height: 24px; margin: -12px 0 0 -12px;
+            pointer-events: none;
+          `
+          hit.innerHTML = bulletHoleMarkup(color)
+          savedClone.appendChild(hit)
+        },
+        reset () { savedClone = null }
+      }
+    }
+
+    const board = document.getElementById('board')
+    const crosshair = document.getElementById('crosshair')
+    const overlay = document.getElementById('overlay')
+    const scoreEl = document.getElementById('score')
+    const shotsEl = document.getElementById('shots')
+    const bestEl = document.getElementById('best')
+    const startBtn = document.getElementById('startBtn')
+    const restartBtn = document.getElementById('restartBtn')
+    const downloadLink = document.getElementById('downloadLink')
+
+    const target = document.createElement('div')
+    target.style.cssText = 'position:absolute; left:-9999px; top:0; width:340px; height:340px;'
+    target.innerHTML = buildTargetSvg()
+    document.body.appendChild(target)
+
+    let plugin = createHitboardPlugin(target)
+    let score = 0
+    let shotsLeft = TOTAL_SHOTS
+    let running = false
+    let rendering = false
+
+    const best = Number(localStorage.getItem('snapdom-range-best') || 0)
+    bestEl.textContent = best
+
+    // The reticle never sits still: it drifts around the mouse and kicks
+    // after every shot, so the point that actually fires (aimX/aimY) isn't
+    // exactly where the mouse is. Drift grows as shots run out.
+    let mouseX = 0, mouseY = 0
+    let aimX = 0, aimY = 0
+    let recoilX = 0, recoilY = 0
+    const swayPhaseX = Math.random() * Math.PI * 2
+    const swayPhaseY = Math.random() * Math.PI * 2
+
+    function tick (t) {
+      recoilX *= 0.9
+      recoilY *= 0.9
+      const amp = Math.min(6 + (TOTAL_SHOTS - shotsLeft) * 1.4, 20)
+      const driftX = Math.sin(t / 850 + swayPhaseX) * amp + recoilX
+      const driftY = Math.cos(t / 630 + swayPhaseY) * amp + recoilY
+      aimX = mouseX + driftX
+      aimY = mouseY + driftY
+      crosshair.style.left = `${aimX}px`
+      crosshair.style.top = `${aimY}px`
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+
+    async function render () {
+      const img = await snapdom.toPng(target, { plugins: [plugin] })
+      img.style.width = '100%'
+      img.style.height = '100%'
+      board.querySelector('img')?.remove()
+      board.insertBefore(img, crosshair)
+      downloadLink.href = img.src
+    }
+
+    function scoreAt (xPct, yPct) {
+      const dist = Math.hypot(xPct - 50, yPct - 50)
+      const ratio = dist / 50
+      if (ratio > 1) return { points: 0, color: '#94a3b8' }
+      const hit = RINGS.find(ring => ratio <= ring.r)
+      return { points: hit.points, color: hit.color }
+    }
+
+    async function shoot () {
+      if (!running || rendering) return
+      const rect = board.getBoundingClientRect()
+      const xPct = (aimX / rect.width) * 100
+      const yPct = (aimY / rect.height) * 100
+
+      crosshair.classList.add('fire')
+      setTimeout(() => crosshair.classList.remove('fire'), 100)
+
+      const angle = Math.random() * Math.PI * 2
+      const kick = 18 + Math.random() * 14
+      recoilX += Math.cos(angle) * kick
+      recoilY += Math.sin(angle) * kick
+
+      const { points, color } = scoreAt(xPct, yPct)
+      plugin.addHit(xPct, yPct, color)
+      score += points
+      shotsLeft -= 1
+      scoreEl.textContent = score
+      shotsEl.textContent = shotsLeft
+
+      rendering = true
+      await render()
+      rendering = false
+
+      if (shotsLeft <= 0) endGame()
+    }
+
+    function moveCrosshair (e) {
+      const rect = board.getBoundingClientRect()
+      crosshair.style.opacity = 1
+      mouseX = e.clientX - rect.left
+      mouseY = e.clientY - rect.top
+    }
+
+    async function startGame () {
+      score = 0
+      shotsLeft = TOTAL_SHOTS
+      running = true
+      scoreEl.textContent = score
+      shotsEl.textContent = shotsLeft
+      overlay.classList.add('hidden')
+      restartBtn.disabled = true
+      downloadLink.style.display = 'none'
+      plugin = createHitboardPlugin(target)
+      await render()
+    }
+
+    function endGame () {
+      running = false
+      overlay.querySelector('h2').textContent = `Done: ${score} points`
+      overlay.querySelector('p').textContent = 'Try again or download the target.'
+      overlay.querySelector('button').textContent = 'Play again'
+      overlay.classList.remove('hidden')
+      restartBtn.disabled = false
+      downloadLink.style.display = 'inline-block'
+      if (score > best) {
+        localStorage.setItem('snapdom-range-best', score)
+        bestEl.textContent = score
+      }
+    }
+
+    board.addEventListener('mousemove', moveCrosshair)
+    board.addEventListener('mousedown', shoot)
+    startBtn.addEventListener('click', startGame)
+    restartBtn.addEventListener('click', startGame)
+  </script>
+</body>
+</html>
