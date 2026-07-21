@@ -61,6 +61,37 @@ describe('snapdom.session', () => {
     s.dispose()
   })
 
+  // Closes the MutationObserver-only staleness gap: canvas pixel draws and programmatic
+  // CSSOM edits touch no DOM attribute, so the automatic tracking can't see them either —
+  // invalidate() is the documented manual escape hatch for those.
+  it('invalidate() manually flags the session dirty for changes automatic tracking cannot see', async () => {
+    const s = snapdom.session(makeEl())
+    const r1 = await s.capture()
+    expect(s.dirty).toBe(false)
+    s.invalidate()
+    expect(s.dirty).toBe(true)
+    const r2 = await s.capture()
+    expect(r2).not.toBe(r1)
+    s.dispose()
+  })
+
+  // <video> frame changes (seek, playback) produce no DOM mutation, so they were part of
+  // the same staleness gap — now tracked directly via timeupdate/seeked listeners.
+  it('tracks <video> frame changes that produce no DOM mutation', async () => {
+    el = document.createElement('div')
+    el.style.cssText = 'width:180px;padding:6px'
+    const video = document.createElement('video')
+    el.appendChild(video)
+    document.body.appendChild(el)
+
+    const s = snapdom.session(el)
+    await s.capture()
+    expect(s.dirty).toBe(false)
+    video.dispatchEvent(new Event('timeupdate'))
+    expect(s.dirty).toBe(true)
+    s.dispose()
+  })
+
   it('dispose prevents further captures', async () => {
     const s = snapdom.session(makeEl())
     await s.capture()

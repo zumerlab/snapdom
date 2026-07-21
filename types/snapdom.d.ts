@@ -355,6 +355,13 @@ export interface CaptureSession {
    * result is returned instantly; otherwise a fresh capture runs with warm caches.
    */
   capture(overrides?: Partial<SnapdomOptions>): Promise<CaptureResult>;
+  /**
+   * Manually flag the session dirty for changes automatic tracking can't see: canvas
+   * pixel draws, programmatic CSSOM edits (stylesheet.insertRule/deleteRule, cssRule.style.*
+   * on a rule rather than an element). DOM mutations and `<video>` frame changes (seek,
+   * playback) are already tracked automatically.
+   */
+  invalidate(): void;
   /** Disconnect observers and drop the memoized result. */
   dispose(): void;
 }
