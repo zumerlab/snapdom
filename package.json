@@ -33,10 +33,11 @@
     "compile": "node esbuild.config.mjs",
     "lint": "eslint src __tests__ --ext .js",
     "lint:fix": "eslint src __tests__ --ext .js --fix",
-    "test": "npm run lint:fix && npx vitest run --browser.headless --reporter=verbose",
+    "test:types": "tsc --noEmit",
+    "test": "npm run lint:fix && npm run test:types && npx vitest run --browser.headless --reporter=verbose",
     "test:firefox": "BROWSER=firefox npx vitest run --browser.headless --reporter=verbose",
     "test:webkit": "BROWSER=webkit npx vitest run --browser.headless --reporter=verbose",
-    "test:full": "npm run lint:fix && BROWSER=all npx vitest run --browser.headless --reporter=verbose",
+    "test:full": "npm run lint:fix && npm run test:types && BROWSER=all npx vitest run --browser.headless --reporter=verbose",
     "report:cross": "node scripts/cross-report.mjs",
     "test:coverage": "npx vitest run --browser.headless --coverage",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
@@ -90,7 +91,8 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.36.0",
     "globals": "^16.4.0",
-    "playwright": "^1.52.0"
+    "playwright": "^1.52.0",
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "vite": "^6"
