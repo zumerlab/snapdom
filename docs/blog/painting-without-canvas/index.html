@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painting Without a Canvas Element, and Other SnapDOM Plugin Experiments</title>
+  <meta name="description" content="A screenshot library's plugin hooks turned out to be enough to build a paint app with no canvas element, a DOM editor that's secretly a WebGL texture, and a shooting gallery — all with the same two-hook pattern." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/blog/painting-without-canvas/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Painting Without a Canvas Element, and Other SnapDOM Plugin Experiments" />
+  <meta property="og:description" content="A paint app with no canvas element, a DOM editor that's secretly a WebGL texture, and a shooting gallery — three toys built on the same two SnapDOM plugin hooks." />
+  <meta property="og:url" content="https://snapdom.dev/blog/painting-without-canvas/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Painting without a canvas element, and other SnapDOM plugin experiments","description":"A screenshot library's plugin hooks turned out to be enough to build a paint app with no canvas element, a DOM editor that's secretly a WebGL texture, and a shooting gallery — all with the same two-hook pattern.","url":"https://snapdom.dev/blog/painting-without-canvas/","datePublished":"2026-07-21","dateModified":"2026-07-21","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"Painting Without a Canvas Element","item":"https://snapdom.dev/blog/painting-without-canvas/"}]}</script>
+  <style>
+    .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
+    .prose figure { margin: 24px 0; }
+    .prose figure img { width: 100%; display: block; border: 1px solid var(--border-soft); }
+    .prose figcaption { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 8px; }
+    .inline-demo-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <section class="hero"><div class="hero-badge"><span class="dot"></span> SnapDOM Blog</div><h1>Painting without a <span class="accent">canvas</span> element</h1><p class="lead">And a couple of other things that fell out of giving a screenshot library a plugin system with two hooks: <code>afterClone</code> and <code>afterRender</code>.</p></section>
+  <main class="page">
+    <p class="byline">Zumerlab · July 21, 2026</p>
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM captures a DOM subtree by cloning it, serializing the clone to an SVG <code>&lt;foreignObject&gt;</code>, and rasterizing that. Its plugin hooks fire on every capture with access to the same closure, so a plugin can hold state across calls that the library itself never persists. Three demos built on that: a <a href="../../labs/paint-canvas/">paint app with no <code>&lt;canvas&gt;</code> element</a>, a <a href="../../labs/webgl-seamless-dom/">contenteditable box that's secretly rendering through WebGL</a>, and a <a href="../../labs/target-range/">shooting gallery</a> that uses the exact same trick as the paint app.</p></div>
+
+    <section class="prose">
+      <h2>The setup</h2>
+      <p>SnapDOM (<a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><code>@zumer/snapdom</code></a>) is a browser library that clones a DOM element, inlines its computed styles, images and fonts, serializes the clone into an SVG <code>data:</code> URL, and rasterizes that to PNG/Canvas/whatever. Nothing unusual there — it's the same family as html2canvas or dom-to-image, minus a few years of bitrot.</p>
+      <p>What's less common is that it has a plugin system: a handful of lifecycle hooks (<code>beforeSnap</code>, <code>afterClone</code>, <code>afterRender</code>, <code>beforeExport</code>, <code>afterExport</code>, plus <code>defineExports</code> for registering entirely new output formats) that fire on every capture and receive a mutable context object. We added it mostly for the boring reasons — watermarking, redaction, format conversion. Then a few of us started asking what else two of those hooks were good for, and the answers were more interesting than "add a watermark."</p>
+      <p>The common thread in everything below: a JavaScript closure survives between function calls, and SnapDOM's core rendering pipeline is stateless by design — every capture re-clones the live element from scratch and forgets it the moment it's done. A plugin sitting in between those two facts can remember things the library itself never will.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Painting without a <code>&lt;canvas&gt;</code> element</h2>
+      <p>The <a href="../../labs/paint-canvas/">paint demo</a> looks like a normal freehand painting widget. It isn't backed by a <code>&lt;canvas&gt;</code> anywhere. There's one hidden <code>&lt;div&gt;</code> holding an empty SVG layer, and an <code>&lt;img&gt;</code> that gets replaced on every stroke with a fresh <code>snapdom.toPng()</code> result. The "canvas" is the accumulated output of a screenshot library capturing the same tiny element over and over, each time with one more stroke baked in than the last.</p>
+      <p>The trick is two hooks and one closure variable:</p>
+      <pre class="code-block">// Trimmed to the two hooks that matter — full version, with stroke
+// smoothing and SVG path bookkeeping, is at the link above.
+function createPaintPlugin () {
+  let savedClone = null
+  let pendingStroke = null
+
+  return {
+    name: 'paint',
+    recordStroke (pathData) { pendingStroke = pathData },
+    afterClone (ctx) {
+      // Instead of letting SnapDOM clone the pristine source, hand back
+      // whatever we saved last time — with the new stroke appended.
+      if (savedClone) ctx.clone = savedClone.cloneNode(true)
+      if (pendingStroke) appendPath(ctx.clone, pendingStroke)
+    },
+    afterRender (ctx) {
+      // Checkpoint what was actually rendered as the new baseline.
+      savedClone = ctx.clone.cloneNode(true)
+      pendingStroke = null
+    }
+  }
+}
+
+// on every point added while dragging:
+plugin.recordStroke(pathData)
+await snapdom.toPng(hiddenSource, { plugins: [plugin] })</pre>
+      <p>Every stroke: append a point to an SVG path, call <code>snapdom.toPng(el, { plugins: [plugin] })</code> again. <code>afterClone</code> swaps in last time's clone instead of a fresh one and adds the new bit of path; <code>afterRender</code> squirrels away whatever came out the other end. The live source element in the DOM is never touched — the picture lives entirely in the plugin's closure, one clone at a time. Throttle it to a capture every ~120ms while dragging (with a local, SnapDOM-free SVG path for the cursor feedback so it doesn't feel laggy) and it's a usable paint app that happens to be, structurally, a loop of independent screenshots.</p>
+      <p>It sounds like a roundabout way to draw a picture, and it is — that's rather the point. Nothing about SnapDOM's actual job (clone → serialize → rasterize) changed; what changed is that a plugin gave the loop somewhere to keep its memory.</p>
+    </section>
+
+    <section class="prose">
+      <h2>A text field that's secretly WebGL</h2>
+      <p>The <a href="../../labs/webgl-seamless-dom/">second demo</a> is a box that looks and behaves like a normal editable text field — real caret, real text selection, paste works, Enter inserts a newline. None of the text you see is being painted by the browser's text engine. It's a WebGL <code>&lt;canvas&gt;</code> underneath, and what you're reading is a texture.</p>
+      <p>Two DOM elements make this work. A fully transparent <code>contenteditable</code> proxy sits visually on top of the canvas — its only job is to give the browser something to put a blinking caret on and to receive real keystrokes, so <code>caret-color</code> is set but the text itself is <code>color: transparent</code>. A second, completely hidden element mirrors whatever you typed and is the one SnapDOM actually captures. A plugin's <code>defineExports</code> adds a <code>webgl</code> export that feeds each capture into a double-buffered WebGL renderer, which cross-fades between the old and new texture over about 110ms so nothing visibly pops:</p>
+      <pre class="code-block">function seamlessWebgl (renderer) {
+  return {
+    name: 'seamless-webgl',
+    defineExports () {
+      return {
+        webgl: async ctx => renderer.update(ctx.export.url)
+      }
+    }
+  }
+}
+
+// on every keystroke, against the hidden mirror element:
+const capture = await snapdom(hiddenSource, { plugins: [plugin], cache: 'full', fast: true })
+await capture.to('webgl')</pre>
+      <p><code>ctx.export.url</code> is the rendered PNG data URL for that specific capture — <code>defineExports</code> hands the plugin the finished render and lets it decide what "exporting" means, in this case "upload as a GPU texture" instead of "hand back an <code>&lt;img&gt;</code>." A shader dropdown on the page (hologram scanlines, CRT, kaleidoscope, a datamosh effect, six more) never touches SnapDOM at all — it's just sampling whichever texture is already sitting on the GPU differently. Same capture pipeline, eight completely different-looking outputs.</p>
+      <p>The practical caveat, since someone will ask: every keystroke can trigger a full capture, so this only stays smooth on cheap-to-capture elements — small, no heavy fonts or images. A <code>dirty</code>/<code>working</code> flag pair coalesces bursts of fast typing into one trailing capture instead of one per keystroke, which is what actually keeps it usable.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Also: a shooting gallery</h2>
+      <p>One more, mostly to make a point: the <a href="../../labs/target-range/">target range</a> is a ten-shot shooting gallery where every bullet hole is permanent — the target visibly accumulates damage over a whole game. It uses the identical <code>afterClone</code>/<code>afterRender</code> persistent-clone pattern as the paint app above, just aimed at a different problem. A plugin holds the last rendered clone, appends a jagged little torn-paper hole marker to it on each shot, and hands that back on the next capture. The live target element in the DOM never gets a single bullet hole added to it; the "damage" is entirely inside the plugin.</p>
+      <p>That it's the same two hooks doing paint accumulation and bullet-hole accumulation is the actual finding here, more than either demo individually: "remember the last capture and build on it" turned out to be a general-purpose primitive, not a one-off hack for a paint app.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Why does a screenshot library need a plugin system at all</h2>
+      <p>Fair question — most of what a plugin does here, you could imagine building without one, by hand-rolling your own capture-and-composite loop around <code>snapdom.toCanvas()</code>. The reason it's a plugin instead is that <code>afterClone</code> and <code>afterRender</code> sit <em>inside</em> SnapDOM's own clone → render pipeline, with access to the same intermediate state (styles, fonts, the fully-resolved clone) that the rest of the pipeline already computed. Reimplementing that loop by hand means reimplementing everything SnapDOM does to make a clone faithful — pseudo-elements, embedded fonts, CSS variables, Shadow DOM — instead of getting it for free and just hooking two points in the middle.</p>
+      <p>The other three demos in the same set — <a href="../../labs/webgl-shatter/">a card that shatters, glitches, dissolves or goes holographic</a>, a <a href="../../labs/webgl-live-mirror/">simpler single-texture version</a> of the WebGL mirror above, and a <a href="../../labs/stop-motion/">stop-motion flipbook</a> that uses <code>afterRender</code> to just pull data <em>out</em> of a capture instead of accumulating anything — are all on the same page if you want to see the rest of what two or three hooks can do. The plugin spec (<a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">PLUGIN_SPEC.md</a>) documents the full hook order and the <code>defineExports</code> API used above.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Try them</div>
+      <div class="related-grid">
+        <a class="related-card" href="../../labs/paint-canvas/">Paint Canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../labs/webgl-seamless-dom/">Seamless DOM → WebGL <span class="arrow">→</span></a>
+        <a class="related-card" href="../../labs/target-range/">Target Range <span class="arrow">→</span></a>
+        <a class="related-card" href="../../labs.html">All Labs demos <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Two hooks and a closure. That's the whole API surface these demos actually use.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+
+  </main>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="../../blog/" class="current">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <script defer src="/copy-code.js"></script>
+</body>
+</html>
