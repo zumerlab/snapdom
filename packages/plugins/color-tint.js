@@ -21,7 +21,6 @@ export function colorTint(options = {}) {
       const root = context.clone;
       if (!root || !(root instanceof HTMLElement)) return;
       root.style.position = 'relative';
-      root.style.overflow = 'hidden';
       const overlay = document.createElement('div');
       overlay.style.position = 'absolute';
       overlay.style.inset = '0';
