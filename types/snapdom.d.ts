@@ -89,13 +89,21 @@ export interface SnapdomOptions {
    */
   reconcile?: boolean;
 
-  /** outerTransforms the root: remove translate/rotate, keep scale/skew. */
+  /** outerTransforms the root: remove translate/rotate, keep scale/skew. Default true. */
   outerTransforms?: boolean;
   /**
-   * Do not expand root bbox for shadows/blur/outline; also strip shadows/outline
-   * from the cloned root to get a tight capture box.
+   * Expand root bbox for shadows/blur/outline instead of stripping them from the
+   * cloned root. Default false (root shadows/outline are stripped, blur bleed is
+   * still included).
    */
   outerShadows?: boolean;
+
+  /**
+   * Capture only a region instead of the full element: `'viewport'` (what the user
+   * currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before
+   * styling/inlining, so this is faster than a full capture. Default null (no clip).
+   */
+  clip?: "viewport" | { x: number; y: number; width: number; height: number } | null;
 
   /**
    * Downsample inlined raster images to their visible resolution (display box × scale × dpr),
@@ -397,12 +405,6 @@ export declare namespace snapdom {
     options?: SnapdomOptions
   ): Promise<HTMLImageElement>;
 
-  function toJpeg(
-    element: Element,
-    options?: SnapdomOptions
-  ): Promise<HTMLImageElement>;
-
-  /** Alias for `toJpeg`. */
   function toJpg(
     element: Element,
     options?: SnapdomOptions
