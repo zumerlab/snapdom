@@ -234,6 +234,30 @@ describe('inlineImages – extra coverage', () => {
     expect((div?.textContent || '')).toBe('img')
   })
 
+  it('inlines the capture root when it is itself an <img> (bare img capture)', async () => {
+    const img = document.createElement('img')
+    img.src = 'https://ex.com/bare-root.jpg'
+    wrap.appendChild(img)
+
+    vi.mocked(snapFetch).mockResolvedValueOnce({ ok: true, data: 'data:image/jpeg;base64,ROOT' })
+
+    // el propio <img> es la raíz de captura — sin wrapper
+    await inlineImages(img)
+
+    expect(img.src).toBe('data:image/jpeg;base64,ROOT')
+  })
+
+  it('inlines the capture root when it is itself an SVG <image>', async () => {
+    const image = document.createElementNS('http://www.w3.org/2000/svg', 'image')
+    image.setAttribute('href', 'https://ex.com/bare-root-svg.png')
+
+    vi.mocked(snapFetch).mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,SVGROOT' })
+
+    await inlineImages(image)
+
+    expect(image.getAttribute('href')).toBe('data:image/png;base64,SVGROOT')
+  })
+
   it('#341: inlines SVG <image href="https://..."> to data URL', async () => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     const img = document.createElementNS('http://www.w3.org/2000/svg', 'image')
