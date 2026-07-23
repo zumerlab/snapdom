@@ -415,24 +415,35 @@ function isFlexOrGridItem(el) {
 
 /**
  * ¿Hay contenido en flujo? Versión rápida:
- *  - Texto no vacío → true (no dispara layout).
+ *  - Nodo de texto directo no vacío → true (no dispara layout).
  *  - <br> inmediato → true.
- *  - Geometry probe: scrollHeight > padding (abspos NO suma) → true.
+ *  - Algún hijo elemento en flujo → true.
+ *
+ * Both questions are about THIS element's own flow, so neither `textContent` nor a
+ * scrollHeight probe can answer them: `textContent` also sees text inside absolutely
+ * positioned descendants, and scrollHeight is floored at clientHeight, so a wrapper whose
+ * children are all out of flow still reports its own used height. Trusting either one made
+ * stripHeightForWrappers drop the height of such a wrapper, which then collapsed to 0 inside
+ * the foreignObject — every following section shifted up over it.
  * @param {Element} el
- * @param {CSSStyleDeclaration} cs  // ya lo tenemos en mano
  */
-function hasFlowFast(el, cs) {
-  if (el.textContent && /\S/.test(el.textContent)) return true
+function hasFlowFast(el) {
+  // Only direct text nodes belong to this element's flow.
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3 && /\S/.test(n.nodeValue)) return true
+  }
   const f = el.firstElementChild, l = el.lastElementChild
   if ((f && f.tagName === 'BR') || (l && l.tagName === 'BR')) return true
 
-  // Probe geométrico (1 lectura de layout): evita recorrer hijos
-  // Nota: scrollHeight no incluye hijos absolute; si sólo hay absolute → ≈ padding
-  const sh = el.scrollHeight
-  if (sh === 0) return false
-  const pt = parseFloat(cs.paddingTop) || 0
-  const pb = parseFloat(cs.paddingBottom) || 0
-  return sh > pt + pb
+  // An element child contributes flow content only when it is itself in flow. getStyle
+  // memoizes per node, and this runs only after the cheap text/<br> paths miss.
+  for (let c = el.firstElementChild; c; c = c.nextElementSibling) {
+    const s = getStyle(c)
+    if (s.display === 'none') continue
+    const pos = s.position
+    if (pos !== 'absolute' && pos !== 'fixed') return true
+  }
+  return false
 }
 
 /**
@@ -484,7 +495,7 @@ function stripHeightForWrappers(el, cs, snap) {
   if (cs.visibility === 'hidden' || cs.opacity === '0') return
 
   // 6) Solo wrappers "en flujo" realmente neutros
-  if (!hasFlowFast(el, cs)) return
+  if (!hasFlowFast(el)) return
 
   // 7) Ahora sí: quitamos height y block-size del snapshot
   delete snap.height
