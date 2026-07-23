@@ -109,6 +109,51 @@ describe('deepClone', () => {
   })
 })
 
+describe('deepClone — <picture> sources', () => {
+  const PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+  function makePicture() {
+    const picture = document.createElement('picture')
+    picture.innerHTML =
+      '<source media="(min-width: 1367px)" srcset="https://example.com/big.jpg">' +
+      '<source media="(min-width: 0px)" srcset="https://example.com/small.jpg">'
+    const img = document.createElement('img')
+    img.src = PX
+    picture.appendChild(img)
+    document.body.appendChild(picture)
+    return picture
+  }
+
+  // A <source> out-ranks the <img>'s own src, so leaving it in the export re-selects an
+  // external URL that svg-as-image may not load — the picture then rasterizes blank even
+  // though the <img> was inlined correctly.
+  it('drops <source> children of <picture> so the inlined <img> src wins', async () => {
+    const picture = makePicture()
+    try {
+      const clone = await runClone(picture)
+      expect(clone.querySelectorAll('source').length).toBe(0)
+      const img = clone.querySelector('img')
+      expect(img).not.toBeNull()
+      expect(img.getAttribute('src')).toBe(PX)
+      expect(clone.outerHTML).not.toContain('example.com')
+    } finally {
+      picture.remove()
+    }
+  })
+
+  it('keeps <source> outside a <picture>', async () => {
+    const wrapper = document.createElement('div')
+    wrapper.innerHTML = '<source srcset="https://example.com/x.jpg">'
+    document.body.appendChild(wrapper)
+    try {
+      const clone = await runClone(wrapper)
+      expect(clone.querySelectorAll('source').length).toBe(1)
+    } finally {
+      wrapper.remove()
+    }
+  })
+})
+
 describe('deepClone edge cases', () => {
   it('clones unsupported node (Comment) as a new Comment', async () => {
     const fake = document.createComment('not supported')

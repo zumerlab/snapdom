@@ -186,6 +186,14 @@ export async function deepClone(node, sessionCache, options) {
       debugWarn(sessionCache, 'Nested <foreignObject> skipped (SVG spec limitation — not rendered by browsers)')
       return null
     }
+    // A <picture>'s <source> out-ranks its <img>'s own src, so it survives into the export
+    // still pointing at an external URL — and svg-as-image may not load external resources,
+    // so the picture rasterizes blank no matter how well the <img> was inlined. The <img>
+    // clone is already frozen to the variant the live page chose (freezeImgSrcset), so the
+    // sources carry nothing we still need: drop them and let that src win.
+    if (tag === 'source' && node.parentElement?.localName === 'picture') {
+      return null
+    }
   }
   if (node.nodeType === Node.TEXT_NODE) {
     return node.cloneNode(true)
