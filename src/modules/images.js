@@ -45,7 +45,10 @@ function extractImageDimensions(img) {
  * @returns {Promise<void>}
  */
 export async function inlineImages(clone, options = {}) {
+  // querySelectorAll only matches descendants: when the capture root is itself an
+  // <img>, it must be included or its src stays external and svg-as-image won't load it.
   const imgs = Array.from(clone.querySelectorAll('img'))
+  if (clone.tagName === 'IMG') imgs.unshift(clone)
   /** @param {HTMLImageElement} img */
   const processImg = async (img) => {
     // Normalize src/srcset/sizes to a single concrete URL
@@ -137,6 +140,7 @@ export async function inlineImages(clone, options = {}) {
 
   // #341: Inline SVG <image href="https://..."> (e.g. Highcharts, D3)
   const svgImages = Array.from(clone.querySelectorAll('image'))
+  if (clone.localName === 'image') svgImages.unshift(clone)
   const processSvgImage = async (el) => {
     const href = getSvgImageHref(el)
     if (!href || href.startsWith('data:') || href.startsWith('blob:')) return
