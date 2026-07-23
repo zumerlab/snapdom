@@ -266,6 +266,23 @@ function lazyCounterContext(doc, sessionCache) {
 }
 
 /**
+ * Strips the CSS content alt-text suffix: `<content-list> / <string-or-counter>+`.
+ * The part after a top-level (unquoted) `/` is screen-reader-only alt text, never
+ * painted — e.g. Font Awesome 7 emits `content: "\f015" / ""` for its icons, and
+ * without this the trailing `/` would be folded into the visible glyph string.
+ * @param {string} raw
+ */
+function stripContentAltText(raw) {
+  let inQuotes = false
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i]
+    if (ch === '"') inQuotes = !inQuotes
+    else if (ch === '/' && !inQuotes) return raw.slice(0, i).trim()
+  }
+  return raw
+}
+
+/**
  * Concatena tokens de CSS `content` (cadenas y resultados de counter()/counters())
  * sin el whitespace que los separa en el source — el browser concatena tokens
  * adyacentes sin espacios, así que `counter(x) ")"` debe renderizar `1)` y no `1 )`.
@@ -402,8 +419,9 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
 function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
   let ps
   try { ps = getStyle(node, pseudo) } catch { }
-  const raw = ps?.content
+  let raw = ps?.content
   if (!raw || raw === 'none' || raw === 'normal') return { text: '', incs: [] }
+  raw = stripContentAltText(raw)
 
   // 1) aplicar overrides de hermanos
   const baseWithSiblings = withSiblingOverrides(node, baseCtx)
