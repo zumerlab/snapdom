@@ -564,7 +564,6 @@ function contributesToParentHeight(el) {
 
 /**
  * Mirrors the removal logic used later so we can know what remains.
- * Extend to honor filterMode:"remove" if needed.
  * @param {Element} el
  * @param {any} options
  */
@@ -577,6 +576,11 @@ function willBeExcluded(el, options) {
       debugWarn(options, 'exclude selector match failed', e)
     }
   }
+  }
+  if (typeof options?.filter === 'function' && options.filterMode === 'remove') {
+    try { if (!options.filter(el)) return true } catch (e) {
+      debugWarn(options, 'filter function failed', e)
+    }
   }
   return false
 }

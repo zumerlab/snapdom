@@ -190,6 +190,24 @@ describe('estimateKeptHeight', () => {
     const h = estimateKeptHeight(container, { excludeMode: 'remove' })
     expect(h).toBeLessThan(120)
   })
+
+  it('skips filtered-out elements (filter fn, filterMode:remove)', () => {
+    const container = document.createElement('div')
+    const kept = document.createElement('div')
+    kept.className = 'keep'
+    kept.style.height = '20px'
+    const dropped = document.createElement('div')
+    dropped.className = 'drop'
+    dropped.style.height = '100px'
+    container.appendChild(kept)
+    container.appendChild(dropped)
+    document.body.appendChild(container)
+    const h = estimateKeptHeight(container, {
+      filter: (el) => !el.classList?.contains('drop'),
+      filterMode: 'remove'
+    })
+    expect(h).toBeLessThan(120)
+  })
 })
 
 describe('limitDecimals', () => {

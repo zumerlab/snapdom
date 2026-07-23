@@ -144,8 +144,8 @@ export async function captureDOM(element, options) {
   await runHook('afterClone', state)
   if (undoPictureResolver) await undoPictureResolver()
   sanitizeCloneForXHTML(state.clone)
-  // Shrink pass ONLY when excludeMode === 'remove'
-  if (state.options?.excludeMode === 'remove') {
+  // Shrink pass when excludeMode/filterMode === 'remove' dropped clone children
+  if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {
     try {
       shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache)
     } catch (e) {
@@ -295,7 +295,7 @@ export async function captureDOM(element, options) {
         } catch { /* fallback: use doc dimensions above */ }
       }
       // === NEW: recompute height using the kept-children span (no offscreen) ===
-      if (state.options?.excludeMode === 'remove') {
+      if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {
         const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
         // Safety: nunca mayor al original, y con un epsilon para evitar recortes por redondeo
         const EPS = 1 // px
