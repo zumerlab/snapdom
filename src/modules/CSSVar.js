@@ -9,14 +9,20 @@ const KEY_PROPS = ['fill', 'stroke', 'color', 'background-color', 'stop-color']
  *  preserved (NOT materialized at clone time) — otherwise we'd freeze the var()
  *  to whatever it resolves to in the dead template context (usually the fallback). */
 const SVG_TEMPLATE_TAGS = new Set([
-  'symbol', 'defs', 'pattern', 'mask', 'clipPath', 'marker',
+  'symbol', 'defs', 'pattern', 'marker',
   'linearGradient', 'radialGradient', 'filter'
 ])
 export function isInSvgTemplate(el) {
   let p = el
   while (p && p.nodeType === 1) {
-    if (p.namespaceURI === 'http://www.w3.org/2000/svg' && SVG_TEMPLATE_TAGS.has(p.localName)) {
-      return true
+    if (p.namespaceURI === 'http://www.w3.org/2000/svg') {
+      // #459: mask/clipPath paint their content in place, exactly once, at their own
+      // document position — unlike <use>, there's no per-consumer shadow tree to
+      // re-scope var() against, so this IS the one true rendering context. Treating
+      // them as templates skipped inlineAllStyles entirely, dropping font-family/etc.
+      // for anything inside (e.g. a <text> used as a mask cutout).
+      if (p.localName === 'mask' || p.localName === 'clipPath') return false
+      if (SVG_TEMPLATE_TAGS.has(p.localName)) return true
     }
     p = p.parentNode
   }
