@@ -46,6 +46,11 @@ if (Object.keys(demos).length === 0) {
     // The snapVisual demo toggles a `body.mutated` class with new bg gradients
     // and pseudo content — large legitimate visual diff, not a snapdom bug.
     'demo': { skip: true },
+    // Continuous WebGL blend/wipe transition re-triggered on every DOM-to-texture
+    // update (~70-110ms cross-fade) — never at rest, so no fixed wait lands on a
+    // stable frame. Diff is always a moving wipe boundary, not a snapdom bug.
+    'd-plugin-webgl-seamless-dom': { skip: true },
+    'd-plugin-webgl-time-tunnel': { skip: true },
     // Root translate/rotate stripped + viewBox recomputed from the remaining scale (fix 3241481).
     'd-root-transform': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, outerTransforms: false } },
     // Bbox must expand for box-shadow / outline / blur bleed instead of clipping them.
