@@ -154,11 +154,13 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
  * @param {HTMLElement} clone The cloned element receiving inline styles.
  * @param {WeakMap} styleCache
  * @param {Object} [options={}]
+ * @param {Map<Node, Node>} [nodeMap] Session clone→source map. Must be the capturing
+ *   session's own reference: the global cache.session.nodeMap (fallback) is reassigned by
+ *   concurrent nested iframe captures and may be an orphaned map by the time this pass runs.
  * @returns {Promise<void>}
  */
-export async function inlineBackgroundImages(source, clone, styleCache, options = {}) {
+export async function inlineBackgroundImages(source, clone, styleCache, options = {}, nodeMap = cache.session.nodeMap) {
   if (!clone) return
-  const nodeMap = cache.session.nodeMap
 
   const jobs = []
   if (source && needsBackgroundInline(source)) jobs.push([source, clone])
