@@ -165,12 +165,12 @@ function originalBox(el) {
  *
  * @param {Element} clone
  * @param {object} options
+ * @param {Map<Node, Node>} [nodeMap] - Session clone→source map (falls back to the global)
  * @returns {Promise<{count:number}>}
  */
-export async function compressClonedBackgrounds(clone, options) {
+export async function compressClonedBackgrounds(clone, options, nodeMap = cache.session.nodeMap) {
   if (!options.compress) return { count: 0 }
   const eff = (options.scale || 1) * (options.dpr || 1)
-  const nodeMap = cache.session.nodeMap
   const els = []
   // include the root clone itself, then descendants
   const candidates = [clone, ...clone.querySelectorAll('*')]
@@ -249,11 +249,13 @@ export async function compressClonedSvgImages(clone, options) {
  * Run all compression passes over the clone (no-op when `compress` is off).
  * @param {Element} clone
  * @param {object} options
+ * @param {Map<Node, Node>} [nodeMap] - Session clone→source map; pass the capture's own
+ *   reference — the global fallback can be stale after nested iframe captures.
  * @returns {Promise<void>}
  */
-export async function compressCloneAssets(clone, options) {
+export async function compressCloneAssets(clone, options, nodeMap) {
   if (!options.compress) return
   await compressClonedImages(clone, options)
-  await compressClonedBackgrounds(clone, options)
+  await compressClonedBackgrounds(clone, options, nodeMap)
   await compressClonedSvgImages(clone, options)
 }

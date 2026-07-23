@@ -21,9 +21,10 @@ import { getStyle } from '../utils'
 /**
  * @param {Element} root - Original capture root (for viewport rects)
  * @param {Element} clone - Prepared clone (styles and resources already inlined)
+ * @param {Map<Node, Node>} [nodeMap] - Session clone→source map; pass the capture's own
+ *   reference — the global fallback can be stale after nested iframe captures.
  */
-export function emulateBackdropFilters(root, clone) {
-  const nodeMap = cache.session.nodeMap
+export function emulateBackdropFilters(root, clone, nodeMap = cache.session.nodeMap) {
   const targets = []
   const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT)
   for (let n = walker.currentNode; n; n = walker.nextNode()) {

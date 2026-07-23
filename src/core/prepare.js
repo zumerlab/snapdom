@@ -20,7 +20,7 @@ import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.help
  * @param {Object} [options={}] - Capture options
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {Function} [options.filter] - Custom filter function
- * @returns {Promise<Object>} Object containing the clone, generated CSS, and style cache
+ * @returns {Promise<Object>} Object containing the clone, generated CSS, style cache, and the session clone→source nodeMap
  */
 
 export async function prepareClone(element, options = {}) {
@@ -216,7 +216,7 @@ export async function prepareClone(element, options = {}) {
       cloneNode.style.marginBlockStart = '0'
     }
   }
-  return { clone, classCSS, styleCache: sessionCache.styleCache, clipWindow }
+  return { clone, classCSS, styleCache: sessionCache.styleCache, nodeMap: sessionCache.nodeMap, clipWindow }
 }
 
 // helpers (stabilizeLayout, resolveBlobUrlsInTree) ahora vienen de utils; bloque antiguo eliminado.

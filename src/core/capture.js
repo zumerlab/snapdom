@@ -100,7 +100,7 @@ export async function captureDOM(element, options) {
   const preClipRect = options.clip ? resolveClipRect(element, options.clip) : null
   let state = { element, options, plugins: options.plugins }
 
-  let clone, classCSS, styleCache, clipWindow
+  let clone, classCSS, styleCache, nodeMap, clipWindow
   let fontsCSS = ''
   let baseCSS = ''
   let dataURL
@@ -120,7 +120,10 @@ export async function captureDOM(element, options) {
   await runHook('beforeClone', state)
   const undoClamp = lineClampTree(state.element, preClipRect)
   try {
-    ({ clone, classCSS, styleCache, clipWindow } = await prepareClone(state.element, state.options))
+    // Keep this capture's own clone→source map: nested iframe captures reassign
+    // cache.session.nodeMap concurrently (see rasterizeIframe), so the global cannot be
+    // trusted after the clone phase — every later pass must use this reference.
+    ({ clone, classCSS, styleCache, nodeMap, clipWindow } = await prepareClone(state.element, state.options))
 
     // state = {clone, classCSS, styleCache, ...state}
 
@@ -133,14 +136,14 @@ export async function captureDOM(element, options) {
     // #426: zero margins that collapse through the root edge so the clone's
     // content sits flush like the captured border box (no clipping / no offset).
     if (clone) {
-      neutralizeRootMarginCollapse(state.element, clone, cache.session.nodeMap)
+      neutralizeRootMarginCollapse(state.element, clone, nodeMap)
     }
   } finally {
     undoClamp()
   }
 
   // AFTERCLONE
-  state = { clone, classCSS, styleCache, ...state }
+  state = { clone, classCSS, styleCache, nodeMap, ...state }
   await runHook('afterClone', state)
   if (undoPictureResolver) await undoPictureResolver()
   sanitizeCloneForXHTML(state.clone)
@@ -153,7 +156,7 @@ export async function captureDOM(element, options) {
     }
   }
   try {
-    await ligatureIconToImage(state.clone, state.element)
+    await ligatureIconToImage(state.clone, state.element, state.nodeMap)
   } catch { /* non-blocking */ }
 
   // Asset phases are network/decode-bound and independent: images ∥ backgrounds ∥ fonts run
@@ -166,18 +169,18 @@ export async function captureDOM(element, options) {
   const assetsPhase = (async () => {
     await Promise.all([
       runIdle(() => inlineImages(state.clone, state.options)),
-      runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options)),
+      runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options, state.nodeMap)),
     ])
     // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it
     // from the already-inlined clone. Non-blocking — a failure just loses the effect.
     try {
-      emulateBackdropFilters(state.element, state.clone)
+      emulateBackdropFilters(state.element, state.clone, state.nodeMap)
     } catch (e) {
       console.warn('[snapdom] backdrop-filter emulation failed:', e)
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {
-      await runIdle(() => compressCloneAssets(state.clone, state.options))
+      await runIdle(() => compressCloneAssets(state.clone, state.options, state.nodeMap))
     }
   })()
 
@@ -310,7 +313,7 @@ export async function captureDOM(element, options) {
         try {
           const cssAll = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS +
             'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
-          reconcileCloneLayout(state.element, state.clone, cssAll, cache.session.nodeMap, w0, h0)
+          reconcileCloneLayout(state.element, state.clone, cssAll, state.nodeMap, w0, h0)
         } catch (e) {
           console.warn('[snapdom] reconcile pass failed:', e)
         }

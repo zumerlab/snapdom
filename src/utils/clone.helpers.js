@@ -452,11 +452,13 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
   // The nested capture below runs its own captureDOM → applyCachePolicy, which REASSIGNS
-  // cache.session.{nodeMap,styleMap,styleCache} to fresh instances. That orphans every entry
-  // the parent capture cloned before reaching this iframe, so the parent's later
-  // inlineBackgroundImages/pseudo recursion (which resolve clone→source via cache.session.nodeMap)
-  // skip those subtrees — e.g. a remote background/mask on a sibling of the iframe is silently
-  // dropped. Snapshot and restore the parent session around the nested call so it stays intact.
+  // cache.session.{nodeMap,styleMap,styleCache} to fresh instances. Sibling iframes rasterize
+  // concurrently, so these save/restore pairs can interleave and the global session may point
+  // at an orphaned nested map afterwards — that's why every post-clone pass of a capture
+  // (inlineBackgroundImages, backdrop-filter, compress, icon fonts, layout reconcile) receives
+  // the capture's own nodeMap reference instead of trusting the global. The snapshot/restore
+  // here is kept as best-effort hygiene so the global usually ends up back at the parent's
+  // session, but nothing may rely on it mid-capture.
   const parentNodeMap = cache.session.nodeMap
   const parentStyleMap = cache.session.styleMap
   const parentStyleCache = cache.session.styleCache
