@@ -191,6 +191,29 @@ const blob = await snapdom.toBlob(el);
 document.body.appendChild(png);
 ```
 
+## CORS & External Resources
+
+When capturing elements that reference **external stylesheets** (e.g., Google Fonts, Font Awesome, or any CDN‑hosted CSS), you **must** ensure that the resources are served with proper CORS headers. Otherwise, the captured image may lack the expected fonts or icons, even though they render correctly in the browser.
+
+### Why is this needed?
+
+- Browsers block JavaScript (including SnapDOM) from reading the binary data of cross‑origin fonts or images unless the server explicitly allows it via `Access-Control-Allow-Origin`.
+- SnapDOM relies on Canvas, which enforces strict CORS policies — unlike the browser's rendering engine, which is more permissive for on‑screen display.
+
+### How to fix it
+
+Add the `crossorigin="anonymous"` attribute to the `<link>` tag when loading external stylesheets:
+
+```html
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+  crossorigin="anonymous"
+/>
+```
+
+> **Note**: If you are hosting the fonts or assets **on the same origin** as your page (e.g., using a local server like `http://localhost`), you **do not** need to add `crossorigin` – the browser treats them as same‑origin and allows full access.
+
 ## Documentation
 
 The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)** — kept there so it stays in sync and searchable:
