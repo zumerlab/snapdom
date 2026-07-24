@@ -277,7 +277,15 @@ export function generateDedupedBaseCSS(usedTagNames) {
   const groups = new Map()
 
   for (let tagName of usedTagNames) {
-    const styles = cache.defaultStyle.get(tagName)
+    // Resolve through getDefaultStyleForTag instead of reading cache.defaultStyle directly.
+    // That cache is an EvictingMap (MAX_DEFAULT_STYLE), and this runs at the very end of a
+    // capture: a document using more distinct tags than the cap has already had its earliest
+    // tags evicted. Reading the map raw returned undefined for exactly those tags and the
+    // `continue` silently emitted no base reset for them, so inside the foreignObject the UA
+    // stylesheet's defaults applied instead (h1..h3/p margins, hr borders, list padding…) and
+    // the capture reflowed taller than the source. Re-deriving is memoized and idempotent;
+    // NO_DEFAULTS_TAGS still yields {} and is dropped by the empty-key guard below.
+    const styles = getDefaultStyleForTag(tagName)
     if (!styles) continue
 
     // Creamos la "firma" del bloque CSS para comparar
