@@ -104,6 +104,26 @@
     .output-box img { max-width: 100%; height: auto; border: 1px solid rgba(15,30,77,0.2); background: #fff; padding: 4px; object-fit: contain; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); }
     .status-msg { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 
+    /* ── session() demo ── */
+    .poke-target { display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, #F5A623 0%, #FFD873 100%); }
+    .poke-target img { width: 72px; height: 72px; object-fit: contain; flex: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25)); }
+    .poke-target .poke-hp { font-weight: 400; opacity: 0.85; font-size: 13px; }
+    /* Comfortable slack over the live text's own width: a few px of font-fallback/emoji-glyph
+       drift between live rendering and the rasterized capture must never be enough to push
+       "caught × N" onto its own line — give the frozen width real headroom instead of exactly
+       matching live content. */
+    .poke-target .poke-info { min-width: 230px; white-space: nowrap; }
+    .output-box .ph { color: var(--text-muted); margin: auto; }
+    .tick-row { display: flex; gap: 3px; justify-content: center; margin-bottom: 8px; }
+    .tick { width: 10px; height: 16px; border: 1.5px solid var(--border-soft); background: #fff; border-radius: 1px; flex: none; transition: background .15s ease, border-color .15s ease; }
+    .tick.cost { background: var(--accent); border-color: var(--accent); }
+    .tick.fast { background: var(--green); border-color: var(--green); }
+    .col-readout { font-family: var(--font-code); font-size: 15px; font-weight: 700; text-align: center; margin-top: 8px; color: var(--text); }
+    .col-readout.win { color: var(--green); }
+    .legend-mini { display: flex; gap: 18px; justify-content: center; margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+    .legend-mini .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+    .credit { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+
     /* ── Responsive ── */
     @media (max-width: 640px) {
       .hero { padding: 56px 20px 30px; }
@@ -144,6 +164,53 @@
       <a class="hub-card" href="./labs/webgl-live-mirror/" data-umami-event="Labs card webgl-live-mirror"><span class="tag">defineExports</span><h3>DOM, live on the GPU</h3><p>Type into a contenteditable card and watch a plugin push each capture into a live WebGL texture.</p></a>
       <a class="hub-card" href="./labs/webgl-seamless-dom/" data-umami-event="Labs card webgl-seamless-dom"><span class="tag">defineExports</span><h3>The text you see isn't text</h3><p>A transparent proxy owns the caret; a hidden element gets captured; a double-buffered WebGL crossfade hides every update.</p></a>
     </div>
+
+    <div class="section-label">New option</div>
+    <!-- burst:true -->
+    <section class="panel" id="demo-session">
+      <div class="section-label">burst: true — memoized repeat captures</div>
+      <p>
+        <code>burst: true</code> watches the element with a scoped <code>MutationObserver</code> and memoizes the
+        last result — unchanged polls skip the pipeline entirely. Numbers below are timed live, in your browser, right now.
+      </p>
+
+      <div class="demo-target poke-target" id="target-session">
+        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" alt="Pikachu" width="72" height="72" loading="lazy" />
+        <div class="poke-info">
+          <strong>Pikachu <span class="poke-hp">35 HP</span></strong>
+          <p>⚡ Electric · caught × <span id="poke-counter">0</span></p>
+        </div>
+      </div>
+
+      <div class="btn-row" id="session-mode-row">
+        <button class="btn btn-primary" data-mode="static" data-umami-event="Labs session mode static">No changes</button>
+        <button class="btn btn-ghost" data-mode="mutating" data-umami-event="Labs session mode mutating">Changes 1-in-4 polls</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-session-run" data-umami-event="Labs session run">Poll it 20×</button>
+      </div>
+
+      <div class="output-row">
+        <div class="output-col">
+          <label>Without burst</label>
+          <div class="tick-row" id="ticks-plain"></div>
+          <div class="output-box" id="box-plain"><span class="ph">—</span></div>
+          <div class="col-readout" id="out-session-plain">—</div>
+        </div>
+        <div class="output-col">
+          <label>With burst: true</label>
+          <div class="tick-row" id="ticks-session"></div>
+          <div class="output-box" id="box-session"><span class="ph">—</span></div>
+          <div class="col-readout" id="out-session-session">—</div>
+        </div>
+      </div>
+      <div class="legend-mini">
+        <span><i class="dot" style="background:var(--accent)"></i> full pipeline run</span>
+        <span><i class="dot" style="background:var(--green)"></i> memoized — instant</span>
+      </div>
+      <div class="status-msg" id="status-session"></div>
+      <p class="credit">Pikachu artwork via <a href="https://pokeapi.co/" target="_blank" rel="noopener">PokeAPI</a>. Pokémon © Nintendo / Game Freak.</p>
+    </section>
 
     <div class="section-label">Experimental browser APIs</div>
     <!-- html-in-canvas -->
@@ -348,6 +415,110 @@
         outApi.innerHTML = `<span style="color:var(--rose)">${e.message}</span>`;
       }
     };
+  </script>
+  <!-- burst:true logic -->
+  <script type="module">
+    import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+
+    const card = document.getElementById('target-session');
+    const counter = document.getElementById('poke-counter');
+    const modeRow = document.getElementById('session-mode-row');
+    const runBtn = document.getElementById('btn-session-run');
+    const ticksPlainEl = document.getElementById('ticks-plain');
+    const ticksSessionEl = document.getElementById('ticks-session');
+    const boxPlain = document.getElementById('box-plain');
+    const boxSession = document.getElementById('box-session');
+    const outPlain = document.getElementById('out-session-plain');
+    const outSession = document.getElementById('out-session-session');
+    const status = document.getElementById('status-session');
+
+    const REPEATS = 20;
+    const STEP_MS = 130; // paced so each poll is actually visible, not just a number
+    let mode = 'static';
+
+    modeRow.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-mode]');
+      if (!btn) return;
+      mode = btn.dataset.mode;
+      modeRow.querySelectorAll('button').forEach(b => {
+        const active = b === btn;
+        b.classList.toggle('btn-primary', active);
+        b.classList.toggle('btn-ghost', !active);
+      });
+    });
+
+    function buildTicks(container) {
+      container.innerHTML = '';
+      const els = [];
+      for (let i = 0; i < REPEATS; i++) {
+        const t = document.createElement('div');
+        t.className = 'tick';
+        container.appendChild(t);
+        els.push(t);
+      }
+      return els;
+    }
+    buildTicks(ticksPlainEl);
+    buildTicks(ticksSessionEl);
+
+    // Runs REPEATS real captures, one at a time, updating the preview and a
+    // tick per poll as it lands. isFull(i) marks whether poll i is a full
+    // pipeline run (colors the tick) — for the burst lane this comes
+    // straight out of when we mutate the card, not a guess.
+    //
+    // captureFn returns the capture RESULT (not a raw SVG url): timing wraps only that call,
+    // so it still measures pipeline time alone. The preview is then rasterized via toPng() —
+    // assigning the raw SVG directly as an <img src> (toRaw()) doesn't reliably apply an
+    // embedded @font-face on first paint in that "SVG-as-image" context (Chromium quirk); a
+    // canvas rasterization forces the decode to wait for the font, same as a real export.
+    async function pollLoop(ticks, box, captureFn, isFull) {
+      let capturedMs = 0;
+      box.innerHTML = '';
+      for (let i = 0; i < REPEATS; i++) {
+        if (mode === 'mutating' && i % 4 === 0) counter.textContent = String(i);
+        const t0 = performance.now();
+        const result = await captureFn();
+        capturedMs += performance.now() - t0;
+        const png = await result.toPng();
+        box.replaceChildren(png);
+        ticks[i].classList.add(isFull(i) ? 'cost' : 'fast');
+        await new Promise(r => setTimeout(r, STEP_MS));
+      }
+      counter.textContent = '0';
+      return capturedMs;
+    }
+
+    runBtn.addEventListener('click', async () => {
+      runBtn.disabled = true;
+      modeRow.querySelectorAll('button').forEach(b => { b.disabled = true; });
+      outPlain.classList.remove('win');
+      outSession.classList.remove('win');
+      outPlain.textContent = '—';
+      outSession.textContent = '—';
+      status.textContent = '';
+      const plainTicks = buildTicks(ticksPlainEl);
+      const burstTicks = buildTicks(ticksSessionEl);
+
+      // embedFonts: true — the card's text uses the site's webfont (Switzer). Without it, the
+      // foreignObject falls back to a substitute font whose metrics don't match, and the width
+      // snapdom froze from the live (Switzer) measurement can re-wrap the counter line.
+      // reconcile: true — belt-and-suspenders: measures the clone against the live card and
+      // pins any box that still diverges, whatever the cause. The card is tiny, so the ~2x
+      // capture-time cost is negligible in absolute terms here.
+      const captureOpts = { embedFonts: true, reconcile: true };
+      const plainMs = await pollLoop(plainTicks, boxPlain, () => snapdom(card, captureOpts), () => true);
+      outPlain.textContent = plainMs.toFixed(2) + ' ms';
+
+      const burstIsFull = (i) => i === 0 || (mode === 'mutating' && i % 4 === 0);
+      const burstMs = await pollLoop(burstTicks, boxSession, () => snapdom(card, { ...captureOpts, burst: true }), burstIsFull);
+      outSession.textContent = burstMs.toFixed(2) + ' ms';
+      const winner = burstMs <= plainMs ? outSession : outPlain;
+      winner.classList.add('win');
+      status.textContent = `${(plainMs / burstMs).toFixed(2)}× faster — pipeline time only, timed live just now.`;
+
+      modeRow.querySelectorAll('button').forEach(b => { b.disabled = false; });
+      runBtn.disabled = false;
+    });
   </script>
   <script defer src="/copy-code.js"></script>
 </body>
