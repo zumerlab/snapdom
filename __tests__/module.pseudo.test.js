@@ -563,4 +563,42 @@ describe('inlinePseudoElements', () => {
     wrap.remove()
     style.remove()
   })
+
+  // Bug-hunt finding: content: image-set(...) only matched content.startsWith('url(') and
+  // fell through to the plain-text branch, rendering the raw CSS source as visible text
+  // instead of painting an image — confirmed live via getComputedStyle before this fix.
+  it('renders content: image-set(...) as an image, not literal text', async () => {
+    const PX1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=='
+    const PX2 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgAAIAAAUAAen63NgAAAAASUVORK5CYII='
+
+    const el = document.createElement('div')
+    el.className = 'imageset-target'
+    document.body.appendChild(el)
+
+    const style = document.createElement('style')
+    style.textContent = `
+      .imageset-target::before {
+        content: image-set(url("${PX1}") 1x, url("${PX2}") 2x);
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+      }
+    `
+    document.head.appendChild(style)
+
+    const sessionCache4 = { styleMap: new Map(), styleCache: new WeakMap() }
+    const clone = el.cloneNode(true)
+    await inlinePseudoElements(el, clone, sessionCache4, {})
+
+    const before = clone.querySelector('[data-snapdom-pseudo="::before"]')
+    expect(before).toBeTruthy()
+    const img = before.querySelector('img')
+    expect(img).toBeTruthy()
+    expect(img.src).toMatch(/^data:image\/png/)
+    // Must not have fallen through to the plain-text branch.
+    expect(before.textContent).toBe('')
+
+    el.remove()
+    style.remove()
+  })
 })

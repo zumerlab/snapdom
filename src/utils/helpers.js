@@ -15,6 +15,36 @@ export function extractURL(value) {
 }
 
 /**
+ * Picks the best-matching URL out of a CSS `image-set()`/`-webkit-image-set()` value for a
+ * given device pixel ratio — the smallest declared resolution that's >= targetDppx, or the
+ * largest available if none reaches it. A candidate with no `Nx`/`Ndpi` descriptor is 1x.
+ * Returns null if `value` isn't an image-set() (so callers can fall through to a plain url()).
+ * @param {string} value
+ * @param {number} [targetDppx=1]
+ * @returns {string|null}
+ */
+export function resolveImageSetURL(value, targetDppx = 1) {
+  const m = value.match(/^\s*-?(?:webkit-)?image-set\(([\s\S]*)\)\s*$/i)
+  if (!m) return null
+  const candidates = []
+  for (const part of m[1].split(',')) {
+    const urlMatch = part.match(/url\((['"]?)(.*?)(\1)\)/)
+    if (!urlMatch) continue
+    const resMatch = part.match(/(\d+(?:\.\d+)?)\s*(x|dpi|dppx)/i)
+    let dppx = 1
+    if (resMatch) {
+      const n = parseFloat(resMatch[1])
+      dppx = /dpi/i.test(resMatch[2]) ? n / 96 : n
+    }
+    candidates.push({ url: urlMatch[2].trim(), dppx })
+  }
+  if (!candidates.length) return null
+  candidates.sort((a, b) => a.dppx - b.dppx)
+  const fit = candidates.find(c => c.dppx >= targetDppx)
+  return (fit || candidates[candidates.length - 1]).url
+}
+
+/**
  * Determines if a font family or URL is an icon font.
  *
  * @param {string} familyOrUrl - The font family or URL

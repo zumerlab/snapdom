@@ -129,6 +129,55 @@ describe('inlineSingleBackgroundEntry', () => {
     const out = await inlineSingleBackgroundEntry('url("https://bad.example.com/x.png")')
     expect(out).toBe('none')
   })
+
+  // Bug-hunt finding: image-set()/-webkit-image-set() used to fall through to extractURL's
+  // generic regex, which always grabs whichever url() appears FIRST in the string — silently
+  // discarding resolution and inlining the 1x candidate even on a 2x display.
+  describe('image-set() resolution matching', () => {
+    let originalDpr
+    beforeEach(() => {
+      originalDpr = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio')
+    })
+    afterEach(() => {
+      if (originalDpr) Object.defineProperty(window, 'devicePixelRatio', originalDpr)
+    })
+
+    it('picks the 2x candidate on a 2x display, not whichever url() comes first', async () => {
+      Object.defineProperty(window, 'devicePixelRatio', { value: 2, configurable: true })
+      const oneX = 'https://example.com/photo-1x.png'
+      const twoX = 'https://example.com/photo-2x.png'
+      cache.background.set(`|${oneX}`, 'data:image/png;base64,ONEX')
+      cache.background.set(`|${twoX}`, 'data:image/png;base64,TWOX')
+      const out = await inlineSingleBackgroundEntry(
+        `image-set(url("${oneX}") 1x, url("${twoX}") 2x)`
+      )
+      expect(out).toBe('url("data:image/png;base64,TWOX")')
+    })
+
+    it('picks the 1x candidate on a 1x display', async () => {
+      Object.defineProperty(window, 'devicePixelRatio', { value: 1, configurable: true })
+      const oneX = 'https://example.com/photo-1x-b.png'
+      const twoX = 'https://example.com/photo-2x-b.png'
+      cache.background.set(`|${oneX}`, 'data:image/png;base64,ONEXB')
+      cache.background.set(`|${twoX}`, 'data:image/png;base64,TWOXB')
+      const out = await inlineSingleBackgroundEntry(
+        `image-set(url("${oneX}") 1x, url("${twoX}") 2x)`
+      )
+      expect(out).toBe('url("data:image/png;base64,ONEXB")')
+    })
+
+    it('works with the -webkit- prefixed form', async () => {
+      Object.defineProperty(window, 'devicePixelRatio', { value: 2, configurable: true })
+      const oneX = 'https://example.com/wk-1x.png'
+      const twoX = 'https://example.com/wk-2x.png'
+      cache.background.set(`|${oneX}`, 'data:image/png;base64,WKONE')
+      cache.background.set(`|${twoX}`, 'data:image/png;base64,WKTWO')
+      const out = await inlineSingleBackgroundEntry(
+        `-webkit-image-set(url("${oneX}") 1x, url("${twoX}") 2x)`
+      )
+      expect(out).toBe('url("data:image/png;base64,WKTWO")')
+    })
+  })
 })
 
 // -----------------------------

@@ -1,5 +1,5 @@
 import { cache } from '../core/cache'
-import { extractURL, safeEncodeURI, resolveURL } from './helpers'
+import { extractURL, safeEncodeURI, resolveURL, resolveImageSetURL } from './helpers'
 import { snapFetch } from '../modules/snapFetch'
 
 /**
@@ -18,8 +18,11 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
   if (isGradient || entry.trim() === 'none') {
     return entry // leave as is
   }
-  // Extract raw URL from url("...") (your existing helper)
-  const rawUrl = extractURL(entry)
+  // image-set()/-webkit-image-set(): pick the candidate matching the live device's pixel
+  // ratio instead of always grabbing whichever url() the generic regex sees first (which
+  // silently discarded resolution — e.g. always inlining the 1x candidate on a 2x display).
+  const rawUrl = resolveImageSetURL(entry, (typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1) ??
+    extractURL(entry)
   if (!rawUrl) {
     // Not a URL(...) we recognize → keep original as a safe fallback
     return entry

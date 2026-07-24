@@ -7,6 +7,7 @@ import {
   getStyle,
   snapshotComputedStyle,
   extractURL,
+  resolveImageSetURL,
   safeEncodeURI,
   inlineSingleBackgroundEntry,
   splitBackgroundImage,
@@ -609,9 +610,10 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // Pin white-space:nowrap on the host AND on the pseudo span itself when
       // live is one line — the span carries an explicit `white-space: normal`
       // from its style snapshot, which would otherwise break inheritance.
-      // Gate: skip single-char (icon) and url() pseudos — wrap impossible there.
+      // Gate: skip single-char (icon) and url()/image-set() pseudos — wrap impossible there.
+      const isImageContent = cleanContent.startsWith('url(') || /^-?(?:webkit-)?image-set\(/i.test(cleanContent)
       let pinNowrap = false
-      if (hasExplicitContent && !isIconFont2 && cleanContent.length > 1 && !cleanContent.startsWith('url(')) {
+      if (hasExplicitContent && !isIconFont2 && cleanContent.length > 1 && !isImageContent) {
         const hostStyle = getStyle(source)
         const fs = parseFloat(hostStyle.fontSize) || 16
         let lh = parseFloat(hostStyle.lineHeight)
@@ -653,9 +655,12 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         imgEl.style = `height:${fontSize}px;width:${(w / h) * fontSize}px;object-fit:contain;`
         pseudoEl.appendChild(imgEl)
         clone.dataset.snapdomHasIcon = 'true'
-      } else if (cleanContent && cleanContent.startsWith('url(')) {
-        // content: url(...)
-        const rawUrl = extractURL(cleanContent)
+      } else if (cleanContent && isImageContent) {
+        // content: url(...) / image-set(...) / -webkit-image-set(...) — image-set() used to
+        // fall through to the plain-text branch below, rendering the raw CSS source as
+        // visible text instead of an image.
+        const rawUrl = resolveImageSetURL(cleanContent, (typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1) ??
+          extractURL(cleanContent)
         if (rawUrl?.trim()) {
           try {
             const dataUrl = await snapFetch(safeEncodeURI(rawUrl), { as: 'dataURL', useProxy: options.useProxy })
