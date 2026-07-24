@@ -42,6 +42,10 @@ export const cache = {
    *  Key: Element. Value: { cssLen, w0, csh, csw } — cssLen is the total injected CSS
    *  length, used together with w0 as a cheap invalidation key when styles change. */
   measureHints: new WeakMap(),
+  /** { count, firstTs, warned } per element — tracks capture frequency for elements NOT using
+   *  burst:true, to suggest it when the same element is captured repeatedly in a short window.
+   *  The actual burst:true memoization state lives in src/core/burst.js, not here. */
+  burstAdvice: new WeakMap(),
   font: new Set(),
   session: {
     styleMap: new Map(),

@@ -71,6 +71,33 @@ function collectResolveNodeHooks(options) {
   return hooks.length ? hooks : null
 }
 
+const BURST_WINDOW_MS = 2000
+const BURST_THRESHOLD = 3
+
+/**
+ * Suggests { burst: true } when the same element is captured BURST_THRESHOLD+ times within
+ * BURST_WINDOW_MS without it. A plain repeat capture re-walks the tree and rereads computed
+ * styles every time even with every asset cache warm (measured ~15ms for a 450-node subtree);
+ * burst:true skips that entirely on an unchanged element. Only runs when burst ISN'T already
+ * set — the whole point is discoverability for callers who don't know it exists yet, so
+ * gating it behind the option it's advertising would be circular. The Date.now()+WeakMap
+ * bookkeeping this costs is cheap enough to always run.
+ * @param {Element} element
+ */
+function checkBurstAdvice(element) {
+  const now = Date.now()
+  const entry = cache.burstAdvice.get(element)
+  if (!entry || now - entry.firstTs > BURST_WINDOW_MS) {
+    cache.burstAdvice.set(element, { count: 1, firstTs: now, warned: false })
+    return
+  }
+  entry.count++
+  if (entry.count >= BURST_THRESHOLD && !entry.warned) {
+    entry.warned = true
+    console.warn('[snapdom] Captured this element multiple times. Pass { burst: true } to increase the speed.')
+  }
+}
+
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
@@ -84,11 +111,13 @@ function collectResolveNodeHooks(options) {
  * @param {boolean} [options.outerTransforms=false] - Normalize root by removing translate/rotate (keep scale/skew)
  * @param {boolean} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
+ * @param {boolean} [options.burst=false] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Without it, snapdom warns once if the same element is captured 3+ times within 2s
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
+  if (!options.burst) checkBurstAdvice(element)
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
   const fast = options.fast
   const outerTransforms = options.outerTransforms !== false   // default: true

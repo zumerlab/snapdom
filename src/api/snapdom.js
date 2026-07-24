@@ -6,21 +6,12 @@ import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
 import { collectUsedFontVariants, ensureFontsReady } from '../modules/fonts.js'
-import { createSession } from './session.js'
+import { captureWithBurst } from '../core/burst.js'
 export { preCache } from './preCache.js'
 
 // API pública (registro global de plugins)
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
 export const snapdom = Object.assign(main, { plugins })
-
-/**
- * Create a capture session for repeated captures of the same element.
- * capture() memoizes: unchanged subtree → instant cached result; mutations (tracked by a
- * scoped MutationObserver) trigger a fresh capture with warm caches.
- * @param {Element} element
- * @param {object} [options]
- */
-snapdom.session = (element, options) => createSession(main, element, options)
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
@@ -90,6 +81,9 @@ async function main(element, userOptions) {
     }
   }
 
+  if (context.burst) {
+    return captureWithBurst(element, userOptions, context, () => snapdom.capture(element, context, INTERNAL_TOKEN))
+  }
   return snapdom.capture(element, context, INTERNAL_TOKEN)
 }
 

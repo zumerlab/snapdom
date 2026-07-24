@@ -89,6 +89,23 @@ export interface SnapdomOptions {
    */
   reconcile?: boolean;
 
+  /**
+   * Memoizes repeated captures of this element: a scoped MutationObserver marks it dirty on
+   * external change, and an unchanged repeat capture returns the cached result without
+   * re-running the pipeline. Opt-in — costs a persistent observer per element. Without it,
+   * snapdom warns once (console.warn) if the same element is captured 3+ times within 2s.
+   * Default false.
+   */
+  burst?: boolean;
+
+  /**
+   * With `burst: true`, forces a fresh capture on this call for changes the automatic
+   * MutationObserver tracking can't see: canvas pixel draws, programmatic CSSOM edits
+   * (stylesheet.insertRule/deleteRule, cssRule.style.* on a rule rather than an element).
+   * Ignored without `burst: true`. Default false.
+   */
+  invalidate?: boolean;
+
   /** outerTransforms the root: remove translate/rotate, keep scale/skew. Default true. */
   outerTransforms?: boolean;
   /**
@@ -346,37 +363,8 @@ export declare function snapdom(
  * - Execution order = registration order.
  * - Per-capture plugins run before globals and override by `name`.
  */
-/** Session for repeated captures of the same element (see snapdom.session). */
-export interface CaptureSession {
-  /** True when the subtree (or document styles) changed since the last capture. */
-  readonly dirty: boolean;
-  /**
-   * Capture the element. While nothing changed and no overrides are passed, the memoized
-   * result is returned instantly; otherwise a fresh capture runs with warm caches.
-   */
-  capture(overrides?: Partial<SnapdomOptions>): Promise<CaptureResult>;
-  /**
-   * Manually flag the session dirty for changes automatic tracking can't see: canvas
-   * pixel draws, programmatic CSSOM edits (stylesheet.insertRule/deleteRule, cssRule.style.*
-   * on a rule rather than an element). DOM mutations and `<video>` frame changes (seek,
-   * playback) are already tracked automatically.
-   */
-  invalidate(): void;
-  /** Disconnect observers and drop the memoized result. */
-  dispose(): void;
-}
-
 export declare namespace snapdom {
   function plugins(...defs: PluginUse[]): typeof snapdom;
-
-  /**
-   * Create a capture session for repeated captures of the same element (frame loops,
-   * polling previews). Mutations are tracked by a scoped MutationObserver.
-   */
-  function session(
-    element: Element,
-    options?: SnapdomOptions
-  ): CaptureSession;
 
   /** Shortcut helpers that run a one-off capture+export. */
 

@@ -94,6 +94,16 @@ export function createContext(options = {}) {
     // to their live size. Opt-in (adds one in-document layout of the clone).
     reconcile: options.reconcile ?? false,
 
+    // Memoizes repeated captures of an unchanged element (scoped MutationObserver + cached
+    // result, see src/core/burst.js) — dashboard polling, video/gif frame loops. Opt-in: it
+    // costs a persistent observer per element, wasted on a one-shot capture. When this is
+    // NOT set, snapdom instead tracks capture frequency cheaply and suggests it once if the
+    // same element is captured repeatedly (see checkBurstAdvice in capture.js).
+    burst: options.burst ?? false,
+    // One-off with burst:true — force a fresh capture for changes automatic tracking can't
+    // see (canvas pixel draws, programmatic CSSOM edits). Ignored without burst:true.
+    invalidate: options.invalidate ?? false,
+
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 

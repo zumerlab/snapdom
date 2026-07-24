@@ -10,7 +10,6 @@ import { snapdom, preCache } from './snapdom'
 import type {
   SnapdomOptions,
   CaptureResult,
-  CaptureSession,
   SnapdomPlugin,
   PluginFactory,
   ExportMap,
@@ -68,17 +67,10 @@ async function staticNamespaceHelpers() {
   await snapdom.toJpeg(el)
 }
 
-async function session() {
-  const s: CaptureSession = snapdom.session(el, { scale: 1 })
-  const dirty: boolean = s.dirty
-  const result: CaptureResult = await s.capture()
-  await s.capture({ scale: 2 })
-  s.invalidate()
-  s.dispose()
-  void dirty; void result
-
-  // @ts-expect-error dirty is readonly
-  s.dirty = true
+async function burstOption() {
+  const options: SnapdomOptions = { burst: true, invalidate: true }
+  const result: CaptureResult = await snapdom(el, options)
+  void result
 }
 
 function pluginShape() {
@@ -105,6 +97,6 @@ async function preCacheHelper() {
 void mainCallable
 void clipOptionShapes
 void staticNamespaceHelpers
-void session
+void burstOption
 void pluginShape
 void preCacheHelper
