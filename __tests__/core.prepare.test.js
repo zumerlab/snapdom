@@ -482,6 +482,20 @@ it('root transform becomes empty string when stripTranslate returns falsy', asyn
   csMock.mockRestore()
 })
 
+// Bug-hunt finding: resolveBlobUrlsInTree built every worklist via root.querySelectorAll(...),
+// which never matches root itself — a capture root that IS the blob: <img> was skipped by this
+// early pass, only picked up later by inlineImages, losing a race if the caller revokes the
+// object URL synchronously right after calling snapdom.
+it('resolves a blob: src when the capture root itself is the <img>', async () => {
+  const img = document.createElement('img')
+  img.src = 'blob:http://localhost/root-img'
+
+  vi.mocked(snapFetch).mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,ROOT' })
+
+  const { clone } = await prepareClone(img)
+  expect(clone.getAttribute('src')).toBe('data:image/png;base64,ROOT')
+})
+
 // 8) resolveBlobUrlsInTree early paths: img sin src/srcset, style sin blob
 it('skips nodes with no actionable URLs (early paths)', async () => {
   const root = document.createElement('div')

@@ -678,11 +678,28 @@ function stringifySrcset(parts) {
   return parts.map((p) => (p.desc ? `${p.url} ${p.desc.trim()}` : p.url)).join(', ')
 }
 
+/**
+ * querySelectorAll never matches the element it's called on, so a capture root that IS one of
+ * these tags/attrs (e.g. `snapdom(imgEl)` where imgEl.src is a blob: URL) was silently skipped
+ * — the early resolveBlobUrlsInTree pass missed it, and only the later idle-scheduled
+ * inlineImages/inlineBackgroundImages passes picked it up, losing the race if the caller
+ * revokes the object URL synchronously right after calling snapdom (see #461 for the same
+ * shape in images.js).
+ * @param {Element} root
+ * @param {string} selector
+ * @returns {Element[]}
+ */
+function selfAndDescendants(root, selector) {
+  const nodes = root.querySelectorAll ? Array.from(root.querySelectorAll(selector)) : []
+  if (root.matches?.(selector)) nodes.unshift(root)
+  return nodes
+}
+
 export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
   const ctx = sessionCache
 
-  const imgs = root.querySelectorAll ? root.querySelectorAll('img') : []
+  const imgs = selfAndDescendants(root, 'img')
   for (const img of imgs) {
     try {
       const srcAttr = img.getAttribute('src')
@@ -712,7 +729,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
     }
   }
 
-  const svgImages = root.querySelectorAll ? root.querySelectorAll('image') : []
+  const svgImages = selfAndDescendants(root, 'image')
   for (const node of svgImages) {
     try {
       const XLINK_NS = 'http://www.w3.org/1999/xlink'
@@ -727,7 +744,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
     }
   }
 
-  const styled = root.querySelectorAll ? root.querySelectorAll("[style*='blob:']") : []
+  const styled = selfAndDescendants(root, "[style*='blob:']")
   for (const el of styled) {
     try {
       const styleText = el.getAttribute('style')
@@ -754,7 +771,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
 
   const urlAttrs = ['poster']
   for (const attr of urlAttrs) {
-    const nodes = root.querySelectorAll ? root.querySelectorAll(`[${attr}^='blob:']`) : []
+    const nodes = selfAndDescendants(root, `[${attr}^='blob:']`)
     for (const n of nodes) {
       try {
         const u = n.getAttribute(attr)

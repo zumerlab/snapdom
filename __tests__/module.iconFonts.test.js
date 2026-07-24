@@ -111,4 +111,35 @@ describe('ligatureIconToImage source pairing (#6)', () => {
     source.remove()
     clone.remove()
   })
+
+  // Bug-hunt finding: querySelectorAll never matches the element it's called on, so
+  // capturing a Material icon directly as root (snapdom(iconSpan)) left its ligature text
+  // ("home") unconverted — the raster showed literal text (or tofu) instead of the icon glyph.
+  it('converts the ligature when the icon itself is the root (not just a descendant)', async () => {
+    const { ligatureIconToImage } = mod
+    const { cache } = await import('../src/core/cache.js')
+
+    const source = document.createElement('span')
+    source.className = 'material-icons'
+    source.style.fontFamily = 'Material Icons'
+    source.style.fontSize = '40px'
+    source.textContent = 'home'
+    document.body.appendChild(source)
+
+    const clone = source.cloneNode(true)
+    document.body.appendChild(clone)
+
+    cache.session.nodeMap = new Map([[clone, source]])
+
+    const replaced = await ligatureIconToImage(clone, source)
+
+    expect(replaced).toBe(1)
+    const img = clone.querySelector('img')
+    expect(img).toBeTruthy()
+    expect(img.style.height).toBe('40px')
+    expect(clone.textContent.trim()).toBe('')
+
+    source.remove()
+    clone.remove()
+  })
 })

@@ -84,6 +84,46 @@ describe('pictureResolver core', () => {
     expect(picture.querySelectorAll('source').length).toBe(1)
   })
 
+  // Bug-hunt finding: querySelector(All) never matches the element it's called on, so a
+  // capture root that IS the <picture>/lazy <img> (e.g. snapdom(pictureEl) for a single hero
+  // image, no wrapper) was silently skipped by both the quick probe and the resolver itself.
+  it('resolves a placeholder <picture> when it IS the capture root, not just a descendant', async () => {
+    const picture = document.createElement('picture')
+    const source = document.createElement('source')
+    source.setAttribute('srcset', 'https://ex.com/real-root.png')
+    const img = document.createElement('img')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
+    picture.appendChild(source)
+    picture.appendChild(img)
+    document.body.appendChild(picture)
+
+    expect(quickProbeMayNeedPictureResolver(picture, true)).toBe(true)
+
+    const undo = await runPictureResolverBeforeClone(picture, { useProxy: '' })
+    expect(typeof undo).toBe('function')
+    expect(img.getAttribute('src')?.startsWith('data:')).toBe(true)
+    expect(picture.querySelectorAll('source').length).toBe(0)
+
+    await undo()
+    picture.remove()
+  })
+
+  it('resolves a lazy <img> when it IS the capture root, not just a descendant', async () => {
+    const img = document.createElement('img')
+    img.setAttribute('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==')
+    img.setAttribute('data-src', 'https://ex.com/real-lazy-root.png')
+    document.body.appendChild(img)
+
+    expect(quickProbeMayNeedPictureResolver(img, true)).toBe(true)
+
+    const undo = await runPictureResolverBeforeClone(img, { useProxy: '' })
+    expect(typeof undo).toBe('function')
+    expect(img.getAttribute('src')?.startsWith('data:image/png')).toBe(true)
+
+    await undo()
+    img.remove()
+  })
+
   it('findLazySrcAttr prefers data-src and reads data-srcset first candidate', () => {
     const a = document.createElement('img')
     a.setAttribute('data-src', 'https://ex.com/hi.png')

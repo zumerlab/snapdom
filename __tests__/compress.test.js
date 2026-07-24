@@ -134,6 +134,21 @@ describe('compressClonedImages', () => {
     expect(stats.count).toBe(0)
     expect(img.getAttribute('src')).toBe(before)
   })
+
+  // Bug-hunt finding, same shape as #461: querySelectorAll never matches the element it's
+  // called on, so a capture root that IS the <img> (snapdom(imgEl), no wrapper) was inlined
+  // but silently never downsampled — compress:true did nothing for the single most common
+  // "capture just this image" pattern.
+  it('downsamples when the clone itself IS the <img>, not just a descendant', async () => {
+    const img = document.createElement('img')
+    img.src = bigPhoto(1800, 1200, 7)
+    img.dataset.snapdomWidth = '180'
+    img.dataset.snapdomHeight = '120'
+    const before = img.getAttribute('src').length
+    const stats = await compressClonedImages(img, { scale: 1, dpr: 1, compress: true })
+    expect(stats.count).toBe(1)
+    expect(img.getAttribute('src').length).toBeLessThan(before)
+  })
 })
 
 describe('compressClonedBackgrounds', () => {
@@ -178,6 +193,18 @@ describe('compressClonedSvgImages', () => {
     const before = image.getAttribute('href').length
 
     const r = await compressClonedSvgImages(svg, { scale: 1, dpr: 1, compress: true })
+    expect(r.count).toBe(1)
+    expect(image.getAttribute('href').length).toBeLessThan(before)
+  })
+
+  it('downsamples when the clone itself IS the SVG <image>, not just a descendant', async () => {
+    const image = document.createElementNS(SVG_NS, 'image')
+    image.setAttribute('href', bigPhoto(1600, 1200, 14))
+    image.setAttribute('width', '160')
+    image.setAttribute('height', '120')
+    const before = image.getAttribute('href').length
+
+    const r = await compressClonedSvgImages(image, { scale: 1, dpr: 1, compress: true })
     expect(r.count).toBe(1)
     expect(image.getAttribute('href').length).toBeLessThan(before)
   })

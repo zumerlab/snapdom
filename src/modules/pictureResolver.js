@@ -19,18 +19,21 @@ export function isPlaceholderSrc(src) {
   return false
 }
 
+const LAZY_IMG_SELECTOR =
+  'img[data-src], img[data-lazy-src], img[data-original], img[data-hi-res-src], img[data-srcset], img[data-lazy-srcset]'
+
 /**
  * Cheap hint: might we need picture/lazy resolution? Avoids full scans when false.
+ * querySelector never matches root itself, so a capture root that IS the <picture>/lazy
+ * <img> (e.g. snapdom(pictureEl) for a single hero image) was silently skipped.
  * @param {Element|null|undefined} root
  * @param {boolean} resolveLazySrc
  */
 export function quickProbeMayNeedPictureResolver(root, resolveLazySrc) {
   if (!root || !(root instanceof Element)) return false
-  if (root.querySelector('picture')) return true
+  if (root.matches?.('picture') || root.querySelector('picture')) return true
   if (resolveLazySrc) {
-    return !!root.querySelector(
-      'img[data-src], img[data-lazy-src], img[data-original], img[data-hi-res-src], img[data-srcset], img[data-lazy-srcset]'
-    )
+    return !!(root.matches?.(LAZY_IMG_SELECTOR) || root.querySelector(LAZY_IMG_SELECTOR))
   }
   return false
 }
@@ -132,7 +135,10 @@ export async function runPictureResolverBeforeClone(root, options = {}) {
     }
   }
 
-  const pictures = root.querySelectorAll('picture')
+  // querySelectorAll never matches root itself — a capture root that IS the <picture>/lazy
+  // <img> was silently skipped (see #461 for the same shape in images.js).
+  const pictures = Array.from(root.querySelectorAll('picture'))
+  if (root.matches?.('picture')) pictures.unshift(root)
   for (const picture of pictures) {
     const img = picture.querySelector('img')
     if (!img) continue
@@ -173,7 +179,8 @@ export async function runPictureResolverBeforeClone(root, options = {}) {
   }
 
   if (resolveLazySrc) {
-    const imgs = root.querySelectorAll('img')
+    const imgs = Array.from(root.querySelectorAll('img'))
+    if (root.localName === 'img') imgs.unshift(root)
     for (const img of imgs) {
       if (img.closest('picture') && isPlaceholderSrc(img.getAttribute('src') || '')) continue
       const currentSrc = img.getAttribute('src') || ''

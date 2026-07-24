@@ -375,7 +375,11 @@ async function safariWarmup(element, baseOptions) {
   }
 
   // 3) “poke” a los canvas del elemento (Chart.js, etc.)
-  element.querySelectorAll('canvas').forEach(c => {
+  // querySelectorAll never matches element itself — a capture root that IS the <canvas>
+  // (e.g. snapdom(canvasEl) for a single chart) was never poked.
+  const canvases = Array.from(element.querySelectorAll('canvas'))
+  if (element.tagName === 'CANVAS') canvases.unshift(element)
+  canvases.forEach(c => {
     try {
       const ctx = c.getContext('2d', { willReadFrequently: true })
       if (ctx) { ctx.getImageData(0, 0, 1, 1) }
@@ -391,17 +395,20 @@ async function safariWarmup(element, baseOptions) {
  * Checks if the element (or its descendants) use background or mask images.
  */
 function hasBackgroundOrMask(el) {
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT)
-  while (walker.nextNode()) {
-    const node = /** @type {Element} */ (walker.currentNode)
+  function checks(node) {
     const cs = getComputedStyle(node)
-
     const bg = cs.backgroundImage && cs.backgroundImage !== 'none'
     const mask = (cs.maskImage && cs.maskImage !== 'none') ||
       (cs.webkitMaskImage && cs.webkitMaskImage !== 'none')
-
-    if (bg || mask) return true
-    if (node.tagName === 'CANVAS') return true
+    return !!(bg || mask || node.tagName === 'CANVAS')
+  }
+  // TreeWalker.nextNode() advances PAST the root passed to createTreeWalker — it never visits
+  // it — so a capture root that itself has the background/mask/canvas (e.g. snapdom(canvasEl))
+  // was silently skipped, and the warmup this gate controls never ran for it.
+  if (checks(el)) return true
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT)
+  while (walker.nextNode()) {
+    if (checks(/** @type {Element} */ (walker.currentNode))) return true
   }
   return false
 }

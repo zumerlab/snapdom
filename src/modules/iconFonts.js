@@ -240,9 +240,15 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = cache
 
   const selector = '.material-icons, [class*="material-symbols"]'
 
+  // querySelectorAll never matches the element it's called on — a capture root that IS the
+  // icon (e.g. snapdom(iconSpan) for a single toolbar icon) was silently skipped, leaving its
+  // ligature text unconverted (see #461 for the same shape in images.js).
   const cloneNodes = Array.from(
     cloneRoot.querySelectorAll(selector)
   ).filter(n => n && n.textContent && n.textContent.trim())
+  if (cloneRoot.matches?.(selector) && cloneRoot.textContent && cloneRoot.textContent.trim()) {
+    cloneNodes.unshift(cloneRoot)
+  }
 
   if (cloneNodes.length === 0) return 0
 
@@ -252,6 +258,9 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = cache
   const sourceNodes = (sourceRoot instanceof Element)
     ? Array.from(sourceRoot.querySelectorAll(selector)).filter(n => n && n.textContent && n.textContent.trim())
     : []
+  if (sourceRoot instanceof Element && sourceRoot.matches?.(selector) && sourceRoot.textContent && sourceRoot.textContent.trim()) {
+    sourceNodes.unshift(sourceRoot)
+  }
 
   let replaced = 0
 
