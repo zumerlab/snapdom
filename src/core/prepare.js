@@ -216,7 +216,14 @@ export async function prepareClone(element, options = {}) {
       cloneNode.style.marginBlockStart = '0'
     }
   }
-  return { clone, classCSS, styleCache: sessionCache.styleCache, nodeMap: sessionCache.nodeMap, clipWindow }
+  return {
+    clone,
+    classCSS,
+    styleCache: sessionCache.styleCache,
+    nodeMap: sessionCache.nodeMap,
+    reconcileRisk: sessionCache.reconcileRisk || 0,
+    clipWindow,
+  }
 }
 
 // helpers (stabilizeLayout, resolveBlobUrlsInTree) ahora vienen de utils; bloque antiguo eliminado.

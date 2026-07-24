@@ -111,6 +111,7 @@ function checkBurstAdvice(element) {
  * @param {boolean} [options.outerTransforms=false] - Normalize root by removing translate/rotate (keep scale/skew)
  * @param {boolean} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
+ * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
  * @param {boolean} [options.burst=false] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Without it, snapdom warns once if the same element is captured 3+ times within 2s
  * @returns {Promise<string>} Promise that resolves to an SVG data URL
  */
@@ -129,7 +130,7 @@ export async function captureDOM(element, options) {
   const preClipRect = options.clip ? resolveClipRect(element, options.clip) : null
   let state = { element, options, plugins: options.plugins }
 
-  let clone, classCSS, styleCache, nodeMap, clipWindow
+  let clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow
   let fontsCSS = ''
   let baseCSS = ''
   let dataURL
@@ -152,7 +153,12 @@ export async function captureDOM(element, options) {
     // Keep this capture's own clone→source map: nested iframe captures reassign
     // cache.session.nodeMap concurrently (see rasterizeIframe), so the global cannot be
     // trusted after the clone phase — every later pass must use this reference.
-    ({ clone, classCSS, styleCache, nodeMap, clipWindow } = await prepareClone(state.element, state.options))
+    ({ clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
+
+    if (reconcileRisk > 0 && !options.reconcile && !cache.warnedReconcile) {
+      cache.warnedReconcile = true
+      console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+    }
 
     // state = {clone, classCSS, styleCache, ...state}
 

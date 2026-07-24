@@ -1,6 +1,7 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/index'
 import { reconcileCloneLayout } from '../src/utils/capture.helpers.js'
+import { cache } from '../src/core/cache.js'
 
 describe('reconcile — layout reconciliation', () => {
   let el
@@ -64,5 +65,47 @@ describe('reconcile — layout reconciliation', () => {
     expect(pinned).toBe(0)
     expect(cloneChild.style.width).toBe('')
     src.remove()
+  })
+
+  it('warns once, suggesting reconcile:true, when width-softened text is captured without it', async () => {
+    cache.warnedReconcile = false
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      // A table cell holds real text content, so getStyleKey softens (drops) its width — the
+      // exact #429/#433/#434 risk shape.
+      el = document.createElement('table')
+      el.innerHTML = '<tr><td>some real text content</td></tr>'
+      document.body.appendChild(el)
+
+      await snapdom(el)
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(warn.mock.calls[0][0]).toContain('reconcile: true')
+
+      // Doesn't repeat on a later capture, even of a fresh equally-at-risk element.
+      const el2 = document.createElement('table')
+      el2.innerHTML = '<tr><td>more text</td></tr>'
+      document.body.appendChild(el2)
+      await snapdom(el2)
+      expect(warn).toHaveBeenCalledTimes(1)
+      el2.remove()
+    } finally {
+      warn.mockRestore()
+      cache.warnedReconcile = false
+    }
+  })
+
+  it('does not warn when reconcile:true is already passed', async () => {
+    cache.warnedReconcile = false
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      el = document.createElement('table')
+      el.innerHTML = '<tr><td>some real text content</td></tr>'
+      document.body.appendChild(el)
+      await snapdom(el, { reconcile: true })
+      expect(warn).not.toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+      cache.warnedReconcile = false
+    }
   })
 })

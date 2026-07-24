@@ -46,6 +46,8 @@ export const cache = {
    *  burst:true, to suggest it when the same element is captured repeatedly in a short window.
    *  The actual burst:true memoization state lives in src/core/burst.js, not here. */
   burstAdvice: new WeakMap(),
+  /** Fires the reconcile suggestion at most once per page load (see capture.js). */
+  warnedReconcile: false,
   font: new Set(),
   session: {
     styleMap: new Map(),

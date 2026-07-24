@@ -363,6 +363,10 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     // Fold tag/content/flex into the cache key so soften-eligible elements with identical styles
     // but different shape don't collide on the shared snapshotKeyCache.
     sig = `${sig}|${tag}${sizedByContent ? '|c' : ''}${flexItem ? '|f' : ''}`
+    // This is the exact condition getStyleKey uses to actually drop the width (the #429/#433/
+    // #434 family): tally it so capture.js can suggest `reconcile: true` when it's never used —
+    // cheap, since softensWidth/sizedByContent are already computed for this node regardless.
+    if (sizedByContent) session.reconcileRisk = (session.reconcileRisk || 0) + 1
   }
   let key = persist.snapshotKeyCache.get(sig)
   if (key === undefined) {
