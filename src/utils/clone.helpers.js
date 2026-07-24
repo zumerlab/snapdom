@@ -7,6 +7,7 @@ import { idle, debugWarn } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
+import { findRealUrlForPicture } from '../modules/pictureResolver.js'
 
 /**
  * Schedule work across idle slices without relying on IdleDeadline constructor.
@@ -167,13 +168,19 @@ export function injectScopedStyle(hostClone, cssText, scopeId) {
  * Freeze the responsive selection of an <img> that has srcset/sizes.
  * Copies a concrete URL into `src` and removes `srcset`/`sizes` so the clone
  * doesn't need layout to resolve a candidate.
- * Works with <picture> because currentSrc reflects the chosen source.
+ * Works with <picture> because currentSrc reflects the chosen source — except
+ * currentSrc resolves eagerly/synchronously in WebKit but is deferred past this point in
+ * Chromium (confirmed: 5/5 runs froze the wrong, non-selected source under fast:true — the
+ * default). Inside a <picture>, resolve the winning source explicitly via the same
+ * media-query matching logic pictureResolver already uses instead of trusting an
+ * unresolved currentSrc.
  * @param {HTMLImageElement} original - Image in the live DOM.
  * @param {HTMLImageElement} cloned - Just-created cloned <img>.
  */
 export function freezeImgSrcset(original, cloned) {
   try {
-    const chosen = original.currentSrc || original.src || ''
+    const picture = original.closest?.('picture')
+    const chosen = (picture ? findRealUrlForPicture(original, picture) : original.currentSrc) || original.src || ''
     if (!chosen) return
     cloned.setAttribute('src', chosen)
     cloned.removeAttribute('srcset')

@@ -162,6 +162,42 @@ describe('deepClone — <picture> sources', () => {
   })
 })
 
+describe('freezeImgSrcset — <picture> currentSrc timing (#464-adjacent, bug-hunt finding)', () => {
+  const OWN_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+  it('resolves the matching <source> even when currentSrc has not resolved synchronously yet', async () => {
+    // <picture>'s own source-selection algorithm runs eagerly in WebKit but is deferred past
+    // this synchronous point in Chromium (confirmed empirically: still unresolved across
+    // microtask/macrotask(0) checkpoints, only settling ~1 rAF later) — cloning immediately
+    // after insertion, with no await in between, is exactly that race window.
+    const picture = document.createElement('picture')
+    picture.innerHTML = '<source media="(min-width: 0px)" srcset="https://example.com/selected.jpg">'
+    const img = document.createElement('img')
+    img.src = OWN_PLACEHOLDER
+    picture.appendChild(img)
+    document.body.appendChild(picture)
+    try {
+      const clone = await runClone(picture)
+      const clonedImg = clone.querySelector('img')
+      expect(clonedImg.getAttribute('src')).toBe('https://example.com/selected.jpg')
+    } finally {
+      picture.remove()
+    }
+  })
+
+  it('still freezes a plain (non-picture) <img> to its own src', async () => {
+    const img = document.createElement('img')
+    img.src = OWN_PLACEHOLDER
+    document.body.appendChild(img)
+    try {
+      const clone = await runClone(img)
+      expect(clone.getAttribute('src')).toBe(OWN_PLACEHOLDER)
+    } finally {
+      img.remove()
+    }
+  })
+})
+
 describe('deepClone edge cases', () => {
   it('clones unsupported node (Comment) as a new Comment', async () => {
     const fake = document.createComment('not supported')
