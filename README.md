@@ -266,6 +266,9 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 | `outerTransforms` | `boolean` | `true` | Keep root translate/rotate in the output |
 | `outerShadows` | `boolean` | `false` | Expand bounds to include root shadows/blur/outline |
 | `fast` | `boolean` | `true` | Skip idle delays for faster capture |
+| `reconcile` | `boolean` | `false` | Measure the clone against the live DOM and pin any diverging box to its real size. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time — snapdom warns once (`console.warn`) if it detects a capture that could benefit from it |
+| `burst` | `boolean` | `false` | Memoizes repeated captures of this element via a scoped MutationObserver — an unchanged repeat skips the pipeline entirely. Without it, snapdom warns once if the same element is captured 3+ times within 2s |
+| `invalidate` | `boolean` | `false` | With `burst: true`, forces a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits) |
 | `plugins` | `array` | — | Per-capture plugins (override globals by name) |
 
 📖 **[Full API & every option, explained with examples → snapdom.dev/docs](https://snapdom.dev/docs/)**

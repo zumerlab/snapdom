@@ -242,6 +242,9 @@ document.body.appendChild(png);
 | `outerTransforms` | `boolean` | `true` | 在输出中保留根元素的平移/旋转 |
 | `outerShadows` | `boolean` | `false` | 扩展边界以包含根元素的阴影/模糊/描边 |
 | `fast` | `boolean` | `true` | 跳过空闲等待，加快捕获速度 |
+| `reconcile` | `boolean` | `false` | 对照真实 DOM 测量克隆结果，把尺寸出现偏差的盒模型钉定为真实大小，可修复少见的文字重新换行/布局漂移问题，代价是捕获耗时大约翻倍 — 如果 snapdom 检测到某次捕获可能受益于此选项，会通过 `console.warn` 提示一次 |
+| `burst` | `boolean` | `false` | 通过限定范围的 `MutationObserver` 对该元素的重复捕获做记忆化 — 内容未变化的重复捕获会完全跳过处理流程。未开启时，如果同一元素在 2 秒内被捕获 3 次以上，snapdom 会提示一次 |
+| `invalidate` | `boolean` | `false` | 配合 `burst: true` 使用，为自动追踪无法感知的变化（canvas 绘制、以编程方式修改 CSSOM）强制触发一次全新捕获 |
 | `plugins` | `array` | — | 单次捕获插件（按名称覆盖全局插件） |
 
 📖 **[完整 API 和全部选项（附示例）→ snapdom.dev/docs](https://snapdom.dev/docs/)**

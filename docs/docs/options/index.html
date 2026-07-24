@@ -113,6 +113,9 @@
           <tr><td class="num">outerShadows</td><td class="num">boolean</td><td class="num">false</td><td>Do not expand the root's bounding box for shadows/blur/outline, and strip those visual effects from the cloned root</td></tr>
           <tr><td class="num">safariWarmupAttempts</td><td class="num">number</td><td class="num">3</td><td>Safari only: iterations to prime font/decode (WebKit #219770). Use <code>1</code> if 3 causes lag</td></tr>
           <tr><td class="num">compress</td><td class="num">boolean</td><td class="num">true</td><td>Downsample inlined raster images to their visible resolution. Faster raster captures + smaller SVG output, fidelity-neutral. Set <code>false</code> to embed images verbatim</td></tr>
+          <tr><td class="num">reconcile</td><td class="num">boolean</td><td class="num">false</td><td>Measures the styled clone against the live DOM and pins any box whose size diverges. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time</td></tr>
+          <tr><td class="num">burst</td><td class="num">boolean</td><td class="num">false</td><td>Memoizes repeated captures of this element via a scoped <code>MutationObserver</code> — an unchanged repeat skips the pipeline entirely</td></tr>
+          <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>With <code>burst: true</code>, forces a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits)</td></tr>
         </tbody>
       </table>
     </section>
@@ -269,6 +272,29 @@ await snapdom.toPng(document.body, { filter: filterHidden });</pre>
       <p><strong>Example</strong></p>
       <pre class="code-block">// outerTransforms and remove shadow bleed
 await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="reconcile">reconcile</h2>
+      <p>SnapDOM translates live computed styles into a generated CSS class per element, which lays out inside a <code>&lt;foreignObject&gt;</code> instead of the page's own stylesheet cascade. That translation matches the live DOM almost everywhere, but a narrow class of boxes — inline text, table cells — get their width from layout algorithms rather than an authored value, and can re-wrap a hair differently if the SVG rasterizer falls back to a slightly different font metric.</p>
+      <p>With <code>reconcile: true</code>, SnapDOM mounts the styled clone off-screen in the real document, measures every node against its live counterpart, and pins <code>width</code>/<code>height</code> only on the boxes that actually diverge — measurement instead of a heuristic, so it's always correct where it applies. The cost is a second real layout pass over the whole captured subtree, which roughly doubles capture time, so it's opt-in rather than default. If SnapDOM detects a capture that used width-softening on the kind of element known to sometimes re-wrap, it logs a one-time <code>console.warn</code> suggesting this option — that warning only fires when <code>reconcile</code> isn't already set.</p>
+      <pre class="code-block">await snapdom.toPng(el, { reconcile: true });</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="burst">burst</h2>
+      <p>Capturing the same unchanged element repeatedly (dashboard polling, a GIF/video export loop) re-walks the tree and re-reads every node's computed style on every single call — real work, even with every image/font/background already cached.</p>
+      <p><code>burst: true</code> watches the element with a scoped <code>MutationObserver</code> and memoizes the last result: an unchanged repeat capture returns the cached result instantly, skipping the pipeline entirely. Any external mutation of the subtree (or of document styles in <code>&lt;head&gt;</code>) marks it dirty again, so the next capture re-runs for real. <code>&lt;video&gt;</code> frame changes (seek, playback) are tracked too, since they touch no DOM attribute. It's opt-in — a persistent observer per element is wasted cost on a one-shot capture.</p>
+      <pre class="code-block">// Dashboard polling: only the first and the 3rd (mutated) calls do real work.
+for (let i = 0; i < 10; i++) {
+  if (i === 3) counter.textContent = 'new value';
+  const result = await snapdom(el, { burst: true });
+  img.src = (await result.toPng()).src;
+}</pre>
+      <p>Canvas pixel draws and programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) touch no DOM attribute either, so the automatic tracking can't see them. Pass <code>invalidate: true</code> alongside <code>burst: true</code> on the next call to force a fresh capture after one of those:</p>
+      <pre class="code-block">ctx.fillRect(0, 0, 100, 100); // canvas redraw — invisible to the observer
+await snapdom(el, { burst: true, invalidate: true });</pre>
+      <p class="muted"><strong>Discoverability:</strong> if you capture the same element 3+ times within 2s <em>without</em> <code>burst: true</code>, snapdom logs a one-time <code>console.warn</code> suggesting it — that's the only case the (cheap) tracking runs unconditionally.</p>
     </section>
 
     <section class="related">

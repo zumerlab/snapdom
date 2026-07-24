@@ -47,6 +47,7 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 - **Masks, backgrounds & border-image** — see [Images & backgrounds](#images--backgrounds).
 - **Custom scrollbars** — `::-webkit-scrollbar` rules are injected so custom scrollbar styling appears.
 - **`excludeStyleProps`** — skip properties from the snapshot by RegExp or predicate (e.g. drop all CSS variables).
+- **`reconcile`** — mounts the styled clone off-screen, measures every node against its live counterpart, and pins only the boxes whose size diverges to their real value. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time; off by default. snapdom warns once (`console.warn`) if it detects a capture that used width-softening on elements known to sometimes need it.
 
 ## Images & backgrounds
 
@@ -56,6 +57,7 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 - **CORS / proxy** — a non-throwing fetch layer with in-flight deduplication, an error cache, timeouts, and inferred credentials. `useProxy` accepts flexible templates (`{url}`, `{urlRaw}`, `?url=` suffix, and more); already-proxied and `data:`/`blob:` URLs are skipped.
 - **Failure fallbacks** — a configurable `fallbackURL` (string or callback), then a placeholder box, then a hidden spacer.
 - **`compress`** — perceptual downsampling of inlined rasters to their visible resolution (display box × scale × dpr), preserving the source codec and never upscaling. On by default; set `compress: false` to embed verbatim.
+- **`image-set()` / `-webkit-image-set()`** — in `background-image` and pseudo-element `content`, the candidate matching the live device pixel ratio is inlined (not just whichever `url()` appears first).
 - **Decode-size guard** — SVG raster size is clamped to safe limits (max 16384px per side, ~268M px area) and downscaled with a warning if exceeded.
 
 ## Fonts & icon fonts
@@ -117,6 +119,9 @@ Defaults as normalized in `src/core/context.js`.
 | `outerTransforms` | `true` | Normalize root translate/rotate vs. expand bbox for transforms |
 | `outerShadows` | `false` | Strip root shadows vs. expand bleed for shadows/blur/outline |
 | `compress` | `true` | Perceptual raster downsampling |
+| `reconcile` | `false` | Measure the clone against the live DOM and pin diverging boxes to their real size (roughly doubles capture time) |
+| `burst` | `false` | Memoize repeated captures of an unchanged element via a scoped `MutationObserver`, skipping the pipeline entirely |
+| `invalidate` | `false` | With `burst: true`, force a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits) |
 | `safariWarmupAttempts` | `3` | Safari warmup iterations (1–3) |
 | `excludeStyleProps` | `null` | RegExp/predicate to skip style props |
 | `resolvePicturePlaceholders` | `true` | Built-in `<picture>` / lazy resolver |
@@ -143,6 +148,7 @@ See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUT
   - `full` — keep everything.
 - **Invalidation** — a MutationObserver on the DOM and `<head>` plus font `loadingdone`/`ready` events bump a style-snapshot epoch, so stale snapshots are dropped automatically.
 - **`preCache`** — warm the caches ahead of time (defaults to `cache: 'full'`).
+- **`burst`** — memoizes repeated captures of an unchanged element: a scoped `MutationObserver` (plus `<video>` frame tracking) marks it dirty on external change, and an unchanged repeat capture skips the pipeline entirely. Opt-in; without it, snapdom warns once if the same element is captured 3+ times within 2s. Pair with `invalidate: true` to force a fresh capture after changes automatic tracking can't see (canvas draws, programmatic CSSOM edits).
 
 ## Cross-browser handling
 
