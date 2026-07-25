@@ -34,6 +34,10 @@ serving the memo, so DOM mutations can never be missed by timing.
   mutation apps (insertRule) should pass `burst:false` or `invalidate:true` — same caveat
   the explicit option always had, but now it can engage without opt-in.
 - Benchmarks: all `*.benchmark.js` now pin `burst:false` — otherwise they measure the memo.
+- Site demo (labs.html Pikachu): needs a redesign when this graduates — its "without burst"
+  lane auto-memoizes too now (verified locally: 64ms vs 17ms — only the ~3 warm-up captures
+  differ), and its hardcoded blue "full pipeline" ticks lie for polls 4-20. New story:
+  "polling speeds up on its own; `burst: true` only skips the warm-up".
 
 ### 3. `refactor: per-capture session object` (cc88a5e) — **main-ready**
 
