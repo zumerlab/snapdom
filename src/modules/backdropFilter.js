@@ -29,7 +29,7 @@ export function emulateBackdropFilters(root, clone, nodeMap = cache.session.node
   const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT)
   for (let n = walker.currentNode; n; n = walker.nextNode()) {
     const orig = nodeMap.get(n)
-    if (!(orig instanceof Element)) continue
+    if ((orig?.nodeType !== 1)) continue
     const cs = getStyle(orig)
     const bf = cs.getPropertyValue('backdrop-filter') || cs.getPropertyValue('-webkit-backdrop-filter')
     // Skip the capture root itself: its backdrop lies outside the captured subtree.
@@ -118,7 +118,7 @@ function prunePayload(copy, clone, rect, nodeMap) {
   while (stack.length) {
     const [c, o] = stack.pop()
     const orig = nodeMap.get(o)
-    if (orig instanceof Element) {
+    if (orig?.nodeType === 1) {
       const r = orig.getBoundingClientRect()
       if (r.left > rect.right + PRUNE_MARGIN || r.right < rect.left - PRUNE_MARGIN ||
           r.top > rect.bottom + PRUNE_MARGIN || r.bottom < rect.top - PRUNE_MARGIN) {

@@ -30,7 +30,7 @@ const LAZY_IMG_SELECTOR =
  * @param {boolean} resolveLazySrc
  */
 export function quickProbeMayNeedPictureResolver(root, resolveLazySrc) {
-  if (!root || !(root instanceof Element)) return false
+  if (!root || (root?.nodeType !== 1)) return false
   if (root.matches?.('picture') || root.querySelector('picture')) return true
   if (resolveLazySrc) {
     return !!(root.matches?.(LAZY_IMG_SELECTOR) || root.querySelector(LAZY_IMG_SELECTOR))
@@ -111,7 +111,7 @@ function mergePictureResolverOpts(options = {}) {
  * @returns {Promise<(() => Promise<void>)|null>}
  */
 export async function runPictureResolverBeforeClone(root, options = {}) {
-  if (!root || !(root instanceof Element)) return null
+  if (!root || (root?.nodeType !== 1)) return null
   if (options.resolvePicturePlaceholders === false) return null
 
   const { timeout, concurrency, resolveLazySrc, silent, useProxy } = mergePictureResolverOpts(options)

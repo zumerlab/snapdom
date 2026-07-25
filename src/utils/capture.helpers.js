@@ -58,7 +58,7 @@ function composedContains(root, node) {
  */
 function findCBAncestor(node, root) {
   for (let a = composedParent(node); a && a !== root; a = composedParent(a)) {
-    if (!(a instanceof Element)) break
+    if ((a?.nodeType !== 1)) break
     const acs = getStyle(a)
     if (acs.position !== 'static' ||
         (acs.transform && acs.transform !== 'none') ||
@@ -120,7 +120,7 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
   }
   const hoisted = []
   for (const [cloneEl, orig] of nodeMap) {
-    if (!(cloneEl instanceof HTMLElement) || !(orig instanceof Element)) continue
+    if (!(cloneEl instanceof HTMLElement) || (orig?.nodeType !== 1)) continue
     if (orig === root || !composedContains(root, orig)) continue
     const cs = styleCache.get(orig) || getStyle(orig)
     const pos = cs.position
@@ -475,7 +475,7 @@ function isReplacedElement(el) {
  * @param {CSSStyleDeclaration} cs
  */
 function shouldShrinkBox(srcEl, cs) {
-  if (!(srcEl instanceof Element)) return false
+  if ((srcEl?.nodeType !== 1)) return false
   if (authorHasExplicitSize(srcEl)) return false
   if (isReplacedElement(srcEl)) return false
 
@@ -509,7 +509,7 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
    * @param {Element} cln
    */
   function walk(src, cln) {
-    if (!(src instanceof Element) || !(cln instanceof Element)) return
+    if ((src?.nodeType !== 1) || (cln?.nodeType !== 1)) return
 
     // If the clone lost children relative to the source, it's a good candidate to shrink.
     const lostKids = src.childElementCount > cln.childElementCount
@@ -568,7 +568,7 @@ function contributesToParentHeight(el) {
  * @param {any} options
  */
 function willBeExcluded(el, options) {
-  if (!(el instanceof Element)) return false
+  if ((el?.nodeType !== 1)) return false
   if (el.getAttribute('data-capture') === 'exclude' && options?.excludeMode === 'remove') return true
   if (Array.isArray(options?.exclude)) {
     for (const sel of options.exclude) {
@@ -687,7 +687,7 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
         const c = cKids[i]
         const m = mKids[i]
         const src = nodeMap.get(c)
-        if (src instanceof Element && c instanceof HTMLElement && src.isConnected) {
+        if (src?.nodeType === 1 && c instanceof HTMLElement && src.isConnected) {
           const sr = src.getBoundingClientRect()
           if (sr.width > 0 && sr.height > 0) {
             const mr = m.getBoundingClientRect()

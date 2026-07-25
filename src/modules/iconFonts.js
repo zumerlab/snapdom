@@ -236,7 +236,7 @@ export async function materialIconToImage(
  * Reads styles from SOURCE for accurate size/color/variation/class.
  */
 export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = cache.session.nodeMap) {
-  if (!(cloneRoot instanceof Element)) return 0
+  if ((cloneRoot?.nodeType !== 1)) return 0
 
   const selector = '.material-icons, [class*="material-symbols"]'
 
@@ -255,10 +255,10 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = cache
   // Map each clone node to its exact source via the clone→source nodeMap built by deepClone.
   // Pairing the two trees positionally breaks when excludeMode:'remove' drops nodes from the
   // clone but not the source: indices shift and we read the wrong source's color/size/variation.
-  const sourceNodes = (sourceRoot instanceof Element)
+  const sourceNodes = (sourceRoot?.nodeType === 1)
     ? Array.from(sourceRoot.querySelectorAll(selector)).filter(n => n && n.textContent && n.textContent.trim())
     : []
-  if (sourceRoot instanceof Element && sourceRoot.matches?.(selector) && sourceRoot.textContent && sourceRoot.textContent.trim()) {
+  if (sourceRoot?.nodeType === 1 && sourceRoot.matches?.(selector) && sourceRoot.textContent && sourceRoot.textContent.trim()) {
     sourceNodes.unshift(sourceRoot)
   }
 

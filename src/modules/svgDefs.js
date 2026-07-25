@@ -11,7 +11,7 @@
  * @param {Document|ParentNode} [lookupRoot] - Where to search for external defs/symbols (defaults to element.ownerDocument).
  */
 export function inlineExternalDefsAndSymbols(element, lookupRoot) {
-  if (!element || !(element instanceof Element)) return
+  if (!element || (element?.nodeType !== 1)) return
 
   const doc = element.ownerDocument || document
   const searchRoot = lookupRoot || doc

@@ -135,7 +135,7 @@ export async function prepareClone(element, options = {}) {
   // Must run after class application (the sticky placeholder inherits the twin's class)
   // and BEFORE the scrolled-container wrapper below — its fixed/absolute adjustment
   // (+scrollY) is what cancels the wrapper's translate for these now-absolute elements.
-  if ((sessionCache.clip || element.scrollTop || element.scrollLeft) && clone instanceof Element) {
+  if ((sessionCache.clip || element.scrollTop || element.scrollLeft) && clone?.nodeType === 1) {
     try {
       const edge = sessionCache.clip && clipWindow ? { x: clipWindow.x, y: clipWindow.y } : { x: 0, y: 0 }
       freezeViewportPositioned(element, clone, sessionCache.nodeMap, sessionCache.styleCache, edge)

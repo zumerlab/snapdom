@@ -68,7 +68,7 @@ function getBaselineComputed(tagName, ns) {
  * pero el valor computado de KEY_PROPS difiere del baseline, inlina ese valor.
  */
 export function resolveCSSVars(sourceEl, cloneEl) {
-  if (!(sourceEl instanceof Element) || !(cloneEl instanceof Element)) return
+  if ((sourceEl?.nodeType !== 1) || (cloneEl?.nodeType !== 1)) return
 
   // #408: descendants of <symbol>/<defs>/<pattern>/etc. render through <use>/url(#…),
   // where the cascade lives. Materializing var() here freezes the fallback.

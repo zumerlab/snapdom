@@ -380,7 +380,7 @@ export function getStyle(el, pseudo = null) {
     return /** @type {any} */ (base)
   }
 
-  if (!(el instanceof Element)) {
+  if ((el?.nodeType !== 1)) {
     const win = typeof window !== 'undefined' ? window : null
     if (win && typeof win.getComputedStyle === 'function') {
       try {
