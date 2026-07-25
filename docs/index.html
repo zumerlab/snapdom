@@ -1301,6 +1301,21 @@
 
     let captureDemoLock = false
     const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    // Safari displays the raw SVG in an iframe (WebKit svg-as-image quirks).
+    // Size it from the captured SVG itself, not the live element's rect: with
+    // animated targets the rect belongs to a different animation frame than the
+    // one the capture froze, and overflow:hidden would clip the difference.
+    function svgIframe(dataUrl) {
+      const svgText = decodeURIComponent(dataUrl.slice(dataUrl.indexOf(',') + 1))
+      const m = svgText.match(/<svg[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/)
+      const iframe = document.createElement('iframe')
+      iframe.setAttribute('sandbox', 'allow-same-origin')
+      iframe.setAttribute('scrolling', 'no')
+      iframe.style.cssText = `width:${m ? m[1] : 300}px;height:${m ? m[2] : 150}px;border:0;overflow:hidden;`
+      iframe.src = dataUrl
+      return iframe
+    }
+
     async function captureDemo(id, outputId, btn) {
       if (captureDemoLock) return
       captureDemoLock = true
@@ -1319,14 +1334,7 @@
         }
         output.innerHTML = ''
         if (isSafari()) {
-          const dataUrl = await snapdom.toRaw(el, opts)
-          const rect = el.getBoundingClientRect()
-          const iframe = document.createElement('iframe')
-          iframe.setAttribute('sandbox', 'allow-same-origin')
-          iframe.setAttribute('scrolling', 'no')
-          iframe.style.cssText = `width:${rect.width}px;height:${rect.height}px;border:0;overflow:hidden;`
-          iframe.src = dataUrl
-          output.appendChild(iframe)
+          output.appendChild(svgIframe(await snapdom.toRaw(el, opts)))
         } else {
           const img = await snapdom.toImg(el, opts)
           output.appendChild(img)
@@ -1350,14 +1358,7 @@
       try {
         const opts = { outerShadows: true, cache: 'auto' }
         if (isSafari()) {
-          const dataUrl = await snapdom.toRaw(el, opts)
-          const rect = el.getBoundingClientRect()
-          const iframe = document.createElement('iframe')
-          iframe.setAttribute('sandbox', 'allow-same-origin')
-          iframe.setAttribute('scrolling', 'no')
-          iframe.style.cssText = `width:${rect.width}px;height:${rect.height}px;border:0;overflow:hidden;`
-          iframe.src = dataUrl
-          output.appendChild(iframe)
+          output.appendChild(svgIframe(await snapdom.toRaw(el, opts)))
         } else {
           const img = await snapdom.toImg(el, opts)
           output.appendChild(img)
