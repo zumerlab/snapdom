@@ -1,0 +1,123 @@
+/**
+ * Stylesheet-driven property universe.
+ *
+ * A page can only move a computed property away from its UA default through author CSS
+ * (rules, inline styles, keyframes) or programmatic animation. Scanning the document's
+ * stylesheets once yields the set of properties any rule can touch; the per-node style
+ * snapshot then reads ONLY those plus a fixed always-list, instead of enumerating all
+ * ~400 computed properties per node — the dominant cost of a capture (measured 8-9x
+ * faster reads at 45 props, cross-engine).
+ *
+ * Correctness: a property outside the universe can't differ from the tag's UA default,
+ * so the defaults-diff downstream would have dropped it anyway. Escape hatches:
+ * - Any unreadable (cross-origin) stylesheet → null (callers fall back to full reads).
+ * - Shadow-root content is snapshotted with full reads (its sheets aren't scanned).
+ * - Element inline-style props are unioned in per node at snapshot time.
+ * - Web Animations API keyframe props are unioned in (CSS animations come from rules).
+ * @module styleScan
+ */
+
+/** Properties always read regardless of what the page's CSS mentions: layout and text
+ *  essentials, plus everything presentational HTML attributes (width=, bgcolor=, dir=,
+ *  align=…) can set without appearing in any stylesheet. Longhands, matching what
+ *  computed-style enumeration lists (the defaults cache diffs per longhand). */
+export const ALWAYS_PROPS = [
+  // box / layout
+  'display', 'position', 'top', 'right', 'bottom', 'left', 'float', 'clear', 'z-index',
+  'box-sizing', 'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+  'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+  'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+  'overflow-x', 'overflow-y', 'visibility', 'opacity', 'content-visibility', 'vertical-align',
+  // border
+  'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+  'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
+  'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
+  'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
+  // flex / grid containers and items
+  'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
+  'align-items', 'align-self', 'align-content', 'justify-content', 'justify-items', 'justify-self',
+  'row-gap', 'column-gap',
+  'grid-template-columns', 'grid-template-rows', 'grid-auto-flow', 'grid-auto-columns', 'grid-auto-rows',
+  'grid-column-start', 'grid-column-end', 'grid-row-start', 'grid-row-end',
+  // text / font
+  'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-stretch',
+  'line-height', 'letter-spacing', 'word-spacing', 'white-space', 'text-align',
+  'text-transform', 'text-indent', 'text-overflow', 'text-shadow', 'direction', 'unicode-bidi',
+  'word-break', 'overflow-wrap', 'tab-size',
+  'list-style-type', 'list-style-position', 'list-style-image',
+  'counter-reset', 'counter-increment', 'counter-set',
+  // visual
+  'background-color', 'background-image', 'background-size', 'background-position',
+  'background-repeat', 'background-clip', 'background-origin', 'background-attachment',
+  'box-shadow', 'outline-width', 'outline-style', 'outline-color', 'outline-offset',
+  'transform', 'transform-origin', 'rotate', 'scale', 'translate',
+  'filter', 'mix-blend-mode', 'clip-path', 'object-fit', 'object-position',
+  // tables
+  'border-collapse', 'border-spacing', 'table-layout', 'caption-side', 'empty-cells',
+]
+
+const MAX_SCAN_RULES = 20000
+
+/** Walks a CSSRuleList adding every set property name to `universe`.
+ *  Returns false when an unreadable sheet or the rule budget makes the scan unreliable. */
+function scanRules(rules, universe, state) {
+  for (let i = 0; i < rules.length; i++) {
+    if (--state.budget < 0) return false
+    const rule = rules[i]
+    const style = rule.style
+    if (style) {
+      for (let j = 0; j < style.length; j++) universe.add(style[j])
+    }
+    if (rule.styleSheet) { // @import
+      if (!scanSheet(rule.styleSheet, universe, state)) return false
+    } else if (rule.cssRules && rule.cssRules.length) { // @media/@supports/@keyframes/…
+      if (!scanRules(rule.cssRules, universe, state)) return false
+    }
+  }
+  return true
+}
+
+function scanSheet(sheet, universe, state) {
+  let rules
+  try { rules = sheet.cssRules } catch { return false } // cross-origin
+  if (!rules) return false
+  return scanRules(rules, universe, state)
+}
+
+/**
+ * Computes the set of CSS properties the document's author styles can touch,
+ * or null when the scan can't be trusted (cross-origin CSS, rule-budget blown).
+ * Pure — memoization (per document + style epoch) is the caller's concern.
+ * @param {Document} doc
+ * @returns {Set<string>|null}
+ */
+export function computePropertyUniverse(doc) {
+  try {
+    const universe = new Set(ALWAYS_PROPS)
+    const state = { budget: MAX_SCAN_RULES }
+    for (const sheet of doc.styleSheets) {
+      if (!scanSheet(sheet, universe, state)) return null
+    }
+    const adopted = /** @type {any} */ (doc).adoptedStyleSheets
+    if (Array.isArray(adopted)) {
+      for (const sheet of adopted) {
+        if (!scanSheet(sheet, universe, state)) return null
+      }
+    }
+    // Programmatic (WAAPI) animations don't live in stylesheets — union their keyframe props.
+    if (typeof doc.getAnimations === 'function') {
+      for (const anim of doc.getAnimations()) {
+        const frames = anim.effect?.getKeyframes?.() || []
+        for (const frame of frames) {
+          for (const key of Object.keys(frame)) {
+            if (key === 'offset' || key === 'easing' || key === 'composite' || key === 'computedOffset') continue
+            universe.add(key.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase()))
+          }
+        }
+      }
+    }
+    return universe
+  } catch {
+    return null
+  }
+}

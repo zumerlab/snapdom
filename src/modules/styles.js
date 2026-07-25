@@ -1,5 +1,6 @@
 import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
+import { computePropertyUniverse } from './styleScan.js'
 
 const snapshotCache = new WeakMap()
 const snapshotKeyCache = new Map()
@@ -84,22 +85,48 @@ export function needsBackgroundInline(source) {
   return true
 }
 
-function snapshotComputedStyleFull(style, options = {}) {
+/** Per-document memo of the scanned property universe, invalidated by the style epoch. */
+const universeCache = new WeakMap()
+function universeFor(el) {
+  const doc = el.ownerDocument || document
+  // Shadow-root content: its own sheets aren't scanned — keep full reads there.
+  if (el.getRootNode && el.getRootNode() !== doc) return null
+  let rec = universeCache.get(doc)
+  if (!rec || rec.epoch !== __epoch) {
+    rec = { epoch: __epoch, universe: computePropertyUniverse(doc) }
+    universeCache.set(doc, rec)
+  }
+  return rec.universe
+}
+
+function snapshotComputedStyleFull(style, options = {}, el = null, universe = null) {
   const out = {}
   const vis = style.getPropertyValue('visibility')
   const excludeStyleProps = options.excludeStyleProps
-  for (let i = 0; i < style.length; i++) {
-    const prop = style[i]
-    if (shouldIgnoreProp(prop)) continue
+  const addProp = (prop) => {
+    if (out[prop] !== undefined) return
+    if (shouldIgnoreProp(prop)) return
     if (excludeStyleProps) {
-      if (excludeStyleProps instanceof RegExp && excludeStyleProps.test(prop)) continue
-      if (typeof excludeStyleProps === 'function' && excludeStyleProps(prop)) continue
+      if (excludeStyleProps instanceof RegExp && excludeStyleProps.test(prop)) return
+      if (typeof excludeStyleProps === 'function' && excludeStyleProps(prop)) return
     }
     let val = style.getPropertyValue(prop)
+    if (!val) return
     if ((prop === 'background-image' || prop === 'content') && val.includes('url(') && !val.includes('data:')) {
       val = 'none'
     }
     out[prop] = val
+  }
+  if (universe) {
+    // Pruned read: only properties the page's CSS (or this element's inline style) can
+    // move off their UA defaults — anything else diffs empty downstream anyway.
+    for (const prop of universe) addProp(prop)
+    const inline = el && el.style
+    if (inline && inline.length) {
+      for (let i = 0; i < inline.length; i++) addProp(inline[i])
+    }
+  } else {
+    for (let i = 0; i < style.length; i++) addProp(style[i])
   }
     // Asegurar props de decoración de texto (algunos motores no las listan en la iteración)
   const EXTRA_TEXT_DECORATION_PROPS = [
@@ -249,7 +276,7 @@ function getSnapshot(el, preStyle = null, options = {}) {
   const ex = (options && options.excludeStyleProps) || null
   if (rec && rec.epoch === __epoch && rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
   const style = preStyle || getComputedStyle(el)
-  const snap = snapshotComputedStyleFull(style, options)
+  const snap = snapshotComputedStyleFull(style, options, el, universeFor(el))
   stripHeightForWrappers(el, style, snap)
   snapshotCache.set(el, { epoch: __epoch, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
   return snap
