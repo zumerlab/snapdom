@@ -60,6 +60,16 @@ turning black): the base reset stamped resolved defaults like `-webkit-text-fill
 rgb(0,0,0)` that pruned class diffs could no longer override. Fixed in 630c6a4 by pruning
 the base reset with the same universe — which also shrinks output CSS.
 
+## Open question: auto-burst engagement on some scenes
+
+Head-to-head profiling showed the synthetic card-grid scene does NOT get memoized by
+auto-burst (poll of 10 ≈ 10 warm pipelines), while the labs Pikachu card demo memoizes
+fine (17/20 polls). Something in the capture of that scene marks the element dirty every
+time (suspects: stabilizeLayout/live-element temporary mutations whose records land after
+the post-capture takeRecords() drain, or scrollbar probing). Worth instrumenting
+`markDirty` before graduating auto-burst — the win is real where it engages, but
+engagement should be predictable.
+
 ## Known flake (pre-existing)
 
 `visual.demos.test.js > d-compress` on webkit fails intermittently (~1 in 5 FULL-suite runs,
