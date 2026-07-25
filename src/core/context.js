@@ -99,7 +99,9 @@ export function createContext(options = {}) {
     // costs a persistent observer per element, wasted on a one-shot capture. When this is
     // NOT set, snapdom instead tracks capture frequency cheaply and suggests it once if the
     // same element is captured repeatedly (see checkBurstAdvice in capture.js).
-    burst: options.burst ?? false,
+    // Tri-state: true/false are explicit; undefined lets shouldAutoBurst enable it when the
+    // same element is captured repeatedly (see src/core/burst.js).
+    burst: options.burst,
     // One-off with burst:true — force a fresh capture for changes automatic tracking can't
     // see (canvas pixel draws, programmatic CSSOM edits). Ignored without burst:true.
     invalidate: options.invalidate ?? false,

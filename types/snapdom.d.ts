@@ -92,9 +92,10 @@ export interface SnapdomOptions {
   /**
    * Memoizes repeated captures of this element: a scoped MutationObserver marks it dirty on
    * external change, and an unchanged repeat capture returns the cached result without
-   * re-running the pipeline. Opt-in — costs a persistent observer per element. Without it,
-   * snapdom warns once (console.warn) if the same element is captured 3+ times within 2s.
-   * Default false.
+   * re-running the pipeline. Unset (default): auto-enables after 3 captures of the same
+   * element within a 2s sliding window (canvas-bearing elements excluded — canvas pixel
+   * draws are invisible to the observer). Pass `true` to force it on from the first
+   * capture, `false` to disable auto mode entirely.
    */
   burst?: boolean;
 

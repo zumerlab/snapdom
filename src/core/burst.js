@@ -18,12 +18,39 @@
  */
 
 import { hasExternalMutation } from '../modules/styles.js'
+import { cache } from './cache.js'
 
 const burstStates = new WeakMap()
 
+const AUTO_WINDOW_MS = 2000
+const AUTO_THRESHOLD = 3
+
+/**
+ * Auto-burst: when the caller passes no explicit `burst` option, repeated captures of the
+ * same element in a short sliding window enable memoization automatically — pollers get the
+ * speedup without knowing the option exists. Canvas-bearing elements are excluded: canvas
+ * pixel draws are invisible to MutationObserver, so auto mode could silently serve stale
+ * frames to chart pollers (explicit `burst: true` still works there, with `invalidate`).
+ * @param {Element} element
+ * @returns {boolean}
+ */
+export function shouldAutoBurst(element) {
+  const now = Date.now()
+  const entry = cache.burstAdvice.get(element)
+  if (!entry || now - entry.lastTs > AUTO_WINDOW_MS) {
+    cache.burstAdvice.set(element, { count: 1, lastTs: now })
+    return false
+  }
+  entry.lastTs = now
+  entry.count++
+  if (entry.count < AUTO_THRESHOLD) return false
+  if (element.tagName === 'CANVAS' || element.querySelector?.('canvas')) return false
+  return true
+}
+
 function trackVideos(element, state, onMediaDirty) {
   const videos = new Set()
-  if (element instanceof HTMLVideoElement) videos.add(element)
+  if (element.tagName === 'VIDEO') videos.add(element)
   if (element.querySelectorAll) for (const v of element.querySelectorAll('video')) videos.add(v)
   for (const v of state.trackedVideos) {
     if (!videos.has(v)) {

@@ -6,7 +6,7 @@ import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
 import { collectUsedFontVariants, ensureFontsReady } from '../modules/fonts.js'
-import { captureWithBurst } from '../core/burst.js'
+import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
 export { preCache } from './preCache.js'
 
 // API pública (registro global de plugins)
@@ -81,7 +81,9 @@ async function main(element, userOptions) {
     }
   }
 
-  if (context.burst) {
+  // Explicit burst wins; unset auto-enables on repeated captures of the same element.
+  const burst = context.burst === undefined ? shouldAutoBurst(element) : context.burst
+  if (burst) {
     return captureWithBurst(element, userOptions, context, () => snapdom.capture(element, context, INTERNAL_TOKEN))
   }
   return snapdom.capture(element, context, INTERNAL_TOKEN)

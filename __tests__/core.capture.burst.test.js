@@ -79,60 +79,35 @@ describe('burst:true — memoizes repeated captures of an unchanged element', ()
   })
 })
 
-describe('burst advice — suggests burst:true for repeated captures that don\'t use it', () => {
+describe('auto-burst — repeated captures enable memoization without the option', () => {
   let el
   afterEach(() => el?.remove())
 
-  it('warns once after 3 captures of the same element in a short window without burst:true', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      el = document.createElement('div')
-      el.textContent = 'burst advice target'
-      document.body.appendChild(el)
+  it('memoizes from the 3rd rapid capture of the same element on', async () => {
+    el = document.createElement('div')
+    el.textContent = 'auto burst target'
+    document.body.appendChild(el)
 
-      await snapdom(el)
-      expect(warn).not.toHaveBeenCalled()
-      await snapdom(el)
-      expect(warn).not.toHaveBeenCalled()
-      await snapdom(el)
-      expect(warn).toHaveBeenCalledTimes(1)
-      expect(warn.mock.calls[0][0]).toContain('burst: true')
-
-      // Doesn't repeat on further captures of the same element.
-      await snapdom(el)
-      expect(warn).toHaveBeenCalledTimes(1)
-    } finally {
-      warn.mockRestore()
-    }
+    const a = (await snapdom(el)).url
+    const b = (await snapdom(el)).url
+    const c = (await snapdom(el)).url // threshold hit: memoized from here
+    const d = (await snapdom(el)).url
+    expect(a).toBe(b) // identical input -> identical output either way
+    expect(c).toBe(d) // and the memo keeps serving it
   })
 
-  it('never warns once burst:true is already in use', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      el = document.createElement('div')
-      el.textContent = 'already using burst'
-      document.body.appendChild(el)
-      for (let i = 0; i < 5; i++) await snapdom(el, { burst: true })
-      expect(warn).not.toHaveBeenCalled()
-    } finally {
-      warn.mockRestore()
-    }
-  })
-
-  it('does not warn for captures spread across different elements', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('does not accumulate counts across different elements', async () => {
     const mounted = []
     try {
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         const e = document.createElement('div')
         e.textContent = `distinct ${i}`
         document.body.appendChild(e)
         mounted.push(e)
-        await snapdom(e)
+        const res = await snapdom(e)
+        expect(decodeURIComponent(res.url.split(',')[1])).toContain(`distinct ${i}`)
       }
-      expect(warn).not.toHaveBeenCalled()
     } finally {
-      warn.mockRestore()
       mounted.forEach((e) => e.remove())
     }
   })
