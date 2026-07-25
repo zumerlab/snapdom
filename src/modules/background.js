@@ -7,8 +7,8 @@ import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../
 import { cache } from '../core/cache.js'
 import { needsBackgroundInline } from './styles.js'
 
-/** Props that can contain url(...) and may need inlining */
-const URL_PROPS = [
+/** Props that can contain url(...) and may need inlining (also drives preCache prefetch) */
+export const URL_PROPS = [
   'background-image',
 
   // Mask shorthands & images (both standard and WebKit)

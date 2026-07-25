@@ -3,7 +3,7 @@ import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } f
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { cache, applyCachePolicy, EvictingMap } from '../core/cache.js'
-import { inlineBackgroundImages } from '../modules/background.js'
+import { URL_PROPS } from '../modules/background.js'
 
 /**
  * Preloads images, background images, and (optionally) fonts into cache before DOM capture.
@@ -40,11 +40,6 @@ export async function preCache(root = document, options = {}) {
   }
   cache.image = cache.image || new EvictingMap(100)
   cache.background = cache.background || new EvictingMap(100)
-
-  // Pre-inline background images into cache (best-effort)
-  try {
-    await inlineBackgroundImages(root, /* mirror */ undefined, cache.session.styleCache, { useProxy })
-  } catch {}
 
   // Collect elements for prefetch
   let imgEls = [], allEls = []
@@ -83,36 +78,29 @@ export async function preCache(root = document, options = {}) {
     }
   }
 
-  // Prefetch background-image url(...) entries
+  // Prefetch every URL-bearing style prop (backgrounds, masks, border-image — the same
+  // URL_PROPS list capture inlines) so capture reads them from cache.background instead
+  // of the network. inlineSingleBackgroundEntry populates the exact keys capture uses.
   for (const el of allEls) {
-    let bg = ''
-    try {
-      // Preferir estilo autor (estable en JSDOM/test); fallback a computado
-      bg = el?.style?.backgroundImage || ''
-      if (!bg || bg === 'none') {
-        bg = getStyle(el).backgroundImage
-      }
-    } catch {}
-    if (bg && bg !== 'none') {
+    const seen = new Set()
+    for (const prop of URL_PROPS) {
+      let val = ''
+      try {
+        // Preferir estilo autor (estable en JSDOM/test); fallback a computado
+        val = (prop === 'background-image' && el?.style?.backgroundImage) ||
+          getStyle(el).getPropertyValue(prop) || ''
+      } catch {}
+      if (!val || val === 'none') continue
       // Extraer SOLO capas url(...) (robusto ante comas de gradients)
-      const urlEntries = bg.match(/url\((?:[^()"']+|"(?:[^"]*)"|'(?:[^']*)')\)/gi) || []
+      const urlEntries = val.match(/url\((?:[^()"']+|"(?:[^"]*)"|'(?:[^']*)')\)/gi) || []
       for (const entry of urlEntries) {
+        if (seen.has(entry)) continue
+        seen.add(entry)
         const p = Promise.resolve()
           .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
           .catch(() => {})
         promises.push(p)
       }
-
-      // (quedó como compat opcional por si querés volver a splitBackgroundImage)
-      // const parts = splitBackgroundImage(bg)
-      // for (const entry of parts) {
-      //   if (entry.startsWith('url(')) {
-      //     const p = Promise.resolve()
-      //       .then(() => inlineSingleBackgroundEntry(entry, { ...options, useProxy }))
-      //       .catch(() => {})
-      //     promises.push(p)
-      //   }
-      // }
     }
   }
 

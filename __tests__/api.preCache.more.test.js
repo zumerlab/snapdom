@@ -8,14 +8,9 @@ vi.mock('../src/utils', async (importOriginal) => {
     fetchImage: vi.fn(async () => 'data:image/png;base64,iVBORw0KGgo='),
     precacheCommonTags: vi.fn(),
     isSafari: vi.fn(() => false), // queda como vi.fn() invocable
+    inlineSingleBackgroundEntry: vi.fn(async () => 'url("data:image/png;base64,AA==")'),
   }
 })
-
-// preCache importa inlineBackgroundImages desde ../modules/background.js
-// (si en tu código real lo seguís importando desde ../utils, cambiá esta ruta acá)
-vi.mock('../src/modules/background.js', () => ({
-  inlineBackgroundImages: vi.fn(async () => {}),
-}))
 
 vi.mock('../src/modules/fonts.js', () => ({
   embedCustomFonts: vi.fn(async () => ''),
@@ -32,7 +27,6 @@ vi.mock('../src/modules/fonts.js', () => ({
 import { preCache } from '../src/api/preCache.js'
 import { cache } from '../src/core/cache.js'
 import * as utils from '../src/utils'
-import { inlineBackgroundImages } from '../src/modules/background.js'
 import {
   embedCustomFonts,
   collectUsedFontVariants,
@@ -42,31 +36,49 @@ import {
 
 describe('preCache – líneas difíciles', () => {
   beforeEach(() => {
-     vi.clearAllMocks()
-  utils.isSafari.mockReset?.()
-  utils.isSafari.mockReturnValue(false)
+    vi.clearAllMocks()
+    utils.isSafari.mockReset?.()
+    utils.isSafari.mockReturnValue(false)
     if (!cache.session) cache.session = {}
     cache.session.styleCache = new WeakMap()
   })
 
-  it('pasa cache.session.styleCache a inlineBackgroundImages (líneas 49–50)', async () => {
+  it('prefetches background, mask and border-image URLs (the full URL_PROPS list)', async () => {
     const root = document.createElement('div')
-    const ref = cache.session.styleCache
-
-    await expect(preCache(root, { embedFonts: false })).resolves.toBeUndefined()
-
-    expect(inlineBackgroundImages).toHaveBeenCalledTimes(1)
-    const args = inlineBackgroundImages.mock.calls[0] // [source, mirror, styleCache, options]
-    expect(args[0]).toBe(root)
-    expect(args[2]).toStrictEqual(ref)              // MISMA referencia => cubre 49–50
-    expect(args[3]).toMatchObject({ useProxy: '' })
+    const bg = document.createElement('div')
+    bg.style.backgroundImage = 'url(https://cdn.example.com/bg.svg)'
+    const masked = document.createElement('div')
+    masked.style.webkitMaskImage = 'url(https://cdn.example.com/mask.svg)'
+    const bordered = document.createElement('div')
+    bordered.style.borderImageSource = 'url(https://cdn.example.com/border.svg)'
+    root.append(bg, masked, bordered)
+    document.body.appendChild(root)
+    try {
+      await expect(preCache(root, { embedFonts: false })).resolves.toBeUndefined()
+      const entries = utils.inlineSingleBackgroundEntry.mock.calls.map((c) => c[0]).join('|')
+      expect(entries).toContain('bg.svg')
+      expect(entries).toContain('mask.svg')
+      expect(entries).toContain('border.svg')
+    } finally {
+      root.remove()
+    }
   })
 
-  it('si inlineBackgroundImages falla, preCache resuelve igual (catch 56–65)', async () => {
-    inlineBackgroundImages.mockRejectedValueOnce(new Error('boom'))
+  it('dedupes repeated url() entries per element and survives entry failures', async () => {
+    utils.inlineSingleBackgroundEntry.mockRejectedValue(new Error('boom'))
     const el = document.createElement('section')
-
-    await expect(preCache(el, { embedFonts: false })).resolves.toBeUndefined()
+    // same url in shorthand and longhand: must be fetched once, and a rejection must not throw
+    el.style.backgroundImage = 'url(https://cdn.example.com/dup.png)'
+    document.body.appendChild(el)
+    try {
+      await expect(preCache(el, { embedFonts: false })).resolves.toBeUndefined()
+      const dupCalls = utils.inlineSingleBackgroundEntry.mock.calls
+        .map((c) => c[0])
+        .filter((e) => e.includes('dup.png'))
+      expect(dupCalls.length).toBe(1)
+    } finally {
+      el.remove()
+    }
   })
 
   it('Safari warmup + embed de fuentes con params correctos (84–91)', async () => {
@@ -98,34 +110,13 @@ describe('preCache – líneas difíciles', () => {
     expect(call.useProxy).toBe('/proxy/')
   })
 
-  it('crea styleCache si no existe y lo inyecta a inlineBackgroundImages (49–50)', async () => {
-  // Aseguramos estado inicial sin styleCache
-  cache.session = cache.session || {}
-  delete cache.session.styleCache
+  it('crea styleCache si no existe (49–50)', async () => {
+    cache.session = cache.session || {}
+    delete cache.session.styleCache
 
-  const root = document.createElement('main')
+    const root = document.createElement('main')
+    await expect(preCache(root, { embedFonts: false })).resolves.toBeUndefined()
 
-  await expect(preCache(root, { embedFonts: false })).resolves.toBeUndefined()
-
-  // Se llamó una vez y con el WeakMap recién creado
-  expect(inlineBackgroundImages).toHaveBeenCalledTimes(1)
-  const args = inlineBackgroundImages.mock.calls[0] // [source, mirror, styleCache, options]
-  expect(args[0]).toBe(root)
-
-  // preCache debió crear y colgar el WeakMap en cache.session.styleCache
-  expect(cache.session.styleCache).toBeInstanceOf(WeakMap)
-  expect(args[2]).toBe(cache.session.styleCache) // MISMA referencia => cubre 49–50
-})
-
-it('si inlineBackgroundImages lanza (throw sync), preCache resuelve igual (56–65)', async () => {
-  // Lanzar sincrónico para entrar al try/catch de preCache
-  inlineBackgroundImages.mockImplementationOnce(() => { throw new Error('sync-boom') })
-
-  const el = document.createElement('section')
-  await expect(preCache(el, { embedFonts: false })).resolves.toBeUndefined()
-
-  // (Opcional) el resto del flujo no debe romperse
-  expect(inlineBackgroundImages).toHaveBeenCalledTimes(1)
-})
-
+    expect(cache.session.styleCache).toBeInstanceOf(WeakMap)
+  })
 })
