@@ -12,6 +12,7 @@ import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle }
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { cache } from '../core/cache.js'
 import { createCaptureSession } from './session.js'
+import { universeFor } from '../modules/styles.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { runPictureResolverBeforeClone } from '../modules/pictureResolver.js'
@@ -235,7 +236,7 @@ export async function captureDOM(element, options) {
   } else {
     await new Promise((resolve) => {
       idle(() => {
-        baseCSS = generateDedupedBaseCSS(usedTags)
+        baseCSS = generateDedupedBaseCSS(usedTags, universeFor(state.element))
         cache.baseStyle.set(tagKey, baseCSS)
         resolve()
       }, { fast })

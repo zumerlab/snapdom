@@ -85,9 +85,12 @@ export function needsBackgroundInline(source) {
   return true
 }
 
-/** Per-document memo of the scanned property universe, invalidated by the style epoch. */
+/** Per-document memo of the scanned property universe, invalidated by the style epoch.
+ *  Exported so the base reset prunes itself with the SAME universe the snapshots use:
+ *  a reset-stamped prop the class diff can no longer override (e.g. the resolved-black
+ *  `-webkit-text-fill-color` overriding a white `color`) must not be emitted either. */
 const universeCache = new WeakMap()
-function universeFor(el) {
+export function universeFor(el) {
   const doc = el.ownerDocument || document
   // Shadow-root content: its own sheets aren't scanned — keep full reads there.
   if (el.getRootNode && el.getRootNode() !== doc) return null

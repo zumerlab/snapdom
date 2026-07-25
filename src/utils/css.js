@@ -273,7 +273,7 @@ export function collectUsedTagNames(root) {
  * @param {string[]} usedTagNames - Array of tag names
  * @returns {string} CSS string
  */
-export function generateDedupedBaseCSS(usedTagNames) {
+export function generateDedupedBaseCSS(usedTagNames, universe = null) {
   const groups = new Map()
 
   for (let tagName of usedTagNames) {
@@ -288,8 +288,15 @@ export function generateDedupedBaseCSS(usedTagNames) {
     const styles = getDefaultStyleForTag(tagName)
     if (!styles) continue
 
+    // Pruned snapshots diff only the universe props, so the reset must not stamp anything
+    // outside it: a reset-only prop (resolved defaults like -webkit-text-fill-color) would
+    // override the class value with no diff entry able to win it back. Outside the universe
+    // the UA default applies inside the foreignObject anyway — restating it buys nothing.
+    const entries = universe
+      ? Object.entries(styles).filter(([k]) => universe.has(k))
+      : Object.entries(styles)
     // Creamos la "firma" del bloque CSS para comparar
-    const key = Object.entries(styles)
+    const key = entries
       .map(([k, v]) => `${k}:${v};`)
       .sort()
       .join('')
