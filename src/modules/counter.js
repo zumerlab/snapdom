@@ -1,4 +1,3 @@
-import { cache } from '../core/cache'
 
 /**
  * Lightweight CSS counter resolver for SnapDOM.
@@ -77,8 +76,6 @@ function formatCounter(value, style) {
  * @returns {{ get(node: Element, name: string): number, getStack(node: Element, name: string): number[] }}
  */
 export function buildCounterContext(root) {
-  const getEpoch = () => (cache?.session?.__counterEpoch ?? 0)
-   let run = getEpoch()
   const nodeCounters = new WeakMap()
   const rootEl = (root instanceof Document) ? root.documentElement : root
 
@@ -213,16 +210,8 @@ export function buildCounterContext(root) {
   const empty = new Map()
   build(rootEl, empty, empty)
 
-    // Si cambió el epoch, reconstruimos el mapa antes de responder
-  function ensureFresh() {
-    const now = getEpoch()
-    if (now !== run) {
-      run = now
-      const empty = new Map()
-      build(rootEl, empty, empty)
-    }
-  }
-
+  // The context is per-capture (lazily built on sessionCache) and never outlives its
+  // capture, so no cross-capture invalidation is needed here.
   return {
     /**
      * Get top value for counter name at given node.
@@ -230,7 +219,6 @@ export function buildCounterContext(root) {
      * @param {string} name
      */
     get(node, name) {
-      ensureFresh()
       const s = nodeCounters.get(node)?.get(name)
       return s && s.length ? s[s.length - 1] : 0
     },
@@ -240,7 +228,6 @@ export function buildCounterContext(root) {
      * @param {string} name
      */
     getStack(node, name) {
-      ensureFresh()
       const s = nodeCounters.get(node)?.get(name)
       return s ? s.slice() : []
     }

@@ -22,7 +22,6 @@ import {
   hasCounters
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
-import { cache } from '../core/cache.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
@@ -221,9 +220,6 @@ export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc))
   return false
 }
 
-/** Acumulador de contadores por padre para propagar increments en pseudos entre hermanos */
-var __siblingCounters = new WeakMap() // parentElement -> Map<counterName, number>
-
 /**
  * True if any single side paints a border. The `border-width`/`border-style` shorthands
  * can't be parsed with parseFloat: a `border-bottom` resolves to "0px 0px 1px 0px", whose
@@ -239,7 +235,6 @@ function hasPaintedBorder(style) {
   }
   return false
 }
-var __pseudoEpoch = -1
 
 /**
  * Wraps buildCounterContext(doc) — an O(document) walk — behind a memoizing
@@ -310,9 +305,9 @@ function collapseCssContent(raw) {
  * @param {Element} node
  * @param {{get:Function, getStack:Function}} base
  */
-function withSiblingOverrides(node, base) {
+function withSiblingOverrides(node, base, siblingCounters) {
   const parent = node.parentElement
-  const map = parent ? __siblingCounters.get(parent) : null
+  const map = parent && siblingCounters ? siblingCounters.get(parent) : null
   if (!map) return base
   return {
     get(n, name) {
@@ -417,7 +412,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
  * @param {{get:Function, getStack:Function}} baseCtx
  * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
  */
-function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
+function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
   let ps
   try { ps = getStyle(node, pseudo) } catch { }
   let raw = ps?.content
@@ -425,7 +420,7 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx) {
   raw = stripContentAltText(raw)
 
   // 1) aplicar overrides de hermanos
-  const baseWithSiblings = withSiblingOverrides(node, baseCtx)
+  const baseWithSiblings = withSiblingOverrides(node, baseCtx, siblingCounters)
 
   // 2) derivar (aplica reset/increment del pseudo)
   const derived = deriveCounterCtxForPseudo(node, ps, baseWithSiblings)
@@ -461,13 +456,10 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
     return
   }
 
-  // Reset per-capture: si cambió el epoch, limpiamos overrides de hermanos
-  const epoch = (cache?.session?.__counterEpoch ?? 0)
-  if (__pseudoEpoch !== epoch) {
-    __siblingCounters = new WeakMap()
-    if (sessionCache) sessionCache.__counterCtx = null
-    __pseudoEpoch = epoch
-  }
+  // Sibling-counter overrides are per-capture state: they live on sessionCache (whose
+  // lifetime is exactly one capture), not on a module global — a concurrently starting
+  // capture used to wipe the shared global mid-traversal via an epoch bump.
+  if (!sessionCache.__siblingCounters) sessionCache.__siblingCounters = new WeakMap()
 
   // buildCounterContext walks the whole document once — defer it behind a lazy
   // wrapper so that cost is only paid the first time a pseudo actually declares
@@ -546,7 +538,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
 const isNoExplicitContent =
   rawContent === '' || rawContent === 'none' || rawContent === 'normal'
 const { text: cleanContent, incs } =
-  resolvePseudoContentAndIncs(source, pseudo, counterCtx)
+  resolvePseudoContentAndIncs(source, pseudo, counterCtx, sessionCache.__siblingCounters)
 
       const bg = style.backgroundImage
       const bgColor = style.backgroundColor
@@ -587,18 +579,18 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if (!shouldRender) {
         // Aun si no renderizamos caja, si el pseudo tenía increments, propagar a hermanos
         if (incs && incs.length && source.parentElement) {
-          const map = __siblingCounters.get(source.parentElement) || new Map()
+          const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
           // Para cada counter incrementado en el pseudo, guardar el valor resuelto final
           for (const { name } of incs) {
             if (!name) continue
             // reconstruir valor final desde derived: volvemos a pedirlo
             // Usamos withSiblingOverrides + derive para ser consistentes
-            const baseWithSibs = withSiblingOverrides(source, counterCtx)
+            const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
             const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
             const finalVal = derived.get(source, name)
             map.set(name, finalVal)
           }
-          __siblingCounters.set(source.parentElement, map)
+          sessionCache.__siblingCounters.set(source.parentElement, map)
         }
         continue
       }
@@ -717,15 +709,15 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
 
       // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
       if (incs && incs.length && source.parentElement) {
-        const map = __siblingCounters.get(source.parentElement) || new Map()
-        const baseWithSibs = withSiblingOverrides(source, counterCtx)
+        const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
+        const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
         const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
         for (const { name } of incs) {
           if (!name) continue
           const finalVal = derived.get(source, name)
           map.set(name, finalVal)
         }
-        __siblingCounters.set(source.parentElement, map)
+        sessionCache.__siblingCounters.set(source.parentElement, map)
       }
 
       if (!hasVisibleBox) continue

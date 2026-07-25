@@ -126,24 +126,24 @@ describe('resolveCountersInContent', () => {
   })
 })
 
-describe('buildCounterContext – epoch invalidation', () => {
-  it('rebuilds the map when the session counter epoch changes', () => {
+describe('buildCounterContext – per-capture stability', () => {
+  it('keeps its snapshot when another capture starts (no shared-epoch rebuild mid-capture)', () => {
     const root = document.createElement('div')
     const inner = document.createElement('span')
     inner.style.counterReset = 'x 5'
     root.appendChild(inner)
     document.body.appendChild(root)
 
-    cache.session = cache.session || {}
-    cache.session.__counterEpoch = 1
     const ctx = buildCounterContext(root)
     expect(ctx.get(inner, 'x')).toBe(5)
 
-    // Mutate the DOM and bump the epoch: the next query must rebuild from the live tree.
+    // A concurrently starting capture used to bump a shared epoch and force this context
+    // to rebuild against a possibly-mutated document mid-capture. The context is
+    // per-capture now: its snapshot must stay stable for the capture's lifetime.
     inner.style.counterReset = 'x 9'
-    cache.session.__counterEpoch = 2
-    expect(ctx.get(inner, 'x')).toBe(9)
-    expect(ctx.getStack(inner, 'x')).toEqual([9])
+    cache.session.__counterEpoch = (cache.session.__counterEpoch || 0) + 1
+    expect(ctx.get(inner, 'x')).toBe(5)
+    expect(ctx.getStack(inner, 'x')).toEqual([5])
   })
 })
 

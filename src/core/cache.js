@@ -84,7 +84,6 @@ export function normalizeCachePolicy(v) {
  * @param {"soft"|"auto"|"full"|"disabled"} policy
  */
 export function applyCachePolicy(policy = 'soft') {
-  cache.session.__counterEpoch = (cache.session.__counterEpoch || 0) + 1
   switch (policy) {
     case 'auto': {
       cache.session.styleMap = new Map()

@@ -24,10 +24,13 @@ import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.help
  */
 
 export async function prepareClone(element, options = {}) {
+  // Prefer the snapshot captureDOM took synchronously at capture start — cache.session may
+  // belong to a different in-flight capture by the time this runs (see capture.js).
+  const session = options.__session || cache.session
   const sessionCache = {
-    styleMap: cache.session.styleMap,
-    styleCache: cache.session.styleCache,
-    nodeMap: cache.session.nodeMap,
+    styleMap: session.styleMap,
+    styleCache: session.styleCache,
+    nodeMap: session.nodeMap,
     options
   }
 
@@ -152,7 +155,9 @@ export async function prepareClone(element, options = {}) {
     const scrollX = originalNode.scrollLeft
     const scrollY = originalNode.scrollTop
     const hasScroll = scrollX || scrollY
-    if (hasScroll && cloneNode instanceof HTMLElement) {
+    // Realm-safe HTML check: iframe-realm clones are not instances of this window's
+    // HTMLElement, but their scroll still needs compensating.
+    if (hasScroll && cloneNode?.nodeType === 1 && cloneNode.namespaceURI === 'http://www.w3.org/1999/xhtml') {
       cloneNode.style.overflow = 'hidden'
       cloneNode.style.scrollbarWidth = 'none'
       cloneNode.style.msOverflowStyle = 'none'
@@ -162,7 +167,7 @@ export async function prepareClone(element, options = {}) {
       try {
         const positioned = cloneNode.querySelectorAll('*')
         for (const child of positioned) {
-          if (!(child instanceof HTMLElement)) continue
+          if (child.nodeType !== 1 || child.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue
           const pos = child.style.position
           if (pos === 'fixed' || pos === 'absolute') {
             const curTop = parseFloat(child.style.top) || 0

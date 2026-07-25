@@ -118,6 +118,14 @@ function checkBurstAdvice(element) {
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   applyCachePolicy(options.cache)
+  // cache.session is reassigned at every capture start: snapshot THIS capture's maps in the
+  // same synchronous tick, before any await, or a concurrently started capture swaps them
+  // and both captures share one nodeMap (double scroll-compensation, cross-contaminated CSS).
+  options.__session = {
+    styleMap: cache.session.styleMap,
+    styleCache: cache.session.styleCache,
+    nodeMap: cache.session.nodeMap
+  }
   if (!options.burst) checkBurstAdvice(element)
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
   const fast = options.fast
