@@ -513,46 +513,44 @@ it('skips nodes with no actionable URLs (early paths)', async () => {
   expect(outImg?.hasAttribute('src')).toBe(false)
   expect(outStyle).toContain('color:red')
 })
-it('replaces blob: URLs inside <img srcset> and preserves non-blob candidates/descriptor', async () => {
+it('freezes a srcset-only img to one candidate and resolves a chosen blob: URL', async () => {
   const wrap = document.createElement('div')
   const img = document.createElement('img')
   img.setAttribute('srcset', 'blob:aa 1x, https://x/y.png 2x, blob:bb 3x')
   wrap.appendChild(img)
 
-  // ⬇️ Evitar que freezeImgSrcset borre srcset
+  // currentSrc/src vacíos: la selección debe salir del srcset (no queda img sin fuente)
   Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
   Object.defineProperty(img, 'src',        { configurable: true, get: () => '' })
 
   vi.mocked(snapFetch)
-    .mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,AAA' }) // blob:aa
-    .mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,BBB' }) // blob:bb
+    .mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,AAA' }) // blob del candidato elegido
 
   const { clone } = await prepareClone(wrap)
-  const out = clone.querySelector('img')?.getAttribute('srcset') || ''
+  const out = clone.querySelector('img')
 
-  expect(out.includes('blob:')).toBe(false)
-  expect(out).toContain('data:image/png;base64,AAA 1x')
-  expect(out).toContain('https://x/y.png 2x')
-  expect(out).toContain('data:image/png;base64,BBB 3x')
+  // freezeImgSrcset elige un candidato (1x en DPR 1), lo fija como src y quita srcset;
+  // resolveBlobUrlsInTree convierte ese blob: elegido a data:.
+  expect(out?.hasAttribute('srcset')).toBe(false)
+  expect(out?.getAttribute('src')).toBe('data:image/png;base64,AAA')
 })
 
-it('keeps original srcset when blob→data conversion fails (changed=false)', async () => {
+it('keeps the chosen blob: src when blob→data conversion fails (changed=false)', async () => {
   const wrap = document.createElement('div')
   const img = document.createElement('img')
   img.setAttribute('srcset', 'blob:fail 1x, blob:alsofail 2x')
   wrap.appendChild(img)
 
-  // ⬇️ Evitar que freezeImgSrcset borre srcset
   Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
   Object.defineProperty(img, 'src',        { configurable: true, get: () => '' })
 
   vi.mocked(snapFetch)
     .mockResolvedValueOnce({ ok: false, data: null })
-    .mockResolvedValueOnce({ ok: false, data: null })
 
   const { clone } = await prepareClone(wrap)
-  const out = clone.querySelector('img')?.getAttribute('srcset') || ''
+  const out = clone.querySelector('img')
 
-  // Como todas fallaron, changed=false → no se toca el atributo
-  expect(out).toBe('blob:fail 1x, blob:alsofail 2x')
+  // Falló la conversión: el src elegido queda como estaba (blob:) y sin srcset
+  expect(out?.hasAttribute('srcset')).toBe(false)
+  expect(out?.getAttribute('src')).toBe('blob:fail')
 })

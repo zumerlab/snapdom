@@ -3,11 +3,11 @@
  * @module utils/clone.helpers
  */
 
-import { idle, debugWarn } from './index.js'
+import { idle, debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
-import { findRealUrlForPicture } from '../modules/pictureResolver.js'
+import { findRealUrlForPicture, pickSrcsetCandidate } from '../modules/pictureResolver.js'
 
 /**
  * Schedule work across idle slices without relying on IdleDeadline constructor.
@@ -179,8 +179,23 @@ export function injectScopedStyle(hostClone, cssText, scopeId) {
  */
 export function freezeImgSrcset(original, cloned) {
   try {
+    // Element-level `content: url(...)` replaces the <img>'s rendered image and out-ranks
+    // src/srcset in the browser's own resolution. The style snapshot neutralizes non-data
+    // content URLs, so freeze the replacement image as the clone's src here.
+    let contentUrl = null
+    const rawContent = getStyle(original).content
+    if (rawContent && rawContent.includes('url(')) {
+      const m = rawContent.match(/url\(["']?([^"')]+)["']?\)/)
+      if (m) contentUrl = m[1]
+    }
     const picture = original.closest?.('picture')
-    const chosen = (picture ? findRealUrlForPicture(original, picture) : original.currentSrc) || original.src || ''
+    const chosen = contentUrl ||
+      (picture ? findRealUrlForPicture(original, picture) : original.currentSrc) ||
+      original.src ||
+      // Chromium/Firefox leave currentSrc empty until the selected candidate has loaded,
+      // so a srcset-only img would reach inlineImages source-less (srcset gets stripped
+      // there). Pick a candidate explicitly, like the <picture> branch does.
+      pickSrcsetCandidate(original.getAttribute('srcset'), original) || ''
     if (!chosen) return
     cloned.setAttribute('src', chosen)
     cloned.removeAttribute('srcset')

@@ -6,6 +6,7 @@
 
 import { snapFetch } from './snapFetch.js'
 import { cache } from '../core/cache.js'
+import { pickSrcsetCandidate } from './pictureResolver.js'
 
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
 
@@ -51,9 +52,11 @@ export async function inlineImages(clone, options = {}) {
   if (clone.tagName === 'IMG') imgs.unshift(clone)
   /** @param {HTMLImageElement} img */
   const processImg = async (img) => {
-    // Normalize src/srcset/sizes to a single concrete URL
+    // Normalize src/srcset/sizes to a single concrete URL. currentSrc stays empty on the
+    // detached clone until the candidate loads (Chromium/Firefox), so derive a candidate
+    // from srcset before stripping it — never demote a sourced img to a source-less one.
     if (!img.getAttribute('src')) {
-      const eff = img.currentSrc || img.src || ''
+      const eff = img.currentSrc || img.src || pickSrcsetCandidate(img.getAttribute('srcset'), img) || ''
       if (eff) img.setAttribute('src', eff)
     }
 

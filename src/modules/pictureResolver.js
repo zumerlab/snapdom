@@ -38,6 +38,40 @@ export function quickProbeMayNeedPictureResolver(root, resolveLazySrc) {
   return false
 }
 
+/** Raster types every target engine decodes; anything else (jxl, tiff…) the browser's own
+ *  <picture> type-support step would skip, so freezing it diverges from what the page shows. */
+const SUPPORTED_SOURCE_TYPE = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
+
+/**
+ * Picks the srcset candidate the browser itself would select: smallest density
+ * >= devicePixelRatio, else the largest. `Nw` width descriptors become densities
+ * via the img's layout width (viewport width when unlaid-out — the `sizes`
+ * default). Mirrors resolveImageSetURL's image-set() logic.
+ * @param {string} srcset
+ * @param {HTMLImageElement} [img]
+ * @returns {string|null}
+ */
+export function pickSrcsetCandidate(srcset, img) {
+  if (!srcset) return null
+  let slot = 0
+  try { slot = img ? (img.getBoundingClientRect().width || img.width) : 0 } catch { }
+  if (!slot) slot = window.innerWidth || 1000
+  const candidates = []
+  for (const part of srcset.split(',')) {
+    const toks = part.trim().split(/\s+/)
+    if (!toks[0]) continue
+    const desc = toks[1] || ''
+    let d = 1
+    if (/^\d*\.?\d+x$/i.test(desc)) d = parseFloat(desc)
+    else if (/^\d+w$/i.test(desc)) d = parseInt(desc, 10) / slot
+    candidates.push({ url: toks[0], d })
+  }
+  if (!candidates.length) return null
+  candidates.sort((a, b) => a.d - b.d)
+  const dpr = window.devicePixelRatio || 1
+  return (candidates.find((c) => c.d >= dpr) || candidates[candidates.length - 1]).url
+}
+
 /**
  * @param {HTMLImageElement} img
  * @param {HTMLPictureElement} picture
@@ -53,15 +87,18 @@ export function findRealUrlForPicture(img, picture) {
     const srcset = source.getAttribute('srcset')
     if (!srcset || isPlaceholderSrc(srcset)) continue
 
+    const type = source.getAttribute('type')
+    if (type && !SUPPORTED_SOURCE_TYPE.test(type.trim())) continue
+
     const media = source.getAttribute('media')
     if (media) {
       try {
         if (window.matchMedia(media).matches) {
-          return srcset.split(',')[0].trim().split(/\s+/)[0]
+          return pickSrcsetCandidate(srcset, img)
         }
       } catch { /* invalid media query */ }
     }
-    if (!fallback) fallback = srcset.split(',')[0].trim().split(/\s+/)[0]
+    if (!fallback) fallback = pickSrcsetCandidate(srcset, img)
   }
   return fallback
 }

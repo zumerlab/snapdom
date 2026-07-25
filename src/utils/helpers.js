@@ -23,6 +23,8 @@ export function extractURL(value) {
  * @param {number} [targetDppx=1]
  * @returns {string|null}
  */
+const SUPPORTED_IMAGE_SET_TYPE = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
+
 export function resolveImageSetURL(value, targetDppx = 1) {
   const m = value.match(/^\s*-?(?:webkit-)?image-set\(([\s\S]*)\)\s*$/i)
   if (!m) return null
@@ -30,6 +32,10 @@ export function resolveImageSetURL(value, targetDppx = 1) {
   for (const part of m[1].split(',')) {
     const urlMatch = part.match(/url\((['"]?)(.*?)(\1)\)/)
     if (!urlMatch) continue
+    // The browser's own image-set() selection skips candidates whose type() it can't
+    // decode — mirror that, or an unsupported format out-ranks what the page painted.
+    const typeMatch = part.match(/type\(\s*["']([^"']+)["']\s*\)/i)
+    if (typeMatch && !SUPPORTED_IMAGE_SET_TYPE.test(typeMatch[1].trim())) continue
     const resMatch = part.match(/(\d+(?:\.\d+)?)\s*(x|dpi|dppx)/i)
     let dppx = 1
     if (resMatch) {
