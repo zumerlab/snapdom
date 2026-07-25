@@ -22,7 +22,15 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture a visual regression screenshot","item":"https://snapdom.dev/how-to/visual-regression-screenshot/"}]}</script>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture a <span class="accent">visual regression</span> screenshot</h1><p class="lead">Produce the input image for a visual diff after fonts, data, animations and layout are stable.</p></section>
+<nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">How-To Recipe</div><h1>Capture a <span class="accent">visual regression</span> screenshot</h1><p class="lead">Produce the input image for a visual diff after fonts, data, animations and layout are stable.</p></section>
   <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Stabilize the component state, capture to PNG, then compare it with a baseline using a dedicated diff tool.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">await document.fonts.ready
 document.documentElement.classList.add('test-mode')
 
@@ -36,14 +44,7 @@ const blob = await snapdom.toBlob(
     <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Is SnapDOM a complete visual testing framework?</summary><p>No. It provides the capture step, not test orchestration, baseline storage or pixel-diff assertions.</p></details><details><summary>Why use dpr: 1?</summary><p>A fixed DPR prevents test machines with different display densities from producing different bitmap dimensions.</p></details></section>
     <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="https://zumerlab.com/snapdiff/?utm_source=snapdom">Compare with SnapDIFF <span class="arrow">→</span></a><a class="related-card" href="../capture-element-without-puppeteer/">Capture without Puppeteer <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">Resolution and DPR <span class="arrow">→</span></a><a class="related-card" href="../../docs/cache/">Cache control <span class="arrow">→</span></a></div></section>
     <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
-  </main><nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/" class="current">How-to</a>
-    <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
-  <script defer src="/copy-code.js"></script>
+  </main>  <script defer src="/copy-code.js"></script>
   <script type="module" src="../../demo.js"></script>
 </body>
 </html>

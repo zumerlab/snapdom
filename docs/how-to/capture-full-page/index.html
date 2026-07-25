@@ -22,7 +22,15 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture a full web page","item":"https://snapdom.dev/how-to/capture-full-page/"}]}</script>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Capture a <span class="accent">full web page</span></h1><p class="lead">Snapshot the document’s rendered DOM rather than only the visible viewport.</p></section>
+<nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">How-To Recipe</div><h1>Capture a <span class="accent">full web page</span></h1><p class="lead">Snapshot the document’s rendered DOM rather than only the visible viewport.</p></section>
   <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Pass <code>document.documentElement</code> or a dedicated page wrapper to SnapDOM.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">const page = document.documentElement
 const capture = await snapdom(page, {
   embedFonts: true,
@@ -33,14 +41,7 @@ await capture.download({ format: 'png', filename: 'full-page' })</pre></section>
     <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Is this the same as a viewport screenshot?</summary><p>No. A viewport screenshot captures visible screen pixels; this captures the selected DOM subtree and its layout extent.</p></details><details><summary>Will lazy content be included?</summary><p>Only content that exists and has resolved. Load or render lazy sections before starting capture.</p></details></section>
     <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../capture-iframe/">Capture an iframe <span class="arrow">→</span></a><a class="related-card" href="../high-resolution-element/">High-resolution capture <span class="arrow">→</span></a><a class="related-card" href="../capture-element-without-puppeteer/">Capture without Puppeteer <span class="arrow">→</span></a><a class="related-card" href="../../docs/options/">Capture options <span class="arrow">→</span></a></div></section>
     <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
-  </main><nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/" class="current">How-to</a>
-    <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
-  <script defer src="/copy-code.js"></script>
+  </main>  <script defer src="/copy-code.js"></script>
   <script type="module" src="../../demo.js"></script>
 </body>
 </html>

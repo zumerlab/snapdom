@@ -8,8 +8,6 @@
   <meta name="robots" content="index, follow" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./shared.css">
   <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
   <script>
@@ -42,11 +40,11 @@
       --shadow-sticker: none;
       --shadow-sticker-sm: none;
       --shadow-sticker-lg: none;
-      --font-display: 'Tanker', 'Switzer', sans-serif;
-      --font-body: 'Switzer', sans-serif;
+      --font-display: Arial, Helvetica, sans-serif;
+      --font-body: Arial, Helvetica, sans-serif;
       --font-mono: Arial, Helvetica, sans-serif;
       --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
-      --font-hand: 'Switzer', sans-serif;
+      --font-hand: Arial, Helvetica, sans-serif;
       --grid-color: transparent;
       --halftone-color: transparent;
       --halftone-size: 5px;
@@ -247,6 +245,17 @@
   </script>
 </head>
 <body>
+  <nav class="page-nav">
+    <a href="./" data-umami-event="Nav showcase">Showcase</a>
+    <a href="./docs/" data-umami-event="Nav docs">Docs</a>
+    <a href="./plugins.html" class="current" data-umami-event="Nav plugins">Plugins</a>
+    <a href="./compare/" data-umami-event="Nav compare">Compare</a>
+    <a href="./guides/" data-umami-event="Nav guides">Guides</a>
+    <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
+    <a href="./labs.html" data-umami-event="Nav labs">Labs</a><a href="./blog/" data-umami-event="Nav blog">Blog</a>
+    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
+  </nav>
+
   <!-- ── Hero ── -->
   <section class="hero" id="top">
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Plugins github repo">
@@ -638,16 +647,6 @@
 
   <!-- ── Scripts ── -->
 
-  <nav class="page-nav">
-    <a href="./" data-umami-event="Nav showcase">Showcase</a>
-    <a href="./docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="./plugins.html" class="current" data-umami-event="Nav plugins">Plugins</a>
-    <a href="./compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="./guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="./labs.html" data-umami-event="Nav labs">Labs</a><a href="./blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
 
   <script>
     async function updateGitHubStars() {
@@ -953,7 +952,7 @@
 
   <!-- Playground -->
   <script type="module">
-    import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
 
     // ── Plugin factories ──
     function filterPlugin(options = {}) {

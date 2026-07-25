@@ -22,7 +22,15 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Export a chart as SVG or PNG","item":"https://snapdom.dev/how-to/export-chart-as-svg/"}]}</script>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> How-To Recipe</div><h1>Export a <span class="accent">chart as SVG</span> or PNG</h1><p class="lead">Capture the complete chart component, including the HTML around canvas or SVG chart output.</p></section>
+<nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/" class="current">How-to</a>
+    <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">How-To Recipe</div><h1>Export a <span class="accent">chart as SVG</span> or PNG</h1><p class="lead">Capture the complete chart component, including the HTML around canvas or SVG chart output.</p></section>
   <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Select the chart wrapper—not only its canvas—and call <code>snapdom.toSvg(wrapper)</code>.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
 
 const chart = document.querySelector('.chart-card')
@@ -32,14 +40,7 @@ document.querySelector('#preview').appendChild(svgImage)</pre></section><section
     <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Will a canvas chart become vector paths?</summary><p>No. SnapDOM preserves its visual output but does not reconstruct canvas pixels as SVG geometry.</p></details><details><summary>When should I export PNG?</summary><p>Use PNG for broad portability or when the chart contains raster content and no scalable wrapper is needed.</p></details></section>
     <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../save-chart-js-as-png/">Save Chart.js as PNG <span class="arrow">→</span></a><a class="related-card" href="../export-dashboard-as-image/">Export a dashboard <span class="arrow">→</span></a><a class="related-card" href="../html-to-svg/">HTML to SVG <span class="arrow">→</span></a><a class="related-card" href="../html-to-png/">HTML to PNG <span class="arrow">→</span></a></div></section>
     <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
-  </main><nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/" class="current">How-to</a>
-    <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
-  <script defer src="/copy-code.js"></script>
+  </main>  <script defer src="/copy-code.js"></script>
   <script type="module" src="../../demo.js"></script>
 </body>
 </html>

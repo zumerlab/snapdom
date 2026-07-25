@@ -62,7 +62,15 @@
   </style>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>The text you see <span class="accent">isn't text</span></h1><p class="lead">Click into the box below and type. Every glyph you "see" is a WebGL texture rendered from the last SnapDOM capture — the real, editable DOM is invisible on purpose, and updates cross-fade in so nothing ever pops.</p></section>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>The text you see <span class="accent">isn't text</span></h1><p class="lead">Click into the box below and type. Every glyph you "see" is a WebGL texture rendered from the last SnapDOM capture — the real, editable DOM is invisible on purpose, and updates cross-fade in so nothing ever pops.</p></section>
   <main class="page">
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two DOM elements do the work: a transparent <code>contenteditable</code> proxy that exists only to give the browser a real caret and real keystroke handling, and a hidden source element that mirrors the typed text and is what SnapDOM actually captures. A <code>defineExports</code> plugin feeds each capture into a WebGL renderer that double-buffers two textures and cross-fades between them, so updates never visibly pop — you always see the previous frame smoothly blend into the new one.</p></div>
@@ -180,13 +188,6 @@ async function refresh () {
     <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>beforeSnap</code>, <code>afterRender</code>, and <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
 
   <div class="source-bin" aria-hidden="true">
     <article id="dom-source">

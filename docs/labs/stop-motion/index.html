@@ -45,7 +45,15 @@
   </style>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>You <span class="accent">choose</span> the frames</h1><p class="lead">No continuous sampling here. You pose an actor, press the shutter, and move on — the sequence is exactly the poses you decided were worth keeping, like a physical stop-motion rig.</p></section>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>You <span class="accent">choose</span> the frames</h1><p class="lead">No continuous sampling here. You pose an actor, press the shutter, and move on — the sequence is exactly the poses you decided were worth keeping, like a physical stop-motion rig.</p></section>
   <main class="page">
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>A tiny plugin's <code>afterRender</code> hook fires once per capture and hands back <code>ctx.dataURL</code>. Nothing accumulates onto a saved clone — unlike the paint-canvas and target-range labs, each capture here is fully independent. The plugin's only job is to collect the dataURLs you explicitly ask for into an ordered array; the player decides the playback rhythm afterward.</p></div>
@@ -143,13 +151,6 @@ await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</p
     <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>afterRender</code>, plus the rest of the <code>beforeSnap → afterSnap</code> pipeline — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
 
   <script defer src="/copy-code.js"></script>
   <script type="module">

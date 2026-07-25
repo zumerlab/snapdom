@@ -71,7 +71,15 @@
   </style>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>DOM, <span class="accent">live</span> on the GPU</h1><p class="lead">Type in the card on the left. On every keystroke, SnapDOM re-captures it and a plugin uploads the result straight into a WebGL texture on the right — not a screenshot you take once, a texture that keeps up with you.</p></section>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>DOM, <span class="accent">live</span> on the GPU</h1><p class="lead">Type in the card on the left. On every keystroke, SnapDOM re-captures it and a plugin uploads the result straight into a WebGL texture on the right — not a screenshot you take once, a texture that keeps up with you.</p></section>
   <main class="page">
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>A <code>defineExports</code> plugin adds a <code>webgl</code> export that feeds a captured PNG straight into an existing WebGL texture, and a small <code>dirty</code>/<code>working</code> coalescing loop makes sure fast typing never queues up stale captures — only the latest edit ever wins the race to the GPU.</p></div>
@@ -199,13 +207,6 @@ editable.addEventListener('input', updateMirror)</pre>
     <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>beforeSnap</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
 
   <script defer src="/copy-code.js"></script>
   <script type="module">

@@ -87,8 +87,6 @@
   <!-- Preconnect to critical origins only (reduces DNS/TLS overhead) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://api.fontshare.com">
-  <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
   <link rel="preconnect" href="https://api.github.com">
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
 
@@ -97,11 +95,9 @@
        isn't gated on external round-trips. Fonts use display=swap: text paints immediately in a
        fallback and swaps in when the webface loads (CLS stays 0 — the swap already reserves space).
        Orbit CSS is only used by the Orbit demo far below the fold. -->
-  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mansalva&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
   <noscript>
-    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mansalva&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous">
   </noscript>
@@ -138,11 +134,11 @@
       --sd-star: #F5A623;
       --sd-body-bg: #F7F9FC;
       --sd-grid-color: transparent;
-      --font-display: 'Tanker', 'Switzer', sans-serif;
-      --font-body: 'Switzer', sans-serif;
+      --font-display: Arial, Helvetica, sans-serif;
+      --font-body: Arial, Helvetica, sans-serif;
       --font-mono: Arial, Helvetica, sans-serif;
       --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
-      --font-hand: 'Switzer', sans-serif;
+      --font-hand: Arial, Helvetica, sans-serif;
       --halftone-color: transparent;
       --halftone-size: 5px;
       --halftone-dot: 0px;
@@ -165,7 +161,6 @@
     }
     ::selection { background: rgba(45,91,255,0.18); }
 
-    @keyframes sd-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
     @keyframes sd-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
     @keyframes sd-print-in { 0% { opacity: 0; translate: 0 -22px; } 100% { opacity: 1; translate: 0 0; } }
 
@@ -183,7 +178,6 @@
     .hero-grid { display: grid; grid-template-columns: 1.02fr 0.98fr; gap: 56px; align-items: start; }
     .hero-copy { display: flex; flex-direction: column; gap: 26px; padding-top: 10px; }
     .hero-eyebrow { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--sd-text-muted); text-transform: uppercase; }
-    .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sd-accent); animation: sd-blink 1.8s infinite; flex: 0 0 auto; }
     .hero-block h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(56px, 6.4vw, 92px); line-height: 0.94; letter-spacing: 0.5px; color: var(--sd-text); margin: 0; text-align: left; }
     .hero-tagline { font-size: 18px; color: #3A4358; margin: 0; max-width: 500px; line-height: 1.6; }
     .hero-tagline em { font-style: normal; font-weight: 700; color: var(--sd-text); }
@@ -613,6 +607,7 @@
         <a href="./docs/" data-umami-event="Top docs">Docs</a>
         <a href="./plugins.html" data-umami-event="Top plugins">Plugins</a>
         <a href="./guides/" data-umami-event="Top guides">Guides</a>
+        <a href="./how-to/" data-umami-event="Top how-to">How-to</a>
         <a href="./compare/" data-umami-event="Top compare">Compare</a>
         <a href="./made-with/" data-umami-event="Top made-with">Made with</a>
         <a href="./labs.html" data-umami-event="Top labs">Labs</a>
@@ -627,7 +622,7 @@
 
     <div class="hero-grid">
       <div class="hero-copy">
-        <div class="hero-eyebrow"><span class="rec-dot"></span><span class="sd-version">v2.15.0</span><span>· MIT · zero dependencies</span></div>
+        <div class="hero-eyebrow"><span class="sd-version">v2.15.0</span><span>· MIT · zero dependencies</span></div>
         <h1>Capture<br>the DOM.</h1>
         <p class="hero-tagline">snapdom turns any element into SVG, PNG, JPG, WebP, GIF, MP4 — even standalone HTML. Fonts, pseudo-elements and shadow roots included. <em>In milliseconds.</em></p>
         <div class="hero-proof" aria-label="Project stats">
@@ -698,15 +693,15 @@
     <div id="menu-container">
       <div class="menu-label" id="demo-index">Contact sheet — 21 live demos, every cell runs the real library</div>
       <nav id="demo-menu" class="demo-menu">
-        <a href="#html-export-demo">toHtml <span class="new-badge">New</span></a>
-        <a href="#gif-export-demo">toGif <span class="new-badge">New</span></a>
-        <a href="#video-export-demo">toMp4 <span class="new-badge">New</span></a>
-        <a href="#video">Video <span class="new-badge">New</span></a>
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
         <a href="#transition">Transition</a>
         <a href="#opts-demo">Shadows</a>
         <a href="#orbit">Orbit</a>
+        <a href="#html-export-demo">toHtml <span class="new-badge">New</span></a>
+        <a href="#gif-export-demo">toGif <span class="new-badge">New</span></a>
+        <a href="#video-export-demo">toMp4 <span class="new-badge">New</span></a>
+        <a href="#video">Video <span class="new-badge">New</span></a>
         <a href="#fonts-demo">Fonts</a>
         <a href="#shadow">Shadow DOM</a>
         <a href="#canvas">Canvas</a>
@@ -725,73 +720,6 @@
 
   <main>
 
-    <!-- ── Export plugins (live demos) ── -->
-    <style>
-      .xp-card { background: linear-gradient(135deg, #2b5876, #4e4376); color: #f3f1ea; max-width: 340px; }
-      .xp-card h3 { margin: 0 0 6px; }
-      .xp-pill { display: inline-block; white-space: nowrap; padding: 5px 12px 5px 24px; position: relative; border-radius: 999px; background: rgba(255,255,255,.14); font: 700 11px/1.4 var(--font-mono, monospace); }
-      .xp-pill::before { content: ''; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #2ee6a6; box-shadow: 0 0 8px #2ee6a6; }
-      .xp-anim { max-width: 260px; height: 150px; display: grid; place-items: center; position: relative; background: #0F1E4D; border-color: rgba(255,255,255,0.14); }
-      .xp-ring { width: 80px; height: 80px; border-radius: 50%; border: 6px solid #5c7cff; border-top-color: #ffd166; animation: xp-spin 1.1s linear infinite; }
-      .xp-count { position: absolute; bottom: 10px; right: 14px; font: 800 26px/1 var(--font-mono, monospace); color: #ffd166; }
-      @keyframes xp-spin { to { transform: rotate(360deg); } }
-    </style>
-
-    <section id="html-export-demo">
-      <h2>toHtml() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>html-export</code> plugin returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels. The preview renders it inside a sandboxed <code>&lt;iframe&gt;</code> to prove it stands alone.</p>
-      <div class="card xp-card" id="xp-html-src">
-        <h3>Provisioning manifest</h3>
-        <p style="margin:0 0 12px; opacity:.85">A surface with <strong style="color:#ffd166">varied</strong> controls and a pseudo-element dot.</p>
-        <span class="xp-pill">SHF · 2.4 GHz</span>
-      </div>
-      <button data-umami-event="Plugin toHtml" onclick="exportToHtml(this)">Export to HTML</button>
-      <div class="output" id="xp-html-out"></div>
-    </section>
-
-    <section id="gif-export-demo">
-      <h2>toGif() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>gif-export</code> plugin records an animating element frame by frame and encodes an animated GIF (median-cut palette + LZW, no dependencies). The spinner and counter make the motion visible.</p>
-      <div class="card xp-anim" id="xp-gif-src">
-        <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
-      </div>
-      <button data-umami-event="Plugin toGif" onclick="recordGif(this)">Record GIF</button>
-      <div class="output" id="xp-gif-out"></div>
-    </section>
-
-    <section id="video-export-demo">
-      <h2>toMp4() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>video-export</code> plugin records via the native <code>MediaRecorder</code>. Safari produces MP4 (H.264); Chromium and Firefox typically produce WebM (auto-fallback). The returned <code>Blob.type</code> reflects what was produced.</p>
-      <div class="card xp-anim" id="xp-vid-src">
-        <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
-      </div>
-      <button data-umami-event="Plugin toMp4" onclick="recordVideo(this)">Record video</button>
-      <div class="output" id="xp-vid-out"></div>
-    </section>
-
-    <!-- Video Frame -->
-    <section id="video">
-      <h2>Video frame <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">
-        <code>&lt;video&gt;</code> pixels are painted by the GPU compositor and don't serialize into <code>&lt;foreignObject&gt;</code>. The pattern: draw the current frame into a <code>&lt;canvas&gt;</code>, then let SnapDOM capture it like any other node. Press play, then capture any frame. The clip is an MDN CC0 sample served with CORS so the canvas isn't tainted.
-      </p>
-      <div class="card" id="video-box" style="text-align:center; padding:12px;">
-        <video id="demo-video"
-          src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
-          crossorigin="anonymous"
-          muted
-          playsinline
-          loop
-          controls
-          preload="metadata"
-          style="max-width:100%; max-height:320px; border-radius:8px;">
-          <track kind="captions" src="./assets/demo-video-captions.vtt" srclang="en" label="English (silent clip — no dialogue)" default>
-        </video>
-      </div>
-      <button data-umami-event="Capture video frame" onclick="captureVideoFrame(this)">Capture Frame</button>
-      <button data-umami-event="Download video frame" onclick="downloadVideoFrame(this)">Download</button>
-      <div class="output" id="video-output"></div>
-    </section>
 
     <!-- Benchmark -->
     <section id="benchmark">
@@ -982,6 +910,74 @@
       <div class="output" id="orbit-output">
 
       </div>
+    </section>
+
+    <!-- ── Export plugins (live demos) ── -->
+    <style>
+      .xp-card { background: linear-gradient(135deg, #2b5876, #4e4376); color: #f3f1ea; max-width: 340px; }
+      .xp-card h3 { margin: 0 0 6px; }
+      .xp-pill { display: inline-block; white-space: nowrap; padding: 5px 12px 5px 24px; position: relative; border-radius: 999px; background: rgba(255,255,255,.14); font: 700 11px/1.4 var(--font-mono, monospace); }
+      .xp-pill::before { content: ''; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #2ee6a6; box-shadow: 0 0 8px #2ee6a6; }
+      .xp-anim { max-width: 260px; height: 150px; display: grid; place-items: center; position: relative; background: #0F1E4D; border-color: rgba(255,255,255,0.14); }
+      .xp-ring { width: 80px; height: 80px; border-radius: 50%; border: 6px solid #5c7cff; border-top-color: #ffd166; animation: xp-spin 1.1s linear infinite; }
+      .xp-count { position: absolute; bottom: 10px; right: 14px; font: 800 26px/1 var(--font-mono, monospace); color: #ffd166; }
+      @keyframes xp-spin { to { transform: rotate(360deg); } }
+    </style>
+
+    <section id="html-export-demo">
+      <h2>toHtml() <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">The <code>html-export</code> plugin returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels. The preview renders it inside a sandboxed <code>&lt;iframe&gt;</code> to prove it stands alone.</p>
+      <div class="card xp-card" id="xp-html-src">
+        <h3>Provisioning manifest</h3>
+        <p style="margin:0 0 12px; opacity:.85">A surface with <strong style="color:#ffd166">varied</strong> controls and a pseudo-element dot.</p>
+        <span class="xp-pill">SHF · 2.4 GHz</span>
+      </div>
+      <button data-umami-event="Plugin toHtml" onclick="exportToHtml(this)">Export to HTML</button>
+      <div class="output" id="xp-html-out"></div>
+    </section>
+
+    <section id="gif-export-demo">
+      <h2>toGif() <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">The <code>gif-export</code> plugin records an animating element frame by frame and encodes an animated GIF (median-cut palette + LZW, no dependencies). The spinner and counter make the motion visible.</p>
+      <div class="card xp-anim" id="xp-gif-src">
+        <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
+      </div>
+      <button data-umami-event="Plugin toGif" onclick="recordGif(this)">Record GIF</button>
+      <div class="output" id="xp-gif-out"></div>
+    </section>
+
+    <section id="video-export-demo">
+      <h2>toMp4() <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">The <code>video-export</code> plugin records via the native <code>MediaRecorder</code>. Safari produces MP4 (H.264); Chromium and Firefox typically produce WebM (auto-fallback). The returned <code>Blob.type</code> reflects what was produced.</p>
+      <div class="card xp-anim" id="xp-vid-src">
+        <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
+      </div>
+      <button data-umami-event="Plugin toMp4" onclick="recordVideo(this)">Record video</button>
+      <div class="output" id="xp-vid-out"></div>
+    </section>
+
+    <!-- Video Frame -->
+    <section id="video">
+      <h2>Video frame <span class="new-badge">New</span></h2>
+      <p class="demo-explanation">
+        <code>&lt;video&gt;</code> pixels are painted by the GPU compositor and don't serialize into <code>&lt;foreignObject&gt;</code>. The pattern: draw the current frame into a <code>&lt;canvas&gt;</code>, then let SnapDOM capture it like any other node. Press play, then capture any frame. The clip is an MDN CC0 sample served with CORS so the canvas isn't tainted.
+      </p>
+      <div class="card" id="video-box" style="text-align:center; padding:12px;">
+        <video id="demo-video"
+          src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+          crossorigin="anonymous"
+          muted
+          playsinline
+          loop
+          controls
+          preload="metadata"
+          style="max-width:100%; max-height:320px; border-radius:8px;">
+          <track kind="captions" src="./assets/demo-video-captions.vtt" srclang="en" label="English (silent clip — no dialogue)" default>
+        </video>
+      </div>
+      <button data-umami-event="Capture video frame" onclick="captureVideoFrame(this)">Capture Frame</button>
+      <button data-umami-event="Download video frame" onclick="downloadVideoFrame(this)">Download</button>
+      <div class="output" id="video-output"></div>
     </section>
 
 
@@ -1865,16 +1861,6 @@
 
   </script>
 
-  <nav class="page-nav">
-    <a href="./" class="current" data-umami-event="Nav showcase">Showcase</a>
-    <a href="./docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="./plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="./compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="./guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="./labs.html" data-umami-event="Nav labs">Labs</a><a href="./blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
 
   <script>
     // Social proof: GitHub stars + npm monthly downloads, cached 24h in localStorage.

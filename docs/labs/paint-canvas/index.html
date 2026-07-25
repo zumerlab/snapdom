@@ -41,7 +41,15 @@
   </style>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>The PNG <span class="accent">is</span> the canvas</h1><p class="lead">There is no <code>&lt;canvas&gt;</code> element anywhere on this page. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on top of it — every stroke you make becomes the next exported PNG.</p></section>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>The PNG <span class="accent">is</span> the canvas</h1><p class="lead">There is no <code>&lt;canvas&gt;</code> element anywhere on this page. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on top of it — every stroke you make becomes the next exported PNG.</p></section>
   <main class="page">
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM normally re-clones the live element on every capture and forgets the last one. This plugin's <code>afterRender</code> hook saves the clone it just produced; <code>afterClone</code> swaps that saved clone back in on the next call and appends the newest stroke to it. Capture after capture, the output accumulates — the PNG becomes a paint surface instead of a snapshot.</p></div>
@@ -163,13 +171,6 @@ async function render (stroke) {
     <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
 
   <script defer src="/copy-code.js"></script>
   <script type="module">

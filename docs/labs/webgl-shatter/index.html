@@ -49,7 +49,15 @@
   </style>
 </head>
 <body>
-  <section class="hero"><div class="hero-badge"><span class="dot"></span> Labs Experiment</div><h1>A capture, <span class="accent">shattered</span></h1><p class="lead">Five WebGL shaders, one starting point: a SnapDOM capture of a live, editable card, turned into a WebGL texture. Nothing here exists without rasterizing the DOM first.</p></section>
+  <nav class="page-nav">
+    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
+    <a href="../../compare/">Compare</a>
+    <a href="../../guides/">Guides</a>
+    <a href="../../how-to/">How-to</a>
+    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
+  </nav>
+
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>A capture, <span class="accent">shattered</span></h1><p class="lead">Five WebGL shaders, one starting point: a SnapDOM capture of a live, editable card, turned into a WebGL texture. Nothing here exists without rasterizing the DOM first.</p></section>
   <main class="page">
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>A custom <code>defineExports</code> plugin (<code>shatterExport</code>) adds a genuinely new export type — <code>result.toShatter()</code> — that isn't a thin wrapper around <code>toPng</code>/<code>toCanvas</code>. It reuses the core canvas exporter internally via the "silent" <code>ctx.exports.canvas()</code> facade (no re-triggered <code>beforeExport</code>/<code>afterExport</code> hooks), then slices that canvas into a grid of small canvases for the physics simulation to grab as WebGL textures. The other four effects — ripple, glitch, dissolve, metal — don't need the plugin at all: they just take the whole card as one texture via plain <code>snapdom.toCanvas()</code>.</p></div>
@@ -168,13 +176,6 @@ const tex = makeTexture(canvas) // gl.texImage2D(..., canvas)</pre>
     <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p><code>defineExports</code> — plus <code>afterClone</code>, <code>afterRender</code>, and the rest of the hook chain this site's other labs use — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
 
   <script defer src="/copy-code.js"></script>
   <script type="module">

@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════
    shared.css — Common styles for all SnapDOM docs
    "Capture instrument" design system
-   Tanker (display) · Switzer (body) · Arial (annotations)
+   System fonts: Arial/Helvetica everywhere
    Paper #F7F9FC · Ink #0F1E4D · Electric #2D5BFF
    ═══════════════════════════════════════════════ */
 
@@ -38,48 +38,34 @@
 }
 .github-stars svg { color: #F5A623; font-size: 11px; }
 
-/* ── Page nav (floating instrument dial) ── */
+/* ── Page nav (plain top bar) ── */
 .page-nav {
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9998;
+  width: 100%;
   display: flex;
-  flex-wrap: nowrap;
-  gap: 2px;
-  background: var(--surface, var(--sd-surface, #FFFFFF));
-  border: 1px solid var(--border, var(--sd-border, #0F1E4D));
-  border-radius: 999px;
-  padding: 4px;
-  box-shadow: 0 12px 32px -12px rgba(15, 30, 77, 0.35);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.16)));
   font-family: var(--font-mono, Arial, Helvetica, sans-serif);
-  max-width: calc(100vw - 24px);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
 }
-.page-nav::-webkit-scrollbar { display: none; }
 .page-nav a {
   font-family: var(--font-mono, Arial, Helvetica, sans-serif);
   font-size: 10px;
   color: var(--text-muted, var(--sd-text-muted, #55617C));
   text-decoration: none;
-  padding: 7px 14px;
-  border-radius: 999px;
-  transition: background 0.15s, color 0.15s;
+  padding: 6px 12px;
+  transition: color 0.15s;
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;
   white-space: nowrap;
-  flex: 0 0 auto;
 }
 .page-nav a:hover {
   color: var(--accent, var(--sd-accent, #2D5BFF));
-  background: var(--accent-soft, var(--sd-accent-soft, rgba(45,91,255,0.08)));
 }
 .page-nav a.current {
-  color: #FFFFFF;
-  background: var(--border, var(--sd-border, #0F1E4D));
+  color: var(--text, var(--sd-text, #0F1E4D));
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }

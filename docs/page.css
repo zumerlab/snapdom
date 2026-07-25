@@ -2,10 +2,9 @@
    page.css — Shared styles for SnapDOM content
    pages (comparisons, guides, how-tos, hubs).
    "Capture instrument" design system
-   Tanker (display) · Switzer (body) · Arial (annotations)
+   System fonts: Arial/Helvetica everywhere
    ═══════════════════════════════════════════════ */
 
-@import url('https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap');
 
 :root {
   --bg: #F7F9FC;
@@ -39,11 +38,11 @@
   --halftone-size: 5px;
   --halftone-dot: 0px;
   --halftone-offset: 0px;
-  --font-display: 'Tanker', 'Switzer', sans-serif;
-  --font-body: 'Switzer', sans-serif;
+  --font-display: Arial, Helvetica, sans-serif;
+  --font-body: Arial, Helvetica, sans-serif;
   --font-mono: Arial, Helvetica, sans-serif;
   --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
-  --font-hand: 'Switzer', sans-serif;
+  --font-hand: Arial, Helvetica, sans-serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

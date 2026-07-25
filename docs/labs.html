@@ -9,8 +9,6 @@
   <meta name="description" content="Six playable SnapDOM plugin demos — paint, shoot, animate and render to WebGL — plus experimental browser API captures like html-in-canvas."/>
   <meta name="robots" content="index, follow"/>
   <link rel="canonical" href="https://snapdom.dev/labs.html"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./shared.css"><link rel="stylesheet" href="./page.css">
   <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
   <script>
@@ -43,11 +41,11 @@
       --shadow-sticker: none;
       --shadow-sticker-sm: none;
       --shadow-sticker-lg: none;
-      --font-display: 'Tanker', 'Switzer', sans-serif;
-      --font-body: 'Switzer', sans-serif;
+      --font-display: Arial, Helvetica, sans-serif;
+      --font-body: Arial, Helvetica, sans-serif;
       --font-mono: Arial, Helvetica, sans-serif;
       --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
-      --font-hand: 'Switzer', sans-serif;
+      --font-hand: Arial, Helvetica, sans-serif;
       --grid-color: transparent;
       --halftone-color: transparent;
       --halftone-size: 5px;
@@ -106,6 +104,11 @@
 
     /* ── session() demo ── */
     .poke-target { display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, #F5A623 0%, #FFD873 100%); }
+    /* Mutation themes: the "Changes 1-in-4 polls" mode cycles these so each
+       mutation is unmissable in both the live card and the captures. */
+    .poke-target.t1 { background: linear-gradient(135deg, #2D5BFF 0%, #7C97FF 100%); }
+    .poke-target.t2 { background: linear-gradient(135deg, #1E9F6E 0%, #6FD9AC 100%); }
+    .poke-target.t3 { background: linear-gradient(135deg, #E63946 0%, #FF8B95 100%); }
     .poke-target img { width: 72px; height: 72px; object-fit: contain; flex: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25)); }
     .poke-target .poke-hp { font-weight: 400; opacity: 0.85; font-size: 13px; }
     /* Comfortable slack over the live text's own width: a few px of font-fallback/emoji-glyph
@@ -143,6 +146,17 @@
   </script>
 </head>
 <body>
+  <nav class="page-nav">
+    <a href="./" data-umami-event="Nav showcase">Showcase</a>
+    <a href="./docs/" data-umami-event="Nav docs">Docs</a>
+    <a href="./plugins.html" data-umami-event="Nav plugins">Plugins</a>
+    <a href="./compare/" data-umami-event="Nav compare">Compare</a>
+    <a href="./guides/" data-umami-event="Nav guides">Guides</a>
+    <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
+    <a href="./labs.html" class="current" data-umami-event="Nav labs">Labs</a><a href="./blog/" data-umami-event="Nav blog">Blog</a>
+    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
+  </nav>
+
   <section class="hero">
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Labs github repo">
       <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
@@ -245,16 +259,6 @@
     </section>
   </main>
 
-  <nav class="page-nav">
-    <a href="./" data-umami-event="Nav showcase">Showcase</a>
-    <a href="./docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="./plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="./compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="./guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="./labs.html" class="current" data-umami-event="Nav labs">Labs</a><a href="./blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
 
   <!-- GitHub stars -->
   <script>
@@ -272,7 +276,7 @@
 
   <!-- html-in-canvas logic -->
   <script type="module">
-    import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
 
     const target = document.getElementById('target-htmlcanvas');
     const outDefault = document.getElementById('out-htmlcanvas-default');
@@ -418,10 +422,28 @@
   </script>
   <!-- burst:true logic -->
   <script type="module">
-    import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
 
     const card = document.getElementById('target-session');
     const counter = document.getElementById('poke-counter');
+    const hp = card.querySelector('.poke-hp');
+
+    // One visible "life event" per mutation poll: card color flips, HP drops,
+    // caught count rises. The class change lands on the observed root, the text
+    // changes on child nodes — both are real subtree mutations for burst.
+    const THEMES = ['', 't1', 't2', 't3'];
+    function mutateCard(step) {
+      card.classList.remove('t1', 't2', 't3');
+      const theme = THEMES[step % THEMES.length];
+      if (theme) card.classList.add(theme);
+      hp.textContent = Math.max(35 - step * 7, 7) + ' HP';
+      counter.textContent = String(step);
+    }
+    function resetCard() {
+      card.classList.remove('t1', 't2', 't3');
+      hp.textContent = '35 HP';
+      counter.textContent = '0';
+    }
     const modeRow = document.getElementById('session-mode-row');
     const runBtn = document.getElementById('btn-session-run');
     const ticksPlainEl = document.getElementById('ticks-plain');
@@ -475,7 +497,7 @@
       let capturedMs = 0;
       box.innerHTML = '';
       for (let i = 0; i < REPEATS; i++) {
-        if (mode === 'mutating' && i % 4 === 0) counter.textContent = String(i);
+        if (mode === 'mutating' && i % 4 === 0) mutateCard(i / 4);
         const t0 = performance.now();
         const result = await captureFn();
         capturedMs += performance.now() - t0;
@@ -484,7 +506,7 @@
         ticks[i].classList.add(isFull(i) ? 'cost' : 'fast');
         await new Promise(r => setTimeout(r, STEP_MS));
       }
-      counter.textContent = '0';
+      resetCard();
       return capturedMs;
     }
 
@@ -499,9 +521,9 @@
       const plainTicks = buildTicks(ticksPlainEl);
       const burstTicks = buildTicks(ticksSessionEl);
 
-      // embedFonts: true — the card's text uses the site's webfont (Switzer). Without it, the
-      // foreignObject falls back to a substitute font whose metrics don't match, and the width
-      // snapdom froze from the live (Switzer) measurement can re-wrap the counter line.
+      // embedFonts: true — if the page ever loads a webfont again, the foreignObject would
+      // otherwise fall back to a substitute font whose metrics don't match, and the width
+      // snapdom froze from the live measurement can re-wrap the counter line.
       // reconcile: true — belt-and-suspenders: measures the clone against the live card and
       // pins any box that still diverges, whatever the cause. The card is tiny, so the ~2x
       // capture-time cost is negligible in absolute terms here.
