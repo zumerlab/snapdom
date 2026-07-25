@@ -80,8 +80,7 @@ describe('snapdom – Safari warmup path', () => {
     el.appendChild(canvas)
     document.body.appendChild(el)
 
-    // safariWarmupAttempts: 1 keeps the (real) warmup capture to a single pass.
-    const result = await snapdom(el, { safariWarmupAttempts: 1 })
+    const result = await snapdom(el)
     expect(typeof result.url).toBe('string')
     expect(result.url.startsWith('data:image/svg+xml')).toBe(true)
   })

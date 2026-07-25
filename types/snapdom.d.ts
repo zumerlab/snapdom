@@ -146,9 +146,6 @@ export interface SnapdomOptions {
    */
   excludeStyleProps?: RegExp | ((prop: string) => boolean);
 
-  /** Safari warmup iterations for WebKit #219770 (1..3). Default 3. */
-  safariWarmupAttempts?: number;
-
   /** Verbose diagnostics via console.warn. Default false. */
   debug?: boolean;
 

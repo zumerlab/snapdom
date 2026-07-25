@@ -1,9 +1,9 @@
-// Bug-hunt finding: the Safari warmup's canvas "poke" (element.querySelectorAll('canvas')) and
-// its own gate (hasBackgroundOrMask's TreeWalker, which never visits the root passed to
-// createTreeWalker) both only reached descendants — a capture root that IS the <canvas>
-// (e.g. snapdom(canvasEl) for a single chart, no wrapper) was never poked, and the warmup
-// never even triggered for it. Isolated in its own file so the module-level _safariWarmup
-// once-per-session flag starts fresh.
+// The Safari pre-step's canvas "poke" (element.querySelectorAll('canvas')) only reached
+// descendants — a capture root that IS the <canvas> (e.g. snapdom(canvasEl) for a single
+// chart, no wrapper) was never poked. The poke resolves WebKit's GPU-backed canvas store
+// so cloneCanvas's toDataURL isn't blank; it now runs on every Safari capture (the old
+// once-per-session 3x pre-capture warmup is gone — WebKit #219770's blank first draw is
+// handled at draw time by toCanvas's verified-draw ladder instead).
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { snapdom } from '../src/index.js'
 
@@ -15,7 +15,7 @@ beforeEach(() => {
   vi.mocked(browser.isSafari).mockReturnValue(true)
 })
 
-describe('Safari warmup — canvas capture root (self-reference)', () => {
+describe('Safari pre-step — canvas capture root (self-reference)', () => {
   it('pokes the canvas when it IS the capture root, not just a descendant', async () => {
     const canvas = document.createElement('canvas')
     canvas.width = 4
@@ -24,15 +24,10 @@ describe('Safari warmup — canvas capture root (self-reference)', () => {
 
     const getContextSpy = vi.spyOn(canvas, 'getContext')
 
-    await snapdom(canvas, { safariWarmupAttempts: 1 })
+    await snapdom(canvas)
 
-    // getContext('2d', {willReadFrequently:true}) is also called once by the normal (always
-    // runs) cloneCanvas step, so 1 call alone means the warmup path never touched this canvas
-    // at all — confirmed empirically: exactly 1 on unfixed code (cloneCanvas only), 3 with the
-    // fix (warmup's own preflight capture's cloneCanvas + the poke itself + the real capture's
-    // cloneCanvas). hasBackgroundOrMask(canvas) missed the root before the fix
-    // (TreeWalker.nextNode() never visits the node passed to createTreeWalker), so the whole
-    // warmup block never triggered and the root canvas was never poked.
+    // getContext is called once by the normal cloneCanvas step (always runs), so 1 call
+    // alone would mean the poke never touched this canvas: expect poke + cloneCanvas ≥ 2.
     expect(getContextSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 })

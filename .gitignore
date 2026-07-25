@@ -149,3 +149,4 @@ __snapshots__
 .cursor/
 bench/
 AGENTS.md
+.snapeye/

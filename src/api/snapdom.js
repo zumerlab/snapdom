@@ -18,8 +18,6 @@ const INTERNAL_TOKEN = Symbol('snapdom.internal')
 // Token interno para llamadas de export "silenciosas" desde plugins (no hooks)
 const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
 
-let _safariWarmup = false
-
 /**
  * Main function that captures a DOM element and returns export utilities.
  * Local-first plugins: `options.plugins` override globals for this capture.
@@ -47,26 +45,28 @@ async function main(element, userOptions) {
   // Attach per-capture plugins (local-first) without removing globals
   attachSessionPlugins(context, userOptions && userOptions.plugins)
 
-  // Safari warm-up: WebKit Bug #219770 — SVG with embedded font triggers img.onload
-  // before font is available. First canvas draw is blank; second+ works. We run
-  // pre-captures + drawImage to prime the font/decode pipeline. Fidelity > speed.
-  // See: https://bugs.webkit.org/show_bug.cgi?id=219770
-  // After the one-shot warmup, skip the whole block: hasBackgroundOrMask walks the tree with
-  // getComputedStyle per node, which is pure overhead once the pipeline is primed.
-  if (isSafari() && !_safariWarmup && (context.embedFonts === true || hasBackgroundOrMask(element))) {
-    if (context.embedFonts) {
+  // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
+  // first draw is now handled at draw time by toCanvas's verified-draw ladder):
+  // wait for the fonts the element actually uses, and poke GPU-backed <canvas>
+  // stores so cloneCanvas's toDataURL isn't blank. Both are cheap per capture.
+  if (isSafari()) {
+    if (context.embedFonts === true) {
       try {
         const required = collectUsedFontVariants(element)
         const families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
         await ensureFontsReady(families, 1)
       } catch { /* non-blocking */ }
     }
-    const attempts = context.safariWarmupAttempts ?? 3
-    for (let i = 0; i < attempts; i++) {
+    // querySelectorAll never matches element itself — a capture root that IS the <canvas>
+    // (e.g. snapdom(canvasEl) for a single chart) must be poked too.
+    const canvases = Array.from(element.querySelectorAll('canvas'))
+    if (element.tagName === 'CANVAS') canvases.unshift(element)
+    for (const c of canvases) {
       try {
-        await safariWarmup(element, userOptions)
-      } catch {
-        // swallow error
+        const ctx = c.getContext('2d', { willReadFrequently: true })
+        if (ctx) ctx.getImageData(0, 0, 1, 1)
+      } catch (e) {
+        debugWarn(userOptions, 'safari canvas poke failed', e)
       }
     }
   }
@@ -304,113 +304,5 @@ snapdom.toWebp = (el, options) => snapdom(el, { ...options, format: 'webp' }).th
  * @returns {Promise<void>}
  */
 snapdom.download = (el, options) => snapdom(el, options).then(result => result.download())
-
-/**
- * Safari/WebKit warmup: primes font and image decode pipeline.
- * Workaround for WebKit #219770 (img.onload fires before embedded font ready).
- * - ensureFontsReady (when embedFonts) runs before first iteration
- * - Mini pre-capture (scale 0.2) → load as Image + decode
- * - drawImage to offscreen canvas (consumes "first draw blank" so real capture works)
- * - Double rAF for layout stabilization
- * - Poke canvas elements for Chart.js etc.
- * Skipped after first session warmup (_safariWarmup) to avoid repeated cost.
- */
-async function safariWarmup(element, baseOptions) {
-  if (_safariWarmup) return
-
-  const preflight = {
-    ...baseOptions,
-    fast: true,
-    embedFonts: true,
-    scale: 0.2
-  }
-
-  let url
-  try {
-    url = await captureDOM(element, preflight)
-  } catch (e) {
-    debugWarn(baseOptions, 'safariWarmup pre-capture failed', e)
-  }
-
-  // 1) estabiliza layout/paint en WebKit
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
-
-  if (url) {
-    await new Promise((resolve) => {
-      const img = new Image()
-      try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
-        debugWarn(baseOptions, 'safariWarmup img hints failed', e)
-      }
-      img.setAttribute('data-snapdom-internal', '')
-      img.style.cssText =
-        'position:fixed;left:0px;top:0px;width:10px;height:10px;opacity:0.01;pointer-events:none;'
-      img.src = url
-      document.body.appendChild(img)
-
-      ;(async () => {
-        try { if (typeof img.decode === 'function') await img.decode() } catch (e) {
-          debugWarn(baseOptions, 'safariWarmup img.decode failed', e)
-        }
-        const start = performance.now()
-        while (!(img.complete && img.naturalWidth > 0) && performance.now() - start < 900) {
-          await new Promise(r => setTimeout(r, 200))
-        }
-        await new Promise(r => requestAnimationFrame(r))
-        // Key: drawImage primes the canvas path. WebKit #219770 — first draw is blank,
-        // second works. We consume the blank draw here so the real capture works.
-        try {
-          const c = document.createElement('canvas')
-          c.width = Math.max(1, img.naturalWidth || 10)
-          c.height = Math.max(1, img.naturalHeight || 10)
-          const ctx = c.getContext('2d')
-          if (ctx) ctx.drawImage(img, 0, 0)
-        } catch { /* non-blocking */ }
-        await new Promise(r => requestAnimationFrame(r))
-        try { img.remove() } catch (e) {
-          debugWarn(baseOptions, 'safariWarmup img.remove failed', e)
-        }
-        resolve()
-      })()
-    })
-  }
-
-  // 3) “poke” a los canvas del elemento (Chart.js, etc.)
-  // querySelectorAll never matches element itself — a capture root that IS the <canvas>
-  // (e.g. snapdom(canvasEl) for a single chart) was never poked.
-  const canvases = Array.from(element.querySelectorAll('canvas'))
-  if (element.tagName === 'CANVAS') canvases.unshift(element)
-  canvases.forEach(c => {
-    try {
-      const ctx = c.getContext('2d', { willReadFrequently: true })
-      if (ctx) { ctx.getImageData(0, 0, 1, 1) }
-    } catch (e) {
-      debugWarn(baseOptions, 'safariWarmup canvas poke failed', e)
-    }
-  })
-
-  _safariWarmup = true
-}
-
-/**
- * Checks if the element (or its descendants) use background or mask images.
- */
-function hasBackgroundOrMask(el) {
-  function checks(node) {
-    const cs = getComputedStyle(node)
-    const bg = cs.backgroundImage && cs.backgroundImage !== 'none'
-    const mask = (cs.maskImage && cs.maskImage !== 'none') ||
-      (cs.webkitMaskImage && cs.webkitMaskImage !== 'none')
-    return !!(bg || mask || node.tagName === 'CANVAS')
-  }
-  // TreeWalker.nextNode() advances PAST the root passed to createTreeWalker — it never visits
-  // it — so a capture root that itself has the background/mask/canvas (e.g. snapdom(canvasEl))
-  // was silently skipped, and the warmup this gate controls never ran for it.
-  if (checks(el)) return true
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT)
-  while (walker.nextNode()) {
-    if (checks(/** @type {Element} */ (walker.currentNode))) return true
-  }
-  return false
-}
 
 export default snapdom

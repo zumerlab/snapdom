@@ -111,9 +111,6 @@ export function createContext(options = {}) {
     // ~free on the common case, fidelity-neutral). Pass `compress: false` to embed images verbatim.
     compress: options.compress !== false,
 
-    // Safari warmup (WebKit #219770): iterations to prime font/decode pipeline. 1–3.
-    safariWarmupAttempts: Math.min(3, Math.max(1, (options.safariWarmupAttempts ?? 3) | 0)),
-
     // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
     excludeStyleProps: options.excludeStyleProps ?? null,
 

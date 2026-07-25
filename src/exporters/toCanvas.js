@@ -53,7 +53,7 @@ function clampSvgTextRasterSize(svg) {
 function isSvgDataURL(u) {
   return typeof u === 'string' && /^data:image\/svg\+xml/i.test(u)
 }
-function decodeSvgFromDataURL(u) {
+export function decodeSvgFromDataURL(u) {
   const i = u.indexOf(',')
   return i >= 0 ? decodeURIComponent(u.slice(i + 1)) : ''
 }
@@ -66,7 +66,7 @@ function peekSvgHeader(u) {
   const chunk = u.slice(i + 1, i + 1201).replace(/%[0-9A-Fa-f]?$/, '')
   try { return decodeURIComponent(chunk) } catch { return '' }
 }
-function encodeSvgToDataURL(svgText) {
+export function encodeSvgToDataURL(svgText) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`
 }
 function splitDecls(s) {
@@ -245,7 +245,7 @@ function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
  * caller must then draw 1:1 and resample the raster instead of letting WebKit
  * re-rasterize the svg scaled.
  */
-async function fixSafariShadows(svg) {
+export async function fixSafariShadows(svg) {
   // Real shadows carry px lengths; `text-shadow:none` defaults must not match.
   const hasShadows = /(?:box-shadow|text-shadow)\s*:[^;"}]*px/i.test(svg)
   if (!hasShadows) return { svg, naturalOnly: false }
@@ -259,6 +259,43 @@ async function fixSafariShadows(svg) {
     return { svg: out, naturalOnly: true }
   } catch {
     return { svg, naturalOnly: true }
+  }
+}
+
+/**
+ * WebKit paints svg-as-image resources late: img.decode() resolves before embedded
+ * @font-face fonts (#219770) and nested raster images (#394) are ready, so the first
+ * drawImage comes out blank or with fallback-font text. Attach offscreen and — when the
+ * svg actually carries such resources — probe-draw a tiny canvas until ink appears
+ * (bounded), instead of fixed pre-capture warmup passes. Plain svgs keep the old
+ * two-frame compositor wait.
+ * @param {HTMLImageElement} img
+ * @param {boolean} verify - Run the ink-probe ladder (svg has fonts/nested images)
+ */
+async function waitForImgPaint(img, verify) {
+  img.setAttribute('data-snapdom-internal', '')
+  img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
+  document.body.appendChild(img)
+  try {
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+    if (!verify) return
+    const probe = document.createElement('canvas')
+    probe.width = 16
+    probe.height = 16
+    const pctx = probe.getContext('2d', { willReadFrequently: true })
+    if (!pctx) return
+    const deadline = performance.now() + 600
+    for (;;) {
+      pctx.clearRect(0, 0, 16, 16)
+      try { pctx.drawImage(img, 0, 0, 16, 16) } catch { return }
+      const d = pctx.getImageData(0, 0, 16, 16).data
+      let ink = false
+      for (let i = 3; i < d.length; i += 4) { if (d[i] > 0) { ink = true; break } }
+      if (ink || performance.now() > deadline) return
+      await new Promise(r => requestAnimationFrame(r))
+    }
+  } finally {
+    try { img.remove() } catch { /* ok */ }
   }
 }
 
@@ -287,6 +324,7 @@ export async function toCanvas(url, options) {
   // drawn from a blob: URL, which would break every toDataURL/toBlob export downstream.
   let src = url
   let shadowNaturalOnly = false
+  let needsPaintVerify = false
   if (isSvgDataURL(url)) {
     const head = (peekSvgHeader(url).match(/<svg\b[^>]*>/i) || [])[0] || ''
     const w = parseFloat((head.match(/\bwidth="([\d.]+)/i) || [])[1])
@@ -300,6 +338,9 @@ export async function toCanvas(url, options) {
           const fixed = await fixSafariShadows(svgText)
           svgText = fixed.svg
           shadowNaturalOnly = fixed.naturalOnly
+          // Embedded fonts / nested raster images are the resources WebKit paints late
+          // (#219770/#394) — only then is the verified-draw ladder worth waiting on.
+          needsPaintVerify = /@font-face|data:image\//i.test(svgText)
         }
         if (oversized) svgText = clampSvgTextRasterSize(svgText) // #425: keep within decode limits
         src = encodeSvgToDataURL(svgText)
@@ -314,18 +355,8 @@ export async function toCanvas(url, options) {
   img.src = src
   await img.decode()
 
-  // #394: on Safari, img.decode() resolves before <img> tags nested in the
-  // foreignObject finish compositing, producing blank raster exports. Attach
-  // offscreen and wait two animation frames so the compositor catches up.
   if (isSafari()) {
-    img.setAttribute('data-snapdom-internal', '')
-    img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
-    document.body.appendChild(img)
-    try {
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
-    } finally {
-      try { img.remove() } catch { /* ok */ }
-    }
+    await waitForImgPaint(img, needsPaintVerify)
   }
 
   const natW = img.naturalWidth
