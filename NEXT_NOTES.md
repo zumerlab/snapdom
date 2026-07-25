@@ -50,6 +50,16 @@ remains only as a legacy surface for direct callers (preCache, tests).
   scroll-compensation bug). Follow-up candidate: migrate preCache + styles.js `_resolveCtx`
   fallback off `cache.session`, then delete the global bucket entirely.
 
+## ⚠ Validation lesson (learned the hard way)
+
+**The visual suite (`visual.demos.test.js`) tests the COMPILED `dist/`, not src** —
+`snapdomUrl: '/dist/snapdom.mjs'`, and each demo loads `../dist/snapdom.js`. Always run
+`npm run compile` before `test:full` when validating a branch, or you're visually testing
+whatever was compiled last. This masked a real styleScan regression (22 demos, white text
+turning black): the base reset stamped resolved defaults like `-webkit-text-fill-color:
+rgb(0,0,0)` that pruned class diffs could no longer override. Fixed in 630c6a4 by pruning
+the base reset with the same universe — which also shrinks output CSS.
+
 ## Known flake (pre-existing)
 
 `visual.demos.test.js > d-compress` on webkit fails intermittently (~1 in 5 FULL-suite runs,
