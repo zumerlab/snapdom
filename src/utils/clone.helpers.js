@@ -473,25 +473,14 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
-  // The nested capture below runs its own captureDOM → applyCachePolicy, which REASSIGNS
-  // cache.session.{nodeMap,styleMap,styleCache} to fresh instances. Sibling iframes rasterize
-  // concurrently, so these save/restore pairs can interleave and the global session may point
-  // at an orphaned nested map afterwards — that's why every post-clone pass of a capture
-  // (inlineBackgroundImages, backdrop-filter, compress, icon fonts, layout reconcile) receives
-  // the capture's own nodeMap reference instead of trusting the global. The snapshot/restore
-  // here is kept as best-effort hygiene so the global usually ends up back at the parent's
-  // session, but nothing may rely on it mid-capture.
-  const parentNodeMap = cache.session.nodeMap
-  const parentStyleMap = cache.session.styleMap
-  const parentStyleCache = cache.session.styleCache
+  // Every capture owns its session from its first synchronous tick (createCaptureSession),
+  // so the nested capture reassigning the legacy cache.session global is harmless — no
+  // save/restore needed here anymore.
   let imgEl
   try {
     imgEl = await snap.toPng(doc.documentElement, nested)
   } finally {
     unpin()
-    cache.session.nodeMap = parentNodeMap
-    cache.session.styleMap = parentStyleMap
-    cache.session.styleCache = parentStyleCache
   }
 
   // Build <img> (bitmap) sized to content box

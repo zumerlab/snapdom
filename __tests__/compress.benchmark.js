@@ -4,6 +4,8 @@
 //
 // NOTE: for stable numbers + an output-size + fidelity (pixel-diff) report, prefer the standalone
 // harness `node bench/compress.mjs` (Playwright direct). vitest bench only reports time.
+// NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
+// otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index.js'
 
@@ -51,12 +53,12 @@ const benchOpts = { time: 2000, warmupIterations: 3 }
 describe('compress: image gallery (toCanvas, scale 2)', () => {
   bench('baseline (compress OFF)', async () => {
     setupContainer()
-    await snapdom.toCanvas(container, { ...opts })
+    await snapdom.toCanvas(container, { ...opts, burst: false })
   }, benchOpts)
 
   bench('compress: true', async () => {
     setupContainer()
-    await snapdom.toCanvas(container, { ...opts, compress: true })
+    await snapdom.toCanvas(container, { ...opts, compress: true, burst: false })
   }, benchOpts)
 })
 
@@ -82,11 +84,11 @@ function setupBg() {
 describe('compress: background-image gallery (toCanvas, scale 2)', () => {
   bench('baseline (compress OFF)', async () => {
     setupBg()
-    await snapdom.toCanvas(bgC, { ...opts, compress: false })
+    await snapdom.toCanvas(bgC, { ...opts, compress: false, burst: false })
   }, benchOpts)
 
   bench('compress: true', async () => {
     setupBg()
-    await snapdom.toCanvas(bgC, { ...opts, compress: true })
+    await snapdom.toCanvas(bgC, { ...opts, compress: true, burst: false })
   }, benchOpts)
 })

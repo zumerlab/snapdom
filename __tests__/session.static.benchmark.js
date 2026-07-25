@@ -1,3 +1,5 @@
+// NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
+// otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
 
@@ -37,7 +39,7 @@ describe(`Benchmark burst:true vs plain capture (${REPEATS}x, unchanged element)
   bench('plain snapdom() called 20x', async () => {
     el = buildDashboard()
     for (let i = 0; i < REPEATS; i++) {
-      await snapdom.toRaw(el)
+      await snapdom.toRaw(el, { burst: false })
     }
   })
 

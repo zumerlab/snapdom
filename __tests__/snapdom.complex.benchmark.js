@@ -1,3 +1,5 @@
+// NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
+// otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe, afterEach } from 'vitest'
 import { domToDataUrl } from 'https://unpkg.com/modern-screenshot'
 import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
@@ -101,7 +103,7 @@ for (const size of sizes) {
 
     bench('snapDOM current version', async () => {
       await setupContainer()
-      await snapdom.toRaw(container)
+      await snapdom.toRaw(container, { burst: false })
     })
 
     bench('snapDOM 2.16.0', async () => {

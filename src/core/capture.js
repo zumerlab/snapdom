@@ -10,7 +10,8 @@ import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
-import { cache, applyCachePolicy } from '../core/cache.js'
+import { cache } from '../core/cache.js'
+import { createCaptureSession } from './session.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { runPictureResolverBeforeClone } from '../modules/pictureResolver.js'
@@ -90,15 +91,7 @@ function collectResolveNodeHooks(options) {
  */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
-  applyCachePolicy(options.cache)
-  // cache.session is reassigned at every capture start: snapshot THIS capture's maps in the
-  // same synchronous tick, before any await, or a concurrently started capture swaps them
-  // and both captures share one nodeMap (double scroll-compensation, cross-contaminated CSS).
-  options.__session = {
-    styleMap: cache.session.styleMap,
-    styleCache: cache.session.styleCache,
-    nodeMap: cache.session.nodeMap
-  }
+  options.__session = createCaptureSession(options.cache)
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
   const fast = options.fast
   const outerTransforms = options.outerTransforms !== false   // default: true
