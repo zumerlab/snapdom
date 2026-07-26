@@ -17,7 +17,7 @@
  * @module burst
  */
 
-import { hasExternalMutation, isExternalRecord } from '../modules/styles.js'
+import { isExternalRecord, getStyleEnvEpoch } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
 import { cache } from './cache.js'
 
@@ -94,16 +94,6 @@ function trackPendingImages(element, state) {
   }
 }
 
-/** Font loads also repaint with no DOM mutation. One module-level epoch (no per-element
- *  listener on document.fonts — that would root the state forever) that captures compare. */
-let _fontEpoch = 0
-let _fontsWired = false
-function wireFontEpoch(doc) {
-  if (_fontsWired) return
-  _fontsWired = true
-  try { doc.fonts?.addEventListener('loadingdone', () => { _fontEpoch++ }) } catch { /* no Font Loading API */ }
-}
-
 function createState(element) {
   const state = {
     dirty: true,
@@ -115,7 +105,7 @@ function createState(element) {
     observers: [],
     trackedVideos: new Set(),
     trackedImages: new Set(),
-    fontEpoch: _fontEpoch,
+    envEpoch: getStyleEnvEpoch(), // shared head+fonts environment epoch (styles.js)
   }
 
   const dirtyAll = () => { state.dirty = true; state.dirtyRoots = null }
@@ -141,28 +131,15 @@ function createState(element) {
       noteDirtyRoot(rec.target)
     }
   }
-  const markDirtyGlobal = (records) => {
-    if (state.capturing) return
-    if (hasExternalMutation(records)) dirtyAll()
-  }
   const onMediaDirty = () => { if (!state.capturing) dirtyAll() }
   state.dirtyAll = dirtyAll
 
-  const doc = element.ownerDocument || document
   try {
     const o = new MutationObserver(markDirty)
     o.observe(element, { subtree: true, childList: true, attributes: true, characterData: true })
     o.__flush = markDirty
     state.observers.push(o)
   } catch { /* degrade to always-dirty */ }
-  try {
-    if (doc.head) {
-      const o = new MutationObserver(markDirtyGlobal)
-      o.observe(doc.head, { subtree: true, childList: true, characterData: true, attributes: true })
-      o.__flush = markDirtyGlobal
-      state.observers.push(o)
-    }
-  } catch { /* head not observable — subtree observer still applies */ }
 
   state.markDirty = markDirty
   state.onMediaDirty = onMediaDirty
@@ -175,7 +152,6 @@ function createState(element) {
   } catch { /* degrade: scrolls won't invalidate */ }
   trackVideos(element, state, onMediaDirty)
   trackPendingImages(element, state)
-  wireFontEpoch(doc)
   return state
 }
 
@@ -231,7 +207,10 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
 
   const run = async () => {
     for (const o of state.observers) o.__flush(o.takeRecords())
-    if (state.fontEpoch !== _fontEpoch) { state.dirtyAll(); state.fontEpoch = _fontEpoch }
+    // Shared style-environment epoch (head CSS + font loads) — one observer stack for the
+    // whole library instead of a per-element duplicate.
+    const env = getStyleEnvEpoch()
+    if (state.envEpoch !== env) { state.dirtyAll(); state.envEpoch = env }
     if (context.invalidate) state.dirtyAll()
     if (!isOneOff && !state.dirty && state.last) return state.last
 

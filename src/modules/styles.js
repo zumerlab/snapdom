@@ -46,24 +46,38 @@ export function isExternalRecord(rec) {
   return true
 }
 
+/** Style-ENVIRONMENT epoch: bumps only on <head> mutations and font loads — the events
+ *  that change how any element renders without touching it. Consumers (burst) poll it via
+ *  getStyleEnvEpoch() instead of wiring their own observers/listeners: one shared stack,
+ *  and polling can't root anything (a subscriber callback would leak its closure). */
+let __envEpoch = 0
+export function getStyleEnvEpoch() {
+  setupInvalidationOnce()
+  return __envEpoch
+}
+
 let __wired = false
 function setupInvalidationOnce(root = document.documentElement) {
   if (__wired) return
   __wired = true
   const onRecords = (records) => { if (hasExternalMutation(records)) bumpEpoch() }
+  const onEnvRecords = (records) => {
+    if (hasExternalMutation(records)) { bumpEpoch(); __envEpoch++ }
+  }
+  const onFonts = () => { bumpEpoch(); __envEpoch++ }
   try {
     const domObs = new MutationObserver(onRecords)
     domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
-    const headObs = new MutationObserver(onRecords)
+    const headObs = new MutationObserver(onEnvRecords)
     headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
     const f = document.fonts
     if (f) {
-      f.addEventListener?.('loadingdone', bumpEpoch)
-      f.ready?.then(() => bumpEpoch()).catch(() => { })
+      f.addEventListener?.('loadingdone', onFonts)
+      f.ready?.then(onFonts).catch(() => { })
     }
   } catch { }
 }
