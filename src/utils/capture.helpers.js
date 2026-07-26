@@ -667,11 +667,18 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   wrap.setAttribute('data-snapdom-internal', '')
   wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' +
     w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
+  // Shadow DOM so the capture CSS can't leak into the live tree (#474): baseCSS carries global
+  // tag rules (span{font-family:...;text-wrap-mode:wrap;...}) that beat INHERITED styles on the
+  // page — mounting them document-wide re-lays-out the live element and poisons every source
+  // rect read below. Inside the shadow the clone also stops seeing page CSS, same as in the
+  // foreignObject. Embedded @font-face is skipped by the caller: every face came from this
+  // document, so family names already resolve to loaded faces.
+  const shadow = wrap.attachShadow({ mode: 'open' })
   const styleNode = elDoc.createElement('style')
   styleNode.textContent = cssText
-  wrap.appendChild(styleNode)
+  shadow.appendChild(styleNode)
   const measured = clone.cloneNode(true)
-  wrap.appendChild(measured)
+  shadow.appendChild(measured)
   elDoc.body.appendChild(wrap)
 
   let pinned = 0

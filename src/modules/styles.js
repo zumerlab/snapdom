@@ -366,7 +366,11 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     // This is the exact condition getStyleKey uses to actually drop the width (the #429/#433/
     // #434 family): tally it so capture.js can suggest `reconcile: true` when it's never used —
     // cheap, since softensWidth/sizedByContent are already computed for this node regardless.
-    if (sizedByContent) session.reconcileRisk = (session.reconcileRisk || 0) + 1
+    // Nowrap/pre boxes stay frozen (#474), so they carry no re-wrap risk.
+    const wsMode = snap['text-wrap-mode'] || snap['white-space'] || ''
+    if (sizedByContent && wsMode !== 'nowrap' && wsMode !== 'pre') {
+      session.reconcileRisk = (session.reconcileRisk || 0) + 1
+    }
   }
   let key = persist.snapshotKeyCache.get(sig)
   if (key === undefined) {

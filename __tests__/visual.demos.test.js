@@ -66,6 +66,12 @@ if (Object.keys(demos).length === 0) {
       wait: 2500,
       setup: async (win) => { try { await win.document.fonts.ready } catch { } }
     },
+    // Issue #474 formulas rendered live at load (captures only run on click) — snapshotting
+    // the table is a KaTeX layout fidelity check. Same CDN font wait as d454.
+    'd474-katex-formulas': {
+      wait: 2500,
+      setup: async (win) => { try { await win.document.fonts.ready } catch { } }
+    },
     // Examples — adjust to your demos:
     // 'd1':  { target: 'body' },
     // 'd2':  { target: '#target', wait: 1500, snapdomOptions: { embedFonts: true } },

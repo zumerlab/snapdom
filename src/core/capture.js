@@ -326,10 +326,13 @@ export async function captureDOM(element, options) {
             const wrap = elDoc.createElement('div')
             wrap.setAttribute('data-snapdom-internal', '')
             wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
+            // Shadow DOM: keeps baseCSS's global tag rules from restyling the live page
+            // while this mount is attached (#474) — same isolation as reconcileCloneLayout.
+            const mShadow = wrap.attachShadow({ mode: 'open' })
             const styleNode = elDoc.createElement('style')
-            styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
-            wrap.appendChild(styleNode)
-            wrap.appendChild(state.clone.cloneNode(true))
+            styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
+            mShadow.appendChild(styleNode)
+            mShadow.appendChild(state.clone.cloneNode(true))
             elDoc.body.appendChild(wrap)
             const csh = wrap.scrollHeight
             const csw = wrap.scrollWidth
@@ -354,7 +357,11 @@ export async function captureDOM(element, options) {
       // boxes whose size diverges from the live tree (measurement over heuristics).
       if (state.options?.reconcile) {
         try {
-          const cssAll = (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS +
+          // No fontsCSS here (#474): every embedded face came from this document, so family
+          // names already resolve to loaded faces. Re-declaring them as data: URLs makes the
+          // fresh (still-loading) faces shadow the loaded ones and both the live tree and the
+          // measured clone briefly re-layout with fallback metrics — poisoning every rect.
+          const cssAll = (state.scrollbarCSS || '') + state.baseCSS +
             'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
           reconcileCloneLayout(state.element, state.clone, cssAll, state.nodeMap, w0, h0)
         } catch (e) {
