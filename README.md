@@ -47,6 +47,27 @@ Full DOM capture with embedded styles, pseudo-elements and fonts; export to SVG,
 
 👉 **See the complete technical feature list in [FEATURES.md](FEATURES.md).**
 
+## 🚀 What's new in v3
+
+v3 is a ground-up rework of the capture engine. **Your v2 code runs unchanged** — every option is still accepted — but what happens underneath is radically different:
+
+**It's much faster, everywhere.**
+- **First captures are up to 2× faster.** A one-time stylesheet scan tells the engine which CSS properties your page can actually use, so the per-node style snapshot reads ~50 properties instead of ~400 — the single biggest cost in any DOM capture.
+- **Repeat captures are effectively free.** Capture the same element a few times and snapdom starts memoizing automatically: unchanged repeats return instantly, and when something *does* change, a **differential recapture** rebuilds only the mutated subtrees (~5× faster on mutating dashboards) with **byte-identical** output to a full capture.
+- Invalidation is automatic and complete: DOM mutations, `<video>` frames, image and font loads, scroll, viewport resizes, `<head>` CSS changes, and CSS/WAAPI animations are all tracked. No API to learn, nothing to configure.
+
+**It's more faithful, by default.**
+- **Web fonts embed automatically** (`embedFonts: 'auto'`). The SVG your capture rasterizes from can't see the page's loaded fonts — v2 silently rendered webfont text with fallback metrics unless you opted in. v3 detects webfont usage and embeds exactly what's needed; system-font pages pay nothing.
+- **Safari, rewritten.** The hidden triple pre-capture warm-up is gone — replaced by a verified draw that waits exactly as long as WebKit needs (first captures ~2× faster). And `toSvg()` now returns actual **vector SVG** on Safari instead of silently rasterizing to PNG.
+- **Concurrent captures are fully isolated.** `Promise.all` over multiple captures can no longer cross-contaminate state — an entire class of race conditions is structurally impossible now.
+- Outputs are smaller too: up to **27% lighter SVGs** from the same content.
+
+**It's simpler.**
+Options that required tuning knowledge tuned themselves out of the API: `burst` engages on its own, `cache` collapsed to a single debug switch, `fast` is obsolete. The best option is the one you never have to read about.
+
+**And it's ready for what's next.**
+An experimental `engine: 'canvas'` renders through the browser's own painter via the WICG canvas-place-element API (Chrome flag) — native form controls pixel-perfect, zero SVG quirks — and falls back seamlessly until browsers ship it fully.
+
 ## Website & Live Demos
 
 [https://snapdom.dev](https://snapdom.dev)
@@ -76,6 +97,7 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 ## Table of Contents
 
+- [What's new in v3](#-whats-new-in-v3)
 - [Quick Start](#quick-start)
 - [Features](#features)
 - [Website & Live Demos](#website--live-demos)
@@ -251,25 +273,31 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 | `format` | `'png' \| 'jpeg' \| 'webp' \| 'svg'` | `'png'` | Format for `download()` |
 | `type` | `string` | `'svg'` | Blob type for `toBlob()` (`'png'`, `'jpeg'`…) |
 | `filename` | `string` | `'snapDOM'` | Download filename |
-| `embedFonts` | `boolean` | `false` | Inline `@font-face` so text renders with your real fonts |
+| `embedFonts` | `boolean \| 'auto'` | `'auto'` | `'auto'` embeds web fonts only when the capture actually uses them (system-font pages skip the pass entirely). `true` forces the embed; `false` disables it |
 | `iconFonts` | `string \| RegExp \| array` | `[]` | Icon font families (always embedded) |
-| `localFonts` | `array` | `[]` | Explicit fonts: `{ family, src, weight?, style? }` |
+| `localFonts` | `array` | `[]` | Explicit fonts: `{ family, src, weight?, style? }` — also the path for JS-registered `FontFace` objects |
 | `excludeFonts` | `object` | — | Skip fonts by family / domain / subset |
+| `fontStylesheetDomains` | `string[]` | — | Extra cross-origin domains to fetch font CSS from |
 | `exclude` | `string[]` | `[]` | CSS selectors to leave out of the capture |
 | `filter` | `(el) => boolean` | `null` | Keep-predicate (return `false` to drop a node) |
 | `excludeMode` / `filterMode` | `'hide' \| 'remove'` | `'hide'` | How excluded nodes are handled |
 | `clip` | `'viewport' \| {x, y, width, height}` | `null` | Capture only a region; offscreen content is pruned |
-| `compress` | `boolean` | `true` | Downsample inlined images to their visible resolution |
+| `compress` | `boolean` | `true` | Downsample inlined images to their visible resolution (runs in a worker when available) |
 | `useProxy` | `string` | `''` | CORS proxy prefix for cross-origin images |
 | `fallbackURL` | `string \| fn` | — | Fallback image for broken `<img>` |
-| `cache` | `'soft' \| 'auto' \| 'full' \| 'disabled'` | `'soft'` | Cache policy between captures |
+| `placeholders` | `boolean` | `true` | Show sized placeholders for resources that fail to load |
+| `resolvePicturePlaceholders` | `boolean` | `true` | Resolve lazy-load placeholders (`data-src`…) and `<picture>` sources on the clone |
+| `burst` | `boolean` | *auto* | Memoized repeat captures. Unset, it **auto-enables** after 3 captures of the same element within 2s; mutations, media, image/font loads, scroll, resize and animations invalidate automatically. `true` skips the warm-up; `false` opts out. Canvas-bearing elements never auto-enable |
+| `invalidate` | `boolean` | `false` | With burst active, forces one fresh capture for changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits) |
+| `reconcile` | `boolean` | `false` | Measure the clone against the live DOM and pin any diverging box to its real size. Fixes rare text re-wrap/layout drift at roughly 2× capture time |
 | `outerTransforms` | `boolean` | `true` | Keep root translate/rotate in the output |
 | `outerShadows` | `boolean` | `false` | Expand bounds to include root shadows/blur/outline |
-| `fast` | `boolean` | `true` | Skip idle delays for faster capture |
-| `reconcile` | `boolean` | `false` | Measure the clone against the live DOM and pin any diverging box to its real size. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time — snapdom warns once (`console.warn`) if it detects a capture that could benefit from it |
-| `burst` | `boolean` | `false` | Memoizes repeated captures of this element via a scoped MutationObserver — an unchanged repeat skips the pipeline entirely. Without it, snapdom warns once if the same element is captured 3+ times within 2s |
-| `invalidate` | `boolean` | `false` | With `burst: true`, forces a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits) |
+| `excludeStyleProps` | `RegExp \| fn` | — | Skip matching CSS properties when snapshotting (e.g. `/^--/`) |
+| `cache` | `'disabled'` | *(structural)* | `'disabled'` (or `false`) opts out of every cache — a debug/testing switch. The legacy `'soft'`/`'auto'`/`'full'` strings are still accepted and map to the default behavior |
 | `plugins` | `array` | — | Per-capture plugins (override globals by name) |
+| `engine` | `'svg' \| 'canvas'` | `'svg'` | **Experimental**: `'canvas'` renders raster exports through the WICG canvas-place-element API when the browser supports it (native painter — form controls pixel-perfect); falls back to the SVG pipeline automatically |
+| `debug` | `boolean` | `false` | Verbose diagnostics via `console.warn` |
+| `fast` | `boolean` | — | **Obsolete** — accepted and ignored (the deferred-work path it controlled was removed) |
 
 📖 **[Full API & every option, explained with examples → snapdom.dev/docs](https://snapdom.dev/docs/)**
 
