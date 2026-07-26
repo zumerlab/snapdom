@@ -59,24 +59,20 @@ export const cache = {
 export { EvictingMap }
 
 /**
- * Normalizes shorthand values to canonical cache policies.
- *  - true  => "soft"
- *  - false => "disabled"
- *  - "auto" => "auto"
- *  - "full" => "full"
+ * Normalizes cache values: `false`/'disabled' opt out of every cache (debug/test escape
+ * hatch); everything else — including the legacy 'soft'/'auto'/'full' strings — maps to
+ * the one structural behavior. The old per-policy session sharing is superseded: sessions
+ * are per-capture by construction (createCaptureSession), repeat-capture speed comes from
+ * auto-burst + differential recapture WITH real invalidation, and 'full' would re-share
+ * session maps across captures — the exact mutable-state class the session refactor
+ * eliminated.
  * @param {unknown} v
- * @returns {"soft"|"auto"|"full"|"disabled"}
+ * @returns {"soft"|"disabled"}
  */
 export function normalizeCachePolicy(v) {
-  if (v === true) return 'soft'
   if (v === false) return 'disabled'
-  if (typeof v === 'string') {
-    const s = v.toLowerCase().trim()
-    if (s === 'auto') return 'auto'
-    if (s === 'full') return 'full'
-    if (s === 'soft' || s === 'disabled') return s
-  }
-  return 'soft' // default
+  if (typeof v === 'string' && v.toLowerCase().trim() === 'disabled') return 'disabled'
+  return 'soft'
 }
 
 /**
@@ -84,43 +80,21 @@ export function normalizeCachePolicy(v) {
  * @param {"soft"|"auto"|"full"|"disabled"} policy
  */
 export function applyCachePolicy(policy = 'soft') {
-  switch (policy) {
-    case 'auto': {
-      cache.session.styleMap = new Map()
-      cache.session.nodeMap  = new Map()
-      return
-    }
-    case 'soft': {
-      cache.session.styleMap   = new Map()
-      cache.session.nodeMap    = new Map()
-      cache.session.styleCache = new WeakMap()
-      return
-    }
-    case 'full': {
-      return
-    }
-    case 'disabled': {
-      cache.session.styleMap   = new Map()
-      cache.session.nodeMap    = new Map()
-      cache.session.styleCache = new WeakMap()
+  // Fresh per-capture session bucket (legacy surface — captures snapshot it immediately
+  // via createCaptureSession and never trust the global afterwards).
+  cache.session.styleMap   = new Map()
+  cache.session.nodeMap    = new Map()
+  cache.session.styleCache = new WeakMap()
+  if (policy !== 'disabled') return
 
-      cache.computedStyle = new WeakMap()
-      cache.measureHints  = new WeakMap()
-      cache.baseStyle     = new EvictingMap(MAX_BASE_STYLE)
-      cache.defaultStyle  = new EvictingMap(MAX_DEFAULT_STYLE)
-      cache.image         = new EvictingMap(MAX_IMAGE)
-      cache.background    = new EvictingMap(MAX_BACKGROUND)
-      cache.resource      = new EvictingMap(MAX_RESOURCE)
-      cache.compress      = new EvictingMap(MAX_COMPRESS)
-      cache.font          = new Set()
-      return
-    }
-    default: {
-      // fallback → soft
-      cache.session.styleMap   = new Map()
-      cache.session.nodeMap    = new Map()
-      cache.session.styleCache = new WeakMap()
-      return
-    }
-  }
+  // 'disabled': also drop every persistent cache so nothing is reused across captures.
+  cache.computedStyle = new WeakMap()
+  cache.measureHints  = new WeakMap()
+  cache.baseStyle     = new EvictingMap(MAX_BASE_STYLE)
+  cache.defaultStyle  = new EvictingMap(MAX_DEFAULT_STYLE)
+  cache.image         = new EvictingMap(MAX_IMAGE)
+  cache.background    = new EvictingMap(MAX_BACKGROUND)
+  cache.resource      = new EvictingMap(MAX_RESOURCE)
+  cache.compress      = new EvictingMap(MAX_COMPRESS)
+  cache.font          = new Set()
 }

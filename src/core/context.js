@@ -14,7 +14,7 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {string}  [options.excludeMode]
  * @param {(node: Node)=>boolean} [options.filter]
  * @param {string}  [options.filterMode]
- * @param {boolean} [options.embedFonts]
+ * @param {boolean|'auto'} [options.embedFonts]
  * @param {string|string[]} [options.iconFonts]
  * @param {string[]} [options.localFonts]
  * @param {string[]|undefined} [options.excludeFonts]
@@ -61,7 +61,11 @@ export function createContext(options = {}) {
     placeholders: options.placeholders !== false, // default true
 
     // Fonts
-    embedFonts: options.embedFonts ?? false,
+    // 'auto' (default): embed webfonts only when the element actually uses families the
+    // document declares — svg-as-image is an isolated document that can't see page fonts,
+    // so skipping the embed on webfont text is silent infidelity; system-font pages skip
+    // the whole phase at zero cost. true/false remain explicit overrides.
+    embedFonts: options.embedFonts ?? 'auto',
     iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts
       : (options.iconFonts ? [options.iconFonts] : []),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],

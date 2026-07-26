@@ -122,7 +122,10 @@ async function diffCapture(element, state, context) {
   const R = state.retained
   if (!R || !R.clone || !R.styleMap || !R.srcToClone) return null
   // Root/whole-tree coupled features: their passes read or reshape the entire clone.
-  if (context.reconcile || context.clip || context.embedFonts || R.clipWindow) return null
+  if (context.reconcile || context.clip || R.clipWindow) return null
+  // Fonts were embedded in the retained capture: a dirty subtree can introduce codepoints
+  // or faces the embedded set lacks — only the full pipeline recollects usage.
+  if (R.fontsCSS) return null
   if (context.excludeMode === 'remove' || context.filterMode === 'remove') return null
 
   const doc = element.ownerDocument || document

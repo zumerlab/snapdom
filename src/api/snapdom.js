@@ -50,10 +50,23 @@ async function main(element, userOptions) {
   // wait for the fonts the element actually uses, and poke GPU-backed <canvas>
   // stores so cloneCanvas's toDataURL isn't blank. Both are cheap per capture.
   if (isSafari()) {
-    if (context.embedFonts === true) {
+    if (context.embedFonts) {
       try {
+        // 'auto': wait only on families the document actually declares as webfonts —
+        // waiting on system families costs real time per capture (measured ~30ms on
+        // WebKit) and buys nothing. Explicit true keeps the unconditional wait.
+        const doc = element.ownerDocument || document
+        const docFamilies = new Set()
+        if (context.embedFonts === 'auto') {
+          try { for (const f of doc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase()) } catch { /* no Font Loading API */ }
+          if (docFamilies.size === 0) throw null // nothing to wait for
+        }
         const required = collectUsedFontVariants(element)
-        const families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
+        let families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
+        if (context.embedFonts === 'auto') {
+          families = new Set([...families].filter((f) => docFamilies.has(f.toLowerCase())))
+          if (families.size === 0) throw null
+        }
         await ensureFontsReady(families, 1)
       } catch { /* non-blocking */ }
     }

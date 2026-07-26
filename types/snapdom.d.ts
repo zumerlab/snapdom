@@ -130,8 +130,13 @@ export interface SnapdomOptions {
    */
   compress?: boolean;
 
-  /** Inline non-icon fonts actually used within the subtree. */
-  embedFonts?: boolean;
+  /**
+   * Inline non-icon fonts actually used within the subtree. Default 'auto': embeds only
+   * when the element uses families the document declares as webfonts (system-font pages
+   * skip the phase entirely). true forces the embed pass; false disables it (webfont text
+   * will rasterize with fallback metrics).
+   */
+  embedFonts?: boolean | 'auto';
   /** Provide fonts explicitly to avoid remote discovery. */
   localFonts?: LocalFont[];
   /** Additional matchers for icon font families (strings or regex). */
@@ -171,7 +176,12 @@ export interface SnapdomOptions {
     | string
     | ((dims: { width?: number; height?: number }) => string);
 
-  /** Cache policy for resources and style maps. Default "soft". */
+  /**
+   * Cache behavior. 'disabled' (or false) opts out of every cache — a debug/testing escape
+   * hatch. Anything else (including the legacy 'soft'/'auto'/'full' strings, still accepted)
+   * is the structural default: per-capture sessions plus content-keyed persistent caches;
+   * repeat-capture speed comes from automatic burst memoization and differential recapture.
+   */
   cache?: CachePolicy;
 
   /** Show placeholders when resources are missing. Default true. */

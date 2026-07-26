@@ -39,8 +39,10 @@ describe('normalizeCachePolicy', () => {
   it('maps booleans and known strings, defaults to "soft"', () => {
     expect(normalizeCachePolicy(true)).toBe('soft')
     expect(normalizeCachePolicy(false)).toBe('disabled')
-    expect(normalizeCachePolicy('auto')).toBe('auto')
-    expect(normalizeCachePolicy('full')).toBe('full')
+    // Legacy strings collapse to the structural default — per-capture sessions plus
+    // auto-burst/differential recapture superseded the old per-policy sharing.
+    expect(normalizeCachePolicy('auto')).toBe('soft')
+    expect(normalizeCachePolicy('full')).toBe('soft')
     expect(normalizeCachePolicy('soft')).toBe('soft')
     expect(normalizeCachePolicy('disabled')).toBe('disabled')
     // unknown → soft (default)
@@ -66,18 +68,16 @@ describe('applyCachePolicy', () => {
     cache.session.nodeMap = new Map()
   })
 
-  it('auto: resets only session.styleMap and session.nodeMap', () => {
+  it('any non-disabled policy: fresh session bucket, persistent caches kept', () => {
     seedSomeData()
     const before = snapshotRefs()
 
-    applyCachePolicy('auto')
+    applyCachePolicy('auto') // legacy string — same structural behavior
 
     const after = snapshotRefs()
-    // Reemplaza solo estos dos
     expect(after.session_styleMap).not.toBe(before.session_styleMap)
     expect(after.session_nodeMap).not.toBe(before.session_nodeMap)
-    // Mantiene styleCache y resto
-    expect(after.session_styleCache).toBe(before.session_styleCache)
+    expect(after.session_styleCache).not.toBe(before.session_styleCache)
     expect(after.image).toBe(before.image)
     expect(after.background).toBe(before.background)
     expect(after.resource).toBe(before.resource)
@@ -117,14 +117,14 @@ describe('applyCachePolicy', () => {
     expect(cache.session.nodeMap.size).toBe(0)
   })
 
-  it('full: no limpia nada (mantiene identidades y contenidos)', () => {
+  it("legacy 'full': persistent caches kept, session bucket still fresh per capture", () => {
     seedSomeData()
     const before = snapshotRefs()
 
     applyCachePolicy('full')
 
     const after = snapshotRefs()
-    // Todo igual
+    // Persistent caches survive…
     expect(after.image).toBe(before.image)
     expect(after.background).toBe(before.background)
     expect(after.resource).toBe(before.resource)
@@ -132,13 +132,11 @@ describe('applyCachePolicy', () => {
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
     expect(after.font).toBe(before.font)
-    expect(after.session_styleMap).toBe(before.session_styleMap)
-    expect(after.session_styleCache).toBe(before.session_styleCache)
-    expect(after.session_nodeMap).toBe(before.session_nodeMap)
-
-    // Y siguen con datos
-    expect(cache.image.size).toBeGreaterThan(0)
-    expect(cache.session.styleMap.size).toBeGreaterThan(0)
+    // …but the session bucket is per-capture now, never shared across captures
+    // (the old 'full' sharing is the state class the session refactor eliminated).
+    expect(after.session_styleMap).not.toBe(before.session_styleMap)
+    expect(after.session_styleCache).not.toBe(before.session_styleCache)
+    expect(after.session_nodeMap).not.toBe(before.session_nodeMap)
   })
 
   it('disabled: reinstancia TODO (global + sesión) y deja todo vacío', () => {

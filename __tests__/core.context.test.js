@@ -31,7 +31,7 @@ describe('createContext - defaults & normalization', () => {
     expect(ctx.exclude.length).toBe(0)
     expect(ctx.filter).toBeNull()
 
-    expect(ctx.embedFonts).toBe(false)
+    expect(ctx.embedFonts).toBe('auto') // default: embed only when the page declares webfonts
     expect(Array.isArray(ctx.iconFonts)).toBe(true)
     expect(ctx.iconFonts.length).toBe(0)
     expect(Array.isArray(ctx.localFonts)).toBe(true)
@@ -77,12 +77,12 @@ describe('createContext - defaults & normalization', () => {
     expect(createContext({}).excludeFonts).toBeUndefined()
   })
 
-  it('normalizes cache option: soft|full|disabled|auto or defaults to soft when invalid', () => {
+  it('normalizes cache: disabled opts out, every legacy string collapses to the structural default', () => {
     expect(createContext({ cache: 'soft' }).cache).toBe('soft')
-    expect(createContext({ cache: 'full' }).cache).toBe('full')
-    expect(createContext({ cache: 'auto' }).cache).toBe('auto')
+    expect(createContext({ cache: 'full' }).cache).toBe('soft') // legacy — superseded by auto-burst/diff
+    expect(createContext({ cache: 'auto' }).cache).toBe('soft') // legacy
     expect(createContext({ cache: 'disabled' }).cache).toBe('disabled')
-    // invalid → soft
+    expect(createContext({ cache: false }).cache).toBe('disabled')
     expect(createContext({ cache: 'weird' }).cache).toBe('soft')
     expect(createContext({ cache: 123 }).cache).toBe('soft')
   })

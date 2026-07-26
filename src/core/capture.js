@@ -191,7 +191,12 @@ export async function captureDOM(element, options) {
   })()
 
   let fontsPhase = Promise.resolve()
-  if (options.embedFonts) {
+  // 'auto' pre-gate: no FontFace registered in the element's document → no webfonts to
+  // embed, skip even the usage walk. Explicit true keeps the full pass unconditionally.
+  const fontsWanted = options.embedFonts === 'auto'
+    ? ((state.element.ownerDocument || document).fonts?.size || 0) > 0
+    : !!options.embedFonts
+  if (fontsWanted) {
     fontsPhase = runIdle(async () => {
       // #441: read fonts from the element's own document (same-origin iframe support)
       const ownerDoc = state.element.ownerDocument || document
@@ -205,6 +210,16 @@ export async function captureDOM(element, options) {
         } catch { return true }
       } : null
       const { required, usedCodepoints } = collectFontUsage(state.element, clipKeep)
+      // 'auto': embed only when a used family is actually a document-declared webfont.
+      if (options.embedFonts === 'auto') {
+        const docFamilies = new Set()
+        try {
+          for (const f of ownerDoc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase())
+        } catch { /* no Font Loading API — treat as no webfonts */ }
+        const usesWebfont = docFamilies.size > 0 &&
+          Array.from(required).some((k) => docFamilies.has(String(k).split('__')[0].toLowerCase()))
+        if (!usesWebfont) return
+      }
       if (isSafari()) {
         const families = new Set(
           Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
