@@ -149,6 +149,41 @@ works in Playwright!):**
   JS-only FontFace objects (no stylesheet rule) still need `localFonts` — unchanged.
 - Visual baselines: unchanged across all 3 engines (no demo shifted).
 
+## 7. Obsolescence + remaining-architecture sweep — **DONE** (7 commits)
+
+- **scroll invalidation** (fix): scroll events produce no mutation records — one
+  capture-phase `scroll` listener per burst element closes the stale-memo hole. A sibling
+  hole found while designing it: **window resize** (media queries flip with no mutation)
+  now bumps the shared env epoch too.
+- **cache.session is test-surface only**: preCache no longer touches it; prepareClone and
+  styles' `_resolveCtx` fall back to fresh isolated maps. The only remaining readers are
+  default parameters serving direct module calls in tests.
+- **window.snapdom global removed**: iframe rasterization uses the threaded `context.snap`
+  exclusively (main() always sets it).
+- **`fast` collapsed**: the idle-sliced non-fast path was pure legacy (allocations +
+  latency, no benefit at current capture times). `idle()` is a call-through now; the
+  option is accepted and ignored. Benchmarks unchanged (1.18-1.47x vs 2.16.0).
+- **invalidation unified**: one style-ENVIRONMENT epoch in styles.js (head mutations +
+  font loads + window resize) replaces burst's duplicate head observer and font-epoch
+  machinery. Polled, not subscribed — callbacks would root state (leak).
+- **diff geometry-reconcile**: layout-rippling mutations (added nodes reflowing a grid) no
+  longer bail — one pass compares each retained box's frozen width/height/min-* against
+  current computed values and re-styles only the drifted ones. The badge-reflow case now
+  serves via diff **byte-equal to full**; mutating-poll stays ~5x.
+- **E (worker compress)**: decode+downscale+re-encode moved to an inline OffscreenCanvas
+  worker (FileReaderSync for the data URL); sync fallback on any failure (no Worker, CSP,
+  engine gap). Visual demos byte-green across engines.
+- **picture-resolver dissolved**: the live-DOM mutation dance (swap src, remove <source>,
+  undo — visible flicker on the user's page) is gone from the pipeline; lazy placeholders
+  resolve on the CLONE in freezeImgSrcset (findLazySrcAttr) and inlineImages fetches them
+  like any source. `runPictureResolverBeforeClone` survives only for the back-compat
+  plugin export.
+- **Evaluated, intentionally NOT done**: (a) reconcile warning stays — embedFonts 'auto'
+  removes the webfont-fallback rewrap cause, but system-ui metric drift in svg-as-image
+  persists, so the risk is still real; (b) #6 memory (data-URL string duplication) —
+  transient peaks only, every alternative (streaming encode, blob URLs) either adds
+  complexity or hits the Chromium blob-taint wall; not worth it.
+
 ## Not done (assessed, next steps)
 
 - **Worker offload**: only `compress` downsampling qualifies (OffscreenCanvas); svg-as-image
