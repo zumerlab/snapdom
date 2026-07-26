@@ -110,3 +110,37 @@ describe('scroll invalidates the memo (no DOM mutation involved)', () => {
     expect(decodeURIComponent(after.url.split(',')[1])).toMatch(/translate\(0px,\s*-(9[5-9]|10[0-5])(\.\d+)?px\)/)
   })
 })
+
+describe('running animations disable the memo (frames repaint with no mutations)', () => {
+  it('an animating element never serves a memo, and pre-animation memos are dropped', async () => {
+    const el = document.createElement('div')
+    el.style.cssText = 'width:120px;height:40px;background:#3af;color:#fff;padding:4px'
+    el.textContent = 'dancer'
+    document.body.appendChild(el)
+
+    // Static: memo engages normally.
+    const statics = []
+    for (let i = 0; i < 4; i++) statics.push(await snapdom(el))
+    expect(statics[3]).toBe(statics[2])
+
+    // Animation starts — NO DOM mutation involved.
+    const anim = el.animate(
+      [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+      { duration: 100000, iterations: Infinity }
+    )
+    try {
+      const a1 = await snapdom(el)
+      const a2 = await snapdom(el)
+      expect(a1).not.toBe(statics[3]) // pre-animation memo dropped, not served
+      expect(a2).not.toBe(a1)         // every animated capture is fresh
+    } finally {
+      anim.cancel()
+    }
+
+    // Animation over: memoization resumes from a FRESH post-animation capture.
+    const b1 = await snapdom(el)
+    expect(b1).not.toBe(statics[3])
+    const b2 = await snapdom(el)
+    expect(b2).toBe(b1)
+  })
+})

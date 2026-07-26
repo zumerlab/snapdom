@@ -212,7 +212,16 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     const env = getStyleEnvEpoch()
     if (state.envEpoch !== env) { state.dirtyAll(); state.envEpoch = env }
     if (context.invalidate) state.dirtyAll()
-    if (!isOneOff && !state.dirty && state.last) return state.last
+    // CSS animations/transitions/WAAPI repaint every frame with NO mutation records: while
+    // any runs in the subtree, every capture is a different frame — never serve OR store a
+    // memo, and drop any memo taken before the animation started (it would be served as
+    // soon as the animation ends, showing a pre-animation frame).
+    let animating = false
+    try {
+      animating = !!element.getAnimations?.({ subtree: true }).some((a) => a.playState === 'running')
+    } catch { /* no Web Animations API — animations won't be detected */ }
+    if (animating) state.last = null
+    if (!isOneOff && !animating && !state.dirty && state.last) return state.last
 
     state.capturing = true
     try {
@@ -240,7 +249,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
         }
       }
       const result = await runCapture()
-      if (!isOneOff) state.last = result
+      if (!isOneOff && !animating) state.last = result
       return result
     } finally {
       context.__retain = undefined
