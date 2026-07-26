@@ -131,6 +131,24 @@ works in Playwright!):**
   readback, `engine:'canvas'` lights up with no code changes.
 - Plugin compat rule implemented: any plugins present → pipeline (conservative v1).
 
+## 6. `feat: cache collapse + embedFonts 'auto'` — **DONE, defaults over knobs**
+
+- **cache**: 'disabled' (or false) remains as the debug/testing escape hatch; every legacy
+  string ('soft'/'auto'/'full') collapses to the one structural behavior. Rationale:
+  per-capture sessions made 'soft' structural, snapshotCache+epoch made 'auto' pointless,
+  and 'full' re-shared session maps across captures — the state class the session refactor
+  eliminated — while its use case (fast repeats) is served correctly by auto-burst + diff.
+  Legacy strings still accepted (no breakage), types document the deprecation.
+- **embedFonts**: default `'auto'` — svg-as-image can't see the page's loaded webfonts, so
+  not embedding webfont text is silent infidelity; but system-font pages must pay nothing.
+  Auto embeds exactly when a used family is document-declared (`document.fonts` pre-gate →
+  zero cost on system pages; family-intersection check after collectFontUsage). Explicit
+  true/false override. Wired through: capture fontsPhase, Safari pre-step (waits only on
+  DECLARED webfont families — unconditional waiting cost ~30ms/capture on WebKit and broke
+  memo latency), diff bail is now retained-fontsCSS-based (system pages keep the diff path).
+  JS-only FontFace objects (no stylesheet rule) still need `localFonts` — unchanged.
+- Visual baselines: unchanged across all 3 engines (no demo shifted).
+
 ## Not done (assessed, next steps)
 
 - **Worker offload**: only `compress` downsampling qualifies (OffscreenCanvas); svg-as-image
