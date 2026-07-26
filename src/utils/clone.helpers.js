@@ -7,7 +7,7 @@ import { debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
-import { findRealUrlForPicture, pickSrcsetCandidate } from '../modules/pictureResolver.js'
+import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 
 /**
  * Schedule work across idle slices without relying on IdleDeadline constructor.
@@ -155,7 +155,7 @@ export function injectScopedStyle(hostClone, cssText, scopeId) {
  * @param {HTMLImageElement} original - Image in the live DOM.
  * @param {HTMLImageElement} cloned - Just-created cloned <img>.
  */
-export function freezeImgSrcset(original, cloned) {
+export function freezeImgSrcset(original, cloned, options = {}) {
   try {
     // Element-level `content: url(...)` replaces the <img>'s rendered image and out-ranks
     // src/srcset in the browser's own resolution. The style snapshot neutralizes non-data
@@ -167,13 +167,22 @@ export function freezeImgSrcset(original, cloned) {
       if (m) contentUrl = m[1]
     }
     const picture = original.closest?.('picture')
-    const chosen = contentUrl ||
+    let chosen = contentUrl ||
       (picture ? findRealUrlForPicture(original, picture) : original.currentSrc) ||
       original.src ||
       // Chromium/Firefox leave currentSrc empty until the selected candidate has loaded,
       // so a srcset-only img would reach inlineImages source-less (srcset gets stripped
       // there). Pick a candidate explicitly, like the <picture> branch does.
       pickSrcsetCandidate(original.getAttribute('srcset'), original) || ''
+    // Lazy-load placeholders (tiny data:/blob src with the real URL parked in data-src…):
+    // resolve on the CLONE. The old live-DOM resolver swapped the user's element and
+    // undid it afterwards — visible flicker and an undo dance for something inlineImages
+    // fetches from the clone just as well.
+    if ((!chosen || isPlaceholderSrc(chosen)) && options.resolvePicturePlaceholders !== false &&
+        options.pictureResolver?.resolveLazySrc !== false) {
+      const lazy = findLazySrcAttr(original)
+      if (lazy) chosen = lazy
+    }
     if (!chosen) return
     cloned.setAttribute('src', chosen)
     cloned.removeAttribute('srcset')

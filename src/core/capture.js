@@ -15,7 +15,6 @@ import { createCaptureSession } from './session.js'
 import { universeFor } from '../modules/styles.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
-import { runPictureResolverBeforeClone } from '../modules/pictureResolver.js'
 import { compressCloneAssets } from '../modules/compress.js'
 import {
   stripRootShadows,
@@ -42,20 +41,6 @@ import {
   readTotalTransformMatrix,
   hasBBoxAffectingTransform,
 } from '../utils/transforms.helpers.js'
-
-/**
- * @param {object} options
- * @returns {boolean}
- */
-function hasPictureResolverPlugin(options) {
-  if (Array.isArray(options.plugins)) {
-    for (const d of options.plugins) {
-      const inst = normalizePlugin(d)
-      if (inst?.name === 'picture-resolver') return true
-    }
-  }
-  return getGlobalPlugins().some(p => p?.name === 'picture-resolver')
-}
 
 /**
  * Collect per-node resolveNode hooks once per capture, so deepClone pays a single falsy
@@ -109,12 +94,6 @@ export async function captureDOM(element, options) {
   // BEFORESNAP
   await runHook('beforeSnap', state)
 
-  /** @type {(() => Promise<void>)|null} */
-  let undoPictureResolver = null
-  if (options.resolvePicturePlaceholders !== false && !hasPictureResolverPlugin(options)) {
-    undoPictureResolver = await runPictureResolverBeforeClone(state.element, state.options)
-  }
-
   // BEFORECLONE
   await runHook('beforeClone', state)
   const undoClamp = lineClampTree(state.element, preClipRect)
@@ -149,7 +128,6 @@ export async function captureDOM(element, options) {
   // AFTERCLONE
   state = { clone, classCSS, styleCache, nodeMap, ...state }
   await runHook('afterClone', state)
-  if (undoPictureResolver) await undoPictureResolver()
   sanitizeCloneForXHTML(state.clone)
   // Shrink pass when excludeMode/filterMode === 'remove' dropped clone children
   if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {

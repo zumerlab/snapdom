@@ -311,7 +311,7 @@ export async function deepClone(node, sessionCache, options) {
     resolveCSSVars(node, clone)
     sessionCache.nodeMap.set(clone, node)
     if (node.tagName === 'IMG') {
-      freezeImgSrcset(node, clone)
+      freezeImgSrcset(node, clone, options)
       // Record original image dimensions (pre-transform) for fallback usage when inlining fails
       try {
         const { width, height } = getUnscaledDimensions(node)
