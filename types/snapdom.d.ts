@@ -45,8 +45,6 @@ export interface ExcludeFonts {
  * ========================= */
 
 export interface SnapdomOptions {
-  /** Fast path: skip small idle delays where safe. */
-  fast?: boolean;
   /** Output scale multiplier. Takes precedence over width/height. */
   scale?: number;
   /** Device pixel ratio to use for rasterization (defaults to `devicePixelRatio`). */
@@ -89,21 +87,11 @@ export interface SnapdomOptions {
    */
   reconcile?: boolean;
 
-  /**
-   * Memoizes repeated captures of this element: a scoped MutationObserver marks it dirty on
-   * external change, and an unchanged repeat capture returns the cached result without
-   * re-running the pipeline. Unset (default): auto-enables after 3 captures of the same
-   * element within a 2s sliding window (canvas-bearing elements excluded — canvas pixel
-   * draws are invisible to the observer). Pass `true` to force it on from the first
-   * capture, `false` to disable auto mode entirely.
-   */
-  burst?: boolean;
-
-  /**
+    /**
    * With `burst: true`, forces a fresh capture on this call for changes the automatic
    * MutationObserver tracking can't see: canvas pixel draws, programmatic CSSOM edits
    * (stylesheet.insertRule/deleteRule, cssRule.style.* on a rule rather than an element).
-   * Ignored without `burst: true`. Default false.
+   * Default false.
    */
   invalidate?: boolean;
 
@@ -123,14 +111,7 @@ export interface SnapdomOptions {
    */
   clip?: "viewport" | { x: number; y: number; width: number; height: number } | null;
 
-  /**
-   * Downsample inlined raster images to their visible resolution (display box × scale × dpr),
-   * preserving the source codec (lossless PNG stays lossless). On by default; pass `false`
-   * to embed images verbatim.
-   */
-  compress?: boolean;
-
-  /**
+    /**
    * Inline non-icon fonts actually used within the subtree. Default 'auto': embeds only
    * when the element uses families the document declares as webfonts (system-font pages
    * skip the phase entirely). true forces the embed pass; false disables it (webfont text

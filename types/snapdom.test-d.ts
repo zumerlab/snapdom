@@ -67,8 +67,10 @@ async function staticNamespaceHelpers() {
   await snapdom.toJpeg(el)
 }
 
-async function burstOption() {
-  const options: SnapdomOptions = { burst: true, invalidate: true }
+async function invalidateOption() {
+  // burst/compress/fast are engine behavior in v3, not public options — only the
+  // invalidate escape hatch remains typed.
+  const options: SnapdomOptions = { invalidate: true }
   const result: CaptureResult = await snapdom(el, options)
   void result
 }
@@ -97,6 +99,6 @@ async function preCacheHelper() {
 void mainCallable
 void clipOptionShapes
 void staticNamespaceHelpers
-void burstOption
+void invalidateOption
 void pluginShape
 void preCacheHelper

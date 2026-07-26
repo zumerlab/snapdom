@@ -24,7 +24,6 @@ describe('createContext - defaults & normalization', () => {
     const ctx = createContext()
 
     expect(ctx.debug).toBe(false)
-    expect(ctx.fast).toBe(true)
     expect(ctx.scale).toBe(1)
 
     expect(Array.isArray(ctx.exclude)).toBe(true)
@@ -140,7 +139,6 @@ describe('createContext - defaults & normalization', () => {
       quality: 0.8,
       filename: 'custom',
       debug: true,
-      fast: false,
       scale: 2,
     })
 
@@ -151,7 +149,6 @@ describe('createContext - defaults & normalization', () => {
     expect(ctx.quality).toBeCloseTo(0.8)
     expect(ctx.filename).toBe('custom')
     expect(ctx.debug).toBe(true)
-    expect(ctx.fast).toBe(false)
     expect(ctx.scale).toBe(2)
   })
 })

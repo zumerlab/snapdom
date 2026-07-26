@@ -8,7 +8,6 @@ import { normalizeCachePolicy } from './cache.js'
  * Creates a normalized capture context for SnapDOM.
  * @param {Object} [options={}]
  * @param {boolean} [options.debug]
- * @param {boolean} [options.fast]
  * @param {number}  [options.scale]
  * @param {Array<string|RegExp>} [options.exclude]
  * @param {string}  [options.excludeMode]
@@ -48,9 +47,6 @@ export function createContext(options = {}) {
   return {
     // Debug & perf
     debug: options.debug ?? false,
-    // Accepted for compatibility; the idle-sliced non-fast path was removed (captures are
-    // fast enough that deferring work only added latency). Always behaves as fast.
-    fast: options.fast ?? true,
     scale: options.scale ?? 1,
 
     // DOM filters
@@ -105,8 +101,9 @@ export function createContext(options = {}) {
     // costs a persistent observer per element, wasted on a one-shot capture. When this is
     // NOT set, snapdom instead tracks capture frequency cheaply and suggests it once if the
     // same element is captured repeatedly (see checkBurstAdvice in capture.js).
-    // Tri-state: true/false are explicit; undefined lets shouldAutoBurst enable it when the
-    // same element is captured repeatedly (see src/core/burst.js).
+    // Burst memoization is default engine behavior (auto-engages on repeat captures, see
+    // src/core/burst.js). true/false remain INTERNAL-ONLY escapes (tests/benchmarks need
+    // deterministic full-pipeline runs), not public API.
     burst: options.burst,
 
     // EXPERIMENTAL: 'canvas' opts into the WICG canvas-place-element engine when the browser
@@ -119,8 +116,9 @@ export function createContext(options = {}) {
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 
-    // Perceptual image downsampling. On by default (big speed win on image-heavy raster captures,
-    // ~free on the common case, fidelity-neutral). Pass `compress: false` to embed images verbatim.
+    // Perceptual image downsampling — always-on engine behavior (fidelity-neutral: codecs
+    // preserved, output adopted only when smaller). `compress: false` is INTERNAL-ONLY
+    // (benchmarks/tests measuring the uncompressed pipeline), not public API.
     compress: options.compress !== false,
 
     // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
