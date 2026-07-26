@@ -200,8 +200,15 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   const softenTag = softensWidth(tagName, display)
   // Only soften when the box is sized by its content: a frozen used width then wraps the text
   // (#429) / pins the table (#434). An empty box sized by a CSS class (#433 inline-block span,
-  // ExtJS button-icon spans) must keep its width.
-  const soften = softenTag && sizedByContent
+  // ExtJS button-icon spans) must keep its width. Boxes whose text cannot wrap (nowrap/pre)
+  // are frozen too (#474): softening lets them GROW under raster metric drift, and growth in a
+  // min-content layout like KaTeX pushes siblings past the frozen root and line-wraps them —
+  // catastrophic vs the sub-pixel overflow a frozen nowrap box risks. Real inline boxes ignore
+  // `width`, so softening stays (dropping it costs nothing and keeps the CSS smaller).
+  const noWrapMode = (snapshot['text-wrap-mode'] || snapshot['white-space'] || '')
+  const frozenNoWrap = softenTag && sizedByContent && !isInline &&
+    (noWrapMode === 'nowrap' || noWrapMode === 'pre')
+  const soften = softenTag && sizedByContent && !frozenNoWrap
 
   let keptMinWidth = false
   for (const prop in snapshot) {
@@ -223,7 +230,10 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
       // Blink lays out in 1/64px units but serializes computed lengths rounded to 1/1000 —
       // sometimes DOWN. Freezing a shrink-to-fit box a hair below its true width re-wraps
       // its text. Round frozen widths UP to the next 1/16px (invisible, guarantees fit).
-      if ((prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
+      // Not for nowrap-frozen boxes (#474): their text can't re-wrap (worst case clips
+      // ≤0.0005px), and in a packed min-content row like KaTeX the per-box round-ups
+      // accumulate past the root's frozen width and line-wrap the row.
+      if (!frozenNoWrap && (prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
         const n = parseFloat(value)
         if (Number.isFinite(n)) {
           entries.push(`${prop}:${Math.ceil(n * 16) / 16}px`)
