@@ -178,6 +178,14 @@ works in Playwright!):**
   resolve on the CLONE in freezeImgSrcset (findLazySrcAttr) and inlineImages fetches them
   like any source. `runPictureResolverBeforeClone` survives only for the back-compat
   plugin export.
+- **animation guard** (user-found in the showcase transition demo): CSS animations /
+  transitions / WAAPI repaint every frame with NO mutation records, so 3+ captures froze
+  on the memoized frame while the original kept moving — and GIF/video recording of
+  CSS-animated content would have frozen the same way. While `getAnimations({subtree})`
+  reports anything running, the memo is neither served nor stored, and pre-animation
+  memos are dropped (they'd resurface as a stale frame the moment the animation ends).
+  This completes the invisible-changes coverage: mutations, video, images, fonts, scroll,
+  resize, head CSS, and now animations. Canvas remains the only exclusion (opt-in).
 - **Evaluated, intentionally NOT done**: (a) reconcile warning stays — embedFonts 'auto'
   removes the webfont-fallback rewrap cause, but system-ui metric drift in svg-as-image
   persists, so the risk is still real; (b) #6 memory (data-URL string duplication) —
