@@ -83,3 +83,30 @@ describe('image loads invalidate the memo (no DOM mutation involved)', () => {
     expect(after).not.toBe(results[4]) // memo dropped, fresh capture
   })
 })
+
+describe('scroll invalidates the memo (no DOM mutation involved)', () => {
+  it('a scrolled descendant drops the memo and the next capture reflects the new position', async () => {
+    const wrap = document.createElement('div')
+    wrap.style.cssText = 'width:220px;padding:6px;background:#fff'
+    const scroller = document.createElement('div')
+    scroller.style.cssText = 'width:200px;height:100px;overflow:auto'
+    for (const c of ['red', 'lime', 'blue']) {
+      const line = document.createElement('div')
+      line.style.cssText = `height:100px;background:${c}`
+      scroller.appendChild(line)
+    }
+    wrap.appendChild(scroller)
+    document.body.appendChild(wrap)
+    void scroller.offsetHeight
+
+    const results = []
+    for (let i = 0; i < 5; i++) results.push(await snapdom(wrap))
+    expect(results[4]).toBe(results[3]) // memo engaged
+
+    scroller.scrollTop = 100 // fires a scroll event, produces no mutation record
+    scroller.dispatchEvent(new Event('scroll')) // programmatic scroll may defer the event
+    const after = await snapdom(wrap)
+    expect(after).not.toBe(results[4])
+    expect(decodeURIComponent(after.url.split(',')[1])).toMatch(/translate\(0px,\s*-(9[5-9]|10[0-5])(\.\d+)?px\)/)
+  })
+})

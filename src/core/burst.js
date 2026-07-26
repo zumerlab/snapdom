@@ -166,6 +166,13 @@ function createState(element) {
 
   state.markDirty = markDirty
   state.onMediaDirty = onMediaDirty
+  // Scroll positions change rendering with NO DOM mutation (scrollTop isn't an attribute):
+  // a scrolled container inside the memoized element would serve its pre-scroll frame
+  // forever. scroll doesn't bubble but does capture-phase propagate — one listener covers
+  // the element and every scrollable descendant. GC'd with the element like the observers.
+  try {
+    element.addEventListener('scroll', onMediaDirty, { capture: true, passive: true })
+  } catch { /* degrade: scrolls won't invalidate */ }
   trackVideos(element, state, onMediaDirty)
   trackPendingImages(element, state)
   wireFontEpoch(doc)
