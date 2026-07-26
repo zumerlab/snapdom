@@ -70,6 +70,19 @@ with the same new signature adopts it as the baseline and the memo re-engages (m
 core.capture.autoburst.rebase.test.js. The `state.capturing` guard on markDirty already
 handled capture-own live-DOM mutations correctly — that was not the issue.
 
+A second, worse hole surfaced by the visual suite (dimension mismatches, e.g. 644x753
+baseline vs 640x512 actual): image and font loads change layout/paint WITHOUT any DOM
+mutation, so a memo taken while a subtree <img> was still loading survived the load and
+served the short pre-load layout forever. Fixed (6620d4a): pending imgs get load/error
+listeners that dirty the state unconditionally (even mid-capture — the in-flight capture
+used the stale layout too), and a module-level document.fonts 'loadingdone' epoch is
+compared per capture. This closes the resource-load blindness for auto mode; canvas
+remains the only excluded case.
+
+Flake triage evidence: with auto-burst force-disabled, d13-svg-pdf-mathjax (0.59%) and
+d5-demo-gallery still fail intermittently in isolated runs — those are CDN-font/decode
+timing flakes independent of this branch, same family as d-compress.
+
 ## Known flake (pre-existing)
 
 `visual.demos.test.js > d-compress` on webkit fails intermittently (~1 in 5 FULL-suite runs,
