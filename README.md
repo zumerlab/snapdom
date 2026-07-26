@@ -402,7 +402,7 @@ Shipping something built with SnapDOM? Add the badge to your README:
 
 ### Projects using SnapDOM
 
-SnapDOM runs in production across 290+ public repositories ([GitHub dependents graph](https://github.com/zumerlab/snapdom/network/dependents)). A few notable ones, each verified from its own `package.json`:
+SnapDOM runs in production across 250+ public repositories ([GitHub dependents graph](https://github.com/zumerlab/snapdom/network/dependents)). A few notable ones, each verified from its own `package.json`:
 
 - [LobeHub](https://github.com/lobehub/lobehub) — platform for operating AI agents
 - [Trilium Notes](https://github.com/TriliumNext/Trilium) — hierarchical personal knowledge base
@@ -413,6 +413,8 @@ SnapDOM runs in production across 290+ public repositories ([GitHub dependents g
 - [Rabby Wallet](https://github.com/RabbyHub/Rabby) — browser wallet for EVM chains
 - [uMap](https://github.com/umap-project/umap) — OpenStreetMap map builder
 - [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — music tracker by MetaBrainz
+- [Mind Elixir](https://github.com/SSShooter/mind-elixir-core) — mind-map core; recommends SnapDOM for image export
+- [Kong UI Components](https://github.com/Kong/public-ui-components) — Kong's dashboard renderer exports PDFs with SnapDOM
 - [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing *(by Zumerlab)*
 
 See the full gallery at **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**. Shipping SnapDOM? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project — real, verifiable projects only.
