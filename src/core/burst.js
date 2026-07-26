@@ -136,7 +136,24 @@ export function captureWithBurst(element, userOptions, context, runCapture) {
   // A call whose options differ from the element's established burst baseline is a one-off:
   // always fresh, and must not overwrite (or be satisfied by) the memoized baseline result.
   const sig = optionsSignature(userOptions)
-  const isOneOff = sig === null || sig !== state.baselineSignature
+  let isOneOff = sig === null || sig !== state.baselineSignature
+  if (isOneOff && sig !== null) {
+    // The usage pattern changed (e.g. auto-burst tripped during one-off calls with other
+    // options, then a polling loop settles on new ones): the SECOND consecutive call with
+    // the same new signature adopts it as the baseline so the memo re-engages, instead of
+    // treating every future call as a one-off forever.
+    if (state.pendingSig === sig) {
+      state.baselineSignature = sig
+      state.last = null
+      state.dirty = true
+      state.pendingSig = null
+      isOneOff = false
+    } else {
+      state.pendingSig = sig
+    }
+  } else {
+    state.pendingSig = null
+  }
 
   const run = async () => {
     for (const o of state.observers) state.markDirty(o.takeRecords())

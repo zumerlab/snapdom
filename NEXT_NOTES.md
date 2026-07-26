@@ -60,15 +60,15 @@ turning black): the base reset stamped resolved defaults like `-webkit-text-fill
 rgb(0,0,0)` that pruned class diffs could no longer override. Fixed in 630c6a4 by pruning
 the base reset with the same universe — which also shrinks output CSS.
 
-## Open question: auto-burst engagement on some scenes
+## Resolved: auto-burst engagement gap (adaptive baseline)
 
-Head-to-head profiling showed the synthetic card-grid scene does NOT get memoized by
-auto-burst (poll of 10 ≈ 10 warm pipelines), while the labs Pikachu card demo memoizes
-fine (17/20 polls). Something in the capture of that scene marks the element dirty every
-time (suspects: stabilizeLayout/live-element temporary mutations whose records land after
-the post-capture takeRecords() drain, or scrollbar probing). Worth instrumenting
-`markDirty` before graduating auto-burst — the win is real where it engages, but
-engagement should be predictable.
+The grid scene wasn't memoizing because `captureWithBurst` pinned `baselineSignature` to
+whatever options the FIRST burst-routed call carried; when the polling loop then used
+different options, every call was a one-off forever. Fixed: the second consecutive call
+with the same new signature adopts it as the baseline and the memo re-engages (measured:
+10-poll loop 41.8ms -> 0.1ms on the grid scene). Regression test:
+core.capture.autoburst.rebase.test.js. The `state.capturing` guard on markDirty already
+handled capture-own live-DOM mutations correctly — that was not the issue.
 
 ## Known flake (pre-existing)
 
