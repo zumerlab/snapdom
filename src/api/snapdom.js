@@ -81,6 +81,14 @@ async function main(element, userOptions) {
     }
   }
 
+  // EXPERIMENTAL engine seam — fully quarantined in src/engines/ (lazy import: zero cost
+  // unless opted in via engine:'canvas'); null return falls through to the normal pipeline.
+  if (context.engine === 'canvas') {
+    const { tryEngineResult } = await import('../engines/htmlInCanvas.js')
+    const engineResult = await tryEngineResult(element, context, () => snapdom.capture(element, context, INTERNAL_TOKEN))
+    if (engineResult) return engineResult
+  }
+
   // Explicit burst wins; unset auto-enables on repeated captures of the same element.
   const burst = context.burst === undefined ? shouldAutoBurst(element) : context.burst
   if (burst) {

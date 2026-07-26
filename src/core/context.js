@@ -102,6 +102,10 @@ export function createContext(options = {}) {
     // Tri-state: true/false are explicit; undefined lets shouldAutoBurst enable it when the
     // same element is captured repeatedly (see src/core/burst.js).
     burst: options.burst,
+
+    // EXPERIMENTAL: 'canvas' opts into the WICG canvas-place-element engine when the browser
+    // supports it (see src/engines/htmlInCanvas.js); anything else uses the svg pipeline.
+    engine: options.engine,
     // One-off with burst:true — force a fresh capture for changes automatic tracking can't
     // see (canvas pixel draws, programmatic CSSOM edits). Ignored without burst:true.
     invalidate: options.invalidate ?? false,
