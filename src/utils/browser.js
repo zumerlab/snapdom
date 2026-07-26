@@ -4,13 +4,11 @@
  * @returns {Promise<void>} Promise that resolves after the delay
  */
 
-export function idle(fn, { fast = false } = {}) {
-  if (fast) return fn()
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(fn, { timeout: 50 })
-  } else {
-    setTimeout(fn, 1)
-  }
+/** Legacy shim: the idle-sliced scheduling path is gone — captures are fast enough that
+ *  deferring work across idle callbacks only added allocations and latency (the `fast`
+ *  option is accepted and ignored). Kept as a call-through so call sites stay uniform. */
+export function idle(fn, _opts = {}) {
+  return fn()
 }
 
 export function isIOS() {

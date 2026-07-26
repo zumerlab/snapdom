@@ -3,7 +3,7 @@
  * @module utils/clone.helpers
  */
 
-import { idle, debugWarn, getStyle } from './index.js'
+import { debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
@@ -17,32 +17,10 @@ import { findRealUrlForPicture, pickSrcsetCandidate } from '../modules/pictureRe
  * @param {boolean} fast
  * @returns {Promise<(Node|null)[]>}
  */
-export function idleCallback(childList, callback, fast) {
-  if (fast) {
-    // Fast mode ran every child through deal()/idle() anyway (synchronously), paying an extra
-    // promise + two closures per node — tens of thousands of allocations on large trees.
-    // Call straight through; Promise.all keeps the same concurrency and ordering.
-    return Promise.all(childList.map((child) => new Promise((resolve) => callback(child, resolve))))
-  }
-  return Promise.all(childList.map((child) => {
-    return new Promise((resolve) => {
-      function deal() {
-        idle((deadline) => {
-          // Safari iOS doesn't expose IdleDeadline constructor; duck-type it instead
-          const hasIdleBudget = deadline && typeof deadline.timeRemaining === 'function'
-            ? deadline.timeRemaining() > 0
-            : true // setTimeout path or unknown object
-
-          if (hasIdleBudget) {
-            callback(child, resolve)
-          } else {
-            deal()
-          }
-        }, { fast })
-      }
-      deal()
-    })
-  }))
+export function idleCallback(childList, callback) {
+  // Single path: the old non-fast branch re-scheduled every child through idle slices —
+  // thousands of allocations per large tree for no benefit at today's capture times.
+  return Promise.all(childList.map((child) => new Promise((resolve) => callback(child, resolve))))
 }
 
 /**

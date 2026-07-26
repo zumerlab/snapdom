@@ -7,7 +7,6 @@ import { generateCSSClasses, stripTranslate, debugWarn, getStyle } from '../util
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
-import { cache } from '../core/cache.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'

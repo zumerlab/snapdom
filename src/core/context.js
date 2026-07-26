@@ -48,6 +48,8 @@ export function createContext(options = {}) {
   return {
     // Debug & perf
     debug: options.debug ?? false,
+    // Accepted for compatibility; the idle-sliced non-fast path was removed (captures are
+    // fast enough that deferring work only added latency). Always behaves as fast.
     fast: options.fast ?? true,
     scale: options.scale ?? 1,
 

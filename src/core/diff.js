@@ -221,7 +221,6 @@ async function diffCapture(element, state, context) {
       outerTransforms: R.outerTransforms,
       outerShadows: R.outerShadows,
       rootTransform2D: R.rootTransform2D,
-      fast: context.fast,
       fontsCSS: R.fontsCSS || ''
     }
   )

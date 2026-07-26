@@ -79,7 +79,6 @@ function collectResolveNodeHooks(options) {
  * @param {Element} element - DOM element to capture
  * @param {Object} [options={}] - Capture options
  * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
- * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {Function} [options.filter] - Custom filter function
@@ -94,7 +93,6 @@ export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   options.__session = createCaptureSession(options.cache)
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
-  const fast = options.fast
   const outerTransforms = options.outerTransforms !== false   // default: true
 
   const outerShadows = !!options.outerShadows
@@ -169,7 +167,7 @@ export async function captureDOM(element, options) {
   // concurrently (they were serialized before, stacking their network latencies). Compress
   // depends on the inlined data URLs, so it waits for images+backgrounds only.
   const runIdle = (fn) => new Promise((resolve, reject) => {
-    idle(() => { Promise.resolve().then(fn).then(resolve, reject) }, { fast })
+    idle(() => { Promise.resolve().then(fn).then(resolve, reject) })
   })
 
   const assetsPhase = (async () => {
@@ -241,7 +239,7 @@ export async function captureDOM(element, options) {
 
   await Promise.all([assetsPhase, fontsPhase])
 
-  const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fast, fontsCSS })
+  const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS })
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential
   // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty
   // subtrees). Internal-only; absent for plain captures.
@@ -249,7 +247,7 @@ export async function captureDOM(element, options) {
     try {
       options.__retain({
         clone, nodeMap, styleCache, styleMap: options.__session.styleMap,
-        classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D, fast
+        classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D
       })
     } catch { /* retention is best-effort */ }
   }
@@ -264,7 +262,7 @@ export async function captureDOM(element, options) {
  * @returns {Promise<string>} SVG data URL
  */
 export async function composeAndSerialize(state, ex) {
-  const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fast, fontsCSS } = ex
+  const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS } = ex
   const options = state.options
   let baseCSS = ''
   let dataURL
@@ -279,7 +277,7 @@ export async function composeAndSerialize(state, ex) {
         baseCSS = generateDedupedBaseCSS(usedTags, universeFor(state.element))
         cache.baseStyle.set(tagKey, baseCSS)
         resolve()
-      }, { fast })
+      })
     })
   }
   // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
@@ -584,7 +582,7 @@ export async function composeAndSerialize(state, ex) {
       dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
       state = { svgString, dataURL, ...state }
       resolve()
-    }, { fast })
+    })
   })
   // afterRender(context)
   await runHook('afterRender', state)

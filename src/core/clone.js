@@ -491,7 +491,7 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
 
-    const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), callback, options.fast)
+    const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), callback)
     shadowFrag.append(...cloneList.filter(clonedChild => !!clonedChild))
     clone.appendChild(shadowFrag)
   }
@@ -510,7 +510,7 @@ export async function deepClone(node, sessionCache, options) {
         resolve(null)
       })
     }
-    const cloneList = await idleCallback(Array.from(nodesToClone), callback, options.fast)
+    const cloneList = await idleCallback(Array.from(nodesToClone), callback)
     fragment.append(...cloneList.filter(clonedChild => !!clonedChild))
     return fragment
   }
@@ -523,7 +523,7 @@ export async function deepClone(node, sessionCache, options) {
       resolve(null)
     })
   }
-  const cloneList = await idleCallback(Array.from(node.childNodes), callback, options.fast)
+  const cloneList = await idleCallback(Array.from(node.childNodes), callback)
   clone.append(...cloneList.filter(clonedChild => !!clonedChild))
 
   // Adjust select value after children are cloned
