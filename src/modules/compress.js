@@ -59,6 +59,87 @@ function sourceMime(dataURL) {
  * @param {number} targetH - visible box height in device pixels
  * @returns {Promise<string|null>}
  */
+
+// ——— Worker offload (E) ———
+// decode + downscale + re-encode are pure pixel work: off the main thread they stop
+// blocking interaction during image-heavy captures and run in parallel with the rest of
+// the pipeline. Inline worker (no build infra); any failure flips to the sync path.
+const WORKER_SRC = `self.onmessage = async (e) => {
+  const { id, dataURL, targetW, targetH, resFactor, quality, mime } = e.data
+  try {
+    const blob = await (await fetch(dataURL)).blob()
+    const bmp = await createImageBitmap(blob)
+    const nw = bmp.width, nh = bmp.height
+    if (!nw || !nh) { bmp.close(); self.postMessage({ id, url: null }); return }
+    const raw = Math.min(1, Math.max(targetW / nw, targetH / nh))
+    if (!(raw > 0) || raw >= 0.95) { bmp.close(); self.postMessage({ id, url: null }); return }
+    const factor = raw * resFactor
+    const ow = Math.max(1, Math.round(nw * factor))
+    const oh = Math.max(1, Math.round(nh * factor))
+    const canvas = new OffscreenCanvas(ow, oh)
+    const ctx = canvas.getContext('2d')
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(bmp, 0, 0, ow, oh)
+    bmp.close()
+    const out = await canvas.convertToBlob({ type: mime, quality })
+    const url = new FileReaderSync().readAsDataURL(out)
+    self.postMessage({ id, url: (url && url.length < dataURL.length) ? url : null })
+  } catch (err) {
+    self.postMessage({ id, error: String(err) })
+  }
+}`
+
+let _worker = null // null = not tried, false = unavailable/broken
+let _seq = 0
+const _pending = new Map()
+function getCompressWorker() {
+  if (_worker !== null) return _worker
+  try {
+    if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') {
+      _worker = false
+      return false
+    }
+    const w = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })))
+    w.onmessage = (e) => {
+      const resolve = _pending.get(e.data.id)
+      if (resolve) {
+        _pending.delete(e.data.id)
+        resolve(e.data.error ? undefined : (e.data.url ?? null))
+      }
+    }
+    w.onerror = () => {
+      // Broken worker (CSP, engine gap): fail every pending request over to the sync path
+      // and stop using it.
+      for (const resolve of _pending.values()) resolve(undefined)
+      _pending.clear()
+      try { w.terminate() } catch { /* ok */ }
+      _worker = false
+    }
+    _worker = w
+  } catch {
+    _worker = false
+  }
+  return _worker
+}
+
+/** Runs the downsample in the worker. Resolves null (no gain / skip), a data URL, or
+ *  undefined when the worker path failed and the caller must use the sync fallback. */
+function workerDownsample(dataURL, targetW, targetH, mime) {
+  const w = getCompressWorker()
+  if (!w) return Promise.resolve(undefined)
+  return new Promise((resolve) => {
+    const id = ++_seq
+    _pending.set(id, resolve)
+    try {
+      w.postMessage({ id, dataURL, targetW, targetH, resFactor: RES_FACTOR, quality: LOSSY_QUALITY, mime })
+    } catch {
+      _pending.delete(id)
+      resolve(undefined)
+    }
+  })
+}
+
 export async function downsampleDataURL(dataURL, targetW, targetH) {
   if (typeof dataURL !== 'string' || !dataURL.startsWith('data:image')) return null
   // SVG data URLs are vectors — rasterizing them here would *lose* fidelity, not save bytes.
@@ -72,6 +153,15 @@ export async function downsampleDataURL(dataURL, targetW, targetH) {
   if (cache.compress.has(cacheKey)) return cache.compress.get(cacheKey)
 
   const result = await (async () => {
+    // Preserve the source codec so lossless stays lossless; fall back to PNG for anything exotic.
+    const sm = sourceMime(dataURL)
+    const mime = sm === 'image/jpeg' ? 'image/jpeg' : sm === 'image/webp' ? 'image/webp' : 'image/png'
+
+    // Preferred path: pixel work in the worker (decode + scale + encode off the main thread).
+    const offloaded = await workerDownsample(dataURL, targetW, targetH, mime)
+    if (offloaded !== undefined) return offloaded
+
+    // Sync fallback (no Worker/OffscreenCanvas, CSP-blocked blob workers, worker error).
     let img
     try { img = await loadImage(dataURL) } catch { return null }
     const nw = img.naturalWidth || img.width
@@ -97,9 +187,6 @@ export async function downsampleDataURL(dataURL, targetW, targetH) {
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(img, 0, 0, ow, oh)
 
-    // Preserve the source codec so lossless stays lossless; fall back to PNG for anything exotic.
-    const sm = sourceMime(dataURL)
-    const mime = sm === 'image/jpeg' ? 'image/jpeg' : sm === 'image/webp' ? 'image/webp' : 'image/png'
     try {
       // PNG ignores the quality arg (lossless); JPEG/WebP honor it.
       const out = canvas.toDataURL(mime, LOSSY_QUALITY)
