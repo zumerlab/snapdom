@@ -454,16 +454,11 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   const { contentWidth, contentHeight, rect } = measureContentBox(iframe)
 
-  // Prefer options.snap (set by main()); fallback to window.snapdom (IIFE build)
-  let snap = options?.snap
-  if (!snap && typeof window !== 'undefined' && window.snapdom) {
-    snap = window.snapdom
-  }
+  // main() threads the capture entrypoints on the context (context.snap) — no global
+  // window.snapdom dependency anymore. Direct captureDOM/deepClone callers must pass it.
+  const snap = options?.snap
   if (!snap || typeof snap.toPng !== 'function') {
-    throw new Error(
-      '[snapdom] iframe capture requires snapdom.toPng. Use snapdom(el) or pass options.snap. ' +
-      'With ESM, assign window.snapdom = snapdom after import if using iframes.'
-    )
+    throw new Error('[snapdom] iframe capture requires the snapdom entrypoints on options.snap — capture through snapdom(el) (set automatically) or pass options.snap.')
   }
 
   // Avoid double scaling; parent capture decides final scale. Drop clip: a visible iframe
