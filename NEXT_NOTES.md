@@ -90,11 +90,29 @@ timing flakes independent of this branch, same family as d-compress.
 prior history of intermittent blanks (see bench/snapeye-dev.mjs investigation). Options:
 per-demo mismatch tolerance bump for webkit, or re-run that harness under load.
 
+## 4. `feat: differential recapture` (burst v2) — **DONE, the ambitious one**
+
+`src/core/diff.js` + dirty-subtree tracking in burst + `composeAndSerialize` extracted from
+captureDOM + `applyStyleClass`/`wrapScrolledClone` extracted from prepareClone. When only
+subtrees mutated, the retained clone from the last full capture gets just those subtrees
+rebuilt (deepClone + pseudo + assets + compress, scoped), spliced, classes regenerated, and
+re-serialized. Measured: mutating poll x10 on a 48-card grid **124.7ms -> 25.9ms (4.8x)**,
+served 10/10, and the output is **byte-identical** to a full capture of the same DOM state
+(that's the test assertion, not pixel-approximate).
+
+Hard-bail conditions (any -> full pipeline, correctness never depends on the diff):
+- options: reconcile / clip / embedFonts / filterMode:'remove' / excludeMode:'remove'
+- unreadable (cross-origin) CSS, or stylesheets using sibling combinators (+ ~), :has(),
+  or CSS counters — those let a mutation change rendering OUTSIDE its subtree
+- dirty subtree contains svg/iframe/canvas/video/audio/object/embed/slot/template/picture/style
+  or introduces shadow content; dirty root is the capture root or its direct child
+- **geometry guard**: if the dirty root's frozen box/margins/display differ from its current
+  computed values, the mutation reflowed the neighborhood (frozen sibling min-widths go
+  stale) -> full. This is what keeps byte-fidelity honest; found via a real leak where an
+  added badge reflowed a grid and sibling min-widths diverged.
+
 ## Not done (assessed, next steps)
 
-- **Differential capture (burst v2)**: keep the clone alive; MutationObserver marks dirty
-  subtrees; recapture re-runs stages only on dirty nodes and splices. Turns mutating-poll
-  captures from O(tree) into O(dirty). Builds on burst + nodeMap + reconcile pieces.
 - **RenderBackend abstraction**: isolate foreignObject-svg rendering behind an interface so
   WICG html-in-canvas (`drawElementImage`) can slot in when it ships; quarantines the
   per-engine quirk layer (Safari fixes) into one backend file.
