@@ -111,11 +111,28 @@ Hard-bail conditions (any -> full pipeline, correctness never depends on the dif
   stale) -> full. This is what keeps byte-fidelity honest; found via a real leak where an
   added badge reflowed a grid and sibling min-widths diverged.
 
+## 5. `feat: html-in-canvas engine` (D) — **DONE as quarantined module, platform-blocked**
+
+`src/engines/htmlInCanvas.js` — NOT core: the only core knowledge is a 3-line lazy-import
+seam in snapdom.js behind the opt-in `engine: 'canvas'` option (+ one line in context/types).
+Model: mounts a live-DOM copy INSIDE a `layoutsubtree` canvas (same document → page CSS
+applies, zero snapshotting) with the element's ancestor chain as `display:contents` shells
+(selector context + inheritance, no boxes), syncs form state, `ctx.drawElement(...)`.
+Null on any doubt → normal pipeline; vector APIs (toRaw/toSvg) lazily run the pipeline.
+
+**Platform findings (verified against flagged Chromium, `--enable-blink-features=CanvasDrawElement`
+works in Playwright!):**
+- `drawElement` exists and PAINTS PIXEL-PERFECTLY — including **native buttons/inputs**,
+  the exact fidelity class the svg pipeline can't reproduce (screenshot proof captured).
+- Without `layoutsubtree` it throws; hidden/offscreen mounts skip the paint pass.
+- **It currently TAINTS the canvas unconditionally** (even local-only content): no
+  getImageData/toBlob → no encodable exports today → the engine's taint probe routes
+  everything to the pipeline. The module is future-ready: when Chromium ships same-origin
+  readback, `engine:'canvas'` lights up with no code changes.
+- Plugin compat rule implemented: any plugins present → pipeline (conservative v1).
+
 ## Not done (assessed, next steps)
 
-- **RenderBackend abstraction**: isolate foreignObject-svg rendering behind an interface so
-  WICG html-in-canvas (`drawElementImage`) can slot in when it ships; quarantines the
-  per-engine quirk layer (Safari fixes) into one backend file.
 - **Worker offload**: only `compress` downsampling qualifies (OffscreenCanvas); svg-as-image
   decode must stay on main. Low priority.
 - **Folder reorg by pipeline stage**: deliberately skipped — ~90 test files import src paths
