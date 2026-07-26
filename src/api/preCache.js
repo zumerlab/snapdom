@@ -33,11 +33,6 @@ export async function preCache(root = document, options = {}) {
   // Warm common tag/style caches (no-op if already done)
   try { precacheCommonTags() } catch {}
 
-  // Ensure session caches
-  cache.session = cache.session || {}
-  if (!cache.session.styleCache) {
-    cache.session.styleCache = new WeakMap()
-  }
   cache.image = cache.image || new EvictingMap(100)
   cache.background = cache.background || new EvictingMap(100)
 

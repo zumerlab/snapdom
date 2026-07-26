@@ -24,9 +24,10 @@ import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.help
  */
 
 export async function prepareClone(element, options = {}) {
-  // Prefer the snapshot captureDOM took synchronously at capture start — cache.session may
-  // belong to a different in-flight capture by the time this runs (see capture.js).
-  const session = options.__session || cache.session
+  // captureDOM always provides its own session (createCaptureSession). Direct callers
+  // (tests, embedders) get fresh isolated maps — production code never reads the mutable
+  // cache.session global here anymore.
+  const session = options.__session || { styleMap: new Map(), styleCache: new WeakMap(), nodeMap: new Map() }
   const sessionCache = {
     styleMap: session.styleMap,
     styleCache: session.styleCache,

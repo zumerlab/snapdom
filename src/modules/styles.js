@@ -310,7 +310,8 @@ function _resolveCtx(sessionOrCtx, opts) {
   }
 
   return {
-    session: cache.session,
+    // Direct callers without a session get isolated throwaway maps — never the global.
+    session: { styleMap: new Map(), styleCache: new WeakMap(), nodeMap: new Map() },
     persist: {
       snapshotKeyCache,
       defaultStyle: cache.defaultStyle,

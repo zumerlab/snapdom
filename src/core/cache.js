@@ -80,8 +80,9 @@ export function normalizeCachePolicy(v) {
  * @param {"soft"|"auto"|"full"|"disabled"} policy
  */
 export function applyCachePolicy(policy = 'soft') {
-  // Fresh per-capture session bucket (legacy surface — captures snapshot it immediately
-  // via createCaptureSession and never trust the global afterwards).
+  // Fresh per-capture session bucket. LEGACY/TEST SURFACE ONLY: the pipeline snapshots it
+  // immediately (createCaptureSession) and threads explicit references everywhere — the
+  // only remaining readers are default parameters serving direct module calls in tests.
   cache.session.styleMap   = new Map()
   cache.session.nodeMap    = new Map()
   cache.session.styleCache = new WeakMap()
