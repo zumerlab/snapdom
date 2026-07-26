@@ -84,7 +84,11 @@ async function main(element, userOptions) {
   // Explicit burst wins; unset auto-enables on repeated captures of the same element.
   const burst = context.burst === undefined ? shouldAutoBurst(element) : context.burst
   if (burst) {
-    return captureWithBurst(element, userOptions, context, () => snapdom.capture(element, context, INTERNAL_TOKEN))
+    return captureWithBurst(
+      element, userOptions, context,
+      () => snapdom.capture(element, context, INTERNAL_TOKEN),
+      (url) => buildResult(url, context)
+    )
   }
   return snapdom.capture(element, context, INTERNAL_TOKEN)
 }
@@ -102,6 +106,16 @@ snapdom.capture = async (el, context, _token) => {
   if (_token !== INTERNAL_TOKEN) throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.')
 
   const url = await captureDOM(el, context)
+  return buildResult(url, context)
+}
+
+/**
+ * Builds the exporter-result object for a capture URL (core exports, plugin exports,
+ * to<Format> helpers, hooks). Shared by snapdom.capture and burst's differential
+ * recapture, which produces a fresh URL without re-running captureDOM.
+ * @private
+ */
+async function buildResult(url, context) {
 
   // ——— 1) Core exports por defecto (carga lazy en cada tipo) ———
   // NOTA: no importamos estáticamente los exportadores aquí.

@@ -28,16 +28,22 @@ function isOwnedNode(node) {
 }
 export function hasExternalMutation(records) {
   for (const rec of records) {
-    if (isOwnedNode(rec.target)) continue
-    if (rec.type === 'childList') {
-      let allOwned = true
-      for (const n of rec.addedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
-      if (allOwned) for (const n of rec.removedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
-      if (allOwned) continue
-    }
-    return true
+    if (isExternalRecord(rec)) return true
   }
   return false
+}
+
+/** Per-record variant of the same ownership filter — burst's differential dirty-tracking
+ *  needs to attribute each external record to its subtree, not just a boolean. */
+export function isExternalRecord(rec) {
+  if (isOwnedNode(rec.target)) return false
+  if (rec.type === 'childList') {
+    let allOwned = true
+    for (const n of rec.addedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
+    if (allOwned) for (const n of rec.removedNodes) if (!isOwnedNode(n)) { allOwned = false; break }
+    if (allOwned) return false
+  }
+  return true
 }
 
 let __wired = false

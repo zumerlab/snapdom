@@ -107,29 +107,11 @@ export async function prepareClone(element, options = {}) {
   // #359: suppress native ::before/::after on elements where we inlined them (avoids double render from cloned <style>)
   const PSEUDO_SUPPRESS = '[data-snapdom-has-after]::after,[data-snapdom-has-before]::before{content:none!important;display:none!important}'
   // prepend shadow CSS so variables/rules are available for everything
-  classCSS = shadowScopedCSS + PSEUDO_SUPPRESS + classCSS
+  const classPrefixCSS = shadowScopedCSS + PSEUDO_SUPPRESS
+  classCSS = classPrefixCSS + classCSS
 
   for (const [node, key] of sessionCache.styleMap.entries()) {
-    if (node.tagName === 'STYLE') continue
-    /* c8 ignore next 4 */
-    if (node.getRootNode && node.getRootNode() instanceof ShadowRoot) {
-      node.setAttribute('style', key.replace(/;/g, '; '))
-      continue
-    }
-
-    // Fuera de Shadow DOM: aplica clase generada para compresión
-    const className = keyToClass.get(key)
-    if (className) node.classList.add(className)
-
-    // Reaplica backgroundImage para evitar que se pierda (si existe)
-    const bgImage = node.style?.backgroundImage
-    const hasIcon = node.dataset?.snapdomHasIcon
-    if (bgImage && bgImage !== 'none') node.style.backgroundImage = bgImage
-    /* c8 ignore next 4 */
-    if (hasIcon) {
-      node.style.verticalAlign = 'middle'
-      node.style.display = 'inline'
-    }
+    applyStyleClass(node, key, keyToClass)
   }
 
   // Re-anchor fixed/sticky clones to their painted position — in clip mode (the window is
@@ -152,49 +134,7 @@ export async function prepareClone(element, options = {}) {
     // scroll — un-scrolling the root here would compensate twice (blank output when
     // capturing a scrolled documentElement).
     if (sessionCache.clip && originalNode === element) continue
-    const scrollX = originalNode.scrollLeft
-    const scrollY = originalNode.scrollTop
-    const hasScroll = scrollX || scrollY
-    // Realm-safe HTML check: iframe-realm clones are not instances of this window's
-    // HTMLElement, but their scroll still needs compensating.
-    if (hasScroll && cloneNode?.nodeType === 1 && cloneNode.namespaceURI === 'http://www.w3.org/1999/xhtml') {
-      cloneNode.style.overflow = 'hidden'
-      cloneNode.style.scrollbarWidth = 'none'
-      cloneNode.style.msOverflowStyle = 'none'
-
-      // #364: Before wrapping with translate, adjust fixed/absolute descendants
-      // so they don't shift when the translate wrapper creates a new containing block.
-      try {
-        const positioned = cloneNode.querySelectorAll('*')
-        for (const child of positioned) {
-          if (child.nodeType !== 1 || child.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue
-          const pos = child.style.position
-          if (pos === 'fixed' || pos === 'absolute') {
-            const curTop = parseFloat(child.style.top) || 0
-            const curLeft = parseFloat(child.style.left) || 0
-            child.style.top = `${curTop + scrollY}px`
-            child.style.left = `${curLeft + scrollX}px`
-            if (pos === 'fixed') child.style.position = 'absolute'
-          }
-        }
-      } catch { /* non-blocking */ }
-
-      const inner = document.createElement('div')
-      // #413: baseCSS emits a `div{white-space:normal;font-family:…}` rule (from the tag's
-      // all:initial defaults) that directly targets this wrapper and overrides the inherited
-      // text formatting of the scrolled element (e.g. a <pre>'s pre-wrap/monospace). `all:unset`
-      // lets inherited props flow from the parent again (inline style beats the type selector)
-      // while keeping non-inherited props at initial, so the wrapper stays visually transparent.
-      inner.style.all = 'unset'
-      inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`
-      inner.style.willChange = 'transform'
-      inner.style.display = 'inline-block'
-      inner.style.width = '100%'
-      while (cloneNode.firstChild) {
-        inner.appendChild(cloneNode.firstChild)
-      }
-      cloneNode.appendChild(inner)
-    }
+    wrapScrolledClone(cloneNode, originalNode)
   }
   if (element === sessionCache.nodeMap.get(clone)) {
     const computed = sessionCache.styleCache.get(element) || getStyle(element)
@@ -224,6 +164,7 @@ export async function prepareClone(element, options = {}) {
   return {
     clone,
     classCSS,
+    classPrefixCSS,
     styleCache: sessionCache.styleCache,
     nodeMap: sessionCache.nodeMap,
     reconcileRisk: sessionCache.reconcileRisk || 0,
@@ -232,3 +173,87 @@ export async function prepareClone(element, options = {}) {
 }
 
 // helpers (stabilizeLayout, resolveBlobUrlsInTree) ahora vienen de utils; bloque antiguo eliminado.
+
+/**
+ * Applies a node's deduped style class (or the shadow-scoped style attribute) plus the
+ * per-node fixups that must survive class generation. Shared by prepareClone and burst's
+ * differential recapture, which re-derives keyToClass after splicing dirty subtrees.
+ * @param {Element} node - clone node (styleMap key)
+ * @param {string} key - style signature
+ * @param {Map<string,string>} keyToClass
+ */
+export function applyStyleClass(node, key, keyToClass) {
+  if (node.tagName === 'STYLE') return
+  /* c8 ignore next 4 */
+  if (node.getRootNode && node.getRootNode() instanceof ShadowRoot) {
+    node.setAttribute('style', key.replace(/;/g, '; '))
+    return
+  }
+
+  // Fuera de Shadow DOM: aplica clase generada para compresión
+  const className = keyToClass.get(key)
+  if (className) node.classList.add(className)
+
+  // Reaplica backgroundImage para evitar que se pierda (si existe)
+  const bgImage = node.style?.backgroundImage
+  const hasIcon = node.dataset?.snapdomHasIcon
+  if (bgImage && bgImage !== 'none') node.style.backgroundImage = bgImage
+  /* c8 ignore next 4 */
+  if (hasIcon) {
+    node.style.verticalAlign = 'middle'
+    node.style.display = 'inline'
+  }
+}
+
+/**
+ * Scroll compensation for one clone/source pair: hides scrollbars and wraps the clone's
+ * children in a translate(-scrollX,-scrollY) inner div, adjusting fixed/absolute
+ * descendants first (#364). No-op for unscrolled sources. Shared by prepareClone's
+ * whole-map pass and burst's differential recapture (delta entries only).
+ * @param {Element} cloneNode
+ * @param {Element} originalNode
+ */
+export function wrapScrolledClone(cloneNode, originalNode) {
+  const scrollX = originalNode.scrollLeft
+  const scrollY = originalNode.scrollTop
+  const hasScroll = scrollX || scrollY
+  // Realm-safe HTML check: iframe-realm clones are not instances of this window's
+  // HTMLElement, but their scroll still needs compensating.
+  if (!hasScroll || cloneNode?.nodeType !== 1 || cloneNode.namespaceURI !== 'http://www.w3.org/1999/xhtml') return
+  cloneNode.style.overflow = 'hidden'
+  cloneNode.style.scrollbarWidth = 'none'
+  cloneNode.style.msOverflowStyle = 'none'
+
+  // #364: Before wrapping with translate, adjust fixed/absolute descendants
+  // so they don't shift when the translate wrapper creates a new containing block.
+  try {
+    const positioned = cloneNode.querySelectorAll('*')
+    for (const child of positioned) {
+      if (child.nodeType !== 1 || child.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue
+      const pos = child.style.position
+      if (pos === 'fixed' || pos === 'absolute') {
+        const curTop = parseFloat(child.style.top) || 0
+        const curLeft = parseFloat(child.style.left) || 0
+        child.style.top = `${curTop + scrollY}px`
+        child.style.left = `${curLeft + scrollX}px`
+        if (pos === 'fixed') child.style.position = 'absolute'
+      }
+    }
+  } catch { /* non-blocking */ }
+
+  const inner = document.createElement('div')
+  // #413: baseCSS emits a `div{white-space:normal;font-family:…}` rule (from the tag's
+  // all:initial defaults) that directly targets this wrapper and overrides the inherited
+  // text formatting of the scrolled element (e.g. a <pre>'s pre-wrap/monospace). `all:unset`
+  // lets inherited props flow from the parent again (inline style beats the type selector)
+  // while keeping non-inherited props at initial, so the wrapper stays visually transparent.
+  inner.style.all = 'unset'
+  inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`
+  inner.style.willChange = 'transform'
+  inner.style.display = 'inline-block'
+  inner.style.width = '100%'
+  while (cloneNode.firstChild) {
+    inner.appendChild(cloneNode.firstChild)
+  }
+  cloneNode.appendChild(inner)
+}

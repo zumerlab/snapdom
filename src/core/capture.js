@@ -104,11 +104,8 @@ export async function captureDOM(element, options) {
   const preClipRect = options.clip ? resolveClipRect(element, options.clip) : null
   let state = { element, options, plugins: options.plugins }
 
-  let clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow
+  let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow
   let fontsCSS = ''
-  let baseCSS = ''
-  let dataURL
-  let svgString
   // NEW: store root transform (scale/skew) when outerTransforms is on
   let rootTransform2D = null
   // BEFORESNAP
@@ -127,7 +124,7 @@ export async function captureDOM(element, options) {
     // Keep this capture's own clone→source map: nested iframe captures reassign
     // cache.session.nodeMap concurrently (see rasterizeIframe), so the global cannot be
     // trusted after the clone phase — every later pass must use this reference.
-    ({ clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
+    ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
 
     if (reconcileRisk > 0 && !options.reconcile && !cache.warnedReconcile) {
       cache.warnedReconcile = true
@@ -229,6 +226,34 @@ export async function captureDOM(element, options) {
 
   await Promise.all([assetsPhase, fontsPhase])
 
+  const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fast, fontsCSS })
+  // Hand this capture's artifacts to whoever wants to retain them (burst's differential
+  // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty
+  // subtrees). Internal-only; absent for plain captures.
+  if (typeof options.__retain === 'function') {
+    try {
+      options.__retain({
+        clone, nodeMap, styleCache, styleMap: options.__session.styleMap,
+        classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D, fast
+      })
+    } catch { /* retention is best-effort */ }
+  }
+  return url
+}
+
+/**
+ * Compose + serialize tail of the pipeline: base reset, bbox/bleed math, foreignObject
+ * assembly and SVG data-URL encoding. Shared by captureDOM and burst's differential
+ * recapture (which rebuilds only dirty subtrees and re-enters here with retained state).
+ * `state` must carry element/options/plugins/clone/classCSS/styleCache/nodeMap.
+ * @returns {Promise<string>} SVG data URL
+ */
+export async function composeAndSerialize(state, ex) {
+  const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fast, fontsCSS } = ex
+  const options = state.options
+  let baseCSS = ''
+  let dataURL
+  let svgString
   const usedTags = collectUsedTagNames(state.clone).sort()
   const tagKey = usedTags.join(',')
   if (cache.baseStyle.has(tagKey)) {
