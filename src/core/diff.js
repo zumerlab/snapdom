@@ -22,14 +22,13 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { compressCloneAssets } from '../modules/compress.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
-import { universeFor } from '../modules/styles.js'
+import { universeFor, inlineAllStyles } from '../modules/styles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { sanitizeCloneForXHTML } from '../utils/capture.helpers.js'
 
 /** Content whose capture involves whole-tree or root-coupled machinery (svg defs hoisting,
  *  nested rasterization, shadow scoping…) — a dirty subtree touching any of these goes full. */
-const GEOMETRY_PROPS = ['width', 'height', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'display', 'position']
 const HEAVY_SUBTREE = 'svg,iframe,canvas,video,audio,object,embed,slot,template,picture,style'
 
 /** Selector/counter semantics that let a mutation inside one subtree change rendering
@@ -71,6 +70,23 @@ function stylesLeakAcrossSubtrees(doc, universe) {
   } catch { leaky = true }
   relationalCache.set(universe, leaky)
   return leaky
+}
+
+/** Parsed box geometry from a style key, memoized per key string (keys are deduped). */
+const keyGeomCache = new Map()
+const GEOM_PROPS = ['width', 'height', 'min-width', 'min-height']
+function geomOfKey(key) {
+  let g = keyGeomCache.get(key)
+  if (g === undefined) {
+    g = null
+    for (const p of GEOM_PROPS) {
+      const m = key.match(new RegExp('(?:^|;)' + p + ':([^;]+)'))
+      if (m && m[1].endsWith('px')) (g ||= {})[p] = m[1]
+    }
+    if (keyGeomCache.size > 5000) keyGeomCache.clear()
+    keyGeomCache.set(key, g)
+  }
+  return g
 }
 
 function stripGeneratedClasses(node) {
@@ -151,23 +167,6 @@ async function diffCapture(element, state, context) {
     const oldClone = R.srcToClone.get(src)
     if (!oldClone || !oldClone.parentNode) return null
 
-    // Layout-ripple guard: frozen styles OUTSIDE this subtree (softened min-widths,
-    // measured boxes of siblings) are only still valid if this subtree's outer geometry
-    // didn't change. Compare the source's current box/margins against what the old
-    // clone's style key froze pre-mutation; any drift → the mutation reflowed the
-    // neighborhood and only the full pipeline sees it.
-    const oldKey = R.styleMap.get(oldClone) || ''
-    const frozen = {}
-    for (const part of oldKey.split(';')) {
-      const ci = part.indexOf(':')
-      if (ci > 0) frozen[part.slice(0, ci)] = part.slice(ci + 1)
-    }
-    if (!frozen.width || !frozen.height) return null
-    const csSrc = getComputedStyle(src)
-    for (const p of GEOMETRY_PROPS) {
-      if (frozen[p] !== undefined && csSrc.getPropertyValue(p) !== frozen[p]) return null
-    }
-
     // Rebuild the subtree through the same passes the full pipeline runs for that region,
     // sharing the retained styleMap/styleCache (class dedup accumulates) with a fresh
     // delta nodeMap so subtree-scoped passes see only their own nodes.
@@ -194,6 +193,27 @@ async function diffCapture(element, state, context) {
       R.nodeMap.set(cloneNode, srcNode)
       R.srcToClone.set(srcNode, cloneNode)
     }
+  }
+
+  // Geometry reconcile: a subtree mutation can reflow its NEIGHBORHOOD (grid/flex/table
+  // tracks, float wrapping), going stale in frozen sibling boxes (softened min-widths,
+  // measured sizes). One pass over the retained pairs refreshes the style key of every box
+  // whose computed geometry drifted — the same values a full pipeline would snapshot at the
+  // current epoch, so byte-fidelity holds without bailing on layout-changing mutations.
+  const sessionLike = { styleMap: R.styleMap, styleCache: R.styleCache, nodeMap: R.nodeMap, options: context }
+  for (const [cloneN, srcN] of R.nodeMap.entries()) {
+    if (!srcN || srcN.nodeType !== 1 || !srcN.isConnected) continue
+    const key = R.styleMap.get(cloneN)
+    if (!key) continue
+    const frozen = geomOfKey(key)
+    if (!frozen) continue
+    let cs = null
+    let drifted = false
+    for (const p in frozen) {
+      cs ||= getComputedStyle(srcN)
+      if (cs.getPropertyValue(p) !== frozen[p]) { drifted = true; break }
+    }
+    if (drifted) await inlineAllStyles(srcN, cloneN, sessionLike, context)
   }
 
   // Class numbering is positional over the sorted key set, so new keys renumber: strip the

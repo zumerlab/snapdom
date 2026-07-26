@@ -74,6 +74,10 @@ function setupInvalidationOnce(root = document.documentElement) {
     headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
+    // Viewport resizes flip media queries — computed styles change with no DOM mutation.
+    window.addEventListener('resize', onFonts, { passive: true })
+  } catch { }
+  try {
     const f = document.fonts
     if (f) {
       f.addEventListener?.('loadingdone', onFonts)

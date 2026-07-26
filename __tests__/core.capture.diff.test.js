@@ -54,12 +54,12 @@ describe('differential recapture', () => {
     expect(res.url).toBe(full.url)
   })
 
-  it('geometry-changing mutations bail to full; box-stable ones keep the diff path, staying consistent', async () => {
+  it('geometry-changing mutations serve via diff too — reflowed neighbors get reconciled, byte-equal to full', async () => {
     const el = buildGrid()
     await engageBurst(el)
 
-    // Adding a node grows the card: geometry guard must route this to the FULL pipeline
-    // (frozen sibling min-widths would otherwise go stale).
+    // Adding a node grows the card and reflows the grid: the geometry-reconcile pass must
+    // refresh drifted sibling boxes so the diff output still byte-matches a full capture.
     const card = el.querySelectorAll('h3')[2].parentElement
     const badge = document.createElement('span')
     badge.textContent = 'NEW-BADGE'
@@ -68,21 +68,21 @@ describe('differential recapture', () => {
     await new Promise((r) => setTimeout(r, 0))
     const served0 = __diffStats.served
     const res1 = await snapdom(el)
-    expect(__diffStats.served).toBe(served0) // bailed on geometry drift
+    expect(__diffStats.served).toBe(served0 + 1)
     expect(decodeURIComponent(res1.url.split(',')[1])).toContain('NEW-BADGE')
+    const full1 = await snapdom(el, { burst: false })
+    expect(res1.url).toBe(full1.url)
 
-    // Box-stable text change AFTER the full re-retained: diff path serves again,
-    // byte-identical to a fresh full capture (maps stayed consistent).
+    // Sequential diff on ANOTHER subtree stays consistent after the reconcile.
     el.querySelectorAll('p')[7].textContent = 'segunda'
     await new Promise((r) => setTimeout(r, 0))
     const res2 = await snapdom(el)
-    expect(__diffStats.served).toBe(served0 + 1)
     const svg2 = decodeURIComponent(res2.url.split(',')[1])
     expect(svg2).toContain('NEW-BADGE')
     expect(svg2).toContain('segunda')
 
-    const full = await snapdom(el, { burst: false })
-    expect(res2.url).toBe(full.url)
+    const full2 = await snapdom(el, { burst: false })
+    expect(res2.url).toBe(full2.url)
   })
 
   it('bails to full (still correct) when the dirty subtree contains heavy content', async () => {
