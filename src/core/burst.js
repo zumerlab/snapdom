@@ -68,6 +68,40 @@ function trackVideos(element, state, onMediaDirty) {
   }
 }
 
+/**
+ * Image loads change layout and paint WITHOUT any DOM mutation — a memo taken while a
+ * subtree <img> was still loading must not survive the load. Listeners live on the imgs
+ * themselves (GC'd with the subtree) and set dirty unconditionally: even a capture in
+ * flight used the pre-load layout, so its memo is stale the moment the image arrives.
+ */
+function trackPendingImages(element, state) {
+  const imgs = []
+  if (element.tagName === 'IMG') imgs.push(element)
+  if (element.querySelectorAll) imgs.push(...element.querySelectorAll('img'))
+  for (const img of imgs) {
+    if (img.complete || state.trackedImages.has(img)) continue
+    state.trackedImages.add(img)
+    const once = () => {
+      state.dirty = true
+      img.removeEventListener('load', once)
+      img.removeEventListener('error', once)
+      state.trackedImages.delete(img)
+    }
+    img.addEventListener('load', once)
+    img.addEventListener('error', once)
+  }
+}
+
+/** Font loads also repaint with no DOM mutation. One module-level epoch (no per-element
+ *  listener on document.fonts — that would root the state forever) that captures compare. */
+let _fontEpoch = 0
+let _fontsWired = false
+function wireFontEpoch(doc) {
+  if (_fontsWired) return
+  _fontsWired = true
+  try { doc.fonts?.addEventListener('loadingdone', () => { _fontEpoch++ }) } catch { /* no Font Loading API */ }
+}
+
 function createState(element) {
   const state = {
     dirty: true,
@@ -76,6 +110,8 @@ function createState(element) {
     inflight: Promise.resolve(),
     observers: [],
     trackedVideos: new Set(),
+    trackedImages: new Set(),
+    fontEpoch: _fontEpoch,
   }
 
   const markDirty = (records) => {
@@ -104,6 +140,8 @@ function createState(element) {
   state.markDirty = markDirty
   state.onMediaDirty = onMediaDirty
   trackVideos(element, state, onMediaDirty)
+  trackPendingImages(element, state)
+  wireFontEpoch(doc)
   return state
 }
 
@@ -157,6 +195,7 @@ export function captureWithBurst(element, userOptions, context, runCapture) {
 
   const run = async () => {
     for (const o of state.observers) state.markDirty(o.takeRecords())
+    if (state.fontEpoch !== _fontEpoch) { state.dirty = true; state.fontEpoch = _fontEpoch }
     if (context.invalidate) state.dirty = true
     if (!isOneOff && !state.dirty && state.last) return state.last
 
@@ -170,6 +209,7 @@ export function captureWithBurst(element, userOptions, context, runCapture) {
       for (const o of state.observers) o.takeRecords() // drop the capture's own records
       state.capturing = false
       trackVideos(element, state, state.onMediaDirty) // pick up <video>s added/removed by this capture
+      trackPendingImages(element, state) // and <img>s still loading — their load must invalidate
     }
   }
 

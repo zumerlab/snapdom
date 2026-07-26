@@ -62,3 +62,24 @@ describe('auto-burst', () => {
     expect(px[1]).toBeGreaterThan(200) // green — not the stale red frame
   })
 })
+
+describe('image loads invalidate the memo (no DOM mutation involved)', () => {
+  it('a memo taken while an img was loading is dropped when the load lands', async () => {
+    const wrap = document.createElement('div')
+    const img = document.createElement('img')
+    img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><rect width="30" height="30" fill="navy"/></svg>')
+    // Simulate a still-loading image so the tracker attaches (load timing is async and racy
+    // in a unit test; the mechanism is what must hold).
+    Object.defineProperty(img, 'complete', { configurable: true, get: () => false })
+    wrap.appendChild(img)
+    document.body.appendChild(wrap)
+
+    const results = []
+    for (let i = 0; i < 5; i++) results.push(await snapdom(wrap))
+    expect(results[4]).toBe(results[3]) // memo engaged while "loading"
+
+    img.dispatchEvent(new Event('load')) // the load arrives — layout/paint changed, no mutation
+    const after = await snapdom(wrap)
+    expect(after).not.toBe(results[4]) // memo dropped, fresh capture
+  })
+})
