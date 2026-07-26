@@ -76,9 +76,17 @@ const tick = () => new Promise((r) => {
   setTimeout(r, 150)
 })
 
-document.querySelectorAll('.run-benchmark-button').forEach((b) => {
-  b.addEventListener('click', () => runBenchmark(b))
-})
+// Benchmarks misbehave on iOS WebKit; hide them there until v3.
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+if (isIOS) {
+  document.querySelectorAll('#benchmark').forEach((n) => { n.style.display = 'none' })
+} else {
+  document.querySelectorAll('.run-benchmark-button').forEach((b) => {
+    b.addEventListener('click', () => runBenchmark(b))
+  })
+}
 
 async function runBenchmark(btn) {
   const lib = LIBS[btn.dataset.lib]

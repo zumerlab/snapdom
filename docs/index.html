@@ -764,6 +764,14 @@
         </div>
       </div>
     </section>
+    <script>
+      // Benchmarks misbehave on iOS WebKit; hide them there until v3.
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        document.getElementById('benchmark').style.display = 'none'
+        document.querySelector('#demo-menu a[href="#benchmark"]').style.display = 'none'
+      }
+    </script>
 
     <!-- Basic -->
     <section id="basic">
