@@ -192,6 +192,16 @@ works in Playwright!):**
   transient peaks only, every alternative (streaming encode, blob URLs) either adds
   complexity or hits the Chromium blob-taint wall; not worth it.
 
+## 8. API decisions for v3 (user-directed): compress/burst/fast are not options
+
+- `fast` is fully gone (context, types, README, tests). Passing it is a no-op unknown key.
+- `compress` and `burst` are engine behavior. **Internal-only escapes remain undocumented
+  but functional** (`compress:false`, `burst:false`/`true`): benchmarks and the diff
+  byte-equality tests need deterministic full-pipeline runs — without them the benches
+  would measure the memo again (the 342x mistake). They are not in types or README.
+- `invalidate` stays public as the one escape hatch (canvas draws, CSSOM edits).
+- README carries the v3 announcement + the complete 30-row options table.
+
 ## Not done (assessed, next steps)
 
 - **Worker offload**: only `compress` downsampling qualifies (OffscreenCanvas); svg-as-image
