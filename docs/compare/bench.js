@@ -76,17 +76,9 @@ const tick = () => new Promise((r) => {
   setTimeout(r, 150)
 })
 
-// Benchmarks misbehave on iOS WebKit; hide them there until v3.
-const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-
-if (isIOS) {
-  document.querySelectorAll('#benchmark').forEach((n) => { n.style.display = 'none' })
-} else {
-  document.querySelectorAll('.run-benchmark-button').forEach((b) => {
-    b.addEventListener('click', () => runBenchmark(b))
-  })
-}
+document.querySelectorAll('.run-benchmark-button').forEach((b) => {
+  b.addEventListener('click', () => runBenchmark(b))
+})
 
 async function runBenchmark(btn) {
   const lib = LIBS[btn.dataset.lib]
@@ -141,6 +133,10 @@ async function runBenchmark(btn) {
         const dataUrl = await otherFn(el)
         otherTotal += performance.now() - t0
         const img = await dataUrlToImg(dataUrl)
+        // Competitor libs rasterize at devicePixelRatio; display at the element's
+        // CSS size so both previews render at the same scale.
+        img.style.width = Math.round(el.getBoundingClientRect().width) + 'px'
+        img.style.height = 'auto'
         otherBox.innerHTML = ''
         otherBox.appendChild(img)
       } catch (err) {

@@ -680,14 +680,14 @@
 
     <div class="trusted-strip">
       <span class="trusted-label">Used in production by</span>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/lobehub.png" alt="" width="20" height="20" loading="lazy">LobeHub</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/TriliumNext.png" alt="" width="20" height="20" loading="lazy">Trilium</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/labring.png" alt="" width="20" height="20" loading="lazy">Sealos</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/Tencent.png" alt="" width="20" height="20" loading="lazy">Tencent</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/seek-oss.png" alt="" width="20" height="20" loading="lazy">SEEK</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/antvis.png" alt="" width="20" height="20" loading="lazy">AntV</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/RabbyHub.png" alt="" width="20" height="20" loading="lazy">Rabby</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="https://github.com/metabrainz.png" alt="" width="20" height="20" loading="lazy">MetaBrainz</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/lobehub.png" alt="" width="20" height="20" loading="lazy">LobeHub</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/TriliumNext.png" alt="" width="20" height="20" loading="lazy">Trilium</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/labring.png" alt="" width="20" height="20" loading="lazy">Sealos</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/Tencent.png" alt="" width="20" height="20" loading="lazy">Tencent</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/seek-oss.png" alt="" width="20" height="20" loading="lazy">SEEK</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/antvis.png" alt="" width="20" height="20" loading="lazy">AntV</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/RabbyHub.png" alt="" width="20" height="20" loading="lazy">Rabby</a>
+      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/metabrainz.png" alt="" width="20" height="20" loading="lazy">MetaBrainz</a>
       <a class="trusted-more" href="./made-with/" data-umami-event="hero_trusted_click">+ more →</a>
     </div>
 
@@ -764,15 +764,6 @@
         </div>
       </div>
     </section>
-    <script>
-      // Benchmarks misbehave on iOS WebKit; hide them there until v3.
-      if (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
-          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
-        document.getElementById('benchmark').style.display = 'none'
-        document.querySelector('#demo-menu a[href="#benchmark"]').style.display = 'none'
-      }
-    </script>
-
     <!-- Basic -->
     <section id="basic">
       <h2>Basic capture</h2>
@@ -1666,7 +1657,9 @@
         h2c = null;
       }
 
-      const forceRender = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      // Double rAF lets the progress message paint; the setTimeout fallback keeps the
+      // run moving when rAF is throttled (background/occluded window).
+      const forceRender = () => new Promise(r => { requestAnimationFrame(() => requestAnimationFrame(r)); setTimeout(r, 150); });
 
       // Benchmark SnapDOM
       let snapTotal = 0;
@@ -1692,13 +1685,12 @@
           h2cContainer.innerHTML = '<div class="progress-message">html2canvas: Capture ' + (i + 1) + '/5...</div>';
           await forceRender();
           const t0 = performance.now();
-          // html2canvas clones the whole document and, on WebKit, hangs waiting on this
-          // page's demo iframes/video (their load events never fire in its sandbox).
-          // Ignoring them helps but is not reliable — 1.4.1 still wedges intermittently —
-          // so the race turns a hang into an honest "did not finish" instead of a dead
-          // button. The bench box contains none of those tags, so its output is unchanged.
+          // html2canvas clones the whole document into a sandbox iframe and waits for its
+          // load — cross-origin images wedge that wait on WebKit (why the made-with
+          // avatars are self-hosted). The race is a backstop so any future hang degrades
+          // to an honest "did not finish" instead of a dead button.
           h2cCanvas = await Promise.race([
-            h2c(el, { logging: false, ignoreElements: (n) => n.tagName === 'IFRAME' || n.tagName === 'VIDEO' }),
+            h2c(el, { logging: false }),
             new Promise((r) => setTimeout(() => r(null), 10000)),
           ]).catch(() => null);
           if (!h2cCanvas) {
@@ -1709,19 +1701,18 @@
             break;
           }
           h2cTotal += performance.now() - t0;
+          // html2canvas rasterizes at devicePixelRatio; display at the element's
+          // CSS size so both previews render at the same scale.
+          h2cCanvas.style.width = Math.round(el.getBoundingClientRect().width) + 'px';
+          h2cCanvas.style.height = 'auto';
           h2cContainer.innerHTML = '';
           h2cContainer.appendChild(h2cCanvas);
           h2cContainer.insertAdjacentHTML('beforeend', '<div class="progress-message">html2canvas: ' + (i + 1) + '/5</div>');
           await forceRender();
         }
       }
-      if (!h2c) {
-        h2cTotal = snapTotal * 2;
-        h2cCanvas = null;
-      }
-
       const snapAvg = snapTotal / 5;
-      const h2cAvg = h2cTotal / 5;
+      const h2cAvg = h2c ? h2cTotal / 5 : 0;
       snapContainer.insertAdjacentHTML('beforeend', '<div class="result-message">Average: ' + snapAvg.toFixed(1) + ' ms</div>');
       if (h2c) {
         h2cContainer.insertAdjacentHTML('beforeend', '<div class="result-message">Average: ' + h2cAvg.toFixed(1) + ' ms</div>');

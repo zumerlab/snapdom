@@ -101,7 +101,11 @@
     .bench-section .section-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; font-weight: 700; }
     .bench-section h2 { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin: 0 0 8px; line-height: 1.25; color: var(--text); }
     .bench-section p.bench-lead { color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0 0 18px; }
-    .bench-target { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; max-width: 280px; margin: 0 auto 18px; text-align: center; font-size: 14px; }
+    /* Centered via the flex wrapper, not auto margins: html-to-image and dom-to-image
+       copy the root's computed margins into their clone and shift the capture out of
+       frame — keep the shared test element margin-free on every compare page. */
+    .bench-target-row { display: flex; justify-content: center; margin-bottom: 18px; }
+    .bench-target { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; max-width: 280px; margin: 0; text-align: center; font-size: 14px; }
     .bench-target::before { content: '◆'; color: var(--accent); margin-right: 6px; }
     .bench-target::after { content: '◆'; color: var(--accent); margin-left: 6px; }
     .bench-actions { text-align: center; margin: 0 0 18px; }
@@ -186,7 +190,9 @@
       <h2>SnapDOM vs html2canvas, head to head</h2>
       <p class="bench-lead">Both libraries capture the same DOM element five times. Times are averaged, the faster one is highlighted. Run it on your machine; the gap is hardware- and content-dependent.</p>
 
-      <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
+      <div class="bench-target-row">
+        <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
+      </div>
 
       <div class="bench-actions">
         <button type="button" class="btn btn-primary run-benchmark-button"
@@ -440,6 +446,10 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
           try {
             const cv = await h2cFn(el, { logging: false });
             h2cTotal += performance.now() - t0;
+            // html2canvas rasterizes at devicePixelRatio; display at the element's
+            // CSS size so both previews render at the same scale.
+            cv.style.width = Math.round(el.getBoundingClientRect().width) + 'px';
+            cv.style.height = 'auto';
             h2c.innerHTML = '';
             h2c.appendChild(cv);
             h2c.insertAdjacentHTML('beforeend', '<div class="progress-message">html2canvas: ' + (i + 1) + '/5</div>');
