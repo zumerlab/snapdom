@@ -282,9 +282,13 @@ async function waitForImgPaint(img, verify) {
     const probe = document.createElement('canvas')
     probe.width = 16
     probe.height = 16
+    // rAF with a timeout fallback: WebKit suspends rAF in occluded windows and
+    // background tabs, and a capture must not hang there.
+    const frame = () => new Promise(r => { requestAnimationFrame(r); setTimeout(r, 50) })
     const pctx = probe.getContext('2d', { willReadFrequently: true })
     if (!pctx) {
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      await frame()
+      await frame()
       return
     }
     const deadline = performance.now() + (verify ? 600 : 150)
@@ -295,7 +299,7 @@ async function waitForImgPaint(img, verify) {
       let ink = false
       for (let i = 3; i < d.length; i += 4) { if (d[i] > 0) { ink = true; break } }
       if (ink || performance.now() > deadline) return
-      await new Promise(r => requestAnimationFrame(r))
+      await frame()
     }
   } finally {
     try { img.remove() } catch { /* ok */ }
