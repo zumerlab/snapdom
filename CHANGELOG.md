@@ -21,12 +21,6 @@ All notable changes to this project will be documented in this file.
 - fix: prefetch mask and border-image URLs in preCache, drop the dead warm call [`423acd5`](https://github.com/zumerlab/snapdom/commit/423acd52c447377da095091344df01d1ea472ed4)
 - fix: first-letter materialization no longer false-positives on margined elements [`52a6fff`](https://github.com/zumerlab/snapdom/commit/52a6fff1eaa16e8411529894559a15a9df3c59c8)
 
-📦 other (chore/docs/…)
-- docs: refresh made-with gallery — 14 new verified projects, drop fantastic-admin [`459baf8`](https://github.com/zumerlab/snapdom/commit/459baf81e7806b52c7c7d513f2e4afd720eb48f4)
-- docs: size Safari's raw-SVG iframe from the capture itself, not the live rect [`c390280`](https://github.com/zumerlab/snapdom/commit/c3902806d5e44206a0c90caa65855b1d0afc8775)
-- docs: wrap top-links on mobile instead of hiding them [`0c1284e`](https://github.com/zumerlab/snapdom/commit/0c1284eb33b6f5189dfb20f66b8f10630ce0d556)
-- docs: correct animation-pin comment — replay comes from inline styles / cloned style tags, not the generated class [`db46fa9`](https://github.com/zumerlab/snapdom/commit/db46fa9661157972e2c2a0151aa6837d4071dc4f)
-- docs: site bench and home tweaks [`4394400`](https://github.com/zumerlab/snapdom/commit/43944005eeaa7811a1a0fb12cfdf7ea50e739815)
 
 #### [v2.22.0](https://github.com/zumerlab/snapdom/compare/v2.18.0...v2.22.0)
 
