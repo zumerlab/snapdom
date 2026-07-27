@@ -265,26 +265,29 @@ export async function fixSafariShadows(svg) {
 /**
  * WebKit paints svg-as-image resources late: img.decode() resolves before embedded
  * @font-face fonts (#219770) and nested raster images (#394) are ready, so the first
- * drawImage comes out blank or with fallback-font text. Attach offscreen and — when the
- * svg actually carries such resources — probe-draw a tiny canvas until ink appears
- * (bounded), instead of fixed pre-capture warmup passes. Plain svgs keep the old
- * two-frame compositor wait.
+ * drawImage comes out blank or with fallback-font text. Attach offscreen and probe-draw
+ * a tiny canvas until ink appears (bounded) — probing first instead of a blind
+ * two-frame wait, because the common case already has ink on the first draw and the
+ * fixed wait cost two frames (~33ms) on every Safari export. Svgs that carry
+ * fonts/nested images get the longer deadline; a genuinely blank capture just runs
+ * out the short one.
  * @param {HTMLImageElement} img
- * @param {boolean} verify - Run the ink-probe ladder (svg has fonts/nested images)
+ * @param {boolean} verify - Svg has fonts/nested images (longer probe deadline)
  */
 async function waitForImgPaint(img, verify) {
   img.setAttribute('data-snapdom-internal', '')
   img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
   document.body.appendChild(img)
   try {
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
-    if (!verify) return
     const probe = document.createElement('canvas')
     probe.width = 16
     probe.height = 16
     const pctx = probe.getContext('2d', { willReadFrequently: true })
-    if (!pctx) return
-    const deadline = performance.now() + 600
+    if (!pctx) {
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      return
+    }
+    const deadline = performance.now() + (verify ? 600 : 150)
     for (;;) {
       pctx.clearRect(0, 0, 16, 16)
       try { pctx.drawImage(img, 0, 0, 16, 16) } catch { return }
