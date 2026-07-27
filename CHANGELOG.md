@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.23.1](https://github.com/zumerlab/snapdom/compare/v2.23.0...v2.23.1)
+
+> 27 July 2026
+
+- perf: probe ink first in Safari's waitForImgPaint instead of a blind two-frame wait [`50ea4eb`](https://github.com/zumerlab/snapdom/commit/50ea4ebb5012d3528f1f0d5d3580b4b923b71c98)
+- fix: rAF timeout fallback so Safari captures don't hang in occluded windows [`104cb06`](https://github.com/zumerlab/snapdom/commit/104cb0663c661304ec59a3f9e6023b56b346b89e)
+
+
 #### [v2.23.0](https://github.com/zumerlab/snapdom/compare/v2.22.0...v2.23.0)
 
 > 27 July 2026
