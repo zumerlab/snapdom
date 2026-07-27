@@ -1692,14 +1692,30 @@
           h2cContainer.innerHTML = '<div class="progress-message">html2canvas: Capture ' + (i + 1) + '/5...</div>';
           await forceRender();
           const t0 = performance.now();
-          h2cCanvas = await h2c(el, { logging: false });
+          // html2canvas clones the whole document and, on WebKit, hangs waiting on this
+          // page's demo iframes/video (their load events never fire in its sandbox).
+          // Ignoring them helps but is not reliable — 1.4.1 still wedges intermittently —
+          // so the race turns a hang into an honest "did not finish" instead of a dead
+          // button. The bench box contains none of those tags, so its output is unchanged.
+          h2cCanvas = await Promise.race([
+            h2c(el, { logging: false, ignoreElements: (n) => n.tagName === 'IFRAME' || n.tagName === 'VIDEO' }),
+            new Promise((r) => setTimeout(() => r(null), 10000)),
+          ]).catch(() => null);
+          if (!h2cCanvas) {
+            h2c = null;
+            // A hung run leaves its cloning iframe behind; drop it so retries start clean.
+            document.querySelectorAll('iframe.html2canvas-container').forEach((f) => f.remove());
+            h2cContainer.innerHTML = '<div class="progress-message" style="color:#c00">html2canvas did not finish in this browser. Showing SnapDOM only.</div>';
+            break;
+          }
           h2cTotal += performance.now() - t0;
           h2cContainer.innerHTML = '';
           h2cContainer.appendChild(h2cCanvas);
           h2cContainer.insertAdjacentHTML('beforeend', '<div class="progress-message">html2canvas: ' + (i + 1) + '/5</div>');
           await forceRender();
         }
-      } else {
+      }
+      if (!h2c) {
         h2cTotal = snapTotal * 2;
         h2cCanvas = null;
       }
