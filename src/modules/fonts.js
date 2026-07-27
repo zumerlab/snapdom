@@ -335,6 +335,11 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
 const URL_RE = /url\((["']?)([^"')]+)\1\)/g
 const FACE_RE = /@font-face[^{}]*\{[^}]*\}/g
 
+function getFontFaceDeclaration(block, property, fallback = '') {
+  const match = block.match(new RegExp(`${property}\\s*:\\s*([^;}]+)[;}]`, 'i'))
+  return (match?.[1] || fallback).trim()
+}
+
 /** @param {string} ur */
 function parseUnicodeRange(ur) {
   if (!ur) return []
@@ -470,13 +475,13 @@ function dedupeFontFaces(cssText) {
   const out = []
 
   for (const block of cssText.match(FACE_RE_G) || []) {
-    const familyRaw = block.match(/font-family:\s*([^;]+);/i)?.[1] || ''
+    const familyRaw = getFontFaceDeclaration(block, 'font-family')
     const family = pickPrimaryFamily(familyRaw)
-    const weightSpec = (block.match(/font-weight:\s*([^;]+);/i)?.[1] || '400').trim()
-    const styleSpec = (block.match(/font-style:\s*([^;]+);/i)?.[1] || 'normal').trim()
-    const stretchSpec = (block.match(/font-stretch:\s*([^;]+);/i)?.[1] || '100%').trim()
-    const urange = (block.match(/unicode-range:\s*([^;]+);/i)?.[1] || '').trim()
-    const srcRaw = (block.match(/src\s*:\s*([^;}]+)[;}]/i)?.[1] || '').trim()
+    const weightSpec = getFontFaceDeclaration(block, 'font-weight', '400')
+    const styleSpec = getFontFaceDeclaration(block, 'font-style', 'normal')
+    const stretchSpec = getFontFaceDeclaration(block, 'font-stretch', '100%')
+    const urange = getFontFaceDeclaration(block, 'unicode-range')
+    const srcRaw = getFontFaceDeclaration(block, 'src')
 
     const urls = extractSrcUrls(srcRaw, location.href)
     const srcPart = urls.length
@@ -821,15 +826,15 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
       let facesOut = ''
       for (const face of cssText.match(FACE_RE) || []) {
-        const famRaw = (face.match(/font-family:\s*([^;]+);/i)?.[1] || '').trim()
+        const famRaw = getFontFaceDeclaration(face, 'font-family')
         const family = pickPrimaryFamily(famRaw)
         if (!family || isIconFont(family)) continue
 
-        const weightSpec = (face.match(/font-weight:\s*([^;]+);/i)?.[1] || '400').trim()
-        const styleSpec = (face.match(/font-style:\s*([^;]+);/i)?.[1] || 'normal').trim()
-        const stretchSpec = (face.match(/font-stretch:\s*([^;]+);/i)?.[1] || '100%').trim()
-        const urange = (face.match(/unicode-range:\s*([^;]+);/i)?.[1] || '').trim()
-        const srcRaw = (face.match(/src\s*:\s*([^;}]+)[;}]/i)?.[1] || '').trim()
+        const weightSpec = getFontFaceDeclaration(face, 'font-weight', '400')
+        const styleSpec = getFontFaceDeclaration(face, 'font-style', 'normal')
+        const stretchSpec = getFontFaceDeclaration(face, 'font-stretch', '100%')
+        const urange = getFontFaceDeclaration(face, 'unicode-range')
+        const srcRaw = getFontFaceDeclaration(face, 'src')
         const srcUrls = extractSrcUrls(srcRaw, link.href)
 
         if (!faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) continue
