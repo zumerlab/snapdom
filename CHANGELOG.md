@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.23.0](https://github.com/zumerlab/snapdom/compare/v2.22.0...v2.23.0)
+
+> 27 July 2026
+
+⚡ perf
+- perf: replace Safari's 3x pre-capture warmup with a verified draw at raster time [`6ee4680`](https://github.com/zumerlab/snapdom/commit/6ee468081a96eb1731b0580aad18d454f2ce5b5c)
+
+🛠 fix
+- fix: keep Safari toSvg/toImg vector at scale instead of rasterizing to PNG [`dbbff09`](https://github.com/zumerlab/snapdom/commit/dbbff09433847fd1819cfcb900579ef9638f58d4)
+- fix(styles): disable animations on clones so entry keyframes don't blank the capture [`#476`](https://github.com/zumerlab/snapdom/pull/476)
+- fix: I freeze nowrap box widths and isolate measure mounts in shadow DOM [`#474`](https://github.com/zumerlab/snapdom/pull/474)
+- fix: freeze the image the browser actually shows (srcset descriptors, type filters, content:url) [`6ac87ef`](https://github.com/zumerlab/snapdom/commit/6ac87efadbcc9ac9e8ded5af7f1f8d4b58a6c32d)
+- fix: parse final font-face declarations without semicolons [`#475`](https://github.com/zumerlab/snapdom/pull/475)
+- fix: stop concurrent captures from sharing session maps and counter state [`d1379a6`](https://github.com/zumerlab/snapdom/commit/d1379a6cca502ccb75001e83982585ec18394f4b)
+- fix: realm-safe element guards — pseudos and per-node handlers now survive iframe-content captures [`5e9d8e1`](https://github.com/zumerlab/snapdom/commit/5e9d8e1dfbe0804d0b2c0eac98be0e859a992d33)
+- fix: collect svg defs referenced from the root svg's own attributes [`441e3cf`](https://github.com/zumerlab/snapdom/commit/441e3cf62d431dfbebf482a683716b3fe63f79bf)
+- fix: prefetch mask and border-image URLs in preCache, drop the dead warm call [`423acd5`](https://github.com/zumerlab/snapdom/commit/423acd52c447377da095091344df01d1ea472ed4)
+- fix: first-letter materialization no longer false-positives on margined elements [`52a6fff`](https://github.com/zumerlab/snapdom/commit/52a6fff1eaa16e8411529894559a15a9df3c59c8)
+
+📦 other (chore/docs/…)
+- docs: refresh made-with gallery — 14 new verified projects, drop fantastic-admin [`459baf8`](https://github.com/zumerlab/snapdom/commit/459baf81e7806b52c7c7d513f2e4afd720eb48f4)
+- docs: size Safari's raw-SVG iframe from the capture itself, not the live rect [`c390280`](https://github.com/zumerlab/snapdom/commit/c3902806d5e44206a0c90caa65855b1d0afc8775)
+- docs: wrap top-links on mobile instead of hiding them [`0c1284e`](https://github.com/zumerlab/snapdom/commit/0c1284eb33b6f5189dfb20f66b8f10630ce0d556)
+- docs: correct animation-pin comment — replay comes from inline styles / cloned style tags, not the generated class [`db46fa9`](https://github.com/zumerlab/snapdom/commit/db46fa9661157972e2c2a0151aa6837d4071dc4f)
+- docs: site bench and home tweaks [`4394400`](https://github.com/zumerlab/snapdom/commit/43944005eeaa7811a1a0fb12cfdf7ea50e739815)
+
 #### [v2.22.0](https://github.com/zumerlab/snapdom/compare/v2.18.0...v2.22.0)
 
 > 25 July 2026
