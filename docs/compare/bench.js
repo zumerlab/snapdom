@@ -133,6 +133,10 @@ async function runBenchmark(btn) {
         const dataUrl = await otherFn(el)
         otherTotal += performance.now() - t0
         const img = await dataUrlToImg(dataUrl)
+        // Competitor libs rasterize at devicePixelRatio; display at the element's
+        // CSS size so both previews render at the same scale.
+        img.style.width = Math.round(el.getBoundingClientRect().width) + 'px'
+        img.style.height = 'auto'
         otherBox.innerHTML = ''
         otherBox.appendChild(img)
       } catch (err) {

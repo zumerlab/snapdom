@@ -324,7 +324,11 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 .bench-section .section-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; font-weight: 700; }
 .bench-section h2 { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin: 0 0 8px; line-height: 1.25; color: var(--text); }
 .bench-section p.bench-lead { color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0 0 18px; }
-.bench-target { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; max-width: 280px; margin: 0 auto 18px; text-align: center; font-size: 14px; }
+/* Centered via the flex wrapper, not auto margins: html-to-image and dom-to-image
+   copy the root's computed margins into their clone and shift the capture out of
+   frame, which would rig the bench against them over an incidental style. */
+.bench-target-row { display: flex; justify-content: center; margin-bottom: 18px; }
+.bench-target { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; max-width: 280px; margin: 0; text-align: center; font-size: 14px; }
 .bench-target::before { content: '◆'; color: var(--accent); margin-right: 6px; }
 .bench-target::after { content: '◆'; color: var(--accent); margin-left: 6px; }
 .bench-actions { text-align: center; margin: 0 0 18px; }

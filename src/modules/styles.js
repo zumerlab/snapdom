@@ -392,6 +392,20 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     normalizeInlineStyleToComputed(source, clone, pre)
   }
 
+  // A static snapshot must not animate. The generated style class already filters animation
+  // props (shouldIgnoreProp), but `animation` can still reach the SVG through the normalized
+  // inline style above or through `<style>` tags cloned inside the captured subtree; when the
+  // SVG is rasterized the animation replays from its 0% keyframe. An entry animation whose
+  // start frame hides the element (e.g. `from { opacity: 0 }`, or an off-screen `transform`)
+  // therefore blanks it out even though the live element already finished animating. Pin
+  // `animation` off with inline `!important` on the elements that actually have one; the
+  // current opacity/transform captured in the snapshot below then renders as the frozen,
+  // already-settled frame.
+  const animName = pre.getPropertyValue('animation-name')
+  if (clone && clone.style && animName && animName !== 'none') {
+    clone.style.setProperty('animation', 'none', 'important')
+  }
+
   const snap = getSnapshot(source, pre, ctx.options)
 
   const flexItem = isFlexOrGridItem(source)

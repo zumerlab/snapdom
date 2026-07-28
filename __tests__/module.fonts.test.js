@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { iconToImage, embedCustomFonts } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
+import { snapFetch } from '../src/modules/snapFetch.js'
+
+vi.mock('../src/modules/snapFetch.js', () => ({
+  snapFetch: vi.fn(),
+}))
 
 // === helpers locales ===
 function cleanFontEnvironment() {
@@ -15,6 +20,15 @@ function addStyleTag(css) {
   style.textContent = css
   document.head.appendChild(style)
   return style
+}
+
+function addFontStylesheet(href = 'https://cdn.example.com/fonts.css') {
+  const link = document.createElement('link')
+  link.setAttribute('data-test-font', 'true')
+  link.rel = 'stylesheet'
+  link.href = href
+  document.head.appendChild(link)
+  return link
 }
 
 // Helpers nuevos para la API smart
@@ -189,6 +203,66 @@ describe('embedCustomFonts', () => {
     expect(css).toMatch(/src:\s*local\(['"]MyFont['"]\),\s*local\(['"]FallbackFont['"]\)/)
     expect(css).toMatch(/font-style:\s*italic/)
     document.head.removeChild(style)
+  })
+
+  it.each([
+    {
+      property: 'font-family',
+      css: '@font-face{src:local("Nunito");font-style:normal;font-weight:100 300;font-stretch:100%;font-family:Nunito}',
+      expected: /font-family:\s*Nunito/,
+    },
+    {
+      property: 'font-weight',
+      css: '@font-face{font-family:Nunito;src:url(https://cdn.example.com/Nunito-Light.ttf);font-weight:100 300}',
+      expected: /font-weight:\s*100 300/,
+      fontUrl: 'https://cdn.example.com/Nunito-Light.ttf',
+    },
+    {
+      property: 'font-style',
+      css: '@font-face{font-family:Nunito;src:local("Nunito");font-weight:100 300;font-stretch:100%;font-style:italic}',
+      expected: /font-style:\s*italic/,
+      required: makeRequired('Nunito', '200', 'italic', 100),
+    },
+    {
+      property: 'font-stretch',
+      css: '@font-face{font-family:Nunito;src:local("Nunito");font-style:normal;font-weight:100 300;font-stretch:75%}',
+      expected: /font-stretch:\s*75%/,
+      required: makeRequired('Nunito', '200', 'normal', 75),
+    },
+    {
+      property: 'unicode-range',
+      css: '@font-face{font-family:Nunito;src:local("Nunito");font-style:normal;font-weight:100 300;font-stretch:100%;unicode-range:U+0000-00FF}',
+      expected: /unicode-range:\s*U\+0000-00FF/,
+    },
+  ])('parses $property when the final declaration has no semicolon', async ({ css: fontCss, expected, required, fontUrl }) => {
+    const href = 'https://cdn.example.com/fonts.css'
+    addFontStylesheet(href)
+    vi.mocked(snapFetch).mockResolvedValueOnce({
+      ok: true,
+      data: fontCss,
+      status: 200,
+      url: href,
+      fromCache: false,
+    })
+    if (fontUrl) {
+      vi.mocked(snapFetch).mockResolvedValueOnce({
+        ok: true,
+        data: 'data:font/ttf;base64,AA==',
+        status: 200,
+        url: fontUrl,
+        fromCache: false,
+        mime: 'font/ttf',
+      })
+    }
+
+    const css = await embedCustomFonts({
+      required: required || makeRequired('Nunito', '200', 'normal', 100),
+      usedCodepoints: makeUsedCodepoints('A'),
+      fontStylesheetDomains: ['cdn.example.com'],
+    })
+
+    expect(css).toMatch(expected)
+    if (fontUrl) expect(css).toContain('data:font/ttf;base64,AA==')
   })
 })
 
