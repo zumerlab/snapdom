@@ -1,5 +1,7 @@
 // src/utils/resolveCSSVars.js
 
+import { getStyleEpoch } from './styles.js'
+
 /** SVG container elements that act as templates: their descendants are rendered
  *  virtually via <use> / url(#...). CSS custom properties on the use site cascade
  *  into the rendered shadow tree, so any var() inside these containers must be
@@ -9,21 +11,35 @@ const SVG_TEMPLATE_TAGS = new Set([
   'symbol', 'defs', 'pattern', 'marker',
   'linearGradient', 'radialGradient', 'filter'
 ])
+/** Per-element memo, scoped to the style epoch so DOM restructuring invalidates it.
+ *  Each ancestor resolves once per epoch — the old uncached walk was O(depth) per node
+ *  and ran 3× per SVG element (resolveCSSVars + two clone.js sites). */
+let __tplMemo = new WeakMap()
+let __tplEpoch = -1
 export function isInSvgTemplate(el) {
-  let p = el
-  while (p && p.nodeType === 1) {
-    if (p.namespaceURI === 'http://www.w3.org/2000/svg') {
-      // #459: mask/clipPath paint their content in place, exactly once, at their own
-      // document position — unlike <use>, there's no per-consumer shadow tree to
-      // re-scope var() against, so this IS the one true rendering context. Treating
-      // them as templates skipped inlineAllStyles entirely, dropping font-family/etc.
-      // for anything inside (e.g. a <text> used as a mask cutout).
-      if (p.localName === 'mask' || p.localName === 'clipPath') return false
-      if (SVG_TEMPLATE_TAGS.has(p.localName)) return true
-    }
-    p = p.parentNode
+  const epoch = getStyleEpoch()
+  if (epoch !== __tplEpoch) { __tplMemo = new WeakMap(); __tplEpoch = epoch }
+  return tplLookup(el)
+}
+function tplLookup(el) {
+  const hit = __tplMemo.get(el)
+  if (hit !== undefined) return hit
+  let result
+  if (el.namespaceURI === 'http://www.w3.org/2000/svg') {
+    // #459: mask/clipPath paint their content in place, exactly once, at their own
+    // document position — unlike <use>, there's no per-consumer shadow tree to
+    // re-scope var() against, so this IS the one true rendering context. Treating
+    // them as templates skipped inlineAllStyles entirely, dropping font-family/etc.
+    // for anything inside (e.g. a <text> used as a mask cutout).
+    if (el.localName === 'mask' || el.localName === 'clipPath') result = false
+    else if (SVG_TEMPLATE_TAGS.has(el.localName)) result = true
   }
-  return false
+  if (result === undefined) {
+    const p = el.parentNode
+    result = !!(p && p.nodeType === 1) && tplLookup(p)
+  }
+  __tplMemo.set(el, result)
+  return result
 }
 
 /**

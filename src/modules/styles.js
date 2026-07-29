@@ -56,6 +56,13 @@ export function getStyleEnvEpoch() {
   return __envEpoch
 }
 
+/** Current style epoch — bumps on any external DOM/head/font mutation. Consumers use it
+ *  to scope per-epoch memos (e.g. isInSvgTemplate) that DOM restructuring must invalidate. */
+export function getStyleEpoch() {
+  setupInvalidationOnce()
+  return __epoch
+}
+
 let __wired = false
 let __domObs = null
 let __headObs = null

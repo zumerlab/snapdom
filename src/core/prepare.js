@@ -6,6 +6,7 @@
 import { generateCSSClasses, stripTranslate, debugWarn, getStyle } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
+import { flushStyleInvalidations } from '../modules/styles.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
@@ -23,6 +24,10 @@ import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.help
  */
 
 export async function prepareClone(element, options = {}) {
+  // Same-tick DOM/style mutations otherwise reach the clone against a stale epoch
+  // (MutationObserver delivery is a microtask) — drain them before any epoch-scoped
+  // memo (universe, pseudo gates, isInSvgTemplate) is read.
+  flushStyleInvalidations()
   // captureDOM always provides its own session (createCaptureSession). Direct callers
   // (tests, embedders) get fresh isolated maps — production code never reads the mutable
   // cache.session global here anymore.
