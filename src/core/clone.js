@@ -688,7 +688,43 @@ async function cloneAudio(node, sessionCache, options) {
   return img
 }
 
+/** <object>/<embed>: no handler meant their external data/src survived into the
+ *  svg-as-image output, where external loads and nested browsing contexts are blocked —
+ *  they rendered blank (or painted the object's FALLBACK children instead of the embedded
+ *  content). Image-typed embeds become an <img> that inlineImages fetches like any source;
+ *  same-origin embedded documents reuse the iframe rasterizer; the rest fall through to
+ *  the generic clone (fallback children are the honest output there). */
+async function cloneObjectEmbed(node, sessionCache, options) {
+  const url = node.getAttribute('data') || node.getAttribute('src') || ''
+  const type = (node.getAttribute('type') || '').toLowerCase()
+  const looksImage = /^image\//.test(type) || /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)(\?|#|$)/i.test(url)
+  if (url && looksImage) {
+    const img = document.createElement('img')
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch { }
+    img.src = url
+    const { width, height } = getUnscaledDimensions(node)
+    if (width > 0) img.style.width = `${width}px`
+    if (height > 0) img.style.height = `${height}px`
+    sessionCache.nodeMap.set(img, node)
+    inlineAllStyles(node, img, sessionCache, options)
+    return img // fallback children deliberately dropped — both would paint otherwise
+  }
+  // Same-origin embedded document (e.g. text/html object) → rasterize like an iframe.
+  let doc = null
+  try { doc = node.contentDocument } catch { /* cross-origin */ }
+  if (doc) {
+    try {
+      const out = await rasterizeIframe(node, sessionCache, options)
+      if (out) return out
+    } catch { /* fall through */ }
+  }
+  if (url) console.warn(`[snapdom] <${node.localName}> content could not be captured (${type || 'unknown type'}): rendering its fallback children`)
+  return undefined // generic clone: fallback children render, matching the no-plugin browser behavior
+}
+
 registerTagHandler('IFRAME', cloneIframe)
 registerTagHandler('CANVAS', cloneCanvas)
 registerTagHandler('VIDEO', cloneVideo)
 registerTagHandler('AUDIO', cloneAudio)
+registerTagHandler('OBJECT', cloneObjectEmbed)
+registerTagHandler('EMBED', cloneObjectEmbed)
