@@ -58,9 +58,26 @@ export const ALWAYS_PROPS = [
 
 const MAX_SCAN_RULES = 20000
 
-/** Walks a CSSRuleList adding every set property name to `universe`.
+/** The pseudo-elements the per-node probe in pseudo.js resolves. The same rule walk that
+ *  builds the property universe collects, per kind, the selectors able to generate that
+ *  pseudo — so the probe can be gated by one `el.matches()` instead of three
+ *  getComputedStyle resolutions per node. */
+const PSEUDO_KINDS = { before: /::?before\b/, after: /::?after\b/, firstLetter: /::?first-letter\b/ }
+const PSEUDO_STRIP = /::?(?:before|after|first-letter)\b/g
+
+/** Strips pseudo-element tokens from a selector list so it can feed `el.matches()`.
+ *  A part that was ONLY the pseudo (`::before {}`) becomes `*` (pseudo-elements are not
+ *  allowed inside :is()/:where(), so top-level empty parts are the only ones possible). */
+function stripPseudo(selectorText) {
+  const s = selectorText.replace(PSEUDO_STRIP, '').trim()
+  if (!s) return '*'
+  return s.replace(/(^|,)(\s*)(?=,|$)/g, '$1$2*')
+}
+
+/** Walks a CSSRuleList adding every set property name to `universe` and every
+ *  pseudo-generating selector to `pseudoSels`.
  *  Returns false when an unreadable sheet or the rule budget makes the scan unreliable. */
-function scanRules(rules, universe, state) {
+function scanRules(rules, universe, pseudoSels, state) {
   for (let i = 0; i < rules.length; i++) {
     if (--state.budget < 0) return false
     const rule = rules[i]
@@ -68,40 +85,68 @@ function scanRules(rules, universe, state) {
     if (style) {
       for (let j = 0; j < style.length; j++) universe.add(style[j])
     }
+    const sel = rule.selectorText
+    if (sel && sel.includes(':')) {
+      for (const kind in PSEUDO_KINDS) {
+        if (PSEUDO_KINDS[kind].test(sel)) pseudoSels[kind].push(stripPseudo(sel))
+      }
+    }
     if (rule.styleSheet) { // @import
-      if (!scanSheet(rule.styleSheet, universe, state)) return false
+      if (!scanSheet(rule.styleSheet, universe, pseudoSels, state)) return false
     } else if (rule.cssRules && rule.cssRules.length) { // @media/@supports/@keyframes/…
-      if (!scanRules(rule.cssRules, universe, state)) return false
+      if (!scanRules(rule.cssRules, universe, pseudoSels, state)) return false
     }
   }
   return true
 }
 
-function scanSheet(sheet, universe, state) {
+function scanSheet(sheet, universe, pseudoSels, state) {
   let rules
   try { rules = sheet.cssRules } catch { return false } // cross-origin
   if (!rules) return false
-  return scanRules(rules, universe, state)
+  return scanRules(rules, universe, pseudoSels, state)
+}
+
+/** Joins collected per-kind selectors into one matches()-ready string, validating the
+ *  combined result once (an unparsable selector → null → callers probe every node).
+ *  `q` is always included for before/after: UA open/close-quote pseudos have no author rule. */
+function composePseudoGates(doc, pseudoSels) {
+  const probe = doc.createElement('div')
+  const gates = {}
+  for (const kind in pseudoSels) {
+    const parts = pseudoSels[kind]
+    if (kind !== 'firstLetter') parts.push('q')
+    if (!parts.length) { gates[kind] = '' ; continue } // no rules → probe nothing
+    const sel = parts.join(',')
+    try { probe.matches(sel); gates[kind] = sel } catch { gates[kind] = null }
+  }
+  return gates
 }
 
 /**
- * Computes the set of CSS properties the document's author styles can touch,
- * or null when the scan can't be trusted (cross-origin CSS, rule-budget blown).
+ * Scans the document's author styles once, returning:
+ * - `universe`: the set of CSS properties any rule can touch, or null when the scan
+ *   can't be trusted (cross-origin CSS, rule-budget blown).
+ * - `pseudoGates`: per pseudo kind (before/after/firstLetter), a combined selector for
+ *   `el.matches()` gating the per-node pseudo probe — `''` = no rules (skip every node),
+ *   null = unreliable (probe every node). All null when universe is null.
  * Pure — memoization (per document + style epoch) is the caller's concern.
  * @param {Document} doc
- * @returns {Set<string>|null}
+ * @returns {{universe: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null}}}
  */
-export function computePropertyUniverse(doc) {
+export function scanAuthorStyles(doc) {
+  const unreliable = { universe: null, pseudoGates: { before: null, after: null, firstLetter: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
+    const pseudoSels = { before: [], after: [], firstLetter: [] }
     const state = { budget: MAX_SCAN_RULES }
     for (const sheet of doc.styleSheets) {
-      if (!scanSheet(sheet, universe, state)) return null
+      if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
     const adopted = /** @type {any} */ (doc).adoptedStyleSheets
     if (Array.isArray(adopted)) {
       for (const sheet of adopted) {
-        if (!scanSheet(sheet, universe, state)) return null
+        if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
       }
     }
     // Programmatic (WAAPI) animations don't live in stylesheets — union their keyframe props.
@@ -116,8 +161,8 @@ export function computePropertyUniverse(doc) {
         }
       }
     }
-    return universe
+    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels) }
   } catch {
-    return null
+    return unreliable
   }
 }

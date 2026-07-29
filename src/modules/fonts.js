@@ -8,6 +8,7 @@ import { getStyle } from '../utils/css.js'
 import { cache } from '../core/cache'
 import { isIconFont } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
+import { pseudoGatesFor } from './styles.js'
 
 /**
  * Converts a unicode character from an icon font into a data URL image.
@@ -996,9 +997,17 @@ export function collectFontUsage(root, keep) {
       required.add(`${family}__${normWeight(cs.fontWeight)}__${normStyle(cs.fontStyle)}__${normStretchPct(cs.fontStretch)}`)
     }
   }
+  // Same selector gate as inlinePseudoElements: skip the two pseudo style resolutions
+  // for nodes no collected ::before/::after selector matches (null gate → probe).
+  const gates = pseudoGatesFor(root)
   const visitElement = (el) => {
     addFromStyle(getStyle(el))
     for (const pseudo of ['::before', '::after']) {
+      const gate = pseudo === '::before' ? gates.before : gates.after
+      if (gate !== null) {
+        if (gate === '') continue
+        try { if (!el.matches(gate)) continue } catch { /* probe */ }
+      }
       const cs = getStyle(el, pseudo)
       const c = cs && cs.content
       if (!c || c === 'none' || c === 'normal') continue

@@ -1,6 +1,6 @@
 import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
-import { computePropertyUniverse } from './styleScan.js'
+import { scanAuthorStyles } from './styleScan.js'
 
 const snapshotCache = new WeakMap()
 const snapshotKeyCache = new Map()
@@ -57,6 +57,8 @@ export function getStyleEnvEpoch() {
 }
 
 let __wired = false
+let __domObs = null
+let __headObs = null
 function setupInvalidationOnce(root = document.documentElement) {
   if (__wired) return
   __wired = true
@@ -66,12 +68,12 @@ function setupInvalidationOnce(root = document.documentElement) {
   }
   const onFonts = () => { bumpEpoch(); __envEpoch++ }
   try {
-    const domObs = new MutationObserver(onRecords)
-    domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
+    __domObs = new MutationObserver(onRecords)
+    __domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
-    const headObs = new MutationObserver(onEnvRecords)
-    headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
+    __headObs = new MutationObserver(onEnvRecords)
+    __headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
     // Viewport resizes flip media queries — computed styles change with no DOM mutation.
@@ -82,6 +84,24 @@ function setupInvalidationOnce(root = document.documentElement) {
     if (f) {
       f.addEventListener?.('loadingdone', onFonts)
       f.ready?.then(onFonts).catch(() => { })
+    }
+  } catch { }
+}
+
+/** Synchronously drains pending invalidation records. MutationObserver delivery is a
+ *  microtask, so a <style> injected in the same tick as a capture would otherwise be
+ *  read against the stale epoch — the scanned universe/pseudo-gates would miss its
+ *  rules. Called once per capture (from the pseudo preflight's fingerprint recompute). */
+export function flushStyleInvalidations() {
+  setupInvalidationOnce()
+  try {
+    if (__headObs) {
+      const r = __headObs.takeRecords()
+      if (r.length && hasExternalMutation(r)) { bumpEpoch(); __envEpoch++ }
+    }
+    if (__domObs) {
+      const r = __domObs.takeRecords()
+      if (r.length && hasExternalMutation(r)) bumpEpoch()
     }
   } catch { }
 }
@@ -114,16 +134,28 @@ export function needsBackgroundInline(source) {
  *  a reset-stamped prop the class diff can no longer override (e.g. the resolved-black
  *  `-webkit-text-fill-color` overriding a white `color`) must not be emitted either. */
 const universeCache = new WeakMap()
+function scanFor(doc) {
+  let rec = universeCache.get(doc)
+  if (!rec || rec.epoch !== __epoch) {
+    rec = { epoch: __epoch, ...scanAuthorStyles(doc) }
+    universeCache.set(doc, rec)
+  }
+  return rec
+}
 export function universeFor(el) {
   const doc = el.ownerDocument || document
   // Shadow-root content: its own sheets aren't scanned — keep full reads there.
   if (el.getRootNode && el.getRootNode() !== doc) return null
-  let rec = universeCache.get(doc)
-  if (!rec || rec.epoch !== __epoch) {
-    rec = { epoch: __epoch, universe: computePropertyUniverse(doc) }
-    universeCache.set(doc, rec)
-  }
-  return rec.universe
+  return scanFor(doc).universe
+}
+
+/** Per-kind selector gates for the pseudo probe (see scanAuthorStyles). Same memo and
+ *  same shadow-root escape as universeFor: null gates → probe every node. */
+const NULL_GATES = { before: null, after: null, firstLetter: null }
+export function pseudoGatesFor(el) {
+  const doc = el.ownerDocument || document
+  if (el.getRootNode && el.getRootNode() !== doc) return NULL_GATES
+  return scanFor(doc).pseudoGates
 }
 
 function snapshotComputedStyleFull(style, options = {}, el = null, universe = null) {

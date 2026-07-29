@@ -22,6 +22,7 @@ import {
   hasCounters
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
+import { pseudoGatesFor, flushStyleInvalidations } from './styles.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
@@ -39,9 +40,15 @@ const CSS_RULE_SCAN_BUDGET = 1000
  */
 function preflightWithFp(doc, sessionCache) {
   const fp = styleFingerprint(doc)
-  if (!sessionCache) return shouldProcessPseudos(doc, fp)
+  if (!sessionCache) {
+    flushStyleInvalidations()
+    return shouldProcessPseudos(doc, fp)
+  }
   // Recompute when the fingerprint changes
   if (sessionCache.__pseudoPreflightFp !== fp) {
+    // Styles changed (or first visit this capture): drain pending observer records so the
+    // scanned universe/pseudo-gates can't be read against a stale epoch (same-tick <style>).
+    flushStyleInvalidations()
     sessionCache.__pseudoPreflight = shouldProcessPseudos(doc, fp)
     sessionCache.__pseudoPreflightFp = fp
   }
@@ -470,7 +477,17 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   }
   const counterCtx = sessionCache.__counterCtx
 
+  // Selector gate from the stylesheet scan: only nodes a collected selector matches pay
+  // the 3-pseudo getComputedStyle probe. '' = no author rules for that kind, null =
+  // scan unreliable (cross-origin CSS, shadow roots) → probe like before.
+  const gates = pseudoGatesFor(source)
+
   for (const pseudo of ['::before', '::after', '::first-letter']) {
+    const gate = gates[pseudo === '::before' ? 'before' : pseudo === '::after' ? 'after' : 'firstLetter']
+    if (gate !== null) {
+      if (gate === '') continue
+      try { if (!source.matches(gate)) continue } catch { /* unparsable at match time → probe */ }
+    }
     try {
       const style = getStyle(source, pseudo)
       if (!style) continue
