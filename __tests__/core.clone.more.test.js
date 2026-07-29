@@ -474,8 +474,11 @@ describe('deepClone – extra targets to lift coverage', () => {
       expect(alreadyMatches.length).toBe(1)
        expect(css).toMatch(/:where\(\s*\[?data-sd="s\d+"\]?[^)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted\]\)\)/)
 
-    // el bloque @media queda presente (el rewriter ignora @ en la captura de selectores)
-    expect(css).toMatch(/@media\s*\(min-width:\s*1px\)\s*\{\s*\.m\s*\{\s*display:\s*block/i)
+    // @media se resuelve en extracción: la condición matchea (min-width:1px) así que la
+    // regla interna se inlinea SIN wrapper (el viewport del SVG no debe re-evaluarla) y
+    // recibe el scope como cualquier otra.
+    expect(css).not.toContain('@media')
+    expect(css).toMatch(/\.m\s*:not\(\[data-sd-slotted\]\)\)\s*\{\s*display:\s*block/i)
 
     // limpiar
     host.remove()

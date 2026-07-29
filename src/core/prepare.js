@@ -8,7 +8,7 @@ import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { flushStyleInvalidations } from '../modules/styles.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
-import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
+import { resolveBlobUrlsInTree, resolveMediaQueries } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
 
@@ -91,6 +91,20 @@ export async function prepareClone(element, options = {}) {
     console.warn('inlinePseudoElements failed:', e)
   }
   await resolveBlobUrlsInTree(clone, sessionCache)
+
+  // Kept light-DOM <style> clones travel into the SVG, whose own tiny viewport would
+  // re-evaluate their @media conditions — freeze them to the live viewport's state now.
+  for (const [cloneNode, srcNode] of sessionCache.nodeMap.entries()) {
+    if (srcNode?.tagName === 'STYLE' && cloneNode?.tagName === 'STYLE' && !cloneNode.hasAttribute('data-sd')) {
+      try {
+        const rules = srcNode.sheet && srcNode.sheet.cssRules
+        if (rules && /@media/i.test(cloneNode.textContent || '')) {
+          cloneNode.textContent = resolveMediaQueries(rules)
+        }
+      } catch { /* unreadable sheet → leave verbatim */ }
+    }
+  }
+
   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
 
   try {

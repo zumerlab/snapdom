@@ -31,8 +31,9 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
     .map(s => s.trim())
     .filter(Boolean)
     .map(s => {
-      // Si ya fue reescrito como :where(...), no lo toques
-      if (s.startsWith(':where(')) return s
+      // Si ya fue reescrito por ESTE rewriter (lleva el attr de scope), no lo toques.
+      // Un :where() de autor sí debe scopearse — sin esto se filtraba al light DOM.
+      if (s.startsWith(':where(') && s.includes('data-sd')) return s
 
       // No toques @rules aquí (esto se hace en el caller)
       if (s.startsWith('@')) return s
@@ -92,21 +93,49 @@ export function nextShadowScopeId(sessionCache) {
 }
 
 /**
- * Extract CSS text from a ShadowRoot: inline <style> plus adoptedStyleSheets (if readable).
+ * Resolve @media at capture time: the serialized SVG is its own tiny viewport, so a
+ * passed-through condition re-evaluates against the IMAGE size, not the page. Matching
+ * blocks inline unwrapped (recursively), non-matching blocks drop — the capture freezes
+ * the media state the user was seeing. @supports keeps its wrapper (its condition is
+ * viewport-independent); @keyframes/@font-face/etc. pass through verbatim.
+ * @param {CSSRuleList} rules
+ * @returns {string}
+ */
+export function resolveMediaQueries(rules) {
+  let out = ''
+  for (const rule of rules) {
+    if (rule.media && rule.cssRules) { // CSSMediaRule
+      let matches = false
+      try { matches = window.matchMedia(rule.conditionText || rule.media.mediaText).matches } catch { }
+      if (matches) out += resolveMediaQueries(rule.cssRules)
+    } else if (rule.conditionText !== undefined && rule.cssRules) { // CSSSupportsRule
+      out += `@supports ${rule.conditionText}{${resolveMediaQueries(rule.cssRules)}}`
+    } else {
+      out += rule.cssText + '\n'
+    }
+  }
+  return out
+}
+
+/**
+ * Extract CSS text from a ShadowRoot: inline <style> plus adoptedStyleSheets (if readable),
+ * with @media resolved against the live viewport (see resolveMediaQueries).
  * @param {ShadowRoot} sr
  * @returns {string}
  */
 export function extractShadowCSS(sr) {
   let css = ''
   try {
-    sr.querySelectorAll('style').forEach(s => { css += (s.textContent || '') + '\n' })
+    sr.querySelectorAll('style').forEach(s => {
+      let rules = null
+      try { rules = s.sheet && s.sheet.cssRules } catch { /* unreadable */ }
+      css += (rules ? resolveMediaQueries(rules) : (s.textContent || '')) + '\n'
+    })
     // adoptedStyleSheets (may throw cross-origin; guard)
     const sheets = sr.adoptedStyleSheets || []
     for (const sh of sheets) {
       try {
-        if (sh && sh.cssRules) {
-          for (const rule of sh.cssRules) css += rule.cssText + '\n'
-        }
+        if (sh && sh.cssRules) css += resolveMediaQueries(sh.cssRules)
       } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
