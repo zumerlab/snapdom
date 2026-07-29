@@ -339,58 +339,27 @@ export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap) {
   }
 }
 
-/** Remove all HTML comments (prevents invalid XML like "--") */
-export function removeAllComments(root) {
-  const it = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
-  const toRemove = []
-  while (it.nextNode()) toRemove.push(it.currentNode)
-  for (const n of toRemove) n.remove()
-}
+const XMLNS_ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
 
-/**
- * Sanitize attributes to produce valid XHTML inside foreignObject.
- * - Drop "@", unknown ":" prefixes
- * - Drop common framework directives (x-*, v-*, :*, on:*, bind:*, let:*, class:*)
- */
-export function sanitizeAttributesForXHTML(root, opts = {}) {
-  const { stripFrameworkDirectives = true } = opts
-  const ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
-
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
-  while (walker.nextNode()) {
-    const el = walker.currentNode
-    // Copy first—NamedNodeMap is live
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name
-
-      if (name.startsWith('*')) { el.removeAttribute(name); continue }
-
-      // "@": never valid in XML attribute names
-      if (name.includes('@')) { el.removeAttribute(name); continue }
-
-      // ":" requires a declared namespace (xml:, xlink:)
-      if (name.includes(':')) {
-        const prefix = name.split(':', 1)[0]
-        if (!ALLOWED_PREFIXES.has(prefix)) { el.removeAttribute(name); continue }
-      }
-
-      if (!stripFrameworkDirectives) continue
-
-      // Common framework directives that break XHTML
-      if (
-        name.startsWith('x-') ||     // Alpine
-        name.startsWith('v-') ||     // Vue
-        name.startsWith(':') ||      // Vue/Alpine shorthand
-        name.startsWith('on:') ||    // Svelte
-        name.startsWith('bind:') ||  // Svelte
-        name.startsWith('let:') ||   // Svelte
-        name.startsWith('class:')    // Svelte
-      ) {
-        el.removeAttribute(name)
-        continue
-      }
-    }
+/** True when an attribute name can't survive XHTML serialization (or is a framework directive). */
+function isInvalidXHTMLAttr(name, stripFrameworkDirectives) {
+  if (name.startsWith('*')) return true
+  // "@": never valid in XML attribute names
+  if (name.includes('@')) return true
+  // ":" requires a declared namespace (xml:, xlink:)
+  if (name.includes(':')) {
+    const prefix = name.split(':', 1)[0]
+    if (!XMLNS_ALLOWED_PREFIXES.has(prefix)) return true
   }
+  if (!stripFrameworkDirectives) return false
+  // Common framework directives that break XHTML
+  return name.startsWith('x-') ||     // Alpine
+    name.startsWith('v-') ||          // Vue
+    name.startsWith(':') ||           // Vue/Alpine shorthand
+    name.startsWith('on:') ||         // Svelte
+    name.startsWith('bind:') ||       // Svelte
+    name.startsWith('let:') ||        // Svelte
+    name.startsWith('class:')         // Svelte
 }
 
 /* eslint-disable no-control-regex */
@@ -404,41 +373,50 @@ const INVALID_XML_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g
 /* eslint-enable no-control-regex */
 
 /**
- * #425: strip XML-1.0-invalid characters from every attribute value AND text node in the
- * clone. clone.js already scrubs attributes during cloning, but values re-applied afterwards
- * (e.g. `input.setAttribute('value', node.value)` for form fields — ExtJS hidden inputs use
- * U+0003 as a delimiter) and text content were not covered. This runs once over the finished
- * clone, right before serialization, so no invalid char can reach the SVG.
+ * One pass over the finished clone before serialization (was three separate walks):
+ * - drops attribute names invalid in XHTML ("@", unknown ":" prefixes, framework directives)
+ * - strips XML-1.0-invalid chars from attribute values and text (#425 — values re-applied
+ *   after cloning, e.g. `input.setAttribute('value', …)` with ExtJS's U+0003 delimiters)
+ * - removes HTML comments (invalid XML like "--")
+ * Runs after the afterClone plugin hooks (plugins may add attributes), in both the full
+ * and diff serialization paths.
  * @param {Element} root
  */
-export function stripInvalidXMLChars(root) {
-  if (!root) return
-  const clean = (node) => {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      if (node.attributes) {
-        for (const attr of Array.from(node.attributes)) {
-          const cv = attr.value.replace(INVALID_XML_CHARS, '')
-          if (cv !== attr.value) {
-            try { node.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
-          }
-        }
-      }
-    } else if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.CDATA_SECTION_NODE) {
-      const cv = node.data.replace(INVALID_XML_CHARS, '')
-      if (cv !== node.data) node.data = cv
-    }
-  }
-  clean(root)
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
-  let n
-  while ((n = walker.nextNode())) clean(n)
-}
-
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
-  sanitizeAttributesForXHTML(root, opts)
-  removeAllComments(root)
-  stripInvalidXMLChars(root)
+  const { stripFrameworkDirectives = true } = opts
+  const stripAttrChars = (el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const cv = attr.value.replace(INVALID_XML_CHARS, '')
+      if (cv !== attr.value) {
+        try { el.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
+      }
+    }
+  }
+  // The walker yields descendants only: the root (capture container) keeps its attribute
+  // names but still gets the invalid-char scrub, matching the previous three-pass behavior.
+  if (root.nodeType === Node.ELEMENT_NODE && root.attributes) stripAttrChars(root)
+  const comments = []
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT)
+  let n
+  while ((n = walker.nextNode())) {
+    if (n.nodeType === Node.ELEMENT_NODE) {
+      // Copy first—NamedNodeMap is live
+      for (const attr of Array.from(n.attributes)) {
+        if (isInvalidXHTMLAttr(attr.name, stripFrameworkDirectives)) { n.removeAttribute(attr.name); continue }
+        const cv = attr.value.replace(INVALID_XML_CHARS, '')
+        if (cv !== attr.value) {
+          try { n.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
+        }
+      }
+    } else if (n.nodeType === Node.COMMENT_NODE) {
+      comments.push(n) // invalid XML like "--"
+    } else {
+      const cv = n.data.replace(INVALID_XML_CHARS, '')
+      if (cv !== n.data) n.data = cv
+    }
+  }
+  for (const c of comments) c.remove()
 }
 
 /**

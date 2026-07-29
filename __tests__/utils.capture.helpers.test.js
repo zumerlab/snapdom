@@ -2,8 +2,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   stripRootShadows,
-  removeAllComments,
-  sanitizeAttributesForXHTML,
   sanitizeCloneForXHTML,
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
@@ -82,19 +80,19 @@ describe('neutralizeRootMarginCollapse (#426, nodeMap alignment)', () => {
   })
 })
 
-describe('removeAllComments', () => {
+describe('sanitizeCloneForXHTML: comments', () => {
   it('removes all HTML comments from root', () => {
     const root = document.createElement('div')
     root.appendChild(document.createComment('test comment'))
     root.appendChild(document.createTextNode('text'))
     root.appendChild(document.createComment('another'))
-    removeAllComments(root)
+    sanitizeCloneForXHTML(root)
     expect(root.childNodes.length).toBe(1)
     expect(root.childNodes[0].nodeType).toBe(Node.TEXT_NODE)
   })
 })
 
-describe('sanitizeAttributesForXHTML', () => {
+describe('sanitizeCloneForXHTML: attributes', () => {
   // Note: TreeWalker.nextNode() traverses descendants; root is starting point.
   // Put attributes on a child so the walker visits it.
   it('removes attributes with unknown : prefix (keeps xml, xlink)', () => {
@@ -103,7 +101,7 @@ describe('sanitizeAttributesForXHTML', () => {
     child.setAttribute('v-bind:foo', '1')
     child.setAttribute('valid', '2')
     root.appendChild(child)
-    sanitizeAttributesForXHTML(root)
+    sanitizeCloneForXHTML(root)
     expect(child.hasAttribute('v-bind:foo')).toBe(false)
     expect(child.getAttribute('valid')).toBe('2')
   })
@@ -116,7 +114,7 @@ describe('sanitizeAttributesForXHTML', () => {
     child.setAttribute(':class', '3')
     child.setAttribute('data-ok', '4')
     root.appendChild(child)
-    sanitizeAttributesForXHTML(root, { stripFrameworkDirectives: true })
+    sanitizeCloneForXHTML(root, { stripFrameworkDirectives: true })
     expect(child.hasAttribute('x-show')).toBe(false)
     expect(child.hasAttribute('v-if')).toBe(false)
     expect(child.hasAttribute(':class')).toBe(false)
@@ -128,7 +126,7 @@ describe('sanitizeAttributesForXHTML', () => {
     const child = document.createElement('span')
     child.setAttribute('x-show', '1')
     root.appendChild(child)
-    sanitizeAttributesForXHTML(root, { stripFrameworkDirectives: false })
+    sanitizeCloneForXHTML(root, { stripFrameworkDirectives: false })
     expect(child.getAttribute('x-show')).toBe('1')
   })
 })

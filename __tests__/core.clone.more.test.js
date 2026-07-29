@@ -1,5 +1,6 @@
 // __tests__/core.clone.more.test.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { sanitizeCloneForXHTML } from '../src/utils/capture.helpers.js'
 import { deepClone } from '../src/core/clone.js'
 import { cache } from '../src/core/cache.js'
 import { NO_CAPTURE_TAGS } from '../src/utils/css.js'
@@ -873,9 +874,10 @@ describe('deepClone – nested foreignObject skipped (NEW-9)', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ROB-3 — XML-invalid control characters stripped from attribute values
+// ROB-3 — XML-invalid control chars are stripped by the single sanitizeCloneForXHTML
+// walk that both serialization paths run on the finished clone (was per-node in deepClone)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('deepClone – XML control char sanitization (ROB-3)', () => {
+describe('clone pipeline – XML control char sanitization (ROB-3)', () => {
   let session
   beforeEach(() => {
     if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
@@ -894,6 +896,7 @@ describe('deepClone – XML control char sanitization (ROB-3)', () => {
     div.setAttribute('data-label', 'hello\x00world')
     document.body.appendChild(div)
     const clone = await deepClone(div, session, {})
+    sanitizeCloneForXHTML(clone)
     expect(clone.getAttribute('data-label')).toBe('helloworld')
   })
 
@@ -902,6 +905,7 @@ describe('deepClone – XML control char sanitization (ROB-3)', () => {
     div.setAttribute('data-info', 'A\x07B')
     document.body.appendChild(div)
     const clone = await deepClone(div, session, {})
+    sanitizeCloneForXHTML(clone)
     expect(clone.getAttribute('data-info')).toBe('AB')
   })
 
@@ -910,6 +914,7 @@ describe('deepClone – XML control char sanitization (ROB-3)', () => {
     div.setAttribute('data-x', 'ok\uFFFEend')
     document.body.appendChild(div)
     const clone = await deepClone(div, session, {})
+    sanitizeCloneForXHTML(clone)
     expect(clone.getAttribute('data-x')).toBe('okend')
   })
 
@@ -918,6 +923,7 @@ describe('deepClone – XML control char sanitization (ROB-3)', () => {
     div.setAttribute('data-json', '{"key":"value","n":42}')
     document.body.appendChild(div)
     const clone = await deepClone(div, session, {})
+    sanitizeCloneForXHTML(clone)
     expect(clone.getAttribute('data-json')).toBe('{"key":"value","n":42}')
   })
 
@@ -926,6 +932,7 @@ describe('deepClone – XML control char sanitization (ROB-3)', () => {
     div.setAttribute('data-text', 'line1\tline2\nline3\rend')
     document.body.appendChild(div)
     const clone = await deepClone(div, session, {})
+    sanitizeCloneForXHTML(clone)
     expect(clone.getAttribute('data-text')).toBe('line1\tline2\nline3\rend')
   })
 })
