@@ -146,12 +146,6 @@ snapdom.plugins(...defs) → snapdom  // chainable, global
 { families?: string[]; domains?: string[]; subsets?: string[] }
 ```
 
-### PictureResolver options
-```ts
-{ timeout?: number; concurrency?: number; resolveLazySrc?: boolean; silent?: boolean }
-```
-Defaults: timeout=5000, concurrency=4, resolveLazySrc=true, silent=false.
-
 ---
 
 ## CAPTURE RESULT
@@ -195,6 +189,52 @@ Options:
 | useProxy | string | '' |
 | cache | CachePolicy | 'full' |
 | excludeFonts | ExcludeFonts | - |
+
+---
+
+## FOR AI AGENTS
+
+snapdom is built to serve as an agent's structured eyes on a live page. Three primitives:
+
+### 1. Read the UI without pixels — toContext()
+```js
+import { contextExport } from '@zumer/snapdom/plugins';
+const result = await snapdom(el, { plugins: [contextExport()] });
+const outline = await result.toContext();
+// h1 [10,8 380x28] "Panel de control"
+// p [10,44 380x18] "Estado del sistema: activo"
+// button [10,80 64x28] "Ir" {label=Enviar búsqueda}
+```
+Compact indented outline (structure, roles, visible text, geometry, form state);
+wrappers collapse and hidden content is skipped — a 48-card dashboard fits in ~2-3k
+tokens. `toContext({ format: 'json' })` returns the tree.
+
+### 2. Act on the UI — toAgentMap()
+```js
+import { agentMap } from '@zumer/snapdom/plugins';
+const result = await snapdom(el, { plugins: [agentMap()] });
+const { image, map } = await result.toAgentMap();
+// image: annotated screenshot with numbered badges on interactive elements
+// map[2].b → [x, y, w, h] of badge 2 ("click element 2")
+```
+
+### 3. Verify actions cheaply — deterministic captures
+Captures of an unchanged DOM are byte-identical (the differential-recapture engine is
+tested on byte equality, not pixel similarity). An agent can hash `result.url` before
+and after an action to answer "did the UI change?" without visual diffing:
+```js
+const before = (await snapdom(el)).url;
+await performAction();
+const after = (await snapdom(el)).url;
+const changed = before !== after;
+```
+`result.warnings` (array of {code, message}) reports capture degradations (failed
+images, clamps, font fallbacks) — check it before trusting a capture in a pipeline.
+
+Recipe: pair toContext() for reading, toAgentMap() for acting, and url-hash comparison
+for verification — all from in-page JavaScript, no extension or CDP needed. An MCP
+server exposing these over a live page is a straightforward wrapper around the three
+calls above.
 
 ---
 
