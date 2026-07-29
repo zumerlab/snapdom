@@ -11,7 +11,35 @@ export { preCache } from './preCache.js'
 
 // API pública (registro global de plugins)
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
-export const snapdom = Object.assign(main, { plugins })
+
+/**
+ * Captures an HTML string (SSR markup, templates, sanitized user content) without the
+ * caller wiring a mount: the markup mounts offscreen in the live document (so page CSS
+ * and fonts apply), captures, and cleans up. When the string has a single root element
+ * that element is the capture target; otherwise the wrapper is.
+ * @param {string} html
+ * @param {object} [options] - Same options as snapdom()
+ * @returns {Promise<object>} The capture result
+ */
+async function fromString(html, options) {
+  if (typeof html !== 'string' || !html.trim()) throw new Error('[snapdom.fromString] html string required')
+  const mount = document.createElement('div')
+  // data-snapdom-internal: mounting/removing must not bump the style epoch.
+  mount.setAttribute('data-snapdom-internal', '')
+  mount.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none;'
+  mount.innerHTML = html
+  document.body.appendChild(mount)
+  try {
+    // One frame so layout (and any already-loaded fonts) settle before measuring.
+    await new Promise((r) => requestAnimationFrame(r))
+    const target = mount.children.length === 1 ? mount.firstElementChild : mount
+    return await main(target, options)
+  } finally {
+    mount.remove()
+  }
+}
+
+export const snapdom = Object.assign(main, { plugins, fromString })
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')

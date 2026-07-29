@@ -65,22 +65,12 @@ export function videoExport(options = {}) {
           const _bitrate = opts.bitrate ?? bitrate;
           const frameMs = 1000 / _fps;
 
-          // 1) Pre-render every frame onto a fixed-size canvas.
-          let W = 0, H = 0;
-          const frames = [];
-          for (let i = 0; i < _count; i++) {
-            const cap = await snapdom(el, { scale: _scale, backgroundColor: _bg, fast: true });
-            const src = await cap.toCanvas();
-            if (i === 0) { W = src.width; H = src.height; }
-            const fc = document.createElement('canvas');
-            fc.width = W; fc.height = H;
-            const fx = fc.getContext('2d');
-            fx.fillStyle = _bg;
-            fx.fillRect(0, 0, W, H);
-            fx.drawImage(src, 0, 0, W, H);
-            frames.push(fc);
-            if (i < _count - 1) await new Promise(r => setTimeout(r, frameMs));
-          }
+          // 1) First frame sizes the stage; capture rides the engine's automatic
+          // memoization/differential recapture (animated subtrees rebuild only what
+          // changed), so per-frame cost tracks the mutation, not the tree.
+          const firstCap = await snapdom(el, { scale: _scale, backgroundColor: _bg });
+          const firstSrc = await firstCap.toCanvas();
+          const W = firstSrc.width, H = firstSrc.height;
 
           // 2) Pick the best supported container/codec.
           const mimeType = MIME_CANDIDATES.find(t =>
@@ -90,11 +80,21 @@ export function videoExport(options = {}) {
             console.warn(`[snapdom] video-export: MP4 not supported by this browser's MediaRecorder; falling back to ${mimeType}`);
           }
 
-          // 3) Play the frames onto a stage canvas while recording its stream.
+          // 3) Explicit-frame recording: captureStream(0) + requestFrame() pushes each
+          // frame at its exact place in the timeline, so output timing is deterministic
+          // even when a capture takes longer than the frame budget (the old realtime
+          // stream + setTimeout pacing drifted and duplicated/dropped frames under load).
           const stage = document.createElement('canvas');
           stage.width = W; stage.height = H;
           const sctx = stage.getContext('2d');
-          const stream = stage.captureStream(_fps);
+          const paint = (src) => {
+            sctx.fillStyle = _bg;
+            sctx.fillRect(0, 0, W, H);
+            sctx.drawImage(src, 0, 0, W, H);
+          };
+          const stream = stage.captureStream(0);
+          const track = stream.getVideoTracks()[0];
+          const pushFrame = () => { if (track && typeof track.requestFrame === 'function') track.requestFrame(); };
 
           const recOpts = {};
           if (mimeType) recOpts.mimeType = mimeType;
@@ -106,10 +106,16 @@ export function videoExport(options = {}) {
           const stopped = new Promise(res => { rec.onstop = res; });
 
           rec.start();
-          for (let i = 0; i < frames.length; i++) {
-            sctx.clearRect(0, 0, W, H);
-            sctx.drawImage(frames[i], 0, 0);
-            await new Promise(r => setTimeout(r, frameMs));
+          paint(firstSrc);
+          pushFrame();
+          for (let i = 1; i < _count; i++) {
+            const t0 = performance.now();
+            const cap = await snapdom(el, { scale: _scale, backgroundColor: _bg });
+            paint(await cap.toCanvas());
+            pushFrame();
+            // Latency-compensated pacing: sleep only the remainder of the frame budget.
+            const spent = performance.now() - t0;
+            if (spent < frameMs) await new Promise(r => setTimeout(r, frameMs - spent));
           }
           await new Promise(r => setTimeout(r, frameMs)); // let the last frame land
           rec.stop();

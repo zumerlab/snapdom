@@ -375,6 +375,12 @@ export declare function snapdom(
 export declare namespace snapdom {
   function plugins(...defs: PluginUse[]): typeof snapdom;
 
+  /**
+   * Capture an HTML string (SSR markup, templates) without wiring a mount: it mounts
+   * offscreen in the live document (page CSS/fonts apply), captures, and cleans up.
+   */
+  function fromString(html: string, options?: SnapdomOptions): Promise<CaptureResult>;
+
   /** Shortcut helpers that run a one-off capture+export. */
 
   /** Returns the raw SVG data URL of a one-off capture. */
