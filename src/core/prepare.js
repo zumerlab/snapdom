@@ -133,6 +133,17 @@ export async function prepareClone(element, options = {}) {
     applyStyleClass(node, key, keyToClass)
   }
 
+  // Top layer: an open modal <dialog> / popover paints above everything with a ::backdrop,
+  // but its clone renders in tree order with no backdrop box. Re-append matching clones at
+  // the end of the root (document order approximates top-layer order) with a synthesized
+  // backdrop div. Zero cost when nothing matches; runs after class application so frozen
+  // styles survive the move.
+  try {
+    liftTopLayerClones(element, clone, sessionCache.nodeMap)
+  } catch (e) {
+    debugWarn(sessionCache, 'top-layer lift failed', e)
+  }
+
   // Re-anchor fixed/sticky clones to their painted position — in clip mode (the window is
   // what the user sees) and whenever the capture root is itself scrolled (stuck stickies
   // must freeze where they're stuck: header/footer/left-sidebar, horizontal included).
@@ -188,6 +199,44 @@ export async function prepareClone(element, options = {}) {
     nodeMap: sessionCache.nodeMap,
     reconcileRisk: sessionCache.reconcileRisk || 0,
     clipWindow,
+  }
+}
+
+/** See call site: replicates top-layer paint order + ::backdrop for open modals/popovers. */
+function liftTopLayerClones(element, clone, nodeMap) {
+  const tops = []
+  for (const sel of [':modal', ':popover-open']) {
+    // Each selector separately: an unsupported one must not kill the other.
+    try { tops.push(...element.querySelectorAll(sel)) } catch { }
+  }
+  if (!tops.length) return
+  const srcToClone = new Map()
+  for (const [c, s] of nodeMap.entries()) srcToClone.set(s, c)
+  let z = 2147480000
+  for (const top of tops) {
+    const topClone = srcToClone.get(top)
+    if (!topClone || topClone === clone || topClone.parentNode == null) continue
+    // Synthesized ::backdrop — fixed inset:0 resolves against the svg viewport inside the
+    // foreignObject, dimming the whole capture like the live backdrop dims the page.
+    // backdrop-filter can't ride along (#457 + no source element for emulation): the rgba
+    // dim is the faithful-and-portable part.
+    try {
+      const bd = getComputedStyle(top, '::backdrop')
+      const bg = bd.backgroundColor
+      const bgImg = bd.backgroundImage
+      const paints = (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') || (bgImg && bgImg !== 'none')
+      if (paints) {
+        const bdiv = document.createElement('div')
+        bdiv.setAttribute('data-sd-backdrop', '')
+        bdiv.style.cssText = `position:fixed;inset:0;z-index:${z};background-color:${bg};` +
+          (bgImg && bgImg !== 'none' && bgImg.includes('data:') ? `background-image:${bgImg};` : '')
+        clone.appendChild(bdiv)
+      }
+    } catch { /* no ::backdrop support → just the lift */ }
+    z += 1
+    topClone.style.zIndex = String(z)
+    clone.appendChild(topClone) // move to end: paints above the rest, out-of-flow so layout keeps
+    z += 1
   }
 }
 
