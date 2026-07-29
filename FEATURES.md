@@ -124,8 +124,6 @@ Defaults as normalized in `src/core/context.js`.
 | `invalidate` | `false` | With `burst: true`, force a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits) |
 | `safariWarmupAttempts` | `3` | Safari warmup iterations (1–3) |
 | `excludeStyleProps` | `null` | RegExp/predicate to skip style props |
-| `resolvePicturePlaceholders` | `true` | Built-in `<picture>` / lazy resolver |
-| `pictureResolver` | `{}` | `{ timeout, concurrency, resolveLazySrc, silent }` |
 | `plugins` | — | Per-capture plugin list (local-first) |
 
 ## Plugin system

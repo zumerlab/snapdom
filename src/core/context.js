@@ -33,8 +33,6 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {boolean} [options.outerShadows]      // NEW
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
- * @param {boolean} [options.resolvePicturePlaceholders] - Resolve &lt;picture&gt; placeholders / lazy data-src before clone (default true)
- * @param {{ timeout?: number, concurrency?: number, resolveLazySrc?: boolean, silent?: boolean }} [options.pictureResolver] - Fine-tune built-in picture resolver
  * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. On by default; pass `false` to embed images verbatim.
  * @returns {Object}
  */
@@ -124,12 +122,9 @@ export function createContext(options = {}) {
     // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
     excludeStyleProps: options.excludeStyleProps ?? null,
 
-    // Built-in picture / lazy-src resolver (see src/modules/pictureResolver.js)
+    // Lazy <picture>/data-src placeholders resolve on the CLONE (freezeImgSrcset).
+    // Accepted for v2 compat, undocumented in v3 (the engine just does the right thing).
     resolvePicturePlaceholders: options.resolvePicturePlaceholders !== false,
-    pictureResolver:
-      options.pictureResolver && typeof options.pictureResolver === 'object'
-        ? options.pictureResolver
-        : {},
 
     // Plugins (reservado)
     // plugins: normalizePlugins(...),

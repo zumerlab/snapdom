@@ -53,7 +53,6 @@ describe('createContext - defaults & normalization', () => {
     expect(ctx.filename).toBe('snapDOM')
 
     expect(ctx.resolvePicturePlaceholders).toBe(true)
-    expect(ctx.pictureResolver).toEqual({})
   })
 
   it('normalizes iconFonts input (string → array, array stays, falsy → empty array)', () => {

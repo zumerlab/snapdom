@@ -164,8 +164,7 @@ export function freezeImgSrcset(original, cloned, options = {}) {
     // resolve on the CLONE. The old live-DOM resolver swapped the user's element and
     // undid it afterwards — visible flicker and an undo dance for something inlineImages
     // fetches from the clone just as well.
-    if ((!chosen || isPlaceholderSrc(chosen)) && options.resolvePicturePlaceholders !== false &&
-        options.pictureResolver?.resolveLazySrc !== false) {
+    if ((!chosen || isPlaceholderSrc(chosen)) && options.resolvePicturePlaceholders !== false) {
       const lazy = findLazySrcAttr(original)
       if (lazy) chosen = lazy
     }

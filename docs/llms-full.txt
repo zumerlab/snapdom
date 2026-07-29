@@ -36,7 +36,7 @@ import { snapdom } from '@zumer/snapdom';
 Subpath exports:
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
-import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, promptExport, pictureResolver } from '@zumer/snapdom/plugins';
+import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, promptExport } from '@zumer/snapdom/plugins';
 ```
 
 ---
@@ -131,8 +131,6 @@ snapdom.plugins(...defs) → snapdom  // chainable, global
 | fallbackURL | string|((dims)=>string) | undefined | Fallback image for broken <img> |
 | cache | 'disabled'|'full'|'auto'|'soft' | 'soft' | Resource cache policy |
 | placeholders | boolean | true | Show placeholders for missing resources |
-| resolvePicturePlaceholders | boolean | true | Resolve lazy <picture>/data-src |
-| pictureResolver | object | {} | {timeout?, concurrency?, resolveLazySrc?, silent?} |
 | plugins | PluginUse[] | undefined | Per-capture plugins (override globals by name) |
 | format | string | 'png' | Default format: png, jpeg, webp, svg |
 | filename | string | 'snapDOM' | Default download filename |
@@ -393,24 +391,7 @@ Override at export: { width, charset, invert }
 
 Hook: defineExports — registers 'ascii' export.
 
-### 6. pictureResolver — Lazy Image Resolution
-
-```js
-import { pictureResolver } from '@zumer/snapdom/plugins';
-snapdom.plugins(pictureResolver({ timeout: 10000, silent: true }));
-```
-
-NOTE: This logic runs by default in core (resolvePicturePlaceholders: true). Use this plugin only for explicit overrides or when core resolver is disabled.
-
-Options:
-- timeout (number, default 5000): per-element fetch timeout ms
-- concurrency (number, default 4): parallel load limit
-- resolveLazySrc (boolean, default true): resolve data-src, data-lazy-src, data-original, data-hi-res-src, data-srcset, data-lazy-srcset
-- silent (boolean, default false): suppress warnings
-
-Hooks: beforeClone (resolve on live DOM), afterClone (undo mutations).
-
-### 7. pdfImage — PDF Export
+### 6. pdfImage — PDF Export
 
 ```js
 import { pdfImage } from '@zumer/snapdom/plugins';
@@ -430,7 +411,7 @@ Generates A4 PDF with centered image, 40pt margins, JPEG compression. No externa
 
 Hook: defineExports — registers 'pdfImage' export.
 
-### 8. promptExport — LLM-Ready Screenshot
+### 7. promptExport — LLM-Ready Screenshot
 
 ```js
 import { promptExport } from '@zumer/snapdom/plugins';
@@ -721,7 +702,7 @@ await result.toPdfImage();
 Cause: CORS. Fix: useProxy option or crossorigin="anonymous" on images.
 
 ### Lazy images show placeholders
-Fix: resolvePicturePlaceholders is true by default. Increase pictureResolver.timeout if needed.
+Fix: lazy placeholders resolve automatically on the clone (data-src, data-lazy-src, data-original, data-srcset).
 
 ### Custom fonts missing
 Fix: Set embedFonts: true. Use preCache for faster first capture. Provide localFonts for offline.
