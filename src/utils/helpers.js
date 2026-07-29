@@ -23,7 +23,10 @@ export function extractURL(value) {
  * @param {number} [targetDppx=1]
  * @returns {string|null}
  */
-const SUPPORTED_IMAGE_SET_TYPE = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
+/** Raster/vector types every target engine decodes; anything else (jxl, tiff…) the
+ *  browser's own type-support step would skip. Shared by image-set() and <source type>. */
+export const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
+const SUPPORTED_IMAGE_SET_TYPE = SUPPORTED_IMAGE_MIME
 
 export function resolveImageSetURL(value, targetDppx = 1) {
   const m = value.match(/^\s*-?(?:webkit-)?image-set\(([\s\S]*)\)\s*$/i)
@@ -50,27 +53,6 @@ export function resolveImageSetURL(value, targetDppx = 1) {
   return (fit || candidates[candidates.length - 1]).url
 }
 
-/**
- * Determines if a font family or URL is an icon font.
- *
- * @param {string} familyOrUrl - The font family or URL
- * @returns {boolean} True if it is an icon font
- */
-export function isIconFont(familyOrUrl) {
-  const iconFontPatterns = [
-    /font\s*awesome/i,
-    /material\s*icons/i,
-    /ionicons/i,
-    /glyphicons/i,
-    /feather/i,
-    /bootstrap\s*icons/i,
-    /remix\s*icons/i,
-    /heroicons/i,
-    /layui/i,
-    /lucide/i
-  ]
-  return iconFontPatterns.some(rx => rx.test(familyOrUrl))
-}
 
 export function stripTranslate(transform) {
   if (!transform || transform === 'none') return ''

@@ -3,6 +3,7 @@
  * mutation resolver was dissolved into the clone path (freezeImgSrcset resolves
  * lazy placeholders on the CLONE; inlineImages fetches them like any source).
  */
+import { SUPPORTED_IMAGE_MIME as SUPPORTED_SOURCE_TYPE } from '../utils/helpers.js'
 
 /**
  * @param {string} src
@@ -16,9 +17,6 @@ export function isPlaceholderSrc(src) {
   return false
 }
 
-/** Raster types every target engine decodes; anything else (jxl, tiff…) the browser's own
- *  <picture> type-support step would skip, so freezing it diverges from what the page shows. */
-const SUPPORTED_SOURCE_TYPE = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
 
 /**
  * Picks the srcset candidate the browser itself would select: smallest density

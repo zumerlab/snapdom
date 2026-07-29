@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractURL, isIconFont, stripTranslate, safeEncodeURI, resolveURL } from '../src/utils'
+import { extractURL, stripTranslate, safeEncodeURI, resolveURL } from '../src/utils'
 
 describe('resolveURL', () => {
   it('resolves relative URL against base', () => {
@@ -19,12 +19,6 @@ describe('extractURL', () => {
   })
 })
 
-describe('isIconFont', () => {
-  it('detects icon fonts', () => {
-    expect(isIconFont('Font Awesome')).toBe(true)
-    expect(isIconFont('Arial')).toBe(false)
-  })
-})
 
 describe('stripTranslate', () => {
   it('removes translate transforms', () => {
