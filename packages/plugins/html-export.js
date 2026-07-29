@@ -27,15 +27,22 @@ export function htmlExport(options = {}) {
           if (typeof url !== 'string' || !url.startsWith('data:image/svg+xml')) {
             throw new Error('[snapdom] html-export: capture is not an SVG data URL');
           }
-          const svgString = decodeURIComponent(url.replace(/^data:image\/svg\+xml[^,]*,/, ''));
+          // Core exposes the serialized SVG lazily and the CSS artifacts directly —
+          // no reverse-parsing of our own output. Decode fallback kept for
+          // artifact-less contexts (older cores, direct calls).
+          const svgString = typeof ctx.export.svgString === 'function'
+            ? ctx.export.svgString()
+            : decodeURIComponent(url.replace(/^data:image\/svg\+xml[^,]*,/, ''));
 
           const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
           const fo = doc.querySelector('foreignObject');
           if (!fo) throw new Error('[snapdom] html-export: capture has no foreignObject');
 
-          const styleEl = fo.querySelector('style');
           const container = fo.querySelector('div');
-          const css = styleEl ? styleEl.textContent : '';
+          const a = ctx.artifacts;
+          const css = a
+            ? (a.scrollbarCSS + a.baseCSS + a.fontsCSS + a.classCSS)
+            : (fo.querySelector('style') ? fo.querySelector('style').textContent : '');
           const body = container ? new XMLSerializer().serializeToString(container) : '';
 
           const asDoc = opts.fullDocument ?? fullDocument;

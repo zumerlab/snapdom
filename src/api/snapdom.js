@@ -150,6 +150,12 @@ snapdom.capture = async (el, context, _token) => {
  * @private
  */
 async function buildResult(url, context) {
+  // Lazy decode: exposing the serialized SVG eagerly would double retained string size
+  // per live result — exporters that need it (toHtml) pay the decode on demand.
+  const lazySvgString = () => {
+    const i = url.indexOf(',')
+    return i >= 0 ? decodeURIComponent(url.slice(i + 1)) : ''
+  }
 
   // ——— 1) Core exports por defecto (carga lazy en cada tipo) ———
   // NOTA: no importamos estáticamente los exportadores aquí.
@@ -200,7 +206,7 @@ async function buildResult(url, context) {
   _pluginExports.jpg = _pluginExports.jpeg
 
   // Contexto extendido para defineExports (incluye URL y la fachada para reuso)
-  const _defineCtx = { ...context, export: { url }, exports: _pluginExports }
+  const _defineCtx = { ...context, artifacts: context.__artifacts || null, export: { url, svgString: lazySvgString }, exports: _pluginExports }
 
   const providedMaps = await runAll('defineExports', _defineCtx)
   // Local-first: earlier plugins in the list (locals) win over later (globals).
@@ -259,7 +265,7 @@ async function buildResult(url, context) {
       const work = exportsMap[type]
       if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, opts)
-      const ctx = { ...context, export: { type, options: nextOpts, url } }
+      const ctx = { ...context, artifacts: context.__artifacts || null, export: { type, options: nextOpts, url, svgString: lazySvgString } }
       // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
       // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
       await runHook('beforeExport', ctx, { format: type, options: nextOpts })

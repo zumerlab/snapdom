@@ -1,4 +1,4 @@
-# SnapDOM Plugin Specification v1.0
+# SnapDOM Plugin Specification v2.0 (snapdom v3)
 
 The official guide for creating SnapDOM plugins.
 
@@ -128,8 +128,14 @@ Every hook receives a single context object (`ctx`):
   svgString,         // After beforeRender
   dataURL,           // After afterRender
 
-  // During export hooks
-  export: { type, options, url }
+  // During export hooks (defineExports and beforeExport/afterExport)
+  export: {
+    type, options, url,
+    svgString,       // () => string — LAZY decode of the serialized SVG (call it)
+  },
+  artifacts: {       // Render CSS the pipeline already holds — never reverse-parse the url
+    classCSS, fontsCSS, baseCSS, scrollbarCSS
+  },
 }
 ```
 
@@ -139,6 +145,26 @@ Every hook receives a single context object (`ctx`):
 2. Mutate `ctx` freely, e.g. change `ctx.backgroundColor` in `beforeSnap`.
 3. `afterExport` return values are chained to the next plugin.
 4. DOM mutations in `beforeClone` must be undone. The live page should not be affected.
+
+### Plugins × the engine's fast paths (v3)
+
+snapdom memoizes repeated captures automatically and rebuilds only mutated subtrees
+(differential recapture). Because a memo serve skips render hooks and a subtree splice
+would drop their work, **any plugin with a clone/render-affecting hook** (`resolveNode`,
+`beforeSnap`, `beforeClone`, `afterClone`, `beforeRender`, `afterRender`) **suspends
+those fast paths** for its captures. Export-only plugins (`defineExports`,
+`beforeExport`, `afterExport`) keep the full speedup.
+
+If your render hooks are **deterministic and idempotent** (same input → same output, no
+external state like timestamps or counters), declare it:
+
+```js
+{ name: 'my-plugin', pure: true, afterClone(ctx) { /* … */ } }
+```
+
+`pure: true` opts the plugin back into memoization and differential recapture. Declaring
+purity on a hook that reads changing external state will serve stale results — that is
+the contract you sign.
 
 ## Adding Custom Exports with defineExports
 

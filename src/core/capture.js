@@ -565,6 +565,15 @@ export async function composeAndSerialize(state, ex) {
   svgString = svgHeader + foString + svgFooter
   dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
   state = { svgString, dataURL, ...state }
+  // Render artifacts for export plugins (toHtml et al) — the CSS strings the pipeline
+  // already holds, so export code never reverse-parses its own data URL. svgString stays
+  // OUT (it doubles retained memory): exporters decode it lazily from the url.
+  options.__artifacts = {
+    classCSS: state.classCSS || '',
+    fontsCSS: state.fontsCSS || '',
+    baseCSS: state.baseCSS || '',
+    scrollbarCSS: state.scrollbarCSS || '',
+  }
   // afterRender(context)
   await runHook('afterRender', state)
 
