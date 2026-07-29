@@ -70,3 +70,33 @@ machinery were migrated/removed with it).
   `fast` rows, checkBurstAdvice comments, inverted JSDoc defaults.
 
 Verdict candidates: **all graduate to next** (they close next's own declared follow-ups).
+
+## Wave 3 — fidelity (findings [7]–[13])
+
+All seven landed; wave close: **3 engines green (chromium/webkit/firefox, 830 tests)**.
+Every fix is gated to cost zero when the feature is absent.
+
+- **[7] open-quote/close-quote** — painted as LITERAL keyword text; now resolved from
+  computed `quotes` (first pair, typographic fallback for Chromium's 'auto').
+- **[10]+[11] ::marker / ::first-line** — were silently discarded; styleScan now collects
+  their selectors and matching elements get an attribute-keyed scoped rule
+  (`[data-sd-pN]::marker{…}`) with only the props differing from the element. Diff path
+  bails when such rules exist (attribute-keyed rules can't splice byte-faithfully).
+- **[8] @media frozen to the live viewport** — shadow CSS + kept light-DOM <style> clones
+  re-evaluated conditions against the SVG's own tiny viewport. resolveMediaQueries inlines
+  matching blocks / drops the rest at extraction (CSSOM on the SOURCE sheet). Bonus: two
+  latent scope-leak bugs in rewriteShadowCSS closed (first-rule-in-@media escape, author
+  :where() selectors skipping the scope wrap).
+- **[9] top-layer** — open :modal/:popover-open clones lift to end-of-root (paint order)
+  with a synthesized ::backdrop (fixed inset:0 resolves against the svg viewport).
+  backdrop-filter doesn't ride along (#457); rgba dim is the portable part.
+- **[13] <object>/<embed>** — image-typed embeds become inlined <img> (fallback children
+  dropped — both painted before), same-origin documents reuse the iframe rasterizer, rest
+  falls through honestly with a warn.
+- **[12] background-attachment:fixed** — the viewport slice the user saw is frozen into
+  element-local px (cover/%/px resolved against the real viewport, intrinsic dims decoded
+  from the inlined data URL); transformed-ancestor/iOS cases match live degradation.
+
+Verdict candidates: **[7], [8], [10], [11], [13] graduate to next**; **[9] and [12] keep
+experimenting** (top-layer ordering approximates call order by document order; fixed-bg
+compensation is the newest math — both deserve real-page mileage before graduating).
