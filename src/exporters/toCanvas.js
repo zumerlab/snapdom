@@ -396,8 +396,14 @@ export async function toCanvas(url, options) {
     outH = natH
   }
 
-  outW = outW * scale
-  outH = outH * scale
+  // ONE sizing rule across every exporter (v3): width/height are the absolute output CSS
+  // size and win; scale applies only when neither is set; dpr multiplies device pixels.
+  // (toCanvas used to multiply width×scale while toImg/toSvg ignored scale — same options,
+  // different geometry.)
+  if (!hasW && !hasH) {
+    outW = outW * scale
+    outH = outH * scale
+  }
 
   // #425: the device canvas is outW*dpr × outH*dpr; dpr (which defaults to devicePixelRatio,
   // i.e. 2 on Retina) can push a within-decode-limit capture past the canvas cap. Clamp the

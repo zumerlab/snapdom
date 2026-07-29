@@ -162,7 +162,9 @@ async function buildResult(url, context) {
     },
     blob: async (ctx, opts) => {
       const { toBlob } = await import('../exporters/toBlob.js')
-      return toBlob(url, { ...ctx, ...(opts || {}) })
+      // Blob keeps its historic svg default (the raw vector output) unless the caller
+      // explicitly asked for an image format.
+      return toBlob(url, { ...ctx, ...(opts || {}), format: (opts && opts.__explicitFormat) || 'svg' })
     },
     png: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
@@ -209,18 +211,36 @@ async function buildResult(url, context) {
 
   // —— Normalizador para opciones por tipo (p.ej. JPEG/WebP: fondo blanco) ——
   function normalizeExportOptions(type, opts) {
-    const next = { ...context, ...(opts || {}) }
+    const raw = opts || {}
+    const next = { ...context, ...raw }
+    // v3: `format` is the one documented name for the output format. `type` survives as a
+    // silent runtime alias ONLY when the caller passed an image-format string in it —
+    // context.type is the result TYPE (svg/img/canvas/blob), never a format, and
+    // context.format is always set, so the alias must read the RAW caller opts.
+    const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
+    const rawType = typeof raw.type === 'string' ? raw.type.toLowerCase() : ''
+    const explicit = typeof raw.format === 'string' ? raw.format.toLowerCase()
+      : (IMAGE_FORMATS.has(rawType) ? rawType : '')
+    if (explicit) next.format = explicit === 'jpg' ? 'jpeg' : explicit
+    // What the CALLER actually asked for (null = nothing): per-export defaults differ
+    // (blob defaults to svg, download to png), so they need the explicit value, not the
+    // context default.
+    next.__explicitFormat = explicit ? next.format : null
     // `type` aquí es el NOMBRE del export ('blob'/'canvas'/'download'/'jpeg'/…), no el formato
-    // de imagen: en toBlob/toCanvas/download el formato viaja en opts.format/opts.type. Resolver
-    // el formato real (jpg→jpeg) para aplanar el fondo igual que createContext (context.js:84),
-    // o JPEG codificaría las zonas transparentes en negro.
+    // de imagen. Resolver el formato real (jpg→jpeg) para aplanar el fondo igual que
+    // createContext, o JPEG codificaría las zonas transparentes en negro.
     const lossy = (s) => s === 'jpeg' || s === 'jpg' || s === 'webp'
-    const fmt = [type, next.format, next.type]
+    const fmt = [type, next.format, rawType]
       .map(v => (typeof v === 'string' ? v.toLowerCase() : ''))
       .find(lossy)
     if (fmt) {
       const noBg = next.backgroundColor == null || next.backgroundColor === 'transparent'
       if (noBg) next.backgroundColor = '#ffffff'
+    }
+    // v3 sizing rule: width/height are the absolute output size and win; scale applies
+    // only when neither is set; dpr multiplies device pixels.
+    if (next.scale !== 1 && (Number.isFinite(next.width) || Number.isFinite(next.height))) {
+      debugWarn(next, 'width/height define the output size — scale is ignored when either is set')
     }
     return next
   }
