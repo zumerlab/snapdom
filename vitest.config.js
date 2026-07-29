@@ -22,6 +22,8 @@ const visualCommands = Object.fromEntries(
 
 export default defineConfig({
   test: {
+    // The visual suite tests compiled dist/ — never let it pixel-diff a stale build.
+    globalSetup: ['./scripts/ensure-fresh-dist.mjs'],
     browser: {
       enabled: true,
       provider: 'playwright',
