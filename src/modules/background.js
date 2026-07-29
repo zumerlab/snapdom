@@ -138,6 +138,111 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
       cloneNode.style.setProperty(prop, val)
     }
   }
+  // 4) background-attachment: fixed positions/sizes against the browser viewport, but the
+  // rasterized SVG's viewport is the element box — the live crop is lost. Freeze the slice
+  // the user was seeing (runs only for the rare flagged nodes).
+  if (hasBg && /fixed/.test(style.getPropertyValue('background-attachment') || '')) {
+    try { await freezeFixedBackground(srcNode, cloneNode, style) } catch { /* keep uncompensated */ }
+  }
+}
+
+/** Resolves one background-size spec against the viewport (fixed layers size there). */
+function resolveFixedLayerSize(sizeSpec, iw, ih, vw, vh) {
+  const spec = (sizeSpec || 'auto').trim()
+  if (spec === 'cover' || spec === 'contain') {
+    if (!iw || !ih) return null
+    const s = spec === 'cover' ? Math.max(vw / iw, vh / ih) : Math.min(vw / iw, vh / ih)
+    return { w: iw * s, h: ih * s }
+  }
+  const parts = spec.split(/\s+/)
+  const comp = (v, base, intrinsic) => {
+    if (v === 'auto' || v === undefined) return null
+    if (v.endsWith('px')) return parseFloat(v)
+    if (v.endsWith('%')) return base * parseFloat(v) / 100
+    return undefined // calc()/other → unsupported
+  }
+  const wRaw = comp(parts[0], vw, iw)
+  const hRaw = comp(parts[1], vh, ih)
+  if (wRaw === undefined || hRaw === undefined) return null
+  let w = wRaw, h = hRaw
+  if (w == null && h == null) { w = iw; h = ih }
+  else if (w == null) w = iw && ih ? h * (iw / ih) : vw
+  else if (h == null) h = iw && ih ? w * (ih / iw) : vh
+  if (!w || !h) return null
+  return { w, h }
+}
+
+/** Rewrites fixed background layers to scroll, freezing viewport-resolved size/position
+ *  into element-local pixel values so the capture shows the exact slice the user saw. */
+async function freezeFixedBackground(srcNode, cloneNode, style) {
+  const attachments = (style.getPropertyValue('background-attachment') || '').split(',').map(s => s.trim())
+  // Engines degrade fixed to scroll inside transformed/filtered ancestors, and
+  // iOS-lineage engines ignore fixed entirely — match the LIVE rendering: plain rewrite.
+  let degraded = isSafariIOSLike()
+  if (!degraded) {
+    for (let p = srcNode.parentElement; p && !degraded; p = p.parentElement) {
+      const cs = getStyle(p)
+      if ((cs.transform && cs.transform !== 'none') || (cs.filter && cs.filter !== 'none')) degraded = true
+    }
+  }
+  if (degraded) {
+    cloneNode.style.setProperty('background-attachment', attachments.map(() => 'scroll').join(', '))
+    return
+  }
+  const rect = srcNode.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const layers = splitBackgroundImage(cloneNode.style.backgroundImage || style.getPropertyValue('background-image') || '')
+  const sizes = (cloneNode.style.backgroundSize || style.getPropertyValue('background-size') || 'auto').split(',').map(s => s.trim())
+  const positions = (cloneNode.style.backgroundPosition || style.getPropertyValue('background-position') || '0% 0%').split(',').map(s => s.trim())
+  const outSizes = []
+  const outPositions = []
+  for (let i = 0; i < layers.length; i++) {
+    const att = attachments[i % attachments.length] || 'scroll'
+    const size = sizes[i % sizes.length]
+    const pos = positions[i % positions.length]
+    if (att !== 'fixed') { outSizes.push(size); outPositions.push(pos); continue }
+    // Intrinsic dims: gradients have none (they fill the positioning area = viewport).
+    let iw = 0, ih = 0
+    const urlMatch = layers[i] && layers[i].match(/url\(["']?([^"')]+)["']?\)/)
+    if (urlMatch) {
+      try {
+        const img = new Image()
+        img.src = urlMatch[1]
+        await img.decode()
+        iw = img.naturalWidth; ih = img.naturalHeight
+      } catch { outSizes.push(size); outPositions.push(pos); continue }
+    }
+    const resolved = urlMatch
+      ? resolveFixedLayerSize(size, iw, ih, vw, vh)
+      : { w: vw, h: vh } // gradient: positioning area is the viewport
+    if (!resolved) { outSizes.push(size); outPositions.push(pos); continue }
+    // Position % resolves against (area - image); px is absolute. calc() → bail this layer.
+    const posParts = pos.split(/\s+/)
+    const comp = (v, area, img) => {
+      if (!v) return 0
+      if (v.endsWith('px')) return parseFloat(v)
+      if (v.endsWith('%')) return (area - img) * parseFloat(v) / 100
+      return undefined
+    }
+    const px = comp(posParts[0] || '0%', vw, resolved.w)
+    const py = comp(posParts[1] || posParts[0] || '0%', vh, resolved.h)
+    if (px === undefined || py === undefined) { outSizes.push(size); outPositions.push(pos); continue }
+    outSizes.push(`${limitPx(resolved.w)}px ${limitPx(resolved.h)}px`)
+    outPositions.push(`${limitPx(px - rect.left)}px ${limitPx(py - rect.top)}px`)
+  }
+  cloneNode.style.setProperty('background-size', outSizes.join(', '))
+  cloneNode.style.setProperty('background-position', outPositions.join(', '))
+  cloneNode.style.setProperty('background-attachment', attachments.map(() => 'scroll').join(', '))
+}
+
+const limitPx = (n) => Math.round(n * 100) / 100
+
+function isSafariIOSLike() {
+  try {
+    const ua = navigator.userAgent
+    return /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+  } catch { return false }
 }
 
 /**
