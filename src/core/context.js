@@ -42,16 +42,33 @@ export function createContext(options = {}) {
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
 
+  // v3: ONE decision, one pair of options. `exclude` accepts selectors and/or predicates
+  // ((el) => true EXCLUDES it, matching the option's name) in any mix; `excludeMode`
+  // says how excluded nodes leave ('hide' spacer | 'remove'). `filter` (keep-polarity)
+  // and `filterMode` stay as silent legacy aliases — filter's polarity flips at this
+  // boundary and both mechanisms compose when passed together. Split ONCE here so the
+  // per-node hot loop never typeof-dispatches.
+  const excludeRaw = options.exclude == null ? [] : (Array.isArray(options.exclude) ? options.exclude : [options.exclude])
+  const excludeSelectors = []
+  const excludePredicates = []
+  for (const e of excludeRaw) {
+    if (typeof e === 'string') excludeSelectors.push(e)
+    else if (typeof e === 'function') excludePredicates.push(e)
+    else if (e != null) console.warn('[snapdom] Ignored invalid exclude entry (expected selector string or predicate):', e)
+  }
+  const excludeMode = options.excludeMode ?? options.filterMode ?? 'hide'
+
   return {
     // Debug & perf
     debug: options.debug ?? false,
     scale: options.scale ?? 1,
 
-    // DOM filters
-    exclude: options.exclude ?? [],
-    excludeMode: options.excludeMode ?? 'hide',
+    // DOM filters (see the exclude unification above)
+    exclude: excludeSelectors,
+    excludePredicates: excludePredicates.length ? excludePredicates : null,
+    excludeMode,
     filter: options.filter ?? null,
-    filterMode: options.filterMode ?? 'hide',
+    filterMode: options.filterMode ?? excludeMode,
 
     // Placeholders
     placeholders: options.placeholders !== false, // default true

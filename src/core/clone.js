@@ -222,6 +222,21 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
+  // Unified exclude predicates ((el) => true excludes). Split from selectors once in
+  // createContext — zero typeof dispatch per node.
+  if (options.excludePredicates) {
+    for (const pred of options.excludePredicates) {
+      try {
+        if (pred(node)) {
+          if (options.excludeMode === 'remove') return null
+          return makeHideSpacer(node)
+        }
+      } catch (err) {
+        console.warn('Error in exclude predicate:', err)
+      }
+    }
+  }
+  // Legacy keep-polarity `filter` (also serves direct deepClone callers without a context).
   if (typeof options.filter === 'function') {
     try {
       if (!options.filter(node)) {
