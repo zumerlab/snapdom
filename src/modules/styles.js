@@ -1,4 +1,4 @@
-import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle } from '../utils/index.js'
+import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 import { scanAuthorStyles } from './styleScan.js'
 
@@ -247,27 +247,7 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
   // background-color that needs its layout longhands for background-clip:text). Read from the
   // live declaration (not `out`) so excludeStyleProps or the url()→none rewrite can't hide it.
   // Stored non-enumerable so key generation/signature iteration never sees it.
-  let needsBg = false
-  {
-    const bgi = style.getPropertyValue('background-image')
-    if (bgi && bgi !== 'none') needsBg = true
-    if (!needsBg) {
-      const bgc = style.getPropertyValue('background-color')
-      if (bgc && bgc !== 'rgba(0, 0, 0, 0)' && bgc !== 'transparent') needsBg = true
-    }
-    if (!needsBg) {
-      for (const p of BG_INLINE_FLAG_PROPS) {
-        const v = style.getPropertyValue(p)
-        if (v && v !== 'none') { needsBg = true; break }
-      }
-    }
-    if (!needsBg) {
-      // #343: some engines report background-image:none while the shorthand carries url()
-      const sh = style.getPropertyValue('background')
-      if (sh && /url\s*\(/i.test(sh)) needsBg = true
-    }
-  }
-  Object.defineProperty(out, '__needsBgInline', { value: needsBg, enumerable: false })
+  Object.defineProperty(out, '__needsBgInline', { value: computeNeedsBgInline(style), enumerable: false })
 
   // #362: Tailwind's * { border: 0 solid } renders incorrectly in capture.
   // When all border widths are 0, normalize to border: none for unambiguous output.
@@ -297,6 +277,22 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
 
   return out
 }
+/** ~10-read probe behind __needsBgInline (also run standalone for NO_DEFAULTS_TAGS,
+ *  which skip the full snapshot but can still carry an external mask/border-image). */
+function computeNeedsBgInline(style) {
+  const bgi = style.getPropertyValue('background-image')
+  if (bgi && bgi !== 'none') return true
+  const bgc = style.getPropertyValue('background-color')
+  if (bgc && bgc !== 'rgba(0, 0, 0, 0)' && bgc !== 'transparent') return true
+  for (const p of BG_INLINE_FLAG_PROPS) {
+    const v = style.getPropertyValue(p)
+    if (v && v !== 'none') return true
+  }
+  // #343: some engines report background-image:none while the shorthand carries url()
+  const sh = style.getPropertyValue('background')
+  return !!(sh && /url\s*\(/i.test(sh))
+}
+
 /**
  * Cheap "is this box sized by its own content?" check: any child element or non-whitespace
  * direct text node. O(1) amortized (firstElementChild short-circuits); never reads textContent
@@ -438,6 +434,24 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     clone.style.setProperty('animation', 'none', 'important')
   }
 
+  const tag = source.tagName?.toLowerCase() || 'div'
+  // NO_DEFAULTS_TAGS (SVG shapes/containers, head stuff) never get a style class —
+  // getStyleKey returns '' and the empty key is dropped at emit. Skip the full universe
+  // snapshot + signature they'd pay for nothing; their paint survives via clone.js's
+  // SVG_PAINT_PROPS pass. Only the bg/mask flag probe runs (CSS masks DO apply to SVG
+  // graphics elements) so needsBackgroundInline stays accurate.
+  if (NO_DEFAULTS_TAGS.has(tag)) {
+    const stub = {}
+    Object.defineProperty(stub, '__needsBgInline', { value: computeNeedsBgInline(pre), enumerable: false })
+    snapshotCache.set(source, {
+      epoch: __epoch, snapshot: stub,
+      embedFonts: !!(ctx.options && ctx.options.embedFonts),
+      excludeStyleProps: (ctx.options && ctx.options.excludeStyleProps) || null,
+    })
+    session.styleMap.set(clone, '')
+    return
+  }
+
   const snap = getSnapshot(source, pre, ctx.options)
 
   const flexItem = isFlexOrGridItem(source)
@@ -453,7 +467,6 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     }
   }
 
-  const tag = source.tagName?.toLowerCase() || 'div'
   // getStyleKey only softens width for inline-sized / table / inline boxes, and only there does
   // its output depend on content/flex-item-ness. For every other node (the vast majority — divs,
   // headings, paragraphs…) skip that bookkeeping entirely so the hot path stays untouched.
