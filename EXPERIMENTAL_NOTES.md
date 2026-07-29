@@ -163,3 +163,26 @@ Verdict candidates: **[29], [31], [32], [42], video-export upgrade graduate to n
 `packages/plugins/agent-map.js` already ships a Set-of-Mark export for visual agents
 (annotated screenshot + badge→role/name/bbox/state JSON). Wave 6 builds on it instead of
 reinventing.
+
+## Wave 6 — AI-agents direction (user directive)
+
+The agent story now has three composable primitives, all in-page (no extension/CDP):
+
+- **toContext() (NEW — packages/plugins/context-export.js)**: the READ half. Compact
+  indented outline of structure/roles/visible text/geometry/form state; wrappers
+  collapse, hidden content skipped, deterministic output. Token economy asserted in
+  tests: a 48-card dashboard stays well under 4k tokens (~4 chars/token). Export-only +
+  pure → keeps the memo/diff fast paths.
+- **toAgentMap() (already existed)**: the ACT half — annotated screenshot + bbox map.
+- **Verification contract (documented, not built — it already held)**: captures of an
+  unchanged DOM are byte-identical (the diff engine's own test oracle), so agents hash
+  result.url before/after an action to answer "did the UI change?" without visual
+  diffing; result.warnings is the degradation check before trusting a capture.
+
+docs/llms-full.txt carries the FOR AI AGENTS section wiring the three together.
+**MCP server: recipe documented, package NOT built** — it's a thin wrapper over the
+three calls; building it belongs with a real consumer (and a transport decision), not
+in this wave.
+
+Verdict candidates: **contextExport + docs graduate to next**; MCP package stays a
+documented direction.
