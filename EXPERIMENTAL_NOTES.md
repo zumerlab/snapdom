@@ -207,3 +207,28 @@ documented direction.
 - **All 49 audited findings dispositioned**: implemented, folded into existing code, or
   explicitly discarded with evidence above. Panel verdict stands: no rewrite —
   `experimental` is `next` plus the closed gaps.
+
+## Comparative benchmark — 2.23.1 vs next vs experimental (2026-07-29)
+
+Same browser session, same DOM per scenario, medians. Harness + branch builds live in
+`bench/dist-compare/` (gitignored; README explains how to re-run). Cold = cache
+disabled + burst/compress pinned off; defaults = what users actually get.
+
+| scenario | 2.23.1 | next | experimental | exp vs main |
+|---|---|---|---|---|
+| cold simple 400x300 | 0.8ms | 0.6ms | 0.6ms | 1.33× |
+| cold complex 24 cards | 15.6ms | 8.3ms | 8.1ms | 1.93× |
+| cold complex 48 cards | 29.2ms | 16.0ms | 15.1ms | 1.93× |
+| cold framework page (48 cards + svg icons + Tailwind-ish reset) | 67.5ms | 41.9ms | **29.5ms** | **2.29×** |
+| warm repeat ×20 (defaults) | 75.5ms | 0.1ms | 0.1ms | ~755× (memo) |
+| mutating poll ×20 (defaults) | 555ms | 244.8ms | 243.7ms | 2.28× |
+| animated poll ×10 (defaults) | 37.6ms | 36.7ms | **13.0ms** | **2.89×** |
+
+Reading: `next`'s wins over 2.23.1 are styleScan + auto-burst + diff (1.8-1.9× cold,
+memo ∞, 2.3× mutating). `experimental`'s wins over `next` appear exactly where its
+wave-1/wave-5 work aims: framework CSS pages (pseudo selector gate + SVG snapshot skip:
+**1.42× over next**) and animated content (diff frame source: **2.82× over next** —
+next pays the full pipeline every animated frame). Bare-DOM scenes are parity with next,
+as expected: the test runner page has no framework CSS to prune.
+
+Bundle sizes (minified): 153KB (2.23.1) → 165KB (next) → 174KB (experimental).
