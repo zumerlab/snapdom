@@ -25,33 +25,32 @@ export const ICON_FONT_URLS = Object.assign({
   materialIconsSharp:   'https://fonts.gstatic.com/s/materialiconssharp/v110/oPWQ_lt5nv4pWNJpghLP75WiFR4kLh3kvmvRImcycg.woff2'
 }, (typeof window !== 'undefined' && window.__SNAPDOM_ICON_FONTS__) || {})
 
-let userIconFonts = []
-const userIconFontKeys = new Set()
+// Matchers for the CAPTURE IN FLIGHT. iconFonts is a per-capture option, so the list is
+// REPLACED at every capture start (setSessionIconFonts) instead of appended forever — a
+// capture's matchers no longer leak into later captures that didn't pass the option.
+// (Concurrent captures with DIFFERENT iconFonts could still interleave through await
+// points; threading matchers through every isIconFont site isn't worth that edge.)
+let sessionIconFonts = []
 
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
 }
 
-// Callers (e.g. snapdom.js) re-invoke this on every capture with the same
-// `iconFonts` option, so dedup against the module-level list instead of
-// growing it unboundedly across repeated captures (animations, session()).
-export function extendIconFonts(fonts) {
-  const list = Array.isArray(fonts) ? fonts : [fonts]
+/** Replaces the in-flight capture's icon-font matchers (empty/absent clears them). */
+export function setSessionIconFonts(fonts) {
+  const list = Array.isArray(fonts) ? fonts : (fonts ? [fonts] : [])
+  const out = []
   for (const f of list) {
-    let rx
-    if (f instanceof RegExp) rx = f
-    else if (typeof f === 'string') rx = new RegExp(escapeRegExp(f), 'i')
-    else { console.warn('[snapdom] Ignored invalid iconFont value:', f); continue }
-    const key = `${rx.source}/${rx.flags}`
-    if (userIconFontKeys.has(key)) continue
-    userIconFontKeys.add(key)
-    userIconFonts.push(rx)
+    if (f instanceof RegExp) out.push(f)
+    else if (typeof f === 'string') out.push(new RegExp(escapeRegExp(f), 'i'))
+    else console.warn('[snapdom] Ignored invalid iconFont value:', f)
   }
+  sessionIconFonts = out
 }
 
 export function isIconFont(input) {
   const text = typeof input === 'string' ? input : ''
-  const candidates = [...defaultIconFonts, ...userIconFonts]
+  const candidates = [...defaultIconFonts, ...sessionIconFonts]
   for (const rx of candidates) {
     if (rx instanceof RegExp && rx.test(text)) return true
   }

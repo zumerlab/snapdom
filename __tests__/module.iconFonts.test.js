@@ -9,46 +9,50 @@ beforeEach(async () => {
   mod = await import('../src/modules/iconFonts.js') // ESM dynamic import
 })
 
-describe('extendIconFonts', () => {
+describe('setSessionIconFonts (per-capture matchers)', () => {
   it('acepta string y lo convierte a RegExp (case-insensitive)', () => {
-    const { extendIconFonts, isIconFont } = mod
-    // string -> RegExp
-    extendIconFonts('acme-brand')
+    const { setSessionIconFonts, isIconFont } = mod
+    setSessionIconFonts('acme-brand')
     expect(isIconFont('ACME-BRAND pack')).toBe(true)
     // control: no matchea algo que no contenga el patrón y tampoco cae en la heurística
     expect(isIconFont('qwerty')).toBe(false)
   })
 
-  it('acepta RegExp y lo agrega a la lista de usuarios', () => {
-    const { extendIconFonts, isIconFont } = mod
-    extendIconFonts(/brandx/i)
+  it('acepta RegExp', () => {
+    const { setSessionIconFonts, isIconFont } = mod
+    setSessionIconFonts(/brandx/i)
     expect(isIconFont('This is BrAnDx kit')).toBe(true)
     expect(isIconFont('no-match-here')).toBe(false)
   })
 
   it('acepta arrays mezclando strings y RegExp', () => {
-    const { extendIconFonts, isIconFont } = mod
-    extendIconFonts(['foo-lib', /bar-pkg/i])
+    const { setSessionIconFonts, isIconFont } = mod
+    setSessionIconFonts(['foo-lib', /bar-pkg/i])
     expect(isIconFont('FOO-LIB icons')).toBe(true)
     expect(isIconFont('BAR-PKG family')).toBe(true)
     expect(isIconFont('none')).toBe(false)
   })
 
-  it('dedupes repeated entries instead of growing the list unboundedly (speed punch-list)', () => {
-    const { extendIconFonts, isIconFont } = mod
-    extendIconFonts(['dup-brand', /dup-brand-rx/i])
-    // A non-matching string forces a full scan of every registered pattern
-    // (no early return), so the RegExp.prototype.test call count is a direct
-    // proxy for the candidate list's size.
+  it('REEMPLAZA la lista por captura — los matchers no se filtran a capturas posteriores', () => {
+    const { setSessionIconFonts, isIconFont } = mod
+    setSessionIconFonts('leaky-brand')
+    expect(isIconFont('LEAKY-BRAND set')).toBe(true)
+    // Next capture without the option: the previous matcher must be gone.
+    setSessionIconFonts(undefined)
+    expect(isIconFont('LEAKY-BRAND set')).toBe(false)
+  })
+
+  it('repeated per-capture registration cannot grow the list (replacement semantics)', () => {
+    const { setSessionIconFonts, isIconFont } = mod
+    setSessionIconFonts(['dup-brand', /dup-brand-rx/i])
     const spy1 = vi.spyOn(RegExp.prototype, 'test')
     isIconFont('nothing-matches-here')
     const callsAfterFirstRegistration = spy1.mock.calls.length
     spy1.mockRestore()
 
-    // Simulates snapdom.js re-calling extendIconFonts with the same option on
-    // every capture (e.g. an animation loop reusing the same iconFonts
-    // array/object). Without dedup this would push 98 more duplicate entries.
-    for (let i = 0; i < 49; i++) extendIconFonts(['dup-brand', /dup-brand-rx/i])
+    // Every capture replaces the list, so re-registering the same option 49 times
+    // (animation loop) leaves exactly the same candidate set.
+    for (let i = 0; i < 49; i++) setSessionIconFonts(['dup-brand', /dup-brand-rx/i])
 
     const spy2 = vi.spyOn(RegExp.prototype, 'test')
     isIconFont('nothing-matches-here')
@@ -59,10 +63,10 @@ describe('extendIconFonts', () => {
   })
 
   it('ignora valores inválidos y hace console.warn', () => {
-    const { extendIconFonts, isIconFont } = mod
+    const { setSessionIconFonts, isIconFont } = mod
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    extendIconFonts(123)           // inválido
-    extendIconFonts({ nope: true }) // inválido
+    setSessionIconFonts(123)           // inválido
+    setSessionIconFonts({ nope: true }) // inválido
     expect(warn).toHaveBeenCalled() // cubre rama del console.warn
     // No debe haber agregado nada que haga matchear "qwerty"
     expect(isIconFont('qwerty')).toBe(false)
