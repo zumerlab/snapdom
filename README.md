@@ -303,7 +303,7 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 * External images should be CORS-accessible (use `useProxy` option for handling CORS denied)
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
-* **Safari**: captures with `embedFonts` or background/mask images run slower due to [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (font decode timing). SnapDOM does pre-captures + `drawImage` to prime the pipeline; configurable via `safariWarmupAttempts` (default 3).
+* **Safari**: the first canvas draw of an SVG carrying embedded fonts or images can be blank ([WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770)). SnapDOM handles it at draw time with a verified-draw ink probe — no warmup, no knob; first captures just take a few extra frames when WebKit needs them.
 * **Custom scrollbar styles** (`::-webkit-scrollbar`): Applied only when the element has *not* been scrolled. When scrolled, the viewport content is captured without the scrollbar.
 
 

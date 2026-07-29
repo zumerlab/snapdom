@@ -110,7 +110,6 @@ snapdom.plugins(...defs) → snapdom  // chainable, global
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| fast | boolean | true | Skip idle delays for faster capture |
 | scale | number | 1 | Output scale multiplier |
 | dpr | number | devicePixelRatio | Device pixel ratio for rasterization |
 | width | number | null | Target output width (keeps aspect if only one dimension) |
@@ -266,7 +265,7 @@ All hooks receive a mutable context:
 {
   element,           // original DOM element (do NOT mutate after afterClone)
   clone,             // cloned DOM (available from afterClone onward)
-  debug, fast, scale, dpr, width, height,
+  debug, scale, dpr, width, height,
   backgroundColor, quality, embedFonts, useProxy,
   exclude, excludeMode, filter, filterMode,
   outerTransforms, outerShadows, cache, fallbackURL,

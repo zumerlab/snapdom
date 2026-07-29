@@ -94,11 +94,6 @@ export function createContext(options = {}) {
     // to their live size. Opt-in (adds one in-document layout of the clone).
     reconcile: options.reconcile ?? false,
 
-    // Memoizes repeated captures of an unchanged element (scoped MutationObserver + cached
-    // result, see src/core/burst.js) — dashboard polling, video/gif frame loops. Opt-in: it
-    // costs a persistent observer per element, wasted on a one-shot capture. When this is
-    // NOT set, snapdom instead tracks capture frequency cheaply and suggests it once if the
-    // same element is captured repeatedly (see checkBurstAdvice in capture.js).
     // Burst memoization is default engine behavior (auto-engages on repeat captures, see
     // src/core/burst.js). true/false remain INTERNAL-ONLY escapes (tests/benchmarks need
     // deterministic full-pipeline runs), not public API.

@@ -120,9 +120,7 @@ Defaults as normalized in `src/core/context.js`.
 | `outerShadows` | `false` | Strip root shadows vs. expand bleed for shadows/blur/outline |
 | `compress` | `true` | Perceptual raster downsampling |
 | `reconcile` | `false` | Measure the clone against the live DOM and pin diverging boxes to their real size (roughly doubles capture time) |
-| `burst` | `false` | Memoize repeated captures of an unchanged element via a scoped `MutationObserver`, skipping the pipeline entirely |
-| `invalidate` | `false` | With `burst: true`, force a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits) |
-| `safariWarmupAttempts` | `3` | Safari warmup iterations (1–3) |
+| `invalidate` | `false` | Force one fresh, non-memoized capture — for changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits) |
 | `excludeStyleProps` | `null` | RegExp/predicate to skip style props |
 | `plugins` | — | Per-capture plugin list (local-first) |
 
@@ -146,11 +144,11 @@ See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUT
   - `full` — keep everything.
 - **Invalidation** — a MutationObserver on the DOM and `<head>` plus font `loadingdone`/`ready` events bump a style-snapshot epoch, so stale snapshots are dropped automatically.
 - **`preCache`** — warm the caches ahead of time (defaults to `cache: 'full'`).
-- **`burst`** — memoizes repeated captures of an unchanged element: a scoped `MutationObserver` (plus `<video>` frame tracking) marks it dirty on external change, and an unchanged repeat capture skips the pipeline entirely. Opt-in; without it, snapdom warns once if the same element is captured 3+ times within 2s. Pair with `invalidate: true` to force a fresh capture after changes automatic tracking can't see (canvas draws, programmatic CSSOM edits).
+- **Repeat-capture memoization** — engine behavior, no option: capture the same element a few times and snapdom memoizes automatically (scoped `MutationObserver` + video/image/font/scroll/resize/head-CSS/animation tracking); when only subtrees changed, a differential recapture rebuilds just those, byte-identical to a full capture. Pass `invalidate: true` to force one fresh capture after changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits).
 
 ## Cross-browser handling
 
-- **Safari warmup** — works around [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (the first canvas draw with an embedded-font SVG is blank) by running small pre-captures + `drawImage` to prime the pipeline when fonts are embedded or the element has background/mask/canvas content. Configurable via `safariWarmupAttempts`.
+- **Safari verified draw** — works around [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (the first canvas draw with an embedded-font SVG is blank) at draw time: `toCanvas` probe-draws until ink appears (bounded), so captures wait exactly as long as WebKit needs. No warmup pass, no configuration.
 - **Safari canvas** — box-shadow is rewritten to an SVG drop-shadow, and image compositing is awaited before drawing.
 - **Firefox** — checkboxes and radios get drawn replacements.
 - **iOS** — `download()` falls back to the Web Share API.
