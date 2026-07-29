@@ -654,3 +654,54 @@ describe('quote keywords in pseudo content (fidelity: literal "open-quote" bug)'
     expect(svg).not.toContain('no-close-quote')
   })
 })
+
+describe('scoped ::marker and ::first-line rules', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('style[data-mk-test]').forEach((s) => s.remove())
+    document.body.innerHTML = ''
+  })
+
+  async function captureSvg(el) {
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const res = await snapdom(el, { cache: 'disabled' })
+    return decodeURIComponent(res.url.split(',')[1])
+  }
+
+  it('authored ::marker color/content survives as a scoped rule', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-mk-test', '')
+    style.textContent = '.zz-list li::marker { color: rgb(200, 10, 10); content: "→ "; }'
+    document.head.appendChild(style)
+    const ul = document.createElement('ul')
+    ul.className = 'zz-list'
+    ul.innerHTML = '<li>uno</li><li>dos</li>'
+    document.body.appendChild(ul)
+    const svg = await captureSvg(ul)
+    expect(svg).toContain('::marker')
+    expect(svg).toContain('rgb(200, 10, 10)')
+    expect(svg).toContain('data-sd-p')
+  })
+
+  it('authored ::first-line styling survives as a scoped rule', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-mk-test', '')
+    style.textContent = '.zz-lede::first-line { font-weight: 700; color: rgb(10, 10, 200); }'
+    document.head.appendChild(style)
+    const p = document.createElement('p')
+    p.className = 'zz-lede'
+    p.style.width = '120px'
+    p.textContent = 'primera línea de un párrafo largo que envuelve en varias líneas seguro'
+    document.body.appendChild(p)
+    const svg = await captureSvg(p)
+    expect(svg).toContain('::first-line')
+    expect(svg).toContain('rgb(10, 10, 200)')
+  })
+
+  it('default markers emit no scoped rule (zero output cost)', async () => {
+    const ul = document.createElement('ul')
+    ul.innerHTML = '<li>plain</li>'
+    document.body.appendChild(ul)
+    const svg = await captureSvg(ul)
+    expect(svg).not.toContain('::marker')
+  })
+})

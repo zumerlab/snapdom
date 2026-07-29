@@ -419,6 +419,42 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
  * @param {{get:Function, getStack:Function}} baseCtx
  * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
  */
+/** Properties valid on the respective pseudo that the scoped-rule emitter diffs. */
+const MARKER_PROPS = ['color', 'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'line-height']
+const FIRST_LINE_PROPS = [
+  'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-variant',
+  'letter-spacing', 'word-spacing', 'text-transform', 'text-decoration-line',
+  'text-decoration-color', 'text-decoration-style', 'line-height', 'background-color', 'vertical-align',
+]
+
+/** Emits `[data-sd-pN]::marker{…}` / `…::first-line{…}` for elements an author selector
+ *  matches, with only the properties that differ from the element's own computed style
+ *  (plus non-normal marker content). Rules accumulate on sessionCache.__pseudoCSS;
+ *  prepareClone folds them into the class prefix CSS. */
+function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) {
+  try {
+    if (!source.matches(gate)) return
+    if (pseudo === '::marker' && !(getStyle(source).display || '').includes('list-item')) return
+    const ps = getStyle(source, pseudo)
+    const base = getStyle(source)
+    if (!ps) return
+    let decls = ''
+    for (const p of props) {
+      const v = ps.getPropertyValue(p)
+      if (v && v !== base.getPropertyValue(p)) decls += `${p}:${v};`
+    }
+    if (pseudo === '::marker') {
+      const c = ps.getPropertyValue('content')
+      if (c && c !== 'normal' && c !== 'none') decls += `content:${c};`
+    }
+    if (!decls) return
+    const n = sessionCache.__pseudoRuleSeq = (sessionCache.__pseudoRuleSeq || 0) + 1
+    const attr = `data-sd-p${n}`
+    clone.setAttribute(attr, '')
+    sessionCache.__pseudoCSS = (sessionCache.__pseudoCSS || '') + `[${attr}]${pseudo}{${decls}}`
+  } catch { /* fidelity extra — never blocks the capture */ }
+}
+
 /** Computed `content` returns quote KEYWORDS un-resolved (open-quote stays the literal
  *  token), so without this the capture paints the text "open-quote". Resolve from the
  *  element's computed `quotes` (first pair — depth-0 approximation), falling back to
@@ -512,6 +548,14 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   // the 3-pseudo getComputedStyle probe. '' = no author rules for that kind, null =
   // scan unreliable (cross-origin CSS, shadow roots) → probe like before.
   const gates = pseudoGatesFor(source)
+
+  // Authored ::marker / ::first-line: a scoped CSS rule (not a span) is the faithful
+  // mechanism — markers re-render natively in the foreignObject and first-line
+  // re-fragments there. Gated strictly on collected author selectors: null (unreliable
+  // scan) keeps today's behavior, and shadow content already carries these rules through
+  // injectScopedStyle.
+  if (gates.marker) emitScopedPseudoRule(source, clone, sessionCache, gates.marker, '::marker', MARKER_PROPS)
+  if (gates.firstLine) emitScopedPseudoRule(source, clone, sessionCache, gates.firstLine, '::first-line', FIRST_LINE_PROPS)
 
   for (const pseudo of ['::before', '::after', '::first-letter']) {
     const gate = gates[pseudo === '::before' ? 'before' : pseudo === '::after' ? 'after' : 'firstLetter']

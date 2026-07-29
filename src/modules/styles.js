@@ -158,7 +158,7 @@ export function universeFor(el) {
 
 /** Per-kind selector gates for the pseudo probe (see scanAuthorStyles). Same memo and
  *  same shadow-root escape as universeFor: null gates → probe every node. */
-const NULL_GATES = { before: null, after: null, firstLetter: null }
+const NULL_GATES = { before: null, after: null, firstLetter: null, marker: null, firstLine: null }
 export function pseudoGatesFor(el) {
   const doc = el.ownerDocument || document
   if (el.getRootNode && el.getRootNode() !== doc) return NULL_GATES

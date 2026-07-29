@@ -62,8 +62,13 @@ const MAX_SCAN_RULES = 20000
  *  builds the property universe collects, per kind, the selectors able to generate that
  *  pseudo — so the probe can be gated by one `el.matches()` instead of three
  *  getComputedStyle resolutions per node. */
-const PSEUDO_KINDS = { before: /::?before\b/, after: /::?after\b/, firstLetter: /::?first-letter\b/ }
-const PSEUDO_STRIP = /::?(?:before|after|first-letter)\b/g
+const PSEUDO_KINDS = {
+  before: /::?before\b/, after: /::?after\b/, firstLetter: /::?first-letter\b/,
+  // marker/firstLine aren't probed per node — matching elements get a scoped CSS rule
+  // (markers re-render natively in the foreignObject; first-line re-fragments there).
+  marker: /::marker\b/, firstLine: /::?first-line\b/,
+}
+const PSEUDO_STRIP = /::?(?:before|after|first-letter|first-line|marker)\b/g
 
 /** Strips pseudo-element tokens from a selector list so it can feed `el.matches()`.
  *  A part that was ONLY the pseudo (`::before {}`) becomes `*` (pseudo-elements are not
@@ -115,7 +120,7 @@ function composePseudoGates(doc, pseudoSels) {
   const gates = {}
   for (const kind in pseudoSels) {
     const parts = pseudoSels[kind]
-    if (kind !== 'firstLetter') parts.push('q')
+    if (kind === 'before' || kind === 'after') parts.push('q')
     if (!parts.length) { gates[kind] = '' ; continue } // no rules → probe nothing
     const sel = parts.join(',')
     try { probe.matches(sel); gates[kind] = sel } catch { gates[kind] = null }
@@ -135,10 +140,10 @@ function composePseudoGates(doc, pseudoSels) {
  * @returns {{universe: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null}}}
  */
 export function scanAuthorStyles(doc) {
-  const unreliable = { universe: null, pseudoGates: { before: null, after: null, firstLetter: null } }
+  const unreliable = { universe: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
-    const pseudoSels = { before: [], after: [], firstLetter: [] }
+    const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
     const state = { budget: MAX_SCAN_RULES }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable

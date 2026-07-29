@@ -142,6 +142,9 @@ async function diffCapture(element, state, context) {
   // Fonts were embedded in the retained capture: a dirty subtree can introduce codepoints
   // or faces the embedded set lacks — only the full pipeline recollects usage.
   if (R.fontsCSS) return null
+  // Scoped ::marker/::first-line rules are attribute-keyed per element — a rebuilt or
+  // removed subtree would strand/miss rules and break the byte-equality guarantee.
+  if (R.classPrefixCSS && (R.classPrefixCSS.includes('::marker') || R.classPrefixCSS.includes('::first-line'))) return null
   if (context.excludeMode === 'remove' || context.filterMode === 'remove') return null
 
   const doc = element.ownerDocument || document
@@ -177,6 +180,9 @@ async function diffCapture(element, state, context) {
     if (sub.querySelector?.('style[data-sd]')) return null // shadow content appeared → full
 
     await inlinePseudoElements(src, sub, sessionCache, context)
+    // Newly-appearing scoped ::marker/::first-line rules can't be spliced into the
+    // retained prefix CSS byte-faithfully → full pipeline.
+    if (sessionCache.__pseudoCSS) return null
     await resolveBlobUrlsInTree(sub, sessionCache)
     sanitizeCloneForXHTML(sub)
     try { await ligatureIconToImage(sub, src, delta) } catch { /* parity with full: non-blocking */ }
