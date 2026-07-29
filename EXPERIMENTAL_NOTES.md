@@ -100,3 +100,29 @@ Every fix is gated to cost zero when the feature is absent.
 Verdict candidates: **[7], [8], [10], [11], [13] graduate to next**; **[9] and [12] keep
 experimenting** (top-layer ordering approximates call order by document order; fixed-bg
 compensation is the newest math — both deserve real-page mileage before graduating).
+
+## Wave 4 — API v3 (findings [21]–[23], [26]–[28], [48])
+
+All landed; suite green per item (chromium; types + lint clean).
+
+- **[21] format unification** — `format` is the one documented name; `type` a silent alias
+  when it carries an image-format string (resolved from RAW caller opts in
+  normalizeExportOptions). toBlob keeps its svg default unless a codec is asked for.
+- **[22] one sizing rule** — width/height absolute win; scale only when neither set; dpr
+  multiplies. toCanvas dropped its width×scale multiplication (matched toImg); debugWarn
+  when both passed. BREAKING for undocumented reliance — v3 window, announce it.
+- **[23] iconFonts session-scoped** — matcher list REPLACED per capture (was append-only
+  global forever). Known theoretical edge documented: concurrent captures with different
+  iconFonts interleaving (full threading through ~10 ctx-less isIconFont sites not worth it).
+- **[27] unified exclude** — selectors and/or predicates (true = exclude) in one option +
+  excludeMode; filter/filterMode legacy keep-polarity aliases, composing. Polarity pinned
+  by dedicated tests. Split once in createContext — no per-node typeof.
+- **[28] result.warnings** — flat {code, message, detail?} log from curated degradation
+  branches (image-fallback, raster/canvas clamps, safari-png-fallback, reconcile-risk),
+  empty in the common case, capped 50. Memo serves retain it (result object is memoized).
+- **[26]+[48] doc/type sync** — d.ts v3, outerTransforms un-inverted, invalidate vs
+  auto-burst, CachePolicy deprecation prose, CaptureResult.warnings + engine url caveat,
+  PLUGIN_SPEC fast removal, README table rows folded.
+
+Verdict candidates: **all graduate to next** ([22]'s toCanvas behavior change flagged for
+the v3 announcement).
