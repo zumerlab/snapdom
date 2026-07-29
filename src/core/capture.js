@@ -12,6 +12,7 @@ import { collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from 
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { cache } from '../core/cache.js'
 import { createCaptureSession } from './session.js'
+import { sessionWarn } from '../utils/debug.js'
 import { universeFor } from '../modules/styles.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
@@ -102,9 +103,12 @@ export async function captureDOM(element, options) {
     // reference (sessions are per-capture; there is no shared session global).
     ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
 
-    if (reconcileRisk > 0 && !options.reconcile && !cache.warnedReconcile) {
-      cache.warnedReconcile = true
-      console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+    if (reconcileRisk > 0 && !options.reconcile) {
+      sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
+      if (!cache.warnedReconcile) {
+        cache.warnedReconcile = true
+        console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+      }
     }
 
     // state = {clone, classCSS, styleCache, ...state}
@@ -133,6 +137,7 @@ export async function captureDOM(element, options) {
     try {
       shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache)
     } catch (e) {
+      sessionWarn(options.__session, 'shrink-failed', 'shrink pass failed', e)
       console.warn('[snapdom] shrink pass failed:', e)
     }
   }
@@ -156,6 +161,7 @@ export async function captureDOM(element, options) {
     try {
       emulateBackdropFilters(state.element, state.clone, state.nodeMap)
     } catch (e) {
+      sessionWarn(options.__session, 'backdrop-filter-failed', 'backdrop-filter emulation failed', e)
       console.warn('[snapdom] backdrop-filter emulation failed:', e)
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.

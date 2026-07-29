@@ -1,5 +1,6 @@
 // src/exporters/toImg.js
 import { isSafari, debugWarn } from '../utils'
+import { sessionWarn } from '../utils/debug.js'
 import { rasterize } from '../modules/rasterize'
 import { fixSafariShadows, decodeSvgFromDataURL, encodeSvgToDataURL } from './toCanvas.js'
 /**
@@ -44,6 +45,7 @@ export async function toImg(url, options) {
       img.style.height = `${cssH}px`
       return img
     } catch (e) {
+      sessionWarn(options.__session, 'safari-png-fallback', 'safari vector toImg failed, falling back to PNG raster', e)
       debugWarn(options, 'safari vector toImg failed, falling back to PNG', e)
       return rasterize(url, { ...options, format: 'png', quality: 1, meta })
     }

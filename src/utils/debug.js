@@ -20,3 +20,22 @@ export function debugWarn(ctx, msg, err) {
     }
   }
 }
+
+/** Cap so a pathological page can't grow the log unboundedly. */
+const MAX_SESSION_WARNINGS = 50
+
+/**
+ * Records a capture degradation on the session's warnings log (surfaced as
+ * result.warnings) and mirrors it to the console when debug is enabled.
+ * Callers that must warn unconditionally keep their own console.warn.
+ * @param {{warnings?: Array}|undefined} session
+ * @param {string} code - stable machine-readable code (e.g. 'image-fallback')
+ * @param {string} message
+ * @param {unknown} [detail]
+ */
+export function sessionWarn(session, code, message, detail) {
+  const w = session && session.warnings
+  if (w && w.length < MAX_SESSION_WARNINGS) {
+    w.push(detail === undefined ? { code, message } : { code, message, detail })
+  }
+}

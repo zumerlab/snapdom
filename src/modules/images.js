@@ -5,6 +5,7 @@
  */
 
 import { snapFetch } from './snapFetch.js'
+import { sessionWarn } from '../utils/debug.js'
 import { cache } from '../core/cache.js'
 import { pickSrcsetCandidate } from './pictureResolver.js'
 
@@ -111,6 +112,7 @@ export async function inlineImages(clone, options = {}) {
     }
 
     if (options.placeholders !== false) {
+      sessionWarn(options.__session, 'image-fallback', `image failed to inline, using placeholder: ${src}`)
       const fallback = document.createElement('div')
       fallback.style.cssText = [
         `width:${fbW}px`,

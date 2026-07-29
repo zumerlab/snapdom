@@ -1,5 +1,6 @@
 // src/exporters/toCanvas.js
 import { isSafari } from '../utils/browser'
+import { sessionWarn } from '../utils/debug.js'
 
 // #425: browsers cap how large an image they will decode and how large a canvas they
 // will back. Chrome/Firefox reject > 16384px on a side and a total decoded-image area
@@ -16,7 +17,7 @@ const MAX_RASTER_AREA = 16384 * 16384
  * lower resolution (no clipping). Operates on decoded text (no re-encode round trips).
  * @param {string} svg @returns {string}
  */
-function clampSvgTextRasterSize(svg) {
+function clampSvgTextRasterSize(svg, session) {
   try {
     const head = svg.match(/<svg\b[^>]*>/i)
     if (!head) return svg
@@ -28,6 +29,7 @@ function clampSvgTextRasterSize(svg) {
     if (f >= 1) return svg
     const nw = Math.max(1, Math.floor(w * f))
     const nh = Math.max(1, Math.floor(h * f))
+    sessionWarn(session, 'raster-clamp', `capture ${Math.round(w)}x${Math.round(h)}px exceeds decode limits; downscaled to ${nw}x${nh}px`)
     console.warn(
       `[snapDOM] Capture ${Math.round(w)}×${Math.round(h)}px exceeds the browser image-decode ` +
       `limit (${MAX_RASTER_SIDE}px/side); downscaling to ${nw}×${nh}px. Lower \`scale\` or set ` +
@@ -349,7 +351,7 @@ export async function toCanvas(url, options) {
           // (#219770/#394) — only then is the verified-draw ladder worth waiting on.
           needsPaintVerify = /@font-face|data:image\//i.test(svgText)
         }
-        if (oversized) svgText = clampSvgTextRasterSize(svgText) // #425: keep within decode limits
+        if (oversized) svgText = clampSvgTextRasterSize(svgText, options.__session) // #425: keep within decode limits
         src = encodeSvgToDataURL(svgText)
       } catch { src = url }
     }
@@ -411,6 +413,7 @@ export async function toCanvas(url, options) {
   const devW = outW * dpr, devH = outH * dpr
   const over = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
   if (over > 1) {
+    sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds canvas limits; downscaled`)
     console.warn(
       `[snapDOM] Output ${Math.round(devW)}×${Math.round(devH)}px exceeds the browser canvas ` +
       `limit (${MAX_RASTER_SIDE}px/side); downscaling. Lower \`scale\`/\`dpr\` or set \`width\`/\`height\`.`

@@ -22,6 +22,10 @@ export function createCaptureSession(policy) {
   return {
     styleMap: new Map(),
     styleCache: new WeakMap(),
-    nodeMap: new Map()
+    nodeMap: new Map(),
+    // Degradation log for THIS capture: {code, message, detail?} entries pushed by the
+    // curated failure branches (image→placeholder, raster clamp, Safari PNG fallback,
+    // reconcile risk). Exposed as result.warnings — empty in the common case.
+    warnings: []
   }
 }

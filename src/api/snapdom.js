@@ -278,6 +278,11 @@ async function buildResult(url, context) {
   // —— Helpers esperados por los tests + API azúcar ——
   const result = {
     url,
+    // Degradation log for this capture (empty in the common case): {code, message,
+    // detail?} entries — image→placeholder, raster/canvas clamps, Safari PNG fallback,
+    // reconcile risk. Export-time entries append after the export resolves; burst memo
+    // serves retain the originating capture's log.
+    warnings: (context.__session && context.__session.warnings) || [],
     toRaw: () => url,
     to: (type, opts) => runExport(type, opts),
 
