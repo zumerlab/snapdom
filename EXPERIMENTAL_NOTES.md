@@ -126,3 +126,40 @@ All landed; suite green per item (chromium; types + lint clean).
 
 Verdict candidates: **all graduate to next** ([22]'s toCanvas behavior change flagged for
 the v3 announcement).
+
+## Wave 5 — extensibility (findings [29]–[33], [37], [39], [40], [42])
+
+- **[29] plugin contract vs fast paths** — hasImpureRenderPlugins gates auto-burst and
+  diff on plugins with clone/render hooks (a memo serve skipped them; diff dropped their
+  subtree work; beforeRender mutated retained state). Export-only plugins keep the
+  speedup; `pure: true` opts render plugins back in. The one correctness bug of the audit.
+- **[31]+[32] export artifacts + PLUGIN_SPEC v2** — ctx.artifacts (CSS strings) +
+  ctx.export.svgString (LAZY decode) on export contexts; html-export stops
+  reverse-parsing its own output; spec documents the artifacts surface and the fast-path
+  purity contract.
+- **[30] animation frame source** — running animations' effect targets become dirty
+  roots; the diff path serves each frame with per-frame snapshot invalidation
+  (invalidateSnapshotsUnder — animations never bump the epoch). Recording loops stop
+  paying the full pipeline for nested animated content; direct-child/heavy/webfont bails
+  keep falling back.
+- **[42] snapdom.fromString** — SSR/HTML-string input via an owned offscreen mount.
+- **[37] evaluated → folded** — a WebCodecs toWebm plugin was written and DISCARDED as a
+  duplicate: video-export already covers WebM/MP4 via MediaRecorder. The real delta was
+  timing, so video-export upgraded to captureStream(0)+requestFrame explicit frames with
+  latency-compensated pacing (the old realtime stream drifted under load).
+- **[39] compositor-fed recording (Element/Region Capture)** — designed, NOT implemented:
+  needs a user-permission prompt (getDisplayMedia-class), which changes the plugin's UX
+  contract. The drift fix + animation diff frames close most of the practical gap;
+  revisit if 60fps recording becomes a marketed use case.
+- **[40] cooperative cross-origin iframe bridge** — designed, NOT implemented: needs a
+  postMessage protocol spec both sides agree on (embed script in the iframe answering
+  capture requests via resolveNode). Direction documented; no code until a real consumer.
+
+Verdict candidates: **[29], [31], [32], [42], video-export upgrade graduate to next**;
+**[30] keeps experimenting** (newest invalidation semantics; wants real-page mileage).
+
+## Discovery of the wave
+
+`packages/plugins/agent-map.js` already ships a Set-of-Mark export for visual agents
+(annotated screenshot + badge→role/name/bbox/state JSON). Wave 6 builds on it instead of
+reinventing.
