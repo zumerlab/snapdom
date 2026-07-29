@@ -113,6 +113,18 @@ export function flushStyleInvalidations() {
   } catch { }
 }
 
+/** Deletes cached style snapshots under a root. Animated subtrees re-snapshot per diff
+ *  frame: animations repaint without mutation records, so the epoch never bumps and the
+ *  cache would freeze the first captured frame. */
+export function invalidateSnapshotsUnder(root) {
+  if (!root || root.nodeType !== 1) return
+  snapshotCache.delete(root)
+  try {
+    const tw = (root.ownerDocument || document).createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+    while (tw.nextNode()) snapshotCache.delete(tw.currentNode)
+  } catch { }
+}
+
 /** URL-bearing props that mean inlineBackgroundImages must visit the node. */
 const BG_INLINE_FLAG_PROPS = [
   'mask', 'mask-image', '-webkit-mask', '-webkit-mask-image',

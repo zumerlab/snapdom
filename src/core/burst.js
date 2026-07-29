@@ -17,7 +17,7 @@
  * @module burst
  */
 
-import { isExternalRecord, getStyleEnvEpoch } from '../modules/styles.js'
+import { isExternalRecord, getStyleEnvEpoch, invalidateSnapshotsUnder } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
 
 const burstStates = new WeakMap()
@@ -220,9 +220,28 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     // soon as the animation ends, showing a pre-animation frame).
     let animating = false
     try {
-      animating = !!element.getAnimations?.({ subtree: true }).some((a) => a.playState === 'running')
+      const anims = element.getAnimations?.({ subtree: true }) || []
+      let targets = new Set()
+      for (const a of anims) {
+        if (a.playState !== 'running') continue
+        animating = true
+        const t = a.effect?.target
+        if (t && t.nodeType === 1 && element.contains(t)) targets.add(t)
+        else { targets = null; break } // untargetable animation → can't scope the frame
+      }
+      // Frame source: animated subtrees become dirty roots, so the DIFF path serves each
+      // frame (styles re-snapshot at the current animation state) instead of the full
+      // pipeline. Their snapshots must be invalidated per frame — animations repaint with
+      // no mutation records, so the epoch never bumps.
+      if (animating && targets && targets.size && state.retained) {
+        state.dirty = true
+        for (const t of targets) {
+          state.dirtyRoots.add(t)
+          invalidateSnapshotsUnder(t)
+        }
+      }
     } catch { /* no Web Animations API — animations won't be detected */ }
-    if (animating) state.last = null
+    if (animating) state.last = null // every animated frame is different: never serve OR keep a memo
     if (!isOneOff && !animating && !state.dirty && state.last) return state.last
 
     state.capturing = true
