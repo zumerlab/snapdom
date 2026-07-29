@@ -116,13 +116,6 @@ describe('captureDOM functional', () => {
     expect(svg3).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
   })
 
-  it('supports fast=false (idle scheduling path)', async () => {
-    const { captureDOM } = await import('../src/core/capture.js')
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 10, 10))
-    const el = document.createElement('div')
-    const url = await captureDOM(el, { embedFonts: false })
-    expect(url.startsWith('data:image/svg+xml')).toBe(true)
-  })
 })
 
 //

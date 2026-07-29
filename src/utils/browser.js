@@ -4,13 +4,6 @@
  * @returns {Promise<void>} Promise that resolves after the delay
  */
 
-/** Legacy shim: the idle-sliced scheduling path is gone — captures are fast enough that
- *  deferring work across idle callbacks only added allocations and latency (the `fast`
- *  option is accepted and ignored). Kept as a call-through so call sites stay uniform. */
-export function idle(fn, _opts = {}) {
-  return fn()
-}
-
 export function isIOS() {
   if (typeof navigator === 'undefined') return false
   if (navigator.userAgentData) {
