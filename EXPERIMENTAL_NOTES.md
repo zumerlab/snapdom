@@ -46,3 +46,27 @@ Safari font item verified on REAL Safari via safaridriver (webfont capture paint
   ✅ verified in real Safari.
 
 Verdict candidates: **all graduate to next** ([0] and [5] with their listed NOT-done caveats).
+
+## Wave 2 — minimal code (findings [14]–[20], [24], [25], [46])
+
+All landed, suite green after each item (chromium; counts shift because tests of deleted
+machinery were migrated/removed with it).
+
+- **pictureResolver live-mutation machinery deleted** (~165 lines): the 'back-compat
+  plugin export' it survived for never existed on any entry point. Four pure URL helpers
+  kept; `pictureResolver` option object gone from context/types/FEATURES; llms-full.txt
+  no longer advertises a plugin import that would throw. Tests migrated to the clone-path
+  contract (freezeImgSrcset).
+- **cache.session global deleted** — createCaptureSession builds fresh maps; four module
+  default params allocate their own; burstAdvice → module-local WeakMap in burst.js;
+  ~13 test files migrated. The #463 race class is unrepresentable now.
+- **idle() retired** — runIdle is a bare microtask boundary; the two sync idle-wrapped
+  blocks in composeAndSerialize unwrapped to straight-line code.
+- **helpers dedup** — second isIconFont (divergence trap) deleted; one shared
+  SUPPORTED_IMAGE_MIME regex.
+- **preCache re-scoped as network prefetch** — cache/cacheOpt/applyCachePolicy gone,
+  embedFonts 'auto' with capture's declared-family gate, Safari attempts 3→1, honest types.
+- **doc drift purged** — safariWarmupAttempts (EN/CN/docs-site), opt-in burst prose,
+  `fast` rows, checkBurstAdvice comments, inverted JSDoc defaults.
+
+Verdict candidates: **all graduate to next** (they close next's own declared follow-ups).
