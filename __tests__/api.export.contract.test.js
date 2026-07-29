@@ -19,8 +19,9 @@ describe('format option unification', () => {
     expect(svgBlob.type).toBe('image/svg+xml')
     const pngBlob = await res.toBlob({ format: 'png' })
     expect(pngBlob.type).toBe('image/png')
-    const legacy = await res.toBlob({ type: 'webp' })
-    expect(legacy.type).toBe('image/webp')
+    // jpeg: universally encodable (WebKit's canvas.toBlob silently falls back on webp)
+    const legacy = await res.toBlob({ type: 'jpeg' })
+    expect(legacy.type).toBe('image/jpeg')
   })
 })
 

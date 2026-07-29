@@ -58,7 +58,7 @@ export function gifExport(options = {}) {
           let W = 0, H = 0;
           const frames = [];
           for (let i = 0; i < _count; i++) {
-            const cap = await snapdom(el, { scale: _scale, backgroundColor: _bg, fast: true });
+            const cap = await snapdom(el, { scale: _scale, backgroundColor: _bg });
             const src = await cap.toCanvas();
             if (i === 0) { W = src.width; H = src.height; }
             const fc = document.createElement('canvas');

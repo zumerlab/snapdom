@@ -186,3 +186,24 @@ in this wave.
 
 Verdict candidates: **contextExport + docs graduate to next**; MCP package stays a
 documented direction.
+
+## Wave 7 — survival
+
+- **ARCHITECTURE.md** (tracked): why-the-pipeline prose, the invalidation matrix, the
+  measured dead-ends registry (including three new ones from this branch), the internal
+  escapes policy with its promotion trigger, the real-Safari verification method, and
+  the testing landmines (dist-stale guard, known flakes).
+- **Invalidation matrix in code**: burst.js's module header is now the wiring's single
+  source of truth (each change class → mechanism → symbol); ARCHITECTURE.md carries the
+  prose mirror.
+- Final sweep: last `fast: true` in gif-export removed.
+
+## Branch close (2026-07-28)
+
+- **Gates**: 108 test files / 853 tests green on chromium+firefox; webkit green after
+  one platform-tolerance fix (WebKit's canvas.toBlob can't encode webp — test uses jpeg).
+- **Benchmark vs pre-wave-1 baseline**: complex scenes 3.8→3.2 / 11.9→10.0 /
+  32.9→27.1 ms (~15-18% faster), simple/warm unchanged, mutating-poll unchanged.
+- **All 49 audited findings dispositioned**: implemented, folded into existing code, or
+  explicitly discarded with evidence above. Panel verdict stands: no rewrite —
+  `experimental` is `next` plus the closed gaps.

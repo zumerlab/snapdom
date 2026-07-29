@@ -1,15 +1,25 @@
 /**
- * burst:true memoization: a scoped MutationObserver plus caching of the last result per
+ * Burst memoization: a scoped MutationObserver plus caching of the last result per
  * element, so repeated captures of an unchanged subtree return instantly (dashboard polling,
- * video/gif frame loops with static frames). Any external mutation of the subtree — or of
- * document styles in <head> — marks the element dirty; the next capture re-runs the pipeline
- * with every content-keyed cache warm (images, downsampled assets, fonts, style snapshots).
+ * video/gif frame loops with static frames). Auto-engages on repeated captures; mutated
+ * subtrees rebuild via the differential path (diff.js).
  *
- * Dirty-tracking is DOM-mutation-based, so it also listens for `<video>` frame changes
- * (timeupdate/seeked — those don't touch any DOM attribute). It cannot see canvas pixel
- * draws or programmatic CSSOM edits (stylesheet.insertRule/deleteRule, cssRule.style.* on a
- * rule rather than an element) — pass `{ burst: true, invalidate: true }` on the next call
- * after those.
+ * INVALIDATION MATRIX — every way a rendered frame can change, and who observes it
+ * (ARCHITECTURE.md carries the prose version; THIS list is the wiring's source of truth):
+ *  - DOM mutations ......... scoped MutationObserver (+ takeRecords flush pre-serve), below
+ *  - <video> frames ........ timeupdate/seeked listeners, trackVideos
+ *  - <img> loads ........... load/error listeners on pending images, trackPendingImages
+ *  - font loads ............ style-environment epoch (styles.js getStyleEnvEpoch)
+ *  - scroll ................ capture-phase scroll listener per element (no records exist)
+ *  - window resize ......... env epoch (media queries flip with no mutation)
+ *  - <head> CSS ............ env epoch (head observer)
+ *  - same-tick <style> ..... flushStyleInvalidations at capture start (records are async)
+ *  - CSS/WAAPI animations .. getAnimations({subtree}) per capture: memo never serves nor
+ *                            persists while running; targeted subtrees become dirty roots
+ *                            for the diff path with invalidateSnapshotsUnder per frame
+ *  - canvas pixel draws .... EXCLUDED (invisible to every observer) → `invalidate: true`
+ *  - CSSOM rule edits ...... EXCLUDED (insertRule/rule.style.*) → `invalidate: true`
+ *  - impure render plugins . suspend auto memo/diff (plugins.js hasImpureRenderPlugins)
  *
  * State lives in a WeakMap keyed by element — no separate handle/dispose: once the element is
  * unreachable, its entry (and the MutationObserver instances closed over it) become
