@@ -93,7 +93,7 @@ function pluginShape() {
 
 async function preCacheHelper() {
   await preCache()
-  await preCache(el, { embedFonts: true, iconFonts: [/custom-icons/i], cache: 'full' })
+  await preCache(el, { embedFonts: 'auto', useProxy: '/proxy/', excludeFonts: { families: ['X'] } })
 }
 
 void mainCallable

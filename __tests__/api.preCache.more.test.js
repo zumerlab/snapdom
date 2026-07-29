@@ -96,7 +96,9 @@ describe('preCache – líneas difíciles', () => {
     const [families, reps] = ensureFontsReady.mock.calls[0]
     expect(families instanceof Set).toBe(true)
     expect(Array.from(families)).toContain('Mansalva')
-    expect(reps).toBe(3)
+    // Aligned with the capture-side ensureFontsReady usage (attempts=1); the 3-attempt
+    // Safari warmup remnant is gone.
+    expect(reps).toBe(1)
 
     expect(embedCustomFonts).toHaveBeenCalledTimes(1)
     const call = embedCustomFonts.mock.calls[0][0]

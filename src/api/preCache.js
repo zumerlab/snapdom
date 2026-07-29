@@ -2,15 +2,17 @@
 import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
-import { cache, applyCachePolicy, EvictingMap } from '../core/cache.js'
+import { cache } from '../core/cache.js'
 import { URL_PROPS } from '../modules/background.js'
 
 /**
- * Preloads images, background images, and (optionally) fonts into cache before DOM capture.
+ * Network prefetch: preloads images, background/mask/border-image URLs and (per
+ * `embedFonts`, default 'auto' — same semantics as capture) fonts into the persistent
+ * caches before DOM capture. Cache policy is not an option here anymore: caching is
+ * structural, and preCache's whole point is warming it.
  * @param {Element|Document} [root=document]
  * @param {Object} [options={}]
- * @param {boolean} [options.embedFonts=true]
- * @param {'full'|'soft'|'auto'|'disabled'} [options.cache='full']
+ * @param {boolean|'auto'} [options.embedFonts='auto']
  * @param {string}  [options.useProxy=""]
  * @param {{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}[]} [options.localFonts=[]]
  * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.excludeFonts]
@@ -19,22 +21,15 @@ import { URL_PROPS } from '../modules/background.js'
  */
 export async function preCache(root = document, options = {}) {
   const {
-    embedFonts = true,
+    embedFonts = 'auto',
     useProxy = '',
   } = options
-  // Accept both `cache` (JSDoc) and legacy `cacheOpt`
-  const cacheMode = options.cache ?? options.cacheOpt ?? 'full'
-
-  applyCachePolicy(cacheMode)
 
   // Ensure font metrics are ready (non-throwing)
   try { await document.fonts?.ready } catch {}
 
   // Warm common tag/style caches (no-op if already done)
   try { precacheCommonTags() } catch {}
-
-  cache.image = cache.image || new EvictingMap(100)
-  cache.background = cache.background || new EvictingMap(100)
 
   // Collect elements for prefetch
   let imgEls = [], allEls = []
@@ -99,30 +94,38 @@ export async function preCache(root = document, options = {}) {
     }
   }
 
-  // Optional: preload/embed fonts
-  if (embedFonts) {
+  // Fonts: 'auto' mirrors capture's gate — embed only when a used family is actually a
+  // document-declared webfont; system-font pages skip the walk and the embed entirely.
+  const doc = (root && root.nodeType === 9) ? root : (root?.ownerDocument || document)
+  const fontsWanted = embedFonts === 'auto' ? (doc.fonts?.size || 0) > 0 : !!embedFonts
+  if (fontsWanted) {
     try {
       const { required, usedCodepoints } = collectFontUsage(root)
-
-      // Safari warmup: ensure families are ready before embedding
-      const safari = (typeof isSafari === 'function') ? isSafari() : !!isSafari
-      if (safari) {
-        const families = new Set(
-          Array.from(required)
-            .map(k => String(k).split('__')[0])
-            .filter(Boolean)
-        )
-        await ensureFontsReady(families, 3)
+      let proceed = true
+      if (embedFonts === 'auto') {
+        const docFamilies = new Set()
+        try { for (const f of doc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase()) } catch {}
+        proceed = docFamilies.size > 0 &&
+          Array.from(required).some((k) => docFamilies.has(String(k).split('__')[0].toLowerCase()))
       }
-
-      await embedCustomFonts({
-        required,
-        usedCodepoints,
-        exclude: options.excludeFonts,
-        localFonts: options.localFonts,
-        useProxy: options.useProxy ?? useProxy,
-        fontStylesheetDomains: options.fontStylesheetDomains,
-      })
+      if (proceed) {
+        if (isSafari()) {
+          const families = new Set(
+            Array.from(required)
+              .map(k => String(k).split('__')[0])
+              .filter(Boolean)
+          )
+          await ensureFontsReady(families, 1)
+        }
+        await embedCustomFonts({
+          required,
+          usedCodepoints,
+          exclude: options.excludeFonts,
+          localFonts: options.localFonts,
+          useProxy: options.useProxy ?? useProxy,
+          fontStylesheetDomains: options.fontStylesheetDomains,
+        })
+      }
     } catch {}
   }
 

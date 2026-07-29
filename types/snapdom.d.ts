@@ -409,22 +409,17 @@ export declare namespace snapdom {
 export interface PreCacheOptions {
   /** Root to scan (defaults to `document`). */
   root?: Element | Document;
-  /** Try to embed non-icon fonts used under root (see also localFonts). */
-  embedFonts?: boolean;
+  /** Font embedding — same semantics as capture: 'auto' (default) embeds only
+   *  document-declared webfonts actually used under root. */
+  embedFonts?: boolean | 'auto';
   /** Provide fonts explicitly to avoid remote discovery. */
   localFonts?: LocalFont[];
-  /** Additional matchers for icon fonts (strings or regex). */
-  iconFonts?: IconFontMatcher | IconFontMatcher[];
+  /** Exclude fonts by family/domain/subset. */
+  excludeFonts?: { families?: string[]; domains?: string[]; subsets?: string[] };
+  /** Extra domains to fetch cross-origin font CSS from. */
+  fontStylesheetDomains?: string[];
   /** Cross-origin proxy prefix (as in SnapdomOptions.useProxy). */
   useProxy?: string;
-  /** Cache policy for this preload operation. */
-  cache?: CachePolicy;
-
-  /** Back-compat fields (no-ops if present) */
-  /**
-   * @deprecated Use `cache` instead.
-   */
-  cacheOpt?: CachePolicy;
 }
 
 /**
