@@ -443,7 +443,10 @@ export async function deepClone(node, sessionCache, options) {
       'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset',
       'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'opacity',
       'fill-opacity', 'stroke-opacity', 'fill-rule', 'clip-rule',
-      'marker', 'marker-start', 'marker-mid', 'marker-end', 'visibility', 'display'
+      'marker', 'marker-start', 'marker-mid', 'marker-end', 'visibility', 'display',
+      // fill/stroke: currentColor resolves against inherited color, which SVG children
+      // without a style snapshot would otherwise lose (was resolveCSSVars' part 3).
+      'color'
     ]
     try {
       const cs = window.getComputedStyle(node)

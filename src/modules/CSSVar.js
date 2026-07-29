@@ -1,8 +1,5 @@
 // src/utils/resolveCSSVars.js
 
-/** Props donde típicamente aparece var() y conviene “materializar” si difieren del baseline */
-const KEY_PROPS = ['fill', 'stroke', 'color', 'background-color', 'stop-color']
-
 /** SVG container elements that act as templates: their descendants are rendered
  *  virtually via <use> / url(#...). CSS custom properties on the use site cascade
  *  into the rendered shadow tree, so any var() inside these containers must be
@@ -29,43 +26,11 @@ export function isInSvgTemplate(el) {
   return false
 }
 
-/** Cache de estilos base por (namespaceURI + tagName) */
-const __BASELINE_CACHE = new Map()
-
-/** Obtiene el estilo computado “base” (sin clase ni estilo) para un tag/namespace */
-function getBaselineComputed(tagName, ns) {
-  const key = ns + '::' + tagName.toLowerCase()
-  let entry = __BASELINE_CACHE.get(key)
-  if (entry) return entry
-
-  // Crear elemento del mismo tipo fuera del flujo visual
-  const doc = document
-  const el = ns === 'http://www.w3.org/2000/svg'
-    ? doc.createElementNS(ns, tagName)
-    : doc.createElement(tagName)
-
-  // Lo insertamos de forma que el UA pueda computar estilos, pero sin afectar layout
-  // (un shadowRoot vacío temporal funciona bien)
-  const holder = doc.createElement('div')
-  holder.setAttribute('data-snapdom-internal', '')
-  holder.style.cssText = 'position:absolute;left:-99999px;top:-99999px;contain:strict;display:block;'
-  holder.appendChild(el)
-  doc.documentElement.appendChild(holder)
-
-  const cs = getComputedStyle(el)
-  const base = {}
-  for (const p of KEY_PROPS) {
-    base[p] = cs.getPropertyValue(p) || ''
-  }
-
-  holder.remove()
-  __BASELINE_CACHE.set(key, base)
-  return base
-}
-
 /**
- * General: resuelve var() en estilos inline/atributos. Además, si no hay var()
- * pero el valor computado de KEY_PROPS difiere del baseline, inlina ese valor.
+ * Resuelve var() en estilos inline/atributos del elemento, materializando el valor
+ * computado en el clone. Los var() aplicados por reglas de hoja no necesitan pasada
+ * propia: el snapshot de estilos (inlineAllStyles) ya captura sus valores resueltos,
+ * y los SVG sin snapshot reciben la pasada SVG_PAINT_PROPS de deepClone.
  */
 export function resolveCSSVars(sourceEl, cloneEl) {
   if ((sourceEl?.nodeType !== 1) || (cloneEl?.nodeType !== 1)) return
@@ -124,30 +89,6 @@ export function resolveCSSVars(sourceEl, cloneEl) {
       const resolved = cs && cs.getPropertyValue(propName)
       if (resolved) {
         try { cloneEl.style.setProperty(propName, resolved.trim()) } catch {}
-      }
-    }
-  }
-
-  // --- 3) Fallback general: cubrir reglas de hoja (clases) SIN buscar en CSSOM
-  // Si NO vimos var() inline/attrs, quizás la clase aplicó var(). En ese caso,
-  // comparamos KEY_PROPS contra baseline del mismo tag/namespace y, si difiere,
-  // inlinamos el valor computado. Esto materializa p.ej. `.css-var-fill { fill: var(--x) }`
-  if (!hasVar) {
-    // Leemos cs aquí sólo si lo vamos a usar
-    if (!cs) {
-      try { cs = getComputedStyle(sourceEl) } catch { cs = null }
-    }
-    if (!cs) return
-
-    const ns = sourceEl.namespaceURI || 'html'
-    const base = getBaselineComputed(sourceEl.tagName, ns)
-
-    for (const prop of KEY_PROPS) {
-      const v = cs.getPropertyValue(prop) || ''
-      const b = base[prop] || ''
-      if (v && v !== b) {
-        // Es distinto al baseline => hay estilo de hoja afectando (posiblemente via var()).
-        try { cloneEl.style.setProperty(prop, v.trim()) } catch {}
       }
     }
   }
