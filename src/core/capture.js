@@ -185,7 +185,9 @@ export async function captureDOM(element, options) {
                  r.bottom >= preClipRect.top - 200 && r.top <= preClipRect.bottom + 200
         } catch { return true }
       } : null
-      const { required, usedCodepoints } = collectFontUsage(state.element, clipKeep)
+      // Safari's pre-step already walked this subtree — reuse its usage (threaded only
+      // for non-clip captures; clip needs the clipKeep-scoped walk).
+      const { required, usedCodepoints } = (!preClipRect && options.__fontUsage) || collectFontUsage(state.element, clipKeep)
       // 'auto': embed only when a used family is actually a document-declared webfont.
       if (options.embedFonts === 'auto') {
         const docFamilies = new Set()

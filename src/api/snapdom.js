@@ -5,7 +5,7 @@ import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
-import { collectUsedFontVariants, ensureFontsReady } from '../modules/fonts.js'
+import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
 export { preCache } from './preCache.js'
 
@@ -61,7 +61,14 @@ async function main(element, userOptions) {
           try { for (const f of doc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase()) } catch { /* no Font Loading API */ }
           if (docFamilies.size === 0) throw null // nothing to wait for
         }
-        const required = collectUsedFontVariants(element)
+        // One walk serves both consumers: fontsPhase reuses this usage instead of
+        // re-walking the subtree (a few frames staler after ensureFontsReady's wait —
+        // narrow missing-glyph exposure, accepted). Clip captures don't thread it:
+        // their fontsPhase walk is clip-scoped, and full-subtree usage would regress
+        // the clip font-subset optimization.
+        const usage = collectFontUsage(element)
+        if (!context.clip) context.__fontUsage = usage
+        const required = usage.required
         let families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
         if (context.embedFonts === 'auto') {
           families = new Set([...families].filter((f) => docFamilies.has(f.toLowerCase())))
