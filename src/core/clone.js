@@ -8,7 +8,6 @@ import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
 import { debugWarn, getStyle } from '../utils/index.js'
 import {
-  idleCallback,
   rewriteShadowCSS,
   nextShadowScopeId,
   extractShadowCSS,
@@ -481,20 +480,14 @@ export async function deepClone(node, sessionCache, options) {
     const neededVars = collectCustomPropsFromCSS(rawCSS)
     const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)
     injectScopedStyle(clone, seed + rewritten, scopeId)
+    // Children clone concurrently (sibling iframe/canvas work overlaps); a failed child
+    // resolves to null and is dropped — same semantics the promise-wrapper scaffolding had.
     const shadowFrag = document.createDocumentFragment()
-    function callback(child, resolve) {
-      if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE') {
-        return resolve(null)
-      } else {
-        deepClone(child, sessionCache, options).then((clonedChild) => {
-          resolve(clonedChild || null)
-        }).catch(() => {
-          resolve(null)
-        })
-      }
-    }
-
-    const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), callback)
+    const cloneList = await Promise.all(Array.from(node.shadowRoot.childNodes).map((child) =>
+      (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE')
+        ? null
+        : deepClone(child, sessionCache, options).catch(() => null)
+    ))
     shadowFrag.append(...cloneList.filter(clonedChild => !!clonedChild))
     clone.appendChild(shadowFrag)
   }
@@ -502,31 +495,21 @@ export async function deepClone(node, sessionCache, options) {
     const assigned = node.assignedNodes?.({ flatten: true }) || []
     const nodesToClone = assigned.length > 0 ? assigned : Array.from(node.childNodes)
     const fragment = document.createDocumentFragment()
-
-    function callback(child, resolve) {
+    const cloneList = await Promise.all(nodesToClone.map((child) =>
       deepClone(child, sessionCache, options).then((clonedChild) => {
-        if (clonedChild) {
-          markSlottedSubtree(clonedChild)
-        }
-        resolve(clonedChild || null)
-      }).catch(() => {
-        resolve(null)
-      })
-    }
-    const cloneList = await idleCallback(Array.from(nodesToClone), callback)
+        if (clonedChild) markSlottedSubtree(clonedChild)
+        return clonedChild || null
+      }).catch(() => null)
+    ))
     fragment.append(...cloneList.filter(clonedChild => !!clonedChild))
     return fragment
   }
 
-  function callback(child, resolve) {
-    if (clonedAssignedNodes.has(child)) return resolve(null)
-    deepClone(child, sessionCache, options).then((clonedChild) => {
-      resolve(clonedChild || null)
-    }).catch(() => {
-      resolve(null)
-    })
-  }
-  const cloneList = await idleCallback(Array.from(node.childNodes), callback)
+  const cloneList = await Promise.all(Array.from(node.childNodes).map((child) =>
+    clonedAssignedNodes.has(child)
+      ? null
+      : deepClone(child, sessionCache, options).catch(() => null)
+  ))
   clone.append(...cloneList.filter(clonedChild => !!clonedChild))
 
   // Adjust select value after children are cloned

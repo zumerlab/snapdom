@@ -347,19 +347,27 @@ function getSnapshot(el, preStyle = null, options = {}) {
 function _resolveCtx(sessionOrCtx, opts) {
   if (sessionOrCtx && sessionOrCtx.session && sessionOrCtx.persist) return sessionOrCtx
   if (sessionOrCtx && (sessionOrCtx.styleMap || sessionOrCtx.styleCache || sessionOrCtx.nodeMap)) {
-    return {
-      session: sessionOrCtx,
-      persist: {
-        snapshotKeyCache,
-        defaultStyle: cache.defaultStyle,
-        baseStyle: cache.baseStyle,
-        image: cache.image,
-        resource: cache.resource,
-        background: cache.background,
-        font: cache.font,
-      },
-      options: opts || {},
+    // Amortize to one ctx allocation per capture: deepClone calls this per node with the
+    // same sessionCache + options references.
+    let ctx = sessionOrCtx.__ctx
+    if (!ctx || sessionOrCtx.__ctxOpts !== opts) {
+      ctx = {
+        session: sessionOrCtx,
+        persist: {
+          snapshotKeyCache,
+          defaultStyle: cache.defaultStyle,
+          baseStyle: cache.baseStyle,
+          image: cache.image,
+          resource: cache.resource,
+          background: cache.background,
+          font: cache.font,
+        },
+        options: opts || {},
+      }
+      sessionOrCtx.__ctx = ctx
+      sessionOrCtx.__ctxOpts = opts
     }
+    return ctx
   }
 
   return {
@@ -395,7 +403,7 @@ function normalizeInlineStyleToComputed(source, clone, computed) {
   }
 }
 
-export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
+export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (source.tagName === 'STYLE') return
 
   const ctx = _resolveCtx(sessionOrCtx, opts)

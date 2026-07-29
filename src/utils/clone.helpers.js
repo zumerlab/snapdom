@@ -10,20 +10,6 @@ import { inlineAllStyles } from '../modules/styles.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 
 /**
- * Schedule work across idle slices without relying on IdleDeadline constructor.
- * Falls back to setTimeout on browsers without requestIdleCallback.
- * @param {Node[]} childList
- * @param {(child: Node, done: () => void) => void} callback
- * @param {boolean} fast
- * @returns {Promise<(Node|null)[]>}
- */
-export function idleCallback(childList, callback) {
-  // Single path: the old non-fast branch re-scheduled every child through idle slices —
-  // thousands of allocations per large tree for no benefit at today's capture times.
-  return Promise.all(childList.map((child) => new Promise((resolve) => callback(child, resolve))))
-}
-
-/**
  * Add :not([data-sd-slotted]) at the rightmost compound of a selector.
  * Very safe approximation: append at the end.
  */

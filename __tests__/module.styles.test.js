@@ -122,8 +122,9 @@ describe('inlineAllStyles – branches y firmas', () => {
 
     // Direct calls without a session get isolated throwaway maps now (the global
     // cache.session is a legacy/test surface the pipeline never reads) — the observable
-    // contract is simply that the call succeeds and styles the clone.
-    await expect(inlineAllStyles(src, clone, { cache: 'soft' })).resolves.toBeUndefined()
+    // contract is simply that the call succeeds and styles the clone. Sync since the
+    // promise-churn cleanup (the function never awaited anything).
+    expect(inlineAllStyles(src, clone, { cache: 'soft' })).toBeUndefined()
   })
 
   it('#348: excludeStyleProps regex excludes matching props from snapshot', async () => {
@@ -270,7 +271,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     const session = freshSession()
 
     // Should not throw even though getComputedStyle() on a detached node is unreliable
-    await expect(inlineAllStyles(src, clone, session, { cache: 'auto' })).resolves.not.toThrow()
+    expect(() => inlineAllStyles(src, clone, session, { cache: 'auto' })).not.toThrow()
     // styleMap entry is written (even if the key may be empty/incomplete for detached nodes)
     expect(session.styleMap.has(clone)).toBe(true)
   })
