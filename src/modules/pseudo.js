@@ -419,12 +419,43 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
  * @param {{get:Function, getStack:Function}} baseCtx
  * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
  */
+/** Computed `content` returns quote KEYWORDS un-resolved (open-quote stays the literal
+ *  token), so without this the capture paints the text "open-quote". Resolve from the
+ *  element's computed `quotes` (first pair — depth-0 approximation), falling back to
+ *  typographic quotes when it computes 'auto' (Chromium) and nothing for 'none'. */
+function resolveQuoteKeywords(raw, node) {
+  if (!/\b(?:no-)?(?:open|close)-quote\b/.test(raw)) return raw
+  let openQ = '“', closeQ = '”'
+  try {
+    const q = getStyle(node).quotes
+    if (q === 'none') { openQ = ''; closeQ = '' }
+    else if (q && q !== 'auto') {
+      const pairs = q.match(/"[^"]*"|'[^']*'/g)
+      if (pairs && pairs.length >= 2) {
+        openQ = pairs[0].slice(1, -1)
+        closeQ = pairs[1].slice(1, -1)
+      }
+    }
+  } catch { }
+  // Emit as quoted strings so collapseCssContent treats them as text; embedded double
+  // quotes would break its tokenizer, so strip them from the glyphs.
+  openQ = openQ.replace(/"/g, '')
+  closeQ = closeQ.replace(/"/g, '')
+  return raw.replace(/"[^"]*"|\b(no-open-quote|no-close-quote|open-quote|close-quote)\b/g, (tok, kw) => {
+    if (!kw) return tok // quoted string — untouched
+    if (kw === 'open-quote') return `"${openQ}"`
+    if (kw === 'close-quote') return `"${closeQ}"`
+    return '""' // no-open-quote / no-close-quote render nothing
+  })
+}
+
 function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
   let ps
   try { ps = getStyle(node, pseudo) } catch { }
   let raw = ps?.content
   if (!raw || raw === 'none' || raw === 'normal') return { text: '', incs: [] }
   raw = stripContentAltText(raw)
+  raw = resolveQuoteKeywords(raw, node)
 
   // 1) aplicar overrides de hermanos
   const baseWithSiblings = withSiblingOverrides(node, baseCtx, siblingCounters)

@@ -1,5 +1,5 @@
 // __tests__/modules.pseudo.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { inlinePseudoElements } from '../src/modules/pseudo.js'
 
 // Mock de utils y fonts con importActual para que Vitest Browser no rompa
@@ -600,5 +600,57 @@ describe('inlinePseudoElements', () => {
 
     el.remove()
     style.remove()
+  })
+})
+
+describe('quote keywords in pseudo content (fidelity: literal "open-quote" bug)', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('style[data-quote-test]').forEach((s) => s.remove())
+    document.body.innerHTML = ''
+  })
+
+  async function captureSvg(el) {
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const res = await snapdom(el, { cache: 'disabled' })
+    // Rendered markup only — the generated class CSS legitimately carries the raw
+    // `content: open-quote` declaration (it never paints; only the span text does).
+    return decodeURIComponent(res.url.split(',')[1]).replace(/<style[\s\S]*?<\/style>/g, '')
+  }
+
+  it('resolves open/close-quote from the computed quotes pairs', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-quote-test', '')
+    style.textContent = `
+      .zz-q { quotes: "«" "»"; }
+      .zz-q::before { content: open-quote; }
+      .zz-q::after { content: close-quote; }
+    `
+    document.head.appendChild(style)
+    const el = document.createElement('div')
+    el.className = 'zz-q'
+    el.textContent = 'cita'
+    document.body.appendChild(el)
+    const svg = await captureSvg(el)
+    expect(svg).toContain('«')
+    expect(svg).toContain('»')
+    expect(svg).not.toContain('open-quote')
+  })
+
+  it('falls back to typographic quotes when quotes computes auto, and renders nothing for no-*-quote', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-quote-test', '')
+    style.textContent = `
+      .zz-q2::before { content: open-quote; }
+      .zz-q2::after { content: no-close-quote; }
+    `
+    document.head.appendChild(style)
+    const el = document.createElement('div')
+    el.className = 'zz-q2'
+    el.textContent = 'hola'
+    document.body.appendChild(el)
+    const svg = await captureSvg(el)
+    expect(svg).toContain('“')
+    expect(svg).not.toContain('open-quote')
+    expect(svg).not.toContain('no-close-quote')
   })
 })
