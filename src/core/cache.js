@@ -42,18 +42,9 @@ export const cache = {
    *  Key: Element. Value: { cssLen, w0, csh, csw } — cssLen is the total injected CSS
    *  length, used together with w0 as a cheap invalidation key when styles change. */
   measureHints: new WeakMap(),
-  /** { count, firstTs, warned } per element — tracks capture frequency for elements NOT using
-   *  burst:true, to suggest it when the same element is captured repeatedly in a short window.
-   *  The actual burst:true memoization state lives in src/core/burst.js, not here. */
-  burstAdvice: new WeakMap(),
   /** Fires the reconcile suggestion at most once per page load (see capture.js). */
   warnedReconcile: false,
   font: new Set(),
-  session: {
-    styleMap: new Map(),
-    styleCache: new WeakMap(),
-    nodeMap: new Map(),
-  }
 }
 
 export { EvictingMap }
@@ -80,12 +71,6 @@ export function normalizeCachePolicy(v) {
  * @param {"soft"|"auto"|"full"|"disabled"} policy
  */
 export function applyCachePolicy(policy = 'soft') {
-  // Fresh per-capture session bucket. LEGACY/TEST SURFACE ONLY: the pipeline snapshots it
-  // immediately (createCaptureSession) and threads explicit references everywhere — the
-  // only remaining readers are default parameters serving direct module calls in tests.
-  cache.session.styleMap   = new Map()
-  cache.session.nodeMap    = new Map()
-  cache.session.styleCache = new WeakMap()
   if (policy !== 'disabled') return
 
   // 'disabled': also drop every persistent cache so nothing is reused across captures.

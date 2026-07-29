@@ -19,7 +19,6 @@
 
 import { isExternalRecord, getStyleEnvEpoch } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
-import { cache } from './cache.js'
 
 const burstStates = new WeakMap()
 
@@ -35,11 +34,14 @@ const AUTO_THRESHOLD = 3
  * @param {Element} element
  * @returns {boolean}
  */
+/** { count, lastTs } per element — capture-frequency tracking for auto-burst. */
+const autoBurstTracker = new WeakMap()
+
 export function shouldAutoBurst(element) {
   const now = Date.now()
-  const entry = cache.burstAdvice.get(element)
+  const entry = autoBurstTracker.get(element)
   if (!entry || now - entry.lastTs > AUTO_WINDOW_MS) {
-    cache.burstAdvice.set(element, { count: 1, lastTs: now })
+    autoBurstTracker.set(element, { count: 1, lastTs: now })
     return false
   }
   entry.lastTs = now
@@ -260,9 +262,9 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     }
   }
 
-  // captureDOM shares the global cache.session bucket, so two in-flight captures of the same
-  // element would race and corrupt each other's node/style maps. Serialize concurrent calls
-  // on one queue; a failed capture rejects only its own caller, not the whole queue.
+  // Two in-flight captures of the same element would race on this element's retained
+  // burst/diff state (memo, retained clone, dirty-roots). Serialize concurrent calls on
+  // one queue; a failed capture rejects only its own caller, not the whole queue.
   const next = state.inflight.then(run, run)
   state.inflight = next.catch(() => {})
   return next

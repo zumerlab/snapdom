@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
 
 describe('burst:true — memoizes repeated captures of an unchanged element', () => {
@@ -21,9 +21,9 @@ describe('burst:true — memoizes repeated captures of an unchanged element', ()
   })
 
   // Two capture() calls fired without awaiting the first must not run captureDOM
-  // concurrently — it shares the global cache.session bucket, so racing captures
-  // corrupt each other's node/style maps (see src/core/burst.js).
-  it('serializes concurrent captures instead of racing on shared cache.session', async () => {
+  // concurrently — racing captures of the same element would corrupt its retained
+  // burst/diff state (see src/core/burst.js).
+  it('serializes concurrent captures of the same element', async () => {
     makeEl()
     const [r1, r2] = await Promise.all([
       snapdom(el, { burst: true }),

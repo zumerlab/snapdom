@@ -29,8 +29,7 @@ export async function prepareClone(element, options = {}) {
   // memo (universe, pseudo gates, isInSvgTemplate) is read.
   flushStyleInvalidations()
   // captureDOM always provides its own session (createCaptureSession). Direct callers
-  // (tests, embedders) get fresh isolated maps — production code never reads the mutable
-  // cache.session global here anymore.
+  // (tests, embedders) get fresh isolated maps.
   const session = options.__session || { styleMap: new Map(), styleCache: new WeakMap(), nodeMap: new Map() }
   const sessionCache = {
     styleMap: session.styleMap,

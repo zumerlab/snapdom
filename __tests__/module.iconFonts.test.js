@@ -80,7 +80,6 @@ describe('isIconFont (defaults)', () => {
 describe('ligatureIconToImage source pairing (#6)', () => {
   it('reads styles from the nodeMap-mapped source, not the positional index', async () => {
     const { ligatureIconToImage } = mod
-    const { cache } = await import('../src/core/cache.js')
 
     // Source: two material icons with distinct font-sizes.
     const source = document.createElement('div')
@@ -99,9 +98,7 @@ describe('ligatureIconToImage source pairing (#6)', () => {
     clone.appendChild(c2)
     document.body.appendChild(clone)
 
-    cache.session.nodeMap = new Map([[c2, s2]])
-
-    await ligatureIconToImage(clone, source)
+    await ligatureIconToImage(clone, source, new Map([[c2, s2]]))
 
     const img = c2.querySelector('img')
     expect(img).toBeTruthy()
@@ -117,7 +114,6 @@ describe('ligatureIconToImage source pairing (#6)', () => {
   // ("home") unconverted — the raster showed literal text (or tofu) instead of the icon glyph.
   it('converts the ligature when the icon itself is the root (not just a descendant)', async () => {
     const { ligatureIconToImage } = mod
-    const { cache } = await import('../src/core/cache.js')
 
     const source = document.createElement('span')
     source.className = 'material-icons'
@@ -129,9 +125,7 @@ describe('ligatureIconToImage source pairing (#6)', () => {
     const clone = source.cloneNode(true)
     document.body.appendChild(clone)
 
-    cache.session.nodeMap = new Map([[clone, source]])
-
-    const replaced = await ligatureIconToImage(clone, source)
+    const replaced = await ligatureIconToImage(clone, source, new Map([[clone, source]]))
 
     expect(replaced).toBe(1)
     const img = clone.querySelector('img')

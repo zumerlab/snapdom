@@ -98,9 +98,8 @@ export async function captureDOM(element, options) {
   await runHook('beforeClone', state)
   const undoClamp = lineClampTree(state.element, preClipRect)
   try {
-    // Keep this capture's own clone→source map: nested iframe captures reassign
-    // cache.session.nodeMap concurrently (see rasterizeIframe), so the global cannot be
-    // trusted after the clone phase — every later pass must use this reference.
+    // Keep this capture's own clone→source map — every later pass must use this
+    // reference (sessions are per-capture; there is no shared session global).
     ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
 
     if (reconcileRisk > 0 && !options.reconcile && !cache.warnedReconcile) {

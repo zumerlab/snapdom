@@ -120,10 +120,9 @@ describe('inlineAllStyles – branches y firmas', () => {
     const src = document.createElement('strong')
     const clone = document.createElement('strong')
 
-    // Direct calls without a session get isolated throwaway maps now (the global
-    // cache.session is a legacy/test surface the pipeline never reads) — the observable
-    // contract is simply that the call succeeds and styles the clone. Sync since the
-    // promise-churn cleanup (the function never awaited anything).
+    // Direct calls without a session get isolated throwaway maps (there is no session
+    // global) — the observable contract is simply that the call succeeds and styles the
+    // clone. Sync since the promise-churn cleanup (the function never awaited anything).
     expect(inlineAllStyles(src, clone, { cache: 'soft' })).toBeUndefined()
   })
 

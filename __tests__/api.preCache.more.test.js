@@ -25,7 +25,6 @@ vi.mock('../src/modules/fonts.js', () => ({
 
 // ⬇️ recién ahora importamos SUT + símbolos mocked
 import { preCache } from '../src/api/preCache.js'
-import { cache } from '../src/core/cache.js'
 import * as utils from '../src/utils'
 import {
   embedCustomFonts,
@@ -39,8 +38,6 @@ describe('preCache – líneas difíciles', () => {
     vi.clearAllMocks()
     utils.isSafari.mockReset?.()
     utils.isSafari.mockReturnValue(false)
-    if (!cache.session) cache.session = {}
-    cache.session.styleCache = new WeakMap()
   })
 
   it('prefetches background, mask and border-image URLs (the full URL_PROPS list)', async () => {
@@ -108,15 +105,5 @@ describe('preCache – líneas difíciles', () => {
     expect(call.exclude).toEqual(excludeFonts)
     expect(call.localFonts).toEqual(localFonts)
     expect(call.useProxy).toBe('/proxy/')
-  })
-
-  it('crea styleCache si no existe (49–50)', async () => {
-    cache.session = cache.session || {}
-    delete cache.session.styleCache
-
-    const root = document.createElement('main')
-    await expect(preCache(root, { embedFonts: false })).resolves.toBeUndefined()
-
-    expect(cache.session.styleCache).toBeInstanceOf(WeakMap)
   })
 })

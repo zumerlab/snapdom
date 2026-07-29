@@ -4,7 +4,6 @@
  */
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
-import { cache } from '../core/cache.js'
 import { needsBackgroundInline } from './styles.js'
 
 /** Props that can contain url(...) and may need inlining (also drives preCache prefetch) */
@@ -154,12 +153,11 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
  * @param {HTMLElement} clone The cloned element receiving inline styles.
  * @param {WeakMap} styleCache
  * @param {Object} [options={}]
- * @param {Map<Node, Node>} [nodeMap] Session clone→source map. Must be the capturing
- *   session's own reference: the global cache.session.nodeMap (fallback) is reassigned by
- *   concurrent nested iframe captures and may be an orphaned map by the time this pass runs.
+ * @param {Map<Node, Node>} [nodeMap] Session clone→source map (the capturing session's
+ *   own reference; the empty-map default only serves direct test calls).
  * @returns {Promise<void>}
  */
-export async function inlineBackgroundImages(source, clone, styleCache, options = {}, nodeMap = cache.session.nodeMap) {
+export async function inlineBackgroundImages(source, clone, styleCache, options = {}, nodeMap = new Map()) {
   if (!clone) return
 
   const jobs = []

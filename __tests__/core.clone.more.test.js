@@ -2,16 +2,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { sanitizeCloneForXHTML } from '../src/utils/capture.helpers.js'
 import { deepClone } from '../src/core/clone.js'
-import { cache } from '../src/core/cache.js'
 import { NO_CAPTURE_TAGS } from '../src/utils/css.js'
 import { createCheckboxRadioReplacement } from '../src/utils/clone.helpers.js'
 import { isFirefox } from '../src/utils/browser.js'
 
 // fresh session cache each test
 const makeSession = () => ({
-  styleMap: cache.session.styleMap,
-  styleCache: cache.session.styleCache,
-  nodeMap: cache.session.nodeMap,
+  styleMap: new Map(),
+  styleCache: new WeakMap(),
+  nodeMap: new Map(),
 })
 
 describe('deepClone – extra coverage', () => {
@@ -19,9 +18,6 @@ describe('deepClone – extra coverage', () => {
 
   beforeEach(() => {
     // reset-ish session structures if available
-    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
-    if (cache.session?.styleCache?.clear) cache.session.styleCache = new WeakMap()
-    if (cache.session?.nodeMap?.clear) cache.session.nodeMap = new Map()
     session = makeSession()
   })
 
@@ -224,9 +220,6 @@ describe('deepClone – targeted branches for coverage gaps', () => {
   let session
   beforeEach(() => {
     // soft reset of session containers
-    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
-    cache.session.styleCache = new WeakMap()
-    cache.session.nodeMap = new Map()
     session = makeSession()
   })
 
@@ -436,15 +429,12 @@ describe('deepClone – targeted branches for coverage gaps', () => {
 describe('deepClone – extra targets to lift coverage', () => {
   let session
   const makeSession = () => ({
-    styleMap: cache.session.styleMap,
-    styleCache: cache.session.styleCache,
-    nodeMap: cache.session.nodeMap,
+    styleMap: new Map(),
+    styleCache: new WeakMap(),
+    nodeMap: new Map(),
   })
 
   beforeEach(() => {
-    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
-    cache.session.styleCache = new WeakMap()
-    cache.session.nodeMap = new Map()
     session = makeSession()
   })
 
@@ -640,13 +630,10 @@ describe('deepClone – extra targets to lift coverage', () => {
 describe('deepClone – Tier 2 fixes', () => {
   let session
   beforeEach(() => {
-    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
-    cache.session.styleCache = new WeakMap()
-    cache.session.nodeMap = new Map()
     session = {
-      styleMap: cache.session.styleMap,
-      styleCache: cache.session.styleCache,
-      nodeMap: cache.session.nodeMap,
+      styleMap: new Map(),
+      styleCache: new WeakMap(),
+      nodeMap: new Map(),
     }
   })
   afterEach(() => {
@@ -771,13 +758,10 @@ describe('deepClone – Tier 2 fixes', () => {
 describe('deepClone – form validation attrs (NEW-8)', () => {
   let session
   beforeEach(() => {
-    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
-    cache.session.styleCache = new WeakMap()
-    cache.session.nodeMap = new Map()
     session = {
-      styleMap: cache.session.styleMap,
-      styleCache: cache.session.styleCache,
-      nodeMap: cache.session.nodeMap,
+      styleMap: new Map(),
+      styleCache: new WeakMap(),
+      nodeMap: new Map(),
     }
   })
   afterEach(() => { document.body.innerHTML = '' })
@@ -841,13 +825,10 @@ describe('deepClone – form validation attrs (NEW-8)', () => {
 describe('deepClone – nested foreignObject skipped (NEW-9)', () => {
   let session
   beforeEach(() => {
-    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
-    cache.session.styleCache = new WeakMap()
-    cache.session.nodeMap = new Map()
     session = {
-      styleMap: cache.session.styleMap,
-      styleCache: cache.session.styleCache,
-      nodeMap: cache.session.nodeMap,
+      styleMap: new Map(),
+      styleCache: new WeakMap(),
+      nodeMap: new Map(),
     }
   })
   afterEach(() => { document.body.innerHTML = '' })
@@ -880,13 +861,10 @@ describe('deepClone – nested foreignObject skipped (NEW-9)', () => {
 describe('clone pipeline – XML control char sanitization (ROB-3)', () => {
   let session
   beforeEach(() => {
-    if (cache.session?.styleMap?.clear) cache.session.styleMap.clear()
-    cache.session.styleCache = new WeakMap()
-    cache.session.nodeMap = new Map()
     session = {
-      styleMap: cache.session.styleMap,
-      styleCache: cache.session.styleCache,
-      nodeMap: cache.session.nodeMap,
+      styleMap: new Map(),
+      styleCache: new WeakMap(),
+      nodeMap: new Map(),
     }
   })
   afterEach(() => { document.body.innerHTML = '' })

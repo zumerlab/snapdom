@@ -15,7 +15,6 @@
  * @module backdropFilter
  */
 
-import { cache } from '../core/cache.js'
 import { getStyle } from '../utils'
 
 /**
@@ -24,7 +23,7 @@ import { getStyle } from '../utils'
  * @param {Map<Node, Node>} [nodeMap] - Session clone→source map; pass the capture's own
  *   reference — the global fallback can be stale after nested iframe captures.
  */
-export function emulateBackdropFilters(root, clone, nodeMap = cache.session.nodeMap) {
+export function emulateBackdropFilters(root, clone, nodeMap = new Map()) {
   const targets = []
   const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT)
   for (let n = walker.currentNode; n; n = walker.nextNode()) {

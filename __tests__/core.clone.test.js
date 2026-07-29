@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { deepClone } from '../src/core/clone.js'
 import { createContext } from '../src/core/context.js'
-import { cache } from '../src/core/cache.js'
 
 let options = createContext()
 const sessionCache = {
-        styleMap: cache.session.styleMap,
-        styleCache: cache.session.styleCache,
-        nodeMap: cache.session.nodeMap
+        styleMap: new Map(),
+        styleCache: new WeakMap(),
+        nodeMap: new Map()
       }
 
 async function runClone(node) {

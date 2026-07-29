@@ -258,7 +258,7 @@ function originalBox(el) {
  * @param {Map<Node, Node>} [nodeMap] - Session clone→source map (falls back to the global)
  * @returns {Promise<{count:number}>}
  */
-export async function compressClonedBackgrounds(clone, options, nodeMap = cache.session.nodeMap) {
+export async function compressClonedBackgrounds(clone, options, nodeMap = new Map()) {
   if (!options.compress) return { count: 0 }
   const eff = (options.scale || 1) * (options.dpr || 1)
   const els = []

@@ -2,7 +2,6 @@
 // Verifies BOTH halves of the promise: smaller/faster output AND no fidelity loss.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { downsampleDataURL, compressClonedImages, compressClonedBackgrounds, compressClonedSvgImages } from '../src/modules/compress.js'
-import { cache } from '../src/core/cache.js'
 import { snapdom } from '../src/index.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -161,9 +160,9 @@ describe('compressClonedBackgrounds', () => {
     const cloneEl = document.createElement('div')
     cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 11)}")`
     const before = cloneEl.style.backgroundImage.length
-    cache.session.nodeMap.set(cloneEl, orig)
+    const nodeMap = new Map([[cloneEl, orig]])
 
-    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true })
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true }, nodeMap)
     expect(r.count).toBe(1)
     expect(cloneEl.style.backgroundImage.length).toBeLessThan(before)
     expect(cloneEl.style.backgroundImage).toContain('data:image')
@@ -174,9 +173,9 @@ describe('compressClonedBackgrounds', () => {
     const cloneEl = document.createElement('div')
     cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 12)}")`
     const before = cloneEl.style.backgroundImage
-    cache.session.nodeMap.set(cloneEl, orig)
+    const nodeMap = new Map([[cloneEl, orig]])
 
-    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true })
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true }, nodeMap)
     expect(r.count).toBe(0)
     expect(cloneEl.style.backgroundImage).toBe(before)
   })

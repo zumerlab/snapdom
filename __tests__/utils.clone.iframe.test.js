@@ -1,7 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { pinIframeViewport, rasterizeIframe } from '../src/utils/clone.helpers.js'
 import { snapdom } from '../src/api/snapdom.js'
-import { cache } from '../src/core/cache.js'
 
 // #393: pinIframeViewport applies `overflow: hidden` to the iframe html/body,
 // which clamps the scroll position to 0. The live page must be left untouched
@@ -88,9 +87,9 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     expect(doc.documentElement.scrollHeight).toBeGreaterThan(1000)
 
     const session = {
-      styleMap: cache.session.styleMap,
-      styleCache: cache.session.styleCache,
-      nodeMap: cache.session.nodeMap,
+      styleMap: new Map(),
+      styleCache: new WeakMap(),
+      nodeMap: new Map(),
     }
     const wrapper = await rasterizeIframe(iframe, session, { snap: snapdom })
     const img = wrapper.querySelector('img')

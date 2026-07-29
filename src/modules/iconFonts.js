@@ -1,5 +1,4 @@
 // iconFonts.js
-import { cache } from '../core/cache.js'
 
 // ---------------------------------------------------------------------------
 // Detection / configuration (kept as-is + extensible)
@@ -235,7 +234,7 @@ export async function materialIconToImage(
  * Replace Material ligature nodes in the CLONE by <img>.
  * Reads styles from SOURCE for accurate size/color/variation/class.
  */
-export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = cache.session.nodeMap) {
+export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = new Map()) {
   if ((cloneRoot?.nodeType !== 1)) return 0
 
   const selector = '.material-icons, [class*="material-symbols"]'

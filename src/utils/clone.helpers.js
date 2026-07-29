@@ -441,8 +441,7 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
   // Every capture owns its session from its first synchronous tick (createCaptureSession),
-  // so the nested capture reassigning the legacy cache.session global is harmless — no
-  // save/restore needed here anymore.
+  // so the nested capture can't disturb this one's maps — no save/restore needed.
   let imgEl
   try {
     imgEl = await snap.toPng(doc.documentElement, nested)

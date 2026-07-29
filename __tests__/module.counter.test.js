@@ -5,7 +5,6 @@ import {
   buildCounterContext,
   resolveCountersInContent
 } from '../src/modules/counter.js'
-import { cache } from '../src/core/cache.js'
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -141,7 +140,6 @@ describe('buildCounterContext – per-capture stability', () => {
     // to rebuild against a possibly-mutated document mid-capture. The context is
     // per-capture now: its snapshot must stay stable for the capture's lifetime.
     inner.style.counterReset = 'x 9'
-    cache.session.__counterEpoch = (cache.session.__counterEpoch || 0) + 1
     expect(ctx.get(inner, 'x')).toBe(5)
     expect(ctx.getStack(inner, 'x')).toEqual([5])
   })

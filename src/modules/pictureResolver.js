@@ -16,10 +16,6 @@ export function isPlaceholderSrc(src) {
   return false
 }
 
-const LAZY_IMG_SELECTOR =
-  'img[data-src], img[data-lazy-src], img[data-original], img[data-hi-res-src], img[data-srcset], img[data-lazy-srcset]'
-
-
 /** Raster types every target engine decodes; anything else (jxl, tiff…) the browser's own
  *  <picture> type-support step would skip, so freezing it diverges from what the page shows. */
 const SUPPORTED_SOURCE_TYPE = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
