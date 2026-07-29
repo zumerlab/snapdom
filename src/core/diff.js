@@ -26,6 +26,7 @@ import { universeFor, inlineAllStyles } from '../modules/styles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { sanitizeCloneForXHTML } from '../utils/capture.helpers.js'
+import { hasImpureRenderPlugins } from './plugins.js'
 
 /** Content whose capture involves whole-tree or root-coupled machinery (svg defs hoisting,
  *  nested rasterization, shadow scoping…) — a dirty subtree touching any of these goes full. */
@@ -142,6 +143,9 @@ async function diffCapture(element, state, context) {
   // Fonts were embedded in the retained capture: a dirty subtree can introduce codepoints
   // or faces the embedded set lacks — only the full pipeline recollects usage.
   if (R.fontsCSS) return null
+  // Render-affecting plugins: the rebuilt subtree would skip resolveNode/afterClone work
+  // and beforeRender would mutate retained state — full pipeline unless declared pure.
+  if (hasImpureRenderPlugins(context)) return null
   // Scoped ::marker/::first-line rules are attribute-keyed per element — a rebuilt or
   // removed subtree would strand/miss rules and break the byte-equality guarantee.
   if (R.classPrefixCSS && (R.classPrefixCSS.includes('::marker') || R.classPrefixCSS.includes('::first-line'))) return null

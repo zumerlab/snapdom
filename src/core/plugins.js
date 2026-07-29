@@ -166,3 +166,29 @@ export function attachSessionPlugins(context, localDefs, force = false) {
 export function getGlobalPlugins() {
   return __plugins.slice()
 }
+
+/** Hooks that touch the clone or the render — the ones memo/diff fast paths would skip
+ *  or re-run against retained state. Export-only plugins (defineExports/beforeExport/
+ *  afterExport) are served correctly by buildResult on every path. */
+const RENDER_HOOKS = ['resolveNode', 'beforeSnap', 'beforeClone', 'afterClone', 'beforeRender', 'afterRender']
+
+/**
+ * True when the capture's plugin list contains a render-affecting plugin that has NOT
+ * declared itself pure. Auto-burst and the diff path bail on these — serving a memo would
+ * skip their hooks, and splicing a rebuilt subtree would drop their transformations —
+ * mirroring the engine seam's conservative hasPlugins rule. A plugin whose hooks are
+ * deterministic/idempotent can set `pure: true` to opt back into the fast paths.
+ * @param {{plugins?: any[]}} context
+ * @returns {boolean}
+ */
+export function hasImpureRenderPlugins(context) {
+  const defs = Array.isArray(context && context.plugins) ? context.plugins : []
+  for (const d of defs) {
+    const inst = normalizePlugin(d)
+    if (!inst || inst.pure === true) continue
+    for (const h of RENDER_HOOKS) {
+      if (typeof inst[h] === 'function') return true
+    }
+  }
+  return false
+}

@@ -4,7 +4,7 @@ import { setSessionIconFonts } from '../modules/iconFonts.js'
 import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
-import { registerPlugins, runHook, runAll, attachSessionPlugins } from '../core/plugins.js'
+import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
 import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
 export { preCache } from './preCache.js'
@@ -111,7 +111,12 @@ async function main(element, userOptions) {
   }
 
   // Explicit burst wins; unset auto-enables on repeated captures of the same element.
-  const burst = context.burst === undefined ? shouldAutoBurst(element) : context.burst
+  // Render-affecting plugins suspend auto mode (a memo serve would skip their hooks) —
+  // explicit burst:true keeps memoizing (the caller opted in), and `pure: true` plugins
+  // re-enable auto.
+  const burst = context.burst === undefined
+    ? (!hasImpureRenderPlugins(context) && shouldAutoBurst(element))
+    : context.burst
   if (burst) {
     return captureWithBurst(
       element, userOptions, context,
