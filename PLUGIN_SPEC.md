@@ -108,7 +108,7 @@ Every hook receives a single context object (`ctx`):
 {
   // Input & options
   element,           // Original DOM element
-  debug, fast,       // Mode flags
+  debug,             // Mode flags
   scale, dpr,        // Resolution
   width, height,     // Dimensions
   backgroundColor,   // Background color

@@ -1,6 +1,6 @@
 /**
  * snapDOM – ultra-fast DOM-to-image capture
- * TypeScript definitions (v2.16)
+ * TypeScript definitions (v3)
  *
  * Notes:
  * - Style compression is internal (no public option).
@@ -16,6 +16,11 @@ export type RasterMime = "png" | "jpg" | "jpeg" | "webp";
 export type BlobType = "svg" | RasterMime;
 
 export type IconFontMatcher = string | RegExp;
+/**
+ * v3: caching is structural — 'disabled' (or `cache: false`) is the one debug/testing
+ * escape hatch. The legacy strings 'full' | 'auto' | 'soft' are still ACCEPTED at runtime
+ * but deprecated: they all map to the same structural behavior.
+ */
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
 /* =========================
@@ -45,7 +50,8 @@ export interface ExcludeFonts {
  * ========================= */
 
 export interface SnapdomOptions {
-  /** Output scale multiplier. Takes precedence over width/height. */
+  /** Output scale multiplier. Applies only when neither width nor height is set —
+   *  width/height are the absolute output size and win (one rule across all exporters). */
   scale?: number;
   /** Device pixel ratio to use for rasterization (defaults to `devicePixelRatio`). */
   dpr?: number;
@@ -64,20 +70,23 @@ export interface SnapdomOptions {
   /** Cross-origin proxy prefix (used as a fallback when CORS blocks). */
   useProxy?: string;
 
-  /** Default Blob type for toBlob() when unspecified. */
+  /** @deprecated Legacy alias for `format` (accepted when it carries an image-format string). */
   type?: BlobType;
 
-  /** CSS selector list to filter nodes. */
-  exclude?: string[];
-  /** How to apply `exclude` ("hide" keeps layout via visibility:hidden; "remove" drops nodes). Default "hide". */
+  /**
+   * Nodes to leave out of the capture: a CSS selector, a predicate returning true to
+   * EXCLUDE the element, or any mix of both in an array.
+   */
+  exclude?: string | ((el: Element) => boolean) | Array<string | ((el: Element) => boolean)>;
+  /** How excluded nodes leave ("hide" keeps layout via an invisible spacer; "remove" drops them). Default "hide". */
   excludeMode?: "hide" | "remove";
 
   /**
-   * Custom predicate: return true to keep node, false to exclude.
-   * Runs in document order; pairs with `filterMode`.
+   * @deprecated Legacy KEEP-polarity predicate (return true to keep). Use `exclude` with
+   * exclude-polarity instead; both compose when passed together.
    */
   filter?: (el: Element) => boolean;
-  /** How to apply `filter` ("hide" or "remove"). Default "hide". */
+  /** @deprecated Legacy alias for `excludeMode`. */
   filterMode?: "hide" | "remove";
 
   /**
@@ -87,15 +96,17 @@ export interface SnapdomOptions {
    */
   reconcile?: boolean;
 
-    /**
-   * With `burst: true`, forces a fresh capture on this call for changes the automatic
-   * MutationObserver tracking can't see: canvas pixel draws, programmatic CSSOM edits
+  /**
+   * Forces one fresh, non-memoized capture — for changes the automatic tracking
+   * (mutations, video frames, image/font loads, scroll, resize, head CSS, animations)
+   * can't see: canvas pixel draws and programmatic CSSOM edits
    * (stylesheet.insertRule/deleteRule, cssRule.style.* on a rule rather than an element).
-   * Default false.
+   * Works with the engine's automatic memoization — no other option required. Default false.
    */
   invalidate?: boolean;
 
-  /** outerTransforms the root: remove translate/rotate, keep scale/skew. Default true. */
+  /** true (default): keep the root's translate/rotate. false: strip them (scale/skew kept)
+   *  and recompute the bbox from the remaining 2D matrix. */
   outerTransforms?: boolean;
   /**
    * Expand root bbox for shadows/blur/outline instead of stripping them from the
@@ -289,8 +300,20 @@ export interface BlobOptions {
 }
 
 export interface CaptureResult {
-  /** Canonical data URL of the SVG snapshot (when available). */
+  /**
+   * Canonical data URL of the SVG snapshot (when available). Note: experimental
+   * engine:'canvas' results resolve their SVG lazily — url is '' there and toRaw()
+   * returns a Promise; use toRaw()/toSvg() for engine-agnostic access.
+   */
   url: string;
+
+  /**
+   * Degradation log for this capture — empty in the common case. Entries record the
+   * capture's silent fallbacks: {code: 'image-fallback' | 'raster-clamp' | 'canvas-clamp'
+   * | 'safari-png-fallback' | 'reconcile-risk' | string, message, detail?}. Export-time
+   * entries (clamps, PNG fallback) append after the corresponding export resolves.
+   */
+  warnings: Array<{ code: string; message: string; detail?: unknown }>;
 
   /** Returns the raw SVG data URL (same as `url`). */
   toRaw(): string;

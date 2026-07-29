@@ -265,22 +265,20 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
-| `scale` | `number` | `1` | Output scale multiplier |
+| `scale` | `number` | `1` | Output scale multiplier (applies only when neither `width` nor `height` is set — those are the absolute output size and win) |
 | `dpr` | `number` | `devicePixelRatio` | Pixel density of the rasterized output |
 | `width` / `height` | `number` | `null` | Target output size (keeps aspect ratio if only one is set) |
 | `backgroundColor` | `string` | `null` (`#ffffff` for JPEG/WebP) | Background fill |
 | `quality` | `number` | `0.92` | JPEG/WebP quality (0–1) |
-| `format` | `'png' \| 'jpeg' \| 'webp' \| 'svg'` | `'png'` | Format for `download()` |
-| `type` | `string` | `'svg'` | Blob type for `toBlob()` (`'png'`, `'jpeg'`…) |
+| `format` | `'png' \| 'jpeg' \| 'webp' \| 'svg'` | `'png'` | Output format for every exporter (`toBlob()` defaults to `'svg'` unless you ask for a codec) |
 | `filename` | `string` | `'snapDOM'` | Download filename |
 | `embedFonts` | `boolean \| 'auto'` | `'auto'` | `'auto'` embeds web fonts only when the capture actually uses them (system-font pages skip the pass entirely). `true` forces the embed; `false` disables it |
 | `iconFonts` | `string \| RegExp \| array` | `[]` | Icon font families (always embedded) |
 | `localFonts` | `array` | `[]` | Explicit fonts: `{ family, src, weight?, style? }` — also the path for JS-registered `FontFace` objects |
 | `excludeFonts` | `object` | — | Skip fonts by family / domain / subset |
 | `fontStylesheetDomains` | `string[]` | — | Extra cross-origin domains to fetch font CSS from |
-| `exclude` | `string[]` | `[]` | CSS selectors to leave out of the capture |
-| `filter` | `(el) => boolean` | `null` | Keep-predicate (return `false` to drop a node) |
-| `excludeMode` / `filterMode` | `'hide' \| 'remove'` | `'hide'` | How excluded nodes are handled |
+| `exclude` | `string \| (el) => boolean \| array of both` | `[]` | Nodes to leave out: selectors and/or predicates (return `true` to exclude) |
+| `excludeMode` | `'hide' \| 'remove'` | `'hide'` | How excluded nodes leave (`hide` keeps layout via an invisible spacer) |
 | `clip` | `'viewport' \| {x, y, width, height}` | `null` | Capture only a region; offscreen content is pruned |
 | `useProxy` | `string` | `''` | CORS proxy prefix for cross-origin images |
 | `fallbackURL` | `string \| fn` | — | Fallback image for broken `<img>` |

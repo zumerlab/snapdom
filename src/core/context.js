@@ -9,7 +9,7 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {Object} [options={}]
  * @param {boolean} [options.debug]
  * @param {number}  [options.scale]
- * @param {Array<string|RegExp>} [options.exclude]
+ * @param {string|((el: Element) => boolean)|Array<string|((el: Element) => boolean)>} [options.exclude] - Selectors and/or predicates (true = exclude)
  * @param {string}  [options.excludeMode]
  * @param {(node: Node)=>boolean} [options.filter]
  * @param {string}  [options.filterMode]
@@ -119,8 +119,8 @@ export function createContext(options = {}) {
     // EXPERIMENTAL: 'canvas' opts into the WICG canvas-place-element engine when the browser
     // supports it (see src/engines/htmlInCanvas.js); anything else uses the svg pipeline.
     engine: options.engine,
-    // One-off with burst:true — force a fresh capture for changes automatic tracking can't
-    // see (canvas pixel draws, programmatic CSSOM edits). Ignored without burst:true.
+    // Forces one fresh, non-memoized capture — for changes automatic tracking can't see
+    // (canvas pixel draws, programmatic CSSOM edits). Works under auto-burst too.
     invalidate: options.invalidate ?? false,
 
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
