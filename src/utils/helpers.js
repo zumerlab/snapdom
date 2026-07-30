@@ -53,7 +53,6 @@ export function resolveImageSetURL(value, targetDppx = 1) {
   return (fit || candidates[candidates.length - 1]).url
 }
 
-
 export function stripTranslate(transform) {
   if (!transform || transform === 'none') return ''
 

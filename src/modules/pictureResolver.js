@@ -17,7 +17,6 @@ export function isPlaceholderSrc(src) {
   return false
 }
 
-
 /**
  * Picks the srcset candidate the browser itself would select: smallest density
  * >= devicePixelRatio, else the largest. `Nw` width descriptors become densities

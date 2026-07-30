@@ -6,4 +6,3 @@ describe('isSafari', () => {
     expect(typeof isSafari()).toBe('boolean')
   })
 })
-

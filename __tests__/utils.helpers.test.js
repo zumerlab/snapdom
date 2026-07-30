@@ -19,7 +19,6 @@ describe('extractURL', () => {
   })
 })
 
-
 describe('stripTranslate', () => {
   it('removes translate transforms', () => {
     expect(stripTranslate('translateX(10px) scale(2)')).toContain('scale(2)')
