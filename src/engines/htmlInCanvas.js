@@ -30,6 +30,7 @@
  * @module engines/htmlInCanvas
  */
 
+import { isSensitiveInput, maskValue } from '../utils/helpers.js'
 import { debugWarn } from '../utils/debug.js'
 
 /** @returns {'drawElement'|'drawElementImage'|null} */
@@ -80,15 +81,18 @@ function mountCopy(element, width, height) {
   return { canvas, wrapper, copy }
 }
 
-/** Sync live form-control state into the copy (cloneNode drops it). */
-function syncFormState(element, copy) {
+/** Sync live form-control state into the copy (cloneNode drops it).
+ *  Exported for the credential-leak regression suite. */
+export function syncFormState(element, copy) {
   const srcs = [element, ...(element.querySelectorAll?.('input,textarea,select') || [])]
   const dsts = [copy, ...(copy.querySelectorAll?.('input,textarea,select') || [])]
   for (let i = 0; i < Math.min(srcs.length, dsts.length); i++) {
     const s = srcs[i], d = dsts[i]
     const tag = s.tagName
     if (tag === 'INPUT') {
-      d.setAttribute('value', s.value)
+      // Same transfer-time masking as the svg clone path: secrets never reach any
+      // serialized/rasterized output.
+      d.setAttribute('value', isSensitiveInput(s) ? maskValue(s.value) : s.value)
       if (s.checked) d.setAttribute('checked', '')
     } else if (tag === 'TEXTAREA') {
       d.textContent = s.value

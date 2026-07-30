@@ -30,6 +30,24 @@
 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'META', 'LINK', 'TITLE'])
 
+/* Sensitive-input guard (self-contained: this package publishes standalone).
+ * Secrets are EXCLUDED, never truncated — a truncated password is still a leak. */
+const SENSITIVE_AC = new Set(['current-password', 'new-password', 'one-time-code'])
+function isSensitiveInput(el) {
+  if (!el || el.tagName !== 'INPUT') return false
+  const type = (el.getAttribute('type') || 'text').toLowerCase()
+  if (type === 'password' || type === 'email' || type === 'tel') return true
+  const ac = (el.getAttribute('autocomplete') || '').toLowerCase()
+  if (!ac) return false
+  for (const token of ac.split(/\s+/)) {
+    if (SENSITIVE_AC.has(token) || token.startsWith('cc-')) return true
+  }
+  return false
+}
+function maskedValue(value) {
+  return '\u2022'.repeat(Math.min(String(value ?? '').length, 12))
+}
+
 /** Tags that carry structure/meaning on their own — never collapsed. */
 const MEANINGFUL_TAGS = new Set([
   'A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'FORM', 'IMG', 'VIDEO', 'AUDIO',
@@ -104,7 +122,10 @@ function nodeState(el) {
   if (el.disabled) s.disabled = true
   if (el.checked !== undefined && (el.type === 'checkbox' || el.type === 'radio')) s.checked = !!el.checked
   if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-    if (el.value) s.value = String(el.value).slice(0, 40)
+    // Sensitive inputs: value NEVER emitted (exclusion, not truncation — a truncated
+    // password is still a leak). Other inputs: masked; the agent sees "has content".
+    if (el.value && !isSensitiveInput(el)) { s.value = maskedValue(el.value); s.hasValue = true }
+    else if (el.value) s.hasValue = true
     if (el.placeholder) s.placeholder = el.placeholder
   }
   if (el.tagName === 'SELECT' && el.selectedOptions?.[0]) s.value = el.selectedOptions[0].textContent.trim().slice(0, 40)

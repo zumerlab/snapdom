@@ -97,3 +97,25 @@ export function resolveURL(url, base) {
     return url
   }
 }
+
+/** Sensitive-input predicate shared by the clone/serialize paths: typed secrets must
+ *  never travel in plain text inside the serialized SVG (or any engine output).
+ *  type password/email/tel, or autocomplete tokens cc-* / current-password /
+ *  new-password / one-time-code. */
+const SENSITIVE_AC = new Set(['current-password', 'new-password', 'one-time-code'])
+export function isSensitiveInput(el) {
+  if (!el || el.tagName !== 'INPUT') return false
+  const type = (el.getAttribute('type') || 'text').toLowerCase()
+  if (type === 'password' || type === 'email' || type === 'tel') return true
+  const ac = (el.getAttribute('autocomplete') || '').toLowerCase()
+  if (!ac) return false
+  for (const token of ac.split(/\s+/)) {
+    if (SENSITIVE_AC.has(token) || token.startsWith('cc-')) return true
+  }
+  return false
+}
+
+/** Same-length bullet mask: rendered width stays plausible, the secret is gone. */
+export function maskValue(value) {
+  return '\u2022'.repeat(String(value ?? '').length)
+}

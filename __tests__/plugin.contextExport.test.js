@@ -33,7 +33,7 @@ describe('contextExport', () => {
     expect(typeof out).toBe('string')
     expect(out).toContain('h1')
     expect(out).toContain('"Panel de control"')
-    expect(out).toContain('{value=hola placeholder=buscar}')
+    expect(out).toContain('{value=•••• hasValue placeholder=buscar}')
     expect(out).toContain('checked')
     expect(out).toContain('label=Enviar búsqueda')
     expect(out).toContain('href=/docs')

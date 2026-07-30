@@ -6,7 +6,7 @@
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
-import { debugWarn, getStyle } from '../utils/index.js'
+import { debugWarn, getStyle, isSensitiveInput, maskValue } from '../utils/index.js'
 import {
   rewriteShadowCSS,
   nextShadowScopeId,
@@ -381,8 +381,12 @@ export async function deepClone(node, sessionCache, options) {
       applyInputVisual = applyVisual
       clone = replacement
     } else {
-      clone.value = node.value
-      clone.setAttribute('value', node.value)
+      // Typed secrets must not travel in plain text inside the serialized SVG: mask
+      // sensitive inputs at transfer time (password renders as bullets anyway; for
+      // email/tel/cc the mask is the honest trade — security over glyph fidelity).
+      const safeValue = isSensitiveInput(node) ? maskValue(node.value) : node.value
+      clone.value = safeValue
+      clone.setAttribute('value', safeValue)
       if (node.checked !== void 0) {
         clone.checked = node.checked
         if (node.checked) clone.setAttribute('checked', '')

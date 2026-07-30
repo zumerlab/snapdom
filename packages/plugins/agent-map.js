@@ -215,6 +215,25 @@ function accessibleName(el) {
  * aria-pressed are included for BOTH values (true and false) because
  * "pressed: false" on a toggle is meaningful information.
  */
+
+/* Sensitive-input guard (self-contained: this package publishes standalone).
+ * Secrets are EXCLUDED, never truncated — a truncated password is still a leak. */
+const SENSITIVE_AC = new Set(['current-password', 'new-password', 'one-time-code']);
+function isSensitiveInput(el) {
+  if (!el || el.tagName !== 'INPUT') return false;
+  const type = (el.getAttribute('type') || 'text').toLowerCase();
+  if (type === 'password' || type === 'email' || type === 'tel') return true;
+  const ac = (el.getAttribute('autocomplete') || '').toLowerCase();
+  if (!ac) return false;
+  for (const token of ac.split(/\s+/)) {
+    if (SENSITIVE_AC.has(token) || token.startsWith('cc-')) return true;
+  }
+  return false;
+}
+function maskedValue(value) {
+  return '\u2022'.repeat(Math.min(String(value ?? '').length, 12));
+}
+
 function deriveState(el, role, rect) {
   const s = {};
 
@@ -244,10 +263,16 @@ function deriveState(el, role, rect) {
   if (el.tagName === 'INPUT') {
     const type = (el.type || 'text').toLowerCase();
     if (type !== 'checkbox' && type !== 'radio' && type !== 'submit' && type !== 'button' && type !== 'reset' && el.value) {
-      s.value = el.value;
+      // Sensitive inputs (password/email/tel/cc-*): value NEVER emitted, in any field.
+      // Remaining inputs: masked by default — the agent learns "field has content"
+      // without the output carrying user data.
+      if (!isSensitiveInput(el)) {
+        s.value = maskedValue(el.value);
+        s.hasValue = true;
+      }
     }
   } else if (el.tagName === 'TEXTAREA') {
-    if (el.value) s.value = el.value;
+    if (el.value) { s.value = maskedValue(el.value); s.hasValue = true; }
   } else if (el.tagName === 'SELECT') {
     s.value = el.value;
     const opt = el.options && el.options[el.selectedIndex];
@@ -303,6 +328,9 @@ function extractMap(element, interactiveSelector, semanticSelector, fields) {
 
 function buildEntry(el, rootRect, i, fields, kind) {
   const rect = el.getBoundingClientRect();
+  // The annotation pass filters on this flag — without it, semantic:true put badges
+  // on headings/paragraphs (the filter was a no-op because nothing ever set it).
+  // Kept in the output so consumers can distinguish actables from context entries.
   const b = [
     Math.round(rect.left - rootRect.left),
     Math.round(rect.top - rootRect.top),
@@ -315,6 +343,7 @@ function buildEntry(el, rootRect, i, fields, kind) {
   const n = accessibleName(el);
 
   const entry = { i, n, r: role, b };
+  if (kind === 'semantic') entry.isSemanticOnly = true;
 
   if (kind === 'interactive') {
     const s = deriveState(el, role, rect);
