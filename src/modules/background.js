@@ -155,14 +155,14 @@ function resolveFixedLayerSize(sizeSpec, iw, ih, vw, vh) {
     return { w: iw * s, h: ih * s }
   }
   const parts = spec.split(/\s+/)
-  const comp = (v, base, intrinsic) => {
+  const comp = (v, base) => {
     if (v === 'auto' || v === undefined) return null
     if (v.endsWith('px')) return parseFloat(v)
     if (v.endsWith('%')) return base * parseFloat(v) / 100
     return undefined // calc()/other → unsupported
   }
-  const wRaw = comp(parts[0], vw, iw)
-  const hRaw = comp(parts[1], vh, ih)
+  const wRaw = comp(parts[0], vw)
+  const hRaw = comp(parts[1], vh)
   if (wRaw === undefined || hRaw === undefined) return null
   let w = wRaw, h = hRaw
   if (w == null && h == null) { w = iw; h = ih }

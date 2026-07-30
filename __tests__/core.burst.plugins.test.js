@@ -38,8 +38,7 @@ describe('auto-burst × plugins', () => {
 
   it('an export-only plugin keeps the auto speedup', async () => {
     const el = makeEl()
-    let defines = 0
-    const plugin = { name: 'exporter-only', defineExports() { defines++; return { noop: async () => 'x' } } }
+    const plugin = { name: 'exporter-only', defineExports() { return { noop: async () => 'x' } } }
     const results = []
     for (let i = 0; i < 8; i++) {
       results.push(await snapdom(el, { plugins: [plugin] }))
