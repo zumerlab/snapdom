@@ -39,20 +39,10 @@ export async function prepareClone(element, options = {}) {
   }
 
   let clipWindow = null
+  let clipRect = null
   if (options.clip) {
-    const rect = resolveClipRect(element, options.clip)
-    if (rect) {
-      sessionCache.clip = { rect, root: element }
-      // Freeze the window in element-local coords NOW, at the same instant culling reads
-      // gBCRs — re-deriving it from a fresh gBCR at render time races user scroll.
-      const elR = element.getBoundingClientRect()
-      clipWindow = {
-        x: rect.left - elR.left,
-        y: rect.top - elR.top,
-        width: rect.width,
-        height: rect.height
-      }
-    }
+    clipRect = resolveClipRect(element, options.clip)
+    if (clipRect) sessionCache.clip = { rect: clipRect, root: element }
   }
 
   let clone
@@ -62,9 +52,23 @@ export async function prepareClone(element, options = {}) {
   const undoStabilizeLayout = stabilizeLayout(element)
 
   // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
-  // Clip mode skips this O(page) walk: on-screen cv:auto content is already rendered by the
-  // browser, and offscreen content gets culled anyway (cv's placeholder box culls correctly).
-  const undoContentVisibility = sessionCache.clip ? () => {} : forceContentVisibility(element)
+  // Clip mode prunes the walk to the window instead of skipping it: a clip rect far from the
+  // real viewport lands on UNRENDERED cv:auto placeholders (blank bands in the capture),
+  // while content outside the window still gets culled at its placeholder box.
+  const undoContentVisibility = forceContentVisibility(element, clipRect)
+
+  if (clipRect) {
+    // Freeze the window in element-local coords NOW — after cv forcing (which can relayout),
+    // at the same instant culling reads gBCRs. Re-deriving it from a fresh gBCR at render
+    // time races user scroll.
+    const elR = element.getBoundingClientRect()
+    clipWindow = {
+      x: clipRect.left - elR.left,
+      y: clipRect.top - elR.top,
+      width: clipRect.width,
+      height: clipRect.height
+    }
+  }
 
   try {
     clone = await deepClone(element, sessionCache, options)

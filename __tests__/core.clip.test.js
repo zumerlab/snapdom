@@ -278,6 +278,38 @@ describe('clip option (region capture)', () => {
     expect(px[3]).toBeGreaterThan(200)
   })
 
+  it('deep clip window renders content-visibility:auto sections (no blank band)', async () => {
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'width:400px;margin:0;'
+    for (let i = 0; i < 10; i++) {
+      const sec = document.createElement('div')
+      sec.style.cssText = 'content-visibility:auto;contain-intrinsic-size:auto 400px;height:400px;margin:0;'
+      const inner = document.createElement('div')
+      inner.style.cssText = 'height:400px;margin:0;background:rgb(255,0,0);'
+      inner.textContent = `CV_SECTION_${i}_MARKER`
+      sec.appendChild(inner)
+      wrap.appendChild(sec)
+    }
+    window.scrollTo(0, 0)
+    // section 8 (y 3200–3600) is far below the real viewport: its cv contents are skipped
+    // by the browser, and pre-fix the clip path never forced them back
+    const target = wrap.children[8]
+    const r = target.getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    const sx = canvas.width / clip.width
+    const sy = canvas.height / clip.height
+    const px = ctx.getImageData(Math.round(clip.width / 2 * sx), Math.round(clip.height / 2 * sy), 1, 1).data
+    expect(px[0]).toBeGreaterThan(200)
+    expect(px[1]).toBeLessThan(60)
+    // forcing is pruned to the window: far sections stay culled
+    const url = await snapdom.toRaw(document.body, { clip })
+    const svg = decodeSvg(url)
+    expect(svg).toContain('CV_SECTION_8_MARKER')
+    expect(svg).not.toContain('CV_SECTION_0_MARKER')
+  })
+
   it('clip: null behaves exactly like a normal capture', async () => {
     const el = mount(document.createElement('div'))
     el.style.cssText = 'width:120px;height:80px;background:teal;'

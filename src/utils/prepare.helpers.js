@@ -31,32 +31,44 @@ export function stabilizeLayout(element) {
  * #281: Force content-visibility to 'visible' on all descendants that use 'auto'.
  * Safari (and some Chromium) skip rendering/style computation for content-visibility:auto
  * elements outside the viewport, causing blank captures.
+ * With a clipRect (clip mode) the walk is pruned to subtrees whose boxes reach the window:
+ * a clip rect far from the real viewport lands on unrendered cv:auto placeholders, but
+ * forcing the whole page would cost O(page) for content the culler drops anyway.
  * Returns an undo function to restore original values.
  * @param {Element} root
+ * @param {{left:number,top:number,right:number,bottom:number}|null} [clipRect]
  * @returns {() => void}
  */
-export function forceContentVisibility(root) {
+export function forceContentVisibility(root, clipRect = null) {
   const saved = []
-  try {
-    const all = root.querySelectorAll('*')
-    for (const el of all) {
-      if (!(el instanceof HTMLElement)) continue
-      const cv = el.style.contentVisibility || ''
-      const cs = getComputedStyle(el)
-      const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
-      if (computed === 'auto' || computed === 'hidden') {
-        saved.push({ el, original: cv })
-        el.style.contentVisibility = 'visible'
-      }
+  const force = (el) => {
+    if (!(el instanceof HTMLElement)) return
+    const cs = getComputedStyle(el)
+    const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
+    if (computed === 'auto' || computed === 'hidden') {
+      saved.push({ el, original: el.style.contentVisibility || '' })
+      el.style.contentVisibility = 'visible'
     }
-    // Check root itself
-    if (root instanceof HTMLElement) {
-      const cs = getComputedStyle(root)
-      const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
-      if (computed === 'auto' || computed === 'hidden') {
-        saved.push({ el: root, original: root.style.contentVisibility || '' })
-        root.style.contentVisibility = 'visible'
+  }
+  try {
+    if (clipRect) {
+      // Margin mirrors clone.js CLIP_CULL_MARGIN; zero-sized boxes (display:contents,
+      // anchors) never prune. Forcing a section before descending gives its children
+      // real layout boxes for their own intersection test (nested cv:auto).
+      const M = 200
+      const walk = (el) => {
+        let r
+        try { r = el.getBoundingClientRect() } catch { return }
+        if ((r.width > 0 || r.height > 0) &&
+            (r.right < clipRect.left - M || r.left > clipRect.right + M ||
+             r.bottom < clipRect.top - M || r.top > clipRect.bottom + M)) return
+        force(el)
+        for (let c = el.firstElementChild; c; c = c.nextElementSibling) walk(c)
       }
+      walk(root)
+    } else {
+      for (const el of root.querySelectorAll('*')) force(el)
+      force(root)
     }
   } catch { /* non-blocking */ }
   return () => {
