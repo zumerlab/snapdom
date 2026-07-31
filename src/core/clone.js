@@ -158,7 +158,39 @@ function makeClipHusk(node, sessionCache, options) {
     husk.style.maxHeight = `${height}px`
   }
   husk.style.visibility = 'hidden'
-  husk.style.overflow = 'hidden'
+  // Deliberately NOT overflow:hidden — that manufactures a BFC the original may not
+  // have had, un-collapsing its margins with neighbors: 68 husks drifted deep-scroll
+  // Wikipedia +812px, shifting the whole clip window one viewport. The husk is empty
+  // (shallow clone), so there is nothing to clip anyway; it keeps the original's own
+  // computed overflow from inlineAllStyles.
+  // Escaped-margin compensation: an empty husk can't reproduce the child margins that
+  // collapsed THROUGH the original's edges (Wikipedia loses 16px per husked <section>
+  // — the whole flow drifts). Assign the LIVE measured gap to both husk edges: since
+  // adjoining margins collapse to their max and the live gap already IS that max,
+  // husk↔husk and husk↔content spacing land exactly on the live layout. Block flow
+  // only — flex/grid/table parents don't collapse margins, and there the computed
+  // margins already inlined are correct.
+  const parentDisplay = node.parentElement ? getStyle(node.parentElement).display : ''
+  const ownPos = getStyle(node).position
+  if (!/flex|grid|table/.test(parentDisplay) && (ownPos === 'static' || ownPos === 'relative')) {
+    const inFlow = (el) => {
+      const cs = getStyle(el)
+      return cs.display !== 'none' && cs.position !== 'absolute' && cs.position !== 'fixed'
+    }
+    const r = node.getBoundingClientRect()
+    let prev = node.previousElementSibling
+    while (prev && !inFlow(prev)) prev = prev.previousElementSibling
+    if (prev) {
+      const g = r.top - prev.getBoundingClientRect().bottom
+      if (g >= 0) husk.style.marginTop = `${g}px`
+    }
+    let next = node.nextElementSibling
+    while (next && !inFlow(next)) next = next.nextElementSibling
+    if (next) {
+      const g = next.getBoundingClientRect().top - r.bottom
+      if (g >= 0) husk.style.marginBottom = `${g}px`
+    }
+  }
   // offset* are border-box; content-box elements with padding/border would inflate
   husk.style.boxSizing = 'border-box'
   return husk
