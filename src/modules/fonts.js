@@ -600,7 +600,8 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       const srcRaw      = (rule.style.getPropertyValue('src')           || '').trim()
       const urange      = (rule.style.getPropertyValue('unicode-range') || '').trim()
 
-      if (!ctx.faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) continue
+      const strict = ctx.faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
+      if (!strict && !ctx.requiredIndex.has(family.toLowerCase())) continue
       const ranges = parseUnicodeRange(urange)
       if (!unicodeIntersects(ctx.usedCodepoints, ranges)) continue
 
@@ -612,6 +613,18 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
         href: baseHref || location.href
       }
       if (ctx.simpleExcluder && ctx.simpleExcluder(meta, ranges)) continue
+
+      // See the <link> pass: held raw until the family is known to have nothing (#478).
+      if (!strict) {
+        ctx.provisionalFaces.push({
+          family: family.toLowerCase(),
+          block: `@font-face{font-family:${family};src:${srcRaw};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange ? `unicode-range:${urange};` : ''}}`,
+          srcRaw,
+          baseHref: baseHref || location.href,
+        })
+        continue
+      }
+      ctx.coveredFamilies.add(family.toLowerCase())
 
       if (/url\(/i.test(srcRaw)) {
         const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy)
@@ -740,6 +753,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     }
   }
 
+  // No branch above accepted this face. That is not the end of the story: the rules here
+  // reject a face that is FAR from what the page asked for, which is right while some
+  // other face of the family is closer — and wrong when there is no other face. CSS never
+  // drops a family that has faces; it picks the closest one and synthesises the rest.
+  // The caller therefore holds rejected faces of a required family as provisional and
+  // emits them only if the family ends the scan with nothing (issue #478).
   return false
 }
 
@@ -783,6 +802,13 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   }
 
   let finalCSS = ''
+
+  // #478 — a required family must never end the scan with zero faces. `coveredFamilies`
+  // records the families a strict match already satisfied; `provisionalFaces` holds the
+  // ones the strict filter rejected, un-inlined, so the fallback below costs nothing
+  // unless it is actually needed.
+  const coveredFamilies = new Set()
+  const provisionalFaces = []
 
   // ---------- 1) External <link rel="stylesheet"> ----------
   // Snapshot BEFORE detaching the injected links so their @import'd font CSS is still
@@ -837,12 +863,18 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         const srcRaw = getFontFaceDeclaration(face, 'src')
         const srcUrls = extractSrcUrls(srcRaw, link.href)
 
-        if (!faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)) continue
+        const strict = faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
+        if (!strict && !requiredIndex.has(family.toLowerCase())) continue
         const ranges = parseUnicodeRange(urange)
         if (!unicodeIntersects(usedCodepoints, ranges)) continue
 
         const meta = { family, weightSpec, styleSpec, stretchSpec, unicodeRange: urange, srcRaw, srcUrls, href: link.href }
         if (exclude && simpleExcluder(meta, ranges)) continue
+
+        // Far from the request, but this family is used: hold it in case nothing closer
+        // shows up (#478). Held raw, so a family that IS covered costs no extra fetch.
+        if (!strict) { provisionalFaces.push({ family: family.toLowerCase(), block: face, srcRaw, baseHref: link.href }); continue }
+        coveredFamilies.add(family.toLowerCase())
 
         const newFace = /url\(/i.test(srcRaw)
           ? await inlineUrlsInCssBlock(face, link.href, useProxy)
@@ -861,6 +893,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     requiredIndex,
     usedCodepoints,
     faceMatchesRequired,
+    coveredFamilies,
+    provisionalFaces,
     simpleExcluder: exclude ? buildSimpleExcluder(exclude) : null,
     useProxy,
     visitedSheets: new Set(),
@@ -881,6 +915,18 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     } catch {
       // cross-origin protected CSSOM; ignore (text pass already tried)
     }
+  }
+
+  // ---------- 2b) Families the strict filter left empty (#478) ----------
+  // The page uses this family and every one of its faces was judged too far from the
+  // request. CSS would still render it — the browser picks the closest face and
+  // synthesises weight/stretch — so dropping it is what produces the reported fallback
+  // to a system font. Emit what the family does have.
+  for (const p of provisionalFaces) {
+    if (coveredFamilies.has(p.family)) continue
+    finalCSS += /url\(/i.test(p.srcRaw)
+      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy)
+      : p.block
   }
 
   // ---------- 3) document.fonts with _snapdomSrc ----------
