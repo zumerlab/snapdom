@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.23.2](https://github.com/zumerlab/snapdom/compare/v2.23.1...v2.23.2)
+
+> 4 August 2026
+
+- fix(fonts): keep a custom @font-face when the page asks for a far weight/stretch [`#478`](https://github.com/zumerlab/snapdom/pull/478)
+
+
 #### [v2.23.1](https://github.com/zumerlab/snapdom/compare/v2.23.0...v2.23.1)
 
 > 27 July 2026
