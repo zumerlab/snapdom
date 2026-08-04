@@ -151,3 +151,5 @@ __snapshots__
 bench/
 AGENTS.md
 .snapeye/
+packages/agent
+.playwright-cli
