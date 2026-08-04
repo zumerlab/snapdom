@@ -11,12 +11,21 @@
  *  - <img> loads ........... load/error listeners on pending images, trackPendingImages
  *  - font loads ............ style-environment epoch (styles.js getStyleEnvEpoch)
  *  - scroll ................ capture-phase scroll listener per element (no records exist)
+ *  - form-control state .... capture-phase input/change listeners (value/checked are
+ *                            properties, not attributes — no records exist)
+ *  - ancestor state ........ ancestorSig compared when the global style epoch bumps
+ *                            (theme/locale/custom-property changes ABOVE the element)
  *  - window resize ......... env epoch (media queries flip with no mutation)
  *  - <head> CSS ............ env epoch (head observer)
  *  - same-tick <style> ..... flushStyleInvalidations at capture start (records are async)
  *  - CSS/WAAPI animations .. getAnimations({subtree}) per capture: memo never serves nor
  *                            persists while running; targeted subtrees become dirty roots
  *                            for the diff path with invalidateSnapshotsUnder per frame
+ *  - shadow DOM ............ one observer per open root, rescanned per capture so a root
+ *                            attached after the memo is also caught (trackShadowRoots).
+ *                            Costs one subtree walk per capture: ~1ms at 8k nodes, against
+ *                            a memo that replaces a ~100ms pipeline. Closed roots cannot
+ *                            be observed by anyone → `invalidate: true` territory.
  *  - canvas pixel draws .... EXCLUDED (invisible to every observer) → `invalidate: true`
  *  - CSSOM rule edits ...... EXCLUDED (insertRule/rule.style.*) → `invalidate: true`
  *  - impure render plugins . suspend auto memo/diff (plugins.js hasImpureRenderPlugins)
@@ -27,7 +36,7 @@
  * @module burst
  */
 
-import { isExternalRecord, getStyleEnvEpoch, invalidateSnapshotsUnder } from '../modules/styles.js'
+import { isExternalRecord, getStyleEnvEpoch, getStyleEpoch, invalidateSnapshotsUnder } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
 
 const burstStates = new WeakMap()
@@ -57,8 +66,71 @@ export function shouldAutoBurst(element) {
   entry.lastTs = now
   entry.count++
   if (entry.count < AUTO_THRESHOLD) return false
-  if (element.tagName === 'CANVAS' || element.querySelector?.('canvas')) return false
+  if (element.tagName === 'CANVAS' || hasCanvas(element)) return false
   return true
+}
+
+/** querySelector stops at a shadow boundary, so a charting web component hid its <canvas>
+ *  from the exclusion above and auto mode served stale frames to exactly the pollers this
+ *  guard exists to protect. Only runs once the auto threshold is reached. */
+function hasCanvas(element) {
+  if (!element.querySelectorAll) return false
+  if (element.querySelector('canvas')) return true
+  for (const el of element.querySelectorAll('*')) {
+    if (el.shadowRoot && (el.shadowRoot.querySelector('canvas') || hasCanvas(el.shadowRoot))) return true
+  }
+  return false
+}
+
+/** Attribute signature of the ancestor chain. A theme toggle, a locale switch or a custom
+ *  property written on <html> changes what the subtree renders without producing a single
+ *  mutation record INSIDE it, so the scoped observer cannot see any of them. Only computed
+ *  when the global style epoch says something changed somewhere. */
+function ancestorSig(element) {
+  let s = ''
+  for (let el = element.parentElement; el; el = el.parentElement) {
+    s += '|' + el.tagName
+    const attrs = el.attributes
+    for (let i = 0; i < attrs.length; i++) s += ' ' + attrs[i].name + '=' + attrs[i].value
+  }
+  return s
+}
+
+/**
+ * A MutationObserver with `subtree: true` does NOT cross a shadow boundary, so every web
+ * component's internal updates were invisible to the memo and auto mode served pre-update
+ * frames indefinitely. Each open root gets its own observer, feeding the same markDirty.
+ * Re-scanned per capture, which also catches roots attached AFTER the memo was taken —
+ * those are content the retained clone never saw, so they invalidate on sight.
+ * Closed roots stay unreachable by design; nothing can observe them.
+ */
+function trackShadowRoots(element, state) {
+  if (!element.querySelectorAll) return
+  const roots = new Set()
+  if (element.shadowRoot) roots.add(element.shadowRoot)
+  for (const el of element.querySelectorAll('*')) {
+    if (el.shadowRoot) roots.add(el.shadowRoot)
+  }
+  for (const [root, obs] of state.trackedShadowRoots) {
+    if (!roots.has(root)) {
+      try { obs.disconnect() } catch { /* already gone */ }
+      state.trackedShadowRoots.delete(root)
+      const i = state.observers.indexOf(obs)
+      if (i >= 0) state.observers.splice(i, 1)
+    }
+  }
+  for (const root of roots) {
+    if (state.trackedShadowRoots.has(root)) continue
+    try {
+      const o = new MutationObserver(state.markDirty)
+      o.observe(root, { subtree: true, childList: true, attributes: true, characterData: true })
+      o.__flush = state.markDirty
+      state.observers.push(o)
+      state.trackedShadowRoots.set(root, o)
+      // Newly seen root: its content was never part of the retained capture.
+      if (state.retained) state.dirtyAll()
+    } catch { /* degrade: this root's changes won't invalidate */ }
+  }
 }
 
 function trackVideos(element, state, onMediaDirty) {
@@ -116,8 +188,11 @@ function createState(element) {
     inflight: Promise.resolve(),
     observers: [],
     trackedVideos: new Set(),
+    trackedShadowRoots: new Map(),
     trackedImages: new Set(),
     envEpoch: getStyleEnvEpoch(), // shared head+fonts environment epoch (styles.js)
+    styleEpoch: getStyleEpoch(),  // cheap gate for the out-of-subtree check below
+    ancestorSig: ancestorSig(element),
   }
 
   const dirtyAll = () => { state.dirty = true; state.dirtyRoots = null }
@@ -161,7 +236,17 @@ function createState(element) {
   // the element and every scrollable descendant. GC'd with the element like the observers.
   try {
     element.addEventListener('scroll', onMediaDirty, { capture: true, passive: true })
-  } catch { /* degrade: scrolls won't invalidate */ }
+    // Form-control state is a property, not an attribute: typing, checking a box or picking
+    // an option produces no mutation record at all, so a memoized form served its empty
+    // pre-typing frame forever. Same capture-phase trick as scroll. A purely programmatic
+    // `el.value = x` still fires nothing — that stays `invalidate: true` territory.
+    element.addEventListener('input', onMediaDirty, { capture: true, passive: true })
+    element.addEventListener('change', onMediaDirty, { capture: true, passive: true })
+    // Focus moves re-style through :focus/:focus-visible with no record either.
+    element.addEventListener('focusin', onMediaDirty, { capture: true, passive: true })
+    element.addEventListener('focusout', onMediaDirty, { capture: true, passive: true })
+  } catch { /* degrade: scrolls/edits won't invalidate */ }
+  trackShadowRoots(element, state)
   trackVideos(element, state, onMediaDirty)
   trackPendingImages(element, state)
   return state
@@ -218,11 +303,23 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
   }
 
   const run = async () => {
+    // Before serving: a shadow root attached since the last capture produces no mutation
+    // record anywhere, so it has to be discovered by scanning.
+    trackShadowRoots(element, state)
     for (const o of state.observers) o.__flush(o.takeRecords())
     // Shared style-environment epoch (head CSS + font loads) — one observer stack for the
     // whole library instead of a per-element duplicate.
     const env = getStyleEnvEpoch()
     if (state.envEpoch !== env) { state.dirtyAll(); state.envEpoch = env }
+    // Ancestor state (dark-mode attribute, locale class, custom property on :root) re-styles
+    // the subtree by inheritance without mutating anything inside it. Gated on the global
+    // epoch so a static page pays one integer compare per capture, not a tree walk.
+    const styleEpoch = getStyleEpoch()
+    if (state.styleEpoch !== styleEpoch) {
+      state.styleEpoch = styleEpoch
+      const sig = ancestorSig(element)
+      if (sig !== state.ancestorSig) { state.ancestorSig = sig; state.dirtyAll() }
+    }
     if (context.invalidate) state.dirtyAll()
     // CSS animations/transitions/WAAPI repaint every frame with NO mutation records: while
     // any runs in the subtree, every capture is a different frame — never serve OR store a
@@ -286,6 +383,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       context.__retain = undefined
       for (const o of state.observers) o.takeRecords() // drop the capture's own records
       state.capturing = false
+      trackShadowRoots(element, state) // pick up shadow roots attached/removed by this capture
       trackVideos(element, state, state.onMediaDirty) // pick up <video>s added/removed by this capture
       trackPendingImages(element, state) // and <img>s still loading — their load must invalidate
     }

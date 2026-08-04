@@ -143,4 +143,84 @@ describe('running animations disable the memo (frames repaint with no mutations)
     const b2 = await snapdom(el)
     expect(b2).toBe(b1)
   })
+
+  // Three inputs that change what renders while producing NO mutation record inside the
+  // captured subtree. Each one used to be served stale forever once auto-burst engaged.
+  describe('invalidation inputs the scoped observer cannot see', () => {
+    const svgOf = (r) => decodeURIComponent(r.url.split(',')[1])
+
+    it('a typed form value invalidates the memo', async () => {
+      const host = document.createElement('div')
+      host.innerHTML = '<label>Nombre <input id="nm" value=""></label><p>estático</p>'
+      document.body.appendChild(host)
+      const input = host.querySelector('#nm')
+      for (let i = 0; i < 4; i++) await snapdom(host)
+
+      input.value = 'Ada Lovelace'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(svgOf(await snapdom(host))).toContain('Ada Lovelace')
+    })
+
+    it('a theme attribute set ABOVE the captured element invalidates the memo', async () => {
+      const style = document.createElement('style')
+      style.textContent = ':root{--zzbg:rgb(255,255,255)} :root[data-zzt="dark"]{--zzbg:rgb(11,18,32)}' +
+        '.zzc{background:var(--zzbg);width:80px;height:40px}'
+      document.head.appendChild(style)
+      const host = document.createElement('div')
+      host.innerHTML = '<div class="zzc">card</div>'
+      document.body.appendChild(host)
+      for (let i = 0; i < 4; i++) await snapdom(host)
+
+      document.documentElement.setAttribute('data-zzt', 'dark')
+      await new Promise((r) => setTimeout(r, 0))
+      try {
+        expect(svgOf(await snapdom(host))).toContain('rgb(11, 18, 32)')
+      } finally {
+        document.documentElement.removeAttribute('data-zzt')
+        style.remove()
+      }
+    })
+
+    it('content updated inside an open shadow root invalidates the memo', async () => {
+      const host = document.createElement('div')
+      const comp = document.createElement('div')
+      const sr = comp.attachShadow({ mode: 'open' })
+      sr.innerHTML = '<p id="t">ORIGINAL-TEXT</p>'
+      host.appendChild(comp)
+      document.body.appendChild(host)
+      for (let i = 0; i < 4; i++) await snapdom(host)
+
+      sr.getElementById('t').textContent = 'UPDATED-TEXT'
+      await new Promise((r) => setTimeout(r, 0))
+      expect(svgOf(await snapdom(host))).toContain('UPDATED-TEXT')
+    })
+
+    it('a shadow root attached AFTER the memo was taken invalidates it', async () => {
+      const host = document.createElement('div')
+      const comp = document.createElement('div')
+      host.appendChild(comp)
+      document.body.appendChild(host)
+      for (let i = 0; i < 4; i++) await snapdom(host)
+
+      // attachShadow produces no mutation record anywhere, so this is found by scanning.
+      comp.attachShadow({ mode: 'open' }).innerHTML = '<p>LATE-SHADOW</p>'
+      await new Promise((r) => setTimeout(r, 0))
+      expect(svgOf(await snapdom(host))).toContain('LATE-SHADOW')
+    })
+
+    it('a <canvas> behind a shadow boundary still blocks auto-burst', async () => {
+      const { shouldAutoBurst } = await import('../src/core/burst.js')
+      const host = document.createElement('div')
+      const comp = document.createElement('div')
+      comp.attachShadow({ mode: 'open' }).innerHTML = '<canvas width="40" height="20"></canvas>'
+      host.appendChild(comp)
+      document.body.appendChild(host)
+
+      shouldAutoBurst(host)
+      shouldAutoBurst(host)
+      expect(shouldAutoBurst(host)).toBe(false)
+    })
+  })
 })
