@@ -295,4 +295,44 @@ describe('inlineAllStyles – branches y firmas', () => {
     await inlineAllStyles(src, clone, session, { cache: 'auto' })
     expect(session.styleMap.has(clone)).toBe(true)
   })
+
+  // :focus/:checked re-style an element without producing any mutation record, so the
+  // snapshot cache (keyed by the style epoch, which only external DOM mutations bump)
+  // kept serving pre-interaction styles across captures.
+  it('interaction state invalidates cached style snapshots', async () => {
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const style = document.createElement('style')
+    style.textContent = '.zzf{background:rgb(255,255,255);width:150px;height:30px;border:1px solid #999}' +
+      '.zzf:focus{background:rgb(0,0,255)}'
+    document.head.appendChild(style)
+    const host = document.createElement('div')
+    host.innerHTML = '<input class="zzf">'
+    document.body.appendChild(host)
+    const input = host.querySelector('.zzf')
+
+    const blue = async () => {
+      const res = await snapdom(host, { dpr: 1, scale: 1 })
+      const c = await res.toCanvas()
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+      let n = 0
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] > 180 && d[i + 3] > 40) n++
+      }
+      return n
+    }
+
+    // warm the cache with captures taken BEFORE the interaction
+    await blue()
+    await blue()
+    input.focus()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(input.matches(':focus')).toBe(true) // precondition
+
+    try {
+      expect(await blue()).toBeGreaterThan(20)
+    } finally {
+      style.remove()
+      host.remove()
+    }
+  })
 })

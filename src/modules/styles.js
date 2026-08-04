@@ -87,6 +87,16 @@ function setupInvalidationOnce(root = document.documentElement) {
     window.addEventListener('resize', onFonts, { passive: true })
   } catch { }
   try {
+    // Interaction pseudo-classes (:focus, :focus-visible, :checked, :disabled) re-style
+    // elements without producing a single mutation record, so a cached snapshot kept
+    // serving the pre-interaction styles. focusin/out bubble (focus/blur do not); change
+    // covers checkbox/radio/select. :hover is deliberately NOT wired — pointer events fire
+    // continuously and would flush the snapshot cache on every mouse move.
+    document.addEventListener('focusin', bumpEpoch, { capture: true, passive: true })
+    document.addEventListener('focusout', bumpEpoch, { capture: true, passive: true })
+    document.addEventListener('change', bumpEpoch, { capture: true, passive: true })
+  } catch { }
+  try {
     const f = document.fonts
     if (f) {
       f.addEventListener?.('loadingdone', onFonts)
