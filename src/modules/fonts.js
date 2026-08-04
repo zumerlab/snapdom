@@ -522,8 +522,14 @@ function docCacheId(doc) {
 }
 
 // ---- cache key per capture signature (avoid cross-pollution between different targets) ----
-function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc) {
+function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints) {
   const req = Array.from(required || []).sort().join('|')
+  // The emitted CSS is SUBSETTED by unicode-range against the codepoints the captured
+  // subtree actually uses, so two captures of the same families but different text are not
+  // interchangeable: an English panel warmed the cache and a Cyrillic one was then served
+  // its latin-only faces. Order-independent digest — Set iteration order is insertion order.
+  let cp = 0, n = 0
+  for (const c of usedCodepoints || []) { cp = (cp + Math.imul(c, 2654435761)) | 0; n++ }
   const ex = exclude ? JSON.stringify({
     families: (exclude.families || []).map(s => String(s).toLowerCase()).sort(),
     domains: (exclude.domains || []).map(s => String(s).toLowerCase()).sort(),
@@ -536,7 +542,7 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
   const px = useProxy || ''
   const fd = (fontStylesheetDomains || []).map(s => String(s).toLowerCase()).sort().join('|')
   const dc = docCacheId(doc || document)
-  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}`
+  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}::cp=${cp}::n=${n}`
 }
 
 // ----------------------------------------------------------------------------
@@ -765,7 +771,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 
-  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc)
+  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints)
   if (cache.resource?.has(cacheKey)) {
     return cache.resource.get(cacheKey)
   }

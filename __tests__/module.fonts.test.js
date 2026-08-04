@@ -310,4 +310,25 @@ describe('embedCustomFonts - single weight fallback', () => {
 
     document.head.removeChild(style)
   })
+
+  // The emitted @font-face set is subsetted by unicode-range against the codepoints the
+  // capture uses, so the cache key must include them: a latin capture warmed the cache and
+  // a Cyrillic one was then served the latin-only faces. Asserted through embedCustomFonts
+  // directly so it does not depend on which fonts the test runner's OS happens to have.
+  it('the fonts cache key accounts for the codepoints actually used', async () => {
+    addStyleTag(`
+      @font-face { font-family: 'ZZSub'; src: url(data:font/woff2;base64,AA==); unicode-range: U+0000-00FF; }
+      @font-face { font-family: 'ZZSub'; src: url(data:font/woff2;base64,BB==); unicode-range: U+0400-04FF; }
+    `)
+    const required = makeRequired('ZZSub', '400', 'normal', 100)
+
+    const latin = await embedCustomFonts({ required, usedCodepoints: makeUsedCodepoints('Hello') })
+    const cyrillic = await embedCustomFonts({ required, usedCodepoints: makeUsedCodepoints('Привет') })
+
+    // Precondition: subsetting really happened for the latin call.
+    expect(latin).toMatch(/AA==/)
+    expect(latin).not.toMatch(/BB==/)
+    // The bug: this second call used to be served the first call's cached CSS.
+    expect(cyrillic).toMatch(/BB==/)
+  })
 })
