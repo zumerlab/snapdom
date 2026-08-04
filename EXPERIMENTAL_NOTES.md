@@ -232,3 +232,246 @@ next pays the full pipeline every animated frame). Bare-DOM scenes are parity wi
 as expected: the test runner page has no framework CSS to prune.
 
 Bundle sizes (minified): 153KB (2.23.1) → 165KB (next) → 174KB (experimental).
+
+## Fidelity matrix — main vs next vs experimental (2026-08-03)
+
+Speed was measured; fidelity was not. `bench/dist-compare/compare.fidelity.harness.js`
+closes that: each scenario is a PORT of the regression test that shipped with the fix
+(asserts copied, not invented), run against all three dists in one browser session.
+
+| scenario | main | next | experimental |
+|---|---|---|---|
+| CSS `open-quote`/`close-quote` resolve to authored glyphs | FAIL | FAIL | PASS |
+| authored `::marker` survives as a scoped rule | FAIL | FAIL | PASS |
+| authored `::first-line` survives as a scoped rule | FAIL | FAIL | PASS |
+| `@media` frozen to the live viewport | FAIL | FAIL | PASS |
+| `@container` not degraded into `@supports` | PASS | PASS | PASS |
+| open modal `<dialog>`: backdrop + paint order | FAIL | FAIL | PASS |
+| image `<object>` inlined instead of blank | FAIL | FAIL | PASS |
+| `background-attachment:fixed` freezes the viewport slice | FAIL | FAIL | PASS |
+
+`next` is fidelity-identical to `main`: all of its 35 commits are speed and API work.
+Every fidelity gain in this branch is `experimental`-only.
+
+**Cross-engine (2026-08-03).** The matrix is byte-identical on chromium, webkit and
+firefox — every FAIL/PASS above holds on all three, so none of these gaps is an engine
+quirk. Full suite on `experimental`: 871 passed / 3 skipped on each engine
+(`BROWSER=webkit|firefox npx vitest run --browser.headless`). Speed medians (ms):
+
+| scenario | chromium m/n/e | webkit m/n/e | firefox m/n/e |
+|---|---|---|---|
+| cold complex 48 cards | 29 / 16 / 15 | 30 / 15 / 15 | 34 / 18 / 17 |
+| cold framework page | 68 / 41 / 29 | 66 / 38 / 27 | 79 / 47 / 34 |
+| warm repeat ×20 | 73 / 0 / 0 | 88 / 0 / 0 | 140 / 0 / 0 |
+| mutating poll ×20 | 556 / 240 / 240 | 550 / 115 / 112 | 663 / 246 / 245 |
+| animated poll ×10 | 38 / 36 / 13 | 43 / 42 / 11 | 75 / 71 / 15 |
+
+The ranking never changes engine to engine; the margins are widest on firefox (animated
+poll 5.0× vs main, 4.7× vs next). Caveat that still stands: Playwright's webkit does not
+reproduce the real-Safari quirks (#219770 et al) — SnapEye in Safari proper remains the
+only verification for those.
+
+## Hardening pass — what shipped, what did not (2026-08-03)
+
+Every fix below was reproduced by executing a repro FIRST, and every regression test was
+checked to fail with the fix reverted. Suite: 884 passing on chromium, webkit and firefox.
+
+| # | Fix | Axis | New in branch | File |
+|---|---|---|---|---|
+| B1 | auto-burst blind to typed form state, ancestor theme attrs, shadow `<canvas>` | fidelity | yes | `core/burst.js` |
+| B2 | diff reconcile false drift on any fractional box | speed+fidelity | yes | `core/diff.js` |
+| B3 | CSS-nested pseudo rules gated out of existence | fidelity | yes | `modules/styleScan.js` |
+| B4 | `:focus`/`:checked` never invalidated the snapshot cache | fidelity | yes | `modules/styles.js` |
+| B5 | `@media` nested in a nesting rule leaked into the SVG | fidelity | yes | `utils/clone.helpers.js` |
+| B9 | `exclude` did not redact the semantic export | fidelity | partly | `plugins/context-export.js` |
+| S1 | emoji split by the ellipsis bake → `URIError`, whole capture rejected | fidelity | no | `modules/lineClamp.js` |
+| S2 | fonts cache key ignored `usedCodepoints` → wrong subset served | fidelity | no | `modules/fonts.js` |
+| S4 | pseudo preflight could not see `@import`-ed rules | fidelity | no | `modules/pseudo.js` |
+| S6 | `exclude` hide-spacer hardcoded `inline-block` → phantom line box | fidelity | no | `core/clone.js` |
+| S3a | CSS mask on `::before`/`::after` dropped → masked icons captured as solid rectangles | fidelity | no | `modules/pseudo.js` |
+| S3b | `useProxy` never reached pseudo backgrounds (`map` passed the layer index as options) | fidelity | no | `modules/pseudo.js` |
+| S5 | a scrolled same-origin iframe was captured from the top of its document | fidelity | no | `utils/clone.helpers.js` |
+
+**Claimed but NOT reproduced — deliberately left alone.** Each was attempted with a real
+repro and an in-run control; none registered, so no code was added for them:
+
+- *B2's asset destruction.* Two scenes with an inline-authored remote background kept every
+  inlined `data:` URL through the reconcile (`rawUrl.diff === 0`).
+- *B4's iframe half.* A `<style>` edit inside a same-origin iframe DID reach the next
+  capture (first frame 3964 green px, second 3966 red px).
+- *B8, backdrop-filter on the diff path.* Could not get the diff path to serve at all in
+  this scene (`servedViaDiff:false` in every arm, including the no-backdrop control), so
+  the measurement proved nothing either way. A bail was NOT added on an unverified symptom.
+- *S4's rule-budget half.* A 1201-rule sheet with the pseudo rule last still returned
+  `preflight:true`.
+
+**Shadow DOM in auto-burst — closed.** A `MutationObserver` with `subtree:true` does not
+cross a shadow boundary, so every web component's internal updates were invisible and auto
+mode served pre-update frames indefinitely. `trackShadowRoots` gives each open root its own
+observer feeding the same `markDirty`, and RE-SCANS before serving, which is what closes the
+case the first attempt could not: a root attached after the memo was taken produces no
+mutation record anywhere, so it can only be found by looking.
+
+Cost of that per-capture scan, measured (median memo serve):
+
+| nodes | memo serve |
+|---|---|
+| 300 | 0.1 ms |
+| 2 000 | 0.3 ms |
+| 8 000 | 1.0 ms |
+
+Accepted deliberately: it is the same order as the `trackVideos`/`trackPendingImages` walks
+already done per capture, and it buys correctness on a memo that replaces a ~100ms pipeline.
+Closed roots remain unobservable by anyone — that stays `invalidate: true` territory.
+
+**B8 (backdrop-filter on the diff path) — refuted, not a bug.** The earlier attempt was
+inconclusive because the diff path never actually served: the scene had the card as a
+DIRECT child of the root (an automatic bail), and the warm-up captures used different
+options than the measured one, which makes the capture a one-off. With both fixed
+(`served:1` in every arm), the frosted card reads 0 sharp stripe transitions on the diff
+path and 0 on the full pipeline, while the no-backdrop control reads 24 on both — the blur
+is present either way. Pinned by a regression test that asserts the diff path ran AND that
+the metric can tell frosted from plain.
+
+**Method note that cost real time twice:** a scene too small hides a reconcile regression
+(3 columns × 40 rows showed no delta from the B2 fix; the 48-card grid shows 16×), and a
+scene depending on system fonts is not portable (the S2 pipeline test passed on chromium
+and firefox and failed on webkit, which lacks Georgia — it is now a unit test).
+
+## Release blockers B1 + B2, fixed (2026-08-03)
+
+From the 36-agent hardening hunt. Both were regressions this branch introduced, both on
+the DEFAULT path (auto-burst engages with no options after 3 captures).
+
+**B1 — auto-burst served stale frames.** Three inputs change what renders while producing
+no mutation record inside the captured subtree, so the scoped MutationObserver was blind
+to all three. Measured before the fix (`default` vs the same page with `burst:false`):
+
+| input | default path | `burst:false` |
+|---|---|---|
+| user types into an `<input>` | never sees the value | sees it |
+| `data-theme` set on `<html>` (custom property) | never sees the new bg | sees it |
+| `<canvas>` inside a shadow root | auto-burst engages | n/a |
+
+The canvas one falsified an invariant the file documents: the guard excluding
+canvas-bearing elements used `element.querySelector('canvas')`, which stops at a shadow
+boundary — exactly the charting web components the guard exists to protect.
+
+Fixes in `burst.js`: capture-phase `input`/`change` listeners (same trick the scroll
+listener already uses, since `value`/`checked` are properties, not attributes); an
+`ancestorSig` comparison gated on `getStyleEpoch()` so a static page pays one integer
+compare and only walks the ancestor chain when something changed somewhere; and a
+shadow-piercing `hasCanvas`. The INVALIDATION MATRIX comment now lists all three.
+
+**B2 — the diff reconcile had a permanent false positive.** `getStyleKey` rounds frozen
+widths UP to the next 1/16px (so a shrink-to-fit box cannot re-wrap), and `diff.js`
+compared that rounded value against a raw `getComputedStyle` string. Instrumented from
+inside the real reconcile loop:
+
+```
+w=640 (620/3 = 206.666… per column):  279 of 282 nodes "drifted", all on width
+                                      live=206.672px  frozen=206.6875px
+w=632 (612/3 = 204 exactly):            0 of 282
+```
+
+So every fractional flex/grid track — i.e. most real layouts — re-ran `inlineAllStyles`
+over the entire retained tree on every differential frame. Fixed by comparing lengths with
+the rounding step as tolerance (`sameFrozenLength`), since genuine layout drift is orders
+of magnitude larger than 1/16px.
+
+**Speed, same harness as the branch benchmark above, medians, chromium:**
+
+| scenario | before | after |
+|---|---|---|
+| mutating poll ×20 (defaults) | 240.6 ms | **15.2 ms** (15.8×) |
+| animated poll ×10 (defaults) | 13.2 ms | **7.3 ms** (1.8×) |
+
+Everything else unchanged. Note for future measurement: a 3-column × 40-row scene showed
+NO time difference from this fix — the reconcile only dominates once the retained tree is
+large. Do not conclude "no effect" from a small scene.
+
+Not reproduced, and therefore not fixed: the report also claimed the reconcile re-run
+destroys inlined `data:` URLs via `normalizeInlineStyleToComputed`. Two attempts with an
+inline-authored remote background kept all assets (`rawUrl.diff === 0`). Left alone.
+
+Still open from the same hunt: general shadow-DOM content updates (not just canvas) are
+invisible to auto-burst. Piercing observers into shadow roots does not close it — a root
+attached after the last full capture is never observed — so it needs a design, not a patch.
+
+## Reverse regression sweep (2026-08-03)
+
+The fidelity matrix above is biased by construction: its scenarios come from this
+branch's own `fix(fidelity)` commits, so it only asks "does experimental fix what it
+claims?". It never asks "what did experimental BREAK that main got right?". Two sweeps
+were run to answer that.
+
+**1. main's own test suite against experimental's source.** 78 of main's 753 tests fail.
+Classified, every one is expected:
+
+| cause | tests | example |
+|---|---|---|
+| internal signature change (session cache threaded as an argument) | 56 | `deepClone(node, options)` → `Cannot read properties of undefined (reading 'styleMap')` |
+| deliberate v3 API surface change | 21 | `cache: 'full'` no longer exists; `fast` removed; iconFonts per-capture; burst advice warning deleted |
+| work relocated, same observable result | 1 | `resolveCSSVars` baseline fallback (fb9dfe8) |
+
+The last one was the only value assertion rather than a TypeError, so it was checked
+end-to-end: a class-driven `color: var(--x)` still reaches the capture on main, next AND
+experimental. The commit's claim (the style snapshot already carries class-driven values)
+holds; the unit test failed because the work moved, and this branch already replaced it
+with a pipeline-level test. **Zero behavior regressions in the 78.**
+
+**2. Pixel diff on neutral scenes.** 20 scenes written from ordinary web CSS (flex, grid,
+shadows, gradients, transforms, stacking, overflow, tables, form controls, text metrics,
+filters, clip-path, object-fit, lists, text-shadow, baselines, scroll containers,
+pseudo-elements, inline SVG) — chosen from no branch's commit list. Each is captured by
+main and by experimental, rasterized, and compared pixel by pixel.
+`bench/dist-compare/compare.regression.harness.js`.
+
+Result on chromium, webkit and firefox alike: **all 20 differ by 0 pixels** (maxDelta 0).
+Two positive controls taken from the fidelity matrix DO register (object 64-66%, marker
+0.6-3.7%), so the harness is demonstrably able to fail — the zeros mean something. Note
+the first `<object>` control was a 1×1 transparent PNG and read 0%: a markup-level
+difference with no visual consequence. Controls have to be visible to be controls.
+
+Limit: 20 synthetic scenes are not a real site. This raises confidence that experimental
+does not silently change ordinary rendering; it does not prove absence of regressions.
+
+### Cross-engine report: the font demos are NOT a bug (2026-08-03, don't re-investigate)
+
+`npm run report:cross` (72 demos, chromium as reference) shows median divergence 3.45%
+(webkit) / 4.17% (firefox), with the font demos among the worst: `d22-font-face-manual-woff2`
+17/28%, `d20-google-fonts-link-variable` 8/26%. Reading the baselines by eye suggested
+firefox was dropping the bold weight and collapsing the 600/900 variable axis. **That
+reading was wrong.** Measured instead (`bench/dist-compare/compare.varfont.harness.js`,
+same font-size, only the weight axis varying):
+
+| weight | live width | captured ink width | captured ink mass |
+|---|---|---|---|
+| 300 | 237.1 | 234 | 1467 |
+| 600 | 247.7 | 246 | 2171 |
+| 900 | 259.3 | 258 | 2794 (chromium) / 2810 (firefox) |
+
+Firefox tracks chromium to within a pixel on every axis step, live AND through the
+capture. The `cross-diffs/*.png` images settle it: the red is spread evenly over every
+glyph of every line (and over the dashed border), which is the signature of per-engine
+text rasterization, not of a lost weight. A second hypothesis — that the baseline was
+recorded with the font fallen back to `system-ui` — is also dead: system-ui scales its
+own weights (217/235/254) in both engines.
+
+Lesson worth keeping: on an image that is almost entirely glyphs, hinting differences
+touch ~25% of the pixels. A high mismatch ratio on a text-heavy demo is not evidence of
+anything by itself — look at the diff image before forming a theory.
+
+Two defects found while building the matrix, both fixed here:
+
+- **`@container` misread as `@supports`** (`resolveMediaQueries` dispatched on the shape
+  `conditionText !== undefined`, which `CSSContainerRule` also has). Unnamed containers
+  evaluated true unconditionally, named ones dropped. Regression introduced by the @media
+  freeze commit; `main`/`next` pass only because they never rewrote the rule at all.
+- **`::marker`/`::first-line` fix was dead code in the common case.** `shouldProcessPseudos`
+  gates the whole pseudo pass on a needle list that never learned about `::marker` /
+  `::first-line`, so a page whose only author pseudo is a marker skipped the pass —
+  the fix's own tests passed only because a sibling test left a `::before` in the
+  document. Adding an unrelated `.decoy::before` anywhere flipped it back on. Needles
+  added; the regression test now asserts on a private iframe document so no stray
+  `::before` on the test page can mask it again.

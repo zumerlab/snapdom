@@ -121,6 +121,8 @@ Every hook receives a single context object (`ctx`):
   filter, filterMode,
   fallbackURL,
 
+  element,           // The capture root — set on every path, including burst's diff recapture
+
   // Intermediate values (available after their stage)
   clone,             // Cloned DOM tree
   classCSS, styleCache,
