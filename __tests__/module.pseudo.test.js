@@ -704,4 +704,85 @@ describe('scoped ::marker and ::first-line rules', () => {
     const svg = await captureSvg(ul)
     expect(svg).not.toContain('::marker')
   })
+
+  // The selector gate feeds on raw `rule.selectorText`, which under CSS nesting is
+  // `& .feat::before` — a selector matches() answers FALSE to instead of throwing, so the
+  // try/catch fallback never fires and the pseudo is gated out of existence. Asserted on
+  // painted pixels: the content string survives inside the <style> payload either way.
+  it('CSS-nested pseudo rules still paint', async () => {
+    async function pinkPixels(host) {
+      const { snapdom } = await import('../src/api/snapdom.js')
+      const res = await snapdom(host, { cache: 'disabled', dpr: 1, scale: 1 })
+      const c = await res.toCanvas()
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+      let n = 0
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] > 180 && d[i + 1] < 80 && d[i + 2] < 110 && d[i + 3] > 40) n++
+      }
+      return n
+    }
+    const shapes = {
+      'flat (control)': '.zzp .feat::before { content:"✔✔✔"; color:rgb(225,29,72); font-size:20px }',
+      'nested descendant': '.zzp { color:#111; & .feat::before { content:"✔✔✔"; color:rgb(225,29,72); font-size:20px } }',
+      'nested inside @media': '@media (min-width:1px){ .zzp { & .feat::before { content:"✔✔✔"; color:rgb(225,29,72); font-size:20px } } }',
+    }
+    for (const [label, css] of Object.entries(shapes)) {
+      const style = document.createElement('style')
+      style.setAttribute('data-mk-test', '')
+      style.textContent = css
+      document.head.appendChild(style)
+      const host = document.createElement('div')
+      host.innerHTML = '<div class="zzp">plan <span class="feat">feature</span></div>'
+      document.body.appendChild(host)
+      const painted = await pinkPixels(host)
+      style.remove()
+      host.remove()
+      expect(painted, label).toBeGreaterThan(20)
+    }
+  })
+
+  // The scoped-rule emitter runs inside inlinePseudoElements, which the preflight can
+  // skip wholesale. A page whose ONLY author pseudo is a marker/first-line has to keep
+  // the pass alive — asserted on a private document so an unrelated ::before anywhere
+  // in the test page can't mask a regression.
+  it('preflight follows @import (component CSS often lives one sheet down)', async () => {
+    const { shouldProcessPseudos } = await import('../src/modules/pseudo.js')
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    const doc = frame.contentDocument
+    const blob = new Blob(['.feat::before{content:"✔";color:red}'], { type: 'text/css' })
+    const url = URL.createObjectURL(blob)
+    try {
+      doc.head.innerHTML = `<style>@import url("${url}"); .x{color:#111}</style>`
+      // Wait for the import to actually load, else the assertion is vacuous.
+      for (let i = 0; i < 40; i++) {
+        try {
+          if (doc.styleSheets[0].cssRules[0].styleSheet.cssRules.length) break
+        } catch { /* still loading */ }
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      expect(doc.styleSheets[0].cssRules[0].styleSheet.cssRules.length).toBeGreaterThan(0)
+      expect(shouldProcessPseudos(doc)).toBe(true)
+    } finally {
+      URL.revokeObjectURL(url)
+      frame.remove()
+    }
+  })
+
+  it('preflight keeps the pseudo pass for marker/first-line-only pages', async () => {
+    const { shouldProcessPseudos } = await import('../src/modules/pseudo.js')
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    const doc = frame.contentDocument
+    try {
+      doc.head.innerHTML = '<style>li::marker { color: rgb(200, 10, 10); }</style>'
+      expect(shouldProcessPseudos(doc)).toBe(true)
+      doc.head.innerHTML = '<style>.lede::first-line { font-weight: 700; }</style>'
+      expect(shouldProcessPseudos(doc)).toBe(true)
+      doc.head.innerHTML = '<style>.plain { color: red; }</style>'
+      expect(shouldProcessPseudos(doc)).toBe(false)
+    } finally {
+      frame.remove()
+    }
+  })
 })

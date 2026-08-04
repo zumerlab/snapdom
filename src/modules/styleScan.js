@@ -90,8 +90,15 @@ function scanRules(rules, universe, pseudoSels, state) {
     if (style) {
       for (let j = 0; j < style.length; j++) universe.add(style[j])
     }
-    const sel = rule.selectorText
+    let sel = rule.selectorText
     if (sel && sel.includes(':')) {
+      // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
+      // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
+      // every node out and delete the pseudo. Resolve & against the enclosing style rule,
+      // walking past grouping rules (@media/@supports have no selectorText).
+      for (let p = rule.parentRule; p && sel.includes('&'); p = p.parentRule) {
+        if (p.selectorText) sel = sel.replace(/&/g, `:is(${p.selectorText})`)
+      }
       for (const kind in PSEUDO_KINDS) {
         if (PSEUDO_KINDS[kind].test(sel)) pseudoSels[kind].push(stripPseudo(sel))
       }
@@ -122,6 +129,9 @@ function composePseudoGates(doc, pseudoSels) {
     const parts = pseudoSels[kind]
     if (kind === 'before' || kind === 'after') parts.push('q')
     if (!parts.length) { gates[kind] = '' ; continue } // no rules → probe nothing
+    // A & that survived resolution (top-level nesting) parses but can never match — that is
+    // worse than no gate at all, so fall back to probing every node.
+    if (parts.some((p) => p.includes('&'))) { gates[kind] = null; continue }
     const sel = parts.join(',')
     try { probe.matches(sel); gates[kind] = sel } catch { gates[kind] = null }
   }

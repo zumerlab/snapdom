@@ -126,6 +126,10 @@ function sheetHasNeedles(sheet, needles, state) {
     for (const k of needles) {
       if (css.includes(k)) return true
     }
+    // @import: the rule's own cssText is only the url, so the needles live one sheet down.
+    // Missing them skips the ENTIRE pseudo pass for any site that keeps its component CSS
+    // behind an import.
+    if (rule && rule.styleSheet && sheetHasNeedles(rule.styleSheet, needles, state)) return true
     // Nested group rules: @media, @supports, etc.
     // @ts-ignore - CSSGroupingRule may not exist in all envs
     if (rule && rule.cssRules && rule.cssRules.length) {
@@ -165,10 +169,12 @@ export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc))
   if (memo && memo.fingerprint === fp) return memo.result
 
   const NEEDLES = [
-    // double-colon
-    '::before', '::after', '::first-letter',
+    // double-colon — ::marker/::first-line ship as scoped rules (emitScopedPseudoRule),
+    // and this preflight is what gates that code: omitting them made a page whose only
+    // author pseudo is a marker skip the pass entirely.
+    '::before', '::after', '::first-letter', '::marker', '::first-line',
     // single-colon robustness
-    ':before', ':after', ':first-letter',
+    ':before', ':after', ':first-letter', ':first-line',
     // counters
     'counter(', 'counters(', 'counter-increment', 'counter-reset'
   ]
@@ -786,13 +792,37 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if (hasBg) {
         try {
           const bgSplits = splitBackgroundImage(bg)
-          const newBgParts = await Promise.all(bgSplits.map(inlineSingleBackgroundEntry))
+          // Arrow form, not a bare reference: map passes (entry, INDEX, array), so the
+          // layer index landed where options belongs and useProxy/CORS settings never
+          // reached a pseudo-element background. background.js:119 has it right.
+          const newBgParts = await Promise.all(bgSplits.map((entry) => inlineSingleBackgroundEntry(entry, options)))
           pseudoEl.style.backgroundImage = newBgParts.join(', ')
         } catch (e) {
           console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e)
         }
       }
       if (hasBgColor) pseudoEl.style.backgroundColor = bgColor
+
+      // The reset above blanks maskImage so a stale mask can't leak in; restoring it was
+      // missing entirely, so every masked icon pseudo (the standard way to tint an SVG
+      // icon) captured as a solid rectangle. The mask must be INLINED like a background —
+      // a url() mask would otherwise point at an asset the SVG cannot reach.
+      const maskImage = style.maskImage || style.webkitMaskImage
+      if (maskImage && maskImage !== 'none') {
+        try {
+          const parts = await Promise.all(
+            splitBackgroundImage(maskImage).map((entry) => inlineSingleBackgroundEntry(entry, options))
+          )
+          const value = parts.join(', ')
+          pseudoEl.style.maskImage = value
+          pseudoEl.style.webkitMaskImage = value
+          for (const prop of ['maskSize', 'maskRepeat', 'maskPosition', 'maskMode', 'maskComposite', 'maskOrigin', 'maskClip']) {
+            if (style[prop]) pseudoEl.style[prop] = style[prop]
+          }
+        } catch (e) {
+          console.warn(`[snapdom] Failed to inline mask-image for ${pseudo}`, e)
+        }
+      }
 
       const hasContent2 =
         pseudoEl.childNodes.length > 0 || (pseudoEl.textContent?.trim() !== '')
