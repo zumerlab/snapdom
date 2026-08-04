@@ -2,6 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Where the code lives (2026-08-04)
+
+Three repos. Getting this wrong pushes private work to a public remote, so check the branch before pushing.
+
+| repo | visibility | holds |
+|---|---|---|
+| `zumerlab/snapdom` | **public** | `main` (shipped, 2.23.x) and `dev` |
+| `zumerlab/snapdom-v3` | private | `experimental` — the v3 line, this file included |
+| `zumerlab/snapdom-agent` | private | the agent oracle (was `packages/agent`) |
+
+- `experimental` tracks `private/experimental`, so a bare `git push` from it goes to the private repo. `main`/`dev` still track `origin`.
+- The `next` branch was deleted: its content was fully contained in `experimental`.
+- `packages/agent` and the `agent-lab` branch no longer exist here — that product lives in its own repo with its history. Do not recreate them.
+- v3 is a breaking release. Anything that must reach users NOW (a fix that also affects `main`) belongs in a separate `main`-based release, not gated behind v3.
+
 ## Non-negotiable project goals
 
 Every change must respect these, in this order:
@@ -34,8 +49,8 @@ SnapDOM captures a DOM subtree and serializes it as an SVG `data:` URL embedded 
 
 Linear pipeline orchestrated by `captureDOM(element, options)`:
 
-1. `prepareClone` (`src/core/prepare.js`) — deep clone with `deepClone` (`src/core/clone.js`), inlines pseudo-elements (`src/modules/pseudo.js`) and SVG `<defs>`/`<symbol>` refs (`src/modules/svgDefs.js`). Returns `{ clone, classCSS, styleCache }`.
-2. Inline assets via `idle()` phases: `inlineImages` (`src/modules/images.js`), `inlineBackgroundImages` (`src/modules/background.js`), optional `embedCustomFonts` (`src/modules/fonts.js`).
+1. `prepareClone` (`src/core/prepare.js`) — deep clone with `deepClone` (`src/core/clone.js`), inlines pseudo-elements (`src/modules/pseudo.js`) and SVG `<defs>`/`<symbol>` refs (`src/modules/svgDefs.js`). Returns `{ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow }`.
+2. Inline assets: `inlineImages` (`src/modules/images.js`), `inlineBackgroundImages` (`src/modules/background.js`), optional `embedCustomFonts` (`src/modules/fonts.js`). (The old `idle()` call-through is gone — the ceremony outlived its scheduler and only added latency.)
 3. Compute bbox + bleed (shadows, blur, outline, transforms — helpers in `src/utils/capture.helpers.js` and `src/utils/transforms.helpers.js`), serialize `<foreignObject>` into an SVG, return a `data:image/svg+xml` URL.
 4. Exporters (`src/exporters/*`) and `src/modules/rasterize.js` are dynamically imported from `src/api/snapdom.js` to keep the initial bundle tree-shakeable.
 
@@ -56,9 +71,31 @@ Plugins are plain objects with lifecycle hooks, local-first:
 
 Spec is in `PLUGIN_SPEC.md`; contribution guidelines in `CONTRIBUTING_PLUGINS.md`. Official plugins live in `packages/plugins/` (monorepo workspace).
 
-### Caching (`src/core/cache.js`)
+### Caching (`src/core/cache.js`) and per-capture session (`src/core/session.js`)
 
-Global `cache` exposes `EvictingMap` (FIFO, capped) instances for `image`, `background`, `resource`, `baseStyle`, `defaultStyle`; `WeakMap`s for `computedStyle` and `measureHints` (caches the expensive clone-in-document layout round-trip); a `Set` for `font`; and a `session` bucket reset per capture. `cache` option accepts `"disabled" | "soft" | "auto" | "full"` (normalized via `normalizeCachePolicy`); `applyCachePolicy` is called at the top of `captureDOM`.
+Global `cache` exposes `EvictingMap` (FIFO, capped) instances for `image`, `background`, `resource`, `baseStyle`, `defaultStyle`, `compress`; `WeakMap`s for `computedStyle` and `measureHints` (caches the expensive clone-in-document layout round-trip); and a `Set` for `font`. Those are genuine cross-capture caches — that is the ONLY thing module-level mutable state is for here.
+
+Everything scoped to one capture lives on the session object from `createCaptureSession()`, threaded explicitly through every stage. The old mutable `cache.session` global is gone: it was the mechanism behind #463 and the double scroll-compensation race, and its whole bug class is now structurally unrepresentable. Do not reintroduce per-capture state at module scope.
+
+The `cache` option collapsed in v3 to `"soft"` (structural default) and `"disabled"`. `normalizeCachePolicy` maps everything else — including the legacy `"auto"`/`"full"` strings — to `"soft"`, silently. Caching is structural now, not a knob.
+
+### Burst memo + differential recapture (`src/core/burst.js`, `src/core/diff.js`)
+
+Default engine behaviour, not an option: after three captures of the same element inside a 2s window, `shouldAutoBurst` engages memoization, and a mutation scoped to a subtree rebuilds ONLY that subtree against the retained clone (`tryDiffCapture`) instead of re-running the pipeline. This is where the branch's large wins live (mutating poll 563ms → 16ms; animated poll 39ms → 7.5ms).
+
+Its correctness rests entirely on one thing: **the INVALIDATION MATRIX comment at the top of `burst.js` is the wiring's source of truth.** Every way a rendered frame can change must have an observer listed there, and several of them produce NO mutation record at all — scroll, form-control state (`value`/`checked` are properties), focus, ancestor theme attributes, shadow-root content, font/image loads, animations. If you add a way for output to change, add its row. Canvas pixel draws and programmatic CSSOM edits are deliberately EXCLUDED (nothing can observe them) → those need `invalidate: true`.
+
+`diff.js` bails to the full pipeline on anything it cannot splice byte-faithfully: `reconcile`, `clip`, embedded fonts, impure render plugins, scoped `::marker`/`::first-line` rules, and stylesheets carrying relational selectors (`+ ~ :has()`, counters) whose match depends on nodes outside the rebuilt subtree — including in `adoptedStyleSheets`. The fast path must never cost correctness; when in doubt it returns null.
+
+### Style scan (`src/modules/styleScan.js`)
+
+One pass over the document's author styles yields (a) the property universe — snapshot only props the page can actually touch — and (b) per-pseudo selector gates, so one `el.matches()` replaces three `getComputedStyle` resolutions per node. Both memoized per document + style epoch.
+
+Two traps this has already sprung: CSS-nesting selectors arrive as raw `& .x::before`, and `matches()` answers **false** to those instead of throwing — so an unresolved `&` silently gates every node out rather than falling back. And a gate that parses but can never match is worse than no gate: return `null` (probe everything) instead.
+
+### Experimental canvas engine (`src/engines/htmlInCanvas.js`)
+
+WICG canvas-place-element (`ctx.drawElement`), opt-in via `engine: 'canvas'`. Fully quarantined: core's only knowledge is a 3-line lazy import in `snapdom.js`, and on ANY doubt `tryEngineResult` returns null and the normal pipeline runs. It paints pixel-perfectly (native form controls included) but Chromium currently taints the canvas unconditionally, so there is no readback and every capture falls through today. Keep the quarantine contract intact — correctness must never depend on this module.
 
 ### Safari/WebKit handling
 
@@ -90,7 +127,30 @@ All are minified, `sideEffects: false`. `src/index.js` only re-exports `snapdom`
 
 ## Testing
 
-- Tests run in headless Chromium (Playwright). There is no Node/jsdom mode — DOM APIs are real.
+- Tests run in a real browser (Playwright). There is no Node/jsdom mode — DOM APIs are real.
+- `BROWSER=webkit|firefox|all` selects the engine; visual baselines are kept per engine. **A fidelity change is not done until it is green on all three** — several fixes this branch shipped behaved differently per engine.
 - Benchmarks: files matching `*.benchmark.js` are excluded from the normal test run; use `npm run test:benchmark` or `npx vitest bench`.
-- Visual diffs live under `__tests__/__screenshots__/`.
-- Coverage config in `vitest.config.js` scopes to `src/**/*.js`.
+- Visual diffs live under `__tests__/__screenshots__/`; `npm run report:cross` builds a cross-engine comparison page.
+- Coverage config in `vitest.config.js` scopes to `src/**/*.js`. **It only runs on chromium** (the v8 provider is Chromium-only), so Safari-only code reads as uncovered even when exercised — that is a measurement blind spot, not debt. Code that is unreachable by construction is marked with `/* c8 ignore start/stop */` and a reason; the `ignore next` form does nothing here.
+
+## Writing tests that are worth having
+
+Every one of these cost real time on this branch. They are not hypothetical.
+
+- **Prove the test can fail.** Break the thing on purpose and confirm it goes red. Several "passing" checks were asserting nothing.
+- **A control must be able to register.** A 1×1 transparent PNG used as a positive control measured 0% pixel difference and nearly validated a broken harness.
+- **Assert on what PAINTS, not on the payload.** The serialized SVG carries the class CSS, so a `content` string or a colour can appear in `res.url` while nothing renders. Count pixels via `res.toCanvas()`.
+- **Static imports defeat module stubbing.** A test that stubs `Worker` must live in a file that does NOT import the module at top level, or the module latches the real one first and the test silently exercises the wrong path.
+- **Watch for cross-test contamination.** Run a suspicious test in isolation (`-t "<name>"`): if it passes in the file but fails alone, the feature is broken and a sibling test was masking it.
+- **Scene size and system fonts change outcomes.** A reconcile regression is invisible on a small tree, and a scene that depends on a system font passes on two engines and fails on the third.
+- **Before theorising from a number, look at the artifact.** On a glyph-dense image, ordinary hinting differences touch ~25% of the pixels.
+
+## Real-Safari verification (SnapEye)
+
+Playwright's WebKit does not reproduce the quirks the Safari code exists for — a green `test:webkit` proves nothing about them. For anything touching `toCanvas`, `toImg`, the Safari pre-step, fonts, or workers:
+
+1. `npm run compile`, then `node bench/snapeye-dev.mjs`. **UNTRACKED**: `bench/` is gitignored, so the harness does not come with a fresh clone, and it needs the sibling `../snapeye` repo. It serves the local `dist/` — confirm that is the build you mean to test.
+2. Drive real Safari via `safaridriver --port 4444` + plain WebDriver calls over curl (Develop → Allow Remote Automation is already enabled on this machine).
+3. The harness writes every captured blob to `.snapeye/`. Complete captures are byte-identical, so any file-size outlier is a blank or corrupt frame. Last run: 100/100 identical, zero blanks.
+
+Sanity-check the detector itself: a blank PNG at the same dimensions weighs ~0.4% of a real capture, so the size threshold genuinely discriminates. And check the FORMAT of what lands in `.snapeye/` — a run that quietly produced SVG instead of PNG is what exposed the `toBlob` format regression that the unit suite missed.
