@@ -66,19 +66,11 @@ export function contextExport(options = {}) {
 
   return {
     name: 'context-export',
-    // Export-only + beforeSnap stash (beforeSnap doesn't touch the clone/render, but it
-    // IS render-phase adjacent; it only records the element reference, so declare pure
-    // to keep the engine's memo/diff fast paths).
-    pure: true,
-    beforeSnap(ctx) {
-      if (ctx && ctx.options) ctx.options.__contextSource = ctx.element
-      return ctx
-    },
 
     defineExports() {
       return {
         context: async (ctx, opts = {}) => {
-          const el = ctx.__contextSource || ctx.element
+          const el = ctx.element
           if (!el) throw new Error('[snapdom] context-export: no source element on context')
           const _format = opts.format ?? format
           const _maxText = opts.maxTextLength ?? maxTextLength
@@ -86,7 +78,7 @@ export function contextExport(options = {}) {
           const _geometry = opts.geometry ?? geometry
 
           const rootRect = el.getBoundingClientRect()
-          const state = { count: 0, truncated: false }
+          const state = { count: 0, truncated: false, ctx }
           const tree = buildNode(el, rootRect, _maxText, _maxNodes, _geometry, state)
           if (_format === 'json') {
             return { root: tree, truncated: state.truncated, nodes: state.count }
@@ -107,6 +99,25 @@ function visibleText(node) {
     if (c.nodeType === 3) out += c.nodeValue
   }
   return out.replace(/\s+/g, ' ').trim()
+}
+
+/** True when the capture pipeline would drop or blank this node. `exclude` is the redaction
+ *  feature: the image already honours it, and a semantic export that did not would hand the
+ *  redacted text straight to a model. Mirrors the decision in src/core/clone.js deepClone —
+ *  that block is the source of truth; keep the two in step. */
+function isExcluded(el, ctx) {
+  if (!ctx) return false
+  if (el.getAttribute?.('data-capture') === 'exclude') return true
+  for (const sel of ctx.exclude || []) {
+    try { if (el.matches?.(sel)) return true } catch { /* invalid selector: clone warns */ }
+  }
+  for (const pred of ctx.excludePredicates || []) {
+    try { if (pred(el)) return true } catch { /* clone warns */ }
+  }
+  if (typeof ctx.filter === 'function') {
+    try { if (!ctx.filter(el)) return true } catch { /* clone warns */ }
+  }
+  return false
 }
 
 function isHidden(el) {
@@ -140,6 +151,7 @@ function nodeState(el) {
 
 function buildNode(el, rootRect, maxText, maxNodes, geometry, state) {
   if (state.count >= maxNodes) { state.truncated = true; return null }
+  if (isExcluded(el, state.ctx)) return null
   state.count++
   const node = { tag: el.localName }
   if (el.id) node.id = el.id
@@ -161,7 +173,7 @@ function buildNode(el, rootRect, maxText, maxNodes, geometry, state) {
 
   const children = []
   for (let c = el.firstElementChild; c; c = c.nextElementSibling) {
-    if (SKIP_TAGS.has(c.tagName) || isHidden(c)) continue
+    if (SKIP_TAGS.has(c.tagName) || isHidden(c) || isExcluded(c, state.ctx)) continue
     const child = buildNode(c, rootRect, maxText, maxNodes, geometry, state)
     if (child) children.push(child)
   }

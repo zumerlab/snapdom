@@ -61,6 +61,31 @@ describe('contextExport', () => {
     expect(a).toBe(b)
   })
 
+  it('survives auto-burst + a nested mutation (differential recapture path)', async () => {
+    const host = fixture()
+    // Past AUTO_THRESHOLD the engine may serve the next capture from the diff path, which
+    // builds its result without running captureDOM — the source element has to come from
+    // the context itself, not from a capture hook.
+    for (let i = 0; i < 4; i++) await snapdom(host, { plugins: [contextExport()] })
+    host.querySelector('p').textContent = 'updated'
+    await new Promise(r => setTimeout(r, 30))
+
+    const res = await snapdom(host, { plugins: [contextExport()] })
+    await expect(res.toContext()).resolves.toContain('div')
+  })
+
+  // `exclude` is the redaction feature. The image already honours it; a semantic export
+  // that did not would hand the redacted text straight to a model.
+  it('excluded content does not leak through the semantic export', async () => {
+    const host = document.createElement('div')
+    host.innerHTML = '<p>publico</p><div class="pii">TARJETA-4111-1111</div>'
+    document.body.appendChild(host)
+    const res = await snapdom(host, { exclude: ['.pii'], plugins: [contextExport()] })
+    const svg = decodeURIComponent(res.url.split(',')[1])
+    expect(svg).not.toContain('TARJETA')
+    expect(String(await res.toContext())).not.toContain('TARJETA')
+  })
+
   it('stays inside a sane token budget for a real-ish card grid', async () => {
     const host = document.createElement('div')
     host.style.cssText = 'width:800px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px'

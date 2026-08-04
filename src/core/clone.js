@@ -55,6 +55,12 @@ export function registerTagHandler(tag, handler) {
  * @returns {HTMLDivElement}
  */
 function makeHideSpacer(node) {
+  // A display:none node occupies nothing live, so ANY spacer shifts the layout; and a
+  // hardcoded inline-block spacer for a block-level node adds a whole line box (baseline
+  // + descender) on top of its height. `exclude` is the redaction feature, routinely
+  // pointed at selectors that also match hidden elements — both cases moved content down.
+  const display = getStyle(node).display
+  if (display === 'none') return null
   const { width, height } = getUnscaledDimensions(node)
   let w = width, h = height
   if (!w || !h) {
@@ -63,7 +69,7 @@ function makeHideSpacer(node) {
     h = h || rect.height || 0
   }
   const spacer = document.createElement('div')
-  spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
+  spacer.style.cssText = `display:${display === 'inline' ? 'inline-block' : display};width:${w}px;height:${h}px;visibility:hidden;`
   return spacer
 }
 
