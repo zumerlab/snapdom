@@ -83,7 +83,7 @@ export function lineClamp(el, cs) {
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    el.textContent = original.slice(0, mid) + '…'
+    el.textContent = original.slice(0, safeCut(original, mid)) + '…'
     // Forzamos layout leyendo scrollHeight
     if (el.scrollHeight <= targetH + 0.5) {
       best = mid; lo = mid + 1
@@ -93,7 +93,7 @@ export function lineClamp(el, cs) {
   }
 
   // Aplica el mejor corte (si nada entra, queda solo '…')
-  el.textContent = (best >= 0 ? original.slice(0, best) : '') + '…'
+  el.textContent = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
 
   // Devuelve undo() para restaurar el DOM original tras clonar
   return () => {
@@ -131,7 +131,7 @@ export function textEllipsis(el, cs) {
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    el.textContent = original.slice(0, mid) + '…'
+    el.textContent = original.slice(0, safeCut(original, mid)) + '…'
     if (el.scrollWidth <= el.clientWidth + 0.5) {
       best = mid; lo = mid + 1
     } else {
@@ -139,7 +139,7 @@ export function textEllipsis(el, cs) {
     }
   }
 
-  el.textContent = (best >= 0 ? original.slice(0, best) : '') + '…'
+  el.textContent = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
 
   return () => {
     el.textContent = prevText
@@ -147,6 +147,17 @@ export function textEllipsis(el, cs) {
 }
 
 /* ---------------- helpers: idénticos a tu snippet ---------------- */
+
+/** A cut index that never lands between the two halves of a surrogate pair. Slicing an
+ *  emoji in half leaves a lone surrogate, and the serialized SVG then fails
+ *  encodeURIComponent — rejecting the WHOLE capture with "URIError: URI malformed",
+ *  not just mangling one glyph. Must be applied to the emitted slice too, not only the
+ *  probes: the last probe is not necessarily the one that wins. */
+function safeCut(text, n) {
+  if (n <= 0 || n >= text.length) return n
+  const c = text.charCodeAt(n - 1)
+  return c >= 0xd800 && c <= 0xdbff ? n - 1 : n
+}
 
 function getClamp(cs) {
   let v = cs.getPropertyValue('-webkit-line-clamp') || cs.getPropertyValue('line-clamp')

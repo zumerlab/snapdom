@@ -173,4 +173,26 @@ describe('lineClampTree (#386)', () => {
     expect(typeof undo).toBe('function')
     undo()
   })
+
+  // The binary search slices by UTF-16 index, so a cut landing between the halves of an
+  // emoji leaves a lone surrogate — encodeURIComponent then rejects the WHOLE serialized
+  // capture with "URIError: URI malformed". Only some widths put the cut in that position,
+  // so this sweeps a range instead of asserting one box.
+  it('never splits a surrogate pair (whole capture used to reject)', async () => {
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const failures = []
+    for (let w = 80; w <= 250; w += 2) {
+      const el = document.createElement('div')
+      el.style.cssText = `width:${w}px;font:14px/18px Arial;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`
+      el.textContent = 'Ship it 🚀🎉🥳🍕😀🤝🌟🔥💡🎯 team update from the release channel'
+      document.body.appendChild(el)
+      try {
+        await snapdom(el, { cache: 'disabled' })
+      } catch (e) {
+        failures.push(`${w}px: ${e}`)
+      }
+      el.remove()
+    }
+    expect(failures).toEqual([])
+  })
 })
