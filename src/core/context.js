@@ -36,9 +36,21 @@ import { normalizeCachePolicy } from './cache.js'
  * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. On by default; pass `false` to embed images verbatim.
  * @returns {Object}
  */
+/** Formats a caller can name in `format` (or legacy `type`). Shared with the export
+ *  normalizer in snapdom.js — the same set decides the alias there. */
+const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
+
 export function createContext(options = {}) {
   let resolvedFormat = options.format ?? 'png'
   if (resolvedFormat === 'jpg') resolvedFormat = 'jpeg'
+  // Did the CALLER name a format, or is this the default? `format` is always set, so the
+  // difference is otherwise unrecoverable downstream — and toBlob needs it: it defaults to
+  // the raw vector unless a codec was asked for, and `snapdom.toBlob(el, {format:'png'})`
+  // asks at CAPTURE time (the static helpers forward options there, not to the exporter).
+  const rawTypeFormat = typeof options.type === 'string' && IMAGE_FORMATS.has(options.type.toLowerCase())
+    ? options.type.toLowerCase()
+    : null
+  const explicitFormat = options.format != null ? resolvedFormat : (rawTypeFormat === 'jpg' ? 'jpeg' : rawTypeFormat)
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
 
@@ -96,6 +108,7 @@ export function createContext(options = {}) {
     width: options.width ?? null,
     height: options.height ?? null,
     format: resolvedFormat,
+    __explicitFormat: explicitFormat,
     type: options.type ?? 'svg',
     quality: options.quality ?? 0.92,
     dpr: options.dpr ?? (window.devicePixelRatio || 1),

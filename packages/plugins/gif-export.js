@@ -34,16 +34,10 @@ export function gifExport(options = {}) {
   return {
     name: 'gif-export',
 
-    // The export ctx comes from createContext (no `element`). Stash the live
-    // element during a capture hook so toGif() can re-capture frames from it.
-    beforeSnap(ctx) {
-      if (ctx && ctx.options) ctx.options.__snapSource = ctx.element;
-    },
-
     defineExports() {
       return {
         gif: async (ctx, opts = {}) => {
-          const el = ctx.__snapSource || ctx.element;
+          const el = ctx.element;
           if (!el) throw new Error('[snapdom] gif-export: no source element on context');
 
           const _fps = opts.fps ?? fps;

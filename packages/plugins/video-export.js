@@ -42,19 +42,13 @@ export function videoExport(options = {}) {
   return {
     name: 'video-export',
 
-    // The export ctx comes from createContext (no `element`). Stash the live
-    // element during a capture hook so toMp4() can re-capture frames from it.
-    beforeSnap(ctx) {
-      if (ctx && ctx.options) ctx.options.__snapSource = ctx.element;
-    },
-
     defineExports() {
       return {
         mp4: async (ctx, opts = {}) => {
           if (typeof MediaRecorder === 'undefined') {
             throw new Error('[snapdom] video-export: MediaRecorder is not available in this environment');
           }
-          const el = ctx.__snapSource || ctx.element;
+          const el = ctx.element;
           if (!el) throw new Error('[snapdom] video-export: no source element on context');
 
           const _fps = opts.fps ?? fps;

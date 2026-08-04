@@ -42,4 +42,21 @@ describe('one sizing rule across exporters', () => {
     expect(canvas.width).toBe(200)
     expect(canvas.height).toBe(100)
   })
+
+  // toBlob defaults to the raw vector unless a codec is asked for — but the static helper
+  // forwards its options to the CAPTURE, not to the exporter, so a capture-time format has
+  // to survive into the export. It did not: `snapdom.toBlob(el, {type:'png'})` (the shape
+  // main documents) and `{format:'png'}` both silently returned SVG.
+  describe('toBlob honours the format wherever the caller named it', () => {
+    it('capture-time and export-time both reach the codec', async () => {
+      const el = makeEl(40, 20)
+      const res = await snapdom(el, { cache: 'disabled' })
+      expect((await res.toBlob()).type).toBe('image/svg+xml')            // documented default
+      expect((await res.toBlob({ format: 'png' })).type).toBe('image/png')
+      expect((await res.toBlob({ type: 'png' })).type).toBe('image/png') // legacy alias
+      expect((await snapdom.toBlob(el, { format: 'png' })).type).toBe('image/png')
+      expect((await snapdom.toBlob(el, { type: 'png' })).type).toBe('image/png')
+      expect((await snapdom.toBlob(el)).type).toBe('image/svg+xml')
+    })
+  })
 })

@@ -69,6 +69,9 @@ async function main(element, userOptions) {
 
   // Normalize options into a capture context
   const context = createContext(userOptions)
+  // The capture root, on every path: burst's differential recapture builds its result from
+  // this context WITHOUT running captureDOM, so hooks are not a reliable place to stash it.
+  context.element = element
 
   // Attach per-capture plugins (local-first) without removing globals
   attachSessionPlugins(context, userOptions && userOptions.plugins)
@@ -265,7 +268,7 @@ async function buildResult(url, context) {
     // What the CALLER actually asked for (null = nothing): per-export defaults differ
     // (blob defaults to svg, download to png), so they need the explicit value, not the
     // context default.
-    next.__explicitFormat = explicit ? next.format : null
+    next.__explicitFormat = explicit ? next.format : (context.__explicitFormat ?? null)
     // `type` aquí es el NOMBRE del export ('blob'/'canvas'/'download'/'jpeg'/…), no el formato
     // de imagen. Resolver el formato real (jpg→jpeg) para aplanar el fondo igual que
     // createContext, o JPEG codificaría las zonas transparentes en negro.
