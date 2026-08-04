@@ -122,6 +122,12 @@ export async function tryEngineResult(element, context, runFallback) {
   if (context.outerShadows) return null // canvas is sized to the element box; bleed needs pipeline math
   if (Number.isFinite(context.width) || Number.isFinite(context.height)) return null
 
+  /* c8 ignore start -- everything below needs a browser that actually exposes
+     ctx.drawElement. It ships behind chrome://flags/#canvas-draw-element only, so
+     `detectDrawApi()` returns null in every CI browser and this code is unreachable by
+     construction — not untested. The reachable half (detection + every bail above, the
+     part that guarantees the pipeline still runs) IS covered by engines.htmlInCanvas.test.js.
+     Re-measure when Chromium ships same-origin readback and the engine can be enabled. */
   const rect = element.getBoundingClientRect()
   const width = Math.max(1, element.offsetWidth || rect.width || 1)
   const height = Math.max(1, element.offsetHeight || rect.height || 1)
@@ -249,4 +255,5 @@ export async function tryEngineResult(element, context, runFallback) {
     toImg: async (opts) => (await fallback()).toImg(opts),
   }
   return result
+  /* c8 ignore stop */
 }
