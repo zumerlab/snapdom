@@ -69,4 +69,57 @@ describe('@media frozen to the live viewport', () => {
     expect(svg).toContain('rgb(7, 7, 7)')
     expect(svg).not.toContain('@media')
   })
+
+  // A rule that can NEST (CSS nesting, @scope, @container) used to fall through to the
+  // verbatim cssText branch, carrying its inner @media into the SVG — where the condition
+  // re-evaluates against the image box. A 300px component repainted at its mobile
+  // breakpoint although that breakpoint is false on the live page.
+  it('an @media nested inside a CSS-nesting rule is resolved, not leaked', async () => {
+    async function centre(host) {
+      const res = await snapdom(host, { cache: 'disabled', dpr: 1, scale: 1 })
+      const c = await res.toCanvas()
+      const d = c.getContext('2d').getImageData(Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data
+      return `${d[0]},${d[1]},${d[2]}`
+    }
+    const shapes = {
+      'plain @media (control)': '.zzbox { background: rgb(0,128,0) } @media (max-width:350px) { .zzbox { background: rgb(255,0,0) } }',
+      'nested @media': '.zzbox { background: rgb(0,128,0); & { @media (max-width:350px) { background: rgb(255,0,0) } } }',
+    }
+    for (const [label, css] of Object.entries(shapes)) {
+      const host = document.createElement('div')
+      host.style.cssText = 'width:300px'
+      const style = document.createElement('style')
+      style.textContent = css
+      host.appendChild(style)
+      host.insertAdjacentHTML('beforeend', '<div class="zzbox" style="width:300px;height:60px"></div>')
+      document.body.appendChild(host)
+      // Precondition: the breakpoint is FALSE live (the runner viewport is wide).
+      expect(getComputedStyle(host.querySelector('.zzbox')).backgroundColor).toBe('rgb(0, 128, 0)')
+      const painted = await centre(host)
+      host.remove()
+      expect(painted, label).toContain('0,128,0')
+    }
+  })
+
+  it('@container passes through verbatim (it shares conditionText with @supports)', async () => {
+    const host = document.createElement('div')
+    const style = document.createElement('style')
+    // The light-DOM path only rewrites <style> clones that mention @media, so mix both —
+    // that is the reported shape. Rewriting @container as @supports would either force the
+    // block on (unnamed: a valid declaration always "supports") or drop it (named: invalid).
+    style.textContent = `
+      @media (min-width: 400px) { .zz-c0 { border-top-color: rgb(4, 4, 4); } }
+      .zz-w { container-name: side; container-type: inline-size; }
+      @container (min-width: 400px) { .zz-c1 { column-rule-color: rgb(5, 5, 5); } }
+      @container side (min-width: 400px) { .zz-c2 { column-rule-color: rgb(6, 6, 6); } }
+    `
+    host.appendChild(style)
+    host.innerHTML += '<div class="zz-w"><div class="zz-c1">a</div><div class="zz-c2">b</div></div>'
+    document.body.appendChild(host)
+
+    const svg = await captureSvg(host)
+    expect(svg).toContain('@container (min-width: 400px)')
+    expect(svg).toContain('@container side (min-width: 400px)')
+    expect(svg).not.toContain('@supports')
+  })
 })

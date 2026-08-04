@@ -97,7 +97,9 @@ export function nextShadowScopeId(sessionCache) {
  * passed-through condition re-evaluates against the IMAGE size, not the page. Matching
  * blocks inline unwrapped (recursively), non-matching blocks drop — the capture freezes
  * the media state the user was seeing. @supports keeps its wrapper (its condition is
- * viewport-independent); @keyframes/@font-face/etc. pass through verbatim.
+ * viewport-independent); @container/@keyframes/@font-face/etc. pass through verbatim
+ * (@container evaluates against ancestor containers, which the foreignObject preserves —
+ * it must be matched by TYPE, since it shares conditionText with @supports).
  * @param {CSSRuleList} rules
  * @returns {string}
  */
@@ -108,8 +110,15 @@ export function resolveMediaQueries(rules) {
       let matches = false
       try { matches = window.matchMedia(rule.conditionText || rule.media.mediaText).matches } catch { }
       if (matches) out += resolveMediaQueries(rule.cssRules)
-    } else if (rule.conditionText !== undefined && rule.cssRules) { // CSSSupportsRule
+    } else if (rule instanceof CSSSupportsRule) {
       out += `@supports ${rule.conditionText}{${resolveMediaQueries(rule.cssRules)}}`
+    } else if (rule.cssRules && rule.cssRules.length && /@media/i.test(rule.cssText)) {
+      // Any other rule that can NEST (a CSS-nesting style rule, @scope, @container): passing
+      // its cssText through verbatim would carry an inner @media into the SVG, where the
+      // condition re-evaluates against the image box instead of the page. Rebuild it so the
+      // inner rules go through this same resolution.
+      const head = rule.cssText.slice(0, rule.cssText.indexOf('{') + 1)
+      out += head + (rule.style ? rule.style.cssText : '') + resolveMediaQueries(rule.cssRules) + '}'
     } else {
       out += rule.cssText + '\n'
     }
@@ -426,6 +435,20 @@ export function pinIframeViewport(doc, w, h) {
   style.textContent = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
     `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style)
+
+  // Pinning sets overflow:hidden on html/body, which resets the scroll offset — so a frame
+  // the user had scrolled was captured from the top of its document instead of from what
+  // they were looking at. Put the recorded offset back on whichever box now scrolls; the
+  // nested capture's existing scrolled-root handling takes it from there.
+  if (sx || sy) {
+    try {
+      if (doc.body) { doc.body.scrollLeft = sx; doc.body.scrollTop = sy }
+      if (doc.documentElement) {
+        if (!doc.documentElement.scrollLeft) doc.documentElement.scrollLeft = sx
+        if (!doc.documentElement.scrollTop) doc.documentElement.scrollTop = sy
+      }
+    } catch { }
+  }
 
   return () => {
     try { style.remove() } catch { }
