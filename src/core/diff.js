@@ -73,6 +73,20 @@ function stylesLeakAcrossSubtrees(doc, universe) {
   return leaky
 }
 
+/** A frozen length is not the raw computed one: getStyleKey rounds widths UP to the next
+ *  1/16px so a shrink-to-fit box can't re-wrap. Comparing it against a raw getComputedStyle
+ *  value therefore reports drift on every fractional box — 279 of 282 nodes on a plain
+ *  3-column flex grid — and the reconcile then re-runs inlineAllStyles over the whole tree
+ *  on every differential frame. Real layout drift is orders of magnitude bigger than the
+ *  rounding, so compare with the rounding step as tolerance. */
+const FROZEN_LENGTH_EPS = 1 / 16
+function sameFrozenLength(live, frozen) {
+  if (live === frozen) return true
+  if (!live.endsWith('px') || !frozen.endsWith('px')) return false
+  const a = parseFloat(live), b = parseFloat(frozen)
+  return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= FROZEN_LENGTH_EPS
+}
+
 /** Parsed box geometry from a style key, memoized per key string (keys are deduped). */
 const keyGeomCache = new Map()
 const GEOM_PROPS = ['width', 'height', 'min-width', 'min-height']
@@ -122,7 +136,7 @@ function pruneSubtreeFromMaps(oldRoot, R) {
  * @returns {Promise<string|null>}
  */
 /** Test/diagnostic counters — how often the fast path was attempted and actually served. */
-export const __diffStats = { attempts: 0, served: 0 }
+export const __diffStats = { attempts: 0, served: 0, reconciled: 0 }
 
 export async function tryDiffCapture(element, state, context) {
   __diffStats.attempts++
@@ -221,9 +235,9 @@ async function diffCapture(element, state, context) {
     let drifted = false
     for (const p in frozen) {
       cs ||= getComputedStyle(srcN)
-      if (cs.getPropertyValue(p) !== frozen[p]) { drifted = true; break }
+      if (!sameFrozenLength(cs.getPropertyValue(p), frozen[p])) { drifted = true; break }
     }
-    if (drifted) await inlineAllStyles(srcN, cloneN, sessionLike, context)
+    if (drifted) { __diffStats.reconciled++; await inlineAllStyles(srcN, cloneN, sessionLike, context) }
   }
 
   // Class numbering is positional over the sorted key set, so new keys renumber: strip the
