@@ -593,11 +593,18 @@ async function cloneCanvas(node, sessionCache, options) {
   try {
     const ctx = node.getContext('2d', { willReadFrequently: true })
     try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
-    // WebKit needs a frame for the poke to materialize the buffer; on other engines
-    // toDataURL is synchronous with issued commands, so an unconditional rAF cost a
-    // serialized frame (≥16ms) per canvas — dashboards with N charts paid N frames.
-    // The blank-result retry below still covers any engine that returns an empty frame.
-    if (isSafari()) await new Promise(r => requestAnimationFrame(r))
+    // A canvas that already holds a WebGL/WebGPU context returns null above, and those are
+    // exactly the ones that need a frame: with preserveDrawingBuffer:false the drawing
+    // buffer is cleared as soon as the frame composites, so toDataURL called from a plain
+    // task (a click handler, say) reads back fully transparent. Awaiting rAF resumes inside
+    // the frame, right after the app's own render callback, while the buffer is still
+    // intact — the blank-result retry below can't cover this because a transparent canvas
+    // still serializes to a perfectly valid PNG, not to 'data:,' (#480).
+    //
+    // WebKit needs the same frame for the 2D poke to materialize the buffer; on other
+    // engines toDataURL is synchronous with issued commands, so an unconditional rAF cost a
+    // serialized frame (≥16ms) per canvas — dashboards with N 2D charts paid N frames.
+    if (isSafari() || !ctx) await new Promise(r => requestAnimationFrame(r))
 
     url = node.toDataURL('image/png')
 
