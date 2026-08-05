@@ -594,11 +594,29 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       const family = pickPrimaryFamily(famRaw)
       if (!family || isIconFont(family)) continue
 
-      const weightSpec  = (rule.style.getPropertyValue('font-weight')   || '400').trim()
-      const styleSpec   = (rule.style.getPropertyValue('font-style')    || 'normal').trim()
-      const stretchSpec = (rule.style.getPropertyValue('font-stretch')  || '100%').trim()
-      const srcRaw      = (rule.style.getPropertyValue('src')           || '').trim()
-      const urange      = (rule.style.getPropertyValue('unicode-range') || '').trim()
+      // An ABSENT descriptor is not the same as an explicit default on a variable font: with
+      // no font-weight the browser leaves the wght axis free across the font's whole range,
+      // while `font-weight:400` pins it to 400 (same for wdth/slnt via font-stretch and
+      // font-style). This block re-emits the rule, so substituting the default here flattened
+      // every axis in the capture while the live page varied it (#479). Keep the defaults for
+      // *matching*, but emit only the descriptors the source actually declared.
+      const weightRaw    = (rule.style.getPropertyValue('font-weight')             || '').trim()
+      const styleRaw     = (rule.style.getPropertyValue('font-style')              || '').trim()
+      const stretchRaw   = (rule.style.getPropertyValue('font-stretch')            || '').trim()
+      const variationRaw = (rule.style.getPropertyValue('font-variation-settings') || '').trim()
+      const srcRaw       = (rule.style.getPropertyValue('src')                     || '').trim()
+      const urange       = (rule.style.getPropertyValue('unicode-range')           || '').trim()
+
+      const weightSpec  = weightRaw || '400'
+      const styleSpec   = styleRaw || 'normal'
+      const stretchSpec = stretchRaw || '100%'
+
+      const descriptors =
+        (styleRaw ? `font-style:${styleRaw};` : '') +
+        (weightRaw ? `font-weight:${weightRaw};` : '') +
+        (stretchRaw ? `font-stretch:${stretchRaw};` : '') +
+        (variationRaw ? `font-variation-settings:${variationRaw};` : '') +
+        (urange ? `unicode-range:${urange};` : '')
 
       const strict = ctx.faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
       if (!strict && !ctx.requiredIndex.has(family.toLowerCase())) continue
@@ -618,7 +636,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       if (!strict) {
         ctx.provisionalFaces.push({
           family: family.toLowerCase(),
-          block: `@font-face{font-family:${family};src:${srcRaw};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange ? `unicode-range:${urange};` : ''}}`,
+          block: `@font-face{font-family:${family};src:${srcRaw};${descriptors}}`,
           srcRaw,
           baseHref: baseHref || location.href,
         })
@@ -628,9 +646,9 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
 
       if (/url\(/i.test(srcRaw)) {
         const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy)
-        await emitFace(`@font-face{font-family:${family};src:${inlinedSrc};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange ? `unicode-range:${urange};` : ''}}`)
+        await emitFace(`@font-face{font-family:${family};src:${inlinedSrc};${descriptors}}`)
       } else {
-        await emitFace(`@font-face{font-family:${family};src:${srcRaw};font-style:${styleSpec};font-weight:${weightSpec};font-stretch:${stretchSpec};${urange ? `unicode-range:${urange};` : ''}}`)
+        await emitFace(`@font-face{font-family:${family};src:${srcRaw};${descriptors}}`)
       }
     }
   }
