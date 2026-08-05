@@ -109,6 +109,71 @@ describe('deepClone', () => {
   })
 })
 
+describe('deepClone — slotted light DOM is cloned exactly once', () => {
+  function occurrences(clone, word) {
+    return (clone.textContent.match(new RegExp(word, 'g')) || []).length
+  }
+
+  async function cloneWrap(build) {
+    const wrap = document.createElement('div')
+    document.body.appendChild(wrap)
+    try {
+      build(wrap)
+      return await runClone(wrap)
+    } finally {
+      wrap.remove()
+    }
+  }
+
+  it('does not duplicate a named slot assignment', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"><span slot="s">SLOTTEDWORD</span></div>'
+      wrap.querySelector('#host').attachShadow({ mode: 'open' }).innerHTML =
+        '<div>shadow: <slot name="s"></slot></div>'
+    })
+    expect(occurrences(clone, 'SLOTTEDWORD')).toBe(1)
+  })
+
+  it('does not duplicate a default slot assignment', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"><span>DEFAULTWORD</span></div>'
+      wrap.querySelector('#host').attachShadow({ mode: 'open' }).innerHTML =
+        '<div>shadow: <slot></slot></div>'
+    })
+    expect(occurrences(clone, 'DEFAULTWORD')).toBe(1)
+  })
+
+  it('keeps slot fallback content when nothing is assigned', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"></div>'
+      wrap.querySelector('#host').attachShadow({ mode: 'open' }).innerHTML =
+        '<div><slot>FALLBACKWORD</slot></div>'
+    })
+    expect(occurrences(clone, 'FALLBACKWORD')).toBe(1)
+  })
+
+  it('does not duplicate when a slot is itself assigned to another slot', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="outer"><span>NESTEDWORD</span></div>'
+      const outerRoot = wrap.querySelector('#outer').attachShadow({ mode: 'open' })
+      outerRoot.innerHTML = '<div id="inner"><slot></slot></div>'
+      outerRoot.querySelector('#inner').attachShadow({ mode: 'open' }).innerHTML =
+        '<div>inner: <slot></slot></div>'
+    })
+    expect(occurrences(clone, 'NESTEDWORD')).toBe(1)
+  })
+
+  it('does not duplicate either of two slotted nodes', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"><span>FIRSTWORD</span><span>SECONDWORD</span></div>'
+      wrap.querySelector('#host').attachShadow({ mode: 'open' }).innerHTML =
+        '<div><slot></slot></div>'
+    })
+    expect(occurrences(clone, 'FIRSTWORD')).toBe(1)
+    expect(occurrences(clone, 'SECONDWORD')).toBe(1)
+  })
+})
+
 describe('deepClone — <picture> sources', () => {
   const PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 

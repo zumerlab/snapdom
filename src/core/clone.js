@@ -457,12 +457,10 @@ export async function deepClone(node, sessionCache, options) {
     try {
       const slots = node.shadowRoot.querySelectorAll('slot')
       for (const s of slots) {
-        let assigned = []
-        try {
-          assigned = s.assignedNodes?.({ flatten: true }) || s.assignedNodes?.() || []
-        } catch {
-          assigned = s.assignedNodes?.() || []
-        }
+        // Must NOT flatten: this set is checked against the host's *direct* childNodes.
+        // flatten:true resolves nested slots away, so when a light-DOM child is itself a
+        // <slot> (a component inside a component) it never lands here and gets cloned twice.
+        const assigned = s.assignedNodes?.() || []
         for (const an of assigned) clonedAssignedNodes.add(an)
       }
     } catch {
@@ -479,7 +477,9 @@ export async function deepClone(node, sessionCache, options) {
     const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)
     injectScopedStyle(clone, seed + rewritten, scopeId)
     const shadowFrag = document.createDocumentFragment()
-    function callback(child, resolve) {
+    // const, not a declaration: esbuild lowers block-level function declarations to a
+    // hoisted `var` of the same name, which would clobber the walker below.
+    const cloneShadowChild = (child, resolve) => {
       if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE') {
         return resolve(null)
       } else {
@@ -491,7 +491,7 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
 
-    const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), callback, options.fast)
+    const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), cloneShadowChild, options.fast)
     shadowFrag.append(...cloneList.filter(clonedChild => !!clonedChild))
     clone.appendChild(shadowFrag)
   }
@@ -500,7 +500,7 @@ export async function deepClone(node, sessionCache, options) {
     const nodesToClone = assigned.length > 0 ? assigned : Array.from(node.childNodes)
     const fragment = document.createDocumentFragment()
 
-    function callback(child, resolve) {
+    const cloneSlottedChild = (child, resolve) => {
       deepClone(child, sessionCache, options).then((clonedChild) => {
         if (clonedChild) {
           markSlottedSubtree(clonedChild)
@@ -510,12 +510,12 @@ export async function deepClone(node, sessionCache, options) {
         resolve(null)
       })
     }
-    const cloneList = await idleCallback(Array.from(nodesToClone), callback, options.fast)
+    const cloneList = await idleCallback(Array.from(nodesToClone), cloneSlottedChild, options.fast)
     fragment.append(...cloneList.filter(clonedChild => !!clonedChild))
     return fragment
   }
 
-  function callback(child, resolve) {
+  function cloneLightChild(child, resolve) {
     if (clonedAssignedNodes.has(child)) return resolve(null)
     deepClone(child, sessionCache, options).then((clonedChild) => {
       resolve(clonedChild || null)
@@ -523,7 +523,7 @@ export async function deepClone(node, sessionCache, options) {
       resolve(null)
     })
   }
-  const cloneList = await idleCallback(Array.from(node.childNodes), callback, options.fast)
+  const cloneList = await idleCallback(Array.from(node.childNodes), cloneLightChild, options.fast)
   clone.append(...cloneList.filter(clonedChild => !!clonedChild))
 
   // Adjust select value after children are cloned
