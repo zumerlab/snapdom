@@ -227,9 +227,11 @@ export async function captureDOM(element, options) {
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential
   // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty
   // subtrees). Internal-only; absent for plain captures.
-  if (typeof options.__retain === 'function') {
+  const retain = typeof options.__retain === 'function' ? options.__retain
+    : (typeof options.retain === 'function' ? options.retain : null)
+  if (retain) {
     try {
-      options.__retain({
+      retain({
         clone, nodeMap, styleCache, styleMap: options.__session.styleMap,
         classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D
       })
