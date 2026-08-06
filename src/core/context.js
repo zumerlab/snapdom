@@ -151,16 +151,6 @@ export function createContext(options = {}) {
     // Accepted for v2 compat, undocumented in v3 (the engine just does the right thing).
     resolvePicturePlaceholders: options.resolvePicturePlaceholders !== false,
 
-    // Capture artifacts hand-off. `createContext` is an allowlist, so a callback
-    // passed by the caller never reached captureDOM's `__retain` block — burst only
-    // works because it assigns onto the already-built context. Consumers that need
-    // the resolved clone (a vector exporter walking it instead of the live DOM, for
-    // one) have no other way in: the clone is where pseudo-elements are materialised,
-    // shadow DOM is flattened and icon fonts are resolved.
-    // Called with { clone, nodeMap, styleCache, styleMap, classPrefixCSS, fontsCSS, ... }
-    // AFTER the capture resolves. Best-effort: a throw inside it is swallowed.
-    retain: typeof options.retain === 'function' ? options.retain : null,
-
     // Plugins (reservado)
     // plugins: normalizePlugins(...),
   }
