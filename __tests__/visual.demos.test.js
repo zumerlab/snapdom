@@ -61,6 +61,18 @@ if (Object.keys(demos).length === 0) {
       snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, compress: true },
       setup: async (win) => { try { await win.__ready } catch { /* best-effort */ } },
     },
+    // 19 canvas-generated PNG data URLs (one 2600x1100 + 18 at 1400x1000) assigned at load.
+    // Decoding them takes longer than `defaultWait` on a loaded machine — WebKit dropped a
+    // single collage tile that way. The demo's own capture button awaits decode() before
+    // capturing; the suite bypasses that button, so wait for the same thing here.
+    'd-compress': {
+      setup: async (win) => {
+        try {
+          const imgs = [...win.document.querySelectorAll('#target img')]
+          await Promise.allSettled(imgs.map((im) => im.decode?.()))
+        } catch { /* best-effort */ }
+      },
+    },
     // Real KaTeX from CDN (issue #454 repro) — needs time to load and lay out fonts.
     'd454-katex-hide-tail': {
       wait: 2500,
