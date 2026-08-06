@@ -119,7 +119,7 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p>SnapDOM is a browser-only library — it must run on the client. Mark your component with <code>'use client'</code> (app router) or import SnapDOM dynamically with <code>ssr: false</code>. Then it's a regular React capture: <code>useRef</code> + <code>snapdom.toPng(ref.current)</code>.</p>
+      <p>SnapDOM is a browser-only library: it must run on the client. Mark your component with <code>'use client'</code> (app router) or import SnapDOM dynamically with <code>ssr: false</code>. Then it's a regular React capture: <code>useRef</code> + <code>snapdom.toPng(ref.current)</code>.</p>
     </div>
 
     <section class="prose">
@@ -129,7 +129,7 @@
     </section>
 
     <section class="prose">
-      <h2 id="client">2. App Router — client component</h2>
+      <h2 id="client">2. App Router: client component</h2>
       <p>Create a client component that owns the ref and the capture logic. The <code>'use client'</code> directive on top is critical: without it Next.js will try to evaluate SnapDOM during the server render and crash.</p>
       <pre class="code-block"><span class="cm">// app/capture/CaptureCard.tsx</span>
 <span class="str">'use client'</span>;
@@ -160,7 +160,7 @@
 
     <section class="prose">
       <h2 id="live-demo">Try it live</h2>
-      <p>This is what <code>CaptureCard</code> does after hydration, running on this page. The button fires <code>snapdom.toPng(cardRef.current)</code> and the captured PNG appears below — all client-side, exactly like it will in your Next.js app.</p>
+      <p>This is what <code>CaptureCard</code> does after hydration, running on this page. The button fires <code>snapdom.toPng(cardRef.current)</code> and the captured PNG appears below, all client-side, exactly like it will in your Next.js app.</p>
       <div class="demo-box">
         <div class="demo-stage">
           <div class="card" id="demo-card" style="max-width:320px;">
@@ -178,7 +178,7 @@
 
     <section class="prose">
       <h2 id="use">3. Use it from a server page</h2>
-      <p>Server components can render the client component as a child. The boundary is the <code>'use client'</code> directive — anything below it runs in the browser:</p>
+      <p>Server components can render the client component as a child. The boundary is the <code>'use client'</code> directive: anything below it runs in the browser:</p>
       <pre class="code-block"><span class="cm">// app/capture/page.tsx</span>
 <span class="kw">import</span> CaptureCard <span class="kw">from</span> <span class="str">'./CaptureCard'</span>;
 
@@ -193,8 +193,8 @@
     </section>
 
     <section class="prose">
-      <h2 id="dynamic">4. Alternative — dynamic import (lazy load)</h2>
-      <p>If you want to keep SnapDOM out of the initial bundle, import the client component dynamically with SSR disabled. One catch: since Next.js 14, <code>ssr: false</code> is not allowed inside a server component — the file doing the <code>dynamic()</code> call must itself be a client component:</p>
+      <h2 id="dynamic">4. Alternative: dynamic import (lazy load)</h2>
+      <p>If you want to keep SnapDOM out of the initial bundle, import the client component dynamically with SSR disabled. One catch: since Next.js 14, <code>ssr: false</code> is not allowed inside a server component. The file doing the <code>dynamic()</code> call must itself be a client component:</p>
       <pre class="code-block"><span class="cm">// app/capture/CaptureLazy.tsx</span>
 <span class="str">'use client'</span>;
 
@@ -204,11 +204,11 @@
   ssr: <span class="kw">false</span>,
   loading: () =&gt; &lt;<span class="fn">p</span>&gt;Loading capture tool…&lt;/<span class="fn">p</span>&gt;,
 });</pre>
-      <p class="muted">Your server page then imports <code>CaptureCard</code> from this wrapper. In the pages router (<code>pages/capture.tsx</code>) there's no <code>'use client'</code> directive and no restriction — <code>ssr: false</code> works directly in the page file.</p>
+      <p class="muted">Your server page then imports <code>CaptureCard</code> from this wrapper. In the pages router (<code>pages/capture.tsx</code>) there's no <code>'use client'</code> directive and no restriction: <code>ssr: false</code> works directly in the page file.</p>
     </section>
 
     <section class="prose">
-      <h2 id="og">5. Bonus — dynamic OG / share images</h2>
+      <h2 id="og">5. Bonus: dynamic OG / share images</h2>
       <p>SnapDOM is great for generating share cards on the fly when the user clicks "share". Capture the rendered card to a Blob, upload it to your CDN, and use that URL as the <code>og:image</code> for the share link:</p>
       <pre class="code-block"><span class="kw">async function</span> <span class="fn">share</span>() {
   <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
@@ -219,7 +219,7 @@
 
   <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/upload'</span>, { method: <span class="str">'POST'</span>, body: form });
 }</pre>
-      <p class="muted">For server-rendered OG images that don't need a real browser, Vercel's <code>@vercel/og</code> is a different tool — see the FAQ below.</p>
+      <p class="muted">For server-rendered OG images that don't need a real browser, Vercel's <code>@vercel/og</code> is a different tool. See the FAQ below.</p>
     </section>
 
     <section class="prose faq">

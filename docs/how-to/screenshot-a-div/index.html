@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How to Screenshot a Div in JavaScript — SnapDOM</title>
+  <title>How to Screenshot a Div in JavaScript: SnapDOM</title>
   <meta name="description" content="Take a screenshot of any HTML element with one line of JavaScript using SnapDOM. Working example, download recipe and FAQs." />
   <meta name="keywords" content="screenshot a div, javascript screenshot, html to image, capture html element, screenshot html javascript" />
   <meta name="robots" content="index, follow" />
@@ -121,11 +121,11 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p><code>const img = await snapdom.toPng(document.querySelector('#my-div'));</code> — that's the entire recipe. The promise resolves to an <code>HTMLImageElement</code> you can append, download or upload.</p>
+      <p><code>const img = await snapdom.toPng(document.querySelector('#my-div'));</code>. That's the entire recipe. The promise resolves to an <code>HTMLImageElement</code> you can append, download or upload.</p>
     </div>
 
     <section class="prose">
-      <h2 id="install">Step 1 — Install SnapDOM</h2>
+      <h2 id="install">Step 1: Install SnapDOM</h2>
       <pre class="code-block">npm install @zumer/snapdom</pre>
       <p>If you don't use a bundler, you can also use the CDN build:</p>
       <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> type=<span class="str">"module"</span><span class="op">&gt;</span>
@@ -134,14 +134,14 @@
     </section>
 
     <section class="prose">
-      <h2 id="pick">Step 2 — Pick the div you want to screenshot</h2>
+      <h2 id="pick">Step 2: Pick the div you want to screenshot</h2>
       <p>Anything that's part of the live document tree works. Most people use <code>document.querySelector</code>:</p>
       <pre class="code-block"><span class="kw">const</span> el = document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>);</pre>
       <p class="muted">The element doesn't need to be visible inside the viewport, but it does need to be attached to the document (not <code>display: none</code>).</p>
     </section>
 
     <section class="prose">
-      <h2 id="capture">Step 3 — Capture it</h2>
+      <h2 id="capture">Step 3: Capture it</h2>
       <p>One line:</p>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
@@ -150,7 +150,7 @@
     </section>
 
     <section class="prose">
-      <h2 id="use">Step 4 — Do something with the image</h2>
+      <h2 id="use">Step 4: Do something with the image</h2>
 
       <h4>Append it to the page</h4>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el);
@@ -194,7 +194,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
     <section class="prose">
       <h2 id="live-demo">Or try it right here</h2>
-      <p>The example above, running on this page — same div, same <code>snapdom.toPng</code> call:</p>
+      <p>The example above, running on this page: same div, same <code>snapdom.toPng</code> call:</p>
       <div class="demo-box">
         <div class="demo-stage">
           <div id="demo-card" style="padding:24px;background:#6366f1;color:#fff;border-radius:12px;max-width:320px;">
@@ -213,12 +213,12 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
     <section class="prose">
       <h2 id="options">Useful options</h2>
       <ul>
-        <li><code>dpr: 2</code> — pixel density (auto-detects <code>window.devicePixelRatio</code> for retina; override here when you need a fixed value).</li>
-        <li><code>scale: 2</code> — multiply the captured size (zoom). Different from <code>dpr</code>: <code>scale</code> makes the output bigger, <code>dpr</code> makes it sharper at the same logical size.</li>
-        <li><code>backgroundColor: '#fff'</code> — fill transparent areas with a colour.</li>
-        <li><code>embedFonts: true</code> — inline <code>@font-face</code> declarations so custom fonts render correctly.</li>
-        <li><code>exclude: ['.skip']</code> — skip any element matching the selector.</li>
-        <li><code>useProxy: 'https://your-proxy.example.com/'</code> — fetch cross-origin images through a CORS proxy.</li>
+        <li><code>dpr: 2</code> sets pixel density (auto-detects <code>window.devicePixelRatio</code> for retina; override here when you need a fixed value).</li>
+        <li><code>scale: 2</code> multiplies the captured size (zoom). Different from <code>dpr</code>: <code>scale</code> makes the output bigger, <code>dpr</code> makes it sharper at the same logical size.</li>
+        <li><code>backgroundColor: '#fff'</code> fills transparent areas with a colour.</li>
+        <li><code>embedFonts: true</code> inlines <code>@font-face</code> declarations so custom fonts render correctly.</li>
+        <li><code>exclude: ['.skip']</code> skips any element matching the selector.</li>
+        <li><code>useProxy: 'https://your-proxy.example.com/'</code> fetches cross-origin images through a CORS proxy.</li>
       </ul>
     </section>
 
@@ -227,7 +227,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Why not use the browser's built-in screenshot API?</summary>
-        <p>There isn't one. The closest thing is the Screen Capture API (<code>getDisplayMedia</code>) which captures the whole tab or screen and requires user permission — it cannot target a specific DOM element. SnapDOM is the workaround.</p>
+        <p>There isn't one. The closest thing is the Screen Capture API (<code>getDisplayMedia</code>) which captures the whole tab or screen and requires user permission, so it cannot target a specific DOM element. SnapDOM is the workaround.</p>
       </details>
 
       <details>
@@ -237,7 +237,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Can I screenshot something inside an iframe?</summary>
-        <p>Same-origin iframes are supported out of the box. Cross-origin iframes are not — the browser blocks access to their content.</p>
+        <p>Same-origin iframes are supported out of the box. Cross-origin iframes are not: the browser blocks access to their content.</p>
       </details>
 
       <details>

@@ -122,7 +122,6 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 | `reconcile` | `false` | 对照真实 DOM 测量克隆结果，把尺寸有偏差的盒模型钉定为真实大小（捕获耗时大约翻倍） |
 | `burst` | `false` | 通过限定范围的 `MutationObserver` 对未变化元素的重复捕获做记忆化，完全跳过处理流程 |
 | `invalidate` | `false` | 配合 `burst: true` 使用，为自动追踪无法感知的变化强制触发一次全新捕获 |
-| `safariWarmupAttempts` | `3` | Safari 预热次数（1–3） |
 | `excludeStyleProps` | `null` | 用于跳过样式属性的正则表达式或判断函数 |
 | `resolvePicturePlaceholders` | `true` | 内置 `<picture>` / 懒加载解析器 |
 | `pictureResolver` | `{}` | `{ timeout, concurrency, resolveLazySrc, silent }` |
@@ -152,7 +151,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 
 ## 跨浏览器处理
 
-- **Safari 预热** — 针对 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) 提供规避方案：第一次把带嵌入字体的 SVG 绘制到 canvas 上时，内容可能为空。嵌入字体，或元素包含背景、蒙版、canvas 内容时，SnapDOM 会先执行少量预捕获并调用 `drawImage` 来预热渲染流程。预热次数可通过 `safariWarmupAttempts` 配置。
+- **Safari 首次绘制** — 针对 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) 提供规避方案：第一次把带嵌入字体的 SVG 绘制到 canvas 上时，内容可能为空。SnapDOM 会等待该元素实际使用的字体就绪，再校验该次绘制是否成功，未成功则重试。无需额外配置。
 - **Safari canvas** — 将 `box-shadow` 转换为 SVG `drop-shadow`，并在绘制前等待图片合成完成。
 - **Firefox** — 原生复选框和单选按钮无法在 SVG `<foreignObject>` 中可靠渲染时，改用等效的内联 SVG 图形。
 - **iOS** — `download()` 无法直接下载时，改用 Web Share API。

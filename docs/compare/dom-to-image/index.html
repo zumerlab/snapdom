@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM vs dom-to-image — A Maintained Alternative</title>
+  <title>SnapDOM vs dom-to-image: A Maintained Alternative</title>
   <meta name="description" content="SnapDOM vs dom-to-image: feature matrix, fidelity, fonts, plugins, and a 1:1 migration snippet from dom-to-image to SnapDOM." />
   <meta name="keywords" content="snapdom vs dom-to-image, dom-to-image alternative, dom-to-image fonts, dom to image library" />
   <meta name="robots" content="index, follow" />
@@ -126,9 +126,9 @@
     </div>
 
     <section class="bench-section" id="benchmark">
-      <div class="section-label">Live benchmark — runs in your browser</div>
+      <div class="section-label">Live benchmark: runs in your browser</div>
       <h2>SnapDOM vs dom-to-image, head to head</h2>
-      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine — the gap is hardware- and content-dependent.</p>
+      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine. The gap is hardware- and content-dependent.</p>
       <div class="bench-target-row">
         <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
       </div>
@@ -242,8 +242,8 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
           <tr><td class="num">{ bgcolor: '#fff' }</td><td class="num">{ backgroundColor: '#fff' }</td></tr>
           <tr><td class="num">{ width, height }</td><td class="num">{ width, height }</td></tr>
           <tr><td class="num">{ filter: node =&gt; … }</td><td class="num">{ filter: node =&gt; … }</td></tr>
-          <tr><td class="num">— (not supported)</td><td class="num">{ embedFonts: true }</td></tr>
-          <tr><td class="num">— (not supported)</td><td class="num">{ plugins: [...] }</td></tr>
+          <tr><td class="num">not supported</td><td class="num">{ embedFonts: true }</td></tr>
+          <tr><td class="num">not supported</td><td class="num">{ plugins: [...] }</td></tr>
         </tbody>
       </table>
 
@@ -261,12 +261,12 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>Is dom-to-image still maintained?</summary>
-        <p>The original <code>dom-to-image</code> package on npm has not received a release in years. SnapDOM is a from-scratch, actively maintained implementation of the same <code>foreignObject</code> idea — with web fonts, Shadow DOM, plugins and full pseudo-element support on top, and a 1:1 migration path (see the table above).</p>
+        <p>The original <code>dom-to-image</code> package on npm has not received a release in years. SnapDOM is a from-scratch, actively maintained implementation of the same <code>foreignObject</code> idea, with web fonts, Shadow DOM, plugins and full pseudo-element support on top, and a 1:1 migration path (see the table above).</p>
       </details>
 
       <details>
         <summary>How do I migrate from dom-to-image to SnapDOM?</summary>
-        <p>Replace the import with <code>@zumer/snapdom</code> and call <code>snapdom.toPng(element)</code>. Most options (<code>filter</code>, <code>bgcolor</code>, <code>width</code>, <code>height</code>) have a direct SnapDOM equivalent — see the migration table above.</p>
+        <p>Replace the import with <code>@zumer/snapdom</code> and call <code>snapdom.toPng(element)</code>. Most options (<code>filter</code>, <code>bgcolor</code>, <code>width</code>, <code>height</code>) have a direct SnapDOM equivalent. See the migration table above.</p>
       </details>
 
       <details>

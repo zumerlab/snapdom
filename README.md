@@ -82,7 +82,7 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 - [Installation](#installation)
 - [Build Outputs](#build-outputs)
 - [Usage](#usage)
-- [Documentation](#documentation) — full API, Options, Plugins & Cache reference on [snapdom.dev/docs](https://snapdom.dev/docs/)
+- [Documentation](#documentation): full API, Options, Plugins & Cache reference on [snapdom.dev/docs](https://snapdom.dev/docs/)
 - [Limitations](#limitations)
 - [Performance Benchmarks](#performance-benchmarks)
 - [Development](#development)
@@ -198,7 +198,7 @@ When capturing elements that reference **external stylesheets** (e.g., Google Fo
 ### Why is this needed?
 
 - Browsers block JavaScript (including SnapDOM) from reading the binary data of cross‑origin fonts or images unless the server explicitly allows it via `Access-Control-Allow-Origin`.
-- SnapDOM relies on Canvas, which enforces strict CORS policies — unlike the browser's rendering engine, which is more permissive for on‑screen display.
+- SnapDOM relies on Canvas, which enforces strict CORS policies. The browser's rendering engine is more permissive for on‑screen display.
 
 ### How to fix it
 
@@ -216,12 +216,12 @@ Add the `crossorigin="anonymous"` attribute to the `<link>` tag when loading ext
 
 ## Documentation
 
-The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)** — kept there so it stays in sync and searchable:
+The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)**, kept there so it stays in sync and searchable:
 
-- **[API reference](https://snapdom.dev/docs/api/)** — the `snapdom()` reusable object, shortcut methods, and exporter-specific options.
-- **[Options](https://snapdom.dev/docs/options/)** — every capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`/`filter`, `compress`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.
-- **[Plugins](https://snapdom.dev/docs/plugins/)** — build, register and ship custom plugins and export formats. Browse community plugins on the [plugins page](https://snapdom.dev/plugins.html).
-- **[Cache & preCache](https://snapdom.dev/docs/cache/)** — control caching between captures and preload resources.
+- **[API reference](https://snapdom.dev/docs/api/)**: the `snapdom()` reusable object, shortcut methods, and exporter-specific options.
+- **[Options](https://snapdom.dev/docs/options/)**: every capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`/`filter`, `compress`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.
+- **[Plugins](https://snapdom.dev/docs/plugins/)**: build, register and ship custom plugins and export formats. Browse community plugins on the [plugins page](https://snapdom.dev/plugins.html).
+- **[Cache & preCache](https://snapdom.dev/docs/cache/)**: control caching between captures and preload resources.
 
 ### API at a glance
 
@@ -254,22 +254,22 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 | `embedFonts` | `boolean` | `false` | Inline `@font-face` so text renders with your real fonts |
 | `iconFonts` | `string \| RegExp \| array` | `[]` | Icon font families (always embedded) |
 | `localFonts` | `array` | `[]` | Explicit fonts: `{ family, src, weight?, style? }` |
-| `excludeFonts` | `object` | — | Skip fonts by family / domain / subset |
+| `excludeFonts` | `object` | none | Skip fonts by family / domain / subset |
 | `exclude` | `string[]` | `[]` | CSS selectors to leave out of the capture |
 | `filter` | `(el) => boolean` | `null` | Keep-predicate (return `false` to drop a node) |
 | `excludeMode` / `filterMode` | `'hide' \| 'remove'` | `'hide'` | How excluded nodes are handled |
 | `clip` | `'viewport' \| {x, y, width, height}` | `null` | Capture only a region; offscreen content is pruned |
 | `compress` | `boolean` | `true` | Downsample inlined images to their visible resolution |
 | `useProxy` | `string` | `''` | CORS proxy prefix for cross-origin images |
-| `fallbackURL` | `string \| fn` | — | Fallback image for broken `<img>` |
+| `fallbackURL` | `string \| fn` | none | Fallback image for broken `<img>` |
 | `cache` | `'soft' \| 'auto' \| 'full' \| 'disabled'` | `'soft'` | Cache policy between captures |
 | `outerTransforms` | `boolean` | `true` | Keep root translate/rotate in the output |
 | `outerShadows` | `boolean` | `false` | Expand bounds to include root shadows/blur/outline |
 | `fast` | `boolean` | `true` | Skip idle delays for faster capture |
-| `reconcile` | `boolean` | `false` | Measure the clone against the live DOM and pin any diverging box to its real size. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time — snapdom warns once (`console.warn`) if it detects a capture that could benefit from it |
-| `burst` | `boolean` | `false` | Memoizes repeated captures of this element via a scoped MutationObserver — an unchanged repeat skips the pipeline entirely. Without it, snapdom warns once if the same element is captured 3+ times within 2s |
+| `reconcile` | `boolean` | `false` | Measure the clone against the live DOM and pin any diverging box to its real size. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time. snapdom warns once (`console.warn`) if it detects a capture that could benefit from it |
+| `burst` | `boolean` | `false` | Memoizes repeated captures of this element via a scoped MutationObserver, so an unchanged repeat skips the pipeline entirely. Without it, snapdom warns once if the same element is captured 3+ times within 2s |
 | `invalidate` | `boolean` | `false` | With `burst: true`, forces a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits) |
-| `plugins` | `array` | — | Per-capture plugins (override globals by name) |
+| `plugins` | `array` | none | Per-capture plugins (override globals by name) |
 
 📖 **[Full API & every option, explained with examples → snapdom.dev/docs](https://snapdom.dev/docs/)**
 
@@ -278,7 +278,7 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 * External images should be CORS-accessible (use `useProxy` option for handling CORS denied)
 * When WebP format is used on Safari, it will fallback to PNG rendering.
 * `@font-face` CSS rule is well supported, but if need to use JS `FontFace()`, see this workaround [`#43`](https://github.com/zumerlab/snapdom/issues/43)
-* **Safari**: captures with `embedFonts` or background/mask images run slower due to [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (font decode timing). SnapDOM does pre-captures + `drawImage` to prime the pipeline; configurable via `safariWarmupAttempts` (default 3).
+* **Safari**: captures with `embedFonts` or background/mask images run slower due to [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (font decode timing). SnapDOM waits for the fonts the element actually uses and verifies the first canvas draw, so there is nothing to configure.
 * **Custom scrollbar styles** (`::-webkit-scrollbar`): Applied only when the element has *not* been scrolled. When scrolled, the viewport content is captured without the scrollbar.
 
 
@@ -390,7 +390,7 @@ If you'd like to support this project too, you can [become a sponsor](https://gi
 
 ## Show your support
 
-If SnapDOM saved you time, a ⭐ on GitHub helps other developers find it — that's the whole ask.
+If SnapDOM saved you time, a ⭐ on GitHub helps other developers find it. That's the whole ask.
 
 Shipping something built with SnapDOM? Add the badge to your README:
 
@@ -404,20 +404,20 @@ Shipping something built with SnapDOM? Add the badge to your README:
 
 SnapDOM runs in production across 250+ public repositories ([GitHub dependents graph](https://github.com/zumerlab/snapdom/network/dependents)). A few notable ones, each verified from its own `package.json`:
 
-- [LobeHub](https://github.com/lobehub/lobehub) — platform for operating AI agents
-- [Trilium Notes](https://github.com/TriliumNext/Trilium) — hierarchical personal knowledge base
-- [Sealos](https://github.com/labring/sealos) — AI-native cloud operating system
-- [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — low-code page editor
-- [Playroom](https://github.com/seek-oss/playroom) — JSX design tool by SEEK
-- [GPT-Vis](https://github.com/antvis/GPT-Vis) — AI-friendly data viz by Ant Group's AntV
-- [Rabby Wallet](https://github.com/RabbyHub/Rabby) — browser wallet for EVM chains
-- [uMap](https://github.com/umap-project/umap) — OpenStreetMap map builder
-- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — music tracker by MetaBrainz
-- [Mind Elixir](https://github.com/SSShooter/mind-elixir-core) — mind-map core; recommends SnapDOM for image export
-- [Kong UI Components](https://github.com/Kong/public-ui-components) — Kong's dashboard renderer exports PDFs with SnapDOM
-- [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing *(by Zumerlab)*
+- [LobeHub](https://github.com/lobehub/lobehub): platform for operating AI agents
+- [Trilium Notes](https://github.com/TriliumNext/Trilium): hierarchical personal knowledge base
+- [Sealos](https://github.com/labring/sealos): AI-native cloud operating system
+- [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor): low-code page editor
+- [Playroom](https://github.com/seek-oss/playroom): JSX design tool by SEEK
+- [GPT-Vis](https://github.com/antvis/GPT-Vis): AI-friendly data viz by Ant Group's AntV
+- [Rabby Wallet](https://github.com/RabbyHub/Rabby): browser wallet for EVM chains
+- [uMap](https://github.com/umap-project/umap): OpenStreetMap map builder
+- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server): music tracker by MetaBrainz
+- [Mind Elixir](https://github.com/SSShooter/mind-elixir-core): mind-map core; recommends SnapDOM for image export
+- [Kong UI Components](https://github.com/Kong/public-ui-components): Kong's dashboard renderer exports PDFs with SnapDOM
+- [SnapDIFF](https://zumerlab.com/snapdiff/): in-browser visual regression testing *(by Zumerlab)*
 
-See the full gallery at **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**. Shipping SnapDOM? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project — real, verifiable projects only.
+See the full gallery at **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**. Shipping SnapDOM? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project. Real, verifiable projects only.
 
 ## License
 

@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Seamless DOM → WebGL — The Text You See Isn't Text — SnapDOM Labs</title>
+  <title>Seamless DOM → WebGL: The Text You See Isn't Text · SnapDOM Labs</title>
   <meta name="description" content="A text field where every glyph is a WebGL texture. A transparent contenteditable proxy owns the caret; a hidden DOM element is what SnapDOM actually captures, cross-faded into view by a double-buffered plugin." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/webgl-seamless-dom/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="Seamless DOM → WebGL — The Text You See Isn't Text" />
-  <meta property="og:description" content="A transparent contenteditable proxy owns the caret. A hidden DOM element is what SnapDOM actually captures — cross-faded into a WebGL canvas by a double-buffered plugin." />
+  <meta property="og:title" content="Seamless DOM → WebGL · The Text You See Isn't Text" />
+  <meta property="og:description" content="A transparent contenteditable proxy owns the caret. A hidden DOM element is what SnapDOM actually captures · cross-faded into a WebGL canvas by a double-buffered plugin." />
   <meta property="og:url" content="https://snapdom.dev/labs/webgl-seamless-dom/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -70,14 +70,14 @@
     <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
   </nav>
 
-  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>The text you see <span class="accent">isn't text</span></h1><p class="lead">Click into the box below and type. Every glyph you "see" is a WebGL texture rendered from the last SnapDOM capture — the real, editable DOM is invisible on purpose, and updates cross-fade in so nothing ever pops.</p></section>
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>The text you see <span class="accent">isn't text</span></h1><p class="lead">Click into the box below and type. Every glyph you "see" is a WebGL texture rendered from the last SnapDOM capture: the real, editable DOM is invisible on purpose, and updates cross-fade in so nothing ever pops.</p></section>
   <main class="page">
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two DOM elements do the work: a transparent <code>contenteditable</code> proxy that exists only to give the browser a real caret and real keystroke handling, and a hidden source element that mirrors the typed text and is what SnapDOM actually captures. A <code>defineExports</code> plugin feeds each capture into a WebGL renderer that double-buffers two textures and cross-fades between them, so updates never visibly pop — you always see the previous frame smoothly blend into the new one.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two DOM elements do the work: a transparent <code>contenteditable</code> proxy that exists only to give the browser a real caret and real keystroke handling, and a hidden source element that mirrors the typed text and is what SnapDOM actually captures. A <code>defineExports</code> plugin feeds each capture into a WebGL renderer that double-buffers two textures and cross-fades between them, so updates never visibly pop: you always see the previous frame smoothly blend into the new one.</p></div>
 
     <section class="prose">
       <h2>What you're looking at</h2>
-      <p>Clicking into the box and typing feels like a normal text field — you get a blinking caret, text selection, the works. None of that text is being rendered by the browser's text engine, though. Every glyph on screen is a pixel in a WebGL texture, produced by capturing a completely different, hidden DOM element with SnapDOM and mixing the result into the canvas underneath your cursor. Pick a shader from the dropdown to see the same texture pipeline reused for very different visual effects — the capture and the compositing don't change, only what the fragment shader does with the finished frame.</p>
+      <p>Clicking into the box and typing feels like a normal text field: you get a blinking caret, text selection, the works. None of that text is being rendered by the browser's text engine, though. Every glyph on screen is a pixel in a WebGL texture, produced by capturing a completely different, hidden DOM element with SnapDOM and mixing the result into the canvas underneath your cursor. Pick a shader from the dropdown to see the same texture pipeline reused for very different visual effects: the capture and the compositing don't change, only what the fragment shader does with the finished frame.</p>
     </section>
 
     <section class="prose">
@@ -115,24 +115,24 @@
     <section class="prose">
       <h2>How it works</h2>
       <ol class="steps">
-        <li><h4>A transparent proxy owns the caret</h4><p>The <code>.input-layer</code> sits visually on top of the WebGL canvas with fully transparent text and background. It exists only to give the browser something to place a real caret on and to receive real keyboard and paste events — it never renders anything visible itself.</p></li>
-        <li><h4>Every edit is mirrored to a hidden element</h4><p>On every <code>input</code> event — plus paste, plus Enter (a <code>beforeinput</code> override inserts a literal newline instead of letting <code>contenteditable</code> create a new <code>&lt;div&gt;</code>) — the proxy's text is copied into the hidden <code>#dom-source</code> element and <code>refresh()</code> runs.</p></li>
+        <li><h4>A transparent proxy owns the caret</h4><p>The <code>.input-layer</code> sits visually on top of the WebGL canvas with fully transparent text and background. It exists only to give the browser something to place a real caret on and to receive real keyboard and paste events; it never renders anything visible itself.</p></li>
+        <li><h4>Every edit is mirrored to a hidden element</h4><p>On every <code>input</code> event, plus paste, plus Enter (a <code>beforeinput</code> override inserts a literal newline instead of letting <code>contenteditable</code> create a new <code>&lt;div&gt;</code>), the proxy's text is copied into the hidden <code>#dom-source</code> element and <code>refresh()</code> runs.</p></li>
         <li><h4><code>refresh()</code> coalesces bursts</h4><p>Same <code>dirty</code>/<code>working</code> loop as the live-mirror demo: if a capture is already in flight when new input arrives, it's flagged dirty and picked up by the loop that's already running, instead of stacking up parallel captures. It captures <code>#dom-source</code> with the <code>seamlessWebgl</code> plugin attached.</p></li>
         <li><h4>The plugin exports into the renderer</h4><p>The plugin's <code>defineExports</code> returns a <code>webgl</code> export. Calling it hands the capture's URL to <code>renderer.update(ctx.export.url)</code> instead of returning an image to the page.</p></li>
-        <li><h4>The idle texture is loaded, not the visible one</h4><p><code>SeamlessRenderer.update()</code> loads the new capture into whichever of its two textures — <code>current</code> or <code>next</code> — isn't currently on screen, then starts a roughly 110ms blend toward it.</p></li>
+        <li><h4>The idle texture is loaded, not the visible one</h4><p><code>SeamlessRenderer.update()</code> loads the new capture into whichever of its two textures, <code>current</code> or <code>next</code> isn't currently on screen, then starts a roughly 110ms blend toward it.</p></li>
         <li><h4>The shader mixes, then the effect applies</h4><p>The render loop's fragment shader mixes <code>beforeImage</code> and <code>afterImage</code> by a <code>blend</code> uniform that ramps 0→1 over that window. Whatever shader is selected in the dropdown runs on top of that already-blended result.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2>Why this needed a plugin</h2>
-      <p>Same argument as the plain live-mirror demo: SnapDOM's core exports return a finished image and stop — they have no concept of "push this into one of two alternating GPU textures for a crossfade." <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md#adding-custom-exports-with-defineexports" target="_blank" rel="noopener"><code>defineExports</code></a> is the seam SnapDOM exposes for exactly that: a plugin can register a named export — here, <code>webgl</code> — that does whatever it wants with the render instead of handing back a PNG.</p>
-      <p>What's different here versus the plain live-mirror demo is architectural, not plugin-API related. Splitting the caret-owning element from the capture-source element is what makes the <em>transition</em> look seamless: the visible surface — the canvas — is never waiting on a capture to know what to show. It's always mid-blend between two textures it already has, while the hidden source quietly gets captured again in the background.</p>
+      <p>Same argument as the plain live-mirror demo: SnapDOM's core exports return a finished image and stop; they have no concept of "push this into one of two alternating GPU textures for a crossfade." <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md#adding-custom-exports-with-defineexports" target="_blank" rel="noopener"><code>defineExports</code></a> is the seam SnapDOM exposes for exactly that: a plugin can register a named export, here, <code>webgl</code>, one that does whatever it wants with the render instead of handing back a PNG.</p>
+      <p>What's different here versus the plain live-mirror demo is architectural, not plugin-API related. Splitting the caret-owning element from the capture-source element is what makes the <em>transition</em> look seamless: the visible surface (the canvas) is never waiting on a capture to know what to show. It's always mid-blend between two textures it already has, while the hidden source quietly gets captured again in the background.</p>
     </section>
 
     <section class="prose">
       <h2>Copy-paste example</h2>
-      <p>The plugin factory — it just forwards a capture's URL to whatever renderer you hand it:</p>
+      <p>The plugin factory. it just forwards a capture's URL to whatever renderer you hand it:</p>
       <pre class="code-block">function seamlessWebgl (renderer) {
   let started = 0
   let elapsed = 0
@@ -151,7 +151,7 @@
     }
   }
 }</pre>
-      <p>And the usage — note this calls the plugin's export through the generic <code>capture.to('webgl')</code>, not a generated <code>capture.toWebgl()</code> helper. Both work; <code>.to(name)</code> is what lets a plugin-defined export be invoked without SnapDOM knowing its name ahead of time:</p>
+      <p>And the usage. note this calls the plugin's export through the generic <code>capture.to('webgl')</code>, not a generated <code>capture.toWebgl()</code> helper. Both work; <code>.to(name)</code> is what lets a plugin-defined export be invoked without SnapDOM knowing its name ahead of time:</p>
       <pre class="code-block">const plugin = seamlessWebgl(renderer)
 let dirty = false
 let working = false
@@ -172,20 +172,20 @@ async function refresh () {
 
     <section class="prose">
       <h2>Limits and things to watch</h2>
-      <p>The transparent-proxy trick only works cleanly for plain text editing. Anything that needs real DOM selection or formatting UI — rich text, IME composition edge cases — needs more care than this demo attempts; the proxy here deliberately strips formatting down to a literal newline on Enter and plain text on paste. Double-buffering also costs one extra WebGL texture's worth of GPU memory compared to the single-texture live-mirror demo — a deliberate trade for the flicker-free feel, and one that only makes sense when the crossfade is actually the point.</p>
+      <p>The transparent-proxy trick only works cleanly for plain text editing. Anything that needs real DOM selection or formatting UI (rich text, IME composition edge cases) needs more care than this demo attempts; the proxy here deliberately strips formatting down to a literal newline on Enter and plain text on paste. Double-buffering also costs one extra WebGL texture's worth of GPU memory compared to the single-texture live-mirror demo, a deliberate trade for the flicker-free feel, and one that only makes sense when the crossfade is actually the point.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../webgl-live-mirror/">WebGL Live Mirror — the single-texture version, no crossfade <span class="arrow">→</span></a>
-        <a class="related-card" href="../webgl-shatter/">WebGL Shatter — a SnapDOM texture driven by physics instead <span class="arrow">→</span></a>
+        <a class="related-card" href="../webgl-live-mirror/">WebGL Live Mirror: the single-texture version, no crossfade <span class="arrow">→</span></a>
+        <a class="related-card" href="../webgl-shatter/">WebGL Shatter: a SnapDOM texture driven by physics instead <span class="arrow">→</span></a>
         <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>beforeSnap</code>, <code>afterRender</code>, and <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses (<code>beforeSnap</code>, <code>afterRender</code>, and <code>defineExports</code> for adding new export formats) is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
 

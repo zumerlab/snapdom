@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How to Convert HTML to PNG in JavaScript — SnapDOM</title>
+  <title>How to Convert HTML to PNG in JavaScript: SnapDOM</title>
   <meta name="description" content="Three patterns for converting HTML to a PNG image with SnapDOM: append to the page, download to disk, or upload to a server." />
   <meta name="keywords" content="html to png, html to png javascript, convert html to png, html to image, html element to png" />
   <meta name="robots" content="index, follow" />
@@ -68,7 +68,7 @@
         "name": "What about high-DPI / retina output?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "SnapDOM auto-detects the device pixel ratio via the dpr option, so retina screens already render sharp. To force a specific density, pass dpr: 2 (or any value). The scale option is different — it multiplies the captured size (zoom)."
+          "text": "SnapDOM auto-detects the device pixel ratio via the dpr option, so retina screens already render sharp. To force a specific density, pass dpr: 2 (or any value). The scale option is different: it multiplies the captured size (zoom)."
         }
       }
     ]
@@ -121,11 +121,11 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p><code>const img = await snapdom.toPng(element);</code> — that returns an <code>HTMLImageElement</code>. Append it, download it, or convert to a Blob with <code>snapdom.toBlob(element)</code> if you need to upload.</p>
+      <p><code>const img = await snapdom.toPng(element);</code>, which returns an <code>HTMLImageElement</code>. Append it, download it, or convert to a Blob with <code>snapdom.toBlob(element)</code> if you need to upload.</p>
     </div>
 
     <section class="prose">
-      <h2 id="install">Step 1 — Install</h2>
+      <h2 id="install">Step 1: Install</h2>
       <pre class="code-block">npm install @zumer/snapdom</pre>
       <p>Or load it from a CDN if you don't use a bundler:</p>
       <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> type=<span class="str">"module"</span><span class="op">&gt;</span>
@@ -134,7 +134,7 @@
     </section>
 
     <section class="prose">
-      <h2 id="append">Pattern 1 — Append the PNG to the page</h2>
+      <h2 id="append">Pattern 1: Append the PNG to the page</h2>
       <p>Useful for quick previews and demos. <code>snapdom.toPng</code> returns an <code>HTMLImageElement</code>, ready to insert anywhere in the DOM:</p>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
@@ -143,7 +143,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
     </section>
 
     <section class="prose">
-      <h2 id="download">Pattern 2 — Download the PNG as a file</h2>
+      <h2 id="download">Pattern 2: Download the PNG as a file</h2>
       <p>SnapDOM ships with a one-liner that triggers the browser's download flow:</p>
       <pre class="code-block"><span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
@@ -160,7 +160,7 @@ URL.<span class="fn">revokeObjectURL</span>(url);</pre>
     </section>
 
     <section class="prose">
-      <h2 id="upload">Pattern 3 — Upload the PNG to a server</h2>
+      <h2 id="upload">Pattern 3: Upload the PNG to a server</h2>
       <p>Capture the element to a Blob, wrap it in <code>FormData</code>, and POST it to your endpoint:</p>
       <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { type: <span class="str">'png'</span> });
 
@@ -174,18 +174,18 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
 <span class="kw">const</span> { url } = <span class="kw">await</span> response.<span class="fn">json</span>();
 <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">'Uploaded to'</span>, url);</pre>
-      <p>This is the same pattern you'd use to generate dynamic <code>og:image</code> share cards — capture the rendered card client-side, upload to a CDN, return the URL.</p>
+      <p>This is the same pattern you'd use to generate dynamic <code>og:image</code> share cards: capture the rendered card client-side, upload to a CDN, return the URL.</p>
     </section>
 
     <section class="prose">
       <h2 id="live-demo">Try the three patterns live</h2>
-      <p>Same element, three buttons — append the PNG, download it, or produce the upload-ready Blob:</p>
+      <p>Same element, three buttons: append the PNG, download it, or produce the upload-ready Blob:</p>
       <div class="demo-box">
         <div class="demo-stage">
           <div id="demo-card" style="max-width:320px;padding:22px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6 55%,#ec4899);border:2px dashed rgba(255,255,255,0.5);color:#fff;">
             <span style="display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,0.22);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">HTML → PNG</span>
             <h3 style="margin:12px 0 6px;font-size:20px;color:#fff;">Gradients, borders &amp; shadows</h3>
-            <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.9);">Rounded corners, a dashed border, a gradient — captured exactly as rendered.</p>
+            <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.9);">Rounded corners, a dashed border, a gradient, captured exactly as rendered.</p>
             <span style="display:inline-block;padding:8px 14px;border-radius:8px;background:#fff;color:#4f46e5;font-size:13px;font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,0.35);">⚡ Even this shadow</span>
           </div>
         </div>
@@ -199,7 +199,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
     </section>
 
     <section class="prose">
-      <h2 id="base64">Bonus — Get a Base64 / data URL</h2>
+      <h2 id="base64">Bonus: Get a Base64 / data URL</h2>
       <p>If you specifically need a base64 string (e.g. to email or embed inline), call <code>toPng</code> and read the <code>src</code> of the returned image:</p>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 <span class="kw">const</span> dataUrl = img.src; <span class="cm">// "data:image/png;base64,iVBORw0KGgo…"</span></pre>
@@ -209,7 +209,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
       <h2 id="hi-dpi">High-DPI / retina output</h2>
       <p>SnapDOM picks up the device's <code>devicePixelRatio</code> automatically through the <code>dpr</code> option, so retina screens already get sharp output without configuration. Override it with <code>dpr</code> when you want a fixed pixel density (e.g. exporting a 2× asset on a non-retina machine):</p>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, { dpr: <span class="num">2</span> });</pre>
-      <p><code>scale</code> is different — it multiplies the captured size (zoom). Use <code>scale</code> when you want a larger image; use <code>dpr</code> when you want the same logical size at higher pixel density. They can be combined:</p>
+      <p><code>scale</code> is different: it multiplies the captured size (zoom). Use <code>scale</code> when you want a larger image; use <code>dpr</code> when you want the same logical size at higher pixel density. They can be combined:</p>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, {
   dpr: <span class="num">2</span>,            <span class="cm">// retina pixel density</span>
   scale: <span class="num">1.5</span>,        <span class="cm">// zoom 1.5×</span>
@@ -222,7 +222,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Can I convert HTML to PNG without a server?</summary>
-        <p>Yes. SnapDOM runs entirely in the browser. There is no server required and no network round-trip — the conversion uses SVG <code>foreignObject</code> and the browser's own renderer.</p>
+        <p>Yes. SnapDOM runs entirely in the browser. There is no server required and no network round-trip. The conversion uses SVG <code>foreignObject</code> and the browser's own renderer.</p>
       </details>
 
       <details>

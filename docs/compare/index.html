@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Best HTML-to-Image JavaScript Library (2026) — Compared</title>
-  <meta name="description" content="Honest 2026 comparison of HTML-to-image JS libraries — SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot: feature matrix + how to choose." />
+  <title>Best HTML-to-Image JavaScript Library (2026): Compared</title>
+  <meta name="description" content="Honest 2026 comparison of HTML-to-image JS libraries · SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot: feature matrix + how to choose." />
   <meta name="keywords" content="best html to image library, html to image javascript library, html2canvas alternative, html-to-image vs html2canvas, dom-to-image alternative, modern-screenshot" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/" />
@@ -13,7 +13,7 @@
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
 
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Best HTML-to-Image JavaScript Library (2026) — Compared" />
+  <meta property="og:title" content="Best HTML-to-Image JavaScript Library (2026) · Compared" />
   <meta property="og:description" content="A code-level, honest comparison of the main HTML-to-image libraries: feature matrix, approach trade-offs, and how to pick the right one." />
   <meta property="og:url" content="https://snapdom.dev/compare/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
@@ -75,7 +75,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>Best <span class="accent">HTML-to-Image</span> JavaScript Library</h1>
-    <p class="lead">An honest, code-level comparison of the libraries that turn a DOM element into an image — html2canvas, html-to-image, dom-to-image, modern-screenshot and SnapDOM. Feature matrix, the trade-offs behind each approach, and how to actually pick one.</p>
+    <p class="lead">An honest, code-level comparison of the libraries that turn a DOM element into an image: html2canvas, html-to-image, dom-to-image, modern-screenshot and SnapDOM. Feature matrix, the trade-offs behind each approach, and how to actually pick one.</p>
   </section>
 
   <main class="page">
@@ -83,11 +83,11 @@
       <p class="muted"><strong>Last updated:</strong> June 2026 · maintained by the SnapDOM team.</p>
 
       <h2>Three ways to turn HTML into an image</h2>
-      <p>Every tool here solves the same problem — "render this DOM node to a PNG/JPG/SVG" — but they fall into three families, and the right pick depends almost entirely on which family fits your constraints:</p>
+      <p>Every tool here solves the same problem ("render this DOM node to a PNG/JPG/SVG"), but they fall into three families, and the right pick depends almost entirely on which family fits your constraints:</p>
       <ul>
-        <li><strong>Client-side libraries</strong> (SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot) — run entirely in the browser, no server, no network round-trip. Best for user-facing "download/share this" features.</li>
-        <li><strong>Server-side browser automation</strong> (Puppeteer, Playwright) — launch a real headless Chromium on your backend. Pixel-perfect, but you ship and scale a browser.</li>
-        <li><strong>Hosted APIs</strong> (HCTI, Urlbox, and similar) — send HTML, get a rendered image back. Zero infra, real Chromium fidelity, but a paid per-render cost and a network hop.</li>
+        <li><strong>Client-side libraries</strong> (SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot) run entirely in the browser: no server, no network round-trip. Best for user-facing "download/share this" features.</li>
+        <li><strong>Server-side browser automation</strong> (Puppeteer, Playwright) launches a real headless Chromium on your backend. Pixel-perfect, but you ship and scale a browser.</li>
+        <li><strong>Hosted APIs</strong> (HCTI, Urlbox, and similar) let you send HTML and get a rendered image back. Zero infra, real Chromium fidelity, but a paid per-render cost and a network hop.</li>
       </ul>
       <p>The rest of this page focuses on the <strong>client-side libraries</strong>, because that's where most projects start and where the differences are subtle.</p>
 
@@ -119,7 +119,7 @@
           </tr>
         </tbody>
       </table>
-      <p class="muted">"Partial" means it works for common cases but has documented gaps. The matrix is a summary — read the head-to-head deep dives below for the specifics that matter to your codebase.</p>
+      <p class="muted">"Partial" means it works for common cases but has documented gaps. The matrix is a summary. Read the head-to-head deep dives below for the specifics that matter to your codebase.</p>
     </section>
 
     <h2 class="prose" style="max-width:760px;margin:0 auto;padding:0 24px;">Head-to-head deep dives</h2>
@@ -152,28 +152,28 @@
       <h2>The libraries, reviewed</h2>
 
       <h3>SnapDOM</h3>
-      <p><strong>Best for new browser-side projects that need real CSS fidelity.</strong> SnapDOM clones the DOM and lets the browser render it inside an SVG <code>&lt;foreignObject&gt;</code>, so anything the browser paints, it captures — pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and embedded web fonts included. It's zero-dependency, ships a plugin system, and outputs SVG, PNG, JPG, WebP, Canvas or Blob. Honest limit: like every client-side tool it's <em>browser-only</em> — it can't capture cross-origin tainted canvases without a proxy, and it isn't a substitute for server Chromium when you need byte-identical output across engines.</p>
+      <p><strong>Best for new browser-side projects that need real CSS fidelity.</strong> SnapDOM clones the DOM and lets the browser render it inside an SVG <code>&lt;foreignObject&gt;</code>, so anything the browser paints, it captures: pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and embedded web fonts included. It's zero-dependency, ships a plugin system, and outputs SVG, PNG, JPG, WebP, Canvas or Blob. Honest limit: like every client-side tool it's <em>browser-only</em> it can't capture cross-origin tainted canvases without a proxy, and it isn't a substitute for server Chromium when you need byte-identical output across engines.</p>
 
       <h3>html2canvas</h3>
-      <p><strong>The incumbent — but aging.</strong> <a href="https://github.com/niklasvh/html2canvas" target="_blank" rel="noopener">html2canvas</a> re-implements the CSS painter in JavaScript and walks only the light DOM, so Shadow DOM trees render empty and web fonts frequently fall back to system fonts. It's slow on dense trees because every node is repainted in JS. The last stable release (1.4.1) shipped in January 2022, the repo carries 1,000+ open issues, and the README still calls it experimental. If you're hitting font or layout bugs with it, that's the signal to migrate.</p>
+      <p><strong>The incumbent, but aging.</strong> <a href="https://github.com/niklasvh/html2canvas" target="_blank" rel="noopener">html2canvas</a> re-implements the CSS painter in JavaScript and walks only the light DOM, so Shadow DOM trees render empty and web fonts frequently fall back to system fonts. It's slow on dense trees because every node is repainted in JS. The last stable release (1.4.1) shipped in January 2022, the repo carries 1,000+ open issues, and the README still calls it experimental. If you're hitting font or layout bugs with it, that's the signal to migrate.</p>
 
       <h3>html-to-image</h3>
-      <p><strong>The best-known dom-to-image fork.</strong> <a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> is a maintained fork of dom-to-image using the same foreignObject technique, and it handles fonts well. Shadow DOM, CSS counters, line-clamp and edge-case CSS are where SnapDOM pulls ahead — and since SnapDOM is also zero-dependency, choosing it doesn't cost you the small footprint.</p>
+      <p><strong>The best-known dom-to-image fork.</strong> <a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> is a maintained fork of dom-to-image using the same foreignObject technique, and it handles fonts well. Shadow DOM, CSS counters, line-clamp and edge-case CSS are where SnapDOM pulls ahead, and since SnapDOM is also zero-dependency, choosing it doesn't cost you the small footprint.</p>
 
       <h3>modern-screenshot</h3>
-      <p><strong>The closest architectural cousin.</strong> <a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener">modern-screenshot</a> is a newer, actively maintained, TypeScript-first foreignObject library — fast and clean. It overlaps heavily with SnapDOM in approach; in practice the choice comes down to SnapDOM's plugin pipeline, broader output formats and fidelity edge-case coverage.</p>
+      <p><strong>The closest architectural cousin.</strong> <a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener">modern-screenshot</a> is a newer, actively maintained, TypeScript-first foreignObject library, fast and clean. It overlaps heavily with SnapDOM in approach; in practice the choice comes down to SnapDOM's plugin pipeline, broader output formats and fidelity edge-case coverage.</p>
 
       <h3>dom-to-image</h3>
-      <p><strong>Avoid for new projects.</strong> <a href="https://github.com/tsayen/dom-to-image" target="_blank" rel="noopener">dom-to-image</a> is the original foreignObject library and the ancestor of html-to-image — but it's effectively unmaintained and struggles with modern flexbox/grid layouts. If you're on it today, html-to-image or SnapDOM are direct, low-friction upgrades.</p>
+      <p><strong>Avoid for new projects.</strong> <a href="https://github.com/tsayen/dom-to-image" target="_blank" rel="noopener">dom-to-image</a> is the original foreignObject library and the ancestor of html-to-image, but it's effectively unmaintained and struggles with modern flexbox/grid layouts. If you're on it today, html-to-image or SnapDOM are direct, low-friction upgrades.</p>
 
       <h3>Server-side &amp; hosted options</h3>
-      <p>When you need byte-perfect cross-browser output, PDF export at scale, or rendering that can't depend on the user's browser, <strong>Puppeteer / Playwright</strong> (self-hosted) or a <strong>hosted API</strong> (HCTI, Urlbox) are the right tools — at the cost of running a headless browser or paying per render. They're complementary to, not competitors of, a client-side library.</p>
+      <p>When you need byte-perfect cross-browser output, PDF export at scale, or rendering that can't depend on the user's browser, <strong>Puppeteer / Playwright</strong> (self-hosted) or a <strong>hosted API</strong> (HCTI, Urlbox) are the right tools, at the cost of running a headless browser or paying per render. They're complementary to, not competitors of, a client-side library.</p>
 
       <h2>Which should you use?</h2>
       <ul>
         <li><strong>New project, want the fewest surprises</strong> → SnapDOM. Most complete fidelity out of the box.</li>
         <li><strong>Already on html2canvas with font / Shadow DOM bugs</strong> → migrate to SnapDOM (familiar <code>toPng/toJpg/toBlob</code> API; usually a one-line swap).</li>
-        <li><strong>Worried about bundle size?</strong> SnapDOM is zero-dependency (~45 KB gzip) and plugins are opt-in subpath imports — you only pay for what you use.</li>
+        <li><strong>Worried about bundle size?</strong> SnapDOM is zero-dependency (~45 KB gzip) and plugins are opt-in subpath imports. You only pay for what you use.</li>
         <li><strong>Still on dom-to-image</strong> → upgrade; it's unmaintained.</li>
         <li><strong>Need server-side pixel-perfect output or PDF at scale</strong> → Puppeteer / Playwright or a hosted API.</li>
       </ul>
@@ -186,7 +186,7 @@
       <h3>Why does my capture miss web fonts or Shadow DOM?</h3>
       <p>That's usually html2canvas or dom-to-image: they don't reliably embed @font-face or traverse Shadow roots. Libraries that render via foreignObject (SnapDOM, html-to-image, modern-screenshot) let the browser paint the real result, so fonts and shadow content are captured.</p>
       <h3>Can I convert HTML to an image without a server?</h3>
-      <p>Yes — every client-side library on this page runs entirely in the browser. You only need a server (Puppeteer/Playwright) or a hosted API when you require byte-identical cross-engine output or PDF generation at scale.</p>
+      <p>Yes. Every client-side library on this page runs entirely in the browser. You only need a server (Puppeteer/Playwright) or a hosted API when you require byte-identical cross-engine output or PDF generation at scale.</p>
     </section>
 
     <section class="cta-section">

@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Paint Canvas — The PNG Is the Canvas — SnapDOM Labs</title>
+  <title>Paint Canvas: The PNG Is the Canvas · SnapDOM Labs</title>
   <meta name="description" content="A paint app with no <canvas> element. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on it, so the exported PNG becomes the paint surface itself." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/paint-canvas/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="Paint Canvas — The PNG Is the Canvas" />
-  <meta property="og:description" content="A paint app with no <canvas> element — a SnapDOM plugin accumulates every stroke onto the last captured clone." />
+  <meta property="og:title" content="Paint Canvas · The PNG Is the Canvas" />
+  <meta property="og:description" content="A paint app with no <canvas> element: a SnapDOM plugin accumulates every stroke onto the last captured clone." />
   <meta property="og:url" content="https://snapdom.dev/labs/paint-canvas/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -49,19 +49,19 @@
     <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
   </nav>
 
-  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>The PNG <span class="accent">is</span> the canvas</h1><p class="lead">There is no <code>&lt;canvas&gt;</code> element anywhere on this page. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on top of it — every stroke you make becomes the next exported PNG.</p></section>
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>The PNG <span class="accent">is</span> the canvas</h1><p class="lead">There is no <code>&lt;canvas&gt;</code> element anywhere on this page. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on top of it, so every stroke you make becomes the next exported PNG.</p></section>
   <main class="page">
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM normally re-clones the live element on every capture and forgets the last one. This plugin's <code>afterRender</code> hook saves the clone it just produced; <code>afterClone</code> swaps that saved clone back in on the next call and appends the newest stroke to it. Capture after capture, the output accumulates — the PNG becomes a paint surface instead of a snapshot.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM normally re-clones the live element on every capture and forgets the last one. This plugin's <code>afterRender</code> hook saves the clone it just produced; <code>afterClone</code> swaps that saved clone back in on the next call and appends the newest stroke to it. Capture after capture, the output accumulates: the PNG becomes a paint surface instead of a snapshot.</p></div>
 
     <section class="prose">
       <h2>What you're looking at</h2>
-      <p>Pick a color and brush size, then drag across the board. What looks like a normal <code>&lt;canvas&gt;</code> painting widget is actually a single hidden <code>&lt;div&gt;</code> holding an empty SVG layer, plus an <code>&lt;img&gt;</code> that gets replaced every time SnapDOM re-renders it. There is no persistent bitmap buffer anywhere in the page's own code — the persistence lives entirely inside the plugin.</p>
+      <p>Pick a color and brush size, then drag across the board. What looks like a normal <code>&lt;canvas&gt;</code> painting widget is actually a single hidden <code>&lt;div&gt;</code> holding an empty SVG layer, plus an <code>&lt;img&gt;</code> that gets replaced every time SnapDOM re-renders it. There is no persistent bitmap buffer anywhere in the page's own code. The persistence lives entirely inside the plugin.</p>
     </section>
 
     <section class="prose">
       <h2 id="live-demo">Try it</h2>
-      <p>Draw on the board below. The line under your cursor is a local SVG path with zero SnapDOM involvement — it never waits on a capture. Underneath, roughly every 120ms, that same stroke gets folded into the plugin's saved clone and re-exported as a real PNG.</p>
+      <p>Draw on the board below. The line under your cursor is a local SVG path with zero SnapDOM involvement: it never waits on a capture. Underneath, roughly every 120ms, that same stroke gets folded into the plugin's saved clone and re-exported as a real PNG.</p>
       <div class="lab-paint">
         <div class="toolbar">
           <div class="swatches" id="swatches"></div>
@@ -84,24 +84,24 @@
     <section class="prose">
       <h2>How it works</h2>
       <ol class="steps">
-        <li><h4>A hidden source element, never the visible board</h4><p>A 420×420 <code>&lt;div&gt;</code> off-screen holds one empty <code>&lt;svg class="strokes"&gt;</code>. This — not the board you see — is what SnapDOM actually captures.</p></li>
+        <li><h4>A hidden source element, never the visible board</h4><p>A 420×420 <code>&lt;div&gt;</code> off-screen holds one empty <code>&lt;svg class="strokes"&gt;</code>. This, not the board you see, is what SnapDOM actually captures.</p></li>
         <li><h4>The visible line is free</h4><p>While you drag, a local SVG <code>&lt;path&gt;</code> on the visible board follows the pointer using <code>getCoalescedEvents()</code> for smooth sampling. This never touches SnapDOM, so the line itself has zero capture latency.</p></li>
         <li><h4>The stroke is handed to the plugin periodically</h4><p>Roughly every 120ms, the in-progress stroke's path data is passed to <code>plugin.recordStroke()</code> and <code>snapdom.toPng()</code> runs again on the hidden source.</p></li>
-        <li><h4><code>afterClone</code> restores state, then applies the stroke</h4><p>Instead of cloning the pristine (empty) source, the plugin swaps in the clone it saved from the <em>previous</em> render. It then finds the in-progress stroke's <code>&lt;path&gt;</code> by a <code>data-stroke-id</code> and updates it — or appends a new one if this is a new stroke. One continuous drag stays one <code>&lt;path&gt;</code> element, never hundreds.</p></li>
+        <li><h4><code>afterClone</code> restores state, then applies the stroke</h4><p>Instead of cloning the pristine (empty) source, the plugin swaps in the clone it saved from the <em>previous</em> render. It then finds the in-progress stroke's <code>&lt;path&gt;</code> by a <code>data-stroke-id</code> and updates it, or appends a new one if this is a new stroke. One continuous drag stays one <code>&lt;path&gt;</code> element, never hundreds.</p></li>
         <li><h4><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next capture.</p></li>
-        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download button just points at that same <code>&lt;img&gt;.src</code> — no second capture needed.</p></li>
+        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download button just points at that same <code>&lt;img&gt;.src</code>, with no second capture needed.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2>Why this needed a plugin</h2>
-      <p>SnapDOM's default behavior is stateless by design: every call re-clones the live element and renders exactly what it looks like right now. That's correct for a screenshot tool and wrong for a paint app, which needs the opposite — remember what was drawn a moment ago and add to it.</p>
-      <p>There's no <code>snapdom()</code> option for "accumulate," because accumulation isn't a rendering concern, it's application state — and the plugin system is exactly the seam SnapDOM exposes for that. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks fire on every capture with access to the same closure, so a plugin can hold a private <code>savedClone</code> variable across calls that plain application code has no way to inject into SnapDOM's clone → render pipeline. Two hooks and one closure variable turn a stateless capture function into a stateful one.</p>
+      <p>SnapDOM's default behavior is stateless by design: every call re-clones the live element and renders exactly what it looks like right now. That's correct for a screenshot tool and wrong for a paint app, which needs the opposite: remember what was drawn a moment ago and add to it.</p>
+      <p>There's no <code>snapdom()</code> option for "accumulate," because accumulation isn't a rendering concern, it's application state, and the plugin system is exactly the seam SnapDOM exposes for that. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks fire on every capture with access to the same closure, so a plugin can hold a private <code>savedClone</code> variable across calls that plain application code has no way to inject into SnapDOM's clone → render pipeline. Two hooks and one closure variable turn a stateless capture function into a stateful one.</p>
     </section>
 
     <section class="prose">
       <h2>Copy-paste example</h2>
-      <p>The plugin factory — swap in your own persistence logic and this pattern works for any "keep building on the last capture" use case, not just painting:</p>
+      <p>The plugin factory. swap in your own persistence logic and this pattern works for any "keep building on the last capture" use case, not just painting:</p>
       <pre class="code-block">function createPaintPlugin (sourceEl) {
   let savedClone = null
   let skipNext = false
@@ -138,7 +138,7 @@
     clear () { skipNext = true }
   }
 }</pre>
-      <p>And the usage — capture again on every stroke update, plugin included:</p>
+      <p>And the usage. capture again on every stroke update, plugin included:</p>
       <pre class="code-block">const plugin = createPaintPlugin(canvasSource)
 
 async function render (stroke) {
@@ -155,20 +155,20 @@ async function render (stroke) {
 
     <section class="prose">
       <h2>Limits and things to watch</h2>
-      <p>Every stroke update is a full SnapDOM capture, so the render loop is throttled (120ms here) rather than firing on every <code>pointermove</code> — captures aren't free, and a paint app that tries to snapshot on every mouse event will fall behind. The visible "live" path is what keeps the drawing feeling instant while the real PNG catches up underneath. The <code>skipNext</code> flag matters more than it looks: without it, <code>clear()</code> would need to hand-build an empty clone instead of letting SnapDOM's own cloning pipeline produce one, and any pipeline behavior added later (pseudo-elements, SVG defs inlining, etc.) would silently stop applying to the very first render after a clear.</p>
+      <p>Every stroke update is a full SnapDOM capture, so the render loop is throttled (120ms here) rather than firing on every <code>pointermove</code>. Captures aren't free, and a paint app that tries to snapshot on every mouse event will fall behind. The visible "live" path is what keeps the drawing feeling instant while the real PNG catches up underneath. The <code>skipNext</code> flag matters more than it looks: without it, <code>clear()</code> would need to hand-build an empty clone instead of letting SnapDOM's own cloning pipeline produce one, and any pipeline behavior added later (pseudo-elements, SVG defs inlining, etc.) would silently stop applying to the very first render after a clear.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../target-range/">Target Range — same persistent-clone trick <span class="arrow">→</span></a>
-        <a class="related-card" href="../stop-motion/">Stop Motion — capturing discrete poses <span class="arrow">→</span></a>
+        <a class="related-card" href="../target-range/">Target Range: same persistent-clone trick <span class="arrow">→</span></a>
+        <a class="related-card" href="../stop-motion/">Stop Motion: capturing discrete poses <span class="arrow">→</span></a>
         <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses (<code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats) is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM Options — Every Capture Option Explained</title>
+  <title>SnapDOM Options: Every Capture Option Explained</title>
   <meta name="description" content="Complete reference for every SnapDOM capture option: scale, dpr, width, height, embedFonts, localFonts, useProxy, exclude, filter, compress, outerTransforms, outerShadows, cache and more." />
   <meta name="keywords" content="snapdom options, snapdom embedfonts, snapdom useproxy, snapdom scale, snapdom exclude, snapdom compress, snapdom outertransforms" />
   <meta name="robots" content="index, follow" />
@@ -81,7 +81,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>SnapDOM <span class="accent">Options</span></h1>
-    <p class="lead">Every capture option SnapDOM accepts, explained one by one — scale and DPR, font embedding, cross-origin proxying, node filtering, image compression, and the transform/shadow bleed controls.</p>
+    <p class="lead">Every capture option SnapDOM accepts, explained one by one: scale and DPR, font embedding, cross-origin proxying, node filtering, image compression, and the transform/shadow bleed controls.</p>
     <div class="hero-actions">
       <a href="#all-options" class="btn btn-primary" data-umami-event="Docs options all">All options</a>
       <a href="../api/" class="btn btn-ghost" data-umami-event="Docs options api">API reference</a>
@@ -119,10 +119,9 @@
           <tr><td class="num">fallbackURL</td><td class="num">string | function</td><td class="num">-</td><td>Fallback image for <code>&lt;img&gt;</code> load failure</td></tr>
           <tr><td class="num">outerTransforms</td><td class="num">boolean</td><td class="num">true</td><td>When <code>false</code> removes <code>translate/rotate</code> but preserves <code>scale/skew</code>, producing a flat, reusable capture</td></tr>
           <tr><td class="num">outerShadows</td><td class="num">boolean</td><td class="num">false</td><td>Do not expand the root's bounding box for shadows/blur/outline, and strip those visual effects from the cloned root</td></tr>
-          <tr><td class="num">safariWarmupAttempts</td><td class="num">number</td><td class="num">3</td><td>Safari only: iterations to prime font/decode (WebKit #219770). Use <code>1</code> if 3 causes lag</td></tr>
           <tr><td class="num">compress</td><td class="num">boolean</td><td class="num">true</td><td>Downsample inlined raster images to their visible resolution. Faster raster captures + smaller SVG output, fidelity-neutral. Set <code>false</code> to embed images verbatim</td></tr>
           <tr><td class="num">reconcile</td><td class="num">boolean</td><td class="num">false</td><td>Measures the styled clone against the live DOM and pins any box whose size diverges. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time</td></tr>
-          <tr><td class="num">burst</td><td class="num">boolean</td><td class="num">false</td><td>Memoizes repeated captures of this element via a scoped <code>MutationObserver</code> — an unchanged repeat skips the pipeline entirely</td></tr>
+          <tr><td class="num">burst</td><td class="num">boolean</td><td class="num">false</td><td>Memoizes repeated captures of this element via a scoped <code>MutationObserver</code>, so an unchanged repeat skips the pipeline entirely</td></tr>
           <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>With <code>burst: true</code>, forces a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits)</td></tr>
         </tbody>
       </table>
@@ -136,11 +135,11 @@
 
     <section class="prose">
       <h2 id="compress">compress</h2>
-      <p>Inlined raster images are embedded at their full natural resolution even when shown in a small box — pixels the output can never display, which only bloat the payload and slow rasterization. With <code>compress</code> (on by default) SnapDOM downsamples each oversized raster to (a touch below) the resolution actually visible (<code>display box × scale × dpr</code>), preserving aspect ratio and never upscaling. The source codec is kept (PNGs stay lossless), and because the image was already shown far smaller than its natural size the quality loss is imperceptible in practice. Images already at or below their visible size are left untouched. Covers <code>&lt;img&gt;</code> (incl. cloned canvas/video), non-repeating CSS <code>background-image</code>, and SVG <code>&lt;image&gt;</code>.</p>
+      <p>Inlined raster images are embedded at their full natural resolution even when shown in a small box: pixels the output can never display, which only bloat the payload and slow rasterization. With <code>compress</code> (on by default) SnapDOM downsamples each oversized raster to (a touch below) the resolution actually visible (<code>display box × scale × dpr</code>), preserving aspect ratio and never upscaling. The source codec is kept (PNGs stay lossless), and because the image was already shown far smaller than its natural size the quality loss is imperceptible in practice. Images already at or below their visible size are left untouched. Covers <code>&lt;img&gt;</code> (incl. cloned canvas/video), non-repeating CSS <code>background-image</code>, and SVG <code>&lt;image&gt;</code>.</p>
       <p>The benefit depends on the export:</p>
       <ul>
-        <li><strong>Raster</strong> (<code>toPng</code> / <code>toJpg</code> / <code>toCanvas</code> / <code>toBlob</code>): <strong>much faster</strong> — the browser decodes/composites small images instead of huge ones. Output size is essentially unchanged (the final bitmap is the same visible pixels).</li>
-        <li><strong>SVG</strong> (<code>toSvg</code> / raw): <strong>much smaller</strong> output — the downsampled images are embedded in the SVG.</li>
+        <li><strong>Raster</strong> (<code>toPng</code> / <code>toJpg</code> / <code>toCanvas</code> / <code>toBlob</code>): <strong>much faster</strong>, because the browser decodes/composites small images instead of huge ones. Output size is essentially unchanged (the final bitmap is the same visible pixels).</li>
+        <li><strong>SVG</strong> (<code>toSvg</code> / raw): <strong>much smaller</strong> output, because the downsampled images are embedded in the SVG.</li>
       </ul>
       <p>It is a no-op for images already shown at (or below) their natural resolution, so the common case pays virtually nothing. Pass <code>compress: false</code> to embed images verbatim (e.g. if you intend to scale the SVG up later).</p>
       <pre class="code-block">// default: images downsampled to visible resolution
@@ -266,14 +265,14 @@ await snapdom.toPng(document.body, { filter: filterHidden });</pre>
       <h2 id="outertransforms">outerTransforms</h2>
       <p>When capturing rotated or translated elements, you may want use <strong>outerTransforms: false</strong> option if you want to eliminate those external transforms. So, the output is <strong>flat, upright, and ready</strong> to use elsewhere.</p>
       <ul>
-        <li><strong><code>outerTransforms: true (default)</code></strong> — <strong>Keeps the original <code>transforms</code> and <code>rotate</code></strong>.</li>
+        <li><strong><code>outerTransforms: true (default)</code></strong>. <strong>Keeps the original <code>transforms</code> and <code>rotate</code></strong>.</li>
       </ul>
     </section>
 
     <section class="prose">
       <h2 id="outershadows">outerShadows</h2>
       <ul>
-        <li><strong><code>outerShadows: false (default)</code></strong> — Prevents expanding the bounding box for shadows, blur, or outline on the root, and also strips <code>box-shadow</code>, <code>text-shadow</code>, <code>filter: blur()/drop-shadow()</code>, and <code>outline</code> from the cloned root.</li>
+        <li><strong><code>outerShadows: false (default)</code></strong>. Prevents expanding the bounding box for shadows, blur, or outline on the root, and also strips <code>box-shadow</code>, <code>text-shadow</code>, <code>filter: blur()/drop-shadow()</code>, and <code>outline</code> from the cloned root.</li>
       </ul>
       <p class="muted"><strong>Tip:</strong> Using both (<code>outerTransforms: false</code> + <code>outerShadows: false</code>) produces a strict, minimal bounding box with no visual bleed.</p>
       <p><strong>Example</strong></p>
@@ -283,15 +282,15 @@ await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
 
     <section class="prose">
       <h2 id="reconcile">reconcile</h2>
-      <p>SnapDOM translates live computed styles into a generated CSS class per element, which lays out inside a <code>&lt;foreignObject&gt;</code> instead of the page's own stylesheet cascade. That translation matches the live DOM almost everywhere, but a narrow class of boxes — inline text, table cells — get their width from layout algorithms rather than an authored value, and can re-wrap a hair differently if the SVG rasterizer falls back to a slightly different font metric.</p>
-      <p>With <code>reconcile: true</code>, SnapDOM mounts the styled clone off-screen in the real document, measures every node against its live counterpart, and pins <code>width</code>/<code>height</code> only on the boxes that actually diverge — measurement instead of a heuristic, so it's always correct where it applies. The cost is a second real layout pass over the whole captured subtree, which roughly doubles capture time, so it's opt-in rather than default. If SnapDOM detects a capture that used width-softening on the kind of element known to sometimes re-wrap, it logs a one-time <code>console.warn</code> suggesting this option — that warning only fires when <code>reconcile</code> isn't already set.</p>
+      <p>SnapDOM translates live computed styles into a generated CSS class per element, which lays out inside a <code>&lt;foreignObject&gt;</code> instead of the page's own stylesheet cascade. That translation matches the live DOM almost everywhere, but a narrow class of boxes (inline text, table cells) get their width from layout algorithms rather than an authored value, and can re-wrap a hair differently if the SVG rasterizer falls back to a slightly different font metric.</p>
+      <p>With <code>reconcile: true</code>, SnapDOM mounts the styled clone off-screen in the real document, measures every node against its live counterpart, and pins <code>width</code>/<code>height</code> only on the boxes that actually diverge: measurement instead of a heuristic, so it's always correct where it applies. The cost is a second real layout pass over the whole captured subtree, which roughly doubles capture time, so it's opt-in rather than default. If SnapDOM detects a capture that used width-softening on the kind of element known to sometimes re-wrap, it logs a one-time <code>console.warn</code> suggesting this option. That warning only fires when <code>reconcile</code> isn't already set.</p>
       <pre class="code-block">await snapdom.toPng(el, { reconcile: true });</pre>
     </section>
 
     <section class="prose">
       <h2 id="burst">burst</h2>
-      <p>Capturing the same unchanged element repeatedly (dashboard polling, a GIF/video export loop) re-walks the tree and re-reads every node's computed style on every single call — real work, even with every image/font/background already cached.</p>
-      <p><code>burst: true</code> watches the element with a scoped <code>MutationObserver</code> and memoizes the last result: an unchanged repeat capture returns the cached result instantly, skipping the pipeline entirely. Any external mutation of the subtree (or of document styles in <code>&lt;head&gt;</code>) marks it dirty again, so the next capture re-runs for real. <code>&lt;video&gt;</code> frame changes (seek, playback) are tracked too, since they touch no DOM attribute. It's opt-in — a persistent observer per element is wasted cost on a one-shot capture.</p>
+      <p>Capturing the same unchanged element repeatedly (dashboard polling, a GIF/video export loop) re-walks the tree and re-reads every node's computed style on every single call: real work, even with every image/font/background already cached.</p>
+      <p><code>burst: true</code> watches the element with a scoped <code>MutationObserver</code> and memoizes the last result: an unchanged repeat capture returns the cached result instantly, skipping the pipeline entirely. Any external mutation of the subtree (or of document styles in <code>&lt;head&gt;</code>) marks it dirty again, so the next capture re-runs for real. <code>&lt;video&gt;</code> frame changes (seek, playback) are tracked too, since they touch no DOM attribute. It's opt-in: a persistent observer per element is wasted cost on a one-shot capture.</p>
       <pre class="code-block">// Dashboard polling: only the first and the 3rd (mutated) calls do real work.
 for (let i = 0; i < 10; i++) {
   if (i === 3) counter.textContent = 'new value';
@@ -301,15 +300,15 @@ for (let i = 0; i < 10; i++) {
       <p>Canvas pixel draws and programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) touch no DOM attribute either, so the automatic tracking can't see them. Pass <code>invalidate: true</code> alongside <code>burst: true</code> on the next call to force a fresh capture after one of those:</p>
       <pre class="code-block">ctx.fillRect(0, 0, 100, 100); // canvas redraw — invisible to the observer
 await snapdom(el, { burst: true, invalidate: true });</pre>
-      <p class="muted"><strong>Discoverability:</strong> if you capture the same element 3+ times within 2s <em>without</em> <code>burst: true</code>, snapdom logs a one-time <code>console.warn</code> suggesting it — that's the only case the (cheap) tracking runs unconditionally.</p>
+      <p class="muted"><strong>Discoverability:</strong> if you capture the same element 3+ times within 2s <em>without</em> <code>burst: true</code>, snapdom logs a one-time <code>console.warn</code> suggesting it. That's the only case the (cheap) tracking runs unconditionally.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../api/" data-umami-event="Docs options card api">API reference — methods &amp; exporters <span class="arrow">→</span></a>
-        <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCache — performance <span class="arrow">→</span></a>
-        <a class="related-card" href="../plugins/" data-umami-event="Docs options card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
+        <a class="related-card" href="../api/" data-umami-event="Docs options card api">API reference: methods &amp; exporters <span class="arrow">→</span></a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCache: performance <span class="arrow">→</span></a>
+        <a class="related-card" href="../plugins/" data-umami-event="Docs options card plugins">Plugins: extend the pipeline <span class="arrow">→</span></a>
         <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs options card h2c">SnapDOM vs html2canvas <span class="arrow">→</span></a>
       </div>
     </section>

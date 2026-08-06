@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How to Save a Chart.js Chart as a PNG — SnapDOM</title>
-  <meta name="description" content="Export a Chart.js chart to PNG in the browser, including its title, legend and container — not just the bare canvas. Working example, download recipe and limitations." />
+  <title>How to Save a Chart.js Chart as a PNG: SnapDOM</title>
+  <meta name="description" content="Export a Chart.js chart to PNG in the browser, including its title, legend and container: not just the bare canvas. Working example, download recipe and limitations." />
   <meta name="keywords" content="chart.js to png, save chart.js as image, export chart.js, chart.js download image, chart to png javascript" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/how-to/save-chart-js-as-png/" />
@@ -14,7 +14,7 @@
 
   <meta property="og:type" content="article" />
   <meta property="og:title" content="How to Save a Chart.js Chart as a PNG" />
-  <meta property="og:description" content="Export a Chart.js chart to PNG including its title, legend and container — not just the bare canvas." />
+  <meta property="og:description" content="Export a Chart.js chart to PNG including its title, legend and container · not just the bare canvas." />
   <meta property="og:url" content="https://snapdom.dev/how-to/save-chart-js-as-png/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -126,12 +126,12 @@
 
     <section class="prose">
       <h2 id="problem">The problem</h2>
-      <p>Chart.js renders inside a <code>&lt;canvas&gt;</code> element. Its native <code>chart.toBase64Image()</code> exports exactly that canvas — the plotting area — and drops anything you laid out in HTML around it: a heading, a custom legend, annotations, the card background. If your export needs to look like the chart your users actually see on the page, you need to capture the surrounding DOM as well.</p>
-      <p>SnapDOM captures a DOM subtree — including live <code>&lt;canvas&gt;</code> pixels — into a single image, so the chart and its frame come out as one composited PNG.</p>
+      <p>Chart.js renders inside a <code>&lt;canvas&gt;</code> element. Its native <code>chart.toBase64Image()</code> exports exactly that canvas, the plotting area, and drops anything you laid out in HTML around it: a heading, a custom legend, annotations, the card background. If your export needs to look like the chart your users actually see on the page, you need to capture the surrounding DOM as well.</p>
+      <p>SnapDOM captures a DOM subtree, including live <code>&lt;canvas&gt;</code> pixels, into a single image, so the chart and its frame come out as one composited PNG.</p>
     </section>
 
     <section class="prose">
-      <h2 id="install">Step 1 — Install</h2>
+      <h2 id="install">Step 1: Install</h2>
       <pre class="code-block">npm install @zumer/snapdom chart.js</pre>
       <p>Without a bundler, load both from a CDN:</p>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">"https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs"</span>;
@@ -139,7 +139,7 @@
     </section>
 
     <section class="prose">
-      <h2 id="wrap">Step 2 — Wrap the chart in a capture target</h2>
+      <h2 id="wrap">Step 2: Wrap the chart in a capture target</h2>
       <p>Put the canvas inside an element that also holds whatever you want in the exported image:</p>
       <pre class="code-block"><span class="op">&lt;</span><span class="fn">div</span> id=<span class="str">"chart-card"</span> style=<span class="str">"padding:20px;background:#fff;border-radius:12px;"</span><span class="op">&gt;</span>
   <span class="op">&lt;</span><span class="fn">h3</span><span class="op">&gt;</span>Monthly revenue<span class="op">&lt;/</span><span class="fn">h3</span><span class="op">&gt;</span>
@@ -148,7 +148,7 @@
     </section>
 
     <section class="prose">
-      <h2 id="capture">Step 3 — Wait for the draw, then capture</h2>
+      <h2 id="capture">Step 3: Wait for the draw, then capture</h2>
       <p>A canvas only holds pixels once Chart.js has painted them. Capturing during the entry animation gives you a blank or half-drawn plot. The reliable fix is to capture from the animation's <code>onComplete</code> callback:</p>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 <span class="kw">import</span> Chart <span class="kw">from</span> <span class="str">'chart.js/auto'</span>;
@@ -172,7 +172,7 @@
     </section>
 
     <section class="prose">
-      <h2 id="download">Step 4 — Download it as a file</h2>
+      <h2 id="download">Step 4: Download it as a file</h2>
       <pre class="code-block"><span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(document.<span class="fn">getElementById</span>(<span class="str">'chart-card'</span>));
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'revenue-chart'</span> });</pre>
       <p>Or get a <code>Blob</code> to upload:</p>
@@ -181,12 +181,12 @@
 
     <section class="prose">
       <h2 id="expected">Expected result</h2>
-      <p>A single PNG that matches what's on screen: the <code>&lt;h3&gt;</code> heading, the card's white background and rounded corners, and the fully rendered bar chart — all in one image at your device pixel ratio. Pass <code>{ scale: 2 }</code> to <code>toPng</code> for a sharper, higher-resolution export.</p>
+      <p>A single PNG that matches what's on screen: the <code>&lt;h3&gt;</code> heading, the card's white background and rounded corners, and the fully rendered bar chart, all in one image at your device pixel ratio. Pass <code>{ scale: 2 }</code> to <code>toPng</code> for a sharper, higher-resolution export.</p>
     </section>
 
     <section class="prose">
       <h2 id="live-demo">Try it live</h2>
-      <p>A real Chart.js bar chart, in a card with an HTML heading. Capture it and compare: the exported PNG includes the heading and the card frame — exactly what <code>toBase64Image()</code> would drop:</p>
+      <p>A real Chart.js bar chart, in a card with an HTML heading. Capture it and compare: the exported PNG includes the heading and the card frame, exactly what <code>toBase64Image()</code> would drop:</p>
       <div class="demo-box">
         <div class="demo-stage">
           <div id="demo-chart-card" style="padding:20px;background:#fff;border-radius:12px;border:1px solid var(--border);max-width:420px;width:100%;">
@@ -204,20 +204,20 @@
 
     <section class="prose">
       <h2 id="when">Going further</h2>
-      <p>The export matches what your users actually see — heading, legend, card styling and the chart itself, in one PNG. And since a capture takes just milliseconds, you can go beyond a single frame: snapshot the chart at each step of an interaction (hover, filter, data update) and assemble the frames into an animated GIF, like the animation demo on the <a href="../../">showcase</a>.</p>
+      <p>The export matches what your users actually see: heading, legend, card styling and the chart itself, in one PNG. And since a capture takes just milliseconds, you can go beyond a single frame: snapshot the chart at each step of an interaction (hover, filter, data update) and assemble the frames into an animated GIF, like the animation demo on the <a href="../../">showcase</a>.</p>
     </section>
 
     <section class="prose faq">
       <h2 id="faq">Frequently asked questions</h2>
 
       <details>
-        <summary>My exported chart is blank — why?</summary>
+        <summary>My exported chart is blank. Why?</summary>
         <p>You captured before Chart.js finished drawing. Capture inside <code>options.animation.onComplete</code>, or set <code>options.animation = false</code> so the chart paints synchronously.</p>
       </details>
 
       <details>
         <summary>Can I export just the canvas without the surrounding HTML?</summary>
-        <p>Chart.js's own <code>chart.toBase64Image()</code> exports the bare canvas. Capturing the wrapper with SnapDOM is the same one-liner and gives you the complete result — so in practice you rarely need anything else.</p>
+        <p>Chart.js's own <code>chart.toBase64Image()</code> exports the bare canvas. Capturing the wrapper with SnapDOM is the same one-liner and gives you the complete result, so in practice you rarely need anything else.</p>
       </details>
 
       <details>
@@ -227,7 +227,7 @@
 
       <details>
         <summary>Does this work with react-chartjs-2?</summary>
-        <p>Yes. Put a <code>ref</code> on the wrapping element and call <code>snapdom.toPng(ref.current)</code> from the chart's <code>onComplete</code> option. The wrapper is just a DOM node — SnapDOM doesn't care how it was rendered.</p>
+        <p>Yes. Put a <code>ref</code> on the wrapping element and call <code>snapdom.toPng(ref.current)</code> from the chart's <code>onComplete</code> option. The wrapper is just a DOM node: SnapDOM doesn't care how it was rendered.</p>
       </details>
     </section>
 
@@ -244,7 +244,7 @@
     <section class="cta-section">
       <div class="cta-card">
         <h2>Try the live demo</h2>
-        <p>SnapDOM captures a live <code>&lt;canvas&gt;</code> in the browser — see it running before you install.</p>
+        <p>SnapDOM captures a live <code>&lt;canvas&gt;</code> in the browser. See it running before you install.</p>
         <a href="../../#canvas" class="btn btn-primary" data-umami-event="Guide chartjs cta demo">Open the canvas demo</a>
         <a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="guide_repo_click">Star on GitHub</a>
       </div>

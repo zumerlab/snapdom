@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM Documentation — API, Options, Plugins & Cache</title>
+  <title>SnapDOM Documentation: API, Options, Plugins & Cache</title>
   <meta name="description" content="Official SnapDOM documentation: full API reference, every capture option, the plugin system, and cache control. Capture any DOM element to SVG, PNG, JPG, WebP, Canvas or Blob." />
   <meta name="keywords" content="snapdom documentation, snapdom api, snapdom options, snapdom plugins, snapdom cache, dom to image, html to image" />
   <meta name="robots" content="index, follow" />
@@ -90,16 +90,16 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">What is SnapDOM</div>
-      <p><strong>SnapDOM</strong> is a next-generation DOM capture engine — the fast, modern alternative to <strong>html2canvas</strong>, <strong>dom-to-image</strong> and <strong>html-to-image</strong>. It converts any DOM subtree into a self-contained representation that can be exported to SVG, PNG, JPG, WebP, Canvas, Blob, or any custom format through plugins — ultra-fast, modular, extensible, and dependency-free.</p>
+      <p><strong>SnapDOM</strong> captures any DOM element as an image. It's the fast, modern alternative to <strong>html2canvas</strong>, <strong>dom-to-image</strong> and <strong>html-to-image</strong>. It converts a DOM subtree into a self-contained representation, then exports it to SVG, PNG, JPG, WebP, Canvas, Blob, or any custom format you add through a plugin. No dependencies.</p>
     </div>
 
     <section class="prose">
       <h2 id="sections">Documentation sections</h2>
       <div class="related-grid">
-        <a class="related-card" href="api/" data-umami-event="Docs hub card api">API reference — methods & exporters <span class="arrow">→</span></a>
-        <a class="related-card" href="options/" data-umami-event="Docs hub card options">Options — every capture option <span class="arrow">→</span></a>
-        <a class="related-card" href="plugins/" data-umami-event="Docs hub card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
-        <a class="related-card" href="cache/" data-umami-event="Docs hub card cache">Cache & preCache — performance <span class="arrow">→</span></a>
+        <a class="related-card" href="api/" data-umami-event="Docs hub card api">API reference: methods &amp; exporters <span class="arrow">→</span></a>
+        <a class="related-card" href="options/" data-umami-event="Docs hub card options">Options: every capture option <span class="arrow">→</span></a>
+        <a class="related-card" href="plugins/" data-umami-event="Docs hub card plugins">Plugins: extend the pipeline <span class="arrow">→</span></a>
+        <a class="related-card" href="cache/" data-umami-event="Docs hub card cache">Cache & preCache: performance <span class="arrow">→</span></a>
       </div>
     </section>
 
@@ -180,8 +180,8 @@ import { plugins } from '@zumer/snapdom/plugins';</pre>
           <tr><th>Pattern</th><th>When to use</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">snapdom(el)</td><td>Reusable — one clone → many exports (PNG + JPG + download).</td></tr>
-          <tr><td class="num">snapdom.toPng(el)</td><td>Shortcut — single export, less code.</td></tr>
+          <tr><td class="num">snapdom(el)</td><td>Reusable: one clone → many exports (PNG + JPG + download).</td></tr>
+          <tr><td class="num">snapdom.toPng(el)</td><td>Shortcut: single export, less code.</td></tr>
         </tbody>
       </table>
       <p>See the <a href="api/">full API reference</a> for every method and the <a href="options/">options reference</a> for everything you can pass.</p>

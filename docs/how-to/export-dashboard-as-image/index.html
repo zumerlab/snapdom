@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How to Export a Dashboard as an Image — SnapDOM</title>
+  <title>How to Export a Dashboard as an Image: SnapDOM</title>
   <meta name="description" content="Export a browser dashboard as PNG with charts, labels, filters, fonts and surrounding UI using SnapDOM." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/how-to/export-dashboard-as-image/" />
@@ -30,7 +30,7 @@
     <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
   </nav>
 
-  <section class="hero"><div class="hero-badge">How-To Recipe</div><h1>Export a <span class="accent">dashboard as an image</span></h1><p class="lead">Capture the complete dashboard users see—not just an individual chart canvas—and download a sharp PNG.</p></section>
+  <section class="hero"><div class="hero-badge">How-To Recipe</div><h1>Export a <span class="accent">dashboard as an image</span></h1><p class="lead">Capture the complete dashboard users see, not just an individual chart canvas, and download a sharp PNG.</p></section>
   <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Capture the dashboard container after charts and fonts finish rendering, then use <code>download({ format: 'png' })</code>.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
 
 await document.fonts.ready

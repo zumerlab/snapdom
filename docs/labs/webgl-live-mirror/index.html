@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebGL Live Mirror — DOM, Live on the GPU — SnapDOM Labs</title>
+  <title>WebGL Live Mirror: DOM, Live on the GPU · SnapDOM Labs</title>
   <meta name="description" content="Typing into a contenteditable element triggers a live SnapDOM capture on every keystroke. A defineExports plugin feeds the result straight into a persistent WebGL texture, and a dirty/working queue keeps fast typing from piling up stale renders." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/webgl-live-mirror/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="WebGL Live Mirror — DOM, Live on the GPU" />
-  <meta property="og:description" content="A SnapDOM plugin streams every keystroke straight into a persistent WebGL texture — no video element, no polling, just a defineExports export wired into a render loop." />
+  <meta property="og:title" content="WebGL Live Mirror · DOM, Live on the GPU" />
+  <meta property="og:description" content="A SnapDOM plugin streams every keystroke straight into a persistent WebGL texture · no video element, no polling, just a defineExports export wired into a render loop." />
   <meta property="og:url" content="https://snapdom.dev/labs/webgl-live-mirror/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -79,14 +79,14 @@
     <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
   </nav>
 
-  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>DOM, <span class="accent">live</span> on the GPU</h1><p class="lead">Type in the card on the left. On every keystroke, SnapDOM re-captures it and a plugin uploads the result straight into a WebGL texture on the right — not a screenshot you take once, a texture that keeps up with you.</p></section>
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>DOM, <span class="accent">live</span> on the GPU</h1><p class="lead">Type in the card on the left. On every keystroke, SnapDOM re-captures it and a plugin uploads the result straight into a WebGL texture on the right: not a screenshot you take once, a texture that keeps up with you.</p></section>
   <main class="page">
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A <code>defineExports</code> plugin adds a <code>webgl</code> export that feeds a captured PNG straight into an existing WebGL texture, and a small <code>dirty</code>/<code>working</code> coalescing loop makes sure fast typing never queues up stale captures — only the latest edit ever wins the race to the GPU.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A <code>defineExports</code> plugin adds a <code>webgl</code> export that feeds a captured PNG straight into an existing WebGL texture, and a small <code>dirty</code>/<code>working</code> coalescing loop makes sure fast typing never queues up stale captures: only the latest edit ever wins the race to the GPU.</p></div>
 
     <section class="prose">
       <h2>What you're looking at</h2>
-      <p>Type in the card on the left and the panel on the right updates within a frame or two — that's a real SnapDOM capture of the live DOM element, decoded into an <code>&lt;img&gt;</code>, and uploaded as a WebGL <code>TEXTURE_2D</code>. The color-theme buttons change a CSS custom property read by the captured element itself, so switching themes is just another DOM mutation flowing through the same capture path. The shader dropdown is different — it never touches SnapDOM at all, it only changes how the fragment shader samples the texture that's already sitting on the GPU.</p>
+      <p>Type in the card on the left and the panel on the right updates within a frame or two: that's a real SnapDOM capture of the live DOM element, decoded into an <code>&lt;img&gt;</code>, and uploaded as a WebGL <code>TEXTURE_2D</code>. The color-theme buttons change a CSS custom property read by the captured element itself, so switching themes is just another DOM mutation flowing through the same capture path. The shader dropdown is different: it never touches SnapDOM at all, it only changes how the fragment shader samples the texture that's already sitting on the GPU.</p>
     </section>
 
     <section class="prose">
@@ -133,23 +133,23 @@
       <h2>How it works</h2>
       <ol class="steps">
         <li><h4>Typing fires an <code>input</code> listener</h4><p>Every keystroke in the <code>contenteditable</code> element dispatches a native <code>input</code> event. The only listener attached to it calls <code>updateMirror()</code>.</p></li>
-        <li><h4><code>updateMirror()</code> sets a <code>dirty</code> flag</h4><p>If a capture is already running, it just marks the work as <code>dirty</code> and returns — it never queues a second capture. If nothing is running, it enters a <code>while (dirty)</code> loop and captures the editable element with <code>{ plugins: [mirrorPlugin], cache: 'full', fast: true }</code>.</p></li>
-        <li><h4>The plugin's <code>defineExports(ctx)</code> adds a <code>webgl</code> export</h4><p>SnapDOM wires that up automatically as <code>capture.toWebgl()</code>. Calling it hands the export function the capture's own context — including <code>ctx.export.url</code>, the rendered PNG data URL for this specific capture.</p></li>
+        <li><h4><code>updateMirror()</code> sets a <code>dirty</code> flag</h4><p>If a capture is already running, it just marks the work as <code>dirty</code> and returns; it never queues a second capture. If nothing is running, it enters a <code>while (dirty)</code> loop and captures the editable element with <code>{ plugins: [mirrorPlugin], cache: 'full', fast: true }</code>.</p></li>
+        <li><h4>The plugin's <code>defineExports(ctx)</code> adds a <code>webgl</code> export</h4><p>SnapDOM wires that up automatically as <code>capture.toWebgl()</code>. Calling it hands the export function the capture's own context, including <code>ctx.export.url</code>, the rendered PNG data URL for this specific capture.</p></li>
         <li><h4>The export loads that PNG into the existing texture</h4><p>The export function creates an <code>Image</code>, points it at <code>ctx.export.url</code>, and once it decodes, hands it to the <code>WebGLMirror</code> instance's <code>update()</code> method, which uploads it as a new <code>TEXTURE_2D</code> and returns the canvas.</p></li>
-        <li><h4>An independent render loop keeps drawing it</h4><p>The mirror's own <code>requestAnimationFrame</code> loop — started once, completely outside of SnapDOM — redraws that texture every frame, applying whichever shader is currently selected. SnapDOM never drives the render loop; it only refreshes what's on the texture.</p></li>
-        <li><h4>The <code>dirty</code> re-check collapses bursts of keystrokes</h4><p>Because <code>dirty</code> is checked again right after each capture finishes, typing a whole sentence quickly produces exactly one trailing capture instead of one per keystroke — the loop always converges on the latest DOM state.</p></li>
+        <li><h4>An independent render loop keeps drawing it</h4><p>The mirror's own <code>requestAnimationFrame</code> loop, started once and completely outside of SnapDOM, redraws that texture every frame, applying whichever shader is currently selected. SnapDOM never drives the render loop; it only refreshes what's on the texture.</p></li>
+        <li><h4>The <code>dirty</code> re-check collapses bursts of keystrokes</h4><p>Because <code>dirty</code> is checked again right after each capture finishes, typing a whole sentence quickly produces exactly one trailing capture instead of one per keystroke: the loop always converges on the latest DOM state.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2>Why this needed a plugin</h2>
-      <p>SnapDOM's core exports — <code>toPng</code>, <code>toCanvas</code>, and the rest — hand you a finished image or canvas and stop there. They have no concept of "also push this into an existing WebGL texture and keep it around for a render loop," because that's not a rendering concern, it's a destination the caller invented.</p>
-      <p><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>defineExports</code></a> is the seam SnapDOM exposes for inventing that new output shape: a plugin can return named async functions that receive the capture's context and get wired up as <code>capture.to&lt;Name&gt;()</code> automatically. The <code>beforeSnap</code>/<code>afterRender</code> hooks are used here too, but only to time each round trip for the on-screen readout — they're informational and have nothing to do with the texture update itself.</p>
+      <p>SnapDOM's core exports: <code>toPng</code>, <code>toCanvas</code>, and the rest, hand you a finished image or canvas and stop there. They have no concept of "also push this into an existing WebGL texture and keep it around for a render loop," because that's not a rendering concern, it's a destination the caller invented.</p>
+      <p><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>defineExports</code></a> is the seam SnapDOM exposes for inventing that new output shape: a plugin can return named async functions that receive the capture's context and get wired up as <code>capture.to&lt;Name&gt;()</code> automatically. The <code>beforeSnap</code>/<code>afterRender</code> hooks are used here too, but only to time each round trip for the on-screen readout; they're informational and have nothing to do with the texture update itself.</p>
     </section>
 
     <section class="prose">
       <h2>Copy-paste example</h2>
-      <p>The plugin factory — it doesn't know or care what a "capture" is beyond <code>ctx.export.url</code>, so it drops into any project that already has a WebGL renderer with an <code>update(url)</code> method:</p>
+      <p>The plugin factory. it doesn't know or care what a "capture" is beyond <code>ctx.export.url</code>, so it drops into any project that already has a WebGL renderer with an <code>update(url)</code> method:</p>
       <pre class="code-block">function webglMirror (renderer) {
   let started = 0
   let elapsed = 0
@@ -169,7 +169,7 @@
     }
   }
 }</pre>
-      <p>And the usage — a <code>dirty</code>/<code>working</code> loop guarantees a burst of edits collapses into one trailing capture instead of one per keystroke:</p>
+      <p>And the usage. a <code>dirty</code>/<code>working</code> loop guarantees a burst of edits collapses into one trailing capture instead of one per keystroke:</p>
       <pre class="code-block">const mirrorPlugin = webglMirror(renderer)
 let dirty = false
 let working = false
@@ -191,20 +191,20 @@ editable.addEventListener('input', updateMirror)</pre>
 
     <section class="prose">
       <h2>Limits and things to watch</h2>
-      <p>Every keystroke can trigger a full SnapDOM capture — SVG serialize plus rasterize — so this pattern is best for elements that are cheap to capture: small, no heavy images, no font embedding. For anything bigger, debounce the <code>input</code> listener before calling <code>updateMirror()</code> rather than firing on every character. <code>cache: 'full'</code> and <code>fast: true</code> are doing real work here too: they keep repeated captures of the <em>same</em> element cheap by skipping re-computation that doesn't change between keystrokes — that's not the default cache policy, and it's a deliberate trade-off for this exact "recapture the same node constantly" use case.</p>
+      <p>Every keystroke can trigger a full SnapDOM capture (SVG serialize plus rasterize), so this pattern is best for elements that are cheap to capture: small, no heavy images, no font embedding. For anything bigger, debounce the <code>input</code> listener before calling <code>updateMirror()</code> rather than firing on every character. <code>cache: 'full'</code> and <code>fast: true</code> are doing real work here too: they keep repeated captures of the <em>same</em> element cheap by skipping re-computation that doesn't change between keystrokes. That's not the default cache policy, and it's a deliberate trade-off for this exact "recapture the same node constantly" use case.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../webgl-seamless-dom/">WebGL Seamless DOM — no flicker between updates <span class="arrow">→</span></a>
-        <a class="related-card" href="../webgl-shatter/">WebGL Shatter — a very different use of the same texture trick <span class="arrow">→</span></a>
+        <a class="related-card" href="../webgl-seamless-dom/">WebGL Seamless DOM: no flicker between updates <span class="arrow">→</span></a>
+        <a class="related-card" href="../webgl-shatter/">WebGL Shatter: a very different use of the same texture trick <span class="arrow">→</span></a>
         <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>beforeSnap</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses (<code>beforeSnap</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats) is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
 

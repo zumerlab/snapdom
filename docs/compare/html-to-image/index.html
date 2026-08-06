@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM vs html-to-image — Side-by-Side Comparison</title>
+  <title>SnapDOM vs html-to-image: Side-by-Side Comparison</title>
   <meta name="description" content="SnapDOM vs html-to-image: feature matrix, fonts, Shadow DOM, plugins and a 1:1 migration snippet." />
   <meta name="keywords" content="snapdom vs html-to-image, html-to-image alternative, html-to-image fonts, html-to-image shadow dom" />
   <meta name="robots" content="index, follow" />
@@ -112,7 +112,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>SnapDOM vs <span class="accent">html-to-image</span></h1>
-    <p class="lead">Two libraries built around the same SVG <code>foreignObject</code> approach — compared on fidelity, fonts, Shadow DOM, plugins and developer experience.</p>
+    <p class="lead">Two libraries built around the same SVG <code>foreignObject</code> approach, compared on fidelity, fonts, Shadow DOM, plugins and developer experience.</p>
     <div class="hero-actions">
       <a href="#matrix" class="btn btn-primary" data-umami-event="Cmp h2i hero matrix">Feature matrix</a>
       <a href="#migrate" class="btn btn-ghost" data-umami-event="Cmp h2i hero migrate">Migration snippet</a>
@@ -126,9 +126,9 @@
     </div>
 
     <section class="bench-section" id="benchmark">
-      <div class="section-label">Live benchmark — runs in your browser</div>
+      <div class="section-label">Live benchmark: runs in your browser</div>
       <h2>SnapDOM vs html-to-image, head to head</h2>
-      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine — the gap is hardware- and content-dependent.</p>
+      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine. The gap is hardware- and content-dependent.</p>
       <div class="bench-target-row">
         <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
       </div>
@@ -198,7 +198,7 @@
         <div class="verdict-card other">
           <h4>What you give up with html-to-image…</h4>
           <ul>
-            <li>No plugin pipeline — watermarks, filters, PDF or ASCII exports are code you write yourself.</li>
+            <li>No plugin pipeline: watermarks, filters, PDF or ASCII exports are code you write yourself.</li>
             <li>Shadow DOM needs manual handling; CSS counters and line-clamp aren't captured.</li>
             <li>No WebP output, and font control stops at a single embed option.</li>
           </ul>
@@ -241,7 +241,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
           <tr><td class="num">{ pixelRatio: 2 }</td><td class="num">{ dpr: 2 }</td></tr>
           <tr><td class="num">{ filter: node =&gt; … }</td><td class="num">{ filter: node =&gt; … }</td></tr>
           <tr><td class="num">{ fontEmbedCSS }</td><td class="num">{ embedFonts: true }</td></tr>
-          <tr><td class="num">— (not supported)</td><td class="num">{ plugins: [...] }</td></tr>
+          <tr><td class="num">not supported</td><td class="num">{ plugins: [...] }</td></tr>
         </tbody>
       </table>
 
@@ -269,7 +269,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>Can I add a watermark or filter without forking the library?</summary>
-        <p>Yes — that's exactly what the SnapDOM plugin system is for. Use the <code>colorTint</code>, <code>filter</code> or <code>timestampOverlay</code> plugins, or write your own with two callbacks (<code>afterClone</code> / <code>beforeExport</code>). Browse the <a href="../../plugins.html">plugins page</a> for the full list.</p>
+        <p>Yes. That's exactly what the SnapDOM plugin system is for. Use the <code>colorTint</code>, <code>filter</code> or <code>timestampOverlay</code> plugins, or write your own with two callbacks (<code>afterClone</code> / <code>beforeExport</code>). Browse the <a href="../../plugins.html">plugins page</a> for the full list.</p>
       </details>
 
       <details>

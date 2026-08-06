@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Target Range — Every Shot Hits the Clone — SnapDOM Labs</title>
+  <title>Target Range: Every Shot Hits the Clone · SnapDOM Labs</title>
   <meta name="description" content="A shooting-gallery demo where bullet holes are never drawn on the live DOM. A SnapDOM plugin holds onto the last captured clone and appends a new hit to it on every shot, so the exported PNG accumulates damage across the whole game." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/target-range/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="Target Range — Every Shot Hits the Clone" />
+  <meta property="og:title" content="Target Range · Every Shot Hits the Clone" />
   <meta property="og:description" content="A shooting-gallery demo where a SnapDOM plugin accumulates bullet holes onto the last captured clone, shot after shot." />
   <meta property="og:url" content="https://snapdom.dev/labs/target-range/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
@@ -55,19 +55,19 @@
     <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
   </nav>
 
-  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>Every shot hits the <span class="accent">clone</span></h1><p class="lead">A bullet hole is never drawn on the live target in the DOM. A SnapDOM plugin holds onto the clone from the last capture and appends a hit marker to it — every shot re-captures on top of every shot before it.</p></section>
+  <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>Every shot hits the <span class="accent">clone</span></h1><p class="lead">A bullet hole is never drawn on the live target in the DOM. A SnapDOM plugin holds onto the clone from the last capture and appends a hit marker to it, so every shot re-captures on top of every shot before it.</p></section>
   <main class="page">
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM's <code>afterRender</code> hook saves the clone it just rendered; <code>afterClone</code> swaps that saved clone back in on the next capture and appends a fresh bullet-hole marker to it. The live target element in the DOM is never touched — the accumulation lives entirely in the plugin's closure.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM's <code>afterRender</code> hook saves the clone it just rendered; <code>afterClone</code> swaps that saved clone back in on the next capture and appends a fresh bullet-hole marker to it. The live target element in the DOM is never touched: the accumulation lives entirely in the plugin's closure.</p></div>
 
     <section class="prose">
       <h2>What you're looking at</h2>
-      <p>Ten shots, a swaying crosshair, a ring-scoring target — it looks like a canvas-based arcade game. It isn't. The board is a single <code>&lt;img&gt;</code> that gets replaced after every shot with a brand-new <code>snapdom.toPng()</code> result. Nothing in the page's own code remembers where the previous holes landed — that memory lives entirely inside a plugin.</p>
+      <p>Ten shots, a swaying crosshair, a ring-scoring target: it looks like a canvas-based arcade game. It isn't. The board is a single <code>&lt;img&gt;</code> that gets replaced after every shot with a brand-new <code>snapdom.toPng()</code> result. Nothing in the page's own code remembers where the previous holes landed. That memory lives entirely inside a plugin.</p>
     </section>
 
     <section class="prose">
       <h2 id="live-demo">Try it</h2>
-      <p>Aim, click to fire. The reticle drifts and kicks after every shot, and the drift grows as you run out of ammo. Each shot triggers one real SnapDOM capture — the marker you see appear is the actual exported PNG, not an overlay.</p>
+      <p>Aim, click to fire. The reticle drifts and kicks after every shot, and the drift grows as you run out of ammo. Each shot triggers one real SnapDOM capture: the marker you see appear is the actual exported PNG, not an overlay.</p>
       <div class="lab-target-range">
         <div class="hud">
           <div class="stat"><b id="score">0</b><span>Score</span></div>
@@ -79,7 +79,7 @@
             <div id="crosshair"><div class="ring"></div></div>
             <div id="overlay">
               <h2>Ready?</h2>
-              <p>10 shots. The reticle sways and kicks with every shot — compensate for the drift.</p>
+              <p>10 shots. The reticle sways and kicks with every shot, so compensate for the drift.</p>
               <button type="button" class="btn btn-primary" id="startBtn">Start</button>
             </div>
           </div>
@@ -88,32 +88,32 @@
           <button type="button" class="btn btn-ghost" id="restartBtn" disabled>Restart</button>
           <a id="downloadLink" class="btn btn-primary" style="display:none" download="snapdom-target.png">Download target</a>
         </div>
-        <p class="hint">The download button uses the <code>&lt;img&gt;</code> that the last <code>snapdom.toPng()</code> call returned, directly — no second capture needed.</p>
+        <p class="hint">The download button uses the <code>&lt;img&gt;</code> that the last <code>snapdom.toPng()</code> call returned, directly, with no second capture needed.</p>
       </div>
     </section>
 
     <section class="prose">
       <h2>How it works</h2>
       <ol class="steps">
-        <li><h4>A hidden source element, never the visible board</h4><p>A 340×340 <code>&lt;div&gt;</code> off-screen holds one SVG target built once from a ring definition. This — not the board you see — is what SnapDOM actually captures.</p></li>
+        <li><h4>A hidden source element, never the visible board</h4><p>A 340×340 <code>&lt;div&gt;</code> off-screen holds one SVG target built once from a ring definition. This, not the board you see, is what SnapDOM actually captures.</p></li>
         <li><h4>The shot is scored locally, against where the reticle really was</h4><p>On click, the reticle's actual position (after sway and recoil, not the raw mouse position) is converted to a percentage and scored against the ring radii. That <code>{ xPct, yPct, color }</code> is handed to <code>plugin.addHit()</code>.</p></li>
-        <li><h4><code>addHit()</code> appends a marker to the plugin's saved clone</h4><p>If this is the very first shot, the plugin clones the live source once to start from. Every call after that appends a jagged, randomized torn-paper hole — positioned in percentage coordinates so it survives the clone → render round trip — to the clone it already has.</p></li>
+        <li><h4><code>addHit()</code> appends a marker to the plugin's saved clone</h4><p>If this is the very first shot, the plugin clones the live source once to start from. Every call after that appends a jagged, randomized torn-paper hole (positioned in percentage coordinates so it survives the clone → render round trip) to the clone it already has.</p></li>
         <li><h4><code>snapdom.toPng()</code> runs again, plugin included</h4><p>The demo doesn't touch the target's own DOM at all. It just calls <code>snapdom.toPng(target, { plugins: [plugin] })</code> again, same as the first shot.</p></li>
-        <li><h4><code>afterClone</code> swaps in the saved clone</h4><p>Instead of letting SnapDOM clone the pristine (hole-free) source, the plugin replaces <code>ctx.clone</code> with the clone it's been building — which already carries every hole from every previous shot.</p></li>
+        <li><h4><code>afterClone</code> swaps in the saved clone</h4><p>Instead of letting SnapDOM clone the pristine (hole-free) source, the plugin replaces <code>ctx.clone</code> with the clone it's been building, which already carries every hole from every previous shot.</p></li>
         <li><h4><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next shot.</p></li>
-        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download link just points at that same <code>&lt;img&gt;.src</code> — it becomes the download source without a second capture.</p></li>
+        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download link just points at that same <code>&lt;img&gt;.src</code>: it becomes the download source without a second capture.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2>Why this needed a plugin</h2>
-      <p>SnapDOM's default behavior is stateless by design: every call re-clones the live element and renders exactly what it looks like right now. That's correct for a screenshot tool and wrong for a game that needs the opposite — remember every hole that's already there and add one more.</p>
-      <p>There's no <code>snapdom()</code> option for "keep what was captured last time," because accumulation isn't a rendering concern, it's application state — and the plugin system is exactly the seam SnapDOM exposes for that. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks fire on every capture with access to the same closure, so a plugin can hold a private <code>savedClone</code> variable across calls that plain application code has no way to inject into SnapDOM's clone → render pipeline. Two hooks and one closure variable turn a stateless capture function into a stateful one.</p>
+      <p>SnapDOM's default behavior is stateless by design: every call re-clones the live element and renders exactly what it looks like right now. That's correct for a screenshot tool and wrong for a game that needs the opposite: remember every hole that's already there and add one more.</p>
+      <p>There's no <code>snapdom()</code> option for "keep what was captured last time," because accumulation isn't a rendering concern, it's application state, and the plugin system is exactly the seam SnapDOM exposes for that. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks fire on every capture with access to the same closure, so a plugin can hold a private <code>savedClone</code> variable across calls that plain application code has no way to inject into SnapDOM's clone → render pipeline. Two hooks and one closure variable turn a stateless capture function into a stateful one.</p>
     </section>
 
     <section class="prose">
       <h2>Copy-paste example</h2>
-      <p>The plugin factory — the persistent-clone technique works for any "keep building on the last capture" use case, not just bullet holes:</p>
+      <p>The plugin factory. the persistent-clone technique works for any "keep building on the last capture" use case, not just bullet holes:</p>
       <pre class="code-block">function createHitboardPlugin (sourceEl) {
   let savedClone = null
 
@@ -142,7 +142,7 @@
     reset () { savedClone = null }
   }
 }</pre>
-      <p>And the usage — score the shot, tell the plugin, capture again:</p>
+      <p>And the usage. score the shot, tell the plugin, capture again:</p>
       <pre class="code-block">const plugin = createHitboardPlugin(target)
 
 function shoot (xPct, yPct) {
@@ -159,20 +159,20 @@ function shoot (xPct, yPct) {
 
     <section class="prose">
       <h2>Limits and things to watch</h2>
-      <p><code>addHit()</code> lazily initializes <code>savedClone</code> from the live source the first time it's called, so the plugin never needs to be primed before the first shot. <code>reset()</code> clears it back to <code>null</code>, which lets the very next capture re-clone the pristine source from scratch — a fresh game, fresh holes. That's a simpler shape than <a href="../paint-canvas/">Paint Canvas</a>'s <code>skipNext</code> flag: this demo never needs to "skip one capture" mid-stream, because a restart is a hard state reset rather than a stroke boundary the plugin has to detect and route around.</p>
+      <p><code>addHit()</code> lazily initializes <code>savedClone</code> from the live source the first time it's called, so the plugin never needs to be primed before the first shot. <code>reset()</code> clears it back to <code>null</code>, which lets the very next capture re-clone the pristine source from scratch: a fresh game, fresh holes. That's a simpler shape than <a href="../paint-canvas/">Paint Canvas</a>'s <code>skipNext</code> flag: this demo never needs to "skip one capture" mid-stream, because a restart is a hard state reset rather than a stroke boundary the plugin has to detect and route around.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../paint-canvas/">Paint Canvas — same persistent-clone trick <span class="arrow">→</span></a>
-        <a class="related-card" href="../stop-motion/">Stop Motion — capturing discrete poses <span class="arrow">→</span></a>
+        <a class="related-card" href="../paint-canvas/">Paint Canvas: same persistent-clone trick <span class="arrow">→</span></a>
+        <a class="related-card" href="../stop-motion/">Stop Motion: capturing discrete poses <span class="arrow">→</span></a>
         <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses — <code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Build your own plugin</h2><p>Every hook this demo uses (<code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats) is documented in the plugin spec.</p><a href="../../plugins.html" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   </main>
 

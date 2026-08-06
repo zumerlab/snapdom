@@ -234,7 +234,7 @@
 
       <details>
         <summary>The captured image is blank</summary>
-        <p>Make sure you trigger the capture from a user event (click) or inside <code>onMounted</code> — never directly inside <code>setup()</code>. The element ref is only assigned after the component has been mounted.</p>
+        <p>Make sure you trigger the capture from a user event (click) or inside <code>onMounted</code>, never directly inside <code>setup()</code>. The element ref is only assigned after the component has been mounted.</p>
         <p>Also confirm the captured element isn't <code>v-if</code>'d off the page. SnapDOM needs the element to be in the live DOM tree.</p>
       </details>
 
@@ -251,7 +251,7 @@
 
       <details>
         <summary>Does SnapDOM work with Nuxt?</summary>
-        <p>Yes — but only on the client side. Wrap your capture component in <code>&lt;ClientOnly&gt;</code> or import SnapDOM dynamically inside <code>onMounted</code> so it never runs on the server.</p>
+        <p>Yes, but only on the client side. Wrap your capture component in <code>&lt;ClientOnly&gt;</code> or import SnapDOM dynamically inside <code>onMounted</code> so it never runs on the server.</p>
       </details>
 
       <details>

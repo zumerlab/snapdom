@@ -122,7 +122,6 @@ Defaults as normalized in `src/core/context.js`.
 | `reconcile` | `false` | Measure the clone against the live DOM and pin diverging boxes to their real size (roughly doubles capture time) |
 | `burst` | `false` | Memoize repeated captures of an unchanged element via a scoped `MutationObserver`, skipping the pipeline entirely |
 | `invalidate` | `false` | With `burst: true`, force a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits) |
-| `safariWarmupAttempts` | `3` | Safari warmup iterations (1–3) |
 | `excludeStyleProps` | `null` | RegExp/predicate to skip style props |
 | `resolvePicturePlaceholders` | `true` | Built-in `<picture>` / lazy resolver |
 | `pictureResolver` | `{}` | `{ timeout, concurrency, resolveLazySrc, silent }` |
@@ -152,7 +151,7 @@ See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUT
 
 ## Cross-browser handling
 
-- **Safari warmup** — works around [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (the first canvas draw with an embedded-font SVG is blank) by running small pre-captures + `drawImage` to prime the pipeline when fonts are embedded or the element has background/mask/canvas content. Configurable via `safariWarmupAttempts`.
+- **Safari first draw** — works around [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) (the first canvas draw with an embedded-font SVG is blank) by waiting for the fonts the element actually uses, then verifying the draw landed and retrying if it did not. No configuration.
 - **Safari canvas** — box-shadow is rewritten to an SVG drop-shadow, and image compositing is awaited before drawing.
 - **Firefox** — checkboxes and radios get drawn replacements.
 - **iOS** — `download()` falls back to the Web Share API.

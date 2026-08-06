@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM API Reference — Methods, Exporters &amp; Options</title>
+  <title>SnapDOM API Reference: Methods, Exporters &amp; Options</title>
   <meta name="description" content="SnapDOM API reference: the snapdom() reusable object, shortcut methods (toPng, toSvg, toCanvas, toBlob, toJpg, toWebp, download), and exporter-specific options." />
   <meta name="keywords" content="snapdom api, snapdom topng, snapdom tocanvas, snapdom toblob, snapdom tosvg, dom to image api" />
   <meta name="robots" content="index, follow" />
@@ -91,7 +91,7 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">At a glance</div>
-      <p>Call <strong><code>snapdom(el)</code></strong> to get a reusable result object — clone once, export many times to SVG, PNG, JPG, WebP, Canvas or Blob, or trigger a download. For a single export, the <strong><code>snapdom.to*</code></strong> shortcut methods do the same in one call. Every method also accepts the full set of <a href="../options/">capture options</a>.</p>
+      <p>Call <strong><code>snapdom(el)</code></strong> to get a reusable result object: clone once, export many times to SVG, PNG, JPG, WebP, Canvas or Blob, or trigger a download. For a single export, the <strong><code>snapdom.to*</code></strong> shortcut methods do the same in one call. Every method also accepts the full set of <a href="../options/">capture options</a>.</p>
     </div>
 
     <section class="prose">
@@ -101,8 +101,8 @@
           <tr><th>Pattern</th><th>When to use</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">snapdom(el)</td><td><strong>Reusable</strong> — one clone → many exports (PNG + JPG + download).</td></tr>
-          <tr><td class="num">snapdom.toPng(el)</td><td><strong>Shortcut</strong> — single export, less code.</td></tr>
+          <tr><td class="num">snapdom(el)</td><td><strong>Reusable</strong>: one clone → many exports (PNG + JPG + download).</td></tr>
+          <tr><td class="num">snapdom.toPng(el)</td><td><strong>Shortcut</strong>: single export, less code.</td></tr>
         </tbody>
       </table>
 
@@ -137,7 +137,7 @@ document.body.appendChild(png);</pre>
   toWebp(options?): Promise&lt;HTMLImageElement&gt;;
   download(options?): Promise&lt;void&gt;;
 }</pre>
-      <p class="muted"><code>toImg()</code> is <strong>deprecated</strong> — use <code>toSvg()</code> instead.</p>
+      <p class="muted"><code>toImg()</code> is <strong>deprecated</strong>: use <code>toSvg()</code> instead.</p>
     </section>
 
     <section class="prose">
@@ -197,9 +197,9 @@ document.body.appendChild(png);</pre>
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../options/" data-umami-event="Docs api card options">Options — every capture option <span class="arrow">→</span></a>
-        <a class="related-card" href="../plugins/" data-umami-event="Docs api card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
-        <a class="related-card" href="../cache/" data-umami-event="Docs api card cache">Cache &amp; preCache — performance <span class="arrow">→</span></a>
+        <a class="related-card" href="../options/" data-umami-event="Docs api card options">Options: every capture option <span class="arrow">→</span></a>
+        <a class="related-card" href="../plugins/" data-umami-event="Docs api card plugins">Plugins: extend the pipeline <span class="arrow">→</span></a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs api card cache">Cache &amp; preCache: performance <span class="arrow">→</span></a>
         <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs api card compare">SnapDOM vs html2canvas <span class="arrow">→</span></a>
       </div>
     </section>
