@@ -501,12 +501,10 @@ export async function deepClone(node, sessionCache, options) {
     try {
       const slots = node.shadowRoot.querySelectorAll('slot')
       for (const s of slots) {
-        let assigned = []
-        try {
-          assigned = s.assignedNodes?.({ flatten: true }) || s.assignedNodes?.() || []
-        } catch {
-          assigned = s.assignedNodes?.() || []
-        }
+        // Must NOT flatten: this set is checked against the host's *direct* childNodes.
+        // flatten:true resolves nested slots away, so when a light-DOM child is itself a
+        // <slot> (a component inside a component) it never lands here and gets cloned twice.
+        const assigned = s.assignedNodes?.() || []
         for (const an of assigned) clonedAssignedNodes.add(an)
       }
     } catch {

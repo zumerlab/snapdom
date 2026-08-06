@@ -24,7 +24,10 @@ module.exports = [
       "no-trailing-spaces": "error",
       "quotes": ["error", "single", { avoidEscape: true }],
       "semi": ["error", "never"],
-      "no-empty": ["error", { allowEmptyCatch: true }]
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      // esbuild lowers block-level function declarations to a hoisted `var` of the same
+      // name; two same-named ones in one scope then silently clobber each other.
+      "no-inner-declarations": ["error", "functions", { blockScopedFunctions: "disallow" }]
     }
   }
 ]
