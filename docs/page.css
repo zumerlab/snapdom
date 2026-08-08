@@ -59,24 +59,24 @@ body {
 ::selection { background: rgba(45,91,255,0.18); }
 
 /* ── Hero ── */
-.hero { padding: 76px 24px 44px; text-align: center; position: relative; }
+.hero { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 76px 0 44px; text-align: left; position: relative; }
 .hero h1 {
   font-family: var(--font-display);
   font-size: clamp(38px, 5.4vw, 64px);
-  font-weight: 400;
-  letter-spacing: 0.5px;
-  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
   margin-bottom: 18px;
   max-width: 880px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: 0;
+  margin-right: 0;
   text-wrap: balance;
 }
 .hero h1 .accent { color: var(--accent); }
-.hero p.lead { color: var(--text-muted); font-size: 18px; max-width: 620px; margin: 0 auto 28px; line-height: 1.65; }
+.hero p.lead { color: var(--text-muted); font-size: 18px; max-width: 680px; margin: 0 0 28px; line-height: 1.65; }
 .hero p.lead em { font-style: normal; color: var(--text); font-weight: 600; }
-.hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.github-badge { margin-bottom: 22px; }
+.hero-actions { display: flex; gap: 12px; justify-content: flex-start; flex-wrap: wrap; }
+.hero > .github-badge { display: none; }
 
 /* ── Buttons ── */
 .btn {
@@ -84,7 +84,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 13px 26px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 14.5px;
   font-weight: 600;
   white-space: nowrap;
@@ -173,7 +173,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
   color: var(--code-text);
   background: transparent;
   border: 1px solid rgba(217, 226, 247, 0.3);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 5px 12px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -351,7 +351,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 
 /* ── Responsive ── */
 @media (max-width: 640px) {
-  .hero { padding: 60px 20px 30px; }
+  .hero { width: calc(100% - 28px); padding: 60px 0 30px; }
   .hero p.lead { font-size: 16px; }
   .prose h2 { font-size: 25px; }
   .prose p, .prose ul, .prose ol { font-size: 15px; }

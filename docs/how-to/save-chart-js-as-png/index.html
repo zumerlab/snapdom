@@ -96,16 +96,8 @@
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../../docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="../" class="current" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">How-To Recipe</div>
@@ -204,7 +196,7 @@
 
     <section class="prose">
       <h2 id="when">Going further</h2>
-      <p>The export matches what your users actually see: heading, legend, card styling and the chart itself, in one PNG. And since a capture takes just milliseconds, you can go beyond a single frame: snapshot the chart at each step of an interaction (hover, filter, data update) and assemble the frames into an animated GIF, like the animation demo on the <a href="../../">showcase</a>.</p>
+      <p>The export matches what your users actually see: heading, legend, card styling and the chart itself, in one PNG. And since a capture takes just milliseconds, you can go beyond a single frame: snapshot the chart at each step of an interaction (hover, filter, data update) and assemble the frames into an animated GIF, like the animation demo on the <a href="../../showcase/">showcase</a>.</p>
     </section>
 
     <section class="prose faq">
@@ -237,7 +229,7 @@
         <a class="related-card" href="../screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
         <a class="related-card" href="../html-to-png/">How to convert HTML to PNG <span class="arrow">→</span></a>
         <a class="related-card" href="../../guides/react/">SnapDOM in React <span class="arrow">→</span></a>
-        <a class="related-card" href="../../">Live demos <span class="arrow">→</span></a>
+        <a class="related-card" href="../../showcase/">Live demos <span class="arrow">→</span></a>
       </div>
     </section>
 
@@ -245,7 +237,7 @@
       <div class="cta-card">
         <h2>Try the live demo</h2>
         <p>SnapDOM captures a live <code>&lt;canvas&gt;</code> in the browser. See it running before you install.</p>
-        <a href="../../#canvas" class="btn btn-primary" data-umami-event="Guide chartjs cta demo">Open the canvas demo</a>
+        <a href="../../showcase/#canvas" class="btn btn-primary" data-umami-event="Guide chartjs cta demo">Open the canvas demo</a>
         <a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="guide_repo_click">Star on GitHub</a>
       </div>
     </section>

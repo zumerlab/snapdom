@@ -1,64 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- === Meta básicos === -->
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM: DOM-to-Image Capture · html2canvas Alternative</title>
-
-  <meta name="description" content="SnapDOM captures any DOM element to image (SVG, PNG, JPG, WebP) with high fidelity: pseudo-elements, web fonts, and Shadow DOM. A fast html2canvas alternative.">
-  <meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity, plugins">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapDOM: Fast, High-Fidelity DOM Capture</title>
+  <meta name="description" content="Capture any DOM element as SVG, PNG, JPG or WebP with fonts, pseudo-elements and open Shadow DOM included. Fast, dependency-free and extensible.">
+  <meta name="keywords" content="snapdom, DOM capture, html2canvas alternative, HTML to image, SVG export, JavaScript screenshot">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://snapdom.dev/">
-
-  <!-- === LLM-friendly documentation === -->
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
-
-  <!-- === Open Graph / Twitter === -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SnapDOM – serious alternative to html2canvas">
-  <meta property="og:description" content="Capture any web UI with high accuracy and speed, including details that html2canvas misses. Try the demo and see the difference.">
+  <meta property="og:title" content="SnapDOM — fast, high-fidelity DOM capture">
+  <meta property="og:description" content="Turn live browser UI into SVG, PNG, JPG or WebP. Zero dependencies, high fidelity and an extensible plugin system.">
   <meta property="og:url" content="https://snapdom.dev/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
-
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="snapdom – HTML capture reinvented">
-  <meta name="twitter:description" content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support.">
+  <meta name="twitter:title" content="SnapDOM — fast, high-fidelity DOM capture">
+  <meta name="twitter:description" content="Capture live DOM as SVG, PNG, JPG or WebP with the browser details intact.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
-
-  <!-- === Favicons === -->
   <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
   <link rel="shortcut icon" href="./assets/favicon/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon/apple-touch-icon.png">
-  <meta name="apple-mobile-web-app-title" content="SnapDOM">
   <link rel="manifest" href="./assets/favicon/site.webmanifest">
-  <meta name="theme-color" content="#F7F9FC">
-
-  <!-- === JSON-LD Structured Data === -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "@id": "https://snapdom.dev/#organization",
-    "name": "Zumerlab",
-    "url": "https://github.com/zumerlab",
-    "sameAs": ["https://github.com/zumerlab"]
-  }
-  </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "@id": "https://snapdom.dev/#website",
-    "name": "SnapDOM",
-    "url": "https://snapdom.dev/",
-    "description": "Documentation and demos for SnapDOM — the DOM-to-image capture library.",
-    "publisher": { "@id": "https://snapdom.dev/#organization" }
-  }
-  </script>
+  <meta name="theme-color" content="#f7f9fc">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -67,1975 +34,538 @@
     "alternateName": "@zumer/snapdom",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
-    "description": "Capture any DOM element as an image. Convert any DOM subtree to SVG, PNG, JPG, or WebP with full CSS fidelity, including pseudo-elements, web fonts, and Shadow DOM.",
+    "description": "Capture any DOM element as SVG, PNG, JPG or WebP with fonts, pseudo-elements and open Shadow DOM included.",
     "url": "https://snapdom.dev/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
     "softwareVersion": "2.23.2",
     "codeRepository": "https://github.com/zumerlab/snapdom",
     "license": "https://spdx.org/licenses/MIT.html",
-    "image": "https://snapdom.dev/assets/og-card.jpg",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-    "author": { "@id": "https://snapdom.dev/#organization" },
-    "publisher": { "@id": "https://snapdom.dev/#organization" },
-    "sameAs": [
-      "https://github.com/zumerlab/snapdom",
-      "https://www.npmjs.com/package/@zumer/snapdom"
-    ]
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
   }
   </script>
-
-  <!-- Preconnect to critical origins only (reduces DNS/TLS overhead) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://api.github.com">
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-
-  <!-- === Stylesheets ===
-       Third-party CSS is loaded non-render-blocking (media=print → onload swap) so first paint
-       isn't gated on external round-trips. Fonts use display=swap: text paints immediately in a
-       fallback and swaps in when the webface loads (CLS stays 0: the swap already reserves space).
-       Orbit CSS is only used by the Orbit demo far below the fold. -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mansalva&display=swap" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mansalva&display=swap">
-    <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous">
-  </noscript>
   <link rel="stylesheet" href="./shared.css">
-
-  <!-- Analytics: loaded after interactive to avoid LCP penalty -->
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
-  <script>
-    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
-  </script>
-
   <style>
     :root {
-      --sd-primary: #0F1E4D;
-      --sd-primary-light: #1E3470;
-      --sd-accent: #2D5BFF;
-      --sd-accent-hover: #1D3FD8;
-      --sd-accent-soft: rgba(45,91,255,0.08);
-      --sd-gradient: linear-gradient(135deg, #2D5BFF, #2D5BFF);
-      --sd-gradient-alt: linear-gradient(90deg, #2D5BFF, #2D5BFF);
-      --sd-surface: #FFFFFF;
-      --sd-surface-elevated: #F0F4FB;
-      --sd-text: #0F1E4D;
-      --sd-text-muted: #55617C;
-      --sd-annot: #616B85;
-      --sd-border: #0F1E4D;
-      --sd-border-soft: rgba(15,30,77,0.16);
-      --sd-hairline: rgba(15,30,77,0.12);
-      --sd-shadow: none;
-      --sd-shadow-hover: none;
-      --sd-shadow-lg: none;
-      --sd-radius: 0;
-      --sd-radius-sm: 0;
-      --sd-star: #F5A623;
-      --sd-body-bg: #F7F9FC;
-      --sd-grid-color: transparent;
-      --font-display: Arial, Helvetica, sans-serif;
-      --font-body: Arial, Helvetica, sans-serif;
-      --font-mono: Arial, Helvetica, sans-serif;
-      --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
-      --font-hand: Arial, Helvetica, sans-serif;
-      --halftone-color: transparent;
-      --halftone-size: 5px;
-      --halftone-dot: 0px;
-      --halftone-offset: 0px;
+      --ink: #0f1e4d;
+      --muted: #59647d;
+      --blue: #2d5bff;
+      --blue-dark: #1d43d7;
+      --paper: #f7f9fc;
+      --white: #fff;
+      --line: rgba(15, 30, 77, .14);
+      --soft: #eef3ff;
+      --max: 1180px;
     }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body {
-      font-family: var(--font-body);
-      background: var(--sd-body-bg);
-      color: var(--sd-text);
-      -webkit-font-smoothing: antialiased;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 0;
-      counter-reset: spec;
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    .wrap { width: min(var(--max), calc(100% - 48px)); margin: 0 auto; }
+    .site-header { position: sticky; top: 0; z-index: 20; background: rgba(247, 249, 252, .94); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .nav { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-size: 24px; }
+    .brand-mark {
+      width: 46px;
+      height: 54px;
+      flex: 0 0 auto;
+      background: url('./assets/mr-snapdom-wave.png') center / contain no-repeat;
+      mix-blend-mode: multiply;
     }
-    ::selection { background: rgba(45,91,255,0.18); }
-
-    @keyframes sd-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
-    @keyframes sd-print-in { 0% { opacity: 0; translate: 0 -22px; } 100% { opacity: 1; translate: 0 0; } }
-
-    /* ═══ Hero — the capture instrument ═══ */
-    .hero-block { width: 100%; max-width: 1200px; padding: 20px 32px 0; margin-bottom: 8px; position: relative; text-align: left; }
-    .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--sd-hairline); margin-bottom: 56px; }
-    .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
-    .brand-mark { width: 12px; height: 12px; background: var(--sd-accent); flex: 0 0 auto; }
-    .brand-name { font-family: var(--font-display); font-weight: 400; font-size: 25px; color: var(--sd-text); letter-spacing: 0.5px; line-height: 1; }
-    .top-links { display: flex; align-items: center; gap: 26px; }
-    .top-links a { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--sd-text-muted); text-decoration: none; transition: color 0.15s; }
-    .top-links a:hover { color: var(--sd-accent); }
-    .hero-top .github-badge { margin: 0; }
-
-    .hero-grid { display: grid; grid-template-columns: 1.02fr 0.98fr; gap: 56px; align-items: start; }
-    .hero-copy { display: flex; flex-direction: column; gap: 26px; padding-top: 10px; }
-    .hero-eyebrow { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--sd-text-muted); text-transform: uppercase; }
-    .hero-block h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(56px, 6.4vw, 92px); line-height: 0.94; letter-spacing: 0.5px; color: var(--sd-text); margin: 0; text-align: left; }
-    .hero-tagline { font-size: 18px; color: #3A4358; margin: 0; max-width: 500px; line-height: 1.6; }
-    .hero-tagline em { font-style: normal; font-weight: 700; color: var(--sd-text); }
-    .hero-actions { display: flex; gap: 14px; justify-content: flex-start; flex-wrap: wrap; margin-top: 0; }
-    .hero-resources { margin: -10px 0 0; color: #596174; font-size: 14px; line-height: 1.7; }
-    .hero-resources a { color: var(--sd-text); font-weight: 650; text-underline-offset: 3px; }
-    .hero-resources a:hover { color: var(--sd-accent); }
-    .sd-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 26px; border-radius: 999px; font-size: 15px; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer; border: 1.5px solid transparent; transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; font-family: var(--font-body); letter-spacing: 0; box-shadow: none; }
-    .sd-btn:hover { transform: translateY(-1px); box-shadow: none; }
-    .sd-btn:active { transform: translateY(0); box-shadow: none; }
-    .sd-btn-primary { background: var(--sd-accent); color: #FFFFFF !important; }
-    .sd-btn-primary:hover { background: var(--sd-accent-hover); }
-    .sd-btn-ghost { background: transparent; color: var(--sd-text) !important; border-color: rgba(15,30,77,0.28); }
-    .sd-btn-ghost:hover { border-color: var(--sd-border); color: var(--sd-text) !important; }
-    .npm-stack { display: flex; flex-direction: column; gap: 8px; align-self: flex-start; max-width: 100%; }
-    .npm-line { display: flex; align-items: flex-start; gap: 14px; border: 1px solid var(--sd-border-soft); padding: 12px 16px; font-family: var(--font-code); font-size: 13px; color: var(--sd-text); background: var(--sd-surface); max-width: 100%; }
-    .npm-prompt { color: var(--sd-text-muted); flex: 0 0 auto; }
-    .npm-cmd { min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
-    .npm-copy { flex: 0 0 auto; margin-left: auto; align-self: flex-start; border: 0; background: none; cursor: pointer; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--sd-accent); padding: 4px 0 4px 14px; border-left: 1px solid var(--sd-border-soft); text-transform: uppercase; }
-    .hero-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 11px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.2px; color: var(--sd-text-muted); }
-    .hero-proof a { display: inline-flex; align-items: center; gap: 5px; color: var(--sd-text-muted); text-decoration: none; border-bottom: 1px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    .hero-proof a:hover { color: var(--sd-accent); border-color: rgba(45,91,255,0.35); }
-    .hero-proof b { color: var(--sd-text); font-weight: 700; }
-    .hero-proof .sep { opacity: 0.4; }
-    .hero-proof svg { color: var(--sd-star); height: 0.95em; width: auto; }
-    .sd-btn.hero-star { gap: 7px; }
-    .sd-btn.hero-star svg { color: var(--sd-star); height: 1em; width: auto; }
-    .trusted-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--sd-hairline); }
-    .trusted-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--sd-annot); }
-    .trusted-item { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 12.5px; color: var(--sd-text-muted); text-decoration: none; transition: color 0.15s; }
-    .trusted-logo { width: 20px; height: 20px; border-radius: 5px; object-fit: cover; filter: grayscale(1); opacity: 0.72; transition: filter 0.15s, opacity 0.15s; }
-    .trusted-item:hover { color: var(--sd-text); }
-    .trusted-item:hover .trusted-logo { filter: grayscale(0); opacity: 1; }
-    .trusted-more { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.5px; color: var(--sd-accent); text-decoration: none; }
-    .trusted-more:hover { color: var(--sd-accent-hover); }
-    .npm-copy:hover { color: var(--sd-accent-hover); }
-
-    /* Viewfinder stage */
-    .hero-stagewrap { display: flex; flex-direction: column; gap: 16px; }
-    .stage { position: relative; height: 470px; border: 1.5px solid var(--sd-border); background: #FFFFFF; overflow: hidden; }
-    .stage-third { position: absolute; background: rgba(15,30,77,0.07); pointer-events: none; }
+    .nav-links { display: flex; align-items: center; gap: 16px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 13px; }
+    .nav-links a:hover { color: var(--blue); }
+    .nav-cta { padding: 10px 16px; border: 1px solid var(--ink); color: var(--ink) !important; font-weight: 700; }
+    .nav .github-badge { margin: 0; padding: 9px 12px; color: var(--ink); }
+    .nav .github-badge:hover { border-color: var(--blue); color: var(--blue); }
+    .mobile-nav { display: none; }
+    .hero { padding: 96px 0 72px; border-bottom: 1px solid var(--line); }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); gap: 72px; align-items: center; }
+    .hero-grid > * { min-width: 0; }
+    .eyebrow { margin: 0 0 20px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { max-width: 760px; margin: 0; font-size: clamp(52px, 7vw, 88px); line-height: .96; letter-spacing: -.055em; }
+    .hero-format { display: inline-block; min-width: 6.6ch; color: var(--blue); }
+    .hero-format.is-changing { animation: hero-format-in .36s ease-out both; }
+    @keyframes hero-format-in {
+      from { opacity: 0; transform: translateY(.14em); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-format.is-changing { animation: none; }
+    }
+    .lead { max-width: 670px; margin: 28px 0 0; color: var(--muted); font-size: 20px; line-height: 1.65; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border: 1px solid var(--ink); text-decoration: none; font-size: 15px; font-weight: 750; }
+    .btn-primary { border-color: var(--blue); color: var(--white); background: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-secondary:hover { color: var(--blue); border-color: var(--blue); }
+    .install-stack { width: 100%; max-width: 680px; margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+    .install { width: 100%; min-width: 0; display: flex; align-items: center; gap: 18px; padding: 13px 16px; color: #dce4ff; background: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+    .install span { min-width: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
+    .install .copy { flex: 0 0 auto; }
+    .copy { border: 0; padding: 0; color: #9eb3ff; background: transparent; cursor: pointer; font: inherit; }
+    .proof { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 14px; }
+    .proof strong { color: var(--ink); }
+    .demo-shell { position: relative; padding: 18px; border: 1px solid var(--line); background: var(--white); box-shadow: 20px 20px 0 var(--soft); }
+    @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes print-in { from { opacity: 0; translate: 0 -20px; } to { opacity: 1; translate: 0 0; } }
+    .stage { position: relative; height: 390px; overflow: hidden; border: 1px solid var(--line); background: linear-gradient(135deg, #f0f4ff, #fff 56%, #edf7ff); }
+    .stage-third { position: absolute; background: rgba(45,91,255,.09); pointer-events: none; }
     .stage-third.v { top: 0; bottom: 0; width: 1px; }
     .stage-third.h { left: 0; right: 0; height: 1px; }
-    .stage-cross { position: absolute; transform: translate(-50%, -50%); font-family: var(--font-mono); font-size: 13px; color: rgba(15,30,77,0.25); pointer-events: none; }
-    .stage-bracket { position: absolute; width: 26px; height: 26px; pointer-events: none; }
-    .stage-bracket.tl { top: 14px; left: 14px; border-top: 3px solid var(--sd-accent); border-left: 3px solid var(--sd-accent); }
-    .stage-bracket.tr { top: 14px; right: 14px; border-top: 3px solid var(--sd-accent); border-right: 3px solid var(--sd-accent); }
-    .stage-bracket.bl { bottom: 14px; left: 14px; border-bottom: 3px solid var(--sd-accent); border-left: 3px solid var(--sd-accent); }
-    .stage-bracket.br { bottom: 14px; right: 14px; border-bottom: 3px solid var(--sd-accent); border-right: 3px solid var(--sd-accent); }
-    .stage-mascot { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); height: 74%; width: auto; }
-    .stage-annot { position: absolute; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--sd-annot); text-transform: uppercase; white-space: nowrap; }
+    .stage-cross { position: absolute; transform: translate(-50%,-50%); color: rgba(15,30,77,.25); font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .stage-bracket { position: absolute; width: 25px; height: 25px; }
+    .stage-bracket.tl { top: 14px; left: 14px; border-top: 3px solid var(--blue); border-left: 3px solid var(--blue); }
+    .stage-bracket.tr { top: 14px; right: 14px; border-top: 3px solid var(--blue); border-right: 3px solid var(--blue); }
+    .stage-bracket.bl { bottom: 14px; left: 14px; border-bottom: 3px solid var(--blue); border-left: 3px solid var(--blue); }
+    .stage-bracket.br { right: 14px; bottom: 14px; border-right: 3px solid var(--blue); border-bottom: 3px solid var(--blue); }
+    .stage-mascot { position: absolute; left: 50%; bottom: 24px; width: auto; height: 76%; transform: translateX(-50%); filter: drop-shadow(0 16px 18px rgba(15,30,77,.16)); }
+    .stage-annot { position: absolute; color: var(--muted); font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
     .stage-annot.vert { writing-mode: vertical-rl; }
-    #hero-flash { position: absolute; inset: 0; background: #FFFFFF; opacity: 0; pointer-events: none; z-index: 5; }
-    #hero-flash.flashing { animation: sd-flash 0.55s ease-out both; }
-
-    .stage-row { display: flex; align-items: flex-start; gap: 22px; min-height: 150px; }
-    .shutter-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
-    .shutter { width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--sd-border); background: #FFFFFF; display: grid; place-items: center; cursor: pointer; padding: 0; transition: transform 0.12s; touch-action: manipulation; }
-    .shutter span { display: block; width: 38px; height: 38px; border-radius: 50%; background: var(--sd-accent); transition: background 0.15s; }
-    .shutter:hover span { background: var(--sd-accent-hover); }
-    .shutter:active { transform: scale(0.92); }
-    .shutter:disabled { opacity: 0.55; cursor: wait; }
-    .shutter-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.2px; color: var(--sd-annot); }
-    .hero-tray { position: relative; display: flex; gap: 14px; align-items: flex-start; flex: 1; min-width: 0; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
-    .star-overlay { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; }
-    .star-overlay::before { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--sd-body-bg) 62%, transparent); backdrop-filter: blur(2px); }
-    .star-card { position: relative; background: #FFFFFF; border: 1px solid rgba(15,30,77,0.2); box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); transform: rotate(-2deg); animation: sd-print-in 0.5s cubic-bezier(0.2,0.9,0.3,1) both; }
-    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 44px 22px; font-family: var(--font-mono); font-size: 17px; font-weight: 700; letter-spacing: 2px; line-height: 1.5; color: var(--sd-primary); text-decoration: none; text-align: center; transition: color 0.15s; }
-    .star-card a:hover { color: var(--sd-accent); }
-    .star-card .star-big { font-size: 46px; line-height: 1; color: var(--sd-star); }
-    .star-close { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(15,30,77,0.2); background: #FFFFFF; color: var(--sd-text-muted); font-family: var(--font-mono); font-size: 16px; line-height: 1; padding: 0; cursor: pointer; display: grid; place-items: center; box-shadow: 0 4px 10px -6px rgba(15,30,77,0.45); touch-action: manipulation; }
-    .star-close:hover { color: var(--sd-primary); }
+    #hero-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: #fff; opacity: 0; }
+    #hero-flash.flashing { animation: flash .55s ease-out both; }
+    .stage-row { min-height: 128px; display: flex; align-items: flex-start; gap: 18px; padding-top: 16px; }
+    .shutter-wrap { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+    .shutter { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 2px solid var(--ink); border-radius: 50%; background: #fff; cursor: pointer; transition: transform .12s; }
+    .shutter span { width: 36px; height: 36px; display: block; border-radius: 50%; background: var(--blue); }
+    .shutter:hover span { background: var(--blue-dark); }
+    .shutter:active { transform: scale(.92); }
+    .shutter:disabled { cursor: wait; opacity: .55; }
+    .shutter-label { color: var(--muted); font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; }
+    .hero-tray { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
     .hero-tray::-webkit-scrollbar { display: none; }
-    .hero-tray:empty::before { content: 'PRINTS LAND HERE — PRESS THE SHUTTER'; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; color: var(--sd-annot); opacity: 0.7; padding-top: 24px; }
-    .print { background: #FFFFFF; border: 1px solid rgba(15,30,77,0.2); padding: 7px 7px 8px; display: flex; flex-direction: column; gap: 6px; animation: sd-print-in 0.5s cubic-bezier(0.2,0.9,0.3,1) both; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); flex: 0 0 auto; }
-    .print img { display: block; width: 178px; height: auto; background: #fff; border: 0 !important; padding: 0 !important; box-shadow: none !important; }
-    .print-cap { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.8px; color: var(--sd-text-muted); }
-    .print-plug { width: 0; min-width: 100%; font-family: var(--font-code); font-size: 8.5px; letter-spacing: 0.3px; line-height: 1.35; color: var(--sd-accent); overflow-wrap: anywhere; margin-top: -3px; }
+    .hero-tray:empty::before { content: 'PRINTS LAND HERE — PRESS THE SHUTTER'; padding-top: 22px; color: var(--muted); opacity: .7; font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; }
+    .print { flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px; padding: 6px 6px 7px; border: 1px solid var(--line); background: #fff; box-shadow: 0 12px 26px -16px rgba(15,30,77,.45); animation: print-in .5s cubic-bezier(.2,.9,.3,1) both; }
+    .print img { width: 158px; height: auto; display: block; }
+    .print-cap { color: var(--muted); font: 8px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .5px; }
+    .print-plug { width: 0; min-width: 100%; margin-top: -2px; overflow-wrap: anywhere; color: var(--blue); font: 8px ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.3; }
     .print.r1 { transform: rotate(1.8deg); }
     .print.r2 { transform: rotate(-2.2deg); }
-    .print.r3 { transform: rotate(1.1deg); }
-
-    /* ═══ Contact sheet (demo index) ═══ */
-    .menu-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--sd-annot); margin: 48px 0 14px; text-transform: uppercase; }
-    nav.demo-menu { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: rgba(15,30,77,0.14); border: 1px solid rgba(15,30,77,0.14); counter-reset: demo; padding: 0; margin: 0; }
-    nav.demo-menu a { position: relative; counter-increment: demo; display: flex; flex-direction: column; gap: 14px; background: var(--sd-surface); color: var(--sd-text); text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; letter-spacing: 0.3px; padding: 13px 13px 11px; border: 0; border-radius: 0; transition: background 0.15s, color 0.15s; min-height: 74px; }
-    nav.demo-menu a::before { content: counter(demo, decimal-leading-zero); display: block; font-size: 10px; opacity: 0.45; }
-    nav.demo-menu a:hover { background: var(--sd-border); color: #FFFFFF; border-color: transparent; }
-    nav.demo-menu::after { content: ''; background: var(--sd-surface); grid-column: span 3; }
-    @media (min-width: 1081px) { nav.demo-menu::after { display: none; } }
-    @media (max-width: 600px) { nav.demo-menu::after { grid-column: span 1; } }
-
-    section a { color: var(--sd-accent); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(45,91,255,0.35); transition: all 0.2s; }
-    section a:hover { border-bottom-color: var(--sd-accent); color: var(--sd-accent-hover); }
-
-    /* ═══ Sections as specimens ═══ */
-    main { width: 100%; max-width: 820px; padding: 0 24px; }
-    section { margin-bottom: 0; padding: 54px 0 44px; border: 0; border-top: 1px solid var(--sd-hairline); border-radius: 0; background: transparent; counter-increment: spec; }
-    main > section:first-of-type, main section:first-child { border-top: 0; }
-    h1 { font-family: var(--font-display); color: var(--sd-text); font-size: clamp(1.75rem, 4vw, 2.5rem); margin-bottom: 0.75rem; letter-spacing: 0.3px; font-weight: 400; }
-    h2 { font-family: var(--font-display); font-size: 27px; color: var(--sd-text); margin-top: 0; margin-bottom: 1.1rem; font-weight: 400; letter-spacing: 0.3px; }
-    section > h2::before { content: 'SPECIMEN ' counter(spec, decimal-leading-zero); display: block; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 2.5px; color: var(--sd-accent); margin-bottom: 12px; }
-    #powered-by > h2::before { content: 'ECOSYSTEM'; }
-    h3 { font-family: var(--font-body); font-weight: 700; }
-
-    /* Buttons (demo controls) */
-    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close), button#capture, .run-benchmark-button {
-      background: transparent;
-      color: var(--sd-text) !important;
-      border: 1.5px solid var(--sd-border);
-      border-radius: 999px;
-      padding: 0.6rem 1.3rem;
-      font-size: 0.72rem;
-      font-weight: 700;
-      font-family: var(--font-mono);
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      box-shadow: none;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-      margin: 0 0.5em 0.5em 0;
-    }
-    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close):hover:not(:disabled), button#capture:hover, .run-benchmark-button:hover:not(:disabled) {
-      background: var(--sd-border);
-      color: #FFFFFF !important;
-      transform: none;
-      box-shadow: none;
-    }
-    .run-benchmark-button { background: var(--sd-accent); border-color: var(--sd-accent); color: #FFFFFF !important; }
-    .run-benchmark-button:hover:not(:disabled) { background: var(--sd-accent-hover); border-color: var(--sd-accent-hover); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .demo-explanation { font-size: 15px; color: var(--sd-text-muted); margin: -0.35rem 0 1.2rem; line-height: 1.6; max-width: 660px; }
-    .demo-explanation code, section p code { background: var(--sd-accent-soft); padding: 0.15rem 0.4rem; border-radius: 0; font-size: 0.9em; font-family: var(--font-code); color: #1D3FD8; }
-
-    .card { background: var(--sd-surface); padding: 1.5em; border: 1px solid var(--sd-border-soft); border-radius: 0; margin-bottom: 1.4em; transition: none; }
-    .card:hover { transform: none; }
-    .card.black { background: #050E2A; padding: 1.5em; border: 1px solid var(--sd-border); border-radius: 0; margin-bottom: 1.4em; }
-    .card.shadow-demo { width: 100%; max-width: 400px; }
-
-    /* Captures come out as prints */
-    .output { margin-top: 1.3rem; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
-    .output img, .output canvas, .output iframe { max-width: 100%; border: 1px solid rgba(15,30,77,0.2); background: #fff; padding: 6px; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); }
-
-    /* Transition demo (capture subject keeps its party) */
-    .transition-box { background: linear-gradient(to right, #43cea2, #185a9d); color: rgb(30, 27, 27); text-align: center; font-size: 1.2em; padding: 2em; border-radius: 16px; animation: bounceColor 5s infinite ease-in-out; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
-    @keyframes bounceColor {
-      0% { transform: rotate(0deg) scale(1) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
-      20% { transform: rotate(-1deg) scale(1.08) translateY(4px); background: radial-gradient(circle at 40% 60%, #fa709a, #fee140); filter: brightness(1.12) hue-rotate(20deg); }
-      50% { transform: rotate(2deg) scale(0.9) translateY(-6px); background: radial-gradient(circle at 70% 30%, #30cfd0, #330867); filter: brightness(1.1) hue-rotate(-20deg); }
-      70% { transform: rotate(-3deg) scale(1) translateY(6px); background: radial-gradient(circle at 30% 70%, #ffe259, #ffa751); filter: brightness(1.15) saturate(1.2); }
-      100% { transform: rotate(0deg) scale(0.95) translateY(0); background: radial-gradient(circle at center, #4facfe, #00f2fe); filter: brightness(1); }
-    }
-    .dancers { display: inline-block; font-size: 2.2rem; animation: dance-move 1.2s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55); will-change: transform, filter; }
-    @keyframes dance-move {
-      0% { transform: rotate(-10deg) scale(1) translateY(0); }
-      10% { transform: rotate(8deg) scale(1.08, 0.95) translateY(-6px) skewY(-6deg); }
-      20% { transform: rotate(-12deg) scale(0.98, 1.05) translateY(4px) skewY(8deg); }
-      30% { transform: rotate(10deg) scale(1.04, 0.96) translateY(-8px) skewY(-8deg); }
-      50% { transform: rotate(12deg) scale(1.08, 0.92) translateY(-10px) skewY(-10deg); }
-      70% { transform: rotate(8deg) scale(1.04, 0.98) translateY(-4px) skewY(-6deg); }
-      100% { transform: rotate(-10deg) scale(1) translateY(0); }
-    }
-
-    .export-text { font-size: 1.1rem; color: var(--sd-text); text-align: center; }
-    .export-format { font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 0; background: var(--sd-accent-soft); color: #1D3FD8; margin: 0 0.2rem; font-family: var(--font-mono); font-size: 0.9em; }
-
-    .pseudo-box::before { content: '★ '; color: var(--sd-star); font-size: 1.2em; }
-    .pseudo-box::after { content: ' ✨'; color: var(--sd-accent); font-size: 1.2em; }
-
-    .clip-card { clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%); background: linear-gradient(120deg, #2D5BFF 0%, #5C7CFF 100%); color: #fff; font-weight: bold; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-
-    .blend-card { background-image: url("https://picsum.photos/id/15/800/400"); background-color: rgba(0, 60, 50, 0.65); background-blend-mode: multiply; background-size: cover; background-position: center; background-repeat: no-repeat; color: white; padding: 2.5em 2em; font-weight: bold; border-radius: 16px; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.3); min-height: 180px; display: flex; align-items: center; justify-content: center; }
-
-    #orbit-box { font-family: sans-serif; font-optical-sizing: auto; background-color: rgb(16, 16, 16) !important; color: rgba(255, 255, 255, 0.451); }
-
-    /* Mask demos */
-    .mask-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-    .mask-card { position: relative; min-height: 180px; display: grid; place-items: center; border-radius: 0; overflow: hidden; border: 1px solid var(--sd-border-soft); }
-    .mask-bg { position: absolute; inset: 0; background: url("https://picsum.photos/id/29/600/400") no-repeat center/cover; }
-    .mask-label { position: relative; z-index: 2; background: rgba(255, 255, 255, 0.9); padding: 0.3rem 0.7rem; border-radius: 0; font-weight: 600; font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }
-    .mask-radial .mask-bg { mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%); -webkit-mask-image: radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 70%); }
-    .mask-png .mask-bg {
-      mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-      mask-position: center; mask-size: 60% 60%; mask-repeat: no-repeat;
-      -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIyMCIgZmlsbD0iYmxhY2siLz48L3N2Zz4=");
-      -webkit-mask-position: center; -webkit-mask-size: 60% 60%; -webkit-mask-repeat: no-repeat;
-    }
-    .mask-svg { background: #1a1a2e; }
-    .mask-svg .masked-box { width: 100%; height: 100%; background: url("https://picsum.photos/id/37/600/400") center/cover no-repeat; mask: url(#svg-blob-mask); -webkit-mask: url(#svg-blob-mask); }
-
-    /* Forms */
-    .form-demo { display: grid; gap: 0.8rem; width: 100%; }
-    .form-row { display: grid; gap: 0.35rem; }
-    .form-row.inline { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-    .form-demo label { font-size: 13px; font-weight: 600; color: var(--sd-text-muted); }
-    .form-demo input[type="text"], .form-demo input[type="email"], .form-demo select, .form-demo textarea {
-      width: 100%; box-sizing: border-box; border: 1px solid rgba(15,30,77,0.3); border-radius: 0; padding: 0.55rem 0.7rem; font-size: 1rem; font-family: var(--font-body); background: #fff; box-shadow: none; min-height: 42px; color: var(--sd-text);
-    }
-    .form-demo input:focus, .form-demo select:focus, .form-demo textarea:focus { outline: none; border-color: var(--sd-accent); }
-    .form-demo textarea { display: block; resize: vertical; }
-
-    /* Iframe demo */
-    .iframe-wrap { border-radius: 0; overflow: hidden; border: 1px solid var(--sd-border-soft); }
-    .iframe-wrap iframe { display: block; width: 100%; height: 240px; background: white; }
-
-    /* Benchmark */
-    .comparison-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; margin-top: 1rem; flex-direction: row; }
-    .comparison-row > div { flex: 1; min-width: 300px; text-align: center; }
-    .label { font-weight: 700; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
-    .winner-glow { animation: glow 1.2s infinite alternate ease-in-out; border-radius: 0; }
-    .progress-message { margin: 1rem 0; font-size: 0.85rem; color: var(--sd-text-muted); font-weight: 600; font-family: var(--font-mono); }
-    .result-message { margin-top: 0.5rem; font-weight: 700; background: var(--sd-accent-soft); padding: 0.3rem; border-radius: 0; font-family: var(--font-mono); font-size: 0.85rem; }
-    .winner-message { font-size: 1.1rem; font-family: var(--font-mono); margin: 1rem 0; padding: 0.8rem 1.2rem; border-radius: 0; background: var(--sd-surface); border: 1px solid var(--sd-border); display: inline-block; }
-    .winner-message .speed-badge { display: inline-block; background: var(--sd-accent); color: #FFFFFF; padding: 0.2rem 0.7rem; border-radius: 999px; font-weight: 700; margin-left: 0.5rem; }
-    .benchmark-cta { display: inline-block; margin: 0.9rem 0 0; padding: 0.6rem 1.2rem; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sd-accent); background: transparent; border: 1.5px solid var(--sd-accent); border-radius: 999px; text-decoration: none; transition: background 0.15s, color 0.15s; }
-    .benchmark-cta:hover { background: var(--sd-accent); color: #FFFFFF; transform: none; }
-    .benchmark-cta span { margin-left: 0.3rem; transition: margin-left 0.15s; }
-    .benchmark-cta:hover span { margin-left: 0.55rem; }
-    .benchmark-star { margin: 0.9rem auto 0; max-width: 460px; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 400; line-height: 1.5; color: var(--sd-text-muted); }
-    .benchmark-star a { color: var(--sd-accent); text-decoration: none; border-bottom: 1px solid rgba(45,91,255,0.35); white-space: nowrap; }
-    .benchmark-star a:hover { color: var(--sd-accent-hover); }
-    .demo-star { margin-top: 12px; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.5; color: var(--sd-text-muted); }
-    .demo-star a { color: var(--sd-accent); text-decoration: none; border-bottom: 1px solid rgba(45,91,255,0.35); white-space: nowrap; }
-    .demo-star a:hover { color: var(--sd-accent-hover); }
-    .benchmark-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
-    .benchmark-column { flex: 1; min-width: 100px; max-width: calc(50% - 1rem); }
-    .benchmark-output { width: 100%; height: 250px; overflow: auto; border: 1px solid var(--sd-border-soft); border-radius: 0; padding: 10px; background: var(--sd-surface-elevated); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .benchmark-output img, .benchmark-output canvas { max-width: 100%; max-height: 200px; object-fit: contain; margin: 0 auto; display: block; }
-    @keyframes glow {
-      from { box-shadow: 0 0 0 1px rgba(45,91,255,0.25); }
-      to { box-shadow: 0 0 0 3px rgba(45,91,255,0.55); }
-    }
-
-    /* CORS proxy demo */
-    .proxy-card { position: relative; border-radius: 0; padding: 1rem; background: var(--sd-surface); border: 1px solid var(--sd-border-soft); }
-    .proxy-hero { height: 120px; border-radius: 0; background-repeat: no-repeat; background-size: contain; background-position: center; border: 1px solid var(--sd-hairline); display: grid; place-items: center; overflow: hidden; background-color: var(--sd-surface-elevated); }
-    .proxy-ctrls { display: grid; grid-template-columns: 1fr auto auto; gap: 0.5rem; margin-top: 0.75rem; align-items: center; }
-    .proxy-ctrls input[type="text"] { width: 100%; box-sizing: border-box; border: 1px solid rgba(15,30,77,0.3); border-radius: 0; padding: 0.55rem 0.7rem; font-size: 0.85rem; font-family: var(--font-mono); background: #fff; color: var(--sd-text); }
-    .proxy-ctrls input[type="text"]:focus { outline: none; border-color: var(--sd-accent); }
-    .proxy-credit { margin-top: 0.6rem; font-size: 0.8rem; color: var(--sd-text-muted); text-align: right; font-family: var(--font-mono); }
-
-    /* Site footer */
-    .site-footer { width: 100%; max-width: 1200px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 26px 32px 96px; border-top: 1px solid var(--sd-hairline); margin-top: 40px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1.5px; color: var(--sd-annot); text-transform: uppercase; }
-    .site-footer a { color: var(--sd-annot); text-decoration: none; }
-    .site-footer a:hover { color: var(--sd-accent); }
-    .site-footer .f-links { display: flex; gap: 20px; }
-
-    [id] { scroll-margin-top: 1rem; }
-    .hidden { display: none !important; }
-
+    .star-overlay { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; }
+    .star-overlay::before { content: ''; position: absolute; inset: 0; background: rgba(247,249,252,.68); backdrop-filter: blur(2px); }
+    .star-card { position: relative; border: 1px solid var(--line); background: #fff; box-shadow: 0 14px 30px -14px rgba(15,30,77,.45); transform: rotate(-2deg); animation: print-in .5s cubic-bezier(.2,.9,.3,1) both; }
+    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 22px 34px 19px; color: var(--ink); text-decoration: none; text-align: center; font: 700 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.5px; }
+    .star-card a:hover { color: var(--blue); }
+    .star-big { color: #f5a623; font-size: 40px; line-height: 1; }
+    .star-close { position: absolute; top: -12px; right: -12px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: #fff; cursor: pointer; }
+    .logos { padding: 30px 0; border-bottom: 1px solid var(--line); }
+    .logo-row { display: flex; align-items: center; gap: 28px; overflow: hidden; color: var(--muted); }
+    .logo-row > span { flex: 0 0 auto; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .logo-list { display: flex; align-items: center; justify-content: space-between; flex: 1; gap: 24px; }
+    .logo-list a { display: inline-flex; align-items: center; color: var(--muted); text-decoration: none; }
+    .logo-list img { width: 28px; height: 28px; object-fit: contain; filter: grayscale(1); opacity: .75; transition: filter .15s, opacity .15s; }
+    .logo-list a:hover img { filter: none; opacity: 1; }
+    .logo-list .logo-more { color: var(--blue); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .logo-list .logo-more:hover { color: var(--blue-dark); }
+    .section { padding: 92px 0; border-bottom: 1px solid var(--line); }
+    .section-heading { display: grid; grid-template-columns: .75fr 1.25fr; gap: 48px; margin-bottom: 44px; }
+    .section-heading h2 { margin: 0; font-size: clamp(36px, 5vw, 58px); line-height: 1; letter-spacing: -.045em; }
+    .section-heading p { max-width: 620px; margin: 4px 0 0; color: var(--muted); font-size: 18px; line-height: 1.65; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+    .feature { min-height: 230px; padding: 30px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.45); }
+    .feature h3 { margin: 0 0 12px; font-size: 22px; }
+    .feature p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .use-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .use-card { padding: 24px; border: 1px solid var(--line); background: var(--white); text-decoration: none; }
+    .use-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+    .use-card span { color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .use-card h3 { margin: 24px 0 10px; font-size: 20px; }
+    .use-card p { margin: 0; color: var(--muted); line-height: 1.55; }
+    .pro { background: var(--ink); color: var(--white); }
+    .pro .section-heading p { color: #b9c5e4; }
+    .pro-panel { display: grid; grid-template-columns: 1.2fr .8fr; border: 1px solid rgba(255,255,255,.22); }
+    .pro-copy { padding: 42px; }
+    .pro-copy .label { color: #9eb3ff; font-size: 12px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+    .pro-copy h3 { max-width: 620px; margin: 20px 0 14px; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; }
+    .pro-copy p { max-width: 660px; margin: 0; color: #b9c5e4; font-size: 17px; line-height: 1.65; }
+    .pro-meta { padding: 42px; display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid rgba(255,255,255,.22); }
+    .pro-meta strong { display: block; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+    .pro-meta p { margin: 12px 0 28px; color: #b9c5e4; line-height: 1.55; }
+    .pro-meta .btn { color: var(--white); border-color: rgba(255,255,255,.55); }
+    .pro-meta .btn:hover { border-color: var(--white); }
+    .resource-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .resource { min-height: 190px; display: flex; flex-direction: column; justify-content: space-between; padding: 26px; border: 1px solid var(--line); background: var(--white); text-decoration: none; }
+    .resource:hover { color: var(--blue); border-color: var(--blue); }
+    .resource small { color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+    .resource strong { font-size: 24px; line-height: 1.15; }
+    .showcase-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
+    .showcase-visual { position: relative; min-height: 360px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: var(--soft); }
+    .showcase-visual img { width: 230px; max-width: 55%; position: relative; filter: drop-shadow(0 18px 24px rgba(15,30,77,.18)); }
+    .showcase-copy h2 { margin: 0; font-size: clamp(38px, 5vw, 62px); line-height: 1; letter-spacing: -.045em; }
+    .showcase-copy p { margin: 22px 0 28px; color: var(--muted); font-size: 18px; line-height: 1.65; }
+    .final-cta { padding: 90px 0; text-align: center; }
+    .final-cta h2 { max-width: 780px; margin: 0 auto; font-size: clamp(42px, 6vw, 72px); line-height: 1; letter-spacing: -.05em; }
+    .final-cta .actions { justify-content: center; }
+    footer { padding: 30px 0 44px; border-top: 1px solid var(--line); color: var(--muted); }
+    .footer-row { display: flex; justify-content: space-between; gap: 24px; }
+    .footer-links { display: flex; gap: 18px; }
     @media (max-width: 1080px) {
-      nav.demo-menu { grid-template-columns: repeat(4, 1fr); }
-    }
-    @media (max-width: 1150px) {
-      .stage-annot { font-size: 9px; letter-spacing: 1px; }
-    }
-    @media (max-width: 900px) {
-      .hero-top { flex-wrap: wrap; }
-      .top-links { order: 3; width: 100%; flex-wrap: wrap; gap: 8px 18px; }
-      .hero-grid { grid-template-columns: 1fr; gap: 40px; }
-      .stage { height: 400px; }
+      .nav-links > a:not(.github-badge) { display: none; }
+      .mobile-nav { display: flex; overflow-x: auto; border-top: 1px solid var(--line); scrollbar-width: none; }
+      .mobile-nav::-webkit-scrollbar { display: none; }
+      .mobile-nav .wrap { display: flex; }
+      .mobile-nav a { flex: 1 0 auto; padding: 11px 14px; color: var(--muted); text-align: center; text-decoration: none; font-size: 12px; font-weight: 700; }
+      .mobile-nav a:hover { color: var(--blue); }
+      .hero { padding-top: 64px; }
+      .hero-grid, .section-heading, .pro-panel, .showcase-callout { grid-template-columns: 1fr; }
+      .demo-shell { max-width: 620px; }
+      .feature-grid, .resource-grid { grid-template-columns: repeat(2, 1fr); }
+      .use-grid { grid-template-columns: repeat(2, 1fr); }
+      .pro-meta { border-top: 1px solid rgba(255,255,255,.22); border-left: 0; }
     }
     @media (max-width: 600px) {
-      body { padding: 0; }
-      .hero-block { padding: 12px 20px 0; }
-      .hero-top { margin-bottom: 32px; }
-      .hero-block h1 { font-size: 52px; }
-      .hero-tagline { font-size: 16px; }
-      .sd-btn { padding: 12px 20px; font-size: 14px; }
-      .npm-line { font-size: 11.5px; padding: 10px 12px; gap: 10px; }
-      .stage { height: 330px; }
+      .wrap { width: min(100% - 28px, var(--max)); }
+      .nav { min-height: 62px; }
+      .brand { font-size: 21px; }
+      .nav .github-badge { padding: 8px 10px; font-size: 10.5px; }
+      .nav .github-badge > svg, .nav .github-badge > span:first-of-type { display: none; }
+      .nav .github-stars { padding-left: 0; border-left: 0; }
+      .hero { padding: 48px 0 54px; }
+      h1 { font-size: 49px; }
+      .lead { font-size: 17px; }
+      .stage { height: 310px; }
       .stage-annot.vert { display: none; }
+      .stage-annot { font-size: 8px; }
       .print img { width: 140px; }
-      .star-card a { font-size: 13px; padding: 16px 22px 14px; letter-spacing: 1.4px; }
-      .star-card .star-big { font-size: 34px; }
-      main { padding: 0 20px; }
-      section { padding: 40px 0 34px; }
-      h2 { font-size: 23px; }
-      .menu-label { margin-top: 12px; }
-      nav.demo-menu { grid-template-columns: repeat(2, 1fr); }
-      .github-badge { font-size: 10.5px; padding: 6px 10px; }
-      .repo-link { display: none; }
-      .card, .card.black { padding: 1em; font-size: 0.9em; }
-      .output { margin-top: 0.7rem; }
-      .blend-card { padding: 1em; font-size: 0.85em; }
-      .transition-box { padding: 1em; font-size: 0.9em; }
-      .dancers { font-size: 1.3rem; }
-      .export-text { font-size: 1em; }
-      #orbit-box { height: 220px !important; min-width: 0; font-size: 0.8em; }
-      .mask-grid { grid-template-columns: 1fr; }
-      .benchmark-output { height: 200px; }
-      .benchmark-container { gap: 1rem; }
-      .benchmark-column { max-width: 100%; min-width: 0; }
-      .proxy-ctrls { grid-template-columns: 1fr; }
-      .form-row.inline { grid-template-columns: 1fr !important; }
-      .form-demo input[type="text"], .form-demo input[type="email"], .form-demo select, .form-demo textarea { font-size: 16px; }
-      .site-footer { padding: 20px 20px 96px; }
+      .logo-row { align-items: flex-start; flex-direction: column; gap: 14px; }
+      .logo-list { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 16px 24px; }
+      .logo-list a:nth-child(n+5):not(.logo-more) { display: none; }
+      .logo-list .logo-more { margin-left: auto; }
+      .section { padding: 64px 0; }
+      .feature-grid, .use-grid, .resource-grid { grid-template-columns: 1fr; }
+      .feature { min-height: 0; }
+      .pro-copy, .pro-meta { padding: 28px; }
+      .showcase-visual { min-height: 280px; }
+      .footer-row { flex-direction: column; }
     }
-  </style>
-  <style>
-    .container-gyro {
-      background: black;
-    }
-
-
-    .gyro {
-      transform-style: preserve-3d;
-      perspective: 300px;
-    }
-
-    .z-15 {
-      transform: translateZ(-15px);
-    }
-
-    .z-35 {
-      transform: translateZ(-35px);
-    }
-
-    .z-75 {
-      transform: translateZ(-75px);
-    }
-
-    .z-85 {
-      transform: translateZ(-85px);
-    }
-
-    .z-110 {
-      transform: translateZ(-110px);
-    }
-
-    .z-120 {
-      transform: translateZ(-120px);
-    }
-
-    .z-155 {
-      transform: translateZ(-155px);
-    }
-
-    .cyan {
-      --o-fill: var(--o-cyan)
-    }
-
-    .cyan-light {
-      --o-fill: var(--o-cyan-light)
-    }
-
-    .cyan-dark-transparent {
-      --o-fill: var(--o-cyan-dark);
-      opacity: 0.6
-    }
-
-    .pink {
-      --o-fill: var(--o-pink)
-    }
-
-    .transparent {
-      --o-fill: none
-    }
-
-    .white {
-      color: white
-    }
-
-    .dashed-small {
-      opacity: 0.5;
-      height: 3px;
-      background: var(--o-cyan-darker);
-    }
-
-    .dashed-big {
-      opacity: 0.8;
-      height: 6px;
-      background: var(--o-cyan);
-
-    }
-
-    .gyro {
-      animation: tiltLoop 10s ease-in-out 5 alternate;
-    }
-
-    @keyframes tiltLoop {
-      0% {
-        transform: rotateX(-35deg) rotateY(-35deg);
-      }
-
-      25% {
-        transform: rotateX(-35deg) rotateY(35deg);
-      }
-
-      50% {
-        transform: rotateX(35deg) rotateY(35deg);
-      }
-
-      75% {
-        transform: rotateX(35deg) rotateY(-35deg);
-      }
-
-      100% {
-        transform: rotateX(-35deg) rotateY(-35deg);
-      }
-    }
-
-    /* NEW badge — demo menu & section headings */
-    .new-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 7px;
-      font-family: var(--font-mono);
-      font-size: 0.55rem;
-      font-weight: 700;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      border-radius: 0;
-      color: var(--sd-accent);
-      background: transparent;
-      border: 1px solid var(--sd-accent);
-      vertical-align: middle;
-    }
-    h2 .new-badge { margin-left: 10px; transform: translateY(-3px); }
-    nav.demo-menu a .new-badge { position: absolute; top: 10px; right: 10px; padding: 2px 5px; font-size: 0.5rem; margin-left: 0; }
-    nav.demo-menu a:hover .new-badge { color: #FFFFFF; border-color: rgba(255,255,255,0.6); }
   </style>
 </head>
-
 <body>
-  <header class="hero-block">
-    <div class="hero-top">
-      <a class="brand" href="./" aria-label="snapdom home"><span class="brand-mark"></span><span class="brand-name">snapdom</span></a>
-      <nav class="top-links" aria-label="Site">
-        <a href="./docs/" data-umami-event="Top docs">Docs</a>
-        <a href="./plugins.html" data-umami-event="Top plugins">Plugins</a>
-        <a href="./guides/" data-umami-event="Top guides">Guides</a>
-        <a href="./how-to/" data-umami-event="Top how-to">How-to</a>
-        <a href="./compare/" data-umami-event="Top compare">Compare</a>
-        <a href="./made-with/" data-umami-event="Top made-with">Made with</a>
-        <a href="./labs.html" data-umami-event="Top labs">Labs</a>
-        <a href="./blog/" data-umami-event="Top blog">Blog</a>
-      </nav>
-      <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="SnapDOM repo">
-      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
-      <span class="repo-link">zumerlab/snapdom</span>
-      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
-    </a>
-    </div>
-
-    <div class="hero-grid">
-      <div class="hero-copy">
-        <div class="hero-eyebrow"><span class="sd-version">v2.23.2</span><span>· MIT · zero dependencies</span></div>
-        <h1>Capture<br>the DOM.</h1>
-        <p class="hero-tagline">SnapDOM captures any element as SVG, PNG, JPG or WebP, with fonts, pseudo-elements and open shadow roots included. Plugins add GIF, video, standalone HTML and custom formats.</p>
-        <div class="hero-proof" aria-label="Project stats">
-          <a href="https://github.com/zumerlab/snapdom/stargazers" id="proof-stars-wrap" target="_blank" rel="noopener">
-            <svg viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg>
-            <b id="proof-stars">…</b>&nbsp;stars
-          </a>
-          <span class="sep" aria-hidden="true">·</span>
-          <span id="proof-dl-wrap"><b id="proof-downloads">…</b>&nbsp;downloads/mo</span>
-          <span class="sep" aria-hidden="true">·</span>
-          <span>Zero dependencies</span>
-          <span class="sep" aria-hidden="true">·</span>
-          <span>~42&nbsp;KB gzip</span>
-        </div>
-        <div class="hero-actions">
-          <a href="./docs/" class="sd-btn sd-btn-primary" data-umami-event="Hero docs">Get started</a>
-          <a href="#demo-index" class="sd-btn sd-btn-ghost" data-umami-event="Hero browse demos">Browse the demos</a>
-          <a href="https://github.com/zumerlab/snapdom" class="sd-btn sd-btn-ghost hero-star" target="_blank" rel="noopener" data-umami-event="hero_star_click" title="Useful? Star SnapDOM on GitHub"><svg viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg>Star on GitHub</a>
-        </div>
-        <p class="hero-resources">Popular resources:
-          <a href="./docs/api/">API reference</a> ·
-          <a href="./how-to/capture-before-pdf/">PDF workflow</a> ·
-          <a href="./compare/modern-screenshot/">SnapDOM vs modern-screenshot</a> ·
-          <a href="./blog/painting-without-canvas/">How SnapDOM captures the DOM</a>
-        </p>
-        <div class="npm-stack">
-          <div class="npm-line"><span class="npm-prompt">&lt;&gt;</span><span class="npm-cmd">&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;</span><button type="button" class="npm-copy" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;' data-umami-event="Copy CDN script">copy</button></div>
-          <div class="npm-line"><span class="npm-prompt">$</span><span class="npm-cmd">npm i @zumer/snapdom</span><button type="button" class="npm-copy" data-copy="npm i @zumer/snapdom" data-umami-event="Copy npm install">copy</button></div>
-        </div>
-      </div>
-
-      <div class="hero-stagewrap">
-        <div class="stage" id="hero-stage">
-          <div class="stage-third v" style="left:33.33%"></div>
-          <div class="stage-third v" style="left:66.66%"></div>
-          <div class="stage-third h" style="top:33.33%"></div>
-          <div class="stage-third h" style="top:66.66%"></div>
-          <span class="stage-cross" style="left:33.33%; top:33.33%">+</span>
-          <span class="stage-cross" style="left:66.66%; top:66.66%">+</span>
-          <div class="stage-bracket tl"></div>
-          <div class="stage-bracket tr"></div>
-          <div class="stage-bracket bl"></div>
-          <div class="stage-bracket br"></div>
-          <img class="stage-mascot" src="./assets/mrsnapdom-pose.png" alt="Mr. Snapdom, moments before capture" width="485" height="418" />
-          <span class="stage-annot" style="top:20px; left:52px">Subject: Mr. Snapdom, cooperative</span>
-          <span class="stage-annot" style="bottom:20px; right:52px">AF · locked</span>
-          <span class="stage-annot vert" style="top:50%; right:20px; transform:translateY(-50%)">Live DOM: not a screenshot</span>
-          <span class="stage-annot" style="bottom:20px; left:52px">Fig. 01: the hero, moments before capture</span>
-          <div id="hero-flash"></div>
-        </div>
-        <div class="stage-row">
-          <div class="shutter-wrap">
-            <button type="button" class="shutter" onclick="captureHeroStage(this)" aria-label="Capture the hero with snapdom" data-umami-event="Hero shutter"><span></span></button>
-            <span class="shutter-label">CAPTURE</span>
-          </div>
-          <div class="hero-tray" id="hero-tray" aria-live="polite"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="trusted-strip">
-      <span class="trusted-label">Used in production by</span>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/lobehub.png" alt="" width="20" height="20" loading="lazy">LobeHub</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/TriliumNext.png" alt="" width="20" height="20" loading="lazy">Trilium</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/labring.png" alt="" width="20" height="20" loading="lazy">Sealos</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/Tencent.png" alt="" width="20" height="20" loading="lazy">Tencent</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/seek-oss.png" alt="" width="20" height="20" loading="lazy">SEEK</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/antvis.png" alt="" width="20" height="20" loading="lazy">AntV</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/RabbyHub.png" alt="" width="20" height="20" loading="lazy">Rabby</a>
-      <a class="trusted-item" href="./made-with/" data-umami-event="hero_trusted_click"><img class="trusted-logo" src="/assets/made-with/metabrainz.png" alt="" width="20" height="20" loading="lazy">MetaBrainz</a>
-      <a class="trusted-more" href="./made-with/" data-umami-event="hero_trusted_click">+ more →</a>
-    </div>
-
-    <div id="menu-container">
-      <div class="menu-label" id="demo-index">Contact sheet: 21 live demos, every cell runs the real library</div>
-      <nav id="demo-menu" class="demo-menu">
-        <a href="#benchmark">Benchmark</a>
-        <a href="#basic">Basic</a>
-        <a href="#transition">Transition</a>
-        <a href="#opts-demo">Shadows</a>
-        <a href="#orbit">Orbit</a>
-        <a href="#html-export-demo">toHtml <span class="new-badge">New</span></a>
-        <a href="#gif-export-demo">toGif <span class="new-badge">New</span></a>
-        <a href="#video-export-demo">toMp4 <span class="new-badge">New</span></a>
-        <a href="#video">Video <span class="new-badge">New</span></a>
-        <a href="#fonts-demo">Fonts</a>
-        <a href="#shadow">Shadow DOM</a>
-        <a href="#canvas">Canvas</a>
-        <a href="#export">Export</a>
-        <a href="#pseudo">Pseudo</a>
-        <a href="#clip">Clip-Path</a>
-        <a href="#blend">Blend</a>
-        <a href="#iframe">Iframe</a>
-        <a href="#forms">Inputs</a>
-        <a href="#mask">Masking</a>
-        <a href="#cors">CORS</a>
-        <a href="#fullbody">Full Page</a>
+  <header class="site-header">
+    <div class="wrap nav">
+      <a class="brand" href="./" aria-label="SnapDOM home"><span class="brand-mark"></span><span>SnapDOM</span></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="./docs/">Docs</a>
+        <a href="./guides/">Guides</a>
+        <a href="./how-to/">How-to</a>
+        <a href="./compare/">Compare</a>
+        <a href="./showcase/">Showcase</a>
+        <a href="./made-with/">Made with</a>
+        <a href="./plugins.html">Plugins</a>
+        <a href="./labs.html">Labs</a>
+        <a href="./blog/">Blog</a>
+        <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" aria-label="SnapDOM on GitHub, current star count">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" style="height:1em;width:auto"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4-68.9 15-83.4-29.8-83.4-29.8-11.1-28.4-27.5-36-27.5-36-22.6-15.4 1.6-15.1 1.6-15.1 24.9 2 38.6 25.5 38.6 25.5 22.2 38 58.2 27.1 72.6 20.6 2.3-16 8.8-27.1 16-33.4-55-6.2-112.8-27.5-112.8-123.1 0-27.1 9.8-49.4 25.5-66.7-2.6-6.2-11.1-31.4 2.3-65.7 20.9-6.5 69 25.5 69 25.5 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-32 69-25.5 13.4 34.3 4.9 59.5 2.3 65.7 16 17.3 25.5 39.6 25.5 66.7 0 95.8-57.9 116.6-113.1 122.8 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8z"/></svg>
+          <span>GitHub</span>
+          <span class="github-stars"><span aria-hidden="true">★</span><span id="star-count">7.9k+</span></span>
+        </a>
       </nav>
     </div>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div></nav>
   </header>
 
   <main>
-
-
-    <!-- Benchmark -->
-    <section id="benchmark">
-      <h2>Benchmark: snapdom vs html2canvas</h2>
-      <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
-        Each library will capture the same DOM element to canvas 5 times. We'll calculate average speed and show the
-        winner.
-      </p>
-      <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 0.95rem;">
-        <a href="./compare/html2canvas/" data-umami-event="Home compare html2canvas">SnapDOM vs html2canvas</a>
-        <span aria-hidden="true"> · </span>
-        <a href="./compare/dom-to-image/" data-umami-event="Home compare dom-to-image">SnapDOM vs dom-to-image</a>
-      </p>
-
-      <div style="display: flex; justify-content: center; margin: 2rem 0;  margin: 0 auto; ">
-        <div class="card pseudo-box" id="benchmark-box" style="text-align: center; max-width: 250px;padding: 1rem;">
-          This is the benchmark test element to be captured by both libraries.
-        </div>
-      </div>
-
-      <div style="text-align:center; margin-bottom: 2rem;">
-        <button data-umami-event="Run benchmarks" class="run-benchmark-button" onclick="runBenchmark()">Run
-          Benchmark</button>
-      </div>
-
-      <div id="benchmark-result" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; font-weight: bold;">
-      </div>
-
-      <div class="benchmark-container">
-        <div class="benchmark-column">
-          <div class="label">SnapDOM</div>
-          <div id="snapdom-benchmark-output" class="benchmark-output">
-            <div class="progress-message">Waiting to start...</div>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow">Open source · zero dependencies · browser native</p>
+          <h1 aria-label="Capture DOM elements as images, videos, text, ASCII, JSON, PDF or anything."><span aria-hidden="true">Capture DOM elements as <span class="hero-format" id="hero-format">images.</span></span></h1>
+          <p class="lead">SnapDOM captures any element as SVG, PNG, JPG, WebP. Plugins add GIF, video, standalone HTML and custom formats.</p>
+          <div class="actions">
+            <a class="btn btn-primary" href="./docs/">Get started</a>
+            <a class="btn btn-secondary" href="./showcase/">Explore live demos</a>
+            <a class="btn btn-secondary" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
+          </div>
+          <div class="install-stack">
+            <div class="install"><span>npm i @zumer/snapdom</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom">copy</button></div>
+            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
+          </div>
+          <div class="proof" aria-label="Project stats">
+            <span><strong id="version-count">v2.23.2</strong> current version</span>
+            <span><strong id="download-count">1m+</strong> downloads/month</span>
+            <span><strong>MIT</strong> licensed</span>
           </div>
         </div>
-        <div class="benchmark-column">
-          <div class="label">html2canvas</div>
-          <div id="h2c-benchmark-output" class="benchmark-output">
-            <div class="progress-message">Waiting to start...</div>
+
+        <div class="demo-shell">
+          <div class="stage" id="hero-stage">
+            <div class="stage-third v" style="left:33.33%"></div>
+            <div class="stage-third v" style="left:66.66%"></div>
+            <div class="stage-third h" style="top:33.33%"></div>
+            <div class="stage-third h" style="top:66.66%"></div>
+            <span class="stage-cross" style="left:33.33%;top:33.33%">+</span>
+            <span class="stage-cross" style="left:66.66%;top:66.66%">+</span>
+            <div class="stage-bracket tl"></div><div class="stage-bracket tr"></div><div class="stage-bracket bl"></div><div class="stage-bracket br"></div>
+            <img class="stage-mascot" src="./assets/mrsnapdom-pose.png" alt="Mr. SnapDOM, ready to be captured">
+            <span class="stage-annot" style="top:20px;left:52px">Subject: Mr. SnapDOM</span>
+            <span class="stage-annot" style="bottom:20px;right:52px">AF · locked</span>
+            <span class="stage-annot vert" style="top:50%;right:20px;transform:translateY(-50%)">Live DOM: not a screenshot</span>
+            <span class="stage-annot" style="bottom:20px;left:52px">Fig. 01: moments before capture</span>
+            <div id="hero-flash"></div>
           </div>
-        </div>
-      </div>
-    </section>
-    <!-- Basic -->
-    <section id="basic">
-      <h2>Basic capture</h2>
-      <div class="card" id="basic-box">
-        <h3>Hello SnapDOM!</h3>
-      </div>
-      <button data-umami-event="Capture basic" onclick="captureDemo('basic-box', 'basic-output', this)">Capture</button>
-      <button data-umami-event="Download basic" onclick="downloadDemo('basic-box')">Download</button>
-      <div class="output" id="basic-output"></div>
-    </section>
-
-    <!-- Transforms & Shadows (isolated target only) -->
-    <section id="opts-demo">
-      <h2>Transforms &amp; shadows</h2>
-
-      <div style="max-width:440px; margin-inline:auto;">
-        <div id="opts-target" style="
-  width: 250px; height: 100px; margin: auto;
-  background: linear-gradient(135deg, #7bdff2, #f7d5b2);
-  border-radius: 14px;
-  box-shadow: 0 14px 28px rgba(26,34,51,.25);
-  transform: rotate(8deg) scale(1.06);
-  transform-origin: 50% 50%;
-  display:grid; place-items:center; color:#1a2233; font-weight:800;">
-          Transformed + Shadow
-        </div>
-        <p></p>
-        <p style="text-align:center; margin:0.5rem 0 0;">
-          Capture it <strong>just</strong> with <code>outerTransforms</code> /
-          <code>outerShadows</code>.
-        </p>
-      </div>
-
-      <div style="display:grid; gap:.6rem; justify-items:center; margin-top:.6rem;">
-        <label style="display:flex; gap:.5rem; align-items:center;">
-          <input id="opts-flat" type="checkbox" checked />
-          <span><code>outerTransforms</code> (keep external CSS transforms)</span>
-        </label>
-        <label style="display:flex; gap:.5rem; align-items:center;">
-          <input id="opts-shadow" type="checkbox" checked />
-          <span><code>outerShadows</code> (keep external CSS shadows)</span>
-        </label>
-
-        <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-          <button data-umami-event="Capture" onclick="captureOptsTarget(this)">Capture</button>
-          <button data-umami-event="Download" onclick="downloadOptsTarget()">Download</button>
-        </div>
-      </div>
-
-      <div class="output" id="opts-demo-output"></div>
-    </section>
-
-
-<style>
-  .hidden { display: none !important; }
-</style>
-    <!-- Transition -->
-    <section id="transition">
-      <h2>Animated transition</h2>
-      <div class="card transition-box" id="transition-box">
-        <div class="dancers">🕺💃</div>
-        <p style="margin: 0; font-weight: bold">I'm dancing and changing color!</p>
-      </div>
-      <button data-umami-event="Capture transition"
-        onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
-      <button data-umami-event="Download transition" onclick="downloadDemo('transition-box')">Download</button>
-      <div class="output" id="transition-output"></div>
-    </section>
-
-    <!-- Orbit -->
-    <section id="orbit">
-      <h2>Orbit CSS toolkit - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
-          data-umami-event="To orbit repo" target="_blank">Go to repo</a></h2>
-      <div class="card black" id="orbit-box"
-        style="height: 400px; overflow: hidden; background-color: black !important;">
-        <div class="bigbang container-gyro">
-          <div class="gravity-spot gyro">
-            <div class="orbit-6 from-120 range-240 small-dash z-15">
-              <!-- small dash elements -->
-            </div>
-            <div class="orbit-6 z-35">
-              <o-arc value="25" class="from-215 shrink-70 outer-orbit pink"></o-arc>
-            </div>
-            <div class="orbit-5">
-              <o-arc value="25" class="from-315 shrink-80 inner-orbit cyan-light"></o-arc>
-            </div>
-            <div class="orbit-5 from-48 range-130">
-              <o-arc class=" shrink-40 outer-orbit cyan-dark-transparent"></o-arc>
-            </div>
-            <div class="orbit-5 from-180 range-100 big-dash">
-              <!-- small dash elements -->
-            </div>
-            <div class="orbit-4 z-85">
-              <o-arc value="40" class="from-10 shrink-40 pink"></o-arc>
-            </div>
-            <div class="orbit-6 from-320 z-110">
-              <o-arc value="40" class="shrink-40 cyan-light"></o-arc>
-            </div>
-            <div class="orbit-6  from-30 z-120">
-              <o-arc class="shrink-60 cyan-light"></o-arc>
-              <o-arc class="shrink-60 transparent"></o-arc>
-              <o-arc class="shrink-60 cyan-light"></o-arc>
-              <o-arc class="shrink-60 transparent"></o-arc>
-            </div>
-            <div class="orbit-6  from-100 z-155">
-              <o-arc value="40" class="shrink-90 inner-orbit cyan-light"></o-arc>
-            </div>
-            <div class="orbit-6 from-185 range-80 z-75">
-              <o-arc class="grow-0.5x cyan-dark-transparent"></o-arc>
-            </div>
-            <div class="orbit-0 white">ORBIT</div>
+          <div class="stage-row">
+            <div class="shutter-wrap"><button class="shutter" id="hero-shutter" type="button" aria-label="Capture Mr. SnapDOM"><span></span></button><span class="shutter-label">CAPTURE</span></div>
+            <div class="hero-tray" id="hero-tray" aria-live="polite"></div>
           </div>
         </div>
       </div>
+    </section>
 
-
-
-      <script>
-        const container = document.querySelector('.container-gyro');
-        const gyro = document.querySelector('.gyro');
-        const sd = document.querySelector('.small-dash')
-        const bd = document.querySelector('.big-dash')
-
-        const smallDashs = [];
-        const bigDashs = [];
-
-        for (let i = 0; i < 30; i++) {
-          smallDashs.push("<div class='vector shrink-40 outer-orbit dashed-small'></div>");
-        }
-
-        for (let i = 0; i < 15; i++) {
-          bigDashs.push("<div class='vector shrink-40 outer-orbit dashed-big'></div>");
-        }
-
-        sd.innerHTML = smallDashs.join('');
-        bd.innerHTML = bigDashs.join('');
-
-      </script>
-
-      </div>
-      <button data-umami-event="Capture orbit"
-        onclick="captureOrbit('orbit-box', 'orbit-output', this)">Capture</button>
-      <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
-      <div class="output" id="orbit-output">
-
+    <section class="logos" aria-label="Used in production by">
+      <div class="wrap logo-row">
+        <span>Used in production by</span>
+        <div class="logo-list">
+          <a href="https://github.com/lobehub/lobehub" target="_blank" rel="noopener" aria-label="LobeHub repository"><img src="./assets/made-with/lobehub.png" alt="LobeHub" title="LobeHub"></a>
+          <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener" aria-label="TriliumNext repository"><img src="./assets/made-with/TriliumNext.png" alt="TriliumNext" title="TriliumNext"></a>
+          <a href="https://github.com/Tencent/tmagic-editor" target="_blank" rel="noopener" aria-label="Tencent TMagic Editor repository"><img src="./assets/made-with/Tencent.png" alt="Tencent" title="Tencent TMagic Editor"></a>
+          <a href="https://github.com/seek-oss/playroom" target="_blank" rel="noopener" aria-label="SEEK Playroom repository"><img src="./assets/made-with/seek-oss.png" alt="SEEK" title="SEEK Playroom"></a>
+          <a href="https://github.com/antvis/GPT-Vis" target="_blank" rel="noopener" aria-label="AntV GPT-Vis repository"><img src="./assets/made-with/antvis.png" alt="AntV" title="AntV GPT-Vis"></a>
+          <a href="https://github.com/metabrainz/listenbrainz-server" target="_blank" rel="noopener" aria-label="MetaBrainz ListenBrainz repository"><img src="./assets/made-with/metabrainz.png" alt="MetaBrainz" title="MetaBrainz ListenBrainz"></a>
+          <a class="logo-more" href="./made-with/">View more projects →</a>
+        </div>
       </div>
     </section>
 
-    <!-- ── Export plugins (live demos) ── -->
-    <style>
-      .xp-card { background: linear-gradient(135deg, #2b5876, #4e4376); color: #f3f1ea; max-width: 340px; }
-      .xp-card h3 { margin: 0 0 6px; }
-      .xp-pill { display: inline-block; white-space: nowrap; padding: 5px 12px 5px 24px; position: relative; border-radius: 999px; background: rgba(255,255,255,.14); font: 700 11px/1.4 var(--font-mono, monospace); }
-      .xp-pill::before { content: ''; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #2ee6a6; box-shadow: 0 0 8px #2ee6a6; }
-      .xp-anim { max-width: 260px; height: 150px; display: grid; place-items: center; position: relative; background: #0F1E4D; border-color: rgba(255,255,255,0.14); }
-      .xp-ring { width: 80px; height: 80px; border-radius: 50%; border: 6px solid #5c7cff; border-top-color: #ffd166; animation: xp-spin 1.1s linear infinite; }
-      .xp-count { position: absolute; bottom: 10px; right: 14px; font: 800 26px/1 var(--font-mono, monospace); color: #ffd166; }
-      @keyframes xp-spin { to { transform: rotate(360deg); } }
-    </style>
-
-    <section id="html-export-demo">
-      <h2>toHtml() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>html-export</code> plugin returns the capture as a self-contained, re-renderable HTML document: markup plus inlined styles and fonts, not pixels. The preview renders it inside a sandboxed <code>&lt;iframe&gt;</code> to prove it stands alone.</p>
-      <div class="card xp-card" id="xp-html-src">
-        <h3>Provisioning manifest</h3>
-        <p style="margin:0 0 12px; opacity:.85">A surface with <strong style="color:#ffd166">varied</strong> controls and a pseudo-element dot.</p>
-        <span class="xp-pill">SHF · 2.4 GHz</span>
+    <section class="section">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2>What SnapDOM captures.</h2>
+          <p>SnapDOM starts from the element the browser rendered. It preserves the parts that usually make DOM capture difficult without rebuilding the page in a second rendering engine.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature"><h3>High fidelity</h3><p>Web fonts, pseudo-elements, SVG references, backgrounds and open shadow roots travel with the capture.</p></article>
+          <article class="feature"><h3>Fast by design</h3><p>A linear capture pipeline, bounded caches and lazy exporters keep repeated captures responsive.</p></article>
+          <article class="feature"><h3>Simple API</h3><p>Capture once, then export to PNG, SVG, canvas, blob, JPG or WebP from the same result.</p></article>
+          <article class="feature"><h3>Zero dependencies</h3><p>Ship one focused browser library without pulling a second DOM or rendering stack into your app.</p></article>
+          <article class="feature"><h3>Plugin-ready</h3><p>Add formats and capture behavior without making the core library larger for everyone.</p></article>
+          <article class="feature"><h3>Open source</h3><p>The core remains MIT licensed, inspectable and usable in personal and commercial projects.</p></article>
+        </div>
       </div>
-      <button data-umami-event="Plugin toHtml" onclick="exportToHtml(this)">Export to HTML</button>
-      <div class="output" id="xp-html-out"></div>
     </section>
 
-    <section id="gif-export-demo">
-      <h2>toGif() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>gif-export</code> plugin records an animating element frame by frame and encodes an animated GIF (median-cut palette + LZW, no dependencies). The spinner and counter make the motion visible.</p>
-      <div class="card xp-anim" id="xp-gif-src">
-        <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
+    <section class="section">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2>Where it is useful.</h2>
+          <p>Use the DOM as the design surface, then capture the result for downloads, generated assets, automation or tests.</p>
+        </div>
+        <div class="use-grid">
+          <a class="use-card" href="./how-to/export-dashboard-as-image/"><span>Product</span><h3>Dashboards</h3><p>Export charts, KPI cards, legends and surrounding interface as one image.</p></a>
+          <a class="use-card" href="./how-to/export-react-component-as-image/"><span>Frontend</span><h3>Components</h3><p>Turn a rendered React component or web UI into a downloadable asset.</p></a>
+          <a class="use-card" href="./how-to/generate-social-card-from-html/"><span>Content</span><h3>Social cards</h3><p>Design in HTML and CSS, then generate shareable images in the browser.</p></a>
+          <a class="use-card" href="./how-to/visual-regression-screenshot/"><span>Testing</span><h3>Visual baselines</h3><p>Produce deterministic component captures for visual regression workflows.</p></a>
+        </div>
       </div>
-      <button data-umami-event="Plugin toGif" onclick="recordGif(this)">Record GIF</button>
-      <div class="output" id="xp-gif-out"></div>
     </section>
 
-    <section id="video-export-demo">
-      <h2>toMp4() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>video-export</code> plugin records via the native <code>MediaRecorder</code>. Safari produces MP4 (H.264); Chromium and Firefox typically produce WebM (auto-fallback). The returned <code>Blob.type</code> reflects what was produced.</p>
-      <div class="card xp-anim" id="xp-vid-src">
-        <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
-      </div>
-      <button data-umami-event="Plugin toMp4" onclick="recordVideo(this)">Record video</button>
-      <div class="output" id="xp-vid-out"></div>
-    </section>
-
-    <!-- Video Frame -->
-    <section id="video">
-      <h2>Video frame <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">
-        <code>&lt;video&gt;</code> pixels are painted by the GPU compositor and don't serialize into <code>&lt;foreignObject&gt;</code>. The pattern: draw the current frame into a <code>&lt;canvas&gt;</code>, then let SnapDOM capture it like any other node. Press play, then capture any frame. The clip is an MDN CC0 sample served with CORS so the canvas isn't tainted.
-      </p>
-      <div class="card" id="video-box" style="text-align:center; padding:12px;">
-        <video id="demo-video"
-          src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
-          crossorigin="anonymous"
-          muted
-          playsinline
-          loop
-          controls
-          preload="metadata"
-          style="max-width:100%; max-height:320px; border-radius:8px;">
-          <track kind="captions" src="./assets/demo-video-captions.vtt" srclang="en" label="English (silent clip, no dialogue)" default>
-        </video>
-      </div>
-      <button data-umami-event="Capture video frame" onclick="captureVideoFrame(this)">Capture Frame</button>
-      <button data-umami-event="Download video frame" onclick="downloadVideoFrame(this)">Download</button>
-      <div class="output" id="video-output"></div>
-    </section>
-
-
-
-    <!-- Fonts -->
-    <section id="fonts-demo">
-      <h2>Web fonts</h2>
-      <div class="card" id="fonts-box">
-        <h3 style="font-family: 'Mansalva', cursive; font-weight: 400">Unique Typography!</h3>
-        <p style="font-family: sans-serif; font-size: 1.2em;">Web fonts with <code>embedFonts: true</code>.</p>
-      </div>
-      <button data-umami-event="Capture fonts" onclick="captureDemo('fonts-box', 'fonts-output', this)">Capture</button>
-      <button data-umami-event="Download fonts" onclick="downloadDemo('fonts-box')">Download</button>
-      <div class="output" id="fonts-output"></div>
-    </section>
-
-    <!-- Shadow DOM -->
-    <section id="shadow">
-      <h2>Shadow DOM</h2>
-      <div class="card" id="shadow-host"></div>
-      <button data-umami-event="Capture shadow"
-        onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
-      <button data-umami-event="Download shadow" onclick="downloadDemo('shadow-host')">Download</button>
-      <div class="output" id="shadow-output"></div>
-    </section>
-
-    <!-- Canvas -->
-    <section id="canvas">
-      <h2>Canvas</h2>
-      <div class="card"><canvas id="myCanvas" width="160" height="160" style="border: 1px solid #000"></canvas></div>
-      <button data-umami-event="Capture canvas"
-        onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
-      <button data-umami-event="Download canvas" onclick="downloadDemo('myCanvas')">Download</button>
-      <div class="output" id="canvas-output"></div>
-    </section>
-
-    <!-- Export -->
-    <section id="export">
-      <h2>Export formats</h2>
-      <div class="card" id="export-box">
-        <div class="export-text"><strong>Export as</strong><br /><span class="export-format">PNG</span>, <span
-            class="export-format">JPG</span> & <span class="export-format">WebP</span>.</div>
-      </div>
-      <button data-umami-event="Export formats" onclick="exportFormats('export-box')">Export</button>
-      <div class="output" id="export-output"></div>
-    </section>
-
-    <!-- Pseudo -->
-    <section id="pseudo">
-      <h2>Pseudo-elements</h2>
-      <div class="card pseudo-box" id="pseudo-box">This element has pseudo-elements.</div>
-      <button data-umami-event="Capture pseudo"
-        onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
-      <button data-umami-event="Download pseudo" onclick="downloadDemo('pseudo-box')">Download</button>
-      <div class="output" id="pseudo-output"></div>
-    </section>
-
-    <!-- Clip-Path -->
-    <section id="clip">
-      <h2>Clip-path</h2>
-      <div class="card clip-card" id="clip-box">This shape uses clip-path</div>
-      <button data-umami-event="Capture clip path"
-        onclick="captureDemo('clip-box', 'clip-output', this)">Capture</button>
-      <button data-umami-event="Download clip path" onclick="downloadDemo('clip-box')">Download</button>
-      <div class="output" id="clip-output"></div>
-    </section>
-
-    <!-- Blend -->
-    <section id="blend">
-      <h2>Mix blend mode</h2>
-      <p class="demo-explanation">CSS <code>background-blend-mode: multiply</code>. A gradient image (sky + grass) blended with a blue overlay. SnapDOM captures the final rendered result.</p>
-      <div class="card blend-card" id="blend-box">Gradient × blue overlay = tinted result</div>
-      <button data-umami-event="Capture blend" onclick="captureDemo('blend-box', 'blend-output', this)">Capture</button>
-      <button data-umami-event="Download blend" onclick="downloadDemo('blend-box')">Download</button>
-      <div class="output" id="blend-output"></div>
-    </section>
-
-    <!-- NEW: Iframe same-origin -->
-    <section id="iframe">
-      <h2>Iframe (same-origin)</h2>
-      <div class="card iframe-wrap">
-        <iframe id="demo-iframe" title="Same-origin demo" loading="lazy" sandbox="allow-same-origin allow-scripts" srcdoc="<!DOCTYPE html>
-<html>
-<head>
-<meta charset='utf-8'>
-<style>
-  body { font-family: system-ui, Arial; margin: 0; padding: 16px; background: #F0F4FB; color: #0F1E4D; }
-  .box { padding: 14px; background: #FFFFFF; border: 1px solid #0F1E4D; position: relative; }
-  .box::before { content: 'iframe:'; position: absolute; top: -10px; left: 12px; background: #2D5BFF; color: #FFFFFF; font-weight: 700; font-size: 12px; padding: 2px 6px; }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-  .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(45,91,255,0.08); border: 1px solid #2D5BFF; color: #1D3FD8; font-weight: 700; }
-</style>
-<body>
-  <div class='box'>
-    <h4>Same-origin content</h4>
-    <div class='row'><span class='pill'>pseudo-elements</span><span class='pill'>grid</span></div>
-  </div>
-  <script defer src='/copy-code.js'></script>
-</body>
-</html>">
-        </iframe>
-      </div>
-      <button data-umami-event="Capture iframe"
-        onclick="captureIframeBody('demo-iframe','iframe-output', this)">Capture</button>
-      <button data-umami-event="Download iframe" onclick="downloadIframeBody('demo-iframe')">Download</button>
-      <div class="output" id="iframe-output"></div>
-    </section>
-
-    <!-- NEW: Inputs & Textarea -->
-    <section id="forms">
-      <h2>Inputs &amp; textarea</h2>
-      <div class="card" id="forms-box">
-        <form class="form-demo" onsubmit="return false;">
-          <div class="form-row inline">
-            <div>
-              <label for="name">Name</label>
-              <input id="name" type="text" placeholder="John Doe" value="Ada Lovelace" />
-            </div>
-            <div>
-              <label for="email">Email</label>
-              <input id="email" type="email" placeholder="ada@math.org" value="ada@math.org" />
-            </div>
+    <section class="section pro" id="pro">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2>SnapDOM Pro</h2>
+          <p>Paid plugins for production workflows built on top of SnapDOM.</p>
+        </div>
+        <div class="pro-panel">
+          <div class="pro-copy">
+            <span class="label">Professional plugins · coming soon</span>
+            <h3>Production-ready plugins.</h3>
+            <p>SnapDOM Pro will add focused, production-ready capabilities without changing the free core. Plugin sales fund ongoing SnapDOM maintenance and help keep the library current, independent and open source.</p>
           </div>
-
-          <div class="form-row inline">
-            <div>
-              <label for="role">Role</label>
-              <select id="role">
-                <option>Developer</option>
-                <option selected>Researcher</option>
-                <option>Designer</option>
-              </select>
-            </div>
-            <div style="display:grid; grid-template-columns:auto 1fr; align-items:center; gap:.5rem;">
-              <input id="newsletter" type="checkbox" checked />
-              <label for="newsletter" style="margin:0;">Subscribe</label>
-            </div>
+          <div class="pro-meta">
+            <div><strong>Built on the public plugin API</strong><p>Local-first, explicit and integrated with the same capture lifecycle as SnapDOM.</p></div>
+            <a class="btn" href="./plugins.html">Explore plugins</a>
           </div>
-
-          <div class="form-row" style="align-items:center; grid-template-columns:auto auto auto; gap:1rem;">
-            <label><input type="radio" name="level" value="junior"> Junior</label>
-            <label><input type="radio" name="level" value="mid" checked> Mid</label>
-            <label><input type="radio" name="level" value="senior"> Senior</label>
-          </div>
-
-          <div class="form-row">
-            <label for="bio">Bio</label>
-            <textarea id="bio" rows="3"
-              style="resize:vertical;">Pioneer of computing. Loves analytical engines.</textarea>
-          </div>
-        </form>
-      </div>
-      <button data-umami-event="Capture forms" onclick="captureDemo('forms-box','forms-output', this)">Capture</button>
-      <button data-umami-event="Download forms" onclick="downloadDemo('forms-box')">Download</button>
-      <div class="output" id="forms-output"></div>
-    </section>
-
-    <!-- NEW: Masking Effects -->
-    <section id="mask">
-      <h2>Masking effects</h2>
-
-      <!-- SVG defs for mask -->
-      <svg width="0" height="0" style="position:absolute;">
-        <defs>
-          <mask id="svg-blob-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="black"></rect>
-            <circle cx="35%" cy="40%" r="28%" fill="white"></circle>
-            <circle cx="65%" cy="60%" r="30%" fill="white"></circle>
-          </mask>
-        </defs>
-      </svg>
-
-      <div class="mask-grid">
-        <div class="mask-card mask-radial" id="mask-radial">
-          <div class="mask-bg"></div>
-          <div class="mask-label">CSS radial mask</div>
         </div>
-
-        <div class="mask-card mask-png" id="mask-png">
-          <div class="mask-bg"></div>
-          <div class="mask-label">PNG circle mask</div>
-        </div>
-
-        <div class="mask-card mask-svg" id="mask-svg">
-          <div class="masked-box"></div>
-          <div class="mask-label">SVG mask</div>
-        </div>
-
-        <div class="mask-card" id="mask-gradient" style="background:#111;">
-          <div
-            style="position:absolute; inset:0; background:url('https://picsum.photos/id/47/600/400') center/cover no-repeat; -webkit-mask-image: linear-gradient(90deg, transparent, black, transparent); mask-image: linear-gradient(90deg, transparent, black, transparent);">
-          </div>
-          <div class="mask-label">Linear gradient mask</div>
-        </div>
-      </div>
-
-      <div style="margin-top:1rem;">
-        <button data-umami-event="Capture mask radial" onclick="captureDemo('mask-radial','mask-output', this)">Capture
-          radial</button>
-        <button data-umami-event="Capture mask png" onclick="captureDemo('mask-png','mask-output', this)">Capture
-          PNG</button>
-        <button data-umami-event="Capture mask svg" onclick="captureDemo('mask-svg','mask-output', this)">Capture
-          SVG</button>
-        <button data-umami-event="Capture mask gradient"
-          onclick="captureDemo('mask-gradient','mask-output', this)">Capture gradient</button>
-      </div>
-      <div class="output" id="mask-output"></div>
-    </section>
-    <!-- CORS Proxy -->
-   <section id="cors">
-      <h2>CORS proxy (useProxy)</h2>
-      <div class="proxy-card">
-        <div id="proxy-hero" class="proxy-hero">
-          <span style="font-weight:600;color:#567; padding: .4rem .6rem; background:#eef4ff; border-radius:8px;">
-            Image preview (background)
-          </span>
-        </div>
-
-        <div class="proxy-ctrls">
-          <input id="proxy-url" type="text" placeholder="Paste an image URL (one that usually fails CORS)"
-            value="https://www.gstatic.com/webp/gallery/1.jpg" />
-          <button id="enable-proxy-btn">Enable proxy</button>
-          <button id="disable-proxy-btn">Disable</button>
-        </div>
-
-        <div style="display:flex; gap:.5rem; margin-top:.6rem; flex-wrap:wrap;">
-          <button data-umami-event="Capture proxy demo" onclick="captureCorsDemo(this)">Capture</button>
-          <button data-umami-event="Download proxy demo" onclick="downloadCorsDemo()">Download</button>
-        </div>
-
-        <div class="proxy-credit">CORS proxy by <a href="https://corsfix.com/" target="_blank">Corsfix</a></div>
-      </div>
-
-      <div class="output" id="proxy-output"></div>
-    </section> 
-
-    <!-- Full Page -->
-    <section id="fullbody">
-      <h2>Full-page capture</h2>
-      <button data-umami-event="Capture full" onclick="captureDemo('body', 'fullbody-output', this)">Capture</button>
-      <button data-umami-event="Download full" onclick="downloadDemo('body')">Download</button>
-      <div class="output" id="fullbody-output"></div>
-    </section>
-
-    <!-- Powered by SnapDOM -->
-    <section id="powered-by">
-      <h2>Powered by snapdom</h2>
-      <div class="card">
-        <h3><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="To snapdiff site" target="_blank">SnapDIFF</a></h3>
-        <p>Visual regression testing that runs in the browser: captures DOM elements with SnapDOM, compares them to saved baselines, and shows what changed. <a href="https://github.com/zumerlab/snapdiff?utm_source=snapdom" data-umami-event="To snapdiff repo" target="_blank">Go to repo</a>.</p>
       </div>
     </section>
 
+    <section class="section">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2>Documentation and guides.</h2>
+          <p>Start with the small API, then go deeper only where your capture needs it.</p>
+        </div>
+        <div class="resource-grid">
+          <a class="resource" href="./docs/"><small>Documentation</small><strong>Install, capture and export</strong><span>Open docs →</span></a>
+          <a class="resource" href="./docs/api/"><small>API reference</small><strong>Methods and exporters</strong><span>Browse API →</span></a>
+          <a class="resource" href="./docs/options/"><small>Options</small><strong>Every capture setting</strong><span>See options →</span></a>
+          <a class="resource" href="./guides/"><small>Frameworks</small><strong>React, Vue, Svelte and more</strong><span>Read guides →</span></a>
+          <a class="resource" href="./how-to/"><small>Recipes</small><strong>Solutions for real workflows</strong><span>Browse how-to →</span></a>
+          <a class="resource" href="./compare/"><small>Comparisons</small><strong>Choose the right capture tool</strong><span>Compare →</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap showcase-callout">
+        <div class="showcase-visual"><img src="./assets/mrsnapdom-run.png" alt="Mr. SnapDOM running toward the live demos"></div>
+        <div class="showcase-copy">
+          <p class="eyebrow">21 live demos</p>
+          <h2>Run the complete demo suite.</h2>
+          <p>Run SnapDOM against canvas, video, fonts, masks, transforms, Shadow DOM, iframes and plugin exporters. Every example uses the real library.</p>
+          <a class="btn btn-primary" href="./showcase/">Open the showcase</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="wrap">
+        <h2>Install SnapDOM and capture your first element.</h2>
+        <div class="actions">
+          <a class="btn btn-primary" href="./docs/">Get started</a>
+          <a class="btn btn-secondary" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <footer class="site-footer">
-    <span>MIT © <a href="https://github.com/zumerlab" target="_blank" rel="noopener">Zumerlab</a></span>
-    <span>DOM → anything</span>
-    <span class="f-links">
-      <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="Footer github">GitHub</a>
-      <a href="https://www.npmjs.com/package/@zumer/snapdom" target="_blank" rel="noopener" data-umami-event="Footer npm">npm</a>
-      <a href="./llms.txt" data-umami-event="Footer llms">llms.txt</a>
-    </span>
+  <footer>
+    <div class="wrap footer-row">
+      <span>MIT © <a href="https://github.com/zumerlab">Zumerlab</a></span>
+      <div class="footer-links"><a href="./docs/">Docs</a><a href="./showcase/">Showcase</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a></div>
+    </div>
   </footer>
 
-
   <script>
-    // Crear componente con shadow DOM
-    class MyBox extends HTMLElement {
-      constructor() {
-        super()
-        const shadow = this.attachShadow({ mode: 'open' })
-        const container = document.createElement('section')
-        container.innerHTML = `
-          <style>
-            .fun-box {
-              display: flex; flex-direction: column; align-items: center;
-              padding: 18px 10px 10px 10px; border-radius: 12px;
-              background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
-              box-shadow: 0 2px 8px #fda08544; font-weight: bold; text-align: center;
-              font-size: 1.1rem; color: #2d3a4b; position: relative;
-            }
-            .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; animation: spin 1.5s linear infinite alternate; }
-            @keyframes spin { 0% { transform: rotate(-10deg) scale(1); } 100% { transform: rotate(10deg) scale(1.15); } }
-            .msg { font-size: 1.1rem; margin-top: 0.2rem; }
-          </style>
-          <div class="fun-box">
-            <div class="emoji">🦄✨</div>
-            <div class="msg">¡Shadow DOM mágico y divertido!<br>¡Haz una captura y comparte la magia!</div>
-          </div>
-        `
-        shadow.appendChild(container)
-      }
-    }
-    customElements.define('my-box', MyBox)
+    if (location.hostname === 'snapdom.dev') {
+      const umami = document.createElement('script')
+      umami.defer = true
+      umami.src = 'https://cloud.umami.is/script.js'
+      umami.dataset.websiteId = '7ec718e8-f0c5-4abb-8f4f-144f57f61937'
+      document.head.appendChild(umami)
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Shadow DOM ejemplo
-      const host = document.getElementById('shadow-host')
-      if (host && !host.shadowRoot) {
-        const shadow = host.attachShadow({ mode: 'open' })
-        shadow.innerHTML =
-          `<div style='padding: 1.2em; background: #0F1E4D; font-weight: 600; text-align: center; color: #FFFFFF;'>Inside the <strong style="color:#8FB5FF">Shadow DOM</strong>: styles scoped, capture intact</div>`
-      }
-      // await preCache()
+      const analytics = document.createElement('script')
+      analytics.async = true
+      analytics.src = 'https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1'
+      document.head.appendChild(analytics)
+      window.dataLayer = window.dataLayer || []
+      function gtag(){ dataLayer.push(arguments) }
+      gtag('js', new Date())
+      gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' })
+    }
+
+    document.querySelectorAll('[data-copy]').forEach(button => {
+      button.addEventListener('click', async event => {
+        await navigator.clipboard.writeText(event.currentTarget.dataset.copy)
+        event.currentTarget.textContent = 'copied'
+        setTimeout(() => { event.currentTarget.textContent = 'copy' }, 1200)
+      })
     })
 
-    const canvas = document.getElementById('myCanvas')
-    if (canvas) {
-      const ctx = canvas.getContext('2d')
-      ctx.fillStyle = '#43e97b'
-      ctx.fillRect(20, 20, 100, 100)
-      ctx.strokeStyle = '#e52e71'
-      ctx.lineWidth = 4
-      ctx.strokeRect(20, 20, 100, 100)
-      ctx.font = 'bold 20px sans-serif'
-      ctx.fillStyle = '#fff'
-      ctx.fillText('🎨', 60, 80)
+    const heroFormat = document.getElementById('hero-format')
+    if (heroFormat && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const formats = ['images.', 'videos.', 'text.', 'ASCII.', 'JSON.', 'PDF.', 'anything.']
+      let formatIndex = 0
+      setInterval(() => {
+        formatIndex = (formatIndex + 1) % formats.length
+        heroFormat.classList.remove('is-changing')
+        heroFormat.textContent = formats[formatIndex]
+        void heroFormat.offsetWidth
+        heroFormat.classList.add('is-changing')
+      }, 1700)
     }
 
-    let captureDemoLock = false
-    const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    // Safari displays the raw SVG in an iframe (WebKit svg-as-image quirks).
-    // Size it from the captured SVG itself, not the live element's rect: with
-    // animated targets the rect belongs to a different animation frame than the
-    // one the capture froze, and overflow:hidden would clip the difference.
-    function svgIframe(dataUrl) {
-      const svgText = decodeURIComponent(dataUrl.slice(dataUrl.indexOf(',') + 1))
-      const m = svgText.match(/<svg[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/)
-      const iframe = document.createElement('iframe')
-      iframe.setAttribute('sandbox', 'allow-same-origin')
-      iframe.setAttribute('scrolling', 'no')
-      iframe.style.cssText = `width:${m ? m[1] : 300}px;height:${m ? m[2] : 150}px;border:0;overflow:hidden;`
-      iframe.src = dataUrl
-      return iframe
-    }
-
-    async function captureDemo(id, outputId, btn) {
-      if (captureDemoLock) return
-      captureDemoLock = true
-      const el = id === 'body' ? document.body : document.getElementById(id)
-      const output = document.getElementById(outputId)
-      if (!el || !output) { captureDemoLock = false; return }
-      if (btn) btn.disabled = true
-
-      try {
-        const opts = {
-          embedFonts: id === 'body' || id === 'fonts-box',
-          scale: id === 'body' ? 0.4 : 1,
-          outerTransforms: true,
-          outerShadows: false,
-          cache: 'auto'
-        }
-        output.innerHTML = ''
-        if (isSafari()) {
-          output.appendChild(svgIframe(await snapdom.toRaw(el, opts)))
-        } else {
-          const img = await snapdom.toImg(el, opts)
-          output.appendChild(img)
-        }
-      } finally {
-        captureDemoLock = false
-        if (btn) btn.disabled = false
+    Promise.allSettled([
+      fetch('https://api.github.com/repos/zumerlab/snapdom').then(response => response.json()),
+      fetch('https://api.npmjs.org/downloads/point/last-month/%40zumer%2Fsnapdom').then(response => response.json()),
+      fetch('https://registry.npmjs.org/%40zumer%2Fsnapdom/latest').then(response => response.json())
+    ]).then(([github, npm, latest]) => {
+      if (github.status === 'fulfilled' && github.value.stargazers_count) {
+        document.getElementById('star-count').textContent = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(github.value.stargazers_count)
       }
-    }
-
-
-    let orbitCaptureLock = false
-    async function captureOrbit(id, outputId, btn) {
-      if (orbitCaptureLock) return
-      orbitCaptureLock = true
-      const el = document.getElementById(id)
-      const output = document.getElementById(outputId)
-      if (!el || !output) { orbitCaptureLock = false; return }
-      if (btn) btn.disabled = true
-      output.innerHTML = ''
-      try {
-        const opts = { outerShadows: true, cache: 'auto' }
-        if (isSafari()) {
-          output.appendChild(svgIframe(await snapdom.toRaw(el, opts)))
-        } else {
-          const img = await snapdom.toImg(el, opts)
-          output.appendChild(img)
-        }
-      } finally {
-        orbitCaptureLock = false
-        if (btn) btn.disabled = false
+      if (npm.status === 'fulfilled' && npm.value.downloads) {
+        document.getElementById('download-count').textContent = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(npm.value.downloads)
       }
-    }
-
-
-    async function downloadDemo(id) {
-      const el = id === 'body' ? document.body : document.getElementById(id)
-      if (!el) return
-      await snapdom.download(el, {
-        format: 'png',
-        name: id,
-        scale: id === 'body' ? 0.5 : 1,
-        quality: 1,
-        embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
-        outerTransforms: true,
-        outerShadows: false
-      })
-    }
-
-    function paintVideoFrame(video) {
-      if (!video.videoWidth || !video.videoHeight) return null
-      const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      canvas.style.maxWidth = '100%'
-      canvas.style.height = 'auto'
-      canvas.style.borderRadius = '8px'
-      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
-      return canvas
-    }
-
-    async function withFrameInBox(video, box, fn) {
-      const canvas = paintVideoFrame(video)
-      if (!canvas) return null
-      const prevDisplay = video.style.display
-      video.style.display = 'none'
-      box.appendChild(canvas)
-      try {
-        return await fn(box)
-      } finally {
-        canvas.remove()
-        video.style.display = prevDisplay
+      if (latest.status === 'fulfilled' && latest.value.version) {
+        document.getElementById('version-count').textContent = `v${latest.value.version}`
       }
-    }
-
-    async function captureVideoFrame(btn) {
-      const video = document.getElementById('demo-video')
-      const box = document.getElementById('video-box')
-      const output = document.getElementById('video-output')
-      if (!video || !box || !output) return
-      if (btn) btn.disabled = true
-      output.innerHTML = ''
-      try {
-        const img = await withFrameInBox(video, box, (el) => snapdom.toImg(el, { cache: 'disabled' }))
-        if (!img) {
-          output.innerHTML = '<div style="padding:1rem;color:#c00">Video not ready. Press play first, then capture.</div>'
-          return
-        }
-        output.appendChild(img)
-      } catch (e) {
-        output.innerHTML = '<div style="padding:1rem;color:#c00">Capture failed: ' + (e && e.message ? e.message : e) + '</div>'
-      } finally {
-        if (btn) btn.disabled = false
-      }
-    }
-
-    async function downloadVideoFrame(btn) {
-      const video = document.getElementById('demo-video')
-      const box = document.getElementById('video-box')
-      if (!video || !box) return
-      if (btn) btn.disabled = true
-      try {
-        await withFrameInBox(video, box, (el) =>
-          snapdom.download(el, { format: 'png', name: 'video-frame', cache: 'disabled' })
-        )
-      } finally {
-        if (btn) btn.disabled = false
-      }
-    }
-
-    async function captureOptsTarget(btn) {
-      const target = document.getElementById('opts-target');
-      const output = document.getElementById('opts-demo-output');
-      if (!target || !output) return;
-
-      const outerTransforms = document.getElementById('opts-flat')?.checked;
-      const outerShadows = document.getElementById('opts-shadow')?.checked;
-
-      if (btn) btn.disabled = true;
-      const img = await snapdom.toImg(target, {
-        embedFonts: false,
-        outerTransforms,
-        outerShadows
-      });
-      output.innerHTML = '';
-      output.appendChild(img);
-      if (btn) btn.disabled = false;
-    }
-
-    async function downloadOptsTarget() {
-      const target = document.getElementById('opts-target');
-      if (!target) return;
-
-      const outerTransforms = document.getElementById('opts-flat')?.checked;
-      const outerShadows = document.getElementById('opts-shadow')?.checked;
-
-      await snapdom.download(target, {
-        format: 'png',
-        quality: 1,
-        embedFonts: false,
-        outerTransforms,
-        outerShadows
-      });
-    }
-
-    async function captureIframeBody(iframeId, outputId, btn) {
-      const iframe = document.getElementById(iframeId)
-      const output = document.getElementById(outputId)
-      if (!iframe || !output) return
-      if (btn) btn.disabled = true
-      const doc = iframe.contentDocument
-      const target = doc?.body
-      if (!target) return
-      const img = await snapdom.toImg(target, {})
-      output.innerHTML = ''
-      output.appendChild(img)
-      if (btn) btn.disabled = false
-    }
-
-    async function downloadIframeBody(iframeId) {
-      const iframe = document.getElementById(iframeId)
-      const doc = iframe?.contentDocument
-      const target = doc?.body
-      if (!target) return
-      await snapdom.download(target, {
-        format: 'png', name: 'iframe-body', scale: 1, quality: 1, outerTransforms: false,
-        outerShadows: true
-      })
-    }
-
-    async function exportFormats(id) {
-      const el = document.getElementById(id)
-      const result = await snapdom(el, {})
-      const output = document.getElementById('export-output')
-      output.innerHTML = ''
-      const [png, jpg, webp] = await Promise.all([result.toPng(), result.toJpg(), result.toWebp()])
-
-      output.append('PNG:', png, document.createElement('br'))
-      output.append('JPG:', jpg, document.createElement('br'))
-      output.append('WebP:', webp)
-    }
+    })
   </script>
-
   <script type="module">
-        import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
 
-
-    window.snapdom = snapdom;
-
-    // ── Export plugin demos ──
-    // Plugins are lazy-loaded from npm (via esm.sh) on first click, so an
-    // unpublished/offline CDN only breaks its own demo, never the whole page.
-    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins';
-    let _xpCount = 0;
-    setInterval(() => {
-      const s = String((_xpCount = (_xpCount + 1) % 100)).padStart(2, '0');
-      const g = document.getElementById('xp-gif-count'); if (g) g.textContent = s;
-      const v = document.getElementById('xp-vid-count'); if (v) v.textContent = s;
-    }, 80);
-
-    function xpError(out, e) { out.innerHTML = `<div class="progress-message">⚠︎ ${String(e && (e.message || e))}</div>`; }
-
-    function xpDownloadBtn(blob, filename) {
-      const b = document.createElement('button');
-      b.textContent = 'Download';
-      b.style.marginTop = '10px';
-      b.onclick = () => {
-        const u = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = u; a.download = filename; a.click();
-        setTimeout(() => URL.revokeObjectURL(u), 4000);
-      };
-      return b;
-    }
-
-    // Post-demo gratitude CTA: fires the success metric every time,
-    // shows a discreet star prompt at most once per session, below the result.
-    function sdExportStar(out, kind) {
-      try { if (window.umami) umami.track('demo_export_success', { kind: kind }); } catch (e) {}
-      try {
-        if (sessionStorage.getItem('sd_export_star')) return;
-        sessionStorage.setItem('sd_export_star', '1');
-      } catch (e) {}
-      const cta = document.createElement('div');
-      cta.className = 'demo-star';
-      cta.innerHTML = 'Saved you time? <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="demo_star_click">★ Star SnapDOM</a>';
-      out.appendChild(cta);
-    }
-
-    window.exportToHtml = async function (btn) {
-      const out = document.getElementById('xp-html-out');
-      btn.disabled = true; out.innerHTML = '<div class="progress-message">Exporting…</div>';
-      try {
-        const { htmlExport } = await import(`${PLUGIN_CDN}/html-export`);
-        const result = await snapdom(document.getElementById('xp-html-src'), { plugins: [htmlExport()] });
-        const html = await result.toHtml();
-        const iframe = document.createElement('iframe');
-        iframe.title = 'exported document';
-        iframe.style.cssText = 'width:100%;height:240px;border:0;border-radius:8px;background:#fff';
-        iframe.srcdoc = html;
-        out.innerHTML = '';
-        out.appendChild(iframe);
-        out.appendChild(xpDownloadBtn(new Blob([html], { type: 'text/html' }), 'capture.html'));
-        sdExportStar(out, 'html');
-      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
-    };
-
-    window.recordGif = async function (btn) {
-      const out = document.getElementById('xp-gif-out');
-      btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording frames…</div>';
-      try {
-        const { gifExport } = await import(`${PLUGIN_CDN}/gif-export`);
-        const src = document.getElementById('xp-gif-src');
-        const result = await snapdom(src, { plugins: [gifExport()] });
-        const blob = await result.toGif({ fps: 12, duration: 1500 });
-        const url = URL.createObjectURL(blob);
-        const img = new Image();
-        const w = Math.round(src.getBoundingClientRect().width);
-        img.style.cssText = `width:100%;max-width:${w}px;height:auto;border-radius:8px;background:#fff`;
-        img.onload = () => URL.revokeObjectURL(url);
-        img.src = url;
-        out.innerHTML = '';
-        out.appendChild(img);
-        out.appendChild(document.createElement('br'));
-        out.appendChild(xpDownloadBtn(blob, 'capture.gif'));
-        sdExportStar(out, 'gif');
-      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
-    };
-
-    window.recordVideo = async function (btn) {
-      const out = document.getElementById('xp-vid-out');
-      btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording…</div>';
-      try {
-        const { videoExport } = await import(`${PLUGIN_CDN}/video-export`);
-        const src = document.getElementById('xp-vid-src');
-        const result = await snapdom(src, { plugins: [videoExport()] });
-        const blob = await result.toMp4({ fps: 12, duration: 2000 });
-        const v = document.createElement('video');
-        v.controls = true; v.loop = true; v.muted = true; v.playsInline = true;
-        const w = Math.round(src.getBoundingClientRect().width);
-        v.style.cssText = `width:100%;max-width:${w}px;height:auto;border-radius:8px`;
-        v.src = URL.createObjectURL(blob);
-        out.innerHTML = '';
-        out.appendChild(v);
-        out.appendChild(document.createElement('br'));
-        out.appendChild(xpDownloadBtn(blob, blob.type.includes('mp4') ? 'capture.mp4' : 'capture.webm'));
-        sdExportStar(out, 'video');
-        v.play().catch(() => {});
-      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
-    };
-
-    // html2canvas carga solo al hacer benchmark (evita bloqueo en Safari por ESM)
-    let html2canvas = null;
-    async function loadHtml2Canvas() {
-      if (!html2canvas) {
-        const mod = await import('https://cdn.skypack.dev/html2canvas');
-        html2canvas = mod.default;
-      }
-      return html2canvas;
-    }
-
-    window.runBenchmark = async function () {
-      const el = document.getElementById("benchmark-box");
-      const snapContainer = document.getElementById("snapdom-benchmark-output");
-      const h2cContainer = document.getElementById("h2c-benchmark-output");
-      const resultText = document.getElementById("benchmark-result");
-      const benchmarkBtn = document.querySelector(".run-benchmark-button");
-
-      if (!el || !snapContainer || !h2cContainer || !resultText || !benchmarkBtn) return;
-
-      snapContainer.innerHTML = '<div class="progress-message">Starting SnapDOM test...</div>';
-      h2cContainer.innerHTML = '<div class="progress-message">Loading html2canvas...</div>';
-      resultText.textContent = "";
-      benchmarkBtn.disabled = true;
-      benchmarkBtn.textContent = "Running benchmark...";
-
-      let h2c;
-      try {
-        h2c = await loadHtml2Canvas();
-      } catch (e) {
-        h2cContainer.innerHTML = '<div class="progress-message" style="color:#c00">html2canvas failed to load (Safari?). Showing SnapDOM only.</div>';
-        h2c = null;
-      }
-
-      // Double rAF lets the progress message paint; the setTimeout fallback keeps the
-      // run moving when rAF is throttled (background/occluded window).
-      const forceRender = () => new Promise(r => { requestAnimationFrame(() => requestAnimationFrame(r)); setTimeout(r, 150); });
-
-      // Benchmark SnapDOM
-      let snapTotal = 0;
-      let snapCanvas;
-      for (let i = 0; i < 5; i++) {
-        snapContainer.innerHTML = '<div class="progress-message">Capture ' + (i + 1) + '/5...</div>';
-        await forceRender();
-        const t0 = performance.now();
-        snapCanvas = await snapdom.toImg(el);
-        snapTotal += performance.now() - t0;
-        snapContainer.innerHTML = '';
-        snapContainer.appendChild(snapCanvas);
-        snapContainer.insertAdjacentHTML('beforeend', '<div class="progress-message">SnapDOM: ' + (i + 1) + '/5</div>');
-        await forceRender();
-      }
-
-      let h2cTotal = 0;
-      let h2cCanvas;
-      if (h2c) {
-        h2cContainer.innerHTML = '<div class="progress-message">Starting html2canvas test...</div>';
-        await forceRender();
-        for (let i = 0; i < 5; i++) {
-          h2cContainer.innerHTML = '<div class="progress-message">html2canvas: Capture ' + (i + 1) + '/5...</div>';
-          await forceRender();
-          const t0 = performance.now();
-          // html2canvas clones the whole document into a sandbox iframe and waits for its
-          // load — cross-origin images wedge that wait on WebKit (why the made-with
-          // avatars are self-hosted). The race is a backstop so any future hang degrades
-          // to an honest "did not finish" instead of a dead button.
-          h2cCanvas = await Promise.race([
-            h2c(el, { logging: false }),
-            new Promise((r) => setTimeout(() => r(null), 10000)),
-          ]).catch(() => null);
-          if (!h2cCanvas) {
-            h2c = null;
-            // A hung run leaves its cloning iframe behind; drop it so retries start clean.
-            document.querySelectorAll('iframe.html2canvas-container').forEach((f) => f.remove());
-            h2cContainer.innerHTML = '<div class="progress-message" style="color:#c00">html2canvas did not finish in this browser. Showing SnapDOM only.</div>';
-            break;
-          }
-          h2cTotal += performance.now() - t0;
-          // html2canvas rasterizes at devicePixelRatio; display at the element's
-          // CSS size so both previews render at the same scale.
-          h2cCanvas.style.width = Math.round(el.getBoundingClientRect().width) + 'px';
-          h2cCanvas.style.height = 'auto';
-          h2cContainer.innerHTML = '';
-          h2cContainer.appendChild(h2cCanvas);
-          h2cContainer.insertAdjacentHTML('beforeend', '<div class="progress-message">html2canvas: ' + (i + 1) + '/5</div>');
-          await forceRender();
-        }
-      }
-      const snapAvg = snapTotal / 5;
-      const h2cAvg = h2c ? h2cTotal / 5 : 0;
-      snapContainer.insertAdjacentHTML('beforeend', '<div class="result-message">Average: ' + snapAvg.toFixed(1) + ' ms</div>');
-      if (h2c) {
-        h2cContainer.insertAdjacentHTML('beforeend', '<div class="result-message">Average: ' + h2cAvg.toFixed(1) + ' ms</div>');
-      }
-
-      const snapWon = h2c && snapAvg < h2cAvg;
-      const factor = snapWon ? (h2cAvg / snapAvg).toFixed(1) : null;
-      const winnerMessage = !h2c
-        ? 'SnapDOM benchmark complete (html2canvas unavailable)'
-        : (snapAvg < h2cAvg
-          ? 'SnapDOM wins! (' + factor + 'x faster)'
-          : 'html2canvas wins! (' + (snapAvg / h2cAvg).toFixed(1) + 'x faster)');
-      resultText.innerHTML =
-        '<div class="winner-message">' + winnerMessage + '</div>' +
-        '<a class="benchmark-cta" href="./compare/html2canvas/" data-umami-event="Benchmark CTA compare">' +
-          'Why you should stop using html2canvas now <span aria-hidden="true">→</span>' +
-        '</a>' +
-        (snapWon
-          ? '<div class="benchmark-star">SnapDOM was ' + factor + '× faster here. If that helped, ' +
-            '<a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="benchmark_star_click">star the project ★</a>.</div>'
-          : '');
-
-      try { if (window.umami) umami.track('benchmark_completed', { winner: snapWon ? 'snapdom' : (h2c ? 'html2canvas' : 'na'), factor: factor }); } catch (e) {}
-
-      snapContainer.classList.toggle('winner-glow', !h2c || snapAvg < h2cAvg);
-      h2cContainer.classList.toggle('winner-glow', h2c && h2cAvg < snapAvg);
-
-      benchmarkBtn.disabled = false;
-      benchmarkBtn.textContent = 'Run Benchmark Again';
-    };
-
-    let PROXY_BASE = ""; // disabled by default
-
-    /**
-     * Enable Corsfix proxy.
-     * @returns {void}
-     */
-    function enableProxy() {
-      PROXY_BASE = "https://proxy.corsfix.com/?";
-      const enableBtn = document.getElementById("enable-proxy-btn");
-      const disableBtn = document.getElementById("disable-proxy-btn");
-      if (enableBtn) enableBtn.disabled = true;
-      if (disableBtn) disableBtn.disabled = false;
-    }
-
-    /**
-     * Disable proxy.
-     * @returns {void}
-     */
-    function disableProxy() {
-      PROXY_BASE = "";
-      const enableBtn = document.getElementById("enable-proxy-btn");
-      const disableBtn = document.getElementById("disable-proxy-btn");
-      if (enableBtn) enableBtn.disabled = false;
-      if (disableBtn) disableBtn.disabled = true;
-    }
-
-    /**
-     * Update preview box background with provided URL.
-     * @param {string} url
-     * @returns {void}
-     */
-    function setProxyHeroBackground(url) {
-      const hero = document.getElementById("proxy-hero");
-      if (hero) hero.style.backgroundImage = url ? `url("${url}")` : "none";
-    }
-    /**
-     * Demo-only convenience wrapper over snapdom.toImg that injects the current proxy state.
-     * @param {Element} el - Target element to capture.
-     * @param {object} [opts] - Extra snapdom options.
-     * @returns {Promise<HTMLImageElement>}
-     */
-    async function toImgCors(el, opts = {}) {
-      return snapdom.toImg(el, {
-        ...opts,
-        // Honor current proxy toggle
-        useProxy: PROXY_BASE || '',
-        cache: 'disabled'
-      });
-    }
-
-    /**
-     * Read the current URL from the CORS demo input and update the hero background.
-     * @returns {string} - The normalized URL from the input.
-     */
-    function getCorsDemoUrl() {
-      const urlInput = document.getElementById('proxy-url');
-      const url = (urlInput?.value || '').trim();
-      setProxyHeroBackground(url);
-      return url;
-    }
-
-    /**
-     * Capture the CORS demo card using the toImgCors wrapper.
-     * @param {HTMLButtonElement} [btn]
-     * @returns {Promise<void>}
-     */
-    async function captureCorsDemo(btn) {
-      const el = document.getElementById('proxy-hero');
-      const output = document.getElementById('proxy-output');
-      if (!el || !output) return;
-
-      if (btn) btn.disabled = true;
-      // Ensure the preview URL is reflected in CSS background
-      getCorsDemoUrl();
-
-      const img = await toImgCors(el, {});
-
-      output.innerHTML = '';
-      output.appendChild(img);
-      if (btn) btn.disabled = false;
-    }
-
-    /**
-     * Download the CORS demo card honoring the current proxy toggle.
-     * @returns {Promise<void>}
-     */
-    async function downloadCorsDemo() {
-      const el = document.getElementById('proxy-hero');
-      if (!el) return;
-
-      // Ensure background reflects the latest input before downloading
-      getCorsDemoUrl();
-
-      await snapdom.download(el, {
-        format: 'png',
-        name: 'cors-demo',
-        useProxy: PROXY_BASE || '',
-        cache: 'disabled'
-      });
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const urlInput = document.getElementById("proxy-url");
-      const enableBtn = document.getElementById("enable-proxy-btn");
-      const disableBtn = document.getElementById("disable-proxy-btn");
-
-      // Inicial
-      if (urlInput) setProxyHeroBackground(urlInput.value || "");
-
-      urlInput?.addEventListener("change", () => {
-        setProxyHeroBackground(urlInput.value.trim());
-      });
-
-      enableBtn?.addEventListener("click", enableProxy);
-      disableBtn?.addEventListener("click", disableProxy);
-
-      // Estado inicial de botones
-      if (enableBtn) enableBtn.disabled = false;
-      if (disableBtn) disableBtn.disabled = true;
-
-
-    });
-    Object.assign(window, {
-      captureCorsDemo,
-      downloadCorsDemo,
-      enableProxy,
-      disableProxy,
-    });
-
-// ASCII and Timestamp plugin demos moved to plugins page
-// See ./plugins.html for interactive plugin playground
-
-  </script>
-
-
-  <script>
-    // Social proof: GitHub stars + npm monthly downloads, cached 24h in localStorage.
-    ;(function () {
-      const TTL = 24 * 60 * 60 * 1000
-      async function cachedJSON(key, url) {
-        try {
-          const raw = localStorage.getItem(key)
-          if (raw) { const o = JSON.parse(raw); if (o && (Date.now() - o.t) < TTL) return o.v }
-        } catch (e) {}
-        const res = await fetch(url)
-        if (!res.ok) throw new Error('fetch failed')
-        const v = await res.json()
-        try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), v })) } catch (e) {}
-        return v
-      }
-      const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
-      const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none' }
-      const compact = (n) => {
-        n = Number(n) || 0
-        if (n >= 1e6) { const m = n / 1e6; return (m >= 10 ? Math.round(m) : Number(m.toFixed(1))) + 'M' }
-        if (n >= 1000) { const k = n / 1000; return (k >= 10 ? Math.round(k) : Number(k.toFixed(1))) + 'k' }
-        return String(n)
-      }
-      cachedJSON('sd_gh_repo', 'https://api.github.com/repos/zumerlab/snapdom')
-        .then(d => { const s = compact(d.stargazers_count); setText('star-count', s); setText('proof-stars', s) })
-        .catch(() => { setText('star-count', ''); hide('proof-stars-wrap') })
-      cachedJSON('sd_npm_dl', 'https://api.npmjs.org/downloads/point/last-month/@zumer/snapdom')
-        .then(d => setText('proof-downloads', compact(d.downloads)))
-        .catch(() => hide('proof-dl-wrap'))
-    })()
-
-    // Live version from the published package.json (npm registry)
-    ;(async function updateVersion() {
-      try {
-        const res = await fetch('https://registry.npmjs.org/@zumer/snapdom/latest')
-        if (!res.ok) return
-        const data = await res.json()
-        if (data && data.version) {
-          document.querySelectorAll('.sd-version').forEach(el => { el.textContent = 'v' + data.version })
-        }
-      } catch (e) { /* keep fallback */ }
-    })()
-
-    // Install snippets copy (CDN + npm)
-    ;(function () {
-      document.querySelectorAll('.npm-copy').forEach(btn => {
-        btn.addEventListener('click', () => {
-          try { navigator.clipboard.writeText(btn.dataset.copy) } catch (e) {}
-          btn.textContent = 'copied'
-          setTimeout(() => { btn.textContent = 'copy' }, 1500)
-        })
-      })
-    })()
-
-    // Hero shutter — captures the viewfinder with the real library.
-    // The first press is a straight capture, so the print can be compared against
-    // the live stage. Every press after that rolls an official plugin and captions
-    // the print with the call that produced it.
-    const HERO_ROLLS = [
+    const pluginRolls = [
       { mod: 'filter', fn: 'filter', opts: { preset: 'vintage' }, label: "filter({ preset: 'vintage' })" },
       { mod: 'filter', fn: 'filter', opts: { preset: 'dramatic' }, label: "filter({ preset: 'dramatic' })" },
       { mod: 'filter', fn: 'filter', opts: { preset: 'grayscale' }, label: "filter({ preset: 'grayscale' })" },
       { mod: 'filter', fn: 'filter', opts: { preset: 'invert' }, label: "filter({ preset: 'invert' })" },
-      { mod: 'color-tint', fn: 'colorTint', opts: { color: '#2D5BFF', opacity: 0.9 }, label: "colorTint({ color: '#2D5BFF' })" },
-      { mod: 'color-tint', fn: 'colorTint', opts: { color: '#FF6B35', opacity: 0.9 }, label: "colorTint({ color: '#FF6B35' })" },
-      { mod: 'timestamp-overlay', fn: 'timestampOverlay', opts: { format: 'time', position: 'bottom-right', fontSize: 26 }, label: "timestampOverlay({ format: 'time' })" },
+      { mod: 'color-tint', fn: 'colorTint', opts: { color: '#2D5BFF', opacity: .9 }, label: "colorTint({ color: '#2D5BFF' })" },
+      { mod: 'color-tint', fn: 'colorTint', opts: { color: '#FF6B35', opacity: .9 }, label: "colorTint({ color: '#FF6B35' })" },
+      { mod: 'timestamp-overlay', fn: 'timestampOverlay', opts: { format: 'time', position: 'bottom-right', fontSize: 26 }, label: "timestampOverlay({ format: 'time' })" }
     ]
-    let heroBusy = false
-    let heroShots = 0
-    let lastRoll = -1
-    let starAsked = false
+    let captureBusy = false
+    let captureCount = 0
+    let lastPlugin = -1
+    let starShown = false
 
-    function rollHeroPlugin() {
-      if (heroShots++ === 0) return null
-      let i = lastRoll
-      while (i === lastRoll) i = Math.floor(Math.random() * HERO_ROLLS.length)
-      lastRoll = i
-      return HERO_ROLLS[i]
+    function nextPlugin() {
+      if (captureCount++ === 0) return null
+      let index = lastPlugin
+      while (index === lastPlugin) index = Math.floor(Math.random() * pluginRolls.length)
+      lastPlugin = index
+      return pluginRolls[index]
     }
 
-    async function captureHeroStage(btn) {
-      if (heroBusy || document.querySelector('.star-overlay')) return
-      heroBusy = true
+    async function captureHero() {
+      if (captureBusy || document.querySelector('.star-overlay')) return
+      captureBusy = true
+      const button = document.getElementById('hero-shutter')
       const stage = document.getElementById('hero-stage')
       const tray = document.getElementById('hero-tray')
       const flash = document.getElementById('hero-flash')
-      if (btn) btn.disabled = true
+      button.disabled = true
       try {
-        if (flash) { flash.classList.remove('flashing'); void flash.offsetWidth; flash.classList.add('flashing') }
-        let waited = 0
-        while (!window.snapdom && waited < 12000) { await new Promise(r => setTimeout(r, 120)); waited += 120 }
-        if (!window.snapdom) return
+        flash.classList.remove('flashing')
+        void flash.offsetWidth
+        flash.classList.add('flashing')
 
-        // Rolled plugin is loaded before the clock starts: the timing on the print
-        // measures the capture, not a one-off CDN fetch.
-        const roll = rollHeroPlugin()
+        const roll = nextPlugin()
         let plugins = []
         let label = 'snapdom.toImg()'
         if (roll) {
           try {
-            const mod = await import(`https://esm.sh/@zumer/snapdom-plugins/${roll.mod}`)
-            plugins = [mod[roll.fn](roll.opts)]
+            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins/${roll.mod}`)
+            plugins = [plugin[roll.fn](roll.opts)]
             label = roll.label
-          } catch (e) { console.warn('hero plugin failed, capturing straight', e) }
+          } catch (error) {
+            console.warn('Hero plugin failed; using a plain capture.', error)
+          }
         }
 
-        const t0 = performance.now()
-        const img = await window.snapdom.toImg(stage, { scale: 0.32, embedFonts: false, cache: 'auto', exclude: ['#hero-flash'], plugins })
-        const ms = Math.max(1, Math.round(performance.now() - t0))
-
+        const started = performance.now()
+        const image = await snapdom.toImg(stage, { scale: .32, embedFonts: false, cache: 'auto', exclude: ['#hero-flash'], plugins })
         const print = document.createElement('div')
-        print.className = 'print r' + ((tray.childElementCount % 2) + 1)
-        img.draggable = false
-        img.alt = 'hero capture'
-        const cap = document.createElement('div')
-        cap.className = 'print-cap'
-        cap.textContent = 'hero.png · ' + ms + ' ms'
-        const plug = document.createElement('div')
-        plug.className = 'print-plug'
-        plug.textContent = label
-        plug.title = label
-        print.append(img, cap, plug)
+        print.className = `print r${(tray.childElementCount % 2) + 1}`
+        image.alt = 'Mr. SnapDOM capture'
+        image.draggable = false
+        const caption = document.createElement('div')
+        caption.className = 'print-cap'
+        caption.textContent = `hero.png · ${Math.max(1, Math.round(performance.now() - started))} ms`
+        const pluginName = document.createElement('div')
+        pluginName.className = 'print-plug'
+        pluginName.textContent = label
+        pluginName.title = label
+        print.append(image, caption, pluginName)
         tray.prepend(print)
         while (tray.childElementCount > 2) tray.lastElementChild.remove()
 
-        // After the 7th shot a star-ask lands over the prints — the visitor has
-        // clearly had fun by then, so that's when we make the pitch. Shown once;
-        // it blocks the shutter until dismissed via the close button or the link.
-        if (heroShots >= 7 && !starAsked) {
-          starAsked = true
-          const ov = document.createElement('div')
-          ov.className = 'star-overlay'
-          ov.innerHTML = '<div class="star-card"><a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="Hero star prompt"><span class="star-big">&#9733;</span>ENJOYING IT?<br>STAR THE REPO</a><button type="button" class="star-close" aria-label="Close">&times;</button></div>'
-          const close = () => { ov.remove(); const sh = document.querySelector('.shutter'); if (sh) sh.disabled = false }
-          ov.querySelector('.star-close').addEventListener('click', close)
-          ov.querySelector('a').addEventListener('click', close)
-          tray.append(ov)
+        if (captureCount >= 7 && !starShown) {
+          starShown = true
+          const overlay = document.createElement('div')
+          overlay.className = 'star-overlay'
+          overlay.innerHTML = '<div class="star-card"><a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span class="star-big">★</span>ENJOYING IT?<br>STAR THE REPO</a><button class="star-close" type="button" aria-label="Close">×</button></div>'
+          const close = () => { overlay.remove(); button.disabled = false }
+          overlay.querySelector('.star-close').addEventListener('click', close)
+          overlay.querySelector('a').addEventListener('click', close)
+          tray.append(overlay)
         }
-      } catch (e) {
-        console.warn('hero capture failed', e)
+      } catch (error) {
+        console.warn(error)
       } finally {
-        heroBusy = false
-        if (btn) btn.disabled = !!document.querySelector('.star-overlay')
+        captureBusy = false
+        button.disabled = !!document.querySelector('.star-overlay')
       }
     }
-    window.captureHeroStage = captureHeroStage
-  </script>
-  <script src="https://unpkg.com/@zumer/orbit/dist/orbit.min.js" crossorigin></script>
-</body>
 
+    document.getElementById('hero-shutter').addEventListener('click', captureHero)
+  </script>
+</body>
 </html>

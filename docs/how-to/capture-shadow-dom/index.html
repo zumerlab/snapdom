@@ -22,13 +22,8 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-To","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture Shadow DOM","item":"https://snapdom.dev/how-to/capture-shadow-dom/"}]}</script>
 </head>
 <body>
-<nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/" class="current">How-to</a>
-    <a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
+<script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero"><div class="hero-badge">How-To Recipe</div><h1>Capture <span class="accent">Shadow DOM</span></h1><p class="lead">Export Web Components as they appear in the live page, including content inside accessible open shadow roots.</p></section>
   <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Capture the component host normally; SnapDOM walks open shadow roots during cloning.</p></div><section class="prose"><h2>Copy-paste example</h2><p>Install <code>@zumer/snapdom</code>, select the rendered element, and capture it:</p><pre class="code-block">const component = document.querySelector('user-profile-card')
@@ -37,7 +32,7 @@ document.body.appendChild(image)</pre></section><section class="prose"><h2>Why t
     <section class="prose"><h2>Limits and common mistakes</h2><p>Closed shadow roots are intentionally inaccessible to page JavaScript and cannot be traversed. External assets remain subject to browser security rules.</p></section>
     <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Can SnapDOM capture closed Shadow DOM?</summary><p>No. Closed roots are not accessible through the DOM API.</p></details><details><summary>Does this work with Lit?</summary><p>Yes. Lit commonly renders into open shadow roots; capture the host after its update is complete.</p></details></section>
     <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../guides/lit/">SnapDOM in Lit <span class="arrow">→</span></a><a class="related-card" href="../screenshot-a-div/">Screenshot a div <span class="arrow">→</span></a><a class="related-card" href="../html-to-svg/">HTML to SVG <span class="arrow">→</span></a><a class="related-card" href="../../compare/html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a></div></section>
-    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../showcase/" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
   </main>  <script defer src="/copy-code.js"></script>
   <script type="module" src="../../demo.js"></script>
 </body>
