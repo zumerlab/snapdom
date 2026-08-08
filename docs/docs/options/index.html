@@ -300,7 +300,7 @@ for (let i = 0; i < 10; i++) {
       <p>Canvas pixel draws and programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) touch no DOM attribute either, so the automatic tracking can't see them. Pass <code>invalidate: true</code> alongside <code>burst: true</code> on the next call to force a fresh capture after one of those:</p>
       <pre class="code-block">ctx.fillRect(0, 0, 100, 100); // canvas redraw — invisible to the observer
 await snapdom(el, { burst: true, invalidate: true });</pre>
-      <p class="muted"><strong>Discoverability:</strong> if you capture the same element 3+ times within 2s <em>without</em> <code>burst: true</code>, snapdom logs a one-time <code>console.warn</code> suggesting it. That's the only case the (cheap) tracking runs unconditionally.</p>
+      <p class="muted"><strong>Discoverability:</strong> if you capture the same element 3+ times within 2s <em>without</em> <code>burst: true</code>, SnapDOM logs a one-time <code>console.warn</code> suggesting it. That's the only case the (cheap) tracking runs unconditionally.</p>
     </section>
 
     <section class="related">
@@ -315,7 +315,7 @@ await snapdom(el, { burst: true, invalidate: true });</pre>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Ready to capture?</h2>
+        <h2>Test an option</h2>
         <p>Drop SnapDOM into your project and capture your first element in one line.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Docs options cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs options cta npm">Install from npm</a>

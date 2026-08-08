@@ -152,3 +152,6 @@ AGENTS.md
 .snapeye/
 packages/agent
 .playwright-cli
+
+# snapdom Pro product pages — generated/authored in snapdom-pro, not published yet
+docs/pro/
