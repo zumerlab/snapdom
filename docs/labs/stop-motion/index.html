@@ -39,6 +39,17 @@
     .lab-stop-motion .filmstrip img { flex: 0 0 auto; width: 58px; height: 44px; border: 1px solid var(--border-soft); object-fit: cover; }
     .lab-stop-motion .demo-status { text-align: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 10px; }
 
+    @media (max-width: 600px) {
+      .lab-stop-motion .filmstrip img {
+        min-width: 40px;
+        max-width: 58px;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        flex: 1 1 58px;
+        object-fit: contain;
+      }
+    }
+
     /* ── Explainer diagram ── */
     .flow-strip { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
     .flow-strip b { color: var(--accent); font-weight: 700; }
