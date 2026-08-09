@@ -225,9 +225,12 @@
       .stage { height: 310px; }
       .stage-annot.vert { display: none; }
       .stage-annot { font-size: 8px; }
-      .hero-tray { gap: 8px; }
-      .print { width: 112px; min-width: 68px; flex: 0 1 112px; }
+      .hero-tray { gap: 7px; }
+      .print { width: 78px; min-width: 64px; flex: 0 1 78px; gap: 3px; padding: 4px; }
       .print img { width: 100% !important; height: auto !important; }
+      .print-cap, .print-plug { font-size: 6.5px; letter-spacing: .2px; }
+      .print-cap { white-space: nowrap; }
+      .print-plug { width: auto; min-width: 0; max-width: 100%; margin-top: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .logo-row { align-items: flex-start; flex-direction: column; gap: 14px; }
       .logo-list { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 16px 24px; }
       .logo-list a:nth-child(n+5):not(.logo-more) { display: none; }
