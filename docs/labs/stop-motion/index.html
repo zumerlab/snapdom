@@ -36,19 +36,17 @@
     .lab-stop-motion .sliders input { display: block; width: 100%; margin-top: 6px; accent-color: var(--accent); }
     .lab-stop-motion .demo-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
     .lab-stop-motion .filmstrip { display: flex; gap: 6px; max-width: 400px; margin: 0 auto; min-height: 46px; overflow-x: auto; }
-    .lab-stop-motion .filmstrip img { flex: 0 0 auto; width: 58px; height: 44px; border: 1px solid var(--border-soft); object-fit: cover; }
+    .lab-stop-motion .filmstrip img { flex: 0 1 58px; width: 58px !important; max-width: 100%; min-width: 0; height: auto !important; aspect-ratio: 4 / 3; border: 1px solid var(--border-soft); object-fit: contain; }
     .lab-stop-motion .demo-status { text-align: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 10px; }
+
+    @media (max-width: 1080px) {
+      .lab-stop-motion .filmstrip { gap: 5px; }
+      .lab-stop-motion .filmstrip img { flex-basis: 48px; width: 48px !important; }
+    }
 
     @media (max-width: 600px) {
       .lab-stop-motion .filmstrip { gap: 4px; }
-      .lab-stop-motion .filmstrip img {
-        min-width: 32px;
-        max-width: 42px;
-        height: auto;
-        aspect-ratio: 4 / 3;
-        flex: 1 1 42px;
-        object-fit: contain;
-      }
+      .lab-stop-motion .filmstrip img { flex-basis: 42px; width: 42px !important; }
     }
 
     /* ── Explainer diagram ── */
@@ -184,15 +182,10 @@ await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</p
     const play = document.querySelector('#play')
     const frameStatus = document.querySelector('#frame-status')
     const capturedFrames = []
+    let capturedFrame
 
     const collector = frameCollector(frame => {
-      capturedFrames.push(frame.url)
-      const image = document.createElement('img')
-      image.src = frame.url
-      image.alt = `Pose ${frame.index}`
-      filmstrip.append(image)
-      play.disabled = capturedFrames.length < 2
-      frameStatus.textContent = `${capturedFrames.length} pose${capturedFrames.length === 1 ? '' : 's'} captured`
+      capturedFrame = frame
     })
 
     function updatePose () {
@@ -207,7 +200,13 @@ await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</p
       addFrame.disabled = true
       frameStatus.textContent = 'Capturing pose…'
       try {
-        await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })
+        const result = await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })
+        const image = await result.toPng()
+        image.alt = `Pose ${capturedFrame.index}`
+        capturedFrames.push(image.src)
+        filmstrip.append(image)
+        play.disabled = capturedFrames.length < 2
+        frameStatus.textContent = `${capturedFrames.length} pose${capturedFrames.length === 1 ? '' : 's'} captured`
       } finally {
         addFrame.disabled = false
       }
