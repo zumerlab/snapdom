@@ -35,7 +35,7 @@
     .lab-stop-motion .sliders label { color: var(--text-muted); font-size: 10px; font-weight: 700; font-family: var(--font-mono); letter-spacing: 1px; text-align: center; text-transform: uppercase; }
     .lab-stop-motion .sliders input { display: block; width: 100%; margin-top: 6px; accent-color: var(--accent); }
     .lab-stop-motion .demo-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
-    .lab-stop-motion .filmstrip { display: flex; gap: 6px; max-width: 400px; margin: 0 auto; min-height: 46px; overflow-x: auto; }
+    .lab-stop-motion .filmstrip { display: flex; align-items: flex-start; gap: 6px; max-width: 400px; margin: 0 auto; min-height: 46px; overflow-x: auto; }
     .lab-stop-motion .filmstrip img { flex: 0 1 58px; width: 58px !important; max-width: 100%; min-width: 0; height: auto !important; aspect-ratio: 4 / 3; border: 1px solid var(--border-soft); object-fit: contain; }
     .lab-stop-motion .demo-status { text-align: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 10px; }
 
@@ -61,7 +61,7 @@
   <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>You <span class="accent">choose</span> the frames</h1><p class="lead">No continuous sampling here. You pose an actor, press the shutter, and move on: the sequence is exactly the poses you decided were worth keeping, like a physical stop-motion rig.</p></section>
   <main class="page">
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A tiny plugin's <code>afterRender</code> hook fires once per capture and hands back <code>ctx.dataURL</code>. Nothing accumulates onto a saved clone. Unlike the paint-canvas and target-range labs, each capture here is fully independent. The plugin's only job is to collect the dataURLs you explicitly ask for into an ordered array; the player decides the playback rhythm afterward.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A tiny plugin's <code>afterRender</code> hook fires once per capture and hands back <code>ctx.dataURL</code>. Nothing accumulates onto a saved clone. Unlike the paint-canvas and target-range labs, each capture here is fully independent. The page stores that vector URL and derives a PNG preview from the same capture so every browser scales the filmstrip consistently.</p></div>
 
     <section class="prose">
       <h2>What you're looking at</h2>
@@ -99,7 +99,7 @@
         <li><h4>Moving a slider never captures anything</h4><p>Dragging Horizontal, Vertical, or Rotation just updates inline styles and a CSS custom property on the live <code>#actor</code> element. SnapDOM is not involved yet.</p></li>
         <li><h4>Capture pose runs one real capture</h4><p>The button calls <code>snapdom(poseScene, { plugins: [collector] })</code> against the current, live state of the stage, whatever pose the sliders are showing right now.</p></li>
         <li><h4><code>afterRender</code> fires with the finished context</h4><p>Once SnapDOM renders the SVG, the plugin's <code>afterRender(ctx)</code> hook runs, increments its counter, and calls back with <code>{ index, url: ctx.dataURL }</code>.</p></li>
-        <li><h4>The page pushes the URL into an array</h4><p><code>capturedFrames.push(frame.url)</code>, plus a thumbnail appended to the filmstrip. The plugin doesn't know or care that a filmstrip exists; it just handed the URL to a callback.</p></li>
+        <li><h4>The page stores the URL and a preview</h4><p>The callback provides the vector URL. The page then calls <code>result.toPng()</code> on that same capture and stores both URLs before appending the PNG to the filmstrip. There is no second DOM capture.</p></li>
         <li><h4>Play iterates the array on a timer</h4><p>Pressing Play walks <code>capturedFrames</code> for a few loops, swapping <code>&lt;img id="playback"&gt;.src</code> on an interval. The plugin is done by this point; playback is pure application code.</p></li>
       </ol>
     </section>
@@ -127,15 +127,18 @@
 }</pre>
       <p>And the usage. capture a pose, read the frame back through the callback:</p>
       <pre class="code-block">const capturedFrames = []
+let capturedFrame
 
 const collector = frameCollector(frame => {
-  capturedFrames.push(frame.url)
+  capturedFrame = frame
 })
 
 // runs once per "Capture pose" click, against whatever
 // pose the sliders are showing at that moment
-await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</pre>
-      <div class="flow-strip">slider input <b>→</b> live style change (no capture) <b>→</b> Capture pose <b>→</b> snapdom() <b>→</b> afterRender (ctx.dataURL) <b>→</b> capturedFrames.push()</div>
+const result = await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })
+const preview = await result.toPng()
+capturedFrames.push({ url: capturedFrame.url, preview: preview.src })</pre>
+      <div class="flow-strip">slider input <b>→</b> live style change (no capture) <b>→</b> Capture pose <b>→</b> afterRender (ctx.dataURL) <b>→</b> PNG preview</div>
     </section>
 
     <section class="prose">
@@ -203,7 +206,7 @@ await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</p
         const result = await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })
         const image = await result.toPng()
         image.alt = `Pose ${capturedFrame.index}`
-        capturedFrames.push(image.src)
+        capturedFrames.push({ url: capturedFrame.url, preview: image.src })
         filmstrip.append(image)
         play.disabled = capturedFrames.length < 2
         frameStatus.textContent = `${capturedFrames.length} pose${capturedFrames.length === 1 ? '' : 's'} captured`
@@ -217,7 +220,7 @@ await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</p
       playback.classList.add('visible')
       for (let loop = 0; loop < 3; loop++) {
         for (const frame of capturedFrames) {
-          playback.src = frame
+          playback.src = frame.preview
           await new Promise(resolve => setTimeout(resolve, 180))
         }
       }
