@@ -252,14 +252,77 @@ function createState(element) {
   return state
 }
 
+/** Identity tags for values that have no structural form (functions, class instances, DOM
+ *  nodes). Comparing them by identity keeps the memo alive for the normal case — a polling
+ *  loop passing the SAME `exclude` callback every frame — while a DIFFERENT callback yields
+ *  a different signature and correctly forces a fresh capture. A freshly-allocated inline
+ *  closure gets a new tag on every call, so it degrades to "always a one-off": slower, never
+ *  wrong. */
+let __refSeq = 0
+const __refTags = new WeakMap()
+function refTag(value) {
+  let tag = __refTags.get(value)
+  if (!tag) {
+    tag = '@' + (++__refSeq)
+    __refTags.set(value, tag)
+  }
+  return tag
+}
+
+/** Deterministic serializer for the options signature. Hand-rolled instead of
+ *  `JSON.stringify(rest, sortedKeys)` because an ARRAY replacer applies at every depth: it
+ *  filtered nested keys against the TOP-LEVEL key list, so `{clip:{x:0,…}}` and
+ *  `{clip:{x:900,…}}` both serialized to `{"clip":{}}` and a memo taken for one rect was
+ *  served for the other. Functions were dropped outright, which is how two different
+ *  `exclude` predicates collided on one memo. Returns null only when nothing comparable can
+ *  be built, and the caller treats that as a one-off. */
+function stableStringify(value, seen) {
+  const t = typeof value
+  if (t === 'undefined') return null
+  if (value === null || t === 'boolean' || t === 'number' || t === 'string') return JSON.stringify(value)
+  if (t === 'function' || t === 'symbol') return t === 'symbol' ? null : JSON.stringify(refTag(value))
+  if (t !== 'object') return null
+  // DOM nodes and other host objects have no stable structural form: compare by identity.
+  if (typeof Node !== 'undefined' && value instanceof Node) return JSON.stringify(refTag(value))
+  if (seen.has(value)) return null // cycle
+  seen.add(value)
+  try {
+    if (Array.isArray(value)) {
+      const parts = []
+      for (const v of value) {
+        const s = stableStringify(v, seen)
+        if (s === null) return null
+        parts.push(s)
+      }
+      return '[' + parts.join(',') + ']'
+    }
+    // Class instances (plugin objects, Map/Set/Date…) carry state Object.keys can't see:
+    // identity, not structure.
+    const proto = Object.getPrototypeOf(value)
+    if (proto !== Object.prototype && proto !== null) return JSON.stringify(refTag(value))
+    const parts = []
+    for (const k of Object.keys(value).sort()) {
+      const v = value[k]
+      if (v === undefined) continue // matches JSON.stringify: absent key, not a distinct value
+      const s = stableStringify(v, seen)
+      if (s === null) return null
+      parts.push(JSON.stringify(k) + ':' + s)
+    }
+    return '{' + parts.join(',') + '}'
+  } finally {
+    seen.delete(value)
+  }
+}
+
 /** Stable signature of every option except burst/invalidate themselves, so a one-off call
- *  with different options (e.g. `{ burst: true, scale: 2 }` once) is detected as such. */
+ *  with different options (e.g. `{ burst: true, scale: 2 }` once) is detected as such.
+ *  null means "can't be compared" — every such call is a one-off. */
 function optionsSignature(userOptions) {
   const { burst: _burst, invalidate: _invalidate, ...rest } = userOptions || {}
   try {
-    return JSON.stringify(rest, Object.keys(rest).sort())
+    return stableStringify(rest, new Set())
   } catch {
-    return null // unserializable (e.g. a filter function) — treat every call as a one-off
+    return null
   }
 }
 
