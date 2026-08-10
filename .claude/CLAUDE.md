@@ -97,6 +97,8 @@ Two traps this has already sprung: CSS-nesting selectors arrive as raw `& .x::be
 
 WICG canvas-place-element (`ctx.drawElement`), opt-in via `engine: 'canvas'`. Fully quarantined: core's only knowledge is a 3-line lazy import in `snapdom.js`, and on ANY doubt `tryEngineResult` returns null and the normal pipeline runs. It paints pixel-perfectly (native form controls included) but Chromium currently taints the canvas unconditionally, so there is no readback and every capture falls through today. Keep the quarantine contract intact — correctness must never depend on this module.
 
+**It is NOT in the shipped bundle.** Nothing is code-split, so the lazy import still landed in `dist/` and every user downloaded a branch that cannot run. `esbuild.config.mjs` defines `__SNAPDOM_CANVAS_ENGINE__ = false`, and the seam in `snapdom.js` is written so esbuild folds the branch (and the module) away. Tests import `src` directly, where the identifier is undefined and the engine stays live. To build it in: `SNAPDOM_CANVAS_ENGINE=1 npm run compile`. When Chromium ships same-origin readback, flip the default.
+
 ### Safari/WebKit handling
 
 The old once-per-session 3x pre-capture warmup is gone. WebKit quirks are handled at their point of impact instead (all verified against real Safari via a SnapEye harness — re-verify there before touching these):
@@ -130,7 +132,9 @@ All are minified, `sideEffects: false`. `src/index.js` only re-exports `snapdom`
 - Tests run in a real browser (Playwright). There is no Node/jsdom mode — DOM APIs are real.
 - `BROWSER=webkit|firefox|all` selects the engine; visual baselines are kept per engine. **A fidelity change is not done until it is green on all three** — several fixes this branch shipped behaved differently per engine.
 - Benchmarks: files matching `*.benchmark.js` are excluded from the normal test run; use `npm run test:benchmark` or `npx vitest bench`.
-- Visual diffs live under `__tests__/__screenshots__/`; `npm run report:cross` builds a cross-engine comparison page.
+- Visual diffs live under `__snapshots__/visual*/`; `npm run report:cross` builds a cross-engine comparison page.
+- **`demos/` is gitignored, and without it the entire visual suite silently skips itself** (`visual.demos.test.js` globs `/demos/d*.html`, gets nothing, and registers a `describe.skip`). A green `npm test` in a fresh clone therefore proves NOTHING about pixels. Copy `demos/` in from the public repo before trusting a run — and **copy it, do not symlink**: vite resolves through the link into the other repo's `node_modules`, several demos then capture at a wrong size, and you get ~11 fabricated "regressions". `npm run test:visual` runs just that file.
+- Baselines are recorded on first run, so a v3-only run only proves v3 agrees with itself. To measure v3 against `main`, generate baselines in the main checkout (identical harness file), copy `__snapshots__/visual` over, and run here. Status as of 2026-08-10: **71/71 demos pixel-identical to main on chromium.**
 - Coverage config in `vitest.config.js` scopes to `src/**/*.js`. **It only runs on chromium** (the v8 provider is Chromium-only), so Safari-only code reads as uncovered even when exercised — that is a measurement blind spot, not debt. Code that is unreachable by construction is marked with `/* c8 ignore start/stop */` and a reason; the `ignore next` form does nothing here.
 
 ## Writing tests that are worth having

@@ -38,7 +38,8 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 
 ## Styles
 
-- **Computed-style inlining** — every node's full computed style is snapshotted and deduplicated into generated CSS classes to keep output compact. Authored inline styles are replaced with computed values so stylesheet `!important` still wins.
+- **Computed-style inlining** — each node's computed style is snapshotted and deduplicated into generated CSS classes to keep output compact. Authored inline styles are replaced with computed values so stylesheet `!important` still wins.
+- **Scanned property universe** — one pass over the document's author styles yields the set of properties the page can actually touch, so the per-node snapshot reads on the order of 50 properties instead of ~400. Same pass derives per-pseudo selector gates, replacing three `getComputedStyle` resolutions per node with one `matches()`. Both memoized per document and style epoch.
 - **Preserved details** — text-decoration longhands (line/color/style/thickness, underline-offset, skip-ink), `-webkit-text-stroke` + `paint-order`, and (when embedding fonts) font-feature/variation/kerning/variant/optical-sizing settings.
 - **`counter()` / `counters()`** — a full CSS counter resolver (counter-reset with nesting, counter-increment, counter-set, and counter-style formatting), used in pseudo-element `content`.
 - **`-webkit-line-clamp` & `text-overflow: ellipsis`** — baked into real text (with `…`) because Firefox and Safari don't honor them inside `<foreignObject>`.
@@ -56,7 +57,7 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 - **`<picture>` & lazy images** — resolves `<picture>` sources and common lazy attributes (`data-src`, `data-lazy-src`, `data-original`, `data-hi-res-src`, `data-srcset`, …) to real URLs before cloning.
 - **CORS / proxy** — a non-throwing fetch layer with in-flight deduplication, an error cache, timeouts, and inferred credentials. `useProxy` accepts flexible templates (`{url}`, `{urlRaw}`, `?url=` suffix, and more); already-proxied and `data:`/`blob:` URLs are skipped.
 - **Failure fallbacks** — a configurable `fallbackURL` (string or callback), then a placeholder box, then a hidden spacer.
-- **`compress`** — perceptual downsampling of inlined rasters to their visible resolution (display box × scale × dpr), preserving the source codec and never upscaling. On by default; set `compress: false` to embed verbatim.
+- **Perceptual downsampling** — inlined rasters are resampled to their visible resolution (display box × scale × dpr), preserving the source codec and never upscaling, and the result is adopted only when it is actually smaller. Engine behavior, not an option: the pixels discarded are ones the output cannot show.
 - **`image-set()` / `-webkit-image-set()`** — in `background-image` and pseudo-element `content`, the candidate matching the live device pixel ratio is inlined (not just whichever `url()` appears first).
 - **Decode-size guard** — SVG raster size is clamped to safe limits (max 16384px per side, ~268M px area) and downscaled with a warning if exceeded.
 
@@ -67,7 +68,7 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 - **`localFonts`** — supply your own fonts as `{ family, src, weight?, style?, stretchPct? }` to fetch and embed.
 - **`excludeFonts`** — exclude by `{ families?, domains?, subsets? }`.
 - **Cross-origin stylesheets** — gated by `fontStylesheetDomains` (plus known math libraries like KaTeX/MathJax).
-- **`preCache`** — preloads images, background images and fonts before capture; defaults to `embedFonts: true` and `cache: 'full'`.
+- **`preCache`** — preloads images, background images and fonts before capture; `embedFonts` defaults to `'auto'`, the same semantics as capture.
 
 ## Export formats
 
@@ -93,20 +94,19 @@ Defaults as normalized in `src/core/context.js`.
 | Option | Default | Behavior |
 |---|---|---|
 | `debug` | `false` | Debug warnings |
-| `fast` | `true` | Skip idle delay for speed |
-| `scale` | `1` | Output scale multiplier |
-| `exclude` | `[]` | CSS selectors to exclude |
+| `scale` | `1` | Output scale multiplier. Applies only when neither `width` nor `height` is set |
+| `exclude` | `[]` | Selectors and/or predicates `(el) => true` (true excludes), in any mix |
 | `excludeMode` | `'hide'` | `'hide'` (spacer) or `'remove'` |
 | `filter` | `null` | Node predicate `(node) => boolean` |
 | `filterMode` | `'hide'` | `'hide'` or `'remove'` |
 | `placeholders` | `true` | Show placeholders for failed images / cross-origin iframes |
-| `embedFonts` | `false` | Embed matched `@font-face` |
+| `embedFonts` | `'auto'` | Embed matched `@font-face`. `'auto'` embeds only when the element uses families the document declares; `true`/`false` force it |
 | `iconFonts` | `[]` | Extra icon-font names/regexes |
 | `localFonts` | `[]` | User font descriptors |
 | `excludeFonts` | `undefined` | `{ families, domains, subsets }` |
 | `fontStylesheetDomains` | `[]` | Extra cross-origin CSS domains |
 | `fallbackURL` | `undefined` | Fallback image URL or callback |
-| `cache` | `'soft'` | `disabled` / `soft` / `auto` / `full` |
+| `cache` | `'soft'` | `soft` (structural default) or `disabled` (debug/testing escape). `auto` / `full` are accepted as legacy aliases and map to `soft` |
 | `useProxy` | `''` | CORS proxy template/base |
 | `width` | `null` | Output width (aspect-preserving) |
 | `height` | `null` | Output height |
@@ -118,7 +118,8 @@ Defaults as normalized in `src/core/context.js`.
 | `filename` | `'snapDOM'` | Download filename base |
 | `outerTransforms` | `true` | Normalize root translate/rotate vs. expand bbox for transforms |
 | `outerShadows` | `false` | Strip root shadows vs. expand bleed for shadows/blur/outline |
-| `compress` | `true` | Perceptual raster downsampling |
+| `clip` | `null` | Capture a region only: `'viewport'` (what the user currently sees) or `{x,y,width,height}` in page coordinates. Offscreen subtrees are pruned before styling and inlining, so it is faster than a full capture |
+| `engine` | `'svg'` | `'canvas'` opts into the experimental WICG canvas-place-element engine. Not in the published bundle (see below); falls back to the svg pipeline whenever it is unavailable |
 | `reconcile` | `false` | Measure the clone against the live DOM and pin diverging boxes to their real size (roughly doubles capture time) |
 | `invalidate` | `false` | Force one fresh, non-memoized capture — for changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits) |
 | `excludeStyleProps` | `null` | RegExp/predicate to skip style props |
@@ -137,13 +138,12 @@ See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUT
 ## Caching & preCache
 
 - **Buckets** — FIFO evicting maps for `image`, `background`, `resource`, `baseStyle` and `defaultStyle`; `WeakMap`s for computed styles and layout measurement hints; a `Set` for fonts; and a per-session bucket.
-- **Policies** (`cache` option):
-  - `disabled` — clear all caches every capture.
-  - `soft` (default) — reset session style/node maps, keep persistent caches.
-  - `auto` — reset style/node maps only, keep the style cache too.
-  - `full` — keep everything.
-- **Invalidation** — a MutationObserver on the DOM and `<head>` plus font `loadingdone`/`ready` events bump a style-snapshot epoch, so stale snapshots are dropped automatically.
-- **`preCache`** — warm the caches ahead of time (defaults to `cache: 'full'`).
+- **Policies** (`cache` option) — caching is structural in v3, not a knob:
+  - `soft` (default) — per-capture sessions plus content-keyed persistent caches.
+  - `disabled` — opts out of every cache. A debug/testing escape, not a tuning option.
+  - `auto` / `full` — accepted for v2 compatibility and silently mapped to `soft`.
+- **Invalidation** — a MutationObserver on the DOM and `<head>` plus font `loadingdone`/`ready` events bump a style epoch, so stale snapshots are dropped automatically. CSSOM edits (`sheet.insertRule`, `rule.style.x = …`) change no DOM node and are invisible to every observer: `invalidate: true` purges the epoch-scoped caches for exactly that case.
+- **`preCache`** — warm the caches ahead of time. `embedFonts` defaults to `'auto'`, same semantics as capture; it takes no cache policy.
 - **Repeat-capture memoization** — engine behavior, no option: capture the same element a few times and snapdom memoizes automatically (scoped `MutationObserver` + video/image/font/scroll/resize/head-CSS/animation tracking); when only subtrees changed, a differential recapture rebuilds just those, byte-identical to a full capture. Pass `invalidate: true` to force one fresh capture after changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits).
 
 ## Cross-browser handling

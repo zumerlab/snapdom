@@ -107,7 +107,7 @@ Every hook receives a single context object (`ctx`):
 ```js
 {
   // Input & options
-  element,           // Original DOM element
+  element,           // The capture root — set on every path, including burst's diff recapture
   debug,             // Mode flags
   scale, dpr,        // Resolution
   width, height,     // Dimensions
@@ -120,8 +120,7 @@ Every hook receives a single context object (`ctx`):
   exclude, excludeMode,
   filter, filterMode,
   fallbackURL,
-
-  element,           // The capture root — set on every path, including burst's diff recapture
+  clip, engine,
 
   // Intermediate values (available after their stage)
   clone,             // Cloned DOM tree
@@ -138,6 +137,9 @@ Every hook receives a single context object (`ctx`):
   artifacts: {       // Render CSS the pipeline already holds — never reverse-parse the url
     classCSS, fontsCSS, baseCSS, scrollbarCSS
   },
+  exports,           // defineExports only — the core exporters (png, canvas, blob, …)
+                     // without their hooks, so a custom format can build on them
+                     // without re-entering the export pipeline
 }
 ```
 

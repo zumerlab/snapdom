@@ -34,6 +34,7 @@ authoritative wiring lives in `src/core/burst.js` (this table names each mechani
 | Same-tick style injection | synchronous `takeRecords()` drain at capture start | styles.js `flushStyleInvalidations`, called from prepareClone |
 | CSS/WAAPI animations (no records) | `getAnimations({subtree})` per capture: memo never serves/stores while running; targeted subtrees become dirty roots for the diff path with per-frame snapshot invalidation | burst.js + styles.js `invalidateSnapshotsUnder` |
 | Canvas pixel draws | **excluded** — invisible to every observer; `invalidate: true` is the documented escape | context.js |
+| CSSOM rule edits (`sheet.insertRule`, `rule.style.x = …`) | **excluded** — they mutate no node, so no observer can fire and no epoch bumps. `invalidate: true` is the escape, and it has to purge the EPOCH-SCOPED style caches, not just the burst memo: the property universe and style snapshots live below burst, so a `burst: false` capture was stale too. The sharp case is a property the scanned universe never saw (a page that never used `writing-mode` does not snapshot it) | snapdom.js `main` → styles.js `invalidateStyleCaches` |
 | Plugins with render hooks | suspend auto memo/diff unless `pure: true` | plugins.js `hasImpureRenderPlugins` |
 
 The differential path's correctness oracle is **byte equality** with a full capture of

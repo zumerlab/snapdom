@@ -49,7 +49,7 @@ Full DOM capture with embedded styles, pseudo-elements and fonts; export to SVG,
 
 ## 🚀 What's new in v3
 
-v3 is a ground-up rework of the capture engine. **Your v2 code runs unchanged** — every option is still accepted — but what happens underneath is radically different:
+v3 is a ground-up rework of the capture engine. The API shape is the same and v2 call sites keep working, but this is a **major release with real behavior changes**. Read [Migrating from v2](#migrating-from-v2) before upgrading a production capture.
 
 **It's much faster, everywhere.**
 - **First captures are up to 2× faster.** A one-time stylesheet scan tells the engine which CSS properties your page can actually use, so the per-node style snapshot reads ~50 properties instead of ~400 — the single biggest cost in any DOM capture.
@@ -59,14 +59,28 @@ v3 is a ground-up rework of the capture engine. **Your v2 code runs unchanged** 
 **It's more faithful, by default.**
 - **Web fonts embed automatically** (`embedFonts: 'auto'`). The SVG your capture rasterizes from can't see the page's loaded fonts — v2 silently rendered webfont text with fallback metrics unless you opted in. v3 detects webfont usage and embeds exactly what's needed; system-font pages pay nothing.
 - **Safari, rewritten.** The hidden triple pre-capture warm-up is gone — replaced by a verified draw that waits exactly as long as WebKit needs (first captures ~2× faster). And `toSvg()` now returns actual **vector SVG** on Safari instead of silently rasterizing to PNG.
-- **Concurrent captures are fully isolated.** `Promise.all` over multiple captures can no longer cross-contaminate state — an entire class of race conditions is structurally impossible now.
+- **Per-capture state is isolated.** The mutable module-level session that caused cross-capture races is gone: state lives on a session object threaded through the pipeline, so that class of bug is structurally unrepresentable. One documented exception remains: concurrent captures passing *different* `iconFonts` lists can still interleave through their await points.
 - Outputs are smaller too: up to **27% lighter SVGs** from the same content.
 
 **It's simpler.**
 Options that required tuning knowledge tuned themselves out of the API: repeat-capture memoization and image compression are simply how the engine works now, `cache` collapsed to a single debug switch, and `fast` is gone. The best option is the one you never have to read about.
 
 **And it's ready for what's next.**
-An experimental `engine: 'canvas'` renders through the browser's own painter via the WICG canvas-place-element API (Chrome flag) — native form controls pixel-perfect, zero SVG quirks — and falls back seamlessly until browsers ship it fully.
+An experimental `engine: 'canvas'` renders through the browser's own painter via the WICG canvas-place-element API (Chrome flag): native form controls pixel-perfect, zero SVG quirks. Chromium currently taints the canvas unconditionally, so there is no readback and every capture falls through to the normal pipeline; the engine is therefore **excluded from the published bundle** rather than shipped as bytes that cannot run. Build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`.
+
+## Migrating from v2
+
+v2 call sites keep working, and unknown options are ignored rather than rejected. These behaviors changed:
+
+| Change | What to do |
+| --- | --- |
+| `embedFonts` defaults to `'auto'` (was off). Webfont text now embeds instead of rendering with fallback metrics. | Nothing, unless you relied on the fallback rendering: pass `embedFonts: false`. |
+| `cache` collapsed to `'soft'` (default) and `'disabled'`. `'auto'` / `'full'` are accepted and silently mapped to `'soft'`. | Drop the option, or use `cache: 'disabled'` for debugging. |
+| `fast` was removed. | Delete it; its behavior is now unconditional. |
+| Repeat captures of the same element memoize automatically after three captures in a 2s window, and mutations trigger a differential recapture. | Nothing normally. For sources no observer can see (`sheet.insertRule()`, direct `rule.style.x` edits, canvas pixel draws) pass `invalidate: true`. |
+| Inlined raster images are downsampled to their visible resolution by default. | Nothing. This preserves the source codec and never upscales. |
+| **`width`/`height` now win over `scale`.** v2 multiplied them together (`{ width: 800, scale: 2 }` rasterized 1600px wide); v3 treats `width`/`height` as the absolute output size and applies `scale` only when neither is set. This also fixes v2's inconsistency where `toCanvas` multiplied by `scale` but `toImg`/`toSvg` ignored it. | If you relied on the product, pass the final size directly (`width: 1600`). |
+| Plugins with a render hook suspend auto-memoization unless they declare `pure: true`. | Add `pure: true` if your hooks are deterministic and idempotent. |
 
 ## Website & Live Demos
 
@@ -98,6 +112,7 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 ## Table of Contents
 
 - [What's new in v3](#-whats-new-in-v3)
+- [Migrating from v2](#migrating-from-v2)
 - [Quick Start](#quick-start)
 - [Features](#features)
 - [Website & Live Demos](#website--live-demos)
@@ -291,7 +306,7 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 | `excludeStyleProps` | `RegExp \| fn` | — | Skip matching CSS properties when snapshotting (e.g. `/^--/`) |
 | `cache` | `'disabled'` | *(structural)* | `'disabled'` (or `false`) opts out of every cache — a debug/testing switch. The legacy `'soft'`/`'auto'`/`'full'` strings are still accepted and map to the default behavior |
 | `plugins` | `array` | — | Per-capture plugins (override globals by name) |
-| `engine` | `'svg' \| 'canvas'` | `'svg'` | **Experimental**: `'canvas'` renders raster exports through the WICG canvas-place-element API when the browser supports it (native painter — form controls pixel-perfect); falls back to the SVG pipeline automatically |
+| `engine` | `'svg' \| 'canvas'` | `'svg'` | **Experimental**: `'canvas'` renders raster exports through the WICG canvas-place-element API when the browser supports it (native painter, form controls pixel-perfect); falls back to the SVG pipeline automatically. Chromium taints the canvas today, so the engine is left out of the published bundle: build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile` |
 | `debug` | `boolean` | `false` | Verbose diagnostics via `console.warn` |
 
 📖 **[Full API & every option, explained with examples → snapdom.dev/docs](https://snapdom.dev/docs/)**

@@ -38,7 +38,8 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 
 ## 样式
 
-- **内联计算样式** — 固化每个节点的完整计算样式，再合并相同样式并生成 CSS 类，以减小输出体积。源元素上的内联样式会替换为计算后的值，确保样式表中的 `!important` 仍按浏览器计算结果生效。
+- **内联计算样式** — 固化每个节点的计算样式，再合并相同样式并生成 CSS 类，以减小输出体积。源元素上的内联样式会替换为计算后的值，确保样式表中的 `!important` 仍按浏览器计算结果生效。
+- **扫描出的属性全集** — 先对文档的作者样式做一次扫描，得出页面实际可能影响到的属性集合，于是每个节点的快照只需读取约 50 个属性，而不是约 400 个。同一次扫描还会得出各伪元素的选择器判定，用一次 `matches()` 取代每个节点三次 `getComputedStyle`。两者都按文档和样式纪元缓存。
 - **保留样式细节** — 保留 `text-decoration` 的具体属性（`line`、`color`、`style`、`thickness`、`underline-offset`、`skip-ink`）、`-webkit-text-stroke`、`paint-order`；嵌入字体时，还会保留字体特性、可变轴、字距调整、变体和光学尺寸等设置。
 - **`counter()` / `counters()`** — 内置完整的 CSS 计数器解析器，支持嵌套的 `counter-reset`、`counter-increment`、`counter-set` 和 `counter-style` 格式化，用于生成伪元素的 `content`。
 - **`-webkit-line-clamp` 与 `text-overflow: ellipsis`** — 直接转换为带 `…` 的实际文本，因为 Firefox 和 Safari 无法在 `<foreignObject>` 中正确应用这些样式。
@@ -56,7 +57,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 - **`<picture>` 与懒加载图片** — 克隆前，将 `<picture>` 的资源和常见懒加载属性（`data-src`、`data-lazy-src`、`data-original`、`data-hi-res-src`、`data-srcset` 等）解析为实际的资源 URL。
 - **跨源 / 代理** — 内置不会向外抛出异常的资源请求层，支持合并并发的相同请求、缓存错误、超时控制和自动判断凭据。`useProxy` 支持多种模板写法（`{url}`、`{urlRaw}`、以 `?url=` 结尾等）；已经过代理的 URL 以及 `data:` / `blob:` URL 会被跳过。
 - **加载失败时的回退方案** — 依次尝试可配置的 `fallbackURL`（字符串或回调）、占位框，最后保留不可见的占位空间。
-- **`compress`** — 按图片的实际显示分辨率（显示区域 × `scale` × `dpr`）对已内联的位图进行感知降采样，保留原始编码格式且绝不放大。默认开启；设置 `compress: false` 可原样嵌入图片数据。
+- **感知降采样** — 按图片的实际显示分辨率（显示区域 × `scale` × `dpr`）对已内联的位图重新采样，保留原始编码格式且绝不放大，只有在结果确实更小的时候才采用。这是引擎行为而非选项：被丢弃的像素本来就无法在输出中显示。
 - **`image-set()` / `-webkit-image-set()`** — 在 `background-image` 和伪元素 `content` 中，会内联与当前设备像素比匹配的候选图片，而不是简单取第一个出现的 `url()`。
 - **解码尺寸保护** — 将 SVG 光栅化时，尺寸会限制在安全范围内（单边最大 16384 px，总面积约 2.68 亿像素）；超出限制时会自动缩小并发出警告。
 
@@ -67,7 +68,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 - **`localFonts`** — 通过 `{ family, src, weight?, style?, stretchPct? }` 传入自定义字体信息，供 SnapDOM 获取并嵌入。
 - **`excludeFonts`** — 可按 `{ families?, domains?, subsets? }` 排除字体。
 - **跨源样式表** — `fontStylesheetDomains` 用于指定允许读取字体样式表的额外跨源域名；KaTeX、MathJax 等已知数学库也在支持范围内。
-- **`preCache`** — 捕获前预加载图片、背景图和字体；默认使用 `embedFonts: true` 和 `cache: 'full'`。
+- **`preCache`** — 捕获前预加载图片、背景图和字体；`embedFonts` 默认为 `'auto'`，语义与捕获时一致。
 
 ## 导出格式
 
@@ -93,9 +94,8 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 | 选项 | 默认值 | 行为 |
 |---|---|---|
 | `debug` | `false` | 输出调试警告 |
-| `fast` | `true` | 跳过空闲等待以提升速度 |
-| `scale` | `1` | 输出缩放倍数 |
-| `exclude` | `[]` | 需要排除的 CSS 选择器 |
+| `scale` | `1` | 输出缩放倍数（仅在既未设置 `width` 也未设置 `height` 时生效） |
+| `exclude` | `[]` | 需要排除的节点：CSS 选择器和/或判断函数 `(el) => true`（返回 `true` 表示排除），两种形式可混用 |
 | `excludeMode` | `'hide'` | `'hide'`（保留布局空间）或 `'remove'`（移除节点） |
 | `filter` | `null` | 节点过滤函数 `(node) => boolean` |
 | `filterMode` | `'hide'` | `'hide'`（保留布局空间）或 `'remove'`（移除节点） |
@@ -106,7 +106,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 | `excludeFonts` | `undefined` | 字体排除规则 `{ families, domains, subsets }` |
 | `fontStylesheetDomains` | `[]` | 允许读取字体样式表的额外跨源域名 |
 | `fallbackURL` | `undefined` | 备用图片 URL 或回调 |
-| `cache` | `'soft'` | `disabled` / `soft` / `auto` / `full` |
+| `cache` | `'soft'` | `soft`（结构性默认）或 `disabled`（调试/测试用的关闭开关）。`auto` / `full` 作为旧版别名仍被接受，并映射为 `soft` |
 | `useProxy` | `''` | 跨源代理模板或基础地址 |
 | `width` | `null` | 输出宽度（保持宽高比） |
 | `height` | `null` | 输出高度 |
@@ -118,10 +118,10 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 | `filename` | `'snapDOM'` | 下载文件名（不含扩展名） |
 | `outerTransforms` | `true` | 规范化根元素的位移/旋转，或扩展边界以容纳变换 |
 | `outerShadows` | `false` | 移除根元素的阴影，或扩展边界以容纳阴影/模糊/轮廓 |
-| `compress` | `true` | 按实际显示分辨率缩小已内联的位图 |
+| `clip` | `null` | 只捕获指定区域：`'viewport'`（用户当前看到的部分）或页面坐标下的 `{x,y,width,height}`。视口外的子树会在样式处理和资源内联之前被剪除，因此比整体捕获更快 |
+| `engine` | `'svg'` | `'canvas'` 启用实验性的 WICG canvas-place-element 引擎。它不包含在发布产物中（见下文），不可用时自动回退到 SVG 流程 |
 | `reconcile` | `false` | 对照真实 DOM 测量克隆结果，把尺寸有偏差的盒模型钉定为真实大小（捕获耗时大约翻倍） |
-| `burst` | `false` | 通过限定范围的 `MutationObserver` 对未变化元素的重复捕获做记忆化，完全跳过处理流程 |
-| `invalidate` | `false` | 配合 `burst: true` 使用，为自动追踪无法感知的变化强制触发一次全新捕获 |
+| `invalidate` | `false` | 为自动追踪无法感知的变化强制触发一次全新捕获，并清空按样式纪元缓存的快照 |
 | `excludeStyleProps` | `null` | 用于跳过样式属性的正则表达式或判断函数 |
 | `resolvePicturePlaceholders` | `true` | 内置 `<picture>` / 懒加载解析器 |
 | `pictureResolver` | `{}` | `{ timeout, concurrency, resolveLazySrc, silent }` |
@@ -140,14 +140,13 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 ## 缓存与 preCache
 
 - **缓存区** — `image`、`background`、`resource`、`baseStyle` 和 `defaultStyle` 使用按 FIFO 顺序淘汰的 `Map`；计算样式和布局测量提示使用 `WeakMap`；字体使用 `Set`；此外还有本次捕获会话专用的缓存区。
-- **策略**（`cache` 选项）：
-  - `disabled` — 每次捕获清空所有缓存。
-  - `soft`（默认） — 重置当前会话的样式/节点映射，保留持久缓存。
-  - `auto` — 只重置样式/节点映射，连样式缓存也会保留。
-  - `full` — 保留一切。
-- **失效机制** — DOM 和 `<head>` 上的 `MutationObserver`，以及字体的 `loadingdone` / `ready` 事件，都会递增样式快照的版本号（epoch），从而自动丢弃过期快照。
-- **`preCache`** — 提前预热缓存（默认 `cache: 'full'`）。
-- **`burst`** — 对同一元素未发生变化的重复捕获做记忆化：限定范围的 `MutationObserver`（以及 `<video>` 帧变化追踪）会在检测到外部变化时将其标记为脏数据，未变化的重复捕获会完全跳过处理流程。需要显式开启；未开启时，如果同一元素在 2 秒内被捕获 3 次以上，snapdom 会提示一次。搭配 `invalidate: true` 可以为自动追踪无法感知的变化（canvas 绘制、以编程方式修改 CSSOM）强制触发一次全新捕获。
+- **策略**（`cache` 选项）— v3 的缓存是引擎结构的一部分，不再是调优开关：
+  - `soft`（默认） — 每次捕获使用独立的会话，配合按内容寻址的持久缓存。
+  - `disabled` — 关闭所有缓存，仅用于调试和测试。
+  - `auto` / `full` — 为兼容 v2 仍被接受，并静默映射为 `soft`。
+- **失效机制** — DOM 和 `<head>` 上的 `MutationObserver`，以及字体的 `loadingdone` / `ready` 事件，都会递增样式版本号（epoch），从而自动丢弃过期快照。CSSOM 层面的修改（`sheet.insertRule`、`rule.style.x = …`）不改动任何节点，任何观察者都看不到：这正是 `invalidate: true` 的用途，它会清空按纪元缓存的快照。
+- **`preCache`** — 提前预热缓存；`embedFonts` 默认为 `'auto'`，语义与捕获时一致，此处不再接受缓存策略参数。
+- **重复捕获记忆化** — 引擎默认行为，无需任何选项：同一元素被反复捕获时，snapdom 会自动开始记忆化（限定范围的 `MutationObserver`，以及对 `<video>`、图片、字体、滚动、窗口尺寸、`<head>` CSS 和动画的追踪）；当只有部分子树发生变化时，差分重建只重做这些子树，输出与完整捕获逐字节一致。对于自动追踪无法感知的变化（canvas 像素绘制、以编程方式修改 CSSOM），传入 `invalidate: true` 强制一次全新捕获。
 
 ## 跨浏览器处理
 

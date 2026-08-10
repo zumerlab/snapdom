@@ -46,6 +46,41 @@
 
 👉 **完整的技术功能清单见 [FEATURES_CN.md](FEATURES_CN.md)。**
 
+## 🚀 v3 有哪些新变化
+
+v3 把捕获引擎彻底重写了一遍。API 的形态没变，v2 的调用方式仍然可用，但这是一个**行为确实发生变化的大版本**，把线上的捕获逻辑升级之前，请先看 [从 v2 迁移](#从-v2-迁移)。
+
+**全面更快。**
+- **首次捕获最多快 2 倍。** 引擎先对样式表做一次扫描，得出页面实际可能用到的 CSS 属性，于是每个节点的样式快照只读取约 50 个属性，而不是约 400 个：这是任何 DOM 捕获中开销最大的一环。
+- **重复捕获几乎不花时间。** 同一个元素捕获几次之后，snapdom 会自动开始记忆化：内容没变的重复捕获立即返回；内容*确实*变了的时候，**差分重建**只重做发生变化的子树（在频繁更新的仪表盘上快约 5 倍），输出与完整捕获**逐字节一致**。
+- 失效追踪是自动且完整的：DOM 变更、`<video>` 帧、图片与字体加载、滚动、视口尺寸变化、`<head>` 中的 CSS 改动，以及 CSS/WAAPI 动画都在追踪范围内。没有新 API 要学，也不需要任何配置。内联图片同样会自动降采样到实际显示分辨率（保留原编码格式，在 Worker 中完成）。
+
+**默认更忠实于原页面。**
+- **网页字体自动嵌入**（`embedFonts: 'auto'`）。捕获结果所依赖的那份 SVG 是一个独立文档，看不到页面已加载的字体。在 v2 中，除非你主动开启，网页字体文字会以回退字体的度量悄悄渲染。v3 会检测是否用到了网页字体，并只嵌入真正需要的部分；纯系统字体的页面完全不付出这份开销。
+- **Safari 部分重写。** 隐藏的三次预热捕获已经去掉，取而代之的是验证绘制：WebKit 需要多久就等多久，一帧不多（首次捕获快约 2 倍）。而且 `toSvg()` 在 Safari 上现在返回真正的**矢量 SVG**，不再悄悄光栅化成 PNG。
+- **每次捕获的状态互相隔离。** 造成捕获之间互相干扰的那个模块级可变会话已经不存在，状态改为放在贯穿整条流水线的会话对象上，因此这一类竞态在结构上无法再出现。已知的例外只有一个：并发捕获传入*不同*的 `iconFonts` 列表时，仍可能在各自的 await 点之间交错。
+- 输出也更小：同样的内容，SVG 体积最多减少 **27%**。
+
+**更简单。**
+那些需要调优知识才能用好的选项，已经自己退出了 API：重复捕获的记忆化和图片压缩现在就是引擎的固有行为，`cache` 收敛成一个调试开关，`fast` 则被移除。最好的选项，是你永远不需要去了解的那个。
+
+**并且为下一步做好了准备。**
+实验性的 `engine: 'canvas'` 通过 WICG canvas-place-element API（Chrome 需开启实验开关）用浏览器自身的绘制器输出结果：原生表单控件像素级还原，也没有 SVG 带来的各种怪癖。但目前 Chromium 会无条件污染画布，读不回像素，因此每次捕获都会回退到常规流程；既然这些字节现在还不可能执行，该引擎**不包含在发布产物中**。需要时用 `SNAPDOM_CANVAS_ENGINE=1 npm run compile` 自行构建。
+
+## 从 v2 迁移
+
+v2 的调用方式仍然可用，未知选项会被忽略而不是报错。发生变化的是这些行为：
+
+| 变化 | 你需要做什么 |
+| --- | --- |
+| `embedFonts` 默认值变为 `'auto'`（原先是关闭）。网页字体文字现在会真正嵌入，而不是以回退字体的度量渲染。 | 通常无需处理。除非你依赖的正是那种回退渲染效果，那就传 `embedFonts: false`。 |
+| `cache` 收敛为 `'soft'`（默认）和 `'disabled'`。`'auto'` / `'full'` 仍被接受，并静默映射为 `'soft'`。 | 去掉这个选项即可；调试时可以用 `cache: 'disabled'`。 |
+| `fast` 已被移除。 | 删掉它，它原本的行为现在是无条件生效的。 |
+| 同一元素在 2 秒内被捕获三次之后会自动记忆化，内容变更则触发差分重建。 | 一般无需处理。对于任何观察者都看不到的变化（`sheet.insertRule()`、直接修改 `rule.style.x`、canvas 像素绘制），传入 `invalidate: true`。 |
+| 内联的位图默认会降采样到实际显示分辨率。 | 无需处理。原始编码格式会被保留，也绝不会放大。 |
+| **`width`/`height` 的优先级现在高于 `scale`。** v2 会把两者相乘（`{ width: 800, scale: 2 }` 光栅化出 1600px 宽）；v3 把 `width`/`height` 视为绝对输出尺寸，只有两者都没设置时才应用 `scale`。这同时修正了 v2 的不一致：`toCanvas` 会乘以 `scale`，而 `toImg`/`toSvg` 会忽略它。 | 如果你依赖的是相乘后的结果，直接传最终尺寸（`width: 1600`）。 |
+| 带有渲染类钩子的插件会暂停自动记忆化，除非声明 `pure: true`。 | 如果你的钩子是确定性且幂等的，加上 `pure: true`。 |
+
 ## 官网与在线演示
 
 [https://snapdom.dev](https://snapdom.dev)
@@ -77,6 +112,8 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });
 
 - [快速开始](#快速开始)
 - [功能特性](#功能特性)
+- [v3 有哪些新变化](#-v3-有哪些新变化)
+- [从 v2 迁移](#从-v2-迁移)
 - [官网与在线演示](#官网与在线演示)
 - [安装](#安装)
 - [构建产物](#构建产物)
@@ -219,7 +256,7 @@ document.body.appendChild(png);
 
 | 选项 | 类型 | 默认值 | 说明 |
 | ---- | ---- | ------ | ---- |
-| `scale` | `number` | `1` | 输出缩放倍数 |
+| `scale` | `number` | `1` | 输出缩放倍数（仅在既未设置 `width` 也未设置 `height` 时生效：这两个选项表示绝对输出尺寸，优先级更高） |
 | `dpr` | `number` | `devicePixelRatio` | 栅格化输出的像素密度 |
 | `width` / `height` | `number` | `null` | 目标输出尺寸（只设置一个时保持宽高比） |
 | `backgroundColor` | `string` | `null`（JPEG/WebP 为 `#ffffff`） | 背景填充色 |
@@ -227,24 +264,22 @@ document.body.appendChild(png);
 | `format` | `'png' \| 'jpeg' \| 'webp' \| 'svg'` | `'png'` | `download()` 使用的格式 |
 | `type` | `string` | `'svg'` | `toBlob()` 的 Blob 类型（`'png'`、`'jpeg'`…） |
 | `filename` | `string` | `'snapDOM'` | 下载文件名 |
-| `embedFonts` | `boolean` | `false` | 内联 `@font-face`，让文字以真实字体渲染 |
+| `embedFonts` | `boolean \| 'auto'` | `'auto'` | 内联 `@font-face`，让文字以真实字体渲染。`'auto'` 只在捕获内容确实用到网页字体时才嵌入（纯系统字体的页面会完全跳过这一步）；`true` 强制嵌入，`false` 关闭 |
 | `iconFonts` | `string \| RegExp \| array` | `[]` | 图标字体的字体族（始终内嵌） |
 | `localFonts` | `array` | `[]` | 显式指定字体：`{ family, src, weight?, style? }` |
 | `excludeFonts` | `object` | — | 按字体族 / 域名 / 子集跳过字体 |
-| `exclude` | `string[]` | `[]` | 从捕获中排除的 CSS 选择器 |
+| `exclude` | `string \| (el) => boolean \| 两者组成的数组` | `[]` | 从捕获中排除的节点：CSS 选择器和/或判断函数（返回 `true` 表示排除），两种形式可混用 |
 | `filter` | `(el) => boolean` | `null` | 保留判断函数（返回 `false` 则丢弃节点） |
 | `excludeMode` / `filterMode` | `'hide' \| 'remove'` | `'hide'` | 被排除节点的处理方式 |
 | `clip` | `'viewport' \| {x, y, width, height}` | `null` | 只捕获指定区域，视口外内容会被裁剪 |
-| `compress` | `boolean` | `true` | 将内联图片降采样到其可见分辨率 |
 | `useProxy` | `string` | `''` | 跨源图片使用的 CORS 代理前缀 |
 | `fallbackURL` | `string \| fn` | — | 加载失败的 `<img>` 的兜底图片 |
-| `cache` | `'soft' \| 'auto' \| 'full' \| 'disabled'` | `'soft'` | 多次捕获之间的缓存策略 |
+| `cache` | `'disabled'` | *(结构性默认)* | `'disabled'`（或 `false`）会关闭所有缓存，仅用于调试和测试。v3 的缓存是引擎结构的一部分，不再是调优开关；`'soft'` / `'auto'` / `'full'` 仍被接受，并映射到默认行为 |
 | `outerTransforms` | `boolean` | `true` | 在输出中保留根元素的平移/旋转 |
 | `outerShadows` | `boolean` | `false` | 扩展边界以包含根元素的阴影/模糊/描边 |
-| `fast` | `boolean` | `true` | 跳过空闲等待，加快捕获速度 |
 | `reconcile` | `boolean` | `false` | 对照真实 DOM 测量克隆结果，把尺寸出现偏差的盒模型钉定为真实大小，可修复少见的文字重新换行/布局漂移问题，代价是捕获耗时大约翻倍 — 如果 snapdom 检测到某次捕获可能受益于此选项，会通过 `console.warn` 提示一次 |
-| `burst` | `boolean` | `false` | 通过限定范围的 `MutationObserver` 对该元素的重复捕获做记忆化 — 内容未变化的重复捕获会完全跳过处理流程。未开启时，如果同一元素在 2 秒内被捕获 3 次以上，snapdom 会提示一次 |
-| `invalidate` | `boolean` | `false` | 配合 `burst: true` 使用，为自动追踪无法感知的变化（canvas 绘制、以编程方式修改 CSSOM）强制触发一次全新捕获 |
+| `invalidate` | `boolean` | `false` | 为自动追踪无法感知的变化（canvas 像素绘制、以编程方式修改 CSSOM）强制触发一次全新捕获，并清空按样式纪元缓存的快照。无需配合任何其他选项 |
+| `engine` | `'svg' \| 'canvas'` | `'svg'` | **实验性**：在浏览器支持时，`'canvas'` 通过 WICG canvas-place-element API 用浏览器自身的绘制器输出位图（原生表单控件像素级还原），不可用时自动回退到 SVG 流程。目前 Chromium 会无条件污染画布，因此该引擎不包含在发布产物中，需要用 `SNAPDOM_CANVAS_ENGINE=1 npm run compile` 自行构建 |
 | `plugins` | `array` | — | 单次捕获插件（按名称覆盖全局插件） |
 
 📖 **[完整 API 和全部选项（附示例）→ snapdom.dev/docs](https://snapdom.dev/docs/)**
