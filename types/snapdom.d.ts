@@ -204,15 +204,32 @@ export interface CaptureContext extends SnapdomOptions {
   svgString?: string;
   dataURL?: string;
 
+  /** Render artifacts handed to `defineExports` so exporters never reverse-parse the data
+   *  URL for CSS the pipeline already holds. `svgString` stays out on purpose (it would
+   *  double retained memory) — read it lazily from `export.svgString`. */
+  artifacts?: {
+    classCSS: string;
+    fontsCSS: string;
+    baseCSS: string;
+    scrollbarCSS: string;
+  } | null;
+
   /** Current export info during beforeExport/afterExport. */
   export?: {
-    /** Export key (e.g., "png", "jpeg", "svg", or any custom key). */
-    type: string;
+    /** Export key (e.g., "png", "jpeg", "svg", or any custom key). Absent inside `defineExports`. */
+    type?: string;
     /** Options passed to the exporter. */
     options?: any;
     /** Canonical SVG data URL of this capture. */
     url: string;
+    /** Lazily decodes the capture's SVG source from `url` (kept a thunk so a live result
+     *  doesn't retain a second copy of the whole document). */
+    svgString?: () => string;
   };
+
+  /** Core export facade for `defineExports`: the built-in exporters without their hooks,
+   *  so a plugin format can build on `png`/`canvas`/… without re-entering the pipeline. */
+  exports?: Record<string, (opts?: any) => Promise<any>>;
 }
 
 /* =========================
@@ -231,6 +248,15 @@ export type ExportMap = Record<string, Exporter>;
 export interface SnapdomPlugin {
   /** Unique name for de-dupe/overrides. */
   name: string;
+
+  /**
+   * Declares the render hooks deterministic and idempotent, opting the plugin back into the
+   * engine's fast paths. A plugin with a render hook otherwise suspends auto-burst and the
+   * differential recapture: serving a memo would skip its hooks, and splicing a rebuilt
+   * subtree would drop its transformations. Set this only if re-running your hooks on the
+   * same input always produces the same output. Default false.
+   */
+  pure?: boolean;
 
   /** Hook order follows registration order. All hooks may be async. */
   beforeSnap?(context: CaptureContext): void | Promise<void>;
