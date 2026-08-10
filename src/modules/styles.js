@@ -394,20 +394,6 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   session.styleMap.set(clone, key)
 }
 /**
- * @param {Element} el
- * @returns {boolean}
- */
-function isReplaced(el) {
-  return el instanceof HTMLImageElement ||
-         el instanceof HTMLCanvasElement ||
-         el instanceof HTMLVideoElement ||
-         el instanceof HTMLIFrameElement ||
-         el instanceof SVGElement ||
-         el instanceof HTMLObjectElement ||
-         el instanceof HTMLEmbedElement
-}
-
-/**
  * Caja “visual”: bg/border/padding u overflow ≠ visible.
  * @param {CSSStyleDeclaration} cs
  */
@@ -469,6 +455,47 @@ function hasFlowFast(el) {
 }
 
 /**
+ * Height this block would take with `height: auto`, measured from the live layout — or NaN
+ * when nothing in flow could be measured.
+ *
+ * Only called once every other guard in stripHeightForWrappers has passed, so the element is
+ * a plain block box with no vertical padding/border and `overflow: visible`: its content-box
+ * top coincides with its border-box top, and the top/bottom margins of its first/last in-flow
+ * children collapse straight through it. The auto height is therefore the distance from the
+ * element's own top edge down to the lowest bottom edge among its in-flow contents.
+ *
+ * Out-of-flow (absolute/fixed) and floated children are skipped: neither contributes to the
+ * auto height of a visible-overflow block. Direct text nodes are measured with a Range, which
+ * reports real line boxes without touching the DOM.
+ *
+ * @param {Element} el
+ * @returns {number}
+ */
+function autoContentHeight(el) {
+  const top = el.getBoundingClientRect().top
+  let bottom = -Infinity
+  let range = null
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3) {
+      if (!/\S/.test(n.nodeValue || '')) continue
+      range = range || document.createRange()
+      range.selectNode(n)
+      const r = range.getBoundingClientRect()
+      if (r.width || r.height) bottom = Math.max(bottom, r.bottom)
+      continue
+    }
+    if (n.nodeType !== 1) continue
+    const s = getStyle(n)
+    if (s.display === 'none') continue
+    const pos = s.position
+    if (pos === 'absolute' || pos === 'fixed') continue
+    if (s.float && s.float !== 'none') continue
+    bottom = Math.max(bottom, n.getBoundingClientRect().bottom)
+  }
+  return bottom === -Infinity ? NaN : bottom - top
+}
+
+/**
  * Best-effort: quita height/block-size en wrappers transparentes de flujo para permitir
  * margin-collapsing, etc. sin romper KaTeX, Orbit, ni layouts con height explícito.
  *
@@ -485,11 +512,6 @@ function stripHeightForWrappers(el, cs, snap) {
   const ALLOWED_TAGS = ['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'nav']
   if (!tag || !ALLOWED_TAGS.includes(tag)) return
 
-  // 2b) Solo quitar si height parece "auto" (≈scrollHeight); si difiere, el autor lo fijó
-  const usedH = parseFloat(cs.height)
-  const TOL = 2
-  if (Number.isFinite(usedH) && el.scrollHeight > 0 && Math.abs(usedH - el.scrollHeight) > TOL) return
-
   // 2c) aspect-ratio define dimensiones derivadas; respetar
   if (cs.aspectRatio && cs.aspectRatio !== 'none' && cs.aspectRatio !== 'auto') return
 
@@ -498,8 +520,11 @@ function stripHeightForWrappers(el, cs, snap) {
   if (disp.includes('flex') || disp.includes('grid')) return
 
   // 4) Guardas existentes
-  if (isReplaced(el)) return
-
+  //
+  // (La guarda de elementos reemplazados vivía aquí y se eliminó: es inalcanzable.
+  // La allow-list de (2) solo deja pasar div/section/article/main/aside/header/
+  // footer/nav, y ninguno de esos puede ser un img/canvas/video/iframe/svg/object/
+  // embed — la comprobación era falsa por construcción, no por casualidad.)
   const pos = cs.position
   if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return
   if (cs.transform !== 'none') return
@@ -518,6 +543,25 @@ function stripHeightForWrappers(el, cs, snap) {
 
   // 6) Solo wrappers "en flujo" realmente neutros
   if (!hasFlowFast(el)) return
+
+  // 6b) Último filtro: solo quitar el height si el height usado es el que el elemento
+  // tendría con `height: auto`. Si difiere, el autor lo fijó — venga de donde venga
+  // (hoja de estilos, <style>, CSSOM, atributo inline) — y hay que respetarlo.
+  //
+  // Esta comprobación usaba `el.scrollHeight`, que NO puede responder la pregunta:
+  // scrollHeight devuelve la altura del padding-box cuando el contenido es más corto que
+  // la caja, así que un `height: 400px` alrededor de una línea de texto da
+  // scrollHeight === 400 === used height, diferencia 0, y el height se borraba. Solo
+  // detectaba heights fijos MENORES que el contenido (el caso raro), nunca el habitual:
+  // el hijo colapsaba a su altura de contenido y el resto del canvas quedaba en blanco.
+  //
+  // Va al final a propósito: llegados aquí sabemos que no hay padding/borde vertical ni
+  // overflow (hasBox), lo que hace que la medida de autoContentHeight sea válida, y el
+  // coste de medir solo lo pagan los pocos nodos que superan todas las guardas.
+  const usedH = parseFloat(cs.height)
+  const autoH = autoContentHeight(el)
+  const TOL = 2
+  if (Number.isFinite(usedH) && Number.isFinite(autoH) && Math.abs(usedH - autoH) > TOL) return
 
   // 7) Ahora sí: quitamos height y block-size del snapshot
   delete snap.height
