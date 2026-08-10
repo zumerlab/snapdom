@@ -569,7 +569,31 @@ export async function captureDOM(element, options) {
       const foString = serializer.serializeToString(fo)
       const wantsSize = hasW || hasH
 
-      options.meta = { w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h }
+      // Public export geometry. `contentX/contentY` are the exact viewBox-space
+      // origin of the logical capture box; unlike `(vbW - w0) / 2`, they remain
+      // correct for asymmetric shadows, transformed roots and clip windows.
+      const captureMeta = Object.freeze({
+        w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h,
+        contentX: limitDecimals(offX + (clipWindow ? minX : 0)),
+        contentY: limitDecimals(offY + (clipWindow ? minY : 0)),
+        clip: clipWindow
+          ? Object.freeze({
+            x: limitDecimals(minX), y: limitDecimals(minY),
+            width: baseW, height: baseH,
+          })
+          : null,
+      })
+      // The context object continues through afterRender and every later export.
+      // Pin the binding as well as freezing the value so a hook cannot silently
+      // desynchronise the canonical SVG from the geometry result consumers see.
+      // Stays configurable on purpose: `options` is caller-owned (toPng/toJpg/toWebp
+      // hand their raw opts straight to captureDOM), so a reused bag must be able to
+      // take a second capture's geometry. Non-configurable would make that a
+      // "Cannot redefine property" TypeError instead. Strict mode still rejects
+      // plain assignment, which is the write this guards against.
+      Object.defineProperty(options, 'meta', {
+        value: captureMeta, enumerable: true, writable: false, configurable: true,
+      })
 
       const svgOutW = (!wantsSize || isSafari())
         ? vbW

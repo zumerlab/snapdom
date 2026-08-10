@@ -55,6 +55,32 @@ describe('clip option (region capture)', () => {
     expect(svg).toMatch(new RegExp(`height="${clip.height}"`))
   })
 
+  it('publishes immutable clip and content-origin geometry on the capture result', async () => {
+    const wrap = mount(buildBlocks(4, 200))
+    const target = wrap.children[2]
+    const box = target.getBoundingClientRect()
+    const clip = {
+      x: box.left + window.scrollX,
+      y: box.top + window.scrollY,
+      width: box.width,
+      height: box.height,
+    }
+    const result = await snapdom(document.body, { clip })
+
+    expect(Object.isFrozen(result.meta)).toBe(true)
+    expect(Object.isFrozen(result.meta.clip)).toBe(true)
+    expect(Object.getOwnPropertyDescriptor(result, 'meta')).toMatchObject({
+      writable: false, configurable: false, enumerable: true,
+    })
+    expect(() => { result.meta = null }).toThrow(TypeError)
+    expect(result.meta.w0).toBeCloseTo(clip.width, 3)
+    expect(result.meta.h0).toBeCloseTo(clip.height, 3)
+    expect(result.meta.contentX).toBeCloseTo(0, 3)
+    expect(result.meta.contentY).toBeCloseTo(0, 3)
+    expect(result.meta.clip.width).toBeCloseTo(clip.width, 3)
+    expect(result.meta.clip.height).toBeCloseTo(clip.height, 3)
+  })
+
   it('culled siblings keep their layout slot: clipped region pixels match the live DOM', async () => {
     const wrap = mount(buildBlocks(8, 400))
     const target = wrap.children[5]

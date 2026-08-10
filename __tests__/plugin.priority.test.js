@@ -70,4 +70,59 @@ describe('plugin export priority', () => {
     expect((await result.to('pdf')).kind).toBe('pdf')
     document.body.removeChild(el)
   })
+
+  it('gives plugin exports the exact frozen raw option bag', async () => {
+    const el = makeEl()
+    const plugin = {
+      name: 'raw-export-options',
+      defineExports: () => ({
+        contract: async (ctx) => ({
+          requested: ctx.export.requestedOptions,
+          normalized: ctx.export.options,
+          element: ctx.element,
+        }),
+      }),
+    }
+    const result = await snapdom(el, { plugins: [plugin] })
+
+    // null is also the capture default. Presence must survive even when comparing
+    // merged values could not distinguish this call from an omitted option.
+    const explicit = await result.toContract({ backgroundColor: null })
+    expect(Object.hasOwn(explicit.requested, 'backgroundColor')).toBe(true)
+    expect(explicit.requested.backgroundColor).toBe(null)
+    expect(Object.isFrozen(explicit.requested)).toBe(true)
+    expect(explicit.normalized.backgroundColor).toBe(null)
+    expect(explicit.element).toBe(el)
+
+    const omitted = await result.toContract()
+    expect(Object.hasOwn(omitted.requested, 'backgroundColor')).toBe(false)
+    expect(Object.isFrozen(omitted.requested)).toBe(true)
+    document.body.removeChild(el)
+  })
+
+  it('snapshots raw options before a queued export can observe later mutation', async () => {
+    const el = makeEl()
+    let release
+    const gate = new Promise(resolve => { release = resolve })
+    let calls = 0
+    const plugin = {
+      name: 'queued-raw-options',
+      defineExports: () => ({
+        contract: async (ctx) => {
+          if (++calls === 1) await gate
+          return ctx.export.requestedOptions.label
+        },
+      }),
+    }
+    const result = await snapdom(el, { plugins: [plugin] })
+    const first = result.toContract({ label: 'first' })
+    const laterOptions = { label: 'queued' }
+    const second = result.toContract(laterOptions)
+    laterOptions.label = 'mutated-after-call'
+    release()
+
+    expect(await first).toBe('first')
+    expect(await second).toBe('queued')
+    document.body.removeChild(el)
+  })
 })

@@ -129,9 +129,20 @@ Every hook receives a single context object (`ctx`):
   dataURL,           // After afterRender
 
   // During export hooks
-  export: { type, options, url }
+  export: { type, options, requestedOptions, url }
 }
 ```
+
+During an export, `export.options` is the normalized merge of capture defaults and
+the export call. `export.requestedOptions` is a frozen shallow copy of exactly what
+the caller passed to `toXxx(...)`: key presence is preserved, including explicit
+values equal to a capture default. It is snapped synchronously when `toXxx()` is
+called, before that export waits behind any earlier job in the capture's queue.
+Plugin exporters should use it when applying their own defaults. In
+`defineExports`, only the final canonical `export.url` is guaranteed because no
+export call is active yet. `element` remains the original source element in both
+`defineExports` and export-hook contexts, including when it belongs to a
+same-origin iframe.
 
 ### Hook Rules
 
@@ -164,6 +175,21 @@ const blob = await result.toPdf({ width: 800 });
 ```
 
 **Priority.** When multiple sources define the same export key, resolution is **local plugin > global plugin > core**. So a plugin passed via `snapdom(el, { plugins: [...] })` can override `toPng`, `toJpg`, `toCanvas`, etc., and a per-capture plugin beats a globally-registered one with the same key. Use this to swap a core exporter for a plugin implementation (e.g. a plugin-provided `png` that reuses the existing SVG via `ctx.export.url`).
+
+`defineExports(ctx)` also receives `ctx.exports`, a silent facade over the core
+exporters. It reuses this capture without recursively firing export hooks. Its
+`canvas()` method accepts `crop: { x, y, width, height }` in SVG viewBox
+coordinates; SnapDOM windows the SVG before image decode, allowing document
+plugins to rasterize page-sized regions instead of one browser-limited bitmap.
+A crop is clipped to the intersection with the viewBox, and it never degrades
+silently: a non-finite or empty window, a window fully outside the viewBox, or a
+payload that is not a serialized SVG capture all reject with a `RangeError`
+rather than returning the whole capture where one page was requested.
+The returned capture object exposes the same immutable render geometry as
+`result.meta`; both the metadata value and the result property that holds it are
+non-writable/non-configurable. Auxiliary element captures can therefore measure
+their own final SVG artifact without consulting the live source tree or risking
+URL/geometry drift.
 
 ## Distribution
 

@@ -78,6 +78,12 @@ if (Object.keys(demos).length === 0) {
       wait: 2500,
       setup: async (win) => { try { await win.document.fonts.ready } catch { } }
     },
+    // Paginates one capture into three crop'd canvases at load. The baseline holds the
+    // live document next to the rasterized pages, so a wrong crop origin or a stretched
+    // page shows up as the tiles no longer reconstructing the source.
+    'd-crop-pages': {
+      setup: async (win) => { try { await win.__ready } catch { /* error is rendered into the demo */ } },
+    },
     // Issue #474 formulas rendered live at load (captures only run on click) — snapshotting
     // the table is a KaTeX layout fidelity check. Same CDN font wait as d454.
     'd474-katex-formulas': {

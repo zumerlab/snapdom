@@ -18,6 +18,46 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
+/** Geometry of the serialized capture, expressed in SVG viewBox CSS pixels. */
+export interface CaptureMeta {
+  /** Logical capture-box size (the clip-window size when clip is active). */
+  readonly w0: number;
+  readonly h0: number;
+  /** Serialized SVG viewBox size, including bleed/padding. */
+  readonly vbW: number;
+  readonly vbH: number;
+  /** Requested output basis before scale/dpr rasterization. */
+  readonly targetW: number;
+  readonly targetH: number;
+  /** Exact logical capture-box origin inside the viewBox. */
+  readonly contentX: number;
+  readonly contentY: number;
+  /** Resolved clip window, or null for a full-element capture. */
+  readonly clip: Readonly<{ x: number; y: number; width: number; height: number }> | null;
+}
+
+/** A window in serialized SVG viewBox coordinates. */
+export interface CanvasCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type CanvasExportOptions = Partial<SnapdomOptions> & { crop?: CanvasCrop };
+
+/** Silent core exporters exposed only while a plugin defines custom exports. */
+export interface PluginExportFacade {
+  img(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  svg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  canvas(options?: CanvasExportOptions): Promise<HTMLCanvasElement>;
+  blob(options?: BlobOptions & Partial<SnapdomOptions>): Promise<Blob>;
+  png(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  jpeg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  jpg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  webp(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+}
+
 /* =========================
  * Font & proxy declarations
  * ========================= */
@@ -204,12 +244,20 @@ export interface CaptureContext extends SnapdomOptions {
   svgString?: string;
   dataURL?: string;
 
+  /** Authoritative geometry produced by the render pass. */
+  readonly meta?: Readonly<CaptureMeta>;
+
+  /** Silent core-export facade, available to `defineExports` only. */
+  exports?: PluginExportFacade;
+
   /** Current export info during beforeExport/afterExport. */
   export?: {
     /** Export key (e.g., "png", "jpeg", "svg", or any custom key). */
-    type: string;
-    /** Options passed to the exporter. */
+    type?: string;
+    /** Capture defaults merged with the options passed to the exporter. */
     options?: any;
+    /** Exact own options supplied to this export call; omitted keys stay omitted. */
+    requestedOptions?: Readonly<Record<string, unknown>>;
     /** Canonical SVG data URL of this capture. */
     url: string;
   };
@@ -303,6 +351,9 @@ export interface CaptureResult {
   /** Canonical data URL of the SVG snapshot (when available). */
   url: string;
 
+  /** Authoritative serialized viewBox/content geometry. */
+  readonly meta: Readonly<CaptureMeta>;
+
   /** Returns the raw SVG data URL (same as `url`). */
   toRaw(): string;
 
@@ -319,7 +370,7 @@ export interface CaptureResult {
   toSvg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
 
   /** Returns a Canvas with the rasterized snapshot. */
-  toCanvas(options?: Partial<SnapdomOptions>): Promise<HTMLCanvasElement>;
+  toCanvas(options?: CanvasExportOptions): Promise<HTMLCanvasElement>;
 
   /** Returns a Blob of the chosen type (svg/png/jpeg/webp). */
   toBlob(options?: BlobOptions & Partial<SnapdomOptions>): Promise<Blob>;

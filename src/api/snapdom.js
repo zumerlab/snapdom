@@ -99,6 +99,12 @@ async function main(element, userOptions) {
 snapdom.capture = async (el, context, _token) => {
   if (_token !== INTERNAL_TOKEN) throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.')
 
+  // Export/defineExports contexts are the same capture context promised to every
+  // other hook. Keep the source element available there too (not only in
+  // captureDOM's transient state wrapper), which is required for ownerDocument
+  // URL/language semantics in document exporters.
+  context.element = el
+
   const url = await captureDOM(el, context)
 
   // ——— 1) Core exports por defecto (carga lazy en cada tipo) ———
@@ -185,11 +191,20 @@ snapdom.capture = async (el, context, _token) => {
   let afterSnapFired = false
   let _exportQueue = Promise.resolve()
   async function runExport(type, opts) {
+    // Snapshot at CALL time, not when this export eventually reaches the session
+    // queue. Callers commonly reuse an options object; a slow earlier export must
+    // not let later mutation rewrite the meaning of an already-requested export.
+    const requestedOptions = Object.freeze(
+      opts && typeof opts === 'object' ? { ...opts } : {}
+    )
     const job = async () => {
       const work = exportsMap[type]
       if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
-      const nextOpts = normalizeExportOptions(type, opts)
-      const ctx = { ...context, export: { type, options: nextOpts, url } }
+      // Preserve key presence as well as values. A plugin default and a normalized
+      // capture default may legitimately have the same value; comparing merged
+      // values cannot tell whether the caller explicitly overrode the plugin.
+      const nextOpts = normalizeExportOptions(type, requestedOptions)
+      const ctx = { ...context, export: { type, options: nextOpts, requestedOptions, url } }
       // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
       // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
       await runHook('beforeExport', ctx, { format: type, options: nextOpts })
@@ -226,6 +241,11 @@ snapdom.capture = async (el, context, _token) => {
     toWebp: (opts) => runExport('webp', opts),
     download: (opts) => runExport('download', opts)
   }
+  // Read-only render geometry for document exporters and diagnostics. Pin both
+  // the frozen value and the result property so URL/meta cannot diverge later.
+  Object.defineProperty(result, 'meta', {
+    value: context.meta, enumerable: true, writable: false, configurable: false,
+  })
 
   // Azúcar dinámico por cada export registrado (plugins incluidos)
   for (const key of Object.keys(exportsMap)) {
