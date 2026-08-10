@@ -13,7 +13,10 @@ module.exports = [
       sourceType: "module",
       globals: {
         ...globals.browser,
-        WebKitCSSMatrix: "readonly"
+        WebKitCSSMatrix: "readonly",
+        // Build-time switch injected by esbuild (see esbuild.config.mjs); undefined when
+        // src is consumed directly, which is how the test suite keeps the engine live.
+        __SNAPDOM_CANVAS_ENGINE__: "readonly"
       }
     },
     rules: {
