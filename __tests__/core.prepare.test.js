@@ -513,44 +513,77 @@ it('skips nodes with no actionable URLs (early paths)', async () => {
   expect(outImg?.hasAttribute('src')).toBe(false)
   expect(outStyle).toContain('color:red')
 })
-it('freezes a srcset-only img to one candidate and resolves a chosen blob: URL', async () => {
-  const wrap = document.createElement('div')
-  const img = document.createElement('img')
-  img.setAttribute('srcset', 'blob:aa 1x, https://x/y.png 2x, blob:bb 3x')
-  wrap.appendChild(img)
+// srcset selection mirrors the browser's own: smallest density >= devicePixelRatio.
+// These cases assert WHICH candidate is frozen, so they only hold at a known DPR —
+// on a Retina runner the real value is 2 and the 2x candidate wins. Pin it instead of
+// inheriting the display, and reset the snapFetch queue per test: these live outside
+// the describe above, so its clearAllMocks does not reach them and an unconsumed
+// mockResolvedValueOnce leaks into the next case.
+describe('srcset freezing (DPR-pinned)', () => {
+  let dprSpy
+  beforeEach(() => {
+    vi.mocked(snapFetch).mockReset()
+    dprSpy = vi.spyOn(window, 'devicePixelRatio', 'get').mockReturnValue(1)
+  })
+  afterEach(() => {
+    dprSpy?.mockRestore()
+    vi.mocked(snapFetch).mockReset()
+  })
 
-  // currentSrc/src vacíos: la selección debe salir del srcset (no queda img sin fuente)
-  Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
-  Object.defineProperty(img, 'src',        { configurable: true, get: () => '' })
+  it('freezes a srcset-only img to one candidate and resolves a chosen blob: URL', async () => {
+    const wrap = document.createElement('div')
+    const img = document.createElement('img')
+    img.setAttribute('srcset', 'blob:aa 1x, https://x/y.png 2x, blob:bb 3x')
+    wrap.appendChild(img)
 
-  vi.mocked(snapFetch)
-    .mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,AAA' }) // blob del candidato elegido
+    // currentSrc/src vacíos: la selección debe salir del srcset (no queda img sin fuente)
+    Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
+    Object.defineProperty(img, 'src', { configurable: true, get: () => '' })
 
-  const { clone } = await prepareClone(wrap)
-  const out = clone.querySelector('img')
+    vi.mocked(snapFetch)
+      .mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,AAA' }) // blob del candidato elegido
 
-  // freezeImgSrcset elige un candidato (1x en DPR 1), lo fija como src y quita srcset;
-  // resolveBlobUrlsInTree convierte ese blob: elegido a data:.
-  expect(out?.hasAttribute('srcset')).toBe(false)
-  expect(out?.getAttribute('src')).toBe('data:image/png;base64,AAA')
-})
+    const { clone } = await prepareClone(wrap)
+    const out = clone.querySelector('img')
 
-it('keeps the chosen blob: src when blob→data conversion fails (changed=false)', async () => {
-  const wrap = document.createElement('div')
-  const img = document.createElement('img')
-  img.setAttribute('srcset', 'blob:fail 1x, blob:alsofail 2x')
-  wrap.appendChild(img)
+    // freezeImgSrcset elige un candidato (1x en DPR 1), lo fija como src y quita srcset;
+    // resolveBlobUrlsInTree convierte ese blob: elegido a data:.
+    expect(out?.hasAttribute('srcset')).toBe(false)
+    expect(out?.getAttribute('src')).toBe('data:image/png;base64,AAA')
+  })
 
-  Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
-  Object.defineProperty(img, 'src',        { configurable: true, get: () => '' })
+  it('keeps the chosen blob: src when blob→data conversion fails (changed=false)', async () => {
+    const wrap = document.createElement('div')
+    const img = document.createElement('img')
+    img.setAttribute('srcset', 'blob:fail 1x, blob:alsofail 2x')
+    wrap.appendChild(img)
 
-  vi.mocked(snapFetch)
-    .mockResolvedValueOnce({ ok: false, data: null })
+    Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
+    Object.defineProperty(img, 'src', { configurable: true, get: () => '' })
 
-  const { clone } = await prepareClone(wrap)
-  const out = clone.querySelector('img')
+    vi.mocked(snapFetch)
+      .mockResolvedValueOnce({ ok: false, data: null })
 
-  // Falló la conversión: el src elegido queda como estaba (blob:) y sin srcset
-  expect(out?.hasAttribute('srcset')).toBe(false)
-  expect(out?.getAttribute('src')).toBe('blob:fail')
+    const { clone } = await prepareClone(wrap)
+    const out = clone.querySelector('img')
+
+    // Falló la conversión: el src elegido queda como estaba (blob:) y sin srcset
+    expect(out?.hasAttribute('srcset')).toBe(false)
+    expect(out?.getAttribute('src')).toBe('blob:fail')
+  })
+
+  it('follows devicePixelRatio when choosing the frozen candidate', async () => {
+    // Same srcset, DPR 2: the 2x candidate must win. Locks the DPR dependency in place
+    // so the pinning above reads as deliberate rather than as a magic constant.
+    dprSpy.mockReturnValue(2)
+    const wrap = document.createElement('div')
+    const img = document.createElement('img')
+    img.setAttribute('srcset', 'https://x/one.png 1x, https://x/two.png 2x')
+    wrap.appendChild(img)
+    Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
+    Object.defineProperty(img, 'src', { configurable: true, get: () => '' })
+
+    const { clone } = await prepareClone(wrap)
+    expect(clone.querySelector('img')?.getAttribute('src')).toBe('https://x/two.png')
+  })
 })

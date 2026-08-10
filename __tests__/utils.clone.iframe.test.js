@@ -92,7 +92,10 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
       styleCache: cache.session.styleCache,
       nodeMap: cache.session.nodeMap,
     }
-    const wrapper = await rasterizeIframe(iframe, session, { snap: snapdom })
+    // Pin dpr: the nested capture defaults to window.devicePixelRatio, so on a Retina
+    // runner the bitmap is legitimately 600x400 and a CSS-pixel assertion fails for a
+    // reason that has nothing to do with #449.
+    const wrapper = await rasterizeIframe(iframe, session, { snap: snapdom, dpr: 1 })
     const img = wrapper.querySelector('img')
     await new Promise((resolve) => {
       if (img.complete && img.naturalHeight) resolve()
@@ -100,6 +103,9 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     })
     expect(img.naturalWidth).toBe(300)
     expect(img.naturalHeight).toBe(200)
+    // The actual #449 regression is height tracking scrollHeight instead of the viewport,
+    // which stays visible whatever the dpr is.
+    expect(img.naturalHeight / img.naturalWidth).toBeCloseTo(200 / 300, 2)
     // and the live doc is left clean
     expect(doc.documentElement.hasAttribute('data-sd-pinned')).toBe(false)
   })
