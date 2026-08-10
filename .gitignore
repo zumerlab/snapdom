@@ -39,6 +39,10 @@ bower_components
 build/Release
 
 # Dependency directories
+# Both spellings: `node_modules/` matches a DIRECTORY only, so a worktree that
+# symlinks its dependencies (node_modules -> ../snapdom/node_modules) slips past
+# it and gets swept into a commit by `git add -A`.
+node_modules
 node_modules/
 jspm_packages/
 
