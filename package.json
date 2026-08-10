@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom",
-  "version": "2.23.1",
+  "version": "3.0.0-beta.0",
   "description": "Fast, modern alternative to html2canvas — captures HTML elements to images (PNG, JPG, SVG, WebP) with exceptional speed and accuracy.",
   "type": "module",
   "main": "./dist/snapdom.js",
@@ -35,6 +35,7 @@
     "lint:fix": "eslint src __tests__ --ext .js --fix",
     "test:types": "tsc --noEmit",
     "test": "npm run lint:fix && npm run test:types && npx vitest run --browser.headless --reporter=verbose",
+    "test:visual": "npx vitest run __tests__/visual.demos.test.js --browser.headless --reporter=verbose",
     "test:firefox": "BROWSER=firefox npx vitest run --browser.headless --reporter=verbose",
     "test:webkit": "BROWSER=webkit npx vitest run --browser.headless --reporter=verbose",
     "test:full": "npm run lint:fix && npm run test:types && BROWSER=all npx vitest run --browser.headless --reporter=verbose",

@@ -39,6 +39,6 @@
   },
   "homepage": "https://zumerlab.github.io/snapdom/",
   "peerDependencies": {
-    "@zumer/snapdom": ">=2.12.1"
+    "@zumer/snapdom": ">=2.12.1 || >=3.0.0-0"
   }
 }
