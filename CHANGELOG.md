@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.24.0](https://github.com/zumerlab/snapdom/compare/v2.23.2...v2.24.0)
+
+> 10 August 2026
+
+- fix: stripe height [`df94e3e`](https://github.com/zumerlab/snapdom/commit/df94e3ee361679c83224c4e989529dfb761ec93e)
+- feat(plugins): expose capture geometry, exact export options and canvas cropping [`7abb29a`](https://github.com/zumerlab/snapdom/commit/7abb29a40ebb2b8159cc539dfb94254e675fac46)
+- fix(styles): reproduce visibility and content-visibility the way browsers do [`21251f7`](https://github.com/zumerlab/snapdom/commit/21251f70ea6153b73541fcf6eed20d766d283c0c)
+- update [`1c8e12f`](https://github.com/zumerlab/snapdom/commit/1c8e12fce6028060b74836bbc0794a154acd3934)
+- fix(fonts): emit only the @font-face descriptors the source declared [`8d0345a`](https://github.com/zumerlab/snapdom/commit/8d0345a4843dd255e293f67f45a5ad13ba0c6ed2)
+- fix(clone): keep the pre-toDataURL frame for WebGL canvases [`1c44d1d`](https://github.com/zumerlab/snapdom/commit/1c44d1d468f8fb40a44a4fbaa7fad1fbeb9fad91)
+- test: pin devicePixelRatio in DPR-dependent tests [`fb7311a`](https://github.com/zumerlab/snapdom/commit/fb7311ab34de7db28fb29abf352ee03d73a36d7a)
+- fix(clone): clone slotted light DOM only once [`f4b1859`](https://github.com/zumerlab/snapdom/commit/f4b18590445a2bb1eff980f0b27948dbdf637abb)
+- chore: bump version to 2.24.0 [`4a2ced5`](https://github.com/zumerlab/snapdom/commit/4a2ced52a60a93b3ed912b18a71ff771709ded0d)
+
 #### [v2.23.2](https://github.com/zumerlab/snapdom/compare/v2.23.1...v2.23.2)
 
 > 4 August 2026
