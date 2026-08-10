@@ -1,6 +1,7 @@
 /**
- * Perceptual image compression for captures. Opt-in via `compress: true`; a no-op when off, so the
- * default hot path is untouched.
+ * Perceptual image compression for captures. ON by default (`compress: false` is the internal
+ * escape hatch, see context.js) — this IS the default hot path, so every cost here is paid by
+ * every capture that inlines a raster.
  *
  * Inlined raster images are embedded at their full natural resolution even when shown in a tiny
  * box — those extra pixels can never be seen in the output, they only bloat the SVG payload and
@@ -46,6 +47,83 @@ async function loadImage(src) {
 function sourceMime(dataURL) {
   const m = /^data:([^;,]+)/.exec(dataURL)
   return m ? m[1] : ''
+}
+
+// Below this, the worker LOSES: postMessage structured-clones the whole base64 string in,
+// FileReaderSync clones another one back, and the payload isn't big enough for the pixel
+// work to cover those two copies. Small images stay on the main thread, where their decode
+// is usually already warm in the browser's cache.
+const WORKER_MIN_CHARS = 64 * 1024
+
+/** First `maxBytes` decoded bytes of a base64 data URL (null for percent-encoded or
+ *  malformed payloads — callers just fall through to the decode path). */
+function headerBytes(dataURL, maxBytes) {
+  const comma = dataURL.indexOf(',')
+  if (comma < 0 || !/;base64/i.test(dataURL.slice(0, comma))) return null
+  const want = Math.ceil(maxBytes / 3) * 4
+  const avail = dataURL.length - comma - 1
+  const take = Math.min(avail, want)
+  try {
+    const bin = atob(dataURL.slice(comma + 1, comma + 1 + take - (take % 4)))
+    const out = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+    return out
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Natural size straight from the container header, without decoding the image.
+ *
+ * This exists because the "no gain" verdict is the COMMON case (a gallery shows its images
+ * at or near natural size) and it used to cost a full decode — inside the worker, behind two
+ * clones of the whole base64 string. Reading 4KB of header answers it for free.
+ * Unrecognized container → null → the old decode path decides, as before.
+ * @returns {{w:number,h:number}|null}
+ */
+function naturalSizeFromDataURL(dataURL) {
+  const b = headerBytes(dataURL, 4096)
+  if (!b || b.length < 16) return null
+  const u16 = (o) => (b[o] << 8) | b[o + 1]
+  // PNG: IHDR width/height are fixed at offsets 16/20.
+  if (b[0] === 0x89 && b[1] === 0x50 && b.length >= 24) {
+    return { w: (b[16] << 24 | b[17] << 16 | b[18] << 8 | b[19]) >>> 0, h: (b[20] << 24 | b[21] << 16 | b[22] << 8 | b[23]) >>> 0 }
+  }
+  // GIF: logical screen descriptor, little-endian.
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return { w: b[6] | (b[7] << 8), h: b[8] | (b[9] << 8) }
+  // WebP: RIFF….WEBP, then one of three chunk layouts.
+  if (b[0] === 0x52 && b[1] === 0x49 && b[8] === 0x57 && b.length >= 30) {
+    const kind = b[15]
+    if (kind === 0x20 && b[23] === 0x9D) return { w: (b[26] | (b[27] << 8)) & 0x3FFF, h: (b[28] | (b[29] << 8)) & 0x3FFF } // VP8 (lossy)
+    if (kind === 0x4C) return { w: (b[21] | ((b[22] & 0x3F) << 8)) + 1, h: (((b[22] >> 6) | (b[23] << 2) | ((b[24] & 0x0F) << 10)) & 0x3FFF) + 1 } // VP8L
+    if (kind === 0x58) return { w: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1, h: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1 } // VP8X
+  }
+  // JPEG: walk the segment chain to the first SOFn. A large EXIF thumbnail can push it past
+  // our 4KB window — that just falls through to the decode path.
+  if (b[0] === 0xFF && b[1] === 0xD8) {
+    let p = 2
+    while (p + 9 < b.length) {
+      if (b[p] !== 0xFF) { p++; continue }
+      const marker = b[p + 1]
+      if (marker === 0xD8 || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { p += 2; continue }
+      if (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+        return { h: u16(p + 5), w: u16(p + 7) }
+      }
+      const len = u16(p + 2)
+      if (len < 2) break
+      p += 2 + len
+    }
+  }
+  return null
+}
+
+/** The oversize guard: the scale factor that still covers the visible box, capped at 1 (no
+ *  upscaling). Below the 0.95 guard band the re-encode isn't worth its cost. Shared so the
+ *  header fast path and the decode path can never drift apart. */
+function gainFactor(nw, nh, targetW, targetH) {
+  const raw = Math.min(1, Math.max(targetW / nw, targetH / nh))
+  return (!(raw > 0) || raw >= 0.95) ? 0 : raw
 }
 
 /**
@@ -157,22 +235,27 @@ export async function downsampleDataURL(dataURL, targetW, targetH) {
     const sm = sourceMime(dataURL)
     const mime = sm === 'image/jpeg' ? 'image/jpeg' : sm === 'image/webp' ? 'image/webp' : 'image/png'
 
-    // Preferred path: pixel work in the worker (decode + scale + encode off the main thread).
-    const offloaded = await workerDownsample(dataURL, targetW, targetH, mime)
-    if (offloaded !== undefined) return offloaded
+    // Header fast path: settle "is there anything to gain?" before any decode or thread hop.
+    const header = naturalSizeFromDataURL(dataURL)
+    if (header && header.w > 0 && header.h > 0 && !gainFactor(header.w, header.h, targetW, targetH)) return null
 
-    // Sync fallback (no Worker/OffscreenCanvas, CSP-blocked blob workers, worker error).
+    // Preferred path for big payloads: pixel work in the worker (decode + scale + encode off
+    // the main thread). Small ones skip it — see WORKER_MIN_CHARS.
+    if (dataURL.length >= WORKER_MIN_CHARS) {
+      const offloaded = await workerDownsample(dataURL, targetW, targetH, mime)
+      if (offloaded !== undefined) return offloaded
+    }
+
+    // Main-thread path: small payloads, and the fallback when the worker is unavailable
+    // (no Worker/OffscreenCanvas, CSP-blocked blob workers, worker error).
     let img
     try { img = await loadImage(dataURL) } catch { return null }
     const nw = img.naturalWidth || img.width
     const nh = img.naturalHeight || img.height
     if (!nw || !nh) return null
 
-    // Scale factor that still covers the visible box, capped at 1 (no upscaling). The 0.95 guard
-    // band avoids re-encoding for a negligible pixel saving — gauged on the visible target, before
-    // the aggression trim.
-    const raw = Math.min(1, Math.max(targetW / nw, targetH / nh))
-    if (!(raw > 0) || raw >= 0.95) return null
+    const raw = gainFactor(nw, nh, targetW, targetH)
+    if (!raw) return null
     const factor = raw * RES_FACTOR
 
     const ow = Math.max(1, Math.round(nw * factor))
