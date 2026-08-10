@@ -6,6 +6,7 @@ import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
 import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
+import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
 export { preCache } from './preCache.js'
 
@@ -72,6 +73,11 @@ async function main(element, userOptions) {
   // The capture root, on every path: burst's differential recapture builds its result from
   // this context WITHOUT running captureDOM, so hooks are not a reliable place to stash it.
   context.element = element
+
+  // `invalidate` has to land here, not inside burst: the style memos (property universe,
+  // snapshots, CSSVar) are epoch-scoped and sit BELOW burst, so `{ burst: false,
+  // invalidate: true }` after a CSSOM edit still rendered the pre-edit CSS world.
+  if (context.invalidate) invalidateStyleCaches()
 
   // Attach per-capture plugins (local-first) without removing globals
   attachSessionPlugins(context, userOptions && userOptions.plugins)

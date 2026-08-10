@@ -63,6 +63,17 @@ export function getStyleEpoch() {
   return __epoch
 }
 
+/** The user's escape hatch (`invalidate: true`), and the ONLY answer to the changes no
+ *  observer can see: `sheet.insertRule()`, `rule.style.x = …`, canvas pixel draws. Those
+ *  bump no epoch, so every epoch-scoped memo (property universe, style snapshots, CSSVar,
+ *  pseudo gates) would keep serving the pre-edit CSS world — and it did, even with
+ *  `burst: false`, because the memos live below burst. Bumps BOTH epochs so the escape
+ *  hatch has no exceptions. */
+export function invalidateStyleCaches() {
+  bumpEpoch()
+  __envEpoch++
+}
+
 let __wired = false
 let __domObs = null
 let __headObs = null
