@@ -19,7 +19,12 @@ describe('forceContentVisibility (#281)', () => {
     expect(el.style.contentVisibility).toBe('auto')
   })
 
-  it('forces content-visibility:hidden to visible on descendants', () => {
+  it('leaves content-visibility:hidden alone on descendants', () => {
+    // This pass exists for `auto`, whose contents the browser skips only as an offscreen
+    // optimization. `hidden` is an authoring decision: the browser paints the element's
+    // own box and skips its contents outright. Forcing it to visible un-hid the whole
+    // subtree into the capture, and also erased the value that modules/styles.js reads to
+    // carry the declaration into the snapshot — see core.contentVisibility.test.js.
     const parent = document.createElement('div')
     const child = document.createElement('div')
     child.style.contentVisibility = 'hidden'
@@ -27,10 +32,24 @@ describe('forceContentVisibility (#281)', () => {
     document.body.appendChild(parent)
 
     const undo = forceContentVisibility(parent)
-    expect(child.style.contentVisibility).toBe('visible')
+    expect(child.style.contentVisibility).toBe('hidden')
 
     undo()
     expect(child.style.contentVisibility).toBe('hidden')
+  })
+
+  it('forces content-visibility:auto on descendants, not just on the root', () => {
+    const parent = document.createElement('div')
+    const child = document.createElement('div')
+    child.style.contentVisibility = 'auto'
+    parent.appendChild(child)
+    document.body.appendChild(parent)
+
+    const undo = forceContentVisibility(parent)
+    expect(child.style.contentVisibility).toBe('visible')
+
+    undo()
+    expect(child.style.contentVisibility).toBe('auto')
   })
 
   it('leaves elements without content-visibility unchanged', () => {

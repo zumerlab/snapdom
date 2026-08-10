@@ -86,7 +86,6 @@ export function needsBackgroundInline(source) {
 
 function snapshotComputedStyleFull(style, options = {}) {
   const out = {}
-  const vis = style.getPropertyValue('visibility')
   const excludeStyleProps = options.excludeStyleProps
   for (let i = 0; i < style.length; i++) {
     const prop = style[i]
@@ -148,13 +147,18 @@ function snapshotComputedStyleFull(style, options = {}) {
       } catch { }
     }
   }
-  if (vis === 'hidden') out.opacity = '0'
-  // content-visibility:hidden skips rendering the subtree entirely (like visibility:hidden
-  // but also skips layout). Force visibility:hidden so the subtree doesn't leak into capture.
-  // Read explicitly because content-visibility is not always enumerated in style.length iteration.
+  // Keep visibility as visibility. Unlike opacity, it is inherited but a child
+  // may explicitly restore `visibility: visible`; flattening a hidden ancestor to
+  // opacity:0 makes that legal, painted descendant impossible to recover.
+  // content-visibility:hidden skips the element's CONTENTS while still painting the
+  // element's own box (background, border, padding) — verified against real Chromium.
+  // Carry the declaration itself so the rasterizer applies those exact semantics: mapping
+  // it to visibility:hidden would erase the box too, and a descendant could override it
+  // back, which the real property does not allow. Read explicitly because
+  // content-visibility is not always enumerated in the style.length iteration.
   try {
     const cv = out['content-visibility'] || style.getPropertyValue('content-visibility')
-    if (cv === 'hidden') out['visibility'] = 'hidden'
+    if (cv === 'hidden') out['content-visibility'] = 'hidden'
   } catch { /* ignore */ }
 
   // Flag whether inlineBackgroundImages has any work on this node (bg/mask/border-image or a

@@ -219,7 +219,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(key).toMatch(/\bborder:\s*none\b/)
   })
 
-  it('content-visibility:hidden forces visibility:hidden in snapshot (NEW-10)', async () => {
+  it('content-visibility:hidden is carried verbatim into the snapshot (NEW-10)', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 
     const src = document.createElement('div')
@@ -235,9 +235,12 @@ describe('inlineAllStyles – branches y firmas', () => {
     document.body.removeChild(src)
 
     const key = session.styleMap.get(clone)
-    // content-visibility:hidden must produce visibility:hidden in the snapshot key
-    // so the subtree doesn't leak visible content into the capture (NEW-10)
-    expect(key).toMatch(/\bvisibility:\s*hidden\b/)
+    // The declaration itself must reach the snapshot so the rasterizer applies the real
+    // semantics: element box painted, contents skipped, not overridable by a descendant.
+    // Mapping it to visibility:hidden (what this test used to assert) erased the box too.
+    expect(key).toMatch(/\bcontent-visibility:\s*hidden\b/)
+    // Lookbehind: `\bvisibility` also matches inside `content-visibility`.
+    expect(key).not.toMatch(/(?<!-)\bvisibility:\s*hidden\b/)
   })
 
   it('cachea getComputedStyle en session.styleCache (una sola lectura por source)', async () => {

@@ -31,6 +31,13 @@ export function stabilizeLayout(element) {
  * #281: Force content-visibility to 'visible' on all descendants that use 'auto'.
  * Safari (and some Chromium) skip rendering/style computation for content-visibility:auto
  * elements outside the viewport, causing blank captures.
+ *
+ * Only 'auto' is forced. 'hidden' is an explicit authoring decision, not an optimization:
+ * the browser paints the element's own box (background, border, padding) and skips its
+ * contents outright — a descendant's `visibility: visible` does not bring them back.
+ * Forcing it to 'visible' used to un-hide the whole subtree, which is why the
+ * "content-visibility:hidden ⇒ visibility:hidden" guard in modules/styles.js could never
+ * fire: this pass had already erased the value it looked for.
  * Returns an undo function to restore original values.
  * @param {Element} root
  * @returns {() => void}
@@ -44,7 +51,7 @@ export function forceContentVisibility(root) {
       const cv = el.style.contentVisibility || ''
       const cs = getComputedStyle(el)
       const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
-      if (computed === 'auto' || computed === 'hidden') {
+      if (computed === 'auto') {
         saved.push({ el, original: cv })
         el.style.contentVisibility = 'visible'
       }
@@ -53,7 +60,7 @@ export function forceContentVisibility(root) {
     if (root instanceof HTMLElement) {
       const cs = getComputedStyle(root)
       const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
-      if (computed === 'auto' || computed === 'hidden') {
+      if (computed === 'auto') {
         saved.push({ el: root, original: root.style.contentVisibility || '' })
         root.style.contentVisibility = 'visible'
       }
