@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM API Reference: Methods, Exporters &amp; Options</title>
-  <meta name="description" content="SnapDOM API reference: the snapdom() reusable object, shortcut methods (toPng, toSvg, toCanvas, toBlob, toJpg, toWebp, download), and exporter-specific options." />
+  <meta name="description" content="SnapDOM API reference: reusable captures, capture geometry, canvas cropping, shortcut methods and exporter-specific options." />
   <meta name="keywords" content="snapdom api, snapdom topng, snapdom tocanvas, snapdom toblob, snapdom tosvg, dom to image api" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/docs/api/" />
@@ -14,7 +14,7 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content="SnapDOM API Reference" />
-  <meta property="og:description" content="Full API reference, every capture option, the plugin system, and cache control for SnapDOM." />
+  <meta property="og:description" content="Full API reference for reusable captures, canvas cropping, capture options, plugins and cache control." />
   <meta property="og:url" content="https://snapdom.dev/docs/api/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -119,10 +119,19 @@ document.body.appendChild(png);</pre>
       <p>Returns a reusable object with export methods. The capture (deep clone + asset inlining) runs once; each method on the returned object reuses it, so exporting several formats from the same element does not re-clone the DOM.</p>
       <pre class="code-block">{
   url: string;
+  meta: Readonly&lt;{
+    w0: number; h0: number;
+    vbW: number; vbH: number;
+    targetW: number; targetH: number;
+    contentX: number; contentY: number;
+    clip: Readonly&lt;{ x: number; y: number; width: number; height: number }&gt; | null;
+  }&gt;;
   toRaw(): string;
   toImg(): Promise&lt;HTMLImageElement&gt;; // deprecated
   toSvg(): Promise&lt;HTMLImageElement&gt;;
-  toCanvas(): Promise&lt;HTMLCanvasElement&gt;;
+  toCanvas(options?: {
+    crop?: { x: number; y: number; width: number; height: number };
+  }): Promise&lt;HTMLCanvasElement&gt;;
   toBlob(options?): Promise&lt;Blob&gt;;
   toPng(options?): Promise&lt;HTMLImageElement&gt;;
   toJpg(options?): Promise&lt;HTMLImageElement&gt;;
@@ -155,6 +164,34 @@ document.body.appendChild(png);</pre>
     <section class="prose">
       <h2 id="exporter-options">Exporter-specific options</h2>
       <p>Some exporters accept a small set of <strong>export-only options</strong> in addition to the global <a href="../options/">capture options</a>.</p>
+
+      <h3 id="canvas-crop">toCanvas({ crop }) and result.meta</h3>
+      <p>The reusable result can rasterize a rectangular window of its canonical SVG. <code>crop</code> is expressed in SVG viewBox CSS pixels and rewrites the viewBox before image decode, so a long capture can become page- or tile-sized canvases without allocating one full-page bitmap. <code>result.meta</code> is the frozen geometry of that serialized capture.</p>
+      <p>Use the two-step API shown here. The one-step <code>snapdom.toCanvas(el, options)</code> shortcut does not accept an export crop.</p>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>Metadata</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">w0 / h0</td><td>Logical capture-box size.</td></tr>
+          <tr><td class="num">contentX / contentY</td><td>Exact logical-content origin inside the SVG viewBox.</td></tr>
+          <tr><td class="num">vbW / vbH</td><td>Complete viewBox size, including bleed and padding.</td></tr>
+          <tr><td class="num">clip</td><td>Resolved capture clip window, or <code>null</code>.</td></tr>
+        </tbody>
+      </table>
+      <pre class="code-block">const result = await snapdom(page, { dpr: 1 });
+const { contentX, contentY, w0, h0 } = result.meta;
+
+const firstTile = await result.toCanvas({
+  crop: {
+    x: contentX,
+    y: contentY,
+    width: Math.min(2048, w0),
+    height: Math.min(2048, h0),
+  },
+  dpr: 1,
+});</pre>
+      <p>A partly outside window is intersected with the viewBox. Empty, non-finite, fully outside or non-SVG crop requests reject. Each resulting canvas remains subject to the browser's raster limits after <code>scale × dpr</code>. See <a href="../../blog/huge-page-mosaic/">the tiled full-page walkthrough and live mosaic</a> for a complete loop and the memory trade-offs.</p>
 
       <h3 id="download">download()</h3>
       <table class="cmp-table">

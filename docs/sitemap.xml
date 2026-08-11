@@ -78,7 +78,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/docs/api/</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-08-11</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/options/</loc>
@@ -102,7 +102,7 @@
   <url><loc>https://snapdom.dev/how-to/capture-element-without-puppeteer/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-shadow-dom/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-iframe/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/how-to/capture-full-page/</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://snapdom.dev/how-to/capture-full-page/</loc><lastmod>2026-08-11</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/high-resolution-element/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-before-pdf/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/visual-regression-screenshot/</loc><lastmod>2026-07-16</lastmod></url>
@@ -117,6 +117,7 @@
   <url><loc>https://snapdom.dev/labs/webgl-shatter/</loc><lastmod>2026-07-21</lastmod></url>
   <url><loc>https://snapdom.dev/labs/webgl-live-mirror/</loc><lastmod>2026-07-21</lastmod></url>
   <url><loc>https://snapdom.dev/labs/webgl-seamless-dom/</loc><lastmod>2026-07-21</lastmod></url>
-  <url><loc>https://snapdom.dev/blog/</loc><lastmod>2026-07-21</lastmod></url>
+  <url><loc>https://snapdom.dev/blog/</loc><lastmod>2026-08-11</lastmod></url>
+  <url><loc>https://snapdom.dev/blog/huge-page-mosaic/</loc><lastmod>2026-08-11</lastmod></url>
   <url><loc>https://snapdom.dev/blog/painting-without-canvas/</loc><lastmod>2026-07-21</lastmod></url>
 </urlset>

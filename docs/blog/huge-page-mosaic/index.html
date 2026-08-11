@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tiled Rasterization for Large DOM Captures | SnapDOM</title>
+  <meta name="description" content="SnapDOM 2.24 windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/blog/huge-page-mosaic/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Tiled Rasterization for Large DOM Captures" />
+  <meta property="og:description" content="Capture one canonical SVG, move a tile-sized window across it, and rasterize each tile into its own canvas." />
+  <meta property="og:url" content="https://snapdom.dev/blog/huge-page-mosaic/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM 2.24 windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-08-11","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"Tiled Rasterization","item":"https://snapdom.dev/blog/huge-page-mosaic/"}]}</script>
+  <style>
+    .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
+    .tile-pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 10px; margin: 22px 0 28px; }
+    .tile-pipeline-step { display: flex; min-height: 104px; flex-direction: column; justify-content: center; padding: 16px; border: 1px solid var(--border-soft); background: var(--surface); }
+    .tile-pipeline-step b { color: var(--accent); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; margin-bottom: 6px; text-transform: uppercase; }
+    .tile-pipeline-step span { color: var(--text); font-size: 13px; line-height: 1.45; }
+    .tile-pipeline-arrow { align-self: center; color: var(--accent); font-size: 22px; }
+    .mosaic-demo { margin: 20px 0 10px; padding: 22px; border: 1px solid var(--border); background: var(--surface); }
+    .mosaic-demo h3 { margin-top: 0; }
+    .mosaic-scroll { width: 100%; height: 430px; overflow: auto; padding: 18px; border: 1px solid var(--border); background: #DCE4F5; }
+    .mosaic-source { width: 640px; height: 2400px; overflow: hidden; color: #0F1E4D; background: #F7F9FC; box-shadow: -16px -12px 0 #2D5BFF; font-family: Arial, Helvetica, sans-serif; }
+    .mosaic-source header { display: flex; height: 300px; flex-direction: column; justify-content: space-between; padding: 42px; color: #FFFFFF; background: #0F1E4D; }
+    .mosaic-source header small, .tile-doc-end small { font-size: 12px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; }
+    .mosaic-source header h3 { max-width: 480px; margin: 0; color: #FFFFFF; font-size: 44px; font-weight: 700; letter-spacing: -2px; line-height: 0.98; text-transform: none; }
+    .mosaic-source header p { max-width: 420px; margin: 0; color: #BFCBEB; font-size: 15px; line-height: 1.55; }
+    .tile-doc-kpis { display: grid; height: 300px; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 32px; background: #FFFFFF; }
+    .tile-doc-kpi { display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border: 1px solid #BAC5DE; }
+    .tile-doc-kpi span { color: #5C6884; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+    .tile-doc-kpi strong { color: #0F1E4D; font-size: 34px; line-height: 1; }
+    .tile-doc-kpi em { color: #1E9F6E; font-size: 13px; font-style: normal; font-weight: 700; }
+    .tile-doc-chart { height: 500px; padding: 38px 42px; background: #EAF0FF; }
+    .tile-doc-eyebrow { color: #2D5BFF; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+    .tile-doc-chart h4, .tile-doc-regions h4, .tile-doc-timeline h4 { margin: 8px 0 24px; color: #0F1E4D; font-size: 28px; letter-spacing: -1px; text-transform: none; }
+    .tile-doc-bars { display: flex; height: 320px; align-items: end; gap: 18px; padding: 20px 22px 0; border-bottom: 2px solid #0F1E4D; }
+    .tile-doc-bar { position: relative; flex: 1; min-width: 0; background: #2D5BFF; }
+    .tile-doc-bar:nth-child(2n) { background: #0F1E4D; }
+    .tile-doc-bar::after { position: absolute; right: 0; bottom: -28px; left: 0; color: #5C6884; content: attr(data-label); font-size: 10px; font-weight: 700; text-align: center; }
+    .tile-doc-regions { height: 520px; padding: 38px 42px; background: #FFFFFF; }
+    .tile-doc-region-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .tile-doc-region { min-height: 158px; padding: 22px; border: 1px solid #BAC5DE; }
+    .tile-doc-region:nth-child(1) { border-top: 6px solid #2D5BFF; }
+    .tile-doc-region:nth-child(2) { border-top: 6px solid #1E9F6E; }
+    .tile-doc-region:nth-child(3) { border-top: 6px solid #F5A623; }
+    .tile-doc-region:nth-child(4) { border-top: 6px solid #E63946; }
+    .tile-doc-region b { display: block; margin-bottom: 12px; font-size: 17px; }
+    .tile-doc-region p { margin: 0; color: #5C6884; font-size: 12px; line-height: 1.5; }
+    .tile-doc-timeline { height: 520px; padding: 38px 42px; color: #FFFFFF; background: #172859; }
+    .tile-doc-timeline h4 { color: #FFFFFF; }
+    .tile-doc-timeline .tile-doc-eyebrow { color: #93ABFF; }
+    .tile-doc-events { display: grid; gap: 13px; }
+    .tile-doc-event { display: grid; grid-template-columns: 74px 1fr; gap: 18px; align-items: start; padding: 15px 0; border-top: 1px solid rgba(255,255,255,0.22); }
+    .tile-doc-event time { color: #93ABFF; font-size: 12px; font-weight: 700; }
+    .tile-doc-event b { display: block; margin-bottom: 4px; font-size: 15px; }
+    .tile-doc-event p { margin: 0; color: #BFCBEB; font-size: 11px; line-height: 1.45; }
+    .tile-doc-end { display: flex; height: 260px; align-items: center; justify-content: space-between; gap: 30px; padding: 42px; color: #0F1E4D; background: #BFD0FF; }
+    .tile-doc-end h4 { max-width: 390px; margin: 8px 0 0; font-size: 30px; letter-spacing: -1px; line-height: 1.08; text-transform: none; }
+    .tile-doc-mark { display: grid; width: 88px; height: 88px; flex: 0 0 auto; place-items: center; color: #FFFFFF; background: #2D5BFF; font-size: 34px; font-weight: 700; }
+    .mosaic-actions { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding: 18px 0 0; }
+    .mosaic-status { min-height: 20px; color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; }
+    .mosaic-result { margin-top: 18px; padding: 18px; border: 1px dashed var(--border); background: var(--surface-hover); }
+    .mosaic-result[hidden] { display: none; }
+    .mosaic-grid { display: grid; width: min(100%, 640px); grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 auto; }
+    .mosaic-tile { position: relative; min-width: 0; border: 1px solid var(--border); background: #FFFFFF; }
+    .mosaic-tile canvas { display: block; width: 100%; height: auto; }
+    .mosaic-tile span { position: absolute; top: 6px; left: 6px; padding: 3px 6px; color: #FFFFFF; background: rgba(15,30,77,0.86); font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+    .mosaic-note { margin: 12px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; text-align: center; }
+    @media (max-width: 680px) {
+      .tile-pipeline { grid-template-columns: 1fr; }
+      .tile-pipeline-arrow { transform: rotate(90deg); }
+      .mosaic-demo { padding: 14px; }
+      .mosaic-scroll { height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
+
+  <section class="hero"><div class="hero-badge">SnapDOM Blog</div><h1><span class="accent">Tiled rasterization</span> for large DOM captures</h1><p class="lead">SnapDOM 2.24 can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.</p></section>
+  <main class="page">
+    <p class="byline">Zumerlab · August 11, 2026</p>
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A very tall DOM capture can serialize to SVG just fine and still fail when the browser tries to decode that SVG into one enormous bitmap. SnapDOM's new <code>toCanvas({ crop })</code> windows the SVG <em>before</em> image decode. Capture once, move that window across <code>result.meta</code>, and you can preserve the requested resolution while each tile fits the browser's raster limits—without ever allocating the full-page canvas. It solves the raster ceiling; it does not make cloning an enormous DOM free.</p></div>
+
+    <section class="prose">
+      <h2>The screenshot was fine. The bitmap wasn't.</h2>
+      <p>There are two very different sizes hiding inside a “full-page screenshot.” The first is the serialized capture: an SVG containing a styled DOM clone inside <code>&lt;foreignObject&gt;</code>. The second is the bitmap a browser creates when that SVG is decoded for PNG, Canvas, JPEG or WebP.</p>
+      <p>The SVG can describe a page tens of thousands of pixels tall. The bitmap is where browsers push back. A common practical ceiling is 16,384 pixels on one side, with an area limit as well; the exact failure point varies by engine and machine. Go past it and <code>img.decode()</code> may reject with the remarkably unhelpful <code>EncodingError: The source image cannot be decoded</code>, or the canvas allocation may fail later.</p>
+      <p>SnapDOM already protects ordinary exports from that crash by downscaling oversized raster output. That is the right fallback when the caller asked for one image. It is the wrong trade when the pixels are the product: a deep-zoom viewer, a page renderer, a tiled upload or a print pipeline should not have to throw resolution away simply because one bitmap is the wrong container.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Cut the SVG, not the canvas</h2>
+      <p>The obvious mosaic algorithm is also the broken one: render one giant canvas, then use <code>drawImage()</code> to cut it into smaller canvases. By the time the slicing loop starts, the browser has already had to decode and allocate the giant bitmap. The failure happens before the workaround gets a turn.</p>
+      <p><code>toCanvas({ crop })</code> moves the cut earlier. SnapDOM rewrites the serialized SVG's root <code>width</code>, <code>height</code> and <code>viewBox</code> to describe only the requested window, and <em>then</em> gives it to <code>Image.decode()</code>. The browser never sees a full-height raster source.</p>
+      <div class="tile-pipeline" aria-label="Tiled rasterization pipeline">
+        <div class="tile-pipeline-step"><b>Capture once</b><span>Clone, style and serialize one canonical SVG.</span></div>
+        <div class="tile-pipeline-arrow" aria-hidden="true">→</div>
+        <div class="tile-pipeline-step"><b>Move the window</b><span>Rewrite the viewBox to one tile's coordinates.</span></div>
+        <div class="tile-pipeline-arrow" aria-hidden="true">→</div>
+        <div class="tile-pipeline-step"><b>Decode small</b><span>Rasterize only that tile, consume it, repeat.</span></div>
+      </div>
+      <p>This work lives entirely in the exporter. The hot capture path still walks and clones the DOM once; asking for ten tiles does not repeat style collection, font embedding or image inlining ten times.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Try the mosaic</h2>
+      <p>The report below is 640 × 2,400 CSS pixels. That is deliberately smaller than a browser limit so the demo stays polite, but it uses the same path as a 40,000-pixel document: one SVG capture, ten 320 × 480 crop windows, ten independent canvases. Scroll the source, then build the mosaic.</p>
+      <div class="mosaic-demo">
+        <div class="mosaic-scroll">
+          <article class="mosaic-source" id="mosaic-source">
+            <header>
+              <small>Northstar / Annual report 2026</small>
+              <h3>Revenue, retention and regional growth.</h3>
+              <p>One continuous DOM document: metrics, charts, regions and a timeline. The mosaic below never rasterizes it as one continuous bitmap.</p>
+            </header>
+            <section class="tile-doc-kpis">
+              <div class="tile-doc-kpi"><span>Annual revenue</span><strong>$18.4m</strong><em>↑ 24.8%</em></div>
+              <div class="tile-doc-kpi"><span>Active teams</span><strong>12,840</strong><em>↑ 18.1%</em></div>
+              <div class="tile-doc-kpi"><span>Net retention</span><strong>117%</strong><em>↑ 6.2 pts</em></div>
+            </section>
+            <section class="tile-doc-chart">
+              <span class="tile-doc-eyebrow">Performance</span>
+              <h4>Recurring revenue by quarter</h4>
+              <div class="tile-doc-bars" aria-label="Bar chart">
+                <div class="tile-doc-bar" data-label="Q1" style="height:38%"></div>
+                <div class="tile-doc-bar" data-label="Q2" style="height:51%"></div>
+                <div class="tile-doc-bar" data-label="Q3" style="height:46%"></div>
+                <div class="tile-doc-bar" data-label="Q4" style="height:68%"></div>
+                <div class="tile-doc-bar" data-label="Q1" style="height:74%"></div>
+                <div class="tile-doc-bar" data-label="Q2" style="height:92%"></div>
+              </div>
+            </section>
+            <section class="tile-doc-regions">
+              <span class="tile-doc-eyebrow">Where growth came from</span>
+              <h4>Four regions, four different jobs</h4>
+              <div class="tile-doc-region-grid">
+                <div class="tile-doc-region"><b>North America</b><p>Enterprise expansion made existing accounts the largest contributor to net new revenue.</p></div>
+                <div class="tile-doc-region"><b>Europe</b><p>Localized onboarding shortened time-to-value across the mid-market segment.</p></div>
+                <div class="tile-doc-region"><b>Asia Pacific</b><p>Partner-led launches opened three markets without adding a regional sales layer.</p></div>
+                <div class="tile-doc-region"><b>Latin America</b><p>Self-serve adoption doubled after local currency pricing reached the checkout.</p></div>
+              </div>
+            </section>
+            <section class="tile-doc-timeline">
+              <span class="tile-doc-eyebrow">The year in four moves</span>
+              <h4>Four releases that moved adoption</h4>
+              <div class="tile-doc-events">
+                <div class="tile-doc-event"><time>JAN 18</time><div><b>New workspace model</b><p>Teams could finally organize projects without duplicating permissions and billing.</p></div></div>
+                <div class="tile-doc-event"><time>APR 04</time><div><b>Usage-based plans</b><p>Smaller customers could start earlier and grow without a contract migration.</p></div></div>
+                <div class="tile-doc-event"><time>JUL 22</time><div><b>Regional data storage</b><p>European deployments moved from exception handling to the standard path.</p></div></div>
+                <div class="tile-doc-event"><time>NOV 09</time><div><b>Partner API</b><p>Implementation partners shipped repeatable integrations instead of one-off scripts.</p></div></div>
+              </div>
+            </section>
+            <footer class="tile-doc-end">
+              <div><small>Priorities for 2027</small><h4>Faster onboarding, regional growth and durable retention.</h4></div>
+              <div class="tile-doc-mark" aria-hidden="true">N</div>
+            </footer>
+          </article>
+        </div>
+        <div class="mosaic-actions">
+          <button class="btn btn-primary" id="build-mosaic" type="button">Build 10-tile mosaic</button>
+          <span class="mosaic-status" id="mosaic-status" aria-live="polite">One capture · no full-page canvas</span>
+        </div>
+        <div class="mosaic-result" id="mosaic-result" hidden>
+          <div class="mosaic-grid" id="mosaic-grid"></div>
+          <p class="mosaic-note">The gaps, borders and responsive scaling make the tiles visible here. At their native 320 × 480 size with no decoration, the ten canvases reconstruct the source.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2>The whole implementation is a loop</h2>
+      <p><code>crop</code> uses SVG viewBox coordinates, so the reliable bounds come from the capture rather than from rereading the live element. This version hands each canvas to a callback immediately; a production exporter can encode, upload or write the tile before requesting the next one.</p>
+      <pre class="code-block">async function tileCapture(capture, options, consume) {
+  const {
+    tileWidth = 2048,
+    tileHeight = 2048,
+    scale = 1,
+    dpr = 1
+  } = options
+
+  const { contentX, contentY, w0, h0 } = capture.meta
+
+  for (let y = 0, row = 0; y &lt; h0; y += tileHeight, row++) {
+    for (let x = 0, col = 0; x &lt; w0; x += tileWidth, col++) {
+      const width = Math.min(tileWidth, w0 - x)
+      const height = Math.min(tileHeight, h0 - y)
+      const crop = {
+        x: contentX + x,
+        y: contentY + y,
+        width,
+        height
+      }
+
+      const canvas = await capture.toCanvas({ crop, scale, dpr })
+      await consume({ canvas, crop, row, col })
+    }
+  }
+}
+
+const capture = await snapdom(document.documentElement, { dpr: 1 })
+
+await tileCapture(capture, {}, async ({ canvas, row, col }) => {
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+  if (!blob) throw new Error('PNG encoding failed')
+
+  try {
+    await uploadTile(blob, { row, col })
+  } finally {
+    canvas.width = canvas.height = 0
+  }
+})</pre>
+      <p>The exports on one capture are queued, so tiles are rasterized in order instead of all competing for decode and canvas memory. For a visual mosaic like the demo it is fine to retain every canvas. For a genuinely huge page, process a tile and release it before moving on.</p>
+    </section>
+
+    <section class="prose">
+      <h2>The geometry is half the feature</h2>
+      <p>A naïve tiler starts at <code>0, 0</code>. That only works while the serialized content also starts there. Root transforms, asymmetric shadows, outlines and clip windows can move the logical page inside the SVG viewBox. SnapDOM 2.24 exposes the final, immutable geometry as <code>result.meta</code>, after those effects have been resolved.</p>
+      <table class="cmp-table">
+        <thead><tr><th>Geometry</th><th>What it measures</th><th>Use it for</th></tr></thead>
+        <tbody>
+          <tr><td class="feature"><code>w0</code> / <code>h0</code></td><td>The logical capture box</td><td>Tile only page content</td></tr>
+          <tr><td class="feature"><code>contentX</code> / <code>contentY</code></td><td>Its exact origin inside the viewBox</td><td>Place the first content tile</td></tr>
+          <tr><td class="feature"><code>vbW</code> / <code>vbH</code></td><td>The complete serialized artifact</td><td>Include bleed and outer effects</td></tr>
+        </tbody>
+      </table>
+      <p>The loop above tiles the logical page from <code>contentX, contentY</code> over <code>w0 × h0</code>. If the mosaic must preserve every pixel of shadow or transformed bleed, tile from <code>0, 0</code> over <code>vbW × vbH</code> instead. Partly outside crop windows are clipped to the viewBox; empty, non-finite or fully outside windows reject rather than quietly returning the whole image.</p>
+    </section>
+
+    <section class="prose">
+      <h2>What tiling does not solve</h2>
+      <p>Tiling removes the full-bitmap allocation from the equation. It does not turn capture into a streaming DOM renderer. SnapDOM still has to clone the complete subtree, read its styles, inline assets and hold the serialized SVG. A 100,000-node document is still a 100,000-node capture.</p>
+      <ul>
+        <li>Virtualized or lazy sections must exist in the DOM before capture; no image library can serialize nodes the application has not rendered.</li>
+        <li><code>tileWidth × scale × dpr</code> and <code>tileHeight × scale × dpr</code> still need to fit the browser's raster limits.</li>
+        <li>Keeping every tile alive eventually holds the same number of pixels in aggregate. Encode or send each tile as you go when memory matters.</li>
+        <li>Stitching the tiles back into one giant canvas recreates the original problem. The consumer has to understand pages, tiles or levels.</li>
+      </ul>
+      <p>If the initial DOM walk is the bottleneck, <code>clip</code> is the other tool: it prunes off-window subtrees before styling and inlining, but requires a separate capture for each region. <code>crop</code> trades that pruning for one frozen artifact, so fonts, images, animation state and live data cannot change between tiles.</p>
+      <p>Each crop also decodes and re-encodes the complete SVG data URL, and the browser still parses the full <code>&lt;foreignObject&gt;</code> payload. Tiling bounds bitmap allocation; it does not make SVG string or parse work proportional to the visible tile.</p>
+      <p>That is a narrower claim than “unlimited screenshots,” and a much more useful one. The DOM is captured once, at one consistent moment. Raster output becomes a sequence of bounded jobs. When each tile fits, no document-wide downscale is required.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Where tile windows are useful</h2>
+      <p>We added crop and immutable geometry for document exporters, where a tall capture naturally becomes PDF pages. The same mechanism also fits map-style viewers, poster printing, zoomable archives and multipart uploads. They all need one stable source and a way to ask for one rectangle at a time.</p>
+      <p>Plugin authors get the same path through <code>ctx.exports.canvas({ crop })</code>, a silent core-export facade that reuses the canonical capture without recursively firing export hooks. That makes “mosaic” a small custom export instead of a second rendering engine—and keeps the extra work out of SnapDOM's capture hot path.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Keep reading</div>
+      <div class="related-grid">
+        <a class="related-card" href="../../how-to/capture-full-page/">Capture a full page <span class="arrow">→</span></a>
+        <a class="related-card" href="../../docs/api/#canvas-crop">Canvas crop API <span class="arrow">→</span></a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Plugin export API <span class="arrow">→</span></a>
+        <a class="related-card" href="../painting-without-canvas/">Painting without canvas <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section"><div class="cta-card"><h2>Capture once. Rasterize in pieces.</h2><p><code>toCanvas({ crop })</code> and immutable capture geometry are available in SnapDOM 2.24.</p><a href="../../docs/api/#canvas-crop" class="btn btn-primary">Read the API</a><a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a></div></section>
+  </main>
+
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+
+    const source = document.getElementById('mosaic-source')
+    const button = document.getElementById('build-mosaic')
+    const status = document.getElementById('mosaic-status')
+    const result = document.getElementById('mosaic-result')
+    const grid = document.getElementById('mosaic-grid')
+
+    button.addEventListener('click', async () => {
+      button.disabled = true
+      status.textContent = 'Capturing one SVG…'
+      result.hidden = true
+      grid.replaceChildren()
+
+      try {
+        const capture = await snapdom(source, { dpr: 1, outerShadows: true })
+        const { contentX, contentY, w0, h0 } = capture.meta
+        const tileWidth = 320
+        const tileHeight = 480
+        let count = 0
+
+        for (let y = 0; y < h0; y += tileHeight) {
+          for (let x = 0; x < w0; x += tileWidth) {
+            const width = Math.min(tileWidth, w0 - x)
+            const height = Math.min(tileHeight, h0 - y)
+            status.textContent = `Rasterizing tile ${count + 1}…`
+
+            const canvas = await capture.toCanvas({
+              crop: { x: contentX + x, y: contentY + y, width, height },
+              scale: 1,
+              dpr: 1
+            })
+            canvas.setAttribute('aria-label', `Mosaic tile ${count + 1}`)
+
+            const tile = document.createElement('div')
+            const label = document.createElement('span')
+            tile.className = 'mosaic-tile'
+            label.textContent = String(++count).padStart(2, '0')
+            tile.append(canvas, label)
+            grid.appendChild(tile)
+          }
+        }
+
+        result.hidden = false
+        status.textContent = `${count} canvases · ${tileWidth} × ${tileHeight}px · content origin ${contentX}, ${contentY}`
+      } catch (error) {
+        status.textContent = `Could not build mosaic: ${error.message}`
+      } finally {
+        button.disabled = false
+      }
+    })
+  </script>
+  <script defer src="/copy-code.js"></script>
+</body>
+</html>
