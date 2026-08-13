@@ -150,6 +150,60 @@ Every hook receives a single context object (`ctx`):
 3. `afterExport` return values are chained to the next plugin.
 4. DOM mutations in `beforeClone` must be undone. The live page should not be affected.
 
+### How far the pipeline runs: `needs`
+
+A capture is a chain, and each stage consumes the artifact of the previous one:
+
+```
+live DOM ──▶ [clone] ──▶ [render] ──▶ exports
+```
+
+Not every plugin needs the whole chain. One that reads the live DOM in `beforeClone`
+(semantic maps, context extraction) never looks at the clone; one that annotates the clone
+may not want pixels. Declare the deepest stage your plugin needs, and snapdom stops there:
+
+```js
+{ name: 'my-plugin', needs: 'live' }    // hooks up to beforeClone; no clone is taken
+{ name: 'my-plugin', needs: 'clone' }   // ...through afterClone; nothing is rendered
+{ name: 'my-plugin' }                   // default 'render': the whole pipeline, as always
+```
+
+Two rules keep this predictable:
+
+1. **The capture runs to the deepest stage its plugins declare.** A plugin can only lower
+   the pipeline when every other plugin agrees, so adding a plugin never takes away an
+   artifact you already had, and a capture with no plugins behaves as it always did.
+2. **What was never produced is never faked.** `url`, `toRaw()`, `toPng()`, `toCanvas()`
+   and friends throw on a capture that stopped early, naming the plugins that lowered it.
+   Re-capturing on demand would return pixels of a *different* instant and the caller
+   would have no way to tell: the clone IS the freeze, and it cannot be taken afterwards.
+
+`result.stage` reports what actually ran.
+
+**Why it is worth declaring.** Measured on a 601-node subtree: clone 43.3 ms, assets
+2.7 ms, serialize 1.6 ms. Stopping before the render saves a few percent; stopping before
+the clone saves ~89%, and only the plugin knows that cut can be made.
+
+**Give the caller the same knob.** Plugins that can work at more than one depth take a
+`needs` option and pass it through, so the vocabulary is identical everywhere:
+
+```js
+export function myPlugin(options = {}) {
+  return { name: 'my-plugin', needs: options.needs ?? 'render', /* hooks */ }
+}
+```
+
+`contextExport({ needs: 'live' })` and `agentMap({ image: false, needs: 'clone' })` are the
+official examples. Both default to `'render'`, because lowering the stage takes the picture
+away and that is the caller's call to make. To validate early, import the shared helper:
+
+```js
+import { assertNeeds, STAGES } from '@zumer/snapdom/plugins'
+const needs = assertNeeds('my-plugin', options.needs, ['clone', 'render'])  // rejects 'live'
+```
+
+Core validates the final value anyway and reports an unknown one with the plugin's name.
+
 ### Plugins × the engine's fast paths (v3)
 
 snapdom memoizes repeated captures automatically and rebuilds only mutated subtrees

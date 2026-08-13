@@ -16,6 +16,7 @@ import { sessionWarn } from '../utils/debug.js'
 import { universeFor } from '../modules/styles.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
+import { stageReaches, DEFAULT_STAGE } from './stages.js'
 import { compressCloneAssets } from '../modules/compress.js'
 import {
   stripRootShadows,
@@ -73,7 +74,8 @@ function collectResolveNodeHooks(options) {
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
  * @param {boolean} [options.burst] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Unset: auto-enables after 3 captures of the same element within 2s (canvas-bearing elements excluded)
- * @returns {Promise<string>} Promise that resolves to an SVG data URL
+ * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
+ *   a shallower stage (`needs: 'live' | 'clone'`) and no render artifact was produced
  */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
@@ -92,11 +94,21 @@ export async function captureDOM(element, options) {
   let fontsCSS = ''
   // NEW: store root transform (scale/skew) when outerTransforms is on
   let rootTransform2D = null
+  // How far this capture has to run: the maximum `needs` of the attached plugins
+  // (see stages.js). 'render' — the default, and every capture without plugins — is the
+  // historical pipeline; the checks below are the only two places that read it.
+  const stage = options.__stage || DEFAULT_STAGE
+
   // BEFORESNAP
   await runHook('beforeSnap', state)
 
   // BEFORECLONE
   await runHook('beforeClone', state)
+
+  // Stage 'live': the attached plugins only read the live DOM, and they just did. No
+  // clone is taken — which is the point: the clone is ~89% of a capture.
+  if (!stageReaches(stage, 'clone')) return null
+
   const undoClamp = lineClampTree(state.element, preClipRect)
   try {
     // Keep this capture's own clone→source map — every later pass must use this
@@ -131,6 +143,17 @@ export async function captureDOM(element, options) {
   // AFTERCLONE
   state = { clone, classCSS, styleCache, nodeMap, ...state }
   await runHook('afterClone', state)
+
+  // Stage 'clone': the plugins wanted the frozen tree, not pixels. Everything from here
+  // (XHTML sanitizing, asset inlining, fonts, foreignObject, serialization) exists only
+  // to feed a renderer, so it is skipped whole.
+  if (!stageReaches(stage, 'render')) {
+    if (typeof options.__retain === 'function') {
+      try { options.__retain({ clone, nodeMap, styleCache, styleMap: options.__session.styleMap, classPrefixCSS, clipWindow }) } catch { /* retention is best-effort */ }
+    }
+    return null
+  }
+
   sanitizeCloneForXHTML(state.clone)
   // Shrink pass when excludeMode/filterMode === 'remove' dropped clone children
   if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {

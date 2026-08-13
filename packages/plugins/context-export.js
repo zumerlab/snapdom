@@ -63,9 +63,17 @@ export function contextExport(options = {}) {
     maxNodes = 800,
     geometry = true,
   } = options
+  // Homogeneous across plugins: `needs` names the deepest stage this instance requires.
+  // Core validates the value and reports it (src/core/stages.js), so no local checking.
+  const needs = options.needs ?? 'render'
 
   return {
     name: 'context-export',
+    // This export only reads the live element, so it CAN run without a clone or a render:
+    // `contextExport({ needs: 'live' })` skips ~89% of the capture. Not the default,
+    // because the documented pairing is picture + text from one call, and lowering the
+    // stage takes the picture away.
+    needs,
 
     defineExports() {
       return {

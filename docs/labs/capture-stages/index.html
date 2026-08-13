@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Capture Stages — a plugin decides how far the pipeline runs</title>
+  <meta name="description" content="A capture is live DOM, then clone, then render. Plugins declare the deepest stage they need, and SnapDOM stops there. Measure the three stages side by side and see what an absent artifact does."/>
+  <link rel="canonical" href="https://snapdom.dev/labs/capture-stages/"/>
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <style>
+    .lab-stages { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-stages .sample { width: min(520px, 100%); background: #fff; border: 1px solid var(--border-soft); padding: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .lab-stages .sample article { border: 1px solid var(--hairline); padding: 8px; font-size: 12px; }
+    .lab-stages .sample h4 { margin: 0 0 4px; font-size: 12px; }
+    .lab-stages .sample p { margin: 0 0 6px; color: var(--text-muted); }
+    .lab-stages .sample button { font: inherit; font-size: 11px; padding: 2px 8px; }
+    .lab-stages .run { margin: 18px 0; }
+    .lab-stages .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .lab-stages .card { border: 1px solid var(--border-soft); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .lab-stages .card h3 { margin: 0; font-size: 15px; font-family: var(--font-mono); }
+    .lab-stages .card code.decl { display: block; background: var(--code-bg); color: var(--code-text); padding: 8px 10px; font-size: 12px; overflow-x: auto; }
+    .lab-stages .ms { font-variant-numeric: tabular-nums; font-size: 28px; line-height: 1; }
+    .lab-stages .ms small { font-size: 13px; color: var(--text-muted); }
+    .lab-stages .bar { height: 10px; background: var(--accent-soft); }
+    .lab-stages .bar i { display: block; height: 100%; background: var(--accent); }
+    .lab-stages .out { border-top: 1px dashed var(--hairline); padding-top: 10px; font-size: 12px; }
+    .lab-stages .out img { max-width: 100%; border: 1px solid var(--hairline); }
+    .lab-stages pre.outline { margin: 0; max-height: 150px; overflow: auto; font-size: 11px; background: var(--surface-hover); padding: 8px; }
+    .lab-stages .err { color: var(--rose); background: var(--rose-soft); padding: 8px; font-size: 11.5px; }
+    .lab-stages .note { color: var(--text-muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+<main class="page">
+  <p class="crumbs"><a href="../../">SnapDOM</a> / <a href="../../labs.html">Labs</a> / Capture Stages</p>
+
+  <h1>Capture stages</h1>
+
+  <p>A capture is a chain: the <b>live DOM</b> is walked, a <b>clone</b> freezes that instant,
+  and a <b>render</b> turns the clone into pixels. Not every consumer needs the whole chain, and
+  the plugin is the one that knows. So it declares it:</p>
+
+  <pre><code>{ name: 'my-plugin', needs: 'live' }   // reads the page, no clone, no pixels
+{ name: 'my-plugin', needs: 'clone' }  // annotates the frozen tree, no pixels
+{ name: 'my-plugin' }                  // default: the whole pipeline, as always</code></pre>
+
+  <p>The stage of a capture is the <b>deepest</b> stage its plugins declare, so one undeclared
+  plugin keeps everything. A capture with no plugins behaves exactly as it always did.</p>
+
+  <div class="lab-stages">
+    <div class="sample" id="sample"></div>
+    <p class="run">
+      <button id="go" class="btn">Run the three stages</button>
+      <span class="note" id="status"></span>
+    </p>
+    <div class="grid" id="cards"></div>
+    <p class="note" id="verdict" style="margin-top:16px"></p>
+  </div>
+
+  <h2>What the numbers say</h2>
+  <p>Stopping before the render saves almost nothing: serialization is a few percent of a
+  capture. Stopping before the <b>clone</b> is the cut that matters, and it is exactly the one a
+  plugin can know about and a caller cannot.</p>
+
+  <h2>What was never produced is never faked</h2>
+  <p>Ask a shallow capture for pixels and it throws, naming the plugin that lowered the stage.
+  Re-capturing on demand would hand back an image of a <i>different</i> instant, and the caller
+  would have no way to tell.</p>
+
+<script type="module">
+import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+
+// ── the element under capture ────────────────────────────────────────────────────────
+const sample = document.getElementById('sample')
+sample.innerHTML = Array.from({ length: 36 }, (_, i) => `
+  <article>
+    <h4>Item ${i + 1}</h4>
+    <p>Short description for row ${i + 1}.</p>
+    <button>Open ${i + 1}</button>
+  </article>`).join('')
+
+// ── three plugins, same knob, different depth ────────────────────────────────────────
+// 'live': reads the page in beforeClone and exports an outline. Never sees a clone.
+const outlinePlugin = () => {
+  let outline = ''
+  return {
+    name: 'outline',
+    needs: 'live',
+    beforeClone(ctx) {
+      const rows = []
+      for (const el of ctx.element.querySelectorAll('h4, button')) {
+        rows.push(`${el.tagName.toLowerCase()} "${el.textContent.trim()}"`)
+      }
+      outline = rows.join('\n')
+    },
+    defineExports: () => ({ outline: async () => outline }),
+  }
+}
+
+// 'clone': stamps the frozen tree. No pixels asked for, so no render runs.
+const stampPlugin = () => {
+  let html = ''
+  return {
+    name: 'stamp',
+    needs: 'clone',
+    afterClone(ctx) {
+      const tag = document.createElement('b')
+      tag.textContent = ' [stamped]'
+      ctx.clone.querySelector('h4')?.appendChild(tag)
+      html = ctx.clone.querySelector('article')?.outerHTML || ''
+    },
+    defineExports: () => ({ stamped: async () => html }),
+  }
+}
+
+// no declaration: the whole pipeline, the historical behaviour
+const plainPlugin = () => ({ name: 'plain' })
+
+const REPS = 7
+const median = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)]
+
+async function time(makePlugins) {
+  const runs = []
+  let last
+  for (let i = 0; i < REPS; i++) {
+    const t = performance.now()
+    last = await snapdom(sample, { plugins: makePlugins(), cache: 'disabled', burst: false })
+    runs.push(performance.now() - t)
+  }
+  return { ms: median(runs), result: last }
+}
+
+const cards = document.getElementById('cards')
+const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild }
+
+document.getElementById('go').addEventListener('click', async () => {
+  const status = document.getElementById('status')
+  status.textContent = `capturing ${sample.querySelectorAll('*').length + 1} nodes, ${REPS} runs each…`
+  cards.innerHTML = ''
+
+  const specs = [
+    { stage: 'live', decl: "needs: 'live'", make: () => [outlinePlugin()] },
+    { stage: 'clone', decl: "needs: 'clone'", make: () => [stampPlugin()] },
+    { stage: 'render', decl: '(no declaration)', make: () => [plainPlugin()] },
+  ]
+
+  const done = []
+  for (const spec of specs) done.push({ ...spec, ...(await time(spec.make)) })
+  const worst = Math.max(...done.map((d) => d.ms))
+
+  for (const d of done) {
+    const card = el(`
+      <div class="card">
+        <h3>${d.stage}</h3>
+        <code class="decl">${d.decl}</code>
+        <div class="ms">${d.ms.toFixed(1)}<small> ms</small></div>
+        <div class="bar"><i style="width:${(d.ms / worst * 100).toFixed(1)}%"></i></div>
+        <div class="out"></div>
+      </div>`)
+    const out = card.querySelector('.out')
+
+    // what this stage DID produce
+    if (d.stage === 'live' || d.stage === 'clone') {
+      const pre = document.createElement('pre')
+      pre.className = 'outline'
+      pre.textContent = d.stage === 'live' ? await d.result.toOutline() : await d.result.toStamped()
+      out.appendChild(pre)
+    }
+
+    // and the same door on every card: ask it for the image
+    try {
+      const img = await d.result.toPng()
+      img.style.maxWidth = '100%'
+      out.appendChild(img)
+    } catch (e) {
+      out.appendChild(el(`<div class="err"><b>result.toPng()</b><br>${String(e.message)}</div>`))
+    }
+
+    cards.appendChild(card)
+  }
+
+  const [live, clone, render] = done
+  status.textContent = `${sample.querySelectorAll('*').length + 1} nodes, median of ${REPS} runs`
+  document.getElementById('verdict').innerHTML =
+    `Stopping at <b>live</b> skipped ${(100 - live.ms / render.ms * 100).toFixed(0)}% of the capture. ` +
+    `Stopping at <b>clone</b> skipped ${Math.max(0, 100 - clone.ms / render.ms * 100).toFixed(0)}%: ` +
+    'the two land in the same place because serialization is a few percent of the work. ' +
+    'The cut that pays is the one before the clone, and only a plugin knows it can be made.'
+})
+</script>
+</main>
+</body>
+</html>

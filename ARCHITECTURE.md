@@ -17,6 +17,32 @@ by an adversarial architecture panel) re-derives this same pipeline; the wins ar
 doing *less* of it (property-universe pruning, class dedup, differential recapture),
 not in doing something else.
 
+## Stages: how far a capture runs (`needs`)
+
+The pipeline is `live DOM → clone → render → exports`, and a plugin declares the deepest
+stage it needs (`src/core/stages.js`, contract in PLUGIN_SPEC.md). Two facts decide the
+shape, and neither is a preference:
+
+- **The clone is the freeze.** Everything downstream reads it, never the live tree, which
+  is why a render can be deferred or swapped for another backend and still describe the
+  captured instant — and why the clone itself cannot be taken later. A capture that
+  skipped it can never produce pixels for that moment, so every door to an absent
+  artifact throws instead of silently re-capturing.
+- **The saving is at the clone, not at the render.** Measured, 601 nodes, cold: clone
+  43.3 ms, assets 2.7 ms, serialize 1.6 ms. The stage split is worth doing for
+  architecture (the canvas engine and non-raster backends stop being special cases), but
+  do not sell it as a render-time optimization: 3%.
+
+The stage is the MAXIMUM declared by the attached plugins, defaulting to `render`, so a
+capture with no plugins is bit-identical to the old path and adding a plugin can never
+remove an artifact. Auto-burst is off below `render`: there is nothing to memoize, and
+those plugins read the live tree on every call.
+
+Open before the canvas engine can be a real backend rather than a bypass: `mountCopy`
+clones the LIVE element again (`src/engines/htmlInCanvas.js`), so as a render stage it
+would discard whatever plugins did in `afterClone`. Either it paints the clone, or it
+declares itself incompatible with clone-mutating plugins.
+
 ## The invalidation matrix (burst/diff correctness)
 
 The memoization engine must observe every way a rendered frame can change. The

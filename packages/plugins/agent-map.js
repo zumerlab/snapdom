@@ -56,6 +56,12 @@ export function agentMap(options = {}) {
 
   return {
     name: 'agent-map',
+    // Homogeneous across plugins: `needs` names the deepest stage this instance requires.
+    // `agentMap({ image: false, needs: 'clone' })` skips the render entirely; it stays
+    // opt-in because a capture built that way cannot change its mind at export time —
+    // toAgentMap({ image: true }) on it fails loud rather than hand back an image of a
+    // later instant. This plugin reads the map in afterClone, so 'live' is not available.
+    needs: options.needs ?? 'render',
 
     afterClone(ctx) {
       const meta = extractMap(

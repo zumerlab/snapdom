@@ -5,6 +5,7 @@ import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
+import { resolveStage, stageReaches, absentArtifactError } from '../core/stages.js'
 import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
@@ -82,6 +83,14 @@ async function main(element, userOptions) {
   // Attach per-capture plugins (local-first) without removing globals
   attachSessionPlugins(context, userOptions && userOptions.plugins)
 
+  // How deep this capture runs: the maximum `needs` of those plugins (stages.js).
+  // Resolved here, once, because both fast paths below only make sense for a capture
+  // that ends in a render artifact.
+  const { stage, loweredBy } = resolveStage(context)
+  context.__stage = stage
+  context.__stageLoweredBy = loweredBy
+  const rendersPixels = stageReaches(stage, 'render')
+
   // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
   // first draw is now handled at draw time by toCanvas's verified-draw ladder):
   // wait for the fonts the element actually uses, and poke GPU-backed <canvas>
@@ -144,7 +153,7 @@ async function main(element, userOptions) {
   // The `typeof` guard is the build switch: esbuild defines __SNAPDOM_CANVAS_ENGINE__ as
   // false for shipped bundles, folding this branch (and the module behind it) away, while
   // src consumers — the test suite — leave it undefined and keep the engine live.
-  if ((typeof __SNAPDOM_CANVAS_ENGINE__ === 'undefined' || __SNAPDOM_CANVAS_ENGINE__) && context.engine === 'canvas') {
+  if (rendersPixels && (typeof __SNAPDOM_CANVAS_ENGINE__ === 'undefined' || __SNAPDOM_CANVAS_ENGINE__) && context.engine === 'canvas') {
     const { tryEngineResult } = await import('../engines/htmlInCanvas.js')
     const engineResult = await tryEngineResult(element, context, () => snapdom.capture(element, context, INTERNAL_TOKEN))
     if (engineResult) return engineResult
@@ -154,9 +163,13 @@ async function main(element, userOptions) {
   // Render-affecting plugins suspend auto mode (a memo serve would skip their hooks) —
   // explicit burst:true keeps memoizing (the caller opted in), and `pure: true` plugins
   // re-enable auto.
-  const burst = context.burst === undefined
-    ? (!hasImpureRenderPlugins(context) && shouldAutoBurst(element))
-    : context.burst
+  // A capture that produces no render artifact has nothing to memoize, and its plugins
+  // read the LIVE tree on every call — a memo serve would be exactly the stale read.
+  const burst = !rendersPixels
+    ? false
+    : context.burst === undefined
+      ? (!hasImpureRenderPlugins(context) && shouldAutoBurst(element))
+      : context.burst
   if (burst) {
     return captureWithBurst(
       element, userOptions, context,
@@ -190,12 +203,29 @@ snapdom.capture = async (el, context, _token) => {
  * @private
  */
 async function buildResult(url, context) {
+  // A capture that stopped at 'live' or 'clone' has no render artifact. Every door to one
+  // throws the SAME error, naming the plugins that lowered the stage: silently
+  // re-capturing would hand back pixels of a different instant (stages.js).
+  const rendered = typeof url === 'string'
+  const absent = (what) => absentArtifactError(context.__stage || 'live', context.__stageLoweredBy || [], what)
+
   // Lazy decode: exposing the serialized SVG eagerly would double retained string size
   // per live result — exporters that need it (toHtml) pay the decode on demand.
   const lazySvgString = () => {
+    if (!rendered) throw absent('svgString')
     const i = url.indexOf(',')
     return i >= 0 ? decodeURIComponent(url.slice(i + 1)) : ''
   }
+
+  /**
+   * What plugins see as `ctx.export`. `url` is a getter so a capture with no render
+   * artifact fails at the read, with the reason, instead of handing over undefined.
+   */
+  const exportFacade = (extra) => Object.defineProperty(
+    { ...(extra || {}), svgString: lazySvgString },
+    'url',
+    rendered ? { value: url, enumerable: true } : { get() { throw absent('export.url') }, enumerable: true }
+  )
 
   // ——— 1) Core exports por defecto (carga lazy en cada tipo) ———
   // NOTA: no importamos estáticamente los exportadores aquí.
@@ -236,6 +266,15 @@ async function buildResult(url, context) {
     },
   }
 
+  // Every core export reads the render artifact, so they all fail the same way when there
+  // is none. Plugin exports that override a core key replace this guard with their own.
+  if (!rendered) {
+    for (const k of Object.keys(coreExports)) {
+      const label = k === 'download' ? 'download()' : `to${k.charAt(0).toUpperCase()}${k.slice(1)}()`
+      coreExports[k] = async () => { throw absent(label) }
+    }
+  }
+
   // ——— 2) Exports declarados por plugins ———
   // Fachada reutilizable “silenciosa” (sin hooks) para uso en defineExports()
   const _pluginExports = {}
@@ -246,7 +285,7 @@ async function buildResult(url, context) {
   _pluginExports.jpg = _pluginExports.jpeg
 
   // Contexto extendido para defineExports (incluye URL y la fachada para reuso)
-  const _defineCtx = { ...context, artifacts: context.__artifacts || null, export: { url, svgString: lazySvgString }, exports: _pluginExports }
+  const _defineCtx = { ...context, artifacts: context.__artifacts || null, export: exportFacade(), exports: _pluginExports }
 
   const providedMaps = await runAll('defineExports', _defineCtx)
   // Local-first: earlier plugins in the list (locals) win over later (globals).
@@ -305,7 +344,7 @@ async function buildResult(url, context) {
       const work = exportsMap[type]
       if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, opts)
-      const ctx = { ...context, artifacts: context.__artifacts || null, export: { type, options: nextOpts, url, svgString: lazySvgString } }
+      const ctx = { ...context, artifacts: context.__artifacts || null, export: exportFacade({ type, options: nextOpts }) }
       // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
       // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
       await runHook('beforeExport', ctx, { format: type, options: nextOpts })
@@ -328,13 +367,17 @@ async function buildResult(url, context) {
 
   // —— Helpers esperados por los tests + API azúcar ——
   const result = {
+    // Present as a plain string on the normal path; a throwing getter (installed below)
+    // when this capture stopped before the render stage.
     url,
+    /** Stage this capture actually ran to: 'live' | 'clone' | 'render'. */
+    stage: context.__stage || 'render',
     // Degradation log for this capture (empty in the common case): {code, message,
     // detail?} entries — image→placeholder, raster/canvas clamps, Safari PNG fallback,
     // reconcile risk. Export-time entries append after the export resolves; burst memo
     // serves retain the originating capture's log.
     warnings: (context.__session && context.__session.warnings) || [],
-    toRaw: () => url,
+    toRaw: () => { if (!rendered) throw absent('toRaw()'); return url },
     to: (type, opts) => runExport(type, opts),
 
     // Métodos “clásicos” que los tests esperan:
@@ -346,6 +389,10 @@ async function buildResult(url, context) {
     toJpg: (opts) => runExport('jpg', opts),     // alias requerido por tests
     toWebp: (opts) => runExport('webp', opts),
     download: (opts) => runExport('download', opts)
+  }
+
+  if (!rendered) {
+    Object.defineProperty(result, 'url', { get() { throw absent('url') }, enumerable: true })
   }
 
   // Azúcar dinámico por cada export registrado (plugins incluidos)

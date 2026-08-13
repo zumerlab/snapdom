@@ -17,6 +17,11 @@
  * Local (per-capture) plugins can be attached using attachSessionPlugins().
  */
 
+// The stage vocabulary travels with the plugin API (this module is the `@zumer/snapdom/
+// plugins` subpath export), so a plugin declares and validates `needs` with the same
+// words core resolves it by. See stages.js.
+export { STAGES, DEFAULT_STAGE, assertNeeds } from './stages.js'
+
 const __plugins = []
 
 /**
