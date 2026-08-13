@@ -18,6 +18,7 @@ import { compressCloneAssets } from '../modules/compress.js'
 import {
   stripRootShadows,
   neutralizeRootMarginCollapse,
+  neutralizeRootZoom,
   sanitizeCloneForXHTML,
   shrinkAutoSizeBoxes,
   estimateKeptHeight,
@@ -180,6 +181,9 @@ export async function captureDOM(element, options) {
     // content sits flush like the captured border box (no clipping / no offset).
     if (clone) {
       neutralizeRootMarginCollapse(state.element, clone, nodeMap)
+      // #483: the raster is sized in the root's pre-zoom coordinate space, so an inline
+      // `zoom` carried over by cloneNode() would shrink the content and leave blank bands.
+      neutralizeRootZoom(state.element, clone)
     }
   } finally {
     undoClamp()

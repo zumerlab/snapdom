@@ -238,6 +238,31 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
 }
 
 /**
+ * #483: Neutralize CSS `zoom` on the CLONE ROOT ONLY.
+ *
+ * The capture canvas is sized from `offsetWidth`/`offsetHeight` and the generated class
+ * uses `getComputedStyle()` widths — both are expressed in the element's own coordinate
+ * space, i.e. BEFORE its own `zoom` is applied (a 200px box with `zoom:.8` reports
+ * offsetWidth 200 while its rect measures 160). So the raster is built at the unzoomed
+ * size and the root must not re-apply its zoom inside the foreignObject: `shouldIgnoreProp`
+ * already keeps `zoom` out of the generated class (#369), but an *inline* `zoom` survives
+ * `cloneNode()` and shrinks the content into the top-left corner, leaving blank right/bottom
+ * bands. Pin the root to `zoom:1`; descendants keep their own zoom, whose computed sizes are
+ * likewise local and therefore still need the scale factor.
+ *
+ * @param {Element} originalEl
+ * @param {HTMLElement} cloneRoot
+ */
+export function neutralizeRootZoom(originalEl, cloneRoot) {
+  if (!originalEl || !cloneRoot || !cloneRoot.style) return
+  let z = 1
+  try { z = parseFloat(getComputedStyle(originalEl).zoom) } catch { return }
+  const hasInlineZoom = !!cloneRoot.style.getPropertyValue('zoom')
+  if (!hasInlineZoom && (!Number.isFinite(z) || z === 1)) return
+  try { cloneRoot.style.setProperty('zoom', '1', 'important') } catch { /* read-only style */ }
+}
+
+/**
  * True if the element establishes a new block formatting context, which stops
  * margins from collapsing through its top/bottom edges.
  * @param {CSSStyleDeclaration} cs
