@@ -152,18 +152,18 @@ Every hook receives a single context object (`ctx`):
 
 ### How far the pipeline runs: `needs`
 
-A capture is a chain, and each stage consumes the artifact of the previous one:
+A capture is a chain, and each step consumes what the previous one produced:
 
 ```
-live DOM ──▶ [clone] ──▶ [render] ──▶ exports
+dom ──▶ [clone] ──▶ [render] ──▶ exports
 ```
 
-Not every plugin needs the whole chain. One that reads the live DOM in `beforeClone`
+Not every plugin needs the whole chain. One that reads the live page in `beforeClone`
 (semantic maps, context extraction) never looks at the clone; one that annotates the clone
-may not want pixels. Declare the deepest stage your plugin needs, and snapdom stops there:
+may not want pixels. Declare what your plugin needs, and snapdom stops there:
 
 ```js
-{ name: 'my-plugin', needs: 'live' }    // hooks up to beforeClone; no clone is taken
+{ name: 'my-plugin', needs: 'dom' }     // hooks up to beforeClone; no clone is taken
 { name: 'my-plugin', needs: 'clone' }   // ...through afterClone; nothing is rendered
 { name: 'my-plugin' }                   // default 'render': the whole pipeline, as always
 ```
@@ -171,14 +171,16 @@ may not want pixels. Declare the deepest stage your plugin needs, and snapdom st
 Two rules keep this predictable:
 
 1. **The capture runs to the deepest stage its plugins declare.** A plugin can only lower
-   the pipeline when every other plugin agrees, so adding a plugin never takes away an
-   artifact you already had, and a capture with no plugins behaves as it always did.
+   the pipeline when every other plugin agrees, and a capture with no plugins behaves as it
+   always did. (Adding a plugin that declares less than `'render'` DOES take the image
+   away — that is the point of declaring it — but it can never do so behind another
+   plugin's back.)
 2. **What was never produced is never faked.** `url`, `toRaw()`, `toPng()`, `toCanvas()`
    and friends throw on a capture that stopped early, naming the plugins that lowered it.
    Re-capturing on demand would return pixels of a *different* instant and the caller
    would have no way to tell: the clone IS the freeze, and it cannot be taken afterwards.
 
-`result.stage` reports what actually ran.
+`result.needs` reports what actually ran — same word, same three values.
 
 **Why it is worth declaring.** Measured on a 601-node subtree: clone 43.3 ms, assets
 2.7 ms, serialize 1.6 ms. Stopping before the render saves a few percent; stopping before
@@ -193,16 +195,21 @@ export function myPlugin(options = {}) {
 }
 ```
 
-`contextExport({ needs: 'live' })` and `agentMap({ image: false, needs: 'clone' })` are the
+`contextExport({ needs: 'dom' })` and `agentMap({ image: false, needs: 'clone' })` are the
 official examples. Both default to `'render'`, because lowering the stage takes the picture
-away and that is the caller's call to make. To validate early, import the shared helper:
+away and that is the caller's call to make.
+
+Core rejects an unknown value by itself, naming your plugin. What core CANNOT know is a
+stage your plugin doesn't support — and running there usually means returning something
+empty that looks like a valid answer. Reject it yourself:
 
 ```js
 import { assertNeeds, STAGES } from '@zumer/snapdom/plugins'
-const needs = assertNeeds('my-plugin', options.needs, ['clone', 'render'])  // rejects 'live'
+const needs = assertNeeds('my-plugin', options.needs, ['clone', 'render'])  // rejects 'dom'
 ```
 
-Core validates the final value anyway and reports an unknown one with the plugin's name.
+`agent-map` is the cautionary example: it reads the map in `afterClone`, so at `'dom'` it
+would hand back an empty map — indistinguishable from a page with nothing interactive.
 
 ### Plugins × the engine's fast paths (v3)
 

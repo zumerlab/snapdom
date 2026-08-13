@@ -1,29 +1,28 @@
 /**
  * How far down the pipeline a capture has to go.
  *
- * A capture is a chain of stages, each one consuming the artifact of the previous:
+ * A capture is a chain, and each step consumes what the previous one produced:
  *
- *   live DOM ──▶ [clone] ──▶ [render] ──▶ exports
+ *   dom ──▶ [clone] ──▶ [render] ──▶ exports
  *
- * Not every consumer needs the whole chain. A plugin that reads the live DOM in
+ * Not every consumer needs the whole chain. A plugin that reads the live page in
  * `beforeClone` (semantic maps, context extraction) never looks at the clone, and one
  * that annotates the clone may not want pixels at all. Measured on a 601-node subtree:
  * clone 43.3 ms, assets 2.7 ms, serialize 1.6 ms — so stopping before the clone is the
  * only cut that saves real time, and it is exactly the cut a plugin can know about and
  * the caller cannot.
  *
- * So plugins declare it, per instance:
+ * So each plugin declares what it needs:
  *
- *   { name: 'agent-oracle', needs: 'live' }        // beforeClone only, no clone taken
+ *   { name: 'agent-oracle', needs: 'dom' }         // beforeClone only, no clone taken
  *   { name: 'agent-map', needs: 'clone' }          // annotates the clone, no pixels
  *   { name: 'ascii-export' }                       // default: 'render', today's pipeline
  *
  * Two rules keep this predictable:
  *
- *  1. The stage is the MAXIMUM of what the attached plugins declare, defaulting to
- *     'render'. A plugin can only lower the pipeline when every other plugin agrees, so
- *     adding a plugin never takes away an artifact you already had, and a capture with no
- *     plugins behaves exactly as it always did.
+ *  1. The capture runs to the MAXIMUM of what the attached plugins declare, defaulting to
+ *     'render'. A plugin can only lower the pipeline when every other plugin agrees, so a
+ *     capture with no plugins behaves exactly as it always did.
  *  2. What was never produced is never faked. Touching `url` / `toPng()` on a capture
  *     that stopped early throws, naming the plugins that lowered it. Re-capturing on
  *     demand would return pixels of a DIFFERENT instant, and the caller has no way to
@@ -33,9 +32,9 @@
  */
 
 /** Ordered, cheapest first. Also the vocabulary for the `needs` declaration. */
-export const STAGES = ['live', 'clone', 'render']
+export const STAGES = ['dom', 'clone', 'render']
 
-const RANK = { live: 0, clone: 1, render: 2 }
+const RANK = { dom: 0, clone: 1, render: 2 }
 
 /** What a plugin that does not declare anything gets: the whole pipeline, as before. */
 export const DEFAULT_STAGE = 'render'
@@ -43,7 +42,7 @@ export const DEFAULT_STAGE = 'render'
 /**
  * Resolve how deep this capture must run.
  * @param {{plugins?: any[]}} context
- * @returns {{stage: 'live'|'clone'|'render', loweredBy: string[]}} stage plus, when it is
+ * @returns {{stage: 'dom'|'clone'|'render', loweredBy: string[]}} stage plus, when it is
  *   below 'render', the plugin names that asked for less (for the error message).
  * @throws {Error} on an unknown `needs` value — a typo must not silently buy the default.
  */
@@ -68,8 +67,10 @@ export function resolveStage(context) {
 
   const stage = STAGES[rank]
   return {
+    // Only the plugins that asked for exactly this stage — they are the ones the error
+    // message blames, and naming a plugin that asked for less would be a wrong lead.
+    loweredBy: stage === DEFAULT_STAGE ? [] : declared.filter((d) => d.needs === stage).map((d) => d.name),
     stage,
-    loweredBy: stage === DEFAULT_STAGE ? [] : declared.map((d) => d.name),
   }
 }
 
@@ -90,7 +91,7 @@ export function stageReaches(stage, wanted) {
  * @param {string} pluginName for the error message
  * @param {any} value what the caller passed (undefined keeps the plugin's own default)
  * @param {string[]} [supported] stages this plugin can actually honor, deepest last
- * @returns {'live'|'clone'|'render'} the resolved stage
+ * @returns {'dom'|'clone'|'render'} the resolved stage
  * @throws {Error} on an unknown stage, or one this plugin cannot honor
  */
 export function assertNeeds(pluginName, value, supported = STAGES) {
@@ -107,7 +108,7 @@ export function assertNeeds(pluginName, value, supported = STAGES) {
 
 /**
  * The one error every absent artifact throws, so the cause reads the same everywhere.
- * @param {'live'|'clone'|'render'} stage stage this capture actually ran to
+ * @param {'dom'|'clone'|'render'} stage stage this capture actually ran to
  * @param {string[]} loweredBy plugin names that declared less than 'render'
  * @param {string} what the artifact the caller reached for (e.g. 'url', 'toPng()')
  * @returns {Error}
@@ -115,8 +116,8 @@ export function assertNeeds(pluginName, value, supported = STAGES) {
 export function absentArtifactError(stage, loweredBy, what) {
   const who = loweredBy.length ? loweredBy.map((n) => `'${n}'`).join(', ') : 'the attached plugins'
   return new Error(
-    `[snapdom] ${what} is not available: this capture stopped at stage '${stage}' because ${who} declared needs: '${stage}'. ` +
-    'Pixels are not re-captured on demand — they would come from a different instant. ' +
-    'Ask the plugin for the deeper stage (its own options), or capture without it.'
+    `[snapdom] no ${what}: this capture stopped at '${stage}' because ${who} declared needs: '${stage}' (result.needs says so too). ` +
+    'It is not re-captured on demand — that would be a different instant. ' +
+    'Ask the plugin for needs: \'render\', or capture without it.'
   )
 }

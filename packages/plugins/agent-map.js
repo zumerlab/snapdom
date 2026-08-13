@@ -29,6 +29,8 @@
  * @param {string}  [options.interactiveSelector]  CSS selector (default below).
  * @param {string}  [options.semanticSelector]  CSS selector (default below).
  * @param {Object}  [options.labelStyle={}]  Override badge styles.
+ * @param {'clone'|'render'} [options.needs='render']  How far the capture runs.
+ *   'clone' skips rendering entirely — requires image: false, and result.url throws.
  * @returns {Object} SnapDOM plugin
  */
 
@@ -54,14 +56,24 @@ export function agentMap(options = {}) {
     labelStyle = {},
   } = options;
 
+  // `needs` names how far the capture has to run. Default 'render': dropping the image is
+  // the caller's call. The two rejections below are cases core cannot catch — without
+  // them the caller gets an EMPTY map, or a late error, instead of the reason.
+  const needs = options.needs ?? 'render';
+  // The map is read in afterClone: with no clone there is no map, only a plausible-looking
+  // empty one.
+  if (needs !== 'clone' && needs !== 'render') {
+    throw new Error(`[snapdom] agent-map cannot run at stage '${needs}': it supports clone, render`);
+  }
+  // A capture with no render can never carry an image, and asking for both is a
+  // contradiction the caller should hear now, not at export time.
+  if (needs === 'clone' && image !== false) {
+    throw new Error("[snapdom] agent-map: needs: 'clone' produces no image — pass image: false, or needs: 'render'");
+  }
+
   return {
     name: 'agent-map',
-    // Homogeneous across plugins: `needs` names the deepest stage this instance requires.
-    // `agentMap({ image: false, needs: 'clone' })` skips the render entirely; it stays
-    // opt-in because a capture built that way cannot change its mind at export time —
-    // toAgentMap({ image: true }) on it fails loud rather than hand back an image of a
-    // later instant. This plugin reads the map in afterClone, so 'live' is not available.
-    needs: options.needs ?? 'render',
+    needs,
 
     afterClone(ctx) {
       const meta = extractMap(

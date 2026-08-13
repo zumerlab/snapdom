@@ -280,7 +280,7 @@ document.body.appendChild(png);
 | `reconcile` | `boolean` | `false` | 对照真实 DOM 测量克隆结果，把尺寸出现偏差的盒模型钉定为真实大小，可修复少见的文字重新换行/布局漂移问题，代价是捕获耗时大约翻倍 — 如果 snapdom 检测到某次捕获可能受益于此选项，会通过 `console.warn` 提示一次 |
 | `invalidate` | `boolean` | `false` | 为自动追踪无法感知的变化（canvas 像素绘制、以编程方式修改 CSSOM）强制触发一次全新捕获，并清空按样式纪元缓存的快照。无需配合任何其他选项 |
 | `engine` | `'svg' \| 'canvas'` | `'svg'` | **实验性**：在浏览器支持时，`'canvas'` 通过 WICG canvas-place-element API 用浏览器自身的绘制器输出位图（原生表单控件像素级还原），不可用时自动回退到 SVG 流程。目前 Chromium 会无条件污染画布，因此该引擎不包含在发布产物中，需要用 `SNAPDOM_CANVAS_ENGINE=1 npm run compile` 自行构建 |
-| `plugins` | `array` | — | 单次捕获插件（按名称覆盖全局插件） |
+| `plugins` | `array` | — | 单次捕获插件（按名称覆盖全局插件）。插件可声明 `needs: 'dom' \| 'clone' \| 'render'`，即捕获需要运行到哪一步。默认 `'render'`（完整流程）；低于该值时不会产生图像，所有导出方法都会抛错，`result.needs` 报告实际运行到哪一步 |
 
 📖 **[完整 API 和全部选项（附示例）→ snapdom.dev/docs](https://snapdom.dev/docs/)**
 

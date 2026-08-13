@@ -134,6 +134,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 - **钩子**（按顺序）：`beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport → afterSnap`。
 - **自定义导出方法** — 插件的 `defineExports` 可以新增或覆盖导出格式；每种格式都会在结果对象上生成对应的 `to<Name>()` 方法，并复用与内置格式相同的导出流程。
 - **支持的写法** — 普通对象、`[factory, options]`、`{ plugin, options }` 或工厂函数。
+- **捕获运行到哪一步**（`needs`）— 插件可声明 `'dom'`（只读实时页面，不克隆）、`'clone'`（冻结的克隆树，不出像素）或 `'render'`（默认：完整流程）。捕获会运行到所有已附加插件声明的最深一步，因此不带插件的捕获行为完全不变。低于 `'render'` 时不会产生图像：`url` 与所有导出方法都会抛错并指出是哪个插件，`result.needs` 则报告实际运行到哪一步。之所以值得声明：克隆约占一次捕获的 89%，只读实时页面的插件（例如语义导出）可以整个跳过它。
 
 参见 [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) 与 [`CONTRIBUTING_PLUGINS.md`](CONTRIBUTING_PLUGINS.md)。
 

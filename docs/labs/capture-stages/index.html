@@ -41,7 +41,7 @@
   and a <b>render</b> turns the clone into pixels. Not every consumer needs the whole chain, and
   the plugin is the one that knows. So it declares it:</p>
 
-  <pre><code>{ name: 'my-plugin', needs: 'live' }   // reads the page, no clone, no pixels
+  <pre><code>{ name: 'my-plugin', needs: 'dom' }   // reads the page, no clone, no pixels
 { name: 'my-plugin', needs: 'clone' }  // annotates the frozen tree, no pixels
 { name: 'my-plugin' }                  // default: the whole pipeline, as always</code></pre>
 
@@ -81,12 +81,12 @@ sample.innerHTML = Array.from({ length: 36 }, (_, i) => `
   </article>`).join('')
 
 // ── three plugins, same knob, different depth ────────────────────────────────────────
-// 'live': reads the page in beforeClone and exports an outline. Never sees a clone.
+// 'dom': reads the page in beforeClone and exports an outline. Never sees a clone.
 const outlinePlugin = () => {
   let outline = ''
   return {
     name: 'outline',
-    needs: 'live',
+    needs: 'dom',
     beforeClone(ctx) {
       const rows = []
       for (const el of ctx.element.querySelectorAll('h4, button')) {
@@ -140,7 +140,7 @@ document.getElementById('go').addEventListener('click', async () => {
   cards.innerHTML = ''
 
   const specs = [
-    { stage: 'live', decl: "needs: 'live'", make: () => [outlinePlugin()] },
+    { stage: 'dom', decl: "needs: 'dom'", make: () => [outlinePlugin()] },
     { stage: 'clone', decl: "needs: 'clone'", make: () => [stampPlugin()] },
     { stage: 'render', decl: '(no declaration)', make: () => [plainPlugin()] },
   ]
@@ -161,10 +161,10 @@ document.getElementById('go').addEventListener('click', async () => {
     const out = card.querySelector('.out')
 
     // what this stage DID produce
-    if (d.stage === 'live' || d.stage === 'clone') {
+    if (d.stage === 'dom' || d.stage === 'clone') {
       const pre = document.createElement('pre')
       pre.className = 'outline'
-      pre.textContent = d.stage === 'live' ? await d.result.toOutline() : await d.result.toStamped()
+      pre.textContent = d.stage === 'dom' ? await d.result.toOutline() : await d.result.toStamped()
       out.appendChild(pre)
     }
 
@@ -183,7 +183,7 @@ document.getElementById('go').addEventListener('click', async () => {
   const [live, clone, render] = done
   status.textContent = `${sample.querySelectorAll('*').length + 1} nodes, median of ${REPS} runs`
   document.getElementById('verdict').innerHTML =
-    `Stopping at <b>live</b> skipped ${(100 - live.ms / render.ms * 100).toFixed(0)}% of the capture. ` +
+    `Stopping at <b>dom</b> skipped ${(100 - live.ms / render.ms * 100).toFixed(0)}% of the capture. ` +
     `Stopping at <b>clone</b> skipped ${Math.max(0, 100 - clone.ms / render.ms * 100).toFixed(0)}%: ` +
     'the two land in the same place because serialization is a few percent of the work. ' +
     'The cut that pays is the one before the clone, and only a plugin knows it can be made.'

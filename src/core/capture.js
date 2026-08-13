@@ -75,7 +75,7 @@ function collectResolveNodeHooks(options) {
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
  * @param {boolean} [options.burst] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Unset: auto-enables after 3 captures of the same element within 2s (canvas-bearing elements excluded)
  * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
- *   a shallower stage (`needs: 'live' | 'clone'`) and no render artifact was produced
+ *   a shallower stage (`needs: 'dom' | 'clone'`) and no render artifact was produced
  */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
@@ -97,7 +97,7 @@ export async function captureDOM(element, options) {
   // How far this capture has to run: the maximum `needs` of the attached plugins
   // (see stages.js). 'render' — the default, and every capture without plugins — is the
   // historical pipeline; the checks below are the only two places that read it.
-  const stage = options.__stage || DEFAULT_STAGE
+  const stage = options.needs || DEFAULT_STAGE
 
   // BEFORESNAP
   await runHook('beforeSnap', state)
@@ -105,8 +105,8 @@ export async function captureDOM(element, options) {
   // BEFORECLONE
   await runHook('beforeClone', state)
 
-  // Stage 'live': the attached plugins only read the live DOM, and they just did. No
-  // clone is taken — which is the point: the clone is ~89% of a capture.
+  // needs: 'dom' — the attached plugins only read the live page, and they just did. No
+  // clone is taken, which is the point: the clone is ~89% of a capture.
   if (!stageReaches(stage, 'clone')) return null
 
   const undoClamp = lineClampTree(state.element, preClipRect)
@@ -144,15 +144,11 @@ export async function captureDOM(element, options) {
   state = { clone, classCSS, styleCache, nodeMap, ...state }
   await runHook('afterClone', state)
 
-  // Stage 'clone': the plugins wanted the frozen tree, not pixels. Everything from here
+  // needs: 'clone' — the plugins wanted the frozen tree, not pixels. Everything from here
   // (XHTML sanitizing, asset inlining, fonts, foreignObject, serialization) exists only
-  // to feed a renderer, so it is skipped whole.
-  if (!stageReaches(stage, 'render')) {
-    if (typeof options.__retain === 'function') {
-      try { options.__retain({ clone, nodeMap, styleCache, styleMap: options.__session.styleMap, classPrefixCSS, clipWindow }) } catch { /* retention is best-effort */ }
-    }
-    return null
-  }
+  // to feed a renderer, so it is skipped whole. Nothing is retained for burst: it is off
+  // below 'render' (src/api/snapdom.js), so there is no memo to feed.
+  if (!stageReaches(stage, 'render')) return null
 
   sanitizeCloneForXHTML(state.clone)
   // Shrink pass when excludeMode/filterMode === 'remove' dropped clone children

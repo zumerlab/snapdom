@@ -132,6 +132,7 @@ Plugins are plain objects with lifecycle hooks, registered globally (`snapdom.pl
 - **Hooks** (in order): `beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport → afterSnap`.
 - **Custom exporters** — a plugin's `defineExports` can add or override export formats; each becomes a `to<Name>()` helper on the result object and gets the same export pipeline as core formats.
 - **Accepted forms** — plain object, `[factory, options]`, `{ plugin, options }`, or a factory function.
+- **How far the capture runs** (`needs`) — a plugin declares `'dom'` (live page only, no clone), `'clone'` (frozen tree, no pixels) or `'render'` (default: the whole pipeline). The capture runs to the deepest stage any attached plugin declares, so a capture with no plugins is unchanged. Below `'render'` there is no image: `url` and every export throw, naming the plugin, and `result.needs` reports what ran. Worth it because the clone is ~89% of a capture — a plugin that only reads the live page (a semantic export) can skip it.
 
 See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUTING_PLUGINS.md).
 

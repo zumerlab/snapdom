@@ -19,9 +19,10 @@ not in doing something else.
 
 ## Stages: how far a capture runs (`needs`)
 
-The pipeline is `live DOM → clone → render → exports`, and a plugin declares the deepest
-stage it needs (`src/core/stages.js`, contract in PLUGIN_SPEC.md). Two facts decide the
-shape, and neither is a preference:
+The pipeline is `dom → clone → render → exports`, and a plugin declares what it needs
+(`src/core/stages.js`, contract in PLUGIN_SPEC.md). One vocabulary, three words: plugins
+declare `needs`, the result reports `needs`. Two facts decide the shape, and neither is a
+preference:
 
 - **The clone is the freeze.** Everything downstream reads it, never the live tree, which
   is why a render can be deferred or swapped for another backend and still describe the
@@ -34,9 +35,17 @@ shape, and neither is a preference:
   do not sell it as a render-time optimization: 3%.
 
 The stage is the MAXIMUM declared by the attached plugins, defaulting to `render`, so a
-capture with no plugins is bit-identical to the old path and adding a plugin can never
-remove an artifact. Auto-burst is off below `render`: there is nothing to memoize, and
-those plugins read the live tree on every call.
+capture with no plugins is bit-identical to the old path and no plugin can lower the stage
+behind another one's back. Auto-burst is off below `render`: there is nothing to memoize,
+and those plugins read the live tree on every call — which is also why nothing is retained
+at the `clone` cut.
+
+Two things core cannot see, so they are pushed to the edges: a plugin that CANNOT honor a
+stage (agent-map at `dom` would return an empty map that reads like a valid one) rejects it
+itself via `assertNeeds`; and a global plugin declaring less than `render` lowers EVERY
+capture in the app, including call sites that never mentioned it — `snapdom.plugins()` is
+the wrong place for a stage-lowering plugin. Not enforced today; if it bites, the fix is to
+let only per-capture plugins lower the stage.
 
 Open before the canvas engine can be a real backend rather than a bypass: `mountCopy`
 clones the LIVE element again (`src/engines/htmlInCanvas.js`), so as a render stage it

@@ -5,7 +5,7 @@ import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
-import { resolveStage, stageReaches, absentArtifactError } from '../core/stages.js'
+import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
 import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
@@ -87,15 +87,17 @@ async function main(element, userOptions) {
   // Resolved here, once, because both fast paths below only make sense for a capture
   // that ends in a render artifact.
   const { stage, loweredBy } = resolveStage(context)
-  context.__stage = stage
-  context.__stageLoweredBy = loweredBy
+  context.needs = stage
+  context.__needsLoweredBy = loweredBy
   const rendersPixels = stageReaches(stage, 'render')
 
   // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
   // first draw is now handled at draw time by toCanvas's verified-draw ladder):
   // wait for the fonts the element actually uses, and poke GPU-backed <canvas>
   // stores so cloneCanvas's toDataURL isn't blank. Both are cheap per capture.
-  if (isSafari()) {
+  // Both exist for the RENDER: a capture that stops earlier embeds no font and clones no
+  // canvas, so this whole block would be pure cost on the path that exists to skip cost.
+  if (rendersPixels && isSafari()) {
     if (context.embedFonts) {
       try {
         // 'auto': wait only on families the document actually declares as webfonts —
@@ -203,11 +205,14 @@ snapdom.capture = async (el, context, _token) => {
  * @private
  */
 async function buildResult(url, context) {
-  // A capture that stopped at 'live' or 'clone' has no render artifact. Every door to one
+  // A capture that stopped at 'dom' or 'clone' has no render artifact. Every door to one
   // throws the SAME error, naming the plugins that lowered the stage: silently
   // re-capturing would hand back pixels of a different instant (stages.js).
-  const rendered = typeof url === 'string'
-  const absent = (what) => absentArtifactError(context.__stage || 'live', context.__stageLoweredBy || [], what)
+  // Read from the STAGE, not from `url`: if some other path ever hands back a non-string,
+  // the error must not blame plugins that did nothing.
+  const stage = context.needs || DEFAULT_STAGE
+  const rendered = stageReaches(stage, 'render')
+  const absent = (what) => absentArtifactError(stage, context.__needsLoweredBy || [], what)
 
   // Lazy decode: exposing the serialized SVG eagerly would double retained string size
   // per live result — exporters that need it (toHtml) pay the decode on demand.
@@ -224,7 +229,9 @@ async function buildResult(url, context) {
   const exportFacade = (extra) => Object.defineProperty(
     { ...(extra || {}), svgString: lazySvgString },
     'url',
-    rendered ? { value: url, enumerable: true } : { get() { throw absent('export.url') }, enumerable: true }
+    // Same reason as result.url below: the throwing form stays non-enumerable so copying
+    // the facade doesn't detonate.
+    rendered ? { value: url, enumerable: true } : { get() { throw absent('export.url') }, enumerable: false, configurable: true }
   )
 
   // ——— 1) Core exports por defecto (carga lazy en cada tipo) ———
@@ -370,8 +377,8 @@ async function buildResult(url, context) {
     // Present as a plain string on the normal path; a throwing getter (installed below)
     // when this capture stopped before the render stage.
     url,
-    /** Stage this capture actually ran to: 'live' | 'clone' | 'render'. */
-    stage: context.__stage || 'render',
+    /** How far this capture ran: 'dom' | 'clone' | 'render'. Same word plugins declare. */
+    needs: stage,
     // Degradation log for this capture (empty in the common case): {code, message,
     // detail?} entries — image→placeholder, raster/canvas clamps, Safari PNG fallback,
     // reconcile risk. Export-time entries append after the export resolves; burst memo
@@ -391,8 +398,11 @@ async function buildResult(url, context) {
     download: (opts) => runExport('download', opts)
   }
 
+  // NOT enumerable: a throwing getter that spread/JSON.stringify/a logger would trip over
+  // turns "there is no image" into a crash in the code trying to report it. Reading
+  // result.url still throws, with the reason.
   if (!rendered) {
-    Object.defineProperty(result, 'url', { get() { throw absent('url') }, enumerable: true })
+    Object.defineProperty(result, 'url', { get() { throw absent('url') }, enumerable: false, configurable: true })
   }
 
   // Azúcar dinámico por cada export registrado (plugins incluidos)

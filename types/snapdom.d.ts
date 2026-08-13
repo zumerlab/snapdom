@@ -16,6 +16,12 @@ export type RasterMime = "png" | "jpg" | "jpeg" | "webp";
 export type BlobType = "svg" | RasterMime;
 
 export type IconFontMatcher = string | RegExp;
+
+/**
+ * How far a capture runs: the live page, the frozen clone, or the rendered image.
+ * Plugins declare it as `needs`; the result reports it as `needs`.
+ */
+export type CaptureStage = "dom" | "clone" | "render";
 /**
  * v3: caching is structural — 'disabled' (or `cache: false`) is the one debug/testing
  * escape hatch. The legacy strings 'full' | 'auto' | 'soft' are still ACCEPTED at runtime
@@ -191,6 +197,10 @@ export interface CaptureContext extends SnapdomOptions {
   /** Input element being captured. */
   element: Element;
 
+  /** How far this capture runs (the deepest `needs` of its plugins). A plugin that
+   *  defines exports can read it to know whether there will be an image at all. */
+  needs: CaptureStage;
+
   /** Cloned root (detached), available after `beforeClone`/`afterClone`. */
   clone?: HTMLElement | SVGElement | null;
 
@@ -248,6 +258,15 @@ export type ExportMap = Record<string, Exporter>;
 export interface SnapdomPlugin {
   /** Unique name for de-dupe/overrides. */
   name: string;
+
+  /**
+   * How far the capture has to run for this plugin: 'dom' (live page only, no clone),
+   * 'clone' (frozen tree, no pixels) or 'render' (the whole pipeline). Default 'render'.
+   * The capture runs to the deepest stage any attached plugin declares, so one plugin can
+   * only lower it when every other agrees. Below 'render' there is no image: `url`,
+   * `toPng()` and every other export throw, and `result.needs` reports what ran.
+   */
+  needs?: CaptureStage;
 
   /**
    * Declares the render hooks deterministic and idempotent, opting the plugin back into the
@@ -330,8 +349,17 @@ export interface CaptureResult {
    * Canonical data URL of the SVG snapshot (when available). Note: experimental
    * engine:'canvas' results resolve their SVG lazily — url is '' there and toRaw()
    * returns a Promise; use toRaw()/toSvg() for engine-agnostic access.
+   *
+   * THROWS when `needs` is not 'render': that capture produced no image, and it is not
+   * re-captured on demand (it would be a different instant).
    */
   url: string;
+
+  /**
+   * How far this capture ran — the deepest stage its plugins declared. 'render' unless a
+   * plugin lowered it, in which case there is no image and every export throws.
+   */
+  needs: CaptureStage;
 
   /**
    * Degradation log for this capture — empty in the common case. Entries record the
