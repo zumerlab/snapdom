@@ -178,7 +178,8 @@ yarn add @zumer/snapdom@dev
 | Variant | File | Use case |
 |---------|------|----------|
 | **ESM** (tree-shakeable) | `dist/snapdom.mjs` | Bundlers (Vite, webpack), `import` |
-| **IIFE** (global) | `dist/snapdom.js` | Script tag, legacy `require` |
+| **CJS** | `dist/snapdom.cjs` | `require('@zumer/snapdom')` |
+| **IIFE** (global) | `dist/snapdom.js` | Script tag, `window.snapdom` |
 
 **Bundler (npm):**
 ```js
@@ -191,10 +192,14 @@ import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 <script> snapdom.toPng(document.body).then(img => document.body.appendChild(img)); </script>
 ```
 
-**Subpath imports** (lighter bundle if you only need one):
+**Subpath imports** (the same single runtime, re-exported for convenience — one plugin registry, one cache, whichever path you import from):
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
-import { plugins } from '@zumer/snapdom/plugins';
+import { registerPlugins, clearPlugins, getGlobalPlugins } from '@zumer/snapdom/plugins';
+```
+The plugin API is also exported from the root, and `snapdom.plugins(...)` registers globally:
+```js
+import { snapdom, registerPlugins } from '@zumer/snapdom';
 ```
 
 
@@ -364,7 +369,7 @@ npm run test:benchmark
 - `src/core/` – Capture pipeline, clone, prepare, plugins
 - `src/modules/` – Images, fonts, pseudo-elements, backgrounds, SVG
 - `src/exporters/` – toPng, toSvg, toBlob, etc.
-- `dist/` – Build output (`snapdom.js`, `snapdom.mjs`, `preCache.mjs`, `plugins.mjs`)
+- `dist/` – Build output (`snapdom.mjs`, `snapdom.cjs`, `snapdom.js`, plus the `preCache.mjs` / `plugins.mjs` re-export stubs)
 
 **Build:**
 ```sh

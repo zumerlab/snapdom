@@ -36,7 +36,7 @@ import { snapdom } from '@zumer/snapdom';
 Subpath exports:
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
-import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, promptExport } from '@zumer/snapdom/plugins';
+import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, promptExport } from '@zumer/snapdom-plugins';
 ```
 
 ---
@@ -198,7 +198,7 @@ snapdom is built to serve as an agent's structured eyes on a live page. Three pr
 
 ### 1. Read the UI without pixels — toContext()
 ```js
-import { contextExport } from '@zumer/snapdom/plugins';
+import { contextExport } from '@zumer/snapdom-plugins';
 const result = await snapdom(el, { plugins: [contextExport()] });
 const outline = await result.toContext();
 // h1 [10,8 380x28] "Panel de control"
@@ -211,7 +211,7 @@ tokens. `toContext({ format: 'json' })` returns the tree.
 
 ### 2. Act on the UI — toAgentMap()
 ```js
-import { agentMap } from '@zumer/snapdom/plugins';
+import { agentMap } from '@zumer/snapdom-plugins';
 const result = await snapdom(el, { plugins: [agentMap()] });
 const { image, map } = await result.toAgentMap();
 // image: annotated screenshot with numbered badges on interactive elements
@@ -337,12 +337,12 @@ Inside defineExports, ctx.exports provides silent access to core exports: img, s
 
 ## OFFICIAL PLUGINS
 
-All imported from '@zumer/snapdom/plugins'.
+All imported from '@zumer/snapdom-plugins'.
 
 ### 1. filter — CSS Filter Effects
 
 ```js
-import { filter } from '@zumer/snapdom/plugins';
+import { filter } from '@zumer/snapdom-plugins';
 snapdom.plugins(filter({ preset: 'grayscale' }));
 // or: filter({ filter: 'brightness(1.2) contrast(0.9) hue-rotate(45deg)' })
 ```
@@ -364,7 +364,7 @@ Hook: afterClone — sets ctx.clone.style.filter.
 ### 2. colorTint — Color Overlay
 
 ```js
-import { colorTint } from '@zumer/snapdom/plugins';
+import { colorTint } from '@zumer/snapdom-plugins';
 snapdom.plugins(colorTint({ color: '#0066ff', opacity: 0.5 }));
 ```
 
@@ -377,7 +377,7 @@ Hook: afterClone — appends div with mix-blend-mode:color.
 ### 3. replaceText — Text Replacement
 
 ```js
-import { replaceText } from '@zumer/snapdom/plugins';
+import { replaceText } from '@zumer/snapdom-plugins';
 snapdom.plugins(replaceText({
   replacements: [
     { find: /\$\d+\.\d{2}/g, replace: '$X.XX' },
@@ -394,7 +394,7 @@ Hook: afterClone — walks text nodes in ctx.clone.
 ### 4. timestampOverlay — Timestamp Badge
 
 ```js
-import { timestampOverlay } from '@zumer/snapdom/plugins';
+import { timestampOverlay } from '@zumer/snapdom-plugins';
 snapdom.plugins(timestampOverlay({
   format: 'iso',
   position: 'top-left',
@@ -414,7 +414,7 @@ Hook: afterClone — appends styled div to ctx.clone.
 ### 5. asciiExport — ASCII Art
 
 ```js
-import { asciiExport } from '@zumer/snapdom/plugins';
+import { asciiExport } from '@zumer/snapdom-plugins';
 snapdom.plugins(asciiExport({ width: 100 }));
 const result = await snapdom(element);
 const ascii = await result.toAscii();
@@ -433,7 +433,7 @@ Hook: defineExports — registers 'ascii' export.
 ### 6. pdfImage — PDF Export
 
 ```js
-import { pdfImage } from '@zumer/snapdom/plugins';
+import { pdfImage } from '@zumer/snapdom-plugins';
 snapdom.plugins(pdfImage({ orientation: 'landscape', filename: 'report.pdf' }));
 const result = await snapdom(element);
 await result.toPdfImage(); // downloads PDF
@@ -453,7 +453,7 @@ Hook: defineExports — registers 'pdfImage' export.
 ### 7. promptExport — LLM-Ready Screenshot
 
 ```js
-import { promptExport } from '@zumer/snapdom/plugins';
+import { promptExport } from '@zumer/snapdom-plugins';
 snapdom.plugins(promptExport());
 const result = await snapdom(document.querySelector('main'));
 const { image, elements, dimensions, prompt } = await result.toPrompt();
@@ -714,7 +714,7 @@ async function capture() {
 
 ### LLM integration
 ```js
-import { promptExport } from '@zumer/snapdom/plugins';
+import { promptExport } from '@zumer/snapdom-plugins';
 snapdom.plugins(promptExport());
 const result = await snapdom(document.querySelector('main'));
 const { image, prompt } = await result.toPrompt();

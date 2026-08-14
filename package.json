@@ -3,7 +3,7 @@
   "version": "3.0.0-beta.0",
   "description": "Fast, modern alternative to html2canvas — captures HTML elements to images (PNG, JPG, SVG, WebP) with exceptional speed and accuracy.",
   "type": "module",
-  "main": "./dist/snapdom.js",
+  "main": "./dist/snapdom.cjs",
   "module": "./dist/snapdom.mjs",
   "types": "./types/snapdom.d.ts",
   "sideEffects": false,
@@ -14,7 +14,7 @@
     ".": {
       "types": "./types/snapdom.d.ts",
       "import": "./dist/snapdom.mjs",
-      "require": "./dist/snapdom.js",
+      "require": "./dist/snapdom.cjs",
       "default": "./dist/snapdom.mjs"
     },
     "./preCache": {
@@ -34,11 +34,11 @@
     "lint": "eslint src __tests__ --ext .js",
     "lint:fix": "eslint src __tests__ --ext .js --fix",
     "test:types": "tsc --noEmit",
-    "test": "npm run lint:fix && npm run test:types && npx vitest run --browser.headless --reporter=verbose",
+    "test": "npm run lint && npm run test:types && npx vitest run --browser.headless --reporter=verbose",
     "test:visual": "npx vitest run __tests__/visual.demos.test.js --browser.headless --reporter=verbose",
     "test:firefox": "BROWSER=firefox npx vitest run --browser.headless --reporter=verbose",
     "test:webkit": "BROWSER=webkit npx vitest run --browser.headless --reporter=verbose",
-    "test:full": "npm run lint:fix && npm run test:types && BROWSER=all npx vitest run --browser.headless --reporter=verbose",
+    "test:full": "npm run lint && npm run test:types && BROWSER=all npx vitest run --browser.headless --reporter=verbose",
     "report:cross": "node scripts/cross-report.mjs",
     "test:coverage": "npx vitest run --browser.headless --coverage",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
@@ -46,7 +46,7 @@
     "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
     "build": "npm run compile && npm pack",
-    "prebuild": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
+    "release": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags && npm run build"
   },
   "repository": {
     "type": "git",

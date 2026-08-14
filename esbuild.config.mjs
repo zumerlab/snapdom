@@ -1,5 +1,5 @@
 import { build } from 'esbuild'
-import { readFileSync, rmSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 
 // The experimental canvas engine (src/engines/htmlInCanvas.js) is dead weight in a shipped
 // build: Chromium taints the canvas unconditionally today, so every engine:'canvas' capture
@@ -64,23 +64,33 @@ async function buildESM() {
 }
 
 /**
- * 3. SUBPATH EXPORTS (preCache, plugins)
- * Salida: dist/preCache.mjs, dist/plugins.mjs
+ * 3. CommonJS (require)
+ * Salida: dist/snapdom.cjs
  */
-async function buildSubpaths() {
+async function buildCJS() {
   await build({
     ...common,
-    entryPoints: {
-      'preCache': 'src/api/preCache.js',
-      'plugins': 'src/core/plugins.js',
-    },
-    outdir: 'dist',
-    outExtension: { '.js': '.mjs' },
-    format: 'esm',
+    entryPoints: ['src/index.js'],
+    outfile: 'dist/snapdom.cjs',
+    format: 'cjs',
     minify: true,
-    splitting: false,
     banner,
   })
+}
+
+/**
+ * 4. SUBPATH EXPORTS (preCache, plugins)
+ * Salida: dist/preCache.mjs, dist/plugins.mjs
+ *
+ * These are NOT bundles. Bundling them separately gave each its own copy of the module
+ * state, so `@zumer/snapdom/plugins` registered into an array snapdom() never read and
+ * `@zumer/snapdom/preCache` warmed a cache instance the capture never saw. Static
+ * re-exports resolve to the same dist/snapdom.mjs instance: one runtime, one registry,
+ * one cache. No splitting, no chunks.
+ */
+function writeSubpathStubs() {
+  writeFileSync('dist/preCache.mjs', `${banner.js}\nexport { preCache } from './snapdom.mjs'\n`)
+  writeFileSync('dist/plugins.mjs', `${banner.js}\nexport { registerPlugins, clearPlugins, getGlobalPlugins, normalizePlugin, STAGES, DEFAULT_STAGE, assertNeeds } from './snapdom.mjs'\n`)
 }
 
 async function main() {
@@ -88,8 +98,9 @@ async function main() {
   await Promise.all([
     buildLegacy(),
     buildESM(),
-    buildSubpaths(),
+    buildCJS(),
   ])
+  writeSubpathStubs()
 }
 
 main().catch((err) => {

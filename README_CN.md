@@ -190,10 +190,14 @@ import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 <script> snapdom.toPng(document.body).then(img => document.body.appendChild(img)); </script>
 ```
 
-**子路径导入**（只使用部分功能时，打包体积更小）：
+**子路径导入**（同一个运行时的再导出，方便使用：无论从哪条路径导入，插件注册表和缓存都只有一份）：
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
-import { plugins } from '@zumer/snapdom/plugins';
+import { registerPlugins, clearPlugins, getGlobalPlugins } from '@zumer/snapdom/plugins';
+```
+插件 API 也从根路径导出，`snapdom.plugins(...)` 会进行全局注册：
+```js
+import { snapdom, registerPlugins } from '@zumer/snapdom';
 ```
 
 

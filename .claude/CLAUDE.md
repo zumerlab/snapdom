@@ -39,7 +39,7 @@ All scripts are npm-driven. Tests run in a real browser via Vitest + Playwright 
 - Single test file: `npx vitest run __tests__/<file>.test.js --browser.headless`
 - Single test by name: `npx vitest run --browser.headless -t "<test name substring>"`
 
-Note: `npm test` auto-fixes lint before running. If you want to run tests without modifying files, call vitest directly.
+Note: `npm test` runs `lint` (check only) then `test:types` then vitest, so verifying never edits files. `npm run lint:fix` is the explicit auto-fix. `npm run build` is pure (compile + pack); the git add/commit/push that used to ride along as `prebuild` now lives in the explicit `npm run release`.
 
 ## Architecture
 
@@ -113,12 +113,15 @@ The old once-per-session 3x pre-capture warmup is gone. WebKit quirks are handle
 
 ### Build outputs (`esbuild.config.mjs`)
 
-Three parallel builds written to `dist/`:
+Written to `dist/`:
 - `dist/snapdom.js` — IIFE from `src/index.browser.js` (exposes `window.snapdom`, `window.preCache`).
-- `dist/snapdom.mjs` — ESM from `src/index.js`.
-- `dist/preCache.mjs`, `dist/plugins.mjs` — subpath ESM entries (see `package.json` `exports`).
+- `dist/snapdom.mjs` — ESM from `src/index.js`. **The single stateful runtime.**
+- `dist/snapdom.cjs` — real CommonJS for `require()`. `main` and `exports["."].require` point here. Do NOT point `require` at the IIFE: `platform:'neutral'` never assigns `module.exports`, so `require()` returned `{}` in every version up to 2.24.1.
+- `dist/preCache.mjs`, `dist/plugins.mjs` — **thin re-export stubs**, not bundles (~200 bytes each).
 
-All are minified, `sideEffects: false`. `src/index.js` only re-exports `snapdom` and `preCache`; plugins are a separate subpath so core bundles stay small.
+That last point is a correctness constraint, not a size choice. Separate esbuild entrypoints get separate module state, so up to 2.24.1 `/plugins` carried its OWN plugin registry and `/preCache` warmed its OWN `cache`: registering through the subpath had zero effect on `snapdom()`. The stubs `export … from './snapdom.mjs'`, so the ESM graph resolves one instance. **Never turn them back into entryPoints.**
+
+All are minified, `sideEffects: false`, `splitting: false`. No code splitting, no chunks, no dynamic-import output files: the distributed bundle stays single and self-sufficient.
 
 ## Code style (eslint.config.cjs)
 
