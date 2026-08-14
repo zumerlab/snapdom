@@ -100,6 +100,50 @@ snapdom(el, {
 
 ---
 
+### `redact-inputs`
+
+Replace typed values with a same-length bullet mask.
+
+snapDOM's core captures what the browser paints. An `email` or `tel` field shows its value in
+the clear on screen, so the capture shows it too. The one mask core applies is
+`type="password"`, and only because it costs nothing: the control already paints bullets, so
+masking it renders identically while keeping the secret out of the serialized SVG.
+
+Redacting anything else trades fidelity for privacy, so it is opt-in and lives here.
+
+```js
+import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';
+
+// Defaults: email, tel, and the cc-* / current-password / new-password / one-time-code
+// autocomplete tokens.
+snapdom(el, { plugins: [redactInputs()] });
+
+// Everything, including textareas:
+snapdom(el, { plugins: [redactInputs({ all: true })] });
+
+// App-specific fields, blanked rather than bulleted:
+snapdom(el, { plugins: [redactInputs({ selector: '[data-private]', mask: () => '' })] });
+```
+
+The mask keeps the original length, so field widths, wrapping and truncation stay put.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `types` | `string[]` | `['email', 'tel']` | Input `type` attribute values to redact |
+| `autocomplete` | `string[]` | `['cc-*', 'current-password', 'new-password', 'one-time-code']` | Autocomplete tokens; a trailing `*` matches by prefix |
+| `selector` | `string` | `''` | Extra CSS selector; anything it matches is redacted (use for textareas) |
+| `all` | `boolean` | `false` | Redact every input and textarea, ignoring the lists |
+| `mask` | `(value, el) => string` | same-length bullets | Custom masker |
+
+Note: this plugin uses `afterClone`, so a capture using it always runs the full pipeline
+(the differential fast path cannot prove a whole-clone hook is subtree-local). That costs
+repeat-capture speed, never correctness.
+
+Semantic exports (`agent-map`, `context-export`) redact by default and do not need this:
+their output is text for a model or a log, not a fidelity surface.
+
+---
+
 ### `color-tint`
 
 Tints the entire capture to a specified color using a `mix-blend-mode` overlay.

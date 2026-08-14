@@ -6,7 +6,7 @@
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
-import { debugWarn, getStyle, isSensitiveInput, maskValue } from '../utils/index.js'
+import { debugWarn, getStyle, isPasswordInput, maskValue } from '../utils/index.js'
 import {
   rewriteShadowCSS,
   nextShadowScopeId,
@@ -419,10 +419,11 @@ export async function deepClone(node, sessionCache, options) {
       applyInputVisual = applyVisual
       clone = replacement
     } else {
-      // Typed secrets must not travel in plain text inside the serialized SVG: mask
-      // sensitive inputs at transfer time (password renders as bullets anyway; for
-      // email/tel/cc the mask is the honest trade — security over glyph fidelity).
-      const safeValue = isSensitiveInput(node) ? maskValue(node.value) : node.value
+      // Password only, and only because the mask is fidelity-NEUTRAL: the control already
+      // paints bullets, so a same-length bullet mask renders identically while the typed
+      // secret stays out of the serialized SVG. Values the browser shows in plain text are
+      // captured as-is; redacting those is the `redactInputs` plugin's job, not core's.
+      const safeValue = isPasswordInput(node) ? maskValue(node.value) : node.value
       clone.value = safeValue
       clone.setAttribute('value', safeValue)
       if (node.checked !== void 0) {

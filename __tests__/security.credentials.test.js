@@ -1,10 +1,16 @@
-// Phase-0 credential-leak regression suite: typed secrets must never appear in ANY
-// output — semantic (agentMap/context), serialized SVG, or engine form-state sync.
-// These assertions fail against the pre-fix code (raw el.value / slice(0,40) paths).
+// Credential-leak regression suite, split along the line v3 draws between the two surfaces:
+//
+//  - The IMAGE is a fidelity surface. It shows what the browser paints, so an email/tel/cc
+//    field that renders in the clear on screen renders in the clear in the capture. The one
+//    exception is type=password, where the mask is fidelity-NEUTRAL (the control already
+//    paints bullets) and therefore free. Redacting the rest is opt-in: `redactInputs`.
+//  - SEMANTIC output (agentMap / contextExport) is NOT a fidelity surface. It is text handed
+//    to a model or a log, so it redacts by default and keeps doing so.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 import { agentMap } from '../packages/plugins/agent-map.js'
 import { contextExport } from '../packages/plugins/context-export.js'
+import { redactInputs } from '../packages/plugins/redact-inputs.js'
 import { syncFormState } from '../src/engines/htmlInCanvas.js'
 
 const SECRETS = {
@@ -40,12 +46,29 @@ const assertNoSecrets = (str) => {
 describe('credential leak (Phase 0)', () => {
   afterEach(() => { document.body.innerHTML = '' })
 
-  it('serialized SVG carries no sensitive values (masked at transfer time)', async () => {
+  it('serialized SVG never carries the password, and keeps everything else verbatim', async () => {
     const form = secretForm()
     const res = await snapdom(form, { cache: 'disabled' })
     const svg = decodeURIComponent(res.url.split(',')[1])
+    // Fidelity-neutral mask: the control paints bullets either way, so the secret has no
+    // reason to be in the payload.
+    expect(svg).not.toContain(SECRETS.password)
+    expect(svg).toContain('•'.repeat(SECRETS.password.length))
+    // Everything the browser paints in the clear is captured in the clear. Masking these
+    // made the image disagree with the page.
+    expect(svg).toContain(SECRETS.email)
+    expect(svg).toContain(SECRETS.tel)
+    expect(svg).toContain(SECRETS.cc)
+    expect(svg).toContain(SECRETS.otp)
+    expect(svg).toContain('NotaVisible123')
+  })
+
+  it('redactInputs opts the image back into full redaction', async () => {
+    const form = secretForm()
+    const res = await snapdom(form, { plugins: [redactInputs()], cache: 'disabled' })
+    const svg = decodeURIComponent(res.url.split(',')[1])
     assertNoSecrets(svg)
-    // Non-sensitive values keep raster fidelity.
+    // Only what was asked for: an ordinary field is still captured faithfully.
     expect(svg).toContain('NotaVisible123')
   })
 
@@ -70,11 +93,14 @@ describe('credential leak (Phase 0)', () => {
     expect(out).toContain('hasValue')
   })
 
-  it('htmlInCanvas syncFormState masks sensitive inputs in the copy', () => {
+  it('htmlInCanvas syncFormState follows the same rule as the svg path', () => {
     const form = secretForm()
     const copy = form.cloneNode(true)
     syncFormState(form, copy)
-    assertNoSecrets(copy.outerHTML)
+    // The engine is another way to produce the IMAGE, so it must not diverge from core:
+    // password masked, everything the browser paints in the clear kept.
+    expect(copy.outerHTML).not.toContain(SECRETS.password)
+    expect(copy.outerHTML).toContain(SECRETS.email)
     expect(copy.outerHTML).toContain('NotaVisible123')
   })
 

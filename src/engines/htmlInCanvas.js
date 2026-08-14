@@ -30,7 +30,7 @@
  * @module engines/htmlInCanvas
  */
 
-import { isSensitiveInput, maskValue } from '../utils/helpers.js'
+import { isPasswordInput, maskValue } from '../utils/helpers.js'
 import { debugWarn } from '../utils/debug.js'
 
 /** @returns {'drawElement'|'drawElementImage'|null} */
@@ -92,7 +92,7 @@ export function syncFormState(element, copy) {
     if (tag === 'INPUT') {
       // Same transfer-time masking as the svg clone path: secrets never reach any
       // serialized/rasterized output.
-      d.setAttribute('value', isSensitiveInput(s) ? maskValue(s.value) : s.value)
+      d.setAttribute('value', isPasswordInput(s) ? maskValue(s.value) : s.value)
       if (s.checked) d.setAttribute('checked', '')
     } else if (tag === 'TEXTAREA') {
       d.textContent = s.value

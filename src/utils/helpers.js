@@ -98,21 +98,14 @@ export function resolveURL(url, base) {
   }
 }
 
-/** Sensitive-input predicate shared by the clone/serialize paths: typed secrets must
- *  never travel in plain text inside the serialized SVG (or any engine output).
- *  type password/email/tel, or autocomplete tokens cc-* / current-password /
- *  new-password / one-time-code. */
-const SENSITIVE_AC = new Set(['current-password', 'new-password', 'one-time-code'])
-export function isSensitiveInput(el) {
-  if (!el || el.tagName !== 'INPUT') return false
-  const type = (el.getAttribute('type') || 'text').toLowerCase()
-  if (type === 'password' || type === 'email' || type === 'tel') return true
-  const ac = (el.getAttribute('autocomplete') || '').toLowerCase()
-  if (!ac) return false
-  for (const token of ac.split(/\s+/)) {
-    if (SENSITIVE_AC.has(token) || token.startsWith('cc-')) return true
-  }
-  return false
+/** The ONE input core masks, and it costs no fidelity: the browser already paints a password
+ *  field as bullets, so a same-length bullet mask renders IDENTICALLY to the live control
+ *  while keeping the typed secret out of the serialized SVG (which is a string callers log,
+ *  upload and cache). Everything the browser shows in PLAIN TEXT (email, tel, cc-*,
+ *  one-time-code) is captured as-is: redacting it would be a real fidelity loss, and fidelity
+ *  is core's job. Redaction is opt-in, via the `redactInputs` plugin. */
+export function isPasswordInput(el) {
+  return !!el && el.tagName === 'INPUT' && (el.getAttribute('type') || '').toLowerCase() === 'password'
 }
 
 /** Same-length bullet mask: rendered width stays plausible, the secret is gone. */
