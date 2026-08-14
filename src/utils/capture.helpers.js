@@ -410,30 +410,26 @@ const INVALID_XML_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
   const { stripFrameworkDirectives = true } = opts
-  const stripAttrChars = (el) => {
+  const scrubEl = (el) => {
+    // Copy first: NamedNodeMap is live
     for (const attr of Array.from(el.attributes)) {
+      if (isInvalidXHTMLAttr(attr.name, stripFrameworkDirectives)) { el.removeAttribute(attr.name); continue }
       const cv = attr.value.replace(INVALID_XML_CHARS, '')
       if (cv !== attr.value) {
         try { el.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
       }
     }
   }
-  // The walker yields descendants only: the root (capture container) keeps its attribute
-  // names but still gets the invalid-char scrub, matching the previous three-pass behavior.
-  if (root.nodeType === Node.ELEMENT_NODE && root.attributes) stripAttrChars(root)
+  // The walker yields descendants only, so the root is scrubbed here: an invalid attribute
+  // name on the capture root (or on a diff-rebuilt subtree root) breaks XMLSerializer just
+  // like one on a child, and the SVG then fails to decode.
+  if (root.nodeType === Node.ELEMENT_NODE) scrubEl(root)
   const comments = []
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT)
   let n
   while ((n = walker.nextNode())) {
     if (n.nodeType === Node.ELEMENT_NODE) {
-      // Copy first—NamedNodeMap is live
-      for (const attr of Array.from(n.attributes)) {
-        if (isInvalidXHTMLAttr(attr.name, stripFrameworkDirectives)) { n.removeAttribute(attr.name); continue }
-        const cv = attr.value.replace(INVALID_XML_CHARS, '')
-        if (cv !== attr.value) {
-          try { n.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
-        }
-      }
+      scrubEl(n)
     } else if (n.nodeType === Node.COMMENT_NODE) {
       comments.push(n) // invalid XML like "--"
     } else {
