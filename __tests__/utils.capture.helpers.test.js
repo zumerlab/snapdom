@@ -189,7 +189,7 @@ describe('estimateKeptHeight', () => {
     expect(h).toBeLessThan(120)
   })
 
-  it('skips filtered-out elements (filter fn, filterMode:remove)', () => {
+  it('skips excluded elements (predicate, excludeMode:remove)', () => {
     const container = document.createElement('div')
     const kept = document.createElement('div')
     kept.className = 'keep'
@@ -201,8 +201,8 @@ describe('estimateKeptHeight', () => {
     container.appendChild(dropped)
     document.body.appendChild(container)
     const h = estimateKeptHeight(container, {
-      filter: (el) => !el.classList?.contains('drop'),
-      filterMode: 'remove'
+      excludePredicates: [(el) => el.classList?.contains('drop')],
+      excludeMode: 'remove'
     })
     expect(h).toBeLessThan(120)
   })

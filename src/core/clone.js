@@ -274,20 +274,6 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
-  // Legacy keep-polarity `filter` (also serves direct deepClone callers without a context).
-  if (typeof options.filter === 'function') {
-    try {
-      if (!options.filter(node)) {
-        if (options.filterMode === 'hide') {
-          return makeHideSpacer(node)
-        } else if (options.filterMode === 'remove') {
-          return null
-        }
-      }
-    } catch (err) {
-      console.warn('Error in filter function:', err)
-    }
-  }
   // Clip mode: prune subtrees painting entirely outside the window (before any plugin
   // hooks or tag handlers — no per-node work is spent on culled content).
   if (sessionCache.clip && isOutsideClip(node, sessionCache.clip)) {

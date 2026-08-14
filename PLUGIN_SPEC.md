@@ -125,7 +125,6 @@ you steer the export through `payload.options`, not through `ctx`.
   outerTransforms, outerShadows,
   embedFonts, localFonts, iconFonts, excludeFonts,
   exclude, excludeMode,
-  filter, filterMode,
   fallbackURL,
   clip, engine,
 

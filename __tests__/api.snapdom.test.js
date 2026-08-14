@@ -158,7 +158,7 @@ it('snapdom should support exclude option to filter out elements by CSS selector
   expect(decoded).toContain('This should remain')
 })
 
-it('snapdom should support filter option to exclude elements with custom logic', async () => {
+it('snapdom should support an exclude predicate with custom logic', async () => {
   const el = document.createElement('div')
   el.innerHTML = `
     <div class="level-1">Level 1
@@ -169,7 +169,7 @@ it('snapdom should support filter option to exclude elements with custom logic',
   `
   document.body.appendChild(el)
   const result = await snapdom(el, {
-    filter: (element) => !element.classList.contains('level-3')
+    exclude: (element) => element.classList.contains('level-3')
   })
 
     const svg = result.toRaw()
@@ -179,7 +179,7 @@ it('snapdom should support filter option to exclude elements with custom logic',
   expect(decoded).not.toContain('Level 3')
 })
 
-it('snapdom should support combining exclude and filter options', async () => {
+it('snapdom should support combining exclude selectors and predicates', async () => {
   const el = document.createElement('div')
   el.innerHTML = `
     <div class="exclude-by-selector">Exclude by selector</div>
@@ -189,8 +189,7 @@ it('snapdom should support combining exclude and filter options', async () => {
   document.body.appendChild(el)
 
   const result = await snapdom(el, {
-    exclude: ['.exclude-by-selector'],
-    filter: (element) => !element.classList.contains('exclude-by-filter')
+    exclude: ['.exclude-by-selector', (element) => element.classList.contains('exclude-by-filter')]
   })
 
    const svg = result.toRaw()

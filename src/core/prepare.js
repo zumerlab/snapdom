@@ -19,7 +19,6 @@ import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.help
  * @param {boolean} [embedFonts=false] - Whether to embed custom fonts
  * @param {Object} [options={}] - Capture options
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
- * @param {Function} [options.filter] - Custom filter function
  * @returns {Promise<Object>} Object containing the clone, generated CSS, style cache, and the session clone→source nodeMap
  */
 

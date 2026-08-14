@@ -172,7 +172,7 @@ async function diffCapture(element, state, context) {
   // Scoped ::marker/::first-line rules are attribute-keyed per element — a rebuilt or
   // removed subtree would strand/miss rules and break the byte-equality guarantee.
   if (R.classPrefixCSS && (R.classPrefixCSS.includes('::marker') || R.classPrefixCSS.includes('::first-line'))) return null
-  if (context.excludeMode === 'remove' || context.filterMode === 'remove') return null
+  if (context.excludeMode === 'remove') return null
 
   const doc = element.ownerDocument || document
   const universe = universeFor(element)

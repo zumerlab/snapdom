@@ -571,14 +571,19 @@ function willBeExcluded(el, options) {
   if (el.getAttribute('data-capture') === 'exclude' && options?.excludeMode === 'remove') return true
   if (Array.isArray(options?.exclude)) {
     for (const sel of options.exclude) {
-    try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
-      debugWarn(options, 'exclude selector match failed', e)
+      try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
+        debugWarn(options, 'exclude selector match failed', e)
+      }
     }
   }
-  }
-  if (typeof options?.filter === 'function' && options.filterMode === 'remove') {
-    try { if (!options.filter(el)) return true } catch (e) {
-      debugWarn(options, 'filter function failed', e)
+  // Predicates were missing here while the removed `filter` option had its own branch, so
+  // `exclude: [fn]` with excludeMode:'remove' estimated a height that counted nodes the
+  // clone then dropped. Selectors and predicates are the same policy and must agree.
+  if (Array.isArray(options?.excludePredicates)) {
+    for (const pred of options.excludePredicates) {
+      try { if (pred(el)) return options.excludeMode === 'remove' } catch (e) {
+        debugWarn(options, 'exclude predicate failed', e)
+      }
     }
   }
   return false

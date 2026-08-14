@@ -88,26 +88,25 @@ it('exclude by selector with excludeMode = "remove" skips element from clonning'
   expect(out).not.toBeInstanceOf(HTMLElement)
 })
 
-  it('excludes by custom filter returning false; and handles filter error', async () => {
-    // filter false -> spacer
+  it('excludes by predicate; and handles a throwing predicate', async () => {
+    // predicate true -> spacer
     const a = document.createElement('p')
-    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'hide' })
+    const out1 = await deepClone(a, session, { excludePredicates: [() => true], excludeMode: 'hide' })
     expect(out1).toBeInstanceOf(HTMLElement)
     expect(out1.style.visibility).toBe('hidden')
 
-    // filter throws -> warn + spacer
+    // predicate throws -> warn, node kept (a broken predicate must not silently drop content)
     const b = document.createElement('p')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const out2 = await deepClone(b, session, { filter: () => { throw new Error('boom') } })
+    const out2 = await deepClone(b, session, { excludePredicates: [() => { throw new Error('boom') }] })
     expect(out2).toBeInstanceOf(HTMLElement)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
   })
 
-  it ('custom filter with filterMode = "remove" skips element from clonning', async () => {
-    // filter false -> null
+  it('exclude predicate with excludeMode "remove" skips the element entirely', async () => {
     const a = document.createElement('p')
-    const out1 = await deepClone(a, session, { filter: () => false, filterMode: 'remove' })
+    const out1 = await deepClone(a, session, { excludePredicates: [() => true], excludeMode: 'remove' })
     expect(out1).not.toBeInstanceOf(HTMLElement)
   })
 

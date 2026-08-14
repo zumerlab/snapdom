@@ -116,11 +116,14 @@ export interface SnapdomOptions {
   excludeMode?: "hide" | "remove";
 
   /**
-   * @deprecated Legacy KEEP-polarity predicate (return true to keep). Use `exclude` with
-   * exclude-polarity instead; both compose when passed together.
+   * @deprecated REMOVED in v3 and no longer applied. It was a second door to the same
+   * decision as `exclude`, with the opposite polarity. Flip the predicate and pass it to
+   * `exclude`: `filter: el => keep(el)` becomes `exclude: el => !keep(el)`. Still declared
+   * so the compiler points at this note instead of reporting an unknown property, and
+   * passing it logs a warning at runtime.
    */
   filter?: (el: Element) => boolean;
-  /** @deprecated Legacy alias for `excludeMode`. */
+  /** @deprecated REMOVED in v3 and no longer applied. Use `excludeMode`. */
   filterMode?: "hide" | "remove";
 
   /**

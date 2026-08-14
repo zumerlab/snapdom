@@ -12,8 +12,6 @@ import { compileIconFontMatchers } from '../modules/iconFonts.js'
  * @param {number}  [options.scale]
  * @param {string|((el: Element) => boolean)|Array<string|((el: Element) => boolean)>} [options.exclude] - Selectors and/or predicates (true = exclude)
  * @param {string}  [options.excludeMode]
- * @param {(node: Node)=>boolean} [options.filter]
- * @param {string}  [options.filterMode]
  * @param {boolean|'auto'} [options.embedFonts]
  * @param {string|string[]} [options.iconFonts]
  * @param {string[]} [options.localFonts]
@@ -55,12 +53,17 @@ export function createContext(options = {}) {
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
 
-  // v3: ONE decision, one pair of options. `exclude` accepts selectors and/or predicates
-  // ((el) => true EXCLUDES it, matching the option's name) in any mix; `excludeMode`
-  // says how excluded nodes leave ('hide' spacer | 'remove'). `filter` (keep-polarity)
-  // and `filterMode` stay as silent legacy aliases — filter's polarity flips at this
-  // boundary and both mechanisms compose when passed together. Split ONCE here so the
-  // per-node hot loop never typeof-dispatches.
+  // ONE decision, ONE pair of options. `exclude` accepts selectors and/or predicates
+  // ((el) => true EXCLUDES it, matching the option's name) in any mix; `excludeMode` says
+  // how excluded nodes leave ('hide' spacer | 'remove'). Split ONCE here so the per-node
+  // hot loop never typeof-dispatches.
+  //
+  // v2's `filter`/`filterMode` are GONE, not silently aliased. They were a second door to
+  // this same decision with the opposite polarity (return true to KEEP), so every reader
+  // had to hold both in their head and every call site checked both. Ignoring them quietly
+  // would be the worst outcome for a redaction feature: the capture would simply stop
+  // hiding what the caller asked to hide. So passing one is a loud warning, once, naming
+  // the exact replacement.
   const excludeRaw = options.exclude == null ? [] : (Array.isArray(options.exclude) ? options.exclude : [options.exclude])
   const excludeSelectors = []
   const excludePredicates = []
@@ -69,11 +72,17 @@ export function createContext(options = {}) {
     else if (typeof e === 'function') excludePredicates.push(e)
     else if (e != null) console.warn('[snapdom] Ignored invalid exclude entry (expected selector string or predicate):', e)
   }
-  const excludeMode = options.excludeMode ?? options.filterMode ?? 'hide'
-  const filterFn = typeof options.filter === 'function' ? options.filter : null
+  if (options.filter != null || options.filterMode != null) {
+    console.warn(
+      '[snapdom] `filter`/`filterMode` were removed in v3 and are NOT applied. ' +
+      'Use `exclude` (opposite polarity: return true to EXCLUDE) and `excludeMode`: ' +
+      'filter: el => keep(el)  ->  exclude: el => !keep(el)'
+    )
+  }
+  const excludeMode = options.excludeMode ?? 'hide'
 
-  // THE exclusion policy, compiled once. deepClone applies exactly these four rules per node
-  // (src/core/clone.js: data-capture, selectors, predicates, legacy keep-polarity filter);
+  // THE exclusion policy, compiled once. deepClone applies exactly these three rules per node
+  // (src/core/clone.js: data-capture, selectors, predicates);
   // everything else that decides what a capture contains — semantic exports, agent maps —
   // asks here instead of reimplementing them, because a node the user redacted from the
   // image must not survive in a text view of the same capture.
@@ -86,9 +95,6 @@ export function createContext(options = {}) {
     for (const pred of excludePredicates) {
       try { if (pred(el)) return true } catch { /* deepClone warns */ }
     }
-    if (filterFn) {
-      try { if (!filterFn(el)) return true } catch { /* deepClone warns */ }
-    }
     return false
   }
 
@@ -97,12 +103,10 @@ export function createContext(options = {}) {
     debug: options.debug ?? false,
     scale: options.scale ?? 1,
 
-    // DOM filters (see the exclude unification above)
+    // Node exclusion (see the unification note above)
     exclude: excludeSelectors,
     excludePredicates: excludePredicates.length ? excludePredicates : null,
     excludeMode,
-    filter: options.filter ?? null,
-    filterMode: options.filterMode ?? excludeMode,
     /** @type {(el: Element) => boolean} true when the capture drops or blanks this node. */
     shouldExclude,
 

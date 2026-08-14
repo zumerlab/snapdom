@@ -28,7 +28,11 @@ describe('createContext - defaults & normalization', () => {
 
     expect(Array.isArray(ctx.exclude)).toBe(true)
     expect(ctx.exclude.length).toBe(0)
-    expect(ctx.filter).toBeNull()
+    expect(ctx.excludeMode).toBe('hide')
+    // `filter`/`filterMode` are removed in v3: the context must not carry them at all, so a
+    // downstream reader cannot resurrect the second polarity by accident.
+    expect('filter' in ctx).toBe(false)
+    expect('filterMode' in ctx).toBe(false)
 
     expect(ctx.embedFonts).toBe('auto') // default: embed only when the page declares webfonts
     expect(Array.isArray(ctx.iconFonts)).toBe(true)

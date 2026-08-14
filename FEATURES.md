@@ -97,8 +97,7 @@ Defaults as normalized in `src/core/context.js`.
 | `scale` | `1` | Output scale multiplier. Applies only when neither `width` nor `height` is set |
 | `exclude` | `[]` | Selectors and/or predicates `(el) => true` (true excludes), in any mix |
 | `excludeMode` | `'hide'` | `'hide'` (spacer) or `'remove'` |
-| `filter` | `null` | Node predicate `(node) => boolean` |
-| `filterMode` | `'hide'` | `'hide'` or `'remove'` |
+| ~~`filter`~~ / ~~`filterMode`~~ | removed | Removed in v3 and no longer applied (passing one logs a warning). They were `exclude`/`excludeMode` with the opposite polarity. Migrate by flipping the predicate: `filter: el => keep(el)` becomes `exclude: el => !keep(el)` |
 | `placeholders` | `true` | Show placeholders for failed images / cross-origin iframes |
 | `embedFonts` | `'auto'` | Embed matched `@font-face`. `'auto'` embeds only when the element uses families the document declares; `true`/`false` force it |
 | `iconFonts` | `[]` | Extra icon-font names/regexes |

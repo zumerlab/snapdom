@@ -59,7 +59,7 @@ v3 is a ground-up rework of the capture engine. The API shape is the same and v2
 **It's more faithful, by default.**
 - **Web fonts embed automatically** (`embedFonts: 'auto'`). The SVG your capture rasterizes from can't see the page's loaded fonts — v2 silently rendered webfont text with fallback metrics unless you opted in. v3 detects webfont usage and embeds exactly what's needed; system-font pages pay nothing.
 - **Safari, rewritten.** The hidden triple pre-capture warm-up is gone — replaced by a verified draw that waits exactly as long as WebKit needs (first captures ~2× faster). And `toSvg()` now returns actual **vector SVG** on Safari instead of silently rasterizing to PNG.
-- **Per-capture state is isolated.** The mutable module-level session that caused cross-capture races is gone: state lives on a session object threaded through the pipeline, so that class of bug is structurally unrepresentable. One documented exception remains: concurrent captures passing *different* `iconFonts` lists can still interleave through their await points.
+- **Per-capture state is isolated.** The mutable module-level session that caused cross-capture races is gone: state lives on a session object threaded through the pipeline, so that class of bug is structurally unrepresentable. `iconFonts` was the last exception and is now compiled per capture too, so concurrent captures with different lists no longer interleave.
 - Outputs are smaller too: up to **27% lighter SVGs** from the same content.
 
 **It's simpler.**
@@ -70,7 +70,7 @@ An experimental `engine: 'canvas'` renders through the browser's own painter via
 
 ## Migrating from v2
 
-v2 call sites keep working, and unknown options are ignored rather than rejected. These behaviors changed:
+Most v2 call sites keep working, and unknown options are ignored rather than rejected. These behaviors changed:
 
 | Change | What to do |
 | --- | --- |
@@ -81,6 +81,8 @@ v2 call sites keep working, and unknown options are ignored rather than rejected
 | Inlined raster images are downsampled to their visible resolution by default. | Nothing. This preserves the source codec and never upscales. |
 | **`width`/`height` now win over `scale`.** v2 multiplied them together (`{ width: 800, scale: 2 }` rasterized 1600px wide); v3 treats `width`/`height` as the absolute output size and applies `scale` only when neither is set. This also fixes v2's inconsistency where `toCanvas` multiplied by `scale` but `toImg`/`toSvg` ignored it. | If you relied on the product, pass the final size directly (`width: 1600`). |
 | Plugins with a render hook suspend auto-memoization unless they declare `pure: true`. | Add `pure: true` if your hooks are deterministic and idempotent. |
+| **`filter` and `filterMode` were removed and are no longer applied.** They were a second door to the same decision as `exclude`/`excludeMode`, with the opposite polarity (return true to KEEP). Passing one logs a warning rather than failing silently, because a redaction option that quietly stops redacting is the worst possible outcome. | Flip the predicate: `filter: el => keep(el)` becomes `exclude: el => !keep(el)`. `filterMode` becomes `excludeMode`. |
+| Input values the browser paints in the clear (`email`, `tel`, `cc-*`, `one-time-code`) are now captured as-is. Core only masks `type="password"`, where the control already paints bullets so the mask costs no fidelity. | Add the `redactInputs` plugin from `@zumer/snapdom-plugins` if you want the old redaction. |
 
 ## Website & Live Demos
 

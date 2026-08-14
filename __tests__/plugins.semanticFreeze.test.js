@@ -68,11 +68,11 @@ describe('one exclusion policy for image and semantics', () => {
     return snapdom(host, { ...options, plugins: [contextExport(), agentMap({ image: false })] })
   }
 
-  // Three spellings of the same policy. Each must redact the image AND both semantic views.
+  // Every spelling of the same policy. Each must redact the image AND both semantic views.
   for (const [label, options] of [
     ['exclude selector', { exclude: ['.pii'] }],
     ['exclude predicate', { exclude: [(el) => el.classList?.contains('pii')] }],
-    ['filter function', { filter: (el) => !(el.classList && el.classList.contains('pii')) }],
+    ['selector and predicate mixed', { exclude: ['.pii', (el) => el.classList?.contains('pii')] }],
   ]) {
     it(`${label}: excluded content reaches neither the image nor the semantic output`, async () => {
       const res = await capture(options)

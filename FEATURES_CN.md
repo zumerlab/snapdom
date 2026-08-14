@@ -97,8 +97,6 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 | `scale` | `1` | 输出缩放倍数（仅在既未设置 `width` 也未设置 `height` 时生效） |
 | `exclude` | `[]` | 需要排除的节点：CSS 选择器和/或判断函数 `(el) => true`（返回 `true` 表示排除），两种形式可混用 |
 | `excludeMode` | `'hide'` | `'hide'`（保留布局空间）或 `'remove'`（移除节点） |
-| `filter` | `null` | 节点过滤函数 `(node) => boolean` |
-| `filterMode` | `'hide'` | `'hide'`（保留布局空间）或 `'remove'`（移除节点） |
 | `placeholders` | `true` | 为加载失败的图片 / 跨源 iframe 显示占位符 |
 | `embedFonts` | `false` | 嵌入匹配的 `@font-face` |
 | `iconFonts` | `[]` | 额外的图标字体名称或正则表达式 |

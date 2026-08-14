@@ -69,7 +69,6 @@ function collectResolveNodeHooks(options) {
  * @param {boolean|'auto'} [options.embedFonts='auto'] - Font embedding ('auto': only document-declared webfonts actually used)
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
- * @param {Function} [options.filter] - Custom filter function
  * @param {boolean} [options.outerTransforms=true] - Keep root translate/rotate; false strips them (keeps scale/skew)
  * @param {boolean} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
@@ -165,8 +164,8 @@ export async function captureDOM(element, options) {
   if (!stageReaches(stage, 'render')) return null
 
   sanitizeCloneForXHTML(state.clone)
-  // Shrink pass when excludeMode/filterMode === 'remove' dropped clone children
-  if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {
+  // Shrink pass when excludeMode === 'remove' dropped clone children
+  if (state.options?.excludeMode === 'remove') {
     try {
       shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache)
     } catch (e) {
@@ -374,7 +373,7 @@ export async function composeAndSerialize(state, ex) {
     } catch { /* fallback: use doc dimensions above */ }
   }
   // === NEW: recompute height using the kept-children span (no offscreen) ===
-  if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {
+  if (state.options?.excludeMode === 'remove') {
     const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
     // Safety: nunca mayor al original, y con un epsilon para evitar recortes por redondeo
     const EPS = 1 // px

@@ -1,7 +1,7 @@
-// v3 exclude unification: one option accepts selectors and/or predicates (true = exclude);
-// legacy filter (keep-polarity) still works and composes. The polarity flip at the alias
-// boundary is the load-bearing assertion — a mistake would silently invert captures.
-import { describe, it, expect, afterEach } from 'vitest'
+// v3 exclude unification: ONE option accepts selectors and/or predicates (true = exclude).
+// v2's keep-polarity `filter` is removed rather than aliased, so the polarity assertions
+// here are load-bearing: getting them backwards would silently invert what a capture hides.
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 
 function page() {
@@ -39,23 +39,30 @@ describe('unified exclude', () => {
     expect(svg).not.toContain('also-me')
   })
 
-  it('legacy filter keeps its KEEP polarity exactly (v2 compat)', async () => {
+  // v3 removed `filter`/`filterMode`: one decision, one door. Ignoring them QUIETLY would be
+  // the worst outcome for a redaction option (the capture would just stop hiding what the
+  // caller asked to hide), so the removal has to be audible.
+  it('legacy filter is NOT applied, and says so', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const svg = await svgOf(page(), { filter: (el) => !el.classList?.contains('drop'), filterMode: 'remove' })
+    expect(warn).toHaveBeenCalled()
+    expect(String(warn.mock.calls[0][0])).toContain('exclude')
+    // Nothing was excluded: the caller has to migrate, and now knows it.
     expect(svg).toContain('keep-me')
-    expect(svg).not.toContain('drop-me')
+    expect(svg).toContain('drop-me')
+    warn.mockRestore()
   })
 
-  it('legacy filter and new exclude compose when both are passed', async () => {
+  it('the migration is a polarity flip: filter(keep) becomes exclude(!keep)', async () => {
     const host = page()
     const extra = document.createElement('span')
     extra.className = 'also-drop'
     extra.textContent = 'also-me'
     host.appendChild(extra)
+    const keep = (el) => !el.classList?.contains('also-drop')
     const svg = await svgOf(host, {
-      exclude: '.drop',
+      exclude: ['.drop', (el) => !keep(el)],
       excludeMode: 'remove',
-      filter: (el) => !el.classList?.contains('also-drop'),
-      filterMode: 'remove',
     })
     expect(svg).toContain('keep-me')
     expect(svg).not.toContain('drop-me')
