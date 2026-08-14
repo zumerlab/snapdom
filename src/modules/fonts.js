@@ -407,21 +407,21 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
     }
     if (isIconFont(abs)) continue
 
+    // `cache.resource` is the ONLY proof the payload exists, here and at every other font
+    // src below. It is FIFO-capped, so a font fetched earlier can be gone; having merely
+    // SEEN the URL proves nothing. Miss => refetch, because the alternative is leaving the
+    // live url() in place, and a remote URL inside a foreignObject is inert: the font would
+    // silently fail to embed.
     if (cache.resource?.has(abs)) {
-      cache.font?.add(abs)
       out = out.replace(m[0], `url(${cache.resource.get(abs)})`)
       continue
     }
-    // Don't skip on `cache.font.has(abs)` alone: `cache.font` is an unbounded "seen" Set but
-    // `cache.resource` (the base64) is FIFO-capped. A seen font whose resource was evicted must
-    // be re-fetched here, not left as a live url() that silently fails to embed.
 
     try {
       const r = await snapFetch(abs, { as: 'dataURL', useProxy, silent: true })
       if (r.ok && typeof r.data === 'string') {
         const b64 = r.data
         cache.resource?.set(abs, b64)
-        cache.font?.add(abs)
         out = out.replace(m[0], `url(${b64})`)
       }
     } catch {
@@ -970,14 +970,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!String(b64).startsWith('data:')) {
         if (cache.resource?.has(f._snapdomSrc)) {
           b64 = cache.resource.get(f._snapdomSrc)
-          cache.font?.add(f._snapdomSrc)
-        } else if (!cache.font?.has(f._snapdomSrc)) {
+        } else {
           try {
             const r = await snapFetch(f._snapdomSrc, { as: 'dataURL', useProxy, silent: true })
             if (r.ok && typeof r.data === 'string') {
               b64 = r.data
               cache.resource?.set(f._snapdomSrc, b64)
-              cache.font?.add(f._snapdomSrc)
             } else {
               continue
             }
@@ -1008,14 +1006,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     if (!b64.startsWith('data:')) {
       if (cache.resource?.has(src)) {
         b64 = cache.resource.get(src)
-        cache.font?.add(src)
-      } else if (!cache.font?.has(src)) {
+      } else {
         try {
           const r = await snapFetch(src, { as: 'dataURL', useProxy, silent: true })
           if (r.ok && typeof r.data === 'string') {
             b64 = r.data
             cache.resource?.set(src, b64)
-            cache.font?.add(src)
           } else {
             continue
           }

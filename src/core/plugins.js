@@ -20,6 +20,7 @@
 // The stage vocabulary travels with the plugin API (this module is the `@zumer/snapdom/
 // plugins` subpath export), so a plugin declares and validates `needs` with the same
 // words core resolves it by. See stages.js.
+import { DEFAULT_STAGE } from './stages.js'
 export { STAGES, DEFAULT_STAGE, assertNeeds } from './stages.js'
 
 const __plugins = []
@@ -46,13 +47,23 @@ export function normalizePlugin(spec) {
 
 /**
  * Register global plugins (deduped by name, preserves order).
+ *
+ * A global plugin may NOT lower the stage. resolveStage runs over the merged list, so a
+ * global `needs: 'dom'` would stop every capture in the application before it produced
+ * pixels, including call sites that never heard of the plugin. Lowering is a per-capture
+ * decision by construction, so this is rejected at registration instead of surfacing later
+ * as a result with no url.
  * @param  {...any} defs
+ * @throws {Error} when a global plugin declares `needs` other than 'render'
  */
 export function registerPlugins(...defs) {
   const flat = defs.flat()
   for (const d of flat) {
     const inst = normalizePlugin(d)
     if (!inst) continue
+    if (inst.needs !== undefined && inst.needs !== DEFAULT_STAGE) {
+      throw new Error(`[snapdom] global plugin '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(inst.needs)}. A global plugin must run to '${DEFAULT_STAGE}': lowering it here would stop EVERY capture in the app short of pixels. Pass it per capture instead: snapdom(el, { plugins: [<plugin>] }).`)
+    }
     // 🔒 de-dup por name
     if (!__plugins.some(p => p && p.name && inst.name && p.name === inst.name)) {
       __plugins.push(inst)
