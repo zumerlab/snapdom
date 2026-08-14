@@ -6,11 +6,14 @@
  * Inlined raster images are embedded at their full natural resolution even when shown in a tiny
  * box — those extra pixels can never be seen in the output, they only bloat the SVG payload and
  * slow rasterization. This pass downsamples each <img> data URL to the resolution actually visible
- * (display box × scale × dpr), preserving aspect ratio and never upscaling. Like dropping inaudible
- * frequencies in an MP3: we discard only what the output can't show.
+ * (display box × scale × dpr), preserving aspect ratio and never upscaling. Like dropping barely
+ * audible frequencies in an MP3: we discard detail the output can barely show.
  *
- * The source codec is preserved (PNG stays lossless), so the win comes from resolution alone —
- * fidelity-neutral.
+ * This is NOT fidelity-neutral, and deliberately so. The source codec is preserved (PNG stays
+ * lossless) so most of the win is pure resolution, but two knobs do cost detail: RES_FACTOR aims
+ * slightly BELOW the visible resolution, and JPEG/WebP sources are re-encoded at LOSSY_QUALITY.
+ * Both are measured wins on payload size and rasterize time, and both cost a small, bounded,
+ * deliberate amount of detail. See each constant for its own reasoning.
  *
  * Covers every inlined raster in the capture: <img> (incl. cloned canvas/video), CSS
  * background-image (no-repeat only — tiled backgrounds need their natural tile resolution), and
@@ -173,12 +176,14 @@ let _seq = 0
 const _pending = new Map()
 function getCompressWorker() {
   if (_worker !== null) return _worker
+  let src
   try {
     if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') {
       _worker = false
       return false
     }
-    const w = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })))
+    src = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }))
+    const w = new Worker(src)
     w.onmessage = (e) => {
       const resolve = _pending.get(e.data.id)
       if (resolve) {
@@ -198,8 +203,18 @@ function getCompressWorker() {
   } catch {
     _worker = false
   }
+  // The worker took its copy of the script at construction; an unrevoked blob URL would pin
+  // the source Blob for the page's lifetime. Also runs when construction threw (CSP).
+  if (src) URL.revokeObjectURL(src)
   return _worker
 }
+
+// A job is one createImageBitmap + one drawImage + one convertToBlob: tens of milliseconds for
+// a typical photo, and still well under a second for a multi-megapixel source on a slow device.
+// Past 5s the worker is wedged, not busy — only `onerror` ever drained `_pending`, so a job that
+// simply never posts back used to hang the capture forever. Falling back costs one redundant
+// main-thread encode and produces the same pixels.
+const WORKER_JOB_TIMEOUT = 5000
 
 /** Runs the downsample in the worker. Resolves null (no gain / skip), a data URL, or
  *  undefined when the worker path failed and the caller must use the sync fallback. */
@@ -208,10 +223,13 @@ function workerDownsample(dataURL, targetW, targetH, mime) {
   if (!w) return Promise.resolve(undefined)
   return new Promise((resolve) => {
     const id = ++_seq
-    _pending.set(id, resolve)
+    const timer = setTimeout(() => { _pending.delete(id); resolve(undefined) }, WORKER_JOB_TIMEOUT)
+    // Stored settler clears the timer, so a prompt answer leaves nothing pending.
+    _pending.set(id, (value) => { clearTimeout(timer); resolve(value) })
     try {
       w.postMessage({ id, dataURL, targetW, targetH, resFactor: RES_FACTOR, quality: LOSSY_QUALITY, mime })
     } catch {
+      clearTimeout(timer)
       _pending.delete(id)
       resolve(undefined)
     }

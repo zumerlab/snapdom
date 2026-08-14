@@ -64,7 +64,22 @@ const snapLogger = createSnapLogger('[snapDOM]', { ttlMs: 3 * 60_000, maxEntries
 // ---------------------------------------------------------------------------
 
 const _inflight = new Map()
+
+// Errors are memoized per key with their own TTL, but an expired entry is only dropped when
+// that exact key is requested again, and a page that fails many distinct URLs never asks
+// twice. Bounded the same way as the logger above (TTL + cap): at the cap, expired entries
+// go first, and only if that frees nothing does the oldest live one go.
+const ERROR_CACHE_MAX = 50
 const _errorCache = new Map()
+
+function rememberError(key, result, ttlMs) {
+  if (_errorCache.size >= ERROR_CACHE_MAX) {
+    const now = Date.now()
+    for (const [k, v] of _errorCache) if (v.until <= now) _errorCache.delete(k)
+    while (_errorCache.size >= ERROR_CACHE_MAX) _errorCache.delete(_errorCache.keys().next().value)
+  }
+  _errorCache.set(key, { until: Date.now() + ttlMs, result })
+}
 
 // ---------------------------------------------------------------------------
 // Utilities
@@ -292,7 +307,7 @@ export async function snapFetch(url, options = {}) {
 
       if (!resp.ok) {
         const result = { ok: false, data: null, status: resp.status, url: finalURL, fromCache: false, reason: 'http_error' }
-        if (errorTTL > 0) _errorCache.set(key, { until: Date.now() + errorTTL, result })
+        if (errorTTL > 0) rememberError(key, result, errorTTL)
         if (!silent) {
           const short = `${resp.status} ${resp.statusText || ''}`.trim()
           snapLogger.warnOnce(
@@ -330,7 +345,7 @@ export async function snapFetch(url, options = {}) {
 
       // Persist HTTP network failures; avoid memoizing non-HTTP (handled above)
       if (!/^blob:/i.test(url) && errorTTL > 0) {
-        _errorCache.set(key, { until: Date.now() + errorTTL, result })
+        rememberError(key, result, errorTTL)
       }
 
       if (!silent) {
