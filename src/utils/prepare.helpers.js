@@ -34,6 +34,13 @@ export function stabilizeLayout(element) {
  * With a clipRect (clip mode) the walk is pruned to subtrees whose boxes reach the window:
  * a clip rect far from the real viewport lands on unrendered cv:auto placeholders, but
  * forcing the whole page would cost O(page) for content the culler drops anyway.
+ *
+ * Only 'auto' is forced. 'hidden' is an explicit authoring decision, not an optimization:
+ * the browser paints the element's own box (background, border, padding) and skips its
+ * contents outright, and a descendant's `visibility: visible` does not bring them back.
+ * Forcing it to 'visible' un-hid the whole subtree into the capture, and also erased the
+ * value modules/styles.js reads to carry the declaration into the snapshot, so that guard
+ * could never fire.
  * Returns an undo function to restore original values.
  * @param {Element} root
  * @param {{left:number,top:number,right:number,bottom:number}|null} [clipRect]
@@ -45,7 +52,7 @@ export function forceContentVisibility(root, clipRect = null) {
     if (!(el instanceof HTMLElement)) return
     const cs = getComputedStyle(el)
     const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
-    if (computed === 'auto' || computed === 'hidden') {
+    if (computed === 'auto') {
       saved.push({ el, original: el.style.contentVisibility || '' })
       el.style.contentVisibility = 'visible'
     }

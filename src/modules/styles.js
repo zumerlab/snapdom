@@ -9,13 +9,9 @@ const snapshotKeyCache = new Map()
  *  unique element styles, this Map can grow without bound and leak memory. */
 const MAX_SNAPSHOT_KEY_CACHE = 2000
 let __epoch = 0
-function bumpEpoch() {
-  __epoch++
-  // Evict when oversized — entries are cheap to rebuild on the next capture.
-  if (snapshotKeyCache.size > MAX_SNAPSHOT_KEY_CACHE) snapshotKeyCache.clear()
-}
+function bumpEpoch() { __epoch++ }
 
-export function notifyStyleEpoch() { bumpEpoch() }
+export function notifyStyleEpoch() { bumpEpoch(); __ruleEpoch++ }
 
 /** Mutations on snapdom-owned helper nodes (sandbox, measure wrapper, warmup img, injected font
  *  links, …) must NOT invalidate the style epoch: every capture creates and removes them, so
@@ -46,6 +42,60 @@ export function isExternalRecord(rec) {
   return true
 }
 
+/** Style-RULE epoch: bumps only when the author RULES themselves can have changed — a
+ *  <style>/<link> added, removed, retargeted or rewritten anywhere in the tree, plus the
+ *  rule sources no mutation record reports at all (below). The scanned property universe
+ *  and the pseudo gates are derived from the rule TEXT alone: which rules match is not
+ *  their business, so keying them on __epoch made a single text-node change re-scan every
+ *  author stylesheet on the next capture — the SPA case v3 exists for. */
+let __ruleEpoch = 0
+
+/** <style>/<link> are the only nodes whose presence, attributes or text can add or remove
+ *  author rules. */
+function isSheetNode(n) {
+  return n.nodeType === 1 && (n.tagName === 'STYLE' || n.tagName === 'LINK')
+}
+function hasSheetNode(n) {
+  return n.nodeType === 1 && (isSheetNode(n) || !!n.querySelector('style,link'))
+}
+/** Whether a mutation record can change the rules themselves: a <style>/<link> inserted or
+ *  removed (anywhere, not just in <head>), one of its attributes (href/media/rel/disabled),
+ *  or the CSS text inside a <style>. Moving or restyling ordinary nodes cannot add a
+ *  declaration or a selector to the page. */
+function isRuleRecord(rec) {
+  const t = rec.target
+  // Attributes land on the element; `style.textContent = …` is a childList record on the
+  // <style> (its text node is replaced, not edited); a characterData edit targets that text
+  // node. All three mean the rules moved, so test the target and its parent.
+  if (t.nodeType === 1 ? isSheetNode(t) : !!(t.parentNode && isSheetNode(t.parentNode))) return true
+  for (const n of rec.addedNodes) if (hasSheetNode(n)) return true
+  for (const n of rec.removedNodes) if (hasSheetNode(n)) return true
+  return false
+}
+
+/** Cheap census of the document's rule sources, recomputed once per capture (not per node).
+ *  It is the only way to see the rule changes that emit NO mutation record: a <link>
+ *  finishing its load, a sheet pushed into adoptedStyleSheets, sheet.insertRule(). A rule
+ *  edited in place (`rule.style.color = …`) still changes nothing observable and remains
+ *  the documented job of `invalidate: true`. */
+let __census = 0
+function sheetCensus(doc) {
+  let n = 0
+  const count = (sheet) => {
+    // Snapdom's own temporary sheets (injected @import links, measurement mounts) come and
+    // go on every capture: counting them would poison the next capture exactly like the
+    // owned-node filter above exists to prevent.
+    if (sheet.ownerNode && isOwnedNode(sheet.ownerNode)) return
+    let len = -1
+    try { len = sheet.cssRules.length } catch { /* cross-origin */ }
+    n = (n * 31 + len + 7) | 0
+  }
+  for (const sheet of doc.styleSheets) count(sheet)
+  const adopted = /** @type {any} */ (doc).adoptedStyleSheets
+  if (adopted) for (const sheet of adopted) count(sheet)
+  return n
+}
+
 /** Style-ENVIRONMENT epoch: bumps only on <head> mutations and font loads — the events
  *  that change how any element renders without touching it. Consumers (burst) poll it via
  *  getStyleEnvEpoch() instead of wiring their own observers/listeners: one shared stack,
@@ -72,6 +122,19 @@ export function getStyleEpoch() {
 export function invalidateStyleCaches() {
   bumpEpoch()
   __envEpoch++
+  __ruleEpoch++
+}
+
+/** The DOM observer's callback, also replayed by flushStyleInvalidations on drained records:
+ *  one pass answers both "did anything paintable change" and "did the author rules change". */
+function onDomRecords(records) {
+  let dom = false
+  for (const rec of records) {
+    if (!isExternalRecord(rec)) continue
+    dom = true
+    if (isRuleRecord(rec)) { __ruleEpoch++; break }
+  }
+  if (dom) bumpEpoch()
 }
 
 let __wired = false
@@ -80,13 +143,12 @@ let __headObs = null
 function setupInvalidationOnce(root = document.documentElement) {
   if (__wired) return
   __wired = true
-  const onRecords = (records) => { if (hasExternalMutation(records)) bumpEpoch() }
   const onEnvRecords = (records) => {
     if (hasExternalMutation(records)) { bumpEpoch(); __envEpoch++ }
   }
   const onFonts = () => { bumpEpoch(); __envEpoch++ }
   try {
-    __domObs = new MutationObserver(onRecords)
+    __domObs = new MutationObserver(onDomRecords)
     __domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
@@ -129,8 +191,10 @@ export function flushStyleInvalidations() {
     }
     if (__domObs) {
       const r = __domObs.takeRecords()
-      if (r.length && hasExternalMutation(r)) bumpEpoch()
+      if (r.length) onDomRecords(r)
     }
+    const census = sheetCensus(document)
+    if (census !== __census) { __census = census; __ruleEpoch++ }
   } catch { }
 }
 
@@ -169,15 +233,16 @@ export function needsBackgroundInline(source) {
   return true
 }
 
-/** Per-document memo of the scanned property universe, invalidated by the style epoch.
+/** Per-document memo of the scanned property universe, invalidated by the style-RULE epoch:
+ *  what it holds depends on the author rules only, never on the DOM they apply to.
  *  Exported so the base reset prunes itself with the SAME universe the snapshots use:
  *  a reset-stamped prop the class diff can no longer override (e.g. the resolved-black
  *  `-webkit-text-fill-color` overriding a white `color`) must not be emitted either. */
 const universeCache = new WeakMap()
 function scanFor(doc) {
   let rec = universeCache.get(doc)
-  if (!rec || rec.epoch !== __epoch) {
-    rec = { epoch: __epoch, ...scanAuthorStyles(doc) }
+  if (!rec || rec.epoch !== __ruleEpoch) {
+    rec = { epoch: __ruleEpoch, ...scanAuthorStyles(doc) }
     universeCache.set(doc, rec)
   }
   return rec
@@ -200,7 +265,6 @@ export function pseudoGatesFor(el) {
 
 function snapshotComputedStyleFull(style, options = {}, el = null, universe = null) {
   const out = {}
-  const vis = style.getPropertyValue('visibility')
   const excludeStyleProps = options.excludeStyleProps
   const addProp = (prop) => {
     if (out[prop] !== undefined) return
@@ -274,13 +338,18 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
       } catch { }
     }
   }
-  if (vis === 'hidden') out.opacity = '0'
-  // content-visibility:hidden skips rendering the subtree entirely (like visibility:hidden
-  // but also skips layout). Force visibility:hidden so the subtree doesn't leak into capture.
-  // Read explicitly because content-visibility is not always enumerated in style.length iteration.
+  // Keep visibility as visibility. Unlike opacity, it is inherited but a child may explicitly
+  // restore `visibility: visible`; flattening a hidden ancestor to opacity:0 makes that legal,
+  // painted descendant impossible to recover.
+  // content-visibility:hidden skips the element's CONTENTS while still painting the element's
+  // own box (background, border, padding) - verified against real Chromium. Carry the
+  // declaration itself so the rasterizer applies those exact semantics: mapping it to
+  // visibility:hidden would erase the box too, and a descendant could override it back, which
+  // the real property does not allow. Read explicitly because content-visibility is not always
+  // enumerated in the style.length iteration.
   try {
     const cv = out['content-visibility'] || style.getPropertyValue('content-visibility')
-    if (cv === 'hidden') out['visibility'] = 'hidden'
+    if (cv === 'hidden') out['content-visibility'] = 'hidden'
   } catch { /* ignore */ }
 
   // Flag whether inlineBackgroundImages has any work on this node (bg/mask/border-image or a
@@ -537,6 +606,11 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   let key = persist.snapshotKeyCache.get(sig)
   if (key === undefined) {
     key = getStyleKey(snap, tag, sizedByContent, flexItem)
+    // Bound at INSERTION: evicting only on an epoch bump left the Map unbounded for as long
+    // as the page's styles held still. Map iterates in insertion order, so this is FIFO.
+    if (persist.snapshotKeyCache.size >= MAX_SNAPSHOT_KEY_CACHE) {
+      persist.snapshotKeyCache.delete(persist.snapshotKeyCache.keys().next().value)
+    }
     persist.snapshotKeyCache.set(sig, key)
   }
   session.styleMap.set(clone, key)
