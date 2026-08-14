@@ -157,9 +157,18 @@ async function diffCapture(element, state, context) {
   // Fonts were embedded in the retained capture: a dirty subtree can introduce codepoints
   // or faces the embedded set lacks — only the full pipeline recollects usage.
   if (R.fontsCSS) return null
-  // Render-affecting plugins: the rebuilt subtree would skip resolveNode/afterClone work
-  // and beforeRender would mutate retained state — full pipeline unless declared pure.
+  // Render-affecting plugins: beforeRender would mutate retained state, and the rebuilt
+  // subtree would skip whole-tree work. Full pipeline unless declared pure.
   if (hasImpureRenderPlugins(context)) return null
+  // `pure` promises deterministic and idempotent; it does NOT promise SUBTREE-LOCAL, and
+  // these two hooks are exactly where that gap bites. An afterClone that rewrites the whole
+  // clone never re-runs on the spliced region, and resolveNode hooks are collected inside
+  // captureDOM (options.__resolveNodeHooks), which this path never reaches, so the deepClone
+  // below would silently skip every one of them. Bail regardless of `pure`: the memo hit,
+  // which serves an unchanged result, is the path where `pure` still means something.
+  for (const p of context.plugins || []) {
+    if (p && (typeof p.resolveNode === 'function' || typeof p.afterClone === 'function')) return null
+  }
   // Scoped ::marker/::first-line rules are attribute-keyed per element — a rebuilt or
   // removed subtree would strand/miss rules and break the byte-equality guarantee.
   if (R.classPrefixCSS && (R.classPrefixCSS.includes('::marker') || R.classPrefixCSS.includes('::first-line'))) return null

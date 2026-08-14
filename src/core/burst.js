@@ -21,6 +21,10 @@
  *  - CSS/WAAPI animations .. getAnimations({subtree}) per capture: memo never serves nor
  *                            persists while running; targeted subtrees become dirty roots
  *                            for the diff path with invalidateSnapshotsUnder per frame
+ *  - mid-capture edits ..... records that land WHILE a capture runs are buffered and judged
+ *                            once it ends (hasTornMutation): a net change that is not the
+ *                            pipeline's own self-undoing work leaves the element dirty, so a
+ *                            torn frame is never memoized
  *  - shadow DOM ............ one observer per open root, rescanned per capture so a root
  *                            attached after the memo is also caught (trackShadowRoots).
  *                            Costs one subtree walk per capture: ~1ms at 8k nodes, against
@@ -123,7 +127,7 @@ function trackShadowRoots(element, state) {
     if (state.trackedShadowRoots.has(root)) continue
     try {
       const o = new MutationObserver(state.markDirty)
-      o.observe(root, { subtree: true, childList: true, attributes: true, characterData: true })
+      o.observe(root, { subtree: true, childList: true, attributes: true, characterData: true, attributeOldValue: true })
       o.__flush = state.markDirty
       state.observers.push(o)
       state.trackedShadowRoots.set(root, o)
@@ -178,9 +182,56 @@ function trackPendingImages(element, state) {
   }
 }
 
+/**
+ * Do the records collected during a capture describe a real change? Dropping them wholesale
+ * (the old behaviour) let a concurrent external mutation vanish, so a TORN frame (half
+ * pre-mutation, half post) was memoized and served as fresh. Flagging every external-looking
+ * record instead would kill the memo outright on any page using text-overflow, line-clamp or
+ * content-visibility:auto: the pipeline mutates those LIVE nodes and undoes them again
+ * (measured: 10 such records on a two-div page).
+ * A mutation whose NET effect is zero cannot change what renders, and that is the test:
+ * attributes compare the OLDEST recorded value against the current one, text-only childList
+ * records balance the text they added against the text they removed. Anything else is a real
+ * change: an element added or removed, or live character data rewritten (which the pipeline
+ * never does). Once per capture, over that capture's own records.
+ * @param {MutationRecord[]} records
+ * @returns {boolean}
+ */
+function hasTornMutation(records) {
+  const attrs = new Map() // target → (attribute name → oldest recorded value)
+  const texts = new Map() // target → (text → +1 added / -1 removed)
+  for (const rec of records) {
+    if (!isExternalRecord(rec)) continue
+    if (rec.type === 'attributes') {
+      let byName = attrs.get(rec.target)
+      if (!byName) attrs.set(rec.target, byName = new Map())
+      if (!byName.has(rec.attributeName)) byName.set(rec.attributeName, rec.oldValue)
+    } else if (rec.type === 'childList') {
+      let delta = texts.get(rec.target)
+      if (!delta) texts.set(rec.target, delta = new Map())
+      for (const n of rec.addedNodes) {
+        if (n.nodeType !== 3) return true
+        delta.set(n.data, (delta.get(n.data) || 0) + 1)
+      }
+      for (const n of rec.removedNodes) {
+        if (n.nodeType !== 3) return true
+        delta.set(n.data, (delta.get(n.data) || 0) - 1)
+      }
+    } else return true
+  }
+  for (const [target, byName] of attrs) {
+    for (const [name, old] of byName) if (target.getAttribute(name) !== old) return true
+  }
+  for (const delta of texts.values()) {
+    for (const n of delta.values()) if (n !== 0) return true
+  }
+  return false
+}
+
 function createState(element) {
   const state = {
     dirty: true,
+    pending: [],           // records seen while capturing, judged by hasTornMutation after
     dirtyRoots: new Set(), // scoped dirty subtree roots; null = everything is dirty
     retained: null,        // artifacts from the last full capture (clone, maps, css) for diff
     capturing: false,
@@ -208,10 +259,14 @@ function createState(element) {
     state.dirtyRoots.add(el)
   }
   const markDirty = (records) => {
-    // Mutations during a capture are the capture's own transient DOM work (line-clamp bake,
-    // content-visibility force, …) which always undoes itself; a user mutating concurrently
-    // mid-capture produces a torn frame either way, so those are ignored too.
-    if (state.capturing) return
+    // Mutations during a capture are MOSTLY the capture's own transient DOM work (line-clamp
+    // bake, content-visibility force, …) which always undoes itself, but not all of them:
+    // an external edit landing mid-capture makes the frame torn. Buffer the batch and judge
+    // it once the capture ends (hasTornMutation), instead of dropping it unseen.
+    if (state.capturing) {
+      for (const rec of records) state.pending.push(rec)
+      return
+    }
     for (const rec of records) {
       if (!isExternalRecord(rec)) continue
       state.dirty = true
@@ -223,7 +278,9 @@ function createState(element) {
 
   try {
     const o = new MutationObserver(markDirty)
-    o.observe(element, { subtree: true, childList: true, attributes: true, characterData: true })
+    // attributeOldValue: hasTornMutation reads it to tell the pipeline's own self-undoing
+    // attribute edits (content-visibility force) from a real one.
+    o.observe(element, { subtree: true, childList: true, attributes: true, characterData: true, attributeOldValue: true })
     o.__flush = markDirty
     state.observers.push(o)
   } catch { /* degrade to always-dirty */ }
@@ -415,36 +472,46 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     if (!isOneOff && !animating && !state.dirty && state.last) return state.last
 
     state.capturing = true
+    let pendingRetained = null
     try {
+      let result = null
       // Differential fast path: only SUBTREES are dirty and the last full capture's
       // artifacts are retained — rebuild just those subtrees and re-serialize. Any doubt
       // (null url) falls through to the full pipeline; correctness never depends on it.
       if (!isOneOff && state.dirty && state.retained && state.dirtyRoots && state.dirtyRoots.size && makeResult) {
         const url = await tryDiffCapture(element, state, context)
-        if (url) {
-          const result = makeResult(url)
-          state.dirty = false
-          state.dirtyRoots = new Set()
-          state.last = result
-          return result
-        }
+        if (url) result = makeResult(url)
       }
+      if (!result) {
+        // Retain this full capture's artifacts for future differential recaptures, into a
+        // local that is published below with the rest of the memo.
+        if (!isOneOff) {
+          context.__retain = (art) => {
+            const srcToClone = new Map()
+            for (const [cloneNode, srcNode] of art.nodeMap.entries()) srcToClone.set(srcNode, cloneNode)
+            pendingRetained = { ...art, srcToClone }
+          }
+        }
+        result = await runCapture()
+      }
+      // COMMIT, and only now: clearing the dirty flags before awaiting the capture marked
+      // the element clean on a capture that then threw, and the next call served the
+      // PREVIOUS frame as if it were fresh. A rejection leaves every flag as it was, so the
+      // pending mutations stay pending and the stale memo stays unreachable.
       if (!isOneOff) {
         state.dirty = false
         state.dirtyRoots = new Set()
-        // Retain this full capture's artifacts for future differential recaptures.
-        context.__retain = (art) => {
-          const srcToClone = new Map()
-          for (const [cloneNode, srcNode] of art.nodeMap.entries()) srcToClone.set(srcNode, cloneNode)
-          state.retained = { ...art, srcToClone }
-        }
+        if (pendingRetained) state.retained = pendingRetained
+        if (!animating) state.last = result
       }
-      const result = await runCapture()
-      if (!isOneOff && !animating) state.last = result
       return result
     } finally {
       context.__retain = undefined
-      for (const o of state.observers) o.takeRecords() // drop the capture's own records
+      for (const o of state.observers) for (const rec of o.takeRecords()) state.pending.push(rec)
+      // Mutations that landed mid-capture: the pipeline's own self-undoing edits are
+      // ignored, a real one means the frame just built is torn: drop it and stay dirty.
+      if (hasTornMutation(state.pending)) { state.dirtyAll(); state.last = null }
+      state.pending.length = 0
       state.capturing = false
       trackShadowRoots(element, state) // pick up shadow roots attached/removed by this capture
       trackVideos(element, state, state.onMediaDirty) // pick up <video>s added/removed by this capture
