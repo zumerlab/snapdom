@@ -347,16 +347,27 @@ async function buildResult(url, context) {
   let afterSnapFired = false
   let _exportQueue = Promise.resolve()
   async function runExport(type, opts) {
+    // Snapshot at CALL time, not when this export reaches the queue below. Callers reuse an
+    // options object, and a slow earlier export must not let later mutation rewrite the
+    // meaning of an already-requested one. Key PRESENCE is preserved too: a plugin default
+    // and a normalized capture default can hold the same value, so comparing merged values
+    // cannot tell an explicit override from an omitted key.
+    const requestedOptions = Object.freeze(opts && typeof opts === 'object' ? { ...opts } : {})
     const job = async () => {
       const work = exportsMap[type]
       if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
-      const nextOpts = normalizeExportOptions(type, opts)
-      const ctx = { ...context, artifacts: context.__artifacts || null, export: exportFacade({ type, options: nextOpts }) }
+      const nextOpts = normalizeExportOptions(type, requestedOptions)
+      const ctx = { ...context, artifacts: context.__artifacts || null, export: exportFacade({ type, options: nextOpts, requestedOptions }) }
       // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
       // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
-      await runHook('beforeExport', ctx, { format: type, options: nextOpts })
+      // Both hooks OBSERVE: what an export returns is decided by `work`, and no hook return
+      // value is read. A plugin steers an export by MUTATING payload.options (that same
+      // object is what work() receives) and replaces one by declaring it in defineExports.
+      // runAll, not runHook: runHook CHAINS returns, so one plugin returning anything would
+      // hand the next plugin that value instead of the documented payload.
+      await runAll('beforeExport', ctx, { format: type, options: nextOpts })
       const result2 = await work(ctx, nextOpts)
-      await runHook('afterExport', ctx, { format: type, options: nextOpts, result: result2 })
+      await runAll('afterExport', ctx, { format: type, options: nextOpts, result: result2 })
       if (!afterSnapFired) {
         afterSnapFired = true
         await runHook('afterSnap', context)
@@ -404,6 +415,15 @@ async function buildResult(url, context) {
   if (!rendered) {
     Object.defineProperty(result, 'url', { get() { throw absent('url') }, enumerable: false, configurable: true })
   }
+
+  // Read-only render geometry for document exporters and diagnostics: THE SAME frozen
+  // record the context and every exporter read, so url and meta can never diverge. Pinned
+  // non-writable/non-configurable (this result object is ours, unlike the context bag).
+  // A capture that stopped before the render stage has no viewBox at all, so meta gets the
+  // same non-enumerable throwing getter as `url` rather than a fabricated shape.
+  Object.defineProperty(result, 'meta', rendered
+    ? { value: context.meta, enumerable: true }
+    : { get() { throw absent('meta') }, enumerable: false, configurable: true })
 
   // Azúcar dinámico por cada export registrado (plugins incluidos)
   for (const key of Object.keys(exportsMap)) {

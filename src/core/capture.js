@@ -82,14 +82,14 @@ export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   options.__session = createCaptureSession(options.cache)
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
-  const outerTransforms = options.outerTransforms !== false   // default: true
-
-  const outerShadows = !!options.outerShadows
-  // Region capture (clip: 'viewport' | {x,y,width,height}). The GEOMETRY window is resolved
-  // once, inside prepareClone (same instant as culling), and returned as clipWindow in
-  // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
-  const preClipRect = options.clip ? resolveClipRect(element, options.clip) : null
-  let state = { element, options, plugins: options.plugins }
+  // ONE context for the whole capture: hooks receive the normalized option bag itself, so
+  // `ctx.scale` / `ctx.backgroundColor` / … are the very values the pipeline reads and the
+  // documented "mutate ctx in beforeSnap" actually lands. Per-stage fields are written onto
+  // it as they are produced. `options` is a NON-enumerable self-reference: plugins reading
+  // `ctx.options` keep working, without adding a cycle to every `{...ctx}` spread.
+  const state = options
+  state.element = element
+  Object.defineProperty(state, 'options', { value: state, configurable: true })
 
   let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow
   let fontsCSS = ''
@@ -110,6 +110,15 @@ export async function captureDOM(element, options) {
   // clone is taken, which is the point: the clone is ~89% of a capture.
   if (!stageReaches(stage, 'clone')) return null
 
+  // Read AFTER the hooks: beforeSnap is the documented place to set capture defaults, and
+  // these three decide the geometry, so reading them earlier ignored the plugin that set them.
+  const outerTransforms = state.outerTransforms !== false   // default: true
+  const outerShadows = !!state.outerShadows
+  // Region capture (clip: 'viewport' | {x,y,width,height}). The GEOMETRY window is resolved
+  // once, inside prepareClone (same instant as culling), and returned as clipWindow in
+  // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
+  const preClipRect = state.clip ? resolveClipRect(state.element, state.clip) : null
+
   const undoClamp = lineClampTree(state.element, preClipRect)
   try {
     // Keep this capture's own clone→source map — every later pass must use this
@@ -123,8 +132,6 @@ export async function captureDOM(element, options) {
         console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
       }
     }
-
-    // state = {clone, classCSS, styleCache, ...state}
 
     if (!outerTransforms && clone) {
       rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
@@ -145,7 +152,10 @@ export async function captureDOM(element, options) {
   }
 
   // AFTERCLONE
-  state = { clone, classCSS, styleCache, nodeMap, ...state }
+  state.clone = clone
+  state.classCSS = classCSS
+  state.styleCache = styleCache
+  state.nodeMap = nodeMap
   await runHook('afterClone', state)
 
   // needs: 'clone' — the plugins wanted the frozen tree, not pixels. Everything from here
@@ -265,12 +275,25 @@ export async function captureDOM(element, options) {
  * Compose + serialize tail of the pipeline: base reset, bbox/bleed math, foreignObject
  * assembly and SVG data-URL encoding. Shared by captureDOM and burst's differential
  * recapture (which rebuilds only dirty subtrees and re-enters here with retained state).
- * `state` must carry element/options/plugins/clone/classCSS/styleCache/nodeMap.
+ * `state` is the capture context itself, or (from diff) a wrapper carrying element/options/
+ * plugins/clone/classCSS/styleCache/nodeMap, which is folded back onto that context.
  * @returns {Promise<string>} SVG data URL
  */
 export async function composeAndSerialize(state, ex) {
   const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS } = ex
   const options = state.options
+  // ONE context: burst's differential recapture hands a wrapper carrying the rebuilt clone,
+  // so fold it onto the capture context and keep every hook below on that single object.
+  // That context is a FRESH one (its call never entered captureDOM), so the self-reference
+  // has to be (re)established here — everything below reads `state.options`. The wrapper's
+  // own `options` is excluded from the fold: it IS the target, so copying it back would
+  // either overwrite the pinned self-reference with an enumerable cycle or, on a context
+  // that already carries it, throw in strict mode.
+  if (state !== options) {
+    const { options: _self, ...stageFields } = state
+    state = Object.assign(options, stageFields)
+    Object.defineProperty(state, 'options', { value: state, configurable: true })
+  }
   let baseCSS = ''
   let dataURL
   let svgString
@@ -284,7 +307,9 @@ export async function composeAndSerialize(state, ex) {
   }
   // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
   const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
-  state = { fontsCSS, baseCSS, scrollbarCSS, ...state }
+  state.fontsCSS = fontsCSS
+  state.baseCSS = baseCSS
+  state.scrollbarCSS = scrollbarCSS
   await runHook('beforeRender', state)
 
   const csEl = getStyle(state.element)
@@ -573,7 +598,29 @@ export async function composeAndSerialize(state, ex) {
   const foString = serializer.serializeToString(fo)
   const wantsSize = hasW || hasH
 
-  options.meta = { w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h }
+  // Public export geometry. `contentX/contentY` are the exact viewBox-space origin of
+  // the logical capture box; unlike `(vbW - w0) / 2`, they stay correct for asymmetric
+  // shadow bleed, transformed roots and clip windows.
+  const captureMeta = Object.freeze({
+    w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h,
+    contentX: limitDecimals(offX + (clipWindow ? minX : 0)),
+    contentY: limitDecimals(offY + (clipWindow ? minY : 0)),
+    clip: clipWindow
+      ? Object.freeze({
+        x: limitDecimals(minX), y: limitDecimals(minY),
+        width: baseW, height: baseH,
+      })
+      : null,
+  })
+  // The context continues through afterRender and every later export. Pin the binding as
+  // well as freezing the value so a hook cannot desynchronise the canonical SVG from the
+  // geometry consumers read. Stays CONFIGURABLE: `options` is caller-owned here (a direct
+  // captureDOM call reuses its bag), so a second capture must be able to redefine it
+  // instead of throwing "Cannot redefine property". Strict mode still rejects plain
+  // assignment, which is the write this guards against.
+  Object.defineProperty(options, 'meta', {
+    value: captureMeta, enumerable: true, writable: false, configurable: true,
+  })
 
   const svgOutW = (!wantsSize || isSafari())
     ? vbW
@@ -587,7 +634,8 @@ export async function composeAndSerialize(state, ex) {
   const svgFooter = '</svg>'
   svgString = svgHeader + foString + svgFooter
   dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
-  state = { svgString, dataURL, ...state }
+  state.svgString = svgString
+  state.dataURL = dataURL
   // Render artifacts for export plugins (toHtml et al) — the CSS strings the pipeline
   // already holds, so export code never reverse-parses its own data URL. svgString stays
   // OUT (it doubles retained memory): exporters decode it lazily from the url.
@@ -599,6 +647,11 @@ export async function composeAndSerialize(state, ex) {
   }
   // afterRender(context)
   await runHook('afterRender', state)
+  // Release the heavy stage fields once the last render hook has seen them: the result closes
+  // over this context, so retaining the clone tree plus a second copy of the SVG source would
+  // double what a live result holds. Export hooks never reached them anyway (the context did
+  // not carry them before), and they read `url` / `__artifacts` instead.
+  state.clone = state.nodeMap = state.styleCache = state.svgString = null
 
   const sandbox = document.getElementById('snapdom-sandbox')
   if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()

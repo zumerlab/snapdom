@@ -29,6 +29,34 @@ export type CaptureStage = "dom" | "clone" | "render";
  */
 export type CachePolicy = "disabled" | "full" | "auto" | "soft";
 
+/** Geometry of the serialized capture, expressed in SVG viewBox CSS pixels. */
+export interface CaptureMeta {
+  /** Logical capture-box size (the clip-window size when clip is active). */
+  readonly w0: number;
+  readonly h0: number;
+  /** Serialized SVG viewBox size, including bleed/padding. */
+  readonly vbW: number;
+  readonly vbH: number;
+  /** Requested output basis before scale/dpr rasterization. */
+  readonly targetW: number;
+  readonly targetH: number;
+  /** Exact logical capture-box origin inside the viewBox. */
+  readonly contentX: number;
+  readonly contentY: number;
+  /** Resolved clip window, or null for a full-element capture. */
+  readonly clip: Readonly<{ x: number; y: number; width: number; height: number }> | null;
+}
+
+/** A window in serialized SVG viewBox coordinates (see `CaptureMeta`). */
+export interface CanvasCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type CanvasExportOptions = Partial<SnapdomOptions> & { crop?: CanvasCrop };
+
 /* =========================
  * Font & proxy declarations
  * ========================= */
@@ -193,26 +221,43 @@ export interface SnapdomOptions {
  * Capture context (hook state)
  * ========================= */
 
+/**
+ * The single object every hook receives: the normalized capture options at the TOP level
+ * (`ctx.scale`, `ctx.backgroundColor`, …) plus the per-stage fields as they are produced.
+ * It is the very bag the pipeline reads, so changing an option in `beforeSnap` takes effect
+ * — except for the options that pick the capture PATH (`plugins`, `needs`, `engine`,
+ * `burst`, `invalidate`, `cache`), which are resolved before the first hook runs.
+ */
 export interface CaptureContext extends SnapdomOptions {
   /** Input element being captured. */
   element: Element;
+
+  /** Self-reference to this same context, for plugins written against `ctx.options`. */
+  readonly options: CaptureContext;
 
   /** How far this capture runs (the deepest `needs` of its plugins). A plugin that
    *  defines exports can read it to know whether there will be an image at all. */
   needs: CaptureStage;
 
-  /** Cloned root (detached), available after `beforeClone`/`afterClone`. */
+  /** Cloned root (detached), from `afterClone` through the render hooks. Released (null)
+   *  once `afterRender` has run, so a live result never retains the whole tree. */
   clone?: HTMLElement | SVGElement | null;
 
   /** Internal style/class caches (opaque to user). */
   classCSS?: string;
   styleCache?: unknown;
+  nodeMap?: unknown;
   fontsCSS?: string;
   baseCSS?: string;
 
-  /** Serialized artifacts, available after render. */
-  svgString?: string;
+  /** Serialized artifacts, available in `afterRender`. `svgString` is released as soon as
+   *  that hook returns (read it lazily from `export.svgString` in an export hook). */
+  svgString?: string | null;
   dataURL?: string;
+
+  /** Authoritative render geometry, frozen and pinned once the render stage runs.
+   *  Absent on a capture that stopped at 'dom' or 'clone' (no viewBox exists). */
+  readonly meta?: Readonly<CaptureMeta>;
 
   /** Render artifacts handed to `defineExports` so exporters never reverse-parse the data
    *  URL for CSS the pipeline already holds. `svgString` stays out on purpose (it would
@@ -228,8 +273,11 @@ export interface CaptureContext extends SnapdomOptions {
   export?: {
     /** Export key (e.g., "png", "jpeg", "svg", or any custom key). Absent inside `defineExports`. */
     type?: string;
-    /** Options passed to the exporter. */
+    /** Capture defaults merged with the options passed to the exporter. */
     options?: any;
+    /** Exact own options supplied to this export call, frozen when `toXxx()` was called;
+     *  omitted keys stay omitted, so a plugin can tell an explicit value from a default. */
+    requestedOptions?: Readonly<Record<string, unknown>>;
     /** Canonical SVG data URL of this capture. */
     url: string;
     /** Lazily decodes the capture's SVG source from `url` (kept a thunk so a live result
@@ -248,8 +296,19 @@ export interface CaptureContext extends SnapdomOptions {
 
 export type Exporter = (ctx: CaptureContext, opts?: any) => Promise<any>;
 
-/** Map returned by `defineExports`: keys are exposed on the result (e.g., `pdf` → `result.toPdf()` as well as `result['pdf']()`). */
+/** Map returned by `defineExports`: each key is exposed on the result as a `to<Key>()`
+ *  helper (`pdf` → `result.toPdf()`) and by name through `result.to('pdf')`. */
 export type ExportMap = Record<string, Exporter>;
+
+/** Second argument of the export hooks. Both hooks observe: every plugin gets this same
+ *  payload and return values are ignored, while `options` is the SAME object the exporter
+ *  receives, so mutating it is how a plugin steers the export. */
+export interface ExportHookPayload {
+  /** Export name: "png", "blob", "download", or any plugin-declared key. */
+  format: string;
+  /** Capture defaults merged with the options passed to this export call. */
+  options: any;
+}
 
 /* =========================
  * Plugin system
@@ -284,17 +343,18 @@ export interface SnapdomPlugin {
   beforeRender?(context: CaptureContext): void | Promise<void>;
   afterRender?(context: CaptureContext): void | Promise<void>;
 
-  /** Runs before EACH export. */
-  beforeExport?(context: CaptureContext): void | Promise<void>;
+  /** Runs before EACH export. Mutate `payload.options` to change what the exporter does. */
+  beforeExport?(context: CaptureContext, payload: ExportHookPayload): void | Promise<void>;
   /**
-   * Runs after EACH export; returning a value will be chained to the next plugin
-   * (transform pipeline). If undefined is returned, the prior result is preserved.
+   * Runs after EACH export. Observational: the return value is ignored and the export's own
+   * result is what the caller gets. To produce a different result, declare that format in
+   * `defineExports` (it can build on `ctx.exports.png()` and friends).
    */
-  afterExport?(context: CaptureContext, result: any): any | Promise<any>;
+  afterExport?(context: CaptureContext, payload: ExportHookPayload & { result: any }): void | Promise<void>;
 
   /**
    * Provide custom exporters (e.g., { pdf: async (ctx, opts) => Blob }).
-   * Keys are exposed on the capture result as helpers (toPdf()) and as index access (result['pdf']()).
+   * Keys are exposed on the capture result as helpers (`toPdf()`) and by name (`to('pdf')`).
    */
   defineExports?(context: CaptureContext): ExportMap | Promise<ExportMap>;
 
@@ -369,6 +429,14 @@ export interface CaptureResult {
    */
   warnings: Array<{ code: string; message: string; detail?: unknown }>;
 
+  /**
+   * Authoritative serialized viewBox/content geometry — the same frozen record the
+   * exporters read, so it can never diverge from `url`.
+   *
+   * THROWS when `needs` is not 'render', for the same reason `url` does.
+   */
+  readonly meta: Readonly<CaptureMeta>;
+
   /** Returns the raw SVG data URL (same as `url`). */
   toRaw(): string;
 
@@ -384,8 +452,9 @@ export interface CaptureResult {
   /** Returns an HTMLImageElement that renders the SVG snapshot. */
   toSvg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
 
-  /** Returns a Canvas with the rasterized snapshot. */
-  toCanvas(options?: Partial<SnapdomOptions>): Promise<HTMLCanvasElement>;
+  /** Returns a Canvas with the rasterized snapshot. `crop` windows the capture in
+   *  `meta` viewBox coordinates, so a long capture can be rasterized page by page. */
+  toCanvas(options?: CanvasExportOptions): Promise<HTMLCanvasElement>;
 
   /** Returns a Blob of the chosen type (svg/png/jpeg/webp). */
   toBlob(options?: BlobOptions & Partial<SnapdomOptions>): Promise<Blob>;
@@ -401,11 +470,9 @@ export interface CaptureResult {
   download(options?: DownloadOptions & Partial<SnapdomOptions>): Promise<void>;
 
   /**
-   * Custom exporters exposed by plugins:
-   * - As helpers: a plugin returning { pdf: (...) => ... } also enables result.toPdf(...)
-   * - As index access: result["pdf"](...)
-   *
-   * Since keys are not known ahead of time, we allow index access.
+   * Custom exporters exposed by plugins: a plugin returning { pdf: (...) => ... } enables
+   * `result.toPdf(...)` and `result.to('pdf', ...)`. Those helper names are not known ahead
+   * of time, hence the index signature.
    */
   [key: string]: any;
 }
@@ -513,5 +580,50 @@ export declare function preCache(
   root?: Element | Document,
   options?: PreCacheOptions
 ): Promise<void>;
+
+/* =========================
+ * Plugin registry
+ * =========================
+ * One runtime owns the registry: the `@zumer/snapdom/plugins` subpath re-exports these same
+ * bindings from the root module, so registering through either reaches the same list.
+ */
+
+/** Register plugins globally, deduped by name. A global plugin must run to 'render'. */
+export declare function registerPlugins(...defs: PluginUse[]): void;
+/** Drop every globally registered plugin. */
+export declare function clearPlugins(): void;
+/** The globally registered plugin instances, in registration order. */
+export declare function getGlobalPlugins(): SnapdomPlugin[];
+/** Resolve a factory/tuple/instance into a plugin instance. */
+export declare function normalizePlugin(spec: PluginUse): SnapdomPlugin | null;
+/** Ordered capture stages, cheapest first. */
+export declare const STAGES: readonly CaptureStage[];
+/** The stage a plugin gets when it declares nothing. */
+export declare const DEFAULT_STAGE: CaptureStage;
+/**
+ * Validate a declared stage, naming `pluginName` in the error. Returns the deepest supported
+ * stage when `value` is undefined/null, so a plugin that declares nothing runs the full pipeline.
+ */
+export declare function assertNeeds(
+  pluginName: string,
+  value?: unknown,
+  supported?: readonly CaptureStage[]
+): CaptureStage;
+
+declare module "@zumer/snapdom/plugins" {
+  export {
+    registerPlugins,
+    clearPlugins,
+    getGlobalPlugins,
+    normalizePlugin,
+    STAGES,
+    DEFAULT_STAGE,
+    assertNeeds,
+  };
+}
+
+declare module "@zumer/snapdom/preCache" {
+  export { preCache };
+}
 
 export {};

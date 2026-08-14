@@ -62,10 +62,10 @@ Plus `defineExports` for adding custom export methods.
 | `beforeSnap` | Before anything happens | Validate options, set defaults |
 | `beforeClone` | Before DOM is cloned | Pre-process live DOM (undo in afterClone) |
 | `afterClone` | After clone is created | Transform clone: overlays, styles, replacements |
-| `beforeRender` | Before SVG serialization | Modify SVG string or rendering options |
-| `afterRender` | After SVG is rendered | Post-process rendered output |
-| `beforeExport` | Before each export call | Modify export options (quality, type) |
-| `afterExport` | After each export call | Transform export output (chained) |
+| `beforeRender` | Before SVG serialization | Adjust the clone or the CSS that is about to be serialized |
+| `afterRender` | After SVG is rendered | Read the serialized output (`ctx.svgString`, `ctx.dataURL`, `ctx.meta`) |
+| `beforeExport` | Before each export call | Adjust export options (quality, size) |
+| `afterExport` | After each export call | Observe the export result (log, upload, measure) |
 | `defineExports` | During plugin registration | Add new export formats (toPdf, toAscii) |
 | `resolveNode` | Per node, during cloning | Replace/skip individual nodes (redaction, custom widgets) |
 
@@ -102,12 +102,19 @@ Keep it fast: it runs on every node of the captured subtree. Prefer cheap checks
 
 ### Hook Context
 
-Every hook receives a single context object (`ctx`):
+Every capture hook (`beforeSnap` → `afterRender`, and `afterSnap`) receives **the same
+single context object** (`ctx`): the normalized options at the top level, plus each stage's
+product as it is produced. It is the very object the pipeline reads, so an option you change
+in `beforeSnap` is the option the capture uses. The export hooks get a per-export VIEW of
+that context (same option values, plus the `export` block for the call at hand), so there
+you steer the export through `payload.options`, not through `ctx`.
 
 ```js
 {
   // Input & options
   element,           // The capture root — set on every path, including burst's diff recapture
+  options,           // Self-reference to this same ctx (for plugins written against ctx.options)
+  needs,             // How far this capture runs: 'dom' | 'clone' | 'render'
   debug,             // Mode flags
   scale, dpr,        // Resolution
   width, height,     // Dimensions
@@ -123,15 +130,19 @@ Every hook receives a single context object (`ctx`):
   clip, engine,
 
   // Intermediate values (available after their stage)
-  clone,             // Cloned DOM tree
-  classCSS, styleCache,
+  clone,             // Cloned DOM tree — from afterClone through afterRender
+  classCSS, styleCache, nodeMap,
   fontsCSS, baseCSS,
-  svgString,         // After beforeRender
-  dataURL,           // After afterRender
+  svgString,         // Serialized SVG source — in afterRender (released right after it)
+  dataURL,           // The capture's data: URL — from afterRender on
+  meta,              // Frozen render geometry (viewBox, content origin, clip) after render
+                     // clone/nodeMap/styleCache/svgString are released once afterRender has
+                     // run: keeping them would make every live result retain the whole tree.
 
   // During export hooks (defineExports and beforeExport/afterExport)
   export: {
     type, options, url,
+    requestedOptions, // Exactly what this toXxx() call passed, frozen (omitted keys stay omitted)
     svgString,       // () => string — LAZY decode of the serialized SVG (call it)
   },
   artifacts: {       // Render CSS the pipeline already holds — never reverse-parse the url
@@ -143,11 +154,40 @@ Every hook receives a single context object (`ctx`):
 }
 ```
 
+### The export hooks take a payload
+
+`beforeExport` and `afterExport` receive a second argument describing the export at hand:
+
+```js
+beforeExport(ctx, { format, options })          // format: 'png' | 'blob' | 'download' | your key
+afterExport (ctx, { format, options, result })  // result: what the exporter returned
+```
+
+`options` is the SAME object the exporter is about to receive, so mutating it in
+`beforeExport` steers that export:
+
+```js
+{
+  name: 'jpeg-quality',
+  beforeExport(ctx, { format, options }) {
+    if (format === 'jpeg') options.quality = 0.6
+  },
+}
+```
+
+Both hooks **observe** the result: every plugin receives the same payload, return values are
+ignored, and the caller gets what the exporter produced. To hand back something else, declare
+that format in `defineExports` (it can build on `ctx.exports.png()` and friends).
+
 ### Hook Rules
 
 1. Hooks can be sync or async. SnapDOM awaits all hooks.
-2. Mutate `ctx` freely, e.g. change `ctx.backgroundColor` in `beforeSnap`.
-3. `afterExport` return values are chained to the next plugin.
+2. Mutate `ctx` freely, e.g. change `ctx.backgroundColor`, `ctx.scale`, `ctx.width`,
+   `ctx.clip`, `ctx.outerTransforms` or `ctx.outerShadows` in `beforeSnap`: everything that
+   shapes the picture is read after that hook has run. The exceptions are the options that
+   pick the capture PATH, resolved before any hook can run: `plugins`, `needs`, `engine`,
+   `burst`, `invalidate` and `cache`. Setting those in a hook has no effect.
+3. Export hooks observe; `defineExports` is where an export result is decided.
 4. DOM mutations in `beforeClone` must be undone. The live page should not be affected.
 
 ### How far the pipeline runs: `needs`
@@ -313,8 +353,8 @@ export function example(options = {}) {
 
     // beforeRender(ctx) {},
     // afterRender(ctx) {},
-    // beforeExport(ctx) {},
-    // afterExport(ctx) {},
+    // beforeExport(ctx, { format, options }) {},
+    // afterExport(ctx, { format, options, result }) {},
     // defineExports(ctx) { return { format: async (ctx, opts) => {} }; },
   };
 }

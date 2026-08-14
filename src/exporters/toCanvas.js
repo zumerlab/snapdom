@@ -44,6 +44,49 @@ function clampSvgTextRasterSize(svg, session) {
 }
 
 /**
+ * Window an SVG before decode. The crop is expressed in the serialized SVG's viewBox
+ * coordinates (result.meta), so a document exporter can rasterize a long capture page by
+ * page instead of allocating one bitmap past the browser decode limits.
+ * @param {string} svg @param {{x:number,y:number,width:number,height:number}} crop
+ * @returns {string}
+ */
+function cropSvgText(svg, crop) {
+  const nums = ['x', 'y', 'width', 'height'].map(k => Number(crop?.[k]))
+  if (!nums.every(Number.isFinite) || nums[2] <= 0 || nums[3] <= 0) {
+    throw new RangeError('[snapdom] canvas crop requires finite x/y and positive width/height')
+  }
+  const head = svg.match(/<svg\b[^>]*>/i)
+  if (!head) throw new Error('[snapdom] cannot crop a non-SVG capture')
+  const tag = head[0]
+  const vb = (tag.match(/\bviewBox="([^"]+)"/i) || [])[1]
+  const parts = String(vb || '').trim().split(/[\s,]+/).map(Number)
+  if (parts.length !== 4 || !parts.every(Number.isFinite) || parts[2] <= 0 || parts[3] <= 0) {
+    throw new Error('[snapdom] cannot crop an SVG without a finite viewBox')
+  }
+  const [vx, vy, vw, vh] = parts
+  const left = Math.max(vx, nums[0])
+  const top = Math.max(vy, nums[1])
+  const right = Math.min(vx + vw, nums[0] + nums[2])
+  const bottom = Math.min(vy + vh, nums[1] + nums[3])
+  if (!(right > left) || !(bottom > top)) {
+    throw new RangeError('[snapdom] canvas crop does not intersect the SVG viewBox')
+  }
+  // The header's width/height may already be a scaled output size: keep that density so a
+  // page slice rasterizes at the same resolution as the whole capture would.
+  const attrW = parseFloat((tag.match(/\bwidth="([\d.]+)/i) || [])[1])
+  const attrH = parseFloat((tag.match(/\bheight="([\d.]+)/i) || [])[1])
+  const densityX = Number.isFinite(attrW) && attrW > 0 ? attrW / vw : 1
+  const densityY = Number.isFinite(attrH) && attrH > 0 ? attrH / vh : 1
+  const width = Math.max(1, (right - left) * densityX)
+  const height = Math.max(1, (bottom - top) * densityY)
+  const next = tag
+    .replace(/(\bwidth=")[^"]*/i, `$1${width}`)
+    .replace(/(\bheight=")[^"]*/i, `$1${height}`)
+    .replace(/(\bviewBox=")[^"]*/i, `$1${left} ${top} ${right - left} ${bottom - top}`)
+  return svg.replace(tag, next)
+}
+
+/**
  * Converts a data URL to a Canvas element.
  * Safari: render offscreen in a per-call temporary slot to avoid flicker, then remove it.
  *
@@ -318,12 +361,13 @@ async function waitForImgPaint(img, verify) {
  *   scale?:number,
  *   dpr?:number,
  *   meta?:object,
+ *   crop?:{x:number,y:number,width:number,height:number},
  *   backgroundColor?: string // <- NUEVO: color opcional para aplanar fondo
  * }} options
  * @returns {Promise<HTMLCanvasElement>}
  */
 export async function toCanvas(url, options) {
-  let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor } = options
+  let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor, crop = null } = options
 
   // SVG payloads: the old path decoded the whole multi-MB data URL just to read the <svg>
   // header (#425 clamp check) and again for the Safari box-shadow rewrite, re-encoding after
@@ -334,15 +378,22 @@ export async function toCanvas(url, options) {
   let src = url
   let shadowNaturalOnly = false
   let needsPaintVerify = false
+  // Cropping IS a viewBox rewrite, so it only exists for the serialized SVG payload. Any
+  // other source would rasterize whole, handing a document exporter a full bitmap where it
+  // asked for one page: fail as loudly as a malformed window instead of degrading silently.
+  if (crop && !isSvgDataURL(url)) {
+    throw new RangeError('[snapdom] canvas crop requires an SVG capture payload')
+  }
   if (isSvgDataURL(url)) {
     const head = (peekSvgHeader(url).match(/<svg\b[^>]*>/i) || [])[0] || ''
     const w = parseFloat((head.match(/\bwidth="([\d.]+)/i) || [])[1])
     const h = parseFloat((head.match(/\bheight="([\d.]+)/i) || [])[1])
     const oversized = Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0 &&
       Math.min(1, MAX_RASTER_SIDE / w, MAX_RASTER_SIDE / h, Math.sqrt(MAX_RASTER_AREA / (w * h))) < 1
-    if (oversized || isSafari()) {
+    if (crop || oversized || isSafari()) {
       try {
         let svgText = decodeSvgFromDataURL(url)
+        if (crop) svgText = cropSvgText(svgText, crop)
         if (isSafari()) {
           const fixed = await fixSafariShadows(svgText)
           svgText = fixed.svg
@@ -351,9 +402,14 @@ export async function toCanvas(url, options) {
           // (#219770/#394) — only then is the verified-draw ladder worth waiting on.
           needsPaintVerify = /@font-face|data:image\//i.test(svgText)
         }
-        if (oversized) svgText = clampSvgTextRasterSize(svgText, options.__session) // #425: keep within decode limits
+        // A crop can turn an oversized source into a safe page-sized decode: clamp the
+        // TRANSFORMED header, not the original full document.
+        if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options.__session) // #425: keep within decode limits
         src = encodeSvgToDataURL(svgText)
-      } catch { src = url }
+      } catch (error) {
+        if (crop) throw error
+        src = url
+      }
     }
   }
 
@@ -375,8 +431,13 @@ export async function toCanvas(url, options) {
   // content box (w0/h0): under outerShadows an asymmetric shadow/blur/outline
   // bleeds unevenly, so w0/h0's aspect ratio no longer matches the actual
   // rasterized image and stretches it.
-  const refW = Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : natW
-  const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : natH
+  // A crop rewrote the SVG's intrinsic size and viewBox before decode, so its decoded
+  // bitmap is the authoritative aspect reference: the full capture's meta would make a
+  // width-only/height-only crop inherit the whole document's ratio and stretch the page.
+  const refW = crop ? natW
+    : Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : natW
+  const refH = crop ? natH
+    : Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : natH
 
   let outW, outH
   const hasW = Number.isFinite(optW)
