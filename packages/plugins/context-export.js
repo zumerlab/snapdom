@@ -20,6 +20,11 @@
  * Output line shape (outline format):
  *   tag[#id][.class] [x,y wxh] "visible text" {state}
  *
+ * The snapshot is taken during the capture, not when toContext() is called: a deferred read
+ * would describe whatever the page looks like THEN, which is a different instant from the
+ * image. toContext() only formats what was already frozen — `format` and `maxTextLength`
+ * still apply per call; `maxNodes` and `geometry` are decided when the snapshot is taken.
+ *
  * @param {Object} [options]
  * @param {'outline'|'json'} [options.format='outline']
  * @param {number} [options.maxTextLength=120] - Per-node text cap (ellipsised)
@@ -77,31 +82,45 @@ export function contextExport(options = {}) {
     name: 'context-export',
     needs,
 
+    // The freeze. Everything below reads the live DOM, so it has to happen while the
+    // capture's instant is still the page's instant.
+    beforeClone(ctx) {
+      const el = ctx.element
+      const state = {
+        count: 0,
+        truncated: false,
+        // The capture's ONE exclusion policy (src/core/context.js). Absent only when a
+        // caller drives the hook with a hand-built context.
+        exclude: typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER,
+      }
+      const root = buildNode(el, el.getBoundingClientRect(), maxNodes, geometry, state)
+      ctx.__contextSnapshot = { root, truncated: state.truncated, nodes: state.count }
+    },
+
     defineExports() {
       return {
         context: async (ctx, opts = {}) => {
-          const el = ctx.element
-          if (!el) throw new Error('[snapdom] context-export: no source element on context')
+          const snap = ctx.__contextSnapshot
+          if (!snap) throw new Error('[snapdom] context-export: this capture carries no snapshot (it never ran beforeClone). It is not re-read on demand — that would be a different instant.')
           const _format = opts.format ?? format
           const _maxText = opts.maxTextLength ?? maxTextLength
-          const _maxNodes = opts.maxNodes ?? maxNodes
           const _geometry = opts.geometry ?? geometry
 
-          const rootRect = el.getBoundingClientRect()
-          const state = { count: 0, truncated: false, ctx }
-          const tree = buildNode(el, rootRect, _maxText, _maxNodes, _geometry, state)
+          const root = snap.root && project(snap.root, _maxText, _geometry)
           if (_format === 'json') {
-            return { root: tree, truncated: state.truncated, nodes: state.count }
+            return { root, truncated: snap.truncated, nodes: snap.nodes }
           }
           const lines = []
-          renderOutline(tree, 0, lines)
-          if (state.truncated) lines.push(`… (truncated at ${_maxNodes} nodes)`)
+          renderOutline(root, 0, lines)
+          if (snap.truncated) lines.push(`… (truncated at ${maxNodes} nodes)`)
           return lines.join('\n')
         }
       }
     }
   }
 }
+
+const NEVER = () => false
 
 function visibleText(node) {
   let out = ''
@@ -111,23 +130,20 @@ function visibleText(node) {
   return out.replace(/\s+/g, ' ').trim()
 }
 
-/** True when the capture pipeline would drop or blank this node. `exclude` is the redaction
- *  feature: the image already honours it, and a semantic export that did not would hand the
- *  redacted text straight to a model. Mirrors the decision in src/core/clone.js deepClone —
- *  that block is the source of truth; keep the two in step. */
-function isExcluded(el, ctx) {
-  if (!ctx) return false
-  if (el.getAttribute?.('data-capture') === 'exclude') return true
-  for (const sel of ctx.exclude || []) {
-    try { if (el.matches?.(sel)) return true } catch { /* invalid selector: clone warns */ }
+/** What actually paints under `el`, mirroring deepClone: a <slot> renders its assigned
+ *  elements, and an open shadow root renders in place of the host's light children —
+ *  except unassigned ones, which core clones after the shadow fragment. Walking only
+ *  `children` made every shadow-DOM component invisible to the export. */
+function renderedChildren(el) {
+  if (el.localName === 'slot') {
+    const assigned = el.assignedElements?.({ flatten: true }) || []
+    return assigned.length ? assigned : el.children
   }
-  for (const pred of ctx.excludePredicates || []) {
-    try { if (pred(el)) return true } catch { /* clone warns */ }
-  }
-  if (typeof ctx.filter === 'function') {
-    try { if (!ctx.filter(el)) return true } catch { /* clone warns */ }
-  }
-  return false
+  const sr = el.shadowRoot
+  if (!sr) return el.children
+  const slotted = new Set()
+  for (const s of sr.querySelectorAll('slot')) for (const n of s.assignedElements()) slotted.add(n)
+  return [...sr.children, ...Array.from(el.children).filter((c) => !slotted.has(c))]
 }
 
 function isHidden(el) {
@@ -159,9 +175,11 @@ function nodeState(el) {
   return Object.keys(s).length ? s : null
 }
 
-function buildNode(el, rootRect, maxText, maxNodes, geometry, state) {
+function buildNode(el, rootRect, maxNodes, geometry, state) {
   if (state.count >= maxNodes) { state.truncated = true; return null }
-  if (isExcluded(el, state.ctx)) return null
+  // Excluded subtrees are not walked at all: `exclude` is the redaction feature, and a
+  // semantic export that ignored it would hand the redacted text straight to a model.
+  if (state.exclude(el)) return null
   state.count++
   const node = { tag: el.localName }
   if (el.id) node.id = el.id
@@ -177,14 +195,14 @@ function buildNode(el, rootRect, maxText, maxNodes, geometry, state) {
     } catch { }
   }
   const text = visibleText(el)
-  if (text) node.text = text.length > maxText ? text.slice(0, maxText - 1) + '…' : text
+  if (text) node.text = text
   const st = nodeState(el)
   if (st) node.state = st
 
   const children = []
-  for (let c = el.firstElementChild; c; c = c.nextElementSibling) {
-    if (SKIP_TAGS.has(c.tagName) || isHidden(c) || isExcluded(c, state.ctx)) continue
-    const child = buildNode(c, rootRect, maxText, maxNodes, geometry, state)
+  for (const c of renderedChildren(el)) {
+    if (SKIP_TAGS.has(c.tagName) || isHidden(c)) continue
+    const child = buildNode(c, rootRect, maxNodes, geometry, state)
     if (child) children.push(child)
   }
   if (children.length) node.children = children
@@ -199,6 +217,19 @@ function buildNode(el, rootRect, maxText, maxNodes, geometry, state) {
     return children[0]
   }
   return node
+}
+
+/** Export-time formatting of the frozen snapshot: text caps and geometry are presentation,
+ *  so they stay per-call, and neither touches the DOM. */
+function project(node, maxText, geometry) {
+  const out = { tag: node.tag }
+  if (node.id) out.id = node.id
+  if (node.class) out.class = node.class
+  if (geometry && node.box) out.box = node.box
+  if (node.text) out.text = node.text.length > maxText ? node.text.slice(0, maxText - 1) + '…' : node.text
+  if (node.state) out.state = node.state
+  if (node.children) out.children = node.children.map((c) => project(c, maxText, geometry))
+  return out
 }
 
 function renderOutline(node, depth, lines) {

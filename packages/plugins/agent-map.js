@@ -80,12 +80,12 @@ export function agentMap(options = {}) {
         ctx.element,
         interactiveSelector,
         semantic ? semanticSelector : null,
-        fields
+        fields,
+        // The capture's ONE exclusion policy (src/core/context.js). Absent only when a
+        // caller drives the hook with a hand-built context.
+        typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER
       );
-      // snapdom's export ctx is a fresh spread of ctx.options, so we stash on
-      // both for the agentMap() call below to find it.
       ctx.__agentMapMeta = meta;
-      if (ctx.options) ctx.options.__agentMapMeta = meta;
 
       if (image === 'annotated') {
         addAnnotations(ctx.clone, meta.map, labelStyle);
@@ -319,20 +319,50 @@ function deriveState(el, role, rect) {
 
 /* ── Map extraction ─────────────────────────────── */
 
-function extractMap(element, interactiveSelector, semanticSelector, fields) {
+const NEVER = () => false;
+
+/** What actually paints under `el`, mirroring deepClone: a <slot> renders its assigned
+ *  elements, and an open shadow root renders in place of the host's light children —
+ *  except unassigned ones, which core clones after the shadow fragment. */
+function renderedChildren(el) {
+  if (el.localName === 'slot') {
+    const assigned = el.assignedElements?.({ flatten: true }) || [];
+    return assigned.length ? assigned : el.children;
+  }
+  const sr = el.shadowRoot;
+  if (!sr) return el.children;
+  const slotted = new Set();
+  for (const s of sr.querySelectorAll('slot')) for (const n of s.assignedElements()) slotted.add(n);
+  return [...sr.children, ...Array.from(el.children).filter((c) => !slotted.has(c))];
+}
+
+function extractMap(element, interactiveSelector, semanticSelector, fields, shouldExclude) {
   const rootRect = element.getBoundingClientRect();
   const map = [];
   let i = 0;
   const tracked = new Set();
 
-  for (const el of element.querySelectorAll(interactiveSelector)) {
+  // querySelectorAll never matches the root and never crosses a shadow boundary, so a
+  // capture root that IS a button, and every shadow-DOM control, were missing from the
+  // map while both render in the image. Walk what core clones instead, and prune excluded
+  // subtrees so a redacted node cannot come back as an actionable badge.
+  const els = [];
+  const visit = (el) => {
+    if (shouldExclude(el)) return;
+    els.push(el);
+    for (const c of renderedChildren(el)) visit(c);
+  };
+  visit(element);
+
+  for (const el of els) {
+    if (!el.matches(interactiveSelector)) continue;
     const entry = buildEntry(el, rootRect, i, fields, 'interactive');
     if (entry) { map.push(entry); tracked.add(el); i++; }
   }
 
   if (semanticSelector) {
-    for (const el of element.querySelectorAll(semanticSelector)) {
-      if (tracked.has(el)) continue;
+    for (const el of els) {
+      if (tracked.has(el) || !el.matches(semanticSelector)) continue;
       const entry = buildEntry(el, rootRect, i, fields, 'semantic');
       if (entry) { map.push(entry); i++; }
     }

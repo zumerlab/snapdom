@@ -69,6 +69,27 @@ export function createContext(options = {}) {
     else if (e != null) console.warn('[snapdom] Ignored invalid exclude entry (expected selector string or predicate):', e)
   }
   const excludeMode = options.excludeMode ?? options.filterMode ?? 'hide'
+  const filterFn = typeof options.filter === 'function' ? options.filter : null
+
+  // THE exclusion policy, compiled once. deepClone applies exactly these four rules per node
+  // (src/core/clone.js: data-capture, selectors, predicates, legacy keep-polarity filter);
+  // everything else that decides what a capture contains — semantic exports, agent maps —
+  // asks here instead of reimplementing them, because a node the user redacted from the
+  // image must not survive in a text view of the same capture.
+  const shouldExclude = (el) => {
+    if (!el || el.nodeType !== 1) return false
+    if (el.getAttribute('data-capture') === 'exclude') return true
+    for (const sel of excludeSelectors) {
+      try { if (el.matches(sel)) return true } catch { /* invalid selector: deepClone warns */ }
+    }
+    for (const pred of excludePredicates) {
+      try { if (pred(el)) return true } catch { /* deepClone warns */ }
+    }
+    if (filterFn) {
+      try { if (!filterFn(el)) return true } catch { /* deepClone warns */ }
+    }
+    return false
+  }
 
   return {
     // Debug & perf
@@ -81,6 +102,8 @@ export function createContext(options = {}) {
     excludeMode,
     filter: options.filter ?? null,
     filterMode: options.filterMode ?? excludeMode,
+    /** @type {(el: Element) => boolean} true when the capture drops or blanks this node. */
+    shouldExclude,
 
     // Placeholders
     placeholders: options.placeholders !== false, // default true
