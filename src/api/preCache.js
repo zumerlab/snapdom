@@ -4,6 +4,7 @@ import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules
 import { snapFetch } from '../modules/snapFetch.js'
 import { cache } from '../core/cache.js'
 import { URL_PROPS } from '../modules/background.js'
+import { compileIconFontMatchers } from '../modules/iconFonts.js'
 
 /**
  * Network prefetch: preloads images, background/mask/border-image URLs and (per
@@ -124,6 +125,7 @@ export async function preCache(root = document, options = {}) {
           localFonts: options.localFonts,
           useProxy: options.useProxy ?? useProxy,
           fontStylesheetDomains: options.fontStylesheetDomains,
+          iconMatchers: compileIconFontMatchers(options.iconFonts),
         })
       }
     } catch {}

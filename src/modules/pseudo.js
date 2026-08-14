@@ -647,7 +647,7 @@ const { text: cleanContent, incs } =
       const color = style.color || '#000'
       const transform = style.transform
 
-      const isIconFont2 = isIconFont(fontFamily)
+      const isIconFont2 = isIconFont(fontFamily, options?.__iconMatchers)
 
 const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasBg = bg && bg !== 'none'

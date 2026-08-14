@@ -396,7 +396,7 @@ function extractSrcUrls(srcValue, baseHref) {
 }
 
 /** @param {string} cssBlock @param {string} baseHref */
-async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
+async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '', iconMatchers) {
   let out = cssBlock
   for (const m of cssBlock.matchAll(URL_RE)) {
     const raw = extractURL(m[0])
@@ -405,7 +405,7 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
     if (!abs.startsWith('http') && !abs.startsWith('data:')) {
       try { abs = new URL(abs, baseHref || location.href).href } catch {}
     }
-    if (isIconFont(abs)) continue
+    if (isIconFont(abs, iconMatchers)) continue
 
     // `cache.resource` is the ONLY proof the payload exists, here and at every other font
     // src below. It is FIFO-capped, so a font fetched earlier can be gone; having merely
@@ -522,7 +522,7 @@ function docCacheId(doc) {
 }
 
 // ---- cache key per capture signature (avoid cross-pollution between different targets) ----
-function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints) {
+function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers) {
   const req = Array.from(required || []).sort().join('|')
   // The emitted CSS is SUBSETTED by unicode-range against the codepoints the captured
   // subtree actually uses, so two captures of the same families but different text are not
@@ -542,7 +542,11 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
   const px = useProxy || ''
   const fd = (fontStylesheetDomains || []).map(s => String(s).toLowerCase()).sort().join('|')
   const dc = docCacheId(doc || document)
-  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}::cp=${cp}::n=${n}`
+  // iconFonts decides which families are SKIPPED, so it changes the emitted CSS. Leaving it
+  // out meant the first capture of a page decided for every later one: `iconFonts: 'Brand'`
+  // and a plain capture of the same subtree shared one entry, and whichever ran first won.
+  const ic = (iconMatchers || []).map(rx => String(rx)).sort().join('|')
+  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}::cp=${cp}::n=${n}::ic=${ic}`
 }
 
 // ----------------------------------------------------------------------------
@@ -599,7 +603,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
     if (rule.type === CSSRule.FONT_FACE_RULE) {
       const famRaw = (rule.style.getPropertyValue('font-family') || '').trim()
       const family = pickPrimaryFamily(famRaw)
-      if (!family || isIconFont(family)) continue
+      if (!family || isIconFont(family, ctx.iconMatchers)) continue
 
       // An ABSENT descriptor is not the same as an explicit default on a variable font: with
       // no font-weight the browser leaves the wght axis free across the font's whole range,
@@ -652,7 +656,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       ctx.coveredFamilies.add(family.toLowerCase())
 
       if (/url\(/i.test(srcRaw)) {
-        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy)
+        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy, ctx.iconMatchers)
         await emitFace(`@font-face{font-family:${family};src:${inlinedSrc};${descriptors}}`)
       } else {
         await emitFace(`@font-face{font-family:${family};src:${srcRaw};${descriptors}}`)
@@ -684,6 +688,7 @@ export async function embedCustomFonts({
   localFonts = [],
   useProxy = '',
   fontStylesheetDomains = [],
+  iconMatchers = [],
   doc = document,
 } = {}) {
   // ---------- Normalize inputs ----------
@@ -789,7 +794,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 
-  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints)
+  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers)
   if (cache.resource?.has(cacheKey)) {
     return cache.resource.get(cacheKey)
   }
@@ -804,7 +809,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     const cssText = styleTag.textContent || ''
     for (const m of cssText.matchAll(IMPORT_ANY_RE_LOCAL)) {
       const u = (m[2] || m[4] || '').trim()
-      if (!u || isIconFont(u)) continue
+      if (!u || isIconFont(u, iconMatchers)) continue
       const hasLink = !!doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)
       if (!hasLink) importUrls.push(u)
     }
@@ -843,7 +848,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   for (const link of linkNodes) {
     try {
-      if (isIconFont(link.href)) continue
+      if (isIconFont(link.href, iconMatchers)) continue
 
       let cssText = ''
       let sameOrigin = false
@@ -869,7 +874,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!cssText) {
         const res = await snapFetch(link.href, { as: 'text', useProxy })
         if (res?.ok && typeof res.data === 'string') cssText = res.data
-        if (isIconFont(link.href)) continue
+        if (isIconFont(link.href, iconMatchers)) continue
       }
 
       // Flatten nested @import and rewrite relative urls per-level using link.href as base
@@ -879,7 +884,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       for (const face of cssText.match(FACE_RE) || []) {
         const famRaw = getFontFaceDeclaration(face, 'font-family')
         const family = pickPrimaryFamily(famRaw)
-        if (!family || isIconFont(family)) continue
+        if (!family || isIconFont(family, iconMatchers)) continue
 
         const weightSpec = getFontFaceDeclaration(face, 'font-weight', '400')
         const styleSpec = getFontFaceDeclaration(face, 'font-style', 'normal')
@@ -902,7 +907,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         coveredFamilies.add(family.toLowerCase())
 
         const newFace = /url\(/i.test(srcRaw)
-          ? await inlineUrlsInCssBlock(face, link.href, useProxy)
+          ? await inlineUrlsInCssBlock(face, link.href, useProxy, iconMatchers)
           : face
         facesOut += newFace
       }
@@ -922,6 +927,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     provisionalFaces,
     simpleExcluder: exclude ? buildSimpleExcluder(exclude) : null,
     useProxy,
+    iconMatchers,
     visitedSheets: new Set(),
     depth: 0
   }
@@ -950,7 +956,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const p of provisionalFaces) {
     if (coveredFamilies.has(p.family)) continue
     finalCSS += /url\(/i.test(p.srcRaw)
-      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy)
+      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy, iconMatchers)
       : p.block
   }
 
@@ -959,7 +965,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     for (const f of doc.fonts || []) {
       if (!f || !f.family || f.status !== 'loaded' || !f._snapdomSrc) continue
       const fam = String(f.family).replace(/^['"]+|['"]+$/g, '')
-      if (isIconFont(fam)) continue
+      if (isIconFont(fam, iconMatchers)) continue
       if (!requiredIndex.has(fam.toLowerCase())) continue
 
       if (exclude?.families && exclude.families.some(n => String(n).toLowerCase() === fam.toLowerCase())) {
@@ -993,7 +999,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const font of localFonts) {
     if (!font || typeof font !== 'object') continue
     const family = String(font.family || '').replace(/^['"]+|['"]+$/g, '')
-    if (!family || isIconFont(family)) continue
+    if (!family || isIconFont(family, iconMatchers)) continue
     if (!requiredIndex.has(family.toLowerCase())) continue
     if (exclude?.families && exclude.families.some(n => String(n).toLowerCase() === family.toLowerCase())) continue
 

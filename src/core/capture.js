@@ -249,6 +249,7 @@ export async function captureDOM(element, options) {
         localFonts: state.options.localFonts,
         useProxy: state.options.useProxy,
         fontStylesheetDomains: state.options.fontStylesheetDomains,
+        iconMatchers: state.options.__iconMatchers,
         doc: ownerDoc
       })
     })

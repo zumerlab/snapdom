@@ -3,6 +3,7 @@
  */
 
 import { normalizeCachePolicy } from './cache.js'
+import { compileIconFontMatchers } from '../modules/iconFonts.js'
 
 /**
  * Creates a normalized capture context for SnapDOM.
@@ -116,6 +117,10 @@ export function createContext(options = {}) {
     embedFonts: options.embedFonts ?? 'auto',
     iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts
       : (options.iconFonts ? [options.iconFonts] : []),
+    // Compiled here, once, and passed explicitly to every isIconFont call: this used to be
+    // a module-level array each capture overwrote, so concurrent captures with different
+    // lists read each other's matchers.
+    __iconMatchers: compileIconFontMatchers(options.iconFonts),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
     fontStylesheetDomains: Array.isArray(options.fontStylesheetDomains) ? options.fontStylesheetDomains : [],

@@ -9,67 +9,59 @@ beforeEach(async () => {
   mod = await import('../src/modules/iconFonts.js') // ESM dynamic import
 })
 
-describe('setSessionIconFonts (per-capture matchers)', () => {
+describe('compileIconFontMatchers (per-capture matchers)', () => {
   it('acepta string y lo convierte a RegExp (case-insensitive)', () => {
-    const { setSessionIconFonts, isIconFont } = mod
-    setSessionIconFonts('acme-brand')
-    expect(isIconFont('ACME-BRAND pack')).toBe(true)
+    const { compileIconFontMatchers, isIconFont } = mod
+    const m = compileIconFontMatchers('acme-brand')
+    expect(isIconFont('ACME-BRAND pack', m)).toBe(true)
     // control: no matchea algo que no contenga el patrón y tampoco cae en la heurística
-    expect(isIconFont('qwerty')).toBe(false)
+    expect(isIconFont('qwerty', m)).toBe(false)
   })
 
   it('acepta RegExp', () => {
-    const { setSessionIconFonts, isIconFont } = mod
-    setSessionIconFonts(/brandx/i)
-    expect(isIconFont('This is BrAnDx kit')).toBe(true)
-    expect(isIconFont('no-match-here')).toBe(false)
+    const { compileIconFontMatchers, isIconFont } = mod
+    const m = compileIconFontMatchers(/brandx/i)
+    expect(isIconFont('This is BrAnDx kit', m)).toBe(true)
+    expect(isIconFont('no-match-here', m)).toBe(false)
   })
 
   it('acepta arrays mezclando strings y RegExp', () => {
-    const { setSessionIconFonts, isIconFont } = mod
-    setSessionIconFonts(['foo-lib', /bar-pkg/i])
-    expect(isIconFont('FOO-LIB icons')).toBe(true)
-    expect(isIconFont('BAR-PKG family')).toBe(true)
-    expect(isIconFont('none')).toBe(false)
+    const { compileIconFontMatchers, isIconFont } = mod
+    const m = compileIconFontMatchers(['foo-lib', /bar-pkg/i])
+    expect(isIconFont('FOO-LIB icons', m)).toBe(true)
+    expect(isIconFont('BAR-PKG family', m)).toBe(true)
+    expect(isIconFont('none', m)).toBe(false)
   })
 
-  it('REEMPLAZA la lista por captura — los matchers no se filtran a capturas posteriores', () => {
-    const { setSessionIconFonts, isIconFont } = mod
-    setSessionIconFonts('leaky-brand')
-    expect(isIconFont('LEAKY-BRAND set')).toBe(true)
-    // Next capture without the option: the previous matcher must be gone.
-    setSessionIconFonts(undefined)
+  it('sin matchers, solo aplican los defaults: nada se filtra entre capturas', () => {
+    const { compileIconFontMatchers, isIconFont } = mod
+    const withOption = compileIconFontMatchers('leaky-brand')
+    expect(isIconFont('LEAKY-BRAND set', withOption)).toBe(true)
+    // A later capture that never passed the option gets its own (empty) list.
+    expect(isIconFont('LEAKY-BRAND set', compileIconFontMatchers(undefined))).toBe(false)
     expect(isIconFont('LEAKY-BRAND set')).toBe(false)
   })
 
-  it('repeated per-capture registration cannot grow the list (replacement semantics)', () => {
-    const { setSessionIconFonts, isIconFont } = mod
-    setSessionIconFonts(['dup-brand', /dup-brand-rx/i])
-    const spy1 = vi.spyOn(RegExp.prototype, 'test')
-    isIconFont('nothing-matches-here')
-    const callsAfterFirstRegistration = spy1.mock.calls.length
-    spy1.mockRestore()
-
-    // Every capture replaces the list, so re-registering the same option 49 times
-    // (animation loop) leaves exactly the same candidate set.
-    for (let i = 0; i < 49; i++) setSessionIconFonts(['dup-brand', /dup-brand-rx/i])
-
-    const spy2 = vi.spyOn(RegExp.prototype, 'test')
-    isIconFont('nothing-matches-here')
-    const callsAfterRepeatedRegistration = spy2.mock.calls.length
-    spy2.mockRestore()
-
-    expect(callsAfterRepeatedRegistration).toBe(callsAfterFirstRegistration)
+  it('dos capturas concurrentes no se pisan los matchers', () => {
+    const { compileIconFontMatchers, isIconFont } = mod
+    // The module-level list this replaced was overwritten at every capture start, so a
+    // second capture starting mid-flight made the first one read ITS list from that point
+    // on. Compiled lists are values: interleaving cannot mix them.
+    const a = compileIconFontMatchers('capture-a-brand')
+    const b = compileIconFontMatchers('capture-b-brand')
+    expect(isIconFont('CAPTURE-A-BRAND', a)).toBe(true)
+    expect(isIconFont('CAPTURE-A-BRAND', b)).toBe(false)
+    expect(isIconFont('CAPTURE-B-BRAND', b)).toBe(true)
+    expect(isIconFont('CAPTURE-B-BRAND', a)).toBe(false)
   })
 
   it('ignora valores inválidos y hace console.warn', () => {
-    const { setSessionIconFonts, isIconFont } = mod
+    const { compileIconFontMatchers, isIconFont } = mod
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    setSessionIconFonts(123)           // inválido
-    setSessionIconFonts({ nope: true }) // inválido
-    expect(warn).toHaveBeenCalled() // cubre rama del console.warn
-    // No debe haber agregado nada que haga matchear "qwerty"
-    expect(isIconFont('qwerty')).toBe(false)
+    const m = compileIconFontMatchers([123, { nope: true }])
+    expect(warn).toHaveBeenCalled()
+    expect(m).toEqual([])
+    expect(isIconFont('qwerty', m)).toBe(false)
     warn.mockRestore()
   })
 })

@@ -1,6 +1,5 @@
 // src/api/snapdom.js
 import { captureDOM } from '../core/capture.js'
-import { setSessionIconFonts } from '../modules/iconFonts.js'
 import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
@@ -138,9 +137,6 @@ async function main(element, userOptions) {
       }
     }
   }
-
-  // Per-capture semantics: REPLACE the matcher list (also clears a previous capture's).
-  setSessionIconFonts(context.iconFonts)
 
   if (!context.snap) {
     // Mantener compat: atajos disponibles en context.snap

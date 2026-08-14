@@ -25,19 +25,23 @@ export const ICON_FONT_URLS = Object.assign({
   materialIconsSharp:   'https://fonts.gstatic.com/s/materialiconssharp/v110/oPWQ_lt5nv4pWNJpghLP75WiFR4kLh3kvmvRImcycg.woff2'
 }, (typeof window !== 'undefined' && window.__SNAPDOM_ICON_FONTS__) || {})
 
-// Matchers for the CAPTURE IN FLIGHT. iconFonts is a per-capture option, so the list is
-// REPLACED at every capture start (setSessionIconFonts) instead of appended forever — a
-// capture's matchers no longer leak into later captures that didn't pass the option.
-// (Concurrent captures with DIFFERENT iconFonts could still interleave through await
-// points; threading matchers through every isIconFont site isn't worth that edge.)
-let sessionIconFonts = []
-
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
 }
 
-/** Replaces the in-flight capture's icon-font matchers (empty/absent clears them). */
-export function setSessionIconFonts(fonts) {
+/**
+ * Compile the `iconFonts` option into matchers, ONCE per capture, in createContext.
+ *
+ * This used to be a module-level `sessionIconFonts` array that every capture overwrote at
+ * its start. Two concurrent captures with different lists interleaved through the await
+ * points and each read the other's matchers, which is the exact bug class v3 removed
+ * everywhere else: per-capture state does not live at module scope, it lives on the
+ * context and is passed explicitly.
+ *
+ * @param {string|RegExp|Array<string|RegExp>} [fonts]
+ * @returns {RegExp[]}
+ */
+export function compileIconFontMatchers(fonts) {
   const list = Array.isArray(fonts) ? fonts : (fonts ? [fonts] : [])
   const out = []
   for (const f of list) {
@@ -45,14 +49,22 @@ export function setSessionIconFonts(fonts) {
     else if (typeof f === 'string') out.push(new RegExp(escapeRegExp(f), 'i'))
     else console.warn('[snapdom] Ignored invalid iconFont value:', f)
   }
-  sessionIconFonts = out
+  return out
 }
 
-export function isIconFont(input) {
+/**
+ * @param {*} input - family name or URL to test
+ * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
+ */
+export function isIconFont(input, matchers) {
   const text = typeof input === 'string' ? input : ''
-  const candidates = [...defaultIconFonts, ...sessionIconFonts]
-  for (const rx of candidates) {
-    if (rx instanceof RegExp && rx.test(text)) return true
+  for (const rx of defaultIconFonts) {
+    if (rx.test(text)) return true
+  }
+  if (matchers) {
+    for (const rx of matchers) {
+      if (rx instanceof RegExp && rx.test(text)) return true
+    }
   }
   if (/icon/i.test(text) || /glyph/i.test(text) || /symbols/i.test(text) || /feather/i.test(text) || /fontawesome/i.test(text)) return true
   return false
