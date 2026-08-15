@@ -4,32 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Where the code lives (2026-08-15)
 
-Three repos. Getting this wrong pushes private work to a public remote, so check the branch before pushing.
+Three SEPARATE repos, three separate clones. Getting this wrong pushes private work to a public remote, so check which directory you are in.
 
-| repo | visibility | holds |
-|---|---|---|
-| `zumerlab/snapdom` | **public** | `main` (shipped, 2.24.x) and `dev` |
-| `zumerlab/snapdom-v3` | private | `main` (default) — the v3 line, this file included |
-| `zumerlab/snapdom-agent` | private | the agent oracle (was `packages/agent`) |
+| repo | visibility | clone | branch |
+|---|---|---|---|
+| `zumerlab/snapdom` | **public** | `~/GitHub/zumerlab/snapdom` | `main` (shipped, 2.24.x) and `dev` |
+| `zumerlab/snapdom-v3` | private | `~/GitHub/zumerlab/snapdom-v3` | `main` (default) — the v3 line, this file included |
+| `zumerlab/snapdom-agent` | private | its own repo | the agent oracle (was `packages/agent`) |
 
-**The two checkouts share ONE git repository.** `/Users/martin/GitHub/zumerlab/snapdom` is a
-worktree of `snapdom-v3`, so both hold the same refs, and there can be only one branch called
-`main` between them. That name belongs to the PUBLIC line (2.24.x, checked out in the other
-worktree). The v3 line therefore keeps the local branch name `experimental` even though its
-remote branch is `main`:
+In each clone `origin` is its OWN repo, so a bare `git push` is always correct. **This was not
+true until 2026-08-15**: `snapdom-v3` used to be a git WORKTREE of the public clone, which meant
+one shared object store (v3 commits physically lived inside the public `.git`, one stray
+`git push origin --all` from leaking), one shared set of refs (only one branch could be called
+`main`, and the public line owned the name), and a `node_modules` symlinked to the public clone
+so its dependency upgrades silently drove v3's tests. All three are gone: separate clones,
+separate objects, separate deps.
 
-- local `experimental` -> tracks `private/main` (the v3 line, private repo, its default branch)
-- local `main` -> tracks `origin/main` (the shipped public line). Do not re-point it.
-
-So a bare `git push` from `experimental` goes to `private/main`, which is correct. The names
-disagree on purpose: renaming the local branch would collide with the public `main`.
-
-- The private repo has exactly one branch, `main`. `experimental` was deleted there on 2026-08-15.
-- A GitHub Action on that repo commits `chore: update contributors list` after a push, so
-  expect the remote to be one commit ahead right after pushing.
-- The `next` branch was deleted: its content was fully contained in the v3 line.
-- `packages/agent` and the `agent-lab` branch no longer exist here — that product lives in its own repo with its history. Do not recreate them.
-- v3 is a breaking release. Anything that must reach users NOW (a fix that also affects `main`) belongs in a separate `main`-based release, not gated behind v3.
+- The v3 repo has exactly one branch, `main`. `experimental` was deleted on both sides.
+- A GitHub Action on the v3 repo commits `chore: update contributors list` after a push, so the
+  remote is one commit ahead right after pushing. Fast-forward, do not panic.
+- `package-lock.json` is GITIGNORED, so `npm install` is not reproducible and dependency
+  versions drift between clones. That is not theoretical: a fresh install pulled Playwright
+  1.62.1 where the visual baselines had been recorded against 1.55.1, and two CJK-text demos
+  failed deterministically until the older Playwright was reinstalled with `--no-save`. When
+  visual demos fail after touching dependencies, check the Playwright version before the code.
+- `packages/agent` and the `agent-lab` branch no longer exist here — that product lives in its
+  own repo with its history. Do not recreate them.
+- v3 is a breaking release. Anything that must reach users NOW (a fix that also affects the
+  public `main`) belongs in a separate public-main release, not gated behind v3.
 
 ## Non-negotiable project goals
 
