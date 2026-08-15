@@ -312,7 +312,7 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 | `outerShadows` | `boolean` | `false` | Expand bounds to include root shadows/blur/outline |
 | `excludeStyleProps` | `RegExp \| fn` | — | Skip matching CSS properties when snapshotting (e.g. `/^--/`) |
 | `cache` | `'disabled'` | *(structural)* | `'disabled'` (or `false`) opts out of every cache — a debug/testing switch. The legacy `'soft'`/`'auto'`/`'full'` strings are still accepted and map to the default behavior |
-| `plugins` | `array` | — | Per-capture plugins (override globals by name). A plugin may declare `needs: 'dom' \| 'clone' \| 'render'` — how far the capture has to run. Default `'render'`: the full pipeline. Below that there is no image and every export throws; `result.needs` says what ran |
+| `plugins` | `array` | — | Per-capture plugins (override globals by name). A plugin may declare `needs: 'clone' \| 'render'`, how far the capture has to run. Default `'render'`: the full pipeline. At `'clone'` there is no image and every export throws; `result.needs` says what ran |
 | `engine` | `'svg' \| 'canvas'` | `'svg'` | **Experimental**: `'canvas'` renders raster exports through the WICG canvas-place-element API when the browser supports it (native painter, form controls pixel-perfect); falls back to the SVG pipeline automatically. Chromium taints the canvas today, so the engine is left out of the published bundle: build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile` |
 | `debug` | `boolean` | `false` | Verbose diagnostics via `console.warn` |
 

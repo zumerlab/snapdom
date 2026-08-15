@@ -376,7 +376,7 @@ async function buildResult(url, context) {
     // Present as a plain string on the normal path; a throwing getter (installed below)
     // when this capture stopped before the render stage.
     url,
-    /** How far this capture ran: 'dom' | 'clone' | 'render'. Same word plugins declare. */
+    /** How far this capture ran: 'clone' | 'render'. Same word plugins declare. */
     needs: stage,
     // Degradation log for this capture (empty in the common case): {code, message,
     // detail?} entries — image→placeholder, raster/canvas clamps, Safari PNG fallback,

@@ -30,7 +30,7 @@
  * @param {number} [options.maxTextLength=120] - Per-node text cap (ellipsised)
  * @param {number} [options.maxNodes=800] - Hard cap; output notes truncation
  * @param {boolean} [options.geometry=true] - Include bounding boxes
- * @param {'dom'|'clone'|'render'} [options.needs='render'] - How far the capture runs.
+ * @param {'clone'|'render'} [options.needs='render'] - How far the capture runs.
  *   'dom' skips the clone and the render (~89% cheaper); result.url then throws.
  * @returns {Object} SnapDOM plugin
  */
@@ -70,12 +70,10 @@ export function contextExport(options = {}) {
     maxNodes = 800,
     geometry = true,
   } = options
-  // `needs` names how far the capture has to run. This export only reads the live page,
-  // so it can run at any stage: `contextExport({ needs: 'dom' })` skips ~89% of the
-  // capture. Default 'render', because the documented pairing is picture + text from one
-  // call and dropping the picture is the caller's call.
-  // Every stage works here, so an unknown value is the only error — and core already
-  // rejects it by name (src/core/stages.js). No local checking.
+  // `needs` names how far the capture has to run. This export reads the live page in
+  // beforeClone, so it does not need pixels: `contextExport({ needs: 'clone' })` skips the
+  // render. It cannot go shallower than that any more, and it should not: a capture that
+  // takes no clone is not a capture, it is this plugin calling its own function.
   const needs = options.needs ?? 'render'
 
   return {

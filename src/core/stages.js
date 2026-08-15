@@ -3,20 +3,20 @@
  *
  * A capture is a chain, and each step consumes what the previous one produced:
  *
- *   dom ──▶ [clone] ──▶ [render] ──▶ exports
+ *   element ──▶ [clone] ──▶ [render] ──▶ exports
  *
- * Not every consumer needs the whole chain. A plugin that reads the live page in
- * `beforeClone` (semantic maps, context extraction) never looks at the clone, and one
- * that annotates the clone may not want pixels at all. Measured on a 601-node subtree:
- * clone 43.3 ms, assets 2.7 ms, serialize 1.6 ms — so stopping before the clone is the
- * only cut that saves real time, and it is exactly the cut a plugin can know about and
- * the caller cannot.
+ * Not every consumer needs the whole chain: a plugin that annotates the clone may not want
+ * pixels at all. So each plugin declares how far it needs to go:
  *
- * So each plugin declares what it needs:
- *
- *   { name: 'agent-oracle', needs: 'dom' }         // beforeClone only, no clone taken
  *   { name: 'agent-map', needs: 'clone' }          // annotates the clone, no pixels
- *   { name: 'ascii-export' }                       // default: 'render', today's pipeline
+ *   { name: 'ascii-export' }                       // default: 'render', the full pipeline
+ *
+ * There used to be a third, shallower stage ('dom') that stopped BEFORE the clone, for
+ * plugins that only read the live page. It was removed: a capture that takes no clone does
+ * no capturing, so core contributed nothing but option normalization and a hook runner, and
+ * a plugin can do that work by calling its own function on the element. The one thing it
+ * genuinely needed from core, the compiled exclusion policy, is on the context as
+ * `shouldExclude` and is available at any stage. The clone is the floor now.
  *
  * Two rules keep this predictable:
  *
@@ -32,9 +32,9 @@
  */
 
 /** Ordered, cheapest first. Also the vocabulary for the `needs` declaration. */
-export const STAGES = ['dom', 'clone', 'render']
+export const STAGES = ['clone', 'render']
 
-const RANK = { dom: 0, clone: 1, render: 2 }
+const RANK = { clone: 0, render: 1 }
 
 /** What a plugin that does not declare anything gets: the whole pipeline, as before. */
 export const DEFAULT_STAGE = 'render'
@@ -42,7 +42,7 @@ export const DEFAULT_STAGE = 'render'
 /**
  * Resolve how deep this capture must run.
  * @param {{plugins?: any[]}} context
- * @returns {{stage: 'dom'|'clone'|'render', loweredBy: string[]}} stage plus, when it is
+ * @returns {{stage: 'clone'|'render', loweredBy: string[]}} stage plus, when it is
  *   below 'render', the plugin names that asked for less (for the error message).
  * @throws {Error} on an unknown `needs` value — a typo must not silently buy the default.
  */
@@ -58,7 +58,7 @@ export function resolveStage(context) {
     if (!inst || typeof inst !== 'object') continue
     const needs = inst.needs === undefined ? DEFAULT_STAGE : inst.needs
     if (!Object.prototype.hasOwnProperty.call(RANK, needs)) {
-      throw new Error(`[snapdom] plugin '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(needs)} — expected one of ${STAGES.join(', ')}`)
+      throw new Error(`[snapdom] plugin '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(needs)}, expected one of ${STAGES.join(', ')}`)
     }
     declared.push({ name: inst.name || '(unnamed)', needs })
     rank = Math.max(rank, RANK[needs])
@@ -91,7 +91,7 @@ export function stageReaches(stage, wanted) {
  * @param {string} pluginName for the error message
  * @param {any} value what the caller passed (undefined keeps the plugin's own default)
  * @param {string[]} [supported] stages this plugin can actually honor, deepest last
- * @returns {'dom'|'clone'|'render'} the resolved stage
+ * @returns {'clone'|'render'} the resolved stage
  * @throws {Error} on an unknown stage, or one this plugin cannot honor
  */
 export function assertNeeds(pluginName, value, supported = STAGES) {
@@ -108,7 +108,7 @@ export function assertNeeds(pluginName, value, supported = STAGES) {
 
 /**
  * The one error every absent artifact throws, so the cause reads the same everywhere.
- * @param {'dom'|'clone'|'render'} stage stage this capture actually ran to
+ * @param {'clone'|'render'} stage stage this capture actually ran to
  * @param {string[]} loweredBy plugin names that declared less than 'render'
  * @param {string} what the artifact the caller reached for (e.g. 'url', 'toPng()')
  * @returns {Error}

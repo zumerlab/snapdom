@@ -114,7 +114,7 @@ you steer the export through `payload.options`, not through `ctx`.
   // Input & options
   element,           // The capture root — set on every path, including burst's diff recapture
   options,           // Self-reference to this same ctx (for plugins written against ctx.options)
-  needs,             // How far this capture runs: 'dom' | 'clone' | 'render'
+  needs,             // How far this capture runs: 'clone' | 'render'
   debug,             // Mode flags
   scale, dpr,        // Resolution
   width, height,     // Dimensions
@@ -194,18 +194,22 @@ that format in `defineExports` (it can build on `ctx.exports.png()` and friends)
 A capture is a chain, and each step consumes what the previous one produced:
 
 ```
-dom ──▶ [clone] ──▶ [render] ──▶ exports
+element ──▶ [clone] ──▶ [render] ──▶ exports
 ```
 
-Not every plugin needs the whole chain. One that reads the live page in `beforeClone`
-(semantic maps, context extraction) never looks at the clone; one that annotates the clone
-may not want pixels. Declare what your plugin needs, and snapdom stops there:
+Not every plugin needs the whole chain: one that annotates the clone may not want pixels.
+Declare what your plugin needs, and snapdom stops there:
 
 ```js
-{ name: 'my-plugin', needs: 'dom' }     // hooks up to beforeClone; no clone is taken
-{ name: 'my-plugin', needs: 'clone' }   // ...through afterClone; nothing is rendered
+{ name: 'my-plugin', needs: 'clone' }   // through afterClone; nothing is rendered
 { name: 'my-plugin' }                   // default 'render': the whole pipeline, as always
 ```
+
+The clone is the floor. A shallower `'dom'` stage existed and was removed: a capture that
+takes no clone does no capturing, so core contributed nothing to it but option
+normalization and a hook runner, which a plugin can do by calling its own function on the
+element. The one thing such a plugin genuinely needed from core, the compiled exclusion
+policy, is `ctx.shouldExclude` and is available at every stage.
 
 Two rules keep this predictable:
 
@@ -234,7 +238,7 @@ export function myPlugin(options = {}) {
 }
 ```
 
-`contextExport({ needs: 'dom' })` and `agentMap({ image: false, needs: 'clone' })` are the
+`contextExport({ needs: 'clone' })` and `agentMap({ image: false, needs: 'clone' })` are the
 official examples. Both default to `'render'`, because lowering the stage takes the picture
 away and that is the caller's call to make.
 

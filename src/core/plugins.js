@@ -49,7 +49,7 @@ export function normalizePlugin(spec) {
  * Register global plugins (deduped by name, preserves order).
  *
  * A global plugin may NOT lower the stage. resolveStage runs over the merged list, so a
- * global `needs: 'dom'` would stop every capture in the application before it produced
+ * global `needs: 'clone'` would stop every capture in the application before it produced
  * pixels, including call sites that never heard of the plugin. Lowering is a per-capture
  * decision by construction, so this is rejected at registration instead of surfacing later
  * as a result with no url.

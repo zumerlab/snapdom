@@ -33,28 +33,26 @@ describe('capture stages (plugin `needs`)', () => {
   it('resolves to the deepest stage declared, defaulting to render', () => {
     expect(resolveStage({}).stage).toBe('render')
     expect(resolveStage({ plugins: [] }).stage).toBe('render')
-    expect(resolveStage({ plugins: [{ name: 'a', needs: 'dom' }] }).stage).toBe('dom')
     expect(resolveStage({ plugins: [{ name: 'a', needs: 'clone' }] }).stage).toBe('clone')
     // an undeclared plugin keeps the whole pipeline: adding one never removes an artifact
-    expect(resolveStage({ plugins: [{ name: 'a', needs: 'dom' }, { name: 'b' }] }).stage).toBe('render')
-    expect(resolveStage({ plugins: [{ name: 'a', needs: 'dom' }, { name: 'b', needs: 'clone' }] }).stage).toBe('clone')
-    expect(STAGES).toEqual(['dom', 'clone', 'render'])
+    expect(resolveStage({ plugins: [{ name: 'a', needs: 'clone' }, { name: 'b' }] }).stage).toBe('render')
+    expect(STAGES).toEqual(['clone', 'render'])
     expect(stageReaches('clone', 'render')).toBe(false)
-    expect(stageReaches('render', 'dom')).toBe(true)
+    expect(stageReaches('render', 'clone')).toBe(true)
+  })
+
+  it("rejects the removed 'dom' stage by name, like any other unknown value", () => {
+    // The clone is the floor: a capture that takes no clone does no capturing, so core
+    // contributed nothing to it but option normalization and a hook runner.
+    expect(() => resolveStage({ plugins: [{ name: 'oracle-ish', needs: 'dom' }] }))
+      .toThrow(/needs: "dom"/)
+    expect(() => resolveStage({ plugins: [{ name: 'oracle-ish', needs: 'dom' }] }))
+      .toThrow(/expected one of clone, render/)
   })
 
   it('rejects an unknown needs value instead of silently taking the default', () => {
     expect(() => resolveStage({ plugins: [{ name: 'typo', needs: 'renderr' }] }))
       .toThrow(/needs: "renderr"/)
-  })
-
-  it('needs:"dom" stops before the clone', async () => {
-    const el = makeEl()
-    const { plugin, seen } = tracer('dom')
-    const result = await snapdom(el, { plugins: [plugin] })
-    expect(seen).toEqual(['beforeClone'])
-    expect(result.needs).toBe('dom')
-    el.remove()
   })
 
   it('needs:"clone" runs the clone and stops before the render', async () => {
@@ -81,7 +79,7 @@ describe('capture stages (plugin `needs`)', () => {
 
   it('one undeclared plugin restores the full pipeline', async () => {
     const el = makeEl()
-    const { plugin: live } = tracer('dom')
+    const { plugin: live } = tracer('clone')
     const { plugin: full, seen } = tracer(null)
     const result = await snapdom(el, { plugins: [live, full] })
     expect(seen).toContain('afterRender')
@@ -104,16 +102,16 @@ describe('capture stages (plugin `needs`)', () => {
     for (const [name, open] of doors) {
       it(`${name} throws, naming the plugin that lowered the stage`, async () => {
         const el = makeEl()
-        const result = await snapdom(el, { plugins: [{ name: 'oracle-ish', needs: 'dom', beforeClone() {} }] })
-        await expect(async () => open(result)).rejects.toThrow(/oracle-ish/)
-        await expect(async () => open(result)).rejects.toThrow(/stopped at 'dom'/)
+        const result = await snapdom(el, { plugins: [{ name: 'annotator', needs: 'clone', afterClone() {} }] })
+        await expect(async () => open(result)).rejects.toThrow(/annotator/)
+        await expect(async () => open(result)).rejects.toThrow(/stopped at 'clone'/)
         el.remove()
       })
     }
 
     it('never re-captures silently: the message says so', async () => {
       const el = makeEl()
-      const result = await snapdom(el, { plugins: [{ name: 'oracle-ish', needs: 'dom' }] })
+      const result = await snapdom(el, { plugins: [{ name: 'annotator', needs: 'clone' }] })
       expect(() => result.url).toThrow(/different instant/)
       el.remove()
     })
@@ -126,7 +124,7 @@ describe('capture stages (plugin `needs`)', () => {
     let count = 0
     const plugin = {
       name: 'semantic-only',
-      needs: 'dom',
+      needs: 'clone',
       beforeClone(ctx) { count = ctx.element.querySelectorAll('*').length },
       defineExports() { return { changes: async () => ({ nodes: count }) } },
     }
@@ -138,11 +136,11 @@ describe('capture stages (plugin `needs`)', () => {
   })
 
   describe('the `needs` option is the same knob on every plugin', () => {
-    it('contextExport({ needs: "dom" }) captures no clone and still exports', async () => {
+    it('contextExport({ needs: "clone" }) skips the render and still exports', async () => {
       const { contextExport } = await import('../packages/plugins/context-export.js')
       const el = makeEl()
-      const res = await snapdom(el, { plugins: [contextExport({ needs: 'dom' })] })
-      expect(res.needs).toBe('dom')
+      const res = await snapdom(el, { plugins: [contextExport({ needs: 'clone' })] })
+      expect(res.needs).toBe('clone')
       expect(String(await res.toContext())).toContain('there')
       await expect(res.toPng()).rejects.toThrow(/context-export/)
       el.remove()
@@ -187,12 +185,12 @@ describe('capture stages (plugin `needs`)', () => {
     // The absent url is a THROWING getter; if it were enumerable, the code trying to
     // report the problem (a logger, JSON.stringify, a spread) would crash on it.
     const el = makeEl()
-    const result = await snapdom(el, { plugins: [{ name: 'oracle-ish', needs: 'dom' }] })
+    const result = await snapdom(el, { plugins: [{ name: 'annotator', needs: 'clone' }] })
     expect(() => ({ ...result })).not.toThrow()
     expect(() => JSON.stringify(result)).not.toThrow()
-    expect(JSON.parse(JSON.stringify(result)).needs).toBe('dom')
+    expect(JSON.parse(JSON.stringify(result)).needs).toBe('clone')
     // ...and reading it directly still fails loud
-    expect(() => result.url).toThrow(/oracle-ish/)
+    expect(() => result.url).toThrow(/annotator/)
     el.remove()
   })
 
@@ -200,19 +198,19 @@ describe('capture stages (plugin `needs`)', () => {
     it('defaults to the deepest stage the plugin supports', async () => {
       const { assertNeeds } = await import('../src/core/stages.js')
       expect(assertNeeds('p', undefined)).toBe('render')
-      expect(assertNeeds('p', undefined, ['dom', 'clone'])).toBe('clone')
-      expect(assertNeeds('p', 'dom')).toBe('dom')
+      expect(assertNeeds('p', undefined, ['clone'])).toBe('clone')
+      expect(assertNeeds('p', 'clone')).toBe('clone')
     })
 
     it('rejects unknown stages and stages the plugin cannot honor', async () => {
       const { assertNeeds } = await import('../src/core/stages.js')
-      expect(() => assertNeeds('p', 'nope')).toThrow(/one of dom, clone, render/)
-      expect(() => assertNeeds('p', 'dom', ['clone', 'render'])).toThrow(/cannot run at stage 'dom'/)
+      expect(() => assertNeeds('p', 'nope')).toThrow(/one of clone, render/)
+      expect(() => assertNeeds('p', 'render', ['clone'])).toThrow(/cannot run at stage 'render'/)
     })
 
     it('travels with the plugin API surface', async () => {
       const mod = await import('../src/core/plugins.js')
-      expect(mod.STAGES).toEqual(['dom', 'clone', 'render'])
+      expect(mod.STAGES).toEqual(['clone', 'render'])
       expect(mod.DEFAULT_STAGE).toBe('render')
       expect(mod.assertNeeds).toBeTypeOf('function')
     })
@@ -222,7 +220,7 @@ describe('capture stages (plugin `needs`)', () => {
     const el = makeEl()
     const plugin = {
       name: 'wants-pixels-but-said-dom',
-      needs: 'dom',
+      needs: 'clone',
       defineExports() { return { ascii: async (ctx) => ctx.export.url } },
     }
     const result = await snapdom(el, { plugins: [plugin] })

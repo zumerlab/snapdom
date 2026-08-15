@@ -19,9 +19,10 @@ not in doing something else.
 
 ## Stages: how far a capture runs (`needs`)
 
-The pipeline is `dom → clone → render → exports`, and a plugin declares what it needs
-(`src/core/stages.js`, contract in PLUGIN_SPEC.md). One vocabulary, three words: plugins
-declare `needs`, the result reports `needs`. Two facts decide the shape, and neither is a
+The pipeline is `element → clone → render → exports`, and a plugin declares how far it needs
+to go (`src/core/stages.js`, contract in PLUGIN_SPEC.md). One vocabulary, two words: plugins
+declare `needs`, the result reports `needs`. The clone is the floor: a shallower `'dom'` stage
+existed and was removed, because a capture that takes no clone does no capturing. Two facts decide the shape, and neither is a
 preference:
 
 - **The clone is the freeze.** Everything downstream reads it, never the live tree, which

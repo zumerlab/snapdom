@@ -47,8 +47,8 @@ SnapDOM captures a DOM subtree and serializes it as an SVG `data:` URL embedded 
 
 ### Capture pipeline (`src/core/capture.js` + `src/engines/`)
 
-**The pipeline splits at the clone**, the same seam `stages.js` names (`dom -> clone -> render`):
-`captureDOM` owns `dom -> clone` (freeze, style snapshot, image/font inlining) and a render
+**The pipeline splits at the clone**, the same seam `stages.js` names (`element -> clone -> render`):
+`captureDOM` owns `element -> clone` (freeze, style snapshot, image/font inlining) and a render
 ENGINE owns `clone -> pixels`. `src/engines/svg.js` is the default engine (`composeAndSerialize`:
 base reset, bbox/bleed math, foreignObject assembly, SVG data-URL encoding) and is also
 re-entered by burst's differential recapture. `src/engines/htmlInCanvas.js` is its

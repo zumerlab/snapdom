@@ -2,7 +2,7 @@
  * SVG render engine: the default way a finished clone becomes pixels.
  *
  * The capture pipeline splits at the clone. `captureDOM` (src/core/capture.js) owns
- * `dom -> clone`: it freezes the subtree, snapshots styles, inlines images and fonts, and
+ * `element -> clone`: it freezes the subtree, snapshots styles, inlines images and fonts, and
  * hands over a self-contained clone plus the CSS that styles it. Everything in this file
  * owns `clone -> render`: base reset, bbox and bleed math, foreignObject assembly and SVG
  * data-URL encoding. Those are the same two halves `stages.js` already names.

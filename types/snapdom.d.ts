@@ -18,10 +18,11 @@ export type BlobType = "svg" | RasterMime;
 export type IconFontMatcher = string | RegExp;
 
 /**
- * How far a capture runs: the live page, the frozen clone, or the rendered image.
- * Plugins declare it as `needs`; the result reports it as `needs`.
+ * How far a capture runs: the frozen clone, or the rendered image. Plugins declare it as
+ * `needs`; the result reports it as `needs`. A shallower "dom" stage existed and was
+ * removed: a capture that takes no clone does no capturing.
  */
-export type CaptureStage = "dom" | "clone" | "render";
+export type CaptureStage = "clone" | "render";
 /**
  * v3: caching is structural — 'disabled' (or `cache: false`) is the one debug/testing
  * escape hatch. The legacy strings 'full' | 'auto' | 'soft' are still ACCEPTED at runtime

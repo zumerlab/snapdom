@@ -1,7 +1,7 @@
 /**
  * Core capture: element -> finished, self-contained clone.
  *
- * The pipeline splits at the clone. This module owns `dom -> clone` (freeze, style
+ * The pipeline splits at the clone. This module owns `element -> clone` (freeze, style
  * snapshot, image and font inlining); turning that clone into pixels belongs to a render
  * engine, and the default one lives in src/engines/svg.js.
  * @module capture
@@ -63,7 +63,7 @@ function collectResolveNodeHooks(options) {
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
  * @param {boolean} [options.burst] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Unset: auto-enables after 3 captures of the same element within 2s (canvas-bearing elements excluded)
  * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
- *   a shallower stage (`needs: 'dom' | 'clone'`) and no render artifact was produced
+ *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
  */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
@@ -92,10 +92,6 @@ export async function captureDOM(element, options) {
 
   // BEFORECLONE
   await runHook('beforeClone', state)
-
-  // needs: 'dom' — the attached plugins only read the live page, and they just did. No
-  // clone is taken, which is the point: the clone is ~89% of a capture.
-  if (!stageReaches(stage, 'clone')) return null
 
   // Read AFTER the hooks: beforeSnap is the documented place to set capture defaults, and
   // these three decide the geometry, so reading them earlier ignored the plugin that set them.

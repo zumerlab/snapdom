@@ -14,9 +14,9 @@ describe('a GLOBAL plugin may not lower the capture stage', () => {
   afterEach(() => { clearPlugins() })
 
   it('rejects registration and names the plugin', async () => {
-    expect(() => registerPlugins({ name: 'oracle-ish', needs: 'dom' }))
-      .toThrow(/oracle-ish/)
-    expect(() => registerPlugins({ name: 'oracle-ish', needs: 'dom' }))
+    expect(() => registerPlugins({ name: 'annotator', needs: 'clone' }))
+      .toThrow(/annotator/)
+    expect(() => registerPlugins({ name: 'annotator', needs: 'clone' }))
       .toThrow(/global plugin/)
     expect(() => registerPlugins({ name: 'mapper', needs: 'clone' }))
       .toThrow(/mapper/)
@@ -53,10 +53,10 @@ describe('a GLOBAL plugin may not lower the capture stage', () => {
 
   it('the SAME plugin passed per capture still lowers that one capture', async () => {
     const el = makeEl()
-    const lowering = { name: 'oracle-ish', needs: 'dom' }
+    const lowering = { name: 'annotator', needs: 'clone' }
     const res = await snapdom(el, { plugins: [lowering] })
-    expect(res.needs).toBe('dom')
-    expect(() => res.url).toThrow(/oracle-ish/)
+    expect(res.needs).toBe('clone')
+    expect(() => res.url).toThrow(/annotator/)
 
     // and the next capture, which did not ask for it, is untouched
     const plain = await snapdom(el)
