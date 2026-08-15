@@ -473,7 +473,7 @@ describe('deepClone – extra targets to lift coverage', () => {
       expect(alreadyMatches.length).toBe(1)
        expect(css).toMatch(/:where\(\s*\[?data-sd="s\d+"\]?[^)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted\]\)\)/)
 
-    // @media se resuelve en extracción: la condición matchea (min-width:1px) así que la
+    // @media is resolved during extraction: the condition matches (min-width:1px), so the
     // regla interna se inlinea SIN wrapper (el viewport del SVG no debe re-evaluarla) y
     // recibe el scope como cualquier otra.
     expect(css).not.toContain('@media')
@@ -511,8 +511,8 @@ describe('deepClone – extra targets to lift coverage', () => {
     expect(sId2).not.toBeFalsy()
     expect(sId1).not.toBe(sId2)
 
-    // para .y ya traía :not([data-sd-slotted]) → no duplicar
-    // (basta con chequear que sólo haya una ocurrencia junto a .y)
+    // .y already carried :not([data-sd-slotted]), so it must not be duplicated
+    // (checking there is a single occurrence next to .y is enough)
     const occurrences = (css2.match(/\.y:not\(\[data-sd-slotted\]\)/g) || []).length
     expect(occurrences).toBe(1)
   })
@@ -541,7 +541,7 @@ describe('deepClone – extra targets to lift coverage', () => {
       borderBottomWidth: '1px',
     })
 
-    // offsetWidth/Height cuando hacemos placeholders, pero acá rasterizamos
+    // offsetWidth/Height when placeholders are used, but here it rasterizes
     Object.defineProperty(iframe, 'offsetWidth', { configurable: true, get: () => 200 })
     Object.defineProperty(iframe, 'offsetHeight', { configurable: true, get: () => 150 })
 
@@ -556,14 +556,14 @@ describe('deepClone – extra targets to lift coverage', () => {
 
     const out = await deepClone(iframe, session, { fast: true, snap })
 
-    // 1) Se creó un style de pin en el iframe (data-sd-iframe-pin) y se removió al salir
+    // 1) A pin style was created in the iframe (data-sd-iframe-pin) and removed on exit
     const hadPin = appended.some(n => n.tagName === 'STYLE' && n.getAttribute('data-sd-iframe-pin') !== null)
     expect(hadPin).toBe(true)
-    // tras el finally de rasterizeIframe, ese <style> debería haber sido removido del head
+    // after rasterizeIframe's finally, that <style> should be gone from the head
     const stillPinned = !!fakeDoc.head.querySelector('style[data-sd-iframe-pin]')
     expect(stillPinned).toBe(false)
 
-    // 2) Wrapper con tamaño del BCR (redondeado)
+    // 2) Wrapper sized from the BCR (rounded)
     expect(out.tagName).toBe('DIV')
     expect(out.style.width).toBe('200px')
     expect(out.style.height).toBe('150px')
@@ -589,7 +589,7 @@ describe('deepClone – extra targets to lift coverage', () => {
     expect(out1.tagName).toBe('DIV')
     expect(out1.style.backgroundImage).toContain('repeating-linear-gradient')
 
-    // sin placeholders → spacer invisible con tamaño del BCR
+    // without placeholders: an invisible spacer sized from the BCR
     vi.spyOn(iframe, 'getBoundingClientRect').mockReturnValue({ width: 80, height: 40 })
     const out2 = await deepClone(iframe, session, { placeholders: false })
     expect(out2.tagName).toBe('DIV')
@@ -599,7 +599,7 @@ describe('deepClone – extra targets to lift coverage', () => {
   })
 
   it('collects multiple custom props in CSS and deduplica', async () => {
-    // Validación indirecta a través del seed: dos props distintas, referenciadas por var()
+    // Indirect validation through the seed: two distinct props, referenced by var()
     const host = document.createElement('div')
     const sr = host.attachShadow({ mode: 'open' })
     // defino ambas en host y en :root para asegurar valores

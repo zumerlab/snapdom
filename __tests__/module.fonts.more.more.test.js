@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // ====== Mocks HOISTED-SAFE ======
-// helpers: dejamos extractURL real si querés, pero acá no dependemos de fetchResource.
+// helpers: extractURL can stay real; nothing here depends on fetchResource.
 vi.mock('../src/utils/helpers', async (importOriginal) => {
   const actual = await importOriginal()
   return {
@@ -29,7 +29,7 @@ vi.mock('../src/modules/snapFetch.js', () => ({
     if (opts.as === 'text') {
       return { ok: true, data: '', status: 200, url, fromCache: false }
     }
-    // default: devolvemos una dataURL mínima de woff2
+    // default: return a minimal woff2 dataURL
     return {
       ok: true,
       data: 'data:font/woff2;base64,AA==',
@@ -65,7 +65,7 @@ function cleanInjectedStuff () {
   })
 }
 
-/** Mock mínimo de document.fonts */
+/** Minimal document.fonts mock */
 function setDocumentFonts (fontsArray = []) {
   const items = [...fontsArray]
   const iter = function * () { yield * items }
@@ -95,7 +95,7 @@ let restoreFonts = () => {}
 beforeEach(() => {
   vi.restoreAllMocks()
 
-  // helpers mocks ya están instalados; limpiamos counters
+  // helper mocks are already installed; just reset the counters
   helpers.fetchResource?.mockClear?.()
 
   // limpiar caches y DOM
@@ -103,11 +103,11 @@ beforeEach(() => {
   try { cache.font?.clear?.() } catch {}
   cleanInjectedStuff()
 
-  // document.fonts vacío por default
+  // document.fonts is empty by default
   restoreFonts?.()
   restoreFonts = setDocumentFonts([])
 
-  // reset de snapFetch mock por si algún test setea respuestas específicas
+  // reset the snapFetch mock in case a test set specific responses
   vi.mocked(snapFetch).mockImplementation(async (url, opts = {}) => {
     if (opts.as === 'text') {
       return { ok: true, data: '', status: 200, url, fromCache: false }
@@ -187,7 +187,7 @@ describe('embedCustomFonts – cache.resource short-circuit', () => {
 /* ----------------- document.fonts con _snapdomSrc ------------------ */
 describe('document.fonts con _snapdomSrc', () => {
   it('descarga _snapdomSrc (no data:) y lo inyecta como @font-face', async () => {
-    // simular un font cargado dinámico
+    // simulate a dynamically loaded font
     restoreFonts?.()
     restoreFonts = setDocumentFonts([
       { family: 'DynFont', status: 'loaded', style: 'normal', weight: '400', _snapdomSrc: 'https://cdn.example.com/dyn.woff2' }
@@ -225,7 +225,7 @@ describe('document.fonts con _snapdomSrc', () => {
     expect(snapFetch).not.toHaveBeenCalled()
   })
 
-  it('si snapFetch devuelve ok:false, continúa sin romper', async () => {
+  it('keeps going without breaking when snapFetch returns ok:false', async () => {
     restoreFonts?.()
     restoreFonts = setDocumentFonts([
       { family: 'DynFail', status: 'loaded', style: 'normal', weight: '400', _snapdomSrc: 'https://cdn.example.com/fail.woff2' }

@@ -36,7 +36,7 @@ export function precacheCommonTags() {
 }
 
 // -----------------------------------------------------------------------------
-// 2) getDefaultStyleForTag → gate único por NO_DEFAULTS_TAGS + sandbox marcado
+// 2) getDefaultStyleForTag -> single gate on NO_DEFAULTS_TAGS + a marked sandbox
 // -----------------------------------------------------------------------------
 /*
  * Retrieves default CSS property values from a temporary element.
@@ -78,7 +78,7 @@ export function getDefaultStyleForTag(tagName) {
   const styles = getComputedStyle(el)
   const defaults = {}
   for (let prop of styles) {
-    // ⬇️ Nuevo: filtramos ruido que no pinta y props dependientes de layout
+    // Filter out noise that never paints, plus layout-dependent props
     if (shouldIgnoreProp(prop)) continue
     const value = styles.getPropertyValue(prop)
     defaults[prop] = value
@@ -149,7 +149,7 @@ export function shouldIgnoreProp(prop /*, tag */) {
 }
 
 // -----------------------------------------------------------------------------
-// 3) getStyleKey → si NO_DEFAULTS_TAGS: "", así no hay clase auto
+// 3) getStyleKey -> "" for NO_DEFAULTS_TAGS, so no auto class is generated
 // -----------------------------------------------------------------------------
 // Tags that size to text content; grid/flex blockify them, so a frozen used width wraps the
 // text when the raster falls back to a wider font (e.g. the "Timestamp demo").
@@ -275,7 +275,7 @@ export function collectUsedTagNames(root) {
 }
 
 // -----------------------------------------------------------------------------
-// 5) generateDedupedBaseCSS → salta keys vacías (sin reglas basura)
+// 5) generateDedupedBaseCSS -> skips empty keys, so no junk rules are emitted
 // -----------------------------------------------------------------------------
 /**
  * Generates deduplicated base CSS for the given tag names.
@@ -305,13 +305,13 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
     const entries = universe
       ? Object.entries(styles).filter(([k]) => universe.has(k))
       : Object.entries(styles)
-    // Creamos la "firma" del bloque CSS para comparar
+    // Build the CSS block "signature" used for comparison
     const key = entries
       .map(([k, v]) => `${k}:${v};`)
       .sort()
       .join('')
 
-    if (!key) continue // <- evita reglas vacías (NO_DEFAULTS_TAGS produce {})
+    if (!key) continue // avoids empty rules (NO_DEFAULTS_TAGS yields {})
 
     // Agrupamos por firma
     if (!groups.has(key)) {
@@ -320,7 +320,7 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
     groups.get(key).push(tagName)
   }
 
-  // Ahora generamos el CSS optimizado
+  // Now emit the optimized CSS
   let css = ''
   for (let [styleBlock, tagList] of groups.entries()) {
     css += `${tagList.join(',')} { ${styleBlock} }\n`
@@ -330,7 +330,7 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
 }
 
 // -----------------------------------------------------------------------------
-// 4) generateCSSClasses → ignora keys vacías (defensivo)
+// 4) generateCSSClasses -> ignores empty keys (defensive)
 // -----------------------------------------------------------------------------
 /**
  * Generates CSS classes from a style map.

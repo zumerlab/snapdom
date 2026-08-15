@@ -106,7 +106,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
     if ((prop === 'background-image') && (!val || val === 'none')) {
       const bgShorthand = style.getPropertyValue('background')
       if (bgShorthand && /url\s*\(/.test(bgShorthand)) {
-        // Use filter+join to preserve all url() layers, not just the first (#NEW-5)
+        // Use filter+join to preserve all url() layers, not just the first
         val = splitBackgroundImage(bgShorthand).filter(p => /url\s*\(/.test(p)).join(', ') || val
       }
     }

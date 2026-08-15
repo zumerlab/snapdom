@@ -23,7 +23,7 @@ vi.mock('../src/modules/fonts.js', () => ({
   ensureFontsReady: vi.fn(async () => {}),
 }))
 
-// ⬇️ recién ahora importamos SUT + símbolos mocked
+// only now import the SUT and the mocked symbols
 import { preCache } from '../src/api/preCache.js'
 import * as utils from '../src/utils'
 import {
@@ -33,7 +33,7 @@ import {
   ensureFontsReady,
 } from '../src/modules/fonts.js'
 
-describe('preCache – líneas difíciles', () => {
+describe('preCache: hard-to-reach lines', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     utils.isSafari.mockReset?.()

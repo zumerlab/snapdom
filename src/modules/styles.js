@@ -235,7 +235,7 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
   } else {
     for (let i = 0; i < style.length; i++) addProp(style[i])
   }
-    // Asegurar props de decoración de texto (algunos motores no las listan en la iteración)
+    // Ensure text-decoration props: some engines do not list them in the iteration.
   const EXTRA_TEXT_DECORATION_PROPS = [
     'text-decoration-line',
     'text-decoration-color',
@@ -251,7 +251,7 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
       if (v) out[prop] = v
     } catch {}
   }
-  // #340: -webkit-text-stroke en Safari – asegurar que se capture aunque no esté en la iteración
+  // #340: -webkit-text-stroke on Safari. Capture it even when the iteration omits it.
   const TEXT_STROKE_PROPS = [
     '-webkit-text-stroke',
     '-webkit-text-stroke-width',
@@ -575,7 +575,7 @@ function hasBox(cs) {
 }
 
 /**
- * Item de flex/grid (mirando display del padre, 1 getComputedStyle).
+ * Flex/grid item (reads the parent's display, one getComputedStyle).
  * @param {Element} el
  */
 function isFlexOrGridItem(el) {
@@ -588,10 +588,10 @@ function isFlexOrGridItem(el) {
 }
 
 /**
- * ¿Hay contenido en flujo? Versión rápida:
- *  - Nodo de texto directo no vacío → true (no dispara layout).
- *  - <br> inmediato → true.
- *  - Algún hijo elemento en flujo → true.
+ * Is there in-flow content? Fast version:
+ *  - A direct, non-empty text node -> true (triggers no layout).
+ *  - An immediate <br> -> true.
+ *  - Any in-flow element child -> true.
  *
  * Both questions are about THIS element's own flow, so neither `textContent` nor a
  * scrollHeight probe can answer them: `textContent` also sees text inside absolutely
@@ -662,15 +662,15 @@ function autoContentHeight(el) {
 }
 
 /**
- * Best-effort: quita height/block-size en wrappers transparentes de flujo para permitir
- * margin-collapsing, etc. sin romper KaTeX, Orbit, ni layouts con height explícito.
+ * Best-effort: drop height/block-size on transparent flow wrappers so margin collapsing
+ * still works, without breaking KaTeX, Orbit, or layouts with an explicit height.
  *
  * @param {Element} el
  * @param {CSSStyleDeclaration} cs
  * @param {Record<string, any>} snap
  */
 function stripHeightForWrappers(el, cs, snap) {
-  // 1) Respeta height inline del autor
+  // 1) Respect an author inline height
   if (el instanceof HTMLElement && el.style && el.style.height) return
 
   // 2) Solo div/section/article/main/aside/header/footer/nav (no ol/ul/li: layout de listas)
@@ -681,16 +681,16 @@ function stripHeightForWrappers(el, cs, snap) {
   // 2c) aspect-ratio define dimensiones derivadas; respetar
   if (cs.aspectRatio && cs.aspectRatio !== 'none' && cs.aspectRatio !== 'auto') return
 
-  // 3) Orbit: si el elemento es flex/grid, no tocar su height
+  // 3) Orbit: leave the height alone when the element is a flex/grid container
   const disp = cs.display || ''
   if (disp.includes('flex') || disp.includes('grid')) return
 
   // 4) Guardas existentes
   //
-  // (La guarda de elementos reemplazados vivía aquí y se eliminó: es inalcanzable.
-  // La allow-list de (2) solo deja pasar div/section/article/main/aside/header/
-  // footer/nav, y ninguno de esos puede ser un img/canvas/video/iframe/svg/object/
-  // embed — la comprobación era falsa por construcción, no por casualidad.)
+  // (The replaced-element guard lived here and was removed: it is unreachable.
+  // The allow-list in (2) only admits div/section/article/main/aside/header/footer/nav,
+  // and none of those can be an img/canvas/video/iframe/svg/object/embed: the check was
+  // false by construction, not by luck.)
 
   const pos = cs.position
   if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return
@@ -698,7 +698,7 @@ function stripHeightForWrappers(el, cs, snap) {
   if (hasBox(cs)) return
   if (isFlexOrGridItem(el)) return
 
-  // 5) No tocar wrappers que se usan para ocultar / accesibilidad (KaTeX, screen-reader hacks, etc.)
+  // 5) Leave hiding / accessibility wrappers alone (KaTeX, screen-reader hacks, and so on)
   const overflowX = cs.overflowX || cs.overflow || 'visible'
   const overflowY = cs.overflowY || cs.overflow || 'visible'
   if (overflowX !== 'visible' || overflowY !== 'visible') return
@@ -711,26 +711,26 @@ function stripHeightForWrappers(el, cs, snap) {
   // 6) Solo wrappers "en flujo" realmente neutros
   if (!hasFlowFast(el)) return
 
-  // 6b) Ultimo filtro: solo quitar el height si el height usado es el que el elemento
-  // tendria con `height: auto`. Si difiere, el autor lo fijo — venga de donde venga
-  // (hoja de estilos, <style>, CSSOM, atributo inline) — y hay que respetarlo.
+  // 6b) Last filter: only drop the height when the used height is what the element would
+  // have with `height: auto`. If it differs, the author set it, wherever it came from
+  // (stylesheet, <style>, CSSOM, inline attribute), and it has to be respected.
   //
-  // Esta comprobacion usaba `el.scrollHeight`, que NO puede responder la pregunta:
-  // scrollHeight devuelve la altura del padding-box cuando el contenido es mas corto que
-  // la caja, asi que un `height: 400px` alrededor de una linea de texto da
-  // scrollHeight === 400 === used height, diferencia 0, y el height se borraba. Solo
-  // detectaba heights fijos MENORES que el contenido (el caso raro), nunca el habitual:
-  // el hijo colapsaba a su altura de contenido y el resto del canvas quedaba en blanco.
+  // This check used to read `el.scrollHeight`, which CANNOT answer that question:
+  // scrollHeight returns the padding-box height when the content is shorter than the box,
+  // so a `height: 400px` around one line of text gives scrollHeight === 400 === used
+  // height, a difference of 0, and the height was dropped. It only caught fixed heights
+  // SMALLER than the content (the rare case), never the usual one: the child collapsed to
+  // its content height and the rest of the canvas came out blank.
   //
-  // Va al final a proposito: llegados aqui sabemos que no hay padding/borde vertical ni
-  // overflow (hasBox), lo que hace que la medida de autoContentHeight sea valida, y el
-  // coste de medir solo lo pagan los pocos nodos que superan todas las guardas.
+  // Deliberately last: by this point we know there is no vertical padding/border and no
+  // overflow (hasBox), which is what makes the autoContentHeight measurement valid, and
+  // only the few nodes that clear every guard pay for measuring.
   const usedH = parseFloat(cs.height)
   const autoH = autoContentHeight(el)
   const TOL = 2
   if (Number.isFinite(usedH) && Number.isFinite(autoH) && Math.abs(usedH - autoH) > TOL) return
 
-  // 7) Ahora si: quitamos height y block-size del snapshot
+  // 7) Now drop height and block-size from the snapshot
   delete snap.height
   delete snap['block-size']
 }

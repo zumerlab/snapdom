@@ -33,7 +33,7 @@ afterEach(() => {
 
 //
 // ──────────────────────────────────────────────────────────────────────────────
-// Edge cases (los que ya tenías, sin cambios)
+// Edge cases
 // ──────────────────────────────────────────────────────────────────────────────
 //
 describe('captureDOM edge cases', () => {
@@ -90,7 +90,7 @@ describe('captureDOM functional', () => {
 
     const el = document.createElement('div')
 
-    // scale → mantiene tamaño natural en <svg>, usa viewBox y no agrega transform: scale(...)
+    // scale keeps the natural <svg> size, uses viewBox, and adds no transform: scale(...)
     const svg1 = decodeSvg(await captureDOM(el, { scale: 2, embedFonts: false }))
     expect(svg1).toContain('width="100"')
     expect(svg1).toContain('height="50"')
@@ -143,7 +143,7 @@ describe('captureDOM – baseCSS presence (no ESM spies)', () => {
 
 //
 // ──────────────────────────────────────────────────────────────────────────────
-// Width/Height/Scale branches (precise, alineado a tu implementación actual)
+// Width/Height/Scale branches (precise, matching the current implementation)
 // ──────────────────────────────────────────────────────────────────────────────
 //
 describe('captureDOM – width/height/scale branches (precise)', () => {
@@ -204,7 +204,7 @@ describe('captureDOM – viewport path sanity', () => {
     const el = document.createElement('div')
     const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // No imponemos un cálculo exacto; validamos la presencia de x="" y y="" numéricos.
+    // No exact arithmetic is required; only that numeric x="" and y="" are present.
     expect(svg).toMatch(/<foreignObject[^>]*\sx="[-\d]+"/)
     expect(svg).toMatch(/<foreignObject[^>]*\sy="[-\d]+"/)
   })
@@ -319,7 +319,7 @@ describe('captureDOM – transform handling (lenient heuristic)', () => {
 
     const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // 1) SVG válido
+    // 1) Valid SVG
     expect(svg.startsWith('<svg')).toBe(true)
 
     // 2) El wrapper suele incluir transform-origin aunque no tenga shorthand transform
@@ -349,7 +349,7 @@ describe('captureDOM – baseTransform & individual props on clone (lenient)', (
 
     const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // Aceptamos presencia inline o, si la implementación normaliza, resets en CSS base.
+    // Accept it inline, or as base-CSS resets when the implementation normalizes.
     const hasInlineAny = /style="[^"]*(?:rotate|scale|translate):/.test(svg)
     const hasBaseResets = /\b(rotate|scale|translate):\s*none\b/.test(svg)
     expect(hasInlineAny || hasBaseResets).toBe(true)
@@ -378,7 +378,7 @@ describe('captureDOM – embedFonts=true (no spies, effect-only)', () => {
     const svg = decodeSvg(await captureDOM(el, { embedFonts: true }))
 
     // No afirmamos siempre la presencia de CSS de fuentes (depende de IO/hints),
-    // pero sí que sea SVG válido.
+    // but it must be a valid SVG.
     expect(svg.startsWith('<svg')).toBe(true)
   })
 })
@@ -426,18 +426,18 @@ describe('captureDOM – width & height together apply size (scale or wrapper si
       embedFonts: false,
     }))
 
-    // SVG header adopta el tamaño pedido (Safari mantiene el natural y escala al exportar)
+    // The SVG header adopts the requested size (Safari keeps the natural one and scales on export)
     expect(svg).toContain(sizedW(150, 100))
     expect(svg).toContain(sizedH(120, 50))
 
-    // Implementación puede elegir:
+    // The implementation may choose:
     // A) non-uniform scale en container
     const hasScale = /transform:[^"]*scale\(\s*1\.5[0-9]*\s*,\s*2\.4[0-9]*\s*\)/.test(svg)
     // B) explicit wrapper sizing via style width/height
     const hasWrapperSize =
       /<div[^>]*style="[^"]*width:\s*150px[^"]*height:\s*120px/.test(svg) ||
       /<div[^>]*style="[^"]*height:\s*120px[^"]*width:\s*150px/.test(svg)
-    // C) solo viewBox natural con wrapper natural (lo que estás emitiendo)
+    // C) natural viewBox with a natural wrapper (what is emitted today)
     const usesViewBoxOnly =
       svg.includes('viewBox="0 0 100 50"') &&
       /<div[^>]*style="[^"]*width:\s*100px/.test(svg) &&
@@ -466,7 +466,7 @@ describe('captureDOM – fractional viewport sizes and tx/ty computation', () =>
     expect(/width="(100\.4|101)"/.test(svg)).toBe(true)
     expect(/height="(50\.6|51)"/.test(svg)).toBe(true)
 
-    // x/y del foreignObject: solo exigimos que existan y sean numéricos (con o sin signo/decimales)
+    // foreignObject x/y: only required to exist and be numeric (sign/decimals allowed)
     expect(/<foreignObject[^>]*\sx="[-\d.]+"/.test(svg)).toBe(true)
     expect(/<foreignObject[^>]*\sy="[-\d.]+"/.test(svg)).toBe(true)
   })
@@ -499,7 +499,7 @@ describe('captureDOM – Typed OM readIndividualTransforms', () => {
   it('reads rotate/scale/translate from computedStyleMap (Typed OM) and propagates to clone', async () => {
     const { captureDOM } = await import('../src/core/capture.js')
 
-    // BCR estándar
+    // Standard BCR
     vi.spyOn(Element.prototype, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(0, 0, 100, 50))
 
@@ -507,7 +507,7 @@ describe('captureDOM – Typed OM readIndividualTransforms', () => {
 
     // Stub Typed OM en el elemento
     el.computedStyleMap = () => ({
-      // rotate: ángulo en radianes → debe convertirse a deg
+      // rotate: an angle in radians must be converted to deg
       get(prop) {
         if (prop === 'rotate') {
           return { angle: { value: Math.PI / 2, unit: 'rad' } } // 90deg
@@ -548,7 +548,7 @@ describe('captureDOM – strict path uses measure host and matrix pipeline', () 
   it('creates snapdom-measure-slot once and reuses it; output includes transform work', async () => {
     const { captureDOM } = await import('../src/core/capture.js')
 
-    // Fuerza bbox-transform: matrix con rotación + translate (no es translate puro)
+    // Force the bbox-transform path: a matrix with rotation + translate (not a pure translate)
     const el = document.createElement('div')
     el.style.transform = 'matrix(0.9396926,0.3420201,-0.3420201,0.9396926,5,-7)'
 
@@ -558,12 +558,12 @@ describe('captureDOM – strict path uses measure host and matrix pipeline', () 
     vi.spyOn(Element.prototype, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(0, 0, 120, 60))
 
-    // 1ª captura: debería crear el host de medición
+    // First capture: it should create the measurement host
     const svg1 = decodeSvg(await captureDOM(el, { embedFonts: false }))
     const host1 = document.getElementById('snapdom-measure-slot')
     expect(host1).toBeTruthy()
 
-    // Debe haber algún transform aplicado en el container (cancel/scale/etc.)
+    // Some transform must be applied on the container (cancel/scale/etc.)
     expect(/style="[^"]*transform:[^"]+/.test(svg1)).toBe(true)
 
     // 2ª captura: reutiliza el mismo host (no duplica nodos)
@@ -597,15 +597,15 @@ describe('captureDOM – pure translate does not trigger strict path', () => {
 
     const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // Viewport path: el tamaño del <svg> refleja el rect (ceil), sin obligación de transform en container.
+    // Viewport path: the <svg> size mirrors the rect (ceil), with no container transform required.
     expect(svg).toContain('width="100"')
     expect(svg).toContain('height="50"')
 
     // Aceptamos que el container NO tenga transform o solo tenga transform-origin.
-    // Si por implementación hubiese un transform, igual no debería contener translate de "cancelación".
+    // If the implementation does emit a transform, it still must not contain a cancelling translate.
     const hasTransform = /style="[^"]*transform:[^"]+/.test(svg)
     if (hasTransform) {
-      // No esperaríamos un translate(...) de cancelación (estrict path) en este caso.
+      // No cancelling translate(...) is expected on this path.
       expect(/transform:[^"]*translate\(/.test(svg)).toBe(false)
     }
   })

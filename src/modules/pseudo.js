@@ -293,8 +293,8 @@ function stripContentAltText(raw) {
 
 /**
  * Concatena tokens de CSS `content` (cadenas y resultados de counter()/counters())
- * sin el whitespace que los separa en el source — el browser concatena tokens
- * adyacentes sin espacios, así que `counter(x) ")"` debe renderizar `1)` y no `1 )`.
+ * without the whitespace that separates them in the source: the browser concatenates
+ * adjacent tokens with no gap, so `counter(x) ")"` must render `1)` and not `1 )`.
  * @param {string} raw
  */
 function collapseCssContent(raw) {
@@ -314,7 +314,7 @@ function collapseCssContent(raw) {
 }
 
 /**
- * Crea un contexto base envuelto que aplica overrides de hermanos (si existen).
+ * Builds a wrapped base context that applies sibling overrides when there are any.
  * @param {Element} node
  * @param {{get:Function, getStack:Function}} base
  */
@@ -326,7 +326,7 @@ function withSiblingOverrides(node, base, siblingCounters) {
     get(n, name) {
       const v = base.get(n, name)
       const ov = map.get(name)
-      // usar el mayor (o el override si existe) para mantener secuencia
+      // take the larger one (or the override when present) to keep the sequence going
       return typeof ov === 'number' ? Math.max(v, ov) : v
     },
     getStack(n, name) {
@@ -344,8 +344,8 @@ function withSiblingOverrides(node, base, siblingCounters) {
 }
 
 /**
- * Aplica counter-reset / counter-increment del pseudo *solo para este nodo*,
- * partiendo de un contexto base (ya envuelto con overrides de hermanos).
+ * Applies the pseudo's counter-reset / counter-increment for THIS node only, starting
+ * from a base context (already wrapped with the sibling overrides).
  * @param {Element} node
  * @param {CSSStyleDeclaration|null} pseudoStyle
  * @param {{get:Function, getStack:Function}} baseCtx
@@ -374,14 +374,14 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
     let stack = baseCtx.getStack(node, name)
     stack = stack.length ? stack.slice() : []
 
-    // reset: push si hay stack, replace si no
+    // reset: push when there is a stack, replace otherwise
     const r = resets.find(x => x.name === name)
     if (r) {
       const val = Number.isFinite(r.num) ? r.num : 0
       stack = stack.length ? [...stack, val] : [val]
     }
 
-    // counter-set: fija el valor del top sin crear scope (orden CSS: reset → set → increment)
+    // counter-set: sets the top value without creating a scope (CSS order: reset -> set -> increment)
     const s = sets.find(x => x.name === name)
     if (s) {
       const val = Number.isFinite(s.num) ? s.num : 0
@@ -389,7 +389,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
       stack[stack.length - 1] = val
     }
 
-    // increment: sobre el top, crear top=0 si no existe
+    // increment: on the top entry, creating top=0 when there is none
     const inc = incs.find(x => x.name === name)
     if (inc) {
       const by = Number.isFinite(inc.num) ? inc.num : 1
@@ -415,10 +415,10 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
 }
 
 /**
- * Resuelve el `content` del pseudo aplicando:
- * 1) overrides de hermanos (para continuidad entre siblings),
- * 2) reset/increment del pseudo,
- * 3) colapso de tokens `"..."` sin espacios intermedios.
+ * Resolves the pseudo's `content` by applying:
+ * 1) sibling overrides (so counters stay continuous across siblings),
+ * 2) the pseudo's own reset/increment,
+ * 3) token collapsing, so `"..."` pieces join with no gap.
  *
  * @param {Element} node
  * @param {'::before'|'::after'} pseudo
@@ -502,7 +502,7 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
   // 1) aplicar overrides de hermanos
   const baseWithSiblings = withSiblingOverrides(node, baseCtx, siblingCounters)
 
-  // 2) derivar (aplica reset/increment del pseudo)
+  // 2) derive (applies the pseudo's reset/increment)
   const derived = deriveCounterCtxForPseudo(node, ps, baseWithSiblings)
 
   // 3) resolver counter()/counters()
@@ -510,7 +510,7 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
     ? resolveCountersInContent(raw, node, derived)
     : raw
 
-  // 4) colapsar tokens (quita espacios entre "1" "." -> "1.")
+  // 4) collapse tokens (drops the gap between "1" and "." -> "1.")
   const text = collapseCssContent(resolved)
   return { text, incs: derived.__incs || [] }
 }
@@ -530,7 +530,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   // <span> (as the ::first-letter path does) drops them from the rendered value.
   // Browsers don't render pseudo-elements on textarea anyway.
   if (source.tagName === 'TEXTAREA') return
-  // --- NEW: preflight once per session/doc ---
+  // --- preflight, once per session/doc ---
   const doc = source.ownerDocument || document
   if (!preflightWithFp(doc, sessionCache)) {
     return
@@ -676,14 +676,14 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         hasShadow || hasOutline
 
       if (!shouldRender) {
-        // Aun si no renderizamos caja, si el pseudo tenía increments, propagar a hermanos
+        // Even with no box rendered, a pseudo that had increments must propagate to siblings
         if (incs && incs.length && source.parentElement) {
           const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
-          // Para cada counter incrementado en el pseudo, guardar el valor resuelto final
+          // For each counter the pseudo incremented, store the final resolved value
           for (const { name } of incs) {
             if (!name) continue
-            // reconstruir valor final desde derived: volvemos a pedirlo
-            // Usamos withSiblingOverrides + derive para ser consistentes
+            // Rebuild the final value from `derived` by asking for it again, using
+            // withSiblingOverrides + derive so it stays consistent with the read above
             const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
             const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
             const finalVal = derived.get(source, name)
@@ -830,7 +830,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox ||
         hasShadow || hasOutline
 
-      // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
+      // Before inserting: when the pseudo incremented anything, propagate the final value to siblings
       if (incs && incs.length && source.parentElement) {
         const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
         const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)

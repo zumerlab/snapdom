@@ -374,7 +374,7 @@ describe('embedCustomFonts - cache key hit', () => {
     expect(css1).toMatch(/url\(["']?data:/)
     expect(snapFetch).toHaveBeenCalledTimes(1)
 
-    // Segunda llamada idéntica → sale del cache.resource por cacheKey
+    // An identical second call is served from cache.resource by cacheKey
     vi.mocked(snapFetch).mockClear()
     const css2 = await embedCustomFonts(opts)
     expect(css2).toBe(css1)

@@ -44,13 +44,13 @@ function makeUsedCodepoints(text='A') {
 }
 
 /**
- * Mock seguro de document.fonts (FontFaceSet "mínimo pero compatible")
+ * Safe document.fonts mock (a minimal but compatible FontFaceSet)
  * @param {Array<{ family:string, status:string, weight?:string, style?:string, _snapdomSrc?:string }>} fontsArray
  */
 function setDocumentFonts(fontsArray = []) {
   const items = [...fontsArray]
 
-  // iterables y helpers típicos
+  // the usual iterables and helpers
   const iter = function* () { yield* items }
   const fakeSet = {
     // iterator por defecto
@@ -64,7 +64,7 @@ function setDocumentFonts(fontsArray = []) {
     delete(ff) { const i = items.indexOf(ff); if (i >= 0) items.splice(i, 1) },
     clear() { items.length = 0 },
     ready: Promise.resolve(),
-    // extra mínimo
+    // minimal extra
     size: items.length
   }
 
@@ -80,7 +80,7 @@ function setDocumentFonts(fontsArray = []) {
 let restoreFonts = () => {}
 
 beforeEach(() => {
-  // cache.reset() o resetCache() según exista
+  // cache.reset() or resetCache(), whichever exists
   if (typeof cache.reset === 'function') cache.reset()
   if (typeof cache.resetCache === 'function') cache.resetCache()
   if (cache.font?.clear) cache.font.clear?.()
@@ -88,7 +88,7 @@ beforeEach(() => {
 
   cleanFontEnvironment()
   vi.restoreAllMocks()
-  restoreFonts = setDocumentFonts([]) // mock vacío por defecto
+  restoreFonts = setDocumentFonts([]) // empty mock by default
 })
 
 afterEach(() => {
@@ -104,7 +104,7 @@ describe('iconToImage', () => {
     toDataURLSpy?.mockRestore?.()
   })
 
-  it('devuelve un data URL válido con dimensiones > 0', async () => {
+  it('returns a valid data URL with dimensions > 0', async () => {
     ctxSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => ({
       scale: vi.fn(),
       font: '',

@@ -2,9 +2,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach} from 'vitest'
 import { inlineImages } from '../src/modules/images.js'
 
-// mock del módulo que usa images.js
+// mock of the module images.js depends on
 vi.mock('../src/modules/snapFetch.js', async () => {
-  // devolvemos una función reemplazable por-test
+  // return a function each test can replace
   return {
     snapFetch: vi.fn(async () => ({ ok: true, data: 'data:image/png;base64,AAA' })),
   }
@@ -69,7 +69,7 @@ if (typeof window !== 'undefined') {
   img.src = 'https://x/fail.png'
   container.appendChild(img)
 
-  // fuerza fallo explícito de snapFetch para este caso
+  // force an explicit snapFetch failure for this case
   vi.mocked(snapFetch).mockResolvedValueOnce({ ok: false, data: null })
 
   await inlineImages(container)
@@ -98,12 +98,12 @@ describe('inlineImages – extra coverage', () => {
   img.setAttribute('sizes', '100vw')
   wrap.appendChild(img)
 
-  // asegurá que vemos la llamada y luego devolvemos OK
+  // make sure the call is observed, then return OK
   vi.mocked(snapFetch).mockResolvedValueOnce({ ok: true, data: 'data:image/png;base64,AAA' })
 
   await inlineImages(wrap)
 
-  // se llamó con la URL normalizada desde currentSrc
+  // called with the URL normalized from currentSrc
   expect(vi.mocked(snapFetch).mock.calls[0][0]).toBe('https://ex.com/a.png')
 
   // los atributos responsivos fueron removidos
@@ -130,10 +130,10 @@ describe('inlineImages – extra coverage', () => {
     expect(img.height).toBe(45)
   })
 
-  it('cuando primer fetch falla usa fallbackURL STRING como fallback y conserva tamaño estimado', async () => {
+  it('when the first fetch fails it uses the STRING fallbackURL and keeps the estimated size', async () => {
     const img = document.createElement('img')
     img.src = 'https://ex.com/fails.png'
-    // datos de tamaño en dataset/attrs/estilo → se usan por prioridad
+    // size data in dataset/attrs/style, used in priority order
     img.dataset.snapdomWidth = '200'
     img.dataset.snapdomHeight = '100'
     wrap.appendChild(img)
@@ -192,7 +192,7 @@ describe('inlineImages – extra coverage', () => {
     expect(fallback.textContent || '').not.toContain('img')
   })
 
-  it('procesa en lotes de 4 (5 imágenes) y aplica placeholder por falla', async () => {
+  it('processes in batches of 4 (5 images) and applies a placeholder on failure', async () => {
     const img = document.createElement('img')
     img.src = 'https://ex.com/down.png'
     wrap.appendChild(img)
@@ -241,7 +241,7 @@ describe('inlineImages – extra coverage', () => {
 
     vi.mocked(snapFetch).mockResolvedValueOnce({ ok: true, data: 'data:image/jpeg;base64,ROOT' })
 
-    // el propio <img> es la raíz de captura — sin wrapper
+    // the <img> itself is the capture root, with no wrapper
     await inlineImages(img)
 
     expect(img.src).toBe('data:image/jpeg;base64,ROOT')

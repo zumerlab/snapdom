@@ -261,11 +261,11 @@ export function applyStyleClass(node, key, keyToClass) {
     return
   }
 
-  // Fuera de Shadow DOM: aplica clase generada para compresión
+  // Outside shadow DOM: apply the generated class for compression
   const className = keyToClass.get(key)
   if (className) node.classList.add(className)
 
-  // Reaplica backgroundImage para evitar que se pierda (si existe)
+  // Re-apply backgroundImage so it is not lost, when there is one
   const bgImage = node.style?.backgroundImage
   const hasIcon = node.dataset?.snapdomHasIcon
   if (bgImage && bgImage !== 'none') node.style.backgroundImage = bgImage

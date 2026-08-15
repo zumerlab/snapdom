@@ -129,15 +129,15 @@ export async function composeAndSerialize(state, ex) {
       }
     } catch { /* fallback: use doc dimensions above */ }
   }
-  // === NEW: recompute height using the kept-children span (no offscreen) ===
+  // === recompute height using the kept-children span (no offscreen) ===
   if (state.options?.excludeMode === 'remove') {
     const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
-    // Safety: nunca mayor al original, y con un epsilon para evitar recortes por redondeo
+    // Safety: never larger than the original, with an epsilon so rounding cannot clip
     const EPS = 1 // px
     if (Number.isFinite(hEst) && hEst > 0) {
       h0 = Math.max(1, Math.min(h0, limitDecimals(hEst + EPS)))
     }
-    // En ancho casi nunca conviene ajustar; si lo necesitás, podés hacer análogo con estimateKeptWidth(...)
+    // Width almost never needs the same adjustment; the analogous helper would be estimateKeptWidth(...)
   }
   // Opt-in layout reconciliation: measure the styled clone in-document and pin only the
   // boxes whose size diverges from the live tree (measurement over heuristics).

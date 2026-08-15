@@ -74,10 +74,10 @@ describe('applyCachePolicy', () => {
     expect(after.computedStyle).toBe(before.computedStyle)
     expect(after.font).toBe(before.font)
 
-    // Nuevos maps están vacíos
+    // The new maps are empty
   })
 
-  it('soft: deja intactos los caches globales (sesión ya no es global)', () => {
+  it('soft: leaves the global caches intact (the session is no longer global)', () => {
     seedSomeData()
     const before = snapshotRefs()
 
@@ -94,7 +94,7 @@ describe('applyCachePolicy', () => {
     expect(after.computedStyle).toBe(before.computedStyle)
     expect(after.font).toBe(before.font)
 
-    // Sesión está vacía
+    // The session is empty
   })
 
   it("legacy 'full': persistent caches kept, session bucket still fresh per capture", () => {
@@ -116,7 +116,7 @@ describe('applyCachePolicy', () => {
     // no shared session bucket left to assert on.
   })
 
-  it('disabled: reinstancia TODO (global + sesión) y deja todo vacío', () => {
+  it('disabled: re-instantiates EVERYTHING (global + session) and leaves it empty', () => {
     seedSomeData()
     const before = snapshotRefs()
 
@@ -133,7 +133,7 @@ describe('applyCachePolicy', () => {
     expect(after.measureHints).not.toBe(before.measureHints)
     expect(after.font).not.toBe(before.font)
 
-    // Vacíos
+    // Empty
     expect(cache.image.size).toBe(0)
     expect(cache.background.size).toBe(0)
     expect(cache.resource.size).toBe(0)
@@ -146,11 +146,11 @@ describe('applyCachePolicy', () => {
     seedSomeData()
     const before = snapshotRefs()
 
-    // Política inexistente provoca rama default → soft
+    // An unknown policy takes the default branch: soft
     applyCachePolicy('unknown-policy')
 
     const after = snapshotRefs()
-    // Reemplaza los de sesión
+    // Replaces the session ones
     // Mantiene globales
     expect(after.image).toBe(before.image)
     expect(after.baseStyle).toBe(before.baseStyle)

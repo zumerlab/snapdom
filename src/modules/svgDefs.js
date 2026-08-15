@@ -76,7 +76,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
     Array.from(element.querySelectorAll('[id]')).map(n => n.id)
   )
 
-  /** IDs referenciados (por cualquiera de los svgRoots) que no están locales aún */
+  /** Referenced ids (from any of the svgRoots) that are not local yet */
   const neededIds = new Set()
 
   /** Flag para saber si hubo referencias (aunque luego no existan matches) */
@@ -84,7 +84,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
 
   /**
    * Extrae ids de url(#id) de un valor de atributo/inline style.
-   * Opcionalmente también encola los ids para resolución recursiva.
+   * Optionally also queues the ids for recursive resolution.
    * @param {string|null} val
    * @param {Set<string>|null} queueForResolve
    */
@@ -136,13 +136,13 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
     }
   }
 
-  // 1) Recolectar referencias de TODOS los svgRoots con dedupe global
+  // 1) Collect references from ALL svgRoots, deduped globally
   for (const svg of svgRoots) collectReferencesInSvg(svg)
 
-  // 2) Si no hay referencias, no crear contenedor (cumple test "does nothing...")
+  // 2) No references: do not create the container (satisfies the "does nothing..." test)
   if (!sawAnyReference) return
 
-  // 3) Crear (o reutilizar) un ÚNICO contenedor oculto en 'element'
+  // 3) Create (or reuse) a SINGLE hidden container inside 'element'
   let defsHost = element.querySelector('svg.inline-defs-container')
   if (!defsHost) {
     defsHost = doc.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -153,7 +153,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
   }
   let localDefs = defsHost.querySelector('defs') || null
 
-  // 4) Resolver externos; nunca tomar fuentes que ya estén dentro de 'element'
+  // 4) Resolve external ones; never take sources that already live inside 'element'
   const findGlobalById = (id) => {
     if (!id) return null
     if (globalExistingIds.has(id)) return null // ya local en root
@@ -161,7 +161,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
 
     const tryFind = (sel) => {
       const el = searchRoot.querySelector(sel)
-      // si la fuente ya está dentro del contenedor root, no es "externa"
+      // a source already inside the root container is not "external"
       return el && !element.contains(el) ? el : null
     }
 
@@ -172,7 +172,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
     )
   }
 
-  // 5) Si no hay matches globales, igual mantenemos el contenedor vacío (cumple test final)
+  // 5) With no global matches we still keep the empty container (satisfies the last test)
   if (!neededIds.size) return
 
   const queued = new Set(neededIds)
@@ -190,7 +190,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
       continue
     }
 
-    // Crear <defs> on-demand (solo si de verdad vamos a insertar algo)
+    // Create <defs> on demand, only when something is actually going to be inserted
     if (!localDefs) {
       localDefs = doc.createElementNS('http://www.w3.org/2000/svg', 'defs')
       defsHost.appendChild(localDefs)
@@ -202,7 +202,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
     inlined.add(id)
     globalExistingIds.add(id)
 
-    // Seguir dependencias internas del clon (recursivo, dedupe global)
+    // Follow the clone's internal dependencies (recursive, globally deduped)
     const walk = [clone, ...clone.querySelectorAll('*')]
     for (const node of walk) {
       const href = getHrefAttr(node)

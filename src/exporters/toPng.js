@@ -5,7 +5,7 @@ import { captureDOM } from '../core/capture.js'
 /**
  * @param {HTMLElement|string} elOrUrl
  * @param {object} opts
- * @returns {Promise<HTMLImageElement|string|HTMLCanvasElement|Blob>} según tu contrato de `rasterize`
+ * @returns {Promise<HTMLImageElement|string|HTMLCanvasElement|Blob>} per the `rasterize` contract
  */
 export async function toPng(elOrUrl, opts = {}) {
   /* c8 ignore start -- direct-exporter entry: the pipeline always hands these a url

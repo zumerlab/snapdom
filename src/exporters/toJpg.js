@@ -3,7 +3,7 @@ import { captureDOM } from '../core/capture.js'
 
 export async function toJpg(elOrUrl, opts = {}) {
   // El normalizador de JPEG→fondo blanco ya corre en snapdom.capture(),
-  // pero por si alguien llama directo al exporter:
+  // but in case someone calls the exporter directly:
   const next = { backgroundColor: '#ffffff', ...opts }
   /* c8 ignore start -- direct-exporter entry: the pipeline always hands these a url
      string, so the element branch is only for someone importing the exporter directly. */

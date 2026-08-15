@@ -10,7 +10,7 @@ import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
 export { preCache } from './preCache.js'
 
-// API pública (registro global de plugins)
+// Public API (global plugin registry)
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
 
 /**
@@ -44,7 +44,7 @@ export const snapdom = Object.assign(main, { plugins, fromString })
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
-// Token interno para llamadas de export "silenciosas" desde plugins (no hooks)
+// Internal token for "silent" export calls made from plugins (no hooks)
 const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
 
 /**
@@ -222,8 +222,8 @@ async function buildResult(url, context) {
     rendered ? { value: url, enumerable: true } : { get() { throw absent('export.url') }, enumerable: false, configurable: true }
   )
 
-  // ——— 1) Core exports por defecto (carga lazy en cada tipo) ———
-  // NOTA: no importamos estáticamente los exportadores aquí.
+  // ——— 1) Default core exports (each type is imported lazily) ———
+  // NOTE: the exporters are deliberately not imported statically here.
   const coreExports = {
     img: async (ctx, opts) => {
       const { toImg } = await import('../exporters/toImg.js')
@@ -271,7 +271,7 @@ async function buildResult(url, context) {
   }
 
   // ——— 2) Exports declarados por plugins ———
-  // Fachada reutilizable “silenciosa” (sin hooks) para uso en defineExports()
+  // Reusable "silent" facade (no hooks) for use from defineExports()
   const _pluginExports = {}
   for (const k of ['img', 'svg', 'canvas', 'blob', 'png', 'jpeg', 'webp']) {
     _pluginExports[k] = async (opts) =>
@@ -279,7 +279,7 @@ async function buildResult(url, context) {
   }
   _pluginExports.jpg = _pluginExports.jpeg
 
-  // Contexto extendido para defineExports (incluye URL y la fachada para reuso)
+  // Extended context for defineExports (carries the URL and the facade for reuse)
   const _defineCtx = { ...context, artifacts: context.__artifacts || null, export: exportFacade(), exports: _pluginExports }
 
   const providedMaps = await runAll('defineExports', _defineCtx)
@@ -290,12 +290,12 @@ async function buildResult(url, context) {
   // Plugin exports override core (plugin > core by name).
   const exportsMap = { ...coreExports, ...provided }
 
-  // —— Alias: jpg → jpeg (para toJpg y to('jpg')) ——
+  // —— Alias: jpg -> jpeg (for toJpg and to('jpg')) ——
   if (exportsMap.jpeg && !exportsMap.jpg) {
     exportsMap.jpg = (ctx, opts) => exportsMap.jpeg(ctx, opts)
   }
 
-  // —— Normalizador para opciones por tipo (p.ej. JPEG/WebP: fondo blanco) ——
+  // —— Per-type option normalizer (e.g. JPEG/WebP: white background) ——
   function normalizeExportOptions(type, opts) {
     const raw = opts || {}
     const next = { ...context, ...raw }
@@ -312,9 +312,9 @@ async function buildResult(url, context) {
     // (blob defaults to svg, download to png), so they need the explicit value, not the
     // context default.
     next.__explicitFormat = explicit ? next.format : (context.__explicitFormat ?? null)
-    // `type` aquí es el NOMBRE del export ('blob'/'canvas'/'download'/'jpeg'/…), no el formato
-    // de imagen. Resolver el formato real (jpg→jpeg) para aplanar el fondo igual que
-    // createContext, o JPEG codificaría las zonas transparentes en negro.
+    // `type` here is the export NAME ('blob'/'canvas'/'download'/'jpeg'/…), not the image
+    // format. Resolve the real format (jpg -> jpeg) so the background is flattened the same
+    // way createContext does it, or JPEG would encode transparent areas as black.
     const lossy = (s) => s === 'jpeg' || s === 'jpg' || s === 'webp'
     const fmt = [type, next.format, rawType]
       .map(v => (typeof v === 'string' ? v.toLowerCase() : ''))
@@ -331,7 +331,7 @@ async function buildResult(url, context) {
     return next
   }
 
-  // —— Runner unificado con beforeExport/afterExport y cola por sesión ——
+  // —— Unified runner with beforeExport/afterExport and a per-session queue ——
   let afterSnapFired = false
   let _exportQueue = Promise.resolve()
   async function runExport(type, opts) {
@@ -371,7 +371,7 @@ async function buildResult(url, context) {
     return run
   }
 
-  // —— Helpers esperados por los tests + API azúcar ——
+  // —— Helpers the tests expect, plus API sugar ——
   const result = {
     // Present as a plain string on the normal path; a throwing getter (installed below)
     // when this capture stopped before the render stage.
@@ -386,13 +386,13 @@ async function buildResult(url, context) {
     toRaw: () => { if (!rendered) throw absent('toRaw()'); return url },
     to: (type, opts) => runExport(type, opts),
 
-    // Métodos “clásicos” que los tests esperan:
+    // "Classic" methods the tests expect:
     toImg: (opts) => runExport('img', opts),
     toSvg: (opts) => runExport('svg', opts),
     toCanvas: (opts) => runExport('canvas', opts),
     toBlob: (opts) => runExport('blob', opts),
     toPng: (opts) => runExport('png', opts),
-    toJpg: (opts) => runExport('jpg', opts),     // alias requerido por tests
+    toJpg: (opts) => runExport('jpg', opts),     // alias the tests require
     toWebp: (opts) => runExport('webp', opts),
     download: (opts) => runExport('download', opts)
   }
@@ -413,7 +413,7 @@ async function buildResult(url, context) {
     ? { value: context.meta, enumerable: true }
     : { get() { throw absent('meta') }, enumerable: false, configurable: true })
 
-  // Azúcar dinámico por cada export registrado (plugins incluidos)
+  // Dynamic sugar for every registered export (plugins included)
   for (const key of Object.keys(exportsMap)) {
     const helper = 'to' + key.charAt(0).toUpperCase() + key.slice(1)
     if (!result[helper]) {

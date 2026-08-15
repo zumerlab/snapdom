@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Carga fresca del módulo para que __wired se reinicie en cada test que lo pida
+// Fresh module load so __wired resets for every test that asks for it
 async function loadInlineAllStylesFresh() {
   await vi.resetModules()
   const mod = await import('../src/modules/styles.js')
@@ -46,7 +46,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(MOStub.count).toBe(0)
   })
 
-  it('engancha invalidación una vez cuando cache !== "disabled"', async () => {
+  it('wires invalidation once when cache !== "disabled"', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 
     const s1 = document.createElement('div')
@@ -64,7 +64,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(session.styleMap.has(c2)).toBe(true)
   })
 
-  it('NO engancha invalidación cuando cache === "disabled"', async () => {
+  it('does NOT wire invalidation when cache === "disabled"', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 
     const src = document.createElement('div')
@@ -114,7 +114,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(session.styleMap.has(clone)).toBe(true)
   })
 
-  it('firma #3: (source, clone, options) usando sólo options', async () => {
+  it('signature #3: (source, clone, options) using options only', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 
     const src = document.createElement('strong')

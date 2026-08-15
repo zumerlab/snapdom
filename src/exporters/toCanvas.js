@@ -126,7 +126,7 @@ function splitDecls(s) {
   return parts.map(x => x.trim()).filter(Boolean)
 }
 function boxShadowToDropShadow(value) {
-  // divide por capas sin romper paréntesis de colores
+  // split by layer without breaking the parentheses of color functions
   const layers = []
   let buf = '', depth = 0
   for (let i = 0; i < value.length; i++) {
@@ -148,7 +148,7 @@ function boxShadowToDropShadow(value) {
     // WebKit renders drop-shadow at ~2x the radius (radius taken as sigma): halve
     // so the fallback shadow matches the live box-shadow width.
     blur = `${parseFloat(blur) / 2}px`
-    // color ≈ lo que quede tras quitar px e 'inset'
+    // color is roughly whatever is left after removing px values and 'inset'
     let color = layer.replace(/-?\d+(?:\.\d+)?px/gi, '')
                      .replace(/\binset\b/ig, '')
                      .trim().replace(/\s{2,}/g, ' ')
@@ -176,8 +176,8 @@ function rewriteDeclList(list) {
     if (ds) {
       filter = filter ? `${filter} ${ds}` : ds
       wfilter = wfilter ? `${wfilter} ${ds}` : ds
-      // opcional: eliminar el box-shadow original para evitar que reaparezca
-      // (no es estrictamente necesario dentro del SVG)
+      // optional: drop the original box-shadow so it cannot come back
+      // (not strictly required inside the SVG)
     }
   }
   const out = [...rest]
@@ -353,7 +353,7 @@ async function waitForImgPaint(img, verify) {
 
 /**
  * Rasterize SVG (o data URL) en un canvas respetando width/height + scale.
- * Soporta aplanar un background color sin canvas intermedio.
+ * Supports flattening a background color with no intermediate canvas.
  * @param {string} url
  * @param {{
  *   width?:number,
@@ -362,7 +362,7 @@ async function waitForImgPaint(img, verify) {
  *   dpr?:number,
  *   meta?:object,
  *   crop?:{x:number,y:number,width:number,height:number},
- *   backgroundColor?: string // <- NUEVO: color opcional para aplanar fondo
+ *   backgroundColor?: string // optional color used to flatten the background
  * }} options
  * @returns {Promise<HTMLCanvasElement>}
  */

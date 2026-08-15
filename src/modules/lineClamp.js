@@ -59,7 +59,7 @@ export function lineClamp(el, cs) {
   if (!isPlainTextContainer(el)) return () => {}
 
   const original = el.textContent ?? ''
-  // Guarda para restaurar
+  // Saved so it can be restored
   const prevText = original
 
   // Measure the REAL rendered line height instead of guessing from CSS.
@@ -74,12 +74,12 @@ export function lineClamp(el, cs) {
   const lineH = perLine > 0 ? perLine : usedLineHeightPx(cs)
   const targetH = Math.round(lineH * lines + pad)
 
-  // Si ya entra completo en N líneas, no hacemos nada (igual que el clamp nativo)
+  // Already fits in N lines: do nothing, same as the native clamp
   if (el.scrollHeight <= targetH + 0.5) {
     return () => {}
   }
 
-  // ==== Binary search sobre el largo del prefijo que entra con ellipsis ====
+  // ==== Binary search over the prefix length that fits with an ellipsis ====
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
@@ -92,10 +92,10 @@ export function lineClamp(el, cs) {
     }
   }
 
-  // Aplica el mejor corte (si nada entra, queda solo '…')
+  // Apply the best cut (when nothing fits, only the ellipsis is left)
   el.textContent = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
 
-  // Devuelve undo() para restaurar el DOM original tras clonar
+  // Return undo() so the original DOM is restored after cloning
   return () => {
     el.textContent = prevText
   }
@@ -122,7 +122,7 @@ export function textEllipsis(el, cs) {
 
   if (!isPlainTextContainer(el)) return () => {}
 
-  // Ya entra completo → el clamp nativo tampoco haría nada.
+  // It already fits, so the native clamp would do nothing either.
   if (el.scrollWidth <= el.clientWidth + 0.5) return () => {}
 
   const original = el.textContent ?? ''
@@ -146,7 +146,7 @@ export function textEllipsis(el, cs) {
   }
 }
 
-/* ---------------- helpers: idénticos a tu snippet ---------------- */
+/* ---------------- helpers ---------------- */
 
 /** A cut index that never lands between the two halves of a surrogate pair. Slicing an
  *  emoji in half leaves a lone surrogate, and the serialized SVG then fails
@@ -180,7 +180,7 @@ function vpad(cs) {
   return (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
 }
 
-/** Plain text container: sin hijos element, sólo nodos de texto/espacios. */
+/** Plain text container: no element children, only text nodes and whitespace. */
 function isPlainTextContainer(el) {
   if (el.childElementCount > 0) return false
   return Array.from(el.childNodes).some(n => n.nodeType === Node.TEXT_NODE)

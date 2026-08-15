@@ -714,11 +714,10 @@ export async function embedCustomFonts({
  *
  * - Prioriza match exacto (peso, estilo, stretch).
  * - Luego permite "near weight" manteniendo estilo/stretch.
- * - Y como fallback específico:
- *   Si SOLO hay @font-face `normal` para una familia,
- *   pero el DOM pide `italic`/`oblique`,
- *   acepta este face normal (si el peso/stretch son razonables),
- *   de modo que el motor pueda generar cursiva sintética.
+ * - Plus one specific fallback:
+ *   when a family declares ONLY a `normal` @font-face but the DOM asks for
+ *   `italic`/`oblique`, accept that normal face (as long as weight/stretch are
+ *   reasonable) so the engine can synthesize the italic.
  *
  * @param {string} fam
  * @param {string} styleSpec   font-style desde @font-face (p.ej. "normal" o "italic")
@@ -768,8 +767,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     }
   }
 
-  // 3) Fallback: DOM pide italic/oblique pero solo hay @font-face normal
-  //    para ESTA familia: aceptamos el face normal si peso/stretch son razonables.
+  // 3) Fallback: the DOM asks for italic/oblique but THIS family only declares a normal
+  //    @font-face. Accept the normal face when weight/stretch are reasonable.
   if (!faceIsRange && ss.kind === 'normal') {
     const hasItalicRequest = need.some((r) => normStyle(r.s) !== 'normal')
     if (hasItalicRequest) {

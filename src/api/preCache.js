@@ -39,7 +39,7 @@ export async function preCache(root = document, options = {}) {
     if (root && root.nodeType === 1 /* ELEMENT_NODE */) {
       const descendants = root.querySelectorAll ? Array.from(root.querySelectorAll('*')) : []
       allEls = [root, ...descendants]
-      // Sólo imágenes dentro del subtree (el root también puede ser <img>)
+      // Images inside the subtree only (the root itself can be an <img> too)
       imgEls = []
       if (root.tagName === 'IMG' && root.getAttribute('src')) imgEls.push(root)
       imgEls.push(...Array.from(root.querySelectorAll?.('img[src]') || []))
@@ -77,7 +77,7 @@ export async function preCache(root = document, options = {}) {
     for (const prop of URL_PROPS) {
       let val = ''
       try {
-        // Preferir estilo autor (estable en JSDOM/test); fallback a computado
+        // Prefer the author style (stable under test); fall back to the computed one
         val = (prop === 'background-image' && el?.style?.backgroundImage) ||
           getStyle(el).getPropertyValue(prop) || ''
       } catch {}

@@ -1,7 +1,7 @@
 // __tests__/module.iconFonts.test.js
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-let mod // se setea en beforeEach para resetear estado del módulo
+let mod // set in beforeEach so the module state resets
 
 beforeEach(async () => {
   vi.restoreAllMocks()
@@ -14,7 +14,7 @@ describe('compileIconFontMatchers (per-capture matchers)', () => {
     const { compileIconFontMatchers, isIconFont } = mod
     const m = compileIconFontMatchers('acme-brand')
     expect(isIconFont('ACME-BRAND pack', m)).toBe(true)
-    // control: no matchea algo que no contenga el patrón y tampoco cae en la heurística
+    // control: something without the pattern must not match, nor fall into the heuristic
     expect(isIconFont('qwerty', m)).toBe(false)
   })
 
@@ -55,7 +55,7 @@ describe('compileIconFontMatchers (per-capture matchers)', () => {
     expect(isIconFont('CAPTURE-B-BRAND', a)).toBe(false)
   })
 
-  it('ignora valores inválidos y hace console.warn', () => {
+  it('ignores invalid values and warns on the console', () => {
     const { compileIconFontMatchers, isIconFont } = mod
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const m = compileIconFontMatchers([123, { nope: true }])

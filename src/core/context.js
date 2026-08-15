@@ -28,8 +28,8 @@ import { compileIconFontMatchers } from '../modules/iconFonts.js'
  * @param {string|null} [options.backgroundColor]
  * @param {string}  [options.filename]
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
- * @param {boolean} [options.outerTransforms] // NEW
- * @param {boolean} [options.outerShadows]      // NEW
+ * @param {boolean} [options.outerTransforms]
+ * @param {boolean} [options.outerShadows]
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
  * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. On by default; pass `false` to embed images verbatim.
@@ -148,7 +148,7 @@ export function createContext(options = {}) {
       options.backgroundColor ?? (['jpeg', 'webp'].includes(resolvedFormat) ? '#ffffff' : null),
     filename: options.filename ?? 'snapDOM',
 
-    // NEW flags (user-friendly)
+    // Root transform / shadow handling
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
 

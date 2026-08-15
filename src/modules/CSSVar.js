@@ -43,10 +43,10 @@ function tplLookup(el) {
 }
 
 /**
- * Resuelve var() en estilos inline/atributos del elemento, materializando el valor
- * computado en el clone. Los var() aplicados por reglas de hoja no necesitan pasada
- * propia: el snapshot de estilos (inlineAllStyles) ya captura sus valores resueltos,
- * y los SVG sin snapshot reciben la pasada SVG_PAINT_PROPS de deepClone.
+ * Resolves var() in the element's inline styles and attributes, materializing the
+ * computed value onto the clone. var() applied by stylesheet rules needs no pass of its
+ * own: the style snapshot (inlineAllStyles) already captures the resolved values, and
+ * SVGs with no snapshot get deepClone's SVG_PAINT_PROPS pass.
  */
 export function resolveCSSVars(sourceEl, cloneEl) {
   if ((sourceEl?.nodeType !== 1) || (cloneEl?.nodeType !== 1)) return
@@ -67,7 +67,7 @@ export function resolveCSSVars(sourceEl, cloneEl) {
     }
   }
 
-  // Leemos cs sólo si hace falta o si vamos a comparar con baseline
+  // Read cs only when needed, or when it is about to be compared against the baseline
   let cs = null
   if (hasVar) {
     try { cs = getComputedStyle(sourceEl) } catch {}
@@ -95,7 +95,7 @@ export function resolveCSSVars(sourceEl, cloneEl) {
     }
   }
 
-  // --- 2) Resolver var() en atributos (genérico; si prop no existe en CSS, setProperty no hace nada)
+  // --- 2) Resolve var() in attributes (generic: setProperty is a no-op for a non-CSS prop)
   if (hasVar && sourceEl.attributes?.length) {
     const attrs = sourceEl.attributes
     for (let i = 0; i < attrs.length; i++) {

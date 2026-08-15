@@ -1,5 +1,5 @@
 import { describe, it, beforeEach, afterEach, afterAll, expect } from 'vitest'
-// ✅ variante ESM en jsDelivr (también podés usar unpkg con ?module)
+// ESM variant on jsDelivr (unpkg with ?module works too)
 import html2canvas from 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm'
 import { snapdom } from '../src/index.js'
 

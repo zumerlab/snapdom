@@ -80,7 +80,7 @@ export async function captureDOM(element, options) {
 
   let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow
   let fontsCSS = ''
-  // NEW: store root transform (scale/skew) when outerTransforms is on
+  // Root transform (scale/skew), kept when outerTransforms is on
   let rootTransform2D = null
   // How far this capture has to run: the maximum `needs` of the attached plugins
   // (see stages.js). 'render' — the default, and every capture without plugins — is the

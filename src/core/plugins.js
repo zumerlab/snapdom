@@ -83,8 +83,8 @@ function getContextPlugins(context) {
 }
 
 /**
- * Llama un hook y propaga un acumulador (compat con tu runHook actual).
- * Usa los plugins locales si existen, o los globales en fallback.
+ * Calls a hook and threads an accumulator through it.
+ * Uses the per-capture plugins when present, falling back to the globals.
  * @param {string} name
  * @param {any} context
  * @param {any} payload
@@ -102,9 +102,9 @@ export async function runHook(name, context, payload) {
 }
 
 /**
- * NUEVO: recolecta los valores devueltos por TODOS los plugins para un hook.
- * Útil para `defineExports` (cada plugin devuelve un mapa propio).
- * Usa plugins locales si existen, o los globales en fallback.
+ * Collects the values returned by EVERY plugin for one hook.
+ * Used by `defineExports`, where each plugin returns a map of its own.
+ * Uses the per-capture plugins when present, falling back to the globals.
  * @param {string} name
  * @param {any} context
  * @param {any} payload
@@ -125,7 +125,7 @@ export async function runAll(name, context, payload) {
 export function clearPlugins() { __plugins.length = 0 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
- * NEW: Local-first per-capture support (without removing global APIs)
+ * Local-first per-capture support, without removing the global APIs.
  * ────────────────────────────────────────────────────────────────────────────── */
 
 /**

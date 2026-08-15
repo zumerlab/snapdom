@@ -16,7 +16,7 @@ import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlacehol
 function addNotSlottedRightmost(sel) {
   sel = sel.trim()
   if (!sel) return sel
-  // Evitar duplicar si ya está
+  // Avoid duplicating when it is already there
   if (/:not\(\s*\[data-sd-slotted\]\s*\)\s*$/.test(sel)) return sel
   return `${sel}:not([data-sd-slotted])`
 }
@@ -31,15 +31,15 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
     .map(s => s.trim())
     .filter(Boolean)
     .map(s => {
-      // Si ya fue reescrito por ESTE rewriter (lleva el attr de scope), no lo toques.
-      // Un :where() de autor sí debe scopearse — sin esto se filtraba al light DOM.
+      // Already rewritten by THIS rewriter (it carries the scope attr): leave it alone.
+      // An author's own :where() DOES need scoping; without this it leaked into the light DOM.
       if (s.startsWith(':where(') && s.includes('data-sd')) return s
 
-      // No toques @rules aquí (esto se hace en el caller)
+      // Do not touch @rules here (the caller handles those)
       if (s.startsWith('@')) return s
 
       const body = excludeSlotted ? addNotSlottedRightmost(s) : s
-      // Especificidad 0 para todo el selector:
+      // Zero specificity for the whole selector:
       return `:where(${scopeSelector} ${body})`
     })
     .join(', ')
@@ -50,7 +50,7 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
  * - :host(.foo)           => :where([data-sd="sN"]:is(.foo))
  * - :host                 => :where([data-sd="sN"])
  * - ::slotted(X)          => :where([data-sd="sN"] X)              (no excluye sloteados)
- * - (resto, p.ej. .button)=> :where([data-sd="sN"] .button:not([data-sd-slotted]))
+ * - (anything else, e.g. .button) => :where([data-sd="sN"] .button:not([data-sd-slotted]))
  * - :host-context(Y)      => :where(:where(Y) [data-sd="sN"])      (aprox)
  */
 export function rewriteShadowCSS(cssText, scopeSelector) {
@@ -67,13 +67,13 @@ export function rewriteShadowCSS(cssText, scopeSelector) {
     return `:where(:where(${sel.trim()}) ${scopeSelector})`
   })
 
-  // 3) ::slotted(X) → descendiente dentro del scope, sin excluir sloteados
+  // 3) ::slotted(X) -> a descendant inside the scope, without excluding slotted nodes
   cssText = cssText.replace(/::slotted\(([^)]+)\)/g, (_, sel) => {
     return `:where(${scopeSelector} ${sel.trim()})`
   })
 
-  // 4) Por cada bloque de selectores "suelto", envolver con :where(scope …)
-  //    y excluir sloteados en el rightmost (:not([data-sd-slotted])).
+  // 4) For every "loose" selector block, wrap it in :where(scope …) and exclude slotted
+  //    nodes on the rightmost compound (:not([data-sd-slotted])).
   cssText = cssText.replace(/(^|})(\s*)([^@}{]+){/g, (_, brace, ws, selectorList) => {
     const wrapped = wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true)
     return `${brace}${ws}${wrapped}{`
@@ -278,7 +278,7 @@ export function markSlottedSubtree(root) {
   if (root.nodeType === Node.ELEMENT_NODE) {
     root.setAttribute('data-sd-slotted', '')
   }
-  // Marcar todos los descendientes elemento
+  // Mark every element descendant
   if (root.querySelectorAll) {
     root.querySelectorAll('*').forEach(el => el.setAttribute('data-sd-slotted', ''))
   }
@@ -637,7 +637,7 @@ var _blobToDataUrlCache = new EvictingMap(80)
  * Read a blob: URL and return its data URL, with memoization + shared cache.
  * - Usa snapFetch(as:'dataURL') para convertir directo.
  * - Dedupea inflight guardando la promesa en el Map.
- * - Escribe también en cache.resource para reuso cross-módulo.
+ * - Also writes to cache.resource so other modules can reuse it.
  * @param {string} blobUrl
  * @returns {Promise<string>} data URL
  */

@@ -608,7 +608,7 @@ export function estimateKeptHeight(container, options) {
   let maxBottom = -Infinity
   let found = false
 
-  // Consider only direct children; incluir floats (contribuyen a la altura del contenedor)
+  // Consider only direct children, floats included: they contribute to the container height
   const kids = Array.from(container.children)
   for (const k of kids) {
     if (willBeExcluded(k, options)) continue
@@ -623,7 +623,7 @@ export function estimateKeptHeight(container, options) {
     found = true
   }
 
-  // content span de lo que queda
+  // content span of what remains
   const contentSpan = found ? Math.max(0, maxBottom - minTop) : 0
 
   // reconstruir altura outer: border + padding + contenido

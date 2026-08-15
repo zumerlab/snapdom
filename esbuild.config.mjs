@@ -25,7 +25,6 @@ const banner = {
   js: `/*
 * SnapDOM
 * v${version}
-* Author: Juan Martin Muda
 * License: MIT
 */`,
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { preCache } from '../src/api/preCache.js'
 import { cache } from '../src/core/cache.js'
-import { safeEncodeURI } from '../src/utils/helpers.js' // ajustá el path si difiere
+import { safeEncodeURI } from '../src/utils/helpers.js'
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -25,7 +25,7 @@ describe('preCache – extra coverage', () => {
         blob: () => Promise.resolve(new Blob([svg], { type: 'image/svg+xml' })),
       })
     }
-    // En el contrato nuevo, no se debería llegar acá si useProxy está seteado
+    // Under the current contract this should be unreachable when useProxy is set
     return Promise.reject(new Error('network fail'))
   })
 
@@ -60,11 +60,11 @@ describe('preCache – extra coverage', () => {
 })
 
   it('handles mixed background layers (gradient + url) and only processes the URL layer', async () => {
-    // No contamos fetch acá porque raster usa Image() y puede ser 0.
-    globalThis.fetch = vi.fn() // por si algo intenta fetch (no debería)
+    // fetch is not counted here: the raster path uses Image() and may be 0.
+    globalThis.fetch = vi.fn() // in case something tries to fetch (it should not)
 
-    const URL = 'https://assets.test/a.svg' // usamos SVG para que sí pase por fetch en tu impl
-    // Si querés testear raster, cambiá asserts a cache.image; con SVG comprobamos background.
+    const URL = 'https://assets.test/a.svg' // SVG so it actually goes through fetch
+    // To test the raster path, assert on cache.image; with SVG we check background.
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
     vi.mocked(globalThis.fetch).mockResolvedValue({
       ok: true,
@@ -78,13 +78,13 @@ describe('preCache – extra coverage', () => {
 
     await preCache(el)
 
-    // Verificamos que SOLO la capa url(...) fue procesada y quedó cacheada
-    // (clave con prefijo de proxy vacío, sin useProxy)
+    // Verify that ONLY the url(...) layer was processed and cached
+    // (key carries an empty proxy prefix, since useProxy is unset)
     const key = '|' + safeEncodeURI(URL)
     expect(cache.background.has(key)).toBe(true)
 
     // No exigimos conteo de fetch: puede ser 0 si fuese raster.
-    // Si mantenés SVG como arriba, opcionalmente:
+    // Keeping the SVG as above, optionally:
     // expect(globalThis.fetch).toHaveBeenCalledTimes(1);
 
     document.body.removeChild(el)
@@ -152,7 +152,7 @@ describe('preCache – extra coverage', () => {
 
     await preCache(root)
 
-    // Comprobamos que el hijo fue visto y cacheado (clave con prefijo de proxy vacío)
+    // Check the child was visited and cached (key carries an empty proxy prefix)
     const key = '|' + safeEncodeURI(CHILD_URL)
     expect(cache.background.has(key)).toBe(true)
 

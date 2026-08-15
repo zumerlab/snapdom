@@ -346,8 +346,8 @@ export async function deepClone(node, sessionCache, options) {
         debugWarn(sessionCache, 'getUnscaledDimensions for IMG failed', e)
       }
 
-      // Si el autor usó % o auto, o el alto/ ancho efectivos dan 0,
-      // escribimos px en línea para evitar que el clon “pierda” la imagen.
+      // When the author used % or auto, or the effective width/height resolve to 0,
+      // write px inline so the clone does not "lose" the image.
       try {
         const authored = node.getAttribute('style') || ''
         const cs = window.getComputedStyle(node)
@@ -375,7 +375,7 @@ export async function deepClone(node, sessionCache, options) {
           // When object-fit is active, minWidth/minHeight can distort the image
           // Only set min dimensions if no object-fit override is in play
         } else {
-          // Blindaje extra: evita que una clase agregada luego anule el fix
+          // Extra shielding: stops a class added later from overriding the fix
           if (w) clone.style.minWidth = `${w}px`
           if (h) clone.style.minHeight = `${h}px`
         }
@@ -588,7 +588,7 @@ async function cloneIframe(node, sessionCache, options) {
     }
   }
 
-  // NEW-7: warn that this iframe was skipped so callers can react
+  // Warn that this iframe was skipped so callers can react
   if (!sameOrigin) {
     console.warn('[snapdom] cross-origin <iframe> skipped (cannot access content). Use options.placeholders to show a placeholder instead.', node)
   }
@@ -634,12 +634,12 @@ async function cloneCanvas(node, sessionCache, options) {
     url = node.toDataURL('image/png')
 
     if (!url || url === 'data:,') {
-      // reintento rápido
+      // quick retry
       try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
       await new Promise(r => requestAnimationFrame(r))
       url = node.toDataURL('image/png')
 
-      // último recurso: copiar a un scratch-canvas y leer desde ahí
+      // last resort: copy into a scratch canvas and read from there
       if (!url || url === 'data:,') {
         const scratch = document.createElement('canvas')
         scratch.width = node.width
@@ -661,11 +661,11 @@ async function cloneCanvas(node, sessionCache, options) {
   }
   if (url) img.src = url
 
-  // conservar dimensiones intrínsecas del bitmap
+  // keep the bitmap's intrinsic dimensions
   img.width = node.width
   img.height = node.height
 
-  // conservar caja CSS para no romper layout usando dimensiones pre-transform
+  // keep the CSS box so layout is not broken, using pre-transform dimensions
   const { width, height } = getUnscaledDimensions(node)
   if (width > 0) img.style.width = `${width}px`
   if (height > 0) img.style.height = `${height}px`
