@@ -21,9 +21,18 @@ const visualCommands = Object.fromEntries(
 )
 
 export default defineConfig({
+  // packages/plugins/* import '@zumer/snapdom' by NAME (they are published separately, so they
+  // must). Under test that name resolved to whatever npm had installed in node_modules — the
+  // last PUBLISHED release, 2.24.1 — so gif-export and video-export ran their internal
+  // recaptures against v2 while claiming to test v3. Point the bare specifier at this
+  // checkout's source: same module graph as `../src/...` imports in the tests, so the plugins
+  // and the suite share one runtime and one plugin registry.
+  resolve: {
+    alias: { '@zumer/snapdom': new URL('./src/index.js', import.meta.url).pathname },
+  },
   test: {
     // The visual suite tests compiled dist/ — never let it pixel-diff a stale build.
-    globalSetup: ['./scripts/ensure-fresh-dist.mjs'],
+    globalSetup: ['./scripts/ensure-fresh-dist.mjs', './scripts/require-visual.mjs'],
     browser: {
       enabled: true,
       provider: 'playwright',

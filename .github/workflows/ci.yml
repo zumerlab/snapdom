@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # What ships, checked as an artifact rather than as source: dist/ is gitignored (correctly —
+  # it is a build output), so this is the job that catches a package.json pointing at files no
+  # tarball contains, and declarations that only typecheck with skipLibCheck on.
+  package:
+    name: package contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:types
+      - run: npm run test:pack
+
+  # Several fixes on this branch behaved differently per engine, so one engine green is not a
+  # release signal. The three run in parallel and are all required.
+  browsers:
+    name: tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx vitest run --browser.headless --reporter=dot
+        env:
+          BROWSER: ${{ matrix.browser }}
+
+  # NOT COVERED HERE, on purpose, so nobody reads a green CI as more than it is:
+  #
+  #   • The VISUAL suite. `demos/` is gitignored, so on a fresh checkout the glob is empty and
+  #     visual.demos.test.js registers describe.skip — CI would report a passing run having
+  #     diffed zero pixels. Run it locally against a copied-in demos/ (copy, never symlink) with
+  #     REQUIRE_VISUAL=1, which turns that silence into a failure. `npm run release` sets it.
+  #
+  #   • Real Safari. Playwright's WebKit does not reproduce the quirks the Safari code exists
+  #     for (#219770 blank first drawImage, shadow-Y flips). A green `webkit` job above says
+  #     nothing about them; that verification is the SnapEye harness, on a real machine.
