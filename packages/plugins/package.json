@@ -20,8 +20,11 @@
   },
   "files": [
     "*.js",
-    "README.md"
+    "*.d.ts",
+    "README.md",
+    "LICENSE"
   ],
+  "types": "./index.d.ts",
   "keywords": [
     "snapdom",
     "snapdom-plugin",
@@ -40,6 +43,6 @@
   },
   "homepage": "https://zumerlab.github.io/snapdom/",
   "peerDependencies": {
-    "@zumer/snapdom": ">=2.12.1 || >=3.0.0-0"
+    "@zumer/snapdom": ">=3.0.0-0"
   }
 }
