@@ -137,7 +137,7 @@ function applyProxy(url, useProxy) {
   // Template tokens
   if (useProxy.includes('{url}')) {
     return useProxy
-      .replace('{urlRaw}', safeEncodeURI(url))     // path-style (1.9.9 compatible)
+      .replace('{urlRaw}', safeEncodeURI(url))     // path-style: proxies that take the URL as a path segment
       .replace('{url}', encodeURIComponent(url))  // query-style
   }
 

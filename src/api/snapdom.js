@@ -139,7 +139,10 @@ async function main(element, userOptions) {
   }
 
   if (!context.snap) {
-    // Mantener compat: atajos disponibles en context.snap
+    // NOT a compat shim: this is the dependency injection that lets clone.helpers capture
+    // nested iframes (rasterizeIframe) without importing snapdom back and creating a cycle,
+    // and without reaching for a global window.snapdom. Direct captureDOM/deepClone callers
+    // must pass it themselves — clone.helpers throws by name when it is missing.
     context.snap = {
       toPng: (el, opts) => snapdom.toPng(el, opts),
       toSvg: (el, opts) => snapdom.toSvg(el, opts),

@@ -6,7 +6,8 @@ import { toCanvas } from './toCanvas.js'
  * @param {string} url - Image data URL.
  * @param {object} options - Context including format and quality.
  * @param {string} [options.format='svg'] - Output format ('svg', 'png', 'jpeg', 'webp').
- *   `type` is accepted as a legacy alias for direct callers.
+ *   `type` is the documented alias callers actually use (result.toBlob({type:'png'}));
+ *   it is live API, not a compat shim. See __tests__/api.export.contract.test.js.
  * @param {number} [options.quality] - Image quality for lossy formats.
  * @param {string} [options.backgroundColor] - Optional background color.
  * @returns {Promise<Blob>} Resolves with the image Blob.
