@@ -9,11 +9,12 @@
  * (display box × scale × dpr), preserving aspect ratio and never upscaling. Like dropping barely
  * audible frequencies in an MP3: we discard detail the output can barely show.
  *
- * This is NOT fidelity-neutral, and deliberately so. The source codec is preserved (PNG stays
- * lossless) so most of the win is pure resolution, but two knobs do cost detail: RES_FACTOR aims
- * slightly BELOW the visible resolution, and JPEG/WebP sources are re-encoded at LOSSY_QUALITY.
- * Both are measured wins on payload size and rasterize time, and both cost a small, bounded,
- * deliberate amount of detail. See each constant for its own reasoning.
+ * What it costs, precisely. Resolution is neutral by construction: RES_FACTOR is 1, so the
+ * target is exactly what the output can show and never less, and images already at or below
+ * their visible size are left alone. The one remaining cost is that JPEG/WebP sources are
+ * re-encoded at LOSSY_QUALITY; PNG stays lossless. So this is not the word "lossless", but the
+ * loss is one re-encode of an already-lossy source, not a resolution the viewer could have seen.
+ * Anything more aggressive than that is a caller's decision, not core's.
  *
  * Covers every inlined raster in the capture: <img> (incl. cloned canvas/video), CSS
  * background-image (no-repeat only — tiled backgrounds need their natural tile resolution), and
@@ -28,11 +29,14 @@ import { cache } from '../core/cache.js'
 // ignores it. High enough that the re-encode is imperceptible on top of the downscale.
 const LOSSY_QUALITY = 0.92
 
-// Aggression: oversized images are downsampled to BELOW their visible resolution. Heavily-oversized
-// images (the common case — big photos shown small) lose nothing perceptible; the loss only starts
-// to show on barely-oversized sharp content. Only applied to images that pass the oversize guard —
-// never to images already at/below their visible size. Lower = smaller/faster, more aggressive.
-const RES_FACTOR = 0.95
+// Target resolution as a fraction of what is actually visible. 1 means: downsample to exactly
+// the resolution the output can show, and not one pixel below. Anything under 1 aims BELOW the
+// visible resolution, which buys a little more size on heavily-oversized images but starts to
+// show on barely-oversized sharp content, and that is a fidelity cost core should not take on
+// the caller's behalf. The big win was never the last 5%: it is discarding the pixels that
+// cannot be seen at all. Only applied to images that pass the oversize guard, never to images
+// already at or below their visible size.
+const RES_FACTOR = 1
 
 // Prefer decode() over onload: onload can fire before the pixels are decodable, so drawing in the
 // same tick may produce a blank/partial canvas for large images. decode() guarantees drawable pixels.

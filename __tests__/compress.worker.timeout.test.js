@@ -74,7 +74,7 @@ describe('compress worker job lifecycle', () => {
     // The fallback must produce a real downsampled image, not a blank or a stub.
     const after = await inspect(out)
     expect(after.w).toBeLessThan(before.w)
-    expect(after.w).toBe(190) // 1200 × (200/1200) × RES_FACTOR
+    expect(after.w).toBe(200) // 1200 × (200/1200) × RES_FACTOR(1) = the visible width
     expect(after.px[3]).toBe(255)
     for (let i = 0; i < 3; i++) expect(Math.abs(after.px[i] - before.px[i])).toBeLessThan(24)
   })
