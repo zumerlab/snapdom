@@ -45,13 +45,22 @@ Note: `npm test` runs `lint` (check only) then `test:types` then vitest, so veri
 
 SnapDOM captures a DOM subtree and serializes it as an SVG `data:` URL embedded in a `<foreignObject>`, which exporters then rasterize to PNG/JPG/WebP/Canvas/Blob.
 
-### Capture pipeline (`src/core/capture.js`)
+### Capture pipeline (`src/core/capture.js` + `src/engines/`)
+
+**The pipeline splits at the clone**, the same seam `stages.js` names (`dom -> clone -> render`):
+`captureDOM` owns `dom -> clone` (freeze, style snapshot, image/font inlining) and a render
+ENGINE owns `clone -> pixels`. `src/engines/svg.js` is the default engine (`composeAndSerialize`:
+base reset, bbox/bleed math, foreignObject assembly, SVG data-URL encoding) and is also
+re-entered by burst's differential recapture. `src/engines/htmlInCanvas.js` is meant to be its
+peer but is NOT one yet: it still runs from a seam in `snapdom.js` BEFORE the pipeline and copies
+the live element instead of consuming the finished clone, which is why it bails on plugins,
+clip, exclude and reconcile. Making it consume the clone is the open design item.
 
 Linear pipeline orchestrated by `captureDOM(element, options)`:
 
 1. `prepareClone` (`src/core/prepare.js`) — deep clone with `deepClone` (`src/core/clone.js`), inlines pseudo-elements (`src/modules/pseudo.js`) and SVG `<defs>`/`<symbol>` refs (`src/modules/svgDefs.js`). Returns `{ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow }`.
 2. Inline assets: `inlineImages` (`src/modules/images.js`), `inlineBackgroundImages` (`src/modules/background.js`), optional `embedCustomFonts` (`src/modules/fonts.js`). (The old `idle()` call-through is gone — the ceremony outlived its scheduler and only added latency.)
-3. Compute bbox + bleed (shadows, blur, outline, transforms — helpers in `src/utils/capture.helpers.js` and `src/utils/transforms.helpers.js`), serialize `<foreignObject>` into an SVG, return a `data:image/svg+xml` URL.
+3. Hand the finished clone to the render engine (`src/engines/svg.js`): compute bbox + bleed (shadows, blur, outline, transforms — helpers in `src/utils/capture.helpers.js` and `src/utils/transforms.helpers.js`), serialize `<foreignObject>` into an SVG, return a `data:image/svg+xml` URL.
 4. Exporters (`src/exporters/*`) and `src/modules/rasterize.js` are dynamically imported from `src/api/snapdom.js` to keep the initial bundle tree-shakeable.
 
 Two option flags materially change layout math: `outerTransforms` (default `true`; when `false`, root translate/rotate are stripped and bbox is recomputed from the remaining 2D matrix) and `outerShadows` (default `false`; when `true`, bbox expands for shadows/blur/outline, otherwise those effects are stripped from the root).

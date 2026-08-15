@@ -15,7 +15,7 @@
  */
 
 import { deepClone } from './clone.js'
-import { composeAndSerialize } from './capture.js'
+import { composeAndSerialize } from '../engines/svg.js'
 import { applyStyleClass, wrapScrolledClone } from './prepare.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineImages } from '../modules/images.js'
