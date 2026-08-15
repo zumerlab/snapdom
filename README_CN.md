@@ -238,13 +238,13 @@ document.body.appendChild(png);
 完整参考文档位于 **[snapdom.dev/docs](https://snapdom.dev/docs/)**，会随版本同步更新，也支持站内搜索：
 
 - **[API 参考](https://snapdom.dev/docs/api/)** — `snapdom()` 返回的可复用对象、快捷方法，以及各导出方法的专用选项。
-- **[选项](https://snapdom.dev/docs/options/)** — 逐项介绍所有捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`/`filter`、`compress`、`outerTransforms`、`outerShadows`、`cache`……），并附有示例。
+- **[选项](https://snapdom.dev/docs/options/)** — 逐项介绍所有捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`、`compress`、`outerTransforms`、`outerShadows`、`cache`……），并附有示例。
 - **[插件](https://snapdom.dev/docs/plugins/)** — 如何构建、注册和发布自定义插件及导出格式。社区插件见[插件页面](https://snapdom.dev/plugins.html)。
 - **[缓存与 preCache](https://snapdom.dev/docs/cache/)** — 控制多次捕获之间的缓存，并通过 `preCache` 提前加载所需资源。
 
 ### API 速览
 
-`snapdom(el, options?)` 返回一个可复用对象（`toPng`、`toSvg`、`toCanvas`、`toBlob`、`toJpg`、`toWebp`、`download`、`url`）。单次导出可使用快捷方法：
+`snapdom(el, options?)` 返回一个可复用对象（`toPng`、`toSvg`、`toCanvas`、`toBlob`、`toJpg`、`toWebp`、`download`、`to(name)`、`toRaw()`、`url`、`meta`、`warnings`、`needs`）。其中 `meta` 是冻结的渲染几何信息（viewBox 尺寸、逻辑捕获框、精确的 `contentX`/`contentY` 原点、解析后的裁剪窗口），文档类导出器需要它来在图像上定位内容。单次导出可使用快捷方法：
 
 | 方法 | 说明 |
 | ------------------------------ | --------------------------------- |

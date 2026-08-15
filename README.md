@@ -66,7 +66,7 @@ v3 is a ground-up rework of the capture engine. The API shape is the same and v2
 Options that required tuning knowledge tuned themselves out of the API: repeat-capture memoization and image compression are simply how the engine works now, `cache` collapsed to a single debug switch, and `fast` is gone. The best option is the one you never have to read about.
 
 **And it's ready for what's next.**
-An experimental `engine: 'canvas'` renders through the browser's own painter via the WICG canvas-place-element API (Chrome flag): native form controls pixel-perfect, zero SVG quirks. Chromium currently taints the canvas unconditionally, so there is no readback and every capture falls through to the normal pipeline; the engine is therefore **excluded from the published bundle** rather than shipped as bytes that cannot run. Build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`.
+An experimental `engine: 'canvas'` renders through the browser's own painter via the WICG canvas-place-element API (Chrome flag): native form controls pixel-perfect, zero SVG quirks. It is a peer of the default SVG engine, not a shortcut around it: both take the same finished clone, so plugins, `exclude` and `reconcile` apply either way. Chromium currently taints the canvas unconditionally, so there is no readback and every capture falls through to the normal pipeline; the engine is therefore **excluded from the published bundle** rather than shipped as bytes that cannot run. Build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`.
 
 ## Migrating from v2
 
@@ -263,13 +263,13 @@ Add the `crossorigin="anonymous"` attribute to the `<link>` tag when loading ext
 The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)** — kept there so it stays in sync and searchable:
 
 - **[API reference](https://snapdom.dev/docs/api/)** — the `snapdom()` reusable object, shortcut methods, and exporter-specific options.
-- **[Options](https://snapdom.dev/docs/options/)** — every capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`/`filter`, `compress`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.
+- **[Options](https://snapdom.dev/docs/options/)** — every capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`, `compress`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.
 - **[Plugins](https://snapdom.dev/docs/plugins/)** — build, register and ship custom plugins and export formats. Browse community plugins on the [plugins page](https://snapdom.dev/plugins.html).
 - **[Cache & preCache](https://snapdom.dev/docs/cache/)** — control caching between captures and preload resources.
 
 ### API at a glance
 
-`snapdom(el, options?)` returns a reusable object (`toPng`, `toSvg`, `toCanvas`, `toBlob`, `toJpg`, `toWebp`, `download`, `url`, `warnings`, `needs`). For single exports, use the shortcuts:
+`snapdom(el, options?)` returns a reusable object (`toPng`, `toSvg`, `toCanvas`, `toBlob`, `toJpg`, `toWebp`, `download`, `to(name)`, `toRaw()`, `url`, `meta`, `warnings`, `needs`). `meta` is the frozen render geometry (viewBox size, logical capture box, exact `contentX`/`contentY` origin, resolved clip window) that document exporters need to place things over the image. For single exports, use the shortcuts:
 
 | Method | Description |
 | ------------------------------ | --------------------------------- |
