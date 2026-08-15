@@ -23,6 +23,7 @@ import { stageReaches, DEFAULT_STAGE } from './stages.js'
 import { compressCloneAssets } from '../modules/compress.js'
 import { composeAndSerialize } from '../engines/svg.js'
 import {
+  assembleCaptureCSS,
   stripRootShadows,
   neutralizeRootMarginCollapse,
   neutralizeRootZoom,
@@ -242,6 +243,26 @@ export async function captureDOM(element, options) {
   }
 
   await Promise.all([assetsPhase, fontsPhase])
+
+  // ——— Render engine ———
+  // The clone is finished. Which engine turns it into pixels is the only choice left, and
+  // both take the SAME input. The experimental one is opt-in and quarantined behind a lazy
+  // import; the `typeof` guard is the build switch (esbuild defines __SNAPDOM_CANVAS_ENGINE__
+  // as false for shipped bundles, folding the branch and the module away, while src
+  // consumers — the test suite — leave it undefined and keep it live). On ANY doubt it
+  // returns null and the SVG engine runs on the same clone.
+  if (state.options.engine === 'canvas' &&
+      (typeof __SNAPDOM_CANVAS_ENGINE__ === 'undefined' || __SNAPDOM_CANVAS_ENGINE__)) {
+    const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
+    assembleCaptureCSS(state, fontsCSS)
+    const canvas = await tryCanvasEngine(state, state.options)
+    // captureDOM's contract is unchanged: a data URL. It is simply raster instead of
+    // vector, so every exporter downstream keeps working with no special case. Handing the
+    // bitmap straight to toCanvas() would save a decode, but nothing can reach this line in
+    // any shipping browser yet, and a shortcut nobody can execute is a shortcut nobody can
+    // verify. Add it with the readback.
+    if (canvas) return canvas.toDataURL()
+  }
 
   const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS })
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential

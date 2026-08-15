@@ -17,14 +17,13 @@
  * @module engines/svg
  */
 
-import { collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
+import { isSafari, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
-import { universeFor } from '../modules/styles.js'
 import { runHook } from '../core/plugins.js'
 import {
+  assembleCaptureCSS,
   estimateKeptHeight,
   limitDecimals,
-  collectScrollbarCSS,
   reconcileCloneLayout,
   composeResidual2D
 } from '../utils/capture.helpers.js'
@@ -64,22 +63,10 @@ export async function composeAndSerialize(state, ex) {
     state = Object.assign(options, stageFields)
     Object.defineProperty(state, 'options', { value: state, configurable: true })
   }
-  let baseCSS = ''
   let dataURL
   let svgString
-  const usedTags = collectUsedTagNames(state.clone).sort()
-  const tagKey = usedTags.join(',')
-  if (cache.baseStyle.has(tagKey)) {
-    baseCSS = cache.baseStyle.get(tagKey)
-  } else {
-    baseCSS = generateDedupedBaseCSS(usedTags, universeFor(state.element))
-    cache.baseStyle.set(tagKey, baseCSS)
-  }
-  // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
-  const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
-  state.fontsCSS = fontsCSS
-  state.baseCSS = baseCSS
-  state.scrollbarCSS = scrollbarCSS
+  // Stamps baseCSS / scrollbarCSS / fontsCSS onto state; everything below reads them there.
+  assembleCaptureCSS(state, fontsCSS)
   await runHook('beforeRender', state)
 
   const csEl = getStyle(state.element)

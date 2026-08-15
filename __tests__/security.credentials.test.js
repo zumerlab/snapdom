@@ -11,7 +11,6 @@ import { snapdom } from '../src/api/snapdom.js'
 import { agentMap } from '../packages/plugins/agent-map.js'
 import { contextExport } from '../packages/plugins/context-export.js'
 import { redactInputs } from '../packages/plugins/redact-inputs.js'
-import { syncFormState } from '../src/engines/htmlInCanvas.js'
 
 const SECRETS = {
   password: 'S3CRET-PW-XYZ123',
@@ -93,15 +92,13 @@ describe('credential leak (Phase 0)', () => {
     expect(out).toContain('hasValue')
   })
 
-  it('htmlInCanvas syncFormState follows the same rule as the svg path', () => {
-    const form = secretForm()
-    const copy = form.cloneNode(true)
-    syncFormState(form, copy)
-    // The engine is another way to produce the IMAGE, so it must not diverge from core:
-    // password masked, everything the browser paints in the clear kept.
-    expect(copy.outerHTML).not.toContain(SECRETS.password)
-    expect(copy.outerHTML).toContain(SECRETS.email)
-    expect(copy.outerHTML).toContain('NotaVisible123')
+  it('the canvas engine inherits the rule instead of reimplementing it', async () => {
+    // It used to sync form state into its own live-DOM copy, with its own masking call.
+    // It consumes core's clone now, so there is exactly one place that decides this and
+    // the assertions above already cover it. Kept as a marker so the duplicate does not
+    // come back: the engine must own no form-state code of its own.
+    const src = await import('../src/engines/htmlInCanvas.js')
+    expect(src.syncFormState).toBeUndefined()
   })
 
   it('semantic-only entries carry the flag and receive no badges', async () => {

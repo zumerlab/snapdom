@@ -4,7 +4,7 @@
 // flag-enabled Chromium (see NEXT_NOTES.md).
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
-import { detectDrawApi, tryEngineResult } from '../src/engines/htmlInCanvas.js'
+import { detectDrawApi, tryCanvasEngine } from '../src/engines/htmlInCanvas.js'
 import { createContext } from '../src/core/context.js'
 
 afterEach(() => { document.body.innerHTML = '' })
@@ -29,18 +29,41 @@ describe("engine:'canvas' — unsupported-browser transparency", () => {
     expect(px[0]).toBeGreaterThan(150) // the red card, not a blank
   })
 
-  it('tryEngineResult returns null without the draw API', async () => {
+  it('returns null without the draw API', async () => {
     if (detectDrawApi()) return // flag-enabled environment: covered by the harness instead
     const el = makeCard()
-    const out = await tryEngineResult(el, createContext({}), () => { throw new Error('must not run') })
-    expect(out).toBeNull()
+    const state = { element: el, clone: el.cloneNode(true) }
+    expect(await tryCanvasEngine(state, createContext({}))).toBeNull()
   })
 
-  it('unsupported options return null even where the API exists', async () => {
+  it('bails on the geometry options whose math lives in the svg engine', async () => {
     const el = makeCard()
-    for (const opts of [{ clip: 'viewport' }, { outerShadows: true }, { width: 50 }, { plugins: [{ name: 'x' }] }]) {
-      const out = await tryEngineResult(el, createContext(opts), () => { throw new Error('must not run') })
-      expect(out).toBeNull()
+    // These are the ONLY bails left. plugins / exclude / reconcile used to be here too,
+    // because the engine copied the live element and skipped the passes that implement
+    // them; consuming the finished clone means they already happened.
+    for (const opts of [{ clip: 'viewport' }, { outerShadows: true }, { width: 50 }]) {
+      const state = { element: el, clone: el.cloneNode(true) }
+      expect(await tryCanvasEngine(state, createContext(opts))).toBeNull()
     }
+  })
+
+  it('bails without a clone rather than reaching for the live element', async () => {
+    // The whole point of the rewire: no clone, no capture. It must never fall back to
+    // copying the live DOM, which is what made the engine pointless before.
+    const el = makeCard()
+    expect(await tryCanvasEngine({ element: el, clone: null }, createContext({}))).toBeNull()
+  })
+
+  it('a plugin capture through engine:\'canvas\' still runs every plugin hook', async () => {
+    // Previously the engine ran BEFORE the pipeline, so it had to refuse any capture with
+    // plugins. Now the plugin work is already baked into the clone it receives.
+    const seen = []
+    const el = makeCard()
+    const res = await snapdom(el, {
+      engine: 'canvas',
+      plugins: [{ name: 'probe', pure: true, afterClone() { seen.push('afterClone') } }],
+    })
+    expect(seen).toEqual(['afterClone'])
+    expect(typeof res.url).toBe('string')
   })
 })

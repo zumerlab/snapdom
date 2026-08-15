@@ -1,36 +1,34 @@
 /**
  * EXPERIMENTAL render engine: WICG canvas-place-element (`ctx.drawElement`, Chrome ~130+
  * behind chrome://flags/#canvas-draw-element; older flagged builds shipped
- * `drawElementImage`). Renders a live-DOM copy straight into a canvas with the engine's
- * OWN painter — native form controls, correct fonts, no svg-as-image quirks — skipping
- * the style-snapshot/inline/serialize/decode pipeline entirely for raster exports.
+ * `drawElementImage`). Paints with the browser's OWN painter, so native form controls come
+ * out right and none of the svg-as-image quirks apply.
+ *
+ * IT IS A PEER OF engines/svg.js. Both take the SAME input, the finished clone, and differ
+ * only in how they turn it into pixels. That is the whole reason this belongs to snapdom
+ * rather than to the caller: an engine that re-copied the LIVE element would be doing what
+ * any page can already do with drawElement, and would throw away the work the clone
+ * represents. It used to do exactly that, which is why it had to bail on plugins, clip,
+ * exclude and reconcile: it skipped the passes that implement them. Now it mounts the clone
+ * core hands it, with the CSS core assembled, so those features come for free.
  *
  * QUARANTINE CONTRACT (this feature is green): everything lives in src/engines/ — core's
- * only knowledge is a 3-line lazy-import seam in snapdom.js behind the opt-in
- * `engine: 'canvas'` option. On ANY doubt (API missing, unsupported options, tainted or
- * blank paint) `tryEngineResult` returns null and the caller runs the normal pipeline —
- * correctness never depends on this module. Vector-facing APIs on the engine result
- * (toRaw/toSvg/toImg) lazily run the normal pipeline; `.url` is not synchronously
- * available and warns once.
+ * only knowledge is a lazy-import seam in captureDOM behind the opt-in `engine: 'canvas'`
+ * option. On ANY doubt (API missing, unsupported options, tainted or blank paint) it
+ * returns null and the caller runs the SVG engine. Correctness never depends on this module.
  *
  * PLATFORM STATUS (verified 2026-07-25, flagged Chromium via --enable-blink-features=
- * CanvasDrawElement): drawElement PAINTS pixel-perfectly — including native form controls
- * the svg pipeline cannot reproduce — but currently TAINTS the canvas unconditionally,
- * even for fully local content. No readback (getImageData/toBlob/toDataURL) means no
- * encodable exports yet, so the taint probe below sends every capture to the pipeline
- * today. The module is intentionally future-ready: the day Chromium ships same-origin
- * readback, engine:'canvas' lights up with no code changes.
+ * CanvasDrawElement): drawElement PAINTS pixel-perfectly, including native form controls the
+ * svg pipeline cannot reproduce, but currently TAINTS the canvas unconditionally, even for
+ * fully local content. No readback (getImageData/toBlob/toDataURL) means no encodable
+ * exports, so the taint probe below sends every capture to the SVG engine today. The day
+ * Chromium ships same-origin readback this lights up with no code changes.
  *
- * Fidelity model: the copy is mounted INSIDE the canvas (same document), so page
- * stylesheets apply naturally — no snapshotting. Ancestor context is preserved by
- * mounting the element's ancestor CHAIN as `display:contents` shells (selector matching
- * like `.sidebar .card` and inheritance survive; no boxes added). Known v1 gaps, by
- * design: sibling-dependent selectors on ancestors (:nth-child on the chain) and
- * anything the live painter ties to the original viewport position.
+ * NOT OPTIMIZED. The mount/draw path is deliberately the simplest thing that consumes the
+ * clone: no bbox/bleed math, no size overrides. Those bails are listed in `tryCanvasEngine`.
  * @module engines/htmlInCanvas
  */
 
-import { isPasswordInput, maskValue } from '../utils/helpers.js'
 import { debugWarn } from '../utils/debug.js'
 
 /** @returns {'drawElement'|'drawElementImage'|null} */
@@ -45,14 +43,21 @@ export function detectDrawApi() {
   return null
 }
 
-let _warnedNoUrl = false
-
 /**
- * Builds the mounted copy: canvas > (layoutsubtree) ancestor shells > deep clone.
- * Shells are display:contents — they contribute selector context and inheritance
- * but no boxes, so the copy lays out exactly like a root-level element.
+ * Mount the FINISHED CLONE for painting: canvas[layoutsubtree] > wrapper > (style + clone).
+ *
+ * No ancestor shells and no live-DOM copying. The clone already carries every computed
+ * style it needs as generated classes, so the page's cascade is irrelevant here — which is
+ * also why `all:initial` on the wrapper is safe and wanted: it isolates the mount from the
+ * host page exactly the way the foreignObject container does in the SVG engine.
+ *
+ * @param {Element} clone - the finished clone (moved into the mount; the caller still holds
+ *   the reference, so a bail can hand it straight to the SVG engine)
+ * @param {string} css - baseCSS + scrollbarCSS + fontsCSS + classCSS
+ * @param {number} width
+ * @param {number} height
  */
-function mountCopy(element, width, height) {
+function mountClone(clone, css, width, height) {
   const canvas = document.createElement('canvas')
   canvas.setAttribute('layoutsubtree', '')
   canvas.setAttribute('data-snapdom-internal', '')
@@ -61,72 +66,45 @@ function mountCopy(element, width, height) {
   canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:-2147483647;pointer-events:none'
 
   const wrapper = document.createElement('div')
-  wrapper.style.cssText = `width:${width}px;height:${height}px;overflow:visible;box-sizing:border-box`
+  wrapper.style.cssText =
+    `all:initial;box-sizing:border-box;display:block;overflow:visible;width:${width}px;height:${height}px`
 
-  // Ancestor chain as display:contents shells, outermost first.
-  const shells = []
-  for (let a = element.parentElement; a && a.tagName !== 'BODY' && a.tagName !== 'HTML'; a = a.parentElement) {
-    const shell = a.cloneNode(false)
-    shell.style.display = 'contents'
-    shells.unshift(shell)
-  }
-  let mountPoint = wrapper
-  for (const shell of shells) {
-    mountPoint.appendChild(shell)
-    mountPoint = shell
-  }
-  const copy = element.cloneNode(true)
-  mountPoint.appendChild(copy)
+  const styleNode = document.createElement('style')
+  styleNode.textContent = css
+  wrapper.appendChild(styleNode)
+  wrapper.appendChild(clone)
   canvas.appendChild(wrapper)
-  return { canvas, wrapper, copy }
-}
-
-/** Sync live form-control state into the copy (cloneNode drops it).
- *  Exported for the credential-leak regression suite. */
-export function syncFormState(element, copy) {
-  const srcs = [element, ...(element.querySelectorAll?.('input,textarea,select') || [])]
-  const dsts = [copy, ...(copy.querySelectorAll?.('input,textarea,select') || [])]
-  for (let i = 0; i < Math.min(srcs.length, dsts.length); i++) {
-    const s = srcs[i], d = dsts[i]
-    const tag = s.tagName
-    if (tag === 'INPUT') {
-      // Same transfer-time masking as the svg clone path: secrets never reach any
-      // serialized/rasterized output.
-      d.setAttribute('value', isPasswordInput(s) ? maskValue(s.value) : s.value)
-      if (s.checked) d.setAttribute('checked', '')
-    } else if (tag === 'TEXTAREA') {
-      d.textContent = s.value
-    } else if (tag === 'SELECT' && s.selectedIndex >= 0) {
-      const opts = d.querySelectorAll('option')
-      if (opts[s.selectedIndex]) opts[s.selectedIndex].setAttribute('selected', '')
-    }
-  }
+  return { canvas, wrapper }
 }
 
 /**
- * Attempts an engine capture. Returns a result object mirroring the normal capture
- * surface, or null when the engine can't honor this capture (caller falls back).
- * @param {Element} element
+ * Paint a finished clone into a canvas. Returns the canvas, or null when this engine cannot
+ * honor the capture (the caller then runs the SVG engine on the same clone).
+ *
+ * @param {object} state - capture state: `clone`, `element`, and the assembled CSS strings
  * @param {object} context - normalized capture context
- * @param {() => Promise<object>} runFallback - runs the normal pipeline capture
- * @returns {Promise<object|null>}
+ * @returns {Promise<HTMLCanvasElement|null>}
  */
-export async function tryEngineResult(element, context, runFallback) {
+export async function tryCanvasEngine(state, context) {
   const drawApi = detectDrawApi()
   if (!drawApi) return null
 
-  // Narrow v1: anything the draw-the-live-copy model doesn't obviously honor → pipeline.
-  const hasPlugins = Array.isArray(context.plugins) && context.plugins.length > 0
-  if (hasPlugins) return null
-  if (context.clip || (Array.isArray(context.exclude) ? context.exclude.length > 0 : !!context.exclude) || context.filter || context.reconcile) return null
-  if (context.outerShadows) return null // canvas is sized to the element box; bleed needs pipeline math
+  const element = state.element
+  const clone = state.clone
+  if (!element || !clone) return null
+
+  // Remaining bails, and they are about GEOMETRY only now, not about pipeline features:
+  // the canvas is sized to the element box, so anything that changes the output box needs
+  // the bbox/bleed math that lives in the SVG engine.
+  if (context.outerShadows) return null
   if (Number.isFinite(context.width) || Number.isFinite(context.height)) return null
+  if (context.clip) return null
 
   /* c8 ignore start -- everything below needs a browser that actually exposes
      ctx.drawElement. It ships behind chrome://flags/#canvas-draw-element only, so
      `detectDrawApi()` returns null in every CI browser and this code is unreachable by
      construction — not untested. The reachable half (detection + every bail above, the
-     part that guarantees the pipeline still runs) IS covered by engines.htmlInCanvas.test.js.
+     part that guarantees the SVG engine still runs) IS covered by engines.htmlInCanvas.test.js.
      Re-measure when Chromium ships same-origin readback and the engine can be enabled. */
   const rect = element.getBoundingClientRect()
   const width = Math.max(1, element.offsetWidth || rect.width || 1)
@@ -136,8 +114,8 @@ export async function tryEngineResult(element, context, runFallback) {
   const outW = Math.max(1, Math.round(width * scale * dpr))
   const outH = Math.max(1, Math.round(height * scale * dpr))
 
-  const { canvas, wrapper, copy } = mountCopy(element, width, height)
-  syncFormState(element, copy)
+  const css = (state.scrollbarCSS || '') + (state.baseCSS || '') + (state.fontsCSS || '') + (state.classCSS || '')
+  const { canvas, wrapper } = mountClone(clone, css, width, height)
   canvas.width = outW
   canvas.height = outH
   document.body.appendChild(canvas)
@@ -154,17 +132,17 @@ export async function tryEngineResult(element, context, runFallback) {
     fn.call(ctx2d, wrapper, 0, 0, width, height)
     ctx2d.restore()
 
-    // Taint probe: cross-origin content painted by drawElement taints the canvas and
-    // would break every toDataURL/toBlob downstream — fall back to the pipeline, which
-    // fetches + inlines those resources instead.
+    // Taint probe: cross-origin content painted by drawElement taints the canvas and would
+    // break every toDataURL/toBlob downstream — fall back to the SVG engine, which has
+    // already fetched and inlined those resources into this very clone.
     let probe
     try {
       probe = ctx2d.getImageData(0, 0, Math.min(64, outW), Math.min(64, outH)).data
     } catch {
-      debugWarn(context, "engine:'canvas': drawElement painted but the canvas is tainted (current Chromium taints unconditionally) — falling back to the svg pipeline")
+      debugWarn(context, "engine:'canvas': drawElement painted but the canvas is tainted (current Chromium taints unconditionally) — falling back to the svg engine")
       return null
     }
-    // Blank probe: a copy that skipped the paint pass draws nothing — don't hand the
+    // Blank probe: a mount that skipped the paint pass draws nothing — don't hand the
     // caller an empty capture when the element visibly has content.
     let ink = false
     for (let i = 3; i < probe.length; i += 4) { if (probe[i] > 0) { ink = true; break } }
@@ -175,8 +153,8 @@ export async function tryEngineResult(element, context, runFallback) {
       if (!any) return null
     }
 
-    // Detach the bitmap from the mounted DOM: copy to a clean canvas so removing the
-    // mount doesn't matter and the returned canvas has no children/attributes.
+    // Detach the bitmap from the mounted DOM: copy to a clean canvas so removing the mount
+    // doesn't matter and the returned canvas has no children/attributes.
     out = document.createElement('canvas')
     out.width = outW
     out.height = outH
@@ -184,76 +162,10 @@ export async function tryEngineResult(element, context, runFallback) {
     out.style.width = `${Math.round(width * scale)}px`
     out.style.height = `${Math.round(height * scale)}px`
   } finally {
+    // Removing the mount takes the clone with it. That is fine on the success path, and on
+    // a bail the caller still holds `state.clone` and the SVG engine re-parents it.
     try { canvas.remove() } catch { /* ok */ }
   }
-
-  // ——— result surface ———
-  let fallbackResult = null
-  const fallback = () => (fallbackResult ||= runFallback())
-
-  const toDataURL = (format, quality) => new Promise((resolve) => {
-    const done = (u) => resolve(String(u || ''))
-    try {
-      out.toBlob((blob) => {
-        if (!blob) return done(out.toDataURL(`image/${format}`, quality))
-        const fr = new FileReader()
-        fr.onload = () => done(fr.result)
-        fr.onerror = () => done(out.toDataURL(`image/${format}`, quality))
-        fr.readAsDataURL(blob)
-      }, `image/${format}`, quality)
-    } catch {
-      done(out.toDataURL(`image/${format}`, quality))
-    }
-  })
-
-  const rasterImg = async (format, opts = {}) => {
-    const dataURL = await toDataURL(format, opts.quality ?? context.quality)
-    const img = new Image()
-    img.src = dataURL
-    await img.decode()
-    img.style.width = out.style.width
-    img.style.height = out.style.height
-    return img
-  }
-
-  const result = {
-    engine: 'canvas',
-    get url() {
-      if (!_warnedNoUrl) {
-        _warnedNoUrl = true
-        debugWarn(context, "engine:'canvas' results have no synchronous svg url — use toRaw()/toSvg(), which run the standard pipeline lazily")
-      }
-      return ''
-    },
-    toCanvas: async () => {
-      const c = document.createElement('canvas')
-      c.width = out.width
-      c.height = out.height
-      c.getContext('2d').drawImage(out, 0, 0)
-      c.style.width = out.style.width
-      c.style.height = out.style.height
-      return c
-    },
-    toPng: (opts) => rasterImg('png', opts),
-    toJpg: (opts) => rasterImg('jpeg', { quality: 0.92, ...opts }),
-    toJpeg: (opts) => rasterImg('jpeg', { quality: 0.92, ...opts }),
-    toWebp: (opts) => rasterImg('webp', opts),
-    toBlob: (opts = {}) => new Promise((resolve, reject) => {
-      const type = opts.type === 'jpg' ? 'jpeg' : (opts.type || 'png')
-      try {
-        out.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), `image/${type}`, opts.quality)
-      } catch (e) { reject(e) }
-    }),
-    download: async (opts = {}) => {
-      const { download } = await import('../exporters/download.js')
-      const dataURL = await toDataURL(opts.format === 'jpg' ? 'jpeg' : (opts.format || 'png'), opts.quality)
-      return download(dataURL, { ...context, ...opts })
-    },
-    // Vector-facing APIs: the engine has no svg — run the standard pipeline lazily.
-    toRaw: async () => (await fallback()).toRaw(),
-    toSvg: async (opts) => (await fallback()).toSvg(opts),
-    toImg: async (opts) => (await fallback()).toImg(opts),
-  }
-  return result
+  return out
   /* c8 ignore stop */
 }

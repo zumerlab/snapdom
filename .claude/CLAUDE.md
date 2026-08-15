@@ -51,10 +51,15 @@ SnapDOM captures a DOM subtree and serializes it as an SVG `data:` URL embedded 
 `captureDOM` owns `dom -> clone` (freeze, style snapshot, image/font inlining) and a render
 ENGINE owns `clone -> pixels`. `src/engines/svg.js` is the default engine (`composeAndSerialize`:
 base reset, bbox/bleed math, foreignObject assembly, SVG data-URL encoding) and is also
-re-entered by burst's differential recapture. `src/engines/htmlInCanvas.js` is meant to be its
-peer but is NOT one yet: it still runs from a seam in `snapdom.js` BEFORE the pipeline and copies
-the live element instead of consuming the finished clone, which is why it bails on plugins,
-clip, exclude and reconcile. Making it consume the clone is the open design item.
+re-entered by burst's differential recapture. `src/engines/htmlInCanvas.js` is its
+experimental peer: same input, different painter. It runs from a lazy seam in `captureDOM` right
+where the clone is finished, and mounts THAT clone (it used to run before the pipeline and copy
+the live element, which is why it had to bail on plugins/clip/exclude/reconcile — it skipped the
+passes that implement them). Its only remaining bails are geometry: `outerShadows`, `clip` and
+explicit `width`/`height` need the bbox math that lives in the svg engine. It is NOT optimized,
+and it cannot run anywhere yet: Chromium taints the canvas unconditionally, so the taint probe
+sends every capture to the svg engine. `assembleCaptureCSS` (utils/capture.helpers.js) is the
+one place both engines get their CSS from.
 
 Linear pipeline orchestrated by `captureDOM(element, options)`:
 

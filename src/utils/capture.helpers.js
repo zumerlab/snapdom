@@ -3,7 +3,9 @@
  * @module utils/capture.helpers
  */
 
-import { debugWarn, getStyle } from './index.js'
+import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS } from './index.js'
+import { cache } from '../core/cache.js'
+import { universeFor } from '../modules/styles.js'
 import {
   bboxWithOriginFull,
   parseTransformOriginPx,
@@ -801,4 +803,35 @@ export function collectScrollbarCSS(doc) {
   }
   _scrollbarCSSMemo.set(doc, { fp, css: out })
   return out
+}
+
+/**
+ * The CSS that makes a finished clone render like the page it came from, assembled once and
+ * stamped onto the capture state.
+ *
+ * It lives here rather than inside a render engine because it belongs to the CLONE, not to
+ * any one way of painting it: `classCSS` already arrives from prepareClone, and these two
+ * complete the set. Both engines need the identical string, and an engine that recomputed it
+ * would be one refactor away from disagreeing with the other.
+ *
+ * @param {object} state - capture state carrying `clone` and `element`
+ * @param {string} fontsCSS - embedded @font-face payload for this capture
+ * @returns {{baseCSS: string, scrollbarCSS: string, fontsCSS: string}}
+ */
+export function assembleCaptureCSS(state, fontsCSS) {
+  const usedTags = collectUsedTagNames(state.clone).sort()
+  const tagKey = usedTags.join(',')
+  let baseCSS
+  if (cache.baseStyle.has(tagKey)) {
+    baseCSS = cache.baseStyle.get(tagKey)
+  } else {
+    baseCSS = generateDedupedBaseCSS(usedTags, universeFor(state.element))
+    cache.baseStyle.set(tagKey, baseCSS)
+  }
+  // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
+  const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
+  state.fontsCSS = fontsCSS
+  state.baseCSS = baseCSS
+  state.scrollbarCSS = scrollbarCSS
+  return { baseCSS, scrollbarCSS, fontsCSS }
 }
