@@ -554,15 +554,6 @@
         <div class="card-footer"><span class="official-badge">official</span><span class="expand-hint">details</span></div>
       </div>
 
-      <!-- html-in-canvas -->
-      <div class="plugin-card" data-category="export" data-plugin="html-in-canvas">
-        <div class="card-top"><div class="plugin-icon">H</div><span class="category-tag">export</span></div>
-        <h3>html-in-canvas</h3>
-        <p>Uses the experimental WICG drawElementImage API for direct DOM-to-canvas rendering where supported.</p>
-        <div class="hooks"><span class="hook-badge">beforeRender</span><span class="hook-badge">afterRender</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-in-canvas.js" data-umami-event="Plugins source html-in-canvas">Source</a><span class="expand-hint">details</span></div>
-      </div>
-
       <!-- prompt-export -->
       <div class="plugin-card" data-category="export" data-plugin="prompt-export">
         <div class="card-top"><div class="plugin-icon">L</div><span class="category-tag">export</span></div>
@@ -740,14 +731,6 @@
           ['orientation', 'string', "'portrait'", "'portrait' | 'landscape'"],
         ],
         usage: `import { pdfImage } from '@zumer/snapdom-plugins/pdf-image';\n\nconst result = await snapdom(el, {\n  plugins: [pdfImage({ orientation: 'landscape' })]\n});\nawait result.toPdfImage(); // downloads PDF`
-      },
-      'html-in-canvas': {
-        icon: 'H', category: 'export',
-        desc: 'Uses the experimental WICG drawElementImage API for direct DOM-to-canvas rendering where supported.',
-        hooks: ['beforeRender', 'afterRender', 'defineExports'],
-        options: [],
-        note: 'Requires Chrome with chrome://flags/#canvas-draw-element enabled.',
-        usage: `import { htmlInCanvasPlugin } from '@zumer/snapdom-plugins/html-in-canvas';\n\nconst result = await snapdom(el, {\n  plugins: [htmlInCanvasPlugin()]\n});\nconst canvas = await result.htmlInCanvas({ scale: 2 });`
       },
       'prompt-export': {
         icon: 'L', category: 'export',

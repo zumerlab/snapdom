@@ -11,7 +11,6 @@
     "./redact-inputs": "./redact-inputs.js",
     "./filter": "./filter.js",
     "./color-tint": "./color-tint.js",
-    "./html-in-canvas": "./html-in-canvas.js",
     "./pdf-image": "./pdf-image.js",
     "./agent-map": "./agent-map.js",
     "./context-export": "./context-export.js",

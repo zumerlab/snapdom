@@ -200,20 +200,6 @@ await result.toPdfImage(); // triggers download
 
 ---
 
-### `html-in-canvas`
-
-Uses the experimental [WICG `drawElementImage`](https://github.com/WICG/canvas-place-element) API for direct DOM-to-canvas rendering where supported. Falls back gracefully.
-
-```js
-import { htmlInCanvas } from '@zumer/snapdom-plugins/html-in-canvas';
-
-snapdom(el, { plugins: [htmlInCanvas()] });
-```
-
-> This plugin uses an experimental browser API and may not work in all environments.
-
----
-
 ### `agent-map`
 
 Produces a Set-of-Mark package for **visual agents**: an annotated screenshot with numbered badges on interactive elements, plus a compact JSON map from badge index → role / accessible name / bbox / state. One call, fully client-side.
