@@ -528,8 +528,22 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
   // subtree actually uses, so two captures of the same families but different text are not
   // interchangeable: an English panel warmed the cache and a Cyrillic one was then served
   // its latin-only faces. Order-independent digest — Set iteration order is insertion order.
+  //
+  // Each codepoint is AVALANCHED before it joins the sum. Multiplying and adding is linear
+  // over the ring, so `sum(imul(c, K)) === imul(sum(c), K)`: the digest was a function of the
+  // SUM of the codepoints and nothing else, and any two sets summing alike collided —
+  // "ad" and "bc" (97+100 = 98+99) produced the same key, on a cache whose whole job is to
+  // tell glyph sets apart. The xor-shift/multiply rounds break that linearity; the outer sum
+  // stays, because the digest must not depend on iteration order.
   let cp = 0, n = 0
-  for (const c of usedCodepoints || []) { cp = (cp + Math.imul(c, 2654435761)) | 0; n++ }
+  for (const c of usedCodepoints || []) {
+    let h = Math.imul(c, 2654435761)
+    h ^= h >>> 15
+    h = Math.imul(h, 2246822507)
+    h ^= h >>> 13
+    cp = (cp + h) | 0
+    n++
+  }
   const ex = exclude ? JSON.stringify({
     families: (exclude.families || []).map(s => String(s).toLowerCase()).sort(),
     domains: (exclude.domains || []).map(s => String(s).toLowerCase()).sort(),
@@ -815,6 +829,14 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   }
   // @import font URLs with no matching <link> are made reachable by injecting a temporary
   // <link>. These are tracked and removed below so the capture never mutates the user's DOM.
+  //
+  // The deadline is not optional. A <link> cannot be aborted and fires NEITHER load nor
+  // error while a request hangs, so a stylesheet that never answers — an offline CDN, a
+  // service worker holding the request, a captive portal — left this Promise.all pending
+  // forever: snapdom() never settled, and the temporary <link> the comment above promises
+  // to remove stayed in the user's <head> because the removal is after the await. Missing
+  // that font costs one fallback glyph run; waiting for it costs the whole capture. Same
+  // 3s budget snapFetch gives every other remote resource.
   const injectedLinks = []
   if (importUrls.length) {
     await Promise.all(importUrls.map((u) => new Promise((resolve) => {
@@ -823,8 +845,10 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       link.rel = 'stylesheet'
       link.href = u
       link.setAttribute('data-snapdom', 'injected-import')
-      link.onload = () => resolve(link)
-      link.onerror = () => resolve(null)
+      const timer = setTimeout(() => resolve(null), 3000)
+      const settle = (v) => { clearTimeout(timer); resolve(v) }
+      link.onload = () => settle(link)
+      link.onerror = () => settle(null)
       doc.head.appendChild(link)
       injectedLinks.push(link)
     })))

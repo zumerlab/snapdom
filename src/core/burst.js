@@ -10,9 +10,12 @@
  *  - <video> frames ........ timeupdate/seeked listeners, trackVideos
  *  - <img> loads ........... load/error listeners on pending images, trackPendingImages
  *  - font loads ............ style-environment epoch (styles.js getStyleEnvEpoch)
- *  - scroll ................ capture-phase scroll listener per element (no records exist)
+ *  - scroll ................ capture-phase scroll listener per element (no records exist),
+ *                            PLUS one per open shadow root: scroll is composed:false, so it
+ *                            stops at the boundary and never reaches the host
  *  - form-control state .... capture-phase input/change listeners (value/checked are
- *                            properties, not attributes — no records exist)
+ *                            properties, not attributes — no records exist). `change` is
+ *                            composed:false too, hence the per-shadow-root listener
  *  - ancestor state ........ ancestorSig compared when the global style epoch bumps
  *                            (theme/locale/custom-property changes ABOVE the element)
  *  - window resize ......... env epoch (media queries flip with no mutation)
@@ -25,8 +28,16 @@
  *                            once it ends (hasTornMutation): a net change that is not the
  *                            pipeline's own self-undoing work leaves the element dirty, so a
  *                            torn frame is never memoized
- *  - shadow DOM ............ one observer per open root, rescanned per capture so a root
- *                            attached after the memo is also caught (trackShadowRoots).
+ *  - mid-capture EVENTS .... the record-less sources above (scroll/input/change/focus/video)
+ *                            set `state.torn` instead of being dropped. There is nothing to
+ *                            judge afterwards — no target, no oldValue — and nothing to
+ *                            judge: the pipeline never types, scrolls or moves focus inside
+ *                            the captured subtree, so any of these is external by
+ *                            construction and the frame is torn
+ *  - shadow DOM ............ one observer per open root, plus the composed:false listeners
+ *                            and the <video>/<img> trackers (querySelectorAll does not cross
+ *                            the boundary either), rescanned per capture so a root attached
+ *                            after the memo is also caught (trackShadowRoots).
  *                            Costs one subtree walk per capture: ~1ms at 8k nodes, against
  *                            a memo that replaces a ~100ms pipeline. Closed roots cannot
  *                            be observed by anyone → `invalidate: true` territory.
@@ -118,6 +129,7 @@ function trackShadowRoots(element, state) {
   for (const [root, obs] of state.trackedShadowRoots) {
     if (!roots.has(root)) {
       try { obs.disconnect() } catch { /* already gone */ }
+      for (const type of SHADOW_LOCAL_EVENTS) root.removeEventListener(type, state.onMediaDirty, true)
       state.trackedShadowRoots.delete(root)
       const i = state.observers.indexOf(obs)
       if (i >= 0) state.observers.splice(i, 1)
@@ -131,16 +143,36 @@ function trackShadowRoots(element, state) {
       o.__flush = state.markDirty
       state.observers.push(o)
       state.trackedShadowRoots.set(root, o)
+      // The record-less half of the matrix needs its own wiring here. The listeners on the
+      // captured element cover the light DOM and, through composition, `input` and focus from
+      // inside a shadow tree — but `scroll` and `change` are composed:false, so they stop AT
+      // the shadow boundary and never reached it. A scrolled pane inside a web component
+      // served its pre-scroll frame forever. The root itself is where those events end up.
+      for (const type of SHADOW_LOCAL_EVENTS) root.addEventListener(type, state.onMediaDirty, { capture: true, passive: true })
       // Newly seen root: its content was never part of the retained capture.
       if (state.retained) state.dirtyAll()
     } catch { /* degrade: this root's changes won't invalidate */ }
   }
 }
 
+/** Events that do NOT compose out of a shadow tree, so the host's listeners never see them. */
+const SHADOW_LOCAL_EVENTS = ['scroll', 'change']
+
+/** Every scope a capture's media can live in: the element's own tree plus each OPEN shadow
+ *  root under it. `querySelectorAll` stops at a shadow boundary, so a <video> or a loading
+ *  <img> inside a web component was invisible to the trackers below — and both change what
+ *  paints with no mutation record to catch it. Costs one extra query per open root, and
+ *  nothing at all on a page without shadow DOM. */
+function scopesOf(element, state) {
+  return state.trackedShadowRoots.size ? [element, ...state.trackedShadowRoots.keys()] : [element]
+}
+
 function trackVideos(element, state, onMediaDirty) {
   const videos = new Set()
   if (element.tagName === 'VIDEO') videos.add(element)
-  if (element.querySelectorAll) for (const v of element.querySelectorAll('video')) videos.add(v)
+  for (const scope of scopesOf(element, state)) {
+    if (scope.querySelectorAll) for (const v of scope.querySelectorAll('video')) videos.add(v)
+  }
   for (const v of state.trackedVideos) {
     if (!videos.has(v)) {
       v.removeEventListener('timeupdate', onMediaDirty)
@@ -166,7 +198,9 @@ function trackVideos(element, state, onMediaDirty) {
 function trackPendingImages(element, state) {
   const imgs = []
   if (element.tagName === 'IMG') imgs.push(element)
-  if (element.querySelectorAll) imgs.push(...element.querySelectorAll('img'))
+  for (const scope of scopesOf(element, state)) {
+    if (scope.querySelectorAll) imgs.push(...scope.querySelectorAll('img'))
+  }
   for (const img of imgs) {
     if (img.complete || state.trackedImages.has(img)) continue
     state.trackedImages.add(img)
@@ -232,6 +266,7 @@ function createState(element) {
   const state = {
     dirty: true,
     pending: [],           // records seen while capturing, judged by hasTornMutation after
+    torn: false,           // a record-less event (input/scroll/focus/video) landed mid-capture
     dirtyRoots: new Set(), // scoped dirty subtree roots; null = everything is dirty
     retained: null,        // artifacts from the last full capture (clone, maps, css) for diff
     capturing: false,
@@ -273,7 +308,20 @@ function createState(element) {
       noteDirtyRoot(rec.target)
     }
   }
-  const onMediaDirty = () => { if (!state.capturing) dirtyAll() }
+  // The record-less half of the invalidation matrix (scroll, input/change, focus, video
+  // frames) needs the same mid-capture handling markDirty gives mutations — it did not have
+  // it, and simply DROPPED anything that arrived while `capturing` was true. The capture
+  // then committed as a clean memo, so an <input> that went OLD → NEW during a capture was
+  // answered with OLD on the next call, forever, since nothing was left to invalidate it.
+  //
+  // Unlike a mutation record there is nothing to judge afterwards (no target, no oldValue),
+  // but there is also nothing to judge: the listeners sit on the captured element itself
+  // and the pipeline never types, scrolls or moves focus inside it — its own DOM work
+  // happens on clones in a sandbox outside the subtree. So the frame is torn, full stop.
+  const onMediaDirty = () => {
+    if (state.capturing) { state.torn = true; return }
+    dirtyAll()
+  }
   state.dirtyAll = dirtyAll
 
   try {
@@ -340,7 +388,7 @@ function stableStringify(value, seen) {
   if (t === 'function' || t === 'symbol') return t === 'symbol' ? null : JSON.stringify(refTag(value))
   if (t !== 'object') return null
   // DOM nodes and other host objects have no stable structural form: compare by identity.
-  if (typeof Node !== 'undefined' && value instanceof Node) return JSON.stringify(refTag(value))
+  if (typeof value.nodeType === 'number') return JSON.stringify(refTag(value))
   if (seen.has(value)) return null // cycle
   seen.add(value)
   try {
@@ -510,8 +558,9 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       for (const o of state.observers) for (const rec of o.takeRecords()) state.pending.push(rec)
       // Mutations that landed mid-capture: the pipeline's own self-undoing edits are
       // ignored, a real one means the frame just built is torn: drop it and stay dirty.
-      if (hasTornMutation(state.pending)) { state.dirtyAll(); state.last = null }
+      if (state.torn || hasTornMutation(state.pending)) { state.dirtyAll(); state.last = null }
       state.pending.length = 0
+      state.torn = false
       state.capturing = false
       trackShadowRoots(element, state) // pick up shadow roots attached/removed by this capture
       trackVideos(element, state, state.onMediaDirty) // pick up <video>s added/removed by this capture

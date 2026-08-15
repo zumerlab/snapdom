@@ -18,6 +18,12 @@ export function plugins(...defs) { registerPlugins(...defs); return snapdom }
  * caller wiring a mount: the markup mounts offscreen in the live document (so page CSS
  * and fonts apply), captures, and cleans up. When the string has a single root element
  * that element is the capture target; otherwise the wrapper is.
+ *
+ * TRUSTED HTML ONLY. The string goes through `innerHTML` into the REAL document, so it is
+ * parsed and activated like any markup on the page: event-handler attributes run, in this
+ * origin. That is not a bug to fix — a capture needs real layout, and real layout means a
+ * live document — but it IS a boundary, and it belongs to the caller. Sanitize anything
+ * user-supplied before it gets here.
  * @param {string} html
  * @param {object} [options] - Same options as snapdom()
  * @returns {Promise<object>} The capture result

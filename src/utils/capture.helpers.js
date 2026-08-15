@@ -3,7 +3,7 @@
  * @module utils/capture.helpers
  */
 
-import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS } from './index.js'
+import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl } from './index.js'
 import { cache } from '../core/cache.js'
 import { universeFor } from '../modules/styles.js'
 import {
@@ -117,12 +117,12 @@ export function composeResidual2D(baseTransform, ind) {
  */
 export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, edge) {
   const rootR = root.getBoundingClientRect()
-  if (cloneRoot instanceof HTMLElement && getStyle(root).position === 'static') {
+  if (isHTMLEl(cloneRoot) && getStyle(root).position === 'static') {
     cloneRoot.style.position = 'relative'
   }
   const hoisted = []
   for (const [cloneEl, orig] of nodeMap) {
-    if (!(cloneEl instanceof HTMLElement) || (orig?.nodeType !== 1)) continue
+    if (!isHTMLEl(cloneEl) || (orig?.nodeType !== 1)) continue
     if (orig === root || !composedContains(root, orig)) continue
     const cs = styleCache.get(orig) || getStyle(orig)
     const pos = cs.position
@@ -454,19 +454,15 @@ function authorHasExplicitSize(el) {
   } catch { return false }
 }
 
+const REPLACED_TAGS = new Set(['img', 'canvas', 'video', 'iframe', 'object', 'embed'])
+
 /**
  * Replaced elements (img, canvas, video, iframe, svg, object, embed) have intrinsic sizing;
  * we do not auto-shrink them here.
  * @param {Element} el
  */
 function isReplacedElement(el) {
-  return el instanceof HTMLImageElement ||
-    el instanceof HTMLCanvasElement ||
-    el instanceof HTMLVideoElement ||
-    el instanceof HTMLIFrameElement ||
-    el instanceof SVGElement ||
-    el instanceof HTMLObjectElement ||
-    el instanceof HTMLEmbedElement
+  return isSVGEl(el) || REPLACED_TAGS.has(el?.localName)
 }
 
 /**
@@ -700,7 +696,7 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
         const c = cKids[i]
         const m = mKids[i]
         const src = nodeMap.get(c)
-        if (src?.nodeType === 1 && c instanceof HTMLElement && src.isConnected) {
+        if (src?.nodeType === 1 && isHTMLEl(c) && src.isConnected) {
           const sr = src.getBoundingClientRect()
           if (sr.width > 0 && sr.height > 0) {
             const mr = m.getBoundingClientRect()

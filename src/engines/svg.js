@@ -101,11 +101,18 @@ export async function composeAndSerialize(state, ex) {
     // Also measure clone in a temp container with injected styles (clone may layout differently).
     // PERF-3: cache result per element — this cloneNode(true) + layout round-trip is expensive
     // for large DOMs; reuse when the same element is captured with the same total CSS length.
+    //
+    // The hint is combined with Math.max, so a STALE one can only ever make the raster too
+    // big — and it did: the validity test was (css length, w0), neither of which moves when a
+    // list collapses or a route unmounts half the page. The document got shorter, the memo
+    // kept the taller measurement, and the capture came back with a band of empty pixels at
+    // the bottom that no later capture could shrink. docH/docW are already read above and
+    // track exactly that, so they belong in the key.
     try {
       const cssLen = (state.scrollbarCSS || '').length + (state.baseCSS || '').length +
                      (state.fontsCSS || '').length + (state.classCSS || '').length
       const hint = cache.measureHints.get(state.element)
-      if (hint && hint.cssLen === cssLen && hint.w0 === w0) {
+      if (hint && hint.cssLen === cssLen && hint.w0 === w0 && hint.docH === docH && hint.docW === docW) {
         if (hint.csh > 0) h0 = Math.max(h0, limitDecimals(hint.csh))
         if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
       } else {
@@ -123,7 +130,7 @@ export async function composeAndSerialize(state, ex) {
         const csh = wrap.scrollHeight
         const csw = wrap.scrollWidth
         elDoc.body.removeChild(wrap)
-        cache.measureHints.set(state.element, { cssLen, w0, csh, csw })
+        cache.measureHints.set(state.element, { cssLen, w0, docH, docW, csh, csw })
         if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
         if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
       }

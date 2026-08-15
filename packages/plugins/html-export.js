@@ -6,6 +6,11 @@
  * It serializes the captured clone directly, so the markup and CSS match the capture
  * byte-for-byte. Nothing is rasterized, and nothing is re-parsed.
  *
+ * That fidelity cuts both ways: the output carries the captured markup AS IT WAS, including
+ * any event-handler attributes the original nodes had. It is a faithful copy of a page, not a
+ * sanitized one — treat a downloaded or served .html from here the way you would treat the
+ * page it came from.
+ *
  * @param {Object} [options]
  * @param {boolean} [options.fullDocument=true] - Wrap in <!DOCTYPE html>…; if false, return just <style> + fragment
  * @param {string} [options.filename='capture.html'] - Download filename when opts.download is used
@@ -17,8 +22,21 @@ export function htmlExport(options = {}) {
     filename = 'capture.html',
   } = options;
 
-  // The captured markup, serialized once from the clone itself (see afterRender).
-  let frozenBody = null;
+  // Where the serialized markup is parked between afterRender and toHtml. It has to hang
+  // off the CAPTURE, not off this closure: one plugin instance serves every capture it is
+  // registered for — always, when registered globally — so a single `let` here was shared
+  // state between them. Each afterRender overwrote it, and since a result's toHtml() is
+  // called later (that is the point of returning a result object), the LAST capture's
+  // markup is what every earlier result answered with:
+  //
+  //   const a = await snapdom(alpha); const b = await snapdom(beta);
+  //   await a.toHtml()   // → beta's markup
+  //
+  // The capture context is the object both hooks already share (afterRender receives it,
+  // and defineExports' ctx is a shallow copy of it, made after the render), so parking the
+  // markup there scopes it to exactly one capture and survives every path — including
+  // burst's differential recapture, which re-enters the engine and re-fires afterRender.
+  const BODY = '__htmlExportBody';
 
   return {
     name: 'html-export',
@@ -43,13 +61,14 @@ export function htmlExport(options = {}) {
      */
     afterRender(state) {
       const container = state.clone?.parentNode;
-      frozenBody = container ? new XMLSerializer().serializeToString(container) : '';
+      state[BODY] = container ? new XMLSerializer().serializeToString(container) : '';
     },
 
     defineExports() {
       return {
         html: async (ctx, opts = {}) => {
-          if (frozenBody === null) {
+          const frozenBody = ctx[BODY];
+          if (typeof frozenBody !== 'string') {
             throw new Error(
               '[snapdom] html-export: this capture produced no render. The plugin\'s afterRender ' +
               'hook never ran, so there is no markup to export (a capture stopped at needs:\'dom\' ' +

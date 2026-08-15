@@ -1,4 +1,4 @@
-import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS } from '../utils/index.js'
+import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 import { scanAuthorStyles } from './styleScan.js'
 
@@ -83,27 +83,54 @@ function onDomRecords(records) {
   if (hasExternalMutation(records)) bumpEpoch()
 }
 
-let __wired = false
-let __domObs = null
-let __headObs = null
-function setupInvalidationOnce(root = document.documentElement) {
-  if (__wired) return
-  __wired = true
+/** Wired PER DOCUMENT, not once per page. A same-origin <iframe> is a second document with
+ *  its own observers, listeners and FontFaceSet: wiring only the top one meant nothing
+ *  inside an iframe ever bumped the epoch, so the style snapshots kept serving whatever the
+ *  first capture saw. Editing a rule inside the frame changed the live pixels and changed
+ *  nothing in the next capture. The epoch stays SHARED — a cross-document bump invalidates
+ *  a few memos it did not have to, which costs one rescan; the alternative is per-document
+ *  epoch bookkeeping in every consumer to fix an over-invalidation nobody can measure. */
+const __wiredDocs = new WeakSet()
+/** Hot-path memo. `inlineAllStyles` calls setupInvalidationOnce once PER NODE, and before
+ *  per-document wiring that call was a single boolean read — effectively free. A WeakSet
+ *  lookup per node is not: it did not show up on one engine at a time, but under
+ *  `BROWSER=all` (three engines contending for the same machine) it pushed two WebKit tests
+ *  past their 15s budget. Nodes come in document order, so an identity compare against the
+ *  last document answers essentially every call, and the WeakSet is only consulted when the
+ *  document actually changes — which happens once per iframe, not once per node. */
+let __lastWiredDoc = null
+/** Every observer we wired, in any document. `env` ones also bump the environment epoch.
+ *  Entries carry their document so dead ones can be dropped: flushStyleInvalidations walks
+ *  this list on EVERY capture, and an <iframe> that is created, captured and removed — which
+ *  a test suite or an SPA does constantly — would otherwise leave its two observers here
+ *  forever. The list grew without bound and each capture paid a takeRecords() per entry; over
+ *  a long run that is a per-capture census of every document the page ever touched, which is
+ *  precisely the cost profile that timed WebKit out before. */
+const __observers = []
+function setupInvalidationOnce(doc = document) {
+  if (doc === __lastWiredDoc) return
+  if (!doc || doc.nodeType !== 9) return
+  if (__wiredDocs.has(doc)) { __lastWiredDoc = doc; return }
+  __wiredDocs.add(doc)
+  __lastWiredDoc = doc
+  const view = doc.defaultView
   const onEnvRecords = (records) => {
     if (hasExternalMutation(records)) { bumpEpoch(); __envEpoch++ }
   }
   const onFonts = () => { bumpEpoch(); __envEpoch++ }
   try {
-    __domObs = new MutationObserver(onDomRecords)
-    __domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
+    const o = new MutationObserver(onDomRecords)
+    o.observe(doc.documentElement, { subtree: true, childList: true, characterData: true, attributes: true })
+    __observers.push({ o, env: false, doc })
   } catch { }
   try {
-    __headObs = new MutationObserver(onEnvRecords)
-    __headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
+    const o = new MutationObserver(onEnvRecords)
+    o.observe(doc.head, { subtree: true, childList: true, characterData: true, attributes: true })
+    __observers.push({ o, env: true, doc })
   } catch { }
   try {
     // Viewport resizes flip media queries — computed styles change with no DOM mutation.
-    window.addEventListener('resize', onFonts, { passive: true })
+    view?.addEventListener('resize', onFonts, { passive: true })
   } catch { }
   try {
     // Interaction pseudo-classes (:focus, :focus-visible, :checked, :disabled) re-style
@@ -111,12 +138,12 @@ function setupInvalidationOnce(root = document.documentElement) {
     // serving the pre-interaction styles. focusin/out bubble (focus/blur do not); change
     // covers checkbox/radio/select. :hover is deliberately NOT wired — pointer events fire
     // continuously and would flush the snapshot cache on every mouse move.
-    document.addEventListener('focusin', bumpEpoch, { capture: true, passive: true })
-    document.addEventListener('focusout', bumpEpoch, { capture: true, passive: true })
-    document.addEventListener('change', bumpEpoch, { capture: true, passive: true })
+    doc.addEventListener('focusin', bumpEpoch, { capture: true, passive: true })
+    doc.addEventListener('focusout', bumpEpoch, { capture: true, passive: true })
+    doc.addEventListener('change', bumpEpoch, { capture: true, passive: true })
   } catch { }
   try {
-    const f = document.fonts
+    const f = doc.fonts
     if (f) {
       f.addEventListener?.('loadingdone', onFonts)
       f.ready?.then(onFonts).catch(() => { })
@@ -131,13 +158,22 @@ function setupInvalidationOnce(root = document.documentElement) {
 export function flushStyleInvalidations() {
   setupInvalidationOnce()
   try {
-    if (__headObs) {
-      const r = __headObs.takeRecords()
-      if (r.length && hasExternalMutation(r)) { bumpEpoch(); __envEpoch++ }
-    }
-    if (__domObs) {
-      const r = __domObs.takeRecords()
-      if (r.length) onDomRecords(r)
+    for (let i = __observers.length - 1; i >= 0; i--) {
+      const { o, env, doc } = __observers[i]
+      // A detached document — an <iframe> removed from the page — has a null defaultView and
+      // can never paint again, so it has nothing left to invalidate. Drop it here rather than
+      // paying for it on every future capture.
+      if (doc !== document && !doc.defaultView) {
+        try { o.disconnect() } catch { }
+        __wiredDocs.delete(doc)
+        if (__lastWiredDoc === doc) __lastWiredDoc = null
+        __observers.splice(i, 1)
+        continue
+      }
+      const r = o.takeRecords()
+      if (!r.length) continue
+      if (env) { if (hasExternalMutation(r)) { bumpEpoch(); __envEpoch++ } }
+      else onDomRecords(r)
     }
   } catch { }
 }
@@ -455,7 +491,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const ctx = _resolveCtx(sessionOrCtx, opts)
   const resetMode = (ctx.options && ctx.options.cache) || 'auto'
 
-  if (resetMode !== 'disabled') setupInvalidationOnce(document.documentElement)
+  // The node's OWN document. Capturing inside a same-origin iframe wired the parent's
+  // observers and watched a document the captured element does not live in.
+  if (resetMode !== 'disabled') setupInvalidationOnce(source.ownerDocument)
 
   if (resetMode === 'disabled' && !ctx.session.__bumpedForDisabled) {
     bumpEpoch()
@@ -471,7 +509,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     // element never throws and callers always receive a usable style object.
     let computed = null
     try { computed = getComputedStyle(source) } catch { /* detached / cross-origin */ }
-    session.styleCache.set(source, computed || getComputedStyle(document.documentElement))
+    session.styleCache.set(source, computed || getComputedStyle((source.ownerDocument || document).documentElement))
   }
   const pre = session.styleCache.get(source)
 
@@ -671,7 +709,7 @@ function autoContentHeight(el) {
  */
 function stripHeightForWrappers(el, cs, snap) {
   // 1) Respect an author inline height
-  if (el instanceof HTMLElement && el.style && el.style.height) return
+  if (isHTMLEl(el) && el.style && el.style.height) return
 
   // 2) Solo div/section/article/main/aside/header/footer/nav (no ol/ul/li: layout de listas)
   const tag = el.tagName && el.tagName.toLowerCase()

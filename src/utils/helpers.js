@@ -112,3 +112,32 @@ export function isPasswordInput(el) {
 export function maskValue(value) {
   return '\u2022'.repeat(String(value ?? '').length)
 }
+
+/* ---------------- realm-safe type tests ----------------
+ *
+ * `node instanceof HTMLInputElement` asks whether the node was built by THIS window's
+ * constructor. A same-origin <iframe> is a second window with its own constructor set, so
+ * every one of those tests answered false for nodes inside a frame \u2014 and the answers were
+ * load-bearing: the branches they guard are what copy a form control's LIVE value
+ * (`.value`, `.checked`) onto the clone. Capturing inside an iframe silently fell through
+ * to the plain-element path and serialized the HTML-attribute defaults, so a typed-in form
+ * came out empty. Namespace + localName are realm-independent, and being plain string
+ * compares they are also cheaper than instanceof in the per-node clone loop. */
+
+const HTML_NS = 'http://www.w3.org/1999/xhtml'
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+/** Realm-safe `node instanceof HTMLxxxElement` for a known tag (lowercase). */
+export function isTag(node, name) {
+  return node?.nodeType === 1 && node.localName === name
+}
+
+/** Realm-safe `node instanceof HTMLElement`. */
+export function isHTMLEl(node) {
+  return node?.nodeType === 1 && node.namespaceURI === HTML_NS
+}
+
+/** Realm-safe `node instanceof SVGElement`. */
+export function isSVGEl(node) {
+  return node?.nodeType === 1 && node.namespaceURI === SVG_NS
+}

@@ -50,7 +50,7 @@ export async function toImg(url, options) {
       return rasterize(url, { ...options, format: 'png', quality: 1, meta })
     }
   }
-const img = new Image()
+  const img = new Image()
   img.decoding = 'sync'
   img.loading = 'eager'
   img.src = url
@@ -75,24 +75,33 @@ const img = new Image()
     img.style.height = `${height}px`
     img.style.width = `${Math.round(refW * k)}px`
   } else {
-     const cssW = Math.round(img.naturalWidth * scale)
-     const cssH = Math.round(img.naturalHeight * scale)
-   img.style.width = `${cssW}px`
-   img.style.height = `${cssH}px`
-   if (typeof url === 'string' && url.startsWith('data:image/svg+xml')) {
-     try {
-       const decoded = decodeURIComponent(url.split(',')[1])
-       const patched = decoded
-         .replace(/width="[^"]*"/, `width="${cssW}"`)
-         .replace(/height="[^"]*"/, `height="${cssH}"`)
-       url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(patched)}`
-       img.src = url
-     } catch (e) {
-       debugWarn(options, 'SVG width/height patch in toImg failed', e)
-     }
-   }
- }
- return img
+    const cssW = Math.round(img.naturalWidth * scale)
+    const cssH = Math.round(img.naturalHeight * scale)
+    img.style.width = `${cssW}px`
+    img.style.height = `${cssH}px`
+    if (typeof url === 'string' && url.startsWith('data:image/svg+xml')) {
+      try {
+        const decoded = decodeURIComponent(url.split(',')[1])
+        const patched = decoded
+          .replace(/width="[^"]*"/, `width="${cssW}"`)
+          .replace(/height="[^"]*"/, `height="${cssH}"`)
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(patched)}`
+        // Assigning src RESTARTS decoding. The decode() above settled for the ORIGINAL
+        // url and says nothing about this one, so toSvg({scale}) handed back an image
+        // with `complete === false`: drawing it in the same tick — exactly what an
+        // exporter or a caller does — painted nothing.
+        await img.decode()
+      } catch (e) {
+        debugWarn(options, 'SVG width/height patch in toImg failed', e)
+        // Hand back something drawable: the original url already decoded once.
+        if (img.src !== url) {
+          img.src = url
+          await img.decode().catch(() => {})
+        }
+      }
+    }
+  }
+  return img
 }
 
 export { toImg as toSvg }

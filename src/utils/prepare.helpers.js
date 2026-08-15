@@ -3,6 +3,8 @@
  * @module utils/prepare.helpers
  */
 
+import { isHTMLEl } from './helpers.js'
+
 /**
  * Stabilize layout by adding transparent border if element has outline but no border.
  * Returns an undo function to restore the element's original inline border.
@@ -49,7 +51,7 @@ export function stabilizeLayout(element) {
 export function forceContentVisibility(root, clipRect = null) {
   const saved = []
   const force = (el) => {
-    if (!(el instanceof HTMLElement)) return
+    if (!isHTMLEl(el)) return
     const cs = getComputedStyle(el)
     const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
     if (computed === 'auto') {

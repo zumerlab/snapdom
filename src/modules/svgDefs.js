@@ -10,6 +10,8 @@
  * @param {Element} element - SVG root or container holding one/more SVGs.
  * @param {Document|ParentNode} [lookupRoot] - Where to search for external defs/symbols (defaults to element.ownerDocument).
  */
+
+import { isSVGEl } from '../utils/helpers.js'
 export function inlineExternalDefsAndSymbols(element, lookupRoot) {
   if (!element || (element?.nodeType !== 1)) return
 
@@ -18,7 +20,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
 
   /** Collect all SVG roots under element (or element if it's an <svg>) */
   const svgRoots =
-    element instanceof SVGSVGElement
+    isSVGEl(element) && element.localName === 'svg'
       ? [element]
       : Array.from(element.querySelectorAll('svg'))
 

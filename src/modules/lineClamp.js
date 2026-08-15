@@ -59,8 +59,6 @@ export function lineClamp(el, cs) {
   if (!isPlainTextContainer(el)) return () => {}
 
   const original = el.textContent ?? ''
-  // Saved so it can be restored
-  const prevText = original
 
   // Measure the REAL rendered line height instead of guessing from CSS.
   // `line-height: normal` is font-metric dependent, and inside a -webkit-box the
@@ -93,12 +91,11 @@ export function lineClamp(el, cs) {
   }
 
   // Apply the best cut (when nothing fits, only the ellipsis is left)
-  el.textContent = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
+  const written = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
+  el.textContent = written
 
   // Return undo() so the original DOM is restored after cloning
-  return () => {
-    el.textContent = prevText
-  }
+  return undoText(el, written, original)
 }
 
 /**
@@ -126,7 +123,6 @@ export function textEllipsis(el, cs) {
   if (el.scrollWidth <= el.clientWidth + 0.5) return () => {}
 
   const original = el.textContent ?? ''
-  const prevText = original
 
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
@@ -139,14 +135,26 @@ export function textEllipsis(el, cs) {
     }
   }
 
-  el.textContent = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
+  const written = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
+  el.textContent = written
 
-  return () => {
-    el.textContent = prevText
-  }
+  return undoText(el, written, original)
 }
 
 /* ---------------- helpers ---------------- */
+
+/** Restore the pre-clamp text — unless the page changed it while the capture was running.
+ *  This is the one place the pipeline writes to the LIVE tree: the ellipsis is baked into
+ *  the real node, the clone is taken, and the text is put back. `prepareClone` is awaited
+ *  in between, which is long enough for the caller's own code to write new text into the
+ *  same node. A blind `el.textContent = original` then reverted that write — the capture
+ *  being stale would have been forgivable, silently undoing the application's update was
+ *  not. If what we wrote is no longer there, the node has a new owner: leave it. */
+function undoText(el, written, original) {
+  return () => {
+    if (el.textContent === written) el.textContent = original
+  }
+}
 
 /** A cut index that never lands between the two halves of a surrogate pair. Slicing an
  *  emoji in half leaves a lone surrogate, and the serialized SVG then fails

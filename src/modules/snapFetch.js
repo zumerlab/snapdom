@@ -336,10 +336,15 @@ export async function snapFetch(url, options = {}) {
       return { ok: true, data: blob, status: resp.status, url: finalURL, fromCache: false, mime }
 
     } catch (err) {
-      const reason =
-        (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError')
-          ? (String(err.message || '').includes('timeout') ? 'timeout' : 'abort')
-          : 'network'
+      // `ctrl.abort('timeout')` makes fetch reject with the abort REASON itself — the bare
+      // string 'timeout', not a DOMException — so the old `typeof err === 'object'` test never
+      // matched and every one of OUR OWN deadlines was reported as 'network'. That is not a
+      // cosmetic mislabel: it cached the failure as a network error, and told the user to set
+      // up a CORS proxy for a server that was simply slow. This controller is the only thing
+      // that aborts this request, so its signal is the authoritative answer.
+      const reason = ctrl.signal.aborted
+        ? (ctrl.signal.reason === 'timeout' ? 'timeout' : 'abort')
+        : (err && typeof err === 'object' && err.name === 'AbortError') ? 'abort' : 'network'
 
       const result = { ok: false, data: null, status: 0, url: finalURL, fromCache: false, reason }
 

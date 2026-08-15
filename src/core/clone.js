@@ -6,7 +6,7 @@
 import { inlineAllStyles } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
-import { debugWarn, getStyle, isPasswordInput, maskValue } from '../utils/index.js'
+import { debugWarn, getStyle, isPasswordInput, maskValue, isTag, isSVGEl } from '../utils/index.js'
 import {
   rewriteShadowCSS,
   nextShadowScopeId,
@@ -289,7 +289,7 @@ export async function deepClone(node, sessionCache, options) {
         debugWarn(sessionCache, 'resolveNode plugin hook failed', e)
       }
       if (out === null) return null
-      if (out instanceof Node) {
+      if (out?.nodeType) {
         if (out.nodeType === Node.ELEMENT_NODE) {
           // Same treatment as built-in tag handlers: map to the source and carry its box
           // styles so the replacement keeps the original layout.
@@ -389,14 +389,14 @@ export async function deepClone(node, sessionCache, options) {
     throw err
   }
   let applyInputVisual = null
-  if (node instanceof HTMLTextAreaElement) {
+  if (isTag(node, 'textarea')) {
     const { width, height } = getUnscaledDimensions(node)
     const w = width || node.getBoundingClientRect().width || 0
     const h = height || node.getBoundingClientRect().height || 0
     if (w) clone.style.width = `${w}px`
     if (h) clone.style.height = `${h}px`
   }
-  if (node instanceof HTMLInputElement) {
+  if (isTag(node, 'input')) {
     const type = (node.type || 'text').toLowerCase()
     const isCheckboxOrRadio = type === 'checkbox' || type === 'radio'
     if (isCheckboxOrRadio && isFirefox()) {
@@ -421,7 +421,7 @@ export async function deepClone(node, sessionCache, options) {
   }
 
   // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
-  if ((node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) && !node.value && node.placeholder) {
+  if ((isTag(node, 'input') || isTag(node, 'textarea')) && !node.value && node.placeholder) {
     try {
       const phStyle = window.getComputedStyle(node, '::placeholder')
       const phColor = phStyle && phStyle.color
@@ -435,15 +435,15 @@ export async function deepClone(node, sessionCache, options) {
     } catch { /* non-blocking */ }
   }
 
-  if (node instanceof HTMLSelectElement) {
+  if (isTag(node, 'select')) {
     pendingSelectValue = node.value
   }
-  if (node instanceof HTMLTextAreaElement) {
+  if (isTag(node, 'textarea')) {
     pendingTextAreaValue = node.value
   }
   // Copy form validation/state attributes so :disabled, :required, :read-only,
   // :invalid, :in-range/:out-of-range pseudo-class styles render correctly in the capture.
-  if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement) {
+  if (isTag(node, 'input') || isTag(node, 'textarea') || isTag(node, 'select')) {
     if (node.disabled) clone.setAttribute('disabled', '')
     if (node.required) clone.setAttribute('required', '')
     if ((/** @type {HTMLInputElement|HTMLTextAreaElement} */ (node)).readOnly) clone.setAttribute('readonly', '')
@@ -466,7 +466,7 @@ export async function deepClone(node, sessionCache, options) {
   // properties from computed style as inline styles to ensure CSS-driven fills/strokes survive.
   // #408: skip descendants of <symbol>/<defs>/etc. — their var() must resolve at the <use> site,
   // not be materialized to the (dead) template's fallback computed value.
-  if (node instanceof SVGElement && !isInSvgTemplate(node)) {
+  if (isSVGEl(node) && !isInSvgTemplate(node)) {
     const SVG_PAINT_PROPS = [
       'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset',
       'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'opacity',
@@ -540,7 +540,7 @@ export async function deepClone(node, sessionCache, options) {
   clone.append(...cloneList.filter(clonedChild => !!clonedChild))
 
   // Adjust select value after children are cloned
-  if (pendingSelectValue !== null && clone instanceof HTMLSelectElement) {
+  if (pendingSelectValue !== null && isTag(clone, 'select')) {
     clone.value = pendingSelectValue
     for (const opt of clone.options) {
       if (opt.value === pendingSelectValue) {
@@ -562,7 +562,7 @@ export async function deepClone(node, sessionCache, options) {
   //
   // Empty string is a real value, so the guard tests against null: `if (value)` would fall
   // through on a cleared textarea and leak the default back.
-  if (pendingTextAreaValue !== null && clone instanceof HTMLTextAreaElement) {
+  if (pendingTextAreaValue !== null && isTag(clone, 'textarea')) {
     clone.textContent = pendingTextAreaValue
   }
   return clone
