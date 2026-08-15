@@ -30,15 +30,26 @@ const banner = {
 }
 
 /**
- * 1. LEGACY IIFE (script tag / require)
+ * 1. LEGACY IIFE (script tag)
  * Salida: dist/snapdom.js
+ *
+ * `format: 'iife'` is load-bearing, not decoration. Without it, platform:'neutral' emitted
+ * the bundle as bare top-level statements, so a <script> tag published every minified
+ * binding as a global: 442 of them, `Fi`, `rt`, `Zt`… one collision away from breaking an
+ * unrelated page. Verified by __tests__/dist.bundle.test.js, which runs the built file in
+ * an empty context and counts what leaks.
+ *
+ * `globalName` is deliberately ABSENT. With it, esbuild wraps the bundle as
+ * `var snapdom = (() => {…})()`, and since src/index.browser.js exports nothing that
+ * assignment lands AFTER the body has run — overwriting the explicit `window.snapdom`
+ * with the entry's empty exports object. The entry owns the global; the bundler must not.
  */
 async function buildLegacy() {
   await build({
     ...common,
     entryPoints: ['src/index.browser.js'],
     outfile: 'dist/snapdom.js',
-    globalName: 'snapdom',
+    format: 'iife',
     platform: 'neutral',
     minify: true,
     target: ['es2020'],
@@ -87,9 +98,18 @@ async function buildCJS() {
  * re-exports resolve to the same dist/snapdom.mjs instance: one runtime, one registry,
  * one cache. No splitting, no chunks.
  */
+const PLUGIN_EXPORTS = ['registerPlugins', 'clearPlugins', 'getGlobalPlugins', 'normalizePlugin', 'STAGES', 'DEFAULT_STAGE', 'assertNeeds']
+
 function writeSubpathStubs() {
   writeFileSync('dist/preCache.mjs', `${banner.js}\nexport { preCache } from './snapdom.mjs'\n`)
-  writeFileSync('dist/plugins.mjs', `${banner.js}\nexport { registerPlugins, clearPlugins, getGlobalPlugins, normalizePlugin, STAGES, DEFAULT_STAGE, assertNeeds } from './snapdom.mjs'\n`)
+  writeFileSync('dist/plugins.mjs', `${banner.js}\nexport { ${PLUGIN_EXPORTS.join(', ')} } from './snapdom.mjs'\n`)
+  // The same stubs for require(). Without them the subpaths were import-only, so a CJS app
+  // that require()d the root and reached the registry through the subpath loaded
+  // snapdom.cjs AND snapdom.mjs — two module instances, two plugin registries, and a
+  // plugin registered through the subpath that snapdom() never saw. One resolution per
+  // module system is the most a dual package can promise; this makes it hold.
+  writeFileSync('dist/preCache.cjs', `${banner.js}\nmodule.exports = { preCache: require('./snapdom.cjs').preCache }\n`)
+  writeFileSync('dist/plugins.cjs', `${banner.js}\nconst r = require('./snapdom.cjs')\nmodule.exports = { ${PLUGIN_EXPORTS.map((n) => `${n}: r.${n}`).join(', ')} }\n`)
 }
 
 async function main() {

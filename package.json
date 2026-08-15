@@ -18,15 +18,20 @@
       "default": "./dist/snapdom.mjs"
     },
     "./preCache": {
-      "import": "./dist/preCache.mjs"
+      "types": "./types/preCache.d.ts",
+      "import": "./dist/preCache.mjs",
+      "require": "./dist/preCache.cjs"
     },
     "./plugins": {
-      "import": "./dist/plugins.mjs"
-    }
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins.mjs",
+      "require": "./dist/plugins.cjs"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist/",
-    "types/snapdom.d.ts",
+    "types/",
     "README.md"
   ],
   "scripts": {
@@ -42,11 +47,14 @@
     "report:cross": "node scripts/cross-report.mjs",
     "test:coverage": "npx vitest run --browser.headless --coverage",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
+    "test:pack": "node scripts/check-pack.mjs",
     "site": "npm run compile && node scripts/serve-site.mjs",
     "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
-    "build": "npm run compile && npm pack",
-    "release": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags && npm run build"
+    "prepack": "npm run compile",
+    "build": "npm pack",
+    "release": "REQUIRE_VISUAL=1 npm run test && npm run test:pack && npm run build && git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags",
+    "publish:beta": "npm publish --tag beta"
   },
   "repository": {
     "type": "git",

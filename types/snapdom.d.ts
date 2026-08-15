@@ -195,7 +195,10 @@ export interface SnapdomOptions {
   /** Verbose diagnostics via console.warn. Default false. */
   debug?: boolean;
 
-  /** Default filename (without extension) for download(). Default "snapDOM". */
+  /**
+   * Filename for download(). The extension is appended from the export format when the name
+   * does not already carry one, so `'card'` saves as `card.png`. Default `"snapdom"`.
+   */
   filename?: string;
 
   /**
@@ -503,6 +506,13 @@ export declare namespace snapdom {
   /**
    * Capture an HTML string (SSR markup, templates) without wiring a mount: it mounts
    * offscreen in the live document (page CSS/fonts apply), captures, and cleans up.
+   *
+   * ⚠️ TRUSTED HTML ONLY. The string is assigned to `innerHTML` and attached to the real
+   * document, so it is parsed and activated exactly like markup you wrote yourself:
+   * `<img onerror>` and friends RUN, in your origin, with your cookies. This is inherent
+   * to rendering arbitrary markup — there is no capture without a live layout — so the
+   * boundary is the caller's to hold. Never pass user-supplied HTML that has not been
+   * sanitized first (DOMPurify or equivalent).
    */
   function fromString(html: string, options?: SnapdomOptions): Promise<CaptureResult>;
 
@@ -614,20 +624,11 @@ export declare function assertNeeds(
   supported?: readonly CaptureStage[]
 ): CaptureStage;
 
-declare module "@zumer/snapdom/plugins" {
-  export {
-    registerPlugins,
-    clearPlugins,
-    getGlobalPlugins,
-    normalizePlugin,
-    STAGES,
-    DEFAULT_STAGE,
-    assertNeeds,
-  };
-}
-
-declare module "@zumer/snapdom/preCache" {
-  export { preCache };
-}
+/* The subpaths declare themselves, in types/plugins.d.ts and types/preCache.d.ts.
+ * They used to live here as `declare module "@zumer/snapdom/plugins" { … }`. In a file
+ * that is already a module those are AUGMENTATIONS of a specifier TypeScript has to
+ * resolve first — and it cannot resolve a package into itself — so every consumer without
+ * `skipLibCheck: true` got TS2665. Separate files, reached through the `types` condition
+ * in package.json's exports map, are the shape that actually works. */
 
 export {};
