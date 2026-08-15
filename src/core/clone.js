@@ -550,6 +550,18 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
+  // Same reason as the select above, and the ordering is load-bearing: a textarea's child
+  // nodes ARE its default value, so the recursion cloned that text and the append above just
+  // put it back. Assigning here wipes those children and leaves exactly the live value.
+  //
+  // Move this up next to the other textarea handling, where it reads like it belongs, and it
+  // runs BEFORE that append: the default text then lands after the value and the capture
+  // shows the content twice. Verified, not assumed — that edit makes
+  // core.clone.textarea.test.js report "expected 2 to be 1". Invisible on a textarea without
+  // default content, which is most of them.
+  //
+  // Empty string is a real value, so the guard tests against null: `if (value)` would fall
+  // through on a cleared textarea and leak the default back.
   if (pendingTextAreaValue !== null && clone instanceof HTMLTextAreaElement) {
     clone.textContent = pendingTextAreaValue
   }
