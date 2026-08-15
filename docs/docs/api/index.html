@@ -161,6 +161,25 @@ document.body.appendChild(png);</pre>
     </section>
 
     <section class="prose">
+      <h2 id="fromstring">snapdom.fromString(html, options?)</h2>
+      <p>New in v3. Captures a markup string — SSR output, a template, an email body — without
+      the caller wiring up a mount. The markup is attached offscreen in the live document, so
+      the page's CSS and fonts apply exactly as they would to anything else on it, captured, and
+      removed. When the string has a single root element that element is the target; otherwise
+      the wrapper is.</p>
+      <pre class="code-block">const result = await snapdom.fromString(
+  '&lt;article class="card"&gt;&lt;h2&gt;Hello&lt;/h2&gt;&lt;/article&gt;'
+);
+const png = await result.toPng();</pre>
+      <p class="muted"><strong>Trusted HTML only.</strong> The string goes through
+      <code>innerHTML</code> into the real document, so it is parsed and ACTIVATED like any
+      markup you wrote yourself: <code>&lt;img onerror&gt;</code> and friends run, in your origin,
+      with your cookies. That is inherent — there is no capture without a live layout — so the
+      trust boundary is yours to hold. Sanitize anything user-supplied (DOMPurify or equivalent)
+      before passing it here.</p>
+    </section>
+
+    <section class="prose">
       <h2 id="exporter-options">Exporter-specific options</h2>
       <p>Some exporters accept a small set of <strong>export-only options</strong> in addition to the global <a href="../options/">capture options</a>.</p>
 

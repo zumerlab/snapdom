@@ -162,7 +162,7 @@ import { plugins } from '@zumer/snapdom/plugins';</pre>
           <tr><th>Stage</th><th>What happens</th></tr>
         </thead>
         <tbody>
-          <tr><td class="feature">Clone</td><td>Deep clone with styles, Shadow DOM, iframes. Exclude/filter nodes.</td></tr>
+          <tr><td class="feature">Clone</td><td>Deep clone with styles, Shadow DOM, iframes. Leave nodes out with <code>exclude</code>.</td></tr>
           <tr><td class="feature">Styles &amp; Pseudo</td><td>Inline <code>::before</code>/<code>::after</code> as elements, resolve <code>counter()</code>/<code>counters()</code>.</td></tr>
           <tr><td class="feature">Images &amp; Backgrounds</td><td>Fetch and inline external images/backgrounds as data URLs.</td></tr>
           <tr><td class="feature">Fonts</td><td>Embed <code>@font-face</code> (optional) and icon fonts.</td></tr>

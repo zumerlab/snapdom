@@ -90,16 +90,20 @@ CaptureResult methods: `toPng()`, `toJpg()`, `toWebp()`, `toSvg()`, `toCanvas()`
 
 ## Official Plugins
 
-Import from `@zumer/snapdom/plugins`:
+Import from `@zumer/snapdom-plugins`:
 
 - `filter({ preset?, filter? })` — CSS filter effects (grayscale, sepia, blur, invert, vintage, dramatic)
 - `colorTint({ color?, opacity? })` — color overlay with blend mode
 - `replaceText({ replacements })` — find/replace text in capture
 - `timestampOverlay({ format?, position? })` — timestamp badge
 - `asciiExport({ width?, charset? })` — adds `toAscii()` export
-- `pictureResolver({ timeout?, concurrency? })` — resolve lazy images
 - `pdfImage({ orientation?, filename? })` — adds `toPdfImage()` export
-- `promptExport({ annotate?, maxImageWidth? })` — adds `toPrompt()` for LLM-ready screenshots
+- `agentMap({ image?, fields?, semantic? })` — adds `toAgentMap()`: annotated screenshot + element map for visual agents
+- `contextExport({ format?, geometry? })` — adds `toContext()`: the tree as an outline or JSON
+- `redactInputs({ types?, all?, mask? })` — masks form-control values before serialization
+- `htmlExport({ fullDocument? })` — adds `toHtml()`: a self-contained, re-renderable HTML document
+- `gifExport({ fps?, duration? })` — adds `toGif()`
+- `videoExport({ fps?, duration? })` — adds `toVideo()`
 
 ## preCache
 

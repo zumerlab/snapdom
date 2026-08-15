@@ -36,7 +36,7 @@ import { snapdom } from '@zumer/snapdom';
 Subpath exports:
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
-import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, promptExport } from '@zumer/snapdom-plugins';
+import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, agentMap } from '@zumer/snapdom-plugins';
 ```
 
 ---
@@ -121,10 +121,12 @@ snapdom.plugins(...defs) → snapdom  // chainable, global
 | iconFonts | string|RegExp|Array | [] | Icon font family matchers (always embedded) |
 | excludeFonts | ExcludeFonts | undefined | Skip fonts by family/domain/subset |
 | useProxy | string | '' | CORS proxy URL prefix |
-| exclude | string[] | [] | CSS selectors to exclude |
+| exclude | string|fn|Array | [] | CSS selectors and/or predicates; a predicate returning TRUE excludes the node |
 | excludeMode | 'hide'|'remove' | 'hide' | hide=visibility:hidden, remove=drop entirely |
-| filter | (el: Element) => boolean | null | Custom predicate (true=keep, false=exclude) |
-| filterMode | 'hide'|'remove' | 'hide' | How to apply filter |
+
+REMOVED IN v3: `filter` and `filterMode`. They were the same decision as exclude/excludeMode with
+the OPPOSITE polarity (return true to KEEP). Passing one logs a warning and does not filter
+anything, so a ported predicate MUST be inverted: `filter: keep` becomes `exclude: el => !keep(el)`.
 | outerTransforms | boolean | true | Normalize root transforms |
 | outerShadows | boolean | false | Expand bbox for shadows/blur/outline |
 | fallbackURL | string|((dims)=>string) | undefined | Fallback image for broken <img> |
@@ -166,7 +168,7 @@ Object returned by snapdom(). All methods accept optional options override.
 | download(opts?) | Promise<void> | Browser file download |
 | to(type, opts?) | Promise<any> | Generic: 'png', 'canvas', or custom |
 
-Plugin exports appear as toX() methods (e.g. toPdfImage(), toAscii(), toPrompt()).
+Plugin exports appear as toX() methods (e.g. toPdfImage(), toAscii(), toAgentMap()).
 
 ---
 
@@ -307,7 +309,7 @@ All hooks receive a mutable context:
   clone,             // cloned DOM (available from afterClone onward)
   debug, scale, dpr, width, height,
   backgroundColor, quality, embedFonts, useProxy,
-  exclude, excludeMode, filter, filterMode,
+  exclude, excludeMode,
   outerTransforms, outerShadows, cache, fallbackURL,
   classCSS, styleCache, fontsCSS, baseCSS,  // intermediate
   svgString, dataURL,                        // after render
@@ -450,17 +452,20 @@ Generates A4 PDF with centered image, 40pt margins, JPEG compression. No externa
 
 Hook: defineExports — registers 'pdfImage' export.
 
-### 7. promptExport — LLM-Ready Screenshot
+### 7. agentMap — Screenshot + Element Map For Visual Agents
 
 ```js
-import { promptExport } from '@zumer/snapdom-plugins';
-snapdom.plugins(promptExport());
+import { agentMap } from '@zumer/snapdom-plugins';
+snapdom.plugins(agentMap());
 const result = await snapdom(document.querySelector('main'));
-const { image, elements, dimensions, prompt } = await result.toPrompt();
+const { image, elements } = await result.toAgentMap();
 ```
 
 Options:
-- annotate (boolean, default true): overlay numbered red badges on interactive elements
+- image ('annotated'|'raw'|false, default 'annotated'): image output; 'annotated' overlays numbered badges
+- fields ('minimal'|'full', default 'minimal'): per-entry shape
+- semantic (boolean, default false): also include non-interactive semantic elements
+- needs ('clone'|'render', default 'render'): how far the capture runs
 - imageFormat ('png'|'jpg'|'webp', default 'png')
 - imageQuality (number, default 0.8): quality 0-1
 - maxImageWidth (number, default 1024): downscale if wider
@@ -472,9 +477,9 @@ Default interactive selector: a[href], button, input, select, textarea, [role="b
 
 Default semantic selector: h1, h2, h3, h4, h5, h6, p, li, img[alt], nav, main, article, section, header, footer, label, td, th, figcaption, blockquote, legend
 
-Custom export: result.toPrompt(opts?) → Promise<PromptResult>
+Custom export: result.toAgentMap(opts?) → Promise<AgentMapResult>
 
-PromptResult:
+AgentMapResult:
 ```ts
 {
   image: string;       // base64 data URL of annotated screenshot
@@ -714,11 +719,11 @@ async function capture() {
 
 ### LLM integration
 ```js
-import { promptExport } from '@zumer/snapdom-plugins';
-snapdom.plugins(promptExport());
+import { agentMap } from '@zumer/snapdom-plugins';
+snapdom.plugins(agentMap());
 const result = await snapdom(document.querySelector('main'));
-const { image, prompt } = await result.toPrompt();
-// Send image + prompt to LLM API
+const { image, elements } = await result.toAgentMap();
+// Send image + elements to the model
 ```
 
 ### Combine plugins

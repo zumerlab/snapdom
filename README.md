@@ -260,7 +260,7 @@ Add the `crossorigin="anonymous"` attribute to the `<link>` tag when loading ext
 
 ## Documentation
 
-The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)** — kept there so it stays in sync and searchable:
+The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)**:
 
 - **[API reference](https://snapdom.dev/docs/api/)** — the `snapdom()` reusable object, shortcut methods, and exporter-specific options.
 - **[Options](https://snapdom.dev/docs/options/)** — every capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`, `compress`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.

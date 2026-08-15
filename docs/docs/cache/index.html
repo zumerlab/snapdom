@@ -125,12 +125,15 @@ await snapdom.toPng(el, { cache: 'disabled' });</pre>
       <p><code>preCache()</code> is an optional helper that preloads external resources to avoid first-capture stalls. It is especially helpful for big or complex trees, where fetching images, backgrounds and fonts on the very first capture would otherwise cause a noticeable pause.</p>
       <pre class="code-block">import { preCache } from '@zumer/snapdom';
 
-await preCache({
-  root: document.body,
+// preCache(root, options) — the root is the FIRST argument, not a field in the options bag.
+await preCache(document.body, {
   embedFonts: true,
   localFonts: [{ family: 'Inter', src: '/fonts/Inter.woff2', weight: 400 }],
   useProxy: 'https://proxy.corsfix.com/?'
-});</pre>
+});
+
+// The root is optional and defaults to `document`.
+await preCache();</pre>
       <p class="muted"><code>preCache()</code> is also available as a lighter subpath import: <code>import { preCache } from '@zumer/snapdom/preCache'</code>.</p>
     </section>
 

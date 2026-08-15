@@ -37,13 +37,16 @@
 
   <h1>Capture stages</h1>
 
-  <p>A capture is a chain: the <b>live DOM</b> is walked, a <b>clone</b> freezes that instant,
-  and a <b>render</b> turns the clone into pixels. Not every consumer needs the whole chain, and
+  <p>A capture is a chain: a <b>clone</b> freezes the live DOM at one instant, and a
+  <b>render</b> turns that clone into pixels. Not every consumer needs the whole chain, and
   the plugin is the one that knows. So it declares it:</p>
 
-  <pre><code>{ name: 'my-plugin', needs: 'dom' }   // reads the page, no clone, no pixels
-{ name: 'my-plugin', needs: 'clone' }  // annotates the frozen tree, no pixels
+  <pre><code>{ name: 'my-plugin', needs: 'clone' }  // annotates the frozen tree, no pixels
 { name: 'my-plugin' }                  // default: the whole pipeline, as always</code></pre>
+
+  <p class="muted">v3 removed a third, shallower stage — <code>needs: 'dom'</code> — which ran the
+  plugin against the live page and took no clone at all. A capture that takes no clone is not a
+  capture, so the stage is gone and declaring it now throws.</p>
 
   <p>The stage of a capture is the <b>deepest</b> stage its plugins declare, so one undeclared
   plugin keeps everything. A capture with no plugins behaves exactly as it always did.</p>
@@ -80,24 +83,7 @@ sample.innerHTML = Array.from({ length: 36 }, (_, i) => `
     <button>Open ${i + 1}</button>
   </article>`).join('')
 
-// ── three plugins, same knob, different depth ────────────────────────────────────────
-// 'dom': reads the page in beforeClone and exports an outline. Never sees a clone.
-const outlinePlugin = () => {
-  let outline = ''
-  return {
-    name: 'outline',
-    needs: 'dom',
-    beforeClone(ctx) {
-      const rows = []
-      for (const el of ctx.element.querySelectorAll('h4, button')) {
-        rows.push(`${el.tagName.toLowerCase()} "${el.textContent.trim()}"`)
-      }
-      outline = rows.join('\n')
-    },
-    defineExports: () => ({ outline: async () => outline }),
-  }
-}
-
+// ── two plugins, same knob, different depth ──────────────────────────────────────────
 // 'clone': stamps the frozen tree. No pixels asked for, so no render runs.
 const stampPlugin = () => {
   let html = ''
@@ -140,7 +126,6 @@ document.getElementById('go').addEventListener('click', async () => {
   cards.innerHTML = ''
 
   const specs = [
-    { stage: 'dom', decl: "needs: 'dom'", make: () => [outlinePlugin()] },
     { stage: 'clone', decl: "needs: 'clone'", make: () => [stampPlugin()] },
     { stage: 'render', decl: '(no declaration)', make: () => [plainPlugin()] },
   ]
@@ -161,10 +146,10 @@ document.getElementById('go').addEventListener('click', async () => {
     const out = card.querySelector('.out')
 
     // what this stage DID produce
-    if (d.stage === 'dom' || d.stage === 'clone') {
+    if (d.stage === 'clone') {
       const pre = document.createElement('pre')
       pre.className = 'outline'
-      pre.textContent = d.stage === 'dom' ? await d.result.toOutline() : await d.result.toStamped()
+      pre.textContent = await d.result.toStamped()
       out.appendChild(pre)
     }
 
@@ -180,13 +165,13 @@ document.getElementById('go').addEventListener('click', async () => {
     cards.appendChild(card)
   }
 
-  const [live, clone, render] = done
+  const [clone, render] = done
   status.textContent = `${sample.querySelectorAll('*').length + 1} nodes, median of ${REPS} runs`
   document.getElementById('verdict').innerHTML =
-    `Stopping at <b>dom</b> skipped ${(100 - live.ms / render.ms * 100).toFixed(0)}% of the capture. ` +
-    `Stopping at <b>clone</b> skipped ${Math.max(0, 100 - clone.ms / render.ms * 100).toFixed(0)}%: ` +
-    'the two land in the same place because serialization is a few percent of the work. ' +
-    'The cut that pays is the one before the clone, and only a plugin knows it can be made.'
+    `Stopping at <b>clone</b> skipped ${Math.max(0, 100 - clone.ms / render.ms * 100).toFixed(0)}% of the capture. ` +
+    'It is a modest cut, and that is the honest result: the clone is the expensive half, ' +
+    'serialization is a few percent of the work. Declare the shallower stage when you truly ' +
+    'do not need pixels — not expecting it to change the shape of the cost.'
 })
 </script>
 </main>

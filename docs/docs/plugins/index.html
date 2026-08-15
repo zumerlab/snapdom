@@ -105,14 +105,18 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pr
           <tr><th>Plugin</th><th>Category</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">picture-resolver</td><td class="feature">Capture</td><td>Resolves lazy-loaded <code>&lt;picture&gt;</code> placeholders. Detects base64 stubs and fetches the real image before capture.</td></tr>
           <tr><td class="num">timestamp-overlay</td><td class="feature">Transform</td><td>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</td></tr>
           <tr><td class="num">filter</td><td class="feature">Transform</td><td>Applies CSS filter effects to captures. Ships with presets: <code>grayscale</code>, <code>sepia</code>, <code>blur</code>, <code>vintage</code>, <code>dramatic</code>.</td></tr>
           <tr><td class="num">replace-text</td><td class="feature">Transform</td><td>Find-and-replace text in the captured clone. Supports strings and regex patterns.</td></tr>
           <tr><td class="num">color-tint</td><td class="feature">Transform</td><td>Tints the entire capture to a specified color using an overlay with <code>mix-blend-mode</code>.</td></tr>
+          <tr><td class="num">redact-inputs</td><td class="feature">Transform</td><td>Masks values in form controls before they reach the serialized capture. Core masks passwords only; this covers the rest.</td></tr>
           <tr><td class="num">ascii-export</td><td class="feature">Export</td><td>Adds a <code>toAscii()</code> method that converts captures to ASCII art. Configurable width, charset, and luminance.</td></tr>
           <tr><td class="num">pdf-image</td><td class="feature">Export</td><td>Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.</td></tr>
-          <tr><td class="num">prompt-export</td><td class="feature">Export</td><td>LLM-friendly capture: adds a <code>toPrompt()</code> method that returns an annotated screenshot, structured element map with bounding boxes, and a pre-formatted text prompt.</td></tr>
+          <tr><td class="num">html-export</td><td class="feature">Export</td><td>Adds a <code>toHtml()</code> method returning the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels.</td></tr>
+          <tr><td class="num">gif-export</td><td class="feature">Export</td><td>Adds a <code>toGif()</code> method that records a sequence of captures into an animated GIF.</td></tr>
+          <tr><td class="num">video-export</td><td class="feature">Export</td><td>Adds a <code>toVideo()</code> method that records a sequence of captures through <code>MediaRecorder</code>.</td></tr>
+          <tr><td class="num">agent-map</td><td class="feature">Export</td><td>Adds a <code>toAgentMap()</code> method: an annotated screenshot plus a structured map of interactive elements with bounding boxes, for visual agents. (This is the plugin formerly called <code>prompt-export</code>.)</td></tr>
+          <tr><td class="num">context-export</td><td class="feature">Export</td><td>Adds a <code>toContext()</code> method that emits the captured tree as an outline or JSON instead of pixels.</td></tr>
         </tbody>
       </table>
       <p>Community plugins are listed on the <a href="../../plugins.html">plugins showcase page</a>. To submit your plugin, open a PR adding one line to <code>community-plugins.md</code> (see <code>CONTRIBUTING_PLUGINS.md</code>).</p>

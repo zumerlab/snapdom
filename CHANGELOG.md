@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### v3.0.0-beta.0
+
+> 15 August 2026
+
+The first v3 beta. **Breaking**: read the migration table in the README before upgrading.
+
+💥 breaking
+- `filter` / `filterMode` removed. `exclude` now takes selectors AND predicates, with the
+  opposite polarity — a predicate returning `true` EXCLUDES the node. Passing `filter` logs a
+  warning and filters nothing, so ported predicates must be inverted.
+- `width` / `height` now win over `scale`. v2 multiplied them; v3 treats `width`/`height` as the
+  absolute output size and applies `scale` only when neither is set.
+- The `needs: 'dom'` plugin stage is gone. A capture that takes no clone does no capturing.
+- `cache` collapsed to `'soft'` (default) and `'disabled'`; `'auto'`/`'full'` map to `'soft'`.
+- `fast` removed — its behaviour is unconditional now.
+- Core masks `type="password"` only. Everything the browser paints in the clear is captured as
+  is; use the `redactInputs` plugin for the old behaviour.
+- `embedFonts` defaults to `'auto'`.
+
+⚡ perf
+- Per-capture sessions replace the module-level mutable session; the whole `#463` bug class is
+  now structurally unrepresentable.
+- Burst memoization + differential recapture: after three captures of an element in a 2s window,
+  a mutation rebuilds only the affected subtree (mutating poll 563ms → 16ms; animated 39ms → 7.5ms).
+- One author-style scan yields the property universe and per-pseudo selector gates, replacing
+  three `getComputedStyle` resolutions per node with one `matches()`.
+
+✨ features
+- `snapdom.fromString(html, options)` captures a markup string with no mount wiring.
+  **Trusted HTML only** — it goes through `innerHTML` into the real document.
+- Plugin stages (`needs`), `defineExports` for custom export formats, and an official plugin
+  package: `@zumer/snapdom-plugins`.
+- Real CommonJS build at `dist/snapdom.cjs`. Up to 2.24.1 `require()` returned `{}`.
+
+🛠 fix
+- The `/plugins` and `/preCache` subpaths re-export from the single runtime instead of being
+  separate bundles with their own module state; registering through a subpath now reaches
+  `snapdom()`. TypeScript declarations ship per subpath, so consumers with `skipLibCheck: false`
+  typecheck.
+- `dist/snapdom.js` is a real IIFE. It was emitting bare top-level statements, publishing 442
+  minified bindings as globals to every `<script>` tag user.
+- `prepack` compiles before packing: publishing from a clean checkout produced a tarball whose
+  package.json pointed at files that were not in it.
+- The line-clamp bake no longer reverts a text update the page made while the capture ran.
+- Burst no longer commits a memo torn by an event that carries no mutation record (typing,
+  scrolling, focus, video frames) mid-capture.
+- Captures inside a same-origin iframe read form controls' live values and see stylesheet edits
+  made in that document.
+- A stalled `@import` stylesheet can no longer hang a capture forever.
+- `htmlExport` keeps its markup per capture instead of on the plugin instance, so concurrent and
+  reused captures no longer export each other's HTML.
+
 #### [v2.23.1](https://github.com/zumerlab/snapdom/compare/v2.23.0...v2.23.1)
 
 > 27 July 2026

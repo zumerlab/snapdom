@@ -392,25 +392,6 @@
                   </div>
                 </div>
               </div>
-              <div class="pg-plugin" data-pg="prompt">
-                <div class="pg-plugin-header">
-                  <input type="checkbox" id="pgChkPrompt">
-                  <span>prompt-export</span>
-                </div>
-                <div class="pg-plugin-opts">
-                  <div class="pg-opt">
-                    <label for="pgPromptAnnotate">Annotate</label>
-                    <select id="pgPromptAnnotate">
-                      <option value="true">on</option>
-                      <option value="false">off</option>
-                    </select>
-                  </div>
-                  <div class="pg-opt">
-                    <label for="pgPromptMaxW">Max width</label>
-                    <input type="text" id="pgPromptMaxW" value="1024" placeholder="px">
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
           <button class="pg-capture-btn" id="pgCapture" data-umami-event="Plugins playground capture">Capture</button>
@@ -491,14 +472,6 @@
     <div class="section-label">Official — @zumer/snapdom-plugins</div>
     <div class="plugin-grid" id="officialGrid">
 
-      <!-- picture-resolver -->
-      <div class="plugin-card" data-category="capture" data-plugin="picture-resolver">
-        <div class="card-top"><div class="plugin-icon">P</div><span class="category-tag">capture</span></div>
-        <h3>picture-resolver</h3>
-        <p>Resolves lazy-loaded &lt;picture&gt; placeholders. Detects base64 stubs and fetches the real image before capture.</p>
-        <div class="hooks"><span class="hook-badge">beforeClone</span><span class="hook-badge">afterClone</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/picture-resolver.js" data-umami-event="Plugins source picture-resolver">Source</a><span class="expand-hint">details</span></div>
-      </div>
 
       <!-- timestamp-overlay -->
       <div class="plugin-card" data-category="transform" data-plugin="timestamp-overlay">
@@ -554,13 +527,32 @@
         <div class="card-footer"><span class="official-badge">official</span><span class="expand-hint">details</span></div>
       </div>
 
-      <!-- prompt-export -->
-      <div class="plugin-card" data-category="export" data-plugin="prompt-export">
-        <div class="card-top"><div class="plugin-icon">L</div><span class="category-tag">export</span></div>
-        <h3>prompt-export</h3>
-        <p>Adds a toPrompt() method that returns an LLM-ready package: annotated screenshot, element map with bounding boxes, and a formatted prompt text.</p>
+
+      <!-- agent-map -->
+      <div class="plugin-card" data-category="export" data-plugin="agent-map">
+        <div class="card-top"><div class="plugin-icon">A</div><span class="category-tag">export</span></div>
+        <h3>agent-map</h3>
+        <p>Adds a toAgentMap() method for visual agents: an annotated screenshot plus a structured map of the interactive elements with their bounding boxes.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/prompt-export.js" data-umami-event="Plugins source prompt-export">Source</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/agent-map.js" data-umami-event="Plugins source agent-map">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- context-export -->
+      <div class="plugin-card" data-category="export" data-plugin="context-export">
+        <div class="card-top"><div class="plugin-icon">C</div><span class="category-tag">export</span></div>
+        <h3>context-export</h3>
+        <p>Adds a toContext() method that emits the captured tree as a text outline or JSON instead of pixels.</p>
+        <div class="hooks"><span class="hook-badge">beforeClone</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/context-export.js" data-umami-event="Plugins source context-export">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- redact-inputs -->
+      <div class="plugin-card" data-category="transform" data-plugin="redact-inputs">
+        <div class="card-top"><div class="plugin-icon">R</div><span class="category-tag">transform</span></div>
+        <h3>redact-inputs</h3>
+        <p>Masks form-control values before they reach the serialized capture. Core masks passwords only, because that mask is fidelity-neutral; everything else is opt-in here.</p>
+        <div class="hooks"><span class="hook-badge">afterClone</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/redact-inputs.js" data-umami-event="Plugins source redact-inputs">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- html-export -->
@@ -657,19 +649,6 @@
   <!-- Plugin modal data -->
   <script>
     const pluginData = {
-      'picture-resolver': {
-        icon: 'P', category: 'capture',
-        desc: 'Resolves lazy-loaded <picture> placeholders. Detects base64 stubs and fetches the real image before capture.',
-        hooks: ['beforeClone', 'afterClone'],
-        options: [
-          ['timeout', 'number', '5000', 'Max ms per image fetch'],
-          ['concurrency', 'number', '4', 'Max parallel fetches'],
-          ['resolveLazySrc', 'boolean', 'true', 'Also resolve data-src/data-srcset patterns'],
-          ['silent', 'boolean', 'false', 'Suppress console warnings'],
-          ['useProxy', 'string', "''", 'CORS proxy URL for cross-origin images'],
-        ],
-        usage: `import { pictureResolver } from '@zumer/snapdom-plugins/picture-resolver';\n\nconst result = await snapdom(el, {\n  plugins: [pictureResolver({ timeout: 3000 })]\n});`
-      },
       'timestamp-overlay': {
         icon: 'T', category: 'transform',
         desc: 'Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.',
@@ -732,20 +711,46 @@
         ],
         usage: `import { pdfImage } from '@zumer/snapdom-plugins/pdf-image';\n\nconst result = await snapdom(el, {\n  plugins: [pdfImage({ orientation: 'landscape' })]\n});\nawait result.toPdfImage(); // downloads PDF`
       },
-      'prompt-export': {
-        icon: 'L', category: 'export',
-        desc: 'Adds a toPrompt() method that returns an LLM-ready package: annotated screenshot, structured element map with bounding boxes, and pre-formatted prompt text.',
+      'agent-map': {
+        icon: 'A', category: 'export',
+        desc: 'Adds a toAgentMap() method for visual agents: an annotated screenshot plus a structured map of interactive elements with bounding boxes. (Formerly published as prompt-export.)',
         hooks: ['afterClone', 'defineExports'],
         options: [
-          ['annotate', 'boolean', 'true', 'Overlay numbered badges on interactive elements'],
+          ['image', "'annotated' | 'raw' | false", "'annotated'", 'Image output, or false for no image'],
+          ['fields', "'minimal' | 'full'", "'minimal'", 'Per-entry shape'],
+          ['semantic', 'boolean', 'false', 'Also include non-interactive semantic elements'],
+          ['maxImageWidth', 'number', '1024', 'Downscale target for the image'],
           ['imageFormat', 'string', "'png'", "'png' | 'jpg' | 'webp'"],
           ['imageQuality', 'number', '0.8', 'Quality for lossy formats (0-1)'],
-          ['maxImageWidth', 'number', '1024', 'Max output width in px; downscales and rescales bboxes'],
-          ['interactiveSelector', 'string', 'see docs', 'CSS selector for the interactive element set'],
-          ['semanticSelector', 'string', 'see docs', 'CSS selector for the semantic element set'],
-          ['labelStyle', 'object', '{}', 'Override styles for the numbered badges'],
+          ['needs', "'clone' | 'render'", "'render'", 'How far the capture runs'],
         ],
-        usage: `import { promptExport } from '@zumer/snapdom-plugins/prompt-export';\n\nconst result = await snapdom(el, {\n  plugins: [promptExport({ annotate: true, maxImageWidth: 1024 })]\n});\nconst { image, elements, dimensions, prompt } = await result.toPrompt();`
+        usage: `import { agentMap } from '@zumer/snapdom-plugins/agent-map';\n\nconst result = await snapdom(el, {\n  plugins: [agentMap({ semantic: true })]\n});\nconst { image, elements } = await result.toAgentMap();`
+      },
+      'context-export': {
+        icon: 'C', category: 'export',
+        desc: 'Adds a toContext() method that emits the captured tree as a text outline or JSON instead of pixels.',
+        hooks: ['beforeClone', 'defineExports'],
+        options: [
+          ['format', "'outline' | 'json'", "'outline'", 'Output shape'],
+          ['maxTextLength', 'number', '120', 'Per-node text cap (ellipsised)'],
+          ['maxNodes', 'number', '800', 'Hard cap; the output notes truncation'],
+          ['geometry', 'boolean', 'true', 'Include bounding boxes'],
+          ['needs', "'clone' | 'render'", "'render'", 'How far the capture runs'],
+        ],
+        usage: `import { contextExport } from '@zumer/snapdom-plugins/context-export';\n\nconst result = await snapdom(el, {\n  plugins: [contextExport({ format: 'json' })]\n});\nconst context = await result.toContext();`
+      },
+      'redact-inputs': {
+        icon: 'R', category: 'transform',
+        desc: 'Masks form-control values before they reach the serialized capture. Core masks passwords only (that mask is fidelity-neutral); anything the browser paints in plain text is opt-in here.',
+        hooks: ['afterClone'],
+        options: [
+          ['types', 'string[]', 'see source', 'input `type` values to redact'],
+          ['autocomplete', 'string[]', 'see source', "autocomplete tokens to redact; a trailing '*' matches a prefix"],
+          ['selector', 'string', "''", 'Extra CSS selector; anything it matches is redacted'],
+          ['all', 'boolean', 'false', 'Redact EVERY input and textarea, ignoring the lists'],
+          ['mask', 'function', '-', '(value, el) => string — custom masker'],
+        ],
+        usage: `import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';\n\nconst result = await snapdom(el, {\n  plugins: [redactInputs({ all: true })]\n});`
       },
       'html-export': {
         icon: 'M', category: 'export',
@@ -1175,161 +1180,6 @@
       };
     }
 
-    // prompt-export — LLM-ready package: annotated image + element map + prompt text
-    function promptExportPlugin(options = {}) {
-      const {
-        annotate = true,
-        imageFormat = 'png',
-        imageQuality = 0.8,
-        maxImageWidth = 1024,
-        labelStyle = {},
-      } = options;
-      const INTERACTIVE = 'a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="checkbox"], [role="radio"], [tabindex]:not([tabindex="-1"]), summary, [contenteditable="true"]';
-      const SEMANTIC = 'h1, h2, h3, h4, h5, h6, p, li, img[alt], nav, main, article, section, header, footer, label, td, th, figcaption, blockquote, legend';
-      const COLLECTED_ATTRS = ['role', 'aria-label', 'aria-expanded', 'aria-checked', 'aria-disabled', 'alt', 'href', 'placeholder', 'name', 'type', 'value', 'title', 'disabled'];
-
-      function buildEntry(el, rootRect, id, type) {
-        const rect = el.getBoundingClientRect();
-        const bbox = {
-          x: Math.round(rect.left - rootRect.left),
-          y: Math.round(rect.top - rootRect.top),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-        };
-        if (bbox.width <= 0 && bbox.height <= 0) return null;
-        const tag = el.tagName.toLowerCase();
-        const text = (el.textContent || '').trim().slice(0, 200);
-        const attributes = {};
-        for (const attr of COLLECTED_ATTRS) {
-          const val = el.getAttribute(attr);
-          if (val != null) attributes[attr] = val;
-        }
-        return { id, tag, type, text, bbox, attributes };
-      }
-      function extractMetadata(element) {
-        const rootRect = element.getBoundingClientRect();
-        const elements = [];
-        let id = 0;
-        const tracked = new Set();
-        for (const el of element.querySelectorAll(INTERACTIVE)) {
-          const entry = buildEntry(el, rootRect, id, 'interactive');
-          if (entry) { elements.push(entry); tracked.add(el); id++; }
-        }
-        for (const el of element.querySelectorAll(SEMANTIC)) {
-          if (tracked.has(el)) continue;
-          const entry = buildEntry(el, rootRect, id, 'semantic');
-          if (entry) { elements.push(entry); id++; }
-        }
-        return { elements, dimensions: { width: rootRect.width, height: rootRect.height } };
-      }
-      function addAnnotations(clone, elements) {
-        const interactive = elements.filter(e => e.type === 'interactive');
-        if (!interactive.length) return;
-        const overlay = document.createElement('div');
-        Object.assign(overlay.style, {
-          position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
-          pointerEvents: 'none', zIndex: '2147483647', overflow: 'visible',
-        });
-        for (const el of interactive) {
-          const badge = document.createElement('span');
-          badge.textContent = String(el.id);
-          Object.assign(badge.style, {
-            position: 'absolute', left: el.bbox.x + 'px', top: el.bbox.y + 'px',
-            transform: 'translate(-50%, -50%)', minWidth: '18px', height: '18px',
-            lineHeight: '18px', fontSize: '11px', fontWeight: '700',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            color: '#fff', backgroundColor: 'rgba(220, 38, 38, 0.92)',
-            borderRadius: '9px', textAlign: 'center', padding: '0 4px',
-            boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            ...labelStyle,
-          });
-          overlay.appendChild(badge);
-        }
-        clone.style.position = 'relative';
-        clone.appendChild(overlay);
-      }
-      function formatPromptText(elements, dim) {
-        const lines = [`Screenshot of a web page (${dim.width}×${dim.height}px).`, ''];
-        const interactive = elements.filter(e => e.type === 'interactive');
-        const semantic = elements.filter(e => e.type === 'semantic');
-        if (interactive.length) {
-          lines.push('Interactive elements:');
-          for (const el of interactive) {
-            const attrParts = Object.entries(el.attributes).map(([k, v]) => `${k}="${v}"`);
-            const text = el.text ? ` "${el.text.length > 60 ? el.text.slice(0, 59) + '…' : el.text}"` : '';
-            const pos = `(${el.bbox.x},${el.bbox.y} ${el.bbox.width}×${el.bbox.height})`;
-            const attrs = attrParts.length ? ' ' + attrParts.join(' ') : '';
-            lines.push(`  [${el.id}] <${el.tag}>${text} ${pos}${attrs}`);
-          }
-          lines.push('');
-        }
-        if (semantic.length) {
-          lines.push('Semantic structure:');
-          for (const el of semantic) {
-            const text = el.text ? ` "${el.text.length > 80 ? el.text.slice(0, 79) + '…' : el.text}"` : '';
-            const attrParts = [];
-            if (el.attributes.alt) attrParts.push(`alt="${el.attributes.alt}"`);
-            if (el.attributes.role) attrParts.push(`role="${el.attributes.role}"`);
-            const attrs = attrParts.length ? ' ' + attrParts.join(' ') : '';
-            lines.push(`  [${el.id}] <${el.tag}>${text}${attrs}`);
-          }
-        }
-        return lines.join('\n');
-      }
-
-      return {
-        name: 'prompt-export',
-        afterClone(ctx) {
-          const meta = extractMetadata(ctx.element);
-          // snapdom spreads a fresh ctx for the export phase from ctx.options,
-          // so stash on both so the prompt() call below can read it.
-          ctx.__promptMetadata = meta;
-          if (ctx.options) ctx.options.__promptMetadata = meta;
-          if (annotate) addAnnotations(ctx.clone, meta.elements);
-        },
-        defineExports() {
-          return {
-            prompt: async (ctx, opts = {}) => {
-              const meta = ctx.__promptMetadata;
-              if (!meta || !meta.elements.length) {
-                return { image: ctx.export.url, elements: [], dimensions: { width: 0, height: 0 }, prompt: '' };
-              }
-              const fmt = opts.imageFormat || imageFormat;
-              const q = opts.imageQuality || imageQuality;
-              const maxW = opts.maxImageWidth || maxImageWidth;
-              const img = new Image();
-              img.src = ctx.export.url;
-              await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-              const ratio = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1;
-              const w = Math.round(img.naturalWidth * ratio);
-              const h = Math.round(img.naturalHeight * ratio);
-              const canvas = document.createElement('canvas');
-              canvas.width = w; canvas.height = h;
-              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-              const mime = fmt === 'jpg' || fmt === 'jpeg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
-              const dataURL = canvas.toDataURL(mime, q);
-              const sx = w / (meta.dimensions.width || 1);
-              const sy = h / (meta.dimensions.height || 1);
-              const elements = meta.elements.map(el => ({
-                ...el,
-                bbox: {
-                  x: Math.round(el.bbox.x * sx),
-                  y: Math.round(el.bbox.y * sy),
-                  width: Math.round(el.bbox.width * sx),
-                  height: Math.round(el.bbox.height * sy),
-                },
-              }));
-              return {
-                image: dataURL,
-                elements,
-                dimensions: { width: w, height: h },
-                prompt: formatPromptText(elements, { width: w, height: h }),
-              };
-            },
-          };
-        },
-      };
-    }
 
     // ── DOM refs ──
     const $ = id => document.getElementById(id);
@@ -1372,8 +1222,6 @@
       const calls = [];
       let hasAscii = false;
       let hasPdf = false;
-      let hasPrompt = false;
-      let promptOpts = null;
 
       if ($('pgChkFilter').checked) {
         const preset = $('pgFilterPreset').value;
@@ -1416,23 +1264,11 @@
         calls.push(orient !== 'portrait' ? `pdfImage({ orientation: '${orient}' })` : `pdfImage()`);
         hasPdf = true;
       }
-      if ($('pgChkPrompt').checked) {
-        const annotate = $('pgPromptAnnotate').value === 'true';
-        const maxW = parseInt($('pgPromptMaxW').value, 10) || 1024;
-        promptOpts = { annotate, maxImageWidth: maxW };
-        plugins.push(promptExportPlugin(promptOpts));
-        imports.push(`import { promptExport } from '@zumer/snapdom-plugins/prompt-export';`);
-        const parts = [];
-        if (!annotate) parts.push('annotate: false');
-        if (maxW !== 1024) parts.push(`maxImageWidth: ${maxW}`);
-        calls.push(parts.length ? `promptExport({ ${parts.join(', ')} })` : `promptExport()`);
-        hasPrompt = true;
-      }
-      return { plugins, imports, calls, hasAscii, hasPdf, hasPrompt, promptOpts };
+      return { plugins, imports, calls, hasAscii, hasPdf };
     }
 
     function updateCode() {
-      const { imports, calls, hasAscii, hasPdf, hasPrompt } = getActivePlugins();
+      const { imports, calls, hasAscii, hasPdf } = getActivePlugins();
       if (!calls.length) {
         pgCode.textContent = '// Select plugins to see the code';
         return;
@@ -1448,7 +1284,6 @@
         `const png = await result.toPng();`;
       if (hasAscii) code += `\nconst ascii = await result.toAscii();`;
       if (hasPdf) code += `\nawait result.toPdfImage(); // downloads PDF`;
-      if (hasPrompt) code += `\nconst { image, elements, prompt } = await result.toPrompt();`;
       pgCode.textContent = code;
     }
 
@@ -1458,37 +1293,11 @@
       pgStatus.textContent = 'Capturing...';
       try {
         const t0 = performance.now();
-        const { plugins, calls, hasAscii, hasPdf, hasPrompt } = getActivePlugins();
+        const { plugins, calls, hasAscii, hasPdf } = getActivePlugins();
         const result = await snapdom(pgTarget, { plugins });
         pgOutput.innerHTML = '';
 
-        if (hasPrompt) {
-          // prompt-export mode — show annotated image + formatted prompt + elements JSON
-          const { image, elements, prompt } = await result.toPrompt();
-          const wrap = document.createElement('div');
-          wrap.style.cssText = 'display:flex;flex-direction:column;gap:12px;width:100%;';
-          const img = document.createElement('img');
-          img.src = image;
-          img.alt = 'Annotated capture';
-          img.style.cssText = 'max-width:100%;border-radius:6px;display:block;';
-          wrap.appendChild(img);
-          const promptBox = document.createElement('pre');
-          promptBox.textContent = prompt;
-          promptBox.style.cssText = 'margin:0;padding:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:11px;line-height:1.45;font-family:ui-monospace,Menlo,monospace;color:#cfd8dc;overflow:auto;max-height:260px;white-space:pre-wrap;';
-          wrap.appendChild(promptBox);
-          const elementsBox = document.createElement('details');
-          elementsBox.style.cssText = 'font-size:11px;color:#8b97a5;';
-          const summary = document.createElement('summary');
-          summary.textContent = `elements JSON — ${elements.length} items`;
-          summary.style.cssText = 'cursor:pointer;padding:4px 0;';
-          elementsBox.appendChild(summary);
-          const elementsPre = document.createElement('pre');
-          elementsPre.textContent = JSON.stringify(elements, null, 2);
-          elementsPre.style.cssText = 'margin:8px 0 0 0;padding:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:11px;line-height:1.45;font-family:ui-monospace,Menlo,monospace;color:#cfd8dc;overflow:auto;max-height:200px;';
-          elementsBox.appendChild(elementsPre);
-          wrap.appendChild(elementsBox);
-          pgOutput.appendChild(wrap);
-        } else if (hasAscii) {
+        if (hasAscii) {
           // ASCII mode — call toAscii directly (same pattern as docs/index.html)
           const cols = parseInt($('pgAsciiW').value) || 100;
           const asciiHTML = await result.toAscii({ cols, invert: true });

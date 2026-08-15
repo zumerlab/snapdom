@@ -49,15 +49,18 @@ If a proposed change conflicts with (1) or (2), don't ship it — surface the tr
 
 All scripts are npm-driven. Tests run in a real browser via Vitest + Playwright (chromium), so `npx playwright install` is required once.
 
-- Build: `npm run compile` (esbuild → `dist/`) · `npm run build` also runs `npm pack`
+- Build: `npm run compile` (esbuild → `dist/`) · `npm run build` = `npm pack` (a `prepack` hook compiles first)
 - Lint: `npm run lint` · auto-fix: `npm run lint:fix`
 - Tests: `npm test` (runs `lint:fix` then `vitest run --browser.headless`)
 - Coverage: `npm run test:coverage`
 - Benchmarks: `npm run test:benchmark`
+- Packaging contract: `npm run test:pack` — packs with no `dist/`, asserts every entrypoint is inside the tarball, installs it into throwaway consumer projects and typechecks with `skipLibCheck: false` under both `node16` and `bundler`, then resolves every entrypoint at runtime and counts the globals the browser bundle leaks. The browser suite cannot see any of this: it imports `src/`.
 - Single test file: `npx vitest run __tests__/<file>.test.js --browser.headless`
 - Single test by name: `npx vitest run --browser.headless -t "<test name substring>"`
 
-Note: `npm test` runs `lint` (check only) then `test:types` then vitest, so verifying never edits files. `npm run lint:fix` is the explicit auto-fix. `npm run build` is pure (compile + pack); the git add/commit/push that used to ride along as `prebuild` now lives in the explicit `npm run release`.
+Note: `npm test` runs `lint` (check only) then `test:types` then vitest, so verifying never edits files. `npm run lint:fix` is the explicit auto-fix. `npm run build` is pure; the git add/commit/push that used to ride along as `prebuild` now lives in the explicit `npm run release`, which VERIFIES FIRST (test → test:pack → build) and pushes last. Publishing is deliberately not automated: `npm run publish:beta` is `npm publish --tag beta`, so a beta can never move `latest`.
+
+**`prepack` is load-bearing.** `dist/` is gitignored — correct, it is a build output — and `files`/`exports` point into it, so without the hook `npm publish` from a clean checkout produces a tarball whose package.json references four files that are not in it. Nothing broken ever shipped, because the release flow packed after compiling on a machine that had `dist/`; the hook removes the dependence on that luck. `test:types` runs with `skipLibCheck: false` and includes `packages/plugins/*.d.ts` for the same reason: with it on, the repo checked declarations in a mode no consumer is ever in.
 
 ## Architecture
 
@@ -159,9 +162,13 @@ Written to `dist/`:
 - `dist/snapdom.js` — IIFE from `src/index.browser.js` (exposes `window.snapdom`, `window.preCache`).
 - `dist/snapdom.mjs` — ESM from `src/index.js`. **The single stateful runtime.**
 - `dist/snapdom.cjs` — real CommonJS for `require()`. `main` and `exports["."].require` point here. Do NOT point `require` at the IIFE: `platform:'neutral'` never assigns `module.exports`, so `require()` returned `{}` in every version up to 2.24.1.
-- `dist/preCache.mjs`, `dist/plugins.mjs` — **thin re-export stubs**, not bundles (~200 bytes each).
+- `dist/preCache.mjs`, `dist/plugins.mjs`, `dist/preCache.cjs`, `dist/plugins.cjs` — **thin re-export stubs**, not bundles (~200 bytes each). The `.cjs` pair exists so a CJS app that `require()`s the root and reaches the registry through a subpath does not load `snapdom.cjs` AND `snapdom.mjs` — two instances, two registries.
 
 That last point is a correctness constraint, not a size choice. Separate esbuild entrypoints get separate module state, so up to 2.24.1 `/plugins` carried its OWN plugin registry and `/preCache` warmed its OWN `cache`: registering through the subpath had zero effect on `snapdom()`. The stubs `export … from './snapdom.mjs'`, so the ESM graph resolves one instance. **Never turn them back into entryPoints.**
+
+`buildLegacy` must keep `format: 'iife'` and must NOT have `globalName`. Without the format, `platform: 'neutral'` emitted bare top-level statements and a `<script>` tag published every minified binding as a global — 442 of them, verified by `npm run test:pack`. It shipped that way through 2.24.1. With `globalName`, esbuild wraps the bundle as `var snapdom = (() => {…})()` and, since `src/index.browser.js` exports nothing, that assignment lands after the body and overwrites the explicit `window.snapdom` with an empty object. The entry owns the global.
+
+Type declarations mirror the same shape: `types/snapdom.d.ts` plus `types/plugins.d.ts` and `types/preCache.d.ts` re-export stubs, wired through a `types` condition per subpath in `exports`. They used to be `declare module "@zumer/snapdom/plugins"` blocks inside the root file, which in a file that is already a module are AUGMENTATIONS of a specifier TypeScript must resolve first — TS2665 in every consumer without `skipLibCheck: true`.
 
 All are minified, `sideEffects: false`, `splitting: false`. No code splitting, no chunks, no dynamic-import output files: the distributed bundle stays single and self-sufficient.
 
@@ -175,10 +182,11 @@ All are minified, `sideEffects: false`, `splitting: false`. No code splitting, n
 ## Testing
 
 - Tests run in a real browser (Playwright). There is no Node/jsdom mode — DOM APIs are real.
+- `vitest.config.js` aliases the bare specifier `@zumer/snapdom` to `src/index.js`. `packages/plugins/*` import the core by NAME because they are published separately, and under test that name resolved to whatever npm had installed — the last PUBLISHED release, 2.24.1 — so `gif-export` and `video-export` ran their internal recaptures against v2 while appearing to test v3.
 - `BROWSER=webkit|firefox|all` selects the engine; visual baselines are kept per engine. **A fidelity change is not done until it is green on all three** — several fixes this branch shipped behaved differently per engine.
 - Benchmarks: files matching `*.benchmark.js` are excluded from the normal test run; use `npm run test:benchmark` or `npx vitest bench`.
 - Visual diffs live under `__snapshots__/visual*/`; `npm run report:cross` builds a cross-engine comparison page.
-- **`demos/` is gitignored, and without it the entire visual suite silently skips itself** (`visual.demos.test.js` globs `/demos/d*.html`, gets nothing, and registers a `describe.skip`). A green `npm test` in a fresh clone therefore proves NOTHING about pixels. Copy `demos/` in from the public repo before trusting a run — and **copy it, do not symlink**: vite resolves through the link into the other repo's `node_modules`, several demos then capture at a wrong size, and you get ~11 fabricated "regressions". `npm run test:visual` runs just that file.
+- **`demos/` is gitignored, and without it the entire visual suite silently skips itself** (`visual.demos.test.js` globs `/demos/d*.html`, gets nothing, and registers a `describe.skip`). A green `npm test` in a fresh clone therefore proves NOTHING about pixels. Copy `demos/` in from the public repo before trusting a run — and **copy it, do not symlink**: vite resolves through the link into the other repo's `node_modules`, several demos then capture at a wrong size, and you get ~11 fabricated "regressions". `npm run test:visual` runs just that file. `REQUIRE_VISUAL=1` turns both silences into a hard failure at globalSetup (`scripts/require-visual.mjs`): no demos, or no baselines at all — the case where the first run RECORDS them and passes, proving only that the build agrees with itself. `npm run release` sets it; ordinary runs and forks are unaffected. CI cannot run the visual suite for the same reason (no `demos/` in the repo) and says so in `.github/workflows/ci.yml`.
 - Baselines are recorded on first run, so a v3-only run only proves v3 agrees with itself. To measure v3 against `main`, generate baselines in the main checkout (identical harness file), copy `__snapshots__/visual` over, and run here. Status as of 2026-08-10: **71/71 demos pixel-identical to main on chromium.**
 - Coverage config in `vitest.config.js` scopes to `src/**/*.js`. **It only runs on chromium** (the v8 provider is Chromium-only), so Safari-only code reads as uncovered even when exercised — that is a measurement blind spot, not debt. Code that is unreachable by construction is marked with `/* c8 ignore start/stop */` and a reason; the `ignore next` form does nothing here.
 
