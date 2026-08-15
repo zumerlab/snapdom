@@ -2,18 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Where the code lives (2026-08-04)
+## Where the code lives (2026-08-15)
 
 Three repos. Getting this wrong pushes private work to a public remote, so check the branch before pushing.
 
 | repo | visibility | holds |
 |---|---|---|
-| `zumerlab/snapdom` | **public** | `main` (shipped, 2.23.x) and `dev` |
-| `zumerlab/snapdom-v3` | private | `experimental` — the v3 line, this file included |
+| `zumerlab/snapdom` | **public** | `main` (shipped, 2.24.x) and `dev` |
+| `zumerlab/snapdom-v3` | private | `main` (default) — the v3 line, this file included |
 | `zumerlab/snapdom-agent` | private | the agent oracle (was `packages/agent`) |
 
-- `experimental` tracks `private/experimental`, so a bare `git push` from it goes to the private repo. `main`/`dev` still track `origin`.
-- The `next` branch was deleted: its content was fully contained in `experimental`.
+**The two checkouts share ONE git repository.** `/Users/martin/GitHub/zumerlab/snapdom` is a
+worktree of `snapdom-v3`, so both hold the same refs, and there can be only one branch called
+`main` between them. That name belongs to the PUBLIC line (2.24.x, checked out in the other
+worktree). The v3 line therefore keeps the local branch name `experimental` even though its
+remote branch is `main`:
+
+- local `experimental` -> tracks `private/main` (the v3 line, private repo, its default branch)
+- local `main` -> tracks `origin/main` (the shipped public line). Do not re-point it.
+
+So a bare `git push` from `experimental` goes to `private/main`, which is correct. The names
+disagree on purpose: renaming the local branch would collide with the public `main`.
+
+- The private repo has exactly one branch, `main`. `experimental` was deleted there on 2026-08-15.
+- A GitHub Action on that repo commits `chore: update contributors list` after a push, so
+  expect the remote to be one commit ahead right after pushing.
+- The `next` branch was deleted: its content was fully contained in the v3 line.
 - `packages/agent` and the `agent-lab` branch no longer exist here — that product lives in its own repo with its history. Do not recreate them.
 - v3 is a breaking release. Anything that must reach users NOW (a fix that also affects `main`) belongs in a separate `main`-based release, not gated behind v3.
 
