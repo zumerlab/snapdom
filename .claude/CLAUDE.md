@@ -23,11 +23,13 @@ separate objects, separate deps.
 - The v3 repo has exactly one branch, `main`. `experimental` was deleted on both sides.
 - A GitHub Action on the v3 repo commits `chore: update contributors list` after a push, so the
   remote is one commit ahead right after pushing. Fast-forward, do not panic.
-- `package-lock.json` is GITIGNORED, so `npm install` is not reproducible and dependency
-  versions drift between clones. That is not theoretical: a fresh install pulled Playwright
-  1.62.1 where the visual baselines had been recorded against 1.55.1, and two CJK-text demos
-  failed deterministically until the older Playwright was reinstalled with `--no-save`. When
-  visual demos fail after touching dependencies, check the Playwright version before the code.
+- **`package-lock.json` is COMMITTED** (2026-08-15) and `playwright` is pinned to an exact
+  version, no caret. Both exist for the same reason: the browser build is part of the visual
+  fixture, not a floating dependency. While the lockfile was gitignored, a fresh `npm install`
+  pulled Playwright 1.62.1 where the baselines had been recorded against 1.55.1, and two
+  CJK-text demos failed DETERMINISTICALLY until 1.55.1 went back. Upgrading Playwright is a
+  deliberate act that re-records baselines, never a side effect of installing. If visual demos
+  move after any dependency work, check the Playwright version before reading the code.
 - `packages/agent` and the `agent-lab` branch no longer exist here — that product lives in its
   own repo with its history. Do not recreate them.
 - v3 is a breaking release. Anything that must reach users NOW (a fix that also affects the
