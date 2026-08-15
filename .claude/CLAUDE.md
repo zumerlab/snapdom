@@ -105,6 +105,16 @@ Its correctness rests entirely on one thing: **the INVALIDATION MATRIX comment a
 
 One pass over the document's author styles yields (a) the property universe — snapshot only props the page can actually touch — and (b) per-pseudo selector gates, so one `el.matches()` replaces three `getComputedStyle` resolutions per node. Both memoized per document + style epoch.
 
+**Do not narrow that memo to a "rule epoch" without measuring invalidation cost under load.**
+It was tried (2026-08-14) and reverted. Keying on author-rule changes instead of the DOM epoch
+is faster in isolation, but three ways the rules can change emit NO mutation record
+(adoptedStyleSheets assignment, a `<link>` finishing its load, `insertRule`), so staying correct
+required a census of every stylesheet in the document, once per capture, reading
+`cssRules.length` on each. On a long suite the document accumulates sheets, and under
+`BROWSER=all` that census timed out `module.pseudo` on WebKit and `d-compress` everywhere while
+the pre-split code ran clean. Removing the census removed the timeouts and broke the three
+correctness cases. `__tests__/module.styles.ruleEpoch.test.js` pins the trade.
+
 Two traps this has already sprung: CSS-nesting selectors arrive as raw `& .x::before`, and `matches()` answers **false** to those instead of throwing — so an unresolved `&` silently gates every node out rather than falling back. And a gate that parses but can never match is worse than no gate: return `null` (probe everything) instead.
 
 ### Experimental canvas engine (`src/engines/htmlInCanvas.js`)

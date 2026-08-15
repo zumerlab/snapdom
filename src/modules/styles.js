@@ -11,7 +11,7 @@ const MAX_SNAPSHOT_KEY_CACHE = 2000
 let __epoch = 0
 function bumpEpoch() { __epoch++ }
 
-export function notifyStyleEpoch() { bumpEpoch(); __ruleEpoch++ }
+export function notifyStyleEpoch() { bumpEpoch() }
 
 /** Mutations on snapdom-owned helper nodes (sandbox, measure wrapper, warmup img, injected font
  *  links, …) must NOT invalidate the style epoch: every capture creates and removes them, so
@@ -48,53 +48,6 @@ export function isExternalRecord(rec) {
  *  and the pseudo gates are derived from the rule TEXT alone: which rules match is not
  *  their business, so keying them on __epoch made a single text-node change re-scan every
  *  author stylesheet on the next capture — the SPA case v3 exists for. */
-let __ruleEpoch = 0
-
-/** <style>/<link> are the only nodes whose presence, attributes or text can add or remove
- *  author rules. */
-function isSheetNode(n) {
-  return n.nodeType === 1 && (n.tagName === 'STYLE' || n.tagName === 'LINK')
-}
-function hasSheetNode(n) {
-  return n.nodeType === 1 && (isSheetNode(n) || !!n.querySelector('style,link'))
-}
-/** Whether a mutation record can change the rules themselves: a <style>/<link> inserted or
- *  removed (anywhere, not just in <head>), one of its attributes (href/media/rel/disabled),
- *  or the CSS text inside a <style>. Moving or restyling ordinary nodes cannot add a
- *  declaration or a selector to the page. */
-function isRuleRecord(rec) {
-  const t = rec.target
-  // Attributes land on the element; `style.textContent = …` is a childList record on the
-  // <style> (its text node is replaced, not edited); a characterData edit targets that text
-  // node. All three mean the rules moved, so test the target and its parent.
-  if (t.nodeType === 1 ? isSheetNode(t) : !!(t.parentNode && isSheetNode(t.parentNode))) return true
-  for (const n of rec.addedNodes) if (hasSheetNode(n)) return true
-  for (const n of rec.removedNodes) if (hasSheetNode(n)) return true
-  return false
-}
-
-/** Cheap census of the document's rule sources, recomputed once per capture (not per node).
- *  It is the only way to see the rule changes that emit NO mutation record: a <link>
- *  finishing its load, a sheet pushed into adoptedStyleSheets, sheet.insertRule(). A rule
- *  edited in place (`rule.style.color = …`) still changes nothing observable and remains
- *  the documented job of `invalidate: true`. */
-let __census = 0
-function sheetCensus(doc) {
-  let n = 0
-  const count = (sheet) => {
-    // Snapdom's own temporary sheets (injected @import links, measurement mounts) come and
-    // go on every capture: counting them would poison the next capture exactly like the
-    // owned-node filter above exists to prevent.
-    if (sheet.ownerNode && isOwnedNode(sheet.ownerNode)) return
-    let len = -1
-    try { len = sheet.cssRules.length } catch { /* cross-origin */ }
-    n = (n * 31 + len + 7) | 0
-  }
-  for (const sheet of doc.styleSheets) count(sheet)
-  const adopted = /** @type {any} */ (doc).adoptedStyleSheets
-  if (adopted) for (const sheet of adopted) count(sheet)
-  return n
-}
 
 /** Style-ENVIRONMENT epoch: bumps only on <head> mutations and font loads — the events
  *  that change how any element renders without touching it. Consumers (burst) poll it via
@@ -122,19 +75,12 @@ export function getStyleEpoch() {
 export function invalidateStyleCaches() {
   bumpEpoch()
   __envEpoch++
-  __ruleEpoch++
 }
 
 /** The DOM observer's callback, also replayed by flushStyleInvalidations on drained records:
  *  one pass answers both "did anything paintable change" and "did the author rules change". */
 function onDomRecords(records) {
-  let dom = false
-  for (const rec of records) {
-    if (!isExternalRecord(rec)) continue
-    dom = true
-    if (isRuleRecord(rec)) { __ruleEpoch++; break }
-  }
-  if (dom) bumpEpoch()
+  if (hasExternalMutation(records)) bumpEpoch()
 }
 
 let __wired = false
@@ -193,8 +139,6 @@ export function flushStyleInvalidations() {
       const r = __domObs.takeRecords()
       if (r.length) onDomRecords(r)
     }
-    const census = sheetCensus(document)
-    if (census !== __census) { __census = census; __ruleEpoch++ }
   } catch { }
 }
 
@@ -241,8 +185,8 @@ export function needsBackgroundInline(source) {
 const universeCache = new WeakMap()
 function scanFor(doc) {
   let rec = universeCache.get(doc)
-  if (!rec || rec.epoch !== __ruleEpoch) {
-    rec = { epoch: __ruleEpoch, ...scanAuthorStyles(doc) }
+  if (!rec || rec.epoch !== __epoch) {
+    rec = { epoch: __epoch, ...scanAuthorStyles(doc) }
     universeCache.set(doc, rec)
   }
   return rec

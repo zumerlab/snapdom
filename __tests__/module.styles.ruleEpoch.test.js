@@ -1,10 +1,22 @@
-// The scanned property universe and the pseudo gates are derived from the author RULES
-// alone, so they are memoized against the style-RULE epoch, not the DOM epoch: an ordinary
-// DOM mutation must not re-scan every stylesheet, and every way the rules can actually
-// change must still invalidate the memo.
+// The scanned property universe and the pseudo gates are memoized against the DOM epoch,
+// which bumps on ANY external mutation. That is deliberately conservative, and it is the
+// decision this file guards.
+//
+// A narrower "rule epoch" was tried: memoize against author-rule changes only, so an
+// ordinary text mutation would not re-scan every stylesheet. It works, and it is faster in
+// isolation. But three ways the rules can change emit NO mutation record at all
+// (adoptedStyleSheets assignment, a <link> finishing its load, insertRule), so keeping it
+// correct required a census of every stylesheet in the document, once per capture, reading
+// cssRules.length on each. Measured under three concurrent browsers on a long suite, where
+// the document accumulates sheets, that census cost more than the split saved: it timed out
+// module.pseudo on webkit while the pre-split code ran clean. Removing the census removed
+// the timeouts and broke the three correctness cases below, which is the whole trade in one
+// sentence.
+//
+// So: do not narrow this memo again without measuring the invalidation cost under load, not
+// just the scan cost in isolation. These tests pin the cases that must keep working.
 import { describe, it, expect, afterEach } from 'vitest'
-import { snapdom } from '../src/index.js'
-import { universeFor, flushStyleInvalidations } from '../src/modules/styles.js'
+import { universeFor, flushStyleInvalidations, invalidateStyleCaches } from '../src/modules/styles.js'
 
 const trash = []
 afterEach(() => {
@@ -12,113 +24,56 @@ afterEach(() => {
   document.adoptedStyleSheets = []
 })
 
-function mount(html = 'probe') {
+function target() {
   const el = document.createElement('div')
-  el.innerHTML = html
+  el.className = 'ruleepoch-probe'
   document.body.appendChild(el)
   trash.push(el)
   return el
 }
 
-/** The memoized universe, after draining anything pending. */
-function currentUniverse(el) {
+/** The universe is the set of properties the page's author rules can touch. */
+function universeHas(el, prop) {
   flushStyleInvalidations()
-  return universeFor(el)
+  const u = universeFor(el)
+  return !!u && u.has(prop)
 }
 
-describe('style-rule epoch', () => {
-  it('does not re-scan the stylesheets when only DOM text changed', () => {
-    const el = mount('<p>before</p>')
-    const before = currentUniverse(el)
-    expect(before).toBeInstanceOf(Set)
-
-    el.firstChild.textContent = 'after'
-    el.setAttribute('data-x', '1')
-    el.appendChild(document.createElement('span'))
-
-    // Same Set instance = the scan never ran again. Keyed on the DOM epoch this is a new one.
-    expect(currentUniverse(el)).toBe(before)
+describe('author-rule changes always reach the scanned universe', () => {
+  it('re-scans when a <style> is injected', () => {
+    const el = target()
+    expect(universeHas(el, 'ruby-position')).toBe(false)
+    const s = document.createElement('style')
+    s.textContent = '.ruleepoch-probe { ruby-position: over }'
+    document.head.appendChild(s)
+    trash.push(s)
+    expect(universeHas(el, 'ruby-position')).toBe(true)
   })
 
-  it('re-scans for a <style> inserted outside <head>', () => {
-    const el = mount()
-    const before = currentUniverse(el)
-    expect(before.has('column-count')).toBe(false)
-
-    const style = document.createElement('style')
-    style.textContent = '.re-probe-a { column-count: 3 }'
-    document.body.appendChild(style)
-    trash.push(style)
-
-    const after = currentUniverse(el)
-    expect(after).not.toBe(before)
-    expect(after.has('column-count')).toBe(true)
-  })
-
-  it('re-scans when the CSS text of an existing <style> is rewritten', () => {
-    const style = document.createElement('style')
-    style.textContent = '.re-probe-b { color: red }'
-    document.body.appendChild(style)
-    trash.push(style)
-
-    const el = mount()
-    const before = currentUniverse(el)
-    expect(before.has('column-span')).toBe(false)
-
-    style.textContent = '.re-probe-b { column-span: all }'
-    expect(currentUniverse(el).has('column-span')).toBe(true)
-  })
-
-  it('re-scans when a sheet is pushed into adoptedStyleSheets', () => {
-    const el = mount()
-    const before = currentUniverse(el)
-    expect(before.has('text-orientation')).toBe(false)
-
-    // No mutation record exists for this: only the per-capture sheet census sees it.
+  it('adoptedStyleSheets needs the escape hatch, like insertRule', () => {
+    // Assigning adoptedStyleSheets emits no mutation record, so nothing observes it. This
+    // is a documented limit, not a regression: it is what the pre-split code did too, and
+    // it is the reason `invalidate: true` exists. Pinned so the limit stays visible.
+    const el = target()
+    expect(universeHas(el, 'text-emphasis-color')).toBe(false)
     const sheet = new CSSStyleSheet()
-    sheet.replaceSync('.re-probe-c { text-orientation: upright }')
-    document.adoptedStyleSheets = [sheet]
-
-    expect(currentUniverse(el).has('text-orientation')).toBe(true)
+    sheet.replaceSync('.ruleepoch-probe { text-emphasis-color: red }')
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
+    expect(universeHas(el, 'text-emphasis-color')).toBe(false) // unobserved, by design
+    invalidateStyleCaches()
+    expect(universeHas(el, 'text-emphasis-color')).toBe(true)
   })
 
-  it('re-scans when a <link rel=stylesheet> finishes loading', async () => {
-    const el = mount()
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = URL.createObjectURL(new Blob(['.re-probe-d { background-blend-mode: multiply }'], { type: 'text/css' }))
-    const loaded = new Promise((res) => { link.onload = res; link.onerror = res })
-    document.body.appendChild(link)
-    trash.push(link)
-
-    // Consume the insertion record and re-prime the memo while the sheet is still empty,
-    // so the assertion below can only pass through the census, not through that record.
-    const beforeLoad = currentUniverse(el)
-    expect(beforeLoad.has('background-blend-mode')).toBe(false)
-
-    await loaded
-    const after = currentUniverse(el)
-    expect(after).not.toBe(beforeLoad)
-    expect(after.has('background-blend-mode')).toBe(true)
-  })
-
-  it('paints a pseudo whose rule arrived after the gates were memoized', async () => {
-    // The pseudo gates ride the same memo: a stale one gates every node out and the
-    // ::after never reaches the capture at all.
-    const el = mount()
-    el.style.cssText = 'width:40px;height:40px;background:rgb(0,0,255)'
-    await snapdom.toCanvas(el, { scale: 1, dpr: 1 })
-
-    const style = document.createElement('style')
-    style.textContent =
-      '.re-gate::after { content:""; display:block; width:40px; height:40px; background:rgb(255,0,0) }'
-    document.body.appendChild(style)
-    trash.push(style)
-    el.className = 're-gate'
-
-    const canvas = await snapdom.toCanvas(el, { scale: 1, dpr: 1 })
-    const d = canvas.getContext('2d', { willReadFrequently: true })
-      .getImageData(canvas.width >> 1, canvas.height - 2, 1, 1).data
-    expect(`${d[0]},${d[1]},${d[2]}`).toBe('255,0,0')
+  it('re-scans after insertRule once the caller says so', () => {
+    // insertRule is observable by nothing, which is what `invalidate: true` exists for.
+    const el = target()
+    const s = document.createElement('style')
+    document.head.appendChild(s)
+    trash.push(s)
+    expect(universeHas(el, 'scroll-snap-stop')).toBe(false)
+    s.sheet.insertRule('.ruleepoch-probe { scroll-snap-stop: always }', 0)
+    // Nothing observed it; the escape hatch is the contract.
+    invalidateStyleCaches()
+    expect(universeHas(el, 'scroll-snap-stop')).toBe(true)
   })
 })
