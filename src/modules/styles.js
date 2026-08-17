@@ -1,4 +1,4 @@
-import { getStyleKey, softensWidth, shouldIgnoreProp, getStyle } from '../utils/index.js'
+import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -234,6 +234,94 @@ function hasRenderedContent(el) {
   }
   return false
 }
+/**
+ * Whether the element's width is author-specified (a length/percentage) rather than derived from
+ * its content or from the layout algorithm around it.
+ *
+ * `getComputedStyle().width` cannot answer this: it resolves to the USED width, so `auto` and
+ * `width: 16px` both come back as `16px`. Typed OM reports the COMPUTED value, where `auto` stays
+ * `auto` — that is the exact question, and it is available in Chromium and WebKit. Firefox has no
+ * Typed OM, so there the answer is inferred from layout instead (see the two probes below).
+ *
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs live computed style of `el`
+ * @param {boolean} isFlexItem
+ */
+function hasSpecifiedWidth(el, cs, isFlexItem) {
+  try {
+    if (typeof el.computedStyleMap === 'function') {
+      const v = el.computedStyleMap().get('width')
+      if (v != null) return !isContentWidthKeyword(String(v).trim().toLowerCase())
+    }
+  } catch { /* fall through to the layout probes */ }
+  const inlineWidth = el.style && (el.style.width || el.style.inlineSize)
+  if (inlineWidth && !isContentWidthKeyword(String(inlineWidth).trim().toLowerCase())) return true
+  // A box that hugs its content is sized by it — `width: max-content` / `fit-content` land here
+  // too, and those must keep softening. For a block-level box, also require that the used width
+  // is not simply the available width (that is what plain `width: auto` gives).
+  if (!contentNarrowerThanBox(el, cs)) return false
+  return isFlexItem || usedWidthDiffersFromAvailable(el, cs)
+}
+
+/** Computed `width` values that still let the box be sized by its content or its container. */
+const CONTENT_WIDTH_KEYWORDS = new Set([
+  'auto', 'min-content', 'max-content', 'stretch', 'fill-available', '-webkit-fill-available',
+])
+function isContentWidthKeyword(value) {
+  // fit-content(<length>) too: the box still shrinks around its content.
+  return CONTENT_WIDTH_KEYWORDS.has(value) || value.startsWith('fit-content')
+}
+
+/**
+ * Fallback probe for flex/grid items: an item sized by its own content is exactly as wide as that
+ * content, so a content box wider than everything inside it means the width came from CSS.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs
+ */
+function contentNarrowerThanBox(el, cs) {
+  const box = el.getBoundingClientRect().width -
+    (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) -
+    (parseFloat(cs.borderLeftWidth) || 0) - (parseFloat(cs.borderRightWidth) || 0)
+  if (!(box > 0)) return false
+  let left = Infinity, right = -Infinity, range = null
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    let r
+    if (n.nodeType === 3) {
+      if (!/\S/.test(n.nodeValue || '')) continue
+      range = range || document.createRange()
+      range.selectNode(n)
+      r = range.getBoundingClientRect()
+      if (!r.width && !r.height) continue
+    } else if (n.nodeType === 1) {
+      const s = getStyle(n)
+      if (s.display === 'none' || s.position === 'absolute' || s.position === 'fixed') continue
+      r = n.getBoundingClientRect()
+    } else continue
+    if (r.left < left) left = r.left
+    if (r.right > right) right = r.right
+  }
+  if (right === -Infinity) return false
+  return (right - left) < box - 0.5
+}
+
+/**
+ * Fallback probe for block-level boxes in normal flow: with `width: auto` they fill the
+ * containing block, so a used width that differs from the available width was authored.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs
+ */
+function usedWidthDiffersFromAvailable(el, cs) {
+  const parent = el.parentElement
+  if (!parent) return false
+  const pcs = getStyle(parent)
+  const available = parent.getBoundingClientRect().width -
+    (parseFloat(pcs.paddingLeft) || 0) - (parseFloat(pcs.paddingRight) || 0) -
+    (parseFloat(pcs.borderLeftWidth) || 0) - (parseFloat(pcs.borderRightWidth) || 0) -
+    (parseFloat(cs.marginLeft) || 0) - (parseFloat(cs.marginRight) || 0)
+  if (!(available > 0)) return false
+  return Math.abs(el.getBoundingClientRect().width - available) > 0.5
+}
+
 const __snapshotSig = new WeakMap()
 function styleSignature(snap) {
   let sig = __snapshotSig.get(snap)
@@ -378,6 +466,14 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   let sizedByContent = true
   if (softensWidth(tag, (snap.display || '').toLowerCase())) {
     sizedByContent = hasRenderedContent(source)
+    // #484: softening only reproduces the box when its `width` is auto. On a blockified box in
+    // normal flow (`span{display:block;width:16px}`) the min-width floor cannot cap the stretch,
+    // and a flex/grid item gets no floor at all (#406) — both lost the authored width. Treat an
+    // author-specified width as "not sized by content" so it is kept verbatim.
+    if (sizedByContent && softenNeedsAutoWidth(tag, snap, flexItem) &&
+        hasSpecifiedWidth(source, pre, flexItem)) {
+      sizedByContent = false
+    }
     // Fold tag/content/flex into the cache key so soften-eligible elements with identical styles
     // but different shape don't collide on the shared snapshotKeyCache.
     sig = `${sig}|${tag}${sizedByContent ? '|c' : ''}${flexItem ? '|f' : ''}`
