@@ -178,6 +178,40 @@ export function softensWidth(tagName, display) {
     (display === 'inline' || INLINE_SIZED_TAGS.has(tagName) || TABLE_TAGS.has(tagName))
 }
 
+// Displays whose `width: auto` is shrink-to-fit: dropping the width and re-adding it as a
+// min-width floor reproduces the used width exactly.
+const SHRINK_TO_FIT_DISPLAYS = new Set([
+  'inline-block', 'inline-flex', 'inline-grid', 'inline-table', 'inline-flow-root', 'table',
+])
+
+/**
+ * Whether softening this box relies on its width being `auto`.
+ *
+ * Softening replaces the used width with a `min-width` floor, which only reproduces the box
+ * when `width: auto` is shrink-to-fit. Two shapes break that assumption (#484):
+ *   - a blockified box in normal flow (`span { display: block; width: 16px }`) — `auto` stretches
+ *     it to the container, so the floor never caps it and the box renders full width;
+ *   - a flex/grid item, which gets no floor at all (#406) and collapses to its content.
+ * For those the caller must check whether the width is author-specified and, if so, keep it.
+ * Real inline boxes ignore `width`, and the table box tree is sized by the table algorithm
+ * (#429) — neither can carry an author width worth preserving.
+ *
+ * @param {string} tagName
+ * @param {Record<string,string>} snapshot computed-style snapshot
+ * @param {boolean} isFlexItem whether the element is a flex/grid item
+ */
+export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
+  const display = (snapshot.display || '').toLowerCase()
+  if (display === 'inline') return false
+  if (TABLE_TAGS.has(tagName)) return false
+  if (isFlexItem) return true
+  const float = (snapshot.float || 'none').toLowerCase()
+  if (float !== 'none') return false
+  const position = (snapshot.position || 'static').toLowerCase()
+  if (position === 'absolute' || position === 'fixed') return false
+  return !SHRINK_TO_FIT_DISPLAYS.has(display)
+}
+
 /**
  * Builds a style key from a snapshot; returns "" for tags in NO_DEFAULTS_TAGS.
  * @param {Record<string,string>} snapshot
