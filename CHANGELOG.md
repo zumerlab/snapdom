@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.24.3](https://github.com/zumerlab/snapdom/compare/v2.24.0...v2.24.3)
+
+> 18 August 2026
+
+- fix: keep an author-specified width on blockified spans (Ref #484) [`f3c75d3`](https://github.com/zumerlab/snapdom/commit/f3c75d3afd64e3bda751c952295b97994d634dd9)
+- fix: neutralize CSS zoom on the capture root (Ref #483) [`14b2047`](https://github.com/zumerlab/snapdom/commit/14b204701483d66ffa6dfa0866dcdb906fa9bcc8)
+
 #### [v2.24.0](https://github.com/zumerlab/snapdom/compare/v2.23.2...v2.24.0)
 
 > 10 August 2026
