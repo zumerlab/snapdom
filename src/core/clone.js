@@ -21,7 +21,7 @@ import {
   getUnscaledDimensions,
   createCheckboxRadioReplacement
 } from '../utils/clone.helpers.js'
-import { isFirefox, isSafari } from '../utils/browser.js'
+import { isFirefox, isSafari, nextFrame } from '../utils/browser.js'
 
 // helper implementations moved to ../utils/clone.helpers.js
 
@@ -587,6 +587,31 @@ async function cloneIframe(node, sessionCache, options) {
   }
 }
 
+/**
+ * Whether nothing has been drawn into this canvas yet (fully transparent).
+ * Sampled through a small scratch canvas so the check stays O(1) regardless of the source size;
+ * only ever called under `{ debug: true }`.
+ * @param {HTMLCanvasElement} node
+ * @returns {boolean}
+ */
+function isBlankCanvas(node) {
+  try {
+    const w = Math.max(1, Math.min(32, node.width))
+    const h = Math.max(1, Math.min(32, node.height))
+    const scratch = document.createElement('canvas')
+    scratch.width = w
+    scratch.height = h
+    const sctx = scratch.getContext('2d', { willReadFrequently: true })
+    if (!sctx) return false
+    sctx.drawImage(node, 0, 0, w, h)
+    const data = sctx.getImageData(0, 0, w, h).data
+    for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
@@ -604,14 +629,14 @@ async function cloneCanvas(node, sessionCache, options) {
     // WebKit needs the same frame for the 2D poke to materialize the buffer; on other
     // engines toDataURL is synchronous with issued commands, so an unconditional rAF cost a
     // serialized frame (≥16ms) per canvas — dashboards with N 2D charts paid N frames.
-    if (isSafari() || !ctx) await new Promise(r => requestAnimationFrame(r))
+    if (isSafari() || !ctx) await nextFrame()
 
     url = node.toDataURL('image/png')
 
     if (!url || url === 'data:,') {
       // reintento rápido
       try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
-      await new Promise(r => requestAnimationFrame(r))
+      await nextFrame()
       url = node.toDataURL('image/png')
 
       // último recurso: copiar a un scratch-canvas y leer desde ahí
@@ -628,6 +653,13 @@ async function cloneCanvas(node, sessionCache, options) {
     }
   } catch (e) {
     debugWarn(sessionCache, 'Canvas toDataURL failed, using empty/fallback', e)
+  }
+
+  // #486: a capture fired before the canvas has drawn anything (an animation still loading, a
+  // chart rendered on the next frame) serializes a perfectly valid, perfectly empty PNG — the
+  // capture "silently fails". Say so under debug, where it costs nothing in normal runs.
+  if (options && options.debug && url && isBlankCanvas(node)) {
+    debugWarn(sessionCache, 'canvas is empty at capture time — capture it after its first frame is drawn', node)
   }
 
   const img = document.createElement('img')
