@@ -58,9 +58,9 @@ export function lineClamp(el, cs) {
 
   if (!isPlainTextContainer(el)) return () => {}
 
-  const original = el.textContent ?? ''
-  // Guarda para restaurar
-  const prevText = original
+  // Mutates the live element's text nodes in place (never textContent, #485).
+  const text = textNodeWriter(el)
+  const original = text.text
 
   // Measure the REAL rendered line height instead of guessing from CSS.
   // `line-height: normal` is font-metric dependent, and inside a -webkit-box the
@@ -68,9 +68,9 @@ export function lineClamp(el, cs) {
   // glyph height (e.g. line-height:18px on 20px text) still lays out taller. A
   // fs*1.2 / raw-CSS guess mis-sizes targetH and clamps to the wrong line count (#443).
   const pad = vpad(cs)
-  el.textContent = 'X'
+  text.write('X')
   const perLine = el.scrollHeight - pad
-  el.textContent = original
+  text.restore()
   const lineH = perLine > 0 ? perLine : usedLineHeightPx(cs)
   const targetH = Math.round(lineH * lines + pad)
 
@@ -83,7 +83,7 @@ export function lineClamp(el, cs) {
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    el.textContent = original.slice(0, mid) + '…'
+    text.write(original.slice(0, mid) + '…')
     // Forzamos layout leyendo scrollHeight
     if (el.scrollHeight <= targetH + 0.5) {
       best = mid; lo = mid + 1
@@ -93,11 +93,11 @@ export function lineClamp(el, cs) {
   }
 
   // Aplica el mejor corte (si nada entra, queda solo '…')
-  el.textContent = (best >= 0 ? original.slice(0, best) : '') + '…'
+  text.write((best >= 0 ? original.slice(0, best) : '') + '…')
 
   // Devuelve undo() para restaurar el DOM original tras clonar
   return () => {
-    el.textContent = prevText
+    text.restore()
   }
 }
 
@@ -125,13 +125,14 @@ export function textEllipsis(el, cs) {
   // Ya entra completo → el clamp nativo tampoco haría nada.
   if (el.scrollWidth <= el.clientWidth + 0.5) return () => {}
 
-  const original = el.textContent ?? ''
-  const prevText = original
+  // Mutates the live element's text nodes in place (never textContent, #485).
+  const text = textNodeWriter(el)
+  const original = text.text
 
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    el.textContent = original.slice(0, mid) + '…'
+    text.write(original.slice(0, mid) + '…')
     if (el.scrollWidth <= el.clientWidth + 0.5) {
       best = mid; lo = mid + 1
     } else {
@@ -139,10 +140,45 @@ export function textEllipsis(el, cs) {
     }
   }
 
-  el.textContent = (best >= 0 ? original.slice(0, best) : '') + '…'
+  text.write((best >= 0 ? original.slice(0, best) : '') + '…')
 
   return () => {
-    el.textContent = prevText
+    text.restore()
+  }
+}
+
+/**
+ * Rewrites an element's text WITHOUT replacing its text nodes.
+ *
+ * `el.textContent = value` is destructive: the browser drops every child node and inserts a fresh
+ * text node. Frameworks that keep a reference to the original node (React fibers, Vue vnodes,
+ * Svelte blocks) then fail on their next update with
+ * `NotFoundError: Failed to execute 'removeChild'` — long after the capture, which makes it very
+ * hard to trace back (#485). Writing `node.data` mutates the same node in place, exactly what
+ * React itself does for a single-text-child update, so node identity survives the measurement.
+ *
+ * Callers are gated by isPlainTextContainer(), so the element has no element children: writing
+ * the whole string into the first text node and blanking the rest lays out identically to a
+ * textContent write, and restore() puts every original chunk back where it was.
+ *
+ * @param {Element} el
+ * @returns {{text: string, write: (value: string) => void, restore: () => void}}
+ */
+function textNodeWriter(el) {
+  const nodes = []
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === Node.TEXT_NODE) nodes.push(n)
+  }
+  const original = nodes.map((n) => n.data)
+  return {
+    text: original.join(''),
+    write(value) {
+      nodes[0].data = value
+      for (let i = 1; i < nodes.length; i++) nodes[i].data = ''
+    },
+    restore() {
+      for (let i = 0; i < nodes.length; i++) nodes[i].data = original[i]
+    },
   }
 }
 
