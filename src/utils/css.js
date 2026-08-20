@@ -12,7 +12,7 @@ export const NO_DEFAULTS_TAGS = new Set([
   // non-painting / head stuff
   'meta', 'link', 'style', 'title', 'noscript', 'script', 'template',
   // SVG whole namespace (safe for LeaderLine/presentation attrs)
-  'g', 'defs', 'use', 'marker', 'mask', 'clipPath', 'pattern',
+  'g', 'defs', 'use', 'marker', 'mask', 'clipPath', 'pattern', 'symbol',
   'path', 'polygon', 'polyline', 'line', 'circle', 'ellipse', 'rect',
   'filter', 'lineargradient', 'radialgradient', 'stop'
 ])
