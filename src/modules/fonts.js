@@ -9,6 +9,7 @@ import { cache } from '../core/cache'
 import { isIconFont } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
 import { pseudoGatesFor } from './styles.js'
+import { nextFrame } from '../utils/browser.js'
 
 /**
  * Converts a unicode character from an icon font into a data URL image.
@@ -1197,6 +1198,7 @@ export async function ensureFontsReady(families, warmupRepetitions = 2, doc = do
 
   for (let i = 0; i < Math.max(1, warmupRepetitions); i++) {
     warmupOnce()
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+    await nextFrame()
+    await nextFrame()
   }
 }
