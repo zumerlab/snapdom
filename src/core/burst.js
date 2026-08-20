@@ -139,7 +139,7 @@ function trackShadowRoots(element, state) {
     if (state.trackedShadowRoots.has(root)) continue
     try {
       const o = new MutationObserver(state.markDirty)
-      o.observe(root, { subtree: true, childList: true, attributes: true, characterData: true, attributeOldValue: true })
+      o.observe(root, { subtree: true, childList: true, attributes: true, characterData: true, attributeOldValue: true, characterDataOldValue: true })
       o.__flush = state.markDirty
       state.observers.push(o)
       state.trackedShadowRoots.set(root, o)
@@ -224,15 +224,18 @@ function trackPendingImages(element, state) {
  * content-visibility:auto: the pipeline mutates those LIVE nodes and undoes them again
  * (measured: 10 such records on a two-div page).
  * A mutation whose NET effect is zero cannot change what renders, and that is the test:
- * attributes compare the OLDEST recorded value against the current one, text-only childList
- * records balance the text they added against the text they removed. Anything else is a real
- * change: an element added or removed, or live character data rewritten (which the pipeline
- * never does). Once per capture, over that capture's own records.
+ * attributes and character data compare the OLDEST recorded value against the current one, and
+ * text-only childList records balance the text they added against the text they removed.
+ * Anything else is a real change: an element added or removed. Character data belongs in the
+ * net-zero group since the truncation bake writes `textNode.data` rather than `textContent`
+ * (#485), so the ellipsis measurement now reports characterData records where it used to report
+ * balanced childList pairs. Once per capture, over that capture's own records.
  * @param {MutationRecord[]} records
  * @returns {boolean}
  */
 function hasTornMutation(records) {
   const attrs = new Map() // target → (attribute name → oldest recorded value)
+  const chars = new Map() // text node → oldest recorded data
   const texts = new Map() // target → (text → +1 added / -1 removed)
   for (const rec of records) {
     if (!isExternalRecord(rec)) continue
@@ -240,6 +243,8 @@ function hasTornMutation(records) {
       let byName = attrs.get(rec.target)
       if (!byName) attrs.set(rec.target, byName = new Map())
       if (!byName.has(rec.attributeName)) byName.set(rec.attributeName, rec.oldValue)
+    } else if (rec.type === 'characterData') {
+      if (!chars.has(rec.target)) chars.set(rec.target, rec.oldValue)
     } else if (rec.type === 'childList') {
       let delta = texts.get(rec.target)
       if (!delta) texts.set(rec.target, delta = new Map())
@@ -256,6 +261,7 @@ function hasTornMutation(records) {
   for (const [target, byName] of attrs) {
     for (const [name, old] of byName) if (target.getAttribute(name) !== old) return true
   }
+  for (const [node, old] of chars) if (node.data !== old) return true
   for (const delta of texts.values()) {
     for (const n of delta.values()) if (n !== 0) return true
   }
@@ -326,9 +332,9 @@ function createState(element) {
 
   try {
     const o = new MutationObserver(markDirty)
-    // attributeOldValue: hasTornMutation reads it to tell the pipeline's own self-undoing
-    // attribute edits (content-visibility force) from a real one.
-    o.observe(element, { subtree: true, childList: true, attributes: true, characterData: true, attributeOldValue: true })
+    // attributeOldValue / characterDataOldValue: hasTornMutation reads them to tell the
+    // pipeline's own self-undoing edits (content-visibility force, ellipsis bake) from a real one.
+    o.observe(element, { subtree: true, childList: true, attributes: true, characterData: true, attributeOldValue: true, characterDataOldValue: true })
     o.__flush = markDirty
     state.observers.push(o)
   } catch { /* degrade to always-dirty */ }
