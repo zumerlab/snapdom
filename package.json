@@ -83,7 +83,11 @@
   "bugs": {
     "url": "https://github.com/zumerlab/snapdom/issues"
   },
-  "homepage": "https://zumerlab.github.io/snapdom/",
+  "homepage": "https://snapdom.dev/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tinchox5"
+  },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@vitest/browser": "^3.1.2",
