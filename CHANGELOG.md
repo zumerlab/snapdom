@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.24.7](https://github.com/zumerlab/snapdom/compare/v2.24.3...v2.24.7)
+
+> 21 August 2026
+
+- fix: measure text truncation without replacing live text nodes (Ref #485) [`418d18f`](https://github.com/zumerlab/snapdom/commit/418d18fcbd3336d1ba1546797f398db893d62d5e)
+- fix: bound the canvas frame wait, warn on an empty canvas (Ref #486) [`de521b8`](https://github.com/zumerlab/snapdom/commit/de521b819afad1586bfdb91677d8e6b0a6b2639d)
+- fix: let &lt;use&gt; icons inherit fill from the use site (Ref #487) [`1b6cd96`](https://github.com/zumerlab/snapdom/commit/1b6cd968d5ecce1bc125619eda6baf38bb18c105)
+
 #### [v2.24.3](https://github.com/zumerlab/snapdom/compare/v2.24.0...v2.24.3)
 
 > 18 August 2026
