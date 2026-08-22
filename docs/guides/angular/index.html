@@ -4,43 +4,100 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Capture an Angular Component as an Image: SnapDOM</title>
-  <meta name="description" content="Capture an Angular component as PNG or SVG with SnapDOM using viewChild and the correct browser lifecycle." />
+  <meta name="description" content="Capture an Angular component as PNG or SVG with SnapDOM using viewChild, afterNextRender, and safe handling for conditional views and SSR." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/guides/angular/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
   <meta property="og:title" content="Capture an Angular Component as an Image" />
-  <meta property="og:description" content="Capture an Angular component as PNG or SVG with SnapDOM using viewChild and the correct browser lifecycle." />
+  <meta property="og:description" content="Use viewChild and Angular render callbacks to capture the DOM state you intended, including conditional and async content." />
   <meta property="og:url" content="https://snapdom.dev/guides/angular/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture an Angular component","description":"Capture an Angular component as PNG or SVG with SnapDOM using viewChild and the correct browser lifecycle.","url":"https://snapdom.dev/guides/angular/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does SnapDOM have a Angular-specific package?","acceptedAnswer":{"@type":"Answer","text":"No. SnapDOM captures the browser DOM, so the same @zumer/snapdom package works across frameworks."}},{"@type":"Question","name":"When should capture run in Angular?","acceptedAnswer":{"@type":"Answer","text":"Run it in the browser after after rendering and after important fonts, images and asynchronous data are ready."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture an Angular component","description":"Capture an Angular component as PNG or SVG with SnapDOM using viewChild, afterNextRender, and safe handling for conditional views and SSR.","url":"https://snapdom.dev/guides/angular/","datePublished":"2026-07-16","dateModified":"2026-08-22","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does SnapDOM have an Angular-specific package?","acceptedAnswer":{"@type":"Answer","text":"No. Import @zumer/snapdom in the Angular component that owns the element reference. SnapDOM works with the browser DOM rather than Angular internals."}},{"@type":"Question","name":"When should capture run in Angular?","acceptedAnswer":{"@type":"Answer","text":"A button handler can capture the DOM that is already rendered. If that handler first changes a signal or input used by the capture, wait for Angular's afterNextRender callback before calling SnapDOM."}},{"@type":"Question","name":"Why is an Angular capture missing conditional content?","acceptedAnswer":{"@type":"Answer","text":"The view query may be empty because an @if block has not rendered yet, or the capture may run before the state change reaches the DOM. Guard optional viewChild queries and wait for the next render after changing state."}}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://snapdom.dev/guides/"},{"@type":"ListItem","position":3,"name":"Capture an Angular component","item":"https://snapdom.dev/guides/angular/"}]}</script>
 </head>
 <body>
 <script defer src="../../site.js"></script>
   <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
-  <section class="hero"><div class="hero-badge">Framework Guide · Angular 17+</div><h1>Capture a <span class="accent">Angular component</span></h1><p class="lead">Export a rendered Angular component as PNG, SVG or Canvas with the framework’s native element reference.</p></section>
-  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Get the rendered element with <code>viewChild</code>, wait for <code>after rendering</code>, then call SnapDOM.</p></div><section class="prose"><h2>Install and use SnapDOM in Angular</h2><pre class="code-block">import { Component, ElementRef, viewChild } from '@angular/core'
+  <section class="hero"><div class="hero-badge">Framework Guide · Angular</div><h1>Capture an <span class="accent">Angular component</span></h1><p class="lead">Use an Angular view query for the element and a render callback only when the capture depends on a state change made moments earlier.</p></section>
+  <main class="page">
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Read the rendered element from <code>viewChild</code> and call SnapDOM from the click handler. If the same handler first changes a signal, wait for <code>afterNextRender</code> or you will capture the previous view.</p></div>
+
+    <section class="prose">
+      <h2 id="component">Capture the current Angular view</h2>
+      <p>Install <code>@zumer/snapdom</code>, give the capture root a template reference, and keep the download button outside that root.</p>
+      <pre class="code-block">npm install @zumer/snapdom</pre>
+      <pre class="code-block">import { Component, ElementRef, viewChild } from '@angular/core'
 import { snapdom } from '@zumer/snapdom'
 
 @Component({
-  template: '&lt;article #card&gt;Your component&lt;/article&gt;&lt;button (click)="save()"&gt;Download&lt;/button&gt;',
+  selector: 'app-share-card',
+  template: `
+    &lt;article #card&gt;
+      &lt;h2&gt;Quarterly report&lt;/h2&gt;
+      &lt;p&gt;Rendered by Angular.&lt;/p&gt;
+    &lt;/article&gt;
+    &lt;button type="button" (click)="download()"&gt;Download PNG&lt;/button&gt;
+  `,
 })
-export class CardComponent {
-  card = viewChild.required&lt;ElementRef&lt;HTMLElement&gt;&gt;('card')
-  async save() {
-    await snapdom.download(this.card().nativeElement, { format: 'png' })
+export class ShareCardComponent {
+  readonly card = viewChild.required&lt;ElementRef&lt;HTMLElement&gt;&gt;('card')
+
+  async download() {
+    await snapdom.download(this.card().nativeElement, {
+      format: 'png',
+      filename: 'angular-card.png',
+      scale: 2,
+    })
   }
-}</pre></section><section class="prose"><h2>Lifecycle and fidelity</h2><p>SnapDOM captures the DOM Angular has already rendered. Keep the capture attached to the component instance, wait for updates to settle, and use <code>embedFonts: true</code> when the output must travel independently.</p></section><section class="prose"><h2>Browser-only boundary</h2><p>Run capture from client-side interaction. SnapDOM needs layout, computed styles, SVG and Canvas APIs, so it does not execute during server rendering.</p></section>
-    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does SnapDOM have a Angular-specific package?</summary><p>No. SnapDOM captures the browser DOM, so the same @zumer/snapdom package works across frameworks.</p></details><details><summary>When should capture run in Angular?</summary><p>Run it in the browser after after rendering and after important fonts, images and asynchronous data are ready.</p></details></section>
-    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../how-to/export-react-component-as-image/">Component export pattern <span class="arrow">→</span></a><a class="related-card" href="../../how-to/html-to-png/">HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../react/">SnapDOM in React <span class="arrow">→</span></a><a class="related-card" href="../../docs/api/">Export API <span class="arrow">→</span></a></div></section>
-    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../showcase/" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+}</pre>
+      <p>The click happens after the component is mounted, so the required query has a real element. SnapDOM reads Angular’s scoped styles from the computed browser result; it does not need a directive, service, or Angular-specific wrapper.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="state-change">Capture after changing Angular state</h2>
+      <p>Angular does not update the DOM at the line where a signal changes. Wrap <code>afterNextRender</code> in a promise when one action must expand the card and then capture the expanded view. Passing the component injector matters because the helper is registered from an event method, outside Angular’s creation-time injection context.</p>
+      <pre class="code-block">import {
+  afterNextRender, inject, Injector, signal,
+} from '@angular/core'
+
+readonly expanded = signal(false)
+private readonly injector = inject(Injector)
+
+private waitForNextRender() {
+  return new Promise&lt;void&gt;((resolve) =&gt; {
+    afterNextRender(resolve, { injector: this.injector })
+  })
+}
+
+async downloadExpanded() {
+  this.expanded.set(true)
+  await this.waitForNextRender()
+  await this.download()
+}</pre>
+      <p><code>afterNextRender</code> waits for Angular’s next render, not for an API request you have not awaited. Resolve the data first, update the component state, then wait for that render.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="conditional-content">Conditional views, images, and fonts</h2>
+      <p><code>viewChild.required</code> fits an element that is always in the template. If the card lives inside <code>@if</code>, use <code>viewChild&lt;ElementRef&lt;HTMLElement&gt;&gt;('card')</code> and return early when the query is empty. Capturing before the branch exists is the usual cause of a missing or zero-size target.</p>
+      <p>Render completion also does not imply that an image request or web font has finished. If either changes the card’s geometry, await the relevant image’s <code>decode()</code> and <code>document.fonts.ready</code> before capture. Use <code>embedFonts: true</code> when an SVG must carry its font data with it.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="ssr">SSR and hydration</h2>
+      <p>SnapDOM needs browser layout, computed styles, SVG, Canvas, and Image APIs. Keep the call in a browser event path. Angular render callbacks do not run during server rendering or build-time prerendering, and an explicit download button naturally waits until the page is hydrated.</p>
+    </section>
+
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does SnapDOM have an Angular-specific package?</summary><p>No. Import <code>@zumer/snapdom</code> in the component that owns the element reference. SnapDOM works with the browser DOM rather than Angular internals.</p></details><details><summary>When should capture run in Angular?</summary><p>A button handler can capture the DOM that is already rendered. If that handler first changes a signal or input used by the capture, wait for <code>afterNextRender</code> before calling SnapDOM.</p></details><details><summary>Why is conditional content missing?</summary><p>The <code>@if</code> branch may not exist yet, or the capture may be reading the previous render. Guard an optional <code>viewChild</code> query and wait for the next render after changing state.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../how-to/export-dashboard-as-image/">Export an async dashboard <span class="arrow">→</span></a><a class="related-card" href="../../how-to/high-resolution-element/">High-resolution PNG <span class="arrow">→</span></a><a class="related-card" href="../svelte/">SnapDOM in Svelte <span class="arrow">→</span></a><a class="related-card" href="../../docs/options/">Capture options <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Add capture to an Angular component</h2><p>Keep the target in a view query and call SnapDOM from the browser event that owns the download.</p><a href="../../showcase/" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
   </main>  <script defer src="/copy-code.js"></script>
 </body>
 </html>

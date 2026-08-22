@@ -155,7 +155,7 @@ yarn add @zumer/snapdom@dev</pre>
           <tr><th>Stage</th><th>What happens</th></tr>
         </thead>
         <tbody>
-          <tr><td class="feature">Clone</td><td>Deep clone with styles, Shadow DOM, iframes. Exclude/filter nodes.</td></tr>
+          <tr><td class="feature">Clone</td><td>Deep clone with styles, <a href="../how-to/capture-shadow-dom/">open Shadow DOM</a> and <a href="../how-to/capture-iframe/">same-origin iframe</a> content. Exclude or filter nodes when needed.</td></tr>
           <tr><td class="feature">Styles &amp; Pseudo</td><td>Inline <code>::before</code>/<code>::after</code> as elements, resolve <code>counter()</code>/<code>counters()</code>.</td></tr>
           <tr><td class="feature">Images &amp; Backgrounds</td><td>Fetch and inline external images/backgrounds as data URLs.</td></tr>
           <tr><td class="feature">Fonts</td><td>Embed <code>@font-face</code> (optional) and icon fonts.</td></tr>
@@ -178,6 +178,7 @@ yarn add @zumer/snapdom@dev</pre>
         </tbody>
       </table>
       <p>See the <a href="api/">full API reference</a> for every method and the <a href="options/">options reference</a> for everything you can pass.</p>
+      <p>Running the capture from automation or a backend job? Use SnapDOM inside the page controlled by <a href="../compare/playwright/">Playwright</a> or <a href="../compare/puppeteer/">Puppeteer</a>. The <a href="../blog/dom-capture-boundaries/">DOM capture boundaries guide</a> covers workers, SSR and cross-origin frames.</p>
     </section>
 
     <section class="related">
@@ -187,6 +188,8 @@ yarn add @zumer/snapdom@dev</pre>
         <a class="related-card" href="../guides/react/">SnapDOM in React <span class="arrow">→</span></a>
         <a class="related-card" href="../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
         <a class="related-card" href="../plugins.html">Browse community plugins <span class="arrow">→</span></a>
+        <a class="related-card" href="../how-to/capture-full-page/">Capture a full page <span class="arrow">→</span></a>
+        <a class="related-card" href="../blog/dom-capture-boundaries/">DOM capture boundaries <span class="arrow">→</span></a>
       </div>
     </section>
 

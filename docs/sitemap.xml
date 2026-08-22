@@ -6,7 +6,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/plugins.html</loc>
-    <lastmod>2026-05-29</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/labs.html</loc>
@@ -38,7 +38,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/guides/react/</loc>
-    <lastmod>2026-05-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/vue/</loc>
@@ -54,11 +54,11 @@
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/screenshot-a-div/</loc>
-    <lastmod>2026-05-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/html-to-png/</loc>
-    <lastmod>2026-05-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/save-chart-js-as-png/</loc>
@@ -70,15 +70,15 @@
   </url>
   <url>
     <loc>https://snapdom.dev/compare/modern-screenshot/</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/api/</loc>
-    <lastmod>2026-08-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/options/</loc>
@@ -86,13 +86,13 @@
   </url>
   <url>
     <loc>https://snapdom.dev/docs/plugins/</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/cache/</loc>
     <lastmod>2026-06-29</lastmod>
   </url>
-  <url><loc>https://snapdom.dev/how-to/html-to-svg/</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://snapdom.dev/how-to/html-to-svg/</loc><lastmod>2026-08-22</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/html-to-canvas/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/export-dashboard-as-image/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/export-react-component-as-image/</loc><lastmod>2026-07-16</lastmod></url>
@@ -101,16 +101,16 @@
   <url><loc>https://snapdom.dev/how-to/generate-social-card-from-html/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-element-without-puppeteer/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-shadow-dom/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/how-to/capture-iframe/</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://snapdom.dev/how-to/capture-iframe/</loc><lastmod>2026-08-22</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-full-page/</loc><lastmod>2026-08-11</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/high-resolution-element/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-before-pdf/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/visual-regression-screenshot/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/guides/svelte/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/guides/angular/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/guides/lit/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/compare/puppeteer/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/compare/playwright/</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://snapdom.dev/guides/svelte/</loc><lastmod>2026-08-22</lastmod></url>
+  <url><loc>https://snapdom.dev/guides/angular/</loc><lastmod>2026-08-22</lastmod></url>
+  <url><loc>https://snapdom.dev/guides/lit/</loc><lastmod>2026-08-22</lastmod></url>
+  <url><loc>https://snapdom.dev/compare/puppeteer/</loc><lastmod>2026-08-22</lastmod></url>
+  <url><loc>https://snapdom.dev/compare/playwright/</loc><lastmod>2026-08-22</lastmod></url>
   <url><loc>https://snapdom.dev/labs/paint-canvas/</loc><lastmod>2026-07-21</lastmod></url>
   <url><loc>https://snapdom.dev/labs/target-range/</loc><lastmod>2026-07-21</lastmod></url>
   <url><loc>https://snapdom.dev/labs/stop-motion/</loc><lastmod>2026-07-21</lastmod></url>

@@ -3,33 +3,139 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM vs Puppeteer for Screenshots: Compared</title>
-  <meta name="description" content="SnapDOM vs Puppeteer: compare client-side DOM capture with headless-browser automation and choose the right screenshot architecture." />
+  <title>SnapDOM vs Puppeteer: Browser Capture from Node</title>
+  <meta name="description" content="Compare SnapDOM DOM export with Puppeteer screenshots in a Node worker, with accurate recipes for readiness, CSP, SVG and reusable captures." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/puppeteer/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="SnapDOM vs Puppeteer for Screenshots · Compared" />
-  <meta property="og:description" content="SnapDOM vs Puppeteer: compare client-side DOM capture with headless-browser automation and choose the right screenshot architecture." />
+  <meta property="og:title" content="SnapDOM vs Puppeteer: Browser Capture from Node" />
+  <meta property="og:description" content="Compare SnapDOM DOM export with Puppeteer screenshots in a Node worker, with accurate recipes for readiness, CSP, SVG and reusable captures." />
   <meta property="og:url" content="https://snapdom.dev/compare/puppeteer/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"SnapDOM vs Puppeteer","description":"SnapDOM vs Puppeteer: compare client-side DOM capture with headless-browser automation and choose the right screenshot architecture.","url":"https://snapdom.dev/compare/puppeteer/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can SnapDOM replace every Puppeteer screenshot?","acceptedAnswer":{"@type":"Answer","text":"No. It replaces client-side element capture, not remote-page rendering or browser automation."}},{"@type":"Question","name":"Can both be used together?","acceptedAnswer":{"@type":"Answer","text":"Yes. Puppeteer can load a page that uses SnapDOM, though direct browser screenshots may be simpler in an automated workflow."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"SnapDOM vs Puppeteer: Browser Capture from Node","description":"Compare SnapDOM DOM export with Puppeteer screenshots in a Node worker, with accurate recipes for readiness, CSP, SVG and reusable captures.","url":"https://snapdom.dev/compare/puppeteer/","datePublished":"2026-07-16","dateModified":"2026-08-22","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom) and Puppeteer"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can SnapDOM run in a Node service?","acceptedAnswer":{"@type":"Answer","text":"SnapDOM needs browser DOM APIs. A Node service can launch a Puppeteer page, inject the browser bundle, call SnapDOM inside page evaluation and return a data URL to Node."}},{"@type":"Question","name":"When is Page.screenshot the better Puppeteer API?","acceptedAnswer":{"@type":"Answer","text":"Use Page.screenshot or ElementHandle.screenshot for a direct pixel capture of a page, viewport or element. Use SnapDOM in the page for SVG, capture plugins, several exports from one capture or parity with a client-side export."}},{"@type":"Question","name":"Does networkidle2 mean the page is ready to capture?","acceptedAnswer":{"@type":"Answer","text":"It only describes recent network activity. Wait for an application-specific ready signal and for document fonts before taking either kind of capture."}}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Compare","item":"https://snapdom.dev/compare/"},{"@type":"ListItem","position":3,"name":"SnapDOM vs Puppeteer","item":"https://snapdom.dev/compare/puppeteer/"}]}</script>
 </head>
 <body>
 <script defer src="../../site.js"></script>
   <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
-  <section class="hero"><div class="hero-badge">Architecture Comparison</div><h1>SnapDOM vs <span class="accent">Puppeteer</span></h1><p class="lead">Client-side DOM export and browser automation overlap at screenshots, but they solve different deployment problems.</p></section>
-  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p><strong>SnapDOM</strong> captures an element already rendered in the user browser. <strong>Puppeteer</strong> is best for server-side URL rendering, automation and controlled-browser screenshots.</p></div><section class="prose"><h2>Different tools for different execution models</h2><table class="cmp-table"><thead><tr><th>Requirement</th><th>SnapDOM</th><th>Puppeteer</th></tr></thead><tbody><tr><td class="feature">Runs in an existing web app</td><td class="yes">Yes</td><td class="partial">Via automation</td></tr><tr><td class="feature">Needs server infrastructure</td><td class="yes">No</td><td class="no">Usually</td></tr><tr><td class="feature">Capture arbitrary URLs</td><td class="no">No</td><td class="yes">Yes</td></tr><tr><td class="feature">Controlled browser engine</td><td class="no">User browser</td><td class="yes">Yes</td></tr><tr><td class="feature">Element export button</td><td class="yes">Direct</td><td class="partial">Network workflow</td></tr></tbody></table></section><section class="prose"><h2>Choose SnapDOM when</h2><ul><li>The element already exists in the user’s DOM.</li><li>The export should work client-side without uploading private UI.</li><li>You need SVG, PNG, JPEG, WebP, Canvas or Blob from one capture.</li></ul></section><section class="prose"><h2>Choose Puppeteer when</h2><ul><li>You must render without an active user browser.</li><li>You need navigation, authentication automation or full-page URL screenshots.</li><li>Output must come from a controlled browser build.</li></ul><p>This requires a Node service and Chromium, but it solves a broader automation problem.</p></section>
-    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Can SnapDOM replace every Puppeteer screenshot?</summary><p>No. It replaces client-side element capture, not remote-page rendering or browser automation.</p></details><details><summary>Can both be used together?</summary><p>Yes. Puppeteer can load a page that uses SnapDOM, though direct browser screenshots may be simpler in an automated workflow.</p></details></section>
-    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../how-to/capture-element-without-puppeteer/">Capture without Puppeteer <span class="arrow">→</span></a><a class="related-card" href="../html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a><a class="related-card" href="../../how-to/visual-regression-screenshot/">Visual regression capture <span class="arrow">→</span></a><a class="related-card" href="../">All comparisons <span class="arrow">→</span></a></div></section>
-    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../showcase/" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
-  </main>  <script defer src="/copy-code.js"></script>
+  <section class="hero">
+    <div class="hero-badge">Puppeteer integration</div>
+    <h1>SnapDOM vs <span class="accent">Puppeteer</span></h1>
+    <p class="lead">Puppeteer supplies the browser process, page lifecycle and network control for a Node capture worker. Running SnapDOM inside that page adds DOM-derived SVG, plugins and reusable exports.</p>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p>Use <code>Page.screenshot()</code> or <code>ElementHandle.screenshot()</code> for a direct pixel capture. Inject SnapDOM when the worker needs raw SVG, in-page redaction or watermarking, several formats from one capture, or output that follows the same code path as a client-side export.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="decision">What each layer owns</h2>
+      <p>Puppeteer launches or connects to a browser, opens URLs, authenticates, controls requests and chooses when to capture. Its screenshot APIs read the browser’s rendered surface and return a pixel buffer.</p>
+      <p>SnapDOM executes in the page. It clones a selected element, carries over its resolved styles and resources, and creates an SVG data URL. The same <code>CaptureResult</code> can then produce raster output without rebuilding the DOM capture.</p>
+      <div style="overflow-x: auto">
+      <table class="cmp-table">
+        <thead><tr><th>Worker responsibility</th><th>Puppeteer</th><th>SnapDOM in the page</th></tr></thead>
+        <tbody>
+          <tr><td class="feature">Launch or connect to a browser</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Navigate, authenticate and intercept requests</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Viewport or full-page pixels</td><td class="yes"><code>Page.screenshot()</code></td><td class="partial">Capture the document element</td></tr>
+          <tr><td class="feature">Element pixels</td><td class="yes"><code>ElementHandle.screenshot()</code></td><td class="yes">DOM subtree export</td></tr>
+          <tr><td class="feature">Raw SVG</td><td class="no">Pixel screenshot</td><td class="yes"><code>result.url</code></td></tr>
+          <tr><td class="feature">Several formats from one DOM pass</td><td class="partial">Separate screenshot calls</td><td class="yes">One <code>CaptureResult</code></td></tr>
+          <tr><td class="feature">Capture-pipeline plugins</td><td class="no">No capture hooks</td><td class="yes">Lifecycle hooks and exporters</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2 id="native">A direct Puppeteer screenshot</h2>
+      <p>This is the shortest path to an element PNG. Replace the sample <code>data-ready</code> attribute with the signal your application exposes after its data and layout settle.</p>
+      <pre class="code-block">import puppeteer from 'puppeteer'
+
+const browser = await puppeteer.launch()
+const page = await browser.newPage()
+
+await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 })
+await page.goto('https://example.com/report', { waitUntil: 'networkidle2' })
+
+const report = await page.waitForSelector('#report[data-ready="true"]')
+await report.screenshot({ path: 'report.png' })
+
+await browser.close()</pre>
+      <p>For the entire scrollable document, call <code>page.screenshot({ path: 'page.png', fullPage: true })</code>. Puppeteer lists both page and element forms in its <a href="https://pptr.dev/guides/screenshots" target="_blank" rel="noopener">screenshot guide</a>.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="inject">Create SVG and PNG in one Puppeteer page</h2>
+      <p>Set CSP bypass before navigation when the target policy would block the injected bundle. The evaluated function waits for fonts, captures the element once, and returns strings that Puppeteer can serialize back to Node.</p>
+      <pre class="code-block">import puppeteer from 'puppeteer'
+import { writeFile } from 'node:fs/promises'
+
+const browser = await puppeteer.launch()
+const page = await browser.newPage()
+
+await page.setBypassCSP(true)
+await page.goto('https://example.com/report', { waitUntil: 'networkidle2' })
+await page.waitForSelector('#report[data-ready="true"]')
+await page.addScriptTag({
+  url: 'https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.js'
+})
+
+const artifacts = await page.$eval('#report', async element =&gt; {
+  await document.fonts.ready
+  const capture = await window.snapdom(element, { embedFonts: true })
+  const canvas = await capture.toCanvas({ dpr: 2 })
+
+  return {
+    svgURL: capture.url,
+    pngURL: canvas.toDataURL('image/png')
+  }
+})
+
+const svgData = artifacts.svgURL.slice(artifacts.svgURL.indexOf(',') + 1)
+const pngData = artifacts.pngURL.slice(artifacts.pngURL.indexOf(',') + 1)
+
+await Promise.all([
+  writeFile('report.svg', decodeURIComponent(svgData)),
+  writeFile('report.png', Buffer.from(pngData, 'base64'))
+])
+
+await browser.close()</pre>
+      <p>The browser bundle exposes <code>window.snapdom</code>. A local or air-gapped worker can pass the installed IIFE bundle through <code>addScriptTag({ content })</code> instead of fetching the CDN URL. Puppeteer documents <a href="https://pptr.dev/api/puppeteer.page.addscripttag" target="_blank" rel="noopener"><code>Page.addScriptTag()</code></a> and notes that <a href="https://pptr.dev/api/puppeteer.page.setbypasscsp" target="_blank" rel="noopener"><code>setBypassCSP()</code></a> must run before navigation because CSP is initialized while the page loads.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="operations">Readiness and worker operations</h2>
+      <p><code>networkidle2</code> is a network checkpoint. A WebSocket app can be ready while the network remains active, and a quiet page can still be waiting for a chart animation or client-side state transition. Prefer an application-specific selector or JavaScript condition, then wait for fonts before either capture path.</p>
+      <ul>
+        <li>Pin the Puppeteer and browser versions used by the worker so output does not drift between deployments.</li>
+        <li>Use the full <code>puppeteer</code> package when its managed browser download fits the deployment; use <code>puppeteer-core</code> when the service supplies or connects to the browser.</li>
+        <li>Keep authentication, request policy, timeouts and browser-process recycling in the Puppeteer layer.</li>
+        <li>Keep DOM capture options and plugins inside the page, next to <code>window.snapdom</code>.</li>
+      </ul>
+      <p>Current Puppeteer releases support Chrome and Firefox; the protocols and supported versions differ. Check the project’s <a href="https://pptr.dev/supported-browsers" target="_blank" rel="noopener">supported-browser table</a> when selecting a worker image.</p>
+    </section>
+
+    <section class="prose faq">
+      <h2 id="faq">Frequently asked questions</h2>
+      <details><summary>Can SnapDOM run in a Node service?</summary><p>SnapDOM needs browser DOM APIs. A Node service can launch a Puppeteer page, inject the browser bundle, call SnapDOM inside page evaluation and return a data URL to Node.</p></details>
+      <details><summary>When is <code>Page.screenshot()</code> the better Puppeteer API?</summary><p>Use <code>Page.screenshot()</code> or <code>ElementHandle.screenshot()</code> for a direct pixel capture of a page, viewport or element. Use SnapDOM in the page for SVG, capture plugins, several exports from one capture or parity with a client-side export.</p></details>
+      <details><summary>Does <code>networkidle2</code> mean the page is ready to capture?</summary><p>It only describes recent network activity. Wait for an application-specific ready signal and for <code>document.fonts.ready</code> before taking either kind of capture.</p></details>
+    </section>
+
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../how-to/capture-element-without-puppeteer/">Capture without Puppeteer <span class="arrow">→</span></a><a class="related-card" href="../../how-to/html-to-svg/">Export HTML to SVG <span class="arrow">→</span></a><a class="related-card" href="../playwright/">SnapDOM vs Playwright <span class="arrow">→</span></a><a class="related-card" href="../">All comparisons <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Run DOM capture in your page</h2><p>Install SnapDOM in the application, or inject the browser bundle from a Puppeteer worker.</p><a href="../../docs/" class="btn btn-primary">Read the API docs</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+  </main>
+  <script defer src="/copy-code.js"></script>
 </body>
 </html>

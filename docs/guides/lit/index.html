@@ -4,45 +4,108 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Capture a Lit Component as an Image: SnapDOM</title>
-  <meta name="description" content="Capture a Lit component as PNG or SVG with SnapDOM using renderRoot query and the correct browser lifecycle." />
+  <meta name="description" content="Capture a Lit component as PNG or SVG with SnapDOM using renderRoot and updateComplete, with guidance for Shadow DOM and nested updates." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/guides/lit/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
   <meta property="og:title" content="Capture a Lit Component as an Image" />
-  <meta property="og:description" content="Capture a Lit component as PNG or SVG with SnapDOM using renderRoot query and the correct browser lifecycle." />
+  <meta property="og:description" content="Capture a Lit render root accurately, including scoped styles, open Shadow DOM, and nested reactive components." />
   <meta property="og:url" content="https://snapdom.dev/guides/lit/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture a Lit component","description":"Capture a Lit component as PNG or SVG with SnapDOM using renderRoot query and the correct browser lifecycle.","url":"https://snapdom.dev/guides/lit/","datePublished":"2026-07-16","dateModified":"2026-07-16","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does SnapDOM have a Lit-specific package?","acceptedAnswer":{"@type":"Answer","text":"No. SnapDOM captures the browser DOM, so the same @zumer/snapdom package works across frameworks."}},{"@type":"Question","name":"When should capture run in Lit?","acceptedAnswer":{"@type":"Answer","text":"Run it in the browser after updateComplete and after important fonts, images and asynchronous data are ready."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture a Lit component","description":"Capture a Lit component as PNG or SVG with SnapDOM using renderRoot and updateComplete, with guidance for Shadow DOM and nested updates.","url":"https://snapdom.dev/guides/lit/","datePublished":"2026-07-16","dateModified":"2026-08-22","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does SnapDOM have a Lit-specific package?","acceptedAnswer":{"@type":"Answer","text":"No. Import @zumer/snapdom in the Lit element and pass it either the host or an element from renderRoot."}},{"@type":"Question","name":"Does Lit updateComplete wait for child components?","acceptedAnswer":{"@type":"Answer","text":"Not by default. It resolves when the current element finishes updating. Await a known child's updateComplete too, or wait for the next animation frame when the capture depends on a descendant tree."}},{"@type":"Question","name":"Can SnapDOM capture a Lit shadow root?","acceptedAnswer":{"@type":"Answer","text":"Yes. SnapDOM captures open Shadow DOM and its scoped styles. Query inside renderRoot when you want only one internal region instead of the entire custom-element host."}}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://snapdom.dev/guides/"},{"@type":"ListItem","position":3,"name":"Capture a Lit component","item":"https://snapdom.dev/guides/lit/"}]}</script>
 </head>
 <body>
 <script defer src="../../site.js"></script>
   <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
-  <section class="hero"><div class="hero-badge">Framework Guide · Lit 3</div><h1>Capture a <span class="accent">Lit component</span></h1><p class="lead">Export a rendered Lit component as PNG, SVG or Canvas with the framework’s native element reference.</p></section>
-  <main class="page"><div class="tldr"><div class="tldr-label">TL;DR</div><p>Get the rendered element with <code>renderRoot query</code>, wait for <code>updateComplete</code>, then call SnapDOM.</p></div><section class="prose"><h2>Install and use SnapDOM in Lit</h2><pre class="code-block">import { LitElement, html } from 'lit'
+  <section class="hero"><div class="hero-badge">Framework Guide · Lit 3</div><h1>Capture a <span class="accent">Lit component</span></h1><p class="lead">Choose the host or one node inside <code>renderRoot</code>, then wait for the reactive updates that own that exact subtree.</p></section>
+  <main class="page">
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Await <code>this.updateComplete</code>, query the card inside <code>this.renderRoot</code>, and pass that element to SnapDOM. A parent’s promise does not automatically wait for reactive child elements.</p></div>
+
+    <section class="prose">
+      <h2 id="component">Capture one region inside a Lit element</h2>
+      <p>The button and card share a shadow root here. Querying <code>#card</code> captures the card without including the download control.</p>
+      <pre class="code-block">npm install @zumer/snapdom</pre>
+      <pre class="code-block">import { LitElement, css, html } from 'lit'
 import { snapdom } from '@zumer/snapdom'
 
 class ShareCard extends LitElement {
+  static styles = css`
+    article { padding: 24px; border-radius: 16px; background: white; }
+  `
+
   async save() {
     await this.updateComplete
+
     const card = this.renderRoot.querySelector('#card')
-    await snapdom.download(card, { format: 'png', filename: 'card' })
+    if (!(card instanceof HTMLElement)) return
+
+    await snapdom.download(card, {
+      format: 'png',
+      filename: 'lit-card.png',
+      scale: 2,
+    })
   }
+
   render() {
-    return html`&lt;article id="card"&gt;Your component&lt;/article&gt;
-      &lt;button @click=${this.save}&gt;Download PNG&lt;/button&gt;`
+    return html`
+      &lt;article id="card"&gt;
+        &lt;h2&gt;Quarterly report&lt;/h2&gt;
+        &lt;p&gt;Rendered inside Lit Shadow DOM.&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;button type="button" @click=${this.save}&gt;Download PNG&lt;/button&gt;
+    `
   }
-}</pre></section><section class="prose"><h2>Lifecycle and fidelity</h2><p>SnapDOM captures the DOM Lit has already rendered. Keep the capture attached to the component instance, wait for updates to settle, and use <code>embedFonts: true</code> when the output must travel independently.</p></section><section class="prose"><h2>Browser-only boundary</h2><p>Run capture from client-side interaction. SnapDOM needs layout, computed styles, SVG and Canvas APIs, so it does not execute during server rendering.</p></section>
-    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does SnapDOM have a Lit-specific package?</summary><p>No. SnapDOM captures the browser DOM, so the same @zumer/snapdom package works across frameworks.</p></details><details><summary>When should capture run in Lit?</summary><p>Run it in the browser after updateComplete and after important fonts, images and asynchronous data are ready.</p></details></section>
-    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../how-to/export-react-component-as-image/">Component export pattern <span class="arrow">→</span></a><a class="related-card" href="../../how-to/html-to-png/">HTML to PNG <span class="arrow">→</span></a><a class="related-card" href="../react/">SnapDOM in React <span class="arrow">→</span></a><a class="related-card" href="../../docs/api/">Export API <span class="arrow">→</span></a></div></section>
-    <section class="cta-section"><div class="cta-card"><h2>Capture it in the browser</h2><p>Install SnapDOM and turn the DOM your users already see into a portable image.</p><a href="../../showcase/" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
+}
+
+customElements.define('share-card', ShareCard)</pre>
+      <p>Lit’s default <code>renderRoot</code> is an open shadow root. SnapDOM preserves its computed styles, CSS variables, pseudo-elements, and open Shadow DOM. No light-DOM copy is needed.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="host-or-child">Capture the host or the internal card</h2>
+      <p>Pass <code>this</code> to capture the custom-element host and its open shadow tree. Pass the queried <code>#card</code> when the host’s margins, slot layout, or controls should stay out of the image. Starting from the smallest meaningful root also avoids processing unrelated nodes.</p>
+      <pre class="code-block">// Host box plus its open shadow tree
+await snapdom.toPng(this)
+
+// Only the internal export surface
+const card = this.renderRoot.querySelector('#card')
+if (card) await snapdom.toPng(card)</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="nested-updates">What updateComplete does not wait for</h2>
+      <p><code>this.updateComplete</code> resolves after this element’s update. It does not, by default, wait for every Lit descendant. If a reactive child draws the chart being exported, await that child too.</p>
+      <pre class="code-block">await this.updateComplete
+
+const chart = this.renderRoot.querySelector('sales-chart')
+if (chart?.updateComplete) await chart.updateComplete
+
+const card = this.renderRoot.querySelector('#card')
+if (card) await snapdom.download(card, { filename: 'report.png' })</pre>
+      <p>For an unknown descendant tree, waiting for the next <code>requestAnimationFrame</code> lets Lit’s pending microtasks drain before the browser paints. Neither wait finishes network requests: await the data promise, image <code>decode()</code>, or <code>document.fonts.ready</code> when those resources alter layout.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="failure-modes">Lit-specific failure modes</h2>
+      <ul><li><strong>The query returns null:</strong> the method ran before the first update, or a conditional template did not render the target. Await <code>updateComplete</code> and keep the null guard.</li><li><strong>A nested chart is stale:</strong> the parent completed while the child still had an update queued. Await the child’s <code>updateComplete</code>.</li><li><strong>The host capture misses internals:</strong> SnapDOM can traverse an open shadow root, but the browser does not expose a closed one through <code>element.shadowRoot</code>. Capture a known internal node if your own component deliberately creates a closed root.</li></ul>
+    </section>
+
+    <section class="prose">
+      <h2 id="ssr">Lit SSR boundary</h2>
+      <p>Lit can render templates on the server, but SnapDOM needs the client’s layout and computed styles. Run the capture after the custom element connects and updates in the browser. A click handler already satisfies that boundary.</p>
+    </section>
+
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Does SnapDOM have a Lit-specific package?</summary><p>No. Import <code>@zumer/snapdom</code> in the Lit element and pass it either the host or an element from <code>renderRoot</code>.</p></details><details><summary>Does updateComplete wait for child components?</summary><p>Not by default. It resolves when the current element finishes updating. Await a known child’s <code>updateComplete</code> too, or wait for the next animation frame when the capture depends on a descendant tree.</p></details><details><summary>Can SnapDOM capture a Lit shadow root?</summary><p>Yes. SnapDOM captures open Shadow DOM and its scoped styles. Query inside <code>renderRoot</code> when you want only one internal region instead of the entire host.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../how-to/capture-shadow-dom/">Capture Shadow DOM <span class="arrow">→</span></a><a class="related-card" href="../../how-to/html-to-svg/">HTML to SVG <span class="arrow">→</span></a><a class="related-card" href="../svelte/">SnapDOM in Svelte <span class="arrow">→</span></a><a class="related-card" href="../../docs/options/">Capture options <span class="arrow">→</span></a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Export a Lit render root</h2><p>Choose the host or one node inside <code>renderRoot</code>, wait for its update, and pass that DOM element to SnapDOM.</p><a href="../../showcase/" class="btn btn-primary">Open the demo</a><a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">Install from npm</a></div></section>
   </main>  <script defer src="/copy-code.js"></script>
 </body>
 </html>

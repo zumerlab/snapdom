@@ -230,7 +230,7 @@ The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)**, k
 - **[Plugins](https://snapdom.dev/docs/plugins/)**: build, register and ship custom plugins and export formats. Browse community plugins on the [plugins page](https://snapdom.dev/plugins.html).
 - **[Cache & preCache](https://snapdom.dev/docs/cache/)**: control caching between captures and preload resources.
 
-Popular guides: **[capture before creating a PDF](https://snapdom.dev/how-to/capture-before-pdf/)** · **[SnapDOM vs modern-screenshot](https://snapdom.dev/compare/modern-screenshot/)** · **[how SnapDOM captures the DOM](https://snapdom.dev/blog/painting-without-canvas/)**
+Popular guides: **[convert HTML to PNG](https://snapdom.dev/how-to/html-to-png/)** · **[tile a full-page capture](https://snapdom.dev/blog/huge-page-mosaic/)** · **[run SnapDOM from Playwright or Puppeteer](https://snapdom.dev/blog/dom-capture-boundaries/)** · **[how SnapDOM captures the DOM](https://snapdom.dev/blog/painting-without-canvas/)**
 
 ### API at a glance
 
