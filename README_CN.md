@@ -252,8 +252,8 @@ document.body.appendChild(png);
 ## 限制
 
 * 外部图片需要允许跨源访问；如果被跨源拦截，可使用 `useProxy` 选项。
-* Safari 不支持以 WebP 导出时，会回退为 PNG。
-* SnapDOM 对 `@font-face` CSS 规则的支持较完善；如需使用 JavaScript `FontFace()`，请参阅 [`#43`](https://github.com/zumerlab/snapdom/issues/43) 中的解决方案。
+* Safari 不支持以 WebP 导出时，会回退为 PNG（已在 Safari 26.5 验证：`canvas.toDataURL('image/webp')` 返回 PNG）。`download()` 仍使用 `.webp` 文件名，因此保存下来的文件实际是 PNG 数据。
+* SnapDOM 对 `@font-face` CSS 规则的支持较完善；通过 JavaScript `FontFace()` 注册的字体**不会**被自动嵌入：请在 `localFonts` 选项中显式列出（`{ family, src }`），或参阅 [`#43`](https://github.com/zumerlab/snapdom/issues/43) 中的解决方案。
 * **Safari**：启用 `embedFonts`，或待捕获元素包含背景图/蒙版图时，受 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770)（字体解码时机）影响，捕获速度会变慢。SnapDOM 会等待该元素实际使用的字体就绪，并校验首次 canvas 绘制是否成功，无需额外配置。
 * **自定义滚动条样式**（`::-webkit-scrollbar`）：仅当元素**尚未滚动**时保留。元素滚动后，SnapDOM 会捕获当前视口中的内容，但不会包含滚动条。
 
