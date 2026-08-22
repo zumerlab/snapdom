@@ -131,7 +131,7 @@ Defaults as normalized in `src/core/context.js`.
 
 Plugins are plain objects with lifecycle hooks, registered globally (`snapdom.plugins(...)`, deduped by `name`) or per-capture (`{ plugins: [...] }`, where locals override globals by name).
 
-- **Hooks** (in order): `beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport → afterSnap`.
+- **Hooks** (in order): `beforeSnap → beforeClone → afterClone → beforeRender → afterRender → [per export: beforeExport → afterExport] → afterSnap` (once). Plus `resolveNode(node, ctx)`, which runs per element during the clone walk (return a Node to replace it, `null` to skip it, `undefined` to continue).
 - **Custom exporters** — a plugin's `defineExports` can add or override export formats; each becomes a `to<Name>()` helper on the result object and gets the same export pipeline as core formats.
 - **Accepted forms** — plain object, `[factory, options]`, `{ plugin, options }`, or a factory function.
 

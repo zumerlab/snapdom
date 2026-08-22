@@ -227,20 +227,40 @@ export interface SnapdomOptions {
  * Capture context (hook state)
  * ========================= */
 
+/**
+ * Union of the two runtime context shapes. Which fields actually exist depends on the hook:
+ *
+ * - Clone-phase hooks (beforeSnap, beforeClone, afterClone, beforeRender, afterRender) get the
+ *   capture state: `element`, `options`, `plugins`, `clone`, `classCSS`, `styleCache`, `nodeMap`,
+ *   `fontsCSS`, `baseCSS`, `scrollbarCSS`, `svgString`, `dataURL`. Capture options are NOT
+ *   flattened onto it there: read them from `ctx.options`.
+ * - Export-phase hooks (beforeExport, afterExport, defineExports) get a spread of the normalized
+ *   options plus `element`, `meta`, `export` and (in defineExports) `exports`. There is no
+ *   `clone` or `nodeMap` at that point: the clone is already serialized.
+ *
+ * Consequence: data stashed as `ctx.__x` in afterClone is invisible in defineExports. Mirror it
+ * on `ctx.options.__x`, which is the object the export context is spread from.
+ */
 export interface CaptureContext extends SnapdomOptions {
-  /** Input element being captured. */
+  /** Input element being captured. Present in every hook. */
   element: Element;
 
-  /** Cloned root (detached), available after `beforeClone`/`afterClone`. */
+  /** Normalized capture options. Present in clone-phase hooks only (export hooks are spread from it). */
+  options?: SnapdomOptions & Record<string, any>;
+
+  /** Cloned root (detached). Clone-phase hooks only, from `afterClone` onward. */
   clone?: HTMLElement | SVGElement | null;
 
-  /** Internal style/class caches (opaque to user). */
+  /** Internal style/class caches (opaque to user). Clone-phase hooks only. */
   classCSS?: string;
   styleCache?: unknown;
   fontsCSS?: string;
   baseCSS?: string;
+  scrollbarCSS?: string;
+  /** Clone node → source node map for this capture. Clone-phase hooks only. */
+  nodeMap?: Map<Node, Node>;
 
-  /** Serialized artifacts, available after render. */
+  /** Serialized artifacts, available after render. Clone-phase hooks only. */
   svgString?: string;
   dataURL?: string;
 
@@ -269,7 +289,7 @@ export interface CaptureContext extends SnapdomOptions {
 
 export type Exporter = (ctx: CaptureContext, opts?: any) => Promise<any>;
 
-/** Map returned by `defineExports`: keys are exposed on the result (e.g., `pdf` → `result.toPdf()` as well as `result['pdf']()`). */
+/** Map returned by `defineExports`: keys are exposed on the result as a `to<Name>()` helper and through `to(name)` (e.g. `pdf` → `result.toPdf()` and `result.to('pdf')`). */
 export type ExportMap = Record<string, Exporter>;
 
 /* =========================
@@ -288,16 +308,25 @@ export interface SnapdomPlugin {
   afterRender?(context: CaptureContext): void | Promise<void>;
 
   /** Runs before EACH export. */
-  beforeExport?(context: CaptureContext): void | Promise<void>;
+  beforeExport?(
+    context: CaptureContext,
+    payload: { format: string; options: any }
+  ): void | Promise<void>;
   /**
-   * Runs after EACH export; returning a value will be chained to the next plugin
-   * (transform pipeline). If undefined is returned, the prior result is preserved.
+   * Runs after EACH export. Observation only: the value returned here becomes the payload
+   * passed to the next plugin's afterExport, but what the caller receives from
+   * toPng()/toBlob()/... is always what the exporter produced. To change an output,
+   * register your own export with `defineExports`.
    */
-  afterExport?(context: CaptureContext, result: any): any | Promise<any>;
+  afterExport?(
+    context: CaptureContext,
+    payload: { format: string; options: any; result: any }
+  ): any | Promise<any>;
 
   /**
    * Provide custom exporters (e.g., { pdf: async (ctx, opts) => Blob }).
-   * Keys are exposed on the capture result as helpers (toPdf()) and as index access (result['pdf']()).
+   * Keys are exposed on the capture result as a `to<Name>()` helper (toPdf()) and through
+   * `to(name)` (result.to('pdf')). Bare index access (result.pdf()) is NOT generated.
    */
   defineExports?(context: CaptureContext): ExportMap | Promise<ExportMap>;
 
@@ -387,10 +416,11 @@ export interface CaptureResult {
 
   /**
    * Custom exporters exposed by plugins:
-   * - As helpers: a plugin returning { pdf: (...) => ... } also enables result.toPdf(...)
-   * - As index access: result["pdf"](...)
+   * - As helpers: a plugin returning { pdf: (...) => ... } enables result.toPdf(...)
+   * - By name: result.to('pdf', options)
    *
-   * Since keys are not known ahead of time, we allow index access.
+   * The index signature exists because helper names are not known ahead of time; it does
+   * not mean result['pdf']() is defined (it is not: only the toX() helper is generated).
    */
   [key: string]: any;
 }

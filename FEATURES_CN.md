@@ -131,7 +131,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 
 插件是包含生命周期钩子的普通对象，可以全局注册（`snapdom.plugins(...)`，按 `name` 去重），也可以只为单次捕获注册（`{ plugins: [...] }`，同名的局部插件会覆盖全局插件）。
 
-- **钩子**（按顺序）：`beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport → afterSnap`。
+- **钩子**（按顺序）：`beforeSnap → beforeClone → afterClone → beforeRender → afterRender → [每次导出：beforeExport → afterExport] → afterSnap`（仅一次）。另有 `resolveNode(node, ctx)`，在克隆遍历时逐个元素调用（返回 Node 替换该节点，返回 `null` 跳过，返回 `undefined` 继续默认流程）。
 - **自定义导出方法** — 插件的 `defineExports` 可以新增或覆盖导出格式；每种格式都会在结果对象上生成对应的 `to<Name>()` 方法，并复用与内置格式相同的导出流程。
 - **支持的写法** — 普通对象、`[factory, options]`、`{ plugin, options }` 或工厂函数。
 

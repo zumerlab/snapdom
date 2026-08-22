@@ -97,15 +97,17 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pr
           <tr><th>Plugin</th><th>Category</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">picture-resolver</td><td class="feature">Capture</td><td>Resolves lazy-loaded <code>&lt;picture&gt;</code> placeholders. Detects base64 stubs and fetches the real image before capture.</td></tr>
+          <tr><td class="num">agent-map</td><td class="feature">Export</td><td>Set-of-Mark package for visual agents: <code>toAgentMap()</code> returns an annotated screenshot plus a numbered map of interactive elements with roles, names and bounding boxes.</td></tr>
+          <tr><td class="num">html-export</td><td class="feature">Export</td><td>Adds <code>toHtml()</code>: the capture as a self-contained, re-renderable HTML document instead of pixels.</td></tr>
+          <tr><td class="num">gif-export</td><td class="feature">Export</td><td>Adds <code>toGif()</code>: records the live element over time and encodes an animated GIF in the browser.</td></tr>
+          <tr><td class="num">video-export</td><td class="feature">Export</td><td>Adds <code>toMp4()</code>: records the element with MediaRecorder (MP4 where supported, WebM otherwise).</td></tr>
           <tr><td class="num">timestamp-overlay</td><td class="feature">Transform</td><td>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</td></tr>
           <tr><td class="num">filter</td><td class="feature">Transform</td><td>Applies CSS filter effects to captures. Ships with presets: <code>grayscale</code>, <code>sepia</code>, <code>blur</code>, <code>vintage</code>, <code>dramatic</code>.</td></tr>
           <tr><td class="num">replace-text</td><td class="feature">Transform</td><td>Find-and-replace text in the captured clone. Supports strings and regex patterns.</td></tr>
           <tr><td class="num">color-tint</td><td class="feature">Transform</td><td>Tints the entire capture to a specified color using an overlay with <code>mix-blend-mode</code>.</td></tr>
           <tr><td class="num">ascii-export</td><td class="feature">Export</td><td>Adds a <code>toAscii()</code> method that converts captures to ASCII art. Configurable width, charset, and luminance.</td></tr>
           <tr><td class="num">pdf-image</td><td class="feature">Export</td><td>Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.</td></tr>
-          <tr><td class="num">html-in-canvas</td><td class="feature">Export</td><td>Uses the experimental WICG <code>drawElementImage</code> API for direct DOM-to-canvas rendering where supported.</td></tr>
-          <tr><td class="num">prompt-export</td><td class="feature">Export</td><td>LLM-friendly capture: adds a <code>toPrompt()</code> method that returns an annotated screenshot, structured element map with bounding boxes, and a pre-formatted text prompt.</td></tr>
+          <tr><td class="num">html-in-canvas</td><td class="feature">Export</td><td>Uses the experimental WICG <code>drawElement</code> API for direct DOM-to-canvas rendering where supported (Chrome with <code>chrome://flags/#canvas-draw-element</code>).</td></tr>
         </tbody>
       </table>
       <p>Community plugins are listed on the <a href="../../plugins.html">plugins showcase page</a>. To submit your plugin, open a PR adding one line to <code>community-plugins.md</code> (see <code>CONTRIBUTING_PLUGINS.md</code>).</p>
@@ -161,28 +163,37 @@ snapdom.plugins(
           <tr><td class="num">beforeRender</td><td class="feature">Pre-serialize</td><td>Right before SVG → data URL.</td></tr>
           <tr><td class="num">afterRender</td><td class="feature">Post-serialize</td><td>Inspect <code>context.svgString</code> / <code>context.dataURL</code>.</td></tr>
           <tr><td class="num">beforeExport</td><td class="feature">Per export</td><td>Before each <code>toPng</code>, <code>toSvg</code>, etc.</td></tr>
-          <tr><td class="num">afterExport</td><td class="feature">Per export</td><td>Transform returned result.</td></tr>
+          <tr><td class="num">afterExport</td><td class="feature">Per export</td><td>Observe the produced result (it cannot replace it).</td></tr>
           <tr><td class="num">afterSnap</td><td class="feature">Once</td><td>After first export; cleanup.</td></tr>
           <tr><td class="num">defineExports</td><td class="feature">Setup</td><td>Add custom exporters (e.g. <code>toPdf</code>).</td></tr>
+          <tr><td class="num">resolveNode</td><td class="feature">Per node</td><td>Replace or skip individual nodes while the clone is built.</td></tr>
         </tbody>
       </table>
-      <p class="muted">Hook order: <code>beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport</code> (with <code>afterSnap</code> firing once after the first export). Returned values from <code>afterExport</code> are chained to the next plugin (transform pipeline).</p>
+      <p class="muted">Hook order: <code>beforeSnap → beforeClone → afterClone → beforeRender → afterRender → [per export: beforeExport → afterExport] → afterSnap</code> (once, after the first export). What <code>afterExport</code> returns becomes the payload for the next plugin's <code>afterExport</code>; it does not change the value the caller gets back. To produce a different output, add your own export with <code>defineExports</code>.</p>
     </section>
 
     <section class="prose">
       <h2 id="context">Context object</h2>
-      <p>Every hook receives a single <code>context</code> object that contains normalized capture state:</p>
+      <p>There are two context shapes, and mixing them up is the most common plugin bug.</p>
       <ul>
-        <li><strong>Input &amp; options:</strong> <code>element</code>, <code>debug</code>, <code>fast</code>, <code>scale</code>, <code>dpr</code>, <code>width</code>, <code>height</code>, <code>backgroundColor</code>, <code>quality</code>, <code>useProxy</code>, <code>cache</code>, <code>outerTransforms</code>, <code>outerShadows</code>, <code>compress</code>, <code>embedFonts</code>, <code>localFonts</code>, <code>iconFonts</code>, <code>excludeFonts</code>, <code>exclude</code>, <code>excludeMode</code>, <code>filter</code>, <code>filterMode</code>, <code>fallbackURL</code>.</li>
-        <li><strong>Intermediate values</strong> (depending on stage): <code>clone</code>, <code>classCSS</code>, <code>styleCache</code>, <code>fontsCSS</code>, <code>baseCSS</code>, <code>svgString</code>, <code>dataURL</code>.</li>
-        <li><strong>During export:</strong> <code>context.export = { type, options, url }</code> where <code>type</code> is the exporter name (<code>"png"</code>, <code>"jpeg"</code>, <code>"svg"</code>, <code>"blob"</code>, etc.), and <code>url</code> is the serialized SVG base.</li>
+        <li><strong>Clone-phase hooks</strong> (<code>beforeSnap</code>, <code>beforeClone</code>, <code>afterClone</code>, <code>beforeRender</code>, <code>afterRender</code>) receive the capture state: <code>element</code>, <code>options</code>, <code>plugins</code>, then <code>clone</code>, <code>classCSS</code>, <code>styleCache</code>, <code>nodeMap</code> (from <code>afterClone</code>), <code>fontsCSS</code>, <code>baseCSS</code>, <code>scrollbarCSS</code> (from <code>beforeRender</code>) and <code>svgString</code>, <code>dataURL</code> (from <code>afterRender</code>). Capture options are <strong>not</strong> flattened here: read them from <code>context.options</code>.</li>
+        <li><strong>Export-phase hooks</strong> (<code>beforeExport</code>, <code>afterExport</code>, <code>defineExports</code>) receive a spread of the normalized options (<code>scale</code>, <code>dpr</code>, <code>width</code>, <code>height</code>, <code>quality</code>, <code>backgroundColor</code>, <code>embedFonts</code>, <code>clip</code>, <code>compress</code>, …) plus <code>element</code>, <code>meta</code> and <code>context.export = { type, options, requestedOptions, url }</code>, where <code>url</code> is the serialized SVG base. <code>defineExports</code> also gets <code>context.exports</code>, a silent facade over the core exporters. There is no <code>clone</code> here: it is already serialized.</li>
       </ul>
-      <p class="muted">You may safely modify <code>context</code> (e.g. override <code>backgroundColor</code> or <code>quality</code>), but do so early (<code>beforeSnap</code>) for global effects or in <code>beforeExport</code> for single-export changes.</p>
+      <p><strong>Passing data from the clone phase to an export.</strong> Setting <code>context.__myData</code> in <code>afterClone</code> does <em>not</em> reach <code>defineExports</code>: they are different objects. Mirror it on <code>context.options</code>, which is what the export context is spread from:</p>
+      <pre class="code-block">afterClone(context) {
+  const data = collect(context.clone);
+  context.__myData = data;                                 // later clone-phase hooks
+  if (context.options) context.options.__myData = data;    // export hooks / defineExports
+},
+defineExports() {
+  return { mine: async (ctx) =&gt; ctx.__myData };
+}</pre>
+      <p class="muted">You may safely modify the context (e.g. override <code>backgroundColor</code> or <code>quality</code>), but do so early (<code>beforeSnap</code>, on <code>context.options</code>) for global effects, or in <code>beforeExport</code> for single-export changes.</p>
     </section>
 
     <section class="prose">
       <h2 id="custom-exports">Custom exports via plugins</h2>
-      <p>Plugins can add new exports using <code>defineExports(context)</code>. For each export key you return (e.g. <code>"pdf"</code>), SnapDOM automatically exposes a helper method named <code>toPdf()</code> on the capture result.</p>
+      <p>Plugins can add new exports using <code>defineExports(context)</code>. For each export key you return (e.g. <code>"pdf"</code>), SnapDOM exposes a helper named <code>toPdf()</code> on the capture result, plus <code>result.to('pdf')</code>. Bare <code>result.pdf()</code> is not generated.</p>
       <p><strong>Register the plugin</strong> (global or per capture):</p>
       <pre class="code-block">import { snapdom } from '@zumer/snapdom';
 
@@ -285,13 +296,13 @@ document.body.appendChild(png);</pre>
     async afterRender(context) {},
 
     /** Before EACH export call (toPng/toSvg/toBlob/...). */
-    async beforeExport(context) {},
+    async beforeExport(context, { format, options }) {},
 
     /**
-     * After EACH export call.
-     * If you return a value, it becomes the result for the next plugin (chaining).
+     * After EACH export call. Observation only: what you return becomes the payload for
+     * the next plugin, not the value the caller receives.
      */
-    async afterExport(context, result) { return result; },
+    async afterExport(context, { format, options, result }) {},
 
     /**
      * Define custom exporters (auto-added as helpers like out.toPdf()).

@@ -58,7 +58,9 @@ Both show up in the same plugin directory on the site.
 - Export as both named and default export
 
 **Hooks:**
-`beforeSnap` → `beforeClone` → `afterClone` → `beforeRender` → `afterRender` → `beforeExport` → `afterExport` + `defineExports`
+`beforeSnap` → `beforeClone` → `afterClone` → `beforeRender` → `afterRender` → [per export: `beforeExport` → `afterExport`] → `afterSnap`, plus `defineExports` (custom exports) and `resolveNode` (per element during the clone walk).
+
+Clone-phase hooks read capture options from `ctx.options`; export-phase hooks get them flattened on `ctx`. To hand data from `afterClone` to `defineExports`, write it to `ctx.options`.
 
 Full reference in [PLUGIN_SPEC.md](./PLUGIN_SPEC.md).
 

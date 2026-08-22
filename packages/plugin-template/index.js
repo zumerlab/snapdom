@@ -15,7 +15,10 @@ export function myPlugin(options = {}) {
     name: 'my-plugin',
 
     // Pick the hook(s) you need. Delete the rest.
-    // Full lifecycle: beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport
+    // Full lifecycle: beforeSnap → beforeClone → afterClone → beforeRender → afterRender →
+    // [per export: beforeExport → afterExport] → afterSnap. Plus resolveNode(node, ctx) per element
+    // during the clone walk, and defineExports() for custom output formats.
+    // Clone-phase hooks read options from ctx.options; export-phase hooks get them flattened on ctx.
 
     // beforeSnap(ctx) {
     //   // Runs before anything happens. ctx.element is the original DOM node.
@@ -27,7 +30,9 @@ export function myPlugin(options = {}) {
 
     afterClone(ctx) {
       // Runs after cloning + style inlining. ctx.clone is the cloned DOM tree.
-      // This is the most common hook — modify the clone here.
+      // This is the most common hook: modify the clone here.
+      // To hand data to a custom export, write it to ctx.options as well:
+      //   ctx.options.__myData = data
     },
 
     // beforeRender(ctx) {
@@ -35,20 +40,21 @@ export function myPlugin(options = {}) {
     // },
 
     // afterRender(ctx) {
-    //   // Runs after rendering. ctx.svg is the SVG string.
+    //   // Runs after rendering. ctx.svgString is the SVG text, ctx.dataURL the encoded URL.
     // },
 
-    // beforeExport(ctx) {
-    //   // Runs before export methods are called.
+    // beforeExport(ctx, { format, options }) {
+    //   // Runs before each export call. Adjust `options` for this export.
     // },
 
-    // afterExport(ctx) {
-    //   // Runs after export. Good for cleanup.
+    // afterExport(ctx, { format, options, result }) {
+    //   // Runs after each export. Observation only: returning a value does not
+    //   // replace what the caller receives. Use afterSnap(ctx) for one-time cleanup.
     // },
 
     // defineExports() {
     //   // Return an object of custom export methods.
-    //   // They become available as result.toMyFormat()
+    //   // They become available as result.toMyFormat() and result.to('myFormat')
     //   return {
     //     myFormat: async (ctx, opts = {}) => {
     //       // ctx.export.url has the data URL
