@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOM Capture Boundaries and Integration Patterns | SnapDOM</title>
+  <meta name="description" content="Run SnapDOM from Node with Playwright or Puppeteer, handle cross-origin iframe boundaries, and separate browser automation from DOM capture." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/blog/dom-capture-boundaries/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="DOM Capture Boundaries and Integration Patterns" />
+  <meta property="og:description" content="Put browser control around SnapDOM for Node jobs, cross-origin documents and automated application flows." />
+  <meta property="og:url" content="https://snapdom.dev/blog/dom-capture-boundaries/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"DOM capture boundaries and integration patterns","description":"Run SnapDOM from Node with Playwright or Puppeteer, handle cross-origin iframe boundaries, and separate browser automation from DOM capture.","url":"https://snapdom.dev/blog/dom-capture-boundaries/","datePublished":"2026-08-22","dateModified":"2026-08-22","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"DOM Capture Boundaries","item":"https://snapdom.dev/blog/dom-capture-boundaries/"}]}</script>
+  <style>
+    .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
+
+  <section class="hero"><div class="hero-badge">SnapDOM Blog</div><h1>DOM capture boundaries and integration patterns</h1><p class="lead">SnapDOM needs a readable DOM and leaves navigation to browser tooling. Browser control connects it to Node, cross-origin documents and automated application flows.</p></section>
+  <main class="page">
+    <p class="byline">Zumerlab · August 22, 2026</p>
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Let Playwright or Puppeteer create the browser state. Run SnapDOM inside that page, then return <code>result.url</code> or a raster data URL to Node. A same-origin iframe can be captured from its parent; a cross-origin document must be served from the same origin or captured from its own page or frame context. <code>useProxy</code> can fetch assets, but it cannot grant access to iframe DOM.</p></div>
+
+    <section class="prose">
+      <h2>Run the capture where the DOM lives</h2>
+      <p>SnapDOM starts from an <code>Element</code>. It reads layout, computed styles, fonts and image state, then asks the browser to paint the styled clone inside an SVG <code>&lt;foreignObject&gt;</code>. A Node process, server renderer or worker without a document cannot provide those browser APIs.</p>
+      <p>The process that receives an HTTP request can still own the job. It launches a browser, prepares the page and saves the output. The call to <code>snapdom()</code> stays inside the page that owns the element.</p>
+      <table class="cmp-table">
+        <thead><tr><th>Situation</th><th>Capture context</th><th>Route</th></tr></thead>
+        <tbody>
+          <tr><td class="feature">SSR app after hydration</td><td>The client page</td><td>Capture after mount and after the DOM is ready</td></tr>
+          <tr><td class="feature">Backend Node job</td><td>A controlled browser page</td><td>Launch Playwright or Puppeteer and inject SnapDOM</td></tr>
+          <tr><td class="feature">Web Worker</td><td>The page's main thread</td><td>Send a capture request with <code>postMessage</code></td></tr>
+          <tr><td class="feature">Service Worker or edge worker</td><td>A separate browser service</td><td>Forward the job to a real browser runtime</td></tr>
+          <tr><td class="feature">Cross-origin document</td><td>Its own page or frame context</td><td>Run the capture where that document is readable</td></tr>
+          <tr><td class="feature">Navigation or E2E flow</td><td>The final, stable page state</td><td>Let the browser driver navigate, interact and wait first</td></tr>
+        </tbody>
+      </table>
+      <p><code>jsdom</code> and similar DOM implementations can parse markup, but they do not replace browser layout and paint. They cannot supply the geometry, font rendering, SVG decode and canvas behavior that a faithful capture needs.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Give Node a real browser</h2>
+      <p>This Playwright script loads the installed IIFE bundle, opens a report, waits for an application-owned ready signal and makes two files from one SnapDOM capture. Node manages the process and filesystem. The page creates the SVG and PNG.</p>
+      <pre class="code-block">npm install @zumer/snapdom playwright
+npx playwright install chromium</pre>
+      <pre class="code-block">import { chromium } from 'playwright'
+import { readFile, writeFile } from 'node:fs/promises'
+
+const snapdomBundle = await readFile(
+  'node_modules/@zumer/snapdom/dist/snapdom.js',
+  'utf8'
+)
+
+const browser = await chromium.launch()
+
+try {
+  const context = await browser.newContext({
+    bypassCSP: true,
+    viewport: { width: 1280, height: 720 },
+    deviceScaleFactor: 1
+  })
+  const page = await context.newPage()
+
+  await page.goto('https://example.com/report', {
+    waitUntil: 'domcontentloaded'
+  })
+  await page.locator('#report[data-export-ready="true"]').waitFor()
+  await page.addScriptTag({ content: snapdomBundle })
+
+  const output = await page.evaluate(async () => {
+    await document.fonts.ready
+
+    const report = document.querySelector('#report')
+    if (!report) throw new Error('Report element not found')
+
+    const capture = await window.snapdom(report, {
+      embedFonts: true,
+      dpr: 1
+    })
+    const png = await capture.toPng()
+
+    return { svg: capture.url, png: png.src }
+  })
+
+  const svgBody = output.svg.slice(output.svg.indexOf(',') + 1)
+  const pngBody = output.png.slice(output.png.indexOf(',') + 1)
+
+  await Promise.all([
+    writeFile('report.svg', decodeURIComponent(svgBody)),
+    writeFile('report.png', Buffer.from(pngBody, 'base64'))
+  ])
+} finally {
+  await browser.close()
+}</pre>
+      <p>The IIFE exposes <code>window.snapdom</code>. Loading the installed bundle instead of <code>@latest</code> from a CDN keeps CI output reproducible and also works offline. In Playwright, CSP bypass belongs to the browser context; Puppeteer uses <code>page.setBypassCSP(true)</code> before navigation.</p>
+      <p><code>CaptureResult</code>, <code>Blob</code>, <code>Canvas</code> and <code>HTMLImageElement</code> instances stay in the browser process. Strings cross the <code>page.evaluate()</code> boundary cleanly, so produce every required format from the reusable capture and return data URLs or encoded text.</p>
+      <p><code>page.screenshot()</code> is the direct tool for a single pixel-based screenshot of a page. Keeping SnapDOM inside the browser is useful when the application also exports client-side, when you need SVG, when a plugin edits the captured DOM, or when one frozen capture must feed several formats.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Capture cross-origin documents from their own context</h2>
+      <p>When an iframe is same-origin, SnapDOM can read its document and place a PNG of the iframe's visible viewport into the parent capture. A sandboxed frame without <code>allow-same-origin</code> may still be inaccessible even when its URL looks local.</p>
+      <p>For a cross-origin iframe, the parent page cannot read <code>iframe.contentDocument</code>. SnapDOM leaves a striped placeholder by default and emits a warning; <code>placeholders: false</code> keeps an invisible spacer with the same box size. That behavior follows the browser's same-origin policy.</p>
+      <p>If you control the deployment, serve or reverse-proxy the document under the same origin. For an authorized third-party page, navigate a controlled browser directly to that URL, inject SnapDOM after navigation and capture <code>document.documentElement</code>. Playwright and Puppeteer can also run code in an individual cross-origin frame context:</p>
+      <pre class="code-block">const frame = page.frames().find(candidate =>
+  candidate.url().startsWith('https://partner.example/')
+)
+
+if (!frame) throw new Error('Partner frame not found')
+
+await frame.addScriptTag({ content: snapdomBundle })
+
+const framePng = await frame.evaluate(async () => {
+  await document.fonts.ready
+
+  const image = await window.snapdom.toPng(
+    document.documentElement,
+    { clip: 'viewport', dpr: 1 }
+  )
+
+  return image.src
+})</pre>
+      <p>The driver reaches the frame through the browser automation protocol; SnapDOM still runs inside the document it reads. If the final artifact needs both the parent page and the child frame, capture the child separately, provide its data URL as an image in a controlled render state, then capture the parent.</p>
+      <p>If the required result is one PNG of the complete parent page, <code>page.screenshot()</code> is shorter and already includes the pixels composited for a cross-origin frame.</p>
+      <p><code>useProxy</code> solves a different problem. It helps SnapDOM fetch cross-origin images, fonts and backgrounds that allow proxying. It does not make iframe DOM same-origin, and an open proxy creates its own authentication and server-side request risks.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Navigation stays with the browser driver</h2>
+      <p>SnapDOM captures the state it receives. It does not open URLs, authenticate, click controls, wait for application data, manage test baselines or compare pixels. Playwright or Puppeteer owns those steps, then calls SnapDOM after the target state is stable.</p>
+      <pre class="code-block">await page.goto(appURL, { waitUntil: 'domcontentloaded' })
+await page.getByRole('button', { name: 'Generate report' }).click()
+await page.locator('#report[data-export-ready="true"]').waitFor()
+await page.addScriptTag({ content: snapdomBundle })
+
+const captureURL = await page.evaluate(async () => {
+  await document.fonts.ready
+  const report = document.querySelector('#report')
+  return (await window.snapdom(report, { dpr: 1 })).url
+})</pre>
+      <p>An explicit application signal is more reliable than a fixed delay or network-idle heuristic. A page can finish its requests while fonts, transitions, charts or asynchronous rendering are still changing what the user sees.</p>
+      <p>For visual regression, the runner should also fix the browser build, viewport, DPR, fonts, locale and timezone, and disable animations. SnapDOM supplies the artifact; the test system still owns baselines, thresholds and assertions.</p>
+    </section>
+
+    <section class="prose">
+      <h2>Account for the browser service</h2>
+      <p>A backend capture still pays for a browser process. Reuse a browser when jobs are frequent, isolate work in fresh contexts, cap concurrency and apply timeouts. A public endpoint that accepts arbitrary URLs also needs URL allowlists and network isolation so it cannot become a route into private services.</p>
+      <p>Every full navigation replaces the page's JavaScript context, so inject the bundle after the final navigation. Wait for the application's own export-ready state and <code>document.fonts.ready</code>, call SnapDOM inside <code>page.evaluate()</code>, and return <code>result.url</code> or a raster image's <code>.src</code>. Keep DOM objects inside the browser process.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Keep reading</div>
+      <div class="related-grid">
+        <a class="related-card" href="../../llms-full.txt">Complete LLM reference <span class="arrow">→</span></a>
+        <a class="related-card" href="../../how-to/capture-iframe/">Capture an iframe <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/playwright/">SnapDOM and Playwright <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/puppeteer/">SnapDOM and Puppeteer <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section"><div class="cta-card"><h2>Put SnapDOM inside the page</h2><p>The complete reference includes the server-side recipe, capture API and plugin hooks used in this integration.</p><a href="../../llms-full.txt" class="btn btn-primary">Open llms-full.txt</a><a href="../../docs/api/" class="btn btn-ghost">Read the API</a></div></section>
+  </main>
+
+  <script defer src="/copy-code.js"></script>
+</body>
+</html>
