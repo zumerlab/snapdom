@@ -18,7 +18,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/compare/</loc>
-    <lastmod>2026-05-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/compare/html2canvas/</loc>
@@ -34,7 +34,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/guides/</loc>
-    <lastmod>2026-05-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/react/</loc>
@@ -42,11 +42,11 @@
   </url>
   <url>
     <loc>https://snapdom.dev/guides/vue/</loc>
-    <lastmod>2026-05-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/nextjs/</loc>
-    <lastmod>2026-05-11</lastmod>
+    <lastmod>2026-08-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/</loc>
@@ -95,11 +95,11 @@
   <url><loc>https://snapdom.dev/how-to/html-to-svg/</loc><lastmod>2026-08-22</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/html-to-canvas/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/export-dashboard-as-image/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/how-to/export-react-component-as-image/</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://snapdom.dev/how-to/export-react-component-as-image/</loc><lastmod>2026-08-22</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/export-chart-as-svg/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/export-invoice-as-image/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/how-to/generate-social-card-from-html/</loc><lastmod>2026-07-16</lastmod></url>
-  <url><loc>https://snapdom.dev/how-to/capture-element-without-puppeteer/</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://snapdom.dev/how-to/generate-social-card-from-html/</loc><lastmod>2026-08-22</lastmod></url>
+  <url><loc>https://snapdom.dev/how-to/capture-element-without-puppeteer/</loc><lastmod>2026-08-22</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-shadow-dom/</loc><lastmod>2026-07-16</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-iframe/</loc><lastmod>2026-08-22</lastmod></url>
   <url><loc>https://snapdom.dev/how-to/capture-full-page/</loc><lastmod>2026-08-11</lastmod></url>

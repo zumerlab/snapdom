@@ -57,12 +57,11 @@
       <pre class="code-block">npm install @zumer/snapdom playwright
 npx playwright install chromium</pre>
       <pre class="code-block">import { chromium } from 'playwright'
-import { readFile, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 
-const snapdomBundle = await readFile(
-  'node_modules/@zumer/snapdom/dist/snapdom.js',
-  'utf8'
-)
+const require = createRequire(import.meta.url)
+const snapdomBundlePath = require.resolve('@zumer/snapdom')
 
 const browser = await chromium.launch()
 
@@ -78,7 +77,7 @@ try {
     waitUntil: 'domcontentloaded'
   })
   await page.locator('#report[data-export-ready="true"]').waitFor()
-  await page.addScriptTag({ content: snapdomBundle })
+  await page.addScriptTag({ path: snapdomBundlePath })
 
   const output = await page.evaluate(async () => {
     await document.fonts.ready
@@ -105,7 +104,7 @@ try {
 } finally {
   await browser.close()
 }</pre>
-      <p>The IIFE exposes <code>window.snapdom</code>. Loading the installed bundle instead of <code>@latest</code> from a CDN keeps CI output reproducible and also works offline. In Playwright, CSP bypass belongs to the browser context; Puppeteer uses <code>page.setBypassCSP(true)</code> before navigation.</p>
+      <p>The package's <code>require</code> export resolves to the IIFE that exposes <code>window.snapdom</code>. Resolving the installed package is robust across hoisted and standalone installs, keeps CI output reproducible and also works offline. In Playwright, CSP bypass belongs to the browser context; Puppeteer uses <code>page.setBypassCSP(true)</code> before navigation.</p>
       <p><code>CaptureResult</code>, <code>Blob</code>, <code>Canvas</code> and <code>HTMLImageElement</code> instances stay in the browser process. Strings cross the <code>page.evaluate()</code> boundary cleanly, so produce every required format from the reusable capture and return data URLs or encoded text.</p>
       <p><code>page.screenshot()</code> is the direct tool for a single pixel-based screenshot of a page. Keeping SnapDOM inside the browser is useful when the application also exports client-side, when you need SVG, when a plugin edits the captured DOM, or when one frozen capture must feed several formats.</p>
     </section>
@@ -121,7 +120,7 @@ try {
 
 if (!frame) throw new Error('Partner frame not found')
 
-await frame.addScriptTag({ content: snapdomBundle })
+await frame.addScriptTag({ path: snapdomBundlePath })
 
 const framePng = await frame.evaluate(async () => {
   await document.fonts.ready

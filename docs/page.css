@@ -211,6 +211,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 .tldr::after { bottom: -1px; right: -1px; border-bottom: 3px solid var(--accent); border-right: 3px solid var(--accent); }
 .tldr .tldr-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: var(--accent); margin-bottom: 8px; font-weight: 700; }
 .tldr p { color: var(--text); font-size: 15px; line-height: 1.65; margin: 0; }
+.tldr code { overflow-wrap: anywhere; word-break: break-word; }
 
 /* ── Comparison table ── */
 .cmp-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 16px 0 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; overflow: hidden; }
@@ -355,7 +356,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
   .prose h2 { font-size: 25px; }
   .prose p, .prose ul, .prose ol { font-size: 15px; }
   .cta-card { padding: 32px 20px; }
-  .cmp-table { font-size: 12px; }
+  .cmp-table { display: block; max-width: 100%; overflow-x: auto; font-size: 12px; }
   .cmp-table th, .cmp-table td { padding: 10px 12px; }
   .bench-grid { grid-template-columns: 1fr; }
 }

@@ -30,7 +30,7 @@
     "@type": "TechArticle",
     "headline": "Capture HTML to PNG in Vue 3 with SnapDOM",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-05-11",
+    "dateModified": "2026-08-22",
     "description": "Step-by-step guide to using SnapDOM inside a Vue 3 single-file component, with a copy-paste setup.",
     "url": "https://snapdom.dev/guides/vue/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -243,7 +243,7 @@
 
       <details>
         <summary>Does SnapDOM work with Nuxt?</summary>
-        <p>Yes, but only on the client side. Wrap your capture component in <code>&lt;ClientOnly&gt;</code> or import SnapDOM dynamically inside <code>onMounted</code> so it never runs on the server.</p>
+        <p>For a direct export from the Nuxt UI, wrap the capture component in <code>&lt;ClientOnly&gt;</code> or call SnapDOM from <code>onMounted</code> or a browser event. For server-generated output, a Nuxt server endpoint can control Playwright or Puppeteer, inject SnapDOM into the rendered page, and return the exported data.</p>
       </details>
 
       <details>

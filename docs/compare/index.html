@@ -31,7 +31,7 @@
     "name": "Best HTML-to-Image JavaScript Library (2026)",
     "url": "https://snapdom.dev/compare/",
     "description": "A code-level comparison of HTML-to-image JavaScript libraries — SnapDOM, html2canvas, html-to-image, dom-to-image and modern-screenshot — with a feature matrix and decision guide.",
-    "dateModified": "2026-06-29",
+    "dateModified": "2026-08-22",
     "isPartOf": { "@id": "https://snapdom.dev/#website" }
   }
   </script>
@@ -72,22 +72,22 @@
 
   <main class="page">
     <section class="prose">
-      <p class="muted"><strong>Last updated:</strong> June 2026 · maintained by the SnapDOM team.</p>
+      <p class="muted"><strong>Last updated:</strong> August 2026 · maintained by the SnapDOM team.</p>
 
-      <h2>Three rendering approaches</h2>
-      <p>Every tool here solves the same problem ("render this DOM node to a PNG/JPG/SVG"), but they fall into three families, and the right pick depends almost entirely on which family fits your constraints:</p>
+      <h2>Three layers you can use separately or together</h2>
+      <p>These tools do not all occupy the same layer. A DOM capture library can run inside a page controlled by browser automation, so the server/client distinction is not an either-or choice:</p>
       <ul>
-        <li><strong>Client-side libraries</strong> (SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot) run entirely in the browser: no server, no network round-trip. Best for user-facing "download/share this" features.</li>
-        <li><strong>Server-side browser automation</strong> (Puppeteer, Playwright) launches a real headless Chromium on your backend. Pixel-perfect, but you ship and scale a browser.</li>
+        <li><strong>DOM capture libraries</strong> (SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot) execute inside a real browser page. That can be the user's existing page, with no server round trip, or a page opened from Node.</li>
+        <li><strong>Browser automation</strong> (Puppeteer, Playwright) launches or connects to a controlled browser and owns navigation, authentication and page state. Use its native screenshot for direct pixels, or inject SnapDOM for SVG, plugins and reusable exports.</li>
         <li><strong>Hosted APIs</strong> (HCTI, Urlbox, and similar) let you send HTML and get a rendered image back. Zero infra, real Chromium fidelity, but a paid per-render cost and a network hop.</li>
       </ul>
-      <p>The rest of this page focuses on the <strong>client-side libraries</strong>, because that's where most projects start and where the differences are subtle.</p>
+      <p>The matrix compares DOM capture libraries and includes Playwright and Puppeteer as a browser-automation reference. Their guides show how the automation and capture layers compose.</p>
 
       <h2>Feature matrix</h2>
       <table class="cmp-table">
         <thead>
           <tr>
-            <th>Library</th><th>Approach</th><th>Shadow DOM</th><th>Web fonts</th><th>Pseudo-elements</th><th>Speed (large DOM)</th><th>Maintained</th><th>No server</th>
+            <th>Library</th><th>Approach</th><th>Shadow DOM</th><th>Web fonts</th><th>Pseudo-elements</th><th>Speed (large DOM)</th><th>Maintained</th><th>No browser worker</th>
           </tr>
         </thead>
         <tbody>
@@ -107,7 +107,7 @@
             <td class="feature">dom-to-image</td><td>foreignObject</td><td class="no">No</td><td class="partial">Partial</td><td class="partial">Partial</td><td class="partial">Medium</td><td class="no">Unmaintained</td><td class="yes">Yes</td>
           </tr>
           <tr>
-            <td class="feature">Puppeteer / Playwright</td><td>Real Chromium</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">Slow start</td><td class="yes">Active</td><td class="no">Server</td>
+            <td class="feature">Puppeteer / Playwright</td><td>Browser control</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">Browser start</td><td class="yes">Active</td><td class="no">No — browser process</td>
           </tr>
         </tbody>
       </table>
@@ -136,15 +136,15 @@
         <h3>SnapDOM vs modern-screenshot</h3>
         <p>Same foreignObject approach, TypeScript-first. Where SnapDOM's plugins and broader fidelity net make the difference.</p>
       </a>
-      <a class="hub-card" href="./puppeteer/"><span class="tag">Architecture</span><h3>SnapDOM vs Puppeteer</h3><p>Existing-browser element export compared with server-side Chromium automation.</p></a>
-      <a class="hub-card" href="./playwright/"><span class="tag">Architecture</span><h3>SnapDOM vs Playwright</h3><p>Client-side DOM capture compared with cross-browser automation and testing.</p></a>
+      <a class="hub-card" href="./puppeteer/"><span class="tag">Integration</span><h3>SnapDOM with Puppeteer</h3><p>Let Puppeteer control the browser, then choose native pixels or inject SnapDOM for SVG, plugins and reusable exports.</p></a>
+      <a class="hub-card" href="./playwright/"><span class="tag">Integration</span><h3>SnapDOM with Playwright</h3><p>Keep Playwright's navigation and test lifecycle while running SnapDOM inside the selected browser page.</p></a>
     </div>
 
     <section class="prose">
       <h2>The libraries, reviewed</h2>
 
       <h3>SnapDOM</h3>
-      <p><strong>For browser-side capture with broad CSS coverage.</strong> SnapDOM clones the DOM and lets the browser render it inside an SVG <code>&lt;foreignObject&gt;</code>. It handles pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and embedded web fonts. It has no runtime dependencies, supports plugins and exports SVG, PNG, JPG, WebP, Canvas or Blob. It cannot bypass browser cross-origin restrictions, and it is not a substitute for server Chromium when output must be identical across browser engines.</p>
+      <p><strong>For DOM capture with broad CSS coverage.</strong> SnapDOM clones the DOM and lets the browser render it inside an SVG <code>&lt;foreignObject&gt;</code>. It handles pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and embedded web fonts. It has no runtime dependencies, supports plugins and exports SVG, PNG, JPG, WebP, Canvas or Blob. It does not navigate or launch a browser and cannot bypass cross-origin access from the current page context. Pair it with Puppeteer or Playwright when a server must own the browser lifecycle.</p>
 
       <h3>html2canvas</h3>
       <p><strong>A JavaScript CSS renderer with a large installed base.</strong> <a href="https://github.com/niklasvh/html2canvas" target="_blank" rel="noopener">html2canvas</a> reads the DOM and implements supported CSS painting itself. That gives it a different compatibility profile from <code>foreignObject</code>-based libraries. Its latest stable release is 1.4.1 from January 2022; the project README still describes it as experimental and lists unsupported CSS as an inherent limitation.</p>
@@ -159,7 +159,7 @@
       <p><strong>Avoid for new projects.</strong> <a href="https://github.com/tsayen/dom-to-image" target="_blank" rel="noopener">dom-to-image</a> is the original foreignObject library and the ancestor of html-to-image, but it's effectively unmaintained and struggles with modern flexbox/grid layouts. If you're on it today, html-to-image or SnapDOM are direct, low-friction upgrades.</p>
 
       <h3>Server-side &amp; hosted options</h3>
-      <p>When you need byte-perfect cross-browser output, PDF export at scale, or rendering that can't depend on the user's browser, <strong>Puppeteer / Playwright</strong> (self-hosted) or a <strong>hosted API</strong> (HCTI, Urlbox) are the right tools, at the cost of running a headless browser or paying per render. They're complementary to, not competitors of, a client-side library.</p>
+      <p>When rendering cannot depend on the user's browser, use <strong>Puppeteer or Playwright</strong> to run a pinned browser build with controlled viewport, fonts, locale and device scale, or use a hosted API. Take a native screenshot for one bitmap. Inject SnapDOM into that page when the server also needs SVG, plugin processing, several formats from one capture or the same export path as the client app. Reproducibility comes from fixing the environment; different browser engines are not expected to produce byte-identical files.</p>
 
       <h2>Choose by execution model</h2>
       <ul>
@@ -167,18 +167,18 @@
         <li><strong>Already on html2canvas with font / Shadow DOM bugs</strong> → migrate to SnapDOM (familiar <code>toPng/toJpg/toBlob</code> API; usually a one-line swap).</li>
         <li><strong>Need a small client-side dependency?</strong> SnapDOM is about 50 KB gzip with no runtime dependencies; plugins are separate imports.</li>
         <li><strong>Still on dom-to-image</strong> → upgrade; it's unmaintained.</li>
-        <li><strong>Need server-side pixel-perfect output or PDF at scale</strong> → Puppeteer / Playwright or a hosted API.</li>
+        <li><strong>Need server-generated output?</strong> Use Puppeteer / Playwright or a hosted browser service; inject SnapDOM when its SVG, plugin or multi-export pipeline is useful.</li>
       </ul>
 
       <h2>FAQ</h2>
       <h3>Which HTML-to-image library should I use?</h3>
-      <p>Use SnapDOM when capture runs in the browser and you need open Shadow DOM, web fonts, pseudo-elements or plugin-defined formats. Use Puppeteer, Playwright or a hosted API when rendering must run on a server or remain consistent across browser engines.</p>
+      <p>Use SnapDOM when a real browser page contains the DOM and you need open Shadow DOM, web fonts, pseudo-elements or plugin-defined formats. For a user-triggered export, run it in that user's page. For server-generated output, let Puppeteer or Playwright control a pinned browser and either take a native screenshot or inject SnapDOM into the loaded page.</p>
       <h3>Is there a maintained html2canvas alternative?</h3>
       <p>Yes. SnapDOM, html-to-image and modern-screenshot are all actively maintained and use the faster foreignObject approach instead of html2canvas's JavaScript re-paint. SnapDOM additionally supports Shadow DOM and a plugin system.</p>
       <h3>Why does my capture miss web fonts or Shadow DOM?</h3>
       <p>That's usually html2canvas or dom-to-image: they don't reliably embed @font-face or traverse Shadow roots. Libraries that render via foreignObject (SnapDOM, html-to-image, modern-screenshot) let the browser paint the real result, so fonts and shadow content are captured.</p>
       <h3>Can I convert HTML to an image without a server?</h3>
-      <p>Yes. Every client-side library on this page runs entirely in the browser. You only need a server (Puppeteer/Playwright) or a hosted API when you require byte-identical cross-engine output or PDF generation at scale.</p>
+      <p>Yes. Run a DOM capture library in the user's existing browser and no screenshot server is required. If the backend must generate the artifact, it needs a controlled browser or hosted browser API; SnapDOM can be injected into that page rather than replaced.</p>
     </section>
 
     <section class="cta-section">

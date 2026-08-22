@@ -49,26 +49,42 @@
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "What is the easiest way to screenshot a div in JavaScript?",
+        "name": "Why not use the browser's built-in screenshot API?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Install @zumer/snapdom and call snapdom.toPng(element). It returns an HTMLImageElement you can append, download, or convert to a Blob — all in one line of code."
+          "text": "Ordinary JavaScript inside a page has no built-in element-screenshot API. getDisplayMedia captures a tab or screen with user permission, not an arbitrary element. Browser automation exposes page and element screenshots and can also inject SnapDOM."
         }
       },
       {
         "@type": "Question",
-        "name": "Can JavaScript take a screenshot of a webpage?",
+        "name": "Does this work with web fonts?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "JavaScript cannot natively screenshot the entire viewport, but it can serialise any DOM element into an image using a library like SnapDOM, html2canvas, or html-to-image. SnapDOM clones the element, inlines its styles and renders it through SVG foreignObject."
+          "text": "Yes. Pass embedFonts: true and SnapDOM inlines the matching @font-face declarations so the image uses the rendered fonts."
         }
       },
       {
         "@type": "Question",
-        "name": "Does it work cross-browser?",
+        "name": "Can I screenshot something inside an iframe?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. SnapDOM works in all modern Chromium, Firefox and Safari browsers. It uses standard Web APIs (SVG foreignObject, Canvas) with no polyfills required."
+          "text": "Readable same-origin iframes are supported from the parent page. Cross-origin and origin-opaque sandboxed frames are not readable from that context. For an authorized target, browser automation can enter the frame or open its URL and inject SnapDOM there."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What about Shadow DOM?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SnapDOM walks open Shadow DOM trees during capture, so Web Components render correctly."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How big is the library?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Around 50 KB minified and gzipped, with zero runtime dependencies."
         }
       }
     ]
@@ -219,7 +235,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Why not use the browser's built-in screenshot API?</summary>
-        <p>There isn't one. The closest thing is the Screen Capture API (<code>getDisplayMedia</code>) which captures the whole tab or screen and requires user permission, so it cannot target a specific DOM element. SnapDOM is the workaround.</p>
+        <p>Ordinary JavaScript running inside a page has no built-in element-screenshot API. The Screen Capture API (<code>getDisplayMedia</code>) captures a tab or screen with user permission, not an arbitrary DOM element. Browser automation hosts do expose page and element screenshots; they can also inject SnapDOM when the output needs SVG, plugins or reusable exports.</p>
       </details>
 
       <details>
@@ -229,7 +245,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Can I screenshot something inside an iframe?</summary>
-        <p>Same-origin iframes are supported out of the box. Cross-origin iframes are not: the browser blocks access to their content.</p>
+        <p>Readable same-origin iframes are supported from the parent page. A sandboxed frame without <code>allow-same-origin</code> may still be opaque. A cross-origin parent cannot read the frame document, but an authorized Playwright or Puppeteer job can enter that frame context or open its URL separately and inject SnapDOM there. See the <a href="../capture-iframe/">iframe guide</a>.</p>
       </details>
 
       <details>

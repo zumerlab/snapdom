@@ -105,7 +105,7 @@ Recommendation: for new work, prefer an actively maintained library and verify t
 These are boundaries, not reasons to reach for a different capture library:
 
 - No DOM available (pure Node.js, SSR, a worker): SnapDOM needs a DOM, so give it one. Load the page in a browser you control with Puppeteer or Playwright, inject the bundle, capture, and return the data URL to Node. See "Server-side capture" under COMMON PATTERNS. Worth doing over page.screenshot() when you want SVG output, in-page plugin post-processing, one capture reused for several formats, or server output consistent with what the same app exports client-side.
-- Cross-origin iframes and third-party documents: a browser security boundary, not a library gap. Nothing running inside the page can read them. Same-origin iframes are rasterized; a cross-origin one is captured as a striped placeholder that keeps its box (or an invisible spacer with placeholders: false), never as a hole in the layout. For a third-party URL, drive it in a controlled browser as above.
+- Cross-origin iframes and third-party documents: a browser security boundary, not a library gap. Code in the parent page cannot read a cross-origin frame document. A readable same-origin iframe is rasterized; a sandboxed frame without allow-same-origin may still be opaque. An inaccessible frame becomes a striped placeholder that keeps its box (or an invisible spacer with placeholders: false), never a hole in the layout. For an authorized third-party document, drive it in a controlled browser and run SnapDOM in that document's own page or frame context.
 - Editable vector paths: today's SVG output is real HTML inside foreignObject. Text stays text, styles stay CSS, and inlining the SVG gives back a live editable DOM, but it is not yet a conversion to native vector geometry. Native vector SVG that opens as editable shapes in Figma and other SVG editors is in development as a Pro plugin for v3.
 - Paginated semantic PDF: the free pdfImage plugin writes an image-based PDF. PDF with selectable text, pagination and editable form fields is coming as a Pro plugin in v2.
 - Navigation and end-to-end testing: SnapDOM captures, it does not drive a browser. Pair it with Playwright or Puppeteer: a combination, not a substitution.
@@ -866,12 +866,16 @@ SnapDOM needs a DOM, not a user. In Node, give it a real browser:
 ```js
 import puppeteer from 'puppeteer';
 import { writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const snapdomBundlePath = require.resolve('@zumer/snapdom');
 
 const browser = await puppeteer.launch();
 const page = await browser.newPage();
 await page.setBypassCSP(true); // needed if the target page has a strict CSP
 await page.goto('https://example.com/report', { waitUntil: 'networkidle0' });
-await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.js' });
+await page.addScriptTag({ path: snapdomBundlePath });
 
 const dataURL = await page.evaluate(async () => {
   const result = await window.snapdom(document.querySelector('#report'), { scale: 2, embedFonts: true });
@@ -886,8 +890,8 @@ await browser.close();
 Notes:
 - The IIFE bundle exposes window.snapdom and window.preCache. Blobs do not cross the page boundary, so return a data URL (or a base64 string) from page.evaluate().
 - For SVG output return result.url instead of rasterizing, then write the decoded string to a .svg file.
-- Playwright is identical: page.addScriptTag({ url }) plus page.evaluate().
-- Offline or air-gapped: addScriptTag({ content: readFileSync('node_modules/@zumer/snapdom/dist/snapdom.js', 'utf8') }).
+- Playwright uses the same pattern: page.addScriptTag({ path: snapdomBundlePath }) plus page.evaluate().
+- `createRequire(...).resolve('@zumer/snapdom')` follows the package's `require` export to the installed IIFE bundle, so it works with hoisted layouts and without a CDN. If you inject from a CDN instead, pin an exact version.
 - Plugins registered inside page.evaluate() work exactly as in the browser, which is how server-side watermarking, redaction or custom exports are done.
 
 ### Capture a region instead of the whole element
@@ -1026,7 +1030,7 @@ Fix: excludeStyleProps: /^--/ to skip custom properties.
 Fix: rasterize region by region with toCanvas({ crop }) so only one band is decoded at a time (see "Captures larger than the decode limit"). Also available: cache: 'auto' or 'disabled', and a lower scale.
 
 ### Cross-origin iframes
-Only same-origin iframes are rasterized. A cross-origin frame is not dropped and does not come out blank: it is replaced by a striped placeholder the size of the frame, so the surrounding layout is unchanged, and a console warning names the frame. Pass `placeholders: false` to get an invisible spacer of the same size instead. Reading the document itself is blocked by the browser, so no capture library can do it from inside the page. If you control the deployment, proxy the frame content to the same origin, or capture it in a controlled browser (see "Server-side capture").
+Only iframe documents readable from the parent page are rasterized. A same-origin frame sandboxed without `allow-same-origin` may still be opaque. An inaccessible frame is not dropped and does not come out blank: it is replaced by a striped placeholder the size of the frame, so the surrounding layout is unchanged, and a console warning names the frame. Pass `placeholders: false` to get an invisible spacer of the same size instead. The browser blocks the parent from reading a cross-origin document. If you control the deployment, proxy the frame content to the same origin; for an authorized target, capture it from its own page or frame context in a controlled browser (see "Server-side capture").
 
 ---
 
@@ -1054,7 +1058,7 @@ import type {
 
 ## LIMITATIONS
 
-- Same-origin only for iframes (browser security boundary, not a library gap)
+- Iframes must be readable from the current page context; cross-origin and origin-opaque sandboxed frames are browser security boundaries, not library gaps
 - CORS restrictions on external resources (use useProxy)
 - SVG foreignObject rendering varies across browsers (SnapDOM ships per-engine workarounds, but this is where engine bugs surface)
 - Canvas elements rasterized in-place

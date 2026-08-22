@@ -82,9 +82,9 @@
         <p>ref() + onMounted in the Composition API. Capture single-file components in two lines of script.</p>
       </a>
       <a class="hub-card" href="./nextjs/" data-umami-event="Guides card nextjs">
-        <span class="tag">Next.js 14+</span>
+        <span class="tag">Next.js App Router</span>
         <h3>SnapDOM in Next.js</h3>
-        <p>Client component + dynamic import. Avoid the SSR bundle and ship a clean app router page.</p>
+        <p>Capture after hydration in a Client Component, or inject SnapDOM into a browser controlled by a Node server action.</p>
       </a>
       <a class="hub-card" href="./svelte/"><span class="tag">Svelte 5</span><h3>SnapDOM in Svelte</h3><p>Use bind:this and tick() to capture a component after its DOM update settles.</p></a>
       <a class="hub-card" href="./angular/"><span class="tag">Angular 17+</span><h3>SnapDOM in Angular</h3><p>Capture an ElementRef from a component method using Angular's viewChild API.</p></a>
@@ -93,7 +93,7 @@
 
     <section class="prose">
       <h2>Framework-specific details</h2>
-      <p>SnapDOM itself is framework-agnostic: it manipulates the DOM the browser already has, so any setup that produces real HTML can use it. The reason these guides exist is that every framework has one or two specific gotchas: refs vs querySelector, hydration boundaries, SSR-only environments, lifecycle timing, etc.</p>
+      <p>SnapDOM is framework-agnostic, but it needs a live browser DOM with layout and computed styles—not just an HTML string produced during SSR. A server job can provide that environment by opening the rendered page with Puppeteer or Playwright and injecting SnapDOM. The guides cover each framework's refs, hydration boundaries and lifecycle timing.</p>
       <p>Each guide gives you a copy-paste component, the right place to call SnapDOM in the lifecycle, and the one common mistake that makes captures come out blank.</p>
     </section>
 
