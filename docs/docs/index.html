@@ -142,8 +142,9 @@ yarn add @zumer/snapdom@dev</pre>
         </tbody>
       </table>
       <p><strong>Subpath imports</strong> (lighter bundle if you only need one):</p>
-      <pre class="code-block">import { preCache } from '@zumer/snapdom/preCache';
-import { plugins } from '@zumer/snapdom/plugins';</pre>
+      <pre class="code-block">import { preCache } from '@zumer/snapdom/preCache';</pre>
+      <p><strong>Official plugins</strong> ship in their own package, <code>@zumer/snapdom-plugins</code>, importable from the root or per plugin:</p>
+      <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';</pre>
     </section>
 
     <section class="prose">

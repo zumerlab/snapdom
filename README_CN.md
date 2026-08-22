@@ -156,7 +156,14 @@ import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 **子路径导入**（只使用部分功能时，打包体积更小）：
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
-import { plugins } from '@zumer/snapdom/plugins';
+```
+
+**官方插件**位于独立的包中：
+```bash
+npm install @zumer/snapdom-plugins
+```
+```js
+import { filter } from '@zumer/snapdom-plugins/filter';
 ```
 
 

@@ -157,7 +157,14 @@ import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 **Subpath imports** (lighter bundle if you only need one):
 ```js
 import { preCache } from '@zumer/snapdom/preCache';
-import { plugins } from '@zumer/snapdom/plugins';
+```
+
+**Official plugins** live in their own package:
+```bash
+npm install @zumer/snapdom-plugins
+```
+```js
+import { filter } from '@zumer/snapdom-plugins/filter';
 ```
 
 
