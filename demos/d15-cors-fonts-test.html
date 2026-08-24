@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snapdom CORS + Fonts Test</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@flaticon/flaticon-uicons@3.3.1/css/all/all.min.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      padding: 2rem;
+    }
+
+    #target {
+      position: relative;
+      width: 400px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #target::before {
+      content: "★";
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      font-size: 24px;
+      color: gold;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Snapdom Test</h2>
+
+<div id="target">
+  <h3>Icon Font Test <i class="fas fa-star"></i></h3>
+  <p>Flaticon Icon: <i class="fi fi-rr-rectangle-list"></i></p>
+  <img width="1200" height="286" src="https://cdn.sstatic.net/Sites/stackoverflow/company/img/logos/so/so-logo.png" alt="Test Image" />
+</div>
+<button id="capture">Capturar</button>
+<div id="output"></div>
+
+<script type="module">
+  import { snapdom } from '../dist/snapdom.mjs'; //'https://unpkg.com/@zumer/snapdom@1.9.9/dist/snapdom.mjs'//'../dist/snapdom.mjs';
+
+  document.getElementById("capture").onclick = async () => {
+    const el = document.getElementById("target");
+    const img = await snapdom.toImg(el, {
+      embedFonts: false,        // Probar que los íconos no se rompan
+      iconFonts: '',           // Ignorar todos los icon fonts
+      useProxy: 'https://proxy.corsfix.com/?' // 'https://proxy.cors.sh/' // 'https://api.cors.lol/?url=' //'https://corsproxy.io/?url=' // 'https://api.allorigins.win/raw?url='  ,
+     // crossOrigin: true         // Soporte de proxy si la imagen falla por CORS
+    });
+    document.getElementById("output").innerHTML = '';
+    document.getElementById("output").appendChild(img);
+  };
+</script>
+
+</body>
+</html>

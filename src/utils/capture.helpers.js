@@ -10,6 +10,9 @@ import {
   readIndividualTransforms
 } from './transforms.helpers.js'
 
+const HTML_NS = 'http://www.w3.org/1999/xhtml'
+const viewportFrozenClones = new WeakSet()
+
 /**
  * Resolves the `clip` option to a rect in viewport coordinates (same space as
  * getBoundingClientRect), or null when absent/invalid.
@@ -115,12 +118,13 @@ export function composeResidual2D(baseTransform, ind) {
  */
 export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, edge) {
   const rootR = root.getBoundingClientRect()
-  if (cloneRoot instanceof HTMLElement && getStyle(root).position === 'static') {
+  if (cloneRoot?.nodeType === 1 && cloneRoot.namespaceURI === HTML_NS &&
+      getStyle(root).position === 'static') {
     cloneRoot.style.position = 'relative'
   }
   const hoisted = []
   for (const [cloneEl, orig] of nodeMap) {
-    if (!(cloneEl instanceof HTMLElement) || (orig?.nodeType !== 1)) continue
+    if (cloneEl?.nodeType !== 1 || cloneEl.namespaceURI !== HTML_NS || orig?.nodeType !== 1) continue
     if (orig === root || !composedContains(root, orig)) continue
     const cs = styleCache.get(orig) || getStyle(orig)
     const pos = cs.position
@@ -129,6 +133,7 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
     if (cloneEl.style.position === 'absolute') continue
     const r = orig.getBoundingClientRect()
     if (!(r.width > 0 && r.height > 0)) continue
+    viewportFrozenClones.add(cloneEl)
     // Freeze the EXACT fractional box. offsetWidth rounds to integers — freezing a
     // fit-content box 0.x px narrower than its content makes inner text re-wrap.
     // Only when the residual matrix scales/rotates (r = transformed box ≠ layout box)
@@ -707,11 +712,36 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   elDoc.body.appendChild(wrap)
 
   let pinned = 0
+  const layoutBox = (node, fallbackW, fallbackH) => {
+    const cs = getStyle(node)
+    const borderBox = cs.boxSizing === 'border-box'
+    const read = (value, fallback, ...extras) => {
+      const size = parseFloat(value)
+      if (!Number.isFinite(size)) return fallback
+      const exact = size + (borderBox ? 0 : extras.reduce((sum, v) => sum + (parseFloat(v) || 0), 0))
+      // Computed width/height can stay logical/auto-like on unusual boxes. A real used
+      // border-box is always within offset*'s sub-pixel rounding distance.
+      return Math.abs(exact - fallback) <= 0.51 ? exact : fallback
+    }
+    return {
+      width: read(cs.width, fallbackW, cs.paddingLeft, cs.paddingRight,
+        cs.borderLeftWidth, cs.borderRightWidth),
+      height: read(cs.height, fallbackH, cs.paddingTop, cs.paddingBottom,
+        cs.borderTopWidth, cs.borderBottomWidth),
+    }
+  }
   try {
+    const measuredRootRect = measured.getBoundingClientRect()
+    const measuredRootW = measured.offsetWidth || w0
+    const measuredRootH = measured.offsetHeight || h0
+    const msx = measuredRootW > 0 && measuredRootRect.width > 0
+      ? measuredRootRect.width / measuredRootW : 1
+    const msy = measuredRootH > 0 && measuredRootRect.height > 0
+      ? measuredRootRect.height / measuredRootH : 1
     // Parallel traversal: `measured` is a deep copy of `clone`, so element structure is
     // identical; the source comes from the session nodeMap. Root box is sized by the
     // foreignObject container, so only descendants are pinned.
-    const walk = (cn, mn) => {
+    const walk = (cn, mn, frozenAncestor = false) => {
       const cKids = cn.children
       const mKids = mn.children
       const n = Math.min(cKids.length, mKids.length)
@@ -719,21 +749,60 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
         const c = cKids[i]
         const m = mKids[i]
         const src = nodeMap.get(c)
-        if (src?.nodeType === 1 && c instanceof HTMLElement && src.isConnected) {
+        const inFrozenTree = frozenAncestor || viewportFrozenClones.has(c)
+        if (src?.nodeType === 1 && c?.namespaceURI === HTML_NS && c.style && src.isConnected) {
           const sr = src.getBoundingClientRect()
           if (sr.width > 0 && sr.height > 0) {
             const mr = m.getBoundingClientRect()
-            const dw = mr.width - sr.width / sx
-            const dh = mr.height - sr.height / sy
+            let sourceW = sr.width / sx
+            let sourceH = sr.height / sy
+            let measuredW = mr.width
+            let measuredH = mr.height
+            const sourceLayoutW = src.offsetWidth || sourceW
+            const sourceLayoutH = src.offsetHeight || sourceH
+            const measuredLayoutW = m.offsetWidth || measuredW
+            const measuredLayoutH = m.offsetHeight || measuredH
+            // A rect includes scale/rotate/skew from the node and its ancestors. Pinning that
+            // visual size while the clone keeps those transforms applies them twice (#489).
+            // Use pre-transform border boxes only on affected branches; ordinary boxes keep
+            // their exact fractional rects instead of offsetWidth's integer rounding.
+            // Chromium flattens some frozen fixed/sticky transforms to a painted-size box,
+            // while Firefox can retain a residual matrix.
+            const transformed =
+              Math.abs(sourceW - sourceLayoutW) > RECONCILE_EPS ||
+              Math.abs(sourceH - sourceLayoutH) > RECONCILE_EPS ||
+              Math.abs(measuredW - measuredLayoutW) > RECONCILE_EPS ||
+              Math.abs(measuredH - measuredLayoutH) > RECONCILE_EPS
+            if (inFrozenTree) {
+              // Freezing/hoisting a positioned ancestor can remove a transform from this branch.
+              // Bake only that missing part into the layout box; any transform still visible
+              // in `measured` is divided back out and remains free to apply once at render.
+              // Restore the measured root's scale first because source rects were normalized
+              // by the live root above while measured rects still include the clone root.
+              const measuredBox = layoutBox(m, measuredLayoutW, measuredLayoutH)
+              sourceW = measuredW > 0 ? sourceW * msx * measuredBox.width / measuredW : sourceW
+              sourceH = measuredH > 0 ? sourceH * msy * measuredBox.height / measuredH : sourceH
+              measuredW = measuredBox.width
+              measuredH = measuredBox.height
+            } else if (transformed) {
+              const sourceBox = layoutBox(src, sourceLayoutW, sourceLayoutH)
+              const measuredBox = layoutBox(m, measuredLayoutW, measuredLayoutH)
+              sourceW = sourceBox.width
+              sourceH = sourceBox.height
+              measuredW = measuredBox.width
+              measuredH = measuredBox.height
+            }
+            const dw = measuredW - sourceW
+            const dh = measuredH - sourceH
             if (Math.abs(dw) > RECONCILE_EPS || Math.abs(dh) > RECONCILE_EPS) {
               c.style.boxSizing = 'border-box'
-              c.style.width = `${limitDecimals(sr.width / sx)}px`
-              c.style.height = `${limitDecimals(sr.height / sy)}px`
+              c.style.width = `${limitDecimals(sourceW)}px`
+              c.style.height = `${limitDecimals(sourceH)}px`
               pinned++
             }
           }
         }
-        walk(c, m)
+        walk(c, m, inFrozenTree)
       }
     }
     walk(clone, measured)

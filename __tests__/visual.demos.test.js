@@ -151,6 +151,12 @@ const overrides = {
   // Issue #474 formulas rendered live at load (captures only run on click) — snapshotting
   // the table is a KaTeX layout fidelity check. Same CDN font wait as d454.
   'd474-katex-formulas': { wait: 2500 },
+  // #489 renders the same doubly-scaled box live, with default capture and with reconciliation.
+  // Wait for both canvases, then capture the whole comparison through the repaired path too.
+  'd489-reconcile-transform': {
+    snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, reconcile: true },
+    setup: async (win) => { try { await win.__ready } catch { /* error is rendered below */ } },
+  },
 }
 
 // Every demo gets settle(), not just the ones with an override, so readiness is a property
