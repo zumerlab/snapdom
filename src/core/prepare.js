@@ -11,6 +11,9 @@ import { cache } from '../core/cache.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
+import { nextFrame } from '../utils/browser.js'
+
+const visibilityWarmups = new Set()
 
 /**
  * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
@@ -54,6 +57,126 @@ export async function prepareClone(element, options = {}) {
   let clone
   let classCSS = ''
   let shadowScopedCSS = ''
+
+  // #488: Calcite icons defer their SVG path fetch until IntersectionObserver says
+  // their open shadow tree is visible. Reveal only offscreen roots that actually contain an
+  // unresolved shadow SVG, then wait (bounded) for its paint data before cloning. The source
+  // styles are restored first, and concurrent captures share the same warmup.
+  if (visibilityWarmups.size) {
+    const containsComposed = (root, child) => {
+      for (let node = child; node; node = node.assignedSlot || node.parentElement || node.getRootNode()?.host) {
+        if (node === root) return true
+      }
+      return false
+    }
+    while (true) {
+      const activeWarmups = [...visibilityWarmups].filter(({ root }) =>
+        containsComposed(root, element) || containsComposed(element, root),
+      ).map(({ promise }) => promise.catch(() => {}))
+      if (!activeWarmups.length) break
+      await Promise.all(activeWarmups)
+    }
+  }
+  if (!sessionCache.clip && element.isConnected && element.ownerDocument?.visibilityState !== 'hidden') {
+    try {
+      const rect = element.getBoundingClientRect()
+      const view = element.ownerDocument?.defaultView || window
+      const offscreen = rect.right <= 0 || rect.bottom <= 0 ||
+        rect.left >= view.innerWidth || rect.top >= view.innerHeight
+
+      const pendingIcons = []
+      const collectPendingShadowIcons = () => {
+        const roots = []
+        if (element.shadowRoot) roots.push(element.shadowRoot)
+        for (const child of element.querySelectorAll('*')) {
+          if (child.shadowRoot) roots.push(child.shadowRoot)
+        }
+        while (roots.length) {
+          const root = roots.pop()
+          const iconRoot = root.host?.localName === 'calcite-icon'
+          for (const child of root.querySelectorAll('*')) {
+            if (child.shadowRoot) roots.push(child.shadowRoot)
+            if (!iconRoot || child.localName !== 'svg') continue
+            const paths = child.querySelectorAll('path')
+            if (!paths.length || [...paths].some(path => path.getAttribute('d')?.trim())) continue
+            const box = child.getBoundingClientRect()
+            if (box.width && box.height) pendingIcons.push(child)
+          }
+        }
+      }
+      if (offscreen) collectPendingShadowIcons()
+
+      if (pendingIcons.length) {
+        const warmup = (async () => {
+          const style = element.style
+          const hadStyle = element.hasAttribute('style')
+          const touched = new Map()
+          const force = (property, value) => {
+            if (!touched.has(property)) {
+              touched.set(property, {
+                value: style.getPropertyValue(property),
+                priority: style.getPropertyPriority(property),
+              })
+            }
+            style.setProperty(property, value, 'important')
+            const saved = touched.get(property)
+            saved.forcedValue = style.getPropertyValue(property)
+            saved.forcedPriority = style.getPropertyPriority(property)
+          }
+          try {
+            force('left', '0')
+            force('top', '0')
+            force('right', 'auto')
+            force('bottom', 'auto')
+            force('margin-top', '0')
+            force('margin-right', '0')
+            force('margin-bottom', '0')
+            force('margin-left', '0')
+            force('transform', 'none')
+            force('translate', 'none')
+            force('opacity', '0')
+            force('pointer-events', 'none')
+
+            const moved = element.getBoundingClientRect()
+            if (moved.right <= 0 || moved.bottom <= 0 ||
+                moved.left >= view.innerWidth || moved.top >= view.innerHeight) {
+              const parent = element.parentElement?.getBoundingClientRect()
+              const left = parent && parent.right > 0 && parent.left < view.innerWidth ? Math.max(0, parent.left) : 0
+              const top = parent && parent.bottom > 0 && parent.top < view.innerHeight ? Math.max(0, parent.top) : 0
+              force('position', 'fixed')
+              force('left', `${left}px`)
+              force('top', `${top}px`)
+            }
+
+            await nextFrame(100)
+            const deadline = Date.now() + 1500
+            const stillPending = () => pendingIcons.some((svg) => {
+              if ([...svg.querySelectorAll('path')].some(path => path.getAttribute('d')?.trim())) return false
+              const box = svg.getBoundingClientRect()
+              return box.width && box.height && box.right > 0 && box.bottom > 0 &&
+                box.left < view.innerWidth && box.top < view.innerHeight
+            })
+            while (Date.now() < deadline && stillPending()) {
+              await new Promise(resolve => setTimeout(resolve, 25))
+            }
+            await nextFrame(100)
+          } finally {
+            for (const [property, saved] of touched) {
+              if (style.getPropertyValue(property) !== saved.forcedValue ||
+                  style.getPropertyPriority(property) !== saved.forcedPriority) continue
+              if (saved.value) style.setProperty(property, saved.value, saved.priority)
+              else style.removeProperty(property)
+            }
+            if (!hadStyle && !style.length) element.removeAttribute('style')
+            await nextFrame(100)
+          }
+        })()
+        const entry = { root: element, promise: warmup }
+        visibilityWarmups.add(entry)
+        try { await warmup } finally { visibilityWarmups.delete(entry) }
+      }
+    } catch { /* non-blocking */ }
+  }
 
   const undoStabilizeLayout = stabilizeLayout(element)
 

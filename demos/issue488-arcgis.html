@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Offscreen ArcGIS Web Component (#488)</title>
+    <script type="module" src="https://js.arcgis.com/5.1/"></script>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 24px; color: #18202a; font: 14px/1.4 system-ui, sans-serif; }
+      .map-stage { position: relative; width: min(720px, 100%); height: 420px; overflow: hidden; }
+      arcgis-map { display: block; width: 100%; height: 100%; }
+      .offscreen { position: absolute; left: -9999px; top: -9999px; }
+      #plainHost { padding: 12px; background: #e7f4ff; font-weight: 700; }
+      button { margin: 16px 8px 16px 0; padding: 8px 12px; cursor: pointer; }
+      #preview { display: block; max-width: 100%; border: 1px solid #c8d1d9; }
+    </style>
+  </head>
+  <body>
+    <h1>#488 — offscreen ArcGIS Web Component</h1>
+    <p>Manual reproduction using ArcGIS 5.1. Both targets use <code>left/top: -9999px</code>.</p>
+
+    <div class="map-stage">
+      <arcgis-map id="map" basemap="topo-vector" center="116.397,39.908" zoom="11"></arcgis-map>
+      <div id="plainHost" class="offscreen">Plain DOM target</div>
+      <div id="target" class="offscreen"></div>
+    </div>
+
+    <button id="capturePlain" type="button" disabled>Capture plain DOM</button>
+    <button id="captureSketch" type="button" disabled>Capture ArcGIS Sketch</button>
+    <output id="status">Loading ArcGIS…</output>
+    <img id="preview" alt="SnapDOM preview">
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs?issue488-arcgis'
+
+      const mapElement = document.querySelector('#map')
+      const sketchHost = document.querySelector('#target')
+      const preview = document.querySelector('#preview')
+      const status = document.querySelector('#status')
+      const buttons = document.querySelectorAll('button')
+      let previewUrl
+
+      async function capture(selector) {
+        const target = document.querySelector(selector)
+        const blob = await snapdom.toBlob(target, {
+          backgroundColor: '#ffffff',
+          embedFonts: false,
+          type: 'svg',
+        })
+        URL.revokeObjectURL(previewUrl)
+        previewUrl = URL.createObjectURL(blob)
+        preview.src = previewUrl
+        await preview.decode()
+        status.textContent = `Captured ${selector}: ${target.offsetWidth} x ${target.offsetHeight}`
+      }
+
+      try {
+        await mapElement.viewOnReady()
+        const [GraphicsLayer] = await $arcgis.import(['@arcgis/core/layers/GraphicsLayer.js'])
+        const graphicsLayer = new GraphicsLayer()
+        mapElement.map.add(graphicsLayer)
+
+        const sketchElement = document.createElement('arcgis-sketch')
+        Object.assign(sketchElement, {
+          referenceElement: mapElement,
+          layer: graphicsLayer,
+          defaultGraphicsLayerDisabled: true,
+          availableCreateTools: ['point', 'polyline', 'polygon', 'rectangle', 'circle', 'text'],
+          creationMode: 'update',
+        })
+        sketchHost.append(sketchElement)
+
+        await customElements.whenDefined('arcgis-sketch')
+        await new Promise((resolve) => {
+          const deadline = performance.now() + 10000
+          const ready = () => {
+            if ((sketchHost.offsetWidth && sketchHost.offsetHeight) || performance.now() >= deadline) resolve()
+            else requestAnimationFrame(ready)
+          }
+          ready()
+        })
+        buttons.forEach((button) => { button.disabled = false })
+        status.textContent = `ArcGIS ready: ${sketchHost.offsetWidth} x ${sketchHost.offsetHeight}`
+      } catch (error) {
+        status.textContent = error.message
+      }
+
+      document.querySelector('#capturePlain').addEventListener('click', () => capture('#plainHost'))
+      document.querySelector('#captureSketch').addEventListener('click', () => capture('#target'))
+    </script>
+  </body>
+</html>

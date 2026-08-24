@@ -45,23 +45,20 @@ export function idleCallback(childList, callback, fast) {
   }))
 }
 
-/**
- * Add :not([data-sd-slotted]) at the rightmost compound of a selector.
- * Very safe approximation: append at the end.
- */
-function addNotSlottedRightmost(sel) {
+/** Add the current scope's slotted exclusion at the rightmost compound. */
+function addNotSlottedRightmost(sel, scopeId) {
   sel = sel.trim()
   if (!sel) return sel
-  // Evitar duplicar si ya está
-  if (/:not\(\s*\[data-sd-slotted\]\s*\)\s*$/.test(sel)) return sel
-  return `${sel}:not([data-sd-slotted])`
+  const marker = scopeId ? `[data-sd-slotted~="${scopeId}"]` : '[data-sd-slotted]'
+  if (sel.endsWith(':not([data-sd-slotted])') || sel.endsWith(`:not(${marker})`)) return sel
+  return `${sel}:not(${marker})`
 }
 
 /**
  * Wrap a selector list with :where(scope ...), lowering specificity to 0.
  * Optionally excludes slotted elements on the rightmost selector.
  */
-function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
+function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scopeId) {
   return selectorList
     .split(',')
     .map(s => s.trim())
@@ -73,7 +70,7 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
       // No toques @rules aquí (esto se hace en el caller)
       if (s.startsWith('@')) return s
 
-      const body = excludeSlotted ? addNotSlottedRightmost(s) : s
+      const body = excludeSlotted ? addNotSlottedRightmost(s, scopeId) : s
       // Especificidad 0 para todo el selector:
       return `:where(${scopeSelector} ${body})`
     })
@@ -85,10 +82,10 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
  * - :host(.foo)           => :where([data-sd="sN"]:is(.foo))
  * - :host                 => :where([data-sd="sN"])
  * - ::slotted(X)          => :where([data-sd="sN"] X)              (no excluye sloteados)
- * - (resto, p.ej. .button)=> :where([data-sd="sN"] .button:not([data-sd-slotted]))
+ * - (resto, p.ej. .button)=> :where([data-sd="sN"] .button:not([data-sd-slotted~="sN"]))
  * - :host-context(Y)      => :where(:where(Y) [data-sd="sN"])      (aprox)
  */
-export function rewriteShadowCSS(cssText, scopeSelector) {
+export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   if (!cssText) return ''
 
   // 1) :host(.foo) y :host
@@ -108,9 +105,9 @@ export function rewriteShadowCSS(cssText, scopeSelector) {
   })
 
   // 4) Por cada bloque de selectores "suelto", envolver con :where(scope …)
-  //    y excluir sloteados en el rightmost (:not([data-sd-slotted])).
+  //    y excluir solo los sloteados de ESTE scope en el rightmost.
   cssText = cssText.replace(/(^|})(\s*)([^@}{]+){/g, (_, brace, ws, selectorList) => {
-    const wrapped = wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true)
+    const wrapped = wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true, scopeId)
     return `${brace}${ws}${wrapped}{`
   })
 
@@ -260,18 +257,24 @@ export function buildSeedCustomPropsRule(hostEl, names, scopeSelector) {
 }
 
 /**
- * Mark slotted subtree with data-sd-slotted attribute
+ * Mark a flattened slotted subtree with this shadow scope's token. Tokens compose when
+ * nested slots are flattened, so parent CSS cannot pierce a child shadow tree while the
+ * child's own CSS still applies to its internals (#488).
  * @param {Node} root
+ * @param {string} [scopeId]
  */
-export function markSlottedSubtree(root) {
+export function markSlottedSubtree(root, scopeId) {
   if (!root) return
-  if (root.nodeType === Node.ELEMENT_NODE) {
-    root.setAttribute('data-sd-slotted', '')
+  const mark = (el) => {
+    const value = el.getAttribute('data-sd-slotted') || ''
+    if (!scopeId) {
+      el.setAttribute('data-sd-slotted', value)
+    } else if (!(` ${value} `).includes(` ${scopeId} `)) {
+      el.setAttribute('data-sd-slotted', value ? `${value} ${scopeId}` : scopeId)
+    }
   }
-  // Marcar todos los descendientes elemento
-  if (root.querySelectorAll) {
-    root.querySelectorAll('*').forEach(el => el.setAttribute('data-sd-slotted', ''))
-  }
+  if (root.nodeType === Node.ELEMENT_NODE) mark(root)
+  root.querySelectorAll?.('*').forEach(mark)
 }
 
 /**

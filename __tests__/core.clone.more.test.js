@@ -345,24 +345,23 @@ describe('deepClone – targeted branches for coverage gaps', () => {
     }
   })
 
-  /**
-   * Covers: SLOT fallback path when assignedNodes() is empty → clones childNodes,
-   * and markSlottedSubtree() adds data-sd-slotted to element descendants.
-   */
-  it('SLOT fallback clones childNodes and marks slotted subtree', async () => {
-    const slot = document.createElement('slot')
-    // assignedNodes() returns empty → fallback to childNodes
-    Object.defineProperty(slot, 'assignedNodes', { configurable: true, value: () => [] })
-    const span = document.createElement('span')
-    span.textContent = 'fallback!'
-    slot.appendChild(span)
+  it('clones SLOT fallback as part of its own shadow scope', async () => {
+    const host = document.createElement('div')
+    host.attachShadow({ mode: 'open' }).innerHTML = `
+      <style>.fallback { color: red }</style>
+      <slot><span class="fallback">fallback!</span></slot>
+    `
+    document.body.appendChild(host)
 
-    const frag = await deepClone(slot, session, {})
-    expect(frag.nodeType).toBe(Node.DOCUMENT_FRAGMENT_NODE)
-    const clonedSpan = frag.firstChild
-    expect(clonedSpan.tagName).toBe('SPAN')
-    // markSlottedSubtree should set data-sd-slotted
-    expect(clonedSpan.hasAttribute('data-sd-slotted')).toBe(true)
+    const clone = await deepClone(host, session, {})
+    host.remove()
+    const scope = clone.getAttribute('data-sd')
+    const clonedSpan = clone.querySelector('.fallback')
+
+    expect(clonedSpan.textContent).toBe('fallback!')
+    expect(clonedSpan.hasAttribute('data-sd-slotted')).toBe(false)
+    expect(clone.querySelector('style[data-sd]').textContent)
+      .toContain(`.fallback:not([data-sd-slotted~="${scope}"])`)
   })
 
   /**
@@ -379,6 +378,46 @@ describe('deepClone – targeted branches for coverage gaps', () => {
     const em = frag.firstChild
     expect(em.tagName).toBe('EM')
     expect(em.getAttribute('data-sd-slotted')).toBe('')
+  })
+
+  it('keeps nested slot markers scoped without duplicating assigned content', async () => {
+    const outer = document.createElement('div')
+    outer.attachShadow({ mode: 'open' }).innerHTML = `
+      <style>.inside { color: red }</style>
+      <slot></slot>
+    `
+
+    const inner = document.createElement('section')
+    inner.attachShadow({ mode: 'open' }).innerHTML = `
+      <style>.inside { color: blue }</style>
+      <div class="inside"><slot></slot></div>
+    `
+    const leaf = document.createElement('span')
+    leaf.className = 'leaf'
+    leaf.textContent = 'once'
+    inner.appendChild(leaf)
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+
+    const clone = await deepClone(outer, session, { fast: true })
+    outer.remove()
+    const outerScope = clone.getAttribute('data-sd')
+    const innerClone = clone.querySelector('section[data-sd]')
+    const innerScope = innerClone.getAttribute('data-sd')
+    const surface = innerClone.querySelector('.inside')
+    const leafClone = innerClone.querySelector('.leaf')
+
+    expect(innerClone.getAttribute('data-sd-slotted').split(/\s+/)).toContain(outerScope)
+    expect(surface.getAttribute('data-sd-slotted').split(/\s+/)).toContain(outerScope)
+    expect(surface.getAttribute('data-sd-slotted').split(/\s+/)).not.toContain(innerScope)
+    expect(leafClone.getAttribute('data-sd-slotted').split(/\s+/)).toEqual(
+      expect.arrayContaining([outerScope, innerScope]),
+    )
+    expect(innerClone.querySelectorAll('.leaf')).toHaveLength(1)
+
+    const css = [...clone.querySelectorAll('style[data-sd]')].map((style) => style.textContent).join('\n')
+    expect(css).toContain(`.inside:not([data-sd-slotted~="${outerScope}"])`)
+    expect(css).toContain(`.inside:not([data-sd-slotted~="${innerScope}"])`)
   })
 
   it('ShadowRoot injects rewritten CSS and seeds custom props used by var()', async () => {
@@ -406,7 +445,7 @@ describe('deepClone – targeted branches for coverage gaps', () => {
   // Seeding rule present
   expect(css).toMatch(/--brand:\s*hotpink/)
   // Rewriting applied
-  expect(css).toMatch(/:where\(\[data-sd="s\d+"\]\s+\.btn:not\(\[data-sd-slotted\]\)\)/)
+  expect(css).toMatch(/:where\(\[data-sd="s\d+"\]\s+\.btn:not\(\[data-sd-slotted~="s\d+"\]\)\)/)
   expect(css).toMatch(/:where\(\[data-sd="s\d+"\]\s+a\)/)
 
   host.remove()
@@ -476,12 +515,12 @@ describe('deepClone – extra targets to lift coverage', () => {
     // seed desde :root
     expect(css).toMatch(/\[data-sd="s\d+"\]\{[^}]*--brand:\s*deepskyblue/i)
 
-    // ::slotted reescrito como descendiente dentro del scope (sin :not([data-sd-slotted]))
+    // ::slotted reescrito como descendiente dentro del scope (sin exclusión slotted)
     expect(css).toMatch(/:where\(\[data-sd="s\d+"\]\s+a\)/)
 
      const alreadyMatches = css.match(/:where\(\.already\)/g) || []
       expect(alreadyMatches.length).toBe(1)
-       expect(css).toMatch(/:where\(\s*\[?data-sd="s\d+"\]?[^)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted\]\)\)/)
+       expect(css).toMatch(/:where\(\s*\[?data-sd="s\d+"\]?[^)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted~="s\d+"\]\)\)/)
 
     // el bloque @media queda presente (el rewriter ignora @ en la captura de selectores)
     expect(css).toMatch(/@media\s*\(min-width:\s*1px\)\s*\{\s*\.m\s*\{\s*display:\s*block/i)

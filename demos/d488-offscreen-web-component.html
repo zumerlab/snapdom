@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Offscreen nested Web Components (#488)</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 32px; color: #172033; background: #eef2f7; font: 14px/1.45 system-ui, sans-serif; }
+      h1 { margin: 0 0 6px; font-size: 22px; }
+      p { margin: 0 0 22px; color: #536178; }
+      .card { width: max-content; padding: 18px; border: 1px solid #d8dee9; border-radius: 14px; background: white; box-shadow: 0 8px 24px #26324812; }
+      .label { margin-bottom: 8px; color: #68758a; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      .stage { position: relative; width: 430px; height: 120px; overflow: hidden; }
+      #target { position: absolute; left: -9999px; top: -9999px; }
+      #capture { margin-top: 18px; padding: 9px 14px; border: 0; border-radius: 8px; color: white; background: #2563eb; font: inherit; font-weight: 700; cursor: pointer; }
+      #status { margin-left: 10px; color: #68758a; }
+      #preview { display: block; min-height: 1px; margin-top: 18px; border: 1px dashed #c4ccda; border-radius: 10px; background: #f8fafc; }
+    </style>
+  </head>
+  <body>
+    <h1>#488 — offscreen nested Web Components</h1>
+    <p>The reference is visible. The capture target is at <code>-9999px</code> inside an <code>overflow:hidden</code> stage.</p>
+
+    <div class="card">
+      <div class="label">Visible reference</div>
+      <div id="reference"></div>
+      <div class="stage"><div id="target"></div></div>
+      <button id="capture" type="button">Capture offscreen toolbar</button>
+      <output id="status">Ready</output>
+      <img id="preview" alt="SnapDOM preview">
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs?issue488-local'
+
+      const paths = {
+        select: 'M5 3l13 8-6 2-3 6z',
+        point: 'M12 3a5 5 0 1 0 .01 0M12 8v13',
+        line: 'M4 19L10 6l10 11',
+        polygon: 'M4 18L7 5l13 4-4 11z',
+        rectangle: 'M4 5h16v14H4z',
+        circle: 'M12 4a8 8 0 1 0 .01 0z',
+        settings: 'M12 8a4 4 0 1 0 .01 0M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2',
+      }
+
+      customElements.define('calcite-icon', class extends HTMLElement {
+        constructor() {
+          super()
+          this.attachShadow({ mode: 'open' }).innerHTML = `
+            <style>:host{display:block;width:22px;height:22px}svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}</style>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d=""></path></svg>
+          `
+        }
+
+        connectedCallback() {
+          this.observer = new IntersectionObserver(([entry]) => {
+            if (!entry?.isIntersecting) return
+            this.observer.disconnect()
+            this.timer = setTimeout(() => {
+              this.shadowRoot.querySelector('path').setAttribute('d', paths[this.getAttribute('name')])
+            }, 80)
+          })
+          this.observer.observe(this)
+        }
+
+        disconnectedCallback() {
+          this.observer?.disconnect()
+          clearTimeout(this.timer)
+        }
+      })
+
+      customElements.define('issue488-action', class extends HTMLElement {
+        constructor() {
+          super()
+          this.attachShadow({ mode: 'open' })
+        }
+
+        connectedCallback() {
+          if (this.shadowRoot.firstChild) return
+          const label = this.getAttribute('label')
+          const icon = this.getAttribute('icon')
+          this.shadowRoot.innerHTML = `
+            <style>:host{display:block}button{display:grid;width:38px;height:38px;padding:8px;place-items:center;border:0;border-radius:7px;color:#344054;background:transparent}button:hover{color:#155eef;background:#eff4ff}</style>
+            <button type="button" aria-label="${label}"><calcite-icon name="${icon}"></calcite-icon></button>
+          `
+        }
+      })
+
+      customElements.define('issue488-group', class extends HTMLElement {
+        constructor() {
+          super()
+          this.attachShadow({ mode: 'open' }).innerHTML = `
+            <style>:host{display:flex;gap:4px;align-items:center}:host(:not(:first-child)){margin-left:8px;padding-left:9px;border-left:1px solid #d8dee9}::slotted(*){flex:none}</style>
+            <slot></slot>
+          `
+        }
+      })
+
+      customElements.define('issue488-toolbar', class extends HTMLElement {
+        constructor() {
+          super()
+          this.attachShadow({ mode: 'open' }).innerHTML = `
+            <style>:host{display:block;width:max-content}.toolbar{display:flex;width:max-content;padding:8px;border:1px solid #d8dee9;border-radius:10px;background:#fff;box-shadow:0 3px 10px #1f293712}::slotted(*){flex:none}</style>
+            <div class="toolbar" role="toolbar"><slot></slot></div>
+          `
+        }
+      })
+
+      const groups = [
+        [['Select', 'select'], ['Point', 'point'], ['Line', 'line']],
+        [['Polygon', 'polygon'], ['Rectangle', 'rectangle'], ['Circle', 'circle']],
+        [['Settings', 'settings']],
+      ]
+
+      function createToolbar() {
+        const toolbar = document.createElement('issue488-toolbar')
+        for (const actions of groups) {
+          const group = document.createElement('issue488-group')
+          for (const [label, icon] of actions) {
+            const action = document.createElement('issue488-action')
+            action.setAttribute('label', label)
+            action.setAttribute('icon', icon)
+            action.setAttribute('data-issue488-action', '')
+            group.appendChild(action)
+          }
+          toolbar.appendChild(group)
+        }
+        return toolbar
+      }
+
+      document.querySelector('#reference').appendChild(createToolbar())
+      document.querySelector('#target').appendChild(createToolbar())
+
+      let previewUrl
+      document.querySelector('#capture').addEventListener('click', async () => {
+        const target = document.querySelector('#target')
+        const status = document.querySelector('#status')
+        status.textContent = 'Capturing…'
+        const blob = await snapdom.toBlob(target, { backgroundColor: '#eef2f7', type: 'svg' })
+        URL.revokeObjectURL(previewUrl)
+        previewUrl = URL.createObjectURL(blob)
+        const preview = document.querySelector('#preview')
+        preview.src = previewUrl
+        await preview.decode()
+        status.textContent = `${preview.naturalWidth} × ${preview.naturalHeight}`
+      })
+    </script>
+  </body>
+</html>
