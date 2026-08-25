@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.24.10](https://github.com/zumerlab/snapdom/compare/v2.24.7...v2.24.10)
+
+> 25 August 2026
+
+- fix: transformed reconciliation. Ref #489 [`9b28ab4`](https://github.com/zumerlab/snapdom/commit/9b28ab4d28b7ac56f324e2677ae47b3c22ba55ba)
+- fix: offscreen captures. Ref #488 [`460b75e`](https://github.com/zumerlab/snapdom/commit/460b75ec0108436c874bf623d3d3c5f1adea134c)
+- fix(iframe): stop suggesting an option that is already on [`98de375`](https://github.com/zumerlab/snapdom/commit/98de37594af6e3891173d091695bf021240482ff)
+- add funding [`e839ec0`](https://github.com/zumerlab/snapdom/commit/e839ec0475a6f950927e146f18c041d9bc9a160b)
+
+
 #### [v2.24.7](https://github.com/zumerlab/snapdom/compare/v2.24.3...v2.24.7)
 
 > 21 August 2026
