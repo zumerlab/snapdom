@@ -29,7 +29,7 @@ async function buildLegacy() {
     ...common,
     entryPoints: ['src/index.browser.js'],
     outfile: 'dist/snapdom.js',
-    globalName: 'snapdom',
+    format: 'iife',
     platform: 'neutral',
     minify: true,
     target: ['es2020'],
