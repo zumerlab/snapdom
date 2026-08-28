@@ -4,6 +4,7 @@
 
 import { defineConfig } from 'vitest/config'
 import { snapDiffCommands } from '@zumer/snapdiff/vitest'
+import { createNetworkGate } from './vitest.network.mjs'
 
 const ALL_BROWSERS = ['chromium', 'firefox', 'webkit']
 const requested = process.env.BROWSER || 'chromium'
@@ -20,14 +21,27 @@ const visualCommands = Object.fromEntries(
   }])
 )
 
+// Answers "what can this connection serve right now?" for every browser worker, from the
+// one node process they all share: run network-dependent tests as usual, run them one at a
+// time, or skip them. See __tests__/helpers/network-gate.js.
+const networkGate = createNetworkGate()
+
+// The first reading is taken here, before any browser starts, and handed to the suites via
+// inject('network'). Tests re-consult the gate as they run — the run itself is what
+// congests the link — but a value known at COLLECTION time is what lets a suite size its
+// own test timeout: a slow link needs a longer one, and vitest bakes timeouts in when the
+// tests are registered. The probe is bounded and paid once per run.
+const network = await networkGate.status()
+
 export default defineConfig({
   test: {
+    provide: { network: { mode: network.mode, reading: network.reading, kbps: network.kbps, serialTimeoutMs: networkGate.serialTimeoutMs } },
     browser: {
       enabled: true,
       provider: 'playwright',
       screenshotFailures: false,
       instances: browsers.map((browser) => ({ browser })),
-      commands: visualCommands,
+      commands: { ...visualCommands, ...networkGate.commands },
     },
     coverage: {
       provider: 'v8',
