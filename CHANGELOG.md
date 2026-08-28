@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.24.12](https://github.com/zumerlab/snapdom/compare/v2.24.10...v2.24.12)
+
+> 28 August 2026
+
+- Split visual demo suite into 6 shards and gate network-bound demos [`56b1e01`](https://github.com/zumerlab/snapdom/commit/56b1e013e843e528b8256baacea12b22090e599a)
+- Fix legacy bundle global leakage. Ref #490 [`80fe19d`](https://github.com/zumerlab/snapdom/commit/80fe19d5edc5a38fae9ca53291a2e8261c4575fe)
+
 #### [v2.24.10](https://github.com/zumerlab/snapdom/compare/v2.24.7...v2.24.10)
 
 > 25 August 2026
