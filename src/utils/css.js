@@ -165,6 +165,78 @@ const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed
 const HARD_WIDTH_PROPS = new Set(['width', 'max-width', 'inline-size', 'max-inline-size'])
 // Min-width longhands: kept verbatim when authored (or set to 0 by #406 on flex/grid items).
 const MIN_WIDTH_PROPS = new Set(['min-width', 'min-inline-size'])
+
+/**
+ * Logical box properties and the physical property they duplicate. Computed-style enumeration
+ * lists both forms of every box property, so the generated CSS re-states most of a box a second
+ * time — about 14 of the 47 declarations of a typical class, parsed again by every rasterization.
+ *
+ * Imported from @frostin/snapdom (element-mirror).
+ */
+const LOGICAL_TO_PHYSICAL = new Map(Object.entries({
+  'block-size': 'height',
+  'inline-size': 'width',
+  'min-block-size': 'min-height',
+  'min-inline-size': 'min-width',
+  'max-block-size': 'max-height',
+  'max-inline-size': 'max-width',
+  'margin-block-start': 'margin-top',
+  'margin-block-end': 'margin-bottom',
+  'margin-inline-start': 'margin-left',
+  'margin-inline-end': 'margin-right',
+  'padding-block-start': 'padding-top',
+  'padding-block-end': 'padding-bottom',
+  'padding-inline-start': 'padding-left',
+  'padding-inline-end': 'padding-right',
+  'inset-block-start': 'top',
+  'inset-block-end': 'bottom',
+  'inset-inline-start': 'left',
+  'inset-inline-end': 'right',
+  'border-block-start-width': 'border-top-width',
+  'border-block-start-style': 'border-top-style',
+  'border-block-start-color': 'border-top-color',
+  'border-block-end-width': 'border-bottom-width',
+  'border-block-end-style': 'border-bottom-style',
+  'border-block-end-color': 'border-bottom-color',
+  'border-inline-start-width': 'border-left-width',
+  'border-inline-start-style': 'border-left-style',
+  'border-inline-start-color': 'border-left-color',
+  'border-inline-end-width': 'border-right-width',
+  'border-inline-end-style': 'border-right-style',
+  'border-inline-end-color': 'border-right-color',
+  'border-start-start-radius': 'border-top-left-radius',
+  'border-start-end-radius': 'border-top-right-radius',
+  'border-end-start-radius': 'border-bottom-left-radius',
+  'border-end-end-radius': 'border-bottom-right-radius',
+  'overflow-block': 'overflow-y',
+  'overflow-inline': 'overflow-x',
+  'overscroll-behavior-block': 'overscroll-behavior-y',
+  'overscroll-behavior-inline': 'overscroll-behavior-x',
+  'contain-intrinsic-block-size': 'contain-intrinsic-height',
+  'contain-intrinsic-inline-size': 'contain-intrinsic-width',
+}))
+
+/**
+ * Whether `prop` says nothing in this style map that its physical counterpart does not already
+ * say. Dropped only on a byte-identical value: the engine genuinely resolves the two forms
+ * differently in places (`min-width` resolves `auto` to `0px` where `min-inline-size` reports
+ * `auto`), and there the logical declaration is load-bearing. The mapping is writing-mode
+ * dependent, so nothing is dropped outside horizontal-tb LTR.
+ *
+ * @param {string} prop
+ * @param {Record<string, string>} styles the map the declaration comes from
+ * @returns {boolean}
+ */
+export function isRedundantLogicalProp(prop, styles) {
+  const physical = LOGICAL_TO_PHYSICAL.get(prop)
+  if (physical === undefined) return false
+  if (styles[physical] !== styles[prop]) return false
+  const writingMode = styles['writing-mode']
+  if (writingMode && writingMode !== 'horizontal-tb') return false
+  const direction = styles['direction']
+  if (direction && direction !== 'ltr') return false
+  return true
+}
 // Slack added to a frozen width to clear the computed-style serialization error (≤0.0005px on
 // a 1/1000-rounded length). Deliberately tiny: it is paid once per box and the shrink-to-fit
 // parent holding a row of them is only paid once in total (#491).
@@ -253,6 +325,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   let keptMinWidth = false
   for (const prop in snapshot) {
     if (shouldIgnoreProp(prop)) continue
+    if (isRedundantLogicalProp(prop, snapshot)) continue
     const value = snapshot[prop]
     if (soften) {
       if (HARD_WIDTH_PROPS.has(prop)) continue // never freeze a content/algorithm width

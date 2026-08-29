@@ -151,3 +151,45 @@ describe('getStyleKey – width softening (#429/#434/#436)', () => {
     expect(key).toContain('width:80px')
   })
 })
+
+// Computed-style enumeration lists both the physical and the logical form of every box
+// property, so the generated class re-stated most of a box twice. A logical declaration is
+// dropped only when it says exactly what its physical twin already says.
+describe('getStyleKey — redundant logical properties (element-mirror import)', () => {
+  it('drops a logical longhand that duplicates its physical twin', () => {
+    const key = getStyleKey({
+      display: 'block',
+      width: '200px', 'inline-size': '200px',
+      height: '80px', 'block-size': '80px',
+      'padding-left': '12px', 'padding-inline-start': '12px',
+      'border-top-width': '1px', 'border-block-start-width': '1px',
+    }, 'div')
+    expect(key).toContain('width:200px')
+    expect(key).toContain('height:80px')
+    expect(key).not.toContain('inline-size')
+    expect(key).not.toContain('block-size')
+    expect(key).not.toContain('padding-inline-start')
+    expect(key).not.toContain('border-block-start-width')
+  })
+
+  it('keeps a logical longhand whose value differs from the physical one', () => {
+    // Chrome resolves min-width:auto to 0px while min-inline-size still reports auto: the
+    // logical declaration is load-bearing there and dropping it changed flex/grid layout.
+    const key = getStyleKey({ display: 'flex', 'min-width': '0px', 'min-inline-size': 'auto' }, 'div')
+    expect(key).toContain('min-inline-size:auto')
+  })
+
+  it('keeps logical properties outside horizontal-tb LTR, where they do not map', () => {
+    const vertical = getStyleKey({
+      display: 'block', 'writing-mode': 'vertical-rl',
+      width: '200px', 'inline-size': '200px',
+    }, 'div')
+    expect(vertical).toContain('inline-size:200px')
+
+    const rtl = getStyleKey({
+      display: 'block', direction: 'rtl',
+      'padding-left': '12px', 'padding-inline-start': '12px',
+    }, 'div')
+    expect(rtl).toContain('padding-inline-start:12px')
+  })
+})

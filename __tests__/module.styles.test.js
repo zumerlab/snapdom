@@ -217,6 +217,8 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(key).toBeDefined()
     // Tailwind * { border: 0 solid } must become border: none in output (#362)
     expect(key).toMatch(/\bborder:\s*none\b/)
+    // The logical per-side longhands survived the normalization and re-declared a
+    // zero-width solid border after it, since they come later in the enumeration.
   })
 
   it('content-visibility:hidden is carried verbatim into the snapshot (NEW-10)', async () => {
