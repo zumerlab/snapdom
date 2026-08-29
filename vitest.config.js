@@ -25,7 +25,8 @@ const visualCommands = Object.fromEntries(
 // node process they all share: run network-dependent tests as usual, run them one at a time, or
 // skip them. See __tests__/helpers/network-gate.js.
 // `workers` is what makes "fast enough" a question about this run rather than about the
-// link: BROWSER=all puts three engines on the same connection.
+// link: BROWSER=all puts three engines on the same connection, and it also sets what the
+// serial lane may cost before the run gives up on network tests altogether.
 const networkGate = createNetworkGate({ workers: browsers.length })
 
 // The first reading is taken here, before any browser starts, and handed to the suites via

@@ -43,6 +43,20 @@ const ALL_DEMOS = import.meta.glob('/demos/d*.html')
 //
 // hookTimeout covers the beforeEach below, which is where a test queues for the serial
 // lane, so it has to outlast that queue rather than the test itself.
+//
+// EVERY BUDGET BELOW IS A CEILING ON ONE DEMO, AND THEY ADD UP. The first version of this
+// let a demo queue 120s for the lane and then run for 30s more, so a single demo could be
+// reported at over two and a half minutes, and with the retry, at five. A gate that costs
+// that much has stopped being a way of coping with a slow link and become the slow thing.
+// The whole chain is now sized to stay under a minute per demo:
+//
+//   gate probe   <= 9s   (warmup 5s + payload batch 4s, in vitest.network.mjs)
+//   lane queue   <= 15s  (LANE_WAIT_MS below; the broker usually refuses instantly)
+//   ---------------------------------------
+//   worst hook     24s, against a 35s hookTimeout. The margin is deliberate: a hook that
+//                  times out reports a FAILED test, which is the one outcome this whole
+//                  gate exists to avoid, so it must never be the thing that expires first.
+//   test body      30s   at most, and the lane's own run budget caps how many pay it
 const NETWORK = inject('network') ?? { mode: 'parallel', serialTimeoutMs: 30000 }
 // Engines running at once. Under BROWSER=all the same demo gets a third of the machine and a
 // third of the link, and the two failures that survived the pre-run probe were exactly that:
@@ -51,12 +65,20 @@ const NETWORK = inject('network') ?? { mode: 'parallel', serialTimeoutMs: 30000 
 // line.
 const ENGINES = inject('engines') ?? 1
 // How long a demo may take to stop changing. It is a CAP, not a wait: a demo that settles in
-// 200ms still costs 200ms. A link the gate found degraded needs the room, and so does a run
-// where three engines share the machine.
-const SETTLE_BUDGET_MS = (NETWORK.mode === 'parallel' ? 2500 : 8000) * ENGINES
+// 200ms still costs 200ms. Three engines sharing the machine need the room; a degraded link
+// does NOT get it multiplied on top, because in serial mode the lane has already given this
+// demo the link to itself, and 8s of waiting for a payload that is not coming is 8s wasted
+// on every network demo in the run.
+const SETTLE_BUDGET_MS = NETWORK.mode === 'parallel' ? 2500 * ENGINES : 8000
+// How long a demo may queue for the serial lane before it is skipped instead. Has to stay
+// clear of hookTimeout below: a hook that times out reports a FAILED test, and a demo the
+// connection could not serve is not a failure of snapdom.
+const LANE_WAIT_MS = 15000
 vi.setConfig({
-  testTimeout: (NETWORK.mode === 'parallel' ? 10000 : NETWORK.serialTimeoutMs) * ENGINES,
-  hookTimeout: 150000,
+  // In serial mode the demo already has the link to itself, so the engine count does not
+  // multiply on top of serialTimeoutMs the way it does for the parallel budget.
+  testTimeout: NETWORK.mode === 'parallel' ? 10000 * ENGINES : NETWORK.serialTimeoutMs,
+  hookTimeout: 35000,
   // One retry whenever the gate is live, not only when the PRE-RUN probe already found the
   // link degraded. The reading that sizes this file is taken on an idle line, and the run
   // itself is what saturates it: a demo that starts under a "parallel" verdict and finishes
@@ -97,10 +119,15 @@ function styleSheetsPending(doc) {
   return false
 }
 
-/** Faces the page declared and has not finished loading. */
+/** Faces that are actually in flight. NOT `unloaded`: that is the permanent status of a
+ *  face the page declared and never used, and Google Fonts' css2 returns one @font-face
+ *  per unicode-range, so a page using latin alone leaves cyrillic and greek `unloaded`
+ *  forever. Treating those as pending burns the whole settle budget on every font demo and
+ *  still waits for the wrong thing. What comes after the stylesheet lands is `fonts.ready`,
+ *  which is about the faces the page USES. */
 function fontFacesPending(doc) {
   for (const face of doc.fonts) {
-    if (face.status === 'loading' || face.status === 'unloaded') return true
+    if (face.status === 'loading') return true
   }
   return false
 }
@@ -272,11 +299,12 @@ const overrides = {
 }
 
 // `overrides[name].skip` wins: a demo skipped for its own reasons should not be reported as
-// a casualty of the connection. The lane may hold a long queue here because hookTimeout was
-// raised to outlast it: in serial mode every network demo passes through the same one lane.
+// a casualty of the connection. In serial mode every network demo passes through the same
+// one lane, so this is where the queue forms and where a demo is skipped rather than left
+// to wait out a queue that cannot clear in time.
 const guard = networkGuard(
   (name) => !overrides[name]?.skip && pageNeedsNetwork(urlByName.get(name)),
-  { laneWaitMs: 120000 },
+  { laneWaitMs: LANE_WAIT_MS },
 )
 
 // Every demo gets settle(), not just the ones with an override, so readiness is a property

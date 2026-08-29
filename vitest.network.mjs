@@ -39,6 +39,7 @@
 //   NETWORK_GATE_URLS             comma-separated payload URLs instead of the default batch
 //   NETWORK_GATE_FAST_KBPS / NETWORK_GATE_MIN_KBPS   tier thresholds, in KB/s
 //   NETWORK_GATE_BUDGET_MS / NETWORK_GATE_WARMUP_MS / NETWORK_GATE_TTL_MS
+//   NETWORK_GATE_LANE_BUDGET_MS   total seconds the serial lane may cost the whole run
 
 // Pinned so the probe measures the connection rather than whatever the CDN serves today.
 const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist'
@@ -91,6 +92,7 @@ async function timedFetch(url, budgetMs, drain) {
  * @param {number}   [options.warmupMs]   budget for the warmup, which pays a cold handshake
  * @param {number}   [options.ttlMs]      how long a reading is reused before re-probing
  * @param {number}   [options.laneMs]     a lease is dropped after this even if never released
+ * @param {number}   [options.laneBudgetMs] total time the serial lane may cost the whole run
  * @returns {{ commands: Record<string, Function>, status: Function, enter: Function, leave: Function }}
  */
 export function createNetworkGate(options = {}) {
@@ -122,6 +124,13 @@ export function createNetworkGate(options = {}) {
   // Leases are dropped on their own: a worker that dies mid-test never sends its release,
   // and one lost lease would otherwise stall every queued test behind it.
   const laneMs = num(options.laneMs, 45000)
+  // What the whole run may spend running network tests one at a time. Serial mode is a
+  // fallback, not a plan: every network test in the run queues for the same lane, so its
+  // cost is the number of such tests times how long each takes, and on a link slow enough
+  // to need the lane that product is what turns a two-minute suite into a twenty-minute
+  // one. Past this the mode ratchets to skip. Per worker, because BROWSER=all runs the
+  // same demos three times and each engine deserves the same allowance.
+  const laneBudgetMs = num(options.laneBudgetMs ?? process.env.NETWORK_GATE_LANE_BUDGET_MS, 180000 * workers)
 
   const forcedMode = FORCED[String(process.env.NETWORK_GATE ?? '').trim().toLowerCase()]
 
@@ -131,15 +140,39 @@ export function createNetworkGate(options = {}) {
   let mode = forcedMode ?? 'parallel'  // ratchets towards 'skip', never back
 
   // --- the one-at-a-time lane ---------------------------------------------------------
+  //
+  // The lane is what makes a degraded link usable, and it is also the only thing here that
+  // can spend unbounded wall clock: EVERY network test in the run passes through it, so the
+  // last one queued waits behind all the others. Unbounded, that is how a suite ends up
+  // reporting single tests at two and a half minutes, most of it spent parked on a timer
+  // waiting to be told no. Two bounds, one per test and one per run:
+  //
+  //   per test  a test is refused IMMEDIATELY when the queue ahead of it cannot clear
+  //             inside its own wait budget, instead of parking to discover the same thing.
+  //             The estimate uses what a turn in the lane has actually cost THIS run.
+  //   per run   the lane has a total budget. Once spent, the mode ratchets to skip: a link
+  //             that needed this much of it has been measured by the only instrument that
+  //             matters, which is the run itself, and another twenty minutes of one-at-a-
+  //             time downloads teaches nothing.
+  //
+  // Both turn a hang into a reported skip, which is the entire purpose of the gate.
   let nextToken = 1
-  const leases = new Map()  // token -> timer
-  const waiting = []        // [{ resolve, timer }]
+  const leases = new Map()  // token -> { timer, at }
+  const waiting = []        // [{ grant, timer }]
+  let laneSpentMs = 0       // wall clock the lane has been held for, this run
+  let laneServed = 0        // turns that completed, so the average below is a real one
+
+  // What one turn costs. The seed only has to be the right order of magnitude: it is
+  // replaced by a measurement as soon as one network test has been through the lane.
+  const laneTurnMs = () => (laneServed > 0 ? laneSpentMs / laneServed : 8000)
 
   function release(token) {
-    const timer = leases.get(token)
-    if (timer === undefined) return false
-    clearTimeout(timer)
+    const lease = leases.get(token)
+    if (lease === undefined) return false
+    clearTimeout(lease.timer)
     leases.delete(token)
+    laneSpentMs += Date.now() - lease.at
+    laneServed++
     const next = waiting.shift()
     if (next) next.grant()
     return true
@@ -147,20 +180,39 @@ export function createNetworkGate(options = {}) {
 
   function grantToken() {
     const token = nextToken++
-    leases.set(token, setTimeout(() => release(token), laneMs))
+    leases.set(token, { at: Date.now(), timer: setTimeout(() => release(token), laneMs) })
     return token
   }
 
   function enter(maxWaitMs = 120000) {
+    // `skip` first, and it is a REFUSAL. Read the other way round it says "not serial, so
+    // help yourself", which hands a free pass to exactly the tests the gate has just
+    // decided the link cannot serve, and quietly makes the budget below unenforceable.
+    if (mode === 'skip') return Promise.resolve({ granted: false, token: null, waitedMs: 0 })
     if (mode !== 'serial') return Promise.resolve({ granted: true, token: null })
+
+    // Budget spent: stop serialising and start skipping, for the rest of the run.
+    if (laneSpentMs >= laneBudgetMs) {
+      ratchet('skip', `serial lane spent its ${Math.round(laneBudgetMs / 1000)}s budget on ${laneServed} tests`)
+      return Promise.resolve({ granted: false, token: null, waitedMs: 0, spentMs: laneSpentMs })
+    }
+
     if (leases.size === 0) return Promise.resolve({ granted: true, token: grantToken() })
+
+    // Refuse now instead of after a long timer when the queue cannot clear in time anyway.
+    const ahead = leases.size + waiting.length
+    if (ahead * laneTurnMs() > maxWaitMs) {
+      return Promise.resolve({ granted: false, token: null, waitedMs: 0, ahead })
+    }
+
+    const queuedAt = Date.now()
     return new Promise((resolve) => {
       const entry = {
         grant: () => { clearTimeout(entry.timer); resolve({ granted: true, token: grantToken() }) },
         timer: setTimeout(() => {
           const i = waiting.indexOf(entry)
           if (i >= 0) waiting.splice(i, 1)
-          resolve({ granted: false, token: null, waitedMs: maxWaitMs })
+          resolve({ granted: false, token: null, waitedMs: Date.now() - queuedAt, ahead })
         }, maxWaitMs),
       }
       waiting.push(entry)
@@ -191,6 +243,19 @@ export function createNetworkGate(options = {}) {
     return { mode: 'skip', kbps, reading: detail }
   }
 
+  /**
+   * Move the verdict towards `skip` and record WHY, so the reading every worker reads back
+   * says which instrument decided: the probe, or the lane running out of budget. Never
+   * relaxes, and updating `cached` here is what keeps status() from serving the reading
+   * that was true one tier ago.
+   */
+  function ratchet(nextMode, reading) {
+    const next = strictest(mode, nextMode)
+    if (next === mode) return
+    mode = next
+    cached = { kbps: cached?.kbps ?? 0, ...cached, mode, reading, at: Date.now() }
+  }
+
   async function probe() {
     const reading = await measure()
     mode = strictest(mode, reading.mode)
@@ -201,7 +266,7 @@ export function createNetworkGate(options = {}) {
   async function status() {
     if (forcedMode) return { mode: forcedMode, kbps: 0, reading: `forced by NETWORK_GATE=${forcedMode}`, at: Date.now() }
     // Nothing to learn once it has ratcheted all the way: stop probing a dead link.
-    if (mode === 'skip') return cached
+    if (mode === 'skip') return cached ?? { mode, kbps: 0, reading: 'serial lane budget spent', at: Date.now() }
     if (cached && Date.now() - cached.at < ttlMs) return cached
     inflight ??= probe().finally(() => { inflight = null })
     return inflight
