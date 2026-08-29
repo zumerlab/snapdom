@@ -128,6 +128,134 @@ export function parseFilterDropShadows(cs) {
  * @param {HTMLElement} cloneRoot
  * @returns {{a:number,b:number,c:number,d:number}|null} The 2D matrix (without translation) or null if not applicable.
  */
+/** The four outer effects, summed the way the root's own bleed is. */
+function outerInkBleed(cs) {
+  const shadow = parseBoxShadow(cs)
+  const text = parseTextShadow(cs)
+  const blur = parseFilterBlur(cs)
+  const outline = parseOutline(cs)
+  const drop = parseFilterDropShadows(cs)
+  return {
+    top: Math.max(shadow.top, text.top) + blur.top + outline.top + drop.bleed.top,
+    right: Math.max(shadow.right, text.right) + blur.right + outline.right + drop.bleed.right,
+    bottom: Math.max(shadow.bottom, text.bottom) + blur.bottom + outline.bottom + drop.bleed.bottom,
+    left: Math.max(shadow.left, text.left) + blur.left + outline.left + drop.bleed.left
+  }
+}
+
+/**
+ * Whether an element carries anything that could paint outside its own box.
+ * Four string reads, so that the layout read below is only paid by the handful
+ * of elements on a page that actually have an effect on them.
+ * @param {CSSStyleDeclaration} cs
+ */
+function mayPaintOutside(cs) {
+  if (cs.boxShadow && cs.boxShadow !== 'none') return true
+  if (cs.textShadow && cs.textShadow !== 'none') return true
+  if ((cs.outlineStyle || 'none') !== 'none') return true
+  if (cs.filter && cs.filter !== 'none') return true
+  return !!cs.webkitFilter && cs.webkitFilter !== 'none'
+}
+
+/**
+ * Which axes an element confines its descendants' paint to.
+ * @param {CSSStyleDeclaration} cs
+ */
+function clipsPaint(cs) {
+  const x = cs.overflowX || cs.overflow || 'visible'
+  const y = cs.overflowY || cs.overflow || 'visible'
+  // contain: paint and clip-path confine both axes at once.
+  const both =
+    (!!cs.contain && /\b(paint|content|strict)\b/.test(cs.contain)) ||
+    (!!cs.clipPath && cs.clipPath !== 'none')
+  return { x: both || x !== 'visible', y: both || y !== 'visible' }
+}
+
+/**
+ * How far the ink of DESCENDANTS reaches past the root's own box.
+ *
+ * A capture is the root's box, so a ring or a shadow a child draws against the
+ * root's edge lands outside it: cloned, then clipped away by the viewBox. This
+ * measures that overhang, so a capture can be widened by as much ink as there
+ * is rather than padded on the chance that something overhangs.
+ *
+ * Only elements carrying an outer effect are measured, and their styles were
+ * already read by the clone. Ancestors that clip are honoured — a shadow inside
+ * `overflow: hidden` never escapes it — which is also what stops a scrolled
+ * container's offscreen rows from widening anything.
+ *
+ * Two spaces meet here. Boxes are measured on the page, so a scale anywhere
+ * above the root inflates them; effects are read from computed style, which is
+ * always in the element's own pixels. The work is done in page pixels, where
+ * clipping ancestors can bound the ink, and `perX`/`perY` — which the caller
+ * knows, having built the bbox — convert the result back at the end.
+ *
+ * Imported from @frostin/snapdom (element-mirror).
+ *
+ * @param {Element} root
+ * @param {Map<Node, Node>} nodeMap clone → source, from the clone pass
+ * @param {WeakMap<Element, CSSStyleDeclaration>} styleCache
+ * @param {number} [perX] root pixels per page pixel, horizontally
+ * @param {number} [perY] root pixels per page pixel, vertically
+ * @returns {{top: number, right: number, bottom: number, left: number}}
+ */
+export function measureSubtreeBleed(root, nodeMap, styleCache, perX = 1, perY = 1) {
+  let top = 0, right = 0, bottom = 0, left = 0
+  const rootClip = clipsPaint(styleCache.get(root) || getStyle(root))
+  if (rootClip.x && rootClip.y) return { top: 0, right: 0, bottom: 0, left: 0 }
+  const rootRect = root.getBoundingClientRect()
+
+  for (const source of nodeMap.values()) {
+    if (source === root || source.nodeType !== 1) continue
+    // An iframe's own capture reassigns the map; its nodes were measured in
+    // another document's coordinates and mean nothing here.
+    if (source.ownerDocument !== root.ownerDocument) continue
+    const cs = styleCache.get(source)
+    if (!cs || !mayPaintOutside(cs)) continue
+    const pad = outerInkBleed(cs)
+    if (!(pad.top || pad.right || pad.bottom || pad.left)) continue
+
+    const box = source.getBoundingClientRect()
+    const ink = {
+      left: box.left - pad.left / perX,
+      top: box.top - pad.top / perY,
+      right: box.right + pad.right / perX,
+      bottom: box.bottom + pad.bottom / perY
+    }
+    for (let a = source.parentElement; a; a = a.parentElement) {
+      const clip = clipsPaint(styleCache.get(a) || getStyle(a))
+      if (clip.x || clip.y) {
+        const bounds = a.getBoundingClientRect()
+        if (clip.x) {
+          ink.left = Math.max(ink.left, bounds.left)
+          ink.right = Math.min(ink.right, bounds.right)
+        }
+        if (clip.y) {
+          ink.top = Math.max(ink.top, bounds.top)
+          ink.bottom = Math.min(ink.bottom, bounds.bottom)
+        }
+      }
+      if (a === root) break
+    }
+
+    if (!rootClip.x) {
+      left = Math.max(left, (rootRect.left - ink.left) * perX)
+      right = Math.max(right, (ink.right - rootRect.right) * perX)
+    }
+    if (!rootClip.y) {
+      top = Math.max(top, (rootRect.top - ink.top) * perY)
+      bottom = Math.max(bottom, (ink.bottom - rootRect.bottom) * perY)
+    }
+  }
+
+  return {
+    top: Math.max(0, Math.ceil(top)),
+    right: Math.max(0, Math.ceil(right)),
+    bottom: Math.max(0, Math.ceil(bottom)),
+    left: Math.max(0, Math.ceil(left))
+  }
+}
+
 export function normalizeRootTransforms(originalEl, cloneRoot) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return null
   const cs = getComputedStyle(originalEl)

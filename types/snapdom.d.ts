@@ -150,8 +150,12 @@ export interface SnapdomOptions {
    * Expand root bbox for shadows/blur/outline instead of stripping them from the
    * cloned root. Default false (root shadows/outline are stripped, blur bleed is
    * still included).
+   *
+   * `'subtree'` additionally widens the capture for the outer-shadow ink DESCENDANTS
+   * paint past the root's box — a card whose own ring is a box-shadow, captured from a
+   * wrapper around it — measured per side and bounded by any ancestor that clips.
    */
-  outerShadows?: boolean;
+  outerShadows?: boolean | 'subtree';
 
   /**
    * Capture only a region instead of the full element: `'viewport'` (what the user

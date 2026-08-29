@@ -58,7 +58,7 @@ function collectResolveNodeHooks(options) {
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {boolean} [options.outerTransforms=true] - Keep root translate/rotate; false strips them (keeps scale/skew)
- * @param {boolean} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds.
+ * @param {boolean|'subtree'} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds. 'subtree' additionally widens the capture for the outer-shadow ink DESCENDANTS paint past the root's box (a child's ring drawn against the root's edge), measured per side and bounded by any ancestor that clips.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
  * @param {boolean} [options.burst] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Unset: auto-enables after 3 captures of the same element within 2s (canvas-bearing elements excluded)
@@ -96,7 +96,9 @@ export async function captureDOM(element, options) {
   // Read AFTER the hooks: beforeSnap is the documented place to set capture defaults, and
   // these three decide the geometry, so reading them earlier ignored the plugin that set them.
   const outerTransforms = state.outerTransforms !== false   // default: true
-  const outerShadows = !!state.outerShadows
+  // Kept as given rather than coerced: 'subtree' also widens the capture for what descendants
+  // paint outside the root's box, and every truthy value means "the root keeps its shadows".
+  const outerShadows = state.outerShadows === 'subtree' ? 'subtree' : !!state.outerShadows
   // Region capture (clip: 'viewport' | {x,y,width,height}). The GEOMETRY window is resolved
   // once, inside prepareClone (same instant as culling), and returned as clipWindow in
   // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).

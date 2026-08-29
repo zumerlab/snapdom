@@ -38,6 +38,7 @@ import {
   readIndividualTransforms,
   readTotalTransformMatrix,
   hasBBoxAffectingTransform,
+  measureSubtreeBleed
 } from '../utils/transforms.helpers.js'
 
 /**
@@ -266,6 +267,17 @@ export async function composeAndSerialize(state, ex) {
   const bleedOutline = parseOutline(csEl)
   const drop = parseFilterDropShadows(csEl)
 
+  // What a child paints past the root's box (outerShadows: 'subtree'). Measured on the page,
+  // so the ratio between the bbox and the box it was drawn as says how many root pixels a page
+  // pixel is worth: the bbox already carries the root's own transform, so what is left in the
+  // ratio is what an ancestor did, and a rotation stretches both boxes alike and correctly
+  // comes out as one. Imported from @frostin/snapdom (element-mirror).
+  const perX = rect.width > 0 ? (maxX - minX) / rect.width : 1
+  const perY = rect.height > 0 ? (maxY - minY) / rect.height : 1
+  const subtree = outerShadows === 'subtree' && !clipWindow
+    ? measureSubtreeBleed(state.element, state.nodeMap, state.styleCache, perX, perY)
+    : { top: 0, right: 0, bottom: 0, left: 0 }
+
   // A region capture defines its own exact edges — never expand it for root bleed.
   // blur() is not an outer-shadow effect: the root keeps it, so its bleed is
   // always included; shadows/outline/drop-shadow only under outerShadows.
@@ -273,10 +285,10 @@ export async function composeAndSerialize(state, ex) {
     ? { top: 0, right: 0, bottom: 0, left: 0 }
     : outerShadows
       ? {
-        top: limitDecimals(Math.max(bleedShadow.top, bleedText.top) + bleedBlur.top + bleedOutline.top + drop.bleed.top),
-        right: limitDecimals(Math.max(bleedShadow.right, bleedText.right) + bleedBlur.right + bleedOutline.right + drop.bleed.right),
-        bottom: limitDecimals(Math.max(bleedShadow.bottom, bleedText.bottom) + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
-        left: limitDecimals(Math.max(bleedShadow.left, bleedText.left) + bleedBlur.left + bleedOutline.left + drop.bleed.left)
+        top: limitDecimals(Math.max(bleedShadow.top, bleedText.top, subtree.top) + bleedBlur.top + bleedOutline.top + drop.bleed.top),
+        right: limitDecimals(Math.max(bleedShadow.right, bleedText.right, subtree.right) + bleedBlur.right + bleedOutline.right + drop.bleed.right),
+        bottom: limitDecimals(Math.max(bleedShadow.bottom, bleedText.bottom, subtree.bottom) + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
+        left: limitDecimals(Math.max(bleedShadow.left, bleedText.left, subtree.left) + bleedBlur.left + bleedOutline.left + drop.bleed.left)
       }
       : { top: bleedBlur.top, right: bleedBlur.right, bottom: bleedBlur.bottom, left: bleedBlur.left }
 
