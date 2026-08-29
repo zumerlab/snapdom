@@ -532,8 +532,15 @@ export async function deepClone(node, sessionCache, options) {
     return fragment
   }
 
+  // A shadow host renders its light DOM only through slots: a child already cloned at its slot
+  // is skipped here, and a child that no slot accepted (its slot="name" matches nothing, or the
+  // shadow tree has no <slot> at all) is outside the flat tree and paints nothing. Cloning the
+  // latter injected content the page never shows, twice over for the common component that
+  // reads its own light DOM and renders a copy inside its shadow tree.
+  const skipLightChild = (child) =>
+    clonedAssignedNodes.has(child) || (node.shadowRoot && !child.assignedSlot)
   const cloneList = await Promise.all(Array.from(node.childNodes).map((child) =>
-    clonedAssignedNodes.has(child)
+    skipLightChild(child)
       ? null
       : deepClone(child, sessionCache, options).catch(() => null)
   ))
