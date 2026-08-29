@@ -2,6 +2,7 @@
  * Utilities for inlining background images as data URLs.
  * @module background
  */
+import { isFirefox } from '../utils/browser.js'
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
 import { needsBackgroundInline } from './styles.js'
@@ -92,7 +93,14 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
     (bgImage && bgImage !== 'none') ||
     (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') ||
     /url\s*\(|gradient\s*\(/i.test(style.getPropertyValue('background') || '')
-  if (hasBg) {
+  // Firefox cannot rasterize background-clip:text in a foreignObject, so the style snapshot
+  // already swapped such a background for a plain text colour (applyBgClipTextFallback);
+  // re-copying it here would paint the gradient as a full box over the text it stands in for.
+  const skipBackground = isFirefox() && (
+    style.getPropertyValue('background-clip') ||
+    style.getPropertyValue('-webkit-background-clip') || ''
+  ).includes('text')
+  if (hasBg && !skipBackground) {
     for (const prop of BG_LAYOUT_PROPS) {
       const v = style.getPropertyValue(prop)
       if (!v) continue
@@ -101,6 +109,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   }
   // 1) Inline URL-bearing properties
   for (const prop of URL_PROPS) {
+    if (skipBackground && prop === 'background-image') continue
     let val = style.getPropertyValue(prop)
     // Fallback: when background-image is none/empty, parse url() from background shorthand (#343)
     if ((prop === 'background-image') && (!val || val === 'none')) {
