@@ -163,6 +163,44 @@ describe('deepClone — slotted light DOM is cloned exactly once', () => {
     expect(occurrences(clone, 'NESTEDWORD')).toBe(1)
   })
 
+  // A shadow host paints its light DOM only through slots. A child no slot accepted is not
+  // in the flat tree, so it must not reach the capture either.
+  it('drops a light child whose slot name matches nothing', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"><span slot="nowhere">UNASSIGNEDWORD</span></div>'
+      wrap.querySelector('#host').attachShadow({ mode: 'open' }).innerHTML =
+        '<div>shadow: <slot name="s"></slot></div>'
+    })
+    expect(occurrences(clone, 'UNASSIGNEDWORD')).toBe(0)
+  })
+
+  it('drops light DOM when the shadow tree has no <slot> at all', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"><span>UNSLOTTEDWORD</span></div>'
+      wrap.querySelector('#host').attachShadow({ mode: 'open' }).innerHTML =
+        '<div>only shadow</div>'
+    })
+    expect(occurrences(clone, 'UNSLOTTEDWORD')).toBe(0)
+  })
+
+  // The mirroring component: it reads its light DOM and renders its own copy inside the
+  // shadow tree, with no <slot>. Cloning the light copy too showed the text twice.
+  it('does not duplicate a component that mirrors its light DOM into the shadow tree', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"><span>MIRROREDWORD</span></div>'
+      wrap.querySelector('#host').attachShadow({ mode: 'open' }).innerHTML =
+        '<div>copy: <span>MIRROREDWORD</span></div>'
+    })
+    expect(occurrences(clone, 'MIRROREDWORD')).toBe(1)
+  })
+
+  it('keeps light DOM of a host without a shadow root', async () => {
+    const clone = await cloneWrap((wrap) => {
+      wrap.innerHTML = '<div id="host"><span slot="nowhere">PLAINWORD</span></div>'
+    })
+    expect(occurrences(clone, 'PLAINWORD')).toBe(1)
+  })
+
   it('does not duplicate either of two slotted nodes', async () => {
     const clone = await cloneWrap((wrap) => {
       wrap.innerHTML = '<div id="host"><span>FIRSTWORD</span><span>SECONDWORD</span></div>'

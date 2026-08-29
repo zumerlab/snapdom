@@ -521,6 +521,11 @@ export async function deepClone(node, sessionCache, options) {
 
   function cloneLightChild(child, resolve) {
     if (clonedAssignedNodes.has(child)) return resolve(null)
+    // A shadow host renders its light DOM only through slots: a child that no slot accepted
+    // (name mismatch, or a shadow tree with no <slot> at all) is not in the flat tree and
+    // paints nothing. Cloning it anyway injects content the page never shows, and shows it
+    // twice when the component mirrors its light DOM into its own shadow tree.
+    if (node.shadowRoot && !child.assignedSlot) return resolve(null)
     deepClone(child, sessionCache, options).then((clonedChild) => {
       resolve(clonedChild || null)
     }).catch(() => {
