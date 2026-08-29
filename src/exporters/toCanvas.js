@@ -351,6 +351,81 @@ async function waitForImgPaint(img, verify) {
   }
 }
 
+// ——— Decode host for per-capture data URLs ———
+// Imported from @frostin/snapdom (element-mirror). A browser keeps an internal resource-cache
+// entry for every unique image URL for the lifetime of the document that fetched it, and there
+// is no API to evict one (releasing the Image's src does not release the entry). A one-shot
+// capture never notices; a loop that captures the same element mints a fresh multi-megabyte
+// data: URL per frame, and the renderer grows by that much per frame, for good. blob: URLs are
+// revocable, but Chromium taints a canvas that draws a foreignObject SVG fetched from one, and
+// a tainted capture can be neither read back nor uploaded to WebGL. So the URLs stay data: and
+// the decode happens in a hidden throwaway iframe instead: cached resources die with the
+// document that fetched them, so recycling the iframe on a byte budget hands the memory back.
+//
+// Recycling only happens while no capture is mid-decode: an image's pixels belong to its
+// document's resource, so tearing that document down under an in-flight decode, or before the
+// final drawImage, would pull the bitmap out from under it.
+const DECODE_FRAME_BUDGET_BYTES = 24 * 1024 * 1024
+let _decodeFrame = null
+let _decodeFrameBytes = 0
+let _decodeInFlight = 0
+
+/** An <img> to decode `src` with, owned by the throwaway frame when there is one. */
+function acquireDecodeImage(src) {
+  if (typeof document === 'undefined' || !document.body) return new Image()
+  // The page may have torn the frame out from under us (anything that empties document.body);
+  // a disconnected frame's document is gone with it.
+  if (_decodeFrame && !_decodeFrame.contentDocument) {
+    try { _decodeFrame.remove() } catch { /* already gone */ }
+    _decodeFrame = null
+  }
+  if (_decodeFrame && _decodeFrameBytes > DECODE_FRAME_BUDGET_BYTES && _decodeInFlight === 0) {
+    try { _decodeFrame.remove() } catch { /* already gone */ }
+    _decodeFrame = null
+  }
+  if (!_decodeFrame) {
+    const frame = document.createElement('iframe')
+    frame.setAttribute('data-snapdom-internal', '')
+    frame.setAttribute('aria-hidden', 'true')
+    frame.style.cssText =
+      'position:absolute;left:-9999px;top:0;width:0;height:0;border:0;visibility:hidden;pointer-events:none'
+    try { document.body.appendChild(frame) } catch { /* detached document */ }
+    if (frame.contentDocument) {
+      _decodeFrame = frame
+      _decodeFrameBytes = 0
+    } else {
+      // Sandboxed or otherwise inert: fall back to the main document, which only costs the
+      // old behaviour.
+      try { frame.remove() } catch { /* already gone */ }
+      return new Image()
+    }
+  }
+  _decodeFrameBytes += src.length
+  _decodeInFlight += 1
+  const img = _decodeFrame.contentDocument.createElement('img')
+  // Flagged rather than checked by ownerDocument at release: the Safari paint wait appends the
+  // image to the main body, which adopts it into the main document, and the guard must still
+  // be released for it.
+  img.__snapdomDecodeFrame = true
+  return img
+}
+
+/** Release the in-flight guard taken by acquireDecodeImage. */
+function releaseDecodeImage(img) {
+  if (!img || !img.__snapdomDecodeFrame) return
+  img.__snapdomDecodeFrame = false
+  _decodeInFlight = Math.max(0, _decodeInFlight - 1)
+}
+
+/** Start the decode of `src` on `image`. */
+function startDecode(image, src) {
+  image.loading = 'eager'
+  image.decoding = 'sync'
+  image.crossOrigin = 'anonymous'
+  image.src = src
+  return image.decode()
+}
+
 /**
  * Rasterize SVG (o data URL) en un canvas respetando width/height + scale.
  * Supports flattening a background color with no intermediate canvas.
@@ -414,110 +489,122 @@ export async function toCanvas(url, options) {
     }
   }
 
-  const img = new Image()
-  img.loading = 'eager'
-  img.decoding = 'sync'
-  img.crossOrigin = 'anonymous'
-  img.src = src
-  await img.decode()
-
-  if (isSafari()) {
-    await waitForImgPaint(img, needsPaintVerify)
+  // Fetched from the throwaway decode frame and held until the last drawImage: recycling the
+  // frame frees this image's pixels along with everything else its document fetched.
+  let img = acquireDecodeImage(src)
+  try {
+    await startDecode(img, src)
+  } catch (e) {
+    if (!img.__snapdomDecodeFrame) throw e
+    // Gecko replaces a freshly inserted iframe's initial about:blank document asynchronously,
+    // aborting loads started against it. By the time the abort surfaces the settled document
+    // is in place, so one retry lands.
+    releaseDecodeImage(img)
+    img = acquireDecodeImage(src)
+    await startDecode(img, src)
   }
 
-  const natW = img.naturalWidth
-  const natH = img.naturalHeight
+  try {
+    if (isSafari()) {
+      await waitForImgPaint(img, needsPaintVerify)
+    }
 
-  // Prefer the rasterized viewBox (vbW/vbH, post-bleed) over the pre-bleed
-  // content box (w0/h0): under outerShadows an asymmetric shadow/blur/outline
-  // bleeds unevenly, so w0/h0's aspect ratio no longer matches the actual
-  // rasterized image and stretches it.
-  // A crop rewrote the SVG's intrinsic size and viewBox before decode, so its decoded
-  // bitmap is the authoritative aspect reference: the full capture's meta would make a
-  // width-only/height-only crop inherit the whole document's ratio and stretch the page.
-  const refW = crop ? natW
-    : Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : natW
-  const refH = crop ? natH
-    : Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : natH
+    const natW = img.naturalWidth
+    const natH = img.naturalHeight
 
-  let outW, outH
-  const hasW = Number.isFinite(optW)
-  const hasH = Number.isFinite(optH)
+    // Prefer the rasterized viewBox (vbW/vbH, post-bleed) over the pre-bleed
+    // content box (w0/h0): under outerShadows an asymmetric shadow/blur/outline
+    // bleeds unevenly, so w0/h0's aspect ratio no longer matches the actual
+    // rasterized image and stretches it.
+    // A crop rewrote the SVG's intrinsic size and viewBox before decode, so its decoded
+    // bitmap is the authoritative aspect reference: the full capture's meta would make a
+    // width-only/height-only crop inherit the whole document's ratio and stretch the page.
+    const refW = crop ? natW
+      : Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : natW
+    const refH = crop ? natH
+      : Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : natH
 
-  if (hasW && hasH) {
-    outW = Math.max(1, optW)
-    outH = Math.max(1, optH)
-  } else if (hasW) {
-    const k = optW / Math.max(1, refW)
-    outW = optW
-    outH = refH * k
-  } else if (hasH) {
-    const k = optH / Math.max(1, refH)
-    outH = optH
-    outW = refW * k
-  } else {
-    outW = natW
-    outH = natH
+    let outW, outH
+    const hasW = Number.isFinite(optW)
+    const hasH = Number.isFinite(optH)
+
+    if (hasW && hasH) {
+      outW = Math.max(1, optW)
+      outH = Math.max(1, optH)
+    } else if (hasW) {
+      const k = optW / Math.max(1, refW)
+      outW = optW
+      outH = refH * k
+    } else if (hasH) {
+      const k = optH / Math.max(1, refH)
+      outH = optH
+      outW = refW * k
+    } else {
+      outW = natW
+      outH = natH
+    }
+
+    // ONE sizing rule across every exporter (v3): width/height are the absolute output CSS
+    // size and win; scale applies only when neither is set; dpr multiplies device pixels.
+    // (toCanvas used to multiply width×scale while toImg/toSvg ignored scale — same options,
+    // different geometry.)
+    if (!hasW && !hasH) {
+      outW = outW * scale
+      outH = outH * scale
+    }
+
+    // #425: the device canvas is outW*dpr × outH*dpr; dpr (which defaults to devicePixelRatio,
+    // i.e. 2 on Retina) can push a within-decode-limit capture past the canvas cap. Clamp the
+    // whole draw so allocation/drawImage don't fail, preserving aspect ratio.
+    const devW = outW * dpr, devH = outH * dpr
+    const over = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
+    if (over > 1) {
+      sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds canvas limits; downscaled`)
+      console.warn(
+        `[snapDOM] Output ${Math.round(devW)}×${Math.round(devH)}px exceeds the browser canvas ` +
+        `limit (${MAX_RASTER_SIDE}px/side); downscaling. Lower \`scale\`/\`dpr\` or set \`width\`/\`height\`.`
+      )
+      outW /= over
+      outH /= over
+    }
+
+    // Draw into the caller's canvas when it gave one (imported from @frostin/snapdom): a
+    // caller looping captures otherwise pays a full-canvas copy per frame to move the pixels
+    // onto its own. Assigning width/height resets the canvas state and clears it, so a reused
+    // canvas starts as clean as a fresh one.
+    const canvas = (typeof HTMLCanvasElement !== 'undefined' && options.canvas instanceof HTMLCanvasElement)
+      ? options.canvas
+      : document.createElement('canvas')
+    canvas.width = outW * dpr
+    canvas.height = outH * dpr
+    canvas.style.width = `${outW}px`
+    canvas.style.height = `${outH}px`
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('[snapdom] toCanvas: the target canvas has no 2d context')
+    if (dpr !== 1) ctx.scale(dpr, dpr)
+
+    if (backgroundColor) {
+      ctx.save()
+      ctx.fillStyle = backgroundColor
+      ctx.fillRect(0, 0, outW, outH)
+      ctx.restore()
+    }
+
+    if (shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
+      // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
+      // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
+      // re-rasterize the svg). Trades a bit of sharpness for correct shadows.
+      const tmp = document.createElement('canvas')
+      tmp.width = natW
+      tmp.height = natH
+      tmp.getContext('2d').drawImage(img, 0, 0)
+      ctx.drawImage(tmp, 0, 0, outW, outH)
+    } else {
+      ctx.drawImage(img, 0, 0, outW, outH)
+    }
+    return canvas
+  } finally {
+    releaseDecodeImage(img)
   }
-
-  // ONE sizing rule across every exporter (v3): width/height are the absolute output CSS
-  // size and win; scale applies only when neither is set; dpr multiplies device pixels.
-  // (toCanvas used to multiply width×scale while toImg/toSvg ignored scale — same options,
-  // different geometry.)
-  if (!hasW && !hasH) {
-    outW = outW * scale
-    outH = outH * scale
-  }
-
-  // #425: the device canvas is outW*dpr × outH*dpr; dpr (which defaults to devicePixelRatio,
-  // i.e. 2 on Retina) can push a within-decode-limit capture past the canvas cap. Clamp the
-  // whole draw so allocation/drawImage don't fail, preserving aspect ratio.
-  const devW = outW * dpr, devH = outH * dpr
-  const over = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
-  if (over > 1) {
-    sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds canvas limits; downscaled`)
-    console.warn(
-      `[snapDOM] Output ${Math.round(devW)}×${Math.round(devH)}px exceeds the browser canvas ` +
-      `limit (${MAX_RASTER_SIDE}px/side); downscaling. Lower \`scale\`/\`dpr\` or set \`width\`/\`height\`.`
-    )
-    outW /= over
-    outH /= over
-  }
-
-  // Draw into the caller's canvas when it gave one (imported from @frostin/snapdom): a
-  // caller looping captures otherwise pays a full-canvas copy per frame to move the pixels
-  // onto its own. Assigning width/height resets the canvas state and clears it, so a reused
-  // canvas starts as clean as a fresh one.
-  const canvas = (typeof HTMLCanvasElement !== 'undefined' && options.canvas instanceof HTMLCanvasElement)
-    ? options.canvas
-    : document.createElement('canvas')
-  canvas.width = outW * dpr
-  canvas.height = outH * dpr
-  canvas.style.width = `${outW}px`
-  canvas.style.height = `${outH}px`
-
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('[snapdom] toCanvas: the target canvas has no 2d context')
-  if (dpr !== 1) ctx.scale(dpr, dpr)
-
-  if (backgroundColor) {
-    ctx.save()
-    ctx.fillStyle = backgroundColor
-    ctx.fillRect(0, 0, outW, outH)
-    ctx.restore()
-  }
-
-  if (shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
-    // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
-    // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
-    // re-rasterize the svg). Trades a bit of sharpness for correct shadows.
-    const tmp = document.createElement('canvas')
-    tmp.width = natW
-    tmp.height = natH
-    tmp.getContext('2d').drawImage(img, 0, 0)
-    ctx.drawImage(tmp, 0, 0, outW, outH)
-  } else {
-    ctx.drawImage(img, 0, 0, outW, outH)
-  }
-  return canvas
 }
