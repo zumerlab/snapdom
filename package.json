@@ -47,7 +47,7 @@
     "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
     "build": "npm run compile && npm pack",
-    "prebuild": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
+    "release:push": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
   },
   "repository": {
     "type": "git",
