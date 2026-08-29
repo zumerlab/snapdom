@@ -21,6 +21,7 @@ import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { stageReaches, DEFAULT_STAGE } from './stages.js'
 import { compressCloneAssets } from '../modules/compress.js'
+import { applyTextFieldSelectionLayers } from '../modules/selection.js'
 import { composeAndSerialize } from '../engines/svg.js'
 import {
   assembleCaptureCSS,
@@ -185,6 +186,15 @@ export async function captureDOM(element, options) {
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {
       await runIdle(() => compressCloneAssets(state.clone, state.options, state.nodeMap))
+    }
+    // Field-selection highlights compose last: the background pass above rewrites a field's
+    // background longhands, and an inlined url() background has to end up under the highlight.
+    if (options.captureSelection) {
+      try {
+        applyTextFieldSelectionLayers(state.nodeMap)
+      } catch (e) {
+        sessionWarn(options.__session, 'selection-compose-failed', 'field selection compose failed', e)
+      }
     }
   })()
 

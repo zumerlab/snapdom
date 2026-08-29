@@ -12,7 +12,7 @@ const decodeFrames = () => [...document.querySelectorAll('iframe[data-snapdom-in
 
 /** An SVG data URL of roughly `bytes` length that still decodes to a 4x4 red square. */
 function bulkySvg(bytes) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">` +
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">' +
     `<rect width="4" height="4" fill="rgb(255,0,0)"/><!--${'p'.repeat(Math.max(0, bytes))}--></svg>`
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }

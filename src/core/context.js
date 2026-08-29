@@ -29,6 +29,7 @@ import { compileIconFontMatchers } from '../modules/iconFonts.js'
  * @param {string}  [options.filename]
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
  * @param {HTMLCanvasElement} [options.canvas] - Draw the canvas export into this canvas instead of a new one
+ * @param {boolean} [options.captureSelection] - Render the user's live text selection into the capture
  * @param {boolean} [options.outerTransforms]
  * @param {boolean} [options.outerShadows]
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
@@ -113,6 +114,12 @@ export function createContext(options = {}) {
 
     // Placeholders
     placeholders: options.placeholders !== false, // default true
+
+    // Render the user's live text selection into the capture: selected runs of text are
+    // wrapped in the styles the browser paints them with (authored ::selection where a rule
+    // matches, the UA highlight colour where none does). Opt-in — a screenshot taken while
+    // the user happens to have text selected should look selected only when asked.
+    captureSelection: options.captureSelection ?? false,
 
     // Canvas exporter target. A caller looping captures (a live mirror) otherwise pays a
     // full-canvas copy per frame moving the pixels off a throwaway canvas onto its own.

@@ -10,6 +10,7 @@ import { flushStyleInvalidations } from '../modules/styles.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree, resolveMediaQueries } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
+import { prepareSelectionContext } from '../modules/selection.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
 
@@ -45,6 +46,16 @@ export async function prepareClone(element, options = {}) {
   if (options.clip) {
     clipRect = resolveClipRect(element, options.clip)
     if (clipRect) sessionCache.clip = { rect: clipRect, root: element }
+  }
+
+  // Read the live selection once per capture; the clone pass wraps the selected runs of text
+  // it finds inside these ranges.
+  if (options.captureSelection) {
+    try {
+      sessionCache.selection = prepareSelectionContext(element)
+    } catch (e) {
+      debugWarn(sessionCache, 'prepareSelectionContext failed', e)
+    }
   }
 
   let clone

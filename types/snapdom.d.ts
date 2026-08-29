@@ -224,6 +224,17 @@ export interface SnapdomOptions {
   /** Show placeholders when resources are missing. Default true. */
   placeholders?: boolean;
 
+  /**
+   * Render the user's live text selection into the capture. A selection is paint without DOM
+   * — the browser draws the highlight and restyles the selected glyphs at paint time — so a
+   * structural clone loses it. Selected runs are wrapped in the styles the browser painted
+   * them with: the authored `::selection` background, color, text-shadow and text-decoration
+   * where a rule matches, the UA highlight colour where none does, and nothing at all over
+   * `user-select: none`. A focused field's selection is painted as background layers behind
+   * its value. Default false.
+   */
+  captureSelection?: boolean;
+
   /** Arbitrary plugin configuration at call-site (see PluginUse). */
   plugins?: PluginUse[];
 }

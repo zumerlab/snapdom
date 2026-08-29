@@ -5,7 +5,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { deepClone } from '../src/core/clone.js'
 import { createRangeReplacement } from '../src/utils/clone.helpers.js'
-import { cache } from '../src/core/cache.js'
 import { isFirefox, isSafari } from '../src/utils/browser.js'
 import { snapdom } from '../src/index.js'
 
