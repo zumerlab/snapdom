@@ -88,7 +88,15 @@ export function networkGuard(needsNetwork, { laneWaitMs = LANE_WAIT_MS } = {}) {
     // Released here rather than in an afterEach: the lease belongs to this test, and
     // onTestFinished still runs when the test fails or times out.
     if (lease.token !== null) ctx.onTestFinished(() => commands.netGateLeave(lease.token).catch(() => {}))
-    if (!lease.granted) ctx.skip(`network lane busy for ${Math.round(lease.waitedMs / 1000)}s: ${status.reading}`)
+    // A refusal is usually INSTANT: the broker knows what a turn in the lane costs and how
+    // many tests are ahead, so it says no rather than letting this one park on a timer for
+    // the full laneWaitMs to find out. Say which of the two it was, because "skipped after
+    // 0s" and "skipped after 20s" mean different things about the run.
+    if (!lease.granted) {
+      const waited = lease.waitedMs > 0 ? `after ${Math.round(lease.waitedMs / 1000)}s` : 'immediately'
+      const queue = lease.ahead ? `, ${lease.ahead} ahead` : ''
+      ctx.skip(`network lane full, gave up ${waited}${queue}: ${status.reading}`)
+    }
   }
 }
 
