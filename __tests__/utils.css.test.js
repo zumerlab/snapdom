@@ -120,10 +120,12 @@ describe('getStyleKey – width softening (#429/#434/#436)', () => {
     expect(getStyleKey({ display: 'block' }, 'path')).toBe('')
   })
 
-  it('rounds a fractional frozen width UP to 1/16px for non-softened tags', () => {
-    // block div is never softened → width is frozen, and a sub-pixel value is ceil-rounded to 1/16px.
+  it('nudges a fractional frozen width past the serialization error for non-softened tags', () => {
+    // block div is never softened → width is frozen, and a sub-pixel value gains the epsilon that
+    // clears the ≤0.0005px computed-style rounding error. Kept at 1/1000 on purpose (#491): a
+    // coarser bump is paid by every box in an inline row but only once by the parent holding them.
     const key = getStyleKey({ display: 'block', width: '100.03px' }, 'div')
-    expect(key).toContain('width:100.0625px') // ceil(100.03 * 16) / 16
+    expect(key).toContain('width:100.031px') // ceil((100.03 + 0.001) * 1000) / 1000
   })
 
   it('drops the used width and synthesizes a min-width floor for a table cell', () => {
