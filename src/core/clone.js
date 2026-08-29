@@ -18,7 +18,8 @@ import {
   markSlottedSubtree,
   rasterizeIframe,
   getUnscaledDimensions,
-  createCheckboxRadioReplacement
+  createCheckboxRadioReplacement,
+  createRangeReplacement
 } from '../utils/clone.helpers.js'
 import { isFirefox, isSafari, nextFrame } from '../utils/browser.js'
 
@@ -404,6 +405,43 @@ export async function deepClone(node, sessionCache, options) {
       sessionCache.nodeMap.set(replacement, node)
       applyInputVisual = applyVisual
       clone = replacement
+    } else if (type === 'range' && (isFirefox() || isSafari())) {
+      // Same reason as the checkbox above: Firefox paints no native control inside a
+      // foreignObject, so a cloned slider lost its track, its fill and its thumb. WebKit is
+      // included beyond the fork's Firefox-only gate because it paints the slider without any
+      // of its accent either (measured: 0 accent-coloured pixels on both engines).
+      const { el: replacement, applyVisual } = createRangeReplacement(node)
+      sessionCache.nodeMap.set(replacement, node)
+      applyInputVisual = applyVisual
+      clone = replacement
+    } else if (type === 'color' && isSafari()) {
+      // WebKit paints a cloned colour well as a text field showing the hex value. The value
+      // painted as a swatch is closer to the control than the value spelled out; !important
+      // so the styles inlined from the (natively rendered) source cannot put the text back.
+      const swatch = /** @type {HTMLInputElement} */ (clone)
+      const colorValue = node.value || '#000000'
+      applyInputVisual = () => {
+        swatch.style.setProperty('background-color', colorValue, 'important')
+        swatch.style.setProperty('color', 'transparent', 'important')
+        swatch.style.setProperty('-webkit-text-fill-color', 'transparent', 'important')
+        swatch.style.setProperty('appearance', 'none', 'important')
+        swatch.style.setProperty('-webkit-appearance', 'none', 'important')
+      }
+      swatch.removeAttribute('value')
+    } else if (
+      (type === 'date' || type === 'time' || type === 'datetime-local') &&
+      (isFirefox() || isSafari())
+    ) {
+      // The formatted text of these controls lives in UA shadow content that neither engine
+      // paints inside a foreignObject: WebKit shows the raw machine value, Firefox nothing at
+      // all. A text clone carrying the locale-formatted value reads like the control instead.
+      clone.setAttribute('type', 'text')
+      let shown = node.value
+      if (type === 'date' && node.valueAsDate) {
+        shown = node.valueAsDate.toLocaleDateString(undefined, { timeZone: 'UTC' })
+      }
+      clone.value = shown
+      clone.setAttribute('value', shown)
     } else {
       // Password only, and only because the mask is fidelity-NEUTRAL: the control already
       // paints bullets, so a same-length bullet mask renders identically while the typed

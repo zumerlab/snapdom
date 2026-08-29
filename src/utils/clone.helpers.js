@@ -543,6 +543,102 @@ function resolveAccentColor(cs) {
 }
 
 /**
+ * Creates a visual replacement for range inputs using inline SVG: a track, the
+ * filled run up to the value, and a thumb, in the control's accent colour.
+ * Firefox does not render native form controls inside SVG foreignObject: a cloned slider
+ * painted none of its accent (verified on v3 as 0 accent-coloured pixels).
+ *
+ * Imported from @frostin/snapdom (element-mirror).
+ * @param {HTMLInputElement} node - Source input
+ * @returns {{ el: HTMLDivElement, applyVisual: () => void }}
+ */
+export function createRangeReplacement(node) {
+  const { width: unscaledW, height: unscaledH } = getUnscaledDimensions(node)
+  const rect = node.getBoundingClientRect()
+  let cs
+  try { cs = window.getComputedStyle(node) } catch { }
+  const parsedW = cs ? parseFloat(cs.width) : NaN
+  const parsedH = cs ? parseFloat(cs.height) : NaN
+  const w = Number.isFinite(parsedW) && parsedW > 0
+    ? parsedW
+    : (unscaledW || rect.width || 128)
+  const h = Number.isFinite(parsedH) && parsedH > 0
+    ? parsedH
+    : (unscaledH || rect.height || 16)
+
+  // Where the value sits between min and max, from the live properties: a
+  // dragged slider updates node.value and nothing in the DOM at all.
+  const min = Number.parseFloat(node.min) || 0
+  const max = Number.isFinite(Number.parseFloat(node.max)) ? Number.parseFloat(node.max) : 100
+  const value = Number.parseFloat(node.value)
+  const span = max - min
+  const fraction = span > 0 && Number.isFinite(value)
+    ? Math.min(1, Math.max(0, (value - min) / span))
+    : 0.5
+
+  // #311: preserve original vertical-align so the replacement doesn't shift inline layout
+  let vAlign = 'middle'
+  try { if (cs && cs.verticalAlign) vAlign = cs.verticalAlign } catch { }
+
+  const box = document.createElement('div')
+  box.setAttribute('data-snapdom-input-replacement', 'range')
+  box.style.cssText = `display:inline-block;width:${w}px;height:${h}px;vertical-align:${vAlign};flex-shrink:0;line-height:0;`
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('width', String(w))
+  svg.setAttribute('height', String(h))
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`)
+  // The thumb is thumb-sized however small the author made the control's box
+  // (a styled slider is often a 4px-tall input), overflowing it the way the
+  // native one does.
+  svg.style.overflow = 'visible'
+  box.appendChild(svg)
+
+  function applyVisual() {
+    const accent = resolveAccentColor(cs)
+    const disabled = !!node.disabled
+    const trackH = Math.max(2, Math.min(4, h))
+    const trackY = (h - trackH) / 2
+    const thumbD = Math.max(10, Math.min(14, Math.max(h, 10)))
+    const r = thumbD / 2
+    // The thumb's centre travels between the track's rounded ends, as the
+    // native one keeps the thumb inside the control at either extreme.
+    const cx = r + fraction * Math.max(0, w - thumbD)
+
+    svg.innerHTML = ''
+    const part = (x, width, fill, opacity) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      el.setAttribute('x', String(x))
+      el.setAttribute('y', String(trackY))
+      el.setAttribute('width', String(Math.max(0, width)))
+      el.setAttribute('height', String(trackH))
+      el.setAttribute('rx', String(trackH / 2))
+      el.setAttribute('fill', fill)
+      if (opacity) el.setAttribute('fill-opacity', opacity)
+      svg.appendChild(el)
+    }
+    // Unfilled track first, in a translucent grey that reads on light and
+    // dark alike, then the filled run laid over its left side.
+    part(0, w, '#808080', '0.4')
+    part(0, cx, accent)
+    const thumb = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    thumb.setAttribute('cx', String(cx))
+    thumb.setAttribute('cy', String(h / 2))
+    thumb.setAttribute('r', String(r))
+    thumb.setAttribute('fill', accent)
+    svg.appendChild(thumb)
+    if (disabled) svg.setAttribute('opacity', '0.5')
+
+    // Force dimensions (inlineAllStyles may copy width:0 from native input)
+    box.style.setProperty('width', `${w}px`, 'important')
+    box.style.setProperty('height', `${h}px`, 'important')
+    box.style.setProperty('min-width', `${w}px`, 'important')
+    box.style.setProperty('min-height', `${h}px`, 'important')
+  }
+  applyVisual()
+  return { el: box, applyVisual }
+}
+
+/**
  * Creates a visual replacement for checkbox/radio inputs using inline SVG.
  * Firefox does not render native form controls inside SVG foreignObject; SVG-based
  * representation avoids CSS class conflicts and renders consistently.
