@@ -427,24 +427,48 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
     const entries = universe
       ? Object.entries(styles).filter(([k]) => universe.has(k))
       : Object.entries(styles)
+    // The same logical-alias trim the class snapshots get: a default that restates its
+    // physical twin is as redundant here as it is there.
+    const kept = entries.filter(([k]) => !isRedundantLogicalProp(k, styles))
     // Build the CSS block "signature" used for comparison
-    const key = entries
-      .map(([k, v]) => `${k}:${v};`)
-      .sort()
-      .join('')
+    const declarations = kept.map(([k, v]) => `${k}:${v};`).sort()
+    const key = declarations.join('')
 
     if (!key) continue // avoids empty rules (NO_DEFAULTS_TAGS yields {})
 
     // Agrupamos por firma
     if (!groups.has(key)) {
-      groups.set(key, [])
+      groups.set(key, { tagList: [], declarations })
     }
-    groups.get(key).push(tagName)
+    groups.get(key).tagList.push(tagName)
   }
 
-  // Now emit the optimized CSS
+  // Factor out what every group declares identically. Tag defaults are ~300 properties each
+  // and overwhelmingly the same across tags, so emitting each group in full made this the
+  // largest CSS in the SVG (32.8kb for 24 tags), re-parsed by every rasterization. The shared
+  // rule lists every tag and each group restates only what differs; group rules come second,
+  // so same-specificity source order still gives them the final word, exactly as before.
+  // Imported from @frostin/snapdom (element-mirror).
+  const parsedGroups = [...groups.values()]
+  let shared = null
+  for (const { declarations } of parsedGroups) {
+    const own = new Set(declarations)
+    if (!shared) { shared = own; continue }
+    for (const declaration of shared) if (!own.has(declaration)) shared.delete(declaration)
+  }
+  shared ??= new Set()
+
   let css = ''
-  for (let [styleBlock, tagList] of groups.entries()) {
+  if (shared.size && parsedGroups.length > 1) {
+    const allTags = parsedGroups.flatMap((group) => group.tagList)
+    css += `${allTags.join(',')} { ${[...shared].join('')} }\n`
+  }
+  for (const { tagList, declarations } of parsedGroups) {
+    const own = parsedGroups.length > 1
+      ? declarations.filter((declaration) => !shared.has(declaration))
+      : declarations
+    if (!own.length) continue
+    const styleBlock = own.join('')
     css += `${tagList.join(',')} { ${styleBlock} }\n`
   }
 
