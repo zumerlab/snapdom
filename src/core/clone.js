@@ -498,12 +498,14 @@ export async function deepClone(node, sessionCache, options) {
     }
     const scopeId = nextShadowScopeId(sessionCache)
     const scopeSelector = `[data-sd="${scopeId}"]`
+    sessionCache.shadowScopes ||= new WeakMap()
+    sessionCache.shadowScopes.set(node.shadowRoot, scopeId)
     try {
       clone.setAttribute('data-sd', scopeId)
     } catch {
     }
     const rawCSS = extractShadowCSS(node.shadowRoot)
-    const rewritten = rewriteShadowCSS(rawCSS, scopeSelector)
+    const rewritten = rewriteShadowCSS(rawCSS, scopeSelector, scopeId)
     const neededVars = collectCustomPropsFromCSS(rawCSS)
     const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)
     injectScopedStyle(clone, seed + rewritten, scopeId)
@@ -519,12 +521,16 @@ export async function deepClone(node, sessionCache, options) {
     clone.appendChild(shadowFrag)
   }
   if (node.tagName === 'SLOT') {
-    const assigned = node.assignedNodes?.({ flatten: true }) || []
-    const nodesToClone = assigned.length > 0 ? assigned : Array.from(node.childNodes)
+    const scopeId = sessionCache.shadowScopes?.get(node.getRootNode())
+    const directAssigned = node.assignedNodes?.() || []
+    const assigned = directAssigned.length ? node.assignedNodes?.({ flatten: true }) || directAssigned : []
+    const nodesToClone = assigned.length ? assigned : Array.from(node.childNodes)
     const fragment = document.createDocumentFragment()
     const cloneList = await Promise.all(nodesToClone.map((child) =>
       deepClone(child, sessionCache, options).then((clonedChild) => {
-        if (clonedChild) markSlottedSubtree(clonedChild)
+        // Only real assignments carry a scope token; a slot's own fallback content belongs to
+        // the shadow tree itself and must keep matching that tree's rules.
+        if (clonedChild && directAssigned.length) markSlottedSubtree(clonedChild, scopeId)
         return clonedChild || null
       }).catch(() => null)
     ))

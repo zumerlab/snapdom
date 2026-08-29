@@ -9,23 +9,20 @@ import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles } from '../modules/styles.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 
-/**
- * Add :not([data-sd-slotted]) at the rightmost compound of a selector.
- * Very safe approximation: append at the end.
- */
-function addNotSlottedRightmost(sel) {
+/** Add the current scope's slotted exclusion at the rightmost compound. */
+function addNotSlottedRightmost(sel, scopeId) {
   sel = sel.trim()
   if (!sel) return sel
-  // Avoid duplicating when it is already there
-  if (/:not\(\s*\[data-sd-slotted\]\s*\)\s*$/.test(sel)) return sel
-  return `${sel}:not([data-sd-slotted])`
+  const marker = scopeId ? `[data-sd-slotted~="${scopeId}"]` : '[data-sd-slotted]'
+  if (sel.endsWith(':not([data-sd-slotted])') || sel.endsWith(`:not(${marker})`)) return sel
+  return `${sel}:not(${marker})`
 }
 
 /**
  * Wrap a selector list with :where(scope ...), lowering specificity to 0.
  * Optionally excludes slotted elements on the rightmost selector.
  */
-function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
+function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scopeId) {
   return selectorList
     .split(',')
     .map(s => s.trim())
@@ -38,7 +35,7 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
       // Do not touch @rules here (the caller handles those)
       if (s.startsWith('@')) return s
 
-      const body = excludeSlotted ? addNotSlottedRightmost(s) : s
+      const body = excludeSlotted ? addNotSlottedRightmost(s, scopeId) : s
       // Zero specificity for the whole selector:
       return `:where(${scopeSelector} ${body})`
     })
@@ -50,10 +47,10 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true) {
  * - :host(.foo)           => :where([data-sd="sN"]:is(.foo))
  * - :host                 => :where([data-sd="sN"])
  * - ::slotted(X)          => :where([data-sd="sN"] X)              (no excluye sloteados)
- * - (anything else, e.g. .button) => :where([data-sd="sN"] .button:not([data-sd-slotted]))
+ * - (anything else, e.g. .button) => :where([data-sd="sN"] .button:not([data-sd-slotted~="sN"]))
  * - :host-context(Y)      => :where(:where(Y) [data-sd="sN"])      (aprox)
  */
-export function rewriteShadowCSS(cssText, scopeSelector) {
+export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   if (!cssText) return ''
 
   // 1) :host(.foo) y :host
@@ -72,10 +69,10 @@ export function rewriteShadowCSS(cssText, scopeSelector) {
     return `:where(${scopeSelector} ${sel.trim()})`
   })
 
-  // 4) For every "loose" selector block, wrap it in :where(scope …) and exclude slotted
-  //    nodes on the rightmost compound (:not([data-sd-slotted])).
+  // 4) For every "loose" selector block, wrap it in :where(scope …) and exclude only the
+  //    slotted nodes of THIS scope on the rightmost compound.
   cssText = cssText.replace(/(^|})(\s*)([^@}{]+){/g, (_, brace, ws, selectorList) => {
-    const wrapped = wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true)
+    const wrapped = wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true, scopeId)
     return `${brace}${ws}${wrapped}{`
   })
 
@@ -270,18 +267,24 @@ export function buildSeedCustomPropsRule(hostEl, names, scopeSelector) {
 }
 
 /**
- * Mark slotted subtree with data-sd-slotted attribute
+ * Mark a flattened slotted subtree with this shadow scope's token. Tokens compose when
+ * nested slots are flattened, so parent CSS cannot pierce a child shadow tree while the
+ * child's own CSS still applies to its internals (#488).
  * @param {Node} root
+ * @param {string} [scopeId]
  */
-export function markSlottedSubtree(root) {
+export function markSlottedSubtree(root, scopeId) {
   if (!root) return
-  if (root.nodeType === Node.ELEMENT_NODE) {
-    root.setAttribute('data-sd-slotted', '')
+  const mark = (el) => {
+    const value = el.getAttribute('data-sd-slotted') || ''
+    if (!scopeId) {
+      el.setAttribute('data-sd-slotted', value)
+    } else if (!(` ${value} `).includes(` ${scopeId} `)) {
+      el.setAttribute('data-sd-slotted', value ? `${value} ${scopeId}` : scopeId)
+    }
   }
-  // Mark every element descendant
-  if (root.querySelectorAll) {
-    root.querySelectorAll('*').forEach(el => el.setAttribute('data-sd-slotted', ''))
-  }
+  if (root.nodeType === Node.ELEMENT_NODE) mark(root)
+  root.querySelectorAll?.('*').forEach(mark)
 }
 
 /**
