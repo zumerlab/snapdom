@@ -92,6 +92,17 @@ const overrides = {
   'd-root-transform': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, outerTransforms: false } },
   // Bbox must expand for box-shadow / outline / blur bleed instead of clipping them.
   'd-outer-shadows': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, outerShadows: true } },
+  // The features imported from @frostin/snapdom (element-mirror) in one shot: a rendered text
+  // selection, a child's ring kept by outerShadows:'subtree', the native controls no engine
+  // paints in a foreignObject, and background-clip:text. The selection is paint state that no
+  // page load restores, so it is re-made here — a capture is taken from the live document, and
+  // focus/selection are lost when the harness navigates.
+  'd-element-mirror-import': {
+    snapdomOptions: {
+      dpr: 1, scale: 1, embedFonts: true, captureSelection: true, outerShadows: 'subtree',
+    },
+    setup: async (win) => { try { win.__selectDemo?.() } catch { /* best-effort */ } },
+  },
   // compress:true must downsample each codec (PNG/JPEG/WebP) without corruption. Images are
   // drawn at load, so wait for them (setup runs after `wait`) before capturing.
   'd-compress-codecs': {
