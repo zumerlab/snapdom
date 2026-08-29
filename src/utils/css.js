@@ -165,6 +165,10 @@ const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed
 const HARD_WIDTH_PROPS = new Set(['width', 'max-width', 'inline-size', 'max-inline-size'])
 // Min-width longhands: kept verbatim when authored (or set to 0 by #406 on flex/grid items).
 const MIN_WIDTH_PROPS = new Set(['min-width', 'min-inline-size'])
+// Slack added to a frozen width to clear the computed-style serialization error (≤0.0005px on
+// a 1/1000-rounded length). Deliberately tiny: it is paid once per box and the shrink-to-fit
+// parent holding a row of them is only paid once in total (#491).
+const WIDTH_EPSILON = 0.001
 
 /**
  * Whether getStyleKey softens the width for this tag/display (inline-sized text tags, the table
@@ -240,8 +244,10 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   // catastrophic vs the sub-pixel overflow a frozen nowrap box risks. Real inline boxes ignore
   // `width`, so softening stays (dropping it costs nothing and keeps the CSS smaller).
   const noWrapMode = (snapshot['text-wrap-mode'] || snapshot['white-space'] || '')
-  const frozenNoWrap = softenTag && sizedByContent && !isInline &&
-    (noWrapMode === 'nowrap' || noWrapMode === 'pre')
+  // A box whose own text cannot break gains nothing from the width guard below: it can only
+  // clip sub-pixel, never re-wrap. Tag/display-independent (#491) — the softening gate is not.
+  const noWrapBox = noWrapMode === 'nowrap' || noWrapMode === 'pre'
+  const frozenNoWrap = softenTag && sizedByContent && !isInline && noWrapBox
   const soften = softenTag && sizedByContent && !frozenNoWrap
 
   let keptMinWidth = false
@@ -263,14 +269,23 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
     if (value && value !== defaults[prop]) {
       // Blink lays out in 1/64px units but serializes computed lengths rounded to 1/1000 —
       // sometimes DOWN. Freezing a shrink-to-fit box a hair below its true width re-wraps
-      // its text. Round frozen widths UP to the next 1/16px (invisible, guarantees fit).
-      // Not for nowrap-frozen boxes (#474): their text can't re-wrap (worst case clips
-      // ≤0.0005px), and in a packed min-content row like KaTeX the per-box round-ups
-      // accumulate past the root's frozen width and line-wrap the row.
-      if (!frozenNoWrap && (prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
+      // its text, so a frozen width is nudged up past that serialization error.
+      //
+      // The nudge must stay AT the error (#491). Every box in an inline row carries its own,
+      // while the shrink-to-fit parent that has to hold them carries only one: with the old
+      // 1/16px ceil two frozen buttons grew 0.094px inside a parent that grew 0.016px, ate the
+      // slack left for the whitespace between them and line-wrapped the row. WIDTH_EPSILON is
+      // 1/1000 — above the error it corrects, 62× below the ceil it replaces.
+      //
+      // Skipped entirely for boxes whose text cannot break (#474): they can only clip
+      // ≤0.0005px, so the nudge is pure accumulation with nothing to gain.
+      if (!noWrapBox && (prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
         const n = parseFloat(value)
         if (Number.isFinite(n)) {
-          entries.push(`${prop}:${Math.ceil(n * 16) / 16}px`)
+          // Re-serialized at the same 1/1000 the value came in at: rounding can shave back at
+          // most half of the epsilon, so the result still clears `n`, and the shared precision
+          // keeps sibling boxes on one generated class instead of one each.
+          entries.push(`${prop}:${(n + WIDTH_EPSILON).toFixed(3)}px`)
           continue
         }
       }
