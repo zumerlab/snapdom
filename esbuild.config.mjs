@@ -36,8 +36,8 @@ const banner = {
  * `format: 'iife'` is load-bearing, not decoration. Without it, platform:'neutral' emitted
  * the bundle as bare top-level statements, so a <script> tag published every minified
  * binding as a global: 442 of them, `Fi`, `rt`, `Zt`… one collision away from breaking an
- * unrelated page. Verified by __tests__/dist.bundle.test.js, which runs the built file in
- * an empty context and counts what leaks.
+ * unrelated page. Verified by scripts/check-pack.mjs (npm run test:pack), which runs the
+ * packed file in an empty context and counts what leaks.
  *
  * `globalName` is deliberately ABSENT. With it, esbuild wraps the bundle as
  * `var snapdom = (() => {…})()`, and since src/index.browser.js exports nothing that
