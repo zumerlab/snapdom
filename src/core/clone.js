@@ -595,9 +595,15 @@ async function cloneIframe(node, sessionCache, options) {
     }
   }
 
-  // Warn that this iframe was skipped so callers can react
+  // Warn that this iframe was skipped so callers can react. `placeholders` is on by default,
+  // so what lands in the capture is the striped placeholder below; only mention the opt-out,
+  // never suggest enabling an option that is already on.
   if (!sameOrigin) {
-    console.warn('[snapdom] cross-origin <iframe> skipped (cannot access content). Use options.placeholders to show a placeholder instead.', node)
+    console.warn(
+      '[snapdom] cross-origin <iframe> skipped (its document cannot be read). Captured as a ' +
+      'placeholder that keeps the frame\'s box; pass { placeholders: false } for an invisible spacer.',
+      node
+    )
   }
 
   // Fallback actual (placeholder o spacer)
