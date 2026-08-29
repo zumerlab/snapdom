@@ -78,10 +78,80 @@ export function invalidateStyleCaches() {
   __envEpoch++
 }
 
+/** Per-node style stamps: how far a DOM mutation is allowed to reach.
+ *
+ *  The style snapshot is the expensive thing this module owns — ~340 computed properties per
+ *  node — and it was thrown away for every element in the document whenever anything anywhere
+ *  mutated. A page where an unrelated component re-renders between captures therefore paid a
+ *  cold snapshot pass every time: measured on a 73-node card, 1.6ms became 5.7ms, and 1.4ms
+ *  became 3.2ms for the canvas-bearing cards auto-burst deliberately excludes.
+ *
+ *  A mutation at T can only restyle what a selector can reach from T: T's parent's subtree
+ *  covers descendant selectors, inheritance and sibling combinators, and each ancestor's own
+ *  snapshot covers `:has()` reaching upwards. What that does NOT cover is `:has()` reaching
+ *  SIDEWAYS — `.a:has(.b) ~ .c` restyles a cousin no walk from T would visit — so the
+ *  narrowing is only used on documents whose author rules contain no `:has()` at all, and
+ *  those documents get the old document-wide invalidation. Fidelity is not traded for speed
+ *  here: there is no staleness window, only a case that opts out of the optimization.
+ *
+ *  Everything that is genuinely document-wide keeps its epoch: rule and head changes, font
+ *  loads, viewport resizes, and the invalidate escape hatch all bump __envEpoch, which the
+ *  snapshot cache reads alongside the stamp. */
+const nodeStamp = new WeakMap()
+let nodeClock = 0
+/** Bumped instead of the stamps when narrowing is unsound (a `:has()` document), which
+ *  invalidates every snapshot at once — exactly the old behaviour. */
+let __allStamp = 0
+
+function stampNode(el) { nodeStamp.set(el, ++nodeClock) }
+
+function stampSubtree(root) {
+  if (!root || root.nodeType !== 1) return
+  nodeClock++
+  nodeStamp.set(root, nodeClock)
+  const all = root.querySelectorAll('*')
+  for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], nodeClock)
+}
+
+/** Invalidate everything a change at `el` can restyle (see the note above). */
+function invalidateAround(el) {
+  stampSubtree(el.parentElement || el)
+  for (let p = el.parentElement; p; p = p.parentElement) stampNode(p)
+}
+
+/** The stamp a node's cached snapshot was taken at. */
+function stampOf(el) {
+  return __allStamp * 1e9 + (nodeStamp.get(el) || 0)
+}
+
+/** Whether narrowing is sound for this document: no author rule uses `:has()`. Answered by
+ *  the same scan the property universe comes from, so it costs nothing per mutation. */
+function canNarrow(doc) {
+  try {
+    return !scanFor(doc || document).usesHas
+  } catch {
+    return false
+  }
+}
+
 /** The DOM observer's callback, also replayed by flushStyleInvalidations on drained records:
  *  one pass answers both "did anything paintable change" and "did the author rules change". */
 function onDomRecords(records) {
-  if (hasExternalMutation(records)) bumpEpoch()
+  if (!hasExternalMutation(records)) return
+  bumpEpoch()
+  // The epoch above still invalidates the memos that key off DOM structure (isInSvgTemplate,
+  // CSSVar, burst's out-of-subtree gate). The snapshot cache is the one that reads stamps.
+  for (const rec of records) {
+    if (!isExternalRecord(rec)) continue
+    const el = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement
+    if (!el) continue
+    const doc = el.ownerDocument || document
+    if (!canNarrow(doc)) { __allStamp++; return }
+    // A class or custom-property flip on <html> or <body> reaches the whole document, which
+    // is what the all-stamp is for.
+    if (el === doc.documentElement || el === doc.body) { __allStamp++; return }
+    invalidateAround(el)
+  }
 }
 
 /** Wired PER DOCUMENT, not once per page. A same-origin <iframe> is a second document with
@@ -139,9 +209,21 @@ function setupInvalidationOnce(doc = document) {
     // serving the pre-interaction styles. focusin/out bubble (focus/blur do not); change
     // covers checkbox/radio/select. :hover is deliberately NOT wired — pointer events fire
     // continuously and would flush the snapshot cache on every mouse move.
-    doc.addEventListener('focusin', bumpEpoch, { capture: true, passive: true })
-    doc.addEventListener('focusout', bumpEpoch, { capture: true, passive: true })
-    doc.addEventListener('change', bumpEpoch, { capture: true, passive: true })
+    // These bump the epoch AND stamp the neighbourhood the pseudo-class can restyle: the
+    // snapshot cache reads stamps, not the epoch, so bumping alone would no longer reach it.
+    const onInteraction = (event) => {
+      bumpEpoch()
+      const t = event.target
+      if (t && t.nodeType === 1 && !isOwnedNode(t)) {
+        if (canNarrow(t.ownerDocument || doc)) invalidateAround(t)
+        else __allStamp++
+      } else {
+        __allStamp++
+      }
+    }
+    doc.addEventListener('focusin', onInteraction, { capture: true, passive: true })
+    doc.addEventListener('focusout', onInteraction, { capture: true, passive: true })
+    doc.addEventListener('change', onInteraction, { capture: true, passive: true })
   } catch { }
   try {
     const f = doc.fonts
@@ -207,7 +289,7 @@ const BG_INLINE_FLAG_PROPS = [
  */
 export function needsBackgroundInline(source) {
   const rec = snapshotCache.get(source)
-  if (rec && rec.epoch === __epoch) {
+  if (rec && snapshotIsCurrent(rec, source)) {
     const f = rec.snapshot && rec.snapshot.__needsBgInline
     if (f !== undefined) return f
   }
@@ -573,19 +655,25 @@ function styleSignature(snap) {
   __snapshotSig.set(snap, sig)
   return sig
 }
+/** A cached snapshot is current while nothing document-wide happened (env epoch) and nothing
+ *  a selector could follow to this node did (its stamp). */
+function snapshotIsCurrent(rec, el) {
+  return rec.env === __envEpoch && rec.stamp === stampOf(el)
+}
+
 function getSnapshot(el, preStyle = null, options = {}) {
   const rec = snapshotCache.get(el)
   // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
-  // (skipped props), but __epoch only bumps on DOM/font mutation — not option changes.
-  // Capturing the same element twice with different options must not reuse the snapshot
-  // (#348). excludeStyleProps is compared by reference: a fresh value misses safely.
+  // (skipped props), which no invalidation signal tracks. Capturing the same element twice
+  // with different options must not reuse the snapshot (#348). excludeStyleProps is compared
+  // by reference: a fresh value misses safely.
   const ef = !!(options && options.embedFonts)
   const ex = (options && options.excludeStyleProps) || null
-  if (rec && rec.epoch === __epoch && rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
+  if (rec && snapshotIsCurrent(rec, el) && rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
   const style = preStyle || getComputedStyle(el)
   const snap = snapshotComputedStyleFull(style, options, el, universeFor(el))
   stripHeightForWrappers(el, style, snap)
-  snapshotCache.set(el, { epoch: __epoch, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
+  snapshotCache.set(el, { env: __envEpoch, stamp: stampOf(el), snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
   return snap
 }
 
@@ -706,7 +794,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     const stub = {}
     Object.defineProperty(stub, '__needsBgInline', { value: computeNeedsBgInline(pre), enumerable: false })
     snapshotCache.set(source, {
-      epoch: __epoch, snapshot: stub,
+      env: __envEpoch, stamp: stampOf(source), snapshot: stub,
       embedFonts: !!(ctx.options && ctx.options.embedFonts),
       excludeStyleProps: (ctx.options && ctx.options.excludeStyleProps) || null,
     })

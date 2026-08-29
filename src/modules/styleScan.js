@@ -91,6 +91,10 @@ function scanRules(rules, universe, pseudoSels, state) {
       for (let j = 0; j < style.length; j++) universe.add(style[j])
     }
     let sel = rule.selectorText
+    // `:has()` is the one selector whose reach a DOM mutation cannot be walked back from — it
+    // restyles ancestors AND, combined with a combinator, their other descendants. A document
+    // that uses it keeps document-wide style invalidation (see nodeStamp in styles.js).
+    if (sel && sel.includes(':has(')) state.usesHas = true
     if (sel && sel.includes(':')) {
       // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
       // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
@@ -150,11 +154,13 @@ function composePseudoGates(doc, pseudoSels) {
  * @returns {{universe: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null}}}
  */
 export function scanAuthorStyles(doc) {
-  const unreliable = { universe: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
+  // the document has no `:has()`, and the narrowing must only run on a promise.
+  const unreliable = { universe: null, usesHas: true, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -176,7 +182,7 @@ export function scanAuthorStyles(doc) {
         }
       }
     }
-    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels) }
+    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas }
   } catch {
     return unreliable
   }
