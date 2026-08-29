@@ -361,6 +361,7 @@ async function waitForImgPaint(img, verify) {
  *   scale?:number,
  *   dpr?:number,
  *   meta?:object,
+ *   canvas?:HTMLCanvasElement,
  *   crop?:{x:number,y:number,width:number,height:number},
  *   backgroundColor?: string // optional color used to flatten the background
  * }} options
@@ -483,13 +484,20 @@ export async function toCanvas(url, options) {
     outH /= over
   }
 
-  const canvas = document.createElement('canvas')
+  // Draw into the caller's canvas when it gave one (imported from @frostin/snapdom): a
+  // caller looping captures otherwise pays a full-canvas copy per frame to move the pixels
+  // onto its own. Assigning width/height resets the canvas state and clears it, so a reused
+  // canvas starts as clean as a fresh one.
+  const canvas = (typeof HTMLCanvasElement !== 'undefined' && options.canvas instanceof HTMLCanvasElement)
+    ? options.canvas
+    : document.createElement('canvas')
   canvas.width = outW * dpr
   canvas.height = outH * dpr
   canvas.style.width = `${outW}px`
   canvas.style.height = `${outH}px`
 
   const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('[snapdom] toCanvas: the target canvas has no 2d context')
   if (dpr !== 1) ctx.scale(dpr, dpr)
 
   if (backgroundColor) {

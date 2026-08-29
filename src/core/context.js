@@ -28,6 +28,7 @@ import { compileIconFontMatchers } from '../modules/iconFonts.js'
  * @param {string|null} [options.backgroundColor]
  * @param {string}  [options.filename]
  * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
+ * @param {HTMLCanvasElement} [options.canvas] - Draw the canvas export into this canvas instead of a new one
  * @param {boolean} [options.outerTransforms]
  * @param {boolean} [options.outerShadows]
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
@@ -112,6 +113,13 @@ export function createContext(options = {}) {
 
     // Placeholders
     placeholders: options.placeholders !== false, // default true
+
+    // Canvas exporter target. A caller looping captures (a live mirror) otherwise pays a
+    // full-canvas copy per frame moving the pixels off a throwaway canvas onto its own.
+    // Anything that is not a canvas is ignored, so the exporter always has one to draw into.
+    canvas: (typeof HTMLCanvasElement !== 'undefined' && options.canvas instanceof HTMLCanvasElement)
+      ? options.canvas
+      : null,
 
     // Fonts
     // 'auto' (default): embed webfonts only when the element actually uses families the
