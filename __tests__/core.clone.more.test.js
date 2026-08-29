@@ -989,4 +989,37 @@ describe('createCheckboxRadioReplacement (#311)', () => {
     // Default browser vertical-align for inputs varies; we just check it is set
     expect(el.style.verticalAlign).toBeTruthy()
   })
+
+  // accent-color computes to the keyword `auto` when nothing authored one. It is a truthy
+  // string, so it used to reach SVG as a paint value: invalid, and the control painted black.
+  const paints = (el) => [...el.querySelectorAll('*')]
+    .flatMap((node) => [node.getAttribute('fill'), node.getAttribute('stroke')])
+    .filter((v) => v && v !== 'none')
+
+  it('never paints the accent-color keyword `auto` into the SVG', () => {
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.checked = true
+    document.body.appendChild(input)
+    expect(getComputedStyle(input).accentColor).toBe('auto') // guard: the shape of the bug
+
+    const { el } = createCheckboxRadioReplacement(input)
+    const used = paints(el)
+    expect(used.length).toBeGreaterThan(0)
+    for (const value of used) {
+      expect(value).not.toBe('auto')
+      expect(CSS.supports('color', value)).toBe(true)
+    }
+  })
+
+  it('uses an authored accent-color', () => {
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.checked = true
+    input.style.accentColor = 'rgb(255, 0, 128)'
+    document.body.appendChild(input)
+
+    const { el } = createCheckboxRadioReplacement(input)
+    expect(paints(el)).toContain('rgb(255, 0, 128)')
+  })
 })

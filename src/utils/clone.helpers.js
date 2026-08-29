@@ -525,6 +525,24 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 // ========== Checkbox/Radio replacement (Firefox fix) ==========
 
 /**
+ * The control's accent, as a colour SVG can take. `accent-color` computes to the keyword
+ * `auto` when the author never set one — a truthy string, so falling through a `||` chain
+ * handed SVG an invalid paint and the control rendered black. The UA's own auto accent is
+ * not readable from CSS, so a blue in the range every desktop UA ships stands in for it.
+ * @param {CSSStyleDeclaration | undefined} cs computed style of the control
+ * @returns {string}
+ */
+function resolveAccentColor(cs) {
+  try {
+    const accent = cs && cs.accentColor
+    if (accent && accent !== 'auto' && accent !== 'none') return accent
+    const color = cs && cs.color
+    if (color) return color
+  } catch { /* detached or cross-realm */ }
+  return '#0a6ed1'
+}
+
+/**
  * Creates a visual replacement for checkbox/radio inputs using inline SVG.
  * Firefox does not render native form controls inside SVG foreignObject; SVG-based
  * representation avoids CSS class conflicts and renders consistently.
@@ -563,10 +581,7 @@ export function createCheckboxRadioReplacement(node) {
   box.appendChild(svg)
 
   function applyVisual() {
-    let color = '#0a6ed1'
-    try {
-      if (cs) color = cs.accentColor || cs.color || color
-    } catch { }
+    const color = resolveAccentColor(cs)
     const stroke = 2
     const pad = stroke / 2
     const inner = s - stroke
