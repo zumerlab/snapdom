@@ -84,6 +84,7 @@ async function timedFetch(url, budgetMs, drain) {
  * @param {string[]} [options.payload]    URLs fetched in parallel and timed as one batch
  * @param {string}   [options.warmup]     URL fetched first, alone, to pay for DNS + TLS
  * @param {number}   [options.fastKbps]   at or above this the link takes the whole run at once
+ * @param {number}   [options.workers]    how many browser workers share the link; scales fastKbps
  * @param {number}   [options.pageKB]     what one network-dependent test is assumed to pull
  * @param {number}   [options.serialTimeoutMs] how long such a test may take in serial mode
  * @param {number}   [options.budgetMs]   hard cap on the timed batch
@@ -108,7 +109,13 @@ export function createNetworkGate(options = {}) {
   // minKbps is not a taste threshold: it is what one test needs to finish. A page that
   // pulls pageKB of fonts and images has serialTimeoutMs to do it in, and below that
   // ratio serialising only converts timeouts into slower timeouts.
-  const fastKbps = num(options.fastKbps ?? process.env.NETWORK_GATE_FAST_KBPS, 120)
+  // "Fast enough" is not a property of the link alone: it is the link divided by how many
+  // workers pull on it at once. The same connection that swallows one engine's demos is a
+  // third of itself under BROWSER=all, which is how a run that passed the pre-run probe went
+  // on to time out on CDN demos. An explicit fastKbps (or the env override) is taken as the
+  // final word; the default scales.
+  const workers = num(options.workers, 1)
+  const fastKbps = num(options.fastKbps ?? process.env.NETWORK_GATE_FAST_KBPS, 120 * workers)
   const pageKB = num(options.pageKB, 300)
   const serialTimeoutMs = num(options.serialTimeoutMs, 30000)
   const minKbps = num(options.minKbps ?? process.env.NETWORK_GATE_MIN_KBPS, pageKB / (serialTimeoutMs / 1000))

@@ -44,16 +44,28 @@ const ALL_DEMOS = import.meta.glob('/demos/d*.html')
 // hookTimeout covers the beforeEach below, which is where a test queues for the serial
 // lane, so it has to outlast that queue rather than the test itself.
 const NETWORK = inject('network') ?? { mode: 'parallel', serialTimeoutMs: 30000 }
+// Engines running at once. Under BROWSER=all the same demo gets a third of the machine and a
+// third of the link, and the two failures that survived the pre-run probe were exactly that:
+// d-compress, which touches no network at all and just decodes nineteen canvases, and d474,
+// which pulls KaTeX. Both hit the 10s budget that had been sized for one engine on an idle
+// line.
+const ENGINES = inject('engines') ?? 1
+// How long a demo may take to stop changing. It is a CAP, not a wait: a demo that settles in
+// 200ms still costs 200ms. A link the gate found degraded needs the room, and so does a run
+// where three engines share the machine.
+const SETTLE_BUDGET_MS = (NETWORK.mode === 'parallel' ? 2500 : 8000) * ENGINES
 vi.setConfig({
-  testTimeout: NETWORK.mode === 'parallel' ? 10000 : NETWORK.serialTimeoutMs,
+  testTimeout: (NETWORK.mode === 'parallel' ? 10000 : NETWORK.serialTimeoutMs) * ENGINES,
   hookTimeout: 150000,
-  // One retry, and only on a link the pre-run probe already found degraded. A demo that
-  // starts while the gate still says "serial" and finishes after the link has collapsed
-  // captures with the fallback font and diffs as a regression it is not (d21 did exactly
-  // that: 16.76% mismatch on a run where its siblings were being skipped). The retry
-  // re-runs the gate, which by then says skip. A real regression fails both times, so this
-  // hides nothing, and on a healthy link there are no retries at all.
-  retry: NETWORK.mode === 'parallel' ? 0 : 1,
+  // One retry whenever the gate is live, not only when the PRE-RUN probe already found the
+  // link degraded. The reading that sizes this file is taken on an idle line, and the run
+  // itself is what saturates it: a demo that starts under a "parallel" verdict and finishes
+  // after the link has collapsed either times out or captures with the fallback font and
+  // diffs as a regression it is not (d21 did exactly that: 16.76% mismatch on a run where its
+  // siblings were being skipped; d25 did it again with Google Fonts). The retry re-consults
+  // the gate, which by then has measured the run's own congestion and says serial or skip. A
+  // real regression fails both times, so this hides nothing.
+  retry: 1,
 })
 
 // Wait for the demo to STOP CHANGING instead of guessing with a fixed delay.
@@ -68,16 +80,52 @@ vi.setConfig({
 //
 // The signature is geometry-only, so a demo animating canvas pixels or colours reads as
 // stable immediately and costs nothing; only a page still growing burns the budget.
-async function settle(win, budget = 2500) {
+/** Stylesheets the page has asked for and not received yet. A `<style>` block's
+ *  `@import` is a CSSImportRule whose `.styleSheet` stays null until the import lands,
+ *  and a `<link>`'s `.sheet` is null until the same. */
+function styleSheetsPending(doc) {
+  for (const link of doc.querySelectorAll('link[rel~="stylesheet"]')) {
+    if (!link.sheet && !link.disabled) return true
+  }
+  for (const sheet of doc.styleSheets) {
+    let rules
+    try { rules = sheet.cssRules } catch { continue } // cross-origin: nothing to wait for
+    for (const rule of rules) {
+      if (rule.type === 3 /* CSSRule.IMPORT_RULE */ && !rule.styleSheet) return true
+    }
+  }
+  return false
+}
+
+/** Faces the page declared and has not finished loading. */
+function fontFacesPending(doc) {
+  for (const face of doc.fonts) {
+    if (face.status === 'loading' || face.status === 'unloaded') return true
+  }
+  return false
+}
+
+async function settle(win, budget = SETTLE_BUDGET_MS) {
   const doc = win.document
   const deadline = Date.now() + budget
   const left = () => Math.max(0, deadline - Date.now())
   const sleep = (ms) => new Promise((r) => win.setTimeout(r, ms))
 
-  // Typesetting depends on the webfont, so fonts first, but BOUNDED. document.fonts.ready
-  // does not settle while a font request is still in flight, and these demos fetch from a
-  // CDN, so an unbounded await hands one stalled request the entire test timeout (d474 sat
-  // at 30s on firefox exactly here). Every wait below is capped by the same deadline.
+  // Typesetting depends on the webfont, so fonts first, but BOUNDED. Every wait below is
+  // capped by the same deadline: an unbounded await would hand one stalled request the
+  // entire test timeout (d474 sat at 30s on firefox exactly here).
+  //
+  // `document.fonts.ready` alone is NOT the signal. These demos pull their font through a
+  // CSS `@import`, so while that stylesheet is in flight the document has declared no faces
+  // at all and `ready` resolves immediately, on a page whose text is still in the fallback.
+  // The geometry loop below then reads three stable frames of the WRONG font and the capture
+  // diffs against a baseline recorded when the import had landed (d21, d25 and d3 failed
+  // exactly this way on firefox, on a slow link, as a dimension mismatch rather than a
+  // timeout). So: wait for the stylesheets the page asked for, then for the faces they
+  // declare, then re-check, because a landing stylesheet declares new faces.
+  while (Date.now() < deadline && (styleSheetsPending(doc) || fontFacesPending(doc))) {
+    await sleep(Math.min(50, left()))
+  }
   try { await Promise.race([doc.fonts.ready, sleep(left())]) } catch { /* best-effort */ }
 
   let last = '', stable = 0

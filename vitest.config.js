@@ -24,7 +24,9 @@ const visualCommands = Object.fromEntries(
 // Answers "what can this connection serve right now?" for every browser worker, from the one
 // node process they all share: run network-dependent tests as usual, run them one at a time, or
 // skip them. See __tests__/helpers/network-gate.js.
-const networkGate = createNetworkGate()
+// `workers` is what makes "fast enough" a question about this run rather than about the
+// link: BROWSER=all puts three engines on the same connection.
+const networkGate = createNetworkGate({ workers: browsers.length })
 
 // The first reading is taken here, before any browser starts, and handed to the suites via
 // inject('network'). Tests re-consult the gate as they run (the run itself is what congests the
@@ -44,7 +46,12 @@ export default defineConfig({
     alias: { '@zumer/snapdom': new URL('./src/index.js', import.meta.url).pathname },
   },
   test: {
-    provide: { network: { mode: network.mode, reading: network.reading, kbps: network.kbps, serialTimeoutMs: networkGate.serialTimeoutMs } },
+    provide: {
+      network: { mode: network.mode, reading: network.reading, kbps: network.kbps, serialTimeoutMs: networkGate.serialTimeoutMs },
+      // Suites size their own timeouts from this: the same demo has three times the machine
+      // and three times the link contention under BROWSER=all.
+      engines: browsers.length,
+    },
     // The visual suite tests compiled dist/ — never let it pixel-diff a stale build.
     globalSetup: ['./scripts/ensure-fresh-dist.mjs', './scripts/require-visual.mjs'],
     browser: {
