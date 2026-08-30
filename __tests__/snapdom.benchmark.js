@@ -6,6 +6,12 @@ import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13
 //import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js';
 import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.9.9/dist/snapdom.mjs'
 import { snapdom as sd216 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.16.0/dist/snapdom.mjs'
+// The v2 line's latest release: the "what does upgrading to v3 buy me" arm. Pinned, like the
+// two above, so a run months from now still measures the same baseline — bump it by hand when
+// v2 ships. It takes no `burst` option on purpose: v2 only bursts when explicitly asked
+// (`if (context.burst)` in its snapdom.js, it just warns otherwise), so this IS its cold
+// pipeline, which is what `burst: false` pins the current version to.
+import { snapdom as sd2 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.12/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
 
 let html2canvasLoaded = false
@@ -121,6 +127,11 @@ for (const size of sizes) {
       await snapdom.toRaw(container, { burst: false })
     })
 
+    bench('snapDOM 2.24.12 (latest v2)', async () => {
+      await setupContainer()
+      await sd2.toRaw(container)
+    })
+
     bench('snapDOM 2.16.0', async () => {
       await setupContainer()
       await sd216.toRaw(container)
@@ -201,6 +212,11 @@ describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
   bench('snapDOM toPng (compress ON)', async () => {
     await setupContainer()
     await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true, burst: false })
+  })
+
+  bench('snapDOM 2.24.12 toPng (compress OFF)', async () => {
+    await setupContainer()
+    await sd2.toPng(container, { compress: false })
   })
 
   bench('snapDOM 2.16.0 toPng (compress OFF)', async () => {
