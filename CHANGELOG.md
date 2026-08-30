@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.24.15](https://github.com/zumerlab/snapdom/compare/v2.24.12...v2.24.15)
+
+> 30 August 2026
+
+- fix: fractional with. Ref #491 [`cffd222`](https://github.com/zumerlab/snapdom/commit/cffd222a1c125bb3b57ea5a23e1d862efa31e381)
+- fix: update network gate logic to manage lane budget and improve test reliability [`8ae2371`](https://github.com/zumerlab/snapdom/commit/8ae237176e7cc4af32add41f54eb58811fd846ca)
+- fix(clone): drop light DOM that no slot accepted [`b75e88b`](https://github.com/zumerlab/snapdom/commit/b75e88b27480f111ab19983b27d8e79ca1e559d8)
+
+
 #### [v2.24.12](https://github.com/zumerlab/snapdom/compare/v2.24.10...v2.24.12)
 
 > 28 August 2026
