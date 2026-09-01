@@ -127,6 +127,25 @@ function say(text) { status.textContent = text }
 
 // ── Measurement ─────────────────────────────────────────────────────────────
 
+/** Hold the page still for the duration of a run.
+ *
+ *  A whole-document cloner crops the element's REGION out of a clone it re-laid out, at
+ *  viewport-relative coordinates — so if the page scrolls between the clone and the crop, the
+ *  capture is of somewhere else entirely. Measured on the complex card with domlens: 0.0%
+ *  divergence with the page still, 45.9% while scrolling through the run. That is their bug,
+ *  but leaving it in means this page reports how the visitor scrolled rather than how the
+ *  library performs, and it only ever bites the libraries that clone the document.
+ *
+ *  Snapping back beats `overflow:hidden`, which removes the scrollbar and reflows the very
+ *  element being measured. */
+function freezeScroll() {
+  const y = window.scrollY
+  const x = window.scrollX
+  const snap = () => { if (window.scrollY !== y || window.scrollX !== x) window.scrollTo(x, y) }
+  window.addEventListener('scroll', snap, { passive: true })
+  return () => window.removeEventListener('scroll', snap)
+}
+
 let mountSeq = 0
 
 /** Mount a scene into the visible stage, so the visitor sees exactly what is captured.
@@ -400,6 +419,7 @@ async function run() {
 
   runBtn.disabled = true
   sceneSel.disabled = true
+  const thaw = freezeScroll()
   tbody.innerHTML = ''
   gallery.innerHTML = ''
   $('lab-copy').hidden = true
@@ -429,6 +449,7 @@ async function run() {
   lastRun = { scene, rows, stamp: stamp() }
   $('lab-stamp').textContent = lastRun.stamp
   $('lab-copy').hidden = false
+  thaw()
   say(`done — ${rows.length} libraries on "${scene.label}".`)
   runBtn.disabled = false
   sceneSel.disabled = false
