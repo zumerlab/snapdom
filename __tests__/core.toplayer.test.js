@@ -33,6 +33,15 @@ describe('top-layer dialog/popover', () => {
       expect(svg).toContain('rgba(10, 20, 30, 0.6)')
       // The dialog clone paints after the backdrop (appended later in the markup).
       expect(svg.indexOf('data-sd-backdrop')).toBeLessThan(svg.indexOf('>modal<'))
+      // Payload assertions can pass while a zero-sized or mispositioned backdrop paints
+      // nothing — prove it in pixels. A corner pixel sits over backdrop-on-white:
+      // rgba(10,20,30,.6) over white blends to ~(108,114,120).
+      const canvas = await res.toCanvas({ backgroundColor: '#ffffff', dpr: 1 })
+      const px = (fx, fy) => canvas.getContext('2d').getImageData(
+        Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data
+      const corner = px(0.04, 0.9)
+      expect(corner[0]).toBeGreaterThan(80)
+      expect(corner[0]).toBeLessThan(150)
     } finally {
       dialog.close()
     }

@@ -4,9 +4,15 @@ import html2canvas from 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm'
 import { snapdom } from '../src/index.js'
 
 function dataUrlBytes(dataUrl) {
-  const b64 = dataUrl.split(',')[1] || ''
-  const padding = (b64.endsWith('==') ? 2 : (b64.endsWith('=') ? 1 : 0))
-  return Math.floor(b64.length * 0.75) - padding
+  // Format-aware: snapdom's toRaw is PERCENT-ENCODED svg (`;charset=utf-8,`), not base64 —
+  // base64 math (*0.75) on it understated snapdom's bytes while the competitor's PNG data
+  // URL IS base64, making the comparison apples to oranges.
+  const [head, payload = ''] = dataUrl.split(/,(.*)/s)
+  if (/;base64/i.test(head)) {
+    const padding = (payload.endsWith('==') ? 2 : (payload.endsWith('=') ? 1 : 0))
+    return Math.floor(payload.length * 0.75) - padding
+  }
+  return new Blob([decodeURIComponent(payload)]).size
 }
 
 describe('Output file size snapdom vs html2canvas (cdn, averaged)', () => {
@@ -39,7 +45,7 @@ describe('Output file size snapdom vs html2canvas (cdn, averaged)', () => {
 
     for (let i = 0; i < RUNS; i++) {
       // SnapDOM (SVG dataURL)
-      const snapUrl = await snapdom.toRaw(container)
+      const snapUrl = await snapdom.toRaw(container, { burst: false })
       snapSum += dataUrlBytes(snapUrl)
 
       // html2canvas → PNG dataURL

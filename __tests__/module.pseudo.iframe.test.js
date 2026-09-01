@@ -33,5 +33,14 @@ describe('pseudo-elements inside same-origin iframes', () => {
     const result = await snapdom(target)
     const svg = decodeURIComponent(result.url.split(',')[1])
     expect(svg).toContain('IFRAME-LABEL')
+    // Pseudo content reaches the SVG through generated class CSS — exactly the payload that
+    // can carry a string while nothing paints. Scan for the label's #2D5BFF background.
+    const canvas = await result.toCanvas({ dpr: 1 })
+    const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    let blue = 0
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.abs(d[i] - 0x2d) < 30 && Math.abs(d[i + 1] - 0x5b) < 30 && Math.abs(d[i + 2] - 0xff) < 30) blue++
+    }
+    expect(blue).toBeGreaterThan(20)
   })
 })

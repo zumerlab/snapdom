@@ -175,7 +175,9 @@ describe('estimateKeptHeight', () => {
     container.appendChild(child)
     document.body.appendChild(container)
     const h = estimateKeptHeight(container, {})
-    expect(h).toBeGreaterThanOrEqual(0)
+    // >= 0 was satisfied by a function that ignores its input entirely (every term of the
+    // sum is ||0-guarded). The single 50px block child IS the whole content span.
+    expect(h).toBe(50)
   })
 
   it('skips excluded elements (data-capture=exclude, excludeMode:remove)', () => {
@@ -186,7 +188,9 @@ describe('estimateKeptHeight', () => {
     container.appendChild(ex)
     document.body.appendChild(container)
     const h = estimateKeptHeight(container, { excludeMode: 'remove' })
-    expect(h).toBeLessThan(120)
+    // The excluded-and-removed only child leaves borders + padding = 0. The old < 120 bound
+    // also passed with the child COUNTED (h = 100), i.e. with the exclusion broken.
+    expect(h).toBe(0)
   })
 
   it('skips excluded elements (predicate, excludeMode:remove)', () => {
@@ -204,7 +208,8 @@ describe('estimateKeptHeight', () => {
       excludePredicates: [(el) => el.classList?.contains('drop')],
       excludeMode: 'remove'
     })
-    expect(h).toBeLessThan(120)
+    // Only the kept 20px child counts; < 120 also passed with the predicate branch broken.
+    expect(h).toBe(20)
   })
 })
 

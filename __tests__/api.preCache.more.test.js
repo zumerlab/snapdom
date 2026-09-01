@@ -5,7 +5,6 @@ vi.mock('../src/utils', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
-    fetchImage: vi.fn(async () => 'data:image/png;base64,iVBORw0KGgo='),
     precacheCommonTags: vi.fn(),
     isSafari: vi.fn(() => false), // queda como vi.fn() invocable
     inlineSingleBackgroundEntry: vi.fn(async () => 'url("data:image/png;base64,AA==")'),
@@ -64,8 +63,12 @@ describe('preCache: hard-to-reach lines', () => {
   it('dedupes repeated url() entries per element and survives entry failures', async () => {
     utils.inlineSingleBackgroundEntry.mockRejectedValue(new Error('boom'))
     const el = document.createElement('section')
-    // same url in shorthand and longhand: must be fetched once, and a rejection must not throw
+    // The SAME url must surface through TWO different URL_PROPS lanes, or the per-element
+    // seen-Set is not load-bearing and this test passes with the dedupe deleted (one lane
+    // yields one entry with or without dedupe). background-image + -webkit-mask-image both
+    // compute here, both carry dup.png, and only the seen-Set collapses the calls to 1.
     el.style.backgroundImage = 'url(https://cdn.example.com/dup.png)'
+    el.style.webkitMaskImage = 'url(https://cdn.example.com/dup.png)'
     document.body.appendChild(el)
     try {
       await expect(preCache(el, { embedFonts: false })).resolves.toBeUndefined()

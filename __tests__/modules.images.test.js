@@ -14,19 +14,6 @@ import { snapFetch } from '../src/modules/snapFetch.js'
 describe('inlineImages', () => {
   let container
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('unhandledrejection', (e) => {
-    const msg = (e.reason && e.reason.message) || ''
-    if (
-      msg.includes('[SnapDOM - fetchImage] Fetch failed and no proxy provided') ||
-      msg.includes('Image load timed out') ||
-      msg.includes('[SnapDOM - fetchImage] Recently failed (cooldown).')
-    ) {
-      e.preventDefault() // evita el banner de Vitest
-    }
-  })
-}
-
   beforeEach(() => {
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -62,6 +49,9 @@ if (typeof window !== 'undefined') {
     await inlineImages(container)
 
     expect(img.src.startsWith('data:image/')).toBe(true)
+    // and the img itself must have survived — a fallback swap would leave the held
+    // reference intact while removing it from the tree, passing the src check alone.
+    expect(container.querySelector('img')).toBe(img)
   })
 
  it('replaces <img> with a fallback if the image fails', async () => {
@@ -192,22 +182,15 @@ describe('inlineImages – extra coverage', () => {
     expect(fallback.textContent || '').not.toContain('img')
   })
 
-  it('processes in batches of 4 (5 images) and applies a placeholder on failure', async () => {
-    const img = document.createElement('img')
-    img.src = 'https://ex.com/down.png'
-    wrap.appendChild(img)
-    const img1 = document.createElement('img')
-    img1.src = 'https://ex.com/down.png'
-    wrap.appendChild(img1)
-    const img2 = document.createElement('img')
-    img2.src = 'https://ex.com/down.png'
-    wrap.appendChild(img2)
-    const img3 = document.createElement('img')
-    img3.src = 'https://ex.com/down.png'
-    wrap.appendChild(img3)
-    const img4 = document.createElement('img')
-    img4.src = 'https://ex.com/down.png'
-    wrap.appendChild(img4)
+  it('processes in batches of 6 (7 images) and applies a placeholder on failure', async () => {
+    // BATCH is 6 in src/modules/images.js — 7 images makes the loop iterate twice, so the
+    // multi-batch path is actually exercised (the old 5-image fixture fit in one batch and
+    // the boundary its title named was never crossed).
+    for (let i = 0; i < 7; i++) {
+      const img = document.createElement('img')
+      img.src = 'https://ex.com/down.png'
+      wrap.appendChild(img)
+    }
     // todas fallan
     vi.mocked(snapFetch).mockResolvedValue({ ok: false, data: null })
 
@@ -215,7 +198,7 @@ describe('inlineImages – extra coverage', () => {
 
     // todas reemplazadas por <div> de placeholder
     const divs = wrap.querySelectorAll('div')
-    expect(divs.length).toBe(5)
+    expect(divs.length).toBe(7)
   })
 
   it('si fallbackURL arroja error, cae en placeholder por defecto', async () => {

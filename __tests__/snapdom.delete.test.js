@@ -17,9 +17,11 @@ describe('snapdom advanced tests', () => {
   })
 
   it('should generate different SVGs for different scales', async () => {
-    const svg1 = await snapdom.toImg(testElement, { scale: 1 })
-    const svg2 = await snapdom.toImg(testElement, { scale: 2 })
-    expect(svg1).not.toBe(svg2)
+    const img1 = await snapdom.toImg(testElement, { scale: 1 })
+    const img2 = await snapdom.toImg(testElement, { scale: 2 })
+    // Two fresh Image objects always differ by identity, so `not.toBe` asserted nothing.
+    // What scale:2 must actually change is the rendered geometry.
+    expect(parseFloat(img2.style.width)).toBeCloseTo(parseFloat(img1.style.width) * 2, 0)
   })
 
   it('captured SVG should contain inner text content', async () => {

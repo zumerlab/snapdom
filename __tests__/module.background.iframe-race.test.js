@@ -97,17 +97,19 @@ function countInlinedBackgrounds(dataUrl) {
 }
 
 describe('background-image inlining races with same-origin iframe rasterization', () => {
-  for (const fast of [true, false]) {
-    it(`fast:${fast} — backgrounds survive 3 concurrent same-origin iframes (6 runs)`, async () => {
-      const bgUrl = await findFetchableUrl()
-      for (let run = 0; run < 6; run++) {
-        const container = makeContainer(bgUrl, 3)
-        const res = await snapdom(container, { fast })
-        const inlined = countInlinedBackgrounds(res.url)
-        mounted.forEach((el) => el.remove())
-        mounted = []
-        expect(inlined, `fast:${fast} run ${run}`).toBe(3)
-      }
-    }, 60000)
-  }
+  // The old fast:true/fast:false parametrization passed a v2-era option v3 never had —
+  // unknown options are silently ignored, so both arms ran byte-identical pipelines. One
+  // arm, same total repro count (the pre-fix failure rate in the header was measured under
+  // v2's fast:false, kept there for history).
+  it('backgrounds survive 3 concurrent same-origin iframes (12 runs)', async () => {
+    const bgUrl = await findFetchableUrl()
+    for (let run = 0; run < 12; run++) {
+      const container = makeContainer(bgUrl, 3)
+      const res = await snapdom(container)
+      const inlined = countInlinedBackgrounds(res.url)
+      mounted.forEach((el) => el.remove())
+      mounted = []
+      expect(inlined, `run ${run}`).toBe(3)
+    }
+  }, 120000)
 })

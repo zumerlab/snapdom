@@ -112,7 +112,7 @@ it('exclude by selector with excludeMode = "remove" skips element from clonning'
 
   it('IFRAME fallback uses gradient style and element size', async () => {
     const frame = document.createElement('iframe')
-    // JSDOM offset* are not layouted; provide getters
+    // offset* needs layout the detached iframe does not have; provide getters
     Object.defineProperty(frame, 'offsetWidth', { configurable: true, get: () => 123 })
     Object.defineProperty(frame, 'offsetHeight', { configurable: true, get: () => 45 })
 
@@ -172,7 +172,7 @@ it('exclude by selector with excludeMode = "remove" skips element from clonning'
     expect([...c2.options].find(o => o.value === 'a')?.hasAttribute('selected')).toBe(false)
   })
 
-   it('ShadowRoot with <slot> only stores STYLE css into styleCache (no content clone)', async () => {
+   it('ShadowRoot with <slot> ShadowRoot with <slot>: injects a scoped style[data-sd] and clones no shadow content', async () => {
      const host = document.createElement('div')
      const sr = host.attachShadow({ mode: 'open' })
      const style = document.createElement('style')
@@ -475,7 +475,7 @@ describe('deepClone – targeted branches for coverage gaps', () => {
   sr.appendChild(style)
   sr.appendChild(txt)
 
-  const clone = await deepClone(host, session, { fast: true })
+  const clone = await deepClone(host, session, {})
 
   // solo debe estar el style inyectado (data-sd), no el <style> original del SR
   const authoredStyles = Array.from(clone.querySelectorAll('style')).filter(s => !s.hasAttribute('data-sd'))
@@ -519,7 +519,7 @@ describe('deepClone – extra targets to lift coverage', () => {
     // anclar para que getComputedStyle(root) funcione estable
     document.body.appendChild(host)
 
-    const out = await deepClone(host, session, { fast: true })
+    const out = await deepClone(host, session, {})
     const injected = out.querySelector('style[data-sd]')
     expect(!!injected).toBe(true)
     const css = injected.textContent || ''
@@ -561,8 +561,8 @@ describe('deepClone – extra targets to lift coverage', () => {
     st2.textContent = '.y:not([data-sd-slotted]) { color: blue }'
     s2.appendChild(st2)
 
-    const out1 = await deepClone(h1, session, { fast: true })
-    const out2 = await deepClone(h2, session, { fast: true })
+    const out1 = await deepClone(h1, session, {})
+    const out2 = await deepClone(h2, session, {})
     const css2 = out2.querySelector('style[data-sd]')?.textContent || ''
 
     // scopes distintos
@@ -615,7 +615,7 @@ describe('deepClone – extra targets to lift coverage', () => {
       }
     }
 
-    const out = await deepClone(iframe, session, { fast: true, snap })
+    const out = await deepClone(iframe, session, { snap })
 
     // 1) A pin style was created in the iframe (data-sd-iframe-pin) and removed on exit
     const hadPin = appended.some(n => n.tagName === 'STYLE' && n.getAttribute('data-sd-iframe-pin') !== null)
@@ -674,7 +674,7 @@ describe('deepClone – extra targets to lift coverage', () => {
     sr.appendChild(st)
 
     document.body.appendChild(host)
-    const out = await deepClone(host, session, { fast: true })
+    const out = await deepClone(host, session, {})
     const css = out.querySelector('style[data-sd]')?.textContent || ''
 
     // ambas aparecen seed-eadas

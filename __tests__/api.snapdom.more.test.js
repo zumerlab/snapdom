@@ -65,23 +65,35 @@ describe('snapdom – result helpers', () => {
   })
 })
 
-describe('snapdom – Safari warmup path', () => {
-  it('runs the warmup once when isSafari and the element has background/canvas', async () => {
+describe('snapdom – Safari pre-step', () => {
+  // The old title named the removed 3x pre-capture warmup, and its only assertion (url is an
+  // svg data URL) is true for ANY successful capture. What the pre-step actually does per
+  // capture is poke drawn canvases with getImageData(0,0,1,1) so cloneCanvas's toDataURL is
+  // not blank — spy on that, so deleting the pre-step fails this test.
+  it('pokes a drawn canvas store when isSafari', async () => {
     vi.mocked(browser.isSafari).mockReturnValue(true)
 
     const el = document.createElement('div')
     el.style.width = '40px'
     el.style.height = '40px'
-    el.style.backgroundImage =
-      'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")'
     const canvas = document.createElement('canvas')
     canvas.width = 4
     canvas.height = 4
+    // Drawn on purpose: the pre-step only pokes a canvas that already HAS a context —
+    // probing a virgin one would create the context and lock the page's canvas mode
+    // (see core.clone.canvasContext.test.js).
+    canvas.getContext('2d').fillRect(0, 0, 4, 4)
     el.appendChild(canvas)
     document.body.appendChild(el)
 
-    const result = await snapdom(el)
-    expect(typeof result.url).toBe('string')
-    expect(result.url.startsWith('data:image/svg+xml')).toBe(true)
+    const gidSpy = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData')
+    try {
+      const result = await snapdom(el)
+      expect(result.url.startsWith('data:image/svg+xml')).toBe(true)
+      const poked = gidSpy.mock.calls.some((c) => c[0] === 0 && c[1] === 0 && c[2] === 1 && c[3] === 1)
+      expect(poked).toBe(true)
+    } finally {
+      gidSpy.mockRestore()
+    }
   })
 })

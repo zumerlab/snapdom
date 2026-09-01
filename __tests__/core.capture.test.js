@@ -6,7 +6,9 @@ afterEach(() => vi.restoreAllMocks())
 describe('captureDOM edge cases', () => {
   it('throws for unsupported element (unknown nodeType)', async () => {
     const fakeNode = { nodeType: 999 }
-    await expect(captureDOM(fakeNode)).rejects.toThrow()
+    // Options provided on purpose: with none, the rejection was a TypeError on undefined
+    // options hit BEFORE anything looked at the node, so the test passed for the wrong reason.
+    await expect(captureDOM(fakeNode, {})).rejects.toThrow()
   })
 
   it('throws if element is null', async () => {
@@ -34,14 +36,10 @@ describe('captureDOM functional', () => {
     const el = document.createElement('div')
     el.style.width = '100px'
     el.style.height = '50px'
-    await captureDOM(el, { scale: 2 })
-    await captureDOM(el, { width: 200 })
-    await captureDOM(el, { height: 100 })
-  })
-
-  it('supports fast=false', async () => {
-    const el = document.createElement('div')
-    await captureDOM(el, { embedFonts: false })
+    for (const opts of [{ scale: 2 }, { width: 200 }, { height: 100 }]) {
+      const url = await captureDOM(el, opts)
+      expect(url.startsWith('data:image/svg+xml')).toBe(true)
+    }
   })
 
   it('supports embedFonts (stubbed)', async () => {

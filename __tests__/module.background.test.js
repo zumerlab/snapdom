@@ -21,7 +21,10 @@ describe('inlineBackgroundImages', () => {
 
   it('processes a valid background-image', async () => {
     source.style.backgroundImage = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")'
-    await expect(inlineBackgroundImages(source, clone, new WeakMap())).resolves.toBeUndefined()
+    // resolves.toBeUndefined could not fail: the per-node work runs under Promise.allSettled,
+    // so a rejection or a no-op never rejects the outer promise. Assert the inlining landed.
+    await inlineBackgroundImages(source, clone, new WeakMap())
+    expect(clone.style.backgroundImage).toContain('data:image/png')
   })
 
   describe('child alignment with clone-only elements (#439)', () => {

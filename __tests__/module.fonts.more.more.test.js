@@ -11,10 +11,6 @@ vi.mock('../src/utils/helpers', async (importOriginal) => {
       const m = String(cssUrlFn).match(/url\((["']?)([^"')]+)\1\)/i)
       return m ? m[2] : ''
     }),
-    fetchResource: vi.fn(async () => ({
-      async blob () { return new Blob([new Uint8Array([0x77, 0x6F, 0x32])], { type: 'font/woff2' }) },
-      async text () { return '' }
-    })),
   }
 })
 
@@ -96,7 +92,6 @@ beforeEach(() => {
   vi.restoreAllMocks()
 
   // helper mocks are already installed; just reset the counters
-  helpers.fetchResource?.mockClear?.()
 
   // limpiar caches y DOM
   try { cache.resource?.clear?.() } catch {}

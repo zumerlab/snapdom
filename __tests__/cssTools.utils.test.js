@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { getStyleKey, collectUsedTagNames, getDefaultStyleForTag } from '../src/utils'
 
-describe('getStyleKey', () => {
-
-  it('getStyleKey works with compress true default', () => {
-    const snapshot = { color: 'red', 'font-size': '12px' }
-    const key = getStyleKey(snapshot, 'div')
-    expect(typeof key).toBe('string')
-  })
-})
+// The getStyleKey describe that lived here named a 'compress' parameter v3 does not have and
+// asserted only typeof string; the real getStyleKey behavior is pinned in utils.css.test.js.
 
 describe('collectUsedTagNames', () => {
   it('returns unique tag names', () => {

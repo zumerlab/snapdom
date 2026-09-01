@@ -1,4 +1,4 @@
-// __tests__/exporters.toCanvas.more.test.js
+// __tests__/exporter.toCanvas.test.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // IMPORTANT: in Browser Mode we cannot spy on ESM exports directly.
@@ -44,21 +44,13 @@ describe('toCanvas (Browser Mode)', () => {
     expect(afterImgs - beforeImgs).toBe(0) // nothing appended
   })
 
-  it('appends and removes <img> and waits 100ms on Safari path', async () => {
+  it('Safari path appends the probe <img> offscreen and leaves no stray <img>', async () => {
+    // The old title claimed a fixed 100ms wait that no longer exists — waitForImgPaint
+    // probe-draws against a 150/600ms deadline with rAF frames instead — and the setTimeout
+    // spy it set up was never asserted. What this test can honestly pin is the mount/unmount
+    // contract of the probe.
     vi.mocked(browser.isSafari).mockReturnValue(true)
 
-    // Spy setTimeout so the promise resolves immediately and we can assert the delay
-    const origSetTimeout = globalThis.setTimeout
-    const calls = []
-    const stoSpy = vi
-      .spyOn(globalThis, 'setTimeout')
-      .mockImplementation((cb, ms, ...args) => {
-        calls.push(ms)
-        // Trigger callback ASAP so the awaited promise resolves
-        return origSetTimeout(cb, 0, ...args)
-      })
-
-    // Spy on Element.prototype.remove to ensure the appended <img> is removed
     const rmSpy = vi.spyOn(Element.prototype, 'remove')
 
     const imgCountBefore = document.querySelectorAll('img').length
@@ -67,8 +59,8 @@ describe('toCanvas (Browser Mode)', () => {
 
     const imgCountAfter = document.querySelectorAll('img').length
     expect(imgCountAfter).toBe(imgCountBefore) // no stray <img> left in the DOM
+    expect(rmSpy).toHaveBeenCalled() // the probe was mounted and explicitly removed
 
-    stoSpy.mockRestore()
     rmSpy.mockRestore()
   })
 })

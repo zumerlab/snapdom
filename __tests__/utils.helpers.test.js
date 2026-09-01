@@ -21,7 +21,7 @@ describe('extractURL', () => {
 
 describe('stripTranslate', () => {
   it('removes translate transforms', () => {
-    expect(stripTranslate('translateX(10px) scale(2)')).toContain('scale(2)')
+    expect(stripTranslate('translateX(10px) scale(2)')).toBe('scale(2)')
   })
   it('stripTranslate removes matrix and matrix3d', () => {
     expect(stripTranslate('matrix(1,0,0,1,10,20)')).not.toContain('10,20')

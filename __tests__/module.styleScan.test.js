@@ -90,7 +90,7 @@ describe('pseudo selector gates', () => {
     const res = await snapdom(el, { cache: 'disabled' })
     const svg = decodeURIComponent(res.url.split(',')[1])
     expect(svg).toContain('data-snapdom-pseudo')
-    expect(svg).toContain('!')
+    expect(svg).toContain('rgb(200, 10, 10)')
   })
 })
 

@@ -81,40 +81,9 @@ describe('captureDOM functional', () => {
     expect(svg).toMatch(/foreignObject\{overflow:visible;?\}/)
   })
 
-  it('supports scale and width/height options (wrapper sizing behavior)', async () => {
-    const { captureDOM } = await import('../src/core/capture.js')
-
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
-      rect(10, 20, 100, 50) // aspect = 2
-    )
-
-    const el = document.createElement('div')
-
-    // scale keeps the natural <svg> size, uses viewBox, and adds no transform: scale(...)
-    const svg1 = decodeSvg(await captureDOM(el, { scale: 2, embedFonts: false }))
-    expect(svg1).toContain('width="100"')
-    expect(svg1).toContain('height="50"')
-    expect(svg1).toContain('viewBox="0 0 100 50"')
-    expect(svg1).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
-    expect(svg1).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
-    expect(/transform:[^"]*scale\(/.test(svg1)).toBe(false)
-
-    // width only → el <svg> adopta 200x100; el wrapper interno permanece 100x50 (natural)
-    const svg2 = decodeSvg(await captureDOM(el, { width: 200, embedFonts: false }))
-    expect(svg2).toContain(sizedW(200, 100))
-    expect(svg2).toContain(sizedH(100, 50))
-    expect(svg2).toContain('viewBox="0 0 100 50"')
-    expect(svg2).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
-    expect(svg2).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
-
-    // height only → el <svg> adopta 200x100; el wrapper permanece 100x50 (natural)
-    const svg3 = decodeSvg(await captureDOM(el, { height: 100, embedFonts: false }))
-    expect(svg3).toContain(sizedW(200, 100))
-    expect(svg3).toContain(sizedH(100, 50))
-    expect(svg3).toContain('viewBox="0 0 100 50"')
-    expect(svg3).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
-    expect(svg3).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
-  })
+  // The combined scale+width+height test that lived here asserted the same facts as the
+  // per-branch 'width/height/scale branches (precise)' describe below, with less precision —
+  // deleted as a duplicate (v3 test-suite review).
 
 })
 
@@ -420,8 +389,7 @@ describe('captureDOM – width & height together apply size (scale or wrapper si
 
     // Ask for 150x120
     const svg = decodeSvg(await captureDOM(el, {
-      fast: true,
-      width: 150,
+            width: 150,
       height: 120,
       embedFonts: false,
     }))
@@ -475,7 +443,9 @@ describe('captureDOM – fractional viewport sizes and tx/ty computation', () =>
 // ──────────────────────────────────────────────────────────────────────────────
 // Cache policy path (no internal assert, but forces applyCachePolicy branch)
 // ──────────────────────────────────────────────────────────────────────────────
-describe('captureDOM – honors cache policy "none"', () => {
+describe('captureDOM – unknown cache strings normalize to soft', () => {
+  // 'none' is not a v3 policy: normalizeCachePolicy maps everything but false/'disabled' to
+  // 'soft', silently. What this pins is exactly that — an unknown string still captures fine.
   it('works with cache: "none" and still returns a valid SVG data URL', async () => {
     const { captureDOM } = await import('../src/core/capture.js')
 

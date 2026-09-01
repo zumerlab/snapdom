@@ -69,9 +69,14 @@ describe('gradient text survives the capture', () => {
     if (isFirefox()) {
       // The substitute is the average of red and blue: purple everywhere, no red-only or
       // blue-only run left.
-      expect(hues.size).toBeLessThanOrEqual(2)
+      expect(hues.has('true|false')).toBe(false)
+      expect(hues.has('false|true')).toBe(false)
     } else {
-      expect(hues.size).toBeGreaterThanOrEqual(1)
+      // A real red->blue gradient must paint a red-dominant AND a blue-dominant population.
+      // size >= 1 was satisfied by ANY ink — including the purple fallback wrongly engaging
+      // here, which is exactly the regression this branch exists to catch.
+      expect(hues.has('true|false')).toBe(true)
+      expect(hues.has('false|true')).toBe(true)
     }
   })
 })

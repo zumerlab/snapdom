@@ -1,6 +1,10 @@
 import { it, expect } from 'vitest'
-import * as snapdom from '../src/index.browser.js'
+import '../src/index.browser.js'
 
-it('should import the browser bundle without errors', () => {
-  expect(snapdom).toBeDefined()
+// The browser entry's whole contract is the two globals it assigns — CLAUDE.md calls this
+// load-bearing ("the entry owns the global"): the file exports nothing, so asserting the
+// imported namespace is defined could never fail. Assert what the entry actually promises.
+it('assigns window.snapdom and window.preCache', () => {
+  expect(typeof window.snapdom).toBe('function')
+  expect(typeof window.preCache).toBe('function')
 })

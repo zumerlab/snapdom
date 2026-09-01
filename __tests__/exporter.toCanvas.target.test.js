@@ -1,4 +1,4 @@
-// A caller-supplied canvas and the public capture geometry (imported from @frostin/snapdom).
+// A caller-supplied canvas and the public capture geometry (imported from @zumer/snapdom).
 //
 // A live mirror loops captures into a canvas it owns; without these it pays a full-canvas
 // copy per frame and cannot tell where the raster sits relative to the element it came from.
@@ -61,35 +61,7 @@ describe('toCanvas — caller-supplied canvas', () => {
   })
 })
 
-describe('result.meta — the geometry the capture decided on', () => {
-  it('reports the element box, the viewBox and where the box starts inside it', async () => {
-    const el = mount()
-    const result = await snapdom(el, { dpr: 1 })
-
-    expect(result.meta).toBeTruthy()
-    expect(result.meta.w0).toBeCloseTo(120, 0)
-    expect(result.meta.h0).toBeCloseTo(60, 0)
-    expect(result.meta.vbW).toBeGreaterThanOrEqual(result.meta.w0)
-    expect(result.meta.vbH).toBeGreaterThanOrEqual(result.meta.h0)
-    expect(Number.isFinite(result.meta.contentX)).toBe(true)
-    expect(Number.isFinite(result.meta.contentY)).toBe(true)
-    expect(result.meta.clip).toBeNull()
-  })
-
-  // What a caller redrawing the raster over the live element actually needs: an asymmetric
-  // bleed moves the element's box inside the raster, and by different amounts per side.
-  it('places the element box inside a raster widened asymmetrically by a shadow', async () => {
-    const el = mount('width:120px;height:60px;background:rgb(0,128,255);box-shadow:40px 0 0 rgb(0,0,0)')
-    const result = await snapdom(el, { dpr: 1, outerShadows: true })
-
-    expect(result.meta.vbW).toBeGreaterThan(result.meta.w0 + 30)
-    // The shadow falls to the right, so the element's box stays near the left edge.
-    expect(result.meta.contentX).toBeLessThan(result.meta.vbW - result.meta.w0)
-  })
-
-  it('is frozen, so an export cannot rewrite what the capture measured', async () => {
-    const el = mount()
-    const result = await snapdom(el, { dpr: 1 })
-    expect(Object.isFrozen(result.meta)).toBe(true)
-  })
-})
+// The 'result.meta' describe that lived here was a payload-only duplicate of
+// core.meta.test.js, which asserts the same geometry more tightly AND proves it in pixels —
+// deleted per the v3 test-suite review; the caller-supplied-canvas coverage above is the
+// part of this file no other test has.
