@@ -138,12 +138,12 @@ describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
 
   afterEach(() => { if (container) { container.remove(); container = null } })
 
-  bench('snapDOM toPng (compress OFF)', async () => {
+  bench('snapDOM current toPng (compress OFF)', async () => {
     await setupContainer()
     await snapdom.toPng(container, { scale: 2, dpr: 1, compress: false, burst: false })
   })
 
-  bench('snapDOM toPng (compress ON)', async () => {
+  bench('snapDOM current toPng (compress ON)', async () => {
     await setupContainer()
     await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true, burst: false })
   })
