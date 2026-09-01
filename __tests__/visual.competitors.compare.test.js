@@ -1,9 +1,11 @@
-// Fidelity comparison: domlens vs snapdom over the REAL demo corpus, per engine.
+// Fidelity comparison: COMPETITORS vs snapdom over the REAL demo corpus, per engine.
 //
-// Why it exists: domlens beats snapdom on the per-element-cold benchmark, and the project's
-// creed is fidelity over speed — so before spending on that gap, the question is whether
-// domlens is FAITHFUL on real pages at all. The capability matrix cannot answer it (domlens
-// passes every coarse cell); the ~80 demos are the corpus that can.
+// Why it exists: when a competitor beats snapdom on a speed benchmark, the project's creed
+// is fidelity over speed — so before spending on that gap, the question is whether the
+// competitor is FAITHFUL on real pages at all. The capability matrix cannot answer it (a
+// coarse cell passes easily); the ~80 demos are the corpus that can. Add a competitor by
+// appending one entry to COMPETITORS below — the artifacts, summary and gallery
+// (scripts/report-competitors.mjs) key everything by its id.
 //
 // What "reference" means here: snapdom's captures, not the live DOM — no library can
 // screenshot the live DOM from inside the page, and snapdom's output on this corpus is the
@@ -18,20 +20,30 @@
 // pageNeedsNetwork gate the visual suite uses.
 //
 // GATED: does nothing under plain `npm test`. Run with
-//   VITE_DOMLENS_COMPARE=1 npx vitest run __tests__/visual.domlens.compare.test.js --browser.headless
-//   BROWSER=all VITE_DOMLENS_COMPARE=1 npx vitest run __tests__/visual.domlens.compare.test.js --browser.headless
+//   VITE_COMPETITOR_COMPARE=1 npx vitest run __tests__/visual.competitors.compare.test.js --browser.headless
+//   BROWSER=all VITE_COMPETITOR_COMPARE=1 npx vitest run __tests__/visual.competitors.compare.test.js --browser.headless
 import { describe, it, expect, vi } from 'vitest'
 import { server } from '@vitest/browser/context'
 import { pageNeedsNetwork } from './helpers/network-gate.js'
 
-const RUN = !!import.meta.env.VITE_DOMLENS_COMPARE
+const RUN = !!import.meta.env.VITE_COMPETITOR_COMPARE
 const ENGINE = server?.browser || 'unknown'
 const DEMOS = Object.keys(import.meta.glob('/demos/d*.html')).sort()
-const DOMLENS_URL = 'https://cdn.jsdelivr.net/npm/domlens.js@0.1.0/+esm'
+
+/** The competitors under comparison. `imp` is the module line injected into the demo's
+ *  iframe realm; `call` receives (win, el) and must resolve to something toDataUrlIn
+ *  understands. One entry per library; everything downstream keys off `id`. */
+const COMPETITORS = [
+  {
+    id: 'domlens',
+    imp: "import { capture as __c_domlens } from 'https://cdn.jsdelivr.net/npm/domlens.js@0.1.0/+esm'; window.__c_domlens = __c_domlens",
+    call: (win, el) => win.__c_domlens(el, { scale: 1 }),
+  },
+]
 const TOL = 25          // per-channel tolerance before a pixel counts as different
 const DIM_SLACK = 2     // px of size difference tolerated before flagging DIM
 
-vi.setConfig({ testTimeout: 300000, hookTimeout: 60000 }) // 112 captures; firefox needs well past 45s
+vi.setConfig({ testTimeout: 600000, hookTimeout: 60000 }) // 160 captures, network demos included
 
 function navigate(iframe, url) {
   return new Promise((resolve, reject) => {
@@ -168,7 +180,7 @@ function diff(a, b) {
   return { pct, bad, region: bad ? `${minX},${minY}..${maxX},${maxY}` : '—' }
 }
 
-describe.skipIf(!RUN)(`domlens vs snapdom over the demo corpus [${ENGINE}]`, () => {
+describe.skipIf(!RUN)(`competitors vs snapdom over the demo corpus [${ENGINE}]`, () => {
   it('captures every offline demo with both and diffs them', async () => {
     const iframe = document.createElement('iframe')
     iframe.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:900px;border:0;visibility:hidden'
@@ -178,7 +190,11 @@ describe.skipIf(!RUN)(`domlens vs snapdom over the demo corpus [${ENGINE}]`, () 
     try {
       for (const url of DEMOS) {
         const name = url.replace('/demos/', '').replace('.html', '')
-        if (await pageNeedsNetwork(url)) { rows.push({ name, skip: 'network' }); continue }
+        // Network-dependent demos are captured too — this suite is manually gated, not part
+        // of npm test, and their fidelity (webfonts, CORS images, icon fonts) is exactly
+        // where capture libraries diverge. The row keeps the flag so a flaky remote is
+        // attributable when a number moves between runs.
+        const net = await pageNeedsNetwork(url)
         try {
           await navigate(iframe, 'about:blank')
           await navigate(iframe, url)
@@ -188,8 +204,8 @@ describe.skipIf(!RUN)(`domlens vs snapdom over the demo corpus [${ENGINE}]`, () 
 
           await inject(iframe, `
             import { snapdom } from '/dist/snapdom.mjs'
-            import { capture } from '${DOMLENS_URL}'
-            window.__snap = snapdom; window.__lens = capture`)
+            ${COMPETITORS.map((c) => c.imp).join('\n            ')}
+            window.__snap = snapdom`)
 
           const el = doc.querySelector('#target') || doc.body
           // The LIVE element's own box is the arbiter when the two captures disagree on
@@ -199,20 +215,21 @@ describe.skipIf(!RUN)(`domlens vs snapdom over the demo corpus [${ENGINE}]`, () 
           const live = `${Math.round(el === doc.body ? Math.max(liveR.width, doc.documentElement.scrollWidth) : liveR.width)}x${Math.round(el === doc.body ? Math.max(liveR.height, doc.documentElement.scrollHeight) : liveR.height)}`
           const snapRes = await win.__snap(el, { embedFonts: true, burst: false })
           const snapUrl = await toDataUrlIn(win, await snapRes.toCanvas({ dpr: 1 }))
-          const lensUrl = await toDataUrlIn(win, await win.__lens(el, { scale: 1 }))
-
           const A = await toBitmap(snapUrl)
-          const B = await toBitmap(lensUrl)
-          const dim = (Math.abs(A.w - B.w) > DIM_SLACK || Math.abs(A.h - B.h) > DIM_SLACK)
-            ? `${A.w}x${A.h} vs ${B.w}x${B.h}` : ''
-          const d = diff(A, B)
           // Persist what each library actually captured, plus the painted diff — the
           // numbers say WHERE to look, these are what you look AT.
-          const dir = `__snapshots__/domlens-compare/${ENGINE}`
+          const dir = `__snapshots__/competitor-compare/${ENGINE}`
           await server.commands.writeFile(`${dir}/${name}.snapdom.png`, snapUrl.split(',')[1], 'base64')
-          await server.commands.writeFile(`${dir}/${name}.domlens.png`, lensUrl.split(',')[1], 'base64')
-          await server.commands.writeFile(`${dir}/${name}.diff.png`, renderDiff(A, B).split(',')[1], 'base64')
-          rows.push({ name, pct: d.pct, region: d.region, dim, live, snapDim: `${A.w}x${A.h}`, lensDim: `${B.w}x${B.h}` })
+          for (const comp of COMPETITORS) {
+            const compUrl = await toDataUrlIn(win, await comp.call(win, el))
+            const B = await toBitmap(compUrl)
+            const dim = (Math.abs(A.w - B.w) > DIM_SLACK || Math.abs(A.h - B.h) > DIM_SLACK)
+              ? `${A.w}x${A.h} vs ${B.w}x${B.h}` : ''
+            const d = diff(A, B)
+            await server.commands.writeFile(`${dir}/${name}.${comp.id}.png`, compUrl.split(',')[1], 'base64')
+            await server.commands.writeFile(`${dir}/${name}.${comp.id}.diff.png`, renderDiff(A, B).split(',')[1], 'base64')
+            rows.push({ name, lib: comp.id, net, pct: d.pct, region: d.region, dim, live, snapDim: `${A.w}x${A.h}`, lensDim: `${B.w}x${B.h}` })
+          }
         } catch (e) {
           rows.push({ name, error: String(e?.message || e).slice(0, 70) })
         }
@@ -223,16 +240,16 @@ describe.skipIf(!RUN)(`domlens vs snapdom over the demo corpus [${ENGINE}]`, () 
 
     const compared = rows.filter((r) => r.pct !== undefined)
     compared.sort((a, b) => b.pct - a.pct)
-    console.log(`\n=== domlens vs snapdom — ${ENGINE} · ${compared.length} compared, ` +
-      `${rows.filter((r) => r.skip).length} skipped (network), ${rows.filter((r) => r.error).length} errored ===`)
+    console.log(`\n=== competitors vs snapdom — ${ENGINE} · ${compared.length} compared ` +
+      `(${compared.filter((r) => r.net).length} network-dependent), ${rows.filter((r) => r.error).length} errored ===`)
     console.log('demo'.padEnd(34) + 'mismatch'.padStart(9) + '  dim-mismatch          live-el      diff-region')
     for (const r of compared) {
-      console.log(r.name.padEnd(34) + (r.pct.toFixed(2) + '%').padStart(9) +
+      console.log((r.name + '/' + r.lib + (r.net ? ' *net' : '')).padEnd(34) + (r.pct.toFixed(2) + '%').padStart(9) +
         '  ' + (r.dim || '—').padEnd(20) + '  ' + (r.live || '').padEnd(11) + '  ' + r.region)
     }
     for (const r of rows.filter((x) => x.error)) console.log(`ERROR  ${r.name}: ${r.error}`)
     await server.commands.writeFile(
-      `__snapshots__/domlens-compare/${ENGINE}/summary.json`,
+      `__snapshots__/competitor-compare/${ENGINE}/summary.json`,
       JSON.stringify({ engine: ENGINE, when: new Date().toISOString(), rows }, null, 1))
 
     const median = compared.length ? compared[Math.floor(compared.length / 2)].pct : 0
