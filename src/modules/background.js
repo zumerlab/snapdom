@@ -5,7 +5,7 @@
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
 import { cache } from '../core/cache.js'
-import { needsBackgroundInline } from './styles.js'
+import { needsBackgroundInline, getCachedSnapshot } from './styles.js'
 
 /** Props that can contain url(...) and may need inlining (also drives preCache prefetch) */
 export const URL_PROPS = [
@@ -77,35 +77,41 @@ const BORDER_AUX_PROPS = [
 async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) {
   const style = styleCache.get(srcNode) || getStyle(srcNode)
   if (!styleCache.has(srcNode)) styleCache.set(srcNode, style)
+  const snap = getCachedSnapshot(srcNode)
+  const getVal = (prop) => {
+    if (snap && snap[prop] !== undefined) return snap[prop]
+    // Fallback to live style when snapshot missing (filtered empty, or not yet cached)
+    try { return style.getPropertyValue(prop) } catch { return '' }
+  }
 
   // Border-image present?
-  const bi = style.getPropertyValue('border-image')
-  const bis = style.getPropertyValue('border-image-source')
+  const bi = getVal('border-image')
+  const bis = getVal('border-image-source')
   const hasBorderImage = (bi && bi !== 'none') || (bis && bis !== 'none')
 
   // Background layout longhands (position/size/repeat/origin/clip/...) are inert without a
   // background, yet are never empty, so copying them onto every node bloated the markup and
   // rasterization cost. Copy only when a background actually exists. background-color is
   // included so the background-clip:text trick (color clipped to text) still works.
-  const bgImage = style.getPropertyValue('background-image')
-  const bgColor = style.getPropertyValue('background-color')
+  const bgImage = getVal('background-image')
+  const bgColor = getVal('background-color')
   const hasBg =
     (bgImage && bgImage !== 'none') ||
     (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') ||
-    /url\s*\(|gradient\s*\(/i.test(style.getPropertyValue('background') || '')
+    /url\s*\(|gradient\s*\(/i.test(getVal('background') || '')
   if (hasBg) {
     for (const prop of BG_LAYOUT_PROPS) {
-      const v = style.getPropertyValue(prop)
+      const v = getVal(prop)
       if (!v) continue
       cloneNode.style.setProperty(prop, v)
     }
   }
   // 1) Inline URL-bearing properties
   for (const prop of URL_PROPS) {
-    let val = style.getPropertyValue(prop)
+    let val = getVal(prop)
     // Fallback: when background-image is none/empty, parse url() from background shorthand (#343)
     if ((prop === 'background-image') && (!val || val === 'none')) {
-      const bgShorthand = style.getPropertyValue('background')
+      const bgShorthand = getVal('background')
       if (bgShorthand && /url\s*\(/.test(bgShorthand)) {
         // Use filter+join to preserve all url() layers, not just the first (#NEW-5)
         val = splitBackgroundImage(bgShorthand).filter(p => /url\s*\(/.test(p)).join(', ') || val
@@ -126,7 +132,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   }
   // 2) Copy mask layout longhands (position / size / repeat, etc.)
   for (const prop of MASK_LAYOUT_PROPS) {
-    const val = style.getPropertyValue(prop)
+    const val = getVal(prop)
     // Skip empty/initial defaults to avoid bloating
     if (!val || val === 'initial') continue
     cloneNode.style.setProperty(prop, val)
@@ -134,7 +140,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   // 3) Copy border-image auxiliaries only if border-image is active
   if (hasBorderImage) {
     for (const prop of BORDER_AUX_PROPS) {
-      const val = style.getPropertyValue(prop)
+      const val = getVal(prop)
       if (!val || val === 'initial') continue
       cloneNode.style.setProperty(prop, val)
     }
@@ -162,17 +168,28 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
 export async function inlineBackgroundImages(source, clone, styleCache, options = {}, nodeMap = cache.session.nodeMap) {
   if (!clone) return
 
-  const jobs = []
-  if (source && needsBackgroundInline(source)) jobs.push([source, clone])
-  const stack = [clone]
-  while (stack.length) {
-    const cn = stack.pop()
-    if (!cn.children) continue
-    for (const child of cn.children) {
-      if (child.tagName === 'STYLE') continue
-      const src = nodeMap.get(child)
-      if (src && needsBackgroundInline(src)) jobs.push([src, child])
-      stack.push(child)
+  // walk-fusion: reuse pre-collected bg clones from deepClone if available
+  let jobs
+  if (Array.isArray(clone._snapdomCollect?.bgClones)) {
+    jobs = []
+    for (const c of clone._snapdomCollect.bgClones) {
+      const s = nodeMap.get(c)
+      if (s) jobs.push([s, c])
+      else if (c === clone && source && needsBackgroundInline(source)) jobs.push([source, c])
+    }
+  } else {
+    jobs = []
+    if (source && needsBackgroundInline(source)) jobs.push([source, clone])
+    const stack = [clone]
+    while (stack.length) {
+      const cn = stack.pop()
+      if (!cn.children) continue
+      for (const child of cn.children) {
+        if (child.tagName === 'STYLE') continue
+        const src = nodeMap.get(child)
+        if (src && needsBackgroundInline(src)) jobs.push([src, child])
+        stack.push(child)
+      }
     }
   }
 

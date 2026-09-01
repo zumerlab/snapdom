@@ -466,9 +466,48 @@ export function stripInvalidXMLChars(root) {
 
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
-  sanitizeAttributesForXHTML(root, opts)
-  removeAllComments(root)
-  stripInvalidXMLChars(root)
+  // Fused single-pass sanitize: was 3 TreeWalkers (attributes, comments, invalid XML)
+  // Now one walk over element+comment+text, handling all in place.
+  const ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
+  const stripDirectives = opts.stripFrameworkDirectives !== false
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT)
+  const toRemoveComments = []
+  // Also need to handle root itself for attributes/text
+  const handleNode = (node) => {
+    if (node.nodeType === Node.COMMENT_NODE) {
+      toRemoveComments.push(node)
+      return
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      // Single pass over a materialized copy: safe to removeAttribute while iterating
+      // the snapshot, and a removed attribute is skipped for value sanitization —
+      // identical to the old two-loop version where the value pass only saw survivors.
+      for (const attr of Array.from(node.attributes)) {
+        const name = attr.name
+        if (name.startsWith('*') || name.includes('@')) { node.removeAttribute(name); continue }
+        if (name.includes(':')) {
+          const prefix = name.split(':', 1)[0]
+          if (!ALLOWED_PREFIXES.has(prefix)) { node.removeAttribute(name); continue }
+        }
+        if (stripDirectives) {
+          if (name.startsWith('x-') || name.startsWith('v-') || name.startsWith(':') ||
+              name.startsWith('on:') || name.startsWith('bind:') || name.startsWith('let:') || name.startsWith('class:')) {
+            node.removeAttribute(name); continue
+          }
+        }
+        // Attribute survived the name checks — sanitize its value in the same pass.
+        const cv = attr.value.replace(INVALID_XML_CHARS, '')
+        if (cv !== attr.value) try { node.setAttribute(attr.name, cv) } catch {}
+      }
+    } else if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.CDATA_SECTION_NODE) {
+      const cv = node.data.replace(INVALID_XML_CHARS, '')
+      if (cv !== node.data) node.data = cv
+    }
+  }
+  handleNode(root)
+  let n
+  while ((n = walker.nextNode())) handleNode(n)
+  for (const c of toRemoveComments) try { c.remove() } catch {}
 }
 
 /**

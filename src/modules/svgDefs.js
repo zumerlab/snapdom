@@ -29,9 +29,16 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
     'fill', 'stroke', 'filter', 'clip-path', 'mask',
     'marker', 'marker-start', 'marker-mid', 'marker-end'
   ]
-
-  const cssEscape = (s) =>
-    (window.CSS && CSS.escape) ? CSS.escape(s) : s.replace(/[^a-zA-Z0-9_-]/g, '\\$&')
+  // Perf: ONE native query covering both the <use href="#..."> pass and the
+  // url(#...) pass. The two original querySelectorAll() calls each traversed
+  // the whole subtree; this union traverses it once and returns everything
+  // either pass would have matched. Built once at module scope.
+  const USE_AND_URL_QUERY =
+    'use,' +
+    '*[style*="url("],' +
+    '*[fill^="url("], *[stroke^="url("],*[filter^="url("],' +
+    '*[clip-path^="url("],*[mask^="url("],*[marker^="url("],' +
+    '*[marker-start^="url("],*[marker-mid^="url("],*[marker-end^="url("]'
 
   const XLINK_NS = 'http://www.w3.org/1999/xlink'
 
@@ -107,30 +114,25 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
   }
 
   const collectReferencesInSvg = (rootSvg) => {
-    // <use ...href="#..."> (cualquier namespace/prefix)
-    const uses = rootSvg.querySelectorAll('use')
-    for (const u of uses) {
-      const href = getHrefAttr(u)
-      if (!href || !href.startsWith('#')) continue
-      sawAnyReference = true
-      const id = href.slice(1).trim()
-      if (id && !globalExistingIds.has(id)) neededIds.add(id)
-    }
-
-    // url(#...) en attrs/estilos
-    const query =
-      '*[style*="url("],' +
-      '*[fill^="url("], *[stroke^="url("],*[filter^="url("],' +
-      '*[clip-path^="url("],*[mask^="url("],*[marker^="url("],' +
-      '*[marker-start^="url("],*[marker-mid^="url("],*[marker-end^="url("]'
-
     // querySelectorAll never matches rootSvg itself: url(#id) refs carried on the
     // <svg> element's own attributes (fill/filter/mask/clip-path/style) count too.
     addUrlIdsFromValue(rootSvg.getAttribute('style') || '')
     for (const a of URL_ATTRS) addUrlIdsFromValue(rootSvg.getAttribute(a))
 
-    const candidates = rootSvg.querySelectorAll(query)
-    for (const el of candidates) {
+    // Single fused walk: <use href="#..."> (cualquier namespace/prefix) AND
+    // url(#...) en attrs/estilos, in one subtree traversal.
+    for (const el of rootSvg.querySelectorAll(USE_AND_URL_QUERY)) {
+      // <use ...href="#..."> — only meaningful on <use>, and only for same-doc
+      // fragment refs; a bare `el.localName === 'use'` check is exact because
+      // the union query's other clauses never match a <use> without url() refs.
+      if (el.localName === 'use') {
+        const href = getHrefAttr(el)
+        if (!href || !href.startsWith('#')) continue
+        sawAnyReference = true
+        const id = href.slice(1).trim()
+        if (id && !globalExistingIds.has(id)) neededIds.add(id)
+      }
+
       addUrlIdsFromValue(el.getAttribute('style') || '')
       for (const a of URL_ATTRS) addUrlIdsFromValue(el.getAttribute(a))
     }
@@ -154,23 +156,56 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
   let localDefs = defsHost.querySelector('defs') || null
 
   // 4) Resolver externos; nunca tomar fuentes que ya estén dentro de 'element'
-  const findGlobalById = (id) => {
-    if (!id) return null
-    if (globalExistingIds.has(id)) return null // ya local en root
-    const esc = cssEscape(id)
-
-    const tryFind = (sel) => {
-      const el = searchRoot.querySelector(sel)
-      // si la fuente ya está dentro del contenedor root, no es "externa"
-      return el && !element.contains(el) ? el : null
+  // Prebuilt id→elements index over searchRoot (single pass) so resolving each
+  // needed id costs an index lookup instead of up to 3 full-document querySelector
+  // scans. Candidates are kept in document order so the first match equals what the
+  // original three-selector `querySelector` sequence would have returned. Replaces
+  // O(neededIds × docSize × 3) querySelector calls with O(docSize) build + O(1) lookups.
+  const findGlobalById = (() => {
+    let index = null
+    const getIndex = () => {
+      if (index) return index
+      const map = new Map()
+      const all = searchRoot.querySelectorAll('[id]')
+      for (let i = 0; i < all.length; i++) {
+        const el = all[i]
+        const id = el.id
+        if (!id) continue
+        let arr = map.get(id)
+        if (!arr) { arr = []; map.set(id, arr) }
+        arr.push(el)
+      }
+      index = map
+      return index
     }
-
-    return (
-      tryFind(`svg defs > *#${esc}`) ||
-      tryFind(`svg > symbol#${esc}`) ||
-      tryFind(`*#${esc}`)
-    )
-  }
+    return (id) => {
+      if (!id) return null
+      if (globalExistingIds.has(id)) return null // ya local en root
+      const cands = getIndex().get(id)
+      if (!cands || !cands.length) return null
+      // priority 1: svg defs > *
+      for (let i = 0; i < cands.length; i++) {
+        const c = cands[i]
+        if (element.contains(c)) continue
+        const p = c.parentElement
+        if (p && p.tagName === 'DEFS' && p.closest('svg')) return c
+      }
+      // priority 2: svg > symbol
+      for (let i = 0; i < cands.length; i++) {
+        const c = cands[i]
+        if (element.contains(c)) continue
+        const p = c.parentElement
+        if (p && p.tagName === 'SYMBOL' && p.parentElement && p.parentElement.tagName === 'SVG') return c
+      }
+      // priority 3: any element with this id
+      for (let i = 0; i < cands.length; i++) {
+        const c = cands[i]
+        if (element.contains(c)) continue
+        return c
+      }
+      return null
+    }
+  })()
 
   // 5) Si no hay matches globales, igual mantenemos el contenedor vacío (cumple test final)
   if (!neededIds.size) return

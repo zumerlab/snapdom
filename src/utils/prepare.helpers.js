@@ -45,23 +45,32 @@ export function stabilizeLayout(element) {
 export function forceContentVisibility(root) {
   const saved = []
   try {
-    const all = root.querySelectorAll('*')
-    for (const el of all) {
-      if (!(el instanceof HTMLElement)) continue
-      const cv = el.style.contentVisibility || ''
+    // Decide whether an element needs content-visibility forced to 'visible'.
+    // If an inline `content-visibility` declaration exists it already wins over any
+    // stylesheet rule for the computed value, so we can decide WITHOUT the expensive
+    // getComputedStyle() call. Only when inline is empty do we read computed style to
+    // catch a stylesheet-driven `auto`. The redundant `getPropertyValue` fallback is
+    // dropped: the camelCase accessor returns the computed value for this standard prop.
+    const evaluate = (el) => {
+      const inlineCV = el.style.contentVisibility || ''
+      if (inlineCV) return { original: inlineCV, force: inlineCV === 'auto' }
       const cs = getComputedStyle(el)
-      const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
-      if (computed === 'auto') {
-        saved.push({ el, original: cv })
+      return { original: '', force: (cs.contentVisibility || '') === 'auto' }
+    }
+
+    for (const el of root.querySelectorAll('*')) {
+      if (!(el instanceof HTMLElement)) continue
+      const { original, force } = evaluate(el)
+      if (force) {
+        saved.push({ el, original })
         el.style.contentVisibility = 'visible'
       }
     }
-    // Check root itself
+    // Check root itself (querySelectorAll('*') excludes it).
     if (root instanceof HTMLElement) {
-      const cs = getComputedStyle(root)
-      const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
-      if (computed === 'auto') {
-        saved.push({ el: root, original: root.style.contentVisibility || '' })
+      const { original, force } = evaluate(root)
+      if (force) {
+        saved.push({ el: root, original })
         root.style.contentVisibility = 'visible'
       }
     }

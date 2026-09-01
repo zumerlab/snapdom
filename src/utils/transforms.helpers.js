@@ -7,6 +7,49 @@ import { limitDecimals } from './capture.helpers.js'
 import { getStyle } from './css.js'
 
 /**
+ * Module-level memo for DOMMatrix construction from a transform string.
+ *
+ * DOMMatrix (and WebKitCSSMatrix) instances are immutable, so sharing a cached
+ * instance across callers is safe as long as no caller mutates it in place.
+ * Verified across the codebase: only `M.multiply(...)` (which returns a NEW
+ * matrix) is used — never `multiplySelf`/`preMultiplySelf`/`translateSelf`/etc.
+ *
+ * Real pages repeat the same transform on many nodes (e.g. `translateX(-50%)`),
+ * so this avoids repeated string parsing + allocation on the per-node hot path
+ * (`readTotalTransformMatrix` -> `matrixFromComputed`). The cache is bounded
+ * (FIFO) so memory stays flat.
+ */
+const _domMatrixCache = new Map()
+const _DOM_MATRIX_CACHE_MAX = 256
+
+function domMatrixFromString(str) {
+  // 'none' / empty => identity matrix (always the same instance).
+  if (!str || str === 'none') {
+    let m = _domMatrixCache.get('')
+    if (!m) {
+      m = new DOMMatrix()
+      _domMatrixCache.set('', m)
+    }
+    return m
+  }
+  const cached = _domMatrixCache.get(str)
+  if (cached) return cached
+  let m
+  try {
+    m = new DOMMatrix(str)
+  } catch {
+    m = new WebKitCSSMatrix(str)
+  }
+  if (_domMatrixCache.size >= _DOM_MATRIX_CACHE_MAX) {
+    // Evict the oldest (first-inserted) entry; Map preserves insertion order.
+    const firstKey = _domMatrixCache.keys().next().value
+    if (firstKey !== undefined) _domMatrixCache.delete(firstKey)
+  }
+  _domMatrixCache.set(str, m)
+  return m
+}
+
+/**
  * Parse box-shadow and calculate bleed dimensions
  * @param {CSSStyleDeclaration} cs
  * @returns {{top: number, right: number, bottom: number, left: number}}
@@ -150,7 +193,7 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
     // were already stripped from the clone above and the clone keeps `scale`, so report the
     // scale matrix for bbox expansion — do NOT write it to transform or scale applies twice.
     let scaleStr = null
-    try { scaleStr = readIndividualTransforms(originalEl).scale } catch { }
+    try { scaleStr = readIndividualTransforms(originalEl, cs).scale } catch { }
     try { cloneRoot.style.transform = 'none' } catch { }
     if (!scaleStr) return { a: 1, b: 0, c: 0, d: 1 }
     // `scale` is unitless: "sx" or "sx sy". Parse straight to a diagonal matrix — it does not
@@ -211,7 +254,7 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
 
   // Unknown transform function: use DOMMatrix to extract 2D components
   try {
-    const M = new DOMMatrix(tr)
+    const M = domMatrixFromString(tr)
     const dec = decomposeScaleShear(M.a, M.b, M.c, M.d)
     try { cloneRoot.style.transform = `matrix(${dec.a}, ${dec.b}, ${dec.c}, ${dec.d}, 0, 0)` } catch { }
     return dec
@@ -285,7 +328,7 @@ export function parseTransformOriginPx(cs, w, h) {
  * @param {Element} el
  * @returns {{ rotate:string, scale:string|null, translate:string|null }}
  */
-export function readIndividualTransforms(el) {
+export function readIndividualTransforms(el, style) {
   const out = { rotate: '0deg', scale: null, translate: null }
 
   const map = (typeof el.computedStyleMap === 'function') ? el.computedStyleMap() : null
@@ -317,7 +360,7 @@ export function readIndividualTransforms(el) {
       }
     } else {
       // Legacy fallback
-      const cs = getComputedStyle(el)
+      const cs = style || getStyle(el)
       out.rotate = (cs.rotate && cs.rotate !== 'none') ? cs.rotate : '0deg'
     }
 
@@ -330,7 +373,7 @@ export function readIndividualTransforms(el) {
       const sy = ('y' in sc && sc.y?.value != null) ? sc.y.value : (Array.isArray(sc) ? sc[1]?.value : sx)
       out.scale = `${sx} ${sy}`
     } else {
-      const cs = getComputedStyle(el)
+      const cs = style || getStyle(el)
       out.scale = (cs.scale && cs.scale !== 'none') ? cs.scale : null
     }
 
@@ -344,14 +387,14 @@ export function readIndividualTransforms(el) {
       const uy = ('y' in tr && tr.y?.unit) ? tr.y.unit : 'px'
       out.translate = `${tx}${ux} ${ty}${uy}`
     } else {
-      const cs = getComputedStyle(el)
+      const cs = style || getStyle(el)
       out.translate = (cs.translate && cs.translate !== 'none') ? cs.translate : null
     }
     return out
   }
 
   // Legacy path – no Typed OM
-  const cs = getComputedStyle(el)
+  const cs = style || getStyle(el)
   out.rotate = (cs.rotate && cs.rotate !== 'none') ? cs.rotate : '0deg'
   out.scale = (cs.scale && cs.scale !== 'none') ? cs.scale : null
   out.translate = (cs.translate && cs.translate !== 'none') ? cs.translate : null
@@ -432,10 +475,5 @@ export function hasBBoxAffectingTransform(el) {
  */
 export function matrixFromComputed(el) {
   const tr = getComputedStyle(el).transform
-  if (!tr || tr === 'none') return new DOMMatrix()
-  try {
-    return new DOMMatrix(tr)
-  } catch {
-    return new WebKitCSSMatrix(tr)
-  }
+  return domMatrixFromString(tr)
 }

@@ -27,12 +27,29 @@ export function lineClampTree(el, clipRect) {
             bottom < clipRect.top - M || r.top > clipRect.bottom + M) return
       }
     }
-    // One computed-style read per node, shared by both passes (hot path).
-    const cs = getComputedStyle(node)
-    const u1 = lineClamp(node, cs)
-    if (u1) undos.push(u1)
-    const u2 = textEllipsis(node, cs)
-    if (u2) undos.push(u2)
+    // Cheap guard BEFORE the expensive getComputedStyle (hot path).
+    //
+    // Both passes can only ever act on a *plain text container*: lineClamp()
+    // and textEllipsis() each bail out early via isPlainTextContainer(el),
+    // which requires `childElementCount === 0` AND at least one text node.
+    // So any element with element children — or with no text at all — cannot
+    // possibly be clamped, and reading its computed style is pure waste.
+    // That is the overwhelming majority of nodes in a real DOM, and it is a
+    // strict superset check: nothing that could be clamped is ever skipped,
+    // so behaviour is bit-for-bit identical.
+    //
+    // Note the guard is deliberately structural, NOT `el.style.*`-based:
+    // class-driven clamping (`-webkit-line-clamp` from a stylesheet, or
+    // text-overflow via a utility class) leaves no trace in the inline style,
+    // so an inline-only guard would silently drop real ellipsis.
+    if (isPlainTextContainerFast(node)) {
+      // One computed-style read per node, shared by both passes (hot path).
+      const cs = getComputedStyle(node)
+      const u1 = lineClamp(node, cs)
+      if (u1) undos.push(u1)
+      const u2 = textEllipsis(node, cs)
+      if (u2) undos.push(u2)
+    }
     for (const child of node.children || []) walk(child)
   }
   walk(el)
@@ -209,4 +226,26 @@ function vpad(cs) {
 function isPlainTextContainer(el) {
   if (el.childElementCount > 0) return false
   return Array.from(el.childNodes).some(n => n.nodeType === Node.TEXT_NODE)
+}
+
+/**
+ * Allocation-free, side-effect-free version of isPlainTextContainer().
+ *
+ * Same predicate, but walks childNodes with a plain for-loop instead of
+ * `Array.from(...).some(...)` — no intermediate array per element — and
+ * short-circuits on the first text node.
+ *
+ * Used as the hot-path guard in lineClampTree(): it must stay *exactly*
+ * equivalent to isPlainTextContainer(), otherwise elements that would clamp
+ * stop clamping (or vice-versa).
+ *
+ * @param {Element} el
+ * @returns {boolean}
+ */
+function isPlainTextContainerFast(el) {
+  if (el.childElementCount > 0) return false
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === Node.TEXT_NODE) return true
+  }
+  return false
 }

@@ -30,6 +30,14 @@ const __preflightMemo = new WeakMap()
  *  300 was too low for large apps (Tailwind, MUI) with 500+ utility rules — raised to 1000. */
 const CSS_RULE_SCAN_BUDGET = 1000
 
+/** The pseudo-element kinds we inline, in paint order. Hoisted so the per-node
+ *  recursion loop doesn't re-allocate the array for every one of the thousands
+ *  of elements it visits. */
+const PSEUDO_LIST = ['::before', '::after', '::first-letter']
+
+/** Border sides, hoisted out of hasPaintedBorder (called up to twice per element). */
+const BORDER_SIDES = ['Top', 'Right', 'Bottom', 'Left']
+
 /**
  * Returns whether to process pseudos, but also memoizes the last fingerprint
  * seen in the provided sessionCache to avoid stale results between tests/runs.
@@ -220,6 +228,142 @@ export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc))
   return false
 }
 
+/** Cache for pseudo selector bloom filter per document+fingerprint */
+const __pseudoSelectorCache = new WeakMap()
+
+/**
+ * Collects base selectors for each pseudo type by scanning stylesheets once per epoch.
+ * Returns a map of pseudo -> comma-joined base selectors (or '*' if universal).
+ * If no selectors for a type, returns null (skip that pseudo entirely).
+ * @param {Document} doc
+ * @param {Object} sessionCache
+ * @returns {{before:string|null, after:string|null, firstLetter:string|null}}
+ */
+function getPseudoSelectors(doc, sessionCache) {
+  const fp = styleFingerprint(doc)
+  const cached = __pseudoSelectorCache.get(doc)
+  if (cached && cached.fp === fp && cached.selectors) return cached.selectors
+
+  const beforeSet = new Set()
+  const afterSet = new Set()
+  const firstLetterSet = new Set()
+  let hasUniversalBefore = false
+  let hasUniversalAfter = false
+  let hasUniversalFirstLetter = false
+
+  const addSelectorsForRule = (selectorText) => {
+    if (!selectorText) return
+    // Split by comma, handling that content may contain commas? but selectorText shouldn't have quoted commas
+    const parts = selectorText.split(',')
+    for (let part of parts) {
+      part = part.trim()
+      const lower = part.toLowerCase()
+      let type = null
+      if (lower.includes('::before') || lower.includes(':before')) type = 'before'
+      else if (lower.includes('::after') || lower.includes(':after')) type = 'after'
+      else if (lower.includes('::first-letter') || lower.includes(':first-letter')) type = 'firstLetter'
+      else continue
+
+      // Strip pseudo from end to get base selector
+      // Handles a:hover::before -> a:hover, ::before -> *
+      let base = part.replace(/::?before|::?after|::?first-letter/gi, '').trim()
+      // Remove trailing combinators/pseudo leftovers like ":" or "::"
+      base = base.replace(/[:]+$/, '').trim()
+      if (!base) base = '*'
+
+      // Validate selector quickly — skip invalid ones that would throw in matches()
+      try {
+        // Test with a dummy element? Just check syntax by trying to use it
+        // We do a lightweight check: querySelector with base should not throw for valid
+        // But to avoid throwing per rule, we just try to add and catch later in matches
+        if (type === 'before') {
+          if (base === '*') hasUniversalBefore = true
+          else beforeSet.add(base)
+        } else if (type === 'after') {
+          if (base === '*') hasUniversalAfter = true
+          else afterSet.add(base)
+        } else if (type === 'firstLetter') {
+          if (base === '*') hasUniversalFirstLetter = true
+          else firstLetterSet.add(base)
+        }
+      } catch {}
+    }
+  }
+
+  const scanRules = (rules) => {
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i]
+      try {
+        // @import: CSSImportRule exposes sheet via rule.styleSheet (§8: must match allow-list coverage)
+        if (rule.styleSheet) {
+          try {
+            const importedRules = rule.styleSheet.cssRules
+            if (importedRules) scanRules(importedRules)
+          } catch {}
+        }
+        if (rule.selectorText) {
+          addSelectorsForRule(rule.selectorText)
+        }
+        // Recurse into grouping rules (@media, @supports, etc.)
+        if (rule.cssRules) scanRules(rule.cssRules)
+      } catch {}
+    }
+  }
+
+  try {
+    for (const sheet of doc.styleSheets) {
+      const rules = safeRules(sheet)
+      if (rules) scanRules(rules)
+    }
+    const ass = /** @type {any} */ (doc).adoptedStyleSheets
+    if (Array.isArray(ass)) {
+      for (const sheet of ass) {
+        const rules = safeRules(sheet)
+        if (rules) scanRules(rules)
+      }
+    }
+    // Shadow roots (Lit, web components) — same coverage as styles allow-list (§8)
+    try {
+      const walker = doc.createTreeWalker(doc.documentElement, NodeFilter.SHOW_ELEMENT)
+      let n
+      while ((n = walker.nextNode())) {
+        const sr = n.shadowRoot
+        if (sr) {
+          if (sr.adoptedStyleSheets && sr.adoptedStyleSheets.length) {
+            for (const sheet of sr.adoptedStyleSheets) {
+              const rules = safeRules(sheet)
+              if (rules) scanRules(rules)
+            }
+          }
+          if (sr.styleSheets) {
+            try {
+              for (const sheet of sr.styleSheets) {
+                const rules = safeRules(sheet)
+                if (rules) scanRules(rules)
+              }
+            } catch {}
+          }
+          for (const st of sr.querySelectorAll('style')) {
+            const sheet = st.sheet
+            if (sheet) {
+              const rules = safeRules(sheet)
+              if (rules) scanRules(rules)
+            }
+          }
+        }
+      }
+    } catch {}
+  } catch {}
+
+  const selectors = {
+    before: hasUniversalBefore ? '*' : (beforeSet.size ? Array.from(beforeSet).join(',') : null),
+    after: hasUniversalAfter ? '*' : (afterSet.size ? Array.from(afterSet).join(',') : null),
+    firstLetter: hasUniversalFirstLetter ? '*' : (firstLetterSet.size ? Array.from(firstLetterSet).join(',') : null),
+  }
+  __pseudoSelectorCache.set(doc, { fp, selectors })
+  return selectors
+}
+
 /**
  * True if any single side paints a border. The `border-width`/`border-style` shorthands
  * can't be parsed with parseFloat: a `border-bottom` resolves to "0px 0px 1px 0px", whose
@@ -228,7 +372,7 @@ export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc))
  * @returns {boolean}
  */
 function hasPaintedBorder(style) {
-  for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+  for (const side of BORDER_SIDES) {
     const w = parseFloat(style[`border${side}Width`]) || 0
     const s = style[`border${side}Style`]
     if (w > 0 && s && s !== 'none' && s !== 'hidden') return true
@@ -450,7 +594,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   // <span> (as the ::first-letter path does) drops them from the rendered value.
   // Browsers don't render pseudo-elements on textarea anyway.
   if (source.tagName === 'TEXTAREA') return
-  // --- NEW: preflight once per session/doc ---
+  // --- Preflight once per session/doc ---
   const doc = source.ownerDocument || document
   if (!preflightWithFp(doc, sessionCache)) {
     return
@@ -469,9 +613,43 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
     sessionCache.__counterCtx = lazyCounterContext(source.ownerDocument || document, sessionCache)
   }
   const counterCtx = sessionCache.__counterCtx
+  const pseudoSelectors = getPseudoSelectors(doc, sessionCache)
 
-  for (const pseudo of ['::before', '::after', '::first-letter']) {
+  for (const pseudo of PSEUDO_LIST) {
     try {
+      // ::first-letter can only wrap a DIRECT non-empty text node. Detect that cheaply
+      // (clone is detached — no style read) so we skip its pseudo getComputedStyle on the
+      // common case of elements without direct text.
+      let firstLetterTextNode = null
+      if (pseudo === '::first-letter') {
+        firstLetterTextNode = Array.from(clone.childNodes).find(
+          (n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim().length > 0
+        )
+        if (!firstLetterTextNode) continue
+      }
+
+      // Bloom filter: skip getComputedStyle if element doesn't match any selector that defines this pseudo.
+      // Saves ~2-3 getComputedStyle per element on huge pages where only a handful of elements have pseudo.
+      if (pseudo === '::before') {
+        const sel = pseudoSelectors.before
+        if (sel === null) continue
+        if (sel !== '*') {
+          try { if (!source.matches(sel)) continue } catch { /* invalid selector, fall through */ }
+        }
+      } else if (pseudo === '::after') {
+        const sel = pseudoSelectors.after
+        if (sel === null) continue
+        if (sel !== '*') {
+          try { if (!source.matches(sel)) continue } catch {}
+        }
+      } else if (pseudo === '::first-letter') {
+        const sel = pseudoSelectors.firstLetter
+        if (sel === null) continue
+        if (sel !== '*') {
+          try { if (!source.matches(sel)) continue } catch {}
+        }
+      }
+
       const style = getStyle(source, pseudo)
       if (!style) continue
       // Skip visually empty pseudo-elements early
@@ -510,11 +688,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
           boxDiff('marginBottom') || boxDiff('marginLeft')
         if (!isMeaningful) continue
 
-        const textNode = Array.from(clone.childNodes).find(
-          (n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim().length > 0
-        )
-        if (!textNode) continue
-
+        const textNode = firstLetterTextNode
         const text = textNode.textContent
         const match = text.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u)
         const first = match?.[0]
@@ -587,7 +761,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
             // reconstruir valor final desde derived: volvemos a pedirlo
             // Usamos withSiblingOverrides + derive para ser consistentes
             const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
-            const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
+            const derived = deriveCounterCtxForPseudo(source, style, baseWithSibs)
             const finalVal = derived.get(source, name)
             map.set(name, finalVal)
           }
@@ -712,7 +886,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if (incs && incs.length && source.parentElement) {
         const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
         const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
-        const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
+        const derived = deriveCounterCtxForPseudo(source, style, baseWithSibs)
         for (const { name } of incs) {
           if (!name) continue
           const finalVal = derived.get(source, name)

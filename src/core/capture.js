@@ -139,7 +139,7 @@ export async function captureDOM(element, options) {
   const preClipRect = options.clip ? resolveClipRect(element, options.clip) : null
   let state = { element, options, plugins: options.plugins }
 
-  let clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow
+  let clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow, tagSet
   let fontsCSS = ''
   let baseCSS = ''
   let dataURL
@@ -162,7 +162,8 @@ export async function captureDOM(element, options) {
     // Keep this capture's own clone→source map: nested iframe captures reassign
     // cache.session.nodeMap concurrently (see rasterizeIframe), so the global cannot be
     // trusted after the clone phase — every later pass must use this reference.
-    ({ clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
+    ({ clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow, tagSet } = await
+prepareClone(state.element, state.options))
 
     if (reconcileRisk > 0 && !options.reconcile && !cache.warnedReconcile) {
       cache.warnedReconcile = true
@@ -267,7 +268,14 @@ export async function captureDOM(element, options) {
 
   await Promise.all([assetsPhase, fontsPhase])
 
-  const usedTags = collectUsedTagNames(state.clone).sort()
+  // Prefer the tag set collected incrementally during deepClone (clone.js _track), which is
+  // free — it avoids a full querySelectorAll('*') walk of the clone here. Falls back to the
+  // walk when unavailable. tagSet may include tags for nodes later dropped (style nodes
+  // removed in prepare, pseudo spans); extra tags only produce extra base-CSS rules, and
+  // NO_DEFAULTS_TAGS/empty-key guards drop the irrelevant ones.
+  const usedTags = (tagSet && tagSet.size)
+    ? Array.from(tagSet).sort()
+    : collectUsedTagNames(state.clone).sort()
   const tagKey = usedTags.join(',')
   if (cache.baseStyle.has(tagKey)) {
     baseCSS = cache.baseStyle.get(tagKey)
