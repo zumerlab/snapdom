@@ -3,7 +3,11 @@ const MAX_IMAGE = 100
 const MAX_BACKGROUND = 100
 const MAX_RESOURCE = 150
 const MAX_BASE_STYLE = 50
-const MAX_DEFAULT_STYLE = 30
+// Keyed by tag name. Must stay ABOVE utils/css.js `commonTags` (31), or precacheCommonTags
+// evicts its own earliest entries — at 30 it evicted 'div', the most common tag on any page,
+// during its own warmup, and every capture then re-measured div defaults from a live sandbox.
+// Headroom above 31 covers the tags a real document uses beyond that list.
+const MAX_DEFAULT_STYLE = 64
 const MAX_COMPRESS = 50
 
 /**

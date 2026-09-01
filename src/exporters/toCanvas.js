@@ -501,7 +501,16 @@ export async function toCanvas(url, options) {
     // is in place, so one retry lands.
     releaseDecodeImage(img)
     img = acquireDecodeImage(src)
-    await startDecode(img, src)
+    // This second acquire is OUTSIDE the try/finally below, so a retry that also rejects
+    // used to propagate with the guard still held. _decodeInFlight then never returned to
+    // zero, the `_decodeInFlight === 0` condition that recycles the shared decode frame
+    // could never be true again, and the frame grew without bound for the page's lifetime.
+    try {
+      await startDecode(img, src)
+    } catch (retryErr) {
+      releaseDecodeImage(img)
+      throw retryErr
+    }
   }
 
   try {

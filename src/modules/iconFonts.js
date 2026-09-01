@@ -148,13 +148,21 @@ async function ensureLigatureCanvasFont(cssFamily, className, axes) {
   if (!loadedCanvasFamilies.has(pick.alias)) {
     try {
       const ff = new FontFace(pick.alias, `url(${pick.url})`, { style: 'normal', weight: '400' })
-      document.fonts.add(ff)
+      // Load BEFORE registering, and memoize the failure. Adding first meant a rejected load
+      // left a dead FontFace in document.fonts, and `has()` was only set on success — so a
+      // font that could not load was re-created and re-added once per icon per capture, and
+      // the document's font set grew for the page's lifetime with faces nothing can use.
       await ff.load()
+      document.fonts.add(ff)
       loadedCanvasFamilies.set(pick.alias, true)
     } catch {
-      // If loading fails, stay on Symbols
+      // If loading fails, stay on Symbols — and remember, so the next capture does not retry.
+      loadedCanvasFamilies.set(pick.alias, false)
       return { familyForMeasure: fam, familyForCanvas: fam }
     }
+  }
+  if (loadedCanvasFamilies.get(pick.alias) === false) {
+    return { familyForMeasure: fam, familyForCanvas: fam }
   }
 
   const quoted = `"${pick.alias}"`
