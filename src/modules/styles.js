@@ -400,6 +400,25 @@ export function needsBackgroundInline(source) {
   return true
 }
 
+/**
+ * The element's current style snapshot, or null when there is none to trust. The background
+ * pass reads through this instead of the CSSOM: a prop present in the snapshot is the value
+ * the capture already resolved, and a prop ABSENT from it was pruned by the property
+ * universe — the page cannot touch it, so its computed value is the default and there is
+ * nothing to copy. Nodes carrying the Firefox background-clip:text fallback are excluded:
+ * their snapshot background props were deliberately swapped (applyBgClipTextFallback) and
+ * the background pass must keep seeing the live values it was written against.
+ * @param {Element} source
+ * @returns {object|null}
+ */
+export function snapshotFor(source) {
+  const rec = snapshotCache.get(source)
+  if (!rec || !snapshotIsCurrent(rec, source)) return null
+  const snap = rec.snapshot
+  if (!snap || snap.__bgClipTextFix) return null
+  return snap
+}
+
 /** Per-document memo of the scanned property universe, invalidated by the style-RULE epoch:
  *  what it holds depends on the author rules only, never on the DOM they apply to.
  *  Exported so the base reset prunes itself with the SAME universe the snapshots use:

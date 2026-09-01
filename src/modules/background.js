@@ -5,7 +5,7 @@
 import { isFirefox } from '../utils/browser.js'
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
-import { needsBackgroundInline } from './styles.js'
+import { needsBackgroundInline, snapshotFor } from './styles.js'
 
 /** Props that can contain url(...) and may need inlining (also drives preCache prefetch) */
 export const URL_PROPS = [
@@ -77,10 +77,27 @@ const BORDER_AUX_PROPS = [
 async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) {
   const style = styleCache.get(srcNode) || getStyle(srcNode)
   if (!styleCache.has(srcNode)) styleCache.set(srcNode, style)
+  // Same-capture snapshot reuse (idea validated independently by v2 PR #492's bg reuse):
+  // most of the ~19 CSSOM reads per flagged node repeated what inlineAllStyles already
+  // resolved. Present in the snapshot -> that value; absent -> pruned by the property
+  // universe, i.e. the computed value is the default and there is nothing to copy ('' skips
+  // every site below). No snapshot (stale stamps, or the Firefox bg-clip:text fallback) ->
+  // plain live reads, exactly the old path.
+  //
+  // URL-BEARING reads stay LIVE on purpose — snapshot values are NOT the live values there:
+  // the snapshot rewrites a non-data url() background-image to 'none' so the shared class
+  // never references a remote resource, and THIS pass is the one that re-reads the real
+  // value and inlines it per node (d12-backgrounds moved 2.7% on all three engines when
+  // these read the sanitized snapshot). Shorthand fallbacks (#343) are live for the same
+  // reason snapshots hold longhands only.
+  const snap = snapshotFor(srcNode)
+  const read = snap
+    ? (prop) => (prop in snap ? snap[prop] : '')
+    : (prop) => style.getPropertyValue(prop)
 
   // Border-image present?
-  const bi = style.getPropertyValue('border-image')
-  const bis = style.getPropertyValue('border-image-source')
+  const bi = read('border-image')
+  const bis = read('border-image-source')
   const hasBorderImage = (bi && bi !== 'none') || (bis && bis !== 'none')
 
   // Background layout longhands (position/size/repeat/origin/clip/...) are inert without a
@@ -88,7 +105,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   // rasterization cost. Copy only when a background actually exists. background-color is
   // included so the background-clip:text trick (color clipped to text) still works.
   const bgImage = style.getPropertyValue('background-image')
-  const bgColor = style.getPropertyValue('background-color')
+  const bgColor = read('background-color')
   const hasBg =
     (bgImage && bgImage !== 'none') ||
     (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') ||
@@ -97,12 +114,12 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   // already swapped such a background for a plain text colour (applyBgClipTextFallback);
   // re-copying it here would paint the gradient as a full box over the text it stands in for.
   const skipBackground = isFirefox() && (
-    style.getPropertyValue('background-clip') ||
-    style.getPropertyValue('-webkit-background-clip') || ''
+    read('background-clip') ||
+    read('-webkit-background-clip') || ''
   ).includes('text')
   if (hasBg && !skipBackground) {
     for (const prop of BG_LAYOUT_PROPS) {
-      const v = style.getPropertyValue(prop)
+      const v = read(prop)
       if (!v) continue
       cloneNode.style.setProperty(prop, v)
     }
@@ -134,7 +151,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   }
   // 2) Copy mask layout longhands (position / size / repeat, etc.)
   for (const prop of MASK_LAYOUT_PROPS) {
-    const val = style.getPropertyValue(prop)
+    const val = read(prop)
     // Skip empty/initial defaults to avoid bloating
     if (!val || val === 'initial') continue
     cloneNode.style.setProperty(prop, val)
@@ -142,7 +159,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   // 3) Copy border-image auxiliaries only if border-image is active
   if (hasBorderImage) {
     for (const prop of BORDER_AUX_PROPS) {
-      const val = style.getPropertyValue(prop)
+      const val = read(prop)
       if (!val || val === 'initial') continue
       cloneNode.style.setProperty(prop, val)
     }
@@ -150,7 +167,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   // 4) background-attachment: fixed positions/sizes against the browser viewport, but the
   // rasterized SVG's viewport is the element box — the live crop is lost. Freeze the slice
   // the user was seeing (runs only for the rare flagged nodes).
-  if (hasBg && /fixed/.test(style.getPropertyValue('background-attachment') || '')) {
+  if (hasBg && /fixed/.test(read('background-attachment') || '')) {
     try { await freezeFixedBackground(srcNode, cloneNode, style) } catch { /* keep uncompensated */ }
   }
 }
