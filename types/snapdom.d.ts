@@ -237,6 +237,10 @@ export interface SnapdomOptions {
 
   /** Arbitrary plugin configuration at call-site (see PluginUse). */
   plugins?: PluginUse[];
+
+  /** Reuse an existing canvas as the render target instead of allocating one
+   *  (`toCanvas` and everything built on it). */
+  canvas?: HTMLCanvasElement;
 }
 
 /* =========================
@@ -597,6 +601,8 @@ export interface PreCacheOptions {
   excludeFonts?: { families?: string[]; domains?: string[]; subsets?: string[] };
   /** Extra domains to fetch cross-origin font CSS from. */
   fontStylesheetDomains?: string[];
+  /** Icon-font matchers, as in SnapdomOptions — warms the ligature/glyph rasterization. */
+  iconFonts?: IconFontMatcher | IconFontMatcher[];
   /** Cross-origin proxy prefix (as in SnapdomOptions.useProxy). */
   useProxy?: string;
 }

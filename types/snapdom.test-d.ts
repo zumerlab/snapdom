@@ -94,6 +94,14 @@ function pluginShape() {
 async function preCacheHelper() {
   await preCache()
   await preCache(el, { embedFonts: 'auto', useProxy: '/proxy/', excludeFonts: { families: ['X'] } })
+  // Shipped and tested at runtime, but absent from the declarations until the v3 audit:
+  // both of these were a TS2353 for every typed consumer.
+  await preCache(el, { iconFonts: [/material/i, 'my-icons'] })
+}
+
+async function canvasTargetOption() {
+  const target = document.createElement('canvas')
+  await snapdom.toCanvas(el, { canvas: target })
 }
 
 void mainCallable
@@ -102,3 +110,4 @@ void staticNamespaceHelpers
 void invalidateOption
 void pluginShape
 void preCacheHelper
+void canvasTargetOption

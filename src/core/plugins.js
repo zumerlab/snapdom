@@ -136,6 +136,8 @@ export function clearPlugins() { __plugins.length = 0 }
  * @param {any[]|undefined} localDefs
  * @returns {ReadonlyArray<any>}
  */
+let __anonSeq = 0
+
 export function mergePlugins(localDefs) {
   /** @type {any[]} */
   const out = []
@@ -144,7 +146,12 @@ export function mergePlugins(localDefs) {
   if (Array.isArray(localDefs)) {
     for (const d of localDefs) {
       const inst = normalizePlugin(d)
-      if (!inst || !inst.name) continue
+      if (!inst) continue
+      // An unnamed plugin used to be dropped here with no error and no warning, so its hooks
+      // simply never ran — indistinguishable from a plugin that does nothing. `name` exists
+      // for dedup and local-over-global override; a plugin that opts out of both is still a
+      // plugin. Give it a per-instance name so it runs and can never collide.
+      if (!inst.name) inst.name = `anonymous-${++__anonSeq}`
       const i = out.findIndex(x => x && x.name === inst.name)
       if (i >= 0) out.splice(i, 1)
       out.push(inst)

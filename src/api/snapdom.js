@@ -280,13 +280,25 @@ async function buildResult(url, context) {
   // Reusable "silent" facade (no hooks) for use from defineExports()
   const _pluginExports = {}
   for (const k of ['img', 'svg', 'canvas', 'blob', 'png', 'jpeg', 'webp']) {
+    // Same normalization the public path applies. Skipping it meant the facade took raw
+    // options: `ctx.exports.blob({ format: 'png' })` handed `work` an un-normalized bag and
+    // came back an SVG blob, and `ctx.exports.jpeg()` never picked up the opaque-background
+    // default that keeps transparency from encoding black.
     _pluginExports[k] = async (opts) =>
-      coreExports[k](context, { ...(opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+      coreExports[k](context, { ...normalizeExportOptions(k, opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
   }
   _pluginExports.jpg = _pluginExports.jpeg
 
   // Extended context for defineExports (carries the URL and the facade for reuse)
-  const _defineCtx = { ...context, artifacts: context.__artifacts || null, export: exportFacade(), exports: _pluginExports }
+  // `options` is a NON-enumerable self-reference on the capture context, so a `{...context}`
+  // spread drops it — and every export-stage context is a spread. Plugins written against
+  // the published types (which declare `options` required on CaptureContext) therefore threw
+  // on `ctx.options.…` inside defineExports/beforeExport/afterExport while the identical line
+  // worked in afterClone. Re-pin it on each view.
+  const viewOf = (extra) =>
+    Object.defineProperty({ ...context, ...extra }, 'options', { value: context, configurable: true })
+
+  const _defineCtx = viewOf({ artifacts: context.__artifacts || null, export: exportFacade(), exports: _pluginExports })
 
   const providedMaps = await runAll('defineExports', _defineCtx)
   // Local-first: earlier plugins in the list (locals) win over later (globals).
@@ -351,7 +363,7 @@ async function buildResult(url, context) {
       const work = exportsMap[type]
       if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, requestedOptions)
-      const ctx = { ...context, artifacts: context.__artifacts || null, export: exportFacade({ type, options: nextOpts, requestedOptions }) }
+      const ctx = viewOf({ artifacts: context.__artifacts || null, export: exportFacade({ type, options: nextOpts, requestedOptions }) })
       // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
       // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
       // Both hooks OBSERVE: what an export returns is decided by `work`, and no hook return
