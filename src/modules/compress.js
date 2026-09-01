@@ -40,12 +40,22 @@ const RES_FACTOR = 1
 
 // Prefer decode() over onload: onload can fire before the pixels are decodable, so drawing in the
 // same tick may produce a blank/partial canvas for large images. decode() guarantees drawable pixels.
+//
+// The onload/onerror fallback only runs where decode() does not EXIST. It used to also catch a
+// decode() REJECTION, which can never be awaited safely: decode rejects on images that have
+// already settled (a valid-header/empty-data PNG on Firefox, a raster past Chromium's ~268 Mpx
+// decode cap), and the listeners attached afterwards then wait on an event that already fired.
+// The promise never settled, and since the only caller has a catch but no timeout, that hung
+// compressCloneAssets -> assetsPhase -> captureDOM's Promise.all forever: the capture neither
+// resolved nor rejected. Letting the rejection propagate turns both cases into the existing
+// "no gain, embed verbatim" path.
 async function loadImage(src) {
   const img = new Image()
   img.decoding = 'sync'
   img.src = src
   if (typeof img.decode === 'function') {
-    try { await img.decode(); return img } catch { /* fall back to onload */ }
+    await img.decode()
+    return img
   }
   await new Promise((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject })
   return img
@@ -344,6 +354,10 @@ export async function compressClonedImages(clone, options) {
   return { count, before, after }
 }
 
+/** `cover`, `contain` and percentage sizes resolve against the element box, so the box is the
+ *  visible resolution. `auto` and absolute lengths do not — they crop. */
+const BOX_RELATIVE_BG_SIZE = /^(cover|contain|(\d+(\.\d+)?%(\s+\d+(\.\d+)?%)?))$/
+
 // Unscaled border-box size of the original element (offset* ignores CSS transforms, matching the
 // resolution snapdom captures at). Falls back to the rendered rect.
 function originalBox(el) {
@@ -354,9 +368,17 @@ function originalBox(el) {
 
 /**
  * Downsample inlined CSS background-image data URLs to the element's visible box. Only for
- * non-repeating backgrounds: a background clips to the element box, so the box bounds what's
- * visible regardless of background-size (cover/contain/auto/explicit). Tiled backgrounds (`repeat`,
- * `space`, `round`) are skipped — a small tile repeated needs its natural resolution.
+ * non-repeating backgrounds, and only where `background-size` is BOX-RELATIVE.
+ *
+ * The box bounds what is visible, but it is not always the visible RESOLUTION, and the two
+ * were conflated here. Under `cover`, `contain` or a percentage the layer is scaled to the
+ * box, so shrinking the source only removes pixels nobody could see. Under `background-size:
+ * auto` — the CSS default — the layer paints at the image's own intrinsic size and the box
+ * merely CROPS it, so a smaller source is a different picture: a 1000x1000 photo in a 200x200
+ * no-repeat div went from a top-left crop to the whole photo squeezed into 200x200, and a
+ * sprite addressed by a negative background-position landed outside the shrunken image and
+ * painted nothing at all. Absolute lengths crop the same way. Tiled backgrounds (`repeat`,
+ * `space`, `round`) are skipped for the related reason that a tile needs its natural size.
  *
  * @param {Element} clone
  * @param {object} options
@@ -383,6 +405,9 @@ export async function compressClonedBackgrounds(clone, options, nodeMap = new Ma
     // Any repeating layer → bail (can't treat the box as the target).
     const repeat = (cs.backgroundRepeat || 'repeat').toLowerCase()
     if (repeat.split(',').some(r => r.trim() !== 'no-repeat')) return
+    // Every layer must scale WITH the box, or the box is not the resolution to target.
+    const size = (cs.backgroundSize || 'auto').toLowerCase()
+    if (size.split(',').some(v => !BOX_RELATIVE_BG_SIZE.test(v.trim()))) return
     const { w: boxW, h: boxH } = originalBox(orig)
     if (!boxW || !boxH) return
     const tw = boxW * eff, th = boxH * eff
@@ -423,8 +448,14 @@ export async function compressClonedSvgImages(clone, options) {
     const href = el.getAttribute('href') ||
       (typeof el.getAttributeNS === 'function' ? el.getAttributeNS('http://www.w3.org/1999/xlink', 'href') : null)
     if (!href || !href.startsWith('data:image') || href.startsWith('data:image/svg')) return
-    const w = parseFloat(el.getAttribute('width')) || 0
-    const h = parseFloat(el.getAttribute('height')) || 0
+    // parseFloat('100%') is 100, so a percentage-sized <image> was downsampled to a 100x100
+    // target and a full-width photo came back roughly 10x too small. The clone is not laid
+    // out, so there is no used value to fall back to: skip it and embed the image verbatim.
+    const wAttr = el.getAttribute('width') || ''
+    const hAttr = el.getAttribute('height') || ''
+    if (wAttr.includes('%') || hAttr.includes('%')) return
+    const w = parseFloat(wAttr) || 0
+    const h = parseFloat(hAttr) || 0
     if (!w || !h) return
     const out = await downsampleDataURL(href, w * eff, h * eff)
     if (out) {
