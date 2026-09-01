@@ -2,7 +2,7 @@
 // assertions were expect(true).toBe(true), so it could never fail and `npm test` paid three
 // full-size captures purely to print timings. The project routes timing to *.benchmark.js
 // (excluded from the normal run); bench() also gives real statistics instead of one sample.
-import { bench, describe, afterEach, beforeEach } from 'vitest'
+import { bench, describe, beforeEach } from 'vitest'
 import { snapdom, preCache } from '../src/index'
 import { cache } from '../src/core/cache'
 
@@ -66,11 +66,6 @@ function createContainer(size) {
   return container
 }
 
-function waitForNextFrame() {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => setTimeout(resolve, 0))
-  })
-}
 beforeEach(() => {
   cache.image.clear()
   cache.background.clear()
@@ -78,35 +73,56 @@ beforeEach(() => {
 })
 for (const size of sizes) {
   describe(`preCache warm vs cold - ${size.label}`, () => {
-    let container
+    // The warm happens OUTSIDE the timed body: the real user story is "preCache(el) at
+    // idle, capture at click", so the bench times only the capture. The first version
+    // timed preCache() inside every iteration, which measures an anti-pattern nobody
+    // ships and reported the feature as a 1.8x loss at page view.
+    //
+    // The untimed work lives in beforeAll, NOT in tinybench's `setup` hook: an async setup
+    // is not awaited, so the warm ran concurrently with the timed captures and every
+    // iteration of the warm arm died to NaN. Both arms consume a queue of FRESH elements
+    // built the same way; the preCache pass over one queue is the only difference.
+    const RUNS = 12 // >= warmupIterations + iterations of each arm (warmupTime: 0 keeps the count exact)
 
-    afterEach( () => {
-      container?.remove()
-      container = null
-      document.body.innerHTML = ''
+    function buildQueue() {
+      const queue = []
+      for (let i = 0; i < RUNS; i++) {
+        const container = createContainer(size)
+        container.style.position = 'absolute'
+        container.style.left = '-10000px'
+        document.body.appendChild(container)
+        queue.push(container)
+      }
+      return queue
+    }
+    let queue = []
+    const drain = () => { for (const c of queue) c.remove(); queue = [] }
 
-    })
-
-    bench('capture without preCache', async () => {
-      container = createContainer(size)
-      document.body.appendChild(container)
-      await waitForNextFrame()
+    bench('cold capture (fresh element, no preCache)', async () => {
+      const container = queue.shift()
       await snapdom.toRaw(container, { burst: false })
+      container.remove()
+    }, {
+      warmupIterations: 2, warmupTime: 0, iterations: 8, time: 0,
+      setup: () => { drain(); queue = buildQueue() },
+      teardown: drain,
     })
 
-    bench('preCache() + capture (total per iteration — preCache is INSIDE the timing)', async () => {
-      // Labeled honestly: preCache runs in the timed body, so this arm answers "what does
-      // calling preCache before every capture cost in total", not "does a warmed cache make
-      // the capture itself faster". The second question already has its answer in
-      // category.cold.benchmark.js: cache:'disabled' costs ~4ms more than soft on a FRESH
-      // element, so document-level warming — which is all preCache can do — cannot reach the
-      // per-element cold cost that dominates a one-shot capture.
-      container = createContainer(size)
-      document.body.appendChild(container)
-      await waitForNextFrame()
-      await preCache()
+    bench('capture after preCache(el) at idle (fresh element, warm untimed)', async () => {
+      const container = queue.shift()
       await snapdom.toRaw(container, { burst: false })
+      container.remove()
+    }, {
+      warmupIterations: 2, warmupTime: 0, iterations: 8, time: 0,
+      setup: async () => {
+        drain()
+        queue = buildQueue()
+        // Let the mount MutationRecords deliver before warming, or the first flush would
+        // stamp the freshly warmed subtrees and nullify every snapshot the warm paid for.
+        await new Promise((r) => setTimeout(r, 0))
+        for (const c of queue) await preCache(c)
+      },
+      teardown: drain,
     })
-
   })
 }

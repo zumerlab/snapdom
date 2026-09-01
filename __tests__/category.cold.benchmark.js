@@ -8,10 +8,16 @@
 // cross-library arms give the same fresh-element treatment to the two closest competitors,
 // so the comparison is cold-vs-cold rather than our-cold-vs-their-warm.
 //
+// ONE OUTPUT STAGE FOR EVERYONE: every arm ends at a PNG data URL. The first version of
+// this file had snapdom at toRaw (SVG url, no raster/encode) against the competitors' full
+// PNG, and the 8.2Mpx encode this table produces is ~130ms — the "snapdom wins cold" read
+// that came out of it was an artifact of the missing stage, not a result. The A/B/C ratios
+// are stage-independent; the cross-library rows are only citable at equal stages.
+//
 // Run:  npx vitest bench __tests__/category.cold.benchmark.js --browser.headless --watch=false
 import { bench, describe, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
-import { loadLibs, bigTableHTML } from './category.libs.js'
+import { loadLibs, bigTableHTML, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
@@ -31,16 +37,16 @@ afterEach(() => { el?.remove(); el = null })
 
 describe('Cold vs steady per element: big table (500 rows)', () => {
   bench('A · snapDOM, FRESH element each capture (per-element cold)', async () => {
-    await snapdom.toRaw(freshElement(), { burst: false })
+    await toDataUrl(await snapdom.toPng(freshElement(), { burst: false }))
   }, { warmupIterations: 1, iterations: 6, time: 0 })
 
   bench('B · snapDOM, SAME element recaptured (steady state)', async () => {
     if (!el || !document.body.contains(el)) freshElement()
-    await snapdom.toRaw(el, { burst: false })
+    await toDataUrl(await snapdom.toPng(el, { burst: false }))
   }, { warmupIterations: 2, iterations: 6, time: 0 })
 
   bench('C · snapDOM, fresh element + cache:disabled (true cold)', async () => {
-    await snapdom.toRaw(freshElement(), { burst: false, cache: 'disabled' })
+    await toDataUrl(await snapdom.toPng(freshElement(), { burst: false, cache: 'disabled' }))
   }, { warmupIterations: 1, iterations: 6, time: 0 })
 
   bench('modern-screenshot, fresh element each capture', async () => {

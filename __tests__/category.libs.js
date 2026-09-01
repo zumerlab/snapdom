@@ -148,7 +148,7 @@ export function bigTableHTML(rows = 500) {
 
 export const SCENARIOS = [
   { label: 'Complex card (viewport)', width: 520, html: complexCardHTML(), opts: { warmupIterations: 2, iterations: 8, time: 0 } },
-  { label: 'Big table (500 rows, ~11.5k px tall)', width: 640, html: bigTableHTML(500), opts: { warmupIterations: 1, iterations: 3, time: 0 } },
+  { label: 'Big table (500 rows, ~11.5k px tall)', width: 640, html: bigTableHTML(500), opts: { warmupIterations: 1, iterations: 8, time: 0 } },
   { label: 'Simple node, page view (1200x800)', width: 1200, height: 800, html: '<h1>Page view (1200x800)</h1>', opts: { warmupIterations: 2, iterations: 8, time: 0 } },
 ]
 
