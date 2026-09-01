@@ -159,3 +159,48 @@ describe('preCache – extra coverage', () => {
     document.body.removeChild(root)
   })
 })
+
+describe('preCache(element) warms the style snapshots', () => {
+  // The cold capture's dominant cost is the per-node style snapshot (~200 reads per node),
+  // which document-level warming cannot reach. preCache with an element target now pays that
+  // walk ahead of time, so the first real capture starts from the per-element cache.
+  it('the first capture after preCache(el) reads a fraction of a cold one', async () => {
+    const { preCache, snapdom } = await import('../src/index.js')
+    const build = () => {
+      const el = document.createElement('div')
+      el.style.cssText = 'width:400px;font-family:Arial'
+      let rows = ''
+      for (let i = 0; i < 60; i++) rows += `<tr><td style="padding:4px;border:1px solid #ccc">#${i}</td><td style="padding:4px">v${i}</td></tr>`
+      el.innerHTML = `<table style="border-collapse:collapse">${rows}</table>`
+      document.body.appendChild(el)
+      return el
+    }
+    const settle = () => new Promise((r) => setTimeout(r, 0))
+    const proto = CSSStyleDeclaration.prototype
+    const real = proto.getPropertyValue
+    const countReads = async (fn) => {
+      let calls = 0
+      proto.getPropertyValue = function (...a) { calls++; return real.apply(this, a) }
+      try { await fn() } finally { proto.getPropertyValue = real }
+      return calls
+    }
+    const a = build()
+    const b = build()
+    try {
+      await settle()
+      // COLD reference: first capture of a, no warming.
+      const cold = await countReads(() => snapdom.toRaw(a, { burst: false }))
+      // WARMED: identical fixture, preCache first.
+      await preCache(b, { embedFonts: false })
+      await settle()
+      const warm = await countReads(() => snapdom.toRaw(b, { burst: false }))
+      // Comparative, not absolute: the residue (pseudo probes, inline normalization,
+      // softening) is engine- and environment-dependent; the CLAIM is that the snapshot
+      // walk itself was pre-paid.
+      expect(warm).toBeLessThan(cold / 2)
+    } finally {
+      a.remove()
+      b.remove()
+    }
+  })
+})

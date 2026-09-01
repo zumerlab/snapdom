@@ -182,13 +182,18 @@ export async function prepareClone(element, options = {}) {
     } catch { /* non-blocking */ }
   }
 
-  const undoStabilizeLayout = stabilizeLayout(element)
+  // __warmOnly (preCache's subtree warm): the clone is discarded, so the live-DOM prep that
+  // exists for clone correctness is pure cost here — and worse than cost: its undo writes
+  // emit mutation records that invalidate the very per-element snapshots the warm just paid
+  // for, which made the warm a no-op (measured: warm == cold, read for read).
+  const warmOnly = !!options.__warmOnly
+  const undoStabilizeLayout = warmOnly ? () => {} : stabilizeLayout(element)
 
   // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
   // Clip mode prunes the walk to the window instead of skipping it: a clip rect far from the
   // real viewport lands on UNRENDERED cv:auto placeholders (blank bands in the capture),
   // while content outside the window still gets culled at its placeholder box.
-  const undoContentVisibility = forceContentVisibility(element, clipRect)
+  const undoContentVisibility = warmOnly ? () => {} : forceContentVisibility(element, clipRect)
 
   if (clipRect) {
     // Freeze the window in element-local coords NOW — after cv forcing (which can relayout),

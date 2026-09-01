@@ -2,6 +2,9 @@
 import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
+import { prepareClone } from '../core/prepare.js'
+import { createContext } from '../core/context.js'
+import { createCaptureSession } from '../core/session.js'
 import { cache } from '../core/cache.js'
 import { URL_PROPS } from '../modules/background.js'
 import { compileIconFontMatchers } from '../modules/iconFonts.js'
@@ -31,6 +34,27 @@ export async function preCache(root = document, options = {}) {
 
   // Warm common tag/style caches (no-op if already done)
   try { precacheCommonTags() } catch {}
+
+  // Warm the per-ELEMENT style snapshots for a known capture target. This is where a cold
+  // capture's time actually lives — measured: ~200 getPropertyValue reads per node, 136ms of
+  // a 190ms first capture on a 3000-node table — and it is per-element work, so the
+  // document-level warming above cannot reach it (measured: cache:'disabled' costs ~4ms more
+  // than warm caches on a FRESH element). A throwaway prepareClone pays that walk NOW: the
+  // snapshots persist in the stamp-guarded per-element cache, so the user's real capture
+  // starts from steady state (~74ms on the same table) instead of paying the walk on click.
+  // Same idea as domlens's prewarm({element}), scoped to what dominates OUR pipeline.
+  // Best-effort and side-effect-free: the clone is discarded, nothing is mounted.
+  if (root && root.nodeType === 1 && root !== document.documentElement && root !== document.body) {
+    try {
+      // Defaults on purpose: the snapshot cache keys on the embedFonts flag, so warming with
+      // a non-default value produced snapshots a default capture could never hit (measured:
+      // warm == cold, read for read, until this matched).
+      const warmCtx = createContext({})
+      warmCtx.__warmOnly = true
+      warmCtx.__session = createCaptureSession('soft')
+      await prepareClone(root, warmCtx)
+    } catch { /* warming must never break preCache */ }
+  }
 
   // Collect elements for prefetch
   let imgEls = [], allEls = []
