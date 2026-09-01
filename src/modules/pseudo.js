@@ -541,7 +541,44 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
  * @param {Object} options - capture options
  * @returns {Promise<void>}
  */
-export async function inlinePseudoElements(source, clone, sessionCache, options) {
+/**
+ * Can the whole pseudo walk be skipped for this subtree?
+ *
+ * `shouldProcessPseudos` answers a DOCUMENT-level question — "does any stylesheet here
+ * mention a pseudo?" — and every real page answers yes, so the pass then recurses over every
+ * node of the capture to discover, usually, that nothing matches. Measured on a 500-row table:
+ * one `.zz::before` rule matching zero nodes took `toRaw` from 75 ms to 197 ms, and the
+ * instrumented counters showed 0 gate passes and 0 getComputedStyle probes. The walk itself
+ * was the whole cost.
+ *
+ * The subtree-level question is the one worth asking, and one `querySelector` answers it.
+ * Two cases must still walk:
+ *  - a `null` gate — the scan could not be trusted (cross-origin CSS), so nothing may be ruled out;
+ *  - any shadow root in the capture — its own sheets are never scanned, so `pseudoGatesFor`
+ *    deliberately returns null gates per node there. `sessionCache.shadowScopes` is filled by
+ *    deepClone, which always runs first (prepare.js), and diff.js bails on shadow content
+ *    before it reaches this pass.
+ * @returns {boolean}
+ */
+function canSkipPseudoWalk(source, sessionCache) {
+  if (sessionCache.shadowScopes?.size) return false
+  const gates = pseudoGatesFor(source)
+  const sels = []
+  for (const kind of ['before', 'after', 'firstLetter', 'marker', 'firstLine']) {
+    const gate = gates[kind]
+    if (gate === null) return false
+    if (gate) sels.push(gate)
+  }
+  if (!sels.length) return true
+  const sel = sels.join(',')
+  try {
+    return !source.matches(sel) && source.querySelector(sel) === null
+  } catch {
+    return false
+  }
+}
+
+export async function inlinePseudoElements(source, clone, sessionCache, options, isDescendant = false) {
   if ((source?.nodeType !== 1) || (clone?.nodeType !== 1)) return
   // #447: a textarea's value is its *child text content*, so wrapping characters in a
   // <span> (as the ::first-letter path does) drops them from the rendered value.
@@ -552,6 +589,8 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   if (!preflightWithFp(doc, sessionCache)) {
     return
   }
+  // Asked once, on the root call only: the recursion below is exactly what this skips.
+  if (!isDescendant && canSkipPseudoWalk(source, sessionCache)) return
 
   // Sibling-counter overrides are per-capture state: they live on sessionCache (whose
   // lifetime is exactly one capture), not on a module global — a concurrently starting
@@ -890,13 +929,13 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
     for (const cChild of cChildren) {
       const sChild = sessionCache.nodeMap.get(cChild)
       if (sChild?.nodeType === 1) {
-        await inlinePseudoElements(sChild, cChild, sessionCache, options)
+        await inlinePseudoElements(sChild, cChild, sessionCache, options, true)
       }
     }
   } else {
     const sChildren = Array.from(source.children)
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-      await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options)
+      await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options, true)
     }
   }
 }
