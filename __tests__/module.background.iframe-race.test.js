@@ -84,14 +84,22 @@ function makeContainer(bgUrl, iframeCount) {
   return container
 }
 
-/** count of nodes in the output SVG whose inline style has a data: background-image */
+/** count of nodes in the output SVG that CARRY a data: background-image — inline, or
+ *  through the engine's [data-sdi] interning (identical style attributes are deduped into
+ *  one attribute-selector rule, so the style can live in the sheet instead of the node) */
 function countInlinedBackgrounds(dataUrl) {
   const svgText = decodeURIComponent(dataUrl.split(',').slice(1).join(','))
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml')
+  const BG = /background-image:\s*url\(["']?data:/
+  const internedBg = new Set()
+  for (const styleEl of doc.querySelectorAll('style')) {
+    for (const m of (styleEl.textContent || '').matchAll(/\[data-sdi="([^"]+)"\]\{([^}]*)\}/g)) {
+      if (BG.test(m[2])) internedBg.add(m[1])
+    }
+  }
   let count = 0
-  for (const el of doc.querySelectorAll('[style]')) {
-    const s = el.getAttribute('style') || ''
-    if (/background-image:\s*url\(["']?data:/.test(s)) count++
+  for (const el of doc.querySelectorAll('[style], [data-sdi]')) {
+    if (BG.test(el.getAttribute('style') || '') || internedBg.has(el.getAttribute('data-sdi'))) count++
   }
   return count
 }
