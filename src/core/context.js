@@ -147,6 +147,8 @@ export function createContext(options = {}) {
 
     /** @type {CachePolicy} */
     cache: cachePolicy,
+    // Internal: identity-share override (undefined = decide per capture in captureDOM).
+    __styleShare: options.__styleShare,
 
     // Network
     useProxy: typeof options.useProxy === 'string' ? options.useProxy : '',

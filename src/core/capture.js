@@ -19,6 +19,7 @@ import { createCaptureSession } from './session.js'
 import { sessionWarn } from '../utils/debug.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
+import { styleShareSafe } from '../modules/styles.js'
 import { stageReaches, DEFAULT_STAGE } from './stages.js'
 import { compressCloneAssets } from '../modules/compress.js'
 import { applyTextFieldSelectionLayers } from '../modules/selection.js'
@@ -104,6 +105,21 @@ export async function captureDOM(element, options) {
   // once, inside prepareClone (same instant as culling), and returned as clipWindow in
   // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
   const preClipRect = state.clip ? resolveClipRect(state.element, state.clip) : null
+
+  // Identity-share fast path (see styles.js): decided ONCE per capture, before any clone
+  // work. Both gates are cheap and both err toward full reads: an unscannable stylesheet or
+  // any selector that can split identical identities answers unsafe, and one running
+  // animation/transition anywhere under the root (computed styles differ per frame) turns
+  // it off wholesale. Respect an explicit override so tests can pin the slow path.
+  if (options.__styleShare === undefined) {
+    try {
+      options.__styleShare = styleShareSafe(state.element.ownerDocument || document) &&
+        (typeof state.element.getAnimations !== 'function' ||
+          state.element.getAnimations({ subtree: true }).length === 0)
+    } catch {
+      options.__styleShare = false
+    }
+  }
 
   const undoClamp = lineClampTree(state.element, preClipRect)
   try {

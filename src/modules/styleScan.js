@@ -95,6 +95,14 @@ function scanRules(rules, universe, pseudoSels, state) {
     // restyles ancestors AND, combined with a combinator, their other descendants. A document
     // that uses it keeps document-wide style invalidation (see nodeStamp in styles.js).
     if (sel && sel.includes(':has(')) state.usesHas = true
+    // Selectors that can style two elements with IDENTICAL tag + attributes + ancestor chain
+    // DIFFERENTLY: structural position, sibling relationships, interaction/UA state, and
+    // :has() (content-dependent). Their presence anywhere disables the identity-share fast
+    // path in styles.js — a substring test, deliberately conservative: a false positive only
+    // costs the optimization, a false negative would cost fidelity.
+    if (sel && (SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
+      state.shareUnsafe = true
+    }
     if (sel && sel.includes(':')) {
       // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
       // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
@@ -153,14 +161,20 @@ function composePseudoGates(doc, pseudoSels) {
  * @param {Document} doc
  * @returns {{universe: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null}}}
  */
+/** See the shareUnsafe note at the selector visitor. Pseudo-ELEMENTS are absent on purpose:
+ *  ::before/::after do not change the HOST element's computed style. `:link` is included
+ *  (href-less anchors differ) but `:visited` need not be — getComputedStyle deliberately
+ *  answers with unvisited values for privacy, so it cannot split identical elements. */
+const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-of-type|empty|hover|focus|active|target|checked|indeterminate|disabled|enabled|read-only|read-write|placeholder-shown|autofill|valid|invalid|user-valid|user-invalid|in-range|out-of-range|required|optional|default|link|any-link|scope|defined|modal|fullscreen|picture-in-picture|playing|paused|dir\(|lang\(|has\()/
+
 export function scanAuthorStyles(doc) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, usesHas: true, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, usesHas: true, shareUnsafe: true, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafe: false }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -182,7 +196,7 @@ export function scanAuthorStyles(doc) {
         }
       }
     }
-    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas }
+    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareUnsafe: state.shareUnsafe }
   } catch {
     return unreliable
   }
