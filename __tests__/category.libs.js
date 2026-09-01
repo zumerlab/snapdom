@@ -93,3 +93,148 @@ export const SCENARIOS = [
   { label: 'Big table (500 rows, ~11.5k px tall)', width: 640, html: bigTableHTML(500), opts: { warmupIterations: 1, iterations: 3, time: 0 } },
   { label: 'Simple node, page view (1200x800)', width: 1200, height: 800, html: '<h1>Page view (1200x800)</h1>', opts: { warmupIterations: 2, iterations: 8, time: 0 } },
 ]
+
+// ── Real-world scenario builders (benchmark realism roadmap) ────────────────
+// Shared by the category.*.benchmark.js files; building here keeps them import-safe for
+// tests too (no bench() calls in this module).
+
+/** ~10k-rule utility stylesheet + a ~1000-node tree styled ONLY by classes. Today every
+ *  other bench styles inline, so styleScan's property universe and per-pseudo gates — the
+ *  machinery with its own reverted-optimization history — went unexercised by any bench. */
+export function cssHeavyScenario() {
+  const rules = []
+  const props = [
+    ['margin', (i) => `${i % 33}px`], ['padding', (i) => `${i % 17}px`],
+    ['color', (i) => `rgb(${i % 255},${(i * 7) % 255},${(i * 13) % 255})`],
+    ['background-color', (i) => `rgb(${(i * 3) % 255},${(i * 11) % 255},${i % 255})`],
+    ['border-radius', (i) => `${i % 24}px`], ['font-size', (i) => `${10 + (i % 14)}px`],
+    ['letter-spacing', (i) => `${(i % 5) / 10}px`], ['line-height', (i) => `${1 + (i % 8) / 10}`],
+    ['border', (i) => `${i % 3}px solid rgb(${i % 200},${i % 200},${i % 200})`],
+    ['box-shadow', (i) => `0 ${i % 4}px ${i % 9}px rgba(0,0,0,.${i % 5})`],
+  ]
+  for (let i = 0; i < 950; i++) {
+    for (const [prop, val] of props) {
+      rules.push(`.u-${prop.replace(/[^a-z]/g, '')}-${i}{${prop}:${val(i)}}`)
+    }
+  }
+  // A few hundred pseudo rules so the per-pseudo selector gates have something to gate.
+  for (let i = 0; i < 200; i++) {
+    rules.push(`.badge-${i}::before{content:"${i}";color:rgb(${i % 255},0,0);margin-right:2px}`)
+  }
+  rules.push('@media (min-width: 100px){.u-margin-1{margin:1px}}')
+  const style = document.createElement('style')
+  style.setAttribute('data-bench-cssheavy', '')
+  style.textContent = rules.join('\n')
+  document.head.appendChild(style)
+
+  const root = document.createElement('div')
+  root.style.width = '900px'
+  let html = ''
+  for (let i = 0; i < 240; i++) {
+    html += `<div class="u-margin-${i % 950} u-padding-${(i * 3) % 950} u-backgroundcolor-${(i * 7) % 950} u-borderradius-${i % 950}">
+      <span class="u-color-${i % 950} u-fontsize-${(i * 5) % 950}">card ${i}</span>
+      <span class="badge-${i % 200} u-letterspacing-${i % 950}">tag</span>
+      <p class="u-lineheight-${i % 950} u-border-${(i * 2) % 950}">body text for card ${i}</p>
+    </div>`
+  }
+  root.innerHTML = html
+  document.body.appendChild(root)
+  return { root, cleanup: () => { root.remove(); style.remove() } }
+}
+
+/** 150 open shadow hosts, nested 3 levels, ~3000 nodes total — the design-system norm the
+ *  capability matrix proves renders but nothing prices. */
+export function shadowTreeScenario() {
+  const root = document.createElement('div')
+  root.style.cssText = 'width:800px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px'
+  const makeHost = (depth, label) => {
+    const host = document.createElement('div')
+    const sr = host.attachShadow({ mode: 'open' })
+    const style = document.createElement('style')
+    style.textContent = `.box{padding:4px;border:1px solid #ccc;border-radius:4px;background:#f8f8f${depth}}
+      .t{font-size:12px;color:#333}.t::after{content:" •";color:rgb(${depth * 80},0,0)}`
+    const box = document.createElement('div')
+    box.className = 'box'
+    box.innerHTML = `<span class="t">${label}</span><slot></slot>`
+    sr.append(style, box)
+    if (depth < 3) {
+      const child = makeHost(depth + 1, `${label}.${depth}`)
+      host.appendChild(child) // slotted light-DOM child
+    }
+    return host
+  }
+  for (let i = 0; i < 50; i++) root.appendChild(makeHost(1, `c${i}`))
+  document.body.appendChild(root)
+  return { root, cleanup: () => root.remove() }
+}
+
+/** 40 distinct same-origin PNGs in a grid — the real fetch → inline path, which the
+ *  data:-URL galleries in the older benches never touch. */
+export function imageGridScenario() {
+  const root = document.createElement('div')
+  root.style.cssText = 'width:880px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px'
+  const urls = []
+  for (let i = 0; i < 40; i++) {
+    const url = new URL(`./fixtures/images/img-${String(i).padStart(2, '0')}.png`, import.meta.url).href
+    urls.push(url)
+    const img = document.createElement('img')
+    img.src = url
+    img.style.cssText = 'width:200px;height:200px;object-fit:cover;border-radius:6px'
+    root.appendChild(img)
+  }
+  document.body.appendChild(root)
+  const ready = Promise.allSettled([...root.querySelectorAll('img')].map((im) => im.decode?.()))
+  return { root, urls, ready, cleanup: () => root.remove() }
+}
+
+/** Article card: two real webfont families (Inter 400/700 + JetBrains Mono, same-origin
+ *  woff2 fixtures), ~80 text nodes. Competitors embed fonts BY DEFAULT, so the plain
+ *  defaults profile systematically understated their cost while snapdom's font path went
+ *  unmeasured. Callers must await `ready` and call `cleanup`. */
+export function fontArticleScenario() {
+  const face = (fam, w, file) =>
+    `@font-face{font-family:'${fam}';font-weight:${w};font-style:normal;` +
+    `src:url('${new URL(`./fixtures/fonts/${file}`, import.meta.url).href}') format('woff2')}`
+  const style = document.createElement('style')
+  style.setAttribute('data-bench-fonts', '')
+  style.textContent = [
+    face('BenchInter', 400, 'inter-400.woff2'),
+    face('BenchInter', 700, 'inter-700.woff2'),
+    face('BenchMono', 400, 'jbmono-400.woff2'),
+  ].join('\n')
+  document.head.appendChild(style)
+
+  const root = document.createElement('div')
+  root.style.cssText = "width:600px;padding:24px;background:#fff;font-family:'BenchInter',sans-serif"
+  let html = '<h1 style="font-weight:700;margin:0 0 12px">Quarterly engineering report</h1>'
+  for (let i = 0; i < 20; i++) {
+    html += `<h3 style="font-weight:700;margin:10px 0 4px">Section ${i + 1}</h3>
+      <p style="margin:0 0 6px">Deployment frequency rose while incident count fell — the
+      pipeline held at <code style="font-family:'BenchMono',monospace">p99=${120 + i}ms</code>
+      across region ${i}.</p>
+      <p style="margin:0">Attribution: team ${String.fromCharCode(65 + (i % 8))}.</p>`
+  }
+  root.innerHTML = html
+  document.body.appendChild(root)
+  const ready = document.fonts.ready.then(() => Promise.all(
+    [['400 14px BenchInter'], ['700 14px BenchInter'], ['400 14px BenchMono']]
+      .map(([f]) => document.fonts.load(f))))
+  return { root, ready, cleanup: () => { root.remove(); style.remove() } }
+}
+
+/** The session.* dashboard, shared so the polling scenario measures the same scene. */
+export function dashboardScenario() {
+  const el = document.createElement('div')
+  el.style.cssText = 'width:360px;padding:16px;background:#fff;font-family:Arial,sans-serif;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.15)'
+  el.innerHTML = `
+    <h2 style="margin:0 0 8px;color:#222">Live metrics</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${Array.from({ length: 6 }, (_, i) => `
+        <div style="padding:10px;border-radius:8px;background:${i % 2 ? '#eef' : '#efe'}">
+          <div style="font-size:12px;color:#666">Metric ${i + 1}</div>
+          <div class="metric-v" style="font-size:20px;font-weight:bold">${(i + 1) * 137}</div>
+        </div>`).join('')}
+    </div>`
+  document.body.appendChild(el)
+  return { root: el, cleanup: () => el.remove() }
+}
