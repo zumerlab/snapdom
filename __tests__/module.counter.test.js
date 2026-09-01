@@ -171,3 +171,39 @@ describe('formatCounter – negative values (NEW-6)', () => {
     expect(resolveCountersInContent('counter(x)', node, fakeCtx)).toBe('0')
   })
 })
+
+describe('multi-counter declarations (whitespace grammar)', () => {
+  // `counter-reset: chapter 0 section 0` is ONE declaration listing TWO counters: the
+  // grammar is `[<counter-name> <integer>?]+`, whitespace-separated, and that is how
+  // getComputedStyle serializes it. Splitting on commas collapsed it to a single part and
+  // dropped every counter after the first.
+  it('resets every counter in one declaration, not just the first', () => {
+    const root = document.createElement('div')
+    root.style.counterReset = 'chapter 3 section 7'
+    root.innerHTML = '<span></span>'
+    document.body.appendChild(root)
+    const ctx = buildCounterContext(root)
+    expect(ctx.get(root, 'chapter')).toBe(3)
+    expect(ctx.get(root, 'section')).toBe(7)
+  })
+
+  it('increments every counter in one declaration', () => {
+    const root = document.createElement('div')
+    root.style.counterReset = 'a 0 b 0'
+    root.style.counterIncrement = 'a 2 b 5'
+    document.body.appendChild(root)
+    const ctx = buildCounterContext(root)
+    expect(ctx.get(root, 'a')).toBe(2)
+    expect(ctx.get(root, 'b')).toBe(5)
+  })
+
+  it('applies the per-property default when a name carries no integer', () => {
+    const root = document.createElement('div')
+    root.style.counterReset = 'x y 4'
+    root.style.counterIncrement = 'x y 3'
+    document.body.appendChild(root)
+    const ctx = buildCounterContext(root)
+    expect(ctx.get(root, 'x')).toBe(1) // reset default 0, increment default 1
+    expect(ctx.get(root, 'y')).toBe(7) // reset 4, increment 3
+  })
+})

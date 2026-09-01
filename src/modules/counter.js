@@ -53,12 +53,40 @@ function formatCounter(value, style) {
       const abs = Math.abs(value)
       return (value < 0 ? '-' : '') + (abs < 10 ? '0' : '') + String(abs)
     }
-    case 'lower-alpha': return alpha(value, false)
-    case 'upper-alpha': return alpha(value, true)
+    // `lower-latin`/`upper-latin` are exact aliases of the -alpha forms (CSS Counter Styles
+    // §6.1). Falling through to the decimal default rendered digits where the page shows
+    // letters — an `a. b. c.` list captured as `1. 2. 3.`.
+    case 'lower-alpha': case 'lower-latin': return alpha(value, false)
+    case 'upper-alpha': case 'upper-latin': return alpha(value, true)
     case 'lower-roman': return roman(value, false)
     case 'upper-roman': return roman(value, true)
     default: return String(value)
   }
+}
+
+/**
+ * Tokenizes a counter-reset / -set / -increment declaration into [name, value] pairs.
+ * The grammar is `[<counter-name> <integer>?]+` — WHITESPACE-separated. Splitting on commas
+ * (which are not part of it) collapsed `counter-reset: chapter 0 section 0` into a single
+ * part and silently dropped every counter after the first. Counter names are custom-idents
+ * and cannot start with a digit, so a numeric token is unambiguously the preceding name's
+ * value. Commas are tolerated as separators rather than parsed, costing nothing.
+ * @param {string} decl
+ * @param {number} dflt - value when a name carries no integer (0 for reset/set, 1 for increment)
+ * @returns {Array<[string, number]>}
+ */
+function counterPairs(decl, dflt) {
+  const toks = decl.trim().split(/[\s,]+/).filter(Boolean)
+  const out = []
+  for (let i = 0; i < toks.length; i++) {
+    const name = toks[i]
+    if (name === 'none') continue
+    const next = toks[i + 1]
+    const hasVal = next !== undefined && Number.isFinite(Number(next))
+    out.push([name, hasVal ? Number(next) : dflt])
+    if (hasVal) i++
+  }
+  return out
 }
 
 /**
@@ -100,12 +128,7 @@ export function buildCounterContext(root) {
     let reset
     try { reset = el.style?.counterReset || getComputedStyle(el).counterReset } catch {}
     if (reset && reset !== 'none') {
-      for (const part of reset.split(',')) {
-        const toks = part.trim().split(/\s+/)
-        const name = toks[0]
-        const val = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 0
-        if (!name) continue
-
+      for (const [name, val] of counterPairs(reset, 0)) {
         const parentStack = parentMap.get(name)
         if (parentStack && parentStack.length) {
           const s = parentStack.slice() // nest on parent's stack
@@ -121,11 +144,7 @@ export function buildCounterContext(root) {
     let set
     try { set = el.style?.counterSet || getComputedStyle(el).counterSet } catch {}
     if (set && set !== 'none') {
-      for (const part of set.split(',')) {
-        const toks = part.trim().split(/\s+/)
-        const name = toks[0]
-        const val = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 0
-        if (!name) continue
+      for (const [name, val] of counterPairs(set, 0)) {
         const stack = map.get(name) || []
         if (stack.length === 0) stack.push(0)
         stack[stack.length - 1] = val
@@ -137,11 +156,7 @@ export function buildCounterContext(root) {
     let inc
     try { inc = el.style?.counterIncrement || getComputedStyle(el).counterIncrement } catch {}
     if (inc && inc !== 'none') {
-      for (const part of inc.split(',')) {
-        const toks = part.trim().split(/\s+/)
-        const name = toks[0]
-        const by = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 1
-        if (!name) continue
+      for (const [name, by] of counterPairs(inc, 1)) {
         const stack = map.get(name) || []
         if (stack.length === 0) stack.push(0)
         stack[stack.length - 1] += by
