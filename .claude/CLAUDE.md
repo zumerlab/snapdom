@@ -122,6 +122,28 @@ Its correctness rests entirely on one thing: **the INVALIDATION MATRIX comment a
 
 `diff.js` bails to the full pipeline on anything it cannot splice byte-faithfully: `reconcile`, `clip`, embedded fonts, impure render plugins, scoped `::marker`/`::first-line` rules, and stylesheets carrying relational selectors (`+ ~ :has()`, counters) whose match depends on nodes outside the rebuilt subtree — including in `adoptedStyleSheets`. The fast path must never cost correctness; when in doubt it returns null.
 
+**The pseudo pass asks a SUBTREE question, not a document one** (`canSkipPseudoWalk`,
+pseudo.js). `shouldProcessPseudos` only answers "does any stylesheet here mention a pseudo?",
+and every real page answers yes — so the pass used to recurse over every node of the capture to
+discover that nothing matched. One `.zz::before` rule matching ZERO nodes took the 500-row table
+from 75 ms to 197 ms (instrumented: 0 gate passes, 0 getComputedStyle probes — the walk WAS the
+cost), and html2canvas was unaffected, so it was ours alone. The root call now runs one
+`querySelector` over the joined gates and returns immediately when nothing in the subtree can
+match: 197 → 66 ms, with scenes whose rules DO match unchanged. Two cases must still walk and
+are bailed on explicitly: a `null` gate (untrusted scan) and any shadow root in the capture
+(`sessionCache.shadowScopes`, filled by deepClone, which always runs first). Pinned by
+`module.pseudo.subtreeGate.test.js`, whose descendant-match test goes red if the
+`querySelector` half is removed.
+
+**`MAX_RASTER_SIDE` is per engine** (`toCanvas.js`): 16384 on Safari, 32767 elsewhere. It used
+to be 16384 for everyone — WebKit's number applied to all three — so a tall capture on a real
+page came back silently DOWNSCALED (live 640x17298 rendered 606x16384, while domlens and
+html2canvas returned it whole). Chromium decodes an svg data URL at 640x32768 and backs a
+640x17298 canvas, probed directly. The clamp path is also not free: it decodes the whole svg
+payload, rewrites the header, re-encodes and resamples at a fractional scale — 5.2 ms/Mpx
+through it against 3.1 ms/Mpx just under it. The AREA cap is unchanged. Pinned by
+`exporters.rasterLimit.test.js` (skipped on webkit, which really does cap at 16384).
+
 ### Style scan (`src/modules/styleScan.js`)
 
 One pass over the document's author styles yields (a) the property universe — snapshot only props the page can actually touch — and (b) per-pseudo selector gates, so one `el.matches()` replaces three `getComputedStyle` resolutions per node. Both memoized per document + style epoch.
@@ -187,6 +209,24 @@ All are minified, `sideEffects: false`, `splitting: false`. No code splitting, n
 - Benchmarks: files matching `*.benchmark.js` are excluded from the normal test run; use `npm run test:benchmark` or `npx vitest bench`.
 - Visual diffs live under `__snapshots__/visual*/`; `npm run report:cross` builds a cross-engine comparison page.
 - **`demos/` is COMMITTED** (2026-09-01; 84 files — held back: the stale docs-site copy, Drift-branded assets, d17/d171 which are built around them, and the `labs*.html` scratch pages, all still gitignored). A checkout without it (sparse, or a worktree from before the commit) makes the visual suite silently skip itself (`visual.demos.test.js` globs `/demos/d*.html`, gets nothing, and registers a `describe.skip`) — a green `npm test` there proves NOTHING about pixels. If you must bring demos in by hand, **copy, do not symlink**: vite resolves through the link into the other repo's `node_modules`, several demos then capture at a wrong size, and you get ~11 fabricated "regressions". `npm run test:visual` runs just that file. `REQUIRE_VISUAL=1` turns both silences into a hard failure at globalSetup (`scripts/require-visual.mjs`): no demos, or no baselines at all — the case where the first run RECORDS them and passes, proving only that the build agrees with itself. `npm run release` sets it; ordinary runs and forks are unaffected. There is no CI on this repo (the `ci.yml` workflow was removed on 2026-08-30): verification is local, and a push to the remote is the last step, not the gate. Nothing but your own machine runs `npm test`, `test:pack` or the visual suite, so `npm run release` — which verifies before it pushes — is the release signal.
+- **The cross-library comparison harness lives in `docs/compare/live/harness.js`**, not in
+  `__tests__/`. It holds the competitor adapters (pinned CDN versions), the fixture-free
+  scenes and the pixel capability oracle, and it is imported by BOTH `__tests__/category.libs.js`
+  (every `category.*.benchmark.js` + the matrix test) and the live lab page at
+  `docs/compare/live/`, which is the same comparison run in a visitor's browser. It sits under
+  `docs/` because the published site can only serve what is inside `docs/` — so **a checkout
+  without `docs/` breaks the category suite**, same trap class as `demos/`. One copy is the
+  point: a live demo that drifts from the measured table is how a project starts contradicting
+  its own README.
+  Four fairness rules the harness exists to enforce, each of which was violated at some point
+  and measured wrong because of it: (1) **one output stage** — every arm ends at a PNG data
+  URL, never snapdom's `toRaw` against someone else's raster; (2) **same pixels** — `scale: 1`
+  AND `dpr: 1`, because snapdom defaults `dpr` to `devicePixelRatio` and headless chromium's
+  DPR of 1 hides it; (3) **correctly-shaped options** — domlens takes `{ output: { scale } }`
+  and silently ignores a flat `scale`; (4) **the memo pinned off** (`burst: false`) except in
+  the polling scene, where it is the point and the label says so. Scenes carry no `class`
+  attributes (the host page would style them) and must fit inside the 16384px canvas limit,
+  past which each library clamps to a different scale and rule (1) quietly ends.
 - Baselines are recorded on first run, so a v3-only run only proves v3 agrees with itself. To measure v3 against `main`, generate baselines in the main checkout (identical harness file), copy `__snapshots__/visual` over, and run here. Status as of 2026-08-10: **71/71 demos pixel-identical to main on chromium.**
 - Coverage config in `vitest.config.js` scopes to `src/**/*.js`. **It only runs on chromium** (the v8 provider is Chromium-only), so Safari-only code reads as uncovered even when exercised — that is a measurement blind spot, not debt. Code that is unreachable by construction is marked with `/* c8 ignore start/stop */` and a reason; the `ignore next` form does nothing here.
 

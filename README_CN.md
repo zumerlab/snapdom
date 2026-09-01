@@ -300,30 +300,124 @@ document.body.appendChild(png);
 
 ## 性能基准测试
 
-**测试环境：**在 Chromium 中运行仓库内的 Vitest 基准测试。实际结果可能受硬件影响。
-表中数值为**平均捕获耗时（毫秒）**，越低越好。
+所有库都跑到**同一个终点——PNG data URL**，各自使用默认配置、scale 1、锁定版本。这条规则是整张
+表的基础：SnapDOM 的 `toRaw` 返回的是 SVG url，跳过了栅格化和编码，而在大场景里这一步大约占总耗
+时的一半。拿它去比别人已经完成的 PNG，正是基准表偏向发布方的原因。
 
-### 简单元素
+**测试环境：** Chromium（Playwright）、无头模式、DPR 1、Apple Silicon。每个数值是**四轮完整测试
+的中位数**，单位毫秒，越低越好。绝对耗时会随 CPU 和浏览器变化，值得引用的是比值。
 
-| 场景                 | SnapDOM 当前版 | SnapDOM v1.9.9 | html2canvas | html-to-image |
-| ------------------------ | --------------- | -------------- | ----------- | ------------- |
-| 小尺寸（200×100）          | **0.5 ms**      | 0.8 ms         | 67.7 ms     | 3.1 ms        |
-| 模态框（400×300）          | **0.5 ms**      | 0.8 ms         | 75.5 ms     | 3.6 ms        |
-| 页面视图（1200×800）     | **0.5 ms**      | 0.8 ms         | 114.2 ms    | 3.3 ms        |
-| 大型滚动区域（2000×1500） | **0.5 ms**      | 0.8 ms         | 186.3 ms    | 3.2 ms        |
-| 超大尺寸（4000×2000）   | **0.5 ms**      | 0.9 ms         | 425.9 ms    | 3.3 ms        |
+> **自己动手跑一遍：**[snapdom.dev/compare/live](https://snapdom.dev/compare/live/) 会在你自己的
+> 浏览器里运行同一套对比——相同的适配器、相同的场景、相同的像素校验器——并输出一张可以直接贴到
+> issue 里的表格。
 
+### 稳定状态——重复捕获同一个元素
 
-### 复杂元素
+| 库 | 复杂卡片 | 500 行表格 | 简单节点（1200×800） |
+| --- | --- | --- | --- |
+| **SnapDOM** | **11.3** | 204.8 | **13.0** |
+| domlens.js 0.1.0 | 17.3 | **194.3** | 115.2 |
+| modern-screenshot 4.7.0 | 31.3 | 546.8 | 14.0 |
+| dom-to-image-more 3.10.2 | 33.0 | 703.8 | 16.9 |
+| html-to-image 1.11.13 | 51.1 | 1,458.7 | 17.4 |
+| html2canvas 1.4.1 | 82.5 | 365.7 | 89.2 |
+| @renoun/screenshot 0.3.3 | 150.2 | 655.2 | 78.7 |
+| dom-to-image 2.6.0 | 154.6 | 921.1 | 128.0 |
+| dom-to-image-modern 1.0.2 | 155.2 | 926.0 | 129.1 |
 
-| 场景                 | SnapDOM 当前版 | SnapDOM v1.9.9 | html2canvas | html-to-image |
-| ------------------------ | --------------- | -------------- | ----------- | ------------- |
-| 小尺寸（200×100）          | **1.6 ms**      | 3.3 ms         | 68.0 ms     | 14.3 ms       |
-| 模态框（400×300）          | **2.9 ms**      | 6.8 ms         | 87.5 ms     | 34.8 ms       |
-| 页面视图（1200×800）     | **17.5 ms**     | 50.2 ms        | 178.0 ms    | 429.0 ms      |
-| 大型滚动区域（2000×1500） | **54.0 ms**     | 201.8 ms       | 735.2 ms    | 984.2 ms      |
-| 超大尺寸（4000×2000）   | **171.4 ms**    | 453.7 ms       | 1,800.4 ms  | 2,611.9 ms    |
+三个场景里有两个差距小到必须明说。**大表格上 domlens 领先 SnapDOM 1.05×**——这是可复现的 5%，尽管
+两者的多轮波动区间有重叠。简单节点上 SnapDOM 与 modern-screenshot 处在误差范围内：那个场景几乎
+没有内容要捕获，衡量的主要是所有库都要付出的 PNG 编码成本。复杂卡片是唯一拉开明显差距的场景，
+1.53×。
 
+### 真实场景
+
+| 场景 | SnapDOM | 次快 | 其余 |
+| --- | --- | --- | --- |
+| CSS 密集页面——1 万条作者样式规则、240 张仅靠 class 上样式的卡片 | **131.1** | domlens 137.3 | modern-screenshot 288.7 · dom-to-image-more 341.1 · html-to-image 599.6 |
+| Shadow DOM——150 个开放 shadow root、嵌套 3 层、约 3000 个节点 | **12.7** | domlens 50.1 | modern-screenshot 102.5 · html2canvas 137.4 · dom-to-image-more 153.5 · html-to-image 410.2 |
+| Web 字体——包含 Inter 400/700 与等宽代码片段的文章 | **11.5** | modern-screenshot 24.4 | dom-to-image-more 25.0 · html-to-image 45.6 |
+| 图片网格——40 张同源 PNG，通过 HTTP 加载 | **58.7** | dom-to-image-more 61.0 | html-to-image 63.6 · domlens 66.1 · modern-screenshot 66.6 |
+| 轮询——对同一个仪表盘连续捕获 20 次 | **20.3** | modern-screenshot 110.2 | dom-to-image-more 333.2 · domlens 476.6 |
+| 深层嵌套树——16 条链 × 10 层，约 2,100 个节点 | 706 | **html2canvas 303** | domlens 676 · modern-screenshot 943 · html-to-image 1,400 |
+
+轮询是唯一一行 SnapDOM 使用**默认配置**、开启记忆化的场景：每个 tick 都重新捕获同一个元素的仪表盘，
+正是 auto-burst 与差分重捕获存在的意义。关掉记忆化（`burst: false`）后同样的循环需要 28.6 ms——
+记忆化在这里带来 1.41× 的收益，而不是「未栅格化」的对比所暗示的数量级差距，因为每个 tick 仍然要
+付出栅格化和 PNG 编码的成本。
+
+CSS 密集场景对 domlens 只领先 1.05×，图片网格则是四方持平：面对 40 张真实的 HTTP 图片，所有库都在
+等同样的网络请求。这两行留在表里，正是因为 SnapDOM **没有**拉开差距的场景才最值得知道。
+
+**深层嵌套树是 SnapDOM 唯一彻底落后的场景，慢 2.3×**——而且输给的是在其他每一行都最慢的
+html2canvas。这个场景取自 domlens 自己的基准测试语料，他们的 README 也诚实地给出了原因：在这么大
+的一张捕获里，绝大部分时间是浏览器在栅格化一张几十兆像素的 SVG 图像，而不是库自身在做的事。所有
+基于 `<foreignObject>` 的实现都要付这笔账——domlens 的 SVG 引擎、modern-screenshot、
+html-to-image 和 SnapDOM 都落在 676 ms 到 1,400 ms 之间；而 html2canvas 直接把盒子画到 canvas 上，
+从不构建那张图像，303 ms 就结束了。这是本文里最清楚的一个例子：架构成本，而不是实现成本。
+
+按阶段拆开看：SnapDOM 的流水线产出 SVG url 只用 **约 97 ms**，浏览器随后花 **800–1,200 ms** 栅格化
+那张图像，PNG 编码约 90 ms。这一行超过 85% 的时间是一次 `drawImage`，期间我们自己的代码一行都没在
+跑；而且这笔开销并不与像素数成正比，这也是它只在这里暴露出来的原因。同一份文档按 1× / 0.5× /
+0.25× 的像素渲染，耗时分别是 547 / 147 / 51 ms；但一份*更小*的文档在同样的 4.2 Mpx 下只要 39 ms：
+Chrome 会为每个 tile 重放整份绘制记录，所以成本随「显示项 × tile 数」增长，外加约 40 ms 的固定
+开销。由此得到的交叉点大约在 **1,000 个节点 / 约 8 Mpx**。在这条线以下，SnapDOM 的领先幅度随场景
+变小而扩大——同一场景在 1、2、4 条链时是 11 / 24 / 64 ms，对方是 74 / 87 / 115 ms；在这条线以上，
+栅格化是一堵墙，再怎么优化流水线也够不到。
+
+### 冷启动与稳定状态——以及 SnapDOM 落后的地方
+
+一次性使用的用户真正感受到的，是元素的**第一次**捕获，而不是第五次。每轮都换新元素、大表格、所有
+库都输出 PNG：
+
+| 测试项 | 毫秒 |
+| --- | --- |
+| domlens.js——每次捕获都换新元素 | **217.6** ← 冷启动最快 |
+| SnapDOM——新元素 + `cache: 'disabled'` | 236.4 |
+| SnapDOM——每次捕获都换新元素 | 238.4 |
+| modern-screenshot——每次捕获都换新元素 | 605.8 |
+| *SnapDOM——重复捕获同一元素，作为参照* | *169.1* |
+
+**在冷启动的大表格上，domlens 比 SnapDOM 快 1.10×。** 之所以写出来，是因为它是真的：他们常驻的 UA
+默认样式探测和 `prewarm()` 买下了第一次捕获，而 SnapDOM 冷启动开销中剩下的大部分，是约 7.7 Mpx 的
+`<foreignObject>` 栅格化与编码——再怎么优化流水线也去不掉。只要同一个元素被捕获第二次，SnapDOM 就
+把这一栏拿回来：169.1 ms 对他们的 217.6 ms。
+
+### 能力矩阵——由像素验证，而不是由 README 验证
+
+每项能力都会在测试夹具里画出自己的标记色，校验器再去捕获得到的 PNG 中数这些像素。它会先证明自己
+能够说「不」：同一个夹具在移除全部能力后重建，六项都必须报告为缺失。默认配置，chromium。
+
+| 库 | Shadow DOM | 伪元素 | conic-gradient | slot 分发内容 | adoptedStyleSheets | 已绘制的 `<canvas>` | 首次捕获 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **SnapDOM** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 7 ms |
+| modern-screenshot 4.7.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 8 ms |
+| domlens.js 0.1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 15 ms |
+| dom-to-image-more 3.10.2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 26 ms |
+| html-to-image 1.11.13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 31 ms |
+| @renoun/screenshot 0.3.3 | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 18 ms |
+| html2canvas 1.4.1 | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | 61 ms |
+| dom-to-image 2.6.0 | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 109 ms |
+| dom-to-image-modern 1.0.2 | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 111 ms |
+
+表格反映的是**默认配置**下的行为；html2canvas 在设置 `foreignObjectRendering: true` 后能通过
+conic-gradient 和 `adoptedStyleSheets` 两项。结果也会因引擎而异——`BROWSER=all` 会为每个引擎单独
+记录一张表。
+
+### 这些表格遵守的规则
+
+1. **同一个输出阶段。** 每一项都以 PNG data URL 结束，SnapDOM 也不例外。
+2. **同样的像素量。** `scale: 1` **并且** `dpr: 1`。SnapDOM 的 `dpr` 默认取 `devicePixelRatio`，
+   否则在高分屏上它编码的像素会是其他库的四倍。
+3. **默认配置、锁定版本。** 不为任何一个库开小灶；调优后的配置单独成行并标注。
+4. **记忆化默认关闭**（`burst: false`），只有轮询场景例外——那里它正是被测对象，并且已在标签里写明。
+
+上面的数字来自一个纯净的测试环境。真实页面——它自己的样式表、它自己的 Web 字体——会让上述每一个库
+都慢得多；在线实验室是在真实页面内部做捕获，所以它给出的数字普遍会高于这张表。这个差距里曾经有很大
+一块是 SnapDOM 独有的：文档里只要存在一条作者 `::before` 规则——哪怕它一个节点都匹配不到——整次捕获
+就会多走一遍递归的树遍历，500 行表格从 75 ms 涨到 197 ms，而 html2canvas 完全不受影响。现在 pseudo
+处理阶段问的是「**被捕获的子树里**有没有节点可能匹配」，而不是「**文档**里有没有提到 pseudo」，这项
+惩罚已经消失（197 → 66 ms）。规则确实匹配到节点的捕获保持不变：那种情况下遍历仍然必须执行。
 
 ### 运行基准测试
 
@@ -331,9 +425,10 @@ document.body.appendChild(png);
 git clone https://github.com/zumerlab/snapdom.git
 cd snapdom
 npm install
-npm run test:benchmark
+npm run test:benchmark                                   # 全部
+npx vitest bench __tests__/category.benchmark.js --browser.headless --watch=false
+npx vitest run __tests__/category.capabilities.test.js --browser.headless --reporter=verbose
 ```
-
 
 ## 开发
 
