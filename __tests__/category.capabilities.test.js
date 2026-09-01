@@ -18,9 +18,14 @@
 // Run:  npx vitest run __tests__/category.capabilities.test.js --browser.headless --reporter=verbose
 //       BROWSER=all npx vitest run __tests__/category.capabilities.test.js --browser.headless
 
-import { describe, test, expect, afterEach, afterAll } from 'vitest'
+import { describe, test, expect, beforeEach, afterEach, afterAll } from 'vitest'
 import { server } from '@vitest/browser/context'
-import { LIBS } from './category.libs.js'
+import { loadLibs, LIB_NAMES, UNAVAILABLE } from './category.libs.js'
+import { networkGuard } from './helpers/network-gate.js'
+
+// Every competitor comes from a CDN, so a library this machine cannot reach is reported as
+// unavailable instead of failing the run. snapdom is local and always tested.
+const LIBS = await loadLibs()
 
 const ENGINE = server?.browser || 'unknown'
 
@@ -105,6 +110,10 @@ let fixture
 
 afterEach(() => { if (fixture) { fixture.remove(); fixture = null } })
 
+// Only the competitor rows touch the network; snapdom's row and the oracle self-test run
+// on a dead link, which is what keeps this file safe inside `npm test`.
+beforeEach(networkGuard((name) => LIB_NAMES.includes(name) && name !== 'snapDOM current'))
+
 describe(`Oracle self-test [${ENGINE}]`, () => {
   test('mutation test: oracle reports every capability absent on the mutant fixture', async () => {
     fixture = buildCapabilityFixture({ mutant: true })
@@ -116,8 +125,11 @@ describe(`Oracle self-test [${ENGINE}]`, () => {
 })
 
 describe(`Capability matrix [${ENGINE}]`, () => {
-  for (const [name, capture] of Object.entries(LIBS)) {
-    test(name, async () => {
+  for (const name of LIB_NAMES) {
+    const capture = LIBS[name]
+    test(name, async (ctx) => {
+      // Reported as skipped WITH the reason rather than as a green pass that covered nothing.
+      if (!capture) ctx.skip(`could not load: ${UNAVAILABLE.get(name)}`)
       fixture = buildCapabilityFixture()
       document.body.appendChild(fixture)
       const t0 = performance.now()
@@ -163,5 +175,8 @@ afterAll(() => {
   console.log(w.map((n) => '-'.repeat(n)).join('  '))
   for (const r of results) {
     console.log(line((c) => cell(r, c)) + (r.error ? `   ERROR: ${r.error}` : ''))
+  }
+  if (UNAVAILABLE.size) {
+    console.log(`not reachable from this machine: ${[...UNAVAILABLE.keys()].join(', ')}`)
   }
 })

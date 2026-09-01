@@ -12,6 +12,9 @@ vi.mock('../src/utils', async (importOriginal) => {
 })
 
 vi.mock('../src/modules/fonts.js', () => ({
+  // preCache's subtree warm imports prepareClone -> pseudo.js, which pulls iconToImage from
+  // this module; a full-module mock must cover the graph's surface or collection dies.
+  iconToImage: vi.fn(async () => ({ dataUrl: 'data:image/png;base64,AA==', width: 1, height: 1 })),
   embedCustomFonts: vi.fn(async () => ''),
   collectFontUsage: vi.fn(() => ({
     required: new Set(['Mansalva__700__italic__100']),

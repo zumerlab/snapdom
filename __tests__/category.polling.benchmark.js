@@ -11,7 +11,9 @@
 // Run:  npx vitest bench __tests__/category.polling.benchmark.js --browser.headless --watch=false
 import { bench, describe, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
-import { LIBS, dashboardScenario } from './category.libs.js'
+import { loadLibs, dashboardScenario } from './category.libs.js'
+
+const LIBS = await loadLibs()
 
 const TICKS = 20
 let scene = null

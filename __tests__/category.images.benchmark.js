@@ -9,7 +9,9 @@
 // Run:  npx vitest bench __tests__/category.images.benchmark.js --browser.headless --watch=false
 import { bench, describe, beforeAll, afterAll } from 'vitest'
 import { snapdom } from '../src/index'
-import { LIBS, imageGridScenario } from './category.libs.js'
+import { loadLibs, imageGridScenario } from './category.libs.js'
+
+const LIBS = await loadLibs()
 
 let scene = null
 beforeAll(async () => { scene = imageGridScenario(); await scene.ready })

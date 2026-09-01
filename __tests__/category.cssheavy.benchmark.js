@@ -8,7 +8,9 @@
 // Run:  npx vitest bench __tests__/category.cssheavy.benchmark.js --browser.headless --watch=false
 import { bench, describe, beforeAll, afterAll } from 'vitest'
 import { snapdom } from '../src/index'
-import { LIBS, cssHeavyScenario } from './category.libs.js'
+import { loadLibs, cssHeavyScenario } from './category.libs.js'
+
+const LIBS = await loadLibs()
 
 let scene = null
 beforeAll(() => { scene = cssHeavyScenario() })

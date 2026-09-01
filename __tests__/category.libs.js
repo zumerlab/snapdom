@@ -4,33 +4,32 @@
 // bench() calls, which throw "bench() is only available in benchmark mode" and take the whole
 // test file down with them — so anything both a bench and a test need lives here instead.
 //
+// Competitors are fetched from a CDN. A STATIC `import ... from 'https://…'` aborts
+// collection of every file importing this module when the link is down or slow, which is why
+// the capability matrix could not live inside `npm test`. Each competitor is loaded lazily
+// and independently by loadLibs() instead: one unreachable payload costs one row, and the
+// suites report it as unavailable. snapdom is local, so its row always runs, offline included.
+//
 // Every adapter has the same signature, (el) => Promise<pngDataUrl>, and every library is
 // called with its DEFAULTS at scale 1, so the comparison is like-for-like.
 
 import { snapdom } from '../src/index'
-import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
-import { domToPng } from 'https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/+esm'
-import * as d2iMore from 'https://cdn.jsdelivr.net/npm/dom-to-image-more@3.10.2/+esm'
-import * as d2i from 'https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/+esm'
-import * as d2iModern from 'https://cdn.jsdelivr.net/npm/dom-to-image-modern@1.0.2/+esm'
-import { capture as domlensCapture } from 'https://cdn.jsdelivr.net/npm/domlens.js@0.1.0/+esm'
-import { screenshot as renounScreenshot } from 'https://cdn.jsdelivr.net/npm/@renoun/screenshot@0.3.3/+esm'
-
-let html2canvasLoaded = false
-export async function loadHtml2Canvas() {
-  if (html2canvasLoaded) return
-  await new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
-    script.onload = () => resolve()
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
-  html2canvasLoaded = true
-}
-await loadHtml2Canvas()
 
 const pick = (m) => (m.default && typeof m.default === 'object' ? m.default : m)
+
+// Vite statically analyses `import()` with a literal argument and tries to resolve it at
+// build time; @vite-ignore hands the URL to the browser's own loader instead.
+const cdn = (url) => import(/* @vite-ignore */ url)
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = src
+    script.onload = () => resolve(undefined)
+    script.onerror = () => reject(new Error(`failed to load ${src}`))
+    document.head.appendChild(script)
+  })
+}
 
 // Normalize any library output (data URL | <img> | <canvas> | Blob) to a PNG data URL,
 // so every caller ends at the same stage.
@@ -43,22 +42,81 @@ export async function toDataUrl(out) {
   throw new Error('unrecognized capture output')
 }
 
-export const LIBS = {
+// Insertion order is the order every report renders in, so keep snapdom first.
+const LOADERS = {
   // burst:false is load-bearing for FAIRNESS. tinybench runs each library's iterations
   // against the same mounted element, and snapdom's auto-burst memoizes after 3 captures of
   // one element inside 2s — so from iteration 3 the "pipeline" column was the memo while
   // every competitor ran its full pipeline. The memo is a real product win, but it is
   // measured honestly in session.static.benchmark.js under its own label; this table claims
   // steady-state PIPELINE cost, so it must pin the pipeline.
-  'snapDOM current': async (el) => toDataUrl(await snapdom.toPng(el, { scale: 1, burst: false })),
-  'html2canvas 1.4.1': async (el) => toDataUrl(await window.html2canvas(el, { logging: false, scale: 1 })),
-  'html-to-image 1.11.13': async (el) => toDataUrl(await htmlToImage.toPng(el, { pixelRatio: 1 })),
-  'modern-screenshot 4.7.0': async (el) => toDataUrl(await domToPng(el, { scale: 1 })),
-  'dom-to-image-more 3.10.2': async (el) => toDataUrl(await pick(d2iMore).toPng(el, { scale: 1 })),
-  'dom-to-image 2.6.0': async (el) => toDataUrl(await pick(d2i).toPng(el, { scale: 1 })),
-  'dom-to-image-modern 1.0.2': async (el) => toDataUrl(await pick(d2iModern).toPng(el, { scale: 1 })),
-  'domlens.js 0.1.0': async (el) => toDataUrl(await domlensCapture(el, { scale: 1 })),
-  '@renoun/screenshot 0.3.3': async (el) => toDataUrl(await renounScreenshot.canvas(el, { scale: 1 })),
+  'snapDOM current': async () => async (el) => toDataUrl(await snapdom.toPng(el, { scale: 1, burst: false })),
+
+  'html2canvas 1.4.1': async () => {
+    if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')
+    return async (el) => toDataUrl(await window.html2canvas(el, { logging: false, scale: 1 }))
+  },
+
+  'html-to-image 1.11.13': async () => {
+    const m = await cdn('https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm')
+    return async (el) => toDataUrl(await m.toPng(el, { pixelRatio: 1 }))
+  },
+
+  'modern-screenshot 4.7.0': async () => {
+    const m = await cdn('https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/+esm')
+    return async (el) => toDataUrl(await m.domToPng(el, { scale: 1 }))
+  },
+
+  'dom-to-image-more 3.10.2': async () => {
+    const m = pick(await cdn('https://cdn.jsdelivr.net/npm/dom-to-image-more@3.10.2/+esm'))
+    return async (el) => toDataUrl(await m.toPng(el, { scale: 1 }))
+  },
+
+  'dom-to-image 2.6.0': async () => {
+    const m = pick(await cdn('https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/+esm'))
+    return async (el) => toDataUrl(await m.toPng(el, { scale: 1 }))
+  },
+
+  'dom-to-image-modern 1.0.2': async () => {
+    const m = pick(await cdn('https://cdn.jsdelivr.net/npm/dom-to-image-modern@1.0.2/+esm'))
+    return async (el) => toDataUrl(await m.toPng(el, { scale: 1 }))
+  },
+
+  'domlens.js 0.1.0': async () => {
+    const m = await cdn('https://cdn.jsdelivr.net/npm/domlens.js@0.1.0/+esm')
+    return async (el) => toDataUrl(await m.capture(el, { scale: 1 }))
+  },
+
+  '@renoun/screenshot 0.3.3': async () => {
+    const m = await cdn('https://cdn.jsdelivr.net/npm/@renoun/screenshot@0.3.3/+esm')
+    return async (el) => toDataUrl(await m.screenshot.canvas(el, { scale: 1 }))
+  },
+}
+
+/** Every library name the category covers, in report order. */
+export const LIB_NAMES = Object.keys(LOADERS)
+
+/** name → why it could not be loaded. Populated by loadLibs(). */
+export const UNAVAILABLE = new Map()
+
+let loaded = null
+
+/**
+ * Resolve every adapter this machine can actually reach: name → (el) => Promise<pngDataUrl>.
+ * An unreachable library is absent from the result and lands in UNAVAILABLE with the reason.
+ */
+export async function loadLibs() {
+  if (loaded) return loaded
+  const libs = {}
+  for (const [name, load] of Object.entries(LOADERS)) {
+    try {
+      libs[name] = await load()
+    } catch (e) {
+      UNAVAILABLE.set(name, String(e?.message || e).slice(0, 120))
+    }
+  }
+  loaded = libs
+  return libs
 }
 
 // ── Scenarios ───────────────────────────────────────────────────────────────

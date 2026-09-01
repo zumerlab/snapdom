@@ -19,7 +19,9 @@
 //       BROWSER=all npx vitest bench __tests__/category.benchmark.js --browser.headless --watch=false
 
 import { bench, describe, afterEach } from 'vitest'
-import { LIBS, SCENARIOS as scenarios } from './category.libs.js'
+import { loadLibs, SCENARIOS as scenarios } from './category.libs.js'
+
+const LIBS = await loadLibs()
 
 for (const scenario of scenarios) {
   describe(`Category benchmark: ${scenario.label}`, () => {

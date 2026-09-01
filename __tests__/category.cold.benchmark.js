@@ -11,7 +11,9 @@
 // Run:  npx vitest bench __tests__/category.cold.benchmark.js --browser.headless --watch=false
 import { bench, describe, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
-import { LIBS, bigTableHTML } from './category.libs.js'
+import { loadLibs, bigTableHTML } from './category.libs.js'
+
+const LIBS = await loadLibs()
 
 const HTML = bigTableHTML(500)
 let el = null
