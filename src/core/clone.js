@@ -835,19 +835,25 @@ async function cloneCanvas(node, sessionCache, options) {
 
 async function cloneVideo(node, sessionCache, options) {
   let url = ''
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = node.videoWidth || node.offsetWidth || 320
-    canvas.height = node.videoHeight || node.offsetHeight || 240
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
-      url = canvas.toDataURL('image/png')
-      // blank canvas = cross-origin or no frame loaded
-      if (!url || url === 'data:,') url = ''
+  // The screen shows the poster until playback first starts or a seek (the "show poster
+  // flag"), whatever frames are already decoded: drawImage would paint frame 0 on
+  // Chromium/Firefox and nothing on WebKit, and even a blank canvas serializes to a valid
+  // PNG that shadowed the poster. Read the flag from what it leaves behind instead.
+  const showPoster = node.poster && node.paused && !node.currentTime && !node.played.length
+  if (!showPoster) {
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = node.videoWidth || node.offsetWidth || 320
+      canvas.height = node.videoHeight || node.offsetHeight || 240
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
+        url = canvas.toDataURL('image/png')
+        if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
+      }
+    } catch (e) {
+      debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
     }
-  } catch (e) {
-    debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
   }
 
   const img = document.createElement('img')
