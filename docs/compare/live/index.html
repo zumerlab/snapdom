@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live HTML-to-Image Benchmark — Run It In Your Own Browser</title>
+  <meta name="description" content="Run the SnapDOM comparison yourself: real-world scenes, nine HTML-to-image libraries, one output stage, cold and steady columns, plus a pixel-verified capability matrix." />
+  <meta name="keywords" content="html to image benchmark, html2canvas benchmark, snapdom vs html2canvas, html-to-image speed, dom to image comparison" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/compare/live/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Live HTML-to-Image Benchmark — Run It In Your Own Browser" />
+  <meta property="og:description" content="Nine libraries, real-world scenes, one output stage. Nothing is pre-recorded: the numbers come from your machine." />
+  <meta property="og:url" content="https://snapdom.dev/compare/live/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F7F9FC">
+
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+
+  <style>
+    .lab-panel { background: var(--surface); border: 1px solid var(--border); padding: 20px; margin: 0 0 24px; }
+    .lab-controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    .lab-field { display: flex; flex-direction: column; gap: 6px; }
+    .lab-field > span { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); font-weight: 700; }
+    .lab-field select { font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); background: #fff; color: var(--text); min-width: 260px; }
+    .lab-note { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 14px 0 0; }
+    .lab-libs { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 0; }
+    .lab-lib { font-family: var(--font-mono); font-size: 12px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .lab-lib input:disabled + * , .lab-lib input:disabled { cursor: not-allowed; }
+    .lab-status { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 700; margin: 16px 0 0; min-height: 1.4em; }
+    .lab-stamp { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin: 6px 0 0; word-break: break-word; }
+    /* No max-height, no overflow: html2canvas and domlens clone the whole document and cut the
+       element's REGION out of it, so a stage that scrolls hands them 300px of scene and the
+       rest of the page below it — a wrong picture, fast. The scene has to be fully laid out. */
+    .lab-stage { margin: 16px 0 0; border: 1px dashed var(--border-soft); background: #fff; padding: 10px; }
+    .lab-stage:empty { display: none; }
+    .cmp-table tr.fastest td { background: rgba(45,91,255,0.08); }
+    .cmp-table .tag { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .lab-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin: 16px 0 0; }
+    .lab-gallery figure { margin: 0; min-width: 0; }
+    .lab-gallery figcaption { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-bottom: 6px; word-break: break-word; }
+    .lab-gallery img { width: 100%; height: auto; max-height: 260px; object-fit: contain; object-position: top; border: 1px solid var(--border-soft); background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/16px 16px; }
+    .cap-selftest { font-family: var(--font-mono); font-size: 12px; margin: 14px 0 0; padding: 8px 10px; border: 1px solid var(--border-soft); color: var(--text-muted); }
+    .cap-selftest.ok { color: var(--green, #2e7d32); border-color: currentColor; }
+    .cap-selftest.bad { color: var(--rose, #E63946); border-color: currentColor; }
+    @media (max-width: 640px) { .lab-field select { min-width: 0; width: 100%; } .lab-controls { flex-direction: column; align-items: stretch; } }
+  </style>
+</head>
+<body>
+  <nav class="page-nav">
+    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
+    <a href="../../docs/" data-umami-event="Nav docs">Docs</a>
+    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
+    <a href="../" class="current" data-umami-event="Nav compare">Compare</a>
+    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
+    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
+    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a>
+    <a href="../../blog/" data-umami-event="Nav blog">Blog</a>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">Live benchmark</div>
+    <h1>Run the comparison <span class="accent">on your own machine</span></h1>
+    <p class="lead">Nothing on this page is pre-recorded. Pick a scene, pick the libraries, and every number below is measured in your browser, right now — using the same adapters, the same scenes and the same pixel oracle the SnapDOM repository uses for its own benchmarks.</p>
+  </section>
+
+  <main class="page">
+    <section class="prose">
+      <h2>How to read it</h2>
+      <ul>
+        <li><strong>One output stage for everyone.</strong> Every library is timed all the way to a PNG data URL. Timing SnapDOM's SVG url against a competitor's rasterized PNG leaves out the raster and encode step — on a large scene that step is roughly half the total, and it is how comparison tables end up flattering whoever publishes them.</li>
+        <li><strong>Cold and repeat are different numbers.</strong> <em>First capture</em> builds a brand-new element every time — capturing something you have never captured before. <em>Repeat</em> re-captures the same element. They differ by ~1.4× for SnapDOM, and the ranking is not always the same in both columns.</li>
+        <li><strong>Defaults, scale 1, pinned versions.</strong> No library is configured for advantage. SnapDOM runs with <code>burst: false</code> in every scene except <em>Polling</em>, so its memoization is not compared against everyone else's full pipeline.</li>
+        <li><strong>The table does not know who should win.</strong> Rows are sorted by measured time and the fastest is highlighted, whoever it is. On some scenes that is not SnapDOM.</li>
+      </ul>
+      <p class="muted">Absolute milliseconds depend on your CPU, your browser and how busy the machine is. The ratios are the part worth quoting.</p>
+    </section>
+
+    <section>
+      <div class="lab-panel">
+        <div class="lab-controls">
+          <label class="lab-field">
+            <span>Scene</span>
+            <select id="lab-scene"></select>
+          </label>
+          <button type="button" class="btn btn-primary" id="lab-run" data-umami-event="Lab run benchmark">Run benchmark</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="lab-copy" hidden data-umami-event="Lab copy results">Copy results as markdown</button>
+        </div>
+        <p class="lab-note" id="lab-scene-note"></p>
+        <div class="lab-libs" id="lab-libs"></div>
+        <p class="lab-status" id="lab-status"></p>
+        <p class="lab-stamp" id="lab-stamp"></p>
+        <div class="lab-stage" id="lab-stage"></div>
+      </div>
+
+      <table class="cmp-table">
+        <thead id="lab-thead">
+          <tr><th>Library</th><th>First capture</th><th>Repeat</th><th>vs fastest</th><th>Output</th><th>Differs from SnapDOM</th></tr>
+        </thead>
+        <tbody id="lab-tbody"></tbody>
+      </table>
+
+      <p class="lab-note">The last column is <strong>how far each output is from SnapDOM's</strong>, pixel for pixel — not a correctness verdict, since SnapDOM is only the reference because it is the library this page ships. A few percent is antialiasing and font rasterization. A large number means the two libraries did not render the same thing, and the gallery below shows which: milliseconds cannot tell a fast capture from a fast capture of the <em>wrong thing</em>.</p>
+
+      <p class="lab-note">Every row must also produce the <strong>same output size</strong>, and must actually paint something. A row tagged <em>not comparable</em> rendered at a different resolution, and one tagged <em>blank output</em> returned a correctly-sized image with nothing in it — in both cases the milliseconds are measuring the wrong thing. Treat those rows as bug reports, not results.</p>
+
+      <p class="lab-note" id="lab-gallery-note" hidden>What each library actually produced. Click one to open it full size — speed is only half the comparison, and this is the other half.</p>
+      <div class="lab-gallery" id="lab-gallery"></div>
+    </section>
+
+    <section class="prose">
+      <h2>Capability matrix, verified by pixels</h2>
+      <p>Feature tables are usually copied from READMEs. This one is not: it captures a fixture where each capability paints its own marker colour, then counts those pixels in the output. A library "supports" something here only if the colour survived the round trip.</p>
+      <p>It starts by proving the oracle can say <em>no</em> — the same fixture is built with every capability removed, and all six must read absent. A checker that cannot fail is a checker that means nothing.</p>
+    </section>
+
+    <section>
+      <div class="lab-panel">
+        <button type="button" class="btn btn-primary" id="cap-run" data-umami-event="Lab run matrix">Run the capability matrix</button>
+        <p class="cap-selftest" id="cap-selftest">The oracle self-test runs first.</p>
+      </div>
+      <table class="cmp-table">
+        <thead><tr id="cap-head"></tr></thead>
+        <tbody id="cap-tbody"></tbody>
+      </table>
+      <p class="lab-note">Cells report behaviour <strong>with defaults</strong>. Some libraries pass more of these once configured — html2canvas, for instance, handles conic gradients with <code>foreignObjectRendering: true</code>. Results also vary by engine: run this page in Safari and Firefox and compare.</p>
+    </section>
+
+    <section class="prose">
+      <h2>What this page cannot tell you</h2>
+      <ul>
+        <li><strong>It is one machine — yours.</strong> A run on a busy laptop, in a background tab, or with an extension injecting stylesheets will move every row. Run it twice.</li>
+        <li><strong>Competitors load from a CDN.</strong> Anything jsDelivr cannot serve you shows up as a row that could not load, not as a win.</li>
+        <li><strong>Speed is not fidelity.</strong> A library that skips shadow DOM has less work to do. Read the output gallery and the capability matrix alongside the milliseconds, never instead of them.</li>
+        <li><strong>These are synthetic scenes.</strong> They were chosen because they isolate a cost — per-node work, author-stylesheet scanning, shadow traversal, large-output raster — not because they are your page.</li>
+      </ul>
+      <p>The same scenes run in the repository as <code>__tests__/category.*.benchmark.js</code>, and the numbers quoted in the README come from there. If a run here disagrees with the README, the README is the one that needs re-measuring — please <a href="https://github.com/zumerlab/snapdom/issues" target="_blank" rel="noopener">open an issue</a> with the copied results.</p>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Read the full comparison</h2>
+        <p>Approach trade-offs, the decision guide, and where each library actually fits.</p>
+        <a href="../" class="btn btn-primary" data-umami-event="Lab cta compare">Back to the comparison</a>
+        <a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Lab cta github">View on GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./lab.js"></script>
+</body>
+</html>
