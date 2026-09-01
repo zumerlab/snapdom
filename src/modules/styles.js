@@ -124,14 +124,96 @@ function stampOf(el) {
   return __allStamp * 1e9 + (nodeStamp.get(el) || 0)
 }
 
-/** Whether narrowing is sound for this document: no author rule uses `:has()`. Answered by
- *  the same scan the property universe comes from, so it costs nothing per mutation. */
+/** Whether narrowing is sound for this document: no author rule uses `:has()`.
+ *
+ *  Memoized on __envEpoch, NOT __epoch, and that distinction is the whole fix. The answer
+ *  derives from rule TEXT alone, but it used to read straight through scanFor, whose memo IS
+ *  keyed on __epoch — and onDomRecords bumps __epoch immediately BEFORE asking. The entry
+ *  therefore missed on every batch, so once any capture had wired the observer, EVERY
+ *  external mutation in the host page (a React commit, a virtualised scroll) paid a full
+ *  scanAuthorStyles — every rule in every sheet plus a document-wide getAnimations — with no
+ *  capture in flight, forever. onInteraction paid it again on every focus and change.
+ *  Hoisting the call above the bump does not help: the PREVIOUS batch's bump already
+ *  invalidated the entry, so it saves exactly one scan, not one per batch.
+ *
+ *  __envEpoch covers the rule changes that matter here: <head> mutations, font loads,
+ *  resizes and the `invalidate` escape hatch. The one source it misses is a <style>/<link>
+ *  mounted outside <head>, which onDomRecords closes below by dropping this entry.
+ *  A failed scan answers "cannot narrow" — the document-wide behaviour, always sound. */
+const hasMemo = new WeakMap()
 function canNarrow(doc) {
-  try {
-    return !scanFor(doc || document).usesHas
-  } catch {
-    return false
+  doc = doc || document
+  let h = hasMemo.get(doc)
+  if (!h || h.env !== __envEpoch) {
+    let usesHas = true
+    try { usesHas = scanFor(doc).usesHas } catch { /* unreadable sheets — stay pessimistic */ }
+    h = { env: __envEpoch, usesHas }
+    hasMemo.set(doc, h)
   }
+  return !h.usesHas
+}
+
+/** A <style>/<link> mounted, removed or rewritten OUTSIDE <head>: the head observer never
+ *  sees it, so nothing bumps __envEpoch and canNarrow's memo would keep answering from
+ *  before those rules existed — including a `:has()` rule, which would leave narrowing
+ *  wrongly enabled. Cheap tag test; it only has to be conservative. */
+function ruleSourceDoc(records) {
+  for (const rec of records) {
+    const t = rec.target
+    const el = t && (t.nodeType === 1 ? t : t.parentElement)
+    if (el && (el.tagName === 'STYLE' || el.tagName === 'LINK')) return el.ownerDocument || document
+    for (const n of rec.addedNodes) if (n.tagName === 'STYLE' || n.tagName === 'LINK') return n.ownerDocument || document
+    for (const n of rec.removedNodes) if (n.tagName === 'STYLE' || n.tagName === 'LINK') return (t && t.ownerDocument) || document
+  }
+  return null
+}
+
+/** Open shadow roots wired into the same invalidation.
+ *
+ *  Neither the document observer (MutationObserver does not cross a shadow boundary) nor
+ *  stampSubtree (querySelectorAll does not either) can see inside one, so a web component
+ *  that re-rendered itself between captures moved no stamp and no epoch, and its cached
+ *  snapshots were served forever. The damage is not limited to geometry: rewriteShadowCSS
+ *  emits shadow rules at specificity zero, so the stale generated class OUTRANKS the
+ *  re-injected stylesheet and a `.box` -> `.box.active` flip keeps the previous frame's
+ *  colours — verified in pixels, not in the payload, where the new rule is present but loses.
+ *
+ *  Kept in their own list rather than __observers: the prune in flushStyleInvalidations keys
+ *  on defaultView, which a ShadowRoot does not have, so it would disconnect these on the
+ *  first flush. Their prune is the host leaving the document, and it drops the WeakSet entry
+ *  too so a re-attached host is re-armed.
+ *
+ *  Stamping is scoped to the tree that changed — shadow CSS is scoped, so a mutation inside
+ *  cannot restyle anything but that tree and (via :host / ::slotted) its host. */
+const shadowObserved = new WeakSet()
+const __shadowObservers = []
+
+function onShadowRecords(records) {
+  if (!hasExternalMutation(records)) return
+  bumpEpoch()
+  const stamped = new Set()
+  for (const rec of records) {
+    if (!isExternalRecord(rec)) continue
+    const root = rec.target.getRootNode && rec.target.getRootNode()
+    if (!root || root.nodeType !== 11 || stamped.has(root)) continue
+    stamped.add(root)
+    nodeClock++
+    if (root.host) nodeStamp.set(root.host, nodeClock)
+    const all = root.querySelectorAll('*')
+    for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], nodeClock)
+  }
+}
+
+/** Called from deepClone for every open root it walks — already inside its `node.shadowRoot`
+ *  branch, so nodes without one pay nothing. Closed roots stay unobservable by design. */
+export function observeShadowRoot(root) {
+  if (!root || shadowObserved.has(root)) return
+  shadowObserved.add(root)
+  try {
+    const o = new MutationObserver(onShadowRecords)
+    o.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
+    __shadowObservers.push({ o, root })
+  } catch { /* degrade: this root's changes will not invalidate */ }
 }
 
 /** The DOM observer's callback, also replayed by flushStyleInvalidations on drained records:
@@ -139,8 +221,16 @@ function canNarrow(doc) {
 function onDomRecords(records) {
   if (!hasExternalMutation(records)) return
   bumpEpoch()
+  const ruleDoc = ruleSourceDoc(records)
+  if (ruleDoc) hasMemo.delete(ruleDoc)
   // The epoch above still invalidates the memos that key off DOM structure (isInSvgTemplate,
   // CSSVar, burst's out-of-subtree gate). The snapshot cache is the one that reads stamps.
+  //
+  // Stamping is deduped by the subtree root it would walk. A batch carries one record per
+  // mutation, and a re-render emits many against the same target (an attribute flip plus a
+  // characterData edit plus a childList splice all share a parent), so the undeduped loop
+  // ran one querySelectorAll('*') per RECORD over the same neighbourhood.
+  const stamped = new Set()
   for (const rec of records) {
     if (!isExternalRecord(rec)) continue
     const el = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement
@@ -150,6 +240,9 @@ function onDomRecords(records) {
     // A class or custom-property flip on <html> or <body> reaches the whole document, which
     // is what the all-stamp is for.
     if (el === doc.documentElement || el === doc.body) { __allStamp++; return }
+    const root = el.parentElement || el
+    if (stamped.has(root)) continue
+    stamped.add(root)
     invalidateAround(el)
   }
 }
@@ -257,6 +350,17 @@ export function flushStyleInvalidations() {
       if (!r.length) continue
       if (env) { if (hasExternalMutation(r)) { bumpEpoch(); __envEpoch++ } }
       else onDomRecords(r)
+    }
+    for (let i = __shadowObservers.length - 1; i >= 0; i--) {
+      const { o, root } = __shadowObservers[i]
+      if (!root.host || !root.host.isConnected) {
+        try { o.disconnect() } catch { }
+        shadowObserved.delete(root)
+        __shadowObservers.splice(i, 1)
+        continue
+      }
+      const r = o.takeRecords()
+      if (r.length) onShadowRecords(r)
     }
   } catch { }
 }
@@ -650,8 +754,31 @@ const __snapshotSig = new WeakMap()
 function styleSignature(snap) {
   let sig = __snapshotSig.get(snap)
   if (sig) return sig
-  const entries = Object.entries(snap).sort((a, b) => a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0))
-  sig = entries.map(([k, v]) => `${k}:${v}`).join(';')
+  // Built in INSERTION order, not sorted. This string is only ever a key into
+  // snapshotKeyCache — never rendered, serialized, or compared for ordering — and
+  // snapshotComputedStyleFull fills every snapshot by walking the same property universe, so
+  // two equal snapshots already come out in the same order. The sort was a per-element
+  // reordering of an already-ordered list, paid on the COLD path that every one-shot capture
+  // takes: Object.entries + sort + map + join over ~130 properties, once per element.
+  // Measured on a 1500-node table, per-element cold cost: 118ms sorted -> 77ms here (-35%),
+  // with the warm path unchanged.
+  //
+  // Use push + join, NOT `sig +=`. The concatenating form builds a cons-string that V8 has
+  // to flatten the moment it is used as a Map key, which moved the cost rather than removing
+  // it (warm went 21ms -> 30ms while cold improved). join produces a flat string directly.
+  //
+  // The separator is U+0001 rather than the old `:`/`;` because both of those occur inside
+  // real property values (a data: URL, a quoted font-family), so the old format could in
+  // principle collide two different snapshots onto one key. A control character cannot
+  // appear in a computed value.
+  //
+  // The only cost of dropping the sort is that two elements whose INLINE style properties
+  // were authored in a different order now miss each other in the key cache — one extra
+  // getStyleKey call, never a wrong key. `__needsBgInline` is non-enumerable, so for...in
+  // sees exactly what Object.entries saw.
+  const parts = []
+  for (const k in snap) parts.push(k, snap[k])
+  sig = parts.join('\u0001')
   __snapshotSig.set(snap, sig)
   return sig
 }

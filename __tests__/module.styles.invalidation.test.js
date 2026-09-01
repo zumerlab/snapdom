@@ -7,6 +7,7 @@
 // colour.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
+import { flushStyleInvalidations } from '../src/modules/styles.js'
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })
@@ -189,6 +190,80 @@ describe('what a mutation must NOT cost', () => {
     await readsFor(target)
     const warm = await readsFor(target)
     host.querySelector('.inv-other2 span').textContent = 'changed'
+    const afterForeign = await readsFor(target)
+    expect(afterForeign).toBeGreaterThan(warm * 2)
+  })
+})
+
+describe('what the OBSERVER must not cost', () => {
+  // The document-wide MutationObserver outlives the capture that wired it, so anything it
+  // does on a mutation is a permanent tax on the host app. It used to bump the style epoch
+  // and then ask canNarrow(), whose answer came through scanFor()'s __epoch-keyed memo —
+  // which the bump two lines above had just invalidated. Every external mutation batch in
+  // the page therefore re-walked every rule in every stylesheet, with no capture running.
+  //
+  // scanAuthorStyles calls doc.getAnimations() exactly once, so counting that call counts
+  // full author-stylesheet scans.
+  async function scansDuring(fn) {
+    const proto = Document.prototype
+    const real = proto.getAnimations
+    let scans = 0
+    proto.getAnimations = function (...args) { scans++; return real.apply(this, args) }
+    try { await fn(); return scans } finally { proto.getAnimations = real }
+  }
+
+  it('the scan count does not grow with the number of mutation batches', async () => {
+    const host = page(
+      '.obs-cost span { padding: 2px }',
+      '<div class="obs-cost">' + '<span>row</span>'.repeat(10) + '</div>',
+    )
+    await snapdom(host.querySelector('.obs-cost'), { embedFonts: false, burst: false })
+    flushStyleInvalidations()
+
+    const mutate = (n) => async () => {
+      for (let i = 0; i < n; i++) {
+        host.querySelector('.obs-cost span').textContent = 'changed ' + i
+        flushStyleInvalidations()
+      }
+    }
+    // A settling env-epoch bump (fonts.ready, a resize) can legitimately cost ONE scan, so
+    // the assertion is about growth, not an absolute zero: 4 batches and 24 batches must
+    // cost the same. Before the fix each batch scanned, so these were 4 and 24.
+    const few = await scansDuring(mutate(4))
+    const many = await scansDuring(mutate(24))
+    expect(few).toBeLessThan(2)
+    expect(many).toBeLessThan(2)
+  })
+
+  it('but a <style> added outside <head> still turns narrowing off', async () => {
+    // __envEpoch does not move for a body-mounted sheet (the head observer never sees it),
+    // so the memo has to be dropped explicitly or a :has() rule would go unnoticed and
+    // leave the narrowing wrongly enabled.
+    const host = page(
+      '.obs-narrow2 span { padding: 2px }',
+      '<div class="obs-narrow2">' + '<span>row</span>'.repeat(30) + '</div>' +
+      '<div class="obs-other2"><span>unrelated</span></div>',
+    )
+    const target = host.querySelector('.obs-narrow2')
+
+    const proto = CSSStyleDeclaration.prototype
+    const real = proto.getPropertyValue
+    const readsFor = async (el) => {
+      let calls = 0
+      proto.getPropertyValue = function (...args) { calls++; return real.apply(this, args) }
+      try { await snapdom(el, { embedFonts: false, burst: false }); return calls } finally { proto.getPropertyValue = real }
+    }
+
+    await readsFor(target)
+    const warm = await readsFor(target)
+
+    const bodySheet = document.createElement('style')
+    bodySheet.textContent = '.obs-narrow2:has(.nothing) { color: rgb(255, 0, 0) }'
+    host.appendChild(bodySheet)   // NOT in <head>
+    flushStyleInvalidations()
+
+    host.querySelector('.obs-other2 span').textContent = 'changed'
+    flushStyleInvalidations()
     const afterForeign = await readsFor(target)
     expect(afterForeign).toBeGreaterThan(warm * 2)
   })
