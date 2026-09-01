@@ -240,7 +240,7 @@ async function measurePolling(name, capture, scene) {
 
 // ── Rendering ───────────────────────────────────────────────────────────────
 
-const THUMB = 64
+const THUMB = 128
 
 async function decorate(rows) {
   for (const r of rows) {
@@ -274,13 +274,18 @@ function thumbOf(img) {
   return ctx.getImageData(0, 0, THUMB, THUMB).data
 }
 
-/** Mean absolute per-channel difference, as a percentage. */
+/** Share of pixels that differ beyond tolerance, as a percentage — NOT the mean difference.
+ *  The mean is what this used to report, and it is useless on pages that are mostly white: a
+ *  capture that had picked up the wrong region of the document entirely, containing none of
+ *  the requested element, scored 9.2% and read as a rounding difference. Counting pixels puts
+ *  the same case near 100% and leaves antialiasing near zero. Tolerance matches the fidelity
+ *  suite's. */
 function thumbDiff(a, b) {
-  let sum = 0
+  let differing = 0
   for (let i = 0; i < a.length; i += 4) {
-    sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2])
+    if (Math.abs(a[i] - b[i]) > 25 || Math.abs(a[i + 1] - b[i + 1]) > 25 || Math.abs(a[i + 2] - b[i + 2]) > 25) differing++
   }
-  return (sum / (a.length / 4 * 3) / 255) * 100
+  return (differing / (a.length / 4)) * 100
 }
 
 /** A capture with one flat colour in it did not capture anything, and timing it is timing the
@@ -375,7 +380,7 @@ function render(rows, scene, withGallery = false) {
 function diffCell(r) {
   if (r.name === SNAP) return '<td class="feature">reference</td>'
   if (r.diff == null) return '<td>—</td>'
-  const cls = r.diff >= 15 ? 'no' : r.diff >= 4 ? 'partial' : 'yes'
+  const cls = r.diff >= 10 ? 'no' : r.diff >= 2 ? 'partial' : 'yes'
   return `<td class="${cls}">${r.diff.toFixed(1)}%</td>`
 }
 

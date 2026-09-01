@@ -109,7 +109,7 @@
         <tbody id="lab-tbody"></tbody>
       </table>
 
-      <p class="lab-note">The last column is <strong>how far each output is from SnapDOM's</strong>, pixel for pixel — not a correctness verdict, since SnapDOM is only the reference because it is the library this page ships. A few percent is antialiasing and font rasterization. A large number means the two libraries did not render the same thing, and the gallery below shows which: milliseconds cannot tell a fast capture from a fast capture of the <em>wrong thing</em>.</p>
+      <p class="lab-note">The last column is <strong>the share of pixels that differ from SnapDOM's capture</strong> beyond a per-channel tolerance — not a correctness verdict, since SnapDOM is only the reference because it is the library this page ships. Under a percent is antialiasing and font rasterization. A large number means the two libraries did not render the same thing, and the gallery below shows which: milliseconds cannot tell a fast capture from a fast capture of the <em>wrong thing</em>.</p>
 
       <p class="lab-note">Every row must also produce the <strong>same output size</strong>, and must actually paint something. A row tagged <em>not comparable</em> rendered at a different resolution, and one tagged <em>blank output</em> returned a correctly-sized image with nothing in it — in both cases the milliseconds are measuring the wrong thing. Treat those rows as bug reports, not results.</p>
 
