@@ -722,12 +722,13 @@ async function cloneIframe(node, sessionCache, options) {
 
 /**
  * Whether nothing has been drawn into this canvas yet (fully transparent).
- * Sampled through a small scratch canvas so the check stays O(1) regardless of the source size;
- * only ever called under `{ debug: true }`.
+ * Sampled through a small scratch canvas so the check stays O(1) regardless of the source
+ * size. Reading FROM the source with drawImage binds no context to it, which is what lets
+ * cloneCanvas decide whether probing the source is safe at all.
  * @param {HTMLCanvasElement} node
  * @returns {boolean}
  */
-function isBlankCanvas(node) {
+export function isBlankCanvas(node) {
   try {
     const w = Math.max(1, Math.min(32, node.width))
     const h = Math.max(1, Math.min(32, node.height))
@@ -749,20 +750,37 @@ async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
   try {
-    const ctx = node.getContext('2d', { willReadFrequently: true })
-    try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
-    // A canvas that already holds a WebGL/WebGPU context returns null above, and those are
-    // exactly the ones that need a frame: with preserveDrawingBuffer:false the drawing
-    // buffer is cleared as soon as the frame composites, so toDataURL called from a plain
-    // task (a click handler, say) reads back fully transparent. Awaiting rAF resumes inside
-    // the frame, right after the app's own render callback, while the buffer is still
-    // intact — the blank-result retry below can't cover this because a transparent canvas
-    // still serializes to a perfectly valid PNG, not to 'data:,' (#480).
+    // Read the canvas BEFORE asking it for a context. getContext('2d') on a canvas the page
+    // has not initialized yet does not just answer the question — it CREATES the context and
+    // permanently fixes the element's mode, so the page's own later getContext('webgl')
+    // returns null and its renderer never starts. Snapdom must not be able to break the host
+    // that way. isBlankCanvas reads through a scratch canvas (drawImage FROM the source),
+    // which binds nothing to it.
     //
-    // WebKit needs the same frame for the 2D poke to materialize the buffer; on other
-    // engines toDataURL is synchronous with issued commands, so an unconditional rAF cost a
-    // serialized frame (≥16ms) per canvas — dashboards with N 2D charts paid N frames.
-    if (isSafari() || !ctx) await nextFrame()
+    // The discriminator: a canvas with content necessarily HAS a context, because nothing can
+    // be drawn without one. So once it reads non-blank, getContext is safe by construction —
+    // it returns the existing 2d context, or null when the context is WebGL/WebGPU.
+    let blank = isBlankCanvas(node)
+    if (blank) {
+      // Blank means one of two things, and one frame separates them. A WebGL/WebGPU canvas
+      // with preserveDrawingBuffer:false has its drawing buffer cleared as soon as the frame
+      // composites, so a read from a plain task (a click handler, say) comes back fully
+      // transparent; awaiting rAF resumes inside the frame, right after the app's own render
+      // callback, while the buffer is still intact (#480). A canvas nobody has drawn into
+      // stays blank across that frame — and it has nothing to capture, so it never needs the
+      // poke that would have locked it.
+      await nextFrame()
+      blank = isBlankCanvas(node)
+    }
+    // WebKit needs a frame for the 2D poke to materialize the backing store; on other engines
+    // toDataURL is synchronous with issued commands, so an unconditional rAF cost a serialized
+    // frame (>=16ms) per canvas — dashboards with N 2D charts paid N frames.
+    let ctx = null
+    if (!blank) {
+      ctx = node.getContext('2d', { willReadFrequently: true })
+      try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
+      if (isSafari()) await nextFrame()
+    }
 
     url = node.toDataURL('image/png')
 

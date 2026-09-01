@@ -1,5 +1,6 @@
 // src/api/snapdom.js
 import { captureDOM } from '../core/capture.js'
+import { isBlankCanvas } from '../core/clone.js'
 import { createContext } from '../core/context.js'
 import { isSafari } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
@@ -136,6 +137,14 @@ async function main(element, userOptions) {
     if (element.tagName === 'CANVAS') canvases.unshift(element)
     for (const c of canvases) {
       try {
+        // Only poke a canvas that already HAS a context. getContext('2d') on one the page has
+        // not initialized yet creates it and fixes the element's mode for good, so the app's
+        // own later getContext('webgl') returns null — snapdom must not be able to break the
+        // page it is photographing. A canvas with content necessarily has a context (nothing
+        // can be drawn without one), and isBlankCanvas reads it through a scratch canvas,
+        // which binds nothing. A blank one has nothing for the poke to materialize anyway,
+        // and cloneCanvas still runs its own rAF + retry ladder for the GPU-backed case.
+        if (isBlankCanvas(c)) continue
         const ctx = c.getContext('2d', { willReadFrequently: true })
         if (ctx) ctx.getImageData(0, 0, 1, 1)
       } catch (e) {

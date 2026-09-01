@@ -20,14 +20,20 @@ describe('Safari pre-step — canvas capture root (self-reference)', () => {
     const canvas = document.createElement('canvas')
     canvas.width = 4
     canvas.height = 4
+    // Draw something. The poke — and cloneCanvas's own getContext — now run only on a canvas
+    // that ALREADY has a context, which a canvas with content necessarily does. Probing a
+    // canvas the page never initialized would create the context and fix its mode for good,
+    // breaking the app's later getContext('webgl'); see core.clone.canvasContext.test.js.
+    // The page owns this context, so the assertion below still measures what it always did.
+    canvas.getContext('2d').fillRect(0, 0, 4, 4)
     document.body.appendChild(canvas)
 
     const getContextSpy = vi.spyOn(canvas, 'getContext')
 
     await snapdom(canvas)
 
-    // getContext is called once by the normal cloneCanvas step (always runs), so 1 call
-    // alone would mean the poke never touched this canvas: expect poke + cloneCanvas ≥ 2.
+    // getContext is called once by the normal cloneCanvas step, so 1 call alone would mean
+    // the poke never touched this canvas: expect poke + cloneCanvas >= 2.
     expect(getContextSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 })
