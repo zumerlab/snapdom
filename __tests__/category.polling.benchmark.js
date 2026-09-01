@@ -28,15 +28,15 @@ async function loop(capture) {
   }
 }
 
-const OPTS = { warmupIterations: 1, iterations: 3, time: 0 }
+const OPTS = { warmupIterations: 1, iterations: 6, time: 0 }
 
 describe(`Polling: ${TICKS} captures of a live dashboard (memoization allowed, labeled)`, () => {
   bench('snapDOM defaults (auto-burst memo + diff engage)', async () => {
-    await loop((el) => snapdom.toRaw(el))
+    await loop((el) => snapdom.toPng(el, { scale: 1, dpr: 1 }))
   }, OPTS)
 
   bench('snapDOM burst:false (what the poller would pay without the memo)', async () => {
-    await loop((el) => snapdom.toRaw(el, { burst: false }))
+    await loop((el) => snapdom.toPng(el, { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('modern-screenshot 4.7.0', async () => {

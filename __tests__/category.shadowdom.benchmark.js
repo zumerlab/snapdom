@@ -20,15 +20,15 @@ let scene = null
 beforeAll(() => { scene = shadowTreeScenario() })
 afterAll(() => scene?.cleanup())
 
-const OPTS = { warmupIterations: 1, iterations: 4, time: 0 }
+const OPTS = { warmupIterations: 2, iterations: 10, time: 0 }
 
 describe('Shadow DOM: 150 open roots, 3 levels, ~3000 nodes', () => {
   bench('snapDOM (burst:false)', async () => {
-    await snapdom.toRaw(scene.root, { burst: false })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false })
   }, OPTS)
 
   bench('snapDOM polling 20x, defaults (prices the per-capture root rescan vs the memo)', async () => {
-    for (let t = 0; t < 20; t++) await snapdom.toRaw(scene.root)
+    for (let t = 0; t < 20; t++) await snapdom.toPng(scene.root, { scale: 1, dpr: 1 })
   }, { warmupIterations: 1, iterations: 2, time: 0 })
 
   bench('modern-screenshot 4.7.0', async () => {

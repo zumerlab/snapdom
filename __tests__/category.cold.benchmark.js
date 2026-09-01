@@ -42,16 +42,16 @@ afterEach(() => { el?.remove(); el = null })
 
 describe('Cold vs steady per element: big table (500 rows)', () => {
   bench('A · snapDOM, FRESH element each capture (per-element cold)', async () => {
-    await toDataUrl(await snapdom.toPng(freshElement(), { burst: false }))
+    await toDataUrl(await snapdom.toPng(freshElement(), { dpr: 1, burst: false }))
   }, { warmupIterations: 1, iterations: 6, time: 0 })
 
   bench('B · snapDOM, SAME element recaptured (steady state)', async () => {
     if (!el || !document.body.contains(el)) freshElement()
-    await toDataUrl(await snapdom.toPng(el, { burst: false }))
+    await toDataUrl(await snapdom.toPng(el, { dpr: 1, burst: false }))
   }, { warmupIterations: 2, iterations: 6, time: 0 })
 
   bench('C · snapDOM, fresh element + cache:disabled (true cold)', async () => {
-    await toDataUrl(await snapdom.toPng(freshElement(), { burst: false, cache: 'disabled' }))
+    await toDataUrl(await snapdom.toPng(freshElement(), { dpr: 1, burst: false, cache: 'disabled' }))
   }, { warmupIterations: 1, iterations: 6, time: 0 })
 
   bench('modern-screenshot, fresh element each capture', async () => {

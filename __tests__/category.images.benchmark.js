@@ -21,11 +21,11 @@ const OPTS = { warmupIterations: 1, iterations: 4, time: 0 }
 
 describe('Image grid: 40 distinct same-origin PNGs over HTTP', () => {
   bench('snapDOM (cache soft — resource cache warm after run 1)', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, burst: false })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false })
   }, OPTS)
 
   bench('snapDOM (cache disabled — every image re-fetched)', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, burst: false, cache: 'disabled' })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false, cache: 'disabled' })
   }, OPTS)
 
   bench('modern-screenshot 4.7.0', async () => {

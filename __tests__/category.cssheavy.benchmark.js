@@ -16,15 +16,15 @@ let scene = null
 beforeAll(() => { scene = cssHeavyScenario() })
 afterAll(() => scene?.cleanup())
 
-const OPTS = { warmupIterations: 1, iterations: 4, time: 0 }
+const OPTS = { warmupIterations: 2, iterations: 10, time: 0 }
 
 describe('CSS-heavy: 10k rules, 1000 class-styled nodes', () => {
   bench('snapDOM (cache soft)', async () => {
-    await snapdom.toRaw(scene.root, { burst: false })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false })
   }, OPTS)
 
   bench('snapDOM (cache disabled)', async () => {
-    await snapdom.toRaw(scene.root, { burst: false, cache: 'disabled' })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false, cache: 'disabled' })
   }, OPTS)
 
   bench('modern-screenshot 4.7.0', async () => {

@@ -30,18 +30,18 @@ const OPTS = { warmupIterations: 1, iterations: 4, time: 0 }
 
 describe('Webfonts: article with Inter 400/700 + mono code spans (configured profile)', () => {
   bench('snapDOM { embedFonts: true }', async () => {
-    await snapdom.toRaw(scene.root, { embedFonts: true, burst: false })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false })
   }, OPTS)
 
   bench('snapDOM { embedFonts: true, cache: disabled } (cold font path — what a one-shot pays)', async () => {
     // The soft arm above is honest steady state: snapdom's font cache is a real
     // cross-capture cache, so iterations 2+ reuse the embedded CSS. But a one-shot user
     // pays the walk + woff2 fetch + base64 every time — this arm prices exactly that.
-    await snapdom.toRaw(scene.root, { embedFonts: true, burst: false, cache: 'disabled' })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false, cache: 'disabled' })
   }, OPTS)
 
   bench('snapDOM { embedFonts: false } (payload renders in fallback — lower bound, labeled)', async () => {
-    await snapdom.toRaw(scene.root, { embedFonts: false, burst: false })
+    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: false, burst: false })
   }, OPTS)
 
   bench('modern-screenshot 4.7.0 (embeds by default)', async () => {
