@@ -201,10 +201,28 @@ function trackPendingImages(element, state) {
   for (const scope of scopesOf(element, state)) {
     if (scope.querySelectorAll) imgs.push(...scope.querySelectorAll('img'))
   }
+  // Drop the ones that are gone. `once` removes an image from the set when its load or
+  // error fires, but an <img> detached while still in flight never fires either — it stayed
+  // in this strong Set with two live listeners, and a list that swaps its rows faster than
+  // they load accumulated them for as long as the captured element was alive.
+  if (state.trackedImages.size) {
+    const live = new Set(imgs)
+    for (const img of state.trackedImages) {
+      if (!live.has(img) && !img.isConnected) state.trackedImages.delete(img)
+    }
+  }
   for (const img of imgs) {
     if (img.complete || state.trackedImages.has(img)) continue
     state.trackedImages.add(img)
     const once = () => {
+      // A load that lands WHILE a capture runs tears that frame: the pipeline read the
+      // pre-load layout, so the clone it is building is already wrong. Marking only `dirty`
+      // was not enough — the commit block clears `dirty` unconditionally and the finally's
+      // tear check judges MutationRecords and `state.torn`, neither of which an image load
+      // produces. The pre-load frame was therefore committed as clean and, since `once`
+      // de-arms itself, served for every later capture. `torn` routes it through the
+      // existing arm below, which drops the memo. Same reasoning as onMediaDirty.
+      if (state.capturing) state.torn = true
       state.dirty = true
       state.dirtyRoots = null
       img.removeEventListener('load', once)
@@ -480,6 +498,11 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     // Before serving: a shadow root attached since the last capture produces no mutation
     // record anywhere, so it has to be discovered by scanning.
     trackShadowRoots(element, state)
+    // Same for an <img> appended since the last capture's finally: it carries no load
+    // listener yet, so its arrival would not invalidate the memo. Arming here as well as in
+    // the finally closes the between-captures window, at one querySelectorAll('img') next
+    // to the subtree walk trackShadowRoots already does.
+    trackPendingImages(element, state)
     for (const o of state.observers) o.__flush(o.takeRecords())
     // Shared style-environment epoch (head CSS + font loads) — one observer stack for the
     // whole library instead of a per-element duplicate.

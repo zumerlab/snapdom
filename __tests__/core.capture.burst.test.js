@@ -112,3 +112,54 @@ describe('auto-burst — repeated captures enable memoization without the option
     }
   })
 })
+
+describe('an <img> load that lands mid-capture', () => {
+  // Image loads change layout and paint with NO mutation record. The `once` listener raised
+  // state.dirty, but the commit block clears dirty unconditionally and the finally's tear
+  // check only judges MutationRecords and state.torn — so a load that landed WHILE the
+  // capture ran was committed as a clean frame built from pre-load layout, and `once`
+  // de-arming itself meant every later capture served it. Same class as onMediaDirty, which
+  // has always set torn.
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+  let host, img
+  afterEach(() => host?.remove())
+
+  function makeHost() {
+    host = document.createElement('div')
+    host.style.cssText = 'width:120px;padding:4px;background:#eef'
+    img = document.createElement('img')
+    // Stands in for an image still in flight: trackPendingImages arms a listener only on
+    // an incomplete <img>, and a real one would settle before the capture we want to tear.
+    Object.defineProperty(img, 'complete', { get: () => false })
+    img.src = PIXEL
+    host.appendChild(img)
+    host.appendChild(document.createTextNode('caption'))
+    document.body.appendChild(host)
+    return host
+  }
+
+  it('is not memoized as a clean frame', async () => {
+    makeHost()
+    // The SAME options on every call, so all three share one burst signature — a call whose
+    // options differ is treated as a one-off that never commits to the memo, and the
+    // assertion below would then hold for a reason that has nothing to do with tearing.
+    const fireMidCapture = {
+      name: 'fire-img-load-mid-capture',
+      beforeRender() { img.dispatchEvent(new Event('load')) },
+    }
+    const opts = { burst: true, plugins: [fireMidCapture] }
+
+    const torn = await snapdom(host, opts)   // load fires while state.capturing is true
+    const next = await snapdom(host, opts)
+
+    expect(next).not.toBe(torn)
+  })
+
+  it('still memoizes when nothing lands mid-capture', async () => {
+    makeHost()
+    const r1 = await snapdom(host, { burst: true })
+    const r2 = await snapdom(host, { burst: true })
+    expect(r2).toBe(r1)
+  })
+})
