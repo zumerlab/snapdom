@@ -105,6 +105,44 @@ async function toBitmap(url) {
   return { w, h, data: ctx.getImageData(0, 0, w, h).data }
 }
 
+/** Paint a human-readable diff: the snapdom capture dimmed to grayscale, RED where the two
+ *  captures disagree inside the common box, ORANGE banding where only one capture has
+ *  pixels (size mismatch). Returns a PNG data URL. */
+function renderDiff(a, b) {
+  const W = Math.max(a.w, b.w)
+  const H = Math.max(a.h, b.h)
+  const w = Math.min(a.w, b.w)
+  const h = Math.min(a.h, b.h)
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const ctx = c.getContext('2d')
+  const out = ctx.createImageData(W, H)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const o = (y * W + x) * 4
+      if (x < w && y < h) {
+        const i = (y * a.w + x) * 4
+        const j = (y * b.w + x) * 4
+        const differs = Math.abs(a.data[i] - b.data[j]) > TOL ||
+          Math.abs(a.data[i + 1] - b.data[j + 1]) > TOL ||
+          Math.abs(a.data[i + 2] - b.data[j + 2]) > TOL ||
+          Math.abs(a.data[i + 3] - b.data[j + 3]) > TOL
+        if (differs) {
+          out.data[o] = 220; out.data[o + 1] = 20; out.data[o + 2] = 20; out.data[o + 3] = 255
+        } else {
+          const g = 200 + (0.3 * a.data[i] + 0.59 * a.data[i + 1] + 0.11 * a.data[i + 2]) * 0.2
+          out.data[o] = g; out.data[o + 1] = g; out.data[o + 2] = g; out.data[o + 3] = 255
+        }
+      } else {
+        out.data[o] = 255; out.data[o + 1] = 160; out.data[o + 2] = 40; out.data[o + 3] = 255
+      }
+    }
+  }
+  ctx.putImageData(out, 0, 0)
+  return c.toDataURL('image/png')
+}
+
 function diff(a, b) {
   const w = Math.min(a.w, b.w)
   const h = Math.min(a.h, b.h)
@@ -168,7 +206,13 @@ describe.skipIf(!RUN)(`domlens vs snapdom over the demo corpus [${ENGINE}]`, () 
           const dim = (Math.abs(A.w - B.w) > DIM_SLACK || Math.abs(A.h - B.h) > DIM_SLACK)
             ? `${A.w}x${A.h} vs ${B.w}x${B.h}` : ''
           const d = diff(A, B)
-          rows.push({ name, pct: d.pct, region: d.region, dim, live })
+          // Persist what each library actually captured, plus the painted diff — the
+          // numbers say WHERE to look, these are what you look AT.
+          const dir = `__snapshots__/domlens-compare/${ENGINE}`
+          await server.commands.writeFile(`${dir}/${name}.snapdom.png`, snapUrl.split(',')[1], 'base64')
+          await server.commands.writeFile(`${dir}/${name}.domlens.png`, lensUrl.split(',')[1], 'base64')
+          await server.commands.writeFile(`${dir}/${name}.diff.png`, renderDiff(A, B).split(',')[1], 'base64')
+          rows.push({ name, pct: d.pct, region: d.region, dim, live, snapDim: `${A.w}x${A.h}`, lensDim: `${B.w}x${B.h}` })
         } catch (e) {
           rows.push({ name, error: String(e?.message || e).slice(0, 70) })
         }
@@ -187,6 +231,9 @@ describe.skipIf(!RUN)(`domlens vs snapdom over the demo corpus [${ENGINE}]`, () 
         '  ' + (r.dim || '—').padEnd(20) + '  ' + (r.live || '').padEnd(11) + '  ' + r.region)
     }
     for (const r of rows.filter((x) => x.error)) console.log(`ERROR  ${r.name}: ${r.error}`)
+    await server.commands.writeFile(
+      `__snapshots__/domlens-compare/${ENGINE}/summary.json`,
+      JSON.stringify({ engine: ENGINE, when: new Date().toISOString(), rows }, null, 1))
 
     const median = compared.length ? compared[Math.floor(compared.length / 2)].pct : 0
     const over5 = compared.filter((r) => r.pct > 5).length
