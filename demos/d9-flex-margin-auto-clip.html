@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>snapdop test</title>
+    <style>
+      
+    .wrapper {
+      display: flex;
+      width: 800px;
+      font-family: sans-serif;
+      margin-block: 20px;
+      /* this causes part of the element to not render in the capture */
+     margin-left: auto;
+    }
+
+    .capture-target  {
+        display: flex;
+        margin-block: 20px;
+        width: 800px;
+        margin-left: 0
+    }
+
+    .capture-target div {
+      width: 200px;
+      padding: 1.5em;
+      background-color: #ddd;
+    }
+
+    .capture-target div:first-of-type {
+      width: 600px;
+      background-color: #fc0;
+    }
+
+    img {
+      width: 100%;
+    }
+
+    button {
+      display: block;
+      margin: 0 auto;
+      padding: 5px 50px;
+      border: 0;
+      border-radius: 10px;
+      background-color: #0d0;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0c0;
+    }
+
+    </style>
+  
+  </head>
+  <body>
+    <div class="wrapper">
+        <div class="capture-target">
+            <div>
+              <i class="fas fa-record-vinyl"></i>
+                Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+                tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+                quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+                consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+                cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            </div>
+            <div>
+                This part will not render in the captured image
+            </div>
+        </div>
+    </div>
+    <button type="button" class="capture">Capture</button>
+    <script type="module">
+      import {snapdom} from '../dist/snapdom.mjs'
+    
+    const target = document.querySelector('.capture-target');  
+   
+    const button = document.querySelector('.capture');
+
+    button.addEventListener('click', async e => {
+      const result = await snapdom.toImg(target);
+
+// await result.download({ format: 'jpg', filename: 'my-capture' });
+
+//const image = await result.toImg()
+      document.body.appendChild(result);
+    });
+
+    </script>
+  </body>
+</html>

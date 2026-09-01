@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SnapDOM Time Tunnel</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #090e15;
+      --paper: #edf5ed;
+      --lime: #c8ff45;
+      --cyan: #5ee8db;
+      --violet: #816dff;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; overflow-x: hidden; color: var(--paper); background: var(--ink); font-family: Arial, sans-serif; }
+    button, input { font: inherit; }
+    .page { width: min(1320px, calc(100% - 24px)); margin: auto; padding: 20px 0 30px; }
+
+    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 14px; }
+    .eyebrow { color: var(--lime); font-size: 9px; font-weight: 900; letter-spacing: .3em; text-transform: uppercase; }
+    h1 { margin: 4px 0 0; font: 900 clamp(42px, 7vw, 78px)/.84 Impact, sans-serif; letter-spacing: -.025em; text-transform: uppercase; }
+    h1 span { color: var(--violet); }
+    header p { max-width: 430px; margin: 0; color: #8da3a6; font-size: 12px; line-height: 1.5; text-align: right; }
+
+    .lab { display: grid; grid-template-columns: 360px minmax(0, 1fr); min-height: 700px; overflow: hidden; border: 1px solid #31414a; border-radius: 16px; background: #0d151d; box-shadow: 0 28px 80px #000b; }
+    .composer { display: flex; flex-direction: column; padding: 18px; border-right: 1px solid #31414a; background: #111b25; }
+    .section-label { margin-bottom: 11px; color: #72888b; font-size: 9px; font-weight: 900; letter-spacing: .17em; text-transform: uppercase; }
+
+    #source-card {
+      --accent: #c8ff45;
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 4 / 5;
+      padding: 25px;
+      border: 1px solid color-mix(in srgb, var(--accent), white 25%);
+      border-radius: 17px;
+      color: #edf5ed;
+      background:
+        radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--accent), transparent 72%) 0 16%, transparent 16.5%),
+        linear-gradient(145deg, #172431, #0a1119);
+      box-shadow: inset 0 0 45px #0008;
+    }
+
+    #source-card::before { content: ''; position: absolute; inset: 0; opacity: .18; background: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 31px 31px; }
+    .card-index { position: relative; color: var(--accent); font: 900 10px/1 monospace; letter-spacing: .18em; }
+    .orb { position: relative; width: 124px; height: 124px; margin: 37px auto 31px; border: 1px solid var(--accent); border-radius: 50%; box-shadow: 0 0 38px color-mix(in srgb, var(--accent), transparent 65%), inset 0 0 30px color-mix(in srgb, var(--accent), transparent 72%); }
+    .orb::before, .orb::after { content: ''; position: absolute; inset: 17px; border: 2px dashed var(--accent); border-radius: 38% 62% 53% 47%; transform: rotate(var(--spin, 0deg)); }
+    .orb::after { inset: 38px; border-style: solid; border-radius: 50%; background: var(--accent); box-shadow: 0 0 26px var(--accent); }
+    #source-title { position: relative; margin: 0; font: 900 40px/.92 Impact, sans-serif; letter-spacing: .02em; text-transform: uppercase; }
+    #source-copy { position: relative; margin: 13px 0 0; color: #a7b8b8; font-size: 12px; line-height: 1.45; }
+    .metrics { position: absolute; right: 23px; bottom: 23px; left: 23px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric { padding: 10px; border: 1px solid #ffffff20; border-radius: 8px; background: #ffffff08; }
+    .metric small { display: block; color: #819294; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
+    .metric strong { color: var(--accent); font: 900 24px/1 Impact, sans-serif; }
+
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 13px; }
+    .action { border: 1px solid #3d5258; border-radius: 999px; padding: 10px; color: var(--paper); background: #20303b; cursor: pointer; font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+    .action.primary { color: var(--ink); border-color: var(--lime); background: var(--lime); }
+    .action:disabled { cursor: wait; opacity: .5; }
+    .plugin-flow { margin-top: auto; padding-top: 18px; color: #6f8588; font-size: 10px; line-height: 1.5; }
+    .plugin-flow code { color: var(--cyan); }
+
+    .tunnel { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(circle, #111c31, #03060b 72%); }
+    #gl { display: block; width: 100%; height: 100%; min-height: 700px; cursor: grab; }
+    #gl:active { cursor: grabbing; }
+    .hud { position: absolute; inset: 0; pointer-events: none; }
+    .hud-top { display: flex; justify-content: space-between; padding: 16px; color: #8ca0a8; font: 900 9px/1 monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .hud-top strong { color: var(--lime); }
+    .reticle { position: absolute; top: 50%; left: 50%; width: 42px; height: 42px; border: 1px solid #c8ff4555; border-radius: 50%; transform: translate(-50%, -50%); }
+    .reticle::before, .reticle::after { content: ''; position: absolute; top: 50%; left: 50%; background: #c8ff4599; transform: translate(-50%, -50%); }
+    .reticle::before { width: 62px; height: 1px; } .reticle::after { width: 1px; height: 62px; }
+    .help { position: absolute; right: 16px; bottom: 16px; padding: 9px 12px; border: 1px solid #ffffff1c; border-radius: 999px; color: #7c9196; background: #05080dbb; font-size: 9px; }
+    #empty { position: absolute; top: 50%; left: 50%; color: #73868c; font-size: 12px; transform: translate(-50%, -50%); }
+
+    @media (max-width: 850px) { header { display: block; } header p { margin-top: 11px; text-align: left; } .lab { grid-template-columns: 1fr; } .composer { border-right: 0; border-bottom: 1px solid #31414a; } #source-card { max-width: 430px; width: 100%; margin: auto; } .plugin-flow { margin-top: 18px; } #gl { min-height: 540px; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div><div class="eyebrow">SnapDOM × native WebGL</div><h1>Time <span>Tunnel</span></h1></div>
+      <p>Cada estado del componente DOM se convierte, mediante un plugin, en una textura navegable dentro de un túnel WebGL.</p>
+    </header>
+
+    <section class="lab">
+      <aside class="composer">
+        <div class="section-label">Componente DOM original</div>
+        <article id="source-card">
+          <div class="card-index">STATE / <span id="source-index">01</span></div>
+          <div class="orb"></div>
+          <h2 id="source-title">Signal found</h2>
+          <p id="source-copy">Una señal desconocida atraviesa la interfaz.</p>
+          <div class="metrics"><div class="metric"><small>Energía</small><strong id="energy">84</strong></div><div class="metric"><small>Distancia</small><strong id="distance">12</strong></div></div>
+        </article>
+        <div class="actions">
+          <button class="action" id="mutate">Mutar DOM</button>
+          <button class="action primary" id="capture">Enviar al túnel</button>
+        </div>
+        <div class="plugin-flow"><code>afterClone()</code> identifica el estado → <code>defineExports()</code> añade <strong>toTunnel()</strong> → WebGL recibe la captura como textura.</div>
+      </aside>
+
+      <div class="tunnel">
+        <canvas id="gl" aria-label="Túnel WebGL de capturas SnapDOM"></canvas>
+        <div id="empty">Preparando estados iniciales…</div>
+        <div class="hud">
+          <div class="hud-top"><span><strong id="frame-count">00</strong> texturas DOM</span><span id="status">WebGL online</span></div>
+          <div class="reticle"></div>
+          <div class="help">Rueda para viajar · mouse para inclinar</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    class TunnelRenderer {
+      constructor(canvas) {
+        this.canvas = canvas
+        this.gl = canvas.getContext('webgl', { alpha: false, antialias: true })
+        this.frames = []
+        this.travel = 0
+        this.targetTravel = 0
+        this.tilt = { x: 0, y: 0 }
+        this.targetTilt = { x: 0, y: 0 }
+        if (!this.gl) throw new Error('WebGL no está disponible')
+        this.setup()
+        this.bind()
+        requestAnimationFrame(time => this.render(time))
+      }
+
+      shader(type, source) {
+        const shader = this.gl.createShader(type)
+        this.gl.shaderSource(shader, source)
+        this.gl.compileShader(shader)
+        if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) throw new Error(this.gl.getShaderInfoLog(shader))
+        return shader
+      }
+
+      setup() {
+        const gl = this.gl
+        const vertex = this.shader(gl.VERTEX_SHADER, `
+          attribute vec2 position;
+          attribute vec2 uv;
+          uniform float depth;
+          uniform float aspect;
+          uniform float frameAspect;
+          uniform float angle;
+          uniform vec2 offset;
+          varying vec2 texCoord;
+          void main() {
+            float c = cos(angle), s = sin(angle);
+            vec2 p = vec2(position.x * c - position.y * s, position.x * s + position.y * c);
+            p.x *= frameAspect;
+            float perspective = 1.7 / depth;
+            vec2 projected = p * perspective + offset / depth;
+            projected.x /= aspect;
+            gl_Position = vec4(projected, 0.0, 1.0);
+            texCoord = uv;
+          }
+        `)
+        const fragment = this.shader(gl.FRAGMENT_SHADER, `
+          precision mediump float;
+          uniform sampler2D image;
+          uniform float opacity;
+          varying vec2 texCoord;
+          void main() {
+            vec4 color = texture2D(image, texCoord);
+            float edge = smoothstep(0.0, .035, texCoord.x) * smoothstep(0.0, .035, texCoord.y) * smoothstep(0.0, .035, 1.0-texCoord.x) * smoothstep(0.0, .035, 1.0-texCoord.y);
+            gl_FragColor = vec4(color.rgb, color.a * opacity * edge);
+          }
+        `)
+        this.program = gl.createProgram()
+        gl.attachShader(this.program, vertex)
+        gl.attachShader(this.program, fragment)
+        gl.linkProgram(this.program)
+        gl.useProgram(this.program)
+
+        const data = new Float32Array([
+          -1,-1, 0,1,  1,-1, 1,1,  -1,1, 0,0,
+          -1,1, 0,0,   1,-1, 1,1,   1,1, 1,0
+        ])
+        const buffer = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+        gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
+        const position = gl.getAttribLocation(this.program, 'position')
+        const uv = gl.getAttribLocation(this.program, 'uv')
+        gl.enableVertexAttribArray(position)
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 16, 0)
+        gl.enableVertexAttribArray(uv)
+        gl.vertexAttribPointer(uv, 2, gl.FLOAT, false, 16, 8)
+        this.uniforms = Object.fromEntries(['depth', 'aspect', 'frameAspect', 'angle', 'offset', 'opacity'].map(name => [name, gl.getUniformLocation(this.program, name)]))
+        gl.enable(gl.BLEND)
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+      }
+
+      bind() {
+        this.canvas.addEventListener('wheel', event => {
+          event.preventDefault()
+          this.targetTravel += event.deltaY * .0025
+        }, { passive: false })
+        this.canvas.addEventListener('pointermove', event => {
+          const rect = this.canvas.getBoundingClientRect()
+          this.targetTilt.x = ((event.clientX - rect.left) / rect.width - .5) * .8
+          this.targetTilt.y = ((event.clientY - rect.top) / rect.height - .5) * -.55
+        })
+        this.canvas.addEventListener('pointerleave', () => { this.targetTilt.x = 0; this.targetTilt.y = 0 })
+      }
+
+      addFrame(url) {
+        return new Promise((resolve, reject) => {
+          const image = new Image()
+          image.onload = () => {
+            const gl = this.gl
+            const texture = gl.createTexture()
+            gl.bindTexture(gl.TEXTURE_2D, texture)
+            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+            this.frames.push({ texture, aspect: image.width / image.height })
+            document.querySelector('#frame-count').textContent = String(this.frames.length).padStart(2, '0')
+            document.querySelector('#empty').hidden = true
+            resolve(this.canvas)
+          }
+          image.onerror = reject
+          image.src = url
+        })
+      }
+
+      resize() {
+        const dpr = Math.min(devicePixelRatio || 1, 2)
+        const width = Math.round(this.canvas.clientWidth * dpr)
+        const height = Math.round(this.canvas.clientHeight * dpr)
+        if (this.canvas.width !== width || this.canvas.height !== height) {
+          this.canvas.width = width
+          this.canvas.height = height
+        }
+        this.gl.viewport(0, 0, width, height)
+      }
+
+      render(time) {
+        this.resize()
+        const gl = this.gl
+        gl.clearColor(.008, .015, .035, 1)
+        gl.clear(gl.COLOR_BUFFER_BIT)
+        this.travel += (this.targetTravel - this.travel) * .065
+        this.tilt.x += (this.targetTilt.x - this.tilt.x) * .06
+        this.tilt.y += (this.targetTilt.y - this.tilt.y) * .06
+        const count = this.frames.length
+        if (count) {
+          const span = Math.max(5.4, count * 1.15)
+          const draw = this.frames.map((frame, index) => {
+            let depth = ((index * 1.15 - this.travel) % span + span) % span + .65
+            return { frame, index, depth }
+          }).sort((a, b) => b.depth - a.depth)
+
+          gl.useProgram(this.program)
+          gl.uniform1f(this.uniforms.aspect, this.canvas.width / this.canvas.height)
+          for (const item of draw) {
+            const wave = item.index * 1.83 + this.travel * .45
+            gl.activeTexture(gl.TEXTURE0)
+            gl.bindTexture(gl.TEXTURE_2D, item.frame.texture)
+            gl.uniform1f(this.uniforms.depth, item.depth)
+            gl.uniform1f(this.uniforms.frameAspect, item.frame.aspect)
+            gl.uniform1f(this.uniforms.angle, Math.sin(wave) * .13 + this.tilt.x * .16)
+            gl.uniform2f(this.uniforms.offset, Math.sin(wave) * .42 + this.tilt.x, Math.cos(wave * .77) * .24 + this.tilt.y)
+            gl.uniform1f(this.uniforms.opacity, Math.min(1, (span - item.depth) * .33))
+            gl.drawArrays(gl.TRIANGLES, 0, 6)
+          }
+          this.targetTravel += .0018
+        }
+        requestAnimationFrame(next => this.render(next))
+      }
+    }
+
+    function timeTunnel(renderer) {
+      let captureIndex = 0
+      return {
+        name: 'webgl-time-tunnel',
+        afterClone(ctx) {
+          captureIndex += 1
+          const label = ctx.clone.querySelector('.card-index')
+          if (label) label.textContent = `ARCHIVED / ${String(captureIndex).padStart(2, '0')}`
+        },
+        defineExports() {
+          return {
+            tunnel: async ctx => renderer.addFrame(ctx.export.url)
+          }
+        }
+      }
+    }
+
+    const renderer = new TunnelRenderer(document.querySelector('#gl'))
+    const tunnelPlugin = timeTunnel(renderer)
+    const source = document.querySelector('#source-card')
+    const palettes = ['#c8ff45', '#5ee8db', '#816dff', '#ff5d8f', '#ffb347']
+    const titles = ['Signal found', 'Memory leak', 'Ghost protocol', 'Future echo', 'Last contact']
+    const copies = ['Una señal desconocida atraviesa la interfaz.', 'El sistema recuerda algo que nunca ocurrió.', 'La copia comienza a observar al original.', 'El próximo estado ya está respondiendo.', 'La transmisión termina antes de comenzar.']
+    let stateIndex = 0
+
+    function mutate() {
+      stateIndex += 1
+      const index = stateIndex % palettes.length
+      source.style.setProperty('--accent', palettes[index])
+      source.style.setProperty('--spin', `${stateIndex * 37}deg`)
+      document.querySelector('#source-index').textContent = String(stateIndex + 1).padStart(2, '0')
+      document.querySelector('#source-title').textContent = titles[index]
+      document.querySelector('#source-copy').textContent = copies[index]
+      document.querySelector('#energy').textContent = 55 + (stateIndex * 17) % 44
+      document.querySelector('#distance').textContent = 8 + (stateIndex * 13) % 87
+    }
+
+    async function capture() {
+      const button = document.querySelector('#capture')
+      button.disabled = true
+      document.querySelector('#status').textContent = 'capturing DOM…'
+      try {
+        const result = await snapdom(source, { plugins: [tunnelPlugin], cache: 'full', fast: true })
+        await result.toTunnel()
+        document.querySelector('#status').textContent = 'texture linked'
+      } finally {
+        button.disabled = false
+      }
+    }
+
+    document.querySelector('#mutate').addEventListener('click', mutate)
+    document.querySelector('#capture').addEventListener('click', capture)
+
+    for (let i = 0; i < 5; i++) {
+      await capture()
+      mutate()
+    }
+  </script>
+</body>
+</html>

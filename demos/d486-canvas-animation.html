@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>capturing an animated canvas (#486)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 20px; margin: 0; }
+      h1 { font-size: 18px; }
+      p { font-size: 14px; color: #555; max-width: 74ch; }
+      #target { display: flex; gap: 16px; width: 460px; border: 1px dashed #ccc; border-radius: 6px; padding: 14px; }
+      figure { margin: 0; }
+      figcaption { font-size: 12px; color: #777; margin-bottom: 6px; }
+      canvas { width: 200px; height: 120px; border: 1px solid #e5e7eb; border-radius: 4px; display: block; }
+      button { margin: 6px 8px 6px 0; padding: 8px 18px; border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; }
+      #btn { background: #0d0; }
+      #btnPlay, #btnEarly { background: #e5e7eb; }
+      table { border-collapse: collapse; font-size: 13px; margin-top: 14px; }
+      th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; }
+      td.ok { color: #080; } td.bad { color: #c00; font-weight: bold; }
+      .out img { border: 1px dashed #d95350; }
+    </style>
+  </head>
+  <body>
+    <h1>#486 — capturing an animated canvas</h1>
+    <p>
+      A canvas is captured by reading it back with <code>toDataURL</code>, so snapDOM can only see
+      what has already been drawn: firing the capture in the same tick that starts an animation
+      (the reported case loaded a Lottie file and captured immediately) serializes an empty canvas.
+      Both canvases below draw a deterministic first frame at load, so the capture must match the
+      live pixels whether the animation is playing or not. <b>Capture too early</b> reproduces the
+      reported mistake on purpose, and <code>{ debug: true }</code> now warns about it.
+    </p>
+
+    <div id="target">
+      <figure>
+        <figcaption>2D context</figcaption>
+        <canvas id="c2d" width="400" height="240"></canvas>
+      </figure>
+      <figure>
+        <figcaption>WebGL (preserveDrawingBuffer: false)</figcaption>
+        <canvas id="cgl" width="400" height="240"></canvas>
+      </figure>
+    </div>
+
+    <button id="btn">Capture</button>
+    <button id="btnPlay">Play / pause animation</button>
+    <button id="btnEarly">Capture too early (reproduces #486)</button>
+
+    <table id="metrics" hidden>
+      <thead><tr><th>canvas</th><th>live painted</th><th>captured painted</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="out"><figure id="shot" hidden><figcaption>captured</figcaption></figure></div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      const c2d = document.querySelector('#c2d')
+      const ctx = c2d.getContext('2d')
+      const cgl = document.querySelector('#cgl')
+      const gl = cgl.getContext('webgl', { preserveDrawingBuffer: false })
+
+      // ---- deterministic frame 0, then optional animation on top of it -------------------
+      function draw2d(t) {
+        ctx.fillStyle = '#0f172a'
+        ctx.fillRect(0, 0, c2d.width, c2d.height)
+        ctx.save()
+        ctx.translate(c2d.width / 2, c2d.height / 2)
+        ctx.rotate(t)
+        ctx.fillStyle = '#38bdf8'
+        ctx.fillRect(-70, -70, 140, 140)
+        ctx.restore()
+        ctx.fillStyle = '#f8fafc'
+        ctx.font = '20px system-ui, sans-serif'
+        ctx.fillText('2D frame', 12, 30)
+      }
+
+      function drawGl(t) {
+        if (!gl) return
+        const v = 0.35 + 0.25 * Math.sin(t)
+        gl.viewport(0, 0, cgl.width, cgl.height)
+        gl.clearColor(v, 0.15, 0.45, 1)
+        gl.clear(gl.COLOR_BUFFER_BIT)
+        gl.enable(gl.SCISSOR_TEST)
+        gl.scissor(40, 40, 160, 160)
+        gl.clearColor(0.98, 0.75, 0.15, 1)
+        gl.clear(gl.COLOR_BUFFER_BIT)
+        gl.disable(gl.SCISSOR_TEST)
+        gl.finish()
+      }
+
+      // The loop ALWAYS runs, `playing` only decides whether the phase advances. A WebGL context
+      // with preserveDrawingBuffer:false throws its drawing buffer away as soon as the frame
+      // composites, so a canvas painted once at load reads back empty no matter when you capture
+      // it — exactly like a paused animation. Redrawing every frame is what a real animation does,
+      // and it is what lets snapdom read the pixels back from inside the frame (#480).
+      let phase = 0
+      let playing = false
+      function frame() {
+        if (playing) phase += 0.03
+        draw2d(phase)
+        drawGl(phase)
+        requestAnimationFrame(frame)
+      }
+      requestAnimationFrame(frame)
+
+      document.querySelector('#btnPlay').addEventListener('click', () => { playing = !playing })
+
+      // ---- measuring -------------------------------------------------------------------
+      function livePainted(cv) {
+        const s = document.createElement('canvas')
+        s.width = cv.width; s.height = cv.height
+        const sc = s.getContext('2d', { willReadFrequently: true })
+        sc.drawImage(cv, 0, 0)
+        const d = sc.getImageData(0, 0, s.width, s.height).data
+        let n = 0
+        for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++
+        return n / (d.length / 4)
+      }
+      async function capturedPainted(el) {
+        const canvas = await snapdom.toCanvas(el, { dpr: 1, scale: 1 })
+        const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height).data
+        let n = 0
+        for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++
+        return n / (d.length / 4)
+      }
+      const pct = (v) => (100 * v).toFixed(1) + '%'
+
+      function report(rows) {
+        const tbody = document.querySelector('#metrics tbody')
+        tbody.innerHTML = ''
+        for (const [name, live, cap, ok, note] of rows) {
+          tbody.insertAdjacentHTML('beforeend',
+            `<tr><td>${name}</td><td>${live}</td><td>${cap}</td><td class="${ok ? 'ok' : 'bad'}">${note}</td></tr>`)
+        }
+        document.querySelector('#metrics').hidden = false
+      }
+
+      document.querySelector('#btn').addEventListener('click', async () => {
+        const rows = []
+        for (const [name, cv] of [['2D', c2d], ['WebGL', cgl]]) {
+          const live = livePainted(cv)
+          const cap = await capturedPainted(cv)
+          rows.push([name, pct(live), pct(cap), Math.abs(live - cap) < 0.05, Math.abs(live - cap) < 0.05 ? 'match' : 'MISMATCH'])
+        }
+        report(rows)
+        const img = await snapdom.toPng(document.querySelector('#target'))
+        const fig = document.querySelector('#shot')
+        fig.querySelectorAll('img').forEach((n) => n.remove())
+        fig.appendChild(img)
+        fig.hidden = false
+      })
+
+      // The reported mistake: capture in the same tick the animation is created, before the
+      // first frame exists. snapdom faithfully serializes an empty canvas; {debug:true} says so.
+      document.querySelector('#btnEarly').addEventListener('click', async () => {
+        const fresh = document.createElement('canvas')
+        fresh.width = 400; fresh.height = 240
+        fresh.style.cssText = 'width:200px;height:120px'
+        document.querySelector('#target').appendChild(fresh)
+        const late = fresh.getContext('2d')
+        setTimeout(() => { late.fillStyle = '#16a34a'; late.fillRect(0, 0, 400, 240) }, 300) // "the animation loads"
+        const cap = await capturedPainted(fresh)
+        report([['fresh canvas captured at t=0', pct(livePainted(fresh)), pct(cap), cap > 0.05,
+          cap > 0.05 ? 'match' : 'empty - capture after the first frame instead']])
+        await snapdom.toRaw(fresh, { debug: true }) // logs the empty-canvas warning
+        setTimeout(() => fresh.remove(), 1200)
+      })
+    </script>
+  </body>
+</html>

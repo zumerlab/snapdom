@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <!-- #454: real KaTeX repro from the issue. The sqrt's .hide-tail span gets width:100%
+             from the KaTeX stylesheet and contains only a position:absolute svg; snapdom
+             dropped that width (softening + authored min-width suppressing the floor), so the
+             square root symbol collapsed and overlapped the radicand. -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css"
+            crossorigin="anonymous"
+        />
+        <script
+            src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js"
+            crossorigin="anonymous"
+        ></script>
+        <script src="/dist/snapdom.js"></script>
+        <style>
+            body { margin: 0; font-family: system-ui, sans-serif; padding: 16px; }
+            #target { font-size: 32px; }
+            #button { display: block; margin: 24px 0; }
+        </style>
+    </head>
+    <body>
+        <div id="target"></div>
+        <button id="button">Capture</button>
+        <script>
+            const e = document.querySelector("#target");
+            katex.render("\\frac{\\sqrt{2185}}{28}", e, {
+                output: "html",
+            });
+
+            const capture = async () => {
+                const img = await snapdom.toSvg(document.querySelector("#target"));
+                document.body.appendChild(img);
+            };
+            document
+                .querySelector("#button")
+                .addEventListener("click", capture);
+        </script>
+    </body>
+</html>

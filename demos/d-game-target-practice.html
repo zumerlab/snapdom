@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shot States — SnapDOM plugin demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --paper: #f4ead2;
+      --orange: #ff6738;
+      --yellow: #ffc857;
+      --teal: #0c7774;
+      --night: #0b171b;
+      --line: #315653;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--paper);
+      background:
+        linear-gradient(#ffffff08 1px, transparent 1px),
+        linear-gradient(90deg, #ffffff08 1px, transparent 1px),
+        radial-gradient(circle at 50% 0, #21494a, var(--night) 58%);
+      background-size: 48px 48px, 48px 48px, auto;
+      font-family: Arial, sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .page {
+      width: min(1120px, calc(100% - 28px));
+      margin: auto;
+      padding: 30px 0 42px;
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 30px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      color: var(--yellow);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 4px 0 0;
+      font: 900 clamp(44px, 7vw, 82px)/.86 Impact, 'Arial Narrow Bold', sans-serif;
+      letter-spacing: -.03em;
+      text-transform: uppercase;
+      text-shadow: 4px 4px 0 #071013;
+    }
+
+    h1 span { color: var(--orange); }
+
+    .intro {
+      max-width: 410px;
+      margin: 0;
+      color: #aac4c0;
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: right;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .game-shell,
+    .side {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #102328;
+      box-shadow: 0 22px 55px #0007;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stat { padding: 12px 17px; }
+    .stat + .stat { border-left: 1px solid var(--line); text-align: right; }
+
+    .label {
+      display: block;
+      color: #789b97;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    .value {
+      color: var(--yellow);
+      font: 900 34px/1 Impact, sans-serif;
+      letter-spacing: .05em;
+    }
+
+    .range {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 610px;
+      overflow: hidden;
+      cursor: none;
+      touch-action: manipulation;
+      background: radial-gradient(circle at center, #245052, #091519 72%);
+    }
+
+    .range::before {
+      content: 'PLUGIN RANGE';
+      position: absolute;
+      bottom: 19px;
+      color: #87b2ac19;
+      font: 900 clamp(45px, 8vw, 94px)/1 Impact, sans-serif;
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+
+    .photo-wrap {
+      position: relative;
+      width: min(90%, 570px);
+      aspect-ratio: 1;
+      filter: drop-shadow(0 24px 18px #0009);
+    }
+
+    #photo-card {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border: 1px solid #60847e;
+      border-radius: 12px;
+      background:
+        radial-gradient(circle at center, #25575a, #0a181c 72%);
+    }
+
+    #photo-card > img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .card-meta {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      z-index: 3;
+      padding: 5px 8px;
+      border: 1px solid #ffffff2e;
+      border-radius: 5px;
+      color: #dce9e5;
+      background: #071114cc;
+      font: 700 10px/1 monospace;
+      letter-spacing: .08em;
+    }
+
+    .plugin-shot-layer,
+    .live-shot-layer,
+    .click-surface {
+      position: absolute;
+      inset: 0;
+    }
+
+    .plugin-shot-layer { z-index: 2; pointer-events: none; }
+    .live-shot-layer { z-index: 5; pointer-events: none; }
+    .click-surface { z-index: 10; }
+
+    .impact {
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 46% 43%, #020202 0 20%, #17100c 22% 33%, transparent 35%),
+        conic-gradient(from 8deg, #bca985, #36261d 9%, #d5c19a 15%, #291a14 23%, #baa27d 31%, #35231a 40%, #c6b18a 51%, #2b1b14 63%, #c8b18b 74%, #36241a 86%, #ad9877);
+      box-shadow:
+        inset 2px 2px 3px #ffffff70,
+        inset -3px -3px 4px #000,
+        1px 2px 3px #000c;
+      transform: translate(-50%, -50%);
+    }
+
+    .impact::before,
+    .impact::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 35px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent 0 8%, #1b100b 9% 24%, transparent 25% 75%, #1b100b 76% 91%, transparent 92%);
+      transform: translate(-50%, -50%) rotate(28deg);
+      opacity: .9;
+    }
+
+    .impact::after { transform: translate(-50%, -50%) rotate(-28deg); }
+
+    .impact.miss {
+      filter: saturate(.55) brightness(.8);
+    }
+
+    .crosshair {
+      position: absolute;
+      z-index: 20;
+      display: none;
+      width: 54px;
+      height: 54px;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px #111;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .crosshair::before,
+    .crosshair::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      background: white;
+      box-shadow: 0 0 0 1px #111;
+      transform: translate(-50%, -50%);
+    }
+
+    .crosshair::before { width: 70px; height: 2px; }
+    .crosshair::after { width: 2px; height: 70px; }
+
+    .busy {
+      position: absolute;
+      inset: 0;
+      z-index: 25;
+      display: none;
+      place-items: center;
+      color: var(--yellow);
+      background: #07111455;
+      font: 900 18px Impact, sans-serif;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .busy.visible { display: grid; }
+
+    .side { overflow: hidden; }
+
+    .side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .side h2 {
+      margin: 0;
+      font: 900 22px/1 Impact, sans-serif;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    #reset {
+      border: 0;
+      padding: 0;
+      color: #86a5a1;
+      background: none;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    #frames {
+      display: grid;
+      gap: 12px;
+      max-height: 648px;
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .empty {
+      padding: 48px 18px;
+      color: #718e8a;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .frame {
+      padding: 8px;
+      border: 1px solid #315653;
+      border-radius: 9px;
+      background: #0a1a1e;
+      animation: enter .25s ease-out;
+    }
+
+    @keyframes enter { from { opacity: 0; transform: translateY(-8px); } }
+
+    .frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1;
+      border-radius: 5px;
+      object-fit: contain;
+      background: #142b2e;
+    }
+
+    .frame div { padding: 10px 4px 4px; }
+
+    .frame strong {
+      display: block;
+      color: var(--yellow);
+      font: 900 20px/1 Impact, sans-serif;
+    }
+
+    .frame span {
+      display: block;
+      margin-top: 5px;
+      color: #789793;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .explain {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      margin-top: 18px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--line);
+    }
+
+    .hook {
+      padding: 15px;
+      background: #102328;
+    }
+
+    .hook code { color: var(--yellow); font-size: 12px; }
+    .hook p { margin: 6px 0 0; color: #86a39f; font-size: 12px; line-height: 1.45; }
+
+    @media (max-width: 850px) {
+      header { display: block; }
+      .intro { margin-top: 13px; text-align: left; }
+      .layout { grid-template-columns: 1fr; }
+      .range { min-height: 520px; }
+      #frames { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); max-height: none; }
+    }
+
+    @media (max-width: 560px) {
+      .range { min-height: 420px; }
+      .photo-wrap { width: 96%; }
+      .explain { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="eyebrow">SnapDOM plugin experiment</div>
+        <h1>Shot <span>States</span></h1>
+      </div>
+      <p class="intro">La imagen no se mueve. Cada disparo se guarda en un clon persistente y SnapDOM captura automáticamente el nuevo estado.</p>
+    </header>
+
+    <div class="layout">
+      <section class="game-shell">
+        <div class="hud">
+          <div class="stat"><span class="label">Puntaje</span><span class="value" id="score">0000</span></div>
+          <div class="stat"><span class="label">Estados capturados</span><span class="value" id="state-count">00</span></div>
+        </div>
+
+        <div class="range" id="range">
+          <div class="photo-wrap" id="photo-wrap">
+            <article id="photo-card">
+              <img src="./assets/target-practice/robot.png" alt="Robot retro con blanco circular en el pecho" draggable="false">
+              <div class="plugin-shot-layer"></div>
+              <div class="card-meta">ESTADO <span data-state>00</span> · <span data-score>0000</span> PTS</div>
+            </article>
+            <div class="live-shot-layer" id="live-shots"></div>
+            <div class="click-surface" id="click-surface" aria-label="Dispará sobre la imagen"></div>
+          </div>
+          <div class="crosshair" id="crosshair"></div>
+          <div class="busy" id="busy">Capturando estado…</div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <div class="side-head">
+          <h2>Historial</h2>
+          <button id="reset">Reiniciar</button>
+        </div>
+        <div id="frames"><div class="empty">Dispará sobre la imagen para crear el primer estado.</div></div>
+      </aside>
+    </div>
+
+    <section class="explain">
+      <div class="hook"><code>afterClone(ctx)</code><p>Reutiliza el clon anterior y agrega el nuevo impacto.</p></div>
+      <div class="hook"><code>afterRender(ctx)</code><p>Guarda el clon actualizado y entrega la captura al historial.</p></div>
+      <div class="hook"><code>plugin.reset()</code><p>Borra la memoria del plugin para empezar otra secuencia.</p></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    function createShotStatesPlugin(onFrame) {
+      let savedClone = null
+      let pendingShot = null
+      let state = 0
+
+      return {
+        name: 'shot-states',
+
+        record(shot) {
+          pendingShot = shot
+        },
+
+        afterClone(ctx) {
+          if (savedClone) ctx.clone = savedClone.cloneNode(true)
+          if (!pendingShot) return
+
+          const impact = document.createElement('span')
+          impact.className = `impact${pendingShot.points ? '' : ' miss'}`
+          impact.style.cssText = `
+            position:absolute;
+            left:${pendingShot.x}%;
+            top:${pendingShot.y}%;
+            width:25px;
+            height:25px;
+            border-radius:50%;
+            background:
+              radial-gradient(circle at 46% 43%, #020202 0 20%, #17100c 22% 33%, transparent 35%),
+              conic-gradient(from 8deg, #bca985, #36261d 9%, #d5c19a 15%, #291a14 23%, #baa27d 31%, #35231a 40%, #c6b18a 51%, #2b1b14 63%, #c8b18b 74%, #36241a 86%, #ad9877);
+            box-shadow:inset 2px 2px 3px #ffffff70, inset -3px -3px 4px #000, 1px 2px 3px #000c;
+            transform:translate(-50%, -50%);
+            ${pendingShot.points ? '' : 'filter:saturate(.55) brightness(.8);'}
+          `
+          ctx.clone.querySelector('.plugin-shot-layer').append(impact)
+
+          state += 1
+          ctx.clone.querySelector('[data-state]').textContent = String(state).padStart(2, '0')
+          ctx.clone.querySelector('[data-score]').textContent = String(pendingShot.total).padStart(4, '0')
+        },
+
+        afterRender(ctx) {
+          savedClone = ctx.clone.cloneNode(true)
+          if (!pendingShot) return
+          onFrame({
+            url: ctx.dataURL,
+            state,
+            points: pendingShot.points,
+            total: pendingShot.total
+          })
+          pendingShot = null
+        },
+
+        reset() {
+          savedClone = null
+          pendingShot = null
+          state = 0
+        }
+      }
+    }
+
+    const photoCard = document.querySelector('#photo-card')
+    const photoWrap = document.querySelector('#photo-wrap')
+    const clickSurface = document.querySelector('#click-surface')
+    const liveShots = document.querySelector('#live-shots')
+    const crosshair = document.querySelector('#crosshair')
+    const busy = document.querySelector('#busy')
+    const scoreNode = document.querySelector('#score')
+    const countNode = document.querySelector('#state-count')
+    const frames = document.querySelector('#frames')
+    let score = 0
+    let capturing = false
+
+    function addFrame(frame) {
+      frames.querySelector('.empty')?.remove()
+      const item = document.createElement('article')
+      item.className = 'frame'
+      const image = document.createElement('img')
+      image.src = frame.url
+      image.alt = `Estado ${frame.state}`
+      const copy = document.createElement('div')
+      const title = document.createElement('strong')
+      title.textContent = `Estado ${String(frame.state).padStart(2, '0')}`
+      const detail = document.createElement('span')
+      detail.textContent = `+${frame.points} · ${frame.total} puntos`
+      copy.append(title, detail)
+      item.append(image, copy)
+      frames.prepend(item)
+      countNode.textContent = String(frame.state).padStart(2, '0')
+    }
+
+    const shotStates = createShotStatesPlugin(addFrame)
+
+    function scoreShot(x, y) {
+      const distance = Math.hypot(x - 50, y - 67)
+      if (distance < 5) return 100
+      if (distance < 11) return 75
+      if (distance < 19) return 50
+      if (distance < 34) return 10
+      return 0
+    }
+
+    function placeLiveImpact(shot) {
+      const impact = document.createElement('span')
+      impact.className = `impact${shot.points ? '' : ' miss'}`
+      impact.style.left = `${shot.x}%`
+      impact.style.top = `${shot.y}%`
+      liveShots.append(impact)
+    }
+
+    async function shoot(event) {
+      if (capturing) return
+      const rect = photoWrap.getBoundingClientRect()
+      const x = ((event.clientX - rect.left) / rect.width) * 100
+      const y = ((event.clientY - rect.top) / rect.height) * 100
+      const points = scoreShot(x, y)
+      score += points
+      const shot = { x, y, points, total: score }
+
+      scoreNode.textContent = String(score).padStart(4, '0')
+      placeLiveImpact(shot)
+      shotStates.record(shot)
+      capturing = true
+      busy.classList.add('visible')
+
+      try {
+        await snapdom(photoCard, {
+          plugins: [shotStates],
+          cache: 'full',
+          fast: true
+        })
+      } finally {
+        capturing = false
+        busy.classList.remove('visible')
+      }
+    }
+
+    function moveCrosshair(event) {
+      const range = document.querySelector('#range').getBoundingClientRect()
+      crosshair.style.display = 'block'
+      crosshair.style.left = `${event.clientX - range.left}px`
+      crosshair.style.top = `${event.clientY - range.top}px`
+    }
+
+    function reset() {
+      shotStates.reset()
+      score = 0
+      scoreNode.textContent = '0000'
+      countNode.textContent = '00'
+      liveShots.replaceChildren()
+      frames.innerHTML = '<div class="empty">Dispará sobre la imagen para crear el primer estado.</div>'
+    }
+
+    clickSurface.addEventListener('pointerdown', shoot)
+    clickSurface.addEventListener('pointermove', moveCrosshair)
+    clickSurface.addEventListener('pointerleave', () => { crosshair.style.display = 'none' })
+    document.querySelector('#reset').addEventListener('click', reset)
+  </script>
+</body>
+</html>

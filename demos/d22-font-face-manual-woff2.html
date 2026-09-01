@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo 3 — @font-face manual (woff2 local) + localFonts</title>
+  <style>
+      @font-face {
+      font-family: 'Fira Code';
+      font-style: normal;
+      font-weight: 700;
+      font-display: fallback;
+      src: url('https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2') format('woff2'),
+           url('https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff') format('woff');
+    }
+
+    .card { border: 1px dashed #aaa; padding: 12px; width: fit-content; margin: 16px 0; }
+    .plex { font-family: 'Fira Code'; font-size: 22px; }
+    .mylocal { font-family: 'MyLocalDemo', system-ui; font-weight: 400; font-size: 22px; }
+  </style>
+</head>
+<body>
+  <h2>Demo 3 — @font-face manual (woff2 local) + localFonts</h2>
+  <div class="card" id="target">
+    <div class="plex">IBMPlexSansLocal — woff2 manual</div>
+    <div class="mylocal">MyLocalDemo — vía localFonts</div>
+  </div>
+
+  <button id="btn">Capturar</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    document.getElementById('btn').addEventListener('click', async () => {
+      const el = document.getElementById('target');
+
+      const img = await snapdom.toImg(el, {
+        embedFonts: true,
+        compress: true,
+        // Inyecta otra familia “local” (dataURL real)
+        localFonts: [
+          { family: 'MyLocalDemo', src: 'data:font/woff;base64,AA==' } // reemplaza por un dataURL válido
+        ]
+      });
+
+      const out = document.getElementById('output');
+      out.innerHTML = ''; out.appendChild(img);
+    });
+  </script>
+</body>
+</html>

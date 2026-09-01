@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo 2 — @import con múltiples pesos</title>
+  <style>
+    
+    @font-face {
+      font-family: 'IBM Plex Mono';
+      font-style: italic;
+      font-weight: 500;
+      font-display: fallback;
+      src: url('https://cdn.jsdelivr.net/npm/@ibm/plex-mono@1.2.3/IBM-Plex-Mono-Italic.woff2') format('woff2'),
+           url('https://cdn.jsdelivr.net/npm/@ibm/plex-mono@1.2.3/IBM-Plex-Mono-Italic.woff') format('woff');
+    }
+
+
+    /* JetBrains Mono Italic desde unpkg */
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-style: italic;
+      font-weight: 400;
+      font-display: fallback;
+      src: url('https://unpkg.com/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-italic.woff2') format('woff2'),
+           url('https://unpkg.com/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-italic.woff') format('woff');
+    }
+
+
+     h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-style: italic;
+      font-weight: 500;
+    }
+
+
+      h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-style: italic;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h2>Demo 2 — @import con múltiples pesos</h2>
+  <div class="card" id="target">
+    <h1 class="roboto-400">Roboto 400 (usada)</h1>
+    <div class="roboto-700">Roboto 700 (usada)</div>
+  </div>
+
+  <button id="btn">Capturar</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+    document.getElementById('btn').addEventListener('click', async () => {
+      const el = document.getElementById('target');
+      // embedFonts true y deja que tu embedCustomFonts filtre por document.fonts
+      const img = await snapdom.toImg(el, { embedFonts: true });
+      const out = document.getElementById('output');
+      out.innerHTML = ''; out.appendChild(img);
+    });
+  </script>
+</body>
+</html>

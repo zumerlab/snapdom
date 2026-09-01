@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SnapDOM CORS Test</title>
+  <style>
+    #target {
+      display: flex;
+      gap: 16px;
+    }
+   #target img {
+      width: 100px;
+      height: auto;
+      border: 1px solid black;
+    }
+  </style>
+</head>
+<body>
+  <h2>SnapDOM CORS Test</h2>
+
+  <div id="target">
+    <!-- Misma origin -->
+    <img src="./assets/wolf.jpg" alt="Same-origin">
+
+    <!-- Imagen externa (se espera que sea pública y con CORS habilitado) -->
+    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f680.svg" alt="Cross-origin">
+  </div>
+
+  <button id="capture">Capture with SnapDOM</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    document.getElementById('capture').onclick = async () => {
+      const target = document.getElementById('target');
+
+      const img = await snapdom.toImg(target, {
+        crossOrigin: (url) => {
+          console.log("Checking crossOrigin for:", url);
+          if (url.startsWith(window.location.origin)) {
+            return "use-credentials";
+          }
+          return "anonymous";
+        }
+      });
+
+      // Append image to output
+      
+      document.getElementById('output').appendChild(img);
+    };
+  </script>
+</body>
+</html>

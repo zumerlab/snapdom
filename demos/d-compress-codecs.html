@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>compress — per-codec downsample (PNG / JPEG / WebP)</title>
+    <script src="../dist/snapdom.js"></script>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 24px; }
+      /* compress:true (default) must downsample each oversized raster to its visible box while
+         PRESERVING the source codec (PNG lossless, JPEG, WebP) — the sourceMime branch in
+         compress.js. Each image is 900×600 natural shown at 180×120, so all three get
+         downsampled; the baseline locks that every codec still renders without color/format
+         corruption or alpha loss. Images are drawn deterministically at load (no CDN, no random). */
+      .row { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; margin-top: 24px; }
+      .row > div > h3 { margin: 0 0 8px; font-size: 13px; color: #555; }
+      #target { display: flex; gap: 12px; }
+      #target figure { margin: 0; }
+      #target figcaption { font-size: 12px; color: #444; margin-top: 4px; }
+      #target img { width: 180px; height: 120px; object-fit: cover; display: block; border: 1px solid #ddd; }
+    </style>
+  </head>
+  <body>
+    <p>
+      Same picture encoded as PNG, JPEG and WebP, each shown oversized. Click <button>capture</button> —
+      with <code>compress:true</code> every image is downsampled to its visible box while keeping its
+      own codec; the capture (right) must match the live row with no corruption.
+    </p>
+
+    <div class="row">
+      <div>
+        <h3>live</h3>
+        <div id="target">
+          <figure><span id="slot-png"></span><figcaption>PNG</figcaption></figure>
+          <figure><span id="slot-jpeg"></span><figcaption>JPEG</figcaption></figure>
+          <figure><span id="slot-webp"></span><figcaption>WebP</figcaption></figure>
+        </div>
+      </div>
+      <div>
+        <h3>snapdom capture</h3>
+        <div id="result"></div>
+      </div>
+    </div>
+
+    <script>
+      // Deterministic photo-like pattern (no Math.random) so the encoded bytes are stable.
+      function draw(w, h) {
+        const c = document.createElement('canvas')
+        c.width = w; c.height = h
+        const x = c.getContext('2d')
+        const g = x.createLinearGradient(0, 0, w, h)
+        g.addColorStop(0, '#ff5f6d'); g.addColorStop(0.5, '#845ec2'); g.addColorStop(1, '#00c9a7')
+        x.fillStyle = g; x.fillRect(0, 0, w, h)
+        for (let i = 0; i < 40; i++) {
+          x.beginPath()
+          x.arc((i * 137) % w, (i * 89) % h, ((i * 13) % 40) + 10, 0, Math.PI * 2)
+          x.fillStyle = 'hsla(' + ((i * 31) % 360) + ', 85%, 65%, 0.45)'
+          x.fill()
+        }
+        return c
+      }
+      const canvas = draw(900, 600)
+      const sources = {
+        png: canvas.toDataURL('image/png'),
+        jpeg: canvas.toDataURL('image/jpeg', 0.92),
+        webp: canvas.toDataURL('image/webp', 0.92),
+      }
+      const imgs = []
+      for (const [codec, url] of Object.entries(sources)) {
+        const img = document.createElement('img')
+        img.src = url
+        img.alt = codec
+        document.getElementById('slot-' + codec).appendChild(img)
+        imgs.push(img)
+      }
+      // Exposed so the visual harness setup() can await decode before capturing.
+      window.__ready = Promise.all(imgs.map(i => (i.decode ? i.decode().catch(() => {}) : Promise.resolve())))
+
+      const button = document.querySelector('button')
+      button.addEventListener('click', async () => {
+        button.setAttribute('disabled', true)
+        await window.__ready
+        const out = await snapdom.toCanvas(document.querySelector('#target'), { compress: true, embedFonts: true })
+        const result = document.querySelector('#result')
+        result.innerHTML = ''
+        result.appendChild(out)
+        button.removeAttribute('disabled')
+      })
+    </script>
+  </body>
+</html>

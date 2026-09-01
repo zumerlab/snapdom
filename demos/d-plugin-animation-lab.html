@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion Lab — SnapDOM animation plugins</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "@zumer/snapdom": "../dist/snapdom.mjs"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #101619;
+      --cream: #f5eedb;
+      --orange: #ff6940;
+      --yellow: #ffd052;
+      --cyan: #55d6c8;
+      --blue: #3357d7;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--cream); background: #101619; font-family: Arial, sans-serif; }
+    button, input { font: inherit; }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      opacity: .35;
+      background:
+        linear-gradient(#ffffff0d 1px, transparent 1px),
+        linear-gradient(90deg, #ffffff0d 1px, transparent 1px),
+        radial-gradient(circle at 50% 0, #284a50, transparent 55%);
+      background-size: 36px 36px, 36px 36px, auto;
+    }
+
+    .page { width: min(1180px, calc(100% - 28px)); margin: auto; padding: 28px 0 44px; }
+    .eyebrow { color: var(--yellow); font-size: 10px; font-weight: 900; letter-spacing: .28em; text-transform: uppercase; }
+    h1 { margin: 5px 0 10px; font: 900 clamp(48px, 8vw, 90px)/.86 Impact, sans-serif; letter-spacing: -.03em; text-transform: uppercase; }
+    h1 span { color: var(--orange); }
+    .lead { max-width: 660px; margin: 0 0 25px; color: #a9c1bd; font-size: 14px; line-height: 1.5; }
+
+    .options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .option { overflow: hidden; border: 1px solid #46625f; border-radius: 16px; background: #152529; box-shadow: 0 24px 60px #0007; }
+    .option-head { display: flex; align-items: center; gap: 13px; padding: 16px 18px; border-bottom: 1px solid #46625f; }
+    .number { display: grid; place-items: center; flex: 0 0 35px; height: 35px; border-radius: 50%; color: var(--ink); background: var(--yellow); font: 900 17px Impact, sans-serif; }
+    h2 { margin: 0; font: 900 24px/1 Impact, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+    .option-head p { margin: 4px 0 0; color: #8da5a1; font-size: 11px; }
+
+    .stage { position: relative; display: grid; place-items: center; min-height: 430px; overflow: hidden; background: radial-gradient(circle, #284d50, #0a1518 72%); }
+    .stage::after { content: 'SNAPDOM MOTION LAB'; position: absolute; bottom: 12px; color: #ffffff16; font: 900 38px Impact, sans-serif; white-space: nowrap; }
+
+    #orbit-scene, #pose-scene {
+      position: relative;
+      width: min(88%, 470px);
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      border: 1px solid #63827e;
+      border-radius: 11px;
+      background:
+        radial-gradient(circle at center, #18373b 0 10%, transparent 10.5%),
+        radial-gradient(circle at center, transparent 0 34%, #80b8b51f 34.5% 35%, transparent 35.5%),
+        #0c1b1f;
+    }
+
+    .planet { position: absolute; top: 50%; left: 50%; width: 104px; height: 104px; border-radius: 50%; background: radial-gradient(circle at 32% 26%, #ffd56b, #ef6941 50%, #7c2a2d); box-shadow: inset -15px -13px 20px #321b29aa, 0 0 38px #ef694155; transform: translate(-50%, -50%); }
+    .planet::after { content: ''; position: absolute; top: 45%; left: -24%; width: 148%; height: 25%; border: 8px solid #f4d98c; border-radius: 50%; transform: rotate(-12deg); }
+    .satellite { position: absolute; top: 50%; left: 50%; width: 33px; height: 22px; border: 4px solid var(--cream); border-radius: 7px; background: var(--blue); transform: translate(134px, -11px); }
+    .satellite::before, .satellite::after { content: ''; position: absolute; top: 3px; width: 23px; height: 9px; border: 2px solid var(--cream); background: var(--cyan); }
+    .satellite::before { right: 100%; } .satellite::after { left: 100%; }
+    .orbit-running .satellite { animation: orbit 1.8s linear infinite; }
+    .orbit-running .planet { animation: pulse 1.2s ease-in-out infinite alternate; }
+    @keyframes orbit { from { transform: rotate(0) translateX(134px) rotate(0); } to { transform: rotate(360deg) translateX(134px) rotate(-360deg); } }
+    @keyframes pulse { to { filter: brightness(1.22); } }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 9px; padding: 14px; border-top: 1px solid #46625f; }
+    .action { flex: 1 1 145px; border: 0; border-radius: 999px; padding: 11px 15px; color: var(--ink); background: var(--yellow); cursor: pointer; font-size: 11px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+    .action.secondary { color: var(--cream); background: #274247; }
+    .action:disabled { cursor: wait; opacity: .5; }
+    .status { width: 100%; min-height: 16px; color: #83a6a1; font-size: 10px; text-align: center; }
+
+    #pose-scene { background: linear-gradient(#dbe8de 0 66%, #9ebbb0 66%); }
+    #pose-scene::before { content: ''; position: absolute; inset: 0; opacity: .23; background: linear-gradient(90deg, transparent 49.5%, #315852 50%, transparent 50.5%), linear-gradient(transparent 49.5%, #315852 50%, transparent 50.5%); background-size: 45px 45px; }
+    .actor { position: absolute; top: 50%; left: 50%; width: 76px; height: 76px; transform: translate(-50%, -50%); }
+    .actor-body { position: absolute; inset: 0; border: 5px solid var(--ink); border-radius: 20% 50% 25% 45%; background: var(--orange); transform: rotate(var(--rotation, 0deg)); }
+    .actor-body::before { content: '★'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--yellow); font-size: 41px; }
+    .shadow { position: absolute; left: 50%; bottom: -14px; width: 82px; height: 14px; border-radius: 50%; background: #19312c3d; transform: translateX(-50%); }
+    #playback { position: absolute; inset: 0; z-index: 5; display: none; width: 100%; height: 100%; object-fit: cover; background: #0c1b1f; }
+    #playback.visible { display: block; }
+
+    .sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+    .sliders label { color: #91aaa6; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-align: center; text-transform: uppercase; }
+    .sliders input { display: block; width: 100%; margin-top: 6px; accent-color: var(--orange); }
+    .filmstrip { display: flex; gap: 6px; width: 100%; min-height: 45px; overflow-x: auto; }
+    .filmstrip img { width: 58px; height: 44px; border: 1px solid #55736f; border-radius: 4px; object-fit: cover; }
+
+    .notes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 17px; }
+    .note { padding: 14px 16px; border-left: 3px solid var(--yellow); color: #8fa7a3; background: #152529; font-size: 12px; line-height: 1.5; }
+    .note code { color: var(--yellow); }
+
+    @media (max-width: 850px) { .options, .notes { grid-template-columns: 1fr; } }
+    @media (max-width: 500px) { .stage { min-height: 350px; } .sliders { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="eyebrow">Dos estrategias de animación</div>
+    <h1>Motion <span>Lab</span></h1>
+    <p class="lead">La primera opción muestrea el DOM continuamente. La segunda captura poses elegidas y las reproduce como una secuencia stop motion.</p>
+
+    <div class="options">
+      <section class="option">
+        <div class="option-head"><span class="number">1</span><div><h2>Grabación continua</h2><p>CSS animation → plugin GIF → archivo animado</p></div></div>
+        <div class="stage">
+          <div id="orbit-scene">
+            <div class="planet"></div>
+            <div class="satellite"></div>
+          </div>
+        </div>
+        <div class="controls">
+          <button class="action secondary" id="preview-orbit">Vista previa</button>
+          <button class="action" id="make-gif">Generar GIF</button>
+          <div class="status" id="gif-status">18 frames · 10 FPS · 1.8 segundos</div>
+        </div>
+      </section>
+
+      <section class="option">
+        <div class="option-head"><span class="number">2</span><div><h2>Stop motion</h2><p>Poses manuales → estados SnapDOM → flipbook</p></div></div>
+        <div class="stage">
+          <div id="pose-scene">
+            <div class="actor" id="actor"><div class="shadow"></div><div class="actor-body"></div></div>
+            <img id="playback" alt="Reproducción de estados">
+          </div>
+        </div>
+        <div class="controls">
+          <div class="sliders">
+            <label>Horizontal<input id="pos-x" type="range" min="15" max="85" value="50"></label>
+            <label>Vertical<input id="pos-y" type="range" min="20" max="80" value="50"></label>
+            <label>Rotación<input id="rotation" type="range" min="-180" max="180" value="0"></label>
+          </div>
+          <button class="action secondary" id="add-frame">+ Capturar pose</button>
+          <button class="action" id="play" disabled>Reproducir</button>
+          <div class="filmstrip" id="filmstrip"></div>
+          <div class="status" id="frame-status">Creá al menos dos poses.</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="notes">
+      <div class="note"><code>gifExport()</code> vuelve a capturar el elemento a intervalos regulares y codifica los frames como GIF89a.</div>
+      <div class="note"><code>afterRender()</code> colecciona sólo las poses elegidas; el reproductor decide después el ritmo de la animación.</div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+    import { gifExport } from '../packages/plugins/gif-export.js'
+
+    const orbitScene = document.querySelector('#orbit-scene')
+    const previewOrbit = document.querySelector('#preview-orbit')
+    const makeGif = document.querySelector('#make-gif')
+    const gifStatus = document.querySelector('#gif-status')
+
+    previewOrbit.addEventListener('click', () => {
+      orbitScene.classList.toggle('orbit-running')
+      previewOrbit.textContent = orbitScene.classList.contains('orbit-running') ? 'Pausar' : 'Vista previa'
+    })
+
+    makeGif.addEventListener('click', async () => {
+      makeGif.disabled = true
+      orbitScene.classList.add('orbit-running')
+      gifStatus.textContent = 'Capturando y codificando…'
+      try {
+        const capture = await snapdom(orbitScene, {
+          plugins: [gifExport({ fps: 10, frames: 18, maxColors: 128 })],
+          cache: 'full',
+          fast: true
+        })
+        const blob = await capture.toGif()
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'snapdom-orbit.gif'
+        link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 5000)
+        gifStatus.textContent = `${Math.round(blob.size / 1024)} KB · GIF descargado`
+      } catch (error) {
+        gifStatus.textContent = `Error: ${error.message}`
+      } finally {
+        makeGif.disabled = false
+      }
+    })
+
+    function frameCollector(onFrame) {
+      let index = 0
+      return {
+        name: 'frame-collector',
+        afterRender(ctx) {
+          index += 1
+          onFrame({ index, url: ctx.dataURL })
+        },
+        reset() { index = 0 }
+      }
+    }
+
+    const poseScene = document.querySelector('#pose-scene')
+    const actor = document.querySelector('#actor')
+    const playback = document.querySelector('#playback')
+    const filmstrip = document.querySelector('#filmstrip')
+    const addFrame = document.querySelector('#add-frame')
+    const play = document.querySelector('#play')
+    const frameStatus = document.querySelector('#frame-status')
+    const capturedFrames = []
+
+    const collector = frameCollector(frame => {
+      capturedFrames.push(frame.url)
+      const image = document.createElement('img')
+      image.src = frame.url
+      image.alt = `Pose ${frame.index}`
+      filmstrip.append(image)
+      play.disabled = capturedFrames.length < 2
+      frameStatus.textContent = `${capturedFrames.length} pose${capturedFrames.length === 1 ? '' : 's'} capturada${capturedFrames.length === 1 ? '' : 's'}`
+    })
+
+    function updatePose() {
+      actor.style.left = `${document.querySelector('#pos-x').value}%`
+      actor.style.top = `${document.querySelector('#pos-y').value}%`
+      actor.style.setProperty('--rotation', `${document.querySelector('#rotation').value}deg`)
+    }
+
+    document.querySelectorAll('.sliders input').forEach(input => input.addEventListener('input', updatePose))
+
+    addFrame.addEventListener('click', async () => {
+      addFrame.disabled = true
+      frameStatus.textContent = 'Capturando pose…'
+      try {
+        await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })
+      } finally {
+        addFrame.disabled = false
+      }
+    })
+
+    play.addEventListener('click', async () => {
+      play.disabled = true
+      playback.classList.add('visible')
+      for (let loop = 0; loop < 3; loop++) {
+        for (const frame of capturedFrames) {
+          playback.src = frame
+          await new Promise(resolve => setTimeout(resolve, 180))
+        }
+      }
+      playback.classList.remove('visible')
+      play.disabled = false
+    })
+  </script>
+</body>
+</html>

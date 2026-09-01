@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>snapdom test</title>
+    <style>
+      body {
+        font-family: 'Mansalva', cursive;
+        /* Múltiples backgrounds */
+        background-image: 
+          url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/400px-Placeholder_view_vector.svg.png');
+        background-position: top left, center center;
+        background-size: 100px 100px, cover;
+        background-repeat: no-repeat, no-repeat;
+        background-color: #f0f0f0; /* color de fondo base por si no cargan las imágenes */
+      }
+      div {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 1em;
+        border-radius: 10px;
+        max-width: 600px;
+        margin: 2em auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>Summary of the University Students' Innovation and Employment Empowerment Conference</h1>
+      This event is an empowerment lecture focusing on the career development and innovative employment of college students in the digital era. The conference integrates industry trend analysis, career planning guidance, and enterprise talent demands. Through tools such as the Four Skills Model, it explores the enhancement of job-seeking competitiveness and interview skills. The guests provided multi-dimensional employment solutions for college students from perspectives of entrepreneurial practice, educational empowerment, and psychology.
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs';
+
+      const mansalva = new FontFace(
+        'Mansalva',
+        'url(https://cdn.jsdelivr.net/npm/@fontsource/mansalva/files/mansalva-latin-400-normal.woff2)'
+      );
+      mansalva._snapdomSrc = "https://cdn.jsdelivr.net/npm/@fontsource/mansalva/files/mansalva-latin-400-normal.woff2";
+
+      mansalva.load().then(async (loadedFont) => {
+        document.fonts.add(loadedFont);
+        document.body.style.fontFamily = 'Mansalva, cursive';
+
+        const el = document.querySelector('body');
+        const png = await snapdom.toImg(el, { embedFonts: true });
+        document.body.appendChild(png);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo: SnapDOM Plugin Paint Canvas</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e293b, #0f172a 60%);
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  header { text-align: center; padding: 24px 16px 8px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6em; }
+  header p { margin: 0 auto; opacity: .7; font-size: .9em; max-width: 480px; }
+
+  .toolbar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 16px;
+  }
+  .swatches { display: flex; gap: 6px; }
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.25);
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.active { border-color: #38bdf8; }
+  .toolbar input[type="color"] {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  .toolbar label {
+    font-size: .8em;
+    opacity: .7;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #board {
+    position: relative;
+    width: min(420px, 90vw);
+    height: min(420px, 90vw);
+    margin: 0 auto 16px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
+    cursor: none;
+    background: #fff;
+    touch-action: none;
+    user-select: none;
+  }
+  #board img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  #liveStrokes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+
+  #brushCursor {
+    position: absolute;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0,0,0,.6);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.7);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 5;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 4px 16px 32px;
+    flex-wrap: wrap;
+  }
+  button, a.button {
+    font: inherit;
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  button.secondary, a.button.secondary { background: #334155; color: #e2e8f0; }
+
+  .hint {
+    text-align: center;
+    opacity: .55;
+    font-size: .8em;
+    max-width: 460px;
+    margin: 0 auto 24px;
+  }
+  code { background: #1e293b; padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🖌️ SnapDOM Plugin Paint Canvas</h1>
+  <p>No hay un <code>&lt;canvas&gt;</code> real: un plugin de SnapDOM guarda el clon ya capturado y le va sumando cada trazo (como un <code>&lt;path&gt;</code> de SVG), así el propio PNG capturado se convierte en el lienzo.</p>
+</header>
+
+<div class="toolbar">
+  <div class="swatches" id="swatches"></div>
+  <input type="color" id="customColor" value="#111827" title="Color personalizado">
+  <label>Grosor <input type="range" id="brushSize" min="3" max="28" value="10"></label>
+</div>
+
+<div id="board">
+  <svg id="liveStrokes" viewBox="0 0 420 420" preserveAspectRatio="none"></svg>
+  <div id="brushCursor"></div>
+</div>
+
+<div class="actions">
+  <button id="clearBtn" class="secondary">Limpiar</button>
+  <a id="downloadLink" class="button secondary" download="snapdom-painting.png">⬇️ Descargar pintura</a>
+</div>
+
+<p class="hint">Mientras arrastrás, un <code>&lt;path&gt;</code> de SVG local (<code>#liveStrokes</code>) sigue al mouse al instante, sin esperar ninguna captura. En paralelo, cada ~120ms ese mismo trazo se graba en el clon persistente del plugin vía <code>plugin.recordStroke()</code> y se dispara un <code>snapdom.toPng()</code> — el PNG real solo necesita alcanzar al dibujo, nunca dictar su fluidez.</p>
+
+<script type="module">
+  import { snapdom } from '../dist/snapdom.mjs'
+
+  const SVG_NS = 'http://www.w3.org/2000/svg'
+  const COLORS = ['#111827', '#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ffffff']
+  const CAPTURE_INTERVAL = 120
+
+  // Same persistent-clone technique as the target-range demo: `afterRender`
+  // saves the clone snapdom just produced, `afterClone` swaps it back in on
+  // the next capture. `recordStroke` hands over the in-progress stroke as an
+  // SVG path string; `afterClone` either updates that stroke's existing
+  // <path> (still being drawn) or appends a new one, so a continuous drag
+  // never piles up duplicate paths — one stroke, one element.
+  function createPaintPlugin (sourceEl) {
+    let savedClone = null
+    let skipNext = false
+    let pendingStroke = null
+
+    function makePath (stroke) {
+      const path = document.createElementNS(SVG_NS, 'path')
+      path.setAttribute('data-stroke-id', stroke.id)
+      path.setAttribute('d', stroke.d)
+      path.setAttribute('fill', 'none')
+      path.setAttribute('stroke', stroke.color)
+      path.setAttribute('stroke-width', stroke.size)
+      path.setAttribute('stroke-linecap', 'round')
+      path.setAttribute('stroke-linejoin', 'round')
+      return path
+    }
+
+    return {
+      name: 'paint',
+      recordStroke (stroke) { pendingStroke = stroke },
+      afterClone (ctx) {
+        if (skipNext) { skipNext = false; pendingStroke = null; return }
+        if (savedClone) ctx.clone = savedClone.cloneNode(true)
+        if (!pendingStroke) return
+        const layer = ctx.clone.querySelector('.strokes')
+        const existing = layer.querySelector(`[data-stroke-id="${pendingStroke.id}"]`)
+        if (existing) existing.setAttribute('d', pendingStroke.d)
+        else layer.append(makePath(pendingStroke))
+      },
+      afterRender (ctx) {
+        savedClone = ctx.clone.cloneNode(true)
+        pendingStroke = null
+      },
+      // `sourceEl` itself never gets mutated (strokes only ever land on
+      // `savedClone`), so skipping the substitution once lets snapdom clone
+      // the pristine live element through its normal pipeline — the same
+      // path the very first capture took — instead of us hand-building a
+      // replacement clone that would be missing whatever setup that pipeline
+      // normally does.
+      clear () { skipNext = true }
+    }
+  }
+
+  const board = document.getElementById('board')
+  const liveSvg = document.getElementById('liveStrokes')
+  const brushCursor = document.getElementById('brushCursor')
+  const swatchesEl = document.getElementById('swatches')
+  const customColor = document.getElementById('customColor')
+  const brushSize = document.getElementById('brushSize')
+  const clearBtn = document.getElementById('clearBtn')
+  const downloadLink = document.getElementById('downloadLink')
+
+  const canvasSource = document.createElement('div')
+  canvasSource.style.cssText = 'position:absolute; left:-9999px; top:0; width:420px; height:420px; background:#fff;'
+  canvasSource.innerHTML = '<svg class="strokes" viewBox="0 0 420 420" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;"></svg>'
+  document.body.appendChild(canvasSource)
+
+  const plugin = createPaintPlugin(canvasSource)
+
+  let color = COLORS[0]
+  let size = Number(brushSize.value)
+  let drawing = false
+  let points = []
+  let livePath = null
+  let strokeId = 0
+  let activeStrokeId = 0
+  let lastCaptureTime = 0
+  let pendingStroke = null
+  let rendering = false
+  let pending = false
+
+  COLORS.forEach(c => {
+    const btn = document.createElement('button')
+    btn.className = 'swatch' + (c === color ? ' active' : '')
+    btn.style.background = c
+    btn.addEventListener('click', () => {
+      color = c
+      swatchesEl.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'))
+      btn.classList.add('active')
+    })
+    swatchesEl.appendChild(btn)
+  })
+
+  customColor.addEventListener('input', () => {
+    color = customColor.value
+    swatchesEl.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'))
+  })
+
+  brushSize.addEventListener('input', () => { size = Number(brushSize.value) })
+
+  async function render (stroke) {
+    if (stroke) plugin.recordStroke(stroke)
+    const img = await snapdom.toPng(canvasSource, { plugins: [plugin] })
+    img.style.width = '100%'
+    img.style.height = '100%'
+    board.querySelector('img')?.remove()
+    board.insertBefore(img, liveSvg)
+    downloadLink.href = img.src
+  }
+
+  async function scheduleRender (stroke) {
+    if (stroke) pendingStroke = stroke
+    if (rendering) { pending = true; return }
+    rendering = true
+    do {
+      pending = false
+      const s = pendingStroke
+      pendingStroke = null
+      await render(s)
+    } while (pending)
+    rendering = false
+  }
+
+  function pointFromClient (clientX, clientY) {
+    const rect = board.getBoundingClientRect()
+    return { x: ((clientX - rect.left) / rect.width) * 420, y: ((clientY - rect.top) / rect.height) * 420 }
+  }
+
+  // Classic freehand-smoothing trick: instead of straight lines between raw
+  // mouse points (which look faceted on fast turns), draw a quadratic curve
+  // through the midpoint of each consecutive pair, using the point between
+  // them as the control point.
+  function pathFromPoints (list) {
+    if (list.length < 2) return ''
+    let d = `M ${list[0].x.toFixed(1)} ${list[0].y.toFixed(1)}`
+    for (let i = 1; i < list.length - 1; i++) {
+      const midX = (list[i].x + list[i + 1].x) / 2
+      const midY = (list[i].y + list[i + 1].y) / 2
+      d += ` Q ${list[i].x.toFixed(1)} ${list[i].y.toFixed(1)} ${midX.toFixed(1)} ${midY.toFixed(1)}`
+    }
+    const last = list[list.length - 1]
+    d += ` L ${last.x.toFixed(1)} ${last.y.toFixed(1)}`
+    return d
+  }
+
+  function createLivePath () {
+    const path = document.createElementNS(SVG_NS, 'path')
+    path.setAttribute('fill', 'none')
+    path.setAttribute('stroke', color)
+    path.setAttribute('stroke-width', size)
+    path.setAttribute('stroke-linecap', 'round')
+    path.setAttribute('stroke-linejoin', 'round')
+    liveSvg.append(path)
+    return path
+  }
+
+  function moveBrushCursor (x, y) {
+    brushCursor.style.opacity = 1
+    brushCursor.style.left = `${x}px`
+    brushCursor.style.top = `${y}px`
+    brushCursor.style.width = `${size}px`
+    brushCursor.style.height = `${size}px`
+    brushCursor.style.marginLeft = `${-size / 2}px`
+    brushCursor.style.marginTop = `${-size / 2}px`
+  }
+
+  function captureStroke () {
+    const d = pathFromPoints(points)
+    if (!d) return
+    scheduleRender({ id: activeStrokeId, d, color, size })
+  }
+
+  board.addEventListener('pointerdown', e => {
+    e.preventDefault()
+    board.setPointerCapture(e.pointerId)
+    drawing = true
+    activeStrokeId = ++strokeId
+    lastCaptureTime = performance.now()
+    points = [pointFromClient(e.clientX, e.clientY)]
+    livePath = createLivePath()
+  })
+
+  board.addEventListener('pointermove', e => {
+    const rect = board.getBoundingClientRect()
+    moveBrushCursor(e.clientX - rect.left, e.clientY - rect.top)
+    if (!drawing) return
+    const samples = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]
+    for (const s of samples) points.push(pointFromClient(s.clientX, s.clientY))
+    livePath.setAttribute('d', pathFromPoints(points))
+    const now = performance.now()
+    if (now - lastCaptureTime >= CAPTURE_INTERVAL) {
+      lastCaptureTime = now
+      captureStroke()
+    }
+  })
+
+  function finishDrawing () {
+    if (!drawing) return
+    drawing = false
+    if (points.length < 2) points.push({ x: points[0].x + 0.1, y: points[0].y + 0.1 })
+    captureStroke()
+    liveSvg.replaceChildren()
+  }
+
+  board.addEventListener('pointerup', finishDrawing)
+  board.addEventListener('pointercancel', finishDrawing)
+  board.addEventListener('pointerleave', () => { brushCursor.style.opacity = 0 })
+
+  clearBtn.addEventListener('click', () => {
+    plugin.clear()
+    liveSvg.replaceChildren()
+    scheduleRender()
+  })
+
+  scheduleRender()
+</script>
+
+</body>
+</html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>prompt-export plugin — local demo</title>
+  <style>
+    :root {
+      --bg: #0d0f12;
+      --surface: #16191e;
+      --border: #2a2f3a;
+      --text: #e6e8ec;
+      --muted: #8b97a5;
+      --accent: #00e0a0;
+      --rose: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    p.tagline { margin: 0 0 24px; color: var(--muted); font-size: 13px; }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+      gap: 24px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Controls ───────────────────────────── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .controls label {
+      display: flex;
+      flex-direction: column;
+      font-size: 11px;
+      color: var(--muted);
+      gap: 4px;
+    }
+    .controls select,
+    .controls input[type="number"] {
+      background: #0f1217;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .controls .chk {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text);
+    }
+    button.run {
+      background: var(--accent);
+      color: #0d0f12;
+      border: 0;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    button.run:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+
+    /* ── Target (the "page" to capture) ────── */
+    #target {
+      background: #fff;
+      color: #1a1a1a;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      max-width: 480px;
+    }
+    #target h1 { font-size: 18px; margin: 0 0 4px; color: #111; }
+    #target h2 { font-size: 15px; margin: 16px 0 6px; color: #444; }
+    #target p { margin: 0 0 10px; color: #555; }
+    #target nav { margin-bottom: 10px; }
+    #target nav a {
+      color: #0d6efd;
+      margin-right: 10px;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    #target .field { margin-bottom: 8px; display: block; }
+    #target input[type="text"],
+    #target input[type="email"],
+    #target input[type="password"] {
+      width: 100%;
+      padding: 5px 8px;
+      border: 1px solid #c9c9c9;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #target select { padding: 5px; font-size: 13px; }
+    #target .checks { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+    #target .checks label { font-size: 13px; cursor: pointer; }
+    #target .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    #target button {
+      padding: 5px 12px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #f8f8f8;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #target button.primary {
+      background: #0d6efd;
+      color: #fff;
+      border-color: #0d6efd;
+    }
+    #target button[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #target details {
+      margin-top: 12px;
+      padding: 8px;
+      background: #f4f4f4;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    #target summary { cursor: pointer; font-weight: 600; }
+
+    /* ── Output ─────────────────────────────── */
+    #output img {
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .output-section {
+      background: #0f1217;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .output-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .output-section h3 {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .output-section .meta { font-size: 11px; color: var(--muted); }
+    .output-section pre {
+      margin: 0;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #d0d7de;
+      white-space: pre-wrap;
+      max-height: 380px;
+      overflow: auto;
+    }
+    .copy {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .copy:hover { color: var(--text); border-color: var(--accent); }
+    .covered-note {
+      margin-top: 12px;
+      padding: 8px 12px;
+      background: rgba(220, 38, 38, 0.08);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 12px;
+    }
+
+    /* ── Mock modal for "covered" testing ── */
+    #mockModal {
+      display: none;
+      position: absolute;
+      z-index: 10;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      border-radius: 4px;
+      padding: 16px 24px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>prompt-export — local test</h1>
+  <p class="tagline">
+    Capturing a <code>#target</code> element with the local build of snapdom
+    (<code>../dist/snapdom.mjs</code>) and the local plugin
+    (<code>../packages/plugins/prompt-export.js</code>). Run this via a local HTTP
+    server (e.g. <code>npx serve</code> or <code>python3 -m http.server</code>)
+    from the project root.
+  </p>
+
+  <div class="layout">
+    <!-- ── Left: target + controls ─────────────────────── -->
+    <div class="panel">
+      <h2>Target (the "page" being captured)</h2>
+
+      <div style="position: relative; margin-bottom: 16px;">
+        <div id="target">
+          <nav>
+            <a href="/">Home</a>
+            <a href="/settings">Settings</a>
+            <a href="/help">Help</a>
+          </nav>
+
+          <h1>User settings</h1>
+          <p>Update your profile and notification preferences.</p>
+
+          <h2>Profile</h2>
+          <label class="field">Name
+            <input type="text" name="name" value="Juan Martin" placeholder="Full name">
+          </label>
+          <label class="field">Email
+            <input type="email" name="email" value="juan@example.com" placeholder="you@example.com">
+          </label>
+          <label class="field">New password
+            <input type="password" name="password" placeholder="Leave empty to keep current">
+          </label>
+
+          <h2>Preferences</h2>
+          <div class="field">
+            <label for="theme-select">Theme</label><br>
+            <select id="theme-select" name="theme">
+              <option>Light</option>
+              <option selected>Dark</option>
+              <option>System</option>
+            </select>
+          </div>
+
+          <div class="checks">
+            <label><input type="checkbox" name="newsletter" checked> Subscribe to product updates</label>
+            <label><input type="checkbox" name="marketing"> Allow marketing emails</label>
+            <label><input type="checkbox" name="terms" aria-label="Accept terms of service"> I accept the terms</label>
+          </div>
+
+          <div class="checks">
+            <label><input type="radio" name="plan" value="free" checked> Free plan</label>
+            <label><input type="radio" name="plan" value="pro"> Pro plan ($9/mo)</label>
+            <label><input type="radio" name="plan" value="team"> Team plan ($29/mo)</label>
+          </div>
+
+          <details>
+            <summary>Advanced settings</summary>
+            <p style="margin: 6px 0 0;">These options affect how your data is processed.</p>
+          </details>
+
+          <div class="actions">
+            <button type="button" class="primary">Save changes</button>
+            <button type="button">Cancel</button>
+            <button type="button" disabled title="Only available on Pro plan">Delete account</button>
+          </div>
+        </div>
+
+        <!-- Optional modal to test the "covered" detection -->
+        <div id="mockModal">
+          Modal overlay covering part of the form
+        </div>
+      </div>
+
+      <h2>Plugin options</h2>
+      <div class="controls">
+        <label>
+          include
+          <select id="optInclude">
+            <option value="text" selected>['prompt'] — cheapest, text only</option>
+            <option value="text+json">['elements','prompt'] — default</option>
+            <option value="full">['image','elements','prompt'] — with image</option>
+          </select>
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="optAnnotate" checked>
+          annotate
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="optIncludeCoords" checked>
+          includeCoords
+        </label>
+        <label>
+          promptMode
+          <select id="optMode">
+            <option value="compact" selected>compact</option>
+            <option value="verbose">verbose</option>
+          </select>
+        </label>
+        <label>
+          maxImageWidth
+          <input type="number" id="optMaxW" value="1024" style="width: 90px;">
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="optCoverTest">
+          show mock modal (tests <code>covered</code>)
+        </label>
+        <button class="run" id="capture">Capture → toPrompt()</button>
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+
+    <!-- ── Right: output ────────────────────────────────── -->
+    <div class="panel">
+      <h2>Output</h2>
+      <div id="output">
+        <p style="color: var(--muted); font-size: 13px;">
+          Click <strong>Capture</strong> to see the annotated image, the
+          <code>elements</code> JSON, and the <code>prompt</code> text that
+          gets produced.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+    import { promptExport } from '../packages/plugins/prompt-export.js'
+
+    const $ = id => document.getElementById(id)
+    const btn = $('capture')
+    const statusEl = $('status')
+    const output = $('output')
+    const mockModal = $('mockModal')
+
+    function positionMockModal() {
+      // Overlay roughly on top of the "Save changes" button so we can see the
+      // `covered: true` flag light up in the output.
+      const btnEl = document.querySelector('#target button.primary')
+      if (!btnEl) return
+      const rect = btnEl.getBoundingClientRect()
+      const containerRect = document.getElementById('target').parentElement.getBoundingClientRect()
+      mockModal.style.left = (rect.left - containerRect.left) + 'px'
+      mockModal.style.top = (rect.top - containerRect.top) + 'px'
+      mockModal.style.width = (rect.width + 140) + 'px'
+      mockModal.style.height = (rect.height + 20) + 'px'
+      mockModal.style.display = 'block'
+    }
+
+    $('optCoverTest').addEventListener('change', (e) => {
+      if (e.target.checked) positionMockModal()
+      else mockModal.style.display = 'none'
+    })
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true
+      statusEl.textContent = 'capturing…'
+      try {
+        const target = $('target')
+        const includeMap = {
+          'text': ['prompt'],
+          'text+json': ['elements', 'prompt'],
+          'full': ['image', 'elements', 'prompt'],
+        }
+        const include = includeMap[$('optInclude').value] || ['elements', 'prompt']
+        const opts = {
+          annotate: $('optAnnotate').checked,
+          includeCoords: $('optIncludeCoords').checked,
+          promptMode: $('optMode').value,
+          maxImageWidth: parseInt($('optMaxW').value, 10) || 1024,
+          include,
+        }
+        const t0 = performance.now()
+        const result = await snapdom(target, { plugins: [promptExport(opts)] })
+        const out = await result.toPrompt()
+        const elapsed = Math.round(performance.now() - t0)
+
+        // Rough token cost estimate — char/3.5 for text, w×h/750 for image
+        const approxText = (s) => Math.round((s?.length || 0) / 3.5)
+        const approxImg = (w, h) => Math.round((w * h) / 750)
+        const elementsText = out.elements ? JSON.stringify(out.elements, null, 2) : ''
+        const promptTokens = approxText(out.prompt)
+        const elementsTokens = approxText(elementsText)
+        const imageTokens = out.image ? approxImg(out.dimensions.width, out.dimensions.height) : 0
+        const totalTokens = promptTokens + elementsTokens + imageTokens
+
+        const coveredCount = out.elements ? out.elements.filter(e => e.covered).length : 0
+        const interactive = out.elements ? out.elements.filter(e => e.type === 'interactive').length : 0
+        const semantic = out.elements ? out.elements.filter(e => e.type === 'semantic').length : 0
+
+        output.innerHTML = ''
+
+        // Token summary — shows the savings when user switches modes
+        const tokSummary = document.createElement('div')
+        tokSummary.className = 'output-section'
+        tokSummary.style.cssText = 'background: rgba(0,224,160,0.06); border-color: rgba(0,224,160,0.3);'
+        const breakdown = []
+        if (out.prompt) breakdown.push(`prompt ${promptTokens}`)
+        if (out.elements) breakdown.push(`elements ${elementsTokens}`)
+        if (out.image) breakdown.push(`image ${imageTokens}`)
+        tokSummary.innerHTML = `
+          <div class="output-section-header">
+            <h3>~${totalTokens} input tokens total</h3>
+            <span class="meta">include: [${include.join(', ')}]</span>
+          </div>
+          <pre style="color:#9aecc8;">${breakdown.join('   ')}</pre>
+        `
+        output.appendChild(tokSummary)
+
+        if (out.image) {
+          const img = document.createElement('img')
+          img.src = out.image
+          img.alt = 'annotated capture'
+          output.appendChild(img)
+        }
+
+        if (coveredCount) {
+          const note = document.createElement('div')
+          note.className = 'covered-note'
+          note.textContent = `⚠ ${coveredCount} element(s) detected as covered by another element.`
+          output.appendChild(note)
+        }
+
+        if (out.prompt) {
+          const promptSection = document.createElement('div')
+          promptSection.className = 'output-section'
+          promptSection.innerHTML = `
+            <div class="output-section-header">
+              <h3>prompt (${out.prompt.length} chars · ~${promptTokens} tokens)</h3>
+              <button class="copy" data-copy="prompt">copy</button>
+            </div>
+            <pre id="prompt-pre"></pre>
+          `
+          output.appendChild(promptSection)
+          $('prompt-pre').textContent = out.prompt
+        }
+
+        if (out.elements) {
+          const jsonSection = document.createElement('div')
+          jsonSection.className = 'output-section'
+          jsonSection.innerHTML = `
+            <div class="output-section-header">
+              <h3>elements (${out.elements.length}: ${interactive} interactive, ${semantic} semantic · ~${elementsTokens} tokens)</h3>
+              <button class="copy" data-copy="elements">copy</button>
+            </div>
+            <pre id="elements-pre"></pre>
+          `
+          output.appendChild(jsonSection)
+          $('elements-pre').textContent = elementsText
+        }
+
+        const dimSection = document.createElement('div')
+        dimSection.className = 'output-section'
+        dimSection.innerHTML = `
+          <div class="output-section-header">
+            <h3>dimensions</h3>
+          </div>
+          <pre>${out.dimensions.width} × ${out.dimensions.height} px</pre>
+        `
+        output.appendChild(dimSection)
+
+        output.querySelectorAll('.copy').forEach(b => {
+          b.addEventListener('click', async () => {
+            const kind = b.getAttribute('data-copy')
+            const text = kind === 'prompt' ? (out.prompt || '') : elementsText
+            try {
+              await navigator.clipboard.writeText(text)
+              const orig = b.textContent
+              b.textContent = 'copied'
+              setTimeout(() => { b.textContent = orig }, 1200)
+            } catch {
+              b.textContent = '(failed)'
+            }
+          })
+        })
+
+        statusEl.textContent = `captured in ${elapsed} ms · ~${totalTokens} input tokens`
+      } catch (err) {
+        output.innerHTML = `<div class="covered-note">Error: ${err.message}</div>`
+        statusEl.textContent = 'error — see output'
+        console.error(err)
+      } finally {
+        btn.disabled = false
+      }
+    })
+  </script>
+</body>
+</html>

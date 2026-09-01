@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo: SnapDOM → WebGL Effects</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e293b, #0f172a 60%);
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  header { text-align: center; padding: 28px 16px 8px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6em; }
+  header p { margin: 0 auto; opacity: .7; font-size: .9em; max-width: 560px; }
+  code { background: #1e293b; padding: 1px 6px; border-radius: 4px; }
+
+  .effects {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 20px 16px 4px;
+  }
+  .effect-btn {
+    font: inherit;
+    border: 0;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    background: #1e293b;
+    color: #94a3b8;
+    font-weight: 700;
+    font-size: .9em;
+  }
+  .effect-btn.active { background: #38bdf8; color: #0f172a; }
+
+  #stage {
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+    min-height: 340px;
+  }
+
+  #card {
+    width: min(420px, 88vw);
+    padding: 28px 26px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #7c3aed, #2563eb 55%, #0ea5e9);
+    box-shadow: 0 20px 60px rgba(37, 99, 235, .45), inset 0 1px 0 rgba(255,255,255,.25);
+    color: #fff;
+  }
+  #card .badge {
+    display: inline-block;
+    font-size: .7em;
+    font-weight: 800;
+    letter-spacing: .08em;
+    background: rgba(255,255,255,.18);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  #card h2 { margin: 0 0 10px; font-size: 1.5em; outline: none; }
+  #card p { margin: 0 0 16px; line-height: 1.5; opacity: .92; outline: none; }
+  #card .stats { display: flex; gap: 10px; font-size: .85em; font-weight: 700; opacity: .9; }
+  #card .stats span { background: rgba(0,0,0,.18); padding: 4px 10px; border-radius: 8px; }
+  #card [contenteditable] { cursor: text; }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 4px 16px 32px;
+    flex-wrap: wrap;
+  }
+  button.action {
+    font: inherit;
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 22px;
+    cursor: pointer;
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  button.action.secondary { background: #334155; color: #e2e8f0; }
+  button.action:disabled { opacity: .4; cursor: default; }
+
+  .hint {
+    text-align: center;
+    opacity: .55;
+    font-size: .8em;
+    max-width: 560px;
+    margin: 0 auto 24px;
+  }
+
+  #fx {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 50;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💥 SnapDOM → WebGL Effects</h1>
+  <p>La tarjeta de abajo es HTML real (editable). Cada efecto parte del mismo lugar: una captura de SnapDOM convertida en textura de WebGL. Lo que cambia es el shader — nada de esto existe sin rasterizar el DOM primero.</p>
+</header>
+
+<div class="effects">
+  <button class="effect-btn active" data-effect="shatter">💥 Shatter</button>
+  <button class="effect-btn" data-effect="ripple">🌊 Ola</button>
+  <button class="effect-btn" data-effect="glitch">📺 Glitch</button>
+  <button class="effect-btn" data-effect="dissolve">💨 Disolver</button>
+  <button class="effect-btn" data-effect="metal">🃏 Metalizada</button>
+</div>
+
+<div id="stage">
+  <div id="card">
+    <span class="badge">✨ LIVE DOM</span>
+    <h2 contenteditable="true" spellcheck="false">¡Probame!</h2>
+    <p contenteditable="true" spellcheck="false">Este texto es HTML editable de verdad. SnapDOM lo captura tal cual se ve — fuente, gradiente, sombra — y lo convierte en una textura de WebGL.</p>
+    <div class="stats"><span>🔥 100%</span><span>⚡ SnapDOM</span></div>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="action" id="applyBtn">💥 Romper</button>
+  <button class="action secondary" id="resetBtn" disabled>🔄 Reconstruir</button>
+</div>
+
+<p class="hint" id="hintText">Editá el texto de la tarjeta antes de aplicar el efecto — vas a ver tu propio texto, no una imagen precocinada.</p>
+
+<canvas id="fx"></canvas>
+
+<script type="module">
+  import { snapdom } from '../dist/snapdom.mjs'
+
+  // A defineExports plugin: adds a genuinely new export type (not a
+  // wrapper around toPng/toCanvas). `ctx.exports.canvas()` is the "silent"
+  // facade — it reuses the core canvas exporter without re-running the
+  // capture's before/afterExport hooks. Only the shatter effect needs this
+  // (it slices the capture into a grid); the other effects work off a
+  // single whole-card texture via plain `snapdom.toCanvas`.
+  function shatterExport (options = {}) {
+    const { cols: defaultCols = 14, rows: defaultRows = 9 } = options
+    return {
+      name: 'shatter',
+      defineExports (ctx) {
+        return {
+          shatter: async (_ctx2, opts = {}) => {
+            const cols = opts.cols || defaultCols
+            const rows = opts.rows || defaultRows
+            const canvas = await ctx.exports.canvas(opts)
+            const pw = canvas.width / cols
+            const ph = canvas.height / rows
+            const pieces = []
+            for (let ry = 0; ry < rows; ry++) {
+              for (let rx = 0; rx < cols; rx++) {
+                const piece = document.createElement('canvas')
+                piece.width = pw
+                piece.height = ph
+                piece.getContext('2d').drawImage(canvas, rx * pw, ry * ph, pw, ph, 0, 0, pw, ph)
+                pieces.push({ u: rx / cols, v: ry / rows, du: 1 / cols, dv: 1 / rows, canvas: piece })
+              }
+            }
+            return { pieces }
+          }
+        }
+      }
+    }
+  }
+
+  const card = document.getElementById('card')
+  const applyBtn = document.getElementById('applyBtn')
+  const resetBtn = document.getElementById('resetBtn')
+  const hintText = document.getElementById('hintText')
+  const fx = document.getElementById('fx')
+  const gl = fx.getContext('webgl', { alpha: true, premultipliedAlpha: false })
+
+  // Every effect positions a textured quad the same way (center/size/
+  // rotation in screen px → clip space), so all four fragment shaders
+  // share one vertex shader; only the pixel logic differs per program.
+  const VS = `
+    attribute vec2 aPos;
+    uniform vec2 uResolution;
+    uniform vec2 uCenter;
+    uniform vec2 uSize;
+    uniform float uRotation;
+    varying vec2 vUV;
+    void main() {
+      vec2 local = (aPos - 0.5) * uSize;
+      float c = cos(uRotation);
+      float s = sin(uRotation);
+      vec2 rotated = vec2(local.x * c - local.y * s, local.x * s + local.y * c);
+      vec2 pos = uCenter + rotated;
+      vec2 clip = (pos / uResolution) * 2.0 - 1.0;
+      clip.y = -clip.y;
+      gl_Position = vec4(clip, 0.0, 1.0);
+      vUV = aPos;
+    }
+  `
+  const FS_PLAIN = `
+    precision mediump float;
+    varying vec2 vUV;
+    uniform sampler2D uTex;
+    uniform float uAlpha;
+    void main() {
+      vec4 c = texture2D(uTex, vUV);
+      gl_FragColor = vec4(c.rgb, c.a * uAlpha);
+    }
+  `
+  const FS_RIPPLE = `
+    precision mediump float;
+    varying vec2 vUV;
+    uniform sampler2D uTex;
+    uniform float uProgress;
+    void main() {
+      vec2 center = vec2(0.5, 0.5);
+      float dist = distance(vUV, center);
+      float decay = 1.0 - uProgress;
+      float wave = sin(dist * 46.0 - uProgress * 14.0) * 0.025 * decay;
+      vec2 dir = normalize(vUV - center + 0.0001);
+      vec2 uv = vUV + dir * wave;
+      gl_FragColor = texture2D(uTex, uv);
+    }
+  `
+  const FS_GLITCH = `
+    precision mediump float;
+    varying vec2 vUV;
+    uniform sampler2D uTex;
+    uniform float uTime;
+    uniform float uIntensity;
+    float rand(vec2 co) { return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      float slice = floor(vUV.y * 36.0);
+      float jitter = (rand(vec2(slice, floor(uTime * 18.0))) - 0.5) * 0.09 * uIntensity;
+      vec2 uv = vec2(vUV.x + jitter, vUV.y);
+      float rOff = 0.008 * uIntensity;
+      float r = texture2D(uTex, uv + vec2(rOff, 0.0)).r;
+      float g = texture2D(uTex, uv).g;
+      float b = texture2D(uTex, uv - vec2(rOff, 0.0)).b;
+      float a = texture2D(uTex, uv).a;
+      gl_FragColor = vec4(r, g, b, a);
+    }
+  `
+  const FS_DISSOLVE = `
+    precision mediump float;
+    varying vec2 vUV;
+    uniform sampler2D uTex;
+    uniform float uProgress;
+    float rand(vec2 co) { return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      vec4 c = texture2D(uTex, vUV);
+      float n = rand(floor(vUV * 70.0));
+      float threshold = uProgress * 1.15 - 0.075;
+      if (n < threshold) discard;
+      float edge = smoothstep(threshold, threshold + 0.09, n);
+      vec3 ember = mix(vec3(1.0, 0.55, 0.15), c.rgb, edge);
+      gl_FragColor = vec4(ember, c.a);
+    }
+  `
+
+  // The metallic/holo card needs a genuine per-frame tilt, so it gets its
+  // own vertex shader (a cheap fake-3D rotation + perspective divide around
+  // the quad's center) instead of the flat shared VS above.
+  const VS_METAL = `
+    precision mediump float;
+    attribute vec2 aPos;
+    uniform vec2 uResolution;
+    uniform vec2 uCenter;
+    uniform vec2 uSize;
+    uniform vec2 uTilt;
+    varying vec2 vUV;
+    void main() {
+      vec3 local = vec3((aPos - 0.5) * uSize, 0.0);
+      float rx = uTilt.y * 0.3;
+      float ry = -uTilt.x * 0.3;
+      float cosX = cos(rx);
+      float sinX = sin(rx);
+      vec3 p1 = vec3(local.x, local.y * cosX - local.z * sinX, local.y * sinX + local.z * cosX);
+      float cosY = cos(ry);
+      float sinY = sin(ry);
+      vec3 p2 = vec3(p1.x * cosY + p1.z * sinY, p1.y, -p1.x * sinY + p1.z * cosY);
+      float persp = 1.0 / (1.0 + p2.z * 0.0025);
+      vec2 projected = p2.xy * persp;
+      vec2 pos = uCenter + projected;
+      vec2 clip = (pos / uResolution) * 2.0 - 1.0;
+      clip.y = -clip.y;
+      gl_Position = vec4(clip, 0.0, 1.0);
+      vUV = aPos;
+    }
+  `
+  const FS_METAL = `
+    precision mediump float;
+    varying vec2 vUV;
+    uniform sampler2D uTex;
+    uniform vec2 uTilt;
+    void main() {
+      vec4 c = texture2D(uTex, vUV);
+      float sheenPos = (vUV.x + vUV.y) * 0.5 - (uTilt.x + uTilt.y) * 0.3;
+      float sheen = pow(max(0.0, 1.0 - abs(fract(sheenPos * 1.4) - 0.5) * 2.7), 3.0);
+      float hue = fract(vUV.x * 0.5 + vUV.y * 0.5 + uTilt.x * 0.4 + uTilt.y * 0.4);
+      vec3 rainbow = 0.5 + 0.5 * cos(6.28318 * (hue + vec3(0.0, 0.33, 0.67)));
+      vec3 result = c.rgb + rainbow * sheen * 0.55 + vec3(sheen * 0.35);
+      gl_FragColor = vec4(result, c.a);
+    }
+  `
+
+  function compileShader (type, src) {
+    const s = gl.createShader(type)
+    gl.shaderSource(s, src)
+    gl.compileShader(s)
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s))
+    return s
+  }
+
+  function compileProgram (fsSrc) {
+    const program = gl.createProgram()
+    gl.attachShader(program, compileShader(gl.VERTEX_SHADER, VS))
+    gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fsSrc))
+    gl.linkProgram(program)
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program))
+    return {
+      program,
+      aPos: gl.getAttribLocation(program, 'aPos'),
+      uResolution: gl.getUniformLocation(program, 'uResolution'),
+      uCenter: gl.getUniformLocation(program, 'uCenter'),
+      uSize: gl.getUniformLocation(program, 'uSize'),
+      uRotation: gl.getUniformLocation(program, 'uRotation'),
+      uTex: gl.getUniformLocation(program, 'uTex'),
+      uAlpha: gl.getUniformLocation(program, 'uAlpha'),
+      uProgress: gl.getUniformLocation(program, 'uProgress'),
+      uTime: gl.getUniformLocation(program, 'uTime'),
+      uIntensity: gl.getUniformLocation(program, 'uIntensity')
+    }
+  }
+
+  function compileMetalProgram () {
+    const program = gl.createProgram()
+    gl.attachShader(program, compileShader(gl.VERTEX_SHADER, VS_METAL))
+    gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, FS_METAL))
+    gl.linkProgram(program)
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program))
+    return {
+      program,
+      aPos: gl.getAttribLocation(program, 'aPos'),
+      uResolution: gl.getUniformLocation(program, 'uResolution'),
+      uCenter: gl.getUniformLocation(program, 'uCenter'),
+      uSize: gl.getUniformLocation(program, 'uSize'),
+      uTex: gl.getUniformLocation(program, 'uTex'),
+      uTilt: gl.getUniformLocation(program, 'uTilt')
+    }
+  }
+
+  const programs = {
+    plain: compileProgram(FS_PLAIN),
+    ripple: compileProgram(FS_RIPPLE),
+    glitch: compileProgram(FS_GLITCH),
+    dissolve: compileProgram(FS_DISSOLVE),
+    metal: compileMetalProgram()
+  }
+
+  const quadBuf = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW)
+
+  gl.enable(gl.BLEND)
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+  function useProgram (p) {
+    gl.useProgram(p.program)
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf)
+    gl.enableVertexAttribArray(p.aPos)
+    gl.vertexAttribPointer(p.aPos, 2, gl.FLOAT, false, 0, 0)
+  }
+
+  function drawQuad (p, { center, size, rotation = 0, alpha = 1, progress = 0, time = 0, intensity = 0, tex }) {
+    gl.uniform2f(p.uResolution, fx.width, fx.height)
+    gl.uniform2f(p.uCenter, center[0], center[1])
+    gl.uniform2f(p.uSize, size[0], size[1])
+    gl.uniform1f(p.uRotation, rotation)
+    gl.uniform1f(p.uAlpha, alpha)
+    gl.uniform1f(p.uProgress, progress)
+    gl.uniform1f(p.uTime, time)
+    gl.uniform1f(p.uIntensity, intensity)
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.uniform1i(p.uTex, 0)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+  }
+
+  function drawMetalQuad (p, { center, size, tilt, tex }) {
+    gl.uniform2f(p.uResolution, fx.width, fx.height)
+    gl.uniform2f(p.uCenter, center[0], center[1])
+    gl.uniform2f(p.uSize, size[0], size[1])
+    gl.uniform2f(p.uTilt, tilt[0], tilt[1])
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.uniform1i(p.uTex, 0)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+  }
+
+  function resizeCanvas () {
+    fx.width = window.innerWidth
+    fx.height = window.innerHeight
+  }
+  resizeCanvas()
+  window.addEventListener('resize', resizeCanvas)
+
+  function makeTexture (source) {
+    const tex = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    // vUV in our vertex shader is Y-down (v=0 at the top of the quad, matching
+    // CSS screen coordinates) rather than GL's native Y-up texture convention,
+    // so flipping on upload would invert the image — leave it unflipped.
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    return tex
+  }
+
+  function clearFx () {
+    gl.viewport(0, 0, fx.width, fx.height)
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+  }
+
+  function restoreCard () {
+    clearFx()
+    card.style.visibility = 'visible'
+    applyBtn.disabled = false
+    resetBtn.disabled = true
+  }
+
+  function finishEffect (autoRestore) {
+    if (autoRestore) restoreCard()
+    else resetBtn.disabled = false
+  }
+
+  // ---- Shatter: slice into a grid, explode each piece with physics ----
+  const GRAVITY = 0.45
+  const FADE = 0.009
+  let bits = []
+
+  async function runShatter () {
+    const rect = card.getBoundingClientRect()
+    const result = await snapdom(card, { plugins: [shatterExport({ cols: 16, rows: 11 })] })
+    const { pieces } = await result.toShatter()
+    card.style.visibility = 'hidden'
+
+    bits = pieces.map(p => {
+      const w = p.du * rect.width
+      const h = p.dv * rect.height
+      const angle = Math.random() * Math.PI * 2
+      const speed = 4 + Math.random() * 9
+      return {
+        tex: makeTexture(p.canvas),
+        x: rect.left + (p.u + p.du / 2) * rect.width,
+        y: rect.top + (p.v + p.dv / 2) * rect.height,
+        w, h,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 6,
+        rot: 0,
+        vr: (Math.random() - 0.5) * 0.3,
+        alpha: 1
+      }
+    })
+
+    function tick () {
+      clearFx()
+      let anyAlive = false
+      for (const b of bits) {
+        if (b.alpha <= 0) continue
+        b.vy += GRAVITY
+        b.x += b.vx
+        b.y += b.vy
+        b.rot += b.vr
+        b.alpha = Math.max(0, b.alpha - FADE)
+        if (b.alpha <= 0) continue
+        anyAlive = true
+        useProgram(programs.plain)
+        drawQuad(programs.plain, { center: [b.x, b.y], size: [b.w, b.h], rotation: b.rot, alpha: b.alpha, tex: b.tex })
+      }
+      if (anyAlive) requestAnimationFrame(tick)
+      else finishEffect(false)
+    }
+    requestAnimationFrame(tick)
+  }
+
+  // ---- Ripple: single texture, a water-drop distortion that settles ----
+  async function runRipple () {
+    const rect = card.getBoundingClientRect()
+    const canvas = await snapdom.toCanvas(card, { scale: 2 })
+    card.style.visibility = 'hidden'
+    const tex = makeTexture(canvas)
+    const center = [rect.left + rect.width / 2, rect.top + rect.height / 2]
+    const size = [rect.width, rect.height]
+    const DURATION = 1500
+    const start = performance.now()
+
+    function tick (now) {
+      const t = Math.min(1, (now - start) / DURATION)
+      clearFx()
+      useProgram(programs.ripple)
+      drawQuad(programs.ripple, { center, size, progress: t, tex })
+      if (t < 1) requestAnimationFrame(tick)
+      else finishEffect(true)
+    }
+    requestAnimationFrame(tick)
+  }
+
+  // ---- Glitch: RGB-split + scanline jitter, settles back to clean ----
+  async function runGlitch () {
+    const rect = card.getBoundingClientRect()
+    const canvas = await snapdom.toCanvas(card, { scale: 2 })
+    card.style.visibility = 'hidden'
+    const tex = makeTexture(canvas)
+    const center = [rect.left + rect.width / 2, rect.top + rect.height / 2]
+    const size = [rect.width, rect.height]
+    const DURATION = 1300
+    const start = performance.now()
+
+    function tick (now) {
+      const elapsed = now - start
+      const t = Math.min(1, elapsed / DURATION)
+      const intensity = 1 - t
+      clearFx()
+      useProgram(programs.glitch)
+      drawQuad(programs.glitch, { center, size, time: elapsed / 60, intensity, tex })
+      if (t < 1) requestAnimationFrame(tick)
+      else finishEffect(true)
+    }
+    requestAnimationFrame(tick)
+  }
+
+  // ---- Dissolve: noise-threshold fade, like ash drifting away ----
+  async function runDissolve () {
+    const rect = card.getBoundingClientRect()
+    const canvas = await snapdom.toCanvas(card, { scale: 2 })
+    card.style.visibility = 'hidden'
+    const tex = makeTexture(canvas)
+    const center = [rect.left + rect.width / 2, rect.top + rect.height / 2]
+    const size = [rect.width, rect.height]
+    const DURATION = 1800
+    const start = performance.now()
+
+    function tick (now) {
+      const t = Math.min(1, (now - start) / DURATION)
+      clearFx()
+      useProgram(programs.dissolve)
+      drawQuad(programs.dissolve, { center, size, progress: t, tex })
+      if (t < 1) requestAnimationFrame(tick)
+      else finishEffect(false)
+    }
+    requestAnimationFrame(tick)
+  }
+
+  // ---- Metalizada: continuous mouse/touch-tracked tilt + holo sheen ----
+  // Unlike the other four (fire once, animate for a fixed duration, done),
+  // this one stays interactive indefinitely — it only stops when the user
+  // explicitly exits, so it needs its own activate/deactivate lifecycle
+  // instead of the run-to-completion pattern above.
+  let metalActive = false
+  let metalTex = null
+  let metalRect = null
+  const metalTilt = { x: 0, y: 0 }
+
+  function clamp (v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
+
+  function metalPointerMove (e) {
+    const cx = metalRect.left + metalRect.width / 2
+    const cy = metalRect.top + metalRect.height / 2
+    metalTilt.x = clamp((e.clientX - cx) / (metalRect.width / 2), -1, 1)
+    metalTilt.y = clamp((e.clientY - cy) / (metalRect.height / 2), -1, 1)
+  }
+
+  function metalTick () {
+    if (!metalActive) return
+    clearFx()
+    useProgram(programs.metal)
+    drawMetalQuad(programs.metal, {
+      center: [metalRect.left + metalRect.width / 2, metalRect.top + metalRect.height / 2],
+      size: [metalRect.width, metalRect.height],
+      tilt: [metalTilt.x, metalTilt.y],
+      tex: metalTex
+    })
+    requestAnimationFrame(metalTick)
+  }
+
+  async function runMetal () {
+    metalRect = card.getBoundingClientRect()
+    const canvas = await snapdom.toCanvas(card, { scale: 2 })
+    card.style.visibility = 'hidden'
+    metalTex = makeTexture(canvas)
+    metalTilt.x = 0
+    metalTilt.y = 0
+    metalActive = true
+    window.addEventListener('pointermove', metalPointerMove)
+    resetBtn.disabled = false
+    resetBtn.textContent = '↩️ Volver a HTML'
+    metalTick()
+  }
+
+  function stopMetal () {
+    metalActive = false
+    window.removeEventListener('pointermove', metalPointerMove)
+    resetBtn.textContent = '🔄 Reconstruir'
+    restoreCard()
+  }
+
+  const EFFECTS = {
+    shatter: { run: runShatter, label: '💥 Romper', hint: 'Editá el texto de la tarjeta antes de romperla — vas a ver tu propio texto volando en pedazos, no una imagen precocinada.' },
+    ripple: { run: runRipple, label: '🌊 Ondear', hint: 'Una onda de agua recorre la tarjeta y se asienta de nuevo — la imagen vuelve sola, no hace falta reconstruir.' },
+    glitch: { run: runGlitch, label: '📺 Interferir', hint: 'Interferencia de señal con separación de color — como el resto de efectos "no destructivos", se corrige sola.' },
+    dissolve: { run: runDissolve, label: '💨 Disolver', hint: 'Cada píxel desaparece en un momento distinto, como ceniza — necesitás "Reconstruir" para recuperar la tarjeta.' },
+    metal: { run: runMetal, label: '🃏 Activar', hint: 'Movés el mouse (o el dedo) sobre la tarjeta y se inclina como una carta metalizada, con un brillo holográfico que sigue el ángulo. "Volver a HTML" para salir.' }
+  }
+
+  let currentEffect = 'shatter'
+  const effectButtons = document.querySelectorAll('.effect-btn')
+  effectButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (metalActive) stopMetal()
+      currentEffect = btn.dataset.effect
+      effectButtons.forEach(b => b.classList.remove('active'))
+      btn.classList.add('active')
+      const cfg = EFFECTS[currentEffect]
+      applyBtn.textContent = cfg.label
+      hintText.textContent = cfg.hint
+    })
+  })
+
+  applyBtn.addEventListener('click', async () => {
+    applyBtn.disabled = true
+    await EFFECTS[currentEffect].run()
+  })
+
+  resetBtn.addEventListener('click', () => {
+    if (metalActive) stopMetal()
+    else restoreCard()
+  })
+</script>
+
+</body>
+</html>

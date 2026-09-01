@@ -137,7 +137,21 @@ dist
 
 drafts/
 
-demos/
+# demos/ is committed so contributors can run the visual suite and reproduce issues.
+# Held back: the docs-site copy, the Drift-branded assets (third-party logos) and the two
+# demos built entirely around them, and the labs* scratch pages (not in the d*.html glob
+# the visual suite runs, so nothing tests them).
+demos/docs/
+demos/assets/pnl-drift-logo-up.webp
+demos/assets/drift-market-icon.svg
+demos/assets/sol-market-icon.svg
+demos/assets/usdc-market-icon.svg
+demos/assets/logo-light.svg
+demos/assets/text-light.svg
+demos/d17-trading-card-ticker.html
+demos/d171-trading-card-ticker-v2.html
+demos/labs*.html
+demos/assets/favicon/
 
 __tests__/__screenshots__
 __snapshots__

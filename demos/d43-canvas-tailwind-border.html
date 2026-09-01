@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>#362 canvas + Tailwind border: 0 solid</title>
+    <style>
+      * { border: 0 solid; }
+    </style>
+  </head>
+  <body>
+    <h3>#362: Canvas with Tailwind * { border: 0 solid }</h3>
+    <p>Capture should show canvas without visible border (border: none in output).</p>
+
+    <main>
+      <br />
+      <canvas id="canvas" width="300" height="100" update:current-page="currentPage = $event"></canvas>
+      <br />
+    </main>
+
+    <button id="snapdom">snapdom</button>
+    <button id="download">download svg</button>
+
+    <h4>snapdom result</h4>
+    <div id="snapdom-result" style="outline: 1px solid green"></div>
+
+    <h4>iframe preview (SVG)</h4>
+    <div id="iframe-preview" style="outline: 1px solid green"></div>
+  </body>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    document.getElementById('snapdom').addEventListener('click', async () => {
+      const main = document.querySelector('main');
+      const result = await snapdom(main);
+      const img = await result.toPng();
+      document.getElementById('snapdom-result').innerHTML = '';
+      document.getElementById('snapdom-result').appendChild(img);
+
+      const iframe = document.createElement('iframe');
+      iframe.src = result.url;
+      iframe.style.width = '100%';
+      iframe.style.height = main.offsetHeight + 200 + 'px';
+      document.getElementById('iframe-preview').innerHTML = '';
+      document.getElementById('iframe-preview').appendChild(iframe);
+    });
+
+    document.getElementById('download').addEventListener('click', async () => {
+      const main = document.querySelector('main');
+      const result = await snapdom(main);
+      await result.download({ format: 'svg', filename: 'screenshot' });
+    });
+  </script>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html data-theme="3dshadow">
+  <head>
+    <meta charset="UTF-8" />
+    <title>nested.html</title>
+    <style>
+      .chatvis-scope-49wl4ard * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: rgb(var(--base-rgb));
+      }
+
+      .chatvis-scope-49wl4ard.chart {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      .chatvis-scope-49wl4ard .nested {
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        color: rgb(var(--text-rgb));
+        width: fit-content;
+        margin: 0 auto;
+      }
+
+      .chatvis-scope-49wl4ard .title {
+        font-size: 1.4rem;
+        text-align: center;
+      }
+
+      .chatvis-scope-49wl4ard .block {
+        display: flex;
+        flex-grow: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        border: 1px solid rgb(var(--border-rgb));
+        gap: 1rem;
+      }
+
+      .chatvis-scope-49wl4ard .block-name {
+        font-weight: bold;
+        white-space: nowrap;
+        text-align: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+
+      .chatvis-scope-49wl4ard .block-container {
+        flex-grow: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-left: 20px;
+        min-width: max-content;
+      }
+
+      .chatvis-scope-49wl4ard .nested > .block {
+        border-width: 2px;
+      }
+
+      .chatvis-scope-49wl4ard .nested > .block > .block-name {
+        font-size: 1.2rem;
+        min-width: 6rem;
+      }
+
+      html[data-theme="sticker"] {
+        .chatvis-scope-49wl4ard .block-container {
+          gap: 1rem;
+        }
+
+        .chatvis-scope-49wl4ard .block {
+          background-color: rgba(var(--accent-rgb), 0.05);
+          box-shadow: 0 0 0 4px rgba(var(--border-rgb), 0.2);
+          border-radius: 4px;
+        }
+      }
+
+      html[data-theme="3dshadow"] {
+        .chatvis-scope-49wl4ard .block {
+          background-color: rgb(var(--base-rgb));
+          box-shadow: 3px 3px 0 0 rgb(var(--accent-rgb)),
+            6px 6px 0 0 rgba(var(--border-rgb), 0.5);
+          border-radius: 2px;
+          transition: transform 0.2s, box-shadow 0.2s;
+          border-width: 1px;
+        }
+
+        .chatvis-scope-49wl4ard .nested > .block {
+          box-shadow: 4px 4px 0 0 rgb(var(--accent-rgb)),
+            8px 8px 0 0 rgba(var(--border-rgb), 0.5);
+        }
+      }
+
+      html[data-theme="neumorphism"] {
+        .chatvis-scope-49wl4ard .block {
+          background-color: rgb(var(--base-rgb));
+          border: none;
+          border-radius: 12px;
+          box-shadow: 6px 6px 18px rgba(var(--border-rgb), 0.3),
+            -6px -6px 18px rgba(var(--accent-rgb), 0.2);
+          padding: 1.2rem;
+        }
+
+        .chatvis-scope-49wl4ard .block-container {
+          gap: 1rem;
+        }
+
+        .chatvis-scope-49wl4ard .nested > .block {
+          box-shadow: 6px 6px 18px rgba(var(--border-rgb), 0.3),
+            -6px -6px 18px rgba(var(--accent-rgb), 0.2);
+        }
+      }
+    </style>
+    <style id="color-theme">
+      body {
+        transition: background-color 0.9s ease;
+      }
+      :root {
+        --text-rgb: 0, 102, 140;
+        --border-rgb: 113, 196, 239;
+        --accent-rgb: 113, 196, 239;
+        --base-rgb: 255, 255, 255;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chart chatvis-scope-49wl4ard">
+      <div class="nested">
+        <div class="block">
+          <div class="block-name">Main Category 1</div>
+          <div class="block-container">
+            <div class="block">Sub-item 1</div>
+            <div class="block">Sub-item 2</div>
+          </div>
+        </div>
+        <div class="block">
+          <div class="block-name">Standalone Item</div>
+        </div>
+        <div class="block">
+          <div class="block-name">Main Category 2</div>
+          <div class="block-container">
+            <div class="block">
+              <div class="block-name">Nested Category</div>
+              <div class="block-container">
+                <div class="block">Deep Item 1</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs';
+      const el = document.querySelector(".chart");
+      const result = await snapdom(el, { compress: false});
+
+      const img = await result.toImg();
+      document.body.appendChild(img);
+
+  await result.download({ format: "png", filename: "my-capture" });
+    </script>
+  </body>
+</html>

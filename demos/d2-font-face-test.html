@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Test @font-face con diveGood</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Double:wght@100..900&display=swap" rel="stylesheet">
+
+  <style>
+    .fascinate-inline-regular {
+  font-family: "Bitcount Prop Double", system-ui;
+  font-optical-sizing: auto;
+}
+
+
+    .font-test {
+      font-family: "Bitcount Prop Double";
+  font-weight: 400;
+  font-style: normal;
+      font-size: 24px;
+      color: #333;
+      border: 1px dashed #aaa;
+      padding: 1em;
+      width: fit-content;
+      margin-bottom: 1em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="font-test" id="target">
+    Esta fuente viene de @font-face (Indie Flower)
+  </div>
+
+  <button onclick="capture()">Capturar fuente</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    window.capture = async function () {
+      const el = document.getElementById('target');
+      const img = await snapdom.toImg(el, {embedFonts: true, compress:true});
+      document.getElementById('output').innerHTML = '';
+      document.getElementById('output').appendChild(img);
+    }
+  </script>
+
+</body>
+</html>

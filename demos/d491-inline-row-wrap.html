@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Packed inline rows must not wrap in the capture (#491)</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; padding: 20px; margin: 0; }
+      h1 { font-size: 18px; }
+      p { font-size: 14px; color: #555; max-width: 72ch; }
+      #target * { box-sizing: border-box; }
+      #target {
+        width: 760px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        padding: 14px;
+        display: grid;
+        gap: 18px;
+        font-size: 15.5px;
+      }
+      .case { font-size: 12px; color: #777; }
+
+      /* case 1 — the reported shape: a flex header whose right-hand cell is shrink-to-fit
+         around two inline-block buttons and the single space between them. */
+      .header { display: flex; align-items: center; justify-content: space-between; }
+      .header .title { margin: 0; font-size: 19.5px; }
+      .actions a { text-decoration: none; }
+      .btn {
+        display: inline-block; white-space: nowrap; border: 0; border-radius: 3px;
+        padding: 4.8px 16.3px; background: #2d7086; color: #fafafa; font: inherit;
+      }
+      /* the search box the wrapped button used to paint over */
+      .search {
+        margin-top: 6px; border: 1px solid #2d7086; border-radius: 3px;
+        padding: 6px 10px; color: #888; font-size: 14.5px;
+      }
+
+      /* case 2 — the same failure amplified: six frozen chips in one shrink-to-fit row, so
+         the per-box round-ups pile up far past the single one the row itself received. */
+      .toolbar { width: fit-content; background: #f2f2f2; border-radius: 4px; padding: 5px; }
+      .chip {
+        display: inline-block; border-radius: 999px; padding: 3.4px 10.7px;
+        background: #fff; border: 1px solid #cfd8dc; font-size: 13.5px;
+      }
+
+      /* control — a fit-content box of wrappable text: it must NOT re-wrap either, which is
+         what the (now smaller) width nudge is still there to guarantee. */
+      .fitbox { width: fit-content; background: #eef7ea; padding: 4.5px 9.5px; font-size: 14.5px; }
+
+      button.capture {
+        display: block; margin: 20px 0; padding: 8px 24px; border: 0;
+        border-radius: 8px; background: #0d0; cursor: pointer; font-size: 14px;
+      }
+      .out { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+      .out figure { margin: 0; }
+      .out figcaption { font-size: 12px; color: #555; margin-bottom: 6px; }
+      .out img { border: 1px dashed #d95350; }
+      table.metrics { border-collapse: collapse; font-size: 13px; margin-top: 16px; }
+      table.metrics th, table.metrics td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; }
+      td.ok { color: #080; } td.bad { color: #c00; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <h1>#491 — a packed inline row line-wrapped in the capture</h1>
+    <p>
+      snapdom freezes the used width of the boxes it does not soften, and used to round a
+      fractional one <em>up</em> to the next 1/16px so Blink's 1/1000-rounded serialization could
+      never leave a shrink-to-fit box a hair below its true width
+      (<a href="https://github.com/zumerlab/snapdom/issues/429">#429</a>). That ceil is paid by
+      every box in a row, while the shrink-to-fit parent holding them is paid once: two buttons
+      grew 0.094px inside a parent that grew 0.016px, the space between them no longer fit, and
+      the second button wrapped to a line the parent's frozen height did not have — landing on
+      top of the search field below it.
+    </p>
+
+    <div id="target">
+      <span class="case">case 1 — reported shape: both buttons stay on the header line</span>
+      <div>
+        <div class="header">
+          <h2 class="title">Ilios Users (View All)</h2>
+          <div class="actions">
+            <a href="#"><button type="button" class="btn">Create New User</button></a>
+            <a href="#"><button type="button" class="btn">Upload Multiple Users</button></a>
+          </div>
+        </div>
+        <div class="search">Find Ilios Users&hellip;</div>
+      </div>
+
+      <span class="case">case 2 — six chips in one shrink-to-fit row (expect one line)</span>
+      <div class="toolbar">
+        <span class="chip">Dashboard</span>
+        <span class="chip">Courses</span>
+        <span class="chip">Learner Groups</span>
+        <span class="chip">Schools</span>
+        <span class="chip">Programs</span>
+        <span class="chip">Reports</span>
+      </div>
+
+      <span class="case">control — fit-content text box (must not re-wrap either)</span>
+      <div class="fitbox">a sentence sized exactly to its own content</div>
+    </div>
+
+    <button class="capture" id="btn">Capture</button>
+    <div class="out">
+      <figure id="shot" hidden><figcaption>captured</figcaption></figure>
+    </div>
+    <table class="metrics" id="metrics" hidden>
+      <thead><tr><th>row</th><th>live lines</th><th>captured lines</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      const ROWS = [
+        ['case 1 — header buttons', '.actions', '.btn'],
+        ['case 2 — chip toolbar', '.toolbar', '.chip'],
+        ['control — fit-content text', '.fitbox', null],
+      ]
+
+      /** How many line boxes the row's children occupy, by counting distinct tops. */
+      function lines(root, [, rowSel, itemSel]) {
+        const row = root.querySelector(rowSel)
+        if (!row) return NaN
+        if (!itemSel) {
+          // text-only box: line count from its height and its own line-height
+          const lh = parseFloat(getComputedStyle(row).lineHeight) || 1
+          return Math.max(1, Math.round(row.getBoundingClientRect().height / lh))
+        }
+        const tops = new Set([...row.querySelectorAll(itemSel)]
+          .map((el) => Math.round(el.getBoundingClientRect().top)))
+        return tops.size
+      }
+
+      // Re-mount the capture's own markup (not the raster) so the rows can be measured with the
+      // same layout engine as the live DOM — a wrap shows up as a number, not a squint. The mount
+      // goes in a SHADOW ROOT: the cloned nodes keep their class names, so in the light DOM this
+      // page's own rules would style them and every row would "match" no matter what snapdom emitted.
+      async function measureCaptured() {
+        const target = document.querySelector('#target')
+        const raw = await snapdom.toRaw(target)
+        const svg = decodeURIComponent(raw.replace(/^data:image\/svg\+xml;charset=utf-8,/, ''))
+        const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
+        const holder = document.createElement('div')
+        holder.style.cssText = `position:absolute;left:-99999px;top:0;width:${
+          target.getBoundingClientRect().width}px`
+        document.body.appendChild(holder)
+        const root = holder.attachShadow({ mode: 'open' })
+        root.append(...doc.querySelector('foreignObject').childNodes)
+        const out = ROWS.map((row) => lines(root, row))
+        holder.remove()
+        return out
+      }
+
+      document.querySelector('#btn').addEventListener('click', async () => {
+        const target = document.querySelector('#target')
+        const live = ROWS.map((row) => lines(target, row))
+        const captured = await measureCaptured()
+
+        const tbody = document.querySelector('#metrics tbody')
+        tbody.innerHTML = ''
+        ROWS.forEach(([name], i) => {
+          const ok = live[i] === captured[i]
+          tbody.insertAdjacentHTML('beforeend',
+            `<tr><td>${name}</td><td>${live[i]}</td><td>${captured[i]}</td>` +
+            `<td class="${ok ? 'ok' : 'bad'}">${ok ? 'match' : 'WRAPPED'}</td></tr>`)
+        })
+        document.querySelector('#metrics').hidden = false
+
+        const img = await snapdom.toPng(target)
+        const fig = document.querySelector('#shot')
+        fig.querySelectorAll('img').forEach((n) => n.remove())
+        fig.appendChild(img)
+        fig.hidden = false
+      })
+    </script>
+  </body>
+</html>

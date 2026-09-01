@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>#444 &lt;audio&gt; tag rendering</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 16px; }
+      /* #444: native <audio controls> is a UA shadow-DOM widget that can't be
+         serialized, so it captured blank. snapdom now draws a representative
+         player sized to the element. */
+      #target { display: flex; flex-direction: column; gap: 16px; width: 340px; }
+      .card { padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+      audio.wide { width: 100%; }
+    </style>
+  </head>
+  <body>
+    <h3>#444: &lt;audio&gt; tag rendering</h3>
+
+    <div id="target">
+      <div class="card">
+        <p>Default audio player</p>
+        <audio controls src=""></audio>
+      </div>
+      <div class="card">
+        <p>Full-width audio player</p>
+        <audio class="wide" controls src=""></audio>
+      </div>
+    </div>
+
+    <h4>Result:</h4>
+    <div id="out"></div>
+  </body>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+    const target = document.getElementById('target')
+    const out = document.getElementById('out')
+    // Auto-capture so the demo is self-contained; snapdiff captures #target directly.
+    const img = await snapdom.toPng(target, {})
+    out.appendChild(img)
+  </script>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SnapDOM – Sticky Freeze Demo (clone-only)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#0b1016; --card:#141a22; --muted:#8696a7; --fg:#e7eef7; --accent:#4aa3ff; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+    .wrap { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; padding: 16px; }
+    .panel { background: var(--card); border: 1px solid #223; border-radius: 12px; padding: 12px; box-shadow: 0 10px 20px rgba(0,0,0,.25); }
+    h1 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
+    .controls { display: flex; gap: 8px; margin-bottom: 10px; }
+    button { background: var(--accent); color: #05111f; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+    button:active { transform: translateY(1px); }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+    /* Demo container with sticky pieces */
+    .capture-root {
+      position: relative;
+      height: 360px;
+      overflow: auto;
+      border-radius: 10px;
+      border: 1px solid #2a3340;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)) ;
+    }
+
+    /* Inner content is wider/taller to require both scrolls */
+    .stage {
+      position: relative;
+      min-height: 900px;
+      width: 900px;         /* force horizontal scroll */
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 16px;
+    }
+
+    /* Sticky header */
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: rgba(21, 118, 255, 0.2);
+      border: 1px solid #3b6ea8;
+      padding: 10px 12px;
+      border-radius: 8px;
+      backdrop-filter: blur(6px);
+      margin-bottom: 8px;
+    }
+
+    /* Sticky footer (bottom: 0) */
+    .sticky-footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 4;
+      background: rgba(20, 160, 120, 0.25);
+      border: 1px solid #2a856b;
+      padding: 10px 12px;
+      border-radius: 8px;
+      backdrop-filter: blur(6px);
+      margin-top: 8px;
+    }
+
+    /* Sticky sidebar (left: 0) */
+    .sidebar {
+      position: sticky;
+      top: 0;     /* anchor against top while scrolling vertically */
+      left: 0;    /* used by some layouts; main anchor is left via sticky in horizontal overflow */
+      align-self: start;
+      height: 260px;
+      background: rgba(255, 220, 80, 0.15);
+      border: 1px solid #8e7a2a;
+      border-radius: 10px;
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .content {
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed #2b3950;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid #2d3a4a;
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 100px;
+      box-shadow: 0 6px 12px rgba(0,0,0,.18);
+      transform: translateZ(0); /* some transforms in the wild */
+    }
+
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 800px;             /* wider than viewport to cause horizontal scroll */
+      background: rgba(255,255,255,0.02);
+      border: 1px solid #2b3950;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td { padding: 8px 12px; border-bottom: 1px solid #233143; white-space: nowrap; }
+    th { background: rgba(255,255,255,0.03); text-align: left; }
+
+
+
+    .output {
+      min-height: 360px;
+      overflow: auto;
+      border: 1px solid #324257;
+      border-radius: 10px;
+      background: #0f1620;
+      padding: 8px;
+    }
+
+    .row { height: 24px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>Original (scroll this)</h1>
+      <div class="controls">
+        <button id="scroll-demo">Scroll to random</button>
+        <button id="clone-freeze">Clone &amp; Freeze Sticky</button>
+      </div>
+      <div class="hint">Tip: scrolleá primero (vertical y horizontal) y luego cloná.</div>
+
+      <!-- Capture root -->
+      <div id="capture-root" class="capture-root">
+        <div class="sticky-header">Sticky Header (top: 0)</div>
+
+        <div class="stage">
+          <aside class="sidebar">
+            <strong>Sticky Sidebar (left: 0)</strong>
+            <p class="hint">Permanece pegada mientras scrolleás.</p>
+            <ul>
+              <li>Item A</li><li>Item B</li><li>Item C</li><li>Item D</li>
+              <li>Item E</li><li>Item F</li><li>Item G</li><li>Item H</li>
+              <li>Item I</li><li>Item J</li><li>Item K</li><li>Item L</li>
+            </ul>
+          </aside>
+
+          <main class="content">
+            <div class="cards">
+              <div class="card">Card 1</div>
+              <div class="card">Card 2</div>
+              <div class="card">Card 3</div>
+              <div class="card">Card 4</div>
+              <div class="card">Card 5</div>
+              <div class="card">Card 6</div>
+              <div class="card">Card 7</div>
+              <div class="card">Card 8</div>
+              <div class="card" style="transform: translateY(0.5px);">Card (tiny transform)</div>
+            </div>
+
+            <h3>Wide Table (frozen first column)</h3>
+            <div style="overflow:auto; border:1px solid #253246; border-radius:8px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="sticky-col">Name</th>
+                    <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th><th>Q6</th><th>Q7</th><th>Q8</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </main>
+        </div>
+
+        <div class="sticky-footer">Sticky Footer (bottom: 0)</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h1>Clone Preview (sticky frozen)</h1>
+      <div class="output" id="preview"></div>
+      <div class="hint">Acá se muestra el clon con los stickies convertidos a absolute en la posición visual.</div>
+    </div>
+  </div>
+<script type="module">
+   import {
+      snapdom,
+      preCache,
+    } from '../dist/snapdom.mjs'
+    const root = document.getElementById('capture-root');
+    const preview = document.getElementById('preview');
+     document.getElementById('clone-freeze').addEventListener('click', async () => {
+      const img = await snapdom.toImg(root, {
+           
+          });
+     
+
+      // Show clone
+      preview.innerHTML = '';
+     
+      preview.appendChild(img);
+      // Make the preview independently scrollable to compare positions
+      preview.scrollTop = 0;
+      preview.scrollLeft = 0;
+    });
+</script>
+  </body>
+  </html>

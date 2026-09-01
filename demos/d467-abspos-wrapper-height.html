@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>abspos-only wrapper loses height (#467)</title>
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      .row { display: flex; align-items: flex-start; gap: 24px; }
+      .col { text-align: center; }
+      .col .caption { font-size: 13px; color: #555; margin-bottom: 6px; }
+      .box {
+        width: 260px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      /* The bug: .hero's height comes only from a stylesheet rule, and its only child is
+         position:absolute — the exact shape that made hasFlowFast wrongly report "in flow". */
+      .hero { position: relative; height: 160px; background: #eee; }
+      .hero .slide {
+        position: absolute; inset: 0;
+        background: linear-gradient(135deg, #6366f1, #ec4899);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-weight: bold; font-size: 14px;
+      }
+      .after { background: #222; color: #fff; padding: 10px; font-size: 13px; text-align: center; }
+      button.capture {
+        display: block;
+        margin: 20px 0;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture:hover { background: #0c0; }
+    </style>
+  </head>
+  <body>
+    <h1>#467 — a wrapper whose only children are position:absolute loses its height</h1>
+    <p style="max-width:640px;font-size:13px;color:#666">
+      <code>.hero</code>'s 160px height comes from a stylesheet, and its only child is an
+      absolutely-positioned overlay. <code>hasFlowFast</code> used to trust
+      <code>textContent</code> (sees text inside the abspos child) and <code>scrollHeight</code>
+      (floored at <code>clientHeight</code>, never drops even when nothing is really in flow) —
+      both signals lied, so the height got stripped and <code>.hero</code> collapsed to 0,
+      letting <code>.after</code> paint over it. Before the fix: no purple/pink gradient band,
+      the dark "below the hero" bar sits right at the top.
+    </p>
+    <button type="button" class="capture">Capture</button>
+
+    <div class="row">
+      <div class="col">
+        <div class="caption">Origin</div>
+        <div class="box">
+          <div class="hero origin">
+            <div class="slide">caption text</div>
+          </div>
+          <div class="after">below the hero</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="caption">Result (snapDOM capture)</div>
+        <div class="box result"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      document.querySelector('.capture').addEventListener('click', async () => {
+        const origin = document.querySelector('.box:not(.result)')
+        const result = document.querySelector('.box.result')
+        try {
+          const img = await snapdom.toPng(origin)
+          result.replaceChildren(img)
+        } catch (e) {
+          result.textContent = 'ERROR'
+          console.error(e)
+        }
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo: SnapDOM Live-DOM Toolkit</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e293b, #0f172a 60%);
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  header { text-align: center; padding: 28px 16px 8px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6em; }
+  header p { margin: 0 auto; opacity: .7; font-size: .9em; max-width: 620px; }
+  code { background: #1e293b; padding: 1px 6px; border-radius: 4px; }
+
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 20px 16px 8px;
+  }
+  .tab-btn {
+    font: inherit;
+    border: 0;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    background: #1e293b;
+    color: #94a3b8;
+    font-weight: 700;
+    font-size: .9em;
+  }
+  .tab-btn.active { background: #38bdf8; color: #0f172a; }
+
+  main { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel-intro { text-align: center; opacity: .7; font-size: .88em; margin: 0 0 20px; }
+
+  button.action {
+    font: inherit;
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  button.action:disabled { opacity: .45; cursor: default; }
+  .actions-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+  .toggle { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: .9em; opacity: .85; margin-bottom: 16px; }
+
+  /* --- Drag & Drop --- */
+  .board { display: flex; gap: 16px; }
+  .column {
+    flex: 1;
+    min-height: 220px;
+    background: #1e293b;
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .column h3 { margin: 0 0 12px; font-size: .85em; opacity: .7; text-transform: uppercase; letter-spacing: .05em; }
+  .column.dropzone { outline: 2px dashed rgba(148,163,184,.3); outline-offset: -6px; }
+  .empty-hint { opacity: .4; font-size: .85em; text-align: center; margin-top: 24px; }
+  .drag-card {
+    position: relative;
+    margin: 0 6px 20px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f97316, #ef4444);
+    box-shadow: 0 8px 20px rgba(239,68,68,.35);
+    cursor: grab;
+  }
+  .drag-card strong { display: block; font-size: .95em; margin-bottom: 4px; }
+  .drag-card p { margin: 0; font-size: .8em; opacity: .85; }
+  .drag-card .badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #facc15;
+    box-shadow: 0 4px 10px rgba(0,0,0,.35);
+    font-size: .9em;
+  }
+
+  /* --- Antes / Después --- */
+  .theme-card {
+    padding: 24px;
+    border-radius: 16px;
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: 0 12px 30px rgba(0,0,0,.3);
+    transition: background .2s, color .2s;
+  }
+  .theme-card.dark { background: #0f172a; color: #e2e8f0; }
+  .theme-card h3 { margin: 0 0 8px; }
+  .theme-card p { margin: 0 0 14px; opacity: .8; }
+  .swatch-row { display: flex; gap: 8px; }
+  .chip { background: rgba(56,189,248,.18); color: #0ea5e9; padding: 5px 12px; border-radius: 999px; font-size: .82em; font-weight: 700; }
+  .theme-card.dark .chip { background: rgba(56,189,248,.28); }
+  .compare-wrap { position: relative; margin-top: 20px; border-radius: 14px; overflow: hidden; }
+  .compare-wrap img { display: block; width: 100%; }
+  .after-clip { position: absolute; inset: 0 auto 0 0; width: 50%; overflow: hidden; border-right: 2px solid #38bdf8; }
+  .compare-wrap input[type="range"] { width: 100%; margin-top: 10px; }
+
+  /* --- Confetti --- */
+  .success-card {
+    text-align: center;
+    padding: 32px 20px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, #059669, #0ea5e9);
+    box-shadow: 0 16px 40px rgba(5,150,105,.35);
+  }
+  .success-card .icon { font-size: 2.4em; margin-bottom: 6px; }
+  .success-card h3 { margin: 0 0 6px; }
+  .success-card p { margin: 0; opacity: .9; }
+  #confettiCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 60; }
+
+  /* --- Galería --- */
+  .preview-stage { display: flex; justify-content: center; padding: 20px 0; }
+  .sample-btn {
+    font: inherit;
+    font-weight: 700;
+    padding: 12px 26px;
+    border-radius: 10px;
+    border: 0;
+    background: #7c3aed;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(124,58,237,.4);
+  }
+  .sample-btn:hover, .sample-btn.force-hover { background: #6d28d9; transform: translateY(-2px); }
+  .sample-btn:focus-visible, .sample-btn.force-focus { outline: 3px solid #a78bfa; outline-offset: 2px; }
+  .sample-btn:disabled, .sample-btn.force-disabled { background: #475569; color: #94a3b8; box-shadow: none; cursor: default; }
+  .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 20px; }
+  .gallery-cell { background: #1e293b; border-radius: 12px; padding: 10px; text-align: center; }
+  .gallery-cell img { max-width: 100%; border-radius: 6px; }
+  .gallery-cell span { display: block; margin-top: 6px; font-size: .78em; opacity: .7; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧬 SnapDOM Live-DOM Toolkit</h1>
+  <p>Cuatro usos prácticos de la misma idea: en cualquier momento podés capturar el DOM tal como está ahora mismo — en vivo, interactivo — y usar esa imagen para algo que la referencia al elemento en sí no te permite.</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-target="panel-drag">🖐️ Drag &amp; Drop</button>
+  <button class="tab-btn" data-target="panel-compare">🪞 Antes / Después</button>
+  <button class="tab-btn" data-target="panel-confetti">🎉 Confetti</button>
+  <button class="tab-btn" data-target="panel-gallery">🖼️ Galería</button>
+</div>
+
+<main>
+  <section class="panel active" id="panel-drag">
+    <p class="panel-intro">La imagen de arrastre nativa del navegador es una caja negra: es exactamente el elemento, sin poder tocarla. Con SnapDOM tenés un bitmap real de la tarjeta <em>en vivo</em>, así que podés levantarla, inclinarla y darle sombra antes de soltarla — algo que <code>setDragImage</code> con la imagen nativa no permite.</p>
+    <label class="toggle"><input type="checkbox" id="useSnapdomDrag" checked> Usar la imagen de arrastre mejorada con SnapDOM (desmarcá para ver la nativa, sin estilo)</label>
+    <div class="board">
+      <div class="column" id="sourceColumn">
+        <h3>Por hacer</h3>
+        <div class="drag-card" draggable="true" data-id="1">
+          <span class="badge">🔥</span>
+          <strong>Rediseñar el checkout</strong>
+          <p>Prioridad alta</p>
+        </div>
+        <div class="drag-card" draggable="true" data-id="2" style="background:linear-gradient(135deg,#8b5cf6,#3b82f6)">
+          <span class="badge">✨</span>
+          <strong>Pulir animaciones</strong>
+          <p>Prioridad media</p>
+        </div>
+      </div>
+      <div class="column dropzone" id="targetColumn">
+        <h3>Hecho</h3>
+        <p class="empty-hint">Soltá acá</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-compare">
+    <p class="panel-intro">Cambiá el tema, guardá "antes" y "después", y deslizá para comparar. Ambos lados son capturas reales de la misma tarjeta en dos momentos — no una edición manual.</p>
+    <div id="themeCard" class="theme-card">
+      <h3>Panel de configuración</h3>
+      <p>Así se ve esta tarjeta con el tema actual.</p>
+      <div class="swatch-row">
+        <span class="chip">Notificaciones</span>
+        <span class="chip">Privacidad</span>
+      </div>
+    </div>
+    <label class="toggle" style="margin-top:14px"><input type="checkbox" id="darkToggle"> Modo oscuro</label>
+    <div class="actions-row">
+      <button class="action" id="captureBeforeBtn">📸 Guardar "Antes"</button>
+      <button class="action" id="captureAfterBtn">📸 Guardar "Después"</button>
+    </div>
+    <div id="compareWrap" class="compare-wrap" hidden>
+      <img id="beforeImg" alt="Antes">
+      <div id="afterClip" class="after-clip"><img id="afterImg" alt="Después"></div>
+      <input type="range" id="compareRange" min="0" max="100" value="50">
+    </div>
+  </section>
+
+  <section class="panel" id="panel-confetti">
+    <p class="panel-intro">Al confirmar, esta tarjeta —tal cual se ve en pantalla— se corta en piezas reales y estalla como confeti. Mismo plugin <code>toShatter()</code> del demo anterior, física distinta (más liviana, hacia arriba).</p>
+    <div id="successCard" class="success-card">
+      <div class="icon">✅</div>
+      <h3>¡Pago confirmado!</h3>
+      <p>Tu pedido #4821 va en camino.</p>
+    </div>
+    <div class="actions-row">
+      <button class="action" id="confettiBtn">🎉 Confirmar</button>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-gallery">
+    <p class="panel-intro">Un botón real, en sus estados reales, capturado automáticamente en cada uno — sin sacar screenshots a mano cada vez que cambia el diseño.</p>
+    <div class="preview-stage">
+      <button id="sampleButton" class="sample-btn">Suscribirme</button>
+    </div>
+    <div class="actions-row">
+      <button class="action" id="generateGalleryBtn">📸 Generar galería</button>
+    </div>
+    <div id="galleryGrid" class="gallery-grid"></div>
+  </section>
+</main>
+
+<canvas id="confettiCanvas"></canvas>
+
+<script type="module">
+  import { snapdom } from '../dist/snapdom.mjs'
+
+  // --- Tabs ---
+  const tabs = document.querySelectorAll('.tab-btn')
+  const panels = document.querySelectorAll('.panel')
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'))
+      panels.forEach(p => p.classList.remove('active'))
+      tab.classList.add('active')
+      document.getElementById(tab.dataset.target).classList.add('active')
+    })
+  })
+
+  // ============== 1) Drag & Drop with a real drag image ==============
+  // The browser's built-in drag ghost is an opaque, unstylable snapshot of
+  // the element — you cannot rotate it, scale it down, or add a shadow to
+  // it. Once SnapDOM gives us an actual bitmap of the *live* card, it's just
+  // pixels: we can draw it onto a second canvas with a "picked up" tilt,
+  // a slight shrink and a drop shadow, then hand *that* to setDragImage.
+  const dragCache = new WeakMap()
+  const useSnapdomDrag = document.getElementById('useSnapdomDrag')
+
+  async function warmDragCache (card) {
+    const shot = await snapdom.toCanvas(card, { scale: 2 })
+    const pad = Math.round(shot.width * 0.15)
+    const styled = document.createElement('canvas')
+    styled.width = shot.width + pad * 2
+    styled.height = shot.height + pad * 2
+    const sctx = styled.getContext('2d')
+    sctx.translate(styled.width / 2, styled.height / 2)
+    sctx.rotate(-4 * Math.PI / 180)
+    sctx.scale(0.92, 0.92)
+    sctx.shadowColor = 'rgba(0,0,0,.45)'
+    sctx.shadowBlur = 24
+    sctx.shadowOffsetY = 14
+    sctx.drawImage(shot, -shot.width / 2, -shot.height / 2)
+    dragCache.set(card, styled)
+  }
+
+  document.querySelectorAll('.drag-card').forEach(card => {
+    warmDragCache(card)
+    card.addEventListener('dragstart', e => {
+      if (useSnapdomDrag.checked) {
+        const canvas = dragCache.get(card)
+        if (canvas) e.dataTransfer.setDragImage(canvas, canvas.width / 2, canvas.height / 2)
+      }
+      e.dataTransfer.setData('text/plain', card.dataset.id)
+    })
+  })
+
+  const targetColumn = document.getElementById('targetColumn')
+  targetColumn.addEventListener('dragover', e => e.preventDefault())
+  targetColumn.addEventListener('drop', e => {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/plain')
+    const card = document.querySelector(`.drag-card[data-id="${id}"]`)
+    if (!card) return
+    document.querySelector('#targetColumn .empty-hint')?.remove()
+    targetColumn.appendChild(card)
+  })
+
+  // ============== 2) Before / after comparison slider ==============
+  const themeCard = document.getElementById('themeCard')
+  const darkToggle = document.getElementById('darkToggle')
+  const beforeImg = document.getElementById('beforeImg')
+  const afterImg = document.getElementById('afterImg')
+  const afterClip = document.getElementById('afterClip')
+  const compareWrap = document.getElementById('compareWrap')
+  const compareRange = document.getElementById('compareRange')
+
+  darkToggle.addEventListener('change', () => themeCard.classList.toggle('dark', darkToggle.checked))
+
+  async function captureTheme () {
+    const img = await snapdom.toPng(themeCard, { scale: 2 })
+    return img.src
+  }
+
+  function revealCompareIfReady () {
+    if (!beforeImg.src || !afterImg.src) return
+    compareWrap.hidden = false
+    requestAnimationFrame(() => { afterImg.style.width = `${beforeImg.clientWidth}px` })
+  }
+
+  document.getElementById('captureBeforeBtn').addEventListener('click', async () => {
+    beforeImg.src = await captureTheme()
+    revealCompareIfReady()
+  })
+  document.getElementById('captureAfterBtn').addEventListener('click', async () => {
+    afterImg.src = await captureTheme()
+    revealCompareIfReady()
+  })
+  compareRange.addEventListener('input', () => {
+    afterClip.style.width = `${compareRange.value}%`
+  })
+
+  // ============== 3) Confetti (reuses the shatter-export technique) ==============
+  function sliceExport (options = {}) {
+    const { cols: defaultCols = 10, rows: defaultRows = 7 } = options
+    return {
+      name: 'slice',
+      defineExports (ctx) {
+        return {
+          shatter: async (_ctx2, opts = {}) => {
+            const cols = opts.cols || defaultCols
+            const rows = opts.rows || defaultRows
+            const canvas = await ctx.exports.canvas(opts)
+            const pw = canvas.width / cols
+            const ph = canvas.height / rows
+            const pieces = []
+            for (let ry = 0; ry < rows; ry++) {
+              for (let rx = 0; rx < cols; rx++) {
+                const piece = document.createElement('canvas')
+                piece.width = pw
+                piece.height = ph
+                piece.getContext('2d').drawImage(canvas, rx * pw, ry * ph, pw, ph, 0, 0, pw, ph)
+                pieces.push({ u: rx / cols, v: ry / rows, du: 1 / cols, dv: 1 / rows, canvas: piece })
+              }
+            }
+            return { pieces }
+          }
+        }
+      }
+    }
+  }
+
+  const successCard = document.getElementById('successCard')
+  const confettiBtn = document.getElementById('confettiBtn')
+  const confettiCanvas = document.getElementById('confettiCanvas')
+  const c2d = confettiCanvas.getContext('2d')
+
+  function resizeConfettiCanvas () {
+    confettiCanvas.width = window.innerWidth
+    confettiCanvas.height = window.innerHeight
+  }
+  resizeConfettiCanvas()
+  window.addEventListener('resize', resizeConfettiCanvas)
+
+  async function burstConfetti () {
+    confettiBtn.disabled = true
+    const rect = successCard.getBoundingClientRect()
+    const result = await snapdom(successCard, { plugins: [sliceExport({ cols: 10, rows: 7 })] })
+    const { pieces } = await result.toShatter()
+
+    successCard.style.visibility = 'hidden'
+
+    const bits = pieces.map(p => {
+      const w = p.du * rect.width
+      const h = p.dv * rect.height
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.6
+      const speed = 6 + Math.random() * 10
+      return {
+        canvas: p.canvas,
+        x: rect.left + (p.u + p.du / 2) * rect.width,
+        y: rect.top + (p.v + p.dv / 2) * rect.height,
+        w, h,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        rot: 0,
+        vr: (Math.random() - 0.5) * 0.4,
+        alpha: 1
+      }
+    })
+
+    const GRAVITY = 0.22
+    const FADE = 0.006
+    function tick () {
+      c2d.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height)
+      let alive = false
+      for (const b of bits) {
+        if (b.alpha <= 0) continue
+        b.vy += GRAVITY
+        b.x += b.vx
+        b.y += b.vy
+        b.rot += b.vr
+        b.alpha = Math.max(0, b.alpha - FADE)
+        if (b.alpha <= 0) continue
+        alive = true
+        c2d.save()
+        c2d.globalAlpha = b.alpha
+        c2d.translate(b.x, b.y)
+        c2d.rotate(b.rot)
+        c2d.drawImage(b.canvas, -b.w / 2, -b.h / 2, b.w, b.h)
+        c2d.restore()
+      }
+      if (alive) {
+        requestAnimationFrame(tick)
+      } else {
+        successCard.style.visibility = 'visible'
+        confettiBtn.disabled = false
+      }
+    }
+    requestAnimationFrame(tick)
+  }
+
+  confettiBtn.addEventListener('click', burstConfetti)
+
+  // ============== 4) Automatic component-state gallery ==============
+  const sampleButton = document.getElementById('sampleButton')
+  const generateGalleryBtn = document.getElementById('generateGalleryBtn')
+  const galleryGrid = document.getElementById('galleryGrid')
+
+  const STATES = [
+    { label: 'Default', apply () {}, revert () {} },
+    { label: 'Hover', apply () { sampleButton.classList.add('force-hover') }, revert () { sampleButton.classList.remove('force-hover') } },
+    { label: 'Focus', apply () { sampleButton.classList.add('force-focus') }, revert () { sampleButton.classList.remove('force-focus') } },
+    { label: 'Disabled', apply () { sampleButton.disabled = true; sampleButton.classList.add('force-disabled') }, revert () { sampleButton.disabled = false; sampleButton.classList.remove('force-disabled') } }
+  ]
+
+  generateGalleryBtn.addEventListener('click', async () => {
+    generateGalleryBtn.disabled = true
+    galleryGrid.innerHTML = ''
+    for (const state of STATES) {
+      state.apply()
+      await new Promise(r => requestAnimationFrame(r))
+      // outerShadows:true so the focus ring (an outline on the root
+      // element) isn't stripped — by default snapdom drops shadow/blur/
+      // outline effects on the captured root unless asked to keep them.
+      const img = await snapdom.toPng(sampleButton, { scale: 3, outerShadows: true })
+      state.revert()
+      const cell = document.createElement('div')
+      cell.className = 'gallery-cell'
+      const label = document.createElement('span')
+      label.textContent = state.label
+      cell.append(img, label)
+      galleryGrid.appendChild(cell)
+    }
+    generateGalleryBtn.disabled = false
+  })
+</script>
+
+</body>
+</html>

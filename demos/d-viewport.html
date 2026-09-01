@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo: clip 'viewport' — captura lo que se ve</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      color: #1e293b;
+    }
+    /* Toolbar fija: debe aparecer en la captura exactamente donde se ve */
+    .toolbar {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+      z-index: 1000;
+      font-size: 14px;
+    }
+    .toolbar { white-space: nowrap; }
+    .toolbar button {
+      font: inherit;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .toolbar button.secondary { background: #334155; color: #e2e8f0; }
+    .toolbar .ms { min-width: 90px; text-align: right; opacity: .85; font-variant-numeric: tabular-nums; }
+
+    /* Badge fija abajo a la derecha: otro elemento fixed para verificar posición */
+    .badge {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      background: #f43f5e;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      z-index: 1000;
+      box-shadow: 0 6px 18px rgba(244,63,94,.4);
+    }
+
+    section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border-bottom: 4px dashed rgba(255,255,255,.5);
+      padding: 24px;
+    }
+    section .num {
+      font-size: 18vmin;
+      font-weight: 900;
+      color: rgba(255,255,255,.92);
+      text-shadow: 0 4px 16px rgba(0,0,0,.25);
+      margin: 0;
+      line-height: 1;
+    }
+    section p {
+      color: rgba(255,255,255,.9);
+      font-size: 18px;
+      max-width: 46ch;
+      text-align: center;
+      margin: 0;
+    }
+    /* Header sticky dentro de cada sección: se congela donde está "pegado" */
+    section .sticky {
+      position: sticky;
+      top: 0;
+      align-self: stretch;
+      margin: -24px -24px 0;
+      padding: 14px 24px;
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+    }
+    section .filler { flex: 1; }
+
+    /* Panel de resultado (se monta DESPUÉS de capturar: nunca sale en la foto) */
+    .result {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.75);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      z-index: 2000;
+      padding: 4vh 4vw;
+    }
+    .result img {
+      max-width: 82vw;
+      max-height: 76vh;
+      border: 3px solid #fff;
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+      background: #fff;
+    }
+    .result .caption { color: #e2e8f0; font-size: 14px; }
+    .result button {
+      font: inherit;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      background: #38bdf8;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <span>📸 snapdom</span>
+    <button id="cap-viewport">Capturar viewport</button>
+    <button id="cap-full" class="secondary">Página completa</button>
+    <span class="ms" id="ms">&nbsp;</span>
+  </div>
+
+  <div class="badge">fixed ✔</div>
+
+  <script>
+    // 8 secciones de 100vh con color y número propios: al scrollear y capturar,
+    // la imagen debe mostrar EXACTAMENTE la franja visible (mismo número, misma posición).
+    const HUES = [210, 260, 320, 10, 40, 90, 150, 180]
+    document.currentScript.insertAdjacentHTML('beforebegin', HUES.map((h, i) => `
+      <section style="background:linear-gradient(160deg, hsl(${h} 80% 55%), hsl(${h + 30} 80% 40%))">
+        <div class="sticky">Sección ${i + 1} — header sticky</div>
+        <div class="filler"></div>
+        <h1 class="num">${i + 1}</h1>
+        <p>Scrolleá hasta la mitad de una sección y capturá: la foto tiene que cortar
+           el degradé y el número exactamente donde los estás viendo.</p>
+        <div class="filler"></div>
+      </section>`).join(''))
+  </script>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    const msEl = document.getElementById('ms')
+
+    function showResult(img, label) {
+      const panel = document.createElement('div')
+      panel.className = 'result'
+      const caption = document.createElement('div')
+      caption.className = 'caption'
+      caption.textContent = label
+      const close = document.createElement('button')
+      close.textContent = 'Cerrar'
+      close.onclick = () => panel.remove()
+      panel.onclick = (e) => { if (e.target === panel) panel.remove() }
+      panel.append(img, caption, close)
+      document.body.appendChild(panel)
+    }
+
+    async function capture(fn, label) {
+      // sin overlays previos en el DOM durante la captura
+      document.querySelectorAll('.result').forEach(p => p.remove())
+      const t0 = performance.now()
+      const img = await fn()
+      const ms = Math.round(performance.now() - t0)
+      msEl.textContent = `${ms} ms`
+      showResult(img, `${label} — ${ms} ms — ${img.naturalWidth}×${img.naturalHeight}px`)
+    }
+
+    document.getElementById('cap-viewport').onclick = () =>
+      capture(() => snapdom.toPng(document.documentElement, { clip: 'viewport', cache: 'disabled', embedFonts: true }), "clip: 'viewport'")
+
+    document.getElementById('cap-full').onclick = () =>
+      capture(() => snapdom.toPng(document.body, { cache: 'disabled' }), 'página completa')
+  </script>
+</body>
+</html>

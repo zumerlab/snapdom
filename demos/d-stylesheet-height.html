@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>height from a stylesheet rule is dropped in the clone</title>
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      p.lead { max-width: 780px; font-size: 13px; color: #666; }
+      .row { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+      .col { text-align: center; }
+      .col .caption { font-size: 13px; color: #555; margin-bottom: 6px; }
+      .box {
+        width: 240px;
+        background: #fff;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        font: 14px/1.4 Arial, sans-serif;
+      }
+
+      /* The affected element must be a TRANSPARENT flow wrapper — no background, no padding,
+         no border, overflow visible — because those all make stripHeightForWrappers bail out
+         on their own (hasBox). Its 120px comes from this stylesheet, with no style attribute
+         anywhere; the outline is what makes the box visible without giving it a background.
+         Before the fix the height was deleted from the style snapshot: each band collapsed to
+         its single line of text and all three ended up stacked at the top of a canvas that was
+         still the full, correct height — the rest of it blank. */
+      .band { height: 120px; outline: 2px solid #6366f1; outline-offset: -2px; }
+      .band-2 { outline-color: #ec4899; }
+      .band-3 { outline-color: #0ea5e9; }
+      .foot { background: #222; color: #fff; padding: 6px; font-size: 13px; text-align: center; }
+
+      button.capture {
+        display: block;
+        margin: 20px 0;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture:hover { background: #0c0; }
+    </style>
+  </head>
+  <body>
+    <h1>A height coming from a stylesheet rule must survive the clone</h1>
+    <p class="lead">
+      Column 1: three transparent <code>.band</code> wrappers whose <code>height: 120px</code>
+      comes from the stylesheet above — no <code>style</code> attribute anywhere. Column 2: the
+      same three bands with <code>style="height:120px"</code> written inline; that path always
+      worked. Before the fix the two captures disagreed — the stylesheet version came out at the
+      right total height but with the three outlined boxes collapsed to one line of text each and
+      stacked at the very top, the rest of the canvas blank, while the inline version came out
+      correct. The guard meant to detect an author-fixed height compared the used height against
+      <code>el.scrollHeight</code>, which returns the padding-box height whenever the content is
+      shorter than the box: <code>scrollHeight === 120 === used height</code>, difference 0, so it
+      read as <code>auto</code> and the height was deleted.
+    </p>
+    <button type="button" class="capture">Capture</button>
+
+    <div class="row">
+      <div class="col">
+        <div class="caption">Origin — stylesheet height</div>
+        <div class="box origin-sheet">
+          <div class="band band-1">ONE</div>
+          <div class="band band-2">TWO</div>
+          <div class="band band-3">THREE</div>
+          <div class="foot">end of the stack</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="caption">Origin — inline height</div>
+        <div class="box origin-inline">
+          <div class="band band-1" style="height:120px">ONE</div>
+          <div class="band band-2" style="height:120px">TWO</div>
+          <div class="band band-3" style="height:120px">THREE</div>
+          <div class="foot">end of the stack</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="caption">Capture — stylesheet height</div>
+        <div class="box result-sheet"></div>
+      </div>
+      <div class="col">
+        <div class="caption">Capture — inline height</div>
+        <div class="box result-inline"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      async function shoot(originSel, resultSel) {
+        const origin = document.querySelector(originSel)
+        const result = document.querySelector(resultSel)
+        try {
+          const img = await snapdom.toPng(origin, { scale: 1, dpr: 1 })
+          result.replaceChildren(img)
+        } catch (e) {
+          result.textContent = 'ERROR'
+          console.error(e)
+        }
+      }
+
+      document.querySelector('.capture').addEventListener('click', async () => {
+        await shoot('.box.origin-sheet', '.box.result-sheet')
+        await shoot('.box.origin-inline', '.box.result-inline')
+      })
+    </script>
+  </body>
+</html>

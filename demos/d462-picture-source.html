@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>&lt;picture&gt; &lt;source&gt; overrides inlined img src (#462)</title>
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      .row { display: flex; align-items: flex-start; gap: 24px; }
+      .col { text-align: center; }
+      .col .caption { font-size: 13px; color: #555; margin-bottom: 6px; }
+      .box {
+        width: 260px;
+        height: 180px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .box picture, .box img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      button.capture {
+        display: block;
+        margin: 20px 0;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture:hover { background: #0c0; }
+    </style>
+  </head>
+  <body>
+    <h1>#462 — &lt;picture&gt; &lt;source&gt; elements override the inlined &lt;img&gt; src</h1>
+    <p style="max-width:640px;font-size:13px;color:#666">
+      A &lt;picture&gt;'s &lt;source&gt; out-ranks the &lt;img&gt;'s own <code>src</code>, so it survives
+      into the exported SVG still pointing at its original URL — and svg-as-image refuses to load
+      any non-<code>data:</code> resource, so the photo used to rasterize blank however well the
+      &lt;img&gt; itself had been inlined. Before the fix: transparent result.
+    </p>
+    <button type="button" class="capture">Capture the &lt;picture&gt;</button>
+
+    <div class="row">
+      <div class="col">
+        <div class="caption">Origin (&lt;picture&gt; with a matching &lt;source&gt;)</div>
+        <div class="box">
+          <picture class="origin">
+            <source media="(min-width: 0px)" srcset="assets/wolf.jpg">
+            <img src="assets/wolf.jpg" alt="wolf">
+          </picture>
+        </div>
+      </div>
+      <div class="col">
+        <div class="caption">Result (snapDOM capture)</div>
+        <div class="box result"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      document.querySelector('.capture').addEventListener('click', async () => {
+        const origin = document.querySelector('.box:not(.result)')
+        const result = document.querySelector('.box.result')
+        try {
+          const img = await snapdom.toPng(origin)
+          result.replaceChildren(img)
+        } catch (e) {
+          result.textContent = 'ERROR'
+          console.error(e)
+        }
+      })
+    </script>
+  </body>
+</html>

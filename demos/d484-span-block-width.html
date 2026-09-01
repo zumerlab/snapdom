@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>&lt;span&gt; with display:block keeps its width (#484)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 20px; margin: 0; }
+      h1 { font-size: 18px; }
+      p { font-size: 14px; color: #555; max-width: 62ch; }
+      #target * { box-sizing: border-box; }
+      #target {
+        width: 420px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .case { font-size: 12px; color: #777; }
+      /* The issue's CSS: a blockified span sized by its class, with text inside. */
+      .tag {
+        display: block;
+        width: 16px;
+        height: 16px;
+        font-size: 10px;
+        line-height: 16px;
+        color: #d95350;
+        border: 1px solid #d95350;
+        border-radius: 4px;
+        text-align: center;
+      }
+      /* case 2: same span as a flex item */
+      .item { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+      /* control A: blockified span WITHOUT an authored width — must still stretch */
+      .autoblock { display: block; background: #eef2ff; font-size: 13px; }
+      /* control B: auto-width grid item sized by its own text (max-content track) */
+      .grid { display: grid; grid-template-columns: max-content; font-size: 13px; }
+      .grid span { background: #ecfdf5; }
+      button.capture {
+        display: block; margin: 20px 0; padding: 8px 24px; border: 0;
+        border-radius: 8px; background: #0d0; cursor: pointer; font-size: 14px;
+      }
+      .out { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+      .out figure { margin: 0; }
+      .out figcaption { font-size: 12px; color: #555; margin-bottom: 6px; }
+      .out img { border: 1px dashed #d95350; }
+      table.metrics { border-collapse: collapse; font-size: 13px; margin-top: 16px; }
+      table.metrics th, table.metrics td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; }
+      td.ok { color: #080; } td.bad { color: #c00; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <h1>#484 — <code>&lt;span&gt;</code> with <code>display:block</code> and an authored width</h1>
+    <p>
+      Width softening drops a content-bearing span's used width and re-adds it as a
+      <code>min-width</code> floor. That only reproduces the box when the width is <code>auto</code>
+      and the box is shrink-to-fit: case 1 stretched to 100% of the container and case 2 (flex item,
+      no floor by <a href="https://github.com/zumerlab/snapdom/issues/406">#406</a>) collapsed to its
+      text. The two controls must keep softening — that is what keeps
+      <a href="https://github.com/zumerlab/snapdom/issues/429">#429</a> and the max-content
+      "Timestamp" case from re-wrapping under font fallback.
+    </p>
+
+    <div id="target">
+      <span class="case">case 1 — blockified span in normal flow (expect 16&times;16)</span>
+      <span class="tag">T</span>
+
+      <span class="case">case 2 — same span inside a flex row (expect 16&times;16)</span>
+      <div class="item"><span class="tag">T</span> label next to the tag</div>
+
+      <span class="case">control A — width:auto blockified span (expect full width)</span>
+      <span class="autoblock">stretches to the container</span>
+
+      <span class="case">control B — auto-width grid item (expect shrink to its text)</span>
+      <div class="grid"><span>2024-09-16 timestamp</span></div>
+    </div>
+
+    <button class="capture" id="btn">Capture</button>
+    <div class="out">
+      <figure id="shot" hidden><figcaption>captured</figcaption></figure>
+    </div>
+    <table class="metrics" id="metrics" hidden>
+      <thead><tr><th>box</th><th>live width</th><th>captured width</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      const BOXES = [
+        ['case 1 .tag', '#target > .tag'],
+        ['case 2 .tag', '.item .tag'],
+        ['control A .autoblock', '.autoblock'],
+        ['control B grid item', '.grid span'],
+      ]
+
+      // Re-mount the capture's own markup (not the raster) so the boxes can be measured with the
+      // same layout engine as the live DOM — a width regression shows up as a number, not a squint.
+      // The mount goes in a SHADOW ROOT: the cloned nodes keep their original class names, so in
+      // the light DOM this page's own `.tag { width:16px }` rule would style them and every
+      // measurement would "match" no matter what snapdom emitted.
+      async function measureCaptured() {
+        const raw = await snapdom.toRaw(document.querySelector('#target'))
+        const svg = decodeURIComponent(raw.replace(/^data:image\/svg\+xml;charset=utf-8,/, ''))
+        const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
+        const holder = document.createElement('div')
+        holder.style.cssText = `position:absolute;left:-99999px;top:0;width:${
+          document.querySelector('#target').getBoundingClientRect().width}px`
+        document.body.appendChild(holder)
+        const root = holder.attachShadow({ mode: 'open' })
+        root.append(...doc.querySelector('foreignObject').childNodes)
+        const widths = BOXES.map(([, sel]) => {
+          const el = root.querySelector(sel.replace('#target > ', ''))
+          return el ? el.getBoundingClientRect().width : NaN
+        })
+        holder.remove()
+        return widths
+      }
+
+      document.querySelector('#btn').addEventListener('click', async () => {
+        const live = BOXES.map(([, sel]) => document.querySelector(sel).getBoundingClientRect().width)
+        const captured = await measureCaptured()
+
+        const tbody = document.querySelector('#metrics tbody')
+        tbody.innerHTML = ''
+        BOXES.forEach(([name], i) => {
+          const ok = Math.abs(live[i] - captured[i]) <= 1
+          tbody.insertAdjacentHTML('beforeend',
+            `<tr><td>${name}</td><td>${live[i].toFixed(1)}px</td>` +
+            `<td>${captured[i].toFixed(1)}px</td>` +
+            `<td class="${ok ? 'ok' : 'bad'}">${ok ? 'match' : 'MISMATCH'}</td></tr>`)
+        })
+        document.querySelector('#metrics').hidden = false
+
+        const img = await snapdom.toPng(document.querySelector('#target'))
+        const fig = document.querySelector('#shot')
+        fig.querySelectorAll('img').forEach((n) => n.remove())
+        fig.appendChild(img)
+        fig.hidden = false
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>background-image race with same-origin iframes (#463)</title>
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      p.note { max-width: 700px; font-size: 13px; color: #666; }
+      /* All children of #stage are direct siblings (bg squares, iframes, filler divs) — this flat
+         shape matters: it's what makes the clone-tree walk actually interleave their concurrent
+         cloning. Wrapping the bg squares and iframes in separate row <div>s changes the
+         concurrency shape enough that the race stops reproducing (learned the hard way while
+         building this demo). */
+      #stage {
+        width: 340px;
+        padding: 8px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      #stage .sq {
+        width: 80px;
+        height: 56px;
+        background-size: cover;
+        background-position: center;
+        border-radius: 4px;
+        border: 1px solid #0003;
+      }
+      #stage iframe { width: 90px; height: 56px; border: 0; border-radius: 4px; }
+      #stage .filler { font-size: 8px; line-height: 1.1; width: 90px; word-break: break-all; color: #bbb; }
+      button.capture {
+        display: block;
+        margin: 20px 0 10px;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture:disabled { background: #9c9; cursor: default; }
+      button.capture:hover:not(:disabled) { background: #0c0; }
+      #summary { font-size: 14px; margin: 8px 0; font-weight: 600; }
+      #strip { display: flex; gap: 10px; flex-wrap: wrap; }
+      .thumb { text-align: center; }
+      .thumb .caption { font-size: 12px; margin-top: 4px; }
+      .thumb img { width: 170px; border: 1px solid #ccc; border-radius: 4px; display: block; }
+      .thumb.fail img { border-color: #e11; box-shadow: 0 0 0 2px #e11 inset; }
+    </style>
+  </head>
+  <body>
+    <h1>#463 — CSS backgrounds intermittently dropped with same-origin iframes</h1>
+    <p class="note">
+      3 <code>background-image</code> squares (from a stylesheet rule, top-left corner of the
+      stage) sit as direct siblings of 6 same-origin iframes and some filler text (their content
+      isn't the point — they're just there to trigger nested captures that race with the parent's
+      own clone; each does a real fetch+decode so several nested captures actually overlap in
+      time). Nested iframe captures used to reassign the shared
+      <code>cache.session.nodeMap</code> concurrently; nothing enforced which one "won" it, so the
+      parent's background pass could read an orphaned empty map and silently skip every
+      background. Runs below capture the same stage 6 times in a row — before the fix this failed
+      every run (0/3 backgrounds); after the fix all 6 runs show 3/3.
+    </p>
+
+    <div id="stage"></div>
+
+    <button type="button" class="capture">Run 6 captures</button>
+    <div id="summary"></div>
+    <div id="strip"></div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      const style = document.createElement('style')
+      style.textContent = `.snapbg-race { background-image: url("assets/wolf.jpg"); }`
+      document.head.appendChild(style)
+
+      const stage = document.getElementById('stage')
+
+      function mountStage() {
+        stage.replaceChildren()
+        for (let i = 0; i < 3; i++) {
+          const d = document.createElement('div')
+          d.className = 'sq snapbg-race'
+          stage.appendChild(d)
+        }
+        const IFRAME_COUNT = 6
+        for (let i = 0; i < IFRAME_COUNT; i++) {
+          const f = document.createElement('iframe')
+          stage.appendChild(f)
+          const filler = document.createElement('div')
+          filler.className = 'filler'
+          filler.textContent = 'x'.repeat(60)
+          stage.appendChild(filler)
+          const doc = f.contentDocument
+          doc.open()
+          // every iframe does a real same-origin fetch (own image, own decode) so several
+          // real event-loop yields from different nested captures land in overlapping windows
+          let inner = `<img src="assets/wolf.jpg?i=${i}" style="width:20px;height:20px">`
+          for (let k = 0; k < (i === 0 ? 120 : 20); k++) inner += `<span style="color:rgb(${k % 256},0,0)">s</span>`
+          doc.write(`<html><body style="margin:0;font-size:8px;background:hsl(${i * 60},70%,50%)">${inner}</body></html>`)
+          doc.close()
+        }
+      }
+      mountStage()
+
+      /** Ground truth: count inlined (data:) background-images in the exported SVG itself, same
+          check the regression test uses. Must go through DOMParser + getAttribute('style') —
+          the serialized style attribute HTML-entity-encodes quotes (url(&quot;data:...)), so a
+          raw regex against the SVG text never matches and silently reports zero every time. */
+      function countInlinedBackgrounds(svgUrl) {
+        const svgText = decodeURIComponent(svgUrl.split(',').slice(1).join(','))
+        const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml')
+        let count = 0
+        for (const el of doc.querySelectorAll('[style]')) {
+          if (/background-image:\s*url\(["']?data:/.test(el.getAttribute('style') || '')) count++
+        }
+        return count
+      }
+
+      const button = document.querySelector('button.capture')
+      const summary = document.getElementById('summary')
+      const strip = document.getElementById('strip')
+
+      button.addEventListener('click', async () => {
+        button.disabled = true
+        summary.textContent = ''
+        strip.replaceChildren()
+        let passed = 0
+        for (let run = 1; run <= 6; run++) {
+          mountStage()
+          await new Promise((r) => setTimeout(r, 30))
+          const capture = await snapdom(stage)
+          const photos = countInlinedBackgrounds(capture.url)
+          const png = await capture.toPng()
+          if (!png.complete || png.naturalWidth === 0) {
+            await new Promise((resolve) => { png.onload = resolve })
+          }
+          if (photos === 3) passed++
+          const thumb = document.createElement('div')
+          thumb.className = 'thumb' + (photos === 3 ? '' : ' fail')
+          const caption = document.createElement('div')
+          caption.className = 'caption'
+          caption.textContent = `run ${run}: ${photos}/3 photos`
+          thumb.appendChild(png)
+          thumb.appendChild(caption)
+          strip.appendChild(thumb)
+        }
+        summary.textContent = `${passed}/6 runs show all 3 backgrounds`
+        summary.style.color = passed === 6 ? '#080' : '#c00'
+        button.disabled = false
+      })
+    </script>
+  </body>
+</html>

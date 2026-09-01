@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>#334 Custom scrollbar in capture</title>
+    <style>
+      .scroll-area {
+        overflow-y: auto;
+        height: 120px;
+        width: 200px;
+        border: 1px solid #ccc;
+        padding: 8px;
+      }
+      .scroll-area::-webkit-scrollbar {
+        height: 10px;
+        width: 10px;
+      }
+      .scroll-area::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 5px;
+      }
+      .scroll-area::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>#334: Custom scrollbar styles in capture</h3>
+    <p>Don't scroll – capture with scrollbar visible. Styled scrollbar should appear in result.</p>
+
+    <div id="target" class="scroll-area">
+      Line 1<br />Line 2<br />Line 3<br />Line 4<br />Line 5<br />
+      Line 6<br />Line 7<br />Line 8<br />Line 9<br />Line 10<br />
+    </div>
+
+    <button id="capture">snapdom capture</button>
+    <h4>Result:</h4>
+    <div id="out"></div>
+  </body>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    document.getElementById('capture').addEventListener('click', async () => {
+      const out = document.getElementById('out');
+      out.innerHTML = '';
+      try {
+        const el = document.getElementById('target');
+        const result = await snapdom(el);
+        const img = await result.toPng();
+        out.appendChild(img);
+      } catch (e) {
+        out.innerHTML = '<span style="color:red">' + e.message + '</span>';
+      }
+    });
+  </script>
+</html>

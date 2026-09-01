@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo: SnapDOM Plugin Target Range</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e293b, #0f172a 60%);
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  header { text-align: center; padding: 24px 16px 8px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6em; }
+  header p { margin: 0; opacity: .7; font-size: .9em; max-width: 480px; margin: 0 auto; }
+
+  .hud {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    padding: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud .stat {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 10px 20px;
+    min-width: 90px;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  }
+  .hud .stat b { display: block; font-size: 1.4em; }
+  .hud .stat span { font-size: .75em; opacity: .7; text-transform: uppercase; letter-spacing: .05em; }
+
+  #board {
+    position: relative;
+    width: min(340px, 88vw);
+    height: min(340px, 88vw);
+    margin: 0 auto 16px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
+    cursor: none;
+    background: #1e293b;
+  }
+  #board img { width: 100%; height: 100%; display: block; pointer-events: none; }
+
+  #crosshair {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+  }
+  #crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: #ef4444;
+  }
+  #crosshair::before { left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; }
+  #crosshair::after { top: 50%; left: 0; right: 0; height: 2px; margin-top: -1px; }
+  #crosshair .ring {
+    position: absolute;
+    inset: 6px;
+    border: 2px solid #ef4444;
+    border-radius: 50%;
+  }
+  #crosshair.fire .ring { border-color: #fde047; }
+
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(15,23,42,.85);
+    text-align: center;
+    padding: 16px;
+    z-index: 10;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 { margin: 0; font-size: 1.4em; }
+  #overlay p { margin: 0; opacity: .8; font-size: .9em; }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 4px 16px 32px;
+    flex-wrap: wrap;
+  }
+  button, a.button {
+    font: inherit;
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  button.secondary, a.button.secondary { background: #334155; color: #e2e8f0; }
+  button:disabled { opacity: .5; cursor: default; }
+
+  .hint {
+    text-align: center;
+    opacity: .55;
+    font-size: .8em;
+    max-width: 420px;
+    margin: 0 auto 24px;
+  }
+  code { background: #1e293b; padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎯 SnapDOM Plugin Target Range</h1>
+  <p>Cada disparo no dibuja sobre el DOM: un plugin de SnapDOM guarda el clon capturado y le agrega la marca del impacto, así el propio PNG capturado va acumulando los disparos.</p>
+</header>
+
+<div class="hud">
+  <div class="stat"><b id="score">0</b><span>Score</span></div>
+  <div class="stat"><b id="shots">10</b><span>Disparos</span></div>
+  <div class="stat"><b id="best">0</b><span>Mejor</span></div>
+</div>
+
+<div id="board">
+  <div id="crosshair"><div class="ring"></div></div>
+  <div id="overlay">
+    <h2>¿Listo?</h2>
+    <p>10 disparos. La mira tiembla y patea con cada tiro — compensá el pulso.</p>
+    <button id="startBtn">Empezar</button>
+  </div>
+</div>
+
+<div class="actions">
+  <button id="restartBtn" class="secondary" disabled>Reiniciar</button>
+  <a id="downloadLink" class="button secondary" style="display:none" download="snapdom-target.png">⬇️ Descargar blanco</a>
+</div>
+
+<p class="hint">El botón de descarga usa directamente el <code>&lt;img&gt;</code> que devolvió el último <code>snapdom.toPng()</code> — no hace falta capturar de nuevo.</p>
+
+<script type="module">
+  import { snapdom } from '../dist/snapdom.mjs'
+
+  const RINGS = [
+    { r: 0.10, points: 50, color: '#facc15' },
+    { r: 0.28, points: 30, color: '#ef4444' },
+    { r: 0.50, points: 20, color: '#1d4ed8' },
+    { r: 0.75, points: 10, color: '#0f172a' },
+    { r: 1.00, points: 5,  color: '#f8fafc' },
+  ]
+  const TOTAL_SHOTS = 10
+
+  function buildTargetSvg () {
+    const cx = 100, cy = 100
+    const circles = [...RINGS].reverse().map(ring =>
+      `<circle cx="${cx}" cy="${cy}" r="${ring.r * 100}" fill="${ring.color}" stroke="rgba(0,0,0,.15)" stroke-width="1"/>`
+    ).join('')
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">${circles}</svg>`
+  }
+
+  // Jagged torn-paper hole instead of a flat dot; the thin rim keeps the
+  // score-zone color as feedback. Randomized per hit so the board doesn't
+  // look stamped.
+  function bulletHoleMarkup (color) {
+    const spikes = 9
+    let outer = '', inner = ''
+    for (let i = 0; i < spikes; i++) {
+      const angle = (i / spikes) * Math.PI * 2
+      const rOuter = 7 + Math.random() * 2.5
+      const rInner = rOuter * 0.45
+      outer += `${(10 + Math.cos(angle) * rOuter).toFixed(1)},${(10 + Math.sin(angle) * rOuter).toFixed(1)} `
+      inner += `${(10 + Math.cos(angle) * rInner).toFixed(1)},${(10 + Math.sin(angle) * rInner).toFixed(1)} `
+    }
+    const rotate = Math.floor(Math.random() * 360)
+    return `<svg width="24" height="24" viewBox="0 0 20 20" style="display:block; transform:rotate(${rotate}deg); filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));">
+      <polygon points="${outer.trim()}" fill="rgba(12,12,12,.92)" stroke="${color}" stroke-width="1"/>
+      <polygon points="${inner.trim()}" fill="rgba(0,0,0,.9)"/>
+    </svg>`
+  }
+
+  // The plugin owns a detached clone of the target. `afterRender` saves the
+  // freshly rendered clone; `afterClone` swaps it back in on the next call.
+  // Because the clone (and every hit marker appended to it) persists in this
+  // closure, each snapdom capture builds on the previous one — the live
+  // `target` element in the DOM is never touched.
+  function createHitboardPlugin (sourceEl) {
+    let savedClone = null
+    return {
+      name: 'hitboard',
+      afterClone (ctx) {
+        if (savedClone) ctx.clone = savedClone.cloneNode(true)
+      },
+      afterRender (ctx) {
+        savedClone = ctx.clone.cloneNode(true)
+      },
+      addHit (xPct, yPct, color) {
+        if (!savedClone) savedClone = sourceEl.cloneNode(true)
+        if (getComputedStyle(savedClone).position === 'static') {
+          savedClone.style.position = 'relative'
+        }
+        const hit = document.createElement('div')
+        hit.style.cssText = `
+          position: absolute; left: ${xPct}%; top: ${yPct}%;
+          width: 24px; height: 24px; margin: -12px 0 0 -12px;
+          pointer-events: none;
+        `
+        hit.innerHTML = bulletHoleMarkup(color)
+        savedClone.appendChild(hit)
+      },
+      reset () { savedClone = null }
+    }
+  }
+
+  const board = document.getElementById('board')
+  const crosshair = document.getElementById('crosshair')
+  const overlay = document.getElementById('overlay')
+  const scoreEl = document.getElementById('score')
+  const shotsEl = document.getElementById('shots')
+  const bestEl = document.getElementById('best')
+  const startBtn = document.getElementById('startBtn')
+  const restartBtn = document.getElementById('restartBtn')
+  const downloadLink = document.getElementById('downloadLink')
+
+  const target = document.createElement('div')
+  target.style.cssText = 'position:absolute; left:-9999px; top:0; width:340px; height:340px;'
+  target.innerHTML = buildTargetSvg()
+  document.body.appendChild(target)
+
+  let plugin = createHitboardPlugin(target)
+  let score = 0
+  let shotsLeft = TOTAL_SHOTS
+  let running = false
+  let rendering = false
+
+  const best = Number(localStorage.getItem('snapdom-range-best') || 0)
+  bestEl.textContent = best
+
+  // The reticle never sits still: it drifts around the mouse and kicks
+  // after every shot, so the point that actually fires (aimX/aimY) isn't
+  // exactly where the mouse is. Drift grows as shots run out.
+  let mouseX = 0, mouseY = 0
+  let aimX = 0, aimY = 0
+  let recoilX = 0, recoilY = 0
+  const swayPhaseX = Math.random() * Math.PI * 2
+  const swayPhaseY = Math.random() * Math.PI * 2
+
+  function tick (t) {
+    recoilX *= 0.9
+    recoilY *= 0.9
+    const amp = Math.min(6 + (TOTAL_SHOTS - shotsLeft) * 1.4, 20)
+    const driftX = Math.sin(t / 850 + swayPhaseX) * amp + recoilX
+    const driftY = Math.cos(t / 630 + swayPhaseY) * amp + recoilY
+    aimX = mouseX + driftX
+    aimY = mouseY + driftY
+    crosshair.style.left = `${aimX}px`
+    crosshair.style.top = `${aimY}px`
+    requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+
+  async function render () {
+    const img = await snapdom.toPng(target, { plugins: [plugin] })
+    img.style.width = '100%'
+    img.style.height = '100%'
+    board.querySelector('img')?.remove()
+    board.insertBefore(img, crosshair)
+    downloadLink.href = img.src
+  }
+
+  function scoreAt (xPct, yPct) {
+    const dist = Math.hypot(xPct - 50, yPct - 50)
+    const ratio = dist / 50
+    if (ratio > 1) return { points: 0, color: '#94a3b8' }
+    const hit = RINGS.find(ring => ratio <= ring.r)
+    return { points: hit.points, color: hit.color }
+  }
+
+  async function shoot () {
+    if (!running || rendering) return
+    const rect = board.getBoundingClientRect()
+    const xPct = (aimX / rect.width) * 100
+    const yPct = (aimY / rect.height) * 100
+
+    crosshair.classList.add('fire')
+    setTimeout(() => crosshair.classList.remove('fire'), 100)
+
+    const angle = Math.random() * Math.PI * 2
+    const kick = 18 + Math.random() * 14
+    recoilX += Math.cos(angle) * kick
+    recoilY += Math.sin(angle) * kick
+
+    const { points, color } = scoreAt(xPct, yPct)
+    plugin.addHit(xPct, yPct, color)
+    score += points
+    shotsLeft -= 1
+    scoreEl.textContent = score
+    shotsEl.textContent = shotsLeft
+
+    rendering = true
+    await render()
+    rendering = false
+
+    if (shotsLeft <= 0) endGame()
+  }
+
+  function moveCrosshair (e) {
+    const rect = board.getBoundingClientRect()
+    crosshair.style.opacity = 1
+    mouseX = e.clientX - rect.left
+    mouseY = e.clientY - rect.top
+  }
+
+  async function startGame () {
+    score = 0
+    shotsLeft = TOTAL_SHOTS
+    running = true
+    scoreEl.textContent = score
+    shotsEl.textContent = shotsLeft
+    overlay.classList.add('hidden')
+    restartBtn.disabled = true
+    downloadLink.style.display = 'none'
+    plugin = createHitboardPlugin(target)
+    await render()
+  }
+
+  function endGame () {
+    running = false
+    overlay.querySelector('h2').textContent = `Fin: ${score} puntos`
+    overlay.querySelector('p').textContent = 'Volvé a intentar o descargá el blanco.'
+    overlay.querySelector('button').textContent = 'Jugar de nuevo'
+    overlay.classList.remove('hidden')
+    restartBtn.disabled = false
+    downloadLink.style.display = 'inline-block'
+    if (score > best) {
+      localStorage.setItem('snapdom-range-best', score)
+      bestEl.textContent = score
+    }
+  }
+
+  board.addEventListener('mousemove', moveCrosshair)
+  board.addEventListener('mousedown', shoot)
+  startBtn.addEventListener('click', startGame)
+  restartBtn.addEventListener('click', startGame)
+</script>
+
+</body>
+</html>

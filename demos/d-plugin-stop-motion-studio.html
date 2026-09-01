@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SnapMotion — Stop motion con SnapDOM</title>
+  <script type="importmap">
+    { "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #101617;
+      --panel: #172629;
+      --line: #405b58;
+      --cream: #f5eedc;
+      --orange: #ff6843;
+      --yellow: #ffd15a;
+      --cyan: #54d5c7;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--cream); background: #0d1619; font-family: Arial, sans-serif; }
+    button, input, select { font: inherit; }
+    .app { width: min(1180px, calc(100% - 20px)); margin: auto; padding: 20px 0 32px; }
+
+    header { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 13px; }
+    .eyebrow { color: var(--yellow); font-size: 9px; font-weight: 900; letter-spacing: .25em; text-transform: uppercase; }
+    h1 { margin: 3px 0 0; font: 900 clamp(38px, 6vw, 68px)/.86 Impact, sans-serif; letter-spacing: -.025em; text-transform: uppercase; }
+    h1 span { color: var(--orange); }
+    header p { max-width: 430px; margin: 0; color: #8ea7a3; font-size: 12px; line-height: 1.45; text-align: right; }
+
+    .studio { overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--panel); box-shadow: 0 25px 70px #0008; }
+
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px; overflow-x: auto; border-bottom: 1px solid var(--line); background: #111e21; }
+    .group { display: flex; align-items: center; gap: 6px; padding-right: 8px; border-right: 1px solid var(--line); white-space: nowrap; }
+    .group:last-child { margin-left: auto; padding-right: 0; border: 0; }
+    .tool { border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; color: var(--cream); background: #203438; cursor: pointer; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+    .tool.active { color: var(--ink); border-color: var(--yellow); background: var(--yellow); }
+    .tool.primary { color: var(--ink); border-color: var(--cyan); background: var(--cyan); }
+    .tool:disabled { cursor: not-allowed; opacity: .35; }
+    .icon-tool { min-width: 35px; padding-inline: 9px; font-size: 17px; }
+    .field { display: flex; align-items: center; gap: 6px; color: #8fa7a3; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+    .field input[type='color'] { width: 31px; height: 31px; padding: 1px; border: 1px solid var(--line); border-radius: 50%; background: none; }
+    .field input[type='range'] { width: 72px; accent-color: var(--orange); }
+    .field input[type='checkbox'] { accent-color: var(--orange); }
+    .field select { border: 1px solid var(--line); border-radius: 6px; padding: 6px; color: var(--cream); background: #203438; }
+
+    .viewport { display: grid; place-items: center; min-height: 620px; padding: 25px; overflow: hidden; background: radial-gradient(circle, #294f50, #091316 72%); }
+    #scene { position: relative; width: min(100%, 920px); aspect-ratio: 16 / 10; overflow: hidden; border: 2px solid #76918c; border-radius: 7px; background: linear-gradient(#c3e1da 0 68%, #7ca598 68%); box-shadow: 0 20px 45px #0009; touch-action: none; cursor: default; }
+    #scene.draw-mode { cursor: crosshair; }
+    #scene::before { content: ''; position: absolute; inset: 0; opacity: .15; background: linear-gradient(#31544e 1px, transparent 1px), linear-gradient(90deg, #31544e 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
+    #scene::after { content: 'SNAPMOTION'; position: absolute; right: 10px; bottom: 8px; color: #18342e66; font-size: 8px; font-weight: 900; letter-spacing: .16em; pointer-events: none; }
+
+    #drawing { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; pointer-events: none; }
+    .object { position: absolute; top: var(--y); left: var(--x); z-index: 4; width: 80px; height: 80px; transform: translate(-50%, -50%) rotate(var(--rotation)); cursor: grab; user-select: none; }
+    .draw-mode .object { pointer-events: none; }
+    .object:active { cursor: grabbing; }
+    .object.selected { outline: 2px dashed white; outline-offset: 7px; }
+    .shape { position: absolute; inset: 0; display: grid; place-items: center; color: var(--color); filter: drop-shadow(5px 8px 4px #17302a55); font: 900 73px/1 Arial, sans-serif; }
+    .object[data-kind='star'] .shape::before { content: '★'; }
+    .object[data-kind='circle'] .shape::before { content: '●'; }
+
+    #onion, #playback { position: absolute; inset: 0; z-index: 2; display: none; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    #onion.visible { display: block; opacity: .22; filter: grayscale(.25); }
+    #playback { z-index: 20; background: #0a1518; }
+    #playback.visible { display: block; }
+
+    .statusbar { display: flex; justify-content: space-between; gap: 15px; padding: 8px 12px; border-top: 1px solid var(--line); color: #78918d; background: #101d20; font-size: 9px; }
+    #status { color: var(--yellow); }
+
+    .timeline-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-top: 1px solid var(--line); background: #132225; }
+    .timeline-head strong { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+    .timeline-actions { display: flex; gap: 6px; }
+    .timeline-actions button { border: 0; padding: 4px 7px; color: #91aaa6; background: none; cursor: pointer; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+    .timeline-actions button:disabled { opacity: .3; }
+    #frames { display: flex; gap: 8px; min-height: 104px; padding: 10px; overflow-x: auto; background: #0e191c; }
+    .empty { margin: auto; color: #5f7773; font-size: 11px; }
+    .frame { flex: 0 0 126px; overflow: hidden; border: 2px solid #3c5552; border-radius: 7px; padding: 0; color: #91aaa6; background: #172629; cursor: pointer; }
+    .frame.active { border-color: var(--yellow); }
+    .frame img { display: block; width: 100%; height: 76px; object-fit: cover; }
+    .frame span { display: block; padding: 6px; font-size: 8px; font-weight: 900; letter-spacing: .08em; text-align: center; text-transform: uppercase; }
+
+    @media (max-width: 760px) { header { display: block; } header p { margin-top: 10px; text-align: left; } .viewport { min-height: 430px; padding: 10px; } .group:last-child { margin-left: 0; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div><div class="eyebrow">SnapDOM stop motion</div><h1>Snap<span>Motion</span></h1></div>
+      <p>Mové figuras o dibujá sobre el escenario. Capturá cada pose y reproducila como animación.</p>
+    </header>
+
+    <section class="studio">
+      <div class="toolbar">
+        <div class="group">
+          <button class="tool active" id="select-mode">↖ Mover</button>
+          <button class="tool" id="draw-mode">✎ Pincel</button>
+        </div>
+        <div class="group">
+          <button class="tool icon-tool" id="add-star" title="Agregar estrella">★</button>
+          <button class="tool icon-tool" id="add-circle" title="Agregar círculo">●</button>
+          <button class="tool" id="delete-object" disabled>Eliminar</button>
+        </div>
+        <div class="group">
+          <label class="field">Color <input id="color" type="color" value="#ff6843"></label>
+          <label class="field">Trazo <input id="brush-size" type="range" min="3" max="30" value="10"></label>
+        </div>
+        <div class="group">
+          <label class="field"><input id="onion-toggle" type="checkbox" checked> Onion</label>
+          <label class="field"><select id="fps"><option>4</option><option selected>8</option><option>12</option></select> FPS</label>
+        </div>
+        <div class="group">
+          <button class="tool primary" id="capture-frame">+ Frame</button>
+          <button class="tool" id="play" disabled>▶</button>
+          <button class="tool" id="export" disabled>GIF ↓</button>
+        </div>
+      </div>
+
+      <div class="viewport">
+        <div id="scene">
+          <img id="onion" alt="Frame anterior">
+          <svg id="drawing" viewBox="0 0 960 600" preserveAspectRatio="none" aria-label="Trazos dibujados"></svg>
+          <img id="playback" alt="Reproducción stop motion">
+        </div>
+      </div>
+
+      <div class="statusbar"><span id="hint">Modo mover: arrastrá las figuras.</span><span id="status">Listo</span></div>
+      <div class="timeline-head">
+        <strong>Timeline · <span id="duration">0.0 s</span></strong>
+        <div class="timeline-actions"><button id="update-frame" disabled>Actualizar</button><button id="delete-frame" disabled>Borrar frame</button><button id="clear">Nuevo</button></div>
+      </div>
+      <div id="frames"><div class="empty">Capturá el primer frame</div></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+    import { gifExport } from '../packages/plugins/gif-export.js'
+
+    const svgNS = 'http://www.w3.org/2000/svg'
+    const scene = document.querySelector('#scene')
+    const drawing = document.querySelector('#drawing')
+    const onion = document.querySelector('#onion')
+    const playback = document.querySelector('#playback')
+    const framesNode = document.querySelector('#frames')
+    const color = document.querySelector('#color')
+    const status = document.querySelector('#status')
+    const frames = []
+    let mode = 'select'
+    let selectedObject = null
+    let selectedFrame = -1
+    let nextId = 1
+    let dragging = null
+    let drawingPath = null
+    let drawPoints = []
+
+    function captureCleanup(onCapture) {
+      let selected = null
+      let onionWasVisible = false
+      return {
+        name: 'stop-motion-frame',
+        beforeClone(ctx) {
+          selected = ctx.element.querySelector('.selected')
+          selected?.classList.remove('selected')
+          onionWasVisible = onion.classList.contains('visible')
+          onion.classList.remove('visible')
+        },
+        afterClone(ctx) {
+          selected?.classList.add('selected')
+          if (onionWasVisible) onion.classList.add('visible')
+          ctx.clone.querySelectorAll('.object').forEach(node => {
+            node.classList.remove('selected')
+            node.style.setProperty('outline', 'none', 'important')
+          })
+          ctx.clone.querySelector('#onion')?.remove()
+          ctx.clone.querySelector('#playback')?.remove()
+        },
+        afterRender(ctx) { onCapture(ctx.dataURL) }
+      }
+    }
+
+    function makeObject(kind, data = {}) {
+      const object = document.createElement('div')
+      object.className = 'object'
+      object.dataset.id = data.id ?? nextId++
+      object.dataset.kind = kind
+      object.style.setProperty('--x', `${data.x ?? 50}%`)
+      object.style.setProperty('--y', `${data.y ?? 50}%`)
+      object.style.setProperty('--rotation', `${data.rotation ?? 0}deg`)
+      object.style.setProperty('--color', data.color || color.value)
+      object.innerHTML = '<span class="shape"></span>'
+      object.addEventListener('pointerdown', startObjectDrag)
+      scene.append(object)
+      selectObject(object)
+      return object
+    }
+
+    function selectObject(object) {
+      selectedObject?.classList.remove('selected')
+      selectedObject = object
+      object?.classList.add('selected')
+      document.querySelector('#delete-object').disabled = !object
+      if (object) color.value = object.style.getPropertyValue('--color').trim()
+    }
+
+    function setMode(next) {
+      mode = next
+      scene.classList.toggle('draw-mode', mode === 'draw')
+      document.querySelector('#select-mode').classList.toggle('active', mode === 'select')
+      document.querySelector('#draw-mode').classList.toggle('active', mode === 'draw')
+      document.querySelector('#hint').textContent = mode === 'draw' ? 'Modo pincel: dibujá directamente sobre el escenario.' : 'Modo mover: arrastrá las figuras.'
+      if (mode === 'draw') selectObject(null)
+    }
+
+    function startObjectDrag(event) {
+      if (mode !== 'select') return
+      event.stopPropagation()
+      selectObject(event.currentTarget)
+      dragging = { object: event.currentTarget, rect: scene.getBoundingClientRect() }
+      scene.setPointerCapture(event.pointerId)
+    }
+
+    function scenePoint(event) {
+      const rect = scene.getBoundingClientRect()
+      return {
+        x: ((event.clientX - rect.left) / rect.width) * 960,
+        y: ((event.clientY - rect.top) / rect.height) * 600
+      }
+    }
+
+    function pathData(points) {
+      if (points.length < 2) return ''
+      let data = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
+      for (let i = 1; i < points.length - 1; i++) {
+        const x = (points[i].x + points[i + 1].x) / 2
+        const y = (points[i].y + points[i + 1].y) / 2
+        data += ` Q ${points[i].x.toFixed(1)} ${points[i].y.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`
+      }
+      const last = points.at(-1)
+      return `${data} L ${last.x.toFixed(1)} ${last.y.toFixed(1)}`
+    }
+
+    function startDrawing(event) {
+      if (mode !== 'draw') return
+      drawPoints = [scenePoint(event)]
+      drawingPath = document.createElementNS(svgNS, 'path')
+      drawingPath.setAttribute('fill', 'none')
+      drawingPath.setAttribute('stroke', color.value)
+      drawingPath.setAttribute('stroke-width', document.querySelector('#brush-size').value)
+      drawingPath.setAttribute('stroke-linecap', 'round')
+      drawingPath.setAttribute('stroke-linejoin', 'round')
+      drawing.append(drawingPath)
+      scene.setPointerCapture(event.pointerId)
+    }
+
+    function movePointer(event) {
+      if (dragging) {
+        const x = Math.max(4, Math.min(96, ((event.clientX - dragging.rect.left) / dragging.rect.width) * 100))
+        const y = Math.max(6, Math.min(94, ((event.clientY - dragging.rect.top) / dragging.rect.height) * 100))
+        dragging.object.style.setProperty('--x', `${x}%`)
+        dragging.object.style.setProperty('--y', `${y}%`)
+      }
+      if (drawingPath) {
+        drawPoints.push(scenePoint(event))
+        drawingPath.setAttribute('d', pathData(drawPoints))
+      }
+    }
+
+    function endPointer(event) {
+      dragging = null
+      if (!drawingPath) return
+      if (drawPoints.length < 2) {
+        const point = scenePoint(event)
+        drawPoints.push({ x: point.x + .1, y: point.y + .1 })
+        drawingPath.setAttribute('d', pathData(drawPoints))
+      }
+      drawingPath = null
+      drawPoints = []
+    }
+
+    function serialize() {
+      return {
+        objects: [...scene.querySelectorAll('.object')].map(node => ({
+          id: Number(node.dataset.id), kind: node.dataset.kind,
+          x: parseFloat(node.style.getPropertyValue('--x')),
+          y: parseFloat(node.style.getPropertyValue('--y')),
+          rotation: parseFloat(node.style.getPropertyValue('--rotation')),
+          color: node.style.getPropertyValue('--color')
+        })),
+        strokes: [...drawing.querySelectorAll('path')].map(path => ({
+          d: path.getAttribute('d'), color: path.getAttribute('stroke'), size: path.getAttribute('stroke-width')
+        }))
+      }
+    }
+
+    function restore(state) {
+      scene.querySelectorAll('.object').forEach(node => node.remove())
+      drawing.replaceChildren()
+      state.objects.forEach(object => makeObject(object.kind, object))
+      state.strokes.forEach(stroke => {
+        const path = document.createElementNS(svgNS, 'path')
+        path.setAttribute('d', stroke.d)
+        path.setAttribute('fill', 'none')
+        path.setAttribute('stroke', stroke.color)
+        path.setAttribute('stroke-width', stroke.size)
+        path.setAttribute('stroke-linecap', 'round')
+        path.setAttribute('stroke-linejoin', 'round')
+        drawing.append(path)
+      })
+      selectObject(null)
+    }
+
+    async function captureFrame(replace = null) {
+      status.textContent = 'Capturando…'
+      let url
+      await snapdom(scene, { plugins: [captureCleanup(value => { url = value })], cache: 'full', fast: true })
+      const frame = { url, state: serialize() }
+      if (replace == null) {
+        frames.push(frame)
+        selectedFrame = frames.length - 1
+      } else frames[replace] = frame
+      status.textContent = replace == null ? 'Frame agregado' : 'Frame actualizado'
+      renderFrames()
+    }
+
+    function renderFrames() {
+      framesNode.replaceChildren()
+      if (!frames.length) framesNode.innerHTML = '<div class="empty">Capturá el primer frame</div>'
+      frames.forEach((frame, index) => {
+        const button = document.createElement('button')
+        button.className = `frame${selectedFrame === index ? ' active' : ''}`
+        button.innerHTML = `<img src="${frame.url}" alt="Frame ${index + 1}"><span>Frame ${String(index + 1).padStart(2, '0')}</span>`
+        button.addEventListener('click', () => {
+          selectedFrame = index
+          restore(frame.state)
+          renderFrames()
+        })
+        framesNode.append(button)
+      })
+      const fps = Number(document.querySelector('#fps').value)
+      document.querySelector('#duration').textContent = `${(frames.length / fps).toFixed(1)} s`
+      document.querySelector('#play').disabled = frames.length < 2
+      document.querySelector('#export').disabled = frames.length < 2
+      document.querySelector('#update-frame').disabled = selectedFrame < 0
+      document.querySelector('#delete-frame').disabled = selectedFrame < 0
+      updateOnion()
+    }
+
+    function updateOnion() {
+      const index = selectedFrame > 0 ? selectedFrame - 1 : frames.length - 1
+      if (document.querySelector('#onion-toggle').checked && index >= 0 && index !== selectedFrame) {
+        onion.src = frames[index].url
+        onion.classList.add('visible')
+      } else onion.classList.remove('visible')
+    }
+
+    async function play(cycles = 2) {
+      const delay = 1000 / Number(document.querySelector('#fps').value)
+      playback.classList.add('visible')
+      for (let cycle = 0; cycle < cycles; cycle++) {
+        for (const frame of frames) {
+          playback.src = frame.url
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+      playback.classList.remove('visible')
+    }
+
+    async function exportGif() {
+      const button = document.querySelector('#export')
+      const fps = Number(document.querySelector('#fps').value)
+      button.disabled = true
+      status.textContent = 'Generando GIF…'
+      playback.src = frames[0].url
+      playback.classList.add('visible')
+      let index = 0
+      const ticker = setInterval(() => { playback.src = frames[index++ % frames.length].url }, 1000 / fps)
+      try {
+        const capture = await snapdom(scene, { plugins: [gifExport({ fps, frames: frames.length, maxColors: 64, scale: .5 })], cache: 'full', fast: true })
+        const blob = await capture.toGif()
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'snapmotion.gif'
+        link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 5000)
+        status.textContent = `GIF listo · ${Math.round(blob.size / 1024)} KB`
+      } finally {
+        clearInterval(ticker)
+        playback.classList.remove('visible')
+        button.disabled = false
+      }
+    }
+
+    document.querySelector('#select-mode').addEventListener('click', () => setMode('select'))
+    document.querySelector('#draw-mode').addEventListener('click', () => setMode('draw'))
+    document.querySelector('#add-star').addEventListener('click', () => { setMode('select'); makeObject('star', { x: 42, y: 48 }) })
+    document.querySelector('#add-circle').addEventListener('click', () => { setMode('select'); makeObject('circle', { x: 58, y: 52 }) })
+    document.querySelector('#delete-object').addEventListener('click', () => { selectedObject?.remove(); selectObject(null) })
+    color.addEventListener('input', () => { if (selectedObject) selectedObject.style.setProperty('--color', color.value) })
+    scene.addEventListener('pointerdown', event => { if (event.target === scene || mode === 'draw') startDrawing(event) })
+    scene.addEventListener('pointermove', movePointer)
+    scene.addEventListener('pointerup', endPointer)
+    scene.addEventListener('pointercancel', endPointer)
+    document.querySelector('#capture-frame').addEventListener('click', () => captureFrame())
+    document.querySelector('#update-frame').addEventListener('click', () => captureFrame(selectedFrame))
+    document.querySelector('#delete-frame').addEventListener('click', () => {
+      frames.splice(selectedFrame, 1)
+      selectedFrame = Math.min(selectedFrame, frames.length - 1)
+      renderFrames()
+    })
+    document.querySelector('#clear').addEventListener('click', () => {
+      frames.length = 0
+      selectedFrame = -1
+      scene.querySelectorAll('.object').forEach(node => node.remove())
+      drawing.replaceChildren()
+      selectObject(null)
+      status.textContent = 'Proyecto nuevo'
+      renderFrames()
+    })
+    document.querySelector('#play').addEventListener('click', () => play())
+    document.querySelector('#export').addEventListener('click', exportGif)
+    document.querySelector('#onion-toggle').addEventListener('change', updateOnion)
+    document.querySelector('#fps').addEventListener('change', renderFrames)
+
+    makeObject('star', { x: 38, y: 48, color: '#ff6843' })
+    makeObject('circle', { x: 64, y: 54, color: '#3357d7' })
+  </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Grid Snapshot Issue</title> <style> 
+/* Problematic CSS */ 
+*, ::before, ::after { 
+    box-sizing: border-box; 
+    border-width: 0; 
+    border-style: solid; 
+    border-color: #e5e7eb; 
+}
+
+/* Grid container styling */
+.test {
+  height: 100px;
+}
+</style>
+<body>
+1
+2
+3
+4
+5
+6
+7
+8
+
+
+ <script src="../dist/snapdom.js"></script>
+ <script> 
+ window.addEventListener('load', () => {
+    snapdom.toPng(document.body).then(img => {
+      document.body.appendChild(img);
+    });
+  });
+ </script> 
+
+</body>
+
+</html>

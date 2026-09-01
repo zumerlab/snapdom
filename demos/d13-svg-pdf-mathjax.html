@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.5.0/dist/svg2pdf.umd.min.js"></script>
+  <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_SVG"></script>
+  <title>Document</title>
+
+
+</head>
+
+<body>
+  <p id="J-pdf">
+    When \(a \ne 0\), there are two solutions to \(ax^2 + bx + c = 0\) and they are
+    \[x = {-b \pm \sqrt{b^2-4ac} \over 2a}.\]
+  </p>
+
+  <button type="button" onclick="download()">
+    download
+  </button>
+  <script type="module">
+    import {snapdom, preCache}  from '../dist/snapdom.mjs'
+
+    window.snapdom = snapdom
+    window.preCache = preCache
+  </script>
+  <script>
+    function svgFromDataUrl(dataUrl) {
+      const [header, encodedData] = dataUrl.split(',');
+      if (!header.startsWith('data:image/svg+xml')) {
+        throw new Error('Not a valid SVG data URL');
+      }
+
+      const svgText = decodeURIComponent(encodedData);
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgText, 'image/svg+xml');
+      return doc.documentElement;
+    }
+
+    async function download() {
+      const el = document.querySelector('#J-pdf');
+      const result = await snapdom.toPng(el);
+
+      document.body.appendChild(result)
+  
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 16px; }
+      /* #434: a table sized with CSS (width:100%) whose first column is sized by a class
+         (.label width:100px). 2.12.8 stripped all table widths → the table collapsed to
+         content width and the columns broke. The captured layout must match the live one. */
+      #target { width: 600px; background: #fff; }
+      .table-row { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
+      .table-row .label { width: 100px; color: #475569; }
+      .table-row td { border: 1px solid #cbd5e1; padding: 6px 8px; }
+    </style>
+  </head>
+  <body>
+    <div id="target">
+      <table class="table-row"><tbody>
+        <tr><td class="label">note1:</td><td>test</td></tr>
+      </tbody></table>
+      <table class="table-row"><tbody>
+        <tr><td class="label">note2:</td><td><div>a longer value 2024-09-16 in the second column</div></td></tr>
+      </tbody></table>
+    </div>
+  </body>
+</html>

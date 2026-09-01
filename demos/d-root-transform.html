@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>root transform — outerTransforms:false</title>
+    <script src="../dist/snapdom.js"></script>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 24px; }
+      /* outerTransforms:false — the root's translate + rotate are stripped and the viewBox is
+         recomputed from the remaining 2D matrix (scale is kept). Guards the bbox math that
+         compensates the stripped translation (fix 3241481) + normalizeRootTransforms:
+         the captured card must come out scaled, axis-aligned, and fully inside the frame
+         (no clipping, no leftover offset). */
+      .row { display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; margin-top: 24px; }
+      .row h3 { margin: 0 0 8px; font-size: 13px; color: #555; }
+      .stage { width: 360px; height: 240px; }
+      #target {
+        transform: translate(40px, 25px) rotate(9deg) scale(1.35);
+        transform-origin: center;
+        width: 220px;
+        box-sizing: border-box;
+        padding: 16px;
+        border: 3px solid #2F63FF;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #eef2ff, #ffffff);
+        color: #111;
+      }
+      #target h3 { margin: 0 0 8px; font-size: 16px; color: #111; }
+      #target .swatch { width: 100%; height: 40px; border-radius: 6px; background: #6366f1; }
+      #target p { margin: 8px 0 0; font-size: 13px; color: #444; }
+    </style>
+  </head>
+  <body>
+    <p>
+      Root has <code>translate + rotate + scale</code>. Click <button>capture</button> — with
+      <code>outerTransforms:false</code> the capture (right) must be scaled, axis-aligned and
+      fully inside the frame: translate + rotate stripped, scale kept.
+    </p>
+
+    <div class="row">
+      <div>
+        <h3>live</h3>
+        <div class="stage">
+          <div id="target">
+            <h3>Root transform</h3>
+            <div class="swatch"></div>
+            <p>translate + rotate stripped, scale kept</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>snapdom capture</h3>
+        <div id="result"></div>
+      </div>
+    </div>
+
+    <script>
+      const button = document.querySelector('button')
+      button.addEventListener('click', async () => {
+        button.setAttribute('disabled', true)
+        const canvas = await snapdom.toCanvas(document.querySelector('#target'), { outerTransforms: false, embedFonts: true })
+        const result = document.querySelector('#result')
+        result.innerHTML = ''
+        result.appendChild(canvas)
+        button.removeAttribute('disabled')
+      })
+    </script>
+  </body>
+</html>

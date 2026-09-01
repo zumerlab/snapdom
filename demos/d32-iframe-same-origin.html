@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SnapDOM iframe same-origin demo</title>
+  <script type="module">
+   import {
+      snapdom,
+      preCache,
+    } from '../dist/snapdom.mjs'
+   // window.snapdom = snapdom
+    window.addEventListener('DOMContentLoaded', async () => {
+      const target = document.getElementById('capture-target');
+      const btn = document.getElementById('btn-capture');
+      const out = document.getElementById('output');
+
+      btn.addEventListener('click', async () => {
+        try {
+          // Captura como PNG
+          const img = await snapdom.toImg(target, {
+            embedFonts: true,
+            fast: true
+          });
+
+          out.appendChild(img);
+        } catch (err) {
+          console.error("Capture error:", err);
+        }
+      });
+    });
+  </script>
+  <style>
+    #capture-target {
+      border: 2px solid #333;
+      padding: 10px;
+      width: 400px;
+    }
+    iframe {
+      width: 100%;
+      height: 150px;
+      border: 1px solid blue;
+    }
+  </style>
+</head>
+<body>
+  <h2>SnapDOM Same-Origin Iframe Demo</h2>
+
+  <div id="capture-target">
+    <p>Outer content before iframe 👇</p>
+    <iframe srcdoc="
+      <style>
+        body { margin:0; font-family: sans-serif; background-color: #f0f0f0; }
+        h3 { color: darkgreen; text-align:center; margin:1em 0; }
+        p { padding: 0.5em; }
+      </style>
+      <h3>Iframe Content</h3>
+      <p>This text comes from inside the iframe.</p>
+    "></iframe>
+    <p>Outer content after iframe 👆</p>
+    <p>Cross-origin iframe (sandboxed) 👇</p>
+<iframe
+  id="xorigin-iframe"
+  sandbox
+  style="width: 100%; height: 150px; border: 1px solid red;"
+  srcdoc='
+    <style>
+      body { margin:0; font-family:sans-serif; background:#eef; }
+      h3 { color:#b00; text-align:center; margin:1em 0; }
+      p  { padding:0.5em; }
+    </style>
+    <h3>Cross-origin (sandbox)</h3>
+    <p>Este contenido es de origen opaco; la captura debe usar fallback.</p>
+  '>
+</iframe>
+
+  </div>
+
+  <button id="btn-capture">Capture with SnapDOM</button>
+  <div id="output"></div>
+</body>
+</html>

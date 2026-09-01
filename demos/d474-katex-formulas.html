@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>#474: KaTeX formulas — default vs reconcile</title>
+        <!-- #474: wide KaTeX (output: html) formulas re-wrapped in the clone (clipped right /
+             overflowed bottom) on 2.22.0 defaults, while reconcile: true fixed those but
+             collapsed a simple inline fraction. Every formula from the issue plus the #454
+             sqrt case; each is captured with default options and with reconcile: true, both
+             directly and via the issue's off-screen wrapper. All fill ratios should be green. -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css" crossorigin="anonymous" />
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.js" crossorigin="anonymous"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/contrib/mhchem.min.js" crossorigin="anonymous"></script>
+        <script src="/dist/snapdom.js"></script>
+        <style>
+            body { font-family: system-ui, sans-serif; padding: 20px; }
+            #status { color: #06c; margin: 8px 0; white-space: pre-wrap; }
+            table { border-collapse: collapse; margin-top: 12px; }
+            td, th { border: 1px solid #999; padding: 6px 8px; font-size: 12px; vertical-align: top; }
+            .out img { border: 1px dashed #f00; background: #fffbe6; display: block; }
+            .meta { white-space: pre; color: #555; }
+            .bad { color: #c00; font-weight: bold; }
+            .ok { color: #080; }
+            .live { background: #f6f6f6; }
+        </style>
+    </head>
+    <body>
+        <h1>#474 — KaTeX default vs <code>reconcile: true</code></h1>
+        <p>
+            Captures each formula with <code>{ embedFonts: true }</code> →
+            <code>toCanvas({ scale: 3, width, height })</code>. <b>direct</b> captures the visible
+            wrapper; <b>offscreen</b> reproduces the issue's off-screen fixed-position clone wrapper.
+            Red dashed border = canvas. Fill = opaque-content width / canvas width; ≥90% is green.
+        </p>
+        <label><input type="checkbox" id="offscreen" /> use off-screen wrapper (issue repro path)</label>
+        <button id="run">Run all</button>
+        <div id="status"></div>
+        <table id="result">
+            <thead>
+                <tr>
+                    <th>formula</th>
+                    <th>live</th>
+                    <th>default</th>
+                    <th>reconcile: true</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <script>
+            const FORMULAS = [
+                { name: "gauss (display)", tex: "\\iiint_{\\Omega}\\left(\\frac{\\partial P}{\\partial x}+\\frac{\\partial Q}{\\partial y}+\\frac{\\partial R}{\\partial z}\\right) d v=\\iint_{\\Sigma} P d y d z+Q d z d x+R d x d y", display: true },
+                { name: "vandermonde (display)", tex: "D_{n-1}=\\left|\\begin{array}{cccc}1 & 1 & \\dots & 1 \\\\ x_{2} & x_{3} & \\dots & x_{n} \\\\ \\vdots & \\vdots & & \\vdots \\\\ x_{2}^{n-2} & x_{3}^{n-2} & \\dots & x_{n}^{n-2}\\end{array}\\right|=\\prod_{2 \\leq j<i \\leq n}\\left(x_{i}-x_{j}\\right)", display: true },
+                { name: "gravity (inline)", tex: "F=\\frac{G M m}{r^{2}}", display: false },
+                { name: "kirchhoff (display)", tex: "\\left[\\frac{\\partial\\left(\\Delta_{r} H_{m}\\right)}{\\partial T}\\right]_{p}=\\sum_{B} v_{B} C_{p, m}(B)", display: true },
+                { name: "newton2 (inline)", tex: "\\vec{F}=\\frac{\\mathrm{d} m}{\\mathrm{d} t} \\vec{v}+m \\frac{\\mathrm{d} \\vec{v}}{\\mathrm{d} t}=\\frac{\\mathrm{d} m}{\\mathrm{d} t} \\vec{v}+m \\vec{a}=\\frac{\\mathrm{d} m}{\\mathrm{d} t} \\vec{v}+m \\frac{\\mathrm{d}^{2} \\vec{r}}{\\mathrm{d} t^{2}}", display: false },
+                // Extra TeX strings contributed by the #474 reporter (incl. mhchem chemistry):
+                { name: "pythagorean (inline)", tex: "a^2+b^2=c^2", display: false },
+                { name: "arithmetic-series (inline)", tex: "S_{n}=n a_{1}+\\frac{n(n-1)}{2} d, n \\in N^{*}", display: false },
+                { name: "newton-leibniz (inline)", tex: "\\int_{a}^{b} f(x) d x=F(b)-F(a)=\\left.F(x)\\right|_{a} ^{b}", display: false },
+                { name: "binomial-dist (inline)", tex: "P_{n}(k)=C_{n}^{k} p^{k} q^{n-k} \\quad k=0,1,2 \\ldots \\ldots, n", display: false },
+                { name: "normal-dist (display)", tex: "f(x) = \\frac{1}{\\sqrt{2\\pi}\\sigma}e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}", display: true },
+                { name: "fibonacci (display)", tex: "\\lim_{n\\to \\infty}\\frac{A_{n-1}}{A_n}=\\frac{\\sqrt{5}-1}{2}.", display: true },
+                { name: "factorize (display)", tex: "\\begin{split}(x-1)(x-3)&=x^2-4x+3 \\\\ &=x^2-4x+4-1 \\\\ &=(x-2)^2-1 \\end{split}", display: true },
+                { name: "dirichlet (display)", tex: "D(x)= \\begin{cases} 1,& x \\in Q \\\\ 0,& x \\notin Q \\end{cases}", display: true },
+                { name: "linear-system (display)", tex: "\\left\\{\\begin{aligned} a_{11} x_{1}+a_{12} x_{2}+\\cdots+a_{1 n} x_{n} &=b_{1} \\\\ a_{21} x_{1}+a_{22} x_{2}+\\cdots+a_{2 n} x_{n} &=b_{2} \\\\ \\cdots \\cdots \\cdots \\\\ a_{m 1} x_{1}+a_{m 2} x_{2}+\\cdots+a_{m n} x_{n} &=b_{m} \\end{aligned}\\right.", display: true },
+                { name: "newton1 (inline)", tex: "\\sum \\vec{F}_{i}=\\frac{\\mathrm{d} \\vec{v}}{\\mathrm{d} t}=0", display: false },
+                { name: "newton3 (inline)", tex: "\\overrightarrow{F_{12}}=-\\overrightarrow{F_{21}}", display: false },
+                { name: "emc2 (inline)", tex: "E=mc^2", display: false },
+                { name: "gravity2 (display)", tex: "G \\frac{m M}{(r+h)^{2}}=m \\frac{\\nu^{2}}{(r+h)}", display: true },
+                { name: "thermo2 (display)", tex: "d S \\geq \\frac{\\delta Q}{T}", display: true },
+                { name: "ion-react (inline)", tex: "\\ce{SO4^2- + Ba^2+ -> BaSO4 v}", display: false },
+                { name: "ammonia (display)", tex: "\\ce{N2 + 3H2 <=>T[高温、加压][催化剂] 2NH3}", display: true },
+                { name: "chem-equilibrium (inline)", tex: "\\mathrm{Zn}+2 \\mathrm{HCl}(\\mathrm{aq})=\\mathrm{H}_{2}+\\mathrm{ZnCl}_{2} \\quad(\\mathrm{aq})", display: false },
+                { name: "chem-K (display)", tex: "K^{\\theta}=\\frac{\\left[p\\left(\\mathrm{H}_{2}\\right) / p^{\\theta}\\right]\\left[c\\left(\\mathrm{ZnCl}_{2}\\right)\\right]}{c^{2}(\\mathrm{HC})}", display: true },
+                { name: "photosynthesis (display)", tex: "\\ce{{CO}_{2} + 2{H}_{2}{O} ->T[光、叶绿体][酶] ({CH}_{2}O) + {H}_{2}{O} + {O}_{2}}", display: true },
+                { name: "sqrt (#454)", tex: "\\frac{\\sqrt{2185}}{28}", display: false },
+            ]
+
+            const status = document.getElementById("status")
+            const log = (m) => { status.textContent += m + "\n" }
+
+            // Off-screen wrapper from the issue: clone of .katex in a fixed container.
+            function makeOffscreenWrapper(katexEl, isDisplay) {
+                const pad = isDisplay ? 8 : 6
+                const wrapper = document.createElement("div")
+                const clone = katexEl.cloneNode(true)
+                const computed = getComputedStyle(katexEl)
+                for (const prop of ["font-size", "line-height", "font-family", "font-weight", "font-style", "letter-spacing", "color"]) {
+                    const v = computed.getPropertyValue(prop)
+                    if (v) { wrapper.style.setProperty(prop, v); clone.style.setProperty(prop, v) }
+                }
+                Object.assign(wrapper.style, {
+                    position: "fixed", left: "-99999px", top: "0",
+                    display: "inline-block", boxSizing: "content-box",
+                    margin: "0", border: "0", background: "transparent",
+                    overflow: "visible", pointerEvents: "none",
+                    paddingTop: pad + "px", paddingBottom: pad + "px",
+                })
+                clone.style.margin = "0"
+                clone.style.overflow = "visible"
+                wrapper.appendChild(clone)
+                document.body.appendChild(wrapper)
+                return wrapper
+            }
+
+            // Opaque-pixel bounding box → width fill ratio.
+            function contentBox(img) {
+                const c = document.createElement("canvas")
+                c.width = img.naturalWidth
+                c.height = img.naturalHeight
+                const g = c.getContext("2d")
+                g.drawImage(img, 0, 0)
+                const d = g.getImageData(0, 0, c.width, c.height).data
+                let minX = c.width, minY = c.height, maxX = -1, maxY = -1
+                for (let y = 0; y < c.height; y++) {
+                    for (let x = 0; x < c.width; x++) {
+                        if (d[(y * c.width + x) * 4 + 3] > 10) {
+                            if (x < minX) minX = x
+                            if (x > maxX) maxX = x
+                            if (y < minY) minY = y
+                            if (y > maxY) maxY = y
+                        }
+                    }
+                }
+                if (maxX < 0) return { text: "EMPTY", fillRatio: 0 }
+                const fillRatio = (maxX - minX + 1) / c.width
+                return {
+                    text: `x:${minX}-${maxX}/${c.width}\ny:${minY}-${maxY}/${c.height}\nwidth fill: ${(fillRatio * 100).toFixed(0)}%`,
+                    fillRatio,
+                }
+            }
+
+            async function captureOne(target, opts) {
+                const rect = target.getBoundingClientRect()
+                const width = Math.max(1, Math.ceil(rect.width))
+                const height = Math.max(1, Math.ceil(rect.height))
+                const snap = await snapdom(target, { embedFonts: true, ...opts })
+                const canvas = await snap.toCanvas({ scale: 3, backgroundColor: "#ffffff00", width, height })
+                const img = new Image()
+                img.src = canvas.toDataURL("image/png")
+                await new Promise((r) => { img.onload = r; img.onerror = r })
+                img.style.width = width + "px"
+                img.style.height = height + "px"
+                return { img, box: contentBox(img) }
+            }
+
+            // Rendered as soon as KaTeX (defer) is up, so the page shows the live formulas without
+            // running captures — the visual suite snapshots this table as a KaTeX fidelity check.
+            let rows = []
+            const mhchemUp = () => { try { katex.renderToString("\\ce{H2O}"); return true } catch { return false } }
+            const ready = new Promise((resolve) => {
+                const tick = setInterval(() => { if (window.katex && mhchemUp()) { clearInterval(tick); resolve() } }, 25)
+            }).then(() => {
+                rows = FORMULAS.map((f) => {
+                    const row = document.createElement("tr")
+                    const nameTd = document.createElement("td")
+                    nameTd.textContent = f.name
+                    row.appendChild(nameTd)
+
+                    // Visible render, wrapped like the issue does (inline-block + vertical padding).
+                    const liveTd = document.createElement("td")
+                    liveTd.className = "live"
+                    const holder = document.createElement("div")
+                    holder.style.cssText = "display:inline-block;padding:" + (f.display ? 8 : 6) + "px 0;"
+                    katex.render(f.tex, holder, { displayMode: f.display, throwOnError: false, output: "html" })
+                    liveTd.appendChild(holder)
+                    row.appendChild(liveTd)
+                    document.querySelector("#result tbody").appendChild(row)
+                    return { f, row, holder }
+                })
+            })
+
+            async function fontsSettled() {
+                // Force layout so the font loads actually start, then wait until the FontFaceSet
+                // settles (fonts.ready alone can resolve before the loads have been triggered).
+                rows.forEach(({ holder }) => void holder.offsetWidth)
+                await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+                for (let i = 0; i < 100 && document.fonts.status === "loading"; i++) {
+                    await document.fonts.ready
+                    await new Promise((r) => requestAnimationFrame(r))
+                }
+            }
+
+            async function run() {
+                const runBtn = document.getElementById("run")
+                if (runBtn.disabled) return
+                runBtn.disabled = true
+                status.textContent = ""
+                document.title = "#474 running..."
+                const offscreen = document.getElementById("offscreen").checked
+                const results = []
+                await ready
+                await fontsSettled()
+
+                for (const { f, row, holder } of rows) {
+                    row.querySelectorAll("td.out").forEach((td) => td.remove())
+                    const entry = { name: f.name }
+                    for (const v of [{ tag: "default", opts: {} }, { tag: "reconcile", opts: { reconcile: true } }]) {
+                        const td = document.createElement("td")
+                        td.className = "out"
+                        let target = holder
+                        let cleanup = null
+                        if (offscreen) {
+                            target = makeOffscreenWrapper(holder.querySelector(".katex"), f.display)
+                            cleanup = () => target.remove()
+                        }
+                        try {
+                            const { img, box } = await captureOne(target, v.opts)
+                            const meta = document.createElement("div")
+                            meta.className = "meta " + (box.fillRatio > 0.9 ? "ok" : "bad")
+                            meta.textContent = box.text
+                            td.appendChild(img)
+                            td.appendChild(meta)
+                            entry[v.tag] = box.fillRatio
+                        } catch (e) {
+                            td.innerHTML = '<span class="bad">ERR: ' + e.message + "</span>"
+                            entry[v.tag] = "ERR: " + e.message
+                        } finally {
+                            if (cleanup) cleanup()
+                        }
+                        row.appendChild(td)
+                    }
+                    results.push(entry)
+                    log(f.name + " done")
+                }
+                window.__results = results
+                log("ALL DONE")
+                document.title = "#474 DONE"
+                runBtn.disabled = false
+            }
+
+            document.getElementById("run").onclick = run
+            window.addEventListener("load", () => {
+                const q = new URLSearchParams(location.search)
+                if (q.has("offscreen")) document.getElementById("offscreen").checked = true
+                if (q.has("run")) run()
+            })
+        </script>
+    </body>
+</html>
