@@ -847,7 +847,19 @@ function snapshotIsCurrent(rec, el) {
  * possible; the per-element snapshotCache (cross-capture, stamp-guarded) sits in front
  * exactly as before.
  */
-const LAYOUT_VARYING_RE = /^(width|height|top|right|bottom|left|transform-origin|perspective-origin)$|^(margin|padding|inset|min|max)-/
+/* Which shared-snapshot props a twin must RE-READ, refined empirically on all three engines
+ * (2026-09-01, twins with %-valued props under different-width parents):
+ *  - ALWAYS: the geometry props whose getComputedStyle value is the USED value regardless of
+ *    how they were authored — width/height, the box offsets (top/right/bottom/left and the
+ *    inset-* logical longhands), transform-origin/perspective-origin.
+ *  - NEVER: the min and max sizing longhands — their resolved value is the COMPUTED value ('10%' stays '10%',
+ *    'auto' stays 'auto' on chromium, firefox AND webkit), and computed values are identical
+ *    between identity twins by construction (same matched rules, same inherited inputs).
+ *  - CONDITIONAL: the margin and padding longhands resolve %-values to used px, so they vary only when the
+ *    document (or the identity's own inline style, identical across twins) actually gives
+ *    the family an unstable value — styleScan flags marginUnstable/paddingUnstable. */
+const LAYOUT_ALWAYS_RE = /^(width|height|top|right|bottom|left|transform-origin|perspective-origin)$|^inset-/
+const UNSTABLE_INLINE_RE = /(margin|padding)[a-z-]*\s*:[^;]*(%|\bauto\b|calc\(|var\()/i
 const SHARE_SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'OPTGROUP', 'PROGRESS', 'METER', 'BUTTON', 'DATALIST'])
 
 function shareStateOf(session) {
@@ -925,8 +937,11 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
     // genuinely per-node (recompute); __bgClipTextFix derives from colors identical under
     // shared identity (carry).
     snap = { ...shared }
+    const rr = shared.__reread
     for (const p in snap) {
-      if (LAYOUT_VARYING_RE.test(p)) {
+      if (LAYOUT_ALWAYS_RE.test(p) ||
+          (rr.m && p.charCodeAt(0) === 109 && p.startsWith('margin-')) ||
+          (rr.p && p.charCodeAt(0) === 112 && p.startsWith('padding-'))) {
         const v = style.getPropertyValue(p)
         if (v) snap[p] = v
         else delete snap[p]
@@ -946,6 +961,19 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
       if (snap.__bgClipTextFix !== undefined) {
         Object.defineProperty(stored, '__bgClipTextFix', { value: snap.__bgClipTextFix, enumerable: false })
       }
+      // Per-identity re-read set, decided once here: document-level family flags from the
+      // scan, plus this identity's own inline style (the style attribute is part of the
+      // identity key, so every twin carries the same text).
+      const scan = scanFor(el.ownerDocument || document)
+      const attr = (el.getAttribute && el.getAttribute('style')) || ''
+      const inlineUnstable = attr && UNSTABLE_INLINE_RE.test(attr)
+      Object.defineProperty(stored, '__reread', {
+        value: {
+          m: !!scan.marginUnstable || (inlineUnstable && /margin/i.test(attr)),
+          p: !!scan.paddingUnstable || (inlineUnstable && /padding/i.test(attr)),
+        },
+        enumerable: false,
+      })
       shareInfo.st.snaps.set(shareInfo.id, stored)
     }
   }

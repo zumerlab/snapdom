@@ -58,6 +58,14 @@ export const ALWAYS_PROPS = [
 
 const MAX_SCAN_RULES = 20000
 
+/** Margin/padding values that can make two identity twins resolve DIFFERENTLY: their
+ *  getComputedStyle value is the USED value (per-cent margins resolve against the parent's
+ *  used width — verified identical behavior on chromium/firefox/webkit), so a %-, auto-,
+ *  calc()- or var()-valued declaration anywhere in the document forces the identity-share
+ *  hit path to keep re-reading that family per node. Fixed lengths (px/em/rem) compute
+ *  identically for twins by construction — same matched rules, same inherited inputs. */
+const UNSTABLE_LAYOUT_VALUE_RE = /%|\bauto\b|calc\(|var\(/i
+
 /** The pseudo-elements the per-node probe in pseudo.js resolves. The same rule walk that
  *  builds the property universe collects, per kind, the selectors able to generate that
  *  pseudo — so the probe can be gated by one `el.matches()` instead of three
@@ -88,7 +96,17 @@ function scanRules(rules, universe, pseudoSels, state) {
     const rule = rules[i]
     const style = rule.style
     if (style) {
-      for (let j = 0; j < style.length; j++) universe.add(style[j])
+      for (let j = 0; j < style.length; j++) {
+        const prop = style[j]
+        universe.add(prop)
+        if (prop.length > 5 && (prop[0] === 'm' || prop[0] === 'p')) {
+          const fam = prop.startsWith('margin') ? 'marginUnstable'
+            : prop.startsWith('padding') ? 'paddingUnstable' : null
+          if (fam && !state[fam] && UNSTABLE_LAYOUT_VALUE_RE.test(style.getPropertyValue(prop))) {
+            state[fam] = true
+          }
+        }
+      }
     }
     let sel = rule.selectorText
     // `:has()` is the one selector whose reach a DOM mutation cannot be walked back from — it
@@ -170,11 +188,11 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
 export function scanAuthorStyles(doc) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, usesHas: true, shareUnsafe: true, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, usesHas: true, shareUnsafe: true, marginUnstable: true, paddingUnstable: true, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafe: false }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafe: false, marginUnstable: false, paddingUnstable: false }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -196,7 +214,7 @@ export function scanAuthorStyles(doc) {
         }
       }
     }
-    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareUnsafe: state.shareUnsafe }
+    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareUnsafe: state.shareUnsafe, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable }
   } catch {
     return unreliable
   }

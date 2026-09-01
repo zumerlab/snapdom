@@ -124,3 +124,58 @@ describe('identity share — the gates, in pixels', () => {
     expect(raw).toBe(off)
   })
 })
+
+describe('identity share — layout re-read narrowing', () => {
+  // Twins under different-width parents: same identity chain (identical tags + attrs),
+  // genuinely different used values wherever %-margins/paddings resolve. Grid columns give
+  // the parents different widths without any structural-position SELECTOR (container
+  // properties don't trip the share-unsafety scan — that asymmetry is exactly what the
+  // re-read exists to cover).
+  function twinFixture(twinCSS, inlineStyle = '') {
+    return mount(
+      `<div class="grid">
+        <div class="col"><div class="twin"${inlineStyle ? ` style="${inlineStyle}"` : ''}><i>x</i></div></div>
+        <div class="col"><div class="twin"${inlineStyle ? ` style="${inlineStyle}"` : ''}><i>x</i></div></div>
+      </div>`,
+      `.grid{display:grid;grid-template-columns:160px 320px;background:#dde}
+       .col{background:#fff}
+       .twin{height:24px;background:#c00}${twinCSS ? `.twin{${twinCSS}}` : ''}`
+    )
+  }
+
+  // A capture of a borderless fixture emits no mutation records, so nothing moves the
+  // per-element stamps between arms and the second arm would replay the first arm's
+  // snapshotCache entries — byte-identical by tautology, proving nothing. Dirty the root
+  // between arms so every arm genuinely re-resolves its styles.
+  async function dirty(el) {
+    el.setAttribute('data-probe-dirty', '1')
+    el.removeAttribute('data-probe-dirty')
+    await settle()
+  }
+
+  async function byteIdentical(el) {
+    await settle()
+    await snapdom.toRaw(el, { burst: false })
+    await dirty(el)
+    const on = await snapdom.toRaw(el, { burst: false })
+    await dirty(el)
+    const off = await snapdom.toRaw(el, { burst: false, __styleShare: false })
+    expect(on).toBe(off)
+  }
+
+  it('author %-margins force the re-read: byte-identical to the full path', async () => {
+    await byteIdentical(twinFixture('margin-left:10%'))
+  })
+
+  it('INLINE %-padding (no author rule) forces it through the identity attribute', async () => {
+    await byteIdentical(twinFixture('', 'padding-left:12%'))
+  })
+
+  it('min/max sizing props never re-read and never diverge', async () => {
+    await byteIdentical(twinFixture('min-width:50%;max-width:90%'))
+  })
+
+  it('px margins skip the re-read without a byte of difference', async () => {
+    await byteIdentical(twinFixture('margin-left:14px;padding:6px'))
+  })
+})
