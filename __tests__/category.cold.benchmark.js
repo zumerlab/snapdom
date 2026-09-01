@@ -23,12 +23,17 @@ const LIBS = await loadLibs()
 
 const HTML = bigTableHTML(500)
 let el = null
+let salt = 0
 
 function freshElement() {
   el?.remove()
   el = document.createElement('div')
   el.style.cssText = 'width:640px;font-family:Arial,sans-serif;font-size:13px'
-  el.innerHTML = HTML
+  // Unique content per element: identical captures produce identical data URLs, and the
+  // browser then serves the svg decode, the foreignObject raster and the PNG decode from
+  // its image cache — stages a real capture (of a real, unique element) always pays. The
+  // marker row keeps every arm honest without changing the scene's shape.
+  el.innerHTML = `<div style="height:14px;font-size:11px">capture #${salt++}</div>` + HTML
   document.body.appendChild(el)
   return el
 }
