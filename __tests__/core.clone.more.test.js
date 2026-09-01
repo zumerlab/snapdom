@@ -319,21 +319,35 @@ describe('deepClone – targeted branches for coverage gaps', () => {
   /**
    * Covers: input.indeterminate branch and attribute mirroring.
    */
-  it('INPUT copies indeterminate flag along with checked/value', async () => {
+  it('INPUT takes the drawn replacement when it is indeterminate', async () => {
+    // `indeterminate` is a DOM property and XMLSerializer cannot emit it, so a cloned native
+    // control captures as plain unchecked — the middle state silently reads as "off".
+    // Measured dark pixels for unchecked / indeterminate / checked on a 30px box:
+    // chromium 116 / 116 / 778 and webkit 10 / 10 / 57 before this, against firefox
+    // 224 / 272 / 826, which already replaced every checkbox. The replacement is now the
+    // path for an indeterminate box on EVERY engine — see core.clone.indeterminate.test.js,
+    // which asserts the dash in pixels.
     const input = document.createElement('input')
     input.type = 'checkbox'
     input.checked = false
     input.indeterminate = true
     input.value = 'vv'
     const c = await deepClone(input, session, {})
+    expect(c.tagName).not.toBe('INPUT')
+  })
+
+  it('INPUT still copies checked/value when it is NOT indeterminate', async () => {
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.checked = false
+    input.value = 'vv'
+    const c = await deepClone(input, session, {})
     if (isFirefox()) {
-      // Firefox path: visual replacement element instead of a live input
+      // Firefox replaces every checkbox: it paints no native control in a foreignObject.
       expect(c.tagName).not.toBe('INPUT')
     } else {
       expect(c.value).toBe('vv')
       expect(c.checked).toBe(false)
-      expect(c.indeterminate).toBe(true)
-      // value attribute mirrored
       expect(c.getAttribute('value')).toBe('vv')
     }
   })

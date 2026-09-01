@@ -384,7 +384,16 @@ export async function deepClone(node, sessionCache, options) {
           // When object-fit is active, minWidth/minHeight can distort the image
           // Only set min dimensions if no object-fit override is in play
         } else {
-          // Extra shielding: stops a class added later from overriding the fix
+          // Extra shielding: stops a class added later from overriding the fix.
+          //
+          // NOTE (v3 audit): w/h are offsetWidth/offsetHeight — the BORDER box — while
+          // min-width/min-height resolve against the CONTENT box, so on an <img> with padding
+          // or a border this floor is nominally too large. Subtracting the difference was
+          // tried and REVERTED: the captured box measured 102x52 against a live 102x52 either
+          // way, so no visible defect could be demonstrated, while d14-cors-test (whose images
+          // carry `border: 1px solid black`) moved by 2.26% / 728px. A change that shifts real
+          // demo pixels with no shown fidelity gain does not belong here. Revisit only with a
+          // case where the capture actually differs from the live element.
           if (w) clone.style.minWidth = `${w}px`
           if (h) clone.style.minHeight = `${h}px`
         }
@@ -408,7 +417,15 @@ export async function deepClone(node, sessionCache, options) {
   if (isTag(node, 'input')) {
     const type = (node.type || 'text').toLowerCase()
     const isCheckboxOrRadio = type === 'checkbox' || type === 'radio'
-    if (isCheckboxOrRadio && isFirefox()) {
+    // Firefox paints no native control inside a foreignObject, hence the replacement. It is
+    // ALSO the only faithful path for an INDETERMINATE checkbox on any engine: that state
+    // lives in a DOM property, XMLSerializer cannot emit it, and the cloned native control
+    // therefore renders as plain unchecked. Measured on the same 30px box (dark pixels,
+    // unchecked / indeterminate / checked): chromium 116 / 116 / 778 and webkit 10 / 10 / 57
+    // — the middle state was indistinguishable from unchecked — against firefox 224 / 272 /
+    // 826, where the replacement already drew the dash. An approximated dash is closer to the
+    // truth than a checkbox that silently reads as "off".
+    if (isCheckboxOrRadio && (isFirefox() || node.indeterminate)) {
       const { el: replacement, applyVisual } = createCheckboxRadioReplacement(node)
       sessionCache.nodeMap.set(replacement, node)
       applyInputVisual = applyVisual
