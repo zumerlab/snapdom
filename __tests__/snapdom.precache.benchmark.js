@@ -94,7 +94,13 @@ for (const size of sizes) {
       await snapdom.toRaw(container, { burst: false })
     })
 
-    bench('capture after preCache', async () => {
+    bench('preCache() + capture (total per iteration — preCache is INSIDE the timing)', async () => {
+      // Labeled honestly: preCache runs in the timed body, so this arm answers "what does
+      // calling preCache before every capture cost in total", not "does a warmed cache make
+      // the capture itself faster". The second question already has its answer in
+      // category.cold.benchmark.js: cache:'disabled' costs ~4ms more than soft on a FRESH
+      // element, so document-level warming — which is all preCache can do — cannot reach the
+      // per-element cold cost that dominates a one-shot capture.
       container = createContainer(size)
       document.body.appendChild(container)
       await waitForNextFrame()
