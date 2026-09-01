@@ -15,11 +15,19 @@ export function stabilizeLayout(element) {
   const style = getComputedStyle(element)
   const outlineStyle = style.outlineStyle
   const outlineWidth = style.outlineWidth
-  const borderStyle = style.borderStyle
-  const borderWidth = style.borderWidth
 
   const outlineVisible = outlineStyle !== 'none' && parseFloat(outlineWidth) > 0
-  const borderAbsent = (borderStyle === 'none' || parseFloat(borderWidth) === 0)
+  // Per SIDE, not through the shorthand. `style.borderWidth` serializes to the four widths
+  // and parseFloat reads only the FIRST, so `border-bottom: 1px solid #ddd` tested as "no
+  // border": the branch below then painted a transparent border over all four sides for the
+  // capture, and its restore (`element.style.border = ''` when only some longhands are
+  // inline) is removeProperty('border') per CSSOM — deleting the author's border from the
+  // LIVE page. Computed border-*-width is already 0 whenever the style is none, so the
+  // separate borderStyle read is redundant.
+  const borderAbsent = parseFloat(style.borderTopWidth) === 0 &&
+    parseFloat(style.borderRightWidth) === 0 &&
+    parseFloat(style.borderBottomWidth) === 0 &&
+    parseFloat(style.borderLeftWidth) === 0
 
   if (outlineVisible && borderAbsent) {
     const original = element.style.border

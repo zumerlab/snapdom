@@ -1,6 +1,6 @@
 // __tests__/utils.prepare.helpers.test.js
 import { describe, it, expect, afterEach } from 'vitest'
-import { forceContentVisibility } from '../src/utils/prepare.helpers.js'
+import { forceContentVisibility, stabilizeLayout } from '../src/utils/prepare.helpers.js'
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -71,5 +71,49 @@ describe('forceContentVisibility (#281)', () => {
   it('handles null/empty root gracefully', () => {
     expect(() => forceContentVisibility(null)).not.toThrow()
     expect(() => forceContentVisibility(document.createElement('div'))).not.toThrow()
+  })
+})
+
+describe('stabilizeLayout - one-sided borders', () => {
+  // The transparent-border shim exists for roots that have an outline but NO border. The
+  // gate read the `border-width` SHORTHAND through parseFloat, which sees only the first of
+  // the four serialized widths, so a bottom-only border tested as "no border". Two things
+  // then went wrong: the capture got a transparent border on all four sides instead of the
+  // real one, and the undo assigned `element.style.border = ''`, which per CSSOM is
+  // removeProperty('border') - deleting the author's inline border from the LIVE page.
+  it('does not shim an element whose border is only on one side', () => {
+    const el = document.createElement('div')
+    el.style.outline = '2px solid red'
+    el.style.borderBottom = '1px solid black'
+    document.body.appendChild(el)
+
+    const undo = stabilizeLayout(el)
+    expect(el.style.borderTopWidth).toBe('')
+    expect(getComputedStyle(el).borderBottomWidth).toBe('1px')
+    undo()
+    expect(el.style.borderBottom).toBe('1px solid black')
+  })
+
+  it('leaves the live inline border intact after undo', () => {
+    const el = document.createElement('div')
+    el.style.outline = '2px solid red'
+    el.style.borderLeft = '3px solid blue'
+    document.body.appendChild(el)
+
+    stabilizeLayout(el)()
+    expect(getComputedStyle(el).borderLeftWidth).toBe('3px')
+    expect(getComputedStyle(el).borderLeftColor).toBe('rgb(0, 0, 255)')
+  })
+
+  it('still shims a genuinely border-less element with an outline', () => {
+    const el = document.createElement('div')
+    el.style.outline = '2px solid red'
+    document.body.appendChild(el)
+
+    const undo = stabilizeLayout(el)
+    expect(getComputedStyle(el).borderTopWidth).toBe('2px')
+    expect(getComputedStyle(el).borderTopColor).toBe('rgba(0, 0, 0, 0)')
+    undo()
+    expect(el.style.border).toBe('')
   })
 })

@@ -401,9 +401,19 @@ function isInvalidXHTMLAttr(name, stripFrameworkDirectives) {
  * C0 controls except TAB (\x09), LF (\x0A), CR (\x0D), plus the noncharacters U+FFFE/U+FFFF.
  * If any survive into the serialized SVG, the data: URL fails to parse and the browser throws
  * "EncodingError: The source image cannot be decoded" at img.decode() time.
+ *
+ * UNPAIRED SURROGATES are worse than that: encodeURIComponent (engines/svg.js) THROWS on them,
+ * so one truncated emoji anywhere in the page \u2014 `title.slice(0, 60)` cutting a 4-byte codepoint
+ * in half is the usual source \u2014 rejects the whole capture with an opaque "URI malformed" and
+ * the user gets no image at all. lineClamp's safeCut already avoids MINTING one; this catches
+ * the ones the page arrived with. Valid pairs are matched first by the leading alternative so
+ * the replacer can hand them back untouched \u2014 do not reorder.
  */
-const INVALID_XML_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g
+const INVALID_XML_CHARS = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g
 /* eslint-enable no-control-regex */
+
+/** Drops the XML-illegal chars above, keeping whole surrogate pairs. */
+const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length === 2 ? m : ''))
 
 /**
  * One pass over the finished clone before serialization (was three separate walks):
@@ -422,7 +432,7 @@ export function sanitizeCloneForXHTML(root, opts = {}) {
     // Copy first: NamedNodeMap is live
     for (const attr of Array.from(el.attributes)) {
       if (isInvalidXHTMLAttr(attr.name, stripFrameworkDirectives)) { el.removeAttribute(attr.name); continue }
-      const cv = attr.value.replace(INVALID_XML_CHARS, '')
+      const cv = stripInvalidXML(attr.value)
       if (cv !== attr.value) {
         try { el.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
       }
@@ -441,7 +451,7 @@ export function sanitizeCloneForXHTML(root, opts = {}) {
     } else if (n.nodeType === Node.COMMENT_NODE) {
       comments.push(n) // invalid XML like "--"
     } else {
-      const cv = n.data.replace(INVALID_XML_CHARS, '')
+      const cv = stripInvalidXML(n.data)
       if (cv !== n.data) n.data = cv
     }
   }
@@ -506,7 +516,7 @@ function shouldShrinkBox(srcEl, cs) {
  * @param {HTMLElement} cloneRoot - cloned subtree root (to write overrides)
  * @param {Map<Element, CSSStyleDeclaration>} styleCache - optional cache you already build
  */
-export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map()) {
+export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(), nodeMap = null) {
   /**
    * @param {Element} src
    * @param {Element} cln
@@ -542,11 +552,25 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
       }
     }
 
-    // Walk element children in order (pseudo wrappers are already inlined elsewhere)
-    const sKids = Array.from(src.children)
+    // Pair each clone child with its OWN source through the capture's clone->source map.
+    // Walking both child lists by index is the pairing this function exists to handle the
+    // fallout of: it runs only when excludeMode:'remove' has already dropped nodes, so the
+    // two lists are guaranteed to be misaligned from the first removal onward, and the
+    // pseudo-element wrappers the pipeline inserts shift them again. Every child past the
+    // first divergence was then measured against an unrelated element. Clone nodes with no
+    // source (snapdom's own inserted wrappers) simply have nothing to compare and are
+    // skipped. The index walk stays as the fallback for callers with no map.
     const cKids = Array.from(cln.children)
-    for (let i = 0; i < Math.min(sKids.length, cKids.length); i++) {
-      walk(sKids[i], cKids[i])
+    if (nodeMap) {
+      for (const cKid of cKids) {
+        const sKid = nodeMap.get(cKid)
+        if (sKid && sKid.nodeType === 1) walk(sKid, cKid)
+      }
+    } else {
+      const sKids = Array.from(src.children)
+      for (let i = 0; i < Math.min(sKids.length, cKids.length); i++) {
+        walk(sKids[i], cKids[i])
+      }
     }
   }
 

@@ -65,7 +65,16 @@ export function parseFilterBlur(cs) {
   const re = /blur\(\s*([0-9.]+)px\s*\)/gi
   let total = 0, m
   while ((m = re.exec(raw))) total += parseFloat(m[1]) || 0
-  const b2 = Math.ceil(total)
+  // `blur(R)` sets R as the Gaussian STANDARD DEVIATION (Filter Effects §blur), so the ink
+  // reaches well past R and bleeding by R alone sliced the halo where it is still clearly
+  // opaque — a blurred box rastered with a hard rectangular edge, worse the larger the
+  // radius. The factor is MEASURED, not taken from the 3σ rule of thumb: walking outward
+  // from the box edge until the pixel is within 2% of the background gives a reach of
+  // 8/15/30px for R=4/8/16 on Chromium and 8/16/31px on Firefox — ~1.9-2.0R. 2 covers every
+  // one of those; 3 would enlarge every blurred capture by half again for no visible gain,
+  // and raster area is capture time. (box-shadow's blur-radius is defined as 2σ instead, so
+  // the same extent needs half this factor there — see parseBoxShadow.)
+  const b2 = Math.ceil(total * 2)
   return { top: b2, right: b2, bottom: b2, left: b2 }
 }
 
@@ -493,6 +502,12 @@ function getMeasureHost() {
   const n = document.createElement('div')
   n.id = 'snapdom-measure-slot'
   n.setAttribute('aria-hidden', 'true')
+  // Marks the host as snapdom-owned BEFORE it is mounted, so neither the mount record nor
+  // the append/remove pair readTotalTransformMatrix does inside it reads as an external
+  // mutation (styles.js isExternalRecord). Without it every capture of a transformed root
+  // bumped the style epoch and re-stamped the whole document, dropping the author-style
+  // scan memo and every cached snapshot on the page.
+  n.setAttribute('data-snapdom-internal', '')
   Object.assign(n.style, {
     position: 'absolute',
     left: '-99999px',
