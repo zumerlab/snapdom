@@ -1,8 +1,6 @@
 // NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
 // otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe, afterEach } from 'vitest'
-import { domToDataUrl } from 'https://unpkg.com/modern-screenshot'
-import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
 import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.9.9/dist/snapdom.mjs'
 import { snapdom as sd216 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.16.0/dist/snapdom.mjs'
 // The v2 line's latest release: the "what does upgrading to v3 buy me" arm. Pinned, like the
@@ -12,22 +10,6 @@ import { snapdom as sd216 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.
 // pipeline, which is what `burst: false` pins the current version to.
 import { snapdom as sd2 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.12/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
-
-let html2canvasLoaded = false
-
-async function loadHtml2Canvas() {
-  if (html2canvasLoaded) return
-  await new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
-    script.onload = () => resolve()
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
-  html2canvasLoaded = true
-}
-
-await loadHtml2Canvas()
 
 const sizes = [
   { width: 200, height: 100, label: 'Small element (200x100)' },
@@ -127,19 +109,10 @@ for (const size of sizes) {
       await sd.toRaw(container)
     })
 
-    bench('html2canvas capture', async () => {
-      await setupContainer()
-      const canvas = await window.html2canvas(container, { logging: false, scale: 1 })
-      await canvas.toDataURL()
-    })
-
-    bench('modern-screenshot capture', async () => {
-      await setupContainer()
-      await domToDataUrl(container)
-    })
-    bench('html-to-image capture', async () => {
-      await setupContainer()
-      await htmlToImage.toSvg(container)
-    })
+    // Cross-library arms live in category.benchmark.js, where every library ends at the SAME
+    // output stage (PNG data URL). Here snapdom ended at toRaw — an SVG string — against
+    // competitors' rasterized PNG, which flatters snapdom and hides raster-stage regressions
+    // (the category bench is what caught the encode-route win). This file is the VERSION
+    // LINEAGE bench: current vs 2.24.12 vs 2.16.0 vs 1.9.9, all at toRaw, which is fair.
   })
 }

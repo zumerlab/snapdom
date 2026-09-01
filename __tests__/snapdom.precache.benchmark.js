@@ -1,4 +1,8 @@
-import { describe, test, expect, afterEach, afterAll, beforeEach } from 'vitest'
+// preCache warm-vs-cold timing. Formerly snapdom.precache.perf.test.js — a *test* whose only
+// assertions were expect(true).toBe(true), so it could never fail and `npm test` paid three
+// full-size captures purely to print timings. The project routes timing to *.benchmark.js
+// (excluded from the normal run); bench() also gives real statistics instead of one sample.
+import { bench, describe, afterEach, beforeEach } from 'vitest'
 import { snapdom, preCache } from '../src/index'
 import { cache } from '../src/core/cache'
 
@@ -7,7 +11,6 @@ const sizes = [
   { width: 400, height: 300, label: 'Modal size (400x300)' },
   { width: 1200, height: 800, label: 'Page view (1200x800)' },
 ]
-let results = []
 function createContainer(size) {
   const container = document.createElement('div')
   container.style.width = `${size.width}px`
@@ -73,16 +76,8 @@ beforeEach(() => {
   cache.background.clear()
   cache.resource.clear()
 })
-afterAll(() => {
-  for (const r of results) {
-    console.log(r.log)
-  }
-  results = []
-
-      document.body.innerHTML = ''
-})
 for (const size of sizes) {
-  describe(`snapDOM performance preCache test (may not be accurate) - ${size.label}`, () => {
+  describe(`preCache warm vs cold - ${size.label}`, () => {
     let container
 
     afterEach( () => {
@@ -92,42 +87,19 @@ for (const size of sizes) {
 
     })
 
-    test('without preCache', async () => {
+    bench('capture without preCache', async () => {
       container = createContainer(size)
       document.body.appendChild(container)
       await waitForNextFrame()
-
-      const start = performance.now()
-      await snapdom.toRaw(container)
-      const end = performance.now()
-
-       let log = `[${size.label}] WITHOUT preCache: capture ${(end - start).toFixed(2)}ms`
-       results.push({ log })
-      expect(true).toBe(true)
-
+      await snapdom.toRaw(container, { burst: false })
     })
 
-    test('with preCache', async () => {
+    bench('capture after preCache', async () => {
       container = createContainer(size)
       document.body.appendChild(container)
       await waitForNextFrame()
-
-      const startPre = performance.now()
       await preCache()
-      const endPre = performance.now()
-
-      const startCap = performance.now()
-      await snapdom.toRaw(container)
-      const endCap = performance.now()
-
-      const precacheTime = (endPre - startPre).toFixed(2)
-      const captureTime = (endCap - startCap).toFixed(2)
-
-     let log = `[${size.label}] WITH preCache:  capture ${captureTime}ms  (preCache ${precacheTime}ms)  `
-
-      results.push({ log })
-
-      expect(true).toBe(true)
+      await snapdom.toRaw(container, { burst: false })
     })
 
   })

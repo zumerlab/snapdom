@@ -53,7 +53,10 @@ const benchOpts = { time: 2000, warmupIterations: 3 }
 describe('compress: image gallery (toCanvas, scale 2)', () => {
   bench('baseline (compress OFF)', async () => {
     setupContainer()
-    await snapdom.toCanvas(container, { ...opts, burst: false })
+    // compress defaults ON in v3, so an omitted key here made this "OFF" arm run WITH
+    // compression — both arms measured the same configuration and a compress regression
+    // was invisible. Matching the second describe, which always passed it explicitly.
+    await snapdom.toCanvas(container, { ...opts, compress: false, burst: false })
   }, benchOpts)
 
   bench('compress: true', async () => {

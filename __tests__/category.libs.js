@@ -44,7 +44,13 @@ export async function toDataUrl(out) {
 }
 
 export const LIBS = {
-  'snapDOM current': async (el) => toDataUrl(await snapdom.toPng(el, { scale: 1 })),
+  // burst:false is load-bearing for FAIRNESS. tinybench runs each library's iterations
+  // against the same mounted element, and snapdom's auto-burst memoizes after 3 captures of
+  // one element inside 2s — so from iteration 3 the "pipeline" column was the memo while
+  // every competitor ran its full pipeline. The memo is a real product win, but it is
+  // measured honestly in session.static.benchmark.js under its own label; this table claims
+  // steady-state PIPELINE cost, so it must pin the pipeline.
+  'snapDOM current': async (el) => toDataUrl(await snapdom.toPng(el, { scale: 1, burst: false })),
   'html2canvas 1.4.1': async (el) => toDataUrl(await window.html2canvas(el, { logging: false, scale: 1 })),
   'html-to-image 1.11.13': async (el) => toDataUrl(await htmlToImage.toPng(el, { pixelRatio: 1 })),
   'modern-screenshot 4.7.0': async (el) => toDataUrl(await domToPng(el, { scale: 1 })),
