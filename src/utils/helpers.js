@@ -39,7 +39,10 @@ export function resolveImageSetURL(value, targetDppx = 1) {
     // decode — mirror that, or an unsupported format out-ranks what the page painted.
     const typeMatch = part.match(/type\(\s*["']([^"']+)["']\s*\)/i)
     if (typeMatch && !SUPPORTED_IMAGE_SET_TYPE.test(typeMatch[1].trim())) continue
-    const resMatch = part.match(/(\d+(?:\.\d+)?)\s*(x|dpi|dppx)/i)
+    // Match the descriptor OUTSIDE the url(): scanning the whole candidate picked the first
+    // digits-then-'x' anywhere in it, so `url("hero-2x.png") 3x` resolved as a 2x candidate
+    // and a retina source could out- or under-rank the one the page actually paints.
+    const resMatch = part.replace(/url\((['"]?)[\s\S]*?\1\)/, ' ').match(/(\d+(?:\.\d+)?)\s*(x|dpi|dppx)\b/i)
     let dppx = 1
     if (resMatch) {
       const n = parseFloat(resMatch[1])

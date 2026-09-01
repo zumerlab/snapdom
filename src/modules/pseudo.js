@@ -297,15 +297,32 @@ function stripContentAltText(raw) {
  * adjacent tokens with no gap, so `counter(x) ")"` must render `1)` and not `1 )`.
  * @param {string} raw
  */
+/** Decodes CSS string escapes: `\A` (a newline), `\2014` with its optional trailing space,
+ *  `\"`, `\\`, and a backslash-newline line continuation (which produces nothing). Without
+ *  this the escape sequences were carried through verbatim and PAINTED — a `content: "\201C"`
+ *  quotation mark rendered as the literal text `\201C`. */
+function unescapeCssString(str) {
+  return str.replace(/\\(?:([0-9a-fA-F]{1,6})[ \t\n]?|([\s\S]))/g, (_, hex, ch) => {
+    if (hex) {
+      const cp = parseInt(hex, 16)
+      return (cp === 0 || cp > 0x10FFFF) ? '\uFFFD' : String.fromCodePoint(cp)
+    }
+    return ch === '\n' ? '' : ch
+  })
+}
+
 function collapseCssContent(raw) {
   if (!raw) return ''
   const parts = []
-  const rx = /"([^"]*)"/g
+  // A string token runs to its matching unescaped quote. `[^"]*` ended the token at the
+  // first `\"`, so `content: "say \"hi\""` was split mid-string and the tail leaked out as
+  // an unquoted token. Both quote styles, since a stylesheet may use either.
+  const rx = /"((?:\\[\s\S]|[^"\\])*)"|'((?:\\[\s\S]|[^'\\])*)'/g
   let lastIndex = 0, m
   while ((m = rx.exec(raw))) {
     const between = raw.slice(lastIndex, m.index).trim()
     if (between) parts.push(between)
-    parts.push(m[1])
+    parts.push(unescapeCssString(m[1] !== undefined ? m[1] : m[2]))
     lastIndex = rx.lastIndex
   }
   const tail = raw.slice(lastIndex).trim()
@@ -614,9 +631,15 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         if (!textNode) continue
 
         const text = textNode.textContent
-        const match = text.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u)
+        // Leading white space is not part of ::first-letter and does not stop it (CSS Pseudo
+        // §3.2). The pattern was anchored at index 0 with \s excluded from both halves, so
+        // any indented markup — `<p>\n  Hello` — matched nothing and the whole pseudo was
+        // dropped. Skip the run, match after it, and put it back in front of the span.
+        const lead = /^\s*/.exec(text)[0]
+        const body = text.slice(lead.length)
+        const match = body.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u)
         const first = match?.[0]
-        const rest = text.slice(first?.length || 0)
+        const rest = body.slice(first?.length || 0)
         if (!first || /[\uD800-\uDFFF]/.test(first)) continue
 
         const span = document.createElement('span')
@@ -629,6 +652,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         const restNode = document.createTextNode(rest)
         clone.replaceChild(restNode, textNode)
         clone.insertBefore(span, restNode)
+        if (lead) clone.insertBefore(document.createTextNode(lead), span)
         continue
       }
 

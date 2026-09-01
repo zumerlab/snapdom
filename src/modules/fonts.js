@@ -294,9 +294,14 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
     let out = ''
     let last = 0
     let m
-    while ((m = IMPORT_ANY_RE.exec(text))) {
+    // Own regex per call. IMPORT_ANY_RE is module-level and /g, so its lastIndex is shared
+    // state — and this function RECURSES into each imported sheet. The nested call resumed
+    // scanning from the parent's lastIndex and then left its own behind, so imports after
+    // the first nested one were skipped and their @font-face rules never embedded.
+    const importRe = new RegExp(IMPORT_ANY_RE.source, 'g')
+    while ((m = importRe.exec(text))) {
       out += text.slice(last, m.index)
-      last = IMPORT_ANY_RE.lastIndex
+      last = importRe.lastIndex
 
       const rawUrl = (m[2] || m[4] || '').trim()
       const absUrl = normalizeUrl(rawUrl, baseHref)
@@ -670,11 +675,16 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       }
       ctx.coveredFamilies.add(family.toLowerCase())
 
+      // Always quote. An unquoted family is a sequence of CSS identifiers, and an identifier
+      // may not start with a digit — so "Press Start 2P", "Baloo 2" and "M PLUS 1p" emitted
+      // an INVALID @font-face that the parser dropped whole, and the font silently failed to
+      // embed while everything else looked fine.
+      const familyDecl = `"${String(family).replace(/^\s*["']|["']\s*$/g, '').replace(/(["\\])/g, '\\$1')}"`
       if (/url\(/i.test(srcRaw)) {
         const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy, ctx.iconMatchers)
-        await emitFace(`@font-face{font-family:${family};src:${inlinedSrc};${descriptors}}`)
+        await emitFace(`@font-face{font-family:${familyDecl};src:${inlinedSrc};${descriptors}}`)
       } else {
-        await emitFace(`@font-face{font-family:${family};src:${srcRaw};${descriptors}}`)
+        await emitFace(`@font-face{font-family:${familyDecl};src:${srcRaw};${descriptors}}`)
       }
     }
   }

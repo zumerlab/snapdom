@@ -54,8 +54,22 @@ export function emulateBackdropFilters(root, clone, nodeMap = new Map()) {
     return { ...t, copy }
   })
 
-  for (const { cloneEl, orig, bf, copy } of jobs) insertFrost(cloneEl, orig, bf, copy, rootRect)
+  for (const { cloneEl, orig, bf, copy } of jobs) {
+    // A replaced element renders no children, so the frost and backdrop layers this
+    // emulation prepends would never paint — while the element's OWN background has already
+    // been wiped with !important to make room for them. The net effect on an <input>, a
+    // <textarea> or an <img> was losing the background and gaining nothing. Leaving the
+    // element alone loses the blur, which is the lesser of the two.
+    if (REPLACED_ELEMENTS.has(cloneEl.tagName)) continue
+    insertFrost(cloneEl, orig, bf, copy, rootRect)
+  }
 }
+
+/** Elements whose children are not rendered, so a prepended layer cannot paint inside them. */
+const REPLACED_ELEMENTS = new Set([
+  'IMG', 'INPUT', 'TEXTAREA', 'SELECT', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME',
+  'EMBED', 'OBJECT', 'PROGRESS', 'METER', 'HR', 'BR',
+])
 
 function insertFrost(cloneEl, orig, bf, copy, rootRect) {
   const r = orig.getBoundingClientRect()
