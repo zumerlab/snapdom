@@ -8,7 +8,16 @@ import { sessionWarn } from '../utils/debug.js'
 // doubles on Retina) throws an opaque async "EncodingError: The source image cannot be
 // decoded" deep in img.decode(). We clamp instead so the capture still succeeds (slightly
 // downscaled) and warn, naming the knobs to adjust.
-const MAX_RASTER_SIDE = 16384
+// 16384 is WebKit's number, and it used to be everyone's. Chromium decodes an svg data URL at
+// 640x32768 and backs a 640x17298 canvas without complaint (probed directly), so on a tall real
+// page the clamp fired where nothing was wrong: the capture came back DOWNSCALED — 606x16384
+// for a live 640x17298, while domlens and html2canvas returned it at full size — and the clamp
+// path also costs, because it decodes the whole svg payload, rewrites the header, re-encodes it
+// and then resamples at a fractional scale. Measured on a 500-row table: 5.2 ms/Mpx through the
+// clamp against 3.1 ms/Mpx just under it, for the same pixel count. Gecko's canvas side limit is
+// 32767, so it shares the higher bound; the AREA cap is unchanged and still catches the cases
+// that actually exceed what a browser will allocate.
+const MAX_RASTER_SIDE = isSafari() ? 16384 : 32767
 const MAX_RASTER_AREA = 16384 * 16384
 
 /**
