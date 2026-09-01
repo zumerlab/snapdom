@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+  <head>
+     <meta charset="UTF-8" />
+    <style>
+    
+      html {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        font-size: 13px;
+      }
+      body {
+        margin: 0;
+      }
+      .table {
+        width: 1020px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <table class="table" style="min-height: 30px">
+        <colgroup>
+          <col width="74.62px" />
+          <col width="907px" />
+        </colgroup>
+        <thead
+          style="
+            grid-template-columns: 74.62px 907px;
+            background-color: rgb(255, 255, 255);
+          "
+        >
+          <tr>
+            <th>
+              <div>
+                <span>title 1</span>
+              </div>
+            </th>
+            <th>
+              <div>
+                <span>title</span>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-index="0">
+            <td rowspan="1" style="grid-row: span 1">
+              <div>
+                <span
+                  ><span
+                    ><span style="font-size: 15px; line-height: 15px"
+                      ><span style="color: rgb(255, 61, 100)">▼</span></span
+                    ><span> </span></span
+                  ><span>299920%</span></span
+                >
+              </div>
+            </td>
+            <td rowspan="1" style="grid-row: span 1">
+              <div>
+                <span
+                  ><span
+                    >Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+                    sed do eiusmod tempor incididunt ut labore et dolore magna
+                    aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo
+                    consequat.</span
+                  ><br
+                /></span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="out"></div>
+
+    <script src="../dist/snapdom.js"></script>
+    <script>
+      window.addEventListener("load", () => {
+        setTimeout(() => {
+          snapdom
+            .toCanvas(document.body, {
+              backgroundColor: "#fff",
+              embedFonts: true,
+            })
+            .then((c) => document.getElementById("out").appendChild(c));
+        }, 100);
+      });
+    </script>
+  </body>
+</html>

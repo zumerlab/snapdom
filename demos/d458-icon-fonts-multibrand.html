@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>icon fonts — multi-brand capture test (#458)</title>
+
+    <!-- Font Awesome 7.0.1 — new content: "\fXXX" / "" alt-text syntax -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Bootstrap Icons — classic content syntax, different vendor/prefix -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" crossorigin="anonymous">
+    <!-- Material Symbols — ligature-based (real text "home", no ::before content at all) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" crossorigin="anonymous">
+
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .row .label { width: 220px; font-size: 14px; color: #555; }
+      .row .label code { display: block; font-size: 11px; color: #999; margin-top: 4px; }
+      .box {
+        width: 96px;
+        height: 96px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .box.result img { width: 100%; height: 100%; }
+      .arrow { color: #999; font-size: 20px; }
+      .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-size: 48px; }
+      button.capture-all {
+        display: block;
+        margin-bottom: 20px;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture-all:hover { background: #0c0; }
+    </style>
+  </head>
+  <body>
+    <h1>Icon fonts across brands: live DOM vs snapDOM capture (#458)</h1>
+    <p style="max-width:640px;font-size:13px;color:#666">
+      Font Awesome 6 (classic <code>content: "\f015"</code>) is already covered by
+      <code>d9-flex-margin-auto-clip.html</code>. This demo focuses on FA7's new alt-text
+      content syntax plus two other brands/mechanisms for contrast.
+    </p>
+    <button type="button" class="capture-all">Capture all rows</button>
+
+    <div class="row" data-name="Font Awesome 7.0.1 (alt-text syntax)">
+      <div class="label">Font Awesome 7.0.1<code>content: "\f015" / ""</code></div>
+      <div class="box origin"><i class="fa fa-house"></i></div>
+      <div class="arrow">&rarr;</div>
+      <div class="box result"></div>
+    </div>
+
+    <div class="row" data-name="Bootstrap Icons 1.11.3">
+      <div class="label">Bootstrap Icons 1.11.3<code>content: ""</code></div>
+      <div class="box origin"><i class="bi bi-house-door-fill"></i></div>
+      <div class="arrow">&rarr;</div>
+      <div class="box result"></div>
+    </div>
+
+    <div class="row" data-name="Material Symbols (ligature)">
+      <div class="label">Material Symbols<code>ligature text, no ::before</code></div>
+      <div class="box origin"><span class="material-symbols-outlined">home</span></div>
+      <div class="arrow">&rarr;</div>
+      <div class="box result"></div>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      async function captureRow(row) {
+        const origin = row.querySelector('.box.origin')
+        const result = row.querySelector('.box.result')
+        try {
+          const img = await snapdom.toPng(origin, { embedFonts: true })
+          result.replaceChildren(img)
+        } catch (e) {
+          result.textContent = 'ERROR'
+          console.error(row.dataset.name, e)
+        }
+      }
+
+      document.querySelector('.capture-all').addEventListener('click', async () => {
+        for (const row of document.querySelectorAll('.row')) {
+          await captureRow(row)
+        }
+      })
+    </script>
+  </body>
+</html>

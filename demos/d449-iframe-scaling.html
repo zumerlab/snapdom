@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>#449 — iframe scaling</title>
+  <script src="../dist/snapdom.js"></script>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; padding: 16px; }
+    iframe {
+      width: 800px;
+      height: 450px;
+    }
+    .row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .row > div > h3 { margin: 0 0 4px; font-size: 13px; color: #555; }
+    canvas { border: 0; }
+  </style>
+</head>
+<body>
+  <p>
+    #449: the iframe shows a page much taller than 450px. Click
+    <button>capture</button> — the capture (left) must match the live iframe (right),
+    not be vertically squashed.
+  </p>
+
+  <div class="row">
+    <div id="result"></div>
+    <div>
+      <h3>live iframe</h3>
+      <iframe src="src449.html" frameborder="0" id="output"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const button = document.querySelector('button')
+    button.addEventListener('click', async () => {
+      button.setAttribute('disabled', true)
+      const capture = await snapdom.toCanvas(document.querySelector('#output'))
+      const result = document.querySelector('#result')
+      result.innerHTML = '<h3>snapdom capture</h3>'
+      result.appendChild(capture)
+      button.removeAttribute('disabled')
+    })
+  </script>
+</body>
+</html>

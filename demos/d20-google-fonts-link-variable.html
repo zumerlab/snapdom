@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo 1 — Google Fonts (link) variable</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Variable font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+
+  <style>
+    .card {
+      border: 1px dashed #aaa; padding: 12px; width: fit-content; margin: 16px 0;
+    }
+    .vf-300 { font-family: "Inter", system-ui; font-weight: 300; font-size: 22px; }
+    .vf-600 { font-family: "Inter", system-ui; font-weight: 600; font-size: 24px; }
+    .vf-900 { font-family: "Inter", system-ui; font-weight: 900; font-size: 26px; }
+  </style>
+</head>
+<body>
+  <h2>Demo 1 — Google Fonts (link) variable</h2>
+  <div class="card" id="target">
+    <div class="vf-300">Inter 300 — variable</div>
+    <div class="vf-600">Inter 600 — variable</div>
+    <div class="vf-900">Inter 900 — variable</div>
+  </div>
+
+  <button id="btn">Capturar</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+    document.getElementById('btn').addEventListener('click', async () => {
+      const el = document.getElementById('target');
+      const img = await snapdom.toImg(el, { embedFonts: true, compress: true });
+      const out = document.getElementById('output');
+      out.innerHTML = ''; out.appendChild(img);
+    });
+  </script>
+</body>
+</html>

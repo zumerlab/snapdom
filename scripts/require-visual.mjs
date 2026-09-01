@@ -2,9 +2,10 @@
 // caught anything.
 //
 // Two ways that happens, both silent:
-//   1. `demos/` is gitignored. visual.demos.test.js globs /demos/d*.html, gets nothing, and
-//      registers a describe.skip — so a fresh clone reports a fully passing `npm test` while
-//      having pixel-diffed zero demos.
+//   1. `demos/` is missing (a sparse checkout, or a worktree created before it was
+//      committed). visual.demos.test.js globs /demos/d*.html, gets nothing, and registers a
+//      describe.skip — so the run reports a fully passing `npm test` while having
+//      pixel-diffed zero demos.
 //   2. Baselines are recorded on FIRST run. With an empty __snapshots__/visual the suite
 //      records whatever the current build produces and passes, which only proves the build
 //      agrees with itself.

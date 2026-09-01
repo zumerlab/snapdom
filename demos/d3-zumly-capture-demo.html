@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Zumly Capture Demo</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@flaticon/flaticon-uicons@3.3.1/css/all/all.min.css">
+  <style>
+    @import url('https://unpkg.com/@zumer/orbit@latest/dist/orbit.css');
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background: #f5f5f5;
+    }
+
+    #target {
+      position: relative;
+      width: 400px;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 20px rgba(0,0,0,1);
+      background-image: url("./assets/wolf.jpg");
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+    #target::after {
+      content: "★";
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      font-size: 30px;
+      color: gold;
+    }
+
+    #output img {
+      margin-top: 2rem;
+      max-width: 100%;
+      border: 1px solid #ccc;
+    }
+
+    .satellite.central{
+      background: var(--o-cyan-light);
+      border: none;
+    }
+
+    .fa-star {
+      color: #f39c12;
+    
+    }
+    .caca {
+      border: 1px solid red;
+      transform: scale(0.7) rotate(3deg);
+    }
+  </style>
+  <style>
+  /* ===== Responsive for plugin demos (ASCII / Timestamp) ===== */
+
+  /* 1) Cards: evita tamaños fijos (420×240) y usa aspect-ratio */
+  #ascii-section .demo,
+  #ts-section .demo {
+    width: min(100%, 480px) !important;   /* escala al ancho de pantalla */
+    height: auto !important;
+    aspect-ratio: 7 / 4;                  /* conserva proporción */
+    border-radius: 14px;
+  }
+
+  /* 2) Stage contenedor: centra y evita overflow lateral */
+  #ascii-section .stage {
+    width: 100%;
+    justify-items: center;
+    gap: 0.8rem;
+    padding-inline: 0.25rem;
+  }
+
+  /* 3) Controles: que envuelvan en mobile y ocupen buen ancho táctil */
+  #ascii-section .row {
+    flex-wrap: wrap;
+    row-gap: .5rem;
+  }
+  #ascii-section .row select,
+  #ascii-section .row button,
+  #ascii-section .row label {
+    flex: 1 1 160px;
+  }
+  @media (max-width: 480px) {
+    #ascii-section .row select,
+    #ascii-section .row button {
+      min-width: 48%;
+    }
+  }
+
+  /* 4) Emoji grid: columnas y tamaño de emoji responsivos */
+  #demo-emoji {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    font-size: clamp(28px, 10vw, 58px) !important;
+  }
+  @media (max-width: 600px) {
+    #demo-emoji { grid-template-columns: repeat(4, 1fr) !important; }
+  }
+  @media (max-width: 380px) {
+    #demo-emoji { grid-template-columns: repeat(3, 1fr) !important; }
+  }
+
+  /* 5) Giant text: que el título/subtítulo escalen */
+  #demo-giant > div:first-child {
+    font-size: clamp(36px, 14vw, 88px) !important;
+    line-height: .95;
+  }
+  #demo-giant > .legend, 
+  #demo-giant div:last-child {
+    font-size: clamp(12px, 5vw, 24px) !important;
+  }
+
+  /* 6) Imagen del demo: que rellene el card sin distorsión */
+  #demo-image img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  /* 7) Salida de ASCII: tipografía y scroll horizontales en pantallas chicas */
+  #ascii-output {
+    max-width: 100%;
+    overflow: auto;             /* por si el ASCII queda ancho */
+  }
+  #ascii-output pre {
+    font-size: clamp(6px, 1.8vw, 10px) !important;
+    line-height: 1 !important;
+    white-space: pre;
+    margin: 0;
+  }
+  /* SVG de salida: responsive */
+  #ascii-output svg, 
+  #ascii-output img, 
+  #ts-output img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* 8) Timestamp card: escala tipografías grandes */
+  #ts-target {
+    font-size: clamp(28px, 10vw, 58px) !important;
+  }
+  #ts-section small {
+    font-size: clamp(12px, 4vw, 24px) !important;
+  }
+
+  /* 9) Botonera genérica dentro de secciones de plugin */
+  #ts-section .output,
+  #ascii-section .output {
+    padding: .6rem;
+    border: 1px solid rgba(20, 67, 51, 0.25);
+    border-radius: 10px;
+    background: rgba(0,0,0,0.04);
+  }
+</style>
+
+</head>
+<body>
+
+  <h1>Zumly Capture Demo</h1>
+
+  <div id="target" class="caca">
+    <h2>Componente complejo <i class="fas fa-star"></i></h2>
+    <p>Este componente tiene: <i class="fi fi-rr-rectangle-list"></i> </p>
+    <ul>
+      <li>background<i class="fas fa-star"></i>-image <i class="fas fa-user"></i>fsdfsdf <i class="fi fi-rr-rectangle-list"></i> </li>
+      <li>pseudo-elemento ::before</li>
+      <li>una imagen <code>&lt;img&gt;</code></li>
+      <li>y unshadow DOM</li>
+    </ul>
+    <img src="./assets/wolf.jpg" width="200" />
+    <my-box></my-box>
+    <div class="bigbang" style="height: 200px">
+      <div class="gravity-spot">
+        <div class="orbit">
+          <div class="satellite central grow-1x at-center"></div>
+        </div>
+        <div class="orbit-2 range-180 from-180">
+          <o-arc shape="circle" class="shrink-50"> <i class="fas fa-time"></i></o-arc>
+        </div>
+        <div class="orbit-3 range-270 ">
+          <o-arc shape="circle" class="shrink-50"></o-arc>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="capture">Capturar</button>
+
+  <div id="output"></div>
+
+  <script type="module" >
+   // import { snapdom } from '../dist/snapdom.mjs';
+    import { snapdom } from '../dist/snapdom.mjs';
+   // import { registerPlugins } from '../dist/modules/plugins.js'; // 'https://unpkg.com/@zumer/snapdom@1.9.3/dist/snapdom.mjs' //'../dist/snapdom.mjs';
+      
+     // 2.1 Precarga al cargar la página
+     window.addEventListener('load', async () => {
+ // await preCache();
+  console.log('📦 Recursos precargados');
+    });
+    class MyBox extends HTMLElement {
+      constructor() {
+        super();
+        const shadow = this.attachShadow({ mode: 'open' });
+        const container = document.createElement('section');
+        container.innerHTML = `
+          <style>
+            .title {
+              padding: 10px;
+              border-radius: 6px;
+              background: #ffeb3b;
+              font-weight: bold;
+              text-align: center;
+            }
+          </style>
+          <div class="title">Hola desde el Shadow DOM</div>
+        `;
+        shadow.appendChild(container);
+      }
+    }
+    customElements.define('my-box', MyBox);
+
+   const redTextPlugin = {
+    name:"tedd",
+  afterClone(context) {
+    const walker = document.createTreeWalker(context.clone, NodeFilter.SHOW_ELEMENT);
+    while (walker.nextNode()) {
+      const el = walker.currentNode;
+      const hasText = [...el.childNodes].some(n => n.nodeType === 3 && /\S/.test(n.textContent));
+      if (hasText) {
+        el.style.setProperty("color", "red", "important");
+        el.style.setProperty("-webkit-text-fill-color", "red", "important");
+      }
+    }
+    console.log("[redTextPlugin] Forzado color rojo en todos los textos (incluyendo WebKit).");
+  }
+};
+
+// plugin-webgl-overlay.js (Three.js render en esquina superior derecha con rotación dinámica)
+
+
+
+const three =  {
+  
+  afterCanvas({canvas}) {
+  const bounds = target.getBoundingClientRect();
+    const width = Math.floor(bounds.width * 0.25);
+    const height = Math.floor(bounds.height * 0.25);
+
+    // Crear wrapper posicionado relativo al target
+   const wrapper = document.createElement("div");
+    wrapper.style.cssText = `
+      position: absolute;
+      top: ${bounds.top + 10 + window.scrollY}px;
+      left: ${bounds.right - width - 10 + window.scrollX}px;
+      width: ${width}px;
+      height: ${height}px;
+      z-index: 9999;
+      pointer-events: auto;
+    `;
+    //canvas.appendChild(wrapper);
+
+   canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    wrapper.appendChild(canvas);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(width, height);
+    renderer.setClearColor(0xf0f0f0);
+
+   const  scene = new THREE.Scene();
+   const  camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.z = 3;
+
+    const light = new THREE.PointLight(0xffffff, 1);
+    light.position.set(2, 2, 5);
+    scene.add(light);
+
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x33aaff,
+      roughness: 0.4,
+      metalness: 0.3,
+    });
+
+  const   cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
+
+ //  requestAnimationFrame(animate);
+   // if (!cube || !renderer) return;
+   // cube.rotation.x += 0.01;
+  //  cube.rotation.y += 0.01;
+    renderer.render(scene, camera);
+}
+}
+
+// import * as THREE from 'https://unpkg.com/three@0.160.1/build/three.module.js';
+
+
+snapdom.toWebGL1 = async (el, options = {}) => {
+  const capture = await snapdom.capture(el, options);
+  const { url } = capture;
+  const dpr = window.devicePixelRatio || 1;
+  const scale = options.scale || 1;
+
+  const texture = await new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(url, resolve, undefined, reject);
+  });
+
+  const width = texture.image.width * scale;
+  const height = texture.image.height * scale;
+
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setSize(width, height);
+  const canvas = renderer.domElement;
+  renderer.setClearColor(0xf0f0f0, 1);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
+  camera.position.set(0, 0, height * 1.5);
+
+  const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+  const light = new THREE.DirectionalLight(0xffffff, 1.7);
+  light.position.set(0, 0, 200);
+  scene.add(ambient, light);
+
+  const geometry = new THREE.PlaneGeometry(width, height);
+  const material = new THREE.MeshPhongMaterial({ map: texture, transparent: true });
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  // Rotación inicial
+  mesh.rotation.x = -0.2;
+  mesh.rotation.y = 0.3;
+
+  // 🎮 Control de mouse básico
+  let isDragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  canvas.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    mesh.rotation.y += dx * 0.01;
+    mesh.rotation.x += dy * 0.01;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+  const animate = () => {
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  };
+  animate();
+
+  return canvas;
+};
+
+function createPersistentClonePlugin() {
+  let savedClone = null;
+
+  return {
+    afterRender(context) {
+      // Guardar una copia profunda del clon nuevo
+      savedClone = context.clone.cloneNode(true);
+    },
+
+    afterClone(context) {
+      if (savedClone) {
+        // Usar el clon anterior como base
+        const reused = savedClone.cloneNode(true);
+        context.clone = reused;
+        
+        console.log("[PersistentClone] reutilizando clon anterior");
+      }
+    },
+
+    addDart() {
+      if (!savedClone) return;
+      const dart = document.createElement("div");
+      dart.textContent = "🎯";
+      dart.style.cssText = `
+        position: absolute;
+        left: ${Math.random() * 80 + 10}%;
+        top: ${Math.random() * 80 + 10}%;
+        font-size: 48px;
+        transform: translate(-50%, -50%);
+      `;
+      const style = window.getComputedStyle(savedClone);
+      if (style.position === "static") {
+        savedClone.style.position = "relative";
+      }
+      savedClone.appendChild(dart);
+    },
+
+    reset() {
+      savedClone = null;
+    }
+  };
+}
+
+const plugin = createPersistentClonePlugin();
+
+
+
+
+  const timestampPlugin = {
+    name: "timestamp",
+     beforeSnap() {
+       
+         console.log('beforeClone')
+      },
+      afterRender() {
+         console.log('afterClone')
+      },
+  afterClone(context) {
+    // Eliminar si ya existe
+    const oldStamp = context.clone.querySelector('[data-snapdom-timestamp]');
+    if (oldStamp) oldStamp.remove();
+    const stamp = document.createElement("div");
+    stamp.setAttribute("data-snapdom-timestamp", "true"); 
+    stamp.textContent = new Date().toLocaleString();
+    stamp.style.cssText = `
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: #fff;
+      background: rgba(0,0,0,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      z-index: 9999;
+    `;
+
+    // Ensure clone is positioned relative so absolute works
+    const style = window.getComputedStyle(context.clone);
+    if (style.position === 'static') {
+      context.clone.style.position = 'relative';
+    }
+
+    context.clone.appendChild(stamp);
+    console.log('afterClone')
+  },
+  afterExport() {
+         console.log('afterRender')
+      },
+
+};
+
+snapdom.plugins([timestampPlugin, redTextPlugin]);
+
+
+const pluginRedOverlay = {
+  afterWebGL({ canvas }) {
+    const gl = canvas.getContext('webgl');
+    if (!gl) return;
+
+    // Dibujar un quad rojo encima de todo usando blending
+
+    // Activar blending para superponer colores
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Crear buffer para el quad completo (de nuevo)
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    const quad = new Float32Array([
+      -1, -1,   1, -1,  -1, 1,
+      -1, 1,    1, -1,   1, 1
+    ]);
+    gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+
+    // Mini shader rojo
+    const vs = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0, 1);
+      }
+    `;
+    const fs = `
+      precision mediump float;
+      void main() {
+        gl_FragColor = vec4(1.0, 0.0, 0.0, 0.2); // rojo semitransparente
+      }
+    `;
+
+    const createShader = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    };
+
+    const program = gl.createProgram();
+    gl.attachShader(program, createShader(gl.VERTEX_SHADER, vs));
+    gl.attachShader(program, createShader(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(program);
+    gl.useProgram(program);
+
+    const loc = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+};
+
+//snapdom.plugins(pluginRedOverlay);
+
+const pluginThreeOrbit = {
+  async afterWebGL({ canvas, img }) {
+    const [
+      { WebGLRenderer },
+      { Scene },
+      { PerspectiveCamera },
+      { AmbientLight },
+      { DirectionalLight },
+      { PlaneGeometry },
+      { Mesh },
+      { MeshPhongMaterial },
+      { CanvasTexture },
+      { Texture }
+    ] = await Promise.all([
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/renderers/WebGLRenderer.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/scenes/Scene.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/cameras/PerspectiveCamera.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/lights/AmbientLight.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/lights/DirectionalLight.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/geometries/PlaneGeometry.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/objects/Mesh.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/materials/MeshPhongMaterial.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/textures/CanvasTexture.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/textures/Texture.js'),
+    ]);
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // No reemplazar el canvas, usar el original
+    const renderer = new WebGLRenderer({ canvas });
+    renderer.setSize(width, height);
+    renderer.setSize(width, height, false);
+    renderer.setClearColor(0xf8f8f8, 1);
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(45, width / height, 1, 1000);
+    camera.position.z = height * 1.2;
+
+    const ambient = new AmbientLight(0xffffff, 0.6);
+    const light = new DirectionalLight(0xffffff, 0.4);
+    light.position.set(0, 0, 300);
+    scene.add(ambient, light);
+
+    const texture = new CanvasTexture(img);
+    // texture.needsUpdate = true;
+    const geometry = new PlaneGeometry(width, height);
+    const material = new MeshPhongMaterial({ map: texture, transparent: true });
+    const mesh = new Mesh(geometry, material);
+    scene.add(mesh);
+
+    // Drag interaction...
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      mesh.rotation.y += dx * 0.01;
+      mesh.rotation.x += dy * 0.01;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    const animate = () => {
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    };
+    animate();
+  }
+};
+
+const pluginThreeOrbit1 = {
+  async afterWebGL({ canvas, img }) {
+    const [
+      { WebGLRenderer },
+      { Scene },
+      { PerspectiveCamera },
+      { AmbientLight },
+      { DirectionalLight },
+      { PlaneGeometry },
+      { Mesh },
+      { MeshPhongMaterial },
+      { Texture }
+    ] = await Promise.all([
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/renderers/WebGLRenderer.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/scenes/Scene.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/cameras/PerspectiveCamera.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/lights/AmbientLight.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/lights/DirectionalLight.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/geometries/PlaneGeometry.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/objects/Mesh.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/materials/MeshPhongMaterial.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/textures/Texture.js'),
+    ]);
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const renderer = new WebGLRenderer({ canvas });
+    renderer.setSize(width, height);
+    renderer.setClearColor(0xf8f8f8, 1);
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(45, width / height, 1, 2000);
+    camera.position.z = height * 1.4;
+
+    const ambient = new AmbientLight(0xff0000, 2.6);
+    const light = new DirectionalLight(0xffffff, 1.5);
+    light.position.set(0, 0, 300);
+    scene.add(ambient, light);
+
+    const texture = new Texture(img);
+    texture.needsUpdate = true;
+
+    // Más segmentos para deformación suave
+    const segments = 60;
+    const geometry = new PlaneGeometry(width, height, segments, segments);
+    const material = new MeshPhongMaterial({ map: texture, transparent: true });
+    const mesh = new Mesh(geometry, material);
+    scene.add(mesh);
+
+    // Drag interaction
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      mesh.rotation.y += dx * 0.01;
+      mesh.rotation.x += dy * 0.01;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // Guardar posición original de vértices
+    const originalVertices = geometry.attributes.position.array.slice();
+
+    const animate = () => {
+      const time = performance.now() * 0.001;
+      const pos = geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const ix = i * 3;
+        const x = originalVertices[ix];
+        const y = originalVertices[ix + 1];
+        const wave = Math.sin(x * 0.02 + time * 2) * Math.cos(y * 0.02 + time * 2) * 5;
+        pos.array[ix + 2] = wave; // deformación Z
+      }
+      pos.needsUpdate = true;
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+  }
+};
+
+const pluginThreeCube = {
+  async afterWebGL({ canvas, img }) {
+    const [
+      { WebGLRenderer },
+      { Scene },
+      { PerspectiveCamera },
+      { AmbientLight },
+      { DirectionalLight },
+      { BoxGeometry },
+      { Mesh },
+      { MeshPhongMaterial },
+      { Texture }
+    ] = await Promise.all([
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/renderers/WebGLRenderer.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/scenes/Scene.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/cameras/PerspectiveCamera.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/lights/AmbientLight.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/lights/DirectionalLight.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/geometries/BoxGeometry.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/objects/Mesh.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/materials/MeshPhongMaterial.js'),
+      import('https://cdn.jsdelivr.net/npm/three@0.160.1/src/textures/Texture.js'),
+    ]);
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const renderer = new WebGLRenderer({ canvas });
+    renderer.setSize(width, height);
+    renderer.setClearColor(0xf8f8f8, 1);
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(45, width / height, 1, 1000);
+    camera.position.z = width * 1.2;
+
+    scene.add(new AmbientLight('green', 0.4));
+    const light = new DirectionalLight(0xffffff, 2.6);
+    light.position.set(1, 1, 2);
+    scene.add(light);
+
+    const texture = new Texture(img);
+    texture.needsUpdate = true;
+
+    const material = new MeshPhongMaterial({ map: texture, transparent: true });
+    const cube = new Mesh(
+      new BoxGeometry(width / 2, height / 2, width / 2),
+      [
+        material, material, material,
+        material, material, material
+      ]
+    );
+    scene.add(cube);
+
+    // Drag interaction
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      cube.rotation.y += dx * 0.01;
+      cube.rotation.x += dy * 0.01;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    const animate = () => {
+      cube.rotation.y += 0.003;
+      cube.rotation.x += 0.001;
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+  }
+};
+
+//snapdom.plugins(pluginThreeCube);
+
+// snapdom.plugins(pluginThreeOrbit1);
+const pluginAsciiImage = {
+  async afterCanvas({ canvas, img }) {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width ;
+    const height = canvas.height ;
+
+    // Tamaño del "pixel ASCII"
+    const cellSize = 2;
+    const cols = Math.floor(width / cellSize);
+    const rows = Math.floor(height / cellSize);
+
+    // Dibujar la imagen original en el canvas original, reducido
+    ctx.drawImage(img, 0, 0, cols / 4, rows / 4);
+    const imgData = ctx.getImageData(0, 0, cols, rows).data;
+
+    // Limpiar canvas original y setear fondo negro
+    ctx.clearRect(0, 0, width * 2, height * 2);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, width * 2, height * 2);
+
+    // Dibujar ASCII
+    const chars = '@#W$9876543210?!abc;:+=-,._ ';
+    ctx.font = `${cellSize}px monospace`;
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'white';
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const i = (y * cols + x) * 4;
+        const r = imgData[i];
+        const g = imgData[i + 1];
+        const b = imgData[i + 2];
+        const brightness = (r + g + b) / 3;
+        const charIndex = Math.floor((brightness / 255) * (chars.length - 1));
+        const char = chars[charIndex];
+        ctx.fillText(char, x * cellSize, y * cellSize);
+      }
+    }
+  }
+};
+
+ //snapdom.plugins(pluginAsciiImage);
+
+    document.getElementById('capture').onclick = async () => {
+      const target = document.getElementById('target');
+     const img = await snapdom.toImg(target);
+      
+     document.getElementById('output').innerHTML = '';
+  
+     //   const img2 = await snapdom.toImg(target, {embedFonts: false});
+      // plugin.addDart();
+      
+     //   document.getElementById('output').appendChild(img2);
+    
+
+     
+   //   
+    document.getElementById('output').appendChild(img);
+     
+    };
+  </script>
+
+  <script src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.js"></script>
+
+</body>
+</html>

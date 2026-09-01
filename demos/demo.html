@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SnapDOM Demo Gallery</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous"> <!-- Add Font Awesome -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap" rel="stylesheet">
+
+  
+  <style>
+    body {
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      padding: 2rem;
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+ @keyframes bounceColor {
+      0% {
+        transform: scale(1) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+      }
+      25% {
+        transform: scale(1.2) translateY(-20px);
+        background: radial-gradient(circle at center, #43e97b, #38f9d7);
+      }
+      50% {
+        transform: scale(1) translateY(0);
+        background: radial-gradient(circle at center, #fa709a, #fee140);
+      }
+      75% {
+        transform: scale(0.8) translateY(10px);
+        background: radial-gradient(circle at center, #30cfd0, #330867);
+      }
+      100% {
+        transform: scale(1) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+      }
+    }
+    h1 {
+      color: #1a2233;
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 8px #e0e7ef;
+    }
+
+    #target {
+      position: relative;
+      width: 420px;
+      padding: 28px 24px 24px 24px;
+      background: rgba(255,255,255,0.95);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+      background-image: url('./assets/wolf.jpg');
+      background-size: cover;
+      background-repeat: no-repeat;
+      margin-bottom: 2rem;
+      border: 2px solid #e0e7ef;
+      transition: box-shadow 0.2s;
+    }
+
+    #target:hover {
+      box-shadow: 0 16px 40px rgba(44,62,80,0.22);
+    }
+
+    #target::before {
+      content: "🎉";
+      position: absolute;
+      top: -18px;
+      right: -18px;
+      font-size: 38px;
+      filter: drop-shadow(0 2px 4px #fff8);
+      animation: bounce 1.2s infinite alternate;
+    }
+
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-10px) scale(1.1); }
+    }
+
+    #target ul {
+      margin: 0 0 1rem 0;
+      padding-left: 1.2rem;
+      color: #3a4a5d;
+      font-size: 1.08rem;
+    }
+
+    #target li {
+      margin-bottom: 0.3rem;
+    }
+
+    #target img {
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #e0e7ef;
+      margin-top: 0.5rem;
+    }
+
+    #output img {
+      margin-top: 1.2rem;
+      max-width: 100%;
+      border: 2px solid #b2becd;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px #b2becd44;
+    }
+
+    button#capture {
+      background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%);
+      color: white;
+      border: none;
+      border-radius: 24px;
+      padding: 0.6rem 1.6rem;
+      font-size: 1.1rem;
+      font-weight: bold;
+      box-shadow: 0 2px 8px #e52e7133;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+      margin: 0 0.5em 1.5em 0;
+    }
+    button#capture:hover {
+      background: linear-gradient(90deg, #e52e71 0%, #ff8a00 100%);
+      transform: scale(1.04);
+    }
+
+    nav {
+      margin-bottom: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      justify-content: center;
+    }
+
+    nav a {
+      color: #1a2233;
+      text-decoration: none;
+      font-weight: bold;
+      border-bottom: 2px solid transparent;
+      transition: border 0.3s;
+      font-size: 1.1em;
+    }
+
+    nav a:hover {
+      border-bottom: 2px solid #4facfe;
+    }
+
+    main {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    section {
+      margin-bottom: 3rem;
+      padding: 1.5rem;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .card {
+      background: linear-gradient(145deg, #ffffff, #e3f0ff);
+      padding: 1.5em;
+      border-left: 5px solid #ff7043;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+      margin-bottom: 2em;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.13);
+    }
+
+    .transition-box {
+     background: linear-gradient(to right, #43cea2, #185a9d);
+  color: white;
+  text-align: center;
+  font-size: 1.2em;
+  padding: 2em;
+  border-radius: 16px;
+  animation: bounceColor 3s infinite ease-in-out;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+    @keyframes bounceColor {
+      0% {
+        transform: scale(1) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+      }
+      25% {
+        transform: scale(1.2) translateY(-20px);
+        background: radial-gradient(circle at center, #43e97b, #38f9d7);
+      }
+      50% {
+        transform: scale(1) translateY(0);
+        background: radial-gradient(circle at center, #fa709a, #fee140);
+      }
+      75% {
+        transform: scale(0.8) translateY(10px);
+        background: radial-gradient(circle at center, #30cfd0, #330867);
+      }
+      100% {
+        transform: scale(1) translateY(0);
+        background: radial-gradient(circle at center, #4facfe, #00f2fe);
+      }
+    }
+
+    .export-text {
+      font-size: 1.1rem;
+      color: #2d3a4b;
+      text-align: center;
+    }
+
+    .export-format {
+      font-weight: bold;
+      padding: 0.2rem 0.4rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      margin: 0 0.2rem;
+    }
+
+    .pseudo-box::before {
+      content: "★ ";
+      color: gold;
+      font-size: 1.2em;
+    }
+
+    .pseudo-box::after {
+      content: " ✨";
+      color: violet;
+      font-size: 1.2em;
+    }
+
+    .clip-card {
+      clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
+      background: linear-gradient(120deg, #b6eaff 0%, #6dd5ed 100%);
+      color: #1a2233;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .blend-card {
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center;
+       background-blend-mode: multiply;
+      color: #222;
+      padding: 3em;
+      font-weight: bold;
+      border-radius: 16px;
+      text-align: center;
+    }
+    @keyframes pulseMove {
+  0% {
+    background: linear-gradient(to right, #43cea2, #185a9d);
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    background: linear-gradient(to right, #185a9d, #43cea2);
+    transform: rotate(2deg) scale(1.05);
+  }
+  100% {
+    background: linear-gradient(to right, #43cea2, #185a9d);
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.transition-box1 {
+  background: linear-gradient(to right, #43cea2, #185a9d);
+  color: white;
+  text-align: center;
+  font-size: 1.2em;
+  padding: 2em;
+  border-radius: 16px;
+  animation: pulseMove 3s infinite ease-in-out;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+  </style>
+</head>
+<body>
+
+<h1>SnapDOM Demo Gallery</h1>
+<nav style="margin-bottom:2rem;display:flex;flex-wrap:wrap;gap:1em;justify-content:center;">
+  <a href="#basic">Basic</a>
+  <a href="#transition">Transition</a>
+  <a href="#fonts-demo">Fonts</a>
+  <a href="#shadow">Shadow DOM</a>
+  <a href="#canvas">Canvas</a>
+  <a href="#export">Export</a>
+  <a href="#pseudo">Pseudo</a>
+  <a href="#clip">Clip-Path</a>
+  <a href="#blend">Blend</a>
+  <a href="#fullbody">Full Page</a>
+</nav>
+<main style="width:100%;max-width:700px;">
+  <section id="basic">
+    <h2>📦 Basic</h2>
+    <div class="card" id="basic-box"><h3>Hello SnapDOM!</h3></div>
+    <button onclick="captureDemo('basic-box', 'basic-output', this)">Capture</button>
+    <button onclick="downloadDemo('basic-box')">Download</button>
+    <div class="output" id="basic-output"></div>
+  </section>
+  <section id="transition">
+    <h2>🚀 Fun Transition</h2>
+    <div class="card transition-box" id="transition-box">
+      <div style="font-size:2.2rem;">🕺💃</div>
+      <p style="margin:0;font-weight:bold;">I'm dancing and changing color!</p>
+    </div>
+    <button onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
+    <button onclick="downloadDemo('transition-box')">Download</button>
+    <div class="output" id="transition-output"></div>
+  </section>
+  <section id="fonts-demo">
+    <h2>🔤 Google Fonts</h2>
+    <div class="card" id="fonts-box">
+      <h3 style="font-family:'Mansalva', cursive;">Unique Typography!</h3>
+      <p style="font-family:'Unbounded', cursive;">Google Fonts with <code>embedFonts: true</code>.</p>
+    </div>
+    <button onclick="captureDemo('fonts-box', 'fonts-output', this)">Capture</button>
+    <button onclick="downloadDemo('fonts-box')">Download</button>
+    <div class="output" id="fonts-output"></div>
+  </section>
+  <section id="shadow">
+    <h2>🧱 Shadow DOM</h2>
+    <div class="card" id="shadow-host"></div>
+    <button onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
+    <button onclick="downloadDemo('shadow-host')">Download</button>
+    <div class="output" id="shadow-output"></div>
+  </section>
+  <section id="canvas">
+    <h2>🎨 Canvas</h2>
+    <div class="card">
+      <canvas id="myCanvas" width="160" height="160" style="border:1px solid #000;"></canvas>
+    </div>
+    <button onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
+    <button onclick="downloadDemo('myCanvas')">Download</button>
+    <div class="output" id="canvas-output"></div>
+  </section>
+  <section id="export">
+    <h2>📁 Export Formats</h2>
+    <div class="card" id="export-box">
+      <div class="export-text">
+        <strong>📤 Export as</strong><br />
+        <span class="export-format">PNG</span>, 
+        <span class="export-format">JPG</span> & 
+        <span class="export-format">WebP</span>.
+      </div>
+    </div>
+    <button onclick="exportFormats('export-box')">Export</button>
+    <div class="output" id="export-output"></div>
+  </section>
+  <section id="pseudo">
+    <h2>✨ Pseudo Elements</h2>
+    <div class="card pseudo-box" id="pseudo-box">
+      This element has pseudo-elements.
+    </div>
+    <button onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
+    <button onclick="downloadDemo('pseudo-box')">Download</button>
+    <div class="output" id="pseudo-output"></div>
+  </section>
+  <section id="clip">
+    <h2>✂️ Clip-Path Demo</h2>
+    <div class="card clip-card" id="clip-box">This shape uses clip-path</div>
+    <button onclick="captureDemo('clip-box', 'clip-output', this)">Capture</button>
+    <button onclick="downloadDemo('clip-box')">Download</button>
+    <div class="output" id="clip-output"></div>
+  </section>
+  <section id="blend">
+    <h2>🌀 Mix Blend Mode</h2>
+    <div class="card blend-card" id="blend-box">Blended content</div>
+    <button onclick="captureDemo('blend-box', 'blend-output', this)">Capture</button>
+    <button onclick="downloadDemo('blend-box')">Download</button>
+    <div class="output" id="blend-output"></div>
+  </section>
+  <section id="fullbody">
+    <h2>🧾 Full Page Capture</h2>
+    <button onclick="captureDemo('body', 'fullbody-output', this)">Capture</button>
+    <button onclick="downloadDemo('body')">Download</button>
+    <div class="output" id="fullbody-output"></div>
+  </section>
+  
+</main>
+
+ 
+<script>
+    // Crear componente con shadow DOM
+    class MyBox extends HTMLElement {
+      constructor() {
+        super();
+        const shadow = this.attachShadow({ mode: 'open' });
+        const container = document.createElement('section');
+        container.innerHTML = `
+          <style>
+            .fun-box {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              padding: 18px 10px 10px 10px;
+              border-radius: 12px;
+              background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+              box-shadow: 0 2px 8px #fda08544;
+              font-weight: bold;
+              text-align: center;
+              font-size: 1.1rem;
+              color: #2d3a4b;
+              position: relative;
+            }
+            .emoji {
+              font-size: 2.5rem;
+              margin-bottom: 0.5rem;
+              animation: spin 1.5s linear infinite alternate;
+            }
+            @keyframes spin {
+              0% { transform: rotate(-10deg) scale(1); }
+              100% { transform: rotate(10deg) scale(1.15); }
+            }
+            .msg {
+              font-size: 1.1rem;
+              margin-top: 0.2rem;
+            }
+          </style>
+          <div class="fun-box">
+            <div class="emoji">🦄✨</div>
+            <div class="msg">¡Shadow DOM mágico y divertido!<br>¡Haz una captura y comparte la magia!</div>
+          </div>
+        `;
+        shadow.appendChild(container);
+      }
+    }
+    
+    customElements.define('my-box', MyBox);
+
+ document.addEventListener('DOMContentLoaded', () => {
+    //await preCache();
+    // Shadow DOM ejemplo
+    const host = document.getElementById('shadow-host');
+    if (host && !host.shadowRoot) {
+      const shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = `<div style='padding: 1em; background: #b2f0ff; border-radius: 8px; font-weight:bold; text-align:center;'>¡Dentro del <strong>Shadow DOM</strong>! 🎩✨</div>`;
+    }
+    });
+    // Canvas ejemplo
+    const canvas = document.getElementById('myCanvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = "#43e97b";
+      ctx.fillRect(20, 20, 100, 100);
+      ctx.strokeStyle = "#e52e71";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(20, 20, 100, 100);
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.fillText("🎨", 60, 80);
+    }
+
+
+async function captureDemo (id,outputId, btn) {
+  const el = id === 'body' ? document.body : document.getElementById(id);
+  const opts = id === 'fonts-box' ? { embedFonts: true } : {};
+  const output = document.getElementById(outputId);
+  if (!el || !output) return;
+  if (btn) btn.disabled = true;
+
+  const img = await snapdom.toImg(el, opts);
+  output.innerHTML = '';
+  output.appendChild(img);
+
+  if (btn) btn.disabled = false;
+}
+ async function downloadDemo (id) {
+    const el = id === 'body' ? document.body : document.getElementById(id);
+    if (!el) return;
+    const opts = { format: 'png', filename: id, scale: 1, quality: 1 };
+    if (id === 'fonts-box') opts.embedFonts = true;
+    await snapdom.download(el, opts);
+  }
+ async function exportFormats (id) {
+    const el = document.getElementById(id);
+    const output = document.getElementById('export-output');
+    output.innerHTML = '';
+    const [png, jpg, webp] = await Promise.all([
+      snapdom.toPng(el),
+      snapdom.toJpg(el),
+      snapdom.toWebp(el),
+    ]);
+    output.append('PNG:', png, document.createElement('br'));
+    output.append('JPG:', jpg, document.createElement('br'));
+    output.append('WebP:', webp);
+  }
+</script>
+ <script type="module">
+    import { snapdom, preCache } from '../dist/snapdom.mjs';
+ window.snapdom = snapdom;
+  window.preCache = preCache;
+    </script>
+
+</body>
+</html>

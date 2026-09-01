@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>#386 Nested line-clamp ellipsis</title>
+    <style>
+      .card {
+        width: 300px;
+        padding: 16px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>#386: Line-clamp ellipsis in nested element</h3>
+    <p>Outer div contains inner div with -webkit-line-clamp: 3. Ellipsis must render in capture.</p>
+
+    <div id="target" class="card">
+      <h4>测试页面：3行省略 + 截图</h4>
+      <div class="line-clamp-3">
+        这是测试的长文字。为了测试三行文字的省略效果，我们需要写一些足够多的内容。 这里会继续补充一些文本，确保超过三行，看看效果是否正常。 最后再加几句话，保证文字内容超出 div 的显示范围。
+      </div>
+      <button id="capture">snapdom 截图</button>
+    </div>
+
+    <h4>Result:</h4>
+    <div id="out"></div>
+  </body>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+    const target = document.getElementById('target');
+    const out = document.getElementById('out');
+
+    document.getElementById('capture').addEventListener('click', async () => {
+      out.innerHTML = '';
+      const img = await snapdom.toPng(target, {});
+      out.appendChild(img);
+    });
+  </script>
+</html>

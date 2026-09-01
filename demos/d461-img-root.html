@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>bare &lt;img&gt; as capture root (#461)</title>
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      .row { display: flex; align-items: flex-start; gap: 24px; }
+      .col { text-align: center; }
+      .col .caption { font-size: 13px; color: #555; margin-bottom: 6px; }
+      .box {
+        width: 260px;
+        height: 180px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background:
+          linear-gradient(45deg, #eee 25%, transparent 25%),
+          linear-gradient(-45deg, #eee 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #eee 75%),
+          linear-gradient(-45deg, transparent 75%, #eee 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      }
+      .box img { max-width: 100%; max-height: 100%; display: block; }
+      button.capture {
+        display: block;
+        margin: 20px 0;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture:hover { background: #0c0; }
+    </style>
+  </head>
+  <body>
+    <h1>#461 — capturing a bare &lt;img&gt; as the root never inlined it</h1>
+    <p style="max-width:640px;font-size:13px;color:#666">
+      <code>snapdom(imgEl)</code> where <code>imgEl</code> IS the capture root, not a descendant.
+      <code>inlineImages</code> used to build its worklist with
+      <code>clone.querySelectorAll('img')</code>, which never matches the element it's called on —
+      so the root's <code>src</code> stayed an external URL and svg-as-image rasterization
+      (checkerboard = transparent) refused to load it. Before the fix this came out blank.
+    </p>
+    <button type="button" class="capture">Capture the &lt;img&gt; itself</button>
+
+    <div class="row">
+      <div class="col">
+        <div class="caption">Origin (the &lt;img&gt; is the capture root)</div>
+        <div class="box">
+          <img class="origin" src="assets/wolf.jpg" alt="wolf">
+        </div>
+      </div>
+      <div class="col">
+        <div class="caption">Result (snapDOM capture)</div>
+        <div class="box result"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      document.querySelector('.capture').addEventListener('click', async () => {
+        const origin = document.querySelector('img.origin')
+        const result = document.querySelector('.box.result')
+        try {
+          const img = await snapdom.toPng(origin)
+          result.replaceChildren(img)
+        } catch (e) {
+          result.textContent = 'ERROR'
+          console.error(e)
+        }
+      })
+    </script>
+  </body>
+</html>

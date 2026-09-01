@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>svg &lt;text&gt; inside &lt;mask&gt; (#459)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vsalvino/computer-modern@main/fonts/bright.css">
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      .row { display: flex; align-items: flex-start; gap: 24px; }
+      .col { text-align: center; }
+      .col .caption { font-size: 13px; color: #555; margin-bottom: 6px; }
+      .box {
+        width: 300px;
+        height: 300px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+      }
+      .box svg, .box img { width: 100%; height: 100%; }
+      button.capture {
+        display: block;
+        margin: 20px 0;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture:hover { background: #0c0; }
+    </style>
+  </head>
+  <body>
+    <h1>#459 — &lt;text&gt; inside &lt;mask&gt; loses its font/style in capture</h1>
+    <p style="max-width:640px;font-size:13px;color:#666">
+      Both TEST labels below use <code>font-family="Computer Modern Bright"</code>. The right
+      one is painted via a mask cutout (a black &lt;text&gt; inside a &lt;mask&gt;, revealing the
+      page background through a black rect). Before the fix, the masked text silently lost its
+      generated style class (font-family included) and rendered with a mismatched font — the
+      outer text was unaffected. <code>text-anchor</code>/<code>dominant-baseline</code> were also
+      reported as behaving oddly in the original issue.
+    </p>
+    <button type="button" class="capture">Capture origin</button>
+
+    <div class="row">
+      <div class="col">
+        <div class="caption">Origin</div>
+        <div class="box origin">
+          <svg viewBox="0 0 100 100">
+            <defs>
+              <mask id="newmask">
+                <rect x="0" y="0" width="100" height="100" fill="white"></rect>
+                <text
+                  x="75" y="50" fill="black" text-anchor="middle" dominant-baseline="middle"
+                  font-size="12.5" font-family="Computer Modern Bright"
+                >TEST</text>
+              </mask>
+            </defs>
+            <rect x="0" y="0" width="100" height="100" fill="black" mask="url(#newmask)"></rect>
+            <text x="25" y="50" fill="gray" text-anchor="middle" dominant-baseline="middle"
+              font-size="12.5" font-family="Computer Modern Bright">TEST</text>
+          </svg>
+        </div>
+      </div>
+      <div class="col">
+        <div class="caption">Result (snapDOM capture)</div>
+        <div class="box result"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      document.querySelector('.capture').addEventListener('click', async () => {
+        const origin = document.querySelector('.box.origin')
+        const result = document.querySelector('.box.result')
+        try {
+          const img = await snapdom.toPng(origin, { embedFonts: true })
+          result.replaceChildren(img)
+        } catch (e) {
+          result.textContent = 'ERROR'
+          console.error(e)
+        }
+      })
+    </script>
+  </body>
+</html>

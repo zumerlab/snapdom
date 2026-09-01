@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>base reset lost for evicted tags (#468)</title>
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      h1 { font-size: 18px; }
+      .row { display: flex; align-items: flex-start; gap: 24px; }
+      .col { text-align: center; }
+      .col .caption { font-size: 13px; color: #555; margin-bottom: 6px; }
+      .box {
+        width: 280px;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #fff;
+        font-size: 11px;
+        line-height: 1.3;
+      }
+      /* Reset to the CSS initial value — the property is diffed away from the element's own
+         generated class, relying entirely on the base reset to hold the UA default off. */
+      .box h3 { margin: 0; font-size: 14px; font-weight: 600; }
+      .box .marker { background: #0d0; height: 4px; }
+      .box .below { background: #222; color: #fff; padding: 4px; }
+      button.capture {
+        display: block;
+        margin: 20px 0;
+        padding: 8px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #0d0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.capture:hover { background: #0c0; }
+    </style>
+  </head>
+  <body>
+    <h1>#468 — base reset silently omitted for tags evicted from the defaultStyle cache</h1>
+    <p style="max-width:680px;font-size:13px;color:#666">
+      Uses 40+ distinct tags so <code>h3</code> (registered early) gets evicted from
+      <code>cache.defaultStyle</code> (capped at 30) before the base-reset pass runs at the end
+      of the capture. Before the fix, <code>h3</code> got no reset rule, so the UA default
+      <code>margin-block-start: 1em</code> came back inside the <code>foreignObject</code> and
+      pushed the green marker bar (and everything below it) down — even though
+      <code>h3 { margin: 0 }</code> is set on the live page. With the fix the green bar sits
+      flush under the heading in both columns.
+    </p>
+    <button type="button" class="capture">Capture</button>
+
+    <div class="row">
+      <div class="col">
+        <div class="caption">Origin</div>
+        <div class="box origin"></div>
+      </div>
+      <div class="col">
+        <div class="caption">Result (snapDOM capture)</div>
+        <div class="box result"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      // 40+ distinct tags, each with visible filler text so none gets culled before the style
+      // pass (an empty/zero-size element never consumes a defaultStyle slot). h3 goes first so
+      // it's among the earliest registered and thus the first evicted past the 30-tag cap.
+      // table/thead/tbody/tr/td/th must stay properly nested inside a real <table> — the HTML
+      // parser foster-parents/drops those tags when set via innerHTML outside that structure,
+      // which silently discards their own display:none and leaked their "x" filler as bare text.
+      const FILLER_TAGS = [
+        'h1', 'h2', 'h4', 'h5', 'h6', 'p', 'pre', 'code', 'em', 'strong', 'small', 'sub', 'sup',
+        'mark', 'del', 'ins', 'a', 'blockquote', 'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+        'label', 'button', 'select', 'textarea', 'fieldset', 'legend',
+        'span', 'b', 'i', 'q', 'cite', 'abbr',
+      ]
+      const TABLE_FILLER =
+        '<table style="display:none"><thead><tr><th>x</th></tr></thead>' +
+        '<tbody><tr><td>x</td></tr></tbody></table>'
+      const origin = document.querySelector('.box.origin')
+      origin.innerHTML =
+        '<h3>Heading</h3>' +
+        TABLE_FILLER +
+        '<div class="marker"></div>' +
+        '<div class="below">below the heading</div>' +
+        FILLER_TAGS.map((t) => `<${t} style="display:none">x</${t}>`).join('')
+      // display:none keeps the fillers invisible in the demo while still registering their tag
+      // (the style pass still needs to compute defaults for them to occupy a cache slot —
+      // matches the PR's own regression test approach).
+
+      document.querySelector('.capture').addEventListener('click', async () => {
+        const result = document.querySelector('.box.result')
+        try {
+          const img = await snapdom.toPng(origin)
+          result.replaceChildren(img)
+        } catch (e) {
+          result.textContent = 'ERROR'
+          console.error(e)
+        }
+      })
+    </script>
+  </body>
+</html>

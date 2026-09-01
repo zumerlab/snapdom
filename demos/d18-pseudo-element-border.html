@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pseudo-element border test</title>
+  <style>
+    #preview {
+      position: relative;
+      background: #eef;
+      width: 200px;
+      height: 100px;
+      border: 1px solid #ccc;
+    }
+
+    #preview::after {
+      content: "";
+      display: block;
+      margin-top: 20px;
+      margin-left: 20px;
+      width: 40px;
+      height: 40px;
+      border-width: 10px;
+      border-style: solid;
+      border-top-color: black;
+      border-right-color: black;
+      border-bottom-color: transparent;
+      border-left-color: transparent;
+      border-radius: 5px;
+      transform: rotate(-45deg);
+    }
+
+    .clone-target {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    .label {
+      font: 14px sans-serif;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>Pseudo-element ::after with border + transform</h2>
+  <div class="clone-target">
+    <div>
+      <div id="preview"></div>
+      <div class="label">Original</div>
+    </div>
+    <div>
+      <div id="cloned"></div>
+      <div class="label">Cloned</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'; // o el path correcto
+
+    const original = document.querySelector("#preview");
+    const cloned = document.querySelector("#cloned")
+
+   const papa = await snapdom.toImg(original)
+
+
+   
+    await cloned.appendChild(papa);
+
+  </script>
+</body>
+</html>

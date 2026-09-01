@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<style>
+  *, *::before, *::after { box-sizing: border-box; border: 0 solid; }
+  html { font-family: system-ui, -apple-system, sans-serif; }
+  body { margin: 0; }
+  button { background: transparent; font-family: inherit; font-size: 100%; font-weight: inherit; line-height: inherit; color: inherit; margin: 0; padding: 0; cursor: pointer; }
+  .page { padding: 40px; background: #fff; }
+  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; width: 360px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+    width: 100%;
+    height: 36px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    background: #2563eb;
+    color: white;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <button class="btn">Send Invite</button>
+    </div>
+    <div id="out"></div>
+  </div>
+  <script src="../dist/snapdom.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        snapdom.toCanvas(document.body, { backgroundColor: '#fff', embedFonts: true })
+          .then(c => document.getElementById('out').appendChild(c));
+      }, 100);
+    });
+  </script>
+</body>
+</html>

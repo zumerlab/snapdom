@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 20px; background: #0b1020; color: #e2e8f0; }
+      h2 { margin: 0 0 4px; font-size: 20px; }
+      .sub { margin: 0 0 16px; font-size: 13px; color: #94a3b8; }
+
+      #target { width: 760px; }
+
+      .hero { width: 720px; height: 300px; border-radius: 14px; overflow: hidden; }
+      .hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      .composite { position: relative; width: 720px; height: 220px; margin-top: 14px; }
+      .composite img { position: absolute; width: 320px; height: 220px; object-fit: cover; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+      .composite img:nth-child(1) { left: 0; transform: rotate(-4deg); }
+      .composite img:nth-child(2) { left: 210px; top: 10px; z-index: 2; }
+      .composite img:nth-child(3) { left: 420px; transform: rotate(5deg); }
+
+      .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
+      .grid .cell { width: 100%; height: 96px; border-radius: 8px; overflow: hidden; }
+      .grid .cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      /* --- capture UI --- */
+      .bar { margin: 0 0 18px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; cursor: pointer; }
+      button:hover { background: #334155; }
+      button:disabled { opacity: .5; cursor: default; }
+      #status { font-size: 13px; color: #94a3b8; }
+      #out { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0 26px; }
+      .panel { background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 12px; }
+      .panel h3 { margin: 0 0 8px; font-size: 14px; }
+      .panel .meta { font-size: 12px; color: #94a3b8; margin-bottom: 8px; min-height: 32px; }
+      .panel img { max-width: 100%; height: auto; border-radius: 6px; display: block; }
+      .win { color: #4ade80; font-weight: 600; }
+      .muted { color: #94a3b8; }
+    </style>
+  </head>
+  <body>
+    <h2>Heavy images — snapdom <code>compress: true</code></h2>
+    <p class="sub">1 hero (2600px) + 3 composite tiles + 15 collage tiles (1400px), all shown small.</p>
+
+    <div class="bar">
+      <button id="run">Capturar y comparar</button>
+      <span id="status">Listo. Apretá el botón para capturar #target con y sin compress.</span>
+    </div>
+
+    <div id="out">
+      <div class="panel"><h3>baseline (sin compress)</h3><div class="meta" id="m-base"></div><div id="i-base"></div></div>
+      <div class="panel"><h3>compress: true</h3><div class="meta" id="m-comp"></div><div id="i-comp"></div></div>
+    </div>
+
+    <!-- ============ the element that gets captured ============ -->
+    <div id="target">
+      <div class="hero"><img id="hero" alt="hero" /></div>
+      <div class="composite" id="composite"><img alt=""><img alt=""><img alt=""></div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <script src="../dist/snapdom.js"></script>
+    <script>
+      // Photo-like raster (gradient + many translucent blobs) — heavy enough to matter.
+      function bigPhoto(w, h, seed) {
+        const c = document.createElement('canvas')
+        c.width = w; c.height = h
+        const x = c.getContext('2d')
+        const g = x.createLinearGradient(0, 0, w, h)
+        g.addColorStop(0, `hsl(${(seed * 47) % 360} 80% 55%)`)
+        g.addColorStop(0.5, `hsl(${(seed * 47 + 70) % 360} 75% 45%)`)
+        g.addColorStop(1, `hsl(${(seed * 47 + 160) % 360} 80% 35%)`)
+        x.fillStyle = g; x.fillRect(0, 0, w, h)
+        for (let i = 0; i < 320; i++) {
+          x.beginPath()
+          x.arc((i * 97 + seed * 13) % w, (i * 53 + seed * 29) % h, ((i * 11) % 70) + 6, 0, Math.PI * 2)
+          x.fillStyle = `hsla(${(i * 17 + seed * 5) % 360} 90% 70% / 0.3)`
+          x.fill()
+        }
+        return c.toDataURL('image/png')
+      }
+
+      document.getElementById('hero').src = bigPhoto(2600, 1100, 1)
+      document.querySelectorAll('#composite img').forEach((im, i) => { im.src = bigPhoto(1400, 1000, i + 2) })
+      const grid = document.getElementById('grid')
+      for (let i = 0; i < 15; i++) {
+        const cell = document.createElement('div'); cell.className = 'cell'
+        const im = document.createElement('img'); im.alt = ''; im.src = bigPhoto(1400, 1000, i + 10)
+        cell.appendChild(im); grid.appendChild(cell)
+      }
+
+      const fmtKB = (n) => (n / 1024).toFixed(1) + ' KB'
+      const target = document.getElementById('target')
+
+      // Track object URLs so we can free them between runs — holding multi-MB blob URLs (and the
+      // large <img>s that decode them) across repeated clicks leaks memory, and that memory
+      // pressure is what makes Chrome drop the largest embedded images during raster (blank capture).
+      let liveURLs = []
+      function freePreviousRun() {
+        liveURLs.forEach(u => URL.revokeObjectURL(u))
+        liveURLs = []
+        document.getElementById('i-base').innerHTML = ''
+        document.getElementById('i-comp').innerHTML = ''
+      }
+
+      async function capture(opts) {
+        const t0 = performance.now()
+        // type:'png' RASTERIZES to a PNG blob. Without it, toBlob defaults to type:'svg' and returns
+        // the raw SVG (foreignObject + base64 images) — which renders flakily/blank inside an <img>.
+        const blob = await snapdom.toBlob(target, { type: 'png', scale: 2, dpr: 1, ...opts })
+        const ms = performance.now() - t0
+        const url = URL.createObjectURL(blob)
+        liveURLs.push(url)
+        return { size: blob.size, ms, url }
+      }
+
+      document.getElementById('run').addEventListener('click', async () => {
+        const btn = document.getElementById('run')
+        btn.disabled = true
+        const status = document.getElementById('status')
+        try {
+          freePreviousRun() // release prior blobs/URLs before allocating new ones
+          // wait for all images to decode first
+          await Promise.allSettled([...target.querySelectorAll('img')].map(im => im.decode?.()))
+
+          status.textContent = 'Capturando baseline…'
+          // compress is ON by default now — the baseline must opt OUT explicitly.
+          const base = await capture({ compress: false })
+          status.textContent = 'Capturando con compress…'
+          const comp = await capture({ compress: true })
+
+          document.getElementById('i-base').innerHTML = `<img src="${base.url}">`
+          document.getElementById('i-comp').innerHTML = `<img src="${comp.url}">`
+          document.getElementById('m-base').innerHTML = `${fmtKB(base.size)} · ${base.ms.toFixed(0)} ms`
+
+          // Size is the guaranteed win. Time can be + or − on a single cold capture (the pass pays
+          // the decode/re-encode upfront); it turns into a win on repeated / high-DPR captures.
+          const savePct = (100 * (1 - comp.size / base.size)).toFixed(0)
+          const dMs = 100 * (comp.ms / base.ms - 1)
+          const timeLabel = dMs <= 0 ? `−${(-dMs).toFixed(0)}% tiempo` : `+${dMs.toFixed(0)}% tiempo`
+          document.getElementById('m-comp').innerHTML =
+            `${fmtKB(comp.size)} · ${comp.ms.toFixed(0)} ms · ` +
+            `<span class="win">−${savePct}% peso</span> · <span class="muted">${timeLabel}</span>`
+          status.textContent = 'Listo. Ambas imágenes deben verse idénticas. El peso es el win garantizado; el tiempo gana en capturas repetidas / DPR alto.'
+        } catch (e) {
+          status.textContent = 'Error: ' + (e?.message || e)
+          console.error(e)
+        } finally {
+          btn.disabled = false
+        }
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 16px; }
+      /* #452: empty pseudo-element boxes sized by CSS. The 8px dot must stay 8px:
+         the flex case collapsed to 0, the display:block case stretched full-width. */
+      .flex-item { display: flex; align-items: center; }
+      .flex-item::before {
+        content: ""; display: inline-block; box-sizing: border-box;
+        width: 8px; height: 8px; background-color: #2F63FF;
+        border: 1px solid red; border-radius: 50%; margin-right: 8px;
+      }
+      .block-item { display: block; }
+      .block-item::before {
+        content: ""; display: block; box-sizing: border-box;
+        width: 8px; height: 8px; background-color: #2F63FF;
+        border: 1px solid red; border-radius: 50%; margin-right: 8px;
+      }
+      .inline-item { display: block; }
+      .inline-item::before {
+        content: ""; display: inline-block; box-sizing: border-box;
+        width: 8px; height: 8px; background-color: #2F63FF;
+        border: 1px solid red; border-radius: 50%; margin-right: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="target">
+      <div class="flex-item">Flex host + inline-block dot</div>
+      <div class="block-item">Block host + block dot</div>
+      <div class="inline-item">Block host + inline-block dot</div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snapdom Test Backgrounds</title>
+  <style>
+    body {
+      background: #333;
+      padding: 40px;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    .test-node {
+      margin: 20px;
+      position: relative;
+      width: 300px;
+      height: 180px;
+      padding: 20px;
+      border-radius: 15px;
+      color: white;
+      font-weight: bold;
+      overflow: hidden;
+      font-size: 20px;
+      display: inline-block;
+    }
+    /* Caso 1: multiple backgrounds */
+    .multi-bg {
+      background-image:
+        url("https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/200px-PNG_transparency_demonstration_1.png"),
+        linear-gradient(45deg, rgba(255,0,0,0.5), rgba(0,0,255,0.5));
+      background-size: contain, cover;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    /* Caso 2: sólo gradiente (no debe inlinerse) */
+    .only-gradient {
+      background: repeating-linear-gradient(135deg, #ff0 0 10px, #f0f 10px 20px);
+    }
+
+    /* Caso 3: solo imagen */
+    .only-img {
+      background: url("https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Example.svg/1200px-Example.svg.png") center/cover no-repeat;
+    }
+
+    /* Caso 4: pseudo con imagen */
+    .pseudo-bg::before {
+      content: "✨";
+      position: absolute;
+      top: -20px;
+      left: -20px;
+      width: 60px;
+      height: 60px;
+      background: url("https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/SVG_Logo.svg/1200px-SVG_Logo.svg.png") center/contain no-repeat;
+      background-color: rgba(255, 0, 0, 0.2);
+      transform: rotate(30deg);
+    }
+
+    /* Caso 5: pseudo con gradiente */
+    .pseudo-bg::after {
+      content: "";
+      position: absolute;
+      bottom: -20px;
+      right: -20px;
+      width: 80px;
+      height: 80px;
+      background: radial-gradient(circle at center, #0f0, transparent);
+      opacity: 0.8;
+    }
+
+    #output {
+      margin-top: 40px;
+      border: 2px solid red;
+      min-height: 300px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-node multi-bg">
+    Múltiples fondos
+  </div>
+
+  <div class="test-node only-gradient">
+    Solo gradiente
+  </div>
+
+  <div class="test-node only-img">
+    Solo imagen
+  </div>
+
+  <div class="test-node pseudo-bg">
+    Con pseudos 🎭
+  </div>
+
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom, preCache } from '../dist/snapdom.mjs';
+
+    window.addEventListener('load', async () => {
+      console.log("[Snapdom Demo] Precache iniciado");
+      await preCache(document, { embedFonts: false });
+      console.log("[Snapdom Demo] Precache completado");
+
+      const nodes = document.querySelectorAll('.test-node');
+      const output = document.querySelector('#output');
+
+      for (const el of nodes) {
+        const capture = await snapdom.toImg(el, {
+          backgroundColor: '#222', scale: 1
+        });
+        output.appendChild(capture);
+      }
+    });
+  </script>
+</body>
+</html>

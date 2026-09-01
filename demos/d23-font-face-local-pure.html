@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo 4 — @font-face con local() puro</title>
+  <style>
+    @font-face {
+      font-family: 'OnlyLocalFace';
+      src: local('Calibri'); /* o cualquier nombre presente en el SO */
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    .card { border: 1px dashed #aaa; padding: 12px; width: fit-content; margin: 16px 0; }
+    .onlylocal { font-family: 'OnlyLocalFace', system-ui; font-size: 22px; }
+  </style>
+</head>
+<body>
+  <h2>Demo 4 — @font-face con local() puro</h2>
+  <div class="card" id="target">
+    <div class="onlylocal">Esta cara usa solo local() en src</div>
+  </div>
+
+  <button id="btn">Capturar</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+    document.getElementById('btn').addEventListener('click', async () => {
+      const el = document.getElementById('target');
+      const img = await snapdom.toImg(el, { embedFonts: true, compress: true });
+      const out = document.getElementById('output');
+      out.innerHTML = ''; out.appendChild(img);
+    });
+  </script>
+</body>
+</html>

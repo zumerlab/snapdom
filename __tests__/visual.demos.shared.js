@@ -350,9 +350,9 @@ export function defineDemoShard (shardIndex, shardCount) {
     })
   )
 
-  // demos/ is not committed to the repo. Forks running `npm test` get an empty
-  // glob → defineDemoSuite registers zero test cases → vitest errors with
-  // "No test found in suite". Skip this shard when there are no demos.
+  // demos/ is committed, but a checkout can still lack it (a sparse checkout, or a
+  // fork that stripped it). An empty glob → defineDemoSuite registers zero test cases →
+  // vitest errors with "No test found in suite". Skip this shard when there are no demos.
   if (Object.keys(demos).length === 0) {
     describe.skip('visual demos (no demos/ folder found)', () => {
       it('skipped', () => {})

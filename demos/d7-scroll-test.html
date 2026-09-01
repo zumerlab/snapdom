@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SnapDOM Scroll Test</title>
+  <style>
+    #scroller {
+      width: 300px;
+      height: 100px;
+      overflow: auto;
+      border: 1px solid #aaa;
+      padding: 10px;
+      white-space: nowrap;
+      font-family: monospace;
+    }
+    #scroller p {
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scroll Test</h1>
+
+  <div id="scroller">
+    <p>Line 01 — Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+    <p>Line 02 — Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+    <p>Line 03 — Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
+    <p>Line 04 — Duis aute irure dolor in reprehenderit in voluptate velit esse.</p>
+    <p>Line 05 — Cillum dolore eu fugiat nulla pariatur.</p>
+    <p>Line 06 — Excepteur sint occaecat cupidatat non proident.</p>
+    <p>Line 07 — Sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    <p>Line 08 — Aliquam erat volutpat.</p>
+    <p>Line 09 — Donec vehicula cursus vestibulum.</p>
+    <p>Line 10 — Etiam at risus et justo dignissim congue.</p>
+    <p>Line 11 — In hac habitasse platea dictumst.</p>
+    <p>Line 12 — Sed imperdiet, nulla et dictum interdum.</p>
+    <p>Line 08 — Aliquam erat volutpat.</p>
+    <p>Line 09 — Donec vehicula cursus vestibulum.</p>
+    <p>Line 10 — Etiam at risus et justo dignissim congue.</p>
+    <p>Line 11 — In hac habitasse platea dictumst.</p>
+    <p>Line 12 — Sed imperdiet, nulla et dictum interdum.</p>
+  </div>
+
+  <button onclick="capture()">Capture with SnapDOM</button>
+
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'; // Asegurate que apunta bien
+
+    async function capture() {
+      const el = document.getElementById('scroller');
+      // Podés scrollear manualmente antes de capturar
+      const result = await snapdom(el);
+      const img = await result.toImg();
+      document.getElementById('output').innerHTML = '';
+      document.getElementById('output').appendChild(img);
+    }
+    window.capture = capture
+  </script>
+</body>
+</html>

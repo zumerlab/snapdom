@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+ <meta name="viewport"
+        content="width=device-width, initial-scale=1.0,
+                 maximum-scale=1.0, user-scalable=no" />
+  <title>Snapdom Demo Gallery</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous"> <!-- Add Font Awesome -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Mansalva&display=swap" rel="stylesheet">
+
+  
+  <style>
+    #mask-svg-demo {
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle at center, #f90, #c03);
+    -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='white'/></svg>");
+    mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='white'/></svg>");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: cover;
+  }
+ body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(to bottom right, #eef2f3, #c9d6ff);
+  color: #222;
+}
+html, body {
+      touch-action: manipulation;
+    }
+    button, a {
+      touch-action: manipulation;
+    }
+header {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  color: white;
+  padding: 1em 2em;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+header h1 {
+  margin: 0 0 0.2em 0;
+  font-size: 1.5em;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+}
+
+nav a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+  border-bottom: 2px solid transparent;
+  transition: border 0.3s;
+}
+
+nav a:hover {
+  border-bottom: 2px solid #fff;
+}
+
+section {
+  padding: 3em 2em;
+}
+
+h2 {
+  font-size: 1.4em;
+  margin-bottom: 0.5em;
+}
+
+/* create a new counter for the first time */
+.parent {
+  counter-reset: item 0;
+}
+
+/* increment the counter on each list item */
+li {
+  counter-increment: item;
+}
+
+/* show numbers on list items */
+li::before {
+  content: counter(item) " ";
+}
+
+/* change the existing counter value */
+.sub-list-one {
+  counter-set: item 10;
+}
+
+/* change the counter value */
+.sub-list-two {
+  counter-reset: item 0;
+}
+
+.card {
+  background: linear-gradient(to bottom right, #ffffff, #f0f0ff);
+  padding: 1.5em;
+  border-radius: 0px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  margin-bottom: 2em;
+
+}
+
+.card:hover {
+  
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+button {
+ background-color: blue;
+  color: white;
+  border: none;
+  padding: 0.6em 1.2em;
+  border-radius: 8px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-top: 1em;
+}
+
+button:hover {
+  background: linear-gradient(90deg, #5a0eb1, #1f65f2);
+}
+
+.output {
+  margin-top: 1em;
+  border: 1px dashed #bbb;
+  padding: 0;
+  background: transparent;
+  border-radius: 8px;
+  overflow: visible;
+}
+
+canvas {
+  border-radius: 8px;
+}
+
+#basic-box {
+  background: #fff3f3;
+  border: 5px solid #ff7f7f;
+}
+
+#shadow-host {
+  background: #e0f7fa;
+  border-left: 5px solid #4dd0e1;
+  min-height: 60px;
+}
+
+#export-box {
+  background: #fff8e1;
+  border-left: 5px solid #ffd54f;
+}
+
+#pseudo-box {
+  background: #f3e5f5;
+  border-left: 5px solid #ba68c8;
+}
+
+#export-box {
+  background: linear-gradient(135deg, #ffe29f, #ffa99f);
+  border-left: 5px solid #ff7043;
+  color: #4e342e;
+  text-align: center;
+  font-size: 1.2em;
+  padding: 2em;
+  transition: background 0.4s ease;
+}
+
+#export-box:hover {
+  background: linear-gradient(135deg, #ffd194, #ffb199);
+}
+
+.export-text {
+  font-family: "Segoe UI", sans-serif;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.export-format {
+  font-weight: bold;
+  color: #bf360c;
+  text-shadow: 1px 1px rgba(255,255,255,0.3);
+}
+@keyframes pulseMove {
+  0% {
+    background: linear-gradient(to right, #43cea2, #185a9d);
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    background: linear-gradient(to right, #185a9d, #43cea2);
+    transform: rotate(2deg) scale(1.05);
+  }
+  100% {
+    background: linear-gradient(to right, #43cea2, #185a9d);
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.same-primary-name,
+.new-secondary-name,
+.same-secondary-name {
+  display: inline-block;
+}
+
+@counter-style style {
+  system: numeric;
+  symbols: "" "1" "2" "3" "4" "5" "6" "7" "8" "9" "10";
+}
+/* create 'primary' counter on divs' parent */
+article {
+  counter-reset: primary 3;
+}
+
+.papa::after {
+  content: " ('primary' counters: " counters(primary, "-", style)
+    ", 'secondary' counters: " counters(secondary, "-", style) ")";
+  color: blue;
+}
+
+/* create new 'primary' counter */
+.same-primary-name {
+  counter-reset: primary 6;
+}
+
+/* create 'secondary' counter on div 'F' */
+.new-secondary-name {
+  counter-reset: secondary 5;
+}
+
+/* override the sibling 'secondary' counter */
+.same-secondary-name {
+  counter-reset: secondary 10;
+}
+
+
+.transition-box {
+  background: linear-gradient(to right, #43cea2, #185a9d);
+  color: white;
+  
+  font-size: 1.2em;
+  padding: 2em;
+  border-radius: 16px;
+
+transform: rotate(45deg) scale(0.5);
+/*  animation: pulseMove 3s infinite ease-in-out;*/
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+header {
+      position: sticky;
+      top: 0;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      color: white;
+      padding: 1em 2em;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between; /* This aligns items to both sides */
+      align-items: center;
+    }
+    
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+    }
+input {
+  border-radius: 20px;
+  border: 1px solid red;
+}
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      border-bottom: 2px solid transparent;
+      transition: border 0.3s;
+    }
+
+    nav a:hover {
+      border-bottom: 2px solid #fff;
+    }
+
+    .github-link {
+      font-size: 1.5em; /* Adjust icon size */
+      color: white;
+      text-decoration: none;
+    }
+
+    .github-link:hover {
+      color: #333;
+    }
+
+    #fonts-demo .card {
+      font-family: 'Unbounded', cursive;
+      font-size: 1.2em;
+      line-height: 1.5;
+      text-align: center;
+    }
+    #fonts-demo h3 {
+      font-family: 'Mansalva', cursive;
+      font-size: 2em;
+      margin-bottom: 0.5em;
+    }
+
+     .blur-container {
+      position: relative;
+     background: url("assets/wolf.jpg");
+      background-size: cover;
+      padding: 2em;
+    }
+
+    .blur-box {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    background-color: rgba(255, 255, 255, 0.4);
+      padding: 1em 2em;
+      border-radius: 10px;
+      color: #000;
+      font-weight: bold;
+      max-width: 300px;
+    }
+
+    #filters .card {
+  color: #333;
+  text-align: center;
+  font-size: 1.1em;
+  font-family: 'Segoe UI', sans-serif;
+  transition: transform 0.3s ease, filter 0.3s ease;
+  backdrop-filter: saturate(180%);
+}
+
+#filters .card:hover {
+  transform: scale(1.02);
+}
+
+#filters p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.card h1::first-letter {
+  color: red;
+  font-size: 3em;
+  font-weight: bold;
+  font-family: serif;
+  background-color: yellow;
+}
+ body {
+    counter-reset:papa;
+  }
+.double-list {
+  counter-reset: count -1;
+}
+
+.double-list li {
+  counter-increment: count 2;
+}
+
+.double-list li::marker {
+  content: counter(count, decimal) + ') ';
+}
+
+ .test {
+  list-style: none;
+    counter-increment: papa;
+}
+
+
+.test::before {
+    content: counter(papa) ".";
+    
+}
+
+textarea{
+  border: 2px dashed green;
+  border-radius: 10px;
+}
+
+  </style>
+</head>
+
+<body id="body">
+
+<header>
+  <h1>SnapDOM Demo Gallery</h1>
+  <nav>
+    <a href="#basic">Basic</a>
+     <a href="#transition">Transition Animation</a>
+      <a href="fonts-demo">Fonts</a>
+    <a href="#shadow">Shadow DOM</a>
+    
+     
+    <a href="#canvas">Canvas</a>
+    <a href="#export">Export</a>
+   
+    <a href="#pseudo">Pseudo</a>
+  </nav>
+  <a href="https://github.com/zumerlab/snapdom" target="_blank" class="github-link">
+    <i class="fab fa-github"></i> <!-- GitHub icon -->
+  </a>
+</header>
+
+<main>
+
+  <section id="basic">
+    <h2>📦 Basic Capture</h2>
+    <div class="card" id="basic-box">
+      <h3>Hello Snapdom</h3>
+      <p>This is a <strong>simple box</strong> with some styled content to test capture.</p>
+      <p ><input type="text" value="caca"></p>
+       <p><input type="text" value=""></p>
+        <p><textarea>ajdalfjllalkj</textarea></p>
+
+       <iframe frameborder="2">
+        <html>
+          <body>
+            hola
+          </body>
+        </html>
+       </iframe>
+    </div>
+    <button onclick="captureDemo('basic-box', 'basic-output', this)">Capture</button>
+    <div class="output" id="basic-output"></div>
+  </section>
+<section id="transition">
+  <h2>🚀 Transition Animation</h2>
+  <div class="card transition-box" id="transition-box">
+    <ul>
+ <li class="test">I'm dancing!</li>
+     <li class="test">'Im dancing!</li>
+      <li class="test">÷I'm dancing!</li>
+        <li class="test">¡I'm dancing!</li>
+         <li class="test">¿I'm dancing!</li>
+    </ul>
+   <p>Best Dynamic Duos in Sports:</p>
+<ol class="double-list">
+  <li>Simone Biles + Jonathan Owens</li>
+  <li>Serena Williams + Venus Williams</li>
+  <li>Aaron Judge + Giancarlo Stanton</li>
+  <li>LeBron James + Dwyane Wade</li>
+  <li>Xavi Hernandez + Andres Iniesta</li>
+</ol>
+
+  </div>
+  <button onclick="captureDemo('transition-box', 'transition-output', this)">Capture</button>
+  <div class="output" id="transition-output"></div>
+</section>
+  <section id="fonts-demo">
+  <h2>🔤 Google Fonts</h2>
+  <div class="card" id="fonts-box">
+    <h3>Unique Typography!</h3>
+    <p>This demo uses fonts loaded from Google Fonts and exports with <code>embedFonts: true</code>.</p>
+      <article>
+  counter-reset: primary 3
+  <div class="papa">A</div>
+  <div class="papa">B</div>
+  <div class="papa">C</div>
+  <div class="same-primary-name">D</div>
+  <span> counter-reset: primary 6</span>
+  <div class="papa">E</div>
+  <div class="new-secondary-name">F</div>
+  <span> counter-reset: secondary 5</span>
+  <div class="papa">G</div>
+  <div class="papa">H</div>
+  <div class="same-secondary-name">I&nbsp;</div>
+  <span> counter-reset: secondary 10</span>
+  <div class="papa">J&nbsp;</div>
+  <div class="papa">K</div>
+  
+  </article>
+  <ul class="parent">
+  <li>A</li>
+  <li>B</li>
+  <li>
+    C (the counter updated using `counter-set`)
+    <ul class="sub-list-one">
+      <li>sub-A</li>
+      <li>sub-B</li>
+    </ul>
+  </li>
+  <li>D</li>
+  <li>
+    E (a new counter created using `counter-reset`)
+    <ul class="sub-list-two">
+      <li>sub-A</li>
+      <li>sub-B</li>
+      <li>sub-C</li>
+    </ul>
+  </li>
+  <li>F</li>
+  <li>G</li>
+</ul>
+  </div>
+  <button onclick="captureFontsDemo('fonts-box', 'fonts-output', this)">
+    Capture
+  </button>
+  <div class="output" id="fonts-output"></div>
+
+
+</section>
+  <section id="shadow">
+    <h2>🧱 Shadow DOM</h2>
+    <div class="card" id="shadow-host"></div>
+    <button onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
+    <div class="output" id="shadow-output"></div>
+    <script>
+      const host = document.getElementById('shadow-host');
+      const shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = `<div style="padding: 1em; background: lightblue; border-radius: 8px;">Inside <strong>Shadow DOM</strong></div>`;
+    </script>
+  </section>
+
+
+
+  <section id="canvas">
+    <h2>🎨 Canvas</h2>
+    <div class="card">
+      <canvas id="myCanvas" width="160" height="160" style="border:1px solid #000;"></canvas>
+    </div>
+    <button onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
+    <div class="output" id="canvas-output"></div>
+    <script>
+      const ctx = document.getElementById('myCanvas').getContext('2d');
+      ctx.fillStyle = "green";
+      ctx.fillRect(20, 20, 100, 100);
+    </script>
+  </section>
+
+  <section id="export">
+    <h2>📁 Export Formats</h2>
+    <div class="card" id="export-box">
+  <div class="export-text">
+    <strong>📤 This box will be exported as</strong><br />
+    <span class="export-format">PNG</span>, 
+    <span class="export-format">JPG</span> & 
+    <span class="export-format">WebP</span>.
+  </div>
+</div>
+
+    <button onclick="exportFormats('export-box')">Export</button>
+    <div class="output" id="export-output"></div>
+  </section>
+
+
+  <section id="pseudo">
+    <h2>✨ Pseudo Elements</h2>
+    <style>
+      .pseudo-box::before {
+        content: "★ ";
+        color: gold;
+        font-size: 1.2em;
+      }
+      .pseudo-box::after {
+        content: " ✨";
+        color: violet;
+        font-size: 1.2em;
+      }
+    </style>
+    <div class="card pseudo-box" id="pseudo-box">
+      This element has pseudo-elements.  <i class="fab fa-github"></i>  <i class="fas fa-image"></i>  <i style="color: green" class="fas fa-poo"></i> 
+    </div>
+    <button onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
+    <div class="output" id="pseudo-output"></div>
+  </section>
+
+<section id="backdrop-demo">
+  <h2>🌫️ Backdrop Filter</h2>
+ 
+  <div class="blur-container" id="blur-box">
+    <div class="blur-box" >
+      This box has a blurred background.
+    </div>
+  </div>
+
+  <button onclick="captureDemo('blur-box', 'backdrop-output', this)">Capture</button>
+  <div class="output" id="backdrop-output"></div>
+</section>
+<section id="filters">
+  <h2>🧪 CSS Filter Effects</h2>
+
+  <div class="card filter-card" id="filter-blur" style="filter: blur(4px); background: linear-gradient(135deg, #fbc2eb, #a6c1ee);">
+    <p><strong>Blurred Vision</strong><br><code>filter: blur(4px)</code></p>
+  </div>
+  <button onclick="captureDemo('filter-blur', 'filter-blur-output', this)">Capture</button>
+  <div class="output" id="filter-blur-output"></div>
+
+  <div class="card filter-card" id="filter-grayscale" style="filter: grayscale(100%); background: linear-gradient(135deg, #d3cce3, #e9e4f0);">
+    <p><strong>Muted Tones</strong><br><code>filter: grayscale(100%)</code></p>
+  </div>
+  <button onclick="captureDemo('filter-grayscale', 'filter-grayscale-output', this)">Capture</button>
+  <div class="output" id="filter-grayscale-output"></div>
+
+  <div class="card filter-card" id="filter-contrast" style="filter: contrast(250%); background: linear-gradient(135deg, #ffecd2, #fcb69f);">
+    <p><strong>High Contrast</strong><br><code>filter: contrast(250%)</code></p>
+  </div>
+  <button onclick="captureDemo('filter-contrast', 'filter-contrast-output', this)">Capture</button>
+  <div class="output" id="filter-contrast-output"></div>
+
+  <div class="card filter-card" id="filter-drop-shadow" style="filter: drop-shadow(6px 6px 8px rgba(0, 0, 0, 0.35)); background: linear-gradient(135deg, #c2e9fb, #a1c4fd);">
+    <p><strong>Floating Shadow</strong><br><code>filter: drop-shadow(...)</code></p>
+  </div>
+  <button onclick="captureDemo('filter-drop-shadow', 'filter-drop-shadow-output', this)">Capture</button>
+  <div class="output" id="filter-drop-shadow-output"></div>
+</section>
+<section id="webcomponent">
+  <h2>📦 Web Component con Slots</h2>
+<div class="container" >
+        <custom-text>
+          <p>this text will be captured with p</p>
+        </custom-text>
+
+        <custom-text>this text will be captured no tag</custom-text>
+      </div>
+
+  <my-card id="my-card">
+    <h3 slot="header">Encabezado del Web Component</h3>
+    <p slot="contenta">Este es el contenido principal del componente.</p>
+    <section slot="footer">
+ <button class="button" >Botón en el footer</button>
+    </section>
+   
+  </my-card>
+
+  <button onclick="captureDemo('webcomponent', 'webcomponent-output', this)">Capturar Web Component</button>
+  <div class="output" id="webcomponent-output"></div>
+
+  <script>
+    class MyCard extends HTMLElement {
+      constructor() {
+        super();
+        const shadow = this.attachShadow({ mode: 'open' });
+        shadow.innerHTML = `
+          <style>
+            :host {
+              display: block;
+              border: 2px solid #764ba2;
+              border-radius: 10px;
+              padding: 1em;
+              background: linear-gradient(135deg, #f3e5f5, #ba68c8);
+              color: #4e342e;
+              max-width: 300px;
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            header, footer {
+              padding: 0.5em 0;
+              font-weight: bold;
+            }
+            header {
+              border-bottom: 1px solid #4e342e;
+            }
+            footer {
+              border-top: 1px solid #4e342e;
+              text-align: right;
+            }
+            ::slotted(h3) {
+              margin: 0;
+              font-size: 1.2em;
+            }
+            ::slotted(p) {
+              margin: 1em 0;
+              font-size: 1em;
+            }
+           .button {
+              background: #764ba2;
+              color: white;
+              border: none;
+              padding: 0.5em 1em;
+              border-radius: 5px;
+              cursor: pointer;
+            }
+            ::slotted(button:hover) {
+              background: #5a0eb1;
+            }
+          </style>
+          <header><slot name="header">Encabezado por defecto</slot></header>
+          <div><slot name="contenta">Contenido por defecto</slot></div>
+          <footer><slot name="footer">hhhh</slot></footer>
+        `;
+      }
+    }
+    customElements.define('my-card', MyCard);
+
+    class CustomText extends HTMLElement {
+  constructor() {
+    super();
+
+    const template = document.createElement("template");
+    template.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          color: white;
+          background-color: black;
+          padding: 2px
+        }
+        
+      </style>
+      <slot></slot>
+    `;
+
+    const shadowRoot = this.attachShadow({ mode: "open" });
+    shadowRoot.appendChild(template.content.cloneNode(true));
+  }
+}
+customElements.define("custom-text", CustomText); 
+  </script>
+</section>
+
+<section id="download"><button id="descargar">download backdrop</button></section>
+<section id="full-demo">
+  <h2>🌫️ full</h2>
+ 
+  
+
+  <button onclick="captureDemo('body', 'full-output', this)">Capture</button>
+  <div class="output" id="full-output"></div>
+</section>
+
+
+<section id="masking">
+  <h2>🎭 Masking Effects</h2>
+
+  <!-- mask-image con PNG -->
+  <div class="card" id="mask-image-demo" style="
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(45deg, orange, purple);
+    -webkit-mask-box-image-source: url('https://upload.wikimedia.org/wikipedia/commons/e/eb/Black_Circle.svg');
+    
+  ">
+  </div>
+  <button onclick="captureDemo('mask-image-demo', 'mask-image-output', this)">Capture</button>
+  <div class="output" id="mask-image-output"></div>
+
+  <!-- mask con SVG clipPath inline -->
+  <div class="card" id="mask-svg-demo" >
+  </div>
+  <button onclick="captureDemo('mask-svg-demo', 'mask-svg-output', this)">Capture</button>
+  <div class="output" id="mask-svg-output"></div>
+
+  <!-- mask-border-source (no tiene soporte real en todos los browsers pero es decorativo) -->
+  <div class="card" id="mask-border-demo" style="
+    border: 20px solid transparent;
+    padding: 2em;
+    border-image-source: url('https://upload.wikimedia.org/wikipedia/commons/2/2f/Checkerboard_pattern.png');
+    border-image-slice: 30;
+    border-image-repeat: stretch;
+    background: #eee;
+  ">
+    Border Mask Effect (simulated)
+  </div>
+  <button onclick="captureDemo('mask-border-demo', 'mask-border-output', this)">Capture</button>
+  <div class="output" id="mask-border-output"></div>
+</section>
+
+</main>
+
+<script>
+  document.getElementById('descargar').addEventListener('click', async () => {
+    const el = document.getElementById('backdrop-demo');
+
+    try {
+      await snapdom.download(el, {
+        format: 'jpg',    // puede ser 'jpg', 'webp', 'svg'
+        name: 'test',
+        scale: 0.4,         // opcional
+        quality: 0.9,    // opcional (solo para jpg/webp)
+        backgroundColor: 'white', // opcional (para jpg/webp),
+       
+      });
+      console.log("Imagen descargada correctamente");
+    } catch (err) {
+      console.error("Error al generar o descargar la imagen:", err);
+    }
+  });
+  async function captureDemo(inputId, outputId, button) {
+    const el = document.getElementById(inputId);
+    const output = document.getElementById(outputId);
+    if (!el || !output) {
+      console.error(`Missing element or output: ${inputId}, ${outputId}`);
+      return;
+    }
+    button.disabled = true;
+    const img = await snapdom.toImg(el, {scale: 1,  excludeMode: 'hide', cache:'disabled'});
+    output.innerHTML = '';
+    output.appendChild(img);
+    button.disabled = false;
+  }
+
+  async function captureFontsDemo(inputId, outputId, button) {
+      const el = document.getElementById(inputId);
+      const output = document.getElementById(outputId);
+      if (!el || !output) {
+        console.error(`Missing element or output: ${inputId}, ${outputId}`);
+        return;
+      }
+      button.disabled = true;
+      // Pasamos embedFonts: true para inlining de las Google Fonts
+      const img = await snapdom.toImg(el, { embedFonts: true, scale: 1});
+      output.innerHTML = '';
+      output.appendChild(img);
+     
+    }
+
+  
+  async function exportFormats(id) {
+    const el = document.getElementById(id);
+    let capture = await snapdom(el)
+    const output = document.getElementById('export-output');
+    output.innerHTML = '';
+    const [png, jpg, webp] = await Promise.all([
+      capture.toPng({scale: 0.1}),
+      capture.toJpg({scale: 1.2}),
+      capture.toWebp({scale: 1}),
+    ]);
+    output.append('PNG:', png, document.createElement('br'));
+    output.append('JPG:', jpg, document.createElement('br'));
+    output.append('WebP:', webp);
+  }
+</script>
+<script type="module">
+ import { snapdom, preCache } from '../dist/snapdom.mjs'; 
+ window.snapdom = snapdom;
+    window.addEventListener('load', async () => {
+     
+     //   await preCache();
+      
+   
+    });
+  </script>
+ 
+</body>
+</html>
+

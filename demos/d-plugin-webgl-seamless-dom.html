@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seamless DOM → WebGL</title>
+  <style>
+    :root { color-scheme: dark; --ink: #080e13; --paper: #f1f5ec; --accent: #61e7d5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--paper); background: var(--ink); font-family: Arial, sans-serif; }
+    button, select { font: inherit; }
+    .page { width: min(1100px, calc(100% - 24px)); margin: auto; padding: 24px 0 34px; }
+    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+    .eyebrow { color: var(--accent); font-size: 9px; font-weight: 900; letter-spacing: .28em; text-transform: uppercase; }
+    h1 { margin: 4px 0 0; font: 900 clamp(42px, 7vw, 76px)/.84 Impact, sans-serif; letter-spacing: -.02em; text-transform: uppercase; }
+    h1 span { color: var(--accent); }
+    header p { max-width: 440px; margin: 0; color: #8fa2a5; font-size: 12px; line-height: 1.5; text-align: right; }
+
+    .bar { display: flex; align-items: center; gap: 7px; width: min(100%, 590px); margin: 0 auto; padding: 9px; border: 1px solid #34474c; border-bottom: 0; border-radius: 13px 13px 0 0; background: #111c22; }
+    .theme { width: 31px; height: 31px; border: 2px solid #fff4; border-radius: 50%; background: var(--color); cursor: pointer; }
+    .theme.active { outline: 2px solid var(--color); outline-offset: 2px; }
+    .shader { display: flex; align-items: center; gap: 7px; margin-left: auto; color: #84989b; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+    .shader select { border: 1px solid #3a5055; border-radius: 7px; padding: 7px; color: var(--paper); background: #1a2930; }
+
+    .stage-shell { position: relative; width: min(100%, 590px); margin: auto; padding: 34px; border: 1px solid #34474c; border-radius: 0 0 13px 13px; background: radial-gradient(circle, #263e44, #0b1318 72%); box-shadow: 0 28px 80px #000a; }
+    .stage { position: relative; width: 100%; aspect-ratio: 4 / 5; }
+    #gl { display: block; width: 100%; height: 100%; border-radius: 18px; background: #060b0f; box-shadow: 0 24px 50px #0008; }
+
+    .input-layer { position: absolute; inset: 1px; z-index: 3; overflow: hidden; padding: 35px; border-radius: 17px; cursor: text; }
+    .proxy-signal { position: relative; color: transparent; font: 900 10px/1 monospace; letter-spacing: .16em; text-transform: uppercase; pointer-events: none; user-select: none; }
+    .proxy-signal::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px; }
+    .input-layer h2, .input-layer p { position: relative; margin-right: 0; color: transparent; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0 transparent; text-shadow: none; text-decoration-color: transparent; caret-color: var(--accent); outline: none; }
+    .input-layer h2 { margin-top: 166px; margin-bottom: 15px; font: 900 clamp(46px, 7vw, 70px)/.86 Impact, sans-serif; letter-spacing: .01em; text-transform: uppercase; }
+    .input-layer p { max-width: 350px; margin-top: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .input-layer [contenteditable]::selection { color: transparent; background: #61e7d555; }
+
+    .gpu-label { position: absolute; top: 12px; right: 12px; z-index: 5; padding: 6px 8px; border: 1px solid #61e7d533; border-radius: 999px; color: var(--accent); background: #071015cc; font: 900 8px/1 monospace; letter-spacing: .1em; pointer-events: none; }
+    .status { display: flex; justify-content: space-between; width: min(100%, 590px); margin: 10px auto 0; color: #6f8588; font: 900 9px/1.4 monospace; text-transform: uppercase; }
+    #perf { color: var(--accent); }
+    .explain { width: min(100%, 590px); margin: 14px auto 0; color: #71868a; font-size: 10px; line-height: 1.5; text-align: center; }
+    .explain code { color: var(--accent); }
+
+    .source-bin { position: fixed; top: 0; left: -200vw; width: 520px; height: 650px; pointer-events: none; }
+    #dom-source { --local-accent: #61e7d5; position: relative; width: 520px; height: 650px; overflow: hidden; padding: 35px; border: 1px solid color-mix(in srgb, var(--local-accent), white 22%); border-radius: 18px; color: #eff5ed; background: radial-gradient(circle at 83% 17%, color-mix(in srgb, var(--local-accent), transparent 70%) 0 17%, transparent 17.5%), linear-gradient(150deg, #172934, #091117); box-shadow: inset 0 0 55px #0008; }
+    #dom-source::before { content: ''; position: absolute; inset: 0; opacity: .15; background: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 35px 35px; }
+    .signal { position: relative; color: var(--local-accent); font: 900 10px/1 monospace; letter-spacing: .16em; text-transform: uppercase; }
+    .signal::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--local-accent); box-shadow: 0 0 13px var(--local-accent); }
+    #dom-source h2 { position: relative; margin: 166px 0 15px; font: 900 70px/.86 Impact, sans-serif; letter-spacing: .01em; text-transform: uppercase; }
+    #dom-source p { position: relative; max-width: 350px; margin: 0; color: #a6b7b7; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .source-mark { position: absolute; right: 24px; bottom: 22px; color: var(--local-accent); font: 900 9px/1 monospace; letter-spacing: .1em; }
+
+    @media (max-width: 650px) { header { display: block; } header p { margin-top: 10px; text-align: left; } .stage-shell { padding: 14px; } .input-layer { padding: 7%; } .input-layer h2 { margin-top: 34%; font-size: clamp(38px, 13vw, 70px); } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div><div class="eyebrow">Seamless SnapDOM plugin</div><h1>DOM <span>GPU</span></h1></div>
+      <p>Hacé click sobre el texto y escribí. Lo que ves permanece siempre en WebGL; un DOM real y oculto se actualiza y recaptura detrás.</p>
+    </header>
+
+    <div class="bar">
+      <button class="theme active" style="--color:#61e7d5" data-color="#61e7d5" aria-label="Tema cyan"></button>
+      <button class="theme" style="--color:#caff4d" data-color="#caff4d" aria-label="Tema lima"></button>
+      <button class="theme" style="--color:#ff658d" data-color="#ff658d" aria-label="Tema rosa"></button>
+      <label class="shader">Shader <select id="shader"><option value="0">Fiel</option><option value="1">Holograma</option><option value="2">CRT</option><option value="3">Líquido</option><option value="4">Kaleido</option><option value="5">Derretido</option><option value="6">Datamosh</option><option value="7">Neón RX</option></select></label>
+    </div>
+
+    <section class="stage-shell">
+      <div class="stage">
+        <canvas id="gl" aria-label="DOM renderizado en WebGL"></canvas>
+        <div class="input-layer">
+          <div class="proxy-signal">Live DOM signal</div>
+          <h2 id="proxy-title" contenteditable="true" spellcheck="false">Escribí acá</h2>
+          <p id="proxy-copy" contenteditable="true" spellcheck="false">Este texto es DOM, pero lo estás viendo como una textura WebGL actualizada por SnapDOM.</p>
+        </div>
+        <div class="gpu-label">LIVE GPU</div>
+      </div>
+    </section>
+    <div class="status"><span>DOM oculto → textura doble buffer</span><span id="perf">iniciando…</span></div>
+    <p class="explain">El editor transparente sólo recibe teclado y caret. El contenido visible viene de <code>plugin.toWebgl()</code>; la textura nueva reemplaza a la anterior únicamente cuando está lista.</p>
+  </main>
+
+  <div class="source-bin" aria-hidden="true">
+    <article id="dom-source">
+      <div class="signal">Live DOM signal</div>
+      <h2 id="source-title">Escribí acá</h2>
+      <p id="source-copy">Este texto es DOM, pero lo estás viendo como una textura WebGL actualizada por SnapDOM.</p>
+      <div class="source-mark">SNAPDOM → WEBGL_</div>
+    </article>
+  </div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    class SeamlessRenderer {
+      constructor(canvas) {
+        this.canvas = canvas
+        this.gl = canvas.getContext('webgl', { antialias: true, alpha: false })
+        this.current = 0
+        this.next = 1
+        this.ready = false
+        this.transitioning = false
+        this.blendStart = 0
+        this.effect = 0
+        if (!this.gl) throw new Error('WebGL no disponible')
+        this.setup()
+        requestAnimationFrame(time => this.render(time))
+      }
+
+      compile(type, source) {
+        const shader = this.gl.createShader(type)
+        this.gl.shaderSource(shader, source)
+        this.gl.compileShader(shader)
+        if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) throw new Error(this.gl.getShaderInfoLog(shader))
+        return shader
+      }
+
+      setup() {
+        const gl = this.gl
+        const vertex = this.compile(gl.VERTEX_SHADER, `attribute vec2 position; attribute vec2 uv; varying vec2 p; void main(){gl_Position=vec4(position,0.,1.);p=uv;}`)
+        const fragment = this.compile(gl.FRAGMENT_SHADER, `
+          precision mediump float;
+          uniform sampler2D beforeImage;
+          uniform sampler2D afterImage;
+          uniform float blend;
+          uniform float time;
+          uniform int effect;
+          uniform vec2 resolution;
+          varying vec2 p;
+          vec4 source(vec2 q){return mix(texture2D(beforeImage,q),texture2D(afterImage,q),blend);}
+          void main(){
+            vec2 q=p;
+            vec4 color=source(q);
+            if(effect==1){
+              float scan=.86+.14*sin((p.y*resolution.y+time*28.)*.34);
+              color.r=source(p+vec2(.0025,0.)).r;
+              color.b=source(p-vec2(.0025,0.)).b;
+              color.rgb=color.rgb*scan+vec3(0.,.055,.05);
+            }
+            if(effect==2){
+              float scan=.72+.28*step(.5,fract(p.y*resolution.y*.5));
+              float vignette=1.-dot(p-.5,p-.5)*.58;
+              color.rgb*=scan*vignette;
+            }
+            if(effect==3){
+              q=p+vec2(sin(p.y*19.+time*1.8),cos(p.x*16.-time*1.35))*.014;
+              color=source(q);
+              color.rgb+=vec3(.02,.065,.06)*sin(q.y*34.+time*2.);
+            }
+            if(effect==4){
+              vec2 center=p-.5;
+              float radius=length(center);
+              float angle=atan(center.y,center.x);
+              float sector=1.0471976;
+              angle=abs(mod(angle,sector)-sector*.5)+time*.045;
+              q=.5+vec2(cos(angle),sin(angle))*radius;
+              color=source(q);
+            }
+            if(effect==5){
+              float drip=.035*sin(p.x*9.+time*1.6)+.014*sin(p.x*31.-time*2.2);
+              q=vec2(p.x,p.y+drip*(.25+p.y));
+              color.g=source(q).g;
+              color.r=source(q+vec2(.008,-.006)).r;
+              color.b=source(q-vec2(.008,-.006)).b;
+            }
+            if(effect==6){
+              float band=floor(p.y*22.);
+              float pulse=step(.76,fract(sin(floor(time*7.)+band*17.)*43758.5453));
+              float shift=(fract(sin(band*91.+floor(time*9.))*2345.23)-.5)*.18*pulse;
+              q=vec2(fract(p.x+shift),p.y);
+              color=source(q);
+              color.r=source(vec2(fract(q.x+.012*pulse),q.y)).r;
+              color.b=source(vec2(fract(q.x-.012*pulse),q.y)).b;
+            }
+            if(effect==7){
+              vec2 px=1./resolution;
+              vec3 base=source(p).rgb;
+              vec3 edge=abs(base-source(p+vec2(px.x*2.,0.)).rgb)+abs(base-source(p+vec2(0.,px.y*2.)).rgb);
+              float glow=clamp(length(edge)*2.4,0.,1.);
+              color.rgb=base*.18+vec3(glow*.2,glow,glow*.82);
+            }
+            gl_FragColor=vec4(color.rgb,1.);
+          }
+        `)
+        this.program = gl.createProgram()
+        gl.attachShader(this.program, vertex)
+        gl.attachShader(this.program, fragment)
+        gl.linkProgram(this.program)
+        gl.useProgram(this.program)
+        const data = new Float32Array([-1,-1,0,1, 1,-1,1,1, -1,1,0,0, -1,1,0,0, 1,-1,1,1, 1,1,1,0])
+        const buffer = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+        gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
+        const position = gl.getAttribLocation(this.program, 'position')
+        const uv = gl.getAttribLocation(this.program, 'uv')
+        gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position,2,gl.FLOAT,false,16,0)
+        gl.enableVertexAttribArray(uv); gl.vertexAttribPointer(uv,2,gl.FLOAT,false,16,8)
+        this.blendUniform = gl.getUniformLocation(this.program, 'blend')
+        this.timeUniform = gl.getUniformLocation(this.program, 'time')
+        this.effectUniform = gl.getUniformLocation(this.program, 'effect')
+        this.resolutionUniform = gl.getUniformLocation(this.program, 'resolution')
+        gl.uniform1i(gl.getUniformLocation(this.program, 'beforeImage'), 0)
+        gl.uniform1i(gl.getUniformLocation(this.program, 'afterImage'), 1)
+        this.textures = [this.makeTexture(), this.makeTexture()]
+      }
+
+      makeTexture() {
+        const gl = this.gl
+        const texture = gl.createTexture()
+        gl.bindTexture(gl.TEXTURE_2D, texture)
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([8,14,18,255]))
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR)
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR)
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE)
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE)
+        return texture
+      }
+
+      update(url) {
+        return new Promise((resolve, reject) => {
+          const image = new Image()
+          image.onload = () => {
+            const gl = this.gl
+            if (this.transitioning && performance.now() - this.blendStart > 70) this.current = this.next
+            this.next = 1 - this.current
+            gl.bindTexture(gl.TEXTURE_2D, this.textures[this.next])
+            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+            gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image)
+            if (!this.ready) {
+              gl.bindTexture(gl.TEXTURE_2D, this.textures[this.current])
+              gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image)
+              this.ready = true
+            }
+            this.blendStart = performance.now()
+            this.transitioning = true
+            resolve(this.canvas)
+          }
+          image.onerror = reject
+          image.src = url
+        })
+      }
+
+      render(time) {
+        const dpr = Math.min(devicePixelRatio || 1, 2)
+        const width = Math.round(this.canvas.clientWidth * dpr)
+        const height = Math.round(this.canvas.clientHeight * dpr)
+        if (this.canvas.width !== width || this.canvas.height !== height) { this.canvas.width=width; this.canvas.height=height }
+        const gl = this.gl
+        gl.viewport(0,0,width,height)
+        gl.clearColor(.02,.035,.045,1); gl.clear(gl.COLOR_BUFFER_BIT)
+        let mix = this.transitioning ? Math.min(1,(performance.now()-this.blendStart)/110) : 0
+        if (mix === 1) { this.current=this.next; this.transitioning=false; mix=0 }
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.textures[this.current])
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,this.textures[this.next])
+        gl.uniform1f(this.blendUniform,mix)
+        gl.uniform1f(this.timeUniform,time*.001)
+        gl.uniform1i(this.effectUniform,this.effect)
+        gl.uniform2f(this.resolutionUniform,width,height)
+        gl.drawArrays(gl.TRIANGLES,0,6)
+        requestAnimationFrame(next => this.render(next))
+      }
+    }
+
+    function seamlessWebgl(renderer) {
+      let started = 0
+      let elapsed = 0
+      return {
+        name: 'seamless-webgl',
+        beforeSnap(){ started=performance.now() },
+        afterRender(){ elapsed=performance.now()-started },
+        defineExports(){
+          return { webgl: async ctx => {
+            const canvas=await renderer.update(ctx.export.url)
+            document.querySelector('#perf').textContent=`${elapsed.toFixed(0)} ms · texture swapped`
+            return canvas
+          }}
+        }
+      }
+    }
+
+    const renderer = new SeamlessRenderer(document.querySelector('#gl'))
+    const plugin = seamlessWebgl(renderer)
+    const source = document.querySelector('#dom-source')
+    let dirty = false
+    let working = false
+
+    async function refresh() {
+      dirty = true
+      if (working) return
+      working = true
+      while (dirty) {
+        dirty = false
+        const capture = await snapdom(source,{plugins:[plugin],cache:'full',fast:true})
+        await capture.to('webgl')
+      }
+      working = false
+    }
+
+    function syncText() {
+      document.querySelector('#source-title').textContent=document.querySelector('#proxy-title').innerText
+      document.querySelector('#source-copy').textContent=document.querySelector('#proxy-copy').innerText
+      refresh()
+    }
+
+    function insertPlainText(text) {
+      const selection = window.getSelection()
+      if (!selection.rangeCount) return
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      const node = document.createTextNode(text)
+      range.insertNode(node)
+      range.setStartAfter(node)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
+    document.querySelector('#proxy-title').addEventListener('input',syncText)
+    document.querySelector('#proxy-copy').addEventListener('input',syncText)
+    document.querySelector('#proxy-copy').addEventListener('beforeinput',event=>{
+      if(event.inputType!=='insertParagraph'&&event.inputType!=='insertLineBreak') return
+      event.preventDefault()
+      insertPlainText('\n')
+      syncText()
+    })
+    document.querySelector('#proxy-copy').addEventListener('paste',event=>{
+      event.preventDefault()
+      insertPlainText(event.clipboardData.getData('text/plain'))
+      syncText()
+    })
+    document.querySelector('#proxy-title').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();document.querySelector('#proxy-copy').focus()}})
+    document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{
+      document.querySelector('.theme.active').classList.remove('active')
+      button.classList.add('active')
+      document.documentElement.style.setProperty('--accent',button.dataset.color)
+      source.style.setProperty('--local-accent',button.dataset.color)
+      refresh()
+    }))
+    document.querySelector('#shader').addEventListener('change',event=>{renderer.effect=Number(event.target.value)})
+    await refresh()
+    document.querySelector('#proxy-title').focus()
+  </script>
+</body>
+</html>

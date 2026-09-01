@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snapdom toBlob Test</title>
+  <style>
+    .problematic-node {
+      margin: 40px 10px;
+      position: fixed;
+      top: 20px;
+      left: 350px;
+      
+      z-index: 1000;
+      transform: rotate(5deg);
+      filter: drop-shadow(14px 14px 6px rgba(0, 0, 0, 1));
+      
+      background: linear-gradient(45deg, #f06, #0cf);
+      padding: 20px;
+      border-radius: 12px;
+      width: 200px;
+      height: 120px;
+      color: white;
+      font-weight: bold;
+      font-family: sans-serif;
+    }
+    #output {
+      margin-top: 180px;
+      border: 2px solid red;
+  
+    }
+  </style>
+</head>
+<body>
+  <div class="problematic-node">
+    Capturame bien, Snapdom 😎
+  </div>
+
+  <div id="target">
+    <pre>
+1
+   2 
+  3 
+  jjjjjj.
+    </pre>
+  </div>
+
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    window.addEventListener('load', async () => {
+      const el = document.querySelector('.problematic-node');
+      const output = document.querySelector('#output');
+
+      // Capturamos
+      const capture = await snapdom(el, {scale:1});
+
+      // Obtenemos Blob en formato png (puede cambiar a jpeg, webp, svg)
+      const blob = await capture.toSvg();
+
+     
+
+      output.appendChild(blob);
+
+      
+    });
+  </script>
+</body>
+</html>

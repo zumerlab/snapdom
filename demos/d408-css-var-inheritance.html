@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo #408 — &lt;use&gt; + &lt;symbol&gt; CSS variable inheritance</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f6f6f6;
+      color: #111;
+    }
+    h1 { margin: 0 0 4px; font-size: 18px; }
+    p.lead { margin: 0 0 20px; color: #555; font-size: 14px; max-width: 720px; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px; color: #888; }
+    .stage {
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      padding: 12px; background: #fafafa; border-radius: 6px; min-height: 120px;
+    }
+    .stage svg.icon { width: 80px; height: 80px; }
+    button {
+      padding: 8px 16px; border-radius: 6px; border: 1px solid #333;
+      background: #111; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    button:hover { background: #333; }
+    .output { margin-top: 12px; min-height: 100px; padding: 12px; background: #fafafa; border-radius: 6px; }
+    .output img { max-width: 100%; }
+    code { background: rgba(0,0,0,0.06); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+    .legend { font-size: 12px; color: #666; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Issue #408 — CSS variable inheritance through <code>&lt;use&gt;</code> → <code>&lt;symbol&gt;</code></h1>
+  <p class="lead">
+    The <code>&lt;symbol&gt;</code> defines its rect with <code>fill="var(--my-fill, #ccc)"</code>.
+    Each <code>&lt;use&gt;</code> sets a different <code>--my-fill</code> via inline <code>style</code>.
+    Before the fix, the SnapDOM capture froze every rect to the <code>#ccc</code> fallback. After the fix,
+    the per-<code>&lt;use&gt;</code> color is preserved.
+  </p>
+
+  <!-- The shared symbol library lives in this hidden SVG. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="rect-icon" viewBox="0 0 100 100">
+        <rect x="10" y="10" width="80" height="80" rx="12"
+              fill="var(--my-fill, #ccc)"
+              stroke="var(--my-stroke, #333)" stroke-width="4" />
+      </symbol>
+      <symbol id="circle-icon" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="40"
+                fill="var(--my-fill, #ccc)"
+                stroke="var(--my-stroke, #333)" stroke-width="4" />
+      </symbol>
+    </defs>
+  </svg>
+
+  <div id="capture-target">
+    <div class="row">
+      <div class="panel">
+        <h2>Live DOM (browser native rendering)</h2>
+        <div class="stage" id="live-stage">
+          <svg class="icon"><use href="#rect-icon" style="--my-fill: #e63946; --my-stroke: #0f1e4d"></use></svg>
+          <svg class="icon"><use href="#rect-icon" style="--my-fill: #2d5bff; --my-stroke: #0f1e4d"></use></svg>
+          <svg class="icon"><use href="#circle-icon" style="--my-fill: #f5a623; --my-stroke: #0f1e4d"></use></svg>
+          <svg class="icon"><use href="#circle-icon" style="--my-fill: #1e9f6e; --my-stroke: #0f1e4d"></use></svg>
+          <!-- This one has no override, should fall back to #ccc -->
+          <svg class="icon"><use href="#rect-icon"></use></svg>
+        </div>
+        <p class="legend">Expected: red, blue, amber, green, gray (fallback).</p>
+      </div>
+
+      <div class="panel">
+        <h2>SnapDOM capture</h2>
+        <div class="output" id="snap-output">— Click "Capture" below.</div>
+        <p class="legend">Should match the Live DOM above. Pre-fix bug: every shape was gray.</p>
+      </div>
+    </div>
+  </div>
+
+  <button id="capture-btn">Capture with SnapDOM</button>
+
+  <script src="../dist/snapdom.js"></script>
+  <script>
+    const btn = document.getElementById('capture-btn');
+    const out = document.getElementById('snap-output');
+
+    btn.addEventListener('click', async () => {
+      out.textContent = 'Capturing…';
+      try {
+        // Capture only the live stage so the comparison stays focused.
+        const target = document.getElementById('live-stage');
+        const result = await snapdom(target, { scale: 2 });
+        const img = await result.toPng();
+        out.innerHTML = '';
+        out.appendChild(img);
+      } catch (err) {
+        out.innerHTML = '<pre style="color:#c00">' + (err.stack || err.message) + '</pre>';
+      }
+    });
+  </script>
+</body>
+</html>

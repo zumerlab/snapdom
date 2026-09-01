@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>outer shadows — outerShadows:true</title>
+    <script src="../dist/snapdom.js"></script>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 24px; background: #fafafa; }
+      /* outerShadows:true — the capture must expand the bbox for the root's box-shadow, outline
+         (+ offset) and filter blur instead of clipping them. Guards the bleed math in
+         transforms.helpers.js (parseBoxShadow / parseOutline / parseFilterBlur): the soft
+         shadow, the outline ring and the blurred glow must all survive inside the frame. */
+      .row { display: flex; gap: 64px; align-items: flex-start; flex-wrap: wrap; margin-top: 24px; }
+      .row h3 { margin: 0 0 8px; font-size: 13px; color: #555; }
+      .stage { width: 320px; height: 240px; display: flex; align-items: center; justify-content: center; }
+      #target {
+        width: 200px;
+        height: 120px;
+        box-sizing: border-box;
+        padding: 16px;
+        border-radius: 14px;
+        background: #6366f1;
+        color: #fff;
+        font-weight: 600;
+        box-shadow: 18px 22px 30px 6px rgba(99, 102, 241, 0.45);
+        outline: 4px solid #f59e0b;
+        outline-offset: 6px;
+      }
+      #target .glow {
+        margin-top: 10px;
+        width: 60px;
+        height: 30px;
+        border-radius: 8px;
+        background: #22d3ee;
+        filter: blur(6px);
+      }
+    </style>
+  </head>
+  <body>
+    <p>
+      Root has a box-shadow, an offset outline and a blurred child. Click <button>capture</button> —
+      with <code>outerShadows:true</code> the capture (right) must keep the shadow, the outline ring
+      and the glow inside the frame, not clip them.
+    </p>
+
+    <div class="row">
+      <div>
+        <h3>live</h3>
+        <div class="stage">
+          <div id="target">
+            Outer shadows
+            <div class="glow"></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>snapdom capture</h3>
+        <div id="result"></div>
+      </div>
+    </div>
+
+    <script>
+      const button = document.querySelector('button')
+      button.addEventListener('click', async () => {
+        button.setAttribute('disabled', true)
+        const canvas = await snapdom.toCanvas(document.querySelector('#target'), { outerShadows: true, embedFonts: true })
+        const result = document.querySelector('#result')
+        result.innerHTML = ''
+        result.appendChild(canvas)
+        button.removeAttribute('disabled')
+      })
+    </script>
+  </body>
+</html>

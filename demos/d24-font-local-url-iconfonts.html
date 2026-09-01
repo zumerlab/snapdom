@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo 5 — local()+url() + iconFonts ignore</title>
+  <!-- Material Icons (icon font) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet">
+
+  <!-- Texto: Roboto -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    @font-face {
+      font-family: 'LocalThenUrl';
+      src: local('SomeMissingLocal'), url('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    .card { border: 1px dashed #aaa; padding: 12px; width: fit-content; margin: 16px 0; }
+    .text { font-family: 'Roboto', system-ui; font-weight: 700; font-size: 22px; }
+    .mix  { font-family: 'LocalThenUrl', system-ui; font-size: 22px; }
+    .mi   { font-family: 'Material Icons'; font-size: 28px; vertical-align: -6px; }
+  </style>
+</head>
+<body>
+  <h2>Demo 5 — local()+url() + iconFonts ignore</h2>
+  <div class="card" id="target">
+    <div class="text">Texto en Roboto 700</div>
+    <div class="mix">Fuente combinada local()+url()</div>
+    <div>Icono MI: <i class="mi"></i></div>
+  </div>
+
+  <button id="btn">Capturar (sin embebir icon font)</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+    document.getElementById('btn').addEventListener('click', async () => {
+      const el = document.getElementById('target');
+      const img = await snapdom.toImg(el, {
+        embedFonts: true,
+        compress: true,
+        iconFonts: [
+          'Material Icons',                 // por family
+          'https://fonts.googleapis.com/icon?family=Material+Icons' // por URL
+        ]
+      });
+      const out = document.getElementById('output');
+      out.innerHTML = ''; out.appendChild(img);
+    });
+  </script>
+</body>
+</html>

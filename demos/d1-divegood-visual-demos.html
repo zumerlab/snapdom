@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Demos visuales para diveGood.js</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2em;
+    }
+    .demo {
+      margin-bottom: 3em;
+    }
+    .label {
+      font-weight: bold;
+      margin-bottom: 0.5em;
+      display: block;
+    }
+    .test-container {
+      display: flex;
+      gap: 2em;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    .box {
+      border: 2px dashed #999;
+      padding: 1em;
+      min-width: 220px;
+      max-width: 400px;
+    }
+    .box h4 {
+      margin-top: 0;
+    }
+    .blend {
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg') no-repeat center;
+      background-size: cover;
+      background-blend-mode: multiply;
+      background-color: red;
+      height: 100px;
+    }
+    .border-image {
+      border: 10px solid red;
+      border-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Checkerboard_pattern.svg/100px-Checkerboard_pattern.svg.png') 30 stretch;
+      height: 80px;
+    }
+    .box-deco {
+      box-decoration-break: clone;
+      border: 2px solid blue;
+      padding: 0.2em;
+    }
+    .shadow {
+      box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+      height: 80px;
+    }
+    .filter img {
+      filter: grayscale(50%) blur(2px);
+    }
+    .ligatures {
+      font-variant-ligatures: discretionary-ligatures;
+      font-family: "Times New Roman", serif;
+    }
+    .mix-blend {
+      mix-blend-mode: difference;
+      background: white;
+      color: black;
+    }
+    .object-fit {
+      width: 150px;
+      height: 100px;
+      object-fit: cover;
+    }
+    .gradient {
+      background: repeating-linear-gradient(45deg, red, red 10px, blue 10px, blue 20px);
+      width: 200px;
+      height: 50px;
+    }
+    .writing {
+      writing-mode: vertical-rl;
+      background: lightyellow;
+    }
+    .zoomed {
+      zoom: 1.5;
+      background: lightblue;
+    }
+    
+  </style>
+</head>
+<body>
+
+  <h2>Demos visuales para testear diveGood.js</h2>
+
+  <div id="demos"></div>
+
+  <button onclick="captureAll()">Capturar todo</button>
+  <button onclick="captureAll1()">Capturar todo1</button>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    const demoDefs = [
+      { label: "Iframe", html: `<iframe src="https://example.com" width="200" height="100"></iframe>` },
+      { label: "Video", html: `<video crossorigin="anonymous" width="200" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4"></video>` },
+      { label: "Background blend", class: "blend", html: `` },
+      { label: "Border image", class: "border-image", html: `` },
+      { label: "Box decoration break", class: "box-deco", html: `<span>Texto<br>con<br>salto</span>` },
+      { label: "Box shadow", class: "shadow", html: `` },
+      { label: "Filter", class: "filter", html: `<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/320px-Fronalpstock_big.jpg">` },
+      { label: "Ligatures", class: "ligatures", html: `<p>office flight</p>` },
+      { label: "Mix blend mode", class: "mix-blend", html: `<div>Texto</div>` },
+      { label: "Object fit", html: `<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Windows_Settings_app_icon.png/240px-Windows_Settings_app_icon.png" class="object-fit">` },
+      { label: "Repeating gradient", class: "gradient", html: `` },
+      { label: "Writing mode", class: "writing", html: `Texto vertical` },
+      { label: "Zoom", class: "zoomed", html: `Texto con zoom` },
+      {
+        label: "Slot en shadow DOM", html: `
+          <custom-slot><span slot="text">Texto proyectado</span></custom-slot>
+          
+          <scr${"ip"}t>customElements.define('custom-slot', class extends HTMLElement {
+              constructor() {
+                super();
+                const shadow = this.attachShadow({mode: 'open'});
+                shadow.innerHTML = '<style>:host{display:block;}</style><slot name="text"></slot>';
+              }
+            });
+          </scr${"ip"}t>
+        `
+      }
+    ];
+
+    const container = document.getElementById('demos');
+
+    demoDefs.forEach((demo, i) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'demo';
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = `${i + 1}. ${demo.label}`;
+      const row = document.createElement('div');
+      row.className = 'test-container';
+
+      const original = document.createElement('div');
+      original.className = `box original ${demo.class || ''}`;
+      original.innerHTML = `<h4>Original</h4>${demo.html}`;
+      original.setAttribute('data-demo-id', `demo-${i}`);
+
+      const captureBox = document.createElement('div');
+      captureBox.className = 'box capture';
+      captureBox.innerHTML = `<h4>Captura</h4><div class="render-here"></div>`;
+
+      row.appendChild(original);
+      row.appendChild(captureBox);
+      wrapper.appendChild(label);
+      wrapper.appendChild(row);
+      container.appendChild(wrapper);
+    });
+
+    window.captureAll = async () => {
+      const originals = document.querySelectorAll('.original');
+      for (const el of originals) {
+        const clone = await snapdom.toImg(el);
+        const id = el.getAttribute('data-demo-id');
+        const captureContainer = document.querySelector(`[data-demo-id="${id}"] ~ .capture .render-here`);
+        captureContainer.innerHTML = '';
+        captureContainer.appendChild(clone);
+      }
+    };
+   
+    window.captureAll1 = async () => {
+      const originals = document.querySelectorAll('.original');
+      for (const el of originals) {
+        const clone = await html2canvas(el, {logging: false});
+        const id = el.getAttribute('data-demo-id');
+        const captureContainer = document.querySelector(`[data-demo-id="${id}"] ~ .capture .render-here`);
+        const img = new Image()
+        img.src = clone.toDataURL();
+        captureContainer.innerHTML = '';
+        captureContainer.appendChild(img);
+      }
+    }
+  
+  </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo 2 — @import con múltiples pesos</title>
+  <style>
+    /* Roboto 400 y 700 por @import */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+    .card { border: 1px dashed #aaa; padding: 12px; width: fit-content; margin: 16px 0; }
+    .roboto-400 { font-family: "Roboto"; font-weight: 400; font-size: 22px; }
+    .roboto-700 { font-family: "Roboto"; font-weight: 700; font-size: 24px; }
+    /* Esta clase NO se usa — debería ayudar a chequear el filtrado de caras no usadas */
+    .roboto-900 { font-family: "Roboto"; font-weight: 900; font-size: 26px; }
+  </style>
+</head>
+<body>
+  <h2>Demo 2 — @import con múltiples pesos</h2>
+  <div class="card" id="target">
+    <div class="roboto-400">Roboto 400 (usada)</div>
+    <div class="roboto-700">Roboto 700 (usada)</div>
+  </div>
+
+  <button id="btn">Capturar</button>
+  <div id="output"></div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+    document.getElementById('btn').addEventListener('click', async () => {
+      const el = document.getElementById('target');
+      // embedFonts true y deja que tu embedCustomFonts filtre por document.fonts
+      const img = await snapdom.toImg(el, { embedFonts: true, compress: true });
+      const out = document.getElementById('output');
+      out.innerHTML = ''; out.appendChild(img);
+    });
+  </script>
+</body>
+</html>

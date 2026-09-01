@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>#371 iframe pseudo-element repro</title>
+  </head>
+  <body>
+    <h3>#371: Pseudo in iframe - body vs documentElement</h3>
+    <p>Iframe content has .pill::before (blue circle). Capture body vs documentElement.</p>
+    <iframe id="target" srcdoc="
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            .pill { position: relative; padding-left: 16px; }
+            .pill::before {
+              content: '';
+              position: absolute;
+              left: 0;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 10px;
+              height: 10px;
+              background: blue;
+              border-radius: 50%;
+            }
+          </style>
+        </head>
+        <body>
+          <span class='pill'>Pill with ::before</span>
+        </body>
+      </html>
+    " style="width:300px;height:100px;border:1px solid #ccc"></iframe>
+    <br>
+    <button class="doc">Capture documentElement</button>
+    <button class="body">Capture body</button>
+    <h4>Result:</h4>
+    <div id="out"></div>
+  </body>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+    const target = document.querySelector('#target');
+    const out = document.getElementById('out');
+
+    const wait = () => new Promise((r) => {
+      if (target.contentDocument?.readyState === 'complete') {
+        r();
+        return;
+      }
+      target.onload = r;
+    });
+    await wait();
+
+    document.querySelector('.doc').addEventListener('click', async () => {
+      out.innerHTML = '';
+      const img = await snapdom.toPng(target.contentDocument.documentElement, {});
+      out.appendChild(img);
+    });
+
+    document.querySelector('.body').addEventListener('click', async () => {
+      out.innerHTML = '';
+      const img = await snapdom.toPng(target.contentDocument.body, {});
+      out.appendChild(img);
+    });
+  </script>
+</html>

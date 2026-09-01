@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ellipsis measurement keeps text nodes (#485)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 20px; margin: 0; }
+      h1 { font-size: 18px; }
+      p { font-size: 14px; color: #555; max-width: 72ch; }
+      #target { width: 460px; border: 1px dashed #ccc; border-radius: 6px; padding: 14px; display: grid; gap: 12px; }
+      .label { font-size: 12px; color: #777; }
+      .ellipsis {
+        display: block; width: 160px; overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; font-size: 14px; background: #f1f5f9; padding: 4px 6px; border-radius: 4px;
+      }
+      .clamp {
+        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+        width: 260px; font-size: 14px; background: #f1f5f9; padding: 4px 6px; border-radius: 4px;
+      }
+      .list { display: grid; gap: 4px; }
+      button { margin: 6px 8px 6px 0; padding: 8px 18px; border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; }
+      #btn { background: #0d0; }
+      #btnRemove { background: #e5e7eb; }
+      table { border-collapse: collapse; font-size: 13px; margin-top: 14px; }
+      th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; }
+      td.ok { color: #080; } td.bad { color: #c00; font-weight: bold; }
+      .out img { border: 1px dashed #d95350; }
+      figcaption { font-size: 12px; color: #555; margin: 10px 0 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>#485 — truncation measurement must not replace live text nodes</h1>
+    <p>
+      snapDOM bakes <code>text-overflow: ellipsis</code> and <code>-webkit-line-clamp</code> by
+      measuring the live element: it writes a candidate string, reads
+      <code>scrollWidth</code>/<code>scrollHeight</code> and binary-searches the cut. Doing that
+      through <code>textContent</code> destroys the element's text nodes; React/Vue/Svelte keep
+      references to them and later crash with
+      <code>NotFoundError: Failed to execute 'removeChild'</code>. The measurement now writes
+      <code>textNode.data</code>, which keeps node identity. "Remove first item" below is what a
+      framework does on the next render: it must not throw after a capture.
+    </p>
+
+    <div id="target">
+      <span class="label">single-line ellipsis</span>
+      <span class="ellipsis" id="one">Alpha Beta Gamma Delta Epsilon Zeta Eta</span>
+      <span class="label">two-line clamp</span>
+      <div class="clamp" id="two">Alpha Beta Gamma Delta Epsilon Zeta Eta Theta Iota Kappa Lambda Mu Nu Xi Omicron Pi Rho Sigma</div>
+      <span class="label">text split across two nodes (a framework interpolation)</span>
+      <span class="ellipsis" id="three"></span>
+      <span class="label">framework-managed list</span>
+      <div class="list" id="list"></div>
+    </div>
+
+    <button id="btn">Capture</button>
+    <button id="btnRemove">Remove first item (what React does next render)</button>
+
+    <table id="metrics" hidden>
+      <thead><tr><th>check</th><th>result</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="out"><figure id="shot" hidden><figcaption>captured</figcaption></figure></div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+
+      // Text split across two nodes, like `{count}{' unidades por caja'}` in JSX.
+      const three = document.querySelector('#three')
+      const partA = document.createTextNode('1234')
+      const partB = document.createTextNode(' unidades por caja de cartón')
+      three.append(partA, partB)
+
+      // A list whose text nodes are held by "the framework" (this array stands in for a fiber).
+      const list = document.querySelector('#list')
+      const held = []
+      for (const name of ['Alpha', 'Beta', 'Gamma']) {
+        const row = document.createElement('span')
+        row.className = 'ellipsis'
+        const node = document.createTextNode(name + ' - a long row label that gets truncated')
+        row.appendChild(node)
+        list.appendChild(row)
+        held.push({ row, node })
+      }
+
+      const one = document.querySelector('#one')
+      const two = document.querySelector('#two')
+      const watched = [
+        ['single-line node kept', () => one.firstChild, one.firstChild, one.firstChild.data],
+        ['clamped node kept', () => two.firstChild, two.firstChild, two.firstChild.data],
+        ['split node #1 kept', () => three.firstChild, partA, partA.data],
+        ['split node #2 kept', () => three.lastChild, partB, partB.data],
+        ['list node kept', () => held[0].row.firstChild, held[0].node, held[0].node.data],
+      ]
+
+      function report(rows) {
+        const tbody = document.querySelector('#metrics tbody')
+        tbody.innerHTML = ''
+        for (const [name, ok, detail] of rows) {
+          tbody.insertAdjacentHTML('beforeend',
+            `<tr><td>${name}</td><td class="${ok ? 'ok' : 'bad'}">${ok ? 'ok' : 'BROKEN'}${detail ? ' - ' + detail : ''}</td></tr>`)
+        }
+        document.querySelector('#metrics').hidden = false
+      }
+
+      document.querySelector('#btn').addEventListener('click', async () => {
+        const img = await snapdom.toPng(document.querySelector('#target'))
+        const rows = watched.map(([name, current, expected, text]) => {
+          const same = current() === expected
+          const restored = expected.data === text
+          return [name, same && restored, same ? (restored ? '' : 'text not restored') : 'node was replaced']
+        })
+        report(rows)
+        const fig = document.querySelector('#shot')
+        fig.querySelectorAll('img').forEach((n) => n.remove())
+        fig.appendChild(img)
+        fig.hidden = false
+      })
+
+      document.querySelector('#btnRemove').addEventListener('click', () => {
+        const item = held.shift()
+        if (!item) return report([['remove first item', true, 'nothing left to remove']])
+        try {
+          item.row.removeChild(item.node)   // the exact call React makes on the node it holds
+          item.row.remove()
+          report([['removeChild on the held text node', true, 'no error']])
+        } catch (e) {
+          report([['removeChild on the held text node', false, e.name + ': ' + e.message]])
+        }
+      })
+    </script>
+  </body>
+</html>

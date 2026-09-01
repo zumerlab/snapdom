@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>snapdom demo</title>
+  </head>
+
+  <body>
+    <code id="ua"></code>
+    <br />
+    <button id="snapdom">snapdom</button>
+    <button id="download">download svg</button>
+    <div style="outline: 1px solid red">
+      <main>
+        <style>
+          .ant-descriptions-item-container {
+            display: flex;
+          }
+          .ant-descriptions-item-label::after {
+            content: ":";
+            position: relative;
+            top: -0.5px;
+            margin-inline: 2px 8px;
+            color: red;
+          }
+          .ant-descriptions-item-content {
+            margin-left: 24px;
+          }
+        </style>
+        <div class="ant-descriptions-item-container">
+          <span class="ant-descriptions-item-label">Address</span
+          ><span class="ant-descriptions-item-content"
+            >No. 18, Wantang Road, Xihu District, Hangzhou, Zhejiang,
+            China</span
+          >
+        </div>
+      </main>
+    </div>
+    <h2>snapdom result</h2>
+    <div id="snapdom-result" style="outline: 1px solid green"></div>
+    <h2>iframe preview</h2>
+    <div id="iframe-preview" style="outline: 1px solid green"></div>
+  </body>
+  <script type="module">
+    document.getElementById("ua").textContent = navigator.userAgent;
+    import { snapdom } from  '../dist/snapdom.mjs'
+
+    document.getElementById("snapdom").addEventListener("click", async () => {
+      const $main = document.querySelector("main");
+      const result = await snapdom($main);
+      const $img = await result.toPng();
+      document.getElementById("snapdom-result").innerHTML = "";
+      document.getElementById("snapdom-result").appendChild($img);
+
+      const $iframe = document.createElement("iframe");
+      $iframe.src = result.url;
+      $iframe.style.width = "100%";
+      $iframe.style.height = $main.offsetHeight + 200 + "px";
+      document.getElementById("iframe-preview").innerHTML = "";
+      document.getElementById("iframe-preview").appendChild($iframe);
+    });
+
+    document.getElementById("download").addEventListener("click", async () => {
+      const $main = document.querySelector("main");
+      const result = await snapdom($main);
+      await result.download({ format: "svg", filename: "screenshot" });
+    });
+  </script>
+</html>
