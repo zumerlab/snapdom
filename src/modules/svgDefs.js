@@ -9,10 +9,14 @@
  *
  * @param {Element} element - SVG root or container holding one/more SVGs.
  * @param {Document|ParentNode} [lookupRoot] - Where to search for external defs/symbols (defaults to element.ownerDocument).
+ * @param {Element} [htmlSource] - The LIVE capture root. HTML elements reference the same defs
+ *   through CSS (`filter: url(#f)`, `clip-path`, `mask`), and that value ends up in the
+ *   generated class CSS rather than on the clone, so it cannot be recovered from the clone
+ *   alone. Reading it from the source's computed style is the only place it is visible.
  */
 
 import { isSVGEl } from '../utils/helpers.js'
-export function inlineExternalDefsAndSymbols(element, lookupRoot) {
+export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   if (!element || (element?.nodeType !== 1)) return
 
   const doc = element.ownerDocument || document
@@ -24,9 +28,9 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
       ? [element]
       : Array.from(element.querySelectorAll('svg'))
 
-  if (svgRoots.length === 0) return
-
-  const URL_ID_RE = /url\(\s*#([^)]+)\)/g
+  // Quotes are optional in CSS and getComputedStyle ADDS them: a class-based
+  // `filter: url(#f)` reads back as `url("#f")`, which the unquoted-only pattern missed.
+  const URL_ID_RE = /url\(\s*["']?\s*#([^)"']+)/g
   const URL_ATTRS = [
     'fill', 'stroke', 'filter', 'clip-path', 'mask',
     'marker', 'marker-start', 'marker-mid', 'marker-end'
@@ -138,8 +142,40 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot) {
     }
   }
 
+  /**
+   * HTML elements reach the same defs through CSS. The value lives in the computed style —
+   * a class-based `filter: url(#f)` never touches the clone's attributes — so this is the
+   * only place it can be read, and it is why the live source is passed in.
+   *
+   * Gated on the document actually holding a def that CSS can reference. `symbol` is
+   * deliberately NOT in that list: an icon sprite is all <symbol>, it is reached through
+   * <use href>, and counting it would put every sprite page through the walk below for
+   * nothing. Pages with no filter/clipPath/mask/gradient/pattern id — nearly all of them —
+   * pay one querySelector and stop.
+   */
+  const collectHtmlReferences = (root) => {
+    if (!root || root.nodeType !== 1 || !root.querySelectorAll) return
+    const referenceable = 'filter[id],clipPath[id],mask[id],linearGradient[id],radialGradient[id],pattern[id]'
+    let hasDefs = false
+    try { hasDefs = !!(searchRoot.querySelector && searchRoot.querySelector(referenceable)) } catch { return }
+    if (!hasDefs) return
+    const CSS_URL_PROPS = ['filter', 'clipPath', 'mask', 'maskImage', 'webkitMaskImage']
+    const scan = (el) => {
+      if (isSVGEl(el)) return // the SVG walk above already covers these
+      let cs
+      try { cs = getComputedStyle(el) } catch { return }
+      for (const prop of CSS_URL_PROPS) {
+        const v = cs[prop]
+        if (v && v.includes('url(')) addUrlIdsFromValue(v)
+      }
+    }
+    scan(root)
+    for (const el of root.querySelectorAll('*')) scan(el)
+  }
+
   // 1) Collect references from ALL svgRoots, deduped globally
   for (const svg of svgRoots) collectReferencesInSvg(svg)
+  collectHtmlReferences(htmlSource)
 
   // 2) No references: do not create the container (satisfies the "does nothing..." test)
   if (!sawAnyReference) return

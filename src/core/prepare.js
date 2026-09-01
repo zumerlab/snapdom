@@ -229,7 +229,7 @@ export async function prepareClone(element, options = {}) {
   // removed) and shifted :first-child/nth-child matches while deepClone read computed
   // styles. The clone is detached; external refs are still resolved from the live document.
   try {
-    inlineExternalDefsAndSymbols(clone)
+    inlineExternalDefsAndSymbols(clone, undefined, element)
   } catch (e) {
     console.warn('inlineExternal defs or symbol failed:', e)
   }
