@@ -211,3 +211,53 @@ Playwright's WebKit does not reproduce the quirks the Safari code exists for —
 3. The harness writes every captured blob to `.snapeye/`. Complete captures are byte-identical, so any file-size outlier is a blank or corrupt frame. Last run: 100/100 identical, zero blanks.
 
 Sanity-check the detector itself: a blank PNG at the same dimensions weighs ~0.4% of a real capture, so the size threshold genuinely discriminates. And check the FORMAT of what lands in `.snapeye/` — a run that quietly produced SVG instead of PNG is what exposed the `toBlob` format regression that the unit suite missed.
+
+## Known open defects (v3 audit, 2026-08-30 → 09-01)
+
+Everything below was found by the audit, confirmed by reading or measuring the real code, and
+deliberately NOT fixed. Each line says why, so nobody re-derives it. **All five are inherited:
+v2 has the identical code or behaviour — none is a v3 regression.** (The two v3-only gaps the
+audit found are noted at the end.)
+
+- **`toCanvas.js` `waitForImgPaint` — first capture blank on WebKit.** The first capture of an
+  element whose svg carries a nested `data:image` comes back FULLY TRANSPARENT; every later
+  capture of the same element is correct. Isolated: the payload is right, and drawing that very
+  payload by hand is blank immediately after `img.decode()` resolves and correct 100ms later —
+  WebKit #394, which this guard exists to cover. Instrumented, the probe reports
+  `{verify:true, iters:3, ink:true}` and returns while the real `drawImage` lands nothing: the
+  16x16 probe draw is **not predictive of the full-size draw**.
+  FIVE candidate fixes were tried and all reverted — not aborting when the probe draw throws;
+  waiting for two identical probe frames instead of first ink; keeping the probed image
+  attached until after the real draw; routing Safari to v2's plain main-document Image instead
+  of the recycled decode frame; and the combination. The decode-frame lifecycle is the next
+  thing to read.
+  **Scope check before investing:** SnapEye on real Safari 26.5 runs 100/100 clean, and the
+  first capture there is correct (the size histogram is exactly 50/50 with no third group). So
+  the real-world trigger is narrower than the synthetic fixture suggests — the demo uses `<img>`
+  elements, the failing fixture an inlined `background-image`. Narrow the trigger first.
+  Reproduces under Playwright WebKit, so it can be fixed and verified without SnapEye.
+  Pinned by a documented skip in `__tests__/visual.fidelity.crossengine.test.js`.
+
+- **`pseudo.js` — scoped `::marker` / `::first-line` skipped when the scan is unreliable.** A
+  cross-origin stylesheet makes `pseudoGatesFor` return `null`, and the scoped emitter treats
+  that as "no rules". Left alone ON PURPOSE: emitting the rule against an unreliable scan would
+  over-apply `::marker` to nodes that never had it, which is a fidelity loss in the other
+  direction. v2 never emitted these rules at all, so v3 is strictly ahead here.
+
+- **`pseudo.js` `styleFingerprint` — ignores adopted stylesheets' rule counts.** A
+  `replaceSync()` on an already-adopted sheet leaves the whole pseudo pass memoized off. Do NOT
+  "fix" this by censusing sheets per capture: that is the same experiment as the rule-epoch one
+  above, it was measured, it timed out `module.pseudo` on WebKit under `BROWSER=all`, and it was
+  reverted. `module.styles.ruleEpoch.test.js` pins the trade.
+
+- **`diff.js` — the differential path skips the live-DOM prep.** Dirty subtrees are rebuilt with
+  a bare `deepClone`, so `lineClampTree` and `forceContentVisibility` never run for them and a
+  spliced frame can render un-clamped text. v3-only code (v2 has no `diff.js`). Threading the
+  live prep through needs its own review of the bail conditions.
+
+- **`clone.js` `<img>` min-width/min-height floor.** Written from `offsetWidth` — the BORDER box
+  — onto an element whose min-* resolve against the CONTENT box, so it is nominally too large
+  with padding or a border. Correcting it was tried and REVERTED: the captured box measured
+  102x52 against a live 102x52 either way, so no visible defect could be demonstrated, while
+  `d14-cors-test` (images with `border: 1px solid black`) moved 2.26% / 728px. Revisit only with
+  a case where the capture actually differs from the live element.
