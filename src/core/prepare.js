@@ -195,11 +195,22 @@ export async function prepareClone(element, options = {}) {
     // at the same instant culling reads gBCRs. Re-deriving it from a fresh gBCR at render
     // time races user scroll.
     const elR = element.getBoundingClientRect()
+    // gBCR is in PAGE pixels — it carries every ancestor transform — while the viewBox that
+    // consumes this window is in the root's own LAYOUT pixels. The two were mixed, so under
+    // a scaled ancestor the capture showed the wrong region at the wrong extent: a
+    // zoom-to-fit editor at scale(0.5) asking for the right half of a slide got the left
+    // half, half as wide. Convert with the element's own visual-to-layout ratio. The
+    // sub-pixel guard keeps the untransformed path (every ordinary capture) byte-identical,
+    // since offsetWidth is integer-rounded and elR.width is not.
+    const lw = element.offsetWidth || elR.width
+    const lh = element.offsetHeight || elR.height
+    const sx = (elR.width && Math.abs(lw - elR.width) >= 1) ? lw / elR.width : 1
+    const sy = (elR.height && Math.abs(lh - elR.height) >= 1) ? lh / elR.height : 1
     clipWindow = {
-      x: clipRect.left - elR.left,
-      y: clipRect.top - elR.top,
-      width: clipRect.width,
-      height: clipRect.height
+      x: (clipRect.left - elR.left) * sx,
+      y: (clipRect.top - elR.top) * sy,
+      width: clipRect.width * sx,
+      height: clipRect.height * sy
     }
   }
 

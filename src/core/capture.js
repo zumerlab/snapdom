@@ -154,7 +154,7 @@ export async function captureDOM(element, options) {
   // Shrink pass when excludeMode === 'remove' dropped clone children
   if (state.options?.excludeMode === 'remove') {
     try {
-      shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache)
+      shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache, state.nodeMap)
     } catch (e) {
       sessionWarn(options.__session, 'shrink-failed', 'shrink pass failed', e)
       console.warn('[snapdom] shrink pass failed:', e)

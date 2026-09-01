@@ -142,7 +142,26 @@ export async function composeAndSerialize(state, ex) {
     const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
     // Safety: never larger than the original, with an epsilon so rounding cannot clip
     const EPS = 1 // px
-    if (Number.isFinite(hEst) && hEst > 0) {
+    // …and only shrink a box whose height COMES FROM its content. An author-set height (or
+    // min-height, or a stretched flex/grid item) does not shrink in the live DOM when a
+    // child is removed, so clamping to the kept span produced a sliver: a 400px card with
+    // one excluded button captured 19px tall, losing 381px of visible background. The test
+    // is a measurement, not a parse of the specified value — computed `height` reports the
+    // used px either way — because a content-sized box's own height already equals
+    // border + padding + the span of its children. Boxes whose height comes from
+    // absolutely-positioned children fail it too, which is right: contributesToParentHeight
+    // deliberately ignores those, so their span is not the height to shrink to.
+    const hAll = estimateKeptHeight(state.element, {})
+    // Tolerance is proportional, not absolute: a content-sized box is usually a few px
+    // TALLER than its children's box span (inline line-box leading, margins the span does
+    // not model), and on Firefox a 40px auto card measures a 36px span — an absolute
+    // epsilon rejected it and the clamp stopped working there. An imposed height is not a
+    // few px off, it is multiples: the 400px card measures the same 36px. The residual is a
+    // height set within ~15% of the content height, which mis-shrinks by a few px instead of
+    // by the hundreds this replaces.
+    const slack = Math.max(2, h0 * 0.15)
+    const contentSized = Number.isFinite(hAll) && hAll >= h0 - slack
+    if (contentSized && Number.isFinite(hEst) && hEst > 0) {
       h0 = Math.max(1, Math.min(h0, limitDecimals(hEst + EPS)))
     }
     // Width almost never needs the same adjustment; the analogous helper would be estimateKeptWidth(...)
@@ -299,10 +318,6 @@ export async function composeAndSerialize(state, ex) {
 
   const vbW0 = Math.max(1, limitDecimals(maxX - minX))
   const vbH0 = Math.max(1, limitDecimals(maxY - minY))
-  const scaleW = (hasW || hasH) ? limitDecimals(w / baseW) : 1
-  const scaleH = (hasH || hasW) ? limitDecimals(h / baseH) : 1
-  const outW = Math.max(1, limitDecimals(vbW0 * scaleW))
-  const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
 
   const svgNS = 'http://www.w3.org/2000/svg'
   // A transformed root's bbox is fractional, so its far edges land flush against the
@@ -398,12 +413,20 @@ export async function composeAndSerialize(state, ex) {
     value: captureMeta, enumerable: true, writable: false, configurable: true,
   })
 
+  // `width`/`height` are the ABSOLUTE OUTPUT SIZE — "one rule across all exporters"
+  // (types/snapdom.d.ts, README) — and every exporter applies exactly that, mapping the whole
+  // viewBox onto the requested box. The header used to encode a different rule: it sized the
+  // svg so the ELEMENT came out `w` wide, which makes the total larger by the bleed. The same
+  // capture therefore rendered its element at 400px through toRaw()/toBlob({format:'svg'})
+  // and at 308px through toPng()/toCanvas(), for a 200px box with a 30px shadow. The header
+  // follows the documented rule now; the Safari branch is untouched, since toImg patches
+  // these attributes itself to keep that path vector.
   const svgOutW = (!wantsSize || isSafari())
     ? vbW
-    : limitDecimals(outW + pad * 2)
+    : (hasW ? w : limitDecimals(vbW * (h / vbH)))
   const svgOutH = (!wantsSize || isSafari())
     ? vbH
-    : limitDecimals(outH + pad * 2)
+    : (hasH ? h : limitDecimals(vbH * (w / vbW)))
 
   const rootFontSize = parseFloat(getStyle(elDoc.documentElement)?.fontSize) || 16
   const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">`
