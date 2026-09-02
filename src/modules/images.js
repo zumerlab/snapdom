@@ -64,6 +64,16 @@ export async function inlineImages(clone, options = {}) {
     img.removeAttribute('srcset')
     img.removeAttribute('sizes')
 
+    // Already inline: nothing to fetch, and the clone carries it. Re-assigning the same
+    // string re-parsed and re-decoded it (61 ms of a 180 ms gallery pipeline, 26 MB of
+    // base64), and the image cache would have kept a multi-MB key pointing at itself. The
+    // attribute is read raw on purpose: the `src` GETTER re-serializes the URL, another
+    // copy of every payload.
+    if ((img.getAttribute('src') || '').startsWith('data:')) {
+      if (!img.width) img.width = img.naturalWidth || 100
+      if (!img.height) img.height = img.naturalHeight || 100
+      return
+    }
     const src = img.src || ''
     if (!src) return
 

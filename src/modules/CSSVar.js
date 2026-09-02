@@ -63,7 +63,8 @@ export function resolveCSSVars(sourceEl, cloneEl) {
     const attrs = sourceEl.attributes
     for (let i = 0; i < attrs.length; i++) {
       const a = attrs[i]
-      if (a && typeof a.value === 'string' && a.value.includes('var(')) { hasVar = true; break }
+      // An inlined data: URL is opaque here and can be megabytes: not worth the scan.
+      if (a && typeof a.value === 'string' && !a.value.startsWith('data:') && a.value.includes('var(')) { hasVar = true; break }
     }
   }
 
@@ -100,7 +101,7 @@ export function resolveCSSVars(sourceEl, cloneEl) {
     const attrs = sourceEl.attributes
     for (let i = 0; i < attrs.length; i++) {
       const a = attrs[i]
-      if (!a || typeof a.value !== 'string' || !a.value.includes('var(')) continue
+      if (!a || typeof a.value !== 'string' || a.value.startsWith('data:') || !a.value.includes('var(')) continue
       const propName = a.name
       const resolved = cs && cs.getPropertyValue(propName)
       if (resolved) {

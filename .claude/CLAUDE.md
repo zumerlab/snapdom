@@ -163,6 +163,24 @@ main-document `new Image()` draw of the same svg by 0.9–24% of the pixels WITH
 gap belongs to the decode-frame path and predates this. Pinned by
 `exporter.toCanvas.bands.test.js`, proven red: a one-row band shift differs by 760k pixels.
 
+**An inlined data: URL is written to the clone ONCE** (images.js, clone.helpers.js
+`freezeImgSrcset`). Every write of an `<img>` src re-parses the URL and starts a load, and for
+a data: URL that is a base64 decode of the whole payload; every READ through the `src` /
+`currentSrc` getters re-serializes it. The gallery bench (9 sources, 26 MB of base64) paid
+that four times: cloneNode's attribute copy, freezeImgSrcset re-setting the identical value,
+inlineImages re-assigning the same string through the setter (and caching a multi-MB key
+pointing at itself), then compress writing the downsample — plus two regex scans over the
+same megabytes (`resolveCSSVars` looking for `var(`, `sanitizeCloneForXHTML` for invalid XML).
+Profiled 2026-09-02: processImg 61 + setAttribute 47 + cloneNode 41 of a 180 ms warm
+pipeline. Now a data: src returns from inlineImages before any fetch or write, freezeImgSrcset
+compares the raw attribute and writes only what differs, and both scanners skip base64
+payloads: warm pipeline 172 → 62 ms, cold 409 → 298, gallery toPng 275 → 144 against
+html-to-image's 280. What is left is cloneNode's own 41 ms — the attribute copy itself starts
+the load — and removing it means a clone that carries no `src` until serialization, which
+plugins reading the clone would observe; not done. Pinned by
+`modules.images.dataUrlPassthrough.test.js` (counts src writes on the clones; restoring either
+write turns it red).
+
 **The identity share asks a SUBTREE question too** (`styleShareSafe`, styles.js; the gate
 is built by styleScan.js). One full computed-style read per structural identity, twins copy
 it — but it was switched off by a DOCUMENT-wide flag whenever any author selector could

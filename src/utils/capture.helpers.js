@@ -425,6 +425,7 @@ const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length ===
  * and diff serialization paths.
  * @param {Element} root
  */
+const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
   const { stripFrameworkDirectives = true } = opts
@@ -432,6 +433,8 @@ export function sanitizeCloneForXHTML(root, opts = {}) {
     // Copy first: NamedNodeMap is live
     for (const attr of Array.from(el.attributes)) {
       if (isInvalidXHTMLAttr(attr.name, stripFrameworkDirectives)) { el.removeAttribute(attr.name); continue }
+      // A base64 payload is XML-safe by alphabet: skip the regex over multi-MB inlined images.
+      if (BASE64_DATA_URL.test(attr.value)) continue
       const cv = stripInvalidXML(attr.value)
       if (cv !== attr.value) {
         try { el.setAttribute(attr.name, cv) } catch { /* read-only attr */ }

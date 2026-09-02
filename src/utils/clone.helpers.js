@@ -188,8 +188,11 @@ export function freezeImgSrcset(original, cloned, options = {}) {
       if (m) contentUrl = m[1]
     }
     const picture = original.closest?.('picture')
+    // A data: src needs no resolution, and the currentSrc/src GETTERS would re-serialize
+    // its megabytes (20 ms of a gallery pipeline): take the attribute as it is.
+    const rawSrc = original.getAttribute('src') || ''
     let chosen = contentUrl ||
-      (picture ? findRealUrlForPicture(original, picture) : original.currentSrc) ||
+      (picture ? findRealUrlForPicture(original, picture) : rawSrc.startsWith('data:') ? rawSrc : original.currentSrc) ||
       original.src ||
       // Chromium/Firefox leave currentSrc empty until the selected candidate has loaded,
       // so a srcset-only img would reach inlineImages source-less (srcset gets stripped
@@ -204,7 +207,10 @@ export function freezeImgSrcset(original, cloned, options = {}) {
       if (lazy) chosen = lazy
     }
     if (!chosen) return
-    cloned.setAttribute('src', chosen)
+    // Setting src is not free: every assignment re-parses the URL and starts a load, and on a
+    // data: URL that is a base64 decode of the whole payload — 26 MB of gallery sources cost
+    // ~40 ms here for a value cloneNode had already copied. Write only what differs.
+    if (cloned.getAttribute('src') !== chosen) cloned.setAttribute('src', chosen)
     cloned.removeAttribute('srcset')
     cloned.removeAttribute('sizes')
     // Hint deterministic decode/load for capture
