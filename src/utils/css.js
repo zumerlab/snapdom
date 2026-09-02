@@ -18,6 +18,7 @@ export const NO_DEFAULTS_TAGS = new Set([
 ])
 
 import { cache } from '../core/cache'
+import { ALWAYS_PROPS } from '../modules/styleScan'
 
 const commonTags = [
   'div', 'span', 'p', 'a', 'img', 'ul', 'li', 'button', 'input', 'select', 'textarea', 'label', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'td', 'th'
@@ -82,6 +83,14 @@ export function getDefaultStyleForTag(tagName) {
     if (shouldIgnoreProp(prop)) continue
     const value = styles.getPropertyValue(prop)
     defaults[prop] = value
+  }
+  // The snapshot reads every ALWAYS_PROPS entry by name, but Chromium's enumeration lists
+  // none of counter-set / counter-reset / counter-increment / content-visibility / white-space
+  // (shorthands and newer properties), so their defaults were missing here and every class
+  // rule carried `counter-set:none;content-visibility:visible;white-space:normal;…` as a
+  // "non-default" value. Read the ones the enumeration skipped from the same probe.
+  for (const prop of ALWAYS_PROPS) {
+    if (!(prop in defaults) && !shouldIgnoreProp(prop)) defaults[prop] = styles.getPropertyValue(prop)
   }
 
   sandbox.removeChild(el)
@@ -610,14 +619,23 @@ export function parseContent(content) {
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left']
 
 /**
+ * Read a computed style into a plain map. With `universe` (the property set the page's
+ * author CSS can touch, from styleScan — the same pruning the element snapshot uses) only
+ * those properties are read: a property no author rule mentions sits at its UA default,
+ * which getStyleKey drops anyway. This is the pseudo-element path, and a `::before` on
+ * every leaf of the deep-tree scene read all ~400 properties per pseudo — 788k
+ * getPropertyValue calls for 1,936 pseudos, 435 ms against 125 without the rule. Null
+ * (unreliable scan, shadow content) keeps the full enumeration.
  * @export
  * @param {CSSStyleDeclaration} style
+ * @param {Set<string>|null} [universe]
  * @return {Record<string,string>}
  */
-export function snapshotComputedStyle(style) {
+export function snapshotComputedStyle(style, universe = null) {
   const snap = {}
-  for (let prop of style) {
-    snap[prop] = style.getPropertyValue(prop)
+  for (const prop of universe || style) {
+    const v = style.getPropertyValue(prop)
+    if (v) snap[prop] = v
   }
   // #390: drop border props on sides that don't paint (style:none/hidden or width:0).
   // Serializing "0px none rgb(0,0,0)" in the foreignObject triggers faint borders on

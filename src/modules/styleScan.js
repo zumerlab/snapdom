@@ -56,6 +56,30 @@ export const ALWAYS_PROPS = [
   'border-collapse', 'border-spacing', 'table-layout', 'caption-side', 'empty-cells',
 ]
 
+// What a pseudo-element's snapshot needs to read. A `::before` has no inline style and no
+// presentational attributes, so a NON-inherited property can only leave its UA default
+// through a rule whose selector names the pseudo (collected per scan as `pseudoProps`);
+// an inherited one only through the element, whose own snapshot already reads the universe.
+// The box props are the ones getStyleKey and the pseudo pass read back (softening, the
+// min-width floor). Deep tree with a ::before per leaf: ~130 reads per pseudo → ~45.
+const INHERITED_PROPS = [
+  'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-stretch', 'font-variant',
+  'font-kerning', 'font-feature-settings', 'font-variation-settings', 'line-height', 'letter-spacing',
+  'word-spacing', 'white-space', 'text-align', 'text-align-last', 'text-indent', 'text-transform',
+  'text-shadow', 'text-rendering', 'direction', 'unicode-bidi', 'word-break', 'overflow-wrap',
+  'hyphens', 'tab-size', 'visibility', 'list-style-type', 'list-style-position', 'list-style-image',
+  'border-collapse', 'border-spacing', 'caption-side', 'empty-cells', 'quotes',
+  'color-scheme', '-webkit-text-fill-color', '-webkit-font-smoothing', 'image-rendering',
+]
+// Not listed although inherited: caret-color (no caret on a pseudo) and the text-stroke pair.
+// A stroke set on the ELEMENT reaches the pseudo span by inheritance inside the foreignObject
+// (the span is the element clone's child), and one set on the pseudo is in pseudoProps. Read
+// by name they made the pseudo's snapshot depend on whether the DOCUMENT universe happened to
+// contain them — snapdom's own injected class CSS in a test page did — and two captures of
+// the same pseudo keyed differently.
+const PSEUDO_BOX_PROPS = ['display', 'width', 'height', 'min-width', 'min-height']
+const PSEUDO_ELEMENT_SEL_RE = /::?(?:before|after|first-letter|first-line|marker)/
+
 const MAX_SCAN_RULES = 20000
 
 /** Margin/padding values that can make two identity twins resolve DIFFERENTLY: their
@@ -96,9 +120,11 @@ function scanRules(rules, universe, pseudoSels, state) {
     const rule = rules[i]
     const style = rule.style
     if (style) {
+      const pseudoRule = !!rule.selectorText && PSEUDO_ELEMENT_SEL_RE.test(rule.selectorText)
       for (let j = 0; j < style.length; j++) {
         const prop = style[j]
         universe.add(prop)
+        if (pseudoRule) state.pseudoProps.add(prop)
         if (style.getPropertyPriority(prop)) state.importantProps.add(prop)
         if (prop.length > 5 && (prop[0] === 'm' || prop[0] === 'p')) {
           const fam = prop.startsWith('margin') ? 'marginUnstable'
@@ -262,11 +288,11 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
 export function scanAuthorStyles(doc) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, usesHas: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, pseudoUniverse: null, usesHas: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set() }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set() }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -294,7 +320,10 @@ export function scanAuthorStyles(doc) {
     const shareGate = joinGate(doc.createElement('div'), shareSels) === null
       ? null
       : shareSels.map((sel) => ({ sel, key: subjectKeyOf(sel) }))
-    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
+    const pseudoUniverse = new Set(PSEUDO_BOX_PROPS)
+    for (const p of INHERITED_PROPS) if (universe.has(p)) pseudoUniverse.add(p)
+    for (const p of state.pseudoProps) pseudoUniverse.add(p)
+    return { universe, pseudoUniverse, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
   } catch {
     return unreliable
   }

@@ -1,4 +1,4 @@
-import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl } from '../utils/index.js'
+import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, snapshotComputedStyle } from '../utils/index.js'
 import { isFirefox } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
 import { scanAuthorStyles } from './styleScan.js'
@@ -482,6 +482,14 @@ export function universeFor(el) {
   // Shadow-root content: its own sheets aren't scanned — keep full reads there.
   if (el.getRootNode && el.getRootNode() !== doc) return null
   return scanFor(doc).universe
+}
+
+/** The property set a pseudo-element's snapshot reads (styleScan's pseudoUniverse); null
+ *  (full read) for shadow content and an unreadable scan, like universeFor. */
+export function pseudoUniverseFor(el) {
+  const doc = el.ownerDocument || document
+  if (el.getRootNode && el.getRootNode() !== doc) return null
+  return scanFor(doc).pseudoUniverse
 }
 
 /** Per-kind selector gates for the pseudo probe (see scanAuthorStyles). Same memo and
@@ -997,6 +1005,48 @@ function shareLists(rec, el) {
   rec.rr = rrList
   rec.sig = staticParts.join('\u0001') + '\u0002' + rrList.join('\u0001')
   return rrList
+}
+
+/**
+ * A pseudo-element's snapshot, shared between identity twins the way the element's is. The
+ * identity interned for `source` during the clone walk (same tag, attributes and ancestor
+ * chain) means the same rules match its `::before` and its inherited inputs are a twin's,
+ * so ONE pruned read per (identity, pseudo) and per twin only the used-value props
+ * (shareLists — the element's own list, decided on the first twin). Falls back to the pruned
+ * read whenever the element share is off for the capture (a splitting selector matching
+ * under the root, animations, an unreadable scan, shadow content) or the walk refused this
+ * node an identity. Deep tree with a `::before` on every leaf (1,936 pseudos), bare page:
+ * pruned reads alone 272 ms; shared 190 ms; without the rule 125.
+ * @param {Element} source
+ * @param {string} pseudo '::before' | '::after'
+ * @param {CSSStyleDeclaration} style getComputedStyle(source, pseudo)
+ * @param {Object} session the capture's sessionCache
+ * @param {Object} options capture options (carries __styleShare)
+ */
+export function pseudoSnapshotFor(source, pseudo, style, session, options) {
+  const st = options && options.__styleShare ? session && session.__styleShare : null
+  const id = st ? st.ids.get(source) : undefined
+  if (id === undefined || id === -1) return snapshotComputedStyle(style, pseudoUniverseFor(source))
+  const key = id + pseudo
+  const snaps = st.pseudo || (st.pseudo = new Map())
+  const rec = snaps.get(key)
+  if (rec) {
+    const snap = { ...rec.snap }
+    const rr = rec.rr || shareLists(rec, source)
+    for (let i = 0; i < rr.length; i++) {
+      const v = style.getPropertyValue(rr[i])
+      if (v) snap[rr[i]] = v
+      else delete snap[rr[i]]
+    }
+    return snap
+  }
+  const snap = snapshotComputedStyle(style, pseudoUniverseFor(source))
+  // By reference, copied on the first twin (shareLists), like the element share: a copy per
+  // pseudo was paid on the deep tree for 1,936 identities that never had a twin. The one
+  // write the pass makes afterwards (a flex-item min-width floor) depends on the host's
+  // display, identical for twins.
+  snaps.set(key, { snap, rr: null, sig: null, h: 'height' in snap, b: 'block-size' in snap })
+  return snap
 }
 
 function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {

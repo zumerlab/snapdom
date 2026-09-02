@@ -240,6 +240,46 @@ twins under different-width parents do not share (measured: the narrow twin's co
 onto the wide one), so every selector inside one joins the share gate. Pinned by four tests
 in `module.styles.identityShare.test.js`, all red on the previous code.
 
+**The pseudo pass cost 150 µs per inlined `::before`, and four things made it** (measured
+2026-09-02 on the deep tree with a 2px `::before` stripe on every leaf, 1,936 pseudos, bare
+page: 435 ms against 125 without the rule; now 172). In order of size:
+1. `styleFingerprint` ran on EVERY node of the recursion (`preflightWithFp` at the top of
+   `inlinePseudoElements`): a document-wide `querySelectorAll('style,link…')` plus a walk of
+   every sheet, per node — quadratic, 64 ms of the 295 on a page holding one `<style>`, on
+   ANY page with any pseudo rule. It runs on the root call only now (`!isDescendant`).
+2. The pseudo snapshot enumerated all ~400 computed properties (`snapshotComputedStyle` in
+   utils/css.js, 788k `getPropertyValue` calls). It takes a property set now: the element
+   universe first, then a PSEUDO universe (styleScan `pseudoUniverse`): a `::before` has no
+   inline style and no presentational attributes, so a non-inherited property can only leave
+   its UA default through a rule whose selector names a pseudo (collected as `pseudoProps`),
+   an inherited one only through the element (INHERITED_PROPS ∩ universe), plus the five box
+   props getStyleKey reads back. ~130 → ~45 reads per pseudo; null (unreliable scan, shadow
+   content) keeps the full enumeration. The only declarations that leave the payload are
+   currentcolor-derived colours on props the pseudo does not use (`outline-color`,
+   `caret-color`, logical `border-*-color`) — pixel-identical on all 77 demos.
+3. The per-tag defaults (`getDefaultStyleForTag`) were built by ENUMERATION, and Chromium's
+   enumeration lists none of `counter-set`/`counter-reset`/`counter-increment`/
+   `content-visibility`/`white-space`/`border-spacing`, all of which the universe reads by
+   name — so every class rule of every element carried them as "non-default" values
+   (`counter-set:none;content-visibility:visible;white-space:normal;…`). The defaults now
+   read the ALWAYS_PROPS the enumeration skipped: the deep-tree payload shrank 10%.
+4. Twin pseudos share one read (`pseudoSnapshotFor`, styles.js): keyed by the element's
+   interned identity + the pseudo, the same used-value re-read list as the element share, the
+   same lazy first-twin copy. Nothing on the deep tree (every leaf's inline background is its
+   own identity) but 500 `li::before` bullets: 48 → 26 ms, 81k → 10k reads. Pinned by
+   `module.pseudo.twinShare.test.js`; the share-off path was a `false.pseudo = …` TypeError
+   swallowed by the pass's try/catch until that test's off arm caught it.
+The deep-tree scene in the harness now CARRIES that stripe (docs/compare/live/harness.js):
+without it the scene measured html2canvas's repainter on bare boxes, the one input it handles
+best; with it its output is 7% off the live element and its cold speed edge is gone. Two
+traps from landing this: (a) INHERITED_PROPS must not list engine-specific props the universe
+may or may not contain (`-webkit-text-stroke-*`, `caret-color`) — read by name they made the
+pseudo's snapshot key depend on unrelated author CSS, and `regression.pseudo.afterPosition`
+(two captures mounted in ONE document, class names shared) collided `.c1` across hosts;
+(b) the Firefox baseline of `d-plugin-animation-lab` moved and was re-recorded: its range
+sliders now render the styled track and thumb like Chromium and the live page (the old
+baseline had unstyled tracks), a fidelity gain that rode along with the defaults fix.
+
 **`normalizeInlineStyleToComputed` is gated, and it has THREE contracts** (styles.js). It
 re-resolves an element's inline declarations through the cascade; its docstring named only
 #328 (a stylesheet `!important` must still beat an inline declaration inside the clone). The

@@ -90,7 +90,9 @@ function dataImage(w, h) {
   return c.toDataURL('image/png')
 }
 
-describe('capture matches a live screenshot of the element', () => {
+// A Playwright element screenshot is a round trip through the node side; under BROWSER=all
+// the three engines share the machine and one took past the default 15s.
+describe('capture matches a live screenshot of the element', { timeout: 60_000 }, () => {
   // THE grid bug. Two identical-identity `1fr 1fr` grids under 120px and 300px columns; the
   // used track list differs, and the identity share used to copy one twin's columns to the
   // other. A block-coloured cell in the wrong place is a large, unmissable diff.

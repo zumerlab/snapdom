@@ -22,7 +22,7 @@ import {
   hasCounters
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
-import { pseudoGatesFor, flushStyleInvalidations, invalidateStyleCaches } from './styles.js'
+import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, flushStyleInvalidations, invalidateStyleCaches } from './styles.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
@@ -619,9 +619,13 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
   if (source.tagName === 'TEXTAREA') return
   // --- preflight, once per session/doc ---
   const doc = source.ownerDocument || document
-  // `__shadowPseudo`: a shadow root in the capture declares a pseudo (deepClone reads its
-  // CSS); the document-level preflight cannot see it.
-  if (!preflightWithFp(doc, sessionCache) && !sessionCache.__shadowPseudo) {
+  // Once per capture, on the ROOT call: the recursion below reaches every node, and the
+  // preflight's fingerprint is a document-wide querySelectorAll plus a walk of every sheet —
+  // per node that was quadratic (deep tree with a ::before per leaf: 64 ms of a 295 ms
+  // capture went to querySelectorAll, on a page holding one <style>). `__shadowPseudo`: a
+  // shadow root in the capture declares a pseudo (deepClone reads its CSS); the
+  // document-level preflight cannot see it.
+  if (!isDescendant && !preflightWithFp(doc, sessionCache) && !sessionCache.__shadowPseudo) {
     return
   }
   // Asked once, on the root call only: the recursion below is exactly what this skips.
@@ -720,7 +724,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
         const span = document.createElement('span')
         span.textContent = first
         span.dataset.snapdomPseudo = '::first-letter'
-        const snapshot = snapshotComputedStyle(style)
+        const snapshot = snapshotComputedStyle(style, pseudoUniverseFor(source))
         const key = getStyleKey(snapshot, 'span')
         sessionCache.styleMap.set(span, key)
 
@@ -821,7 +825,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // pseudoEl.style.verticalAlign = 'baseline'
       pseudoEl.style.pointerEvents = 'none'
       if (pinNowrap) pseudoEl.style.whiteSpace = 'nowrap'
-      const snapshot = snapshotComputedStyle(style)
+      const snapshot = pseudoSnapshotFor(source, pseudo, style, sessionCache, options)
       // #452: mirror the styles.js width-softening flags. An empty pseudo box sized by
       // CSS (width/height, content:'') is the #433 "empty box" case — its width must be
       // kept verbatim, otherwise a blockified flex-item dot collapses to 0 and a
