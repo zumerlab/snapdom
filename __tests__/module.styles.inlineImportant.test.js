@@ -1,17 +1,25 @@
-// #328 had no direct pixel test: normalizeInlineStyleToComputed re-resolves an element's
-// inline declarations through the cascade so a stylesheet `!important` still wins inside the
-// clone. These pin the three outcomes that pass has to produce, on painted pixels rather than
-// on the serialized payload.
+// normalizeInlineStyleToComputed re-resolves an element's inline declarations through the
+// cascade. Its docstring names one reason — #328, a stylesheet `!important` must still win
+// inside the clone — and it had no test. It has THREE contracts; the other two are
+// undocumented and load-bearing, and each was found by a test going red while scoping the
+// pass. All four assertions below are on painted pixels, never on the payload.
 //
-// They also bound an optimization that was measured and rejected. Scoping the pass to the
-// properties some author rule marks `!important` takes toRaw on a 500-row table from 67.6 ms
-// to 38.6 ms — 45% of the pipeline — and these three stay green, because #328 is only half of
-// what the pass does. The other half is undocumented: it is the mechanism that carries
-// snapdom's OWN writes on the source element (the selection highlight's background layers,
-// same-origin iframe expansion) onto the clone. The demo corpus caught it on all three engines
-// (d32-iframe-same-origin) along with module.selection. Scoping it needs the passes that write
-// to the source to record WHICH properties they wrote; the important-property set alone is not
-// the contract.
+//  1. #328, for the property the important rule declares.
+//  2. `background`: the selection highlight composes its measured px layers on top of the
+//     longhands this pass puts on the clone (module.selection).
+//  3. Context-dependent values — `width:100%`, `1.2em`, `calc()`, `auto` — resolve against a
+//     containing block the foreignObject does not reproduce (d32-iframe-same-origin).
+//
+// Why that is worth writing down: this pass is 45% of a 500-row-table capture. Stubbed out,
+// toRaw goes 67.6 -> 38.6 ms, because cells carrying `padding` and `border` shorthands pay 20
+// computed reads and 20 writes per node for values their own style attribute already holds.
+// Gating on all three contracts measures 67.6 -> 51.1 ms with the corpus green on chromium,
+// firefox and webkit. NOT landed: the variant that satisfies contract 3 also compares the
+// clone's style attribute against the source's, and that comparison answers differently in the
+// differential-recapture path — it breaks core.capture.diff's "byte-equal to full" on all
+// three engines. The open question is why those two attributes diverge in the full pipeline
+// for d32's elements. Until that is answered the pass stays whole.
+
 import { describe, test, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
 
@@ -49,6 +57,24 @@ describe('inline declarations and stylesheet !important (#328)', () => {
     root.style.cssText = 'width:100px;height:100px;background:#fff'
     root.innerHTML = '<div style="background:#e00000;width:80px;height:80px"></div>'
     expect(await countPixels(root, [0xe0, 0x00, 0x00])).toBeGreaterThan(4000)
+  }, 30_000)
+
+  test('a context-dependent inline value is pinned to its used value in the clone', async () => {
+    // `50%` resolves against a containing block the foreignObject does not reproduce, so the
+    // pass must re-resolve it even though no rule marks it important. Asserted through the
+    // painted width, not the payload.
+    const root = mount(document.createElement('div'))
+    root.style.cssText = 'width:200px;height:60px;background:#fff'
+    root.innerHTML = '<div style="width:50%;height:60px;background:#e00000"></div>'
+    const canvas = await snapdom.toCanvas(root, { scale: 1, dpr: 1, burst: false })
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    const { data } = ctx.getImageData(0, 30, canvas.width, 1)   // una fila por el medio
+    let red = 0
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] > 180 && data[i + 1] < 60 && data[i + 2] < 60) red++
+    }
+    expect(red).toBeGreaterThan(90)
+    expect(red).toBeLessThan(110)
   }, 30_000)
 
   test('a plain (non-important) rule does not override the inline declaration', async () => {
