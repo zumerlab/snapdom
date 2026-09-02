@@ -1085,7 +1085,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (source.tagName === 'STYLE') return
 
   const ctx = _resolveCtx(sessionOrCtx, opts)
-  const resetMode = (ctx.options && ctx.options.cache) || 'auto'
+  // Normalized upstream to 'soft' | 'disabled'; 'soft' is the only non-disabled value.
+  const resetMode = (ctx.options && ctx.options.cache) || 'soft'
 
   // The node's OWN document. Capturing inside a same-origin iframe wired the parent's
   // observers and watched a document the captured element does not live in.

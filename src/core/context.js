@@ -27,7 +27,7 @@ import { compileIconFontMatchers } from '../modules/iconFonts.js'
  * @param {number}  [options.dpr]
  * @param {string|null} [options.backgroundColor]
  * @param {string}  [options.filename]
- * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
+ * @param {unknown} [options.cache] - `'disabled'` (or `false`) empties every persistent cache before the capture, a debug/test escape hatch. Anything else is the default: caching is structural, not a knob (the legacy 'soft'/'auto'/'full' strings all mean this).
  * @param {HTMLCanvasElement} [options.canvas] - Draw the canvas export into this canvas instead of a new one
  * @param {boolean} [options.captureSelection] - Render the user's live text selection into the capture
  * @param {boolean} [options.outerTransforms]

@@ -33,10 +33,11 @@ describe('Webfonts: article with Inter 400/700 + mono code spans (configured pro
     await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false })
   }, OPTS)
 
-  bench('snapDOM { embedFonts: true, cache: disabled } (cold font path — what a one-shot pays)', async () => {
-    // The soft arm above is honest steady state: snapdom's font cache is a real
-    // cross-capture cache, so iterations 2+ reuse the embedded CSS. But a one-shot user
-    // pays the walk + woff2 fetch + base64 every time — this arm prices exactly that.
+  bench('snapDOM { embedFonts: true }, font cache wiped before each capture (the first capture on a page)', async () => {
+    // The arm above is honest steady state: snapdom's font cache is a real cross-capture
+    // cache, so iterations 2+ reuse the embedded CSS. A page's FIRST capture pays the walk +
+    // woff2 fetch + base64 — `cache: 'disabled'` empties that cache before each iteration,
+    // so this arm prices exactly that.
     await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false, cache: 'disabled' })
   }, OPTS)
 

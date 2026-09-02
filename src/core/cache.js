@@ -72,7 +72,7 @@ export function normalizeCachePolicy(v) {
 
 /**
  * Applies the cache policy.
- * @param {"soft"|"auto"|"full"|"disabled"} policy
+ * @param {"soft"|"disabled"} policy
  */
 export function applyCachePolicy(policy = 'soft') {
   if (policy !== 'disabled') return

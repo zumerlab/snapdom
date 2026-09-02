@@ -14,7 +14,7 @@ import { applyCachePolicy } from './cache.js'
 /**
  * Creates this capture's session in the same synchronous tick that applies the cache
  * policy. There is no shared session global anymore — every capture owns fresh maps.
- * @param {"soft"|"auto"|"full"|"disabled"} [policy]
+ * @param {"soft"|"disabled"} [policy] - already normalized by createContext; 'soft' is the only non-disabled value
  * @returns {{styleMap: Map, styleCache: WeakMap, nodeMap: Map}}
  */
 export function createCaptureSession(policy) {
