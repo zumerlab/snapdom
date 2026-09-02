@@ -107,6 +107,18 @@ describe('identity share — the gates, in pixels', () => {
     expect(ur).toBeLessThan(80)
   })
 
+  it('@container rules differentiate twins by their container\'s size', async () => {
+    // Same identity chain, containers of different widths: the rule paints only the wide
+    // one. No selector here is structural, so only the scan's @container awareness can keep
+    // the share from copying the narrow twin's blue onto the wide one.
+    const el = mount(
+      '<div class="cqg"><div class="cq"><div class="cqt"></div></div><div class="cq"><div class="cqt"></div></div></div>',
+      `.cqg{display:grid;grid-template-columns:100px 300px} .cq{container-type:inline-size}
+       .cqt{height:40px;background:rgb(0,0,255)} @container (min-width:200px){.cqt{background:rgb(255,0,0)}}`)
+    expect(await px(el, 50 / 400, 0.5)).toBe('0,0,255')
+    expect(await px(el, 250 / 400, 0.5)).toBe('255,0,0')
+  })
+
   it('layout-varying values stay per-node even when the identity matches', async () => {
     // Identical identities, different content: the second cell is wider. A shared width
     // would squeeze or stretch one of them.
@@ -177,5 +189,30 @@ describe('identity share — layout re-read narrowing', () => {
 
   it('px margins skip the re-read without a byte of difference', async () => {
     await byteIdentical(twinFixture('margin-left:14px;padding:6px'))
+  })
+
+  it('grid track lists are used values: each grid twin keeps its own columns', async () => {
+    // The deep-tree shape: twin `1fr 1fr` grids under 160px and 320px columns. Computed
+    // style reports the USED tracks (`78px 78px` / `158px 158px`), so a shared list gives
+    // the wide twin the narrow one's columns and its second cell ends at its midpoint.
+    const el = mount(
+      `<div class="gg">
+        <div class="gcol"><div class="gtwin"><i></i><b></b></div></div>
+        <div class="gcol"><div class="gtwin"><i></i><b></b></div></div>
+      </div>`,
+      `.gg{display:grid;grid-template-columns:160px 320px}
+       .gtwin{display:grid;grid-template-columns:1fr 1fr;height:40px}
+       .gtwin i{background:rgb(0,0,255)} .gtwin b{background:rgb(255,0,0)}`)
+    expect(await px(el, 120 / 480, 0.5)).toBe('255,0,0') // narrow twin, second cell
+    expect(await px(el, 200 / 480, 0.5)).toBe('0,0,255') // wide twin, first cell
+    expect(await px(el, 448 / 480, 0.5)).toBe('255,0,0') // wide twin, right end of its second cell
+  })
+
+  it('a % translate resolves against each twin\'s own box', async () => {
+    await byteIdentical(twinFixture('transform:translateX(50%)'))
+  })
+
+  it('logical sizes are used values, like width and height', async () => {
+    await byteIdentical(twinFixture('inline-size:50%'))
   })
 })

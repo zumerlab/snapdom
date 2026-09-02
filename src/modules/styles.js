@@ -857,11 +857,15 @@ function snapshotIsCurrent(rec, el) {
  * A one-shot capture's dominant cost is the style snapshot: ~200 getPropertyValue reads per
  * node, measured at 56µs/node — 162ms of a 192ms capture on a 3000-node table. But most of
  * those nodes are structurally identical (same tag, same attributes, same ancestor chain),
- * and for such nodes the computed style can only differ in LAYOUT-derived values. Measured
- * across chromium/firefox/webkit with identical-identity nodes whose content differs, the
- * complete divergence set is: width/height (+ their logical aliases), transform-origin and
- * perspective-origin (box-derived), and margin/padding longhands (auto and % resolution). So: read
- * the full snapshot ONCE per identity, and per node re-read only the layout-varying props.
+ * and for such nodes the computed style can only differ in LAYOUT-derived values — the
+ * properties CSSOM resolves to USED values. Measured across chromium/firefox/webkit with
+ * identical-identity nodes whose boxes differ, the divergence set is: width/height (+ their
+ * logical aliases), the box offsets, transform-origin and perspective-origin (box-derived),
+ * margin/padding longhands (auto and % resolution), a grid container's track lists (`1fr 1fr`
+ * reads as px per container — the deep-tree scene's grids took a deeper twin's columns and
+ * laid out 18% of the pixels wrong), and the transform matrix (a % translate is resolved
+ * against the box). So: read the full snapshot ONCE per identity, and per node re-read only
+ * those.
  *
  * FIDELITY GATES, all conservative (any doubt → full reads):
  *  - document: no author selector that can split identical identities (structural position,
@@ -886,8 +890,11 @@ function snapshotIsCurrent(rec, el) {
  *    between identity twins by construction (same matched rules, same inherited inputs).
  *  - CONDITIONAL: the margin and padding longhands resolve %-values to used px, so they vary only when the
  *    document (or the identity's own inline style, identical across twins) actually gives
- *    the family an unstable value — styleScan flags marginUnstable/paddingUnstable. */
-const LAYOUT_ALWAYS_RE = /^(width|height|top|right|bottom|left|transform-origin|perspective-origin)$|^inset-/
+ *    the family an unstable value — styleScan flags marginUnstable/paddingUnstable. The grid
+ *    track lists only on a grid container (elsewhere they are the specified value), and
+ *    `transform` only when the identity has one (`none` cannot hide a % translate) — both
+ *    decided from the identity's own read, so a table pays nothing for either. */
+const LAYOUT_ALWAYS_RE = /^(width|height|inline-size|block-size|top|right|bottom|left|transform-origin|perspective-origin)$|^inset-/
 const UNSTABLE_INLINE_RE = /(margin|padding)[a-z-]*\s*:[^;]*(%|\bauto\b|calc\(|var\()/i
 const SHARE_SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'OPTGROUP', 'PROGRESS', 'METER', 'BUTTON', 'DATALIST'])
 
@@ -948,6 +955,50 @@ function identityFor(el, st) {
   return id
 }
 
+/** The identity's re-read list and base signature, decided once on its first twin (`el`,
+ *  whose style attribute is the identity's — the attribute is part of the key) and kept on
+ *  the share record: the
+ *  always-geometry props, plus the margin/padding families only when the document-level
+ *  scan or that inline style gives them an unstable value, the grid track lists on a grid
+ *  container, and `transform` when the identity has one. The base signature covers the props
+ *  twins NEVER re-read plus the re-read prop NAMES: a twin's full signature is base + its own
+ *  re-read VALUES (+ the strip outcome), injective for the same reason the flat signature
+ *  was — every name and value of the final snapshot is represented exactly once. */
+function shareLists(rec, el) {
+  // Re-copied once here, riders included: the identity's own object was built by keyed
+  // stores (dictionary mode in V8) and every twin spreads it — off a spread-made copy the
+  // 500-row table's twins clone 6 ms faster, and only identities WITH twins pay the copy.
+  const src = rec.snap
+  const stored = rec.snap = { ...src }
+  Object.defineProperty(stored, '__needsBgInline', { value: src.__needsBgInline, enumerable: false })
+  if (src.__bgClipTextFix !== undefined) {
+    Object.defineProperty(stored, '__bgClipTextFix', { value: src.__bgClipTextFix, enumerable: false })
+  }
+  const scan = scanFor(el.ownerDocument || document)
+  const attr = (el.getAttribute && el.getAttribute('style')) || ''
+  const inlineUnstable = attr && UNSTABLE_INLINE_RE.test(attr)
+  const rrM = !!scan.marginUnstable || (inlineUnstable && /margin/i.test(attr))
+  const rrP = !!scan.paddingUnstable || (inlineUnstable && /padding/i.test(attr))
+  const rrG = stored.display !== undefined && stored.display.includes('grid')
+  const rrT = stored.transform !== undefined && stored.transform !== 'none'
+  const rrList = []
+  for (const k in stored) {
+    if (LAYOUT_ALWAYS_RE.test(k) ||
+        (rrG && (k === 'grid-template-columns' || k === 'grid-template-rows')) ||
+        (rrT && k === 'transform') ||
+        (rrM && k.charCodeAt(0) === 109 && k.startsWith('margin-')) ||
+        (rrP && k.charCodeAt(0) === 112 && k.startsWith('padding-'))) rrList.push(k)
+  }
+  if (rec.h && !('height' in stored)) rrList.push('height')
+  if (rec.b && !('block-size' in stored)) rrList.push('block-size')
+  const rrSet = new Set(rrList)
+  const staticParts = []
+  for (const k in stored) { if (!rrSet.has(k)) staticParts.push(k, stored[k]) }
+  rec.rr = rrList
+  rec.sig = staticParts.join('\u0001') + '\u0002' + rrList.join('\u0001')
+  return rrList
+}
+
 function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
   const rec = snapshotCache.get(el)
   // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
@@ -968,13 +1019,13 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
     // all non-geometry computed values, identical between identity twins by construction
     // (same matched rules; animations disable the share). Recomputing the flag per twin was
     // 7 live reads a node for an answer the identity already holds.
-    snap = { ...shared }
-    // Direct loop over the identity's precomputed re-read list: the old form walked all
-    // ~150 keys with a regex test per key, per twin (10.8ms of getSnapshot self-time on
-    // the 500-row table, profiled). The values feed `dyn`, which composes this twin's
-    // snapshotKeyCache signature from the identity's base signature below — styleSignature
+    snap = { ...shared.snap }
+    // Direct loop over the identity's re-read list (built on its first twin): the old form
+    // walked all ~150 keys with a regex test per key, per twin (10.8ms of getSnapshot
+    // self-time on the 500-row table, profiled). The values feed `dyn`, which composes this
+    // twin's snapshotKeyCache signature from the identity's base signature — styleSignature
     // re-hashed the whole snapshot per twin for another 11ms otherwise.
-    const rrList = shared.__rrList
+    const rrList = shared.rr || shareLists(shared, el)
     dyn = []
     for (let i = 0; i < rrList.length; i++) {
       const p = rrList[i]
@@ -983,56 +1034,30 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
       else delete snap[p]
       dyn.push(v)
     }
-    Object.defineProperty(snap, '__needsBgInline', { value: shared.__needsBgInline, enumerable: false })
-    if (shared.__bgClipTextFix !== undefined) {
-      Object.defineProperty(snap, '__bgClipTextFix', { value: shared.__bgClipTextFix, enumerable: false })
+    Object.defineProperty(snap, '__needsBgInline', { value: shared.snap.__needsBgInline, enumerable: false })
+    if (shared.snap.__bgClipTextFix !== undefined) {
+      Object.defineProperty(snap, '__bgClipTextFix', { value: shared.snap.__bgClipTextFix, enumerable: false })
     }
   } else {
     snap = snapshotComputedStyleFull(style, options, el, universeFor(el))
     if (shareInfo) {
-      // Store BEFORE stripHeightForWrappers: that pass mutates per-element (it judges this
-      // node's own children), so siblings must start from the unstripped read. The spread
-      // drops the non-enumerable riders; the hit path above restores them.
-      const stored = { ...snap }
-      if (snap.__bgClipTextFix !== undefined) {
-        Object.defineProperty(stored, '__bgClipTextFix', { value: snap.__bgClipTextFix, enumerable: false })
-      }
-      Object.defineProperty(stored, '__needsBgInline', { value: snap.__needsBgInline, enumerable: false })
-      // Per-identity re-read list, decided once here: the always-geometry props, plus the
-      // margin/padding families only when the document-level scan or this identity's own
-      // inline style (the style attribute is part of the identity key, so every twin
-      // carries the same text) gives them an unstable value.
-      const scan = scanFor(el.ownerDocument || document)
-      const attr = (el.getAttribute && el.getAttribute('style')) || ''
-      const inlineUnstable = attr && UNSTABLE_INLINE_RE.test(attr)
-      const rrM = !!scan.marginUnstable || (inlineUnstable && /margin/i.test(attr))
-      const rrP = !!scan.paddingUnstable || (inlineUnstable && /padding/i.test(attr))
-      const rrList = []
-      for (const k in stored) {
-        if (LAYOUT_ALWAYS_RE.test(k) ||
-            (rrM && k.charCodeAt(0) === 109 && k.startsWith('margin-')) ||
-            (rrP && k.charCodeAt(0) === 112 && k.startsWith('padding-'))) rrList.push(k)
-      }
-      // Base signature over the props twins NEVER re-read, plus the re-read prop NAMES:
-      // a twin's full signature is base + its own re-read VALUES (+ the strip outcome),
-      // injective for the same reason the flat signature was — every name and value of the
-      // final snapshot is represented exactly once.
-      const rrSet = new Set(rrList)
-      const staticParts = []
-      for (const k in stored) { if (!rrSet.has(k)) staticParts.push(k, stored[k]) }
-      Object.defineProperty(stored, '__rrList', { value: rrList, enumerable: false })
-      Object.defineProperty(stored, '__baseSig', {
-        value: staticParts.join('\u0001') + '\u0002' + rrList.join('\u0001'),
-        enumerable: false,
-      })
-      shareInfo.st.snaps.set(shareInfo.id, stored)
+      // Stored by REFERENCE, with the riders it already carries: the copy that used to be
+      // made here, plus a re-read list and a base signature per identity, cost 27 ms of a
+      // 134 ms pipeline on a tree whose nodes are all unique (the deep-tree scene: 1,936
+      // leaves, each with its own inline background) for lists no twin ever read. Two
+      // passes mutate this object after it is stored, and both are deterministic for the
+      // twins: the flex-item min-width floor writes the value every twin gets too, and
+      // stripHeightForWrappers judges this node's OWN children, so it may delete height /
+      // block-size that a twin keeps — the flags let shareLists put them back on the
+      // re-read list, where the twin reads its own.
+      shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null, sig: null, h: 'height' in snap, b: 'block-size' in snap })
     }
   }
   stripHeightForWrappers(el, style, snap)
   if (dyn !== null) {
     // Seed the signature memo AFTER the strip: it deletes at most height/block-size, and two
     // twins with different strip outcomes must not collide onto one key.
-    __snapshotSig.set(snap, shared.__baseSig + '\u0002' + dyn.join('\u0001') +
+    __snapshotSig.set(snap, shared.sig + '\u0002' + dyn.join('\u0001') +
       ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004'))
   }
   snapshotCache.set(el, { env: __envEpoch, stamp: stampOf(el), snapshot: snap, embedFonts: ef, excludeStyleProps: ex })

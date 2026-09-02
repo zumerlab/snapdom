@@ -218,6 +218,28 @@ only selectors whose key is present in the subtree reach the `querySelector`: un
 (`el.matches`). Pinned by `module.styles.shareSubtreeGate.test.js`, proven to fail both
 ways: the document flag turns its first test red, dropping the querySelector half its second.
 
+**What a twin must RE-READ is the set of properties CSSOM resolves to USED values, and the
+list was incomplete** (`shareLists`, styles.js). Turning the share on for real pages exposed
+it: the deep-tree scene on the docs lab rendered 18.6% of its pixels wrong (html2canvas 0.8%
+against a Playwright screenshot of the live element) because `grid-template-columns` reads
+as the used track list — `1fr 1fr` is `42px 388px` on one grid and `230px 840px` on its
+structural twin three levels up — and every grid took the first twin's columns. A probe of
+twins with different boxes on all three engines gives the full divergence set: width /
+height and their logical aliases, the box offsets, transform/perspective-origin, margin and
+padding (% and auto), the grid track lists, and `transform` (a % translate is resolved into
+the matrix). `inline-size`/`block-size` are re-read whenever present, the track lists only
+on a grid container and `transform` only when the identity has one, so a table pays no
+extra read. The list and the base signature are built on an identity's FIRST TWIN, not when
+it is stored: on the deep tree every leaf is its own identity (unique inline background) and
+building them per identity cost 27 ms of a 134 ms pipeline; the record now stores the
+snapshot by reference and copies it once on the first hit — the identity's own object is
+V8-dictionary-mode (keyed stores, then the strip's `delete`) and twins spreading it cost the
+500-row table 6 ms. Deep tree 160 → 131 ms, table 68 unchanged, share-off 134 / 155.
+A second hole of the same class: `@container` rules style by the container's size, which
+twins under different-width parents do not share (measured: the narrow twin's colour painted
+onto the wide one), so every selector inside one joins the share gate. Pinned by four tests
+in `module.styles.identityShare.test.js`, all red on the previous code.
+
 **`normalizeInlineStyleToComputed` is gated, and it has THREE contracts** (styles.js). It
 re-resolves an element's inline declarations through the cascade; its docstring named only
 #328 (a stylesheet `!important` must still beat an inline declaration inside the clone). The

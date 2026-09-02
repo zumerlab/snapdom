@@ -133,10 +133,13 @@ function scanRules(rules, universe, pseudoSels, state) {
     // `.faq p + p` in the host CSS, matching nothing inside the captured table, cost a 500-row
     // capture 536k computed-style reads instead of 77k. A substring test, deliberately
     // conservative: a false positive only adds a selector to the gate.
-    if (sel && (SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
+    // A rule inside @container styles by the CONTAINER's size, which twins under
+    // different-width parents do not share (measured: the narrow twin's colour painted onto
+    // the wide one), so every selector in there joins the gate too.
+    if (sel && (state.inContainer || SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
       for (const part of splitTopLevel(sel, ',')) {
         const one = part.trim()
-        if (one && (SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) state.shareUnsafeSels.add(one)
+        if (one && (state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) state.shareUnsafeSels.add(one)
       }
     }
     if (sel && sel.includes(':')) {
@@ -147,7 +150,11 @@ function scanRules(rules, universe, pseudoSels, state) {
     if (rule.styleSheet) { // @import
       if (!scanSheet(rule.styleSheet, universe, pseudoSels, state)) return false
     } else if (rule.cssRules && rule.cssRules.length) { // @media/@supports/@keyframes/…
-      if (!scanRules(rule.cssRules, universe, pseudoSels, state)) return false
+      const container = typeof CSSContainerRule !== 'undefined' && rule instanceof CSSContainerRule
+      if (container) state.inContainer++
+      const ok = scanRules(rule.cssRules, universe, pseudoSels, state)
+      if (container) state.inContainer--
+      if (!ok) return false
     }
   }
   return true
@@ -259,7 +266,7 @@ export function scanAuthorStyles(doc) {
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), marginUnstable: false, paddingUnstable: false, importantProps: new Set() }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set() }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }

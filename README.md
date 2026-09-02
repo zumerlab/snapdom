@@ -454,18 +454,18 @@ captures per cell, median.
 
 | Scene (per-element cold, docs page) | SnapDOM | domlens 0.1.0 | html2canvas 1.4.1 | modern-screenshot 4.7.0 | html-to-image 1.11.13 |
 | --- | --- | --- | --- | --- | --- |
-| Table, 500 rows (640×17312) | **194.5** | 281.6 | 380.2 | 607.7 ¹ | 1,461.9 ¹ |
-| Deep nested tree (1232×13586) | 388.8 | 737.8 | **324.0** | 981.0 | 1,593.3 |
-| Photo gallery (960×654) | 220.8 | 1,175.4 | **187.5** | 625.6 | 578.4 |
+| Table, 500 rows (640×17312) | **194.4** | 276.2 | 377.9 | 606.3 ¹ | 1,454.8 ¹ |
+| Deep nested tree (1232×13586) | 363.4 | 716.0 | **318.1** | 975.1 | 1,583.8 |
+| Photo gallery (960×654) | 210.7 | 1,150.9 | **187.7** | 600.3 | 597.4 |
 
 ¹ Output a different size from everyone else's (modern-screenshot 640×17311, html-to-image
 605×16384: it hits the 16384px canvas limit and downscales), so the cell is not comparable.
 
-The table is SnapDOM's by 1.45× over domlens. The other two rows go to html2canvas, on a real
+The table is SnapDOM's by 1.42× over domlens. The other two rows go to html2canvas, on a real
 page, cold, and the reason is architectural in both: it never builds the SVG image and it
-never inlines a picture. On the deep tree SnapDOM's first-capture pipeline is 168 ms
-(54 ms on the second capture of the same element) plus 168 ms of raster and encode; the
-repainter's whole job is 324. On the gallery the first capture pays to fetch nine photos,
+never inlines a picture. On the deep tree SnapDOM's first-capture pipeline is 131 ms
+(53 ms on the second capture of the same element) and the remaining ~230 ms is raster and
+encode; the repainter's whole job is 318. On the gallery the first capture pays to fetch nine photos,
 base64-encode 26 MB of them into the clone and downsample them to the 4 MB the output can
 show — 305 ms of pipeline where the repainter paints the browser's already-decoded images in
 187. On the second capture SnapDOM's memo has the downsampled photos and the row flips to
