@@ -315,46 +315,46 @@ document.body.appendChild(png);
 
 | 库 | 复杂卡片 | 500 行表格 | 简单节点（1200×800） |
 | --- | --- | --- | --- |
-| **SnapDOM** | **11.3** | 204.8 | **13.0** |
-| domlens.js 0.1.0 | 17.3 | **194.3** | 115.2 |
-| modern-screenshot 4.7.0 | 31.3 | 546.8 | 14.0 |
-| dom-to-image-more 3.10.2 | 33.0 | 703.8 | 16.9 |
-| html-to-image 1.11.13 | 51.1 | 1,458.7 | 17.4 |
-| html2canvas 1.4.1 | 82.5 | 365.7 | 89.2 |
-| @renoun/screenshot 0.3.3 | 150.2 | 655.2 | 78.7 |
-| dom-to-image 2.6.0 | 154.6 | 921.1 | 128.0 |
-| dom-to-image-modern 1.0.2 | 155.2 | 926.0 | 129.1 |
+| **SnapDOM** | **11.1** | **183.0** | 12.9 |
+| domlens.js 0.1.0 | 18.0 | 192.3 | 123.4 |
+| modern-screenshot 4.7.0 | 30.0 | 534.2 | **12.1** |
+| dom-to-image-more 3.10.2 | 32.3 | 703.8 | 17.8 |
+| html-to-image 1.11.13 | 49.8 | 1,432.7 | 17.6 |
+| html2canvas 1.4.1 | 83.8 | 363.1 | 90.4 |
+| @renoun/screenshot 0.3.3 | 144.3 | 636.6 | 78.1 |
+| dom-to-image 2.6.0 | 156.8 | 918.0 | 129.6 |
+| dom-to-image-modern 1.0.2 | 157.2 | 924.5 | 131.6 |
 
-三个场景里有两个差距小到必须明说。**大表格上 domlens 领先 SnapDOM 1.05×**——这是可复现的 5%，尽管
-两者的多轮波动区间有重叠。简单节点上 SnapDOM 与 modern-screenshot 处在误差范围内：那个场景几乎
-没有内容要捕获，衡量的主要是所有库都要付出的 PNG 编码成本。复杂卡片是唯一拉开明显差距的场景，
-1.53×。
+三个场景里有两个差距小到必须明说。大表格上 SnapDOM 以 1.05× 领先——在内联样式处理阶段被收窄之前
+（见下文），这一格曾以同样的幅度落后，而且两者的多轮波动区间至今仍有重叠。简单节点上
+modern-screenshot 名义上快 0.8 ms：那个场景几乎没有内容要捕获，衡量的主要是所有库都要付出的
+PNG 编码成本，名次在不同轮次之间会互换。复杂卡片是唯一拉开明显差距的场景，1.62×。
 
 ### 真实场景
 
 | 场景 | SnapDOM | 次快 | 其余 |
 | --- | --- | --- | --- |
-| CSS 密集页面——1 万条作者样式规则、240 张仅靠 class 上样式的卡片 | **131.1** | domlens 137.3 | modern-screenshot 288.7 · dom-to-image-more 341.1 · html-to-image 599.6 |
-| Shadow DOM——150 个开放 shadow root、嵌套 3 层、约 3000 个节点 | **12.7** | domlens 50.1 | modern-screenshot 102.5 · html2canvas 137.4 · dom-to-image-more 153.5 · html-to-image 410.2 |
-| Web 字体——包含 Inter 400/700 与等宽代码片段的文章 | **11.5** | modern-screenshot 24.4 | dom-to-image-more 25.0 · html-to-image 45.6 |
-| 图片网格——40 张同源 PNG，通过 HTTP 加载 | **58.7** | dom-to-image-more 61.0 | html-to-image 63.6 · domlens 66.1 · modern-screenshot 66.6 |
-| 轮询——对同一个仪表盘连续捕获 20 次 | **20.3** | modern-screenshot 110.2 | dom-to-image-more 333.2 · domlens 476.6 |
-| 深层嵌套树——16 条链 × 10 层，约 2,100 个节点 | 706 | **html2canvas 303** | domlens 676 · modern-screenshot 943 · html-to-image 1,400 |
+| CSS 密集页面——1 万条作者样式规则、240 张仅靠 class 上样式的卡片 | **129.3** | domlens 165.5 | modern-screenshot 291.0 · dom-to-image-more 337.4 · html-to-image 590.0 |
+| Shadow DOM——150 个开放 shadow root、嵌套 3 层、约 3000 个节点 | **12.1** | domlens 64.2 | modern-screenshot 120.1 · html2canvas 140.8 · dom-to-image-more 162.0 · html-to-image 432.8 |
+| Web 字体——包含 Inter 400/700 与等宽代码片段的文章 | **11.3** | modern-screenshot 27.4 | dom-to-image-more 28.6 · html-to-image 39.6 |
+| 图片网格——40 张同源 PNG，通过 HTTP 加载 | **57.7** | modern-screenshot 65.1 | dom-to-image-more 73.6 · domlens 75.3 · html-to-image 85.5 |
+| 轮询——对同一个仪表盘连续捕获 20 次 | **19.8** | modern-screenshot 112.4 | dom-to-image-more 334.5 · domlens 490.3 |
+| 深层嵌套树——16 条链 × 10 层，约 2,100 个节点 | 656 | **html2canvas 306** | domlens 666 · modern-screenshot 913 · html-to-image 1,356 |
 
 轮询是唯一一行 SnapDOM 使用**默认配置**、开启记忆化的场景：每个 tick 都重新捕获同一个元素的仪表盘，
-正是 auto-burst 与差分重捕获存在的意义。关掉记忆化（`burst: false`）后同样的循环需要 28.6 ms——
-记忆化在这里带来 1.41× 的收益，而不是「未栅格化」的对比所暗示的数量级差距，因为每个 tick 仍然要
+正是 auto-burst 与差分重捕获存在的意义。关掉记忆化（`burst: false`）后同样的循环需要 27.4 ms——
+记忆化在这里带来 1.39× 的收益，而不是「未栅格化」的对比所暗示的数量级差距，因为每个 tick 仍然要
 付出栅格化和 PNG 编码的成本。
 
-CSS 密集场景对 domlens 只领先 1.05×，图片网格则是四方持平：面对 40 张真实的 HTTP 图片，所有库都在
-等同样的网络请求。这两行留在表里，正是因为 SnapDOM **没有**拉开差距的场景才最值得知道。
+CSS 密集场景对 domlens 领先 1.28×，图片网格则比看上去更接近：面对 40 张真实的 HTTP 图片，所有库都在
+等同样的网络请求。网格留在表里，正是因为 SnapDOM **没有**大幅拉开差距的场景才最值得知道。
 
-**深层嵌套树是 SnapDOM 唯一彻底落后的场景，慢 2.3×**——而且输给的是在其他每一行都最慢的
+**深层嵌套树是 SnapDOM 唯一彻底落后的场景，慢 2.15×**——而且输给的是在其他每一行都最慢的
 html2canvas。这个场景取自 domlens 自己的基准测试语料，他们的 README 也诚实地给出了原因：在这么大
 的一张捕获里，绝大部分时间是浏览器在栅格化一张几十兆像素的 SVG 图像，而不是库自身在做的事。所有
 基于 `<foreignObject>` 的实现都要付这笔账——domlens 的 SVG 引擎、modern-screenshot、
-html-to-image 和 SnapDOM 都落在 676 ms 到 1,400 ms 之间；而 html2canvas 直接把盒子画到 canvas 上，
-从不构建那张图像，303 ms 就结束了。这是本文里最清楚的一个例子：架构成本，而不是实现成本。
+html-to-image 和 SnapDOM 都落在 656 ms 到 1,356 ms 之间；而 html2canvas 直接把盒子画到 canvas 上，
+从不构建那张图像，306 ms 就结束了。这是本文里最清楚的一个例子：架构成本，而不是实现成本。
 
 按阶段拆开看：SnapDOM 的流水线产出 SVG url 只用 **约 97 ms**，浏览器随后花 **800–1,200 ms** 栅格化
 那张图像，PNG 编码约 90 ms。这一行超过 85% 的时间是一次 `drawImage`，期间我们自己的代码一行都没在
@@ -365,23 +365,24 @@ Chrome 会为每个 tile 重放整份绘制记录，所以成本随「显示项 
 变小而扩大——同一场景在 1、2、4 条链时是 11 / 24 / 64 ms，对方是 74 / 87 / 115 ms；在这条线以上，
 栅格化是一堵墙，再怎么优化流水线也够不到。
 
-### 冷启动与稳定状态——以及 SnapDOM 落后的地方
+### 冷启动与稳定状态——唯一打平的一格
 
 一次性使用的用户真正感受到的，是元素的**第一次**捕获，而不是第五次。每轮都换新元素、大表格、所有
 库都输出 PNG：
 
 | 测试项 | 毫秒 |
 | --- | --- |
-| domlens.js——每次捕获都换新元素 | **217.6** ← 冷启动最快 |
-| SnapDOM——新元素 + `cache: 'disabled'` | 236.4 |
-| SnapDOM——每次捕获都换新元素 | 238.4 |
-| modern-screenshot——每次捕获都换新元素 | 605.8 |
-| *SnapDOM——重复捕获同一元素，作为参照* | *169.1* |
+| domlens.js——每次捕获都换新元素 | **211.6** ← 冷启动最快 |
+| SnapDOM——新元素 + `cache: 'disabled'` | 216.4 |
+| SnapDOM——每次捕获都换新元素 | 218.6 |
+| modern-screenshot——每次捕获都换新元素 | 595.1 |
+| *SnapDOM——重复捕获同一元素，作为参照* | *150.8* |
 
-**在冷启动的大表格上，domlens 比 SnapDOM 快 1.10×。** 之所以写出来，是因为它是真的：他们常驻的 UA
-默认样式探测和 `prewarm()` 买下了第一次捕获，而 SnapDOM 冷启动开销中剩下的大部分，是约 7.7 Mpx 的
-`<foreignObject>` 栅格化与编码——再怎么优化流水线也去不掉。只要同一个元素被捕获第二次，SnapDOM 就
-把这一栏拿回来：169.1 ms 对他们的 217.6 ms。
+**在冷启动的大表格上 domlens 领先 1.03×——已在轮次间的噪声范围之内。** 在内联样式处理阶段被收窄到
+真正需要重新解析的属性之前，这个差距是 1.10×；那一步是逐节点执行的，所以冷启动和稳定状态同样为它付账。
+SnapDOM 冷启动开销中剩下的大部分，是约 7.7 Mpx 的 `<foreignObject>` 栅格化与编码——再怎么优化流水线
+也去不掉；他们常驻的 UA 默认样式探测则买下了最后那几毫秒。之所以单独写出来，是因为这是唯一一格名次
+仍会在轮次之间互换的。只要同一个元素被捕获第二次，SnapDOM 就明显拉开：150.8 ms 对他们的 211.6 ms。
 
 ### 能力矩阵——由像素验证，而不是由 README 验证
 

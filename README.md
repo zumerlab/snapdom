@@ -347,50 +347,51 @@ browser; the ratios are the part worth quoting.
 
 | Library | Complex card | Table, 500 rows | Simple node (1200×800) |
 | --- | --- | --- | --- |
-| **SnapDOM** | **11.3** | 204.8 | **13.0** |
-| domlens.js 0.1.0 | 17.3 | **194.3** | 115.2 |
-| modern-screenshot 4.7.0 | 31.3 | 546.8 | 14.0 |
-| dom-to-image-more 3.10.2 | 33.0 | 703.8 | 16.9 |
-| html-to-image 1.11.13 | 51.1 | 1,458.7 | 17.4 |
-| html2canvas 1.4.1 | 82.5 | 365.7 | 89.2 |
-| @renoun/screenshot 0.3.3 | 150.2 | 655.2 | 78.7 |
-| dom-to-image 2.6.0 | 154.6 | 921.1 | 128.0 |
-| dom-to-image-modern 1.0.2 | 155.2 | 926.0 | 129.1 |
+| **SnapDOM** | **11.1** | **183.0** | 12.9 |
+| domlens.js 0.1.0 | 18.0 | 192.3 | 123.4 |
+| modern-screenshot 4.7.0 | 30.0 | 534.2 | **12.1** |
+| dom-to-image-more 3.10.2 | 32.3 | 703.8 | 17.8 |
+| html-to-image 1.11.13 | 49.8 | 1,432.7 | 17.6 |
+| html2canvas 1.4.1 | 83.8 | 363.1 | 90.4 |
+| @renoun/screenshot 0.3.3 | 144.3 | 636.6 | 78.1 |
+| dom-to-image 2.6.0 | 156.8 | 918.0 | 129.6 |
+| dom-to-image-modern 1.0.2 | 157.2 | 924.5 | 131.6 |
 
-Two of these three are close enough to say so out loud. **domlens edges SnapDOM on the big
-table by 1.05×** — a real, repeatable 5%, though the two libraries' run-to-run ranges overlap.
-On the simple node SnapDOM and modern-screenshot are inside noise of each other: that scene has
-almost nothing to capture, so it mostly prices the PNG encode everyone shares. The complex card
-is the one clear gap, at 1.53×.
+Two of these three are close enough to say so out loud. SnapDOM takes the big table by 1.05×
+— it lost that cell by the same margin before the inline-style pass was scoped (see below), and
+the two libraries' run-to-run ranges still overlap. On the simple node modern-screenshot is
+nominally ahead by 0.8 ms: that scene has almost nothing to capture, so it mostly prices the PNG
+encode everyone shares, and the order flips between runs. The complex card is the one clear gap,
+at 1.62×.
 
 ### Real-world scenes
 
 | Scene | SnapDOM | Next fastest | Rest of the field |
 | --- | --- | --- | --- |
-| CSS-heavy page — 10k author rules, 240 class-styled cards | **131.1** | domlens 137.3 | modern-screenshot 288.7 · dom-to-image-more 341.1 · html-to-image 599.6 |
-| Shadow DOM — 150 open roots, 3 levels, ~3k nodes | **12.7** | domlens 50.1 | modern-screenshot 102.5 · html2canvas 137.4 · dom-to-image-more 153.5 · html-to-image 410.2 |
-| Web fonts — article with Inter 400/700 + mono spans | **11.5** | modern-screenshot 24.4 | dom-to-image-more 25.0 · html-to-image 45.6 |
-| Image grid — 40 same-origin PNGs fetched over HTTP | **58.7** | dom-to-image-more 61.0 | html-to-image 63.6 · domlens 66.1 · modern-screenshot 66.6 |
-| Polling — 20 captures of a live dashboard | **20.3** | modern-screenshot 110.2 | dom-to-image-more 333.2 · domlens 476.6 |
-| Deep nested tree — 16 chains × 10 levels, ~2,100 nodes | 706 | **html2canvas 303** | domlens 676 · modern-screenshot 943 · html-to-image 1,400 |
+| CSS-heavy page — 10k author rules, 240 class-styled cards | **129.3** | domlens 165.5 | modern-screenshot 291.0 · dom-to-image-more 337.4 · html-to-image 590.0 |
+| Shadow DOM — 150 open roots, 3 levels, ~3k nodes | **12.1** | domlens 64.2 | modern-screenshot 120.1 · html2canvas 140.8 · dom-to-image-more 162.0 · html-to-image 432.8 |
+| Web fonts — article with Inter 400/700 + mono spans | **11.3** | modern-screenshot 27.4 | dom-to-image-more 28.6 · html-to-image 39.6 |
+| Image grid — 40 same-origin PNGs fetched over HTTP | **57.7** | modern-screenshot 65.1 | dom-to-image-more 73.6 · domlens 75.3 · html-to-image 85.5 |
+| Polling — 20 captures of a live dashboard | **19.8** | modern-screenshot 112.4 | dom-to-image-more 334.5 · domlens 490.3 |
+| Deep nested tree — 16 chains × 10 levels, ~2,100 nodes | 656 | **html2canvas 306** | domlens 666 · modern-screenshot 913 · html-to-image 1,356 |
 
 Polling is the one row where SnapDOM runs with its **defaults**, memoization on: a dashboard
 that re-captures the same element every tick is exactly what auto-burst and differential
-recapture exist for. Without the memo (`burst: false`) the same loop costs 28.6 ms — the memo
-is worth 1.41× here, not the order of magnitude an unrasterized comparison would suggest,
+recapture exist for. Without the memo (`burst: false`) the same loop costs 27.4 ms — the memo
+is worth 1.39× here, not the order of magnitude an unrasterized comparison would suggest,
 because every tick still pays the raster and the PNG encode.
 
-CSS-heavy is a 1.05× lead over domlens, and the image grid is a four-way tie: with 40 real HTTP
-images, everyone waits on the same fetches. Both are in the table because the scenes where
-SnapDOM does *not* pull ahead are the ones worth knowing about.
+CSS-heavy is a 1.28× lead over domlens, and the image grid is closer than it looks: with 40 real
+HTTP images, everyone waits on the same fetches. The grid is in the table because the scenes
+where SnapDOM does *not* pull far ahead are the ones worth knowing about.
 
-**The deep tree is the one SnapDOM loses outright, by 2.3×** — and it loses to html2canvas, the
+**The deep tree is the one SnapDOM loses outright, by 2.15×** — and it loses to html2canvas, the
 oldest and slowest library in every other row. The scene is borrowed from domlens's own benchmark
 corpus, and their README diagnoses the mechanism honestly: on a capture that large, most of the
 time is the browser rasterizing a multi-megapixel SVG image, not anything the library does. Every
 `<foreignObject>` implementation pays it — domlens's SVG engine, modern-screenshot, html-to-image
-and SnapDOM all land between 676 ms and 1,400 ms, while html2canvas, which paints boxes onto a
-canvas and never builds that image, finishes in 303 ms. It is the clearest case in this document
+and SnapDOM all land between 656 ms and 1,356 ms, while html2canvas, which paints boxes onto a
+canvas and never builds that image, finishes in 306 ms. It is the clearest case in this document
 of an architectural cost rather than an implementation one.
 
 Decomposed by stage, SnapDOM's pipeline produces the SVG url in **~97 ms**; the browser spends
@@ -403,24 +404,26 @@ That puts the crossover at roughly **1,000 nodes / ~8 Mpx**. Below it SnapDOM wi
 margin — at 1, 2 and 4 chains the same scene is 11 / 24 / 64 ms against html2canvas's
 74 / 87 / 115 ms. Above it, the raster is a wall that no pipeline work reaches.
 
-### Cold vs steady — and where SnapDOM loses
+### Cold vs steady — the one cell that is a tie
 
 The number a one-shot user actually experiences is the **first** capture of an element, not the
 fifth. Fresh element every iteration, big table, PNG for everyone:
 
 | Arm | ms |
 | --- | --- |
-| domlens.js — fresh element each capture | **217.6** ← fastest cold |
-| SnapDOM — fresh element + `cache: 'disabled'` | 236.4 |
-| SnapDOM — fresh element each capture | 238.4 |
-| modern-screenshot — fresh element each capture | 605.8 |
-| *SnapDOM — same element re-captured, for reference* | *169.1* |
+| domlens.js — fresh element each capture | **211.6** ← fastest cold |
+| SnapDOM — fresh element + `cache: 'disabled'` | 216.4 |
+| SnapDOM — fresh element each capture | 218.6 |
+| modern-screenshot — fresh element each capture | 595.1 |
+| *SnapDOM — same element re-captured, for reference* | *150.8* |
 
-**domlens is 1.10× faster than SnapDOM on a cold big table.** It is called out because it is
-real: their persistent UA-default probe and `prewarm()` buy them the first capture, and most of
-what is left of SnapDOM's cold cost is the raster and encode of a ~7.7 Mpx foreignObject, which
-no amount of pipeline work removes. SnapDOM takes the column back the moment the same element
-is captured twice — 169.1 ms against their 217.6.
+**domlens is 1.03× ahead on a cold big table — inside run-to-run noise.** It was 1.10× before
+the inline-style pass was scoped to what actually needs re-resolving; that pass ran per node,
+so it was cold cost as much as steady. What is left of SnapDOM's cold time is mostly the raster
+and encode of a ~7.7 Mpx foreignObject, which no pipeline work removes, and their persistent
+UA-default probe buys them the last few milliseconds. The cell is called out because it is the
+one where the order still flips between runs. SnapDOM pulls clear the moment the same element is
+captured twice — 150.8 ms against their 211.6.
 
 ### Capability matrix — verified by pixels, not by READMEs
 
