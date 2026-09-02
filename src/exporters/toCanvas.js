@@ -435,6 +435,36 @@ function startDecode(image, src) {
   return image.decode()
 }
 
+// Chromium's svg-as-image draw is superlinear in the destination size: the deep-tree bench
+// (1232x13572, ~20k boxes) rasterized in 517 ms as one draw and in 123 ms as 8 horizontal
+// bands drawn from the ONE decoded image with source rects into the SAME canvas; WebKit
+// 71 → 15; Firefox has no nonlinearity (49 → 54). A 640x17298 table is unchanged (37 → 38), so
+// the gate is area, not height: one draw below 4 Mpx, above it a band per ~2 Mpx, capped at 8
+// (16 measured slower than 8). Bands are cut on whole device rows and every band maps its
+// source rect with the same scale and zero offset the whole draw would use, so the only
+// pixels that can differ are Chromium's own 256px tile seams of the one-shot raster: 68 of
+// 16.7M on the deep tree, one grey level each, at rows 256 apart, none at band edges. The
+// `crop` option is not this: it rewrites the viewBox and re-decodes the svg per window
+// (~47 ms of load+layout each on that tree), which is why it got worse past 4 slices.
+const BAND_MIN_AREA = 4e6
+const BAND_AREA = 2e6
+const MAX_BANDS = 8
+function drawBanded(ctx, img, devW, devH) {
+  const area = devW * devH
+  const bands = area > BAND_MIN_AREA ? Math.min(MAX_BANDS, Math.ceil(area / BAND_AREA)) : 1
+  if (bands === 1) {
+    ctx.drawImage(img, 0, 0, devW, devH)
+    return
+  }
+  const natW = img.naturalWidth
+  const k = img.naturalHeight / devH
+  for (let i = 0; i < bands; i++) {
+    const y0 = Math.round(i * devH / bands)
+    const y1 = i === bands - 1 ? devH : Math.round((i + 1) * devH / bands)
+    ctx.drawImage(img, 0, y0 * k, natW, (y1 - y0) * k, 0, y0, devW, y1 - y0)
+  }
+}
+
 /**
  * Rasterize SVG (o data URL) en un canvas respetando width/height + scale.
  * Supports flattening a background color with no intermediate canvas.
@@ -616,10 +646,15 @@ export async function toCanvas(url, options) {
       const tmp = document.createElement('canvas')
       tmp.width = natW
       tmp.height = natH
-      tmp.getContext('2d').drawImage(img, 0, 0)
+      drawBanded(tmp.getContext('2d'), img, natW, natH)
       ctx.drawImage(tmp, 0, 0, outW, outH)
     } else {
-      ctx.drawImage(img, 0, 0, outW, outH)
+      // Device pixels, identity transform: the bands are cut on whole device rows, and the
+      // dpr scale is folded into the destination size instead of the transform.
+      ctx.save()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      drawBanded(ctx, img, outW * dpr, outH * dpr)
+      ctx.restore()
     }
     return canvas
   } finally {

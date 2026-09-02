@@ -144,6 +144,25 @@ payload, rewrites the header, re-encodes and resamples at a fractional scale —
 through it against 3.1 ms/Mpx just under it. The AREA cap is unchanged. Pinned by
 `exporters.rasterLimit.test.js` (skipped on webkit, which really does cap at 16384).
 
+**Large captures are drawn in horizontal BANDS from one decoded image** (`drawBanded`,
+toCanvas.js). Chromium's svg-as-image draw is superlinear in the destination size: the deep
+tree (1232x13572, ~20k boxes) took 517 ms as one `drawImage` and 123 ms as 8 bands drawn with
+source rects into the same canvas; real Safari 26.5 through the exporter path 153 → 94; Firefox
+has no nonlinearity (49 → 54, harmless). The 500-row table is unchanged (37 → 38), so the gate
+is AREA, not height: one draw below 4 Mpx, a band per ~2 Mpx above, capped at 8 (16 measured
+slower). Cut on whole device rows with the dpr folded into the destination size under an
+identity transform, so every band uses the exact transform the whole draw would. Pixels:
+68 of 16.7M differ on Chromium, at rows 256 apart — the tile seams of Chromium's own one-shot
+raster, not band edges — and 0 on Firefox. This is NOT the `crop` option: crop rewrites the
+viewBox and re-decodes the svg per window (~47 ms of load+layout each on that tree), which is
+why it got worse past 4 slices (370 / 549 / 982 ms at 4 / 8 / 16) while bands keep improving.
+Two WebKit facts to keep straight: `waitForImgPaint`'s 16x16 probe is a `drawImage` too (the
+call-count test filters it by canvas size), and the exporter's raster differs from a naive
+main-document `new Image()` draw of the same svg by 0.9–24% of the pixels WITH THE BANDS OFF
+(identical counts with them on, safaridriver-measured), so the parity tests skip there — that
+gap belongs to the decode-frame path and predates this. Pinned by
+`exporter.toCanvas.bands.test.js`, proven red: a one-row band shift differs by 760k pixels.
+
 **The identity share asks a SUBTREE question too** (`styleShareSafe`, styles.js; the gate
 is built by styleScan.js). One full computed-style read per structural identity, twins copy
 it — but it was switched off by a DOCUMENT-wide flag whenever any author selector could
