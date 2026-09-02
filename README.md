@@ -342,7 +342,9 @@ are the part worth quoting.
 
 > **Run it yourself:** [snapdom.dev/compare/live](https://snapdom.dev/compare/live/) runs this
 > exact comparison in your own browser — same adapters, same scenes, same oracle — and prints
-> a table you can paste into an issue.
+> a table you can paste into an issue. The SnapDOM row is labelled with the version it loaded:
+> the published lab runs the published package, so until the v3 beta is on npm those rows are
+> v2, and the numbers below need the lab served by `npm run site`, which loads the local build.
 
 ### Steady state — re-capturing the same element
 

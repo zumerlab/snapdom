@@ -16,7 +16,8 @@ module.exports = [
         WebKitCSSMatrix: "readonly",
         // Build-time switch injected by esbuild (see esbuild.config.mjs); undefined when
         // src is consumed directly, which is how the test suite keeps the engine live.
-        __SNAPDOM_CANVAS_ENGINE__: "readonly"
+        __SNAPDOM_CANVAS_ENGINE__: "readonly",
+        __SNAPDOM_VERSION__: "readonly"
       }
     },
     rules: {

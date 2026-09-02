@@ -21,7 +21,10 @@ import {
   buildCapabilityFixture, analyzeCapabilities, CAPS,
 } from './harness.js'
 
-const SNAP = 'SnapDOM'
+// The version is in the label on purpose: this page imports the PUBLISHED package from unpkg
+// unless `npm run site` serves it, which rewrites the import to the local build. A run that
+// says v2 is a run of v2.
+const SNAP = `SnapDOM v${snapdom.version || '?'}`
 const CAPTURE_TIMEOUT = 45_000
 
 // snapdom's pipeline rows pin burst:false for the same reason the repo benchmark does: after
@@ -602,7 +605,7 @@ function boot() {
   }
   // SnapDOM's checkbox is disabled — it is always in the comparison. `:checked` still matches
   // a disabled-but-checked input, so selectedLibs() picks it up.
-  $('lib-SnapDOM').checked = true
+  $('lib-' + SNAP.replace(/\W+/g, '')).checked = true
 
   const capHead = $('cap-head')
   capHead.innerHTML = '<th>Library</th>' + CAPS.map((c) => `<th>${CAP_LABELS[c]}</th>`).join('') + '<th>first capture</th>'

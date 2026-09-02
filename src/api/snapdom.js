@@ -47,7 +47,11 @@ async function fromString(html, options) {
   }
 }
 
-export const snapdom = Object.assign(main, { plugins, fromString })
+// The build stamps package.json's version in; a `src` import (the test suite) has none. It is
+// here so a benchmark page can say which build it measured: the live lab loads the published
+// package from unpkg unless served by `npm run site`, and a v2 row read as v3 cost an evening.
+const version = typeof __SNAPDOM_VERSION__ === 'string' ? __SNAPDOM_VERSION__ : 'src'
+export const snapdom = Object.assign(main, { plugins, fromString, version })
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')

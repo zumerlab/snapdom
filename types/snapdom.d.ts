@@ -522,6 +522,9 @@ export declare function snapdom(
 export declare namespace snapdom {
   function plugins(...defs: PluginUse[]): typeof snapdom;
 
+  /** The package version this bundle was built from (`'src'` when imported from source). */
+  const version: string;
+
   /**
    * Capture an HTML string (SSR markup, templates) without wiring a mount: it mounts
    * offscreen in the live document (page CSS/fonts apply), captures, and cleans up.

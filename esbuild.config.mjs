@@ -10,16 +10,17 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 // Build with the engine: SNAPDOM_CANVAS_ENGINE=1 npm run compile
 const CANVAS_ENGINE = process.env.SNAPDOM_CANVAS_ENGINE === '1'
 
+const pkg = JSON.parse(readFileSync('./package.json', 'utf8'))
+const version = pkg.version || '0.0.0'
+
 /** @type {import('esbuild').BuildOptions} */
 const common = {
   bundle: true,
   sourcemap: false,
   logLevel: 'info',
-  define: { __SNAPDOM_CANVAS_ENGINE__: String(CANVAS_ENGINE) },
+  define: { __SNAPDOM_CANVAS_ENGINE__: String(CANVAS_ENGINE), __SNAPDOM_VERSION__: JSON.stringify(version) },
 }
 
-const pkg = JSON.parse(readFileSync('./package.json', 'utf8'))
-const version = pkg.version || '0.0.0'
 
 const banner = {
   js: `/*
