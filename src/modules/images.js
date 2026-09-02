@@ -93,6 +93,9 @@ export async function inlineImages(clone, options = {}) {
       // Success path: inline DataURL and ensure dimensions for layout fidelity
       cache.image?.set(src, r.data)
       img.src = r.data
+      // Same bytes as the data URL, zero-copy into compress's worker (a Blob crosses
+      // postMessage by reference; the string would be cloned and base64-decoded again).
+      if (r.blob) img.__snapdomBlob = r.blob
       if (!img.width) img.width = img.naturalWidth || 100
       if (!img.height) img.height = img.naturalHeight || 100
       return

@@ -238,7 +238,7 @@ export async function snapFetch(url, options = {}) {
       const mime = blob.type || resp.headers.get('content-type') || ''
       if (as === 'dataURL') {
         const dataURL = await blobToDataURL(blob)
-        return { ok: true, data: dataURL, status: resp.status, url, fromCache: false, mime }
+        return { ok: true, data: dataURL, blob, status: resp.status, url, fromCache: false, mime }
       }
       if (as === 'text') {
         const text = await blob.text()
@@ -328,8 +328,10 @@ export async function snapFetch(url, options = {}) {
       const mime = blob.type || resp.headers.get('content-type') || ''
 
       if (as === 'dataURL') {
+        // The Blob rides along: compress hands it to its worker instead of a base64 string
+        // the worker would have to decode again (140 ms for 26 MB of gallery photos).
         const dataURL = await blobToDataURL(blob)
-        return { ok: true, data: dataURL, status: resp.status, url: finalURL, fromCache: false, mime }
+        return { ok: true, data: dataURL, blob, status: resp.status, url: finalURL, fromCache: false, mime }
       }
 
       // default 'blob'

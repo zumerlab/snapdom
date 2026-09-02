@@ -181,6 +181,24 @@ plugins reading the clone would observe; not done. Pinned by
 `modules.images.dataUrlPassthrough.test.js` (counts src writes on the clones; restoring either
 write turns it red).
 
+**Compress runs on a lazy worker POOL and takes the fetched Blob, not its base64 string**
+(compress.js, snapFetch.js, images.js). The worker's cost on the 9-photo gallery, measured
+sequentially: `fetch(dataURL)` 140 ms (a base64 decode of the 26 MB of sources), PNG decode
+105, resize 1, PNG encode 65, base64 back 3. Two things followed. One worker serialized the
+jobs: 219 ms wall against 145 on four (138 on eight — four is the knee), so slots are spawned
+on demand up to `min(4, hardwareConcurrency - 1)`, with the same pool-wide failure semantics
+the single worker had (a throwing constructor or an erroring worker fails every pending job
+over to the sync path and stops the route). And when the image came over HTTP, snapFetch
+already held the Blob it base64-encoded for the clone's src: it now rides on the result,
+inlineImages parks it on the clone (`img.__snapdomBlob`), and compress posts it instead of
+the string — a Blob crosses postMessage by reference, the string was cloned and decoded
+again. Cold captures only; warm ones are served by the compress memo. Measured with every
+cache emptied: data:-sourced gallery 298 → 226 ms of pipeline (pool; there is no Blob for a
+data: source, so the decode happens either way); HTTP-sourced photos 258 → 187 in the fast
+mode, medians 261 → 201 (pool + Blob). Resizing inside createImageBitmap was measured slower
+(260 vs 219) and is not used. Images under 64 KB never reach the worker, so the README's
+image-grid row does not move.
+
 **The identity share asks a SUBTREE question too** (`styleShareSafe`, styles.js; the gate
 is built by styleScan.js). One full computed-style read per structural identity, twins copy
 it — but it was switched off by a DOCUMENT-wide flag whenever any author selector could

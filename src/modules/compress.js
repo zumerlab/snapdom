@@ -160,9 +160,9 @@ function gainFactor(nw, nh, targetW, targetH) {
 // blocking interaction during image-heavy captures and run in parallel with the rest of
 // the pipeline. Inline worker (no build infra); any failure flips to the sync path.
 const WORKER_SRC = `self.onmessage = async (e) => {
-  const { id, dataURL, targetW, targetH, resFactor, quality, mime } = e.data
+  const { id, dataURL, blob: given, srcLength, targetW, targetH, resFactor, quality, mime } = e.data
   try {
-    const blob = await (await fetch(dataURL)).blob()
+    const blob = given || await (await fetch(dataURL)).blob()
     const bmp = await createImageBitmap(blob)
     const nw = bmp.width, nh = bmp.height
     if (!nw || !nh) { bmp.close(); self.postMessage({ id, url: null }); return }
@@ -179,25 +179,34 @@ const WORKER_SRC = `self.onmessage = async (e) => {
     bmp.close()
     const out = await canvas.convertToBlob({ type: mime, quality })
     const url = new FileReaderSync().readAsDataURL(out)
-    self.postMessage({ id, url: (url && url.length < dataURL.length) ? url : null })
+    self.postMessage({ id, url: (url && url.length < srcLength) ? url : null })
   } catch (err) {
     self.postMessage({ id, error: String(err) })
   }
 }`
 
-let _worker = null // null = not tried, false = unavailable/broken
+// A small POOL, filled lazily: decode + scale + encode are CPU-bound and independent per
+// image, and one worker serialized them — the 9-photo gallery's jobs took 219 ms on one
+// worker, 145 on four (138 on eight, so four is the knee). Slots are spawned on demand, so a
+// page with a single photo still starts a single thread. Failure semantics are pool-wide,
+// as they were for the single worker: a construction that throws (CSP) or a worker that
+// errors fails every pending request over to the sync path and stops the worker route.
+const POOL_SIZE = Math.max(1, Math.min(4, ((typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 2) - 1))
+let _workers = null // null = not tried, false = unavailable/broken, else lazily filled slots
+let _next = 0
 let _seq = 0
 const _pending = new Map()
-function getCompressWorker() {
-  if (_worker !== null) return _worker
-  let src
+function disableWorkers() {
+  for (const resolve of _pending.values()) resolve(undefined)
+  _pending.clear()
+  if (Array.isArray(_workers)) for (const w of _workers) { try { w?.terminate() } catch { /* ok */ } }
+  _workers = false
+}
+function spawnWorker() {
+  let src, w = null
   try {
-    if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') {
-      _worker = false
-      return false
-    }
     src = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }))
-    const w = new Worker(src)
+    w = new Worker(src)
     w.onmessage = (e) => {
       const resolve = _pending.get(e.data.id)
       if (resolve) {
@@ -205,22 +214,28 @@ function getCompressWorker() {
         resolve(e.data.error ? undefined : (e.data.url ?? null))
       }
     }
-    w.onerror = () => {
-      // Broken worker (CSP, engine gap): fail every pending request over to the sync path
-      // and stop using it.
-      for (const resolve of _pending.values()) resolve(undefined)
-      _pending.clear()
-      try { w.terminate() } catch { /* ok */ }
-      _worker = false
-    }
-    _worker = w
+    w.onerror = disableWorkers
   } catch {
-    _worker = false
+    w = null
   }
   // The worker took its copy of the script at construction; an unrevoked blob URL would pin
   // the source Blob for the page's lifetime. Also runs when construction threw (CSP).
   if (src) URL.revokeObjectURL(src)
-  return _worker
+  return w
+}
+function getCompressWorker() {
+  if (_workers === false) return false
+  if (_workers === null) {
+    if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') return (_workers = false)
+    _workers = []
+  }
+  const i = _next++ % POOL_SIZE
+  if (!_workers[i]) {
+    const w = spawnWorker()
+    if (!w) { disableWorkers(); return false }
+    _workers[i] = w
+  }
+  return _workers[i]
 }
 
 // A job is one createImageBitmap + one drawImage + one convertToBlob: tens of milliseconds for
@@ -232,7 +247,7 @@ const WORKER_JOB_TIMEOUT = 5000
 
 /** Runs the downsample in the worker. Resolves null (no gain / skip), a data URL, or
  *  undefined when the worker path failed and the caller must use the sync fallback. */
-function workerDownsample(dataURL, targetW, targetH, mime) {
+function workerDownsample(dataURL, targetW, targetH, mime, blob) {
   const w = getCompressWorker()
   if (!w) return Promise.resolve(undefined)
   return new Promise((resolve) => {
@@ -241,7 +256,8 @@ function workerDownsample(dataURL, targetW, targetH, mime) {
     // Stored settler clears the timer, so a prompt answer leaves nothing pending.
     _pending.set(id, (value) => { clearTimeout(timer); resolve(value) })
     try {
-      w.postMessage({ id, dataURL, targetW, targetH, resFactor: RES_FACTOR, quality: LOSSY_QUALITY, mime })
+      // With a Blob the string stays home: it is only there for the size comparison.
+      w.postMessage({ id, dataURL: blob ? '' : dataURL, blob, srcLength: dataURL.length, targetW, targetH, resFactor: RES_FACTOR, quality: LOSSY_QUALITY, mime })
     } catch {
       clearTimeout(timer)
       _pending.delete(id)
@@ -250,7 +266,8 @@ function workerDownsample(dataURL, targetW, targetH, mime) {
   })
 }
 
-export async function downsampleDataURL(dataURL, targetW, targetH) {
+/** @param {Blob} [blob] the same bytes as `dataURL`, when the inline pass still has them */
+export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
   if (typeof dataURL !== 'string' || !dataURL.startsWith('data:image')) return null
   // SVG data URLs are vectors — rasterizing them here would *lose* fidelity, not save bytes.
   if (dataURL.startsWith('data:image/svg')) return null
@@ -274,7 +291,7 @@ export async function downsampleDataURL(dataURL, targetW, targetH) {
     // Preferred path for big payloads: pixel work in the worker (decode + scale + encode off
     // the main thread). Small ones skip it — see WORKER_MIN_CHARS.
     if (dataURL.length >= WORKER_MIN_CHARS) {
-      const offloaded = await workerDownsample(dataURL, targetW, targetH, mime)
+      const offloaded = await workerDownsample(dataURL, targetW, targetH, mime, blob)
       if (offloaded !== undefined) return offloaded
     }
 
@@ -337,7 +354,7 @@ export async function compressClonedImages(clone, options) {
     const cssW = parseFloat(img.dataset.snapdomWidth) || parseFloat(img.style.width) || img.width || 0
     const cssH = parseFloat(img.dataset.snapdomHeight) || parseFloat(img.style.height) || img.height || 0
     if (!cssW || !cssH) return
-    const out = await downsampleDataURL(src, cssW * eff, cssH * eff)
+    const out = await downsampleDataURL(src, cssW * eff, cssH * eff, img.__snapdomBlob)
     if (out) {
       count++
       before += src.length
