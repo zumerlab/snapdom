@@ -17,7 +17,7 @@ import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
 import {
   COMPETITORS, toDataUrl,
   complexCardHTML, bigTableHTML, cssHeavyScenario, shadowTreeScenario, deepTreeScenario,
-  dashboardScenario,
+  dashboardScenario, galleryScenario,
   buildCapabilityFixture, analyzeCapabilities, CAPS,
 } from './harness.js'
 
@@ -86,6 +86,13 @@ const SCENES = {
     cold: 1, steady: 3,
     heavy: true,
     mount: deepTreeScenario,
+  },
+  gallery: {
+    label: 'Photo gallery (9 photos, 16 Mpx of sources)',
+    note: 'A 3000×1400 hero and eight 1500×1000 thumbnails shown at 960×360 and ~232×130, fetched as same-origin blob: URLs like any HTTP image. Prices image inlining and downsampling: SnapDOM embeds only the pixels the output can show (4 MB of payload instead of 26 MB) and pays that work once per image.',
+    cold: 2, steady: 3,
+    heavy: true,
+    mount: galleryScenario,
   },
   polling: {
     label: 'Polling: 20 captures in a row',
@@ -177,9 +184,9 @@ let mountSeq = 0
  *  and identical content serializes to an identical data: URL — which the browser then serves
  *  from cache, quietly removing the decode stage from the measurement. The attribute changes
  *  the payload without moving a single pixel. */
-function mountInto(scene) {
+async function mountInto(scene) {
   stage.innerHTML = ''
-  const built = scene.mount()
+  const built = await scene.mount()
   built.root.setAttribute('data-lab-run', String(++mountSeq))
   stage.appendChild(built.root)
   return built
@@ -194,7 +201,7 @@ async function measure(name, capture, scene) {
   // column is per-element cold — the cost of capturing an element you have not captured
   // before — rather than "whoever loaded last looks slowest".
   say(`${name} — warming up`)
-  const warm = mountInto({ mount: wrap('<p>warm-up</p>', 120) })
+  const warm = await mountInto({ mount: wrap('<p>warm-up</p>', 120) })
   const warmT0 = performance.now()
   try { await withTimeout(capture(warm.root), CAPTURE_TIMEOUT, name) } catch { /* reported below if it also fails for real */ }
   const warmMs = performance.now() - warmT0
@@ -213,7 +220,7 @@ async function measure(name, capture, scene) {
     const colds = []
     for (let i = 0; i < coldRuns; i++) {
       say(`${name} — first capture ${i + 1}/${coldRuns}`)
-      built = mountInto(scene)
+      built = await mountInto(scene)
       await tick()
       const t0 = performance.now()
       await withTimeout(capture(built.root), CAPTURE_TIMEOUT, name)
@@ -224,7 +231,7 @@ async function measure(name, capture, scene) {
     }
     if (colds.length) row.cold = median(colds)
 
-    built = mountInto(scene)
+    built = await mountInto(scene)
     await tick()
     const steadies = []
     for (let i = 0; i < steadyRuns; i++) {
@@ -250,7 +257,7 @@ async function measure(name, capture, scene) {
  *  4th tick so an incremental path has to do real work. A fully static loop flatters a memo. */
 async function measurePolling(name, capture, scene) {
   const row = { name, cold: null, steady: null, out: null, dim: null, error: null, perCapture: null }
-  const built = mountInto(scene)
+  const built = await mountInto(scene)
   await tick()
   try {
     const samples = []

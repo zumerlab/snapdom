@@ -250,6 +250,48 @@ export function deepTreeScenario() {
   return { root, cleanup: () => { root.remove(); style.remove() } }
 }
 
+/** A photo gallery: one 3000x1400 hero and eight 1500x1000 thumbnails, shown at 960x360 and
+ *  ~232x130 — the shape of a product page or a media card, and the scene that prices image
+ *  inlining and downsampling (16 Mpx of sources for 0.6 Mpx of output). The photos are
+ *  generated once (gradients and translucent circles: PNG-hostile like a real photo, no
+ *  binary fixtures to ship) and served to the capture as same-origin blob: URLs, so every
+ *  library fetches them the way it fetches an HTTP image. */
+let _galleryBlobs = null
+function galleryPhoto(w, h, seed) {
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const x = c.getContext('2d')
+  const g = x.createLinearGradient(0, 0, w, h)
+  g.addColorStop(0, `hsl(${(seed * 47) % 360} 80% 55%)`)
+  g.addColorStop(1, `hsl(${(seed * 47 + 120) % 360} 80% 35%)`)
+  x.fillStyle = g
+  x.fillRect(0, 0, w, h)
+  for (let i = 0; i < 200; i++) {
+    x.beginPath()
+    x.arc((i * 97 + seed * 13) % w, (i * 53 + seed * 29) % h, ((i * 11) % 60) + 6, 0, Math.PI * 2)
+    x.fillStyle = `hsla(${(i * 17) % 360} 90% 70% / 0.4)`
+    x.fill()
+  }
+  return new Promise((r) => c.toBlob(r, 'image/png'))
+}
+export async function galleryScenario() {
+  if (!_galleryBlobs) {
+    _galleryBlobs = await Promise.all([galleryPhoto(3000, 1400, 1), ...Array.from({ length: 8 }, (_, i) => galleryPhoto(1500, 1000, i + 2))])
+  }
+  const urls = _galleryBlobs.map((b) => URL.createObjectURL(b))
+  const root = document.createElement('div')
+  root.style.cssText = 'width:960px;background:#fff;font-family:Arial,sans-serif'
+  root.innerHTML =
+    `<div style="width:960px;height:360px;overflow:hidden;border-radius:12px"><img style="width:100%;height:100%;object-fit:cover;display:block" src="${urls[0]}"></div>` +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">' +
+    urls.slice(1).map((u) => `<div style="height:130px;overflow:hidden;border-radius:8px"><img style="width:100%;height:100%;object-fit:cover;display:block" src="${u}"></div>`).join('') +
+    '</div>'
+  document.body.appendChild(root)
+  await Promise.allSettled(Array.from(root.querySelectorAll('img')).map((im) => im.decode?.()))
+  return { root, cleanup: () => { root.remove(); urls.forEach((u) => URL.revokeObjectURL(u)) } }
+}
+
 /** The dashboard the polling scenario re-captures every tick. */
 export function dashboardScenario() {
   const el = document.createElement('div')

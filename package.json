@@ -48,6 +48,7 @@
     "report:cross": "node scripts/cross-report.mjs",
     "test:coverage": "npx vitest run --browser.headless --coverage",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
+    "bench:realpage": "node scripts/realpage-bench.mjs",
     "test:pack": "node scripts/check-pack.mjs",
     "site": "npm run compile && node scripts/serve-site.mjs",
     "bump:dry": "npx @zumerbox/bump -d",

@@ -375,6 +375,7 @@ order can still flip between runs. The complex card is 1.74×.
 | Shadow DOM — 150 open roots, 3 levels, ~3k nodes | **12.0** | domlens 65.3 | modern-screenshot 104.2 · html2canvas 140.0 · dom-to-image-more 168.1 · html-to-image 646.1 |
 | Web fonts — article with Inter 400/700 + mono spans | **10.7** | modern-screenshot 23.1 | dom-to-image-more 25.0 · html-to-image 41.5 |
 | Image grid — 40 same-origin PNGs fetched over HTTP | **52.1** | dom-to-image-more 59.7 | html-to-image 60.9 · domlens 66.5 · modern-screenshot 68.1 |
+| Photo gallery — 9 photos, 16 Mpx of sources, 960px wide | **76.9** | html2canvas 75.7 | html-to-image 244.6 · dom-to-image-more 426.6 · modern-screenshot 628.7 · domlens 841.6 |
 | Polling — 20 captures of a live dashboard | **18.6** | modern-screenshot 109.1 | dom-to-image-more 333.3 · domlens 470.4 |
 | Deep nested tree — 16 chains × 10 levels, ~2,100 nodes | **240.9** | html2canvas 303.8 | domlens 673.7 · modern-screenshot 932.2 · html-to-image 1,375.6 |
 
@@ -386,7 +387,16 @@ because every tick still pays the raster and the PNG encode.
 
 CSS-heavy is a 1.10× lead over domlens, and the image grid is closer than it looks: with 40 real
 HTTP images, everyone waits on the same fetches. The grid is in the table because the scenes
-where SnapDOM does *not* pull far ahead are the ones worth knowing about.
+where SnapDOM does *not* pull far ahead are the ones worth knowing about — and the photo
+gallery is a tie with html2canvas, for a reason worth spelling out. A 3000×1400 hero and eight
+1500×1000 thumbnails shown at 960×360 and 232×130 are 16 Mpx of sources for 0.6 Mpx of output.
+Every `<foreignObject>` library has to inline them into the SVG; SnapDOM downsamples each one to
+the resolution the output can show (a 4 MB payload instead of 26 MB) and memoizes the result per
+image, which is why the steady number is 76.9 while the libraries that embed the sources whole
+pay the raster of 26 MB. html2canvas never inlines anything: it paints the images the browser has
+already decoded for the page, straight onto its canvas, and that is as cheap as it gets. The
+first capture of such a page is where the two approaches differ most; the real-page table below
+has that number.
 
 **The deep tree was the one SnapDOM lost outright — by 2.15×, to html2canvas, the oldest and
 slowest library in every other row — until the raster stage was split.** The scene is borrowed
@@ -429,6 +439,40 @@ the pipeline. The larger cold change is not in this table at all, because this p
 a real page with its own stylesheet the identity share used to switch itself off (see the host
 CSS note below), and that is where cold captures were losing 80 ms.
 
+### On a real page
+
+Everything above runs in a bare harness page. A real page has its own stylesheets, fonts and
+scripts, and they cost every library something — and used to cost SnapDOM more than most: a
+single author `::before` rule, or a `.btn:hover`, anywhere in the document switched off two of
+its fast paths for the whole capture (see the note at the end of this section). This table is
+the same comparison run inside the docs site's own `/compare/` page, **per-element cold** — the
+scene is mounted fresh for every capture, with unique content, so nothing is served from a
+cache: the number a one-shot user actually experiences. Same rules, same adapters, five
+captures per cell, median.
+
+| Scene (per-element cold, docs page) | SnapDOM | domlens 0.1.0 | html2canvas 1.4.1 | modern-screenshot 4.7.0 | html-to-image 1.11.13 |
+| --- | --- | --- | --- | --- | --- |
+| Table, 500 rows (640×17312) | **194.5** | 281.6 | 380.2 | 607.7 ¹ | 1,461.9 ¹ |
+| Deep nested tree (1232×13586) | 388.8 | 737.8 | **324.0** | 981.0 | 1,593.3 |
+| Photo gallery (960×654) | 220.8 | 1,175.4 | **187.5** | 625.6 | 578.4 |
+
+¹ Output a different size from everyone else's (modern-screenshot 640×17311, html-to-image
+605×16384: it hits the 16384px canvas limit and downscales), so the cell is not comparable.
+
+The table is SnapDOM's by 1.45× over domlens. The other two rows go to html2canvas, on a real
+page, cold, and the reason is architectural in both: it never builds the SVG image and it
+never inlines a picture. On the deep tree SnapDOM's first-capture pipeline is 168 ms
+(54 ms on the second capture of the same element) plus 168 ms of raster and encode; the
+repainter's whole job is 324. On the gallery the first capture pays to fetch nine photos,
+base64-encode 26 MB of them into the clone and downsample them to the 4 MB the output can
+show — 305 ms of pipeline where the repainter paints the browser's already-decoded images in
+187. On the second capture SnapDOM's memo has the downsampled photos and the row flips to
+77 vs 76 (the steady table above). The cells are here because a first capture on a real page is
+the honest question, and these two are the answer today.
+
+Run it: `npm run site` in one terminal, `node scripts/realpage-bench.mjs` in another. It prints
+this table.
+
 ### Capability matrix — verified by pixels, not by READMEs
 
 Each capability paints a marker colour into a fixture; the checker counts those pixels in the
@@ -466,9 +510,9 @@ Cells report behaviour **with defaults**; html2canvas passes conic gradients and
 4. **The memo is pinned off** except in the polling scenario, where it is the point and the
    label says so.
 
-Numbers here come from a bare harness. A real page — its own stylesheets, its own webfonts —
-costs every one of these libraries considerably more; the live lab captures inside a real page,
-so expect its numbers to be higher than this table across the board. One large part of that gap
+The category tables come from a bare harness; the real-page table above is the same comparison
+inside the docs site, and the live lab captures inside whatever page you run it in. Expect the
+bare numbers to be the lowest of the three. One large part of the gap between bare and real
 used to be SnapDOM's alone: a single author `::before` rule anywhere in the document — matching
 nothing — put the whole capture through a second recursive tree walk, taking the 500-row table
 from 75 ms to 197 ms while html2canvas was unaffected. The pseudo pass now asks whether any node

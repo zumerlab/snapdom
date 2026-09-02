@@ -30,6 +30,7 @@ export {
   shadowTreeScenario,
   deepTreeScenario,
   dashboardScenario,
+  galleryScenario,
 } from '../docs/compare/live/harness.js'
 
 import { complexCardHTML, bigTableHTML } from '../docs/compare/live/harness.js'
