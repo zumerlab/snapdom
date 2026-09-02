@@ -366,14 +366,23 @@ export async function deepClone(node, sessionCache, options) {
           return /%|auto/i.test(String(v || ''))
         }
 
-        const w = parseInt(clone.dataset.snapdomWidth || '0', 10)
-        const h = parseInt(clone.dataset.snapdomHeight || '0', 10)
+        // getUnscaledDimensions is the BORDER box (offsetWidth); width/height and min-* resolve
+        // against the CONTENT box unless box-sizing is border-box, so with padding or a border
+        // the frozen box was too large by exactly that much and the picture rendered scaled
+        // inside it (measured against the live element: 18–34% of pixels differ with 20px
+        // padding + a 5px border, 0% without either).
+        const px = (p) => parseFloat(cs.getPropertyValue(p)) || 0
+        const bb = cs.getPropertyValue('box-sizing') === 'border-box'
+        const w = parseInt(clone.dataset.snapdomWidth || '0', 10) -
+          (bb ? 0 : px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width'))
+        const h = parseInt(clone.dataset.snapdomHeight || '0', 10) -
+          (bb ? 0 : px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width'))
 
-        const needFreezeW = usesPercentOrAuto('width') || !w
-        const needFreezeH = usesPercentOrAuto('height') || !h
+        const needFreezeW = usesPercentOrAuto('width') || !(w > 0)
+        const needFreezeH = usesPercentOrAuto('height') || !(h > 0)
 
-        if (needFreezeW && w) clone.style.width = `${w}px`
-        if (needFreezeH && h) clone.style.height = `${h}px`
+        if (needFreezeW && w > 0) clone.style.width = `${w}px`
+        if (needFreezeH && h > 0) clone.style.height = `${h}px`
 
         // #337: Preserve object-fit and object-position for correct image proportions
         const objectFit = cs.getPropertyValue('object-fit')
@@ -384,18 +393,11 @@ export async function deepClone(node, sessionCache, options) {
           // When object-fit is active, minWidth/minHeight can distort the image
           // Only set min dimensions if no object-fit override is in play
         } else {
-          // Extra shielding: stops a class added later from overriding the fix.
-          //
-          // NOTE (v3 audit): w/h are offsetWidth/offsetHeight — the BORDER box — while
-          // min-width/min-height resolve against the CONTENT box, so on an <img> with padding
-          // or a border this floor is nominally too large. Subtracting the difference was
-          // tried and REVERTED: the captured box measured 102x52 against a live 102x52 either
-          // way, so no visible defect could be demonstrated, while d14-cors-test (whose images
-          // carry `border: 1px solid black`) moved by 2.26% / 728px. A change that shifts real
-          // demo pixels with no shown fidelity gain does not belong here. Revisit only with a
-          // case where the capture actually differs from the live element.
-          if (w) clone.style.minWidth = `${w}px`
-          if (h) clone.style.minHeight = `${h}px`
+          // Extra shielding: stops a class added later from overriding the fix. Content-box
+          // values (see above): an earlier attempt corrected only this floor, saw no change on
+          // a fixture whose freeze above still wrote the border box, and was reverted.
+          if (w > 0) clone.style.minWidth = `${w}px`
+          if (h > 0) clone.style.minHeight = `${h}px`
         }
       } catch (e) {
         debugWarn(sessionCache, 'IMG dimension freeze failed', e)
@@ -588,6 +590,10 @@ export async function deepClone(node, sessionCache, options) {
     } catch {
     }
     const rawCSS = extractShadowCSS(node.shadowRoot)
+    // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
+    // among them, and a page whose only ::after lives in a shadow root skipped the pass
+    // entirely (the pinned shadow ::after that never painted).
+    if (!sessionCache.__shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.__shadowPseudo = true
     const rewritten = rewriteShadowCSS(rawCSS, scopeSelector, scopeId)
     const neededVars = collectCustomPropsFromCSS(rawCSS)
     const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)

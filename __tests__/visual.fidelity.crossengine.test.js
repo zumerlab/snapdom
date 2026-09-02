@@ -133,21 +133,16 @@ describe('3 · target width combined with a shadow', () => {
 describe('4 · an oversized background-size:auto layer is a crop, not a scale', () => {
   // compress downsampled to the element box, which under `auto` changes WHICH pixels paint.
   //
-  // The crop case is SKIPPED ON WEBKIT because it fails there for a reason of its own, and
-  // that reason is a real, open snapdom bug rather than anything about compress:
-  //
-  //   The first capture of an element whose svg carries a nested data:image comes back FULLY
-  //   TRANSPARENT on WebKit; later captures of the same element are correct. Isolated: the
-  //   serialized payload is correct, and drawing that very payload by hand is blank
-  //   immediately after img.decode() resolves and correct 100ms later. That is WebKit #394,
-  //   which waitForImgPaint (src/exporters/toCanvas.js) exists to cover — and does not.
-  //   Changing its readiness signal from "any ink" to "two consecutive identical frames" did
-  //   not help either, so the guard is likely not being applied to the image that is finally
-  //   drawn; the decode-frame lifecycle is the next thing to read.
-  //
-  // Unlike most of the Safari quirk family this DOES reproduce under Playwright WebKit, so
-  // it can be fixed and verified here without the SnapEye harness. Un-skip this when it is.
-  it.skipIf(isSafari())('keeps the addressed quadrant of a sprite', async () => {
+  // The crop case is also the WebKit pin for the other half of #394: the FIRST capture of an
+  // element whose svg carries a nested data:image came back fully transparent there (later
+  // captures were correct). WebKit decodes the nested raster asynchronously at a subsampling
+  // level picked from the draw's scale, so waitForImgPaint's 16x16 probe proved a coarse
+  // frame and the full-size draw, asking for a finer one, painted nothing while it decoded.
+  // toCanvas now probes again AFTER the real draw and redraws once the frame lands; this
+  // test is red on webkit without that (it reproduces under Playwright WebKit, no SnapEye
+  // needed). The first decode of a data: URL is the trigger, so it must stay the first
+  // capture of this sprite in the page: keep it ahead of the cover case below.
+  it('keeps the addressed quadrant of a sprite', async () => {
     const src = await quadImage(600)
     // A 100x100 window onto the bottom-right (yellow) quadrant of a 600x600 sprite.
     const el = mount(

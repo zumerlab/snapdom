@@ -15,6 +15,8 @@
  */
 
 import { deepClone } from './clone.js'
+import { lineClampTree } from '../modules/lineClamp.js'
+import { forceContentVisibility } from '../utils/prepare.helpers.js'
 import { composeAndSerialize } from '../engines/svg.js'
 import { applyStyleClass, wrapScrolledClone } from './prepare.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
@@ -202,7 +204,18 @@ async function diffCapture(element, state, context) {
     // delta nodeMap so subtree-scoped passes see only their own nodes.
     const delta = new Map()
     const sessionCache = { styleMap: R.styleMap, styleCache: R.styleCache, nodeMap: delta, options: context }
-    const sub = await deepClone(src, sessionCache, context)
+    // The same live-DOM prep the full pipeline runs before ITS deepClone (capture.js,
+    // prepare.js): clamp/ellipsis text to its rendered lines and un-skip content-visibility.
+    // A bare deepClone spliced un-clamped text into the retained frame.
+    const undoClamp = lineClampTree(src, null)
+    const undoCV = forceContentVisibility(src)
+    let sub
+    try {
+      sub = await deepClone(src, sessionCache, context)
+    } finally {
+      undoCV()
+      undoClamp()
+    }
     if (!sub || sub.nodeType !== 1) return null
     if (sub.querySelector?.('style[data-sd]')) return null // shadow content appeared → full
 

@@ -22,7 +22,7 @@ import {
   hasCounters
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
-import { pseudoGatesFor, flushStyleInvalidations } from './styles.js'
+import { pseudoGatesFor, flushStyleInvalidations, invalidateStyleCaches } from './styles.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
@@ -100,8 +100,13 @@ function styleFingerprint(doc) {
     }
   }
 
+  // Adopted sheets by rule count, not just by number: `replaceSync()` on a sheet already
+  // adopted changes no length and emits no mutation record, and the pass stayed memoized
+  // off. Constructed sheets are same-origin by definition, and a page has a handful.
   const ass = /** @type {any} */ (doc).adoptedStyleSheets
-  fp += `ass:${Array.isArray(ass) ? ass.length : 0}|tr:${totalRules}`
+  let assRules = 0
+  if (Array.isArray(ass)) for (const s of ass) { const r = safeRules(s); if (r) assRules += r.length }
+  fp += `ass:${Array.isArray(ass) ? ass.length : 0}/${assRules}|tr:${totalRules}`
 
   return fp
 }
@@ -167,6 +172,14 @@ function sheetHasNeedles(sheet, needles, state) {
 export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc)) {
   const memo = __preflightMemo.get(doc)
   if (memo && memo.fingerprint === fp) return memo.result
+  // A `<style>`/`<link>` mount or edit already bumps the DOM epoch through its mutation
+  // record, so the styles.js memos (universe, gates) re-scan for those on their own. The one
+  // rule change that emits NO record is on adoptedStyleSheets (assignment or replaceSync), so
+  // ONLY when the adopted portion of the fingerprint moved is a manual epoch bump needed —
+  // and doing it for every fingerprint change bumped epochs mid-capture and cost three
+  // read-count/byte-equality tests their invariants.
+  const adopted = (s) => (s.match(/\|ass:[^|]*/) || [''])[0]
+  if (memo && adopted(fp) !== adopted(memo.fingerprint)) invalidateStyleCaches()
 
   const NEEDLES = [
     // double-colon — ::marker/::first-line ship as scoped rules (emitScopedPseudoRule),
@@ -443,9 +456,14 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
  * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
  */
 /** Properties valid on the respective pseudo that the scoped-rule emitter diffs. */
-const MARKER_PROPS = ['color', 'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'line-height']
+// -webkit-text-fill-color is here because it PAINTS the glyphs and overrides `color`: when the
+// element clone carries a full style read (the unreliable-scan path reads every property), it
+// gets the element's own fill colour, which then defeats the pseudo's `color`. Read from the
+// pseudo it resolves to the pseudo's own colour (initial is currentColor), so emitting it makes
+// the first line / marker actually paint. Only written when it differs from the element's.
+const MARKER_PROPS = ['color', '-webkit-text-fill-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'line-height']
 const FIRST_LINE_PROPS = [
-  'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-variant',
+  'color', '-webkit-text-fill-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-variant',
   'letter-spacing', 'word-spacing', 'text-transform', 'text-decoration-line',
   'text-decoration-color', 'text-decoration-style', 'line-height', 'background-color', 'vertical-align',
 ]
@@ -456,7 +474,14 @@ const FIRST_LINE_PROPS = [
  *  prepareClone folds them into the class prefix CSS. */
 function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) {
   try {
-    if (!source.matches(gate)) return
+    if (gate === null) {
+      // No selector to ask: only the boxes the pseudo can exist on pay the probe — list
+      // items for ::marker, block containers for ::first-line (shadow content excluded: its
+      // own scoped rules render there).
+      if (source.getRootNode() !== (source.ownerDocument || document)) return
+      const d = getStyle(source).display || ''
+      if (pseudo === '::marker' ? !d.includes('list-item') : !(d === 'block' || d === 'flow-root' || d === 'list-item' || d === 'inline-block' || d === 'table-cell' || d === 'table-caption')) return
+    } else if (!source.matches(gate)) return
     if (pseudo === '::marker' && !(getStyle(source).display || '').includes('list-item')) return
     const ps = getStyle(source, pseudo)
     const base = getStyle(source)
@@ -464,7 +489,12 @@ function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) 
     let decls = ''
     for (const p of props) {
       const v = ps.getPropertyValue(p)
-      if (v && v !== base.getPropertyValue(p)) decls += `${p}:${v};`
+      // background-color and vertical-align are not inherited: the pseudo's initial value
+      // differs from a painted element's own and is not an authored rule (a probed block
+      // with a background emitted an inert rule per node, which also tripped diff.js's
+      // "new scoped rules → full pipeline" bail).
+      if (v && v !== base.getPropertyValue(p) &&
+          !(p === 'background-color' && v === 'rgba(0, 0, 0, 0)') && !(p === 'vertical-align' && v === 'baseline')) decls += `${p}:${v};`
     }
     if (pseudo === '::marker') {
       const c = ps.getPropertyValue('content')
@@ -554,14 +584,17 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
  * The subtree-level question is the one worth asking, and one `querySelector` answers it.
  * Two cases must still walk:
  *  - a `null` gate — the scan could not be trusted (cross-origin CSS), so nothing may be ruled out;
- *  - any shadow root in the capture — its own sheets are never scanned, so `pseudoGatesFor`
- *    deliberately returns null gates per node there. `sessionCache.shadowScopes` is filled by
- *    deepClone, which always runs first (prepare.js), and diff.js bails on shadow content
- *    before it reaches this pass.
+ *  - a shadow root in the capture whose own CSS declares a pseudo — those sheets are never
+ *    scanned, so `pseudoGatesFor` returns null gates per node there and the walk probes them.
+ *    `__shadowPseudo` is set by deepClone, which always runs first (prepare.js) and reads
+ *    every shadow root's CSS anyway; diff.js bails on shadow content before this pass. (It
+ *    used to test `shadowScopes.size`, which is a WeakMap: always undefined, never a bail —
+ *    the pinned shadow ::after was skipped right here.) A shadow root that declares no
+ *    pseudo cannot get one from the document's sheets, so the light-DOM question stands.
  * @returns {boolean}
  */
 function canSkipPseudoWalk(source, sessionCache) {
-  if (sessionCache.shadowScopes?.size) return false
+  if (sessionCache.__shadowPseudo) return false
   const gates = pseudoGatesFor(source)
   const sels = []
   for (const kind of ['before', 'after', 'firstLetter', 'marker', 'firstLine']) {
@@ -586,7 +619,9 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
   if (source.tagName === 'TEXTAREA') return
   // --- preflight, once per session/doc ---
   const doc = source.ownerDocument || document
-  if (!preflightWithFp(doc, sessionCache)) {
+  // `__shadowPseudo`: a shadow root in the capture declares a pseudo (deepClone reads its
+  // CSS); the document-level preflight cannot see it.
+  if (!preflightWithFp(doc, sessionCache) && !sessionCache.__shadowPseudo) {
     return
   }
   // Asked once, on the root call only: the recursion below is exactly what this skips.
@@ -613,11 +648,12 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
 
   // Authored ::marker / ::first-line: a scoped CSS rule (not a span) is the faithful
   // mechanism — markers re-render natively in the foreignObject and first-line
-  // re-fragments there. Gated strictly on collected author selectors: null (unreliable
-  // scan) keeps today's behavior, and shadow content already carries these rules through
-  // injectScopedStyle.
-  if (gates.marker) emitScopedPseudoRule(source, clone, sessionCache, gates.marker, '::marker', MARKER_PROPS)
-  if (gates.firstLine) emitScopedPseudoRule(source, clone, sessionCache, gates.firstLine, '::first-line', FIRST_LINE_PROPS)
+  // re-fragments there. '' = no author rule for that kind; a selector gates the probe; null
+  // (unreliable scan: a cross-origin sheet) probes like ::before does — the emitter only
+  // writes what differs from the element's own style, so it cannot over-apply. Shadow
+  // content carries these rules through injectScopedStyle instead.
+  if (gates.marker !== '') emitScopedPseudoRule(source, clone, sessionCache, gates.marker, '::marker', MARKER_PROPS)
+  if (gates.firstLine !== '') emitScopedPseudoRule(source, clone, sessionCache, gates.firstLine, '::first-line', FIRST_LINE_PROPS)
 
   for (const pseudo of ['::before', '::after', '::first-letter']) {
     const gate = gates[pseudo === '::before' ? 'before' : pseudo === '::after' ? 'after' : 'firstLetter']

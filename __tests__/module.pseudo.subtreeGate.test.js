@@ -37,21 +37,33 @@ describe('pseudo subtree gate', () => {
     expect(await countPixels(root, [0xe0, 0x00, 0x00])).toBeGreaterThan(1000)
   }, 30_000)
 
-  // PRE-EXISTING DEFECT, not a regression from the subtree gate: it fails identically with the
-  // gate reverted. An author ::before/::after declared INSIDE an open shadow root never paints,
-  // while a plain rule from the same <style> does — same fixture, one capture: the `.k` box
-  // renders green and the `::after` box renders nothing, whereas the identical pair in light
-  // DOM renders the ::after on top. The scoped rule reaches the payload (the svg carries both
-  // the selector and the colour), so the break is in scoping/matching at render time, not in
-  // collection. Unpinning this is its own task; the gate change must not be blamed for it.
-  test.skip('a ::after inside an open shadow root still renders', async () => {
+  // A ::after declared INSIDE an open shadow root, on a page whose document sheets mention no
+  // pseudo at all. Two things used to lose it: the pass's preflight only reads the document's
+  // sheets, so it skipped the whole walk; and the scope rewrite produced
+  // `:where([data-sd] .k::after:not(…))`, which no parser accepts. It is inlined as a span
+  // from the live computed style, like a light-DOM ::after, and exactly once.
+  test('a ::after inside an open shadow root still renders', async () => {
     const root = mount(document.createElement('div'))
     root.style.cssText = 'width:120px;height:120px;background:#fff'
     const host = document.createElement('div')
     root.appendChild(host)
     const sr = host.attachShadow({ mode: 'open' })
     sr.innerHTML = '<style>.k::after{content:"";display:block;width:40px;height:40px;background:#0000e0}</style><div class="k"></div>'
-    expect(await countPixels(root, [0x00, 0x00, 0xe0])).toBeGreaterThan(1000)
+    const n = await countPixels(root, [0x00, 0x00, 0xe0])
+    expect(n).toBeGreaterThan(1000)
+    expect(n).toBeLessThan(2200) // one 40x40 box, not two
+  }, 30_000)
+
+  // ::marker has no span mechanism: it renders natively in the foreignObject from the scoped
+  // rule, which needs the pseudo-element OUTSIDE the :where() wrapper to be a valid selector.
+  test('a ::marker declared inside a shadow root colours the marker', async () => {
+    const root = mount(document.createElement('div'))
+    root.style.cssText = 'width:160px;height:80px;background:#fff;font:16px Arial'
+    const host = document.createElement('div')
+    root.appendChild(host)
+    host.attachShadow({ mode: 'open' }).innerHTML =
+      '<style>li::marker{color:#c000c0;font-size:40px}</style><ul style="margin:0;padding-left:60px"><li>x</li></ul>'
+    expect(await countPixels(root, [0xc0, 0x00, 0xc0])).toBeGreaterThan(40)
   }, 30_000)
 
   // The shadow bail in canSkipPseudoWalk is behaviour-preserving rather than provable through

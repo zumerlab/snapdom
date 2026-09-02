@@ -284,7 +284,7 @@ WICG canvas-place-element (`ctx.drawElement`), opt-in via `engine: 'canvas'`. Fu
 
 The old once-per-session 3x pre-capture warmup is gone. WebKit quirks are handled at their point of impact instead (all verified against real Safari via a SnapEye harness — re-verify there before touching these):
 
-- **WebKit #219770/#394** (svg-as-image: `img.decode()` resolves before embedded fonts / nested images paint → blank first `drawImage`): `toCanvas`'s `waitForImgPaint` attaches the img offscreen and, when the svg carries `@font-face`/`data:image` payloads, probe-draws a 16px canvas until ink appears (bounded ~600ms). Plain svgs keep the old two-rAF compositor wait.
+- **WebKit #219770/#394** (svg-as-image: `img.decode()` resolves before embedded fonts / nested images paint → blank first `drawImage`): `toCanvas`'s `waitForImgPaint` attaches the img offscreen and, when the svg carries `@font-face`/`data:image` payloads, probe-draws a 16px canvas until ink appears (bounded ~600ms). Plain svgs keep the old two-rAF compositor wait. The pre-draw probe is not sufficient on its own for a large nested raster (WebKit decodes it asynchronously at a subsampling level chosen from the DRAW's scale, so the 16x16 probe proves a coarse frame the full-size draw does not reuse): the real draw is wrapped in `paint()` and, on Safari when the probe saw ink, the same probe runs ONCE MORE after the draw — blank means the finer decode is still pending, so wait for it (bounded 600ms) and `paint()` again at the same scale. Only a would-be-blank first capture pays the redraw; see the FIXED entry below.
 - **`src/api/snapdom.js` Safari pre-step**: waits `ensureFontsReady` for the element's fonts (when `embedFonts`) and pokes `<canvas>` stores (`getImageData(1,1)`) so `cloneCanvas`'s `toDataURL` isn't blank. Cheap, runs per capture.
 - **`toImg`/`toSvg` with scale/width/height on Safari stays vector**: `fixSafariShadows` (same rewrite `toCanvas` uses — WebKit flips svg-as-image shadow Y offsets) + patching the svg's own `width`/`height` to the display size, so it renders at natural scale. PNG rasterize is only the error fallback.
 
@@ -337,7 +337,13 @@ All are minified, `sideEffects: false`, `splitting: false`. No code splitting, n
   URL, never snapdom's `toRaw` against someone else's raster; (2) **same pixels** — `scale: 1`
   AND `dpr: 1`, because snapdom defaults `dpr` to `devicePixelRatio` and headless chromium's
   DPR of 1 hides it; (3) **correctly-shaped options** — domlens takes `{ output: { scale } }`
-  and silently ignores a flat `scale`; (4) **the memo pinned off** (`burst: false`) except in
+  and silently ignores a flat `scale`, and it takes `viewport: { scrollX: 0, scrollY: 0 }`
+  because its default viewport reads the window's scroll and the region it cuts is offset by
+  exactly that much (lab page scrolled 300px: the table capture starts at row #9; 1000px:
+  row #29; 0.00% against a live screenshot with the option, at any scroll — measured
+  2026-09-02 after the user saw "domlens never looks right" on the lab and suspected the
+  host page; the host CSS was innocent, disabling it only moved the element to scroll 0);
+  (4) **the memo pinned off** (`burst: false`) except in
   the polling scene, where it is the point and the label says so. Scenes carry no `class`
   attributes (the host page would style them) and must fit inside the 16384px canvas limit,
   past which each library clamps to a different scale and rule (1) quietly ends.
@@ -366,52 +372,74 @@ Playwright's WebKit does not reproduce the quirks the Safari code exists for —
 
 Sanity-check the detector itself: a blank PNG at the same dimensions weighs ~0.4% of a real capture, so the size threshold genuinely discriminates. And check the FORMAT of what lands in `.snapeye/` — a run that quietly produced SVG instead of PNG is what exposed the `toBlob` format regression that the unit suite missed.
 
-## Known open defects (v3 audit, 2026-08-30 → 09-01)
+## Audit defects — all six FIXED 2026-09-02 (were "open" 2026-08-30 → 09-01)
 
-Everything below was found by the audit, confirmed by reading or measuring the real code, and
-deliberately NOT fixed. Each line says why, so nobody re-derives it. **All five are inherited:
-v2 has the identical code or behaviour — none is a v3 regression.** (The two v3-only gaps the
-audit found are noted at the end.)
+The five audit defects plus the shadow-root `::after` were fixed in one pass. Each entry keeps
+the mechanism and says how it was closed, so a regression is recognizable. The traps that
+guarded the earlier "do not fix" decisions are still real — they are why each fix is narrow.
 
-- **`toCanvas.js` `waitForImgPaint` — first capture blank on WebKit.** The first capture of an
-  element whose svg carries a nested `data:image` comes back FULLY TRANSPARENT; every later
-  capture of the same element is correct. Isolated: the payload is right, and drawing that very
-  payload by hand is blank immediately after `img.decode()` resolves and correct 100ms later —
-  WebKit #394, which this guard exists to cover. Instrumented, the probe reports
-  `{verify:true, iters:3, ink:true}` and returns while the real `drawImage` lands nothing: the
-  16x16 probe draw is **not predictive of the full-size draw**.
-  FIVE candidate fixes were tried and all reverted — not aborting when the probe draw throws;
-  waiting for two identical probe frames instead of first ink; keeping the probed image
-  attached until after the real draw; routing Safari to v2's plain main-document Image instead
-  of the recycled decode frame; and the combination. The decode-frame lifecycle is the next
-  thing to read.
-  **Scope check before investing:** SnapEye on real Safari 26.5 runs 100/100 clean, and the
-  first capture there is correct (the size histogram is exactly 50/50 with no third group). So
-  the real-world trigger is narrower than the synthetic fixture suggests — the demo uses `<img>`
-  elements, the failing fixture an inlined `background-image`. Narrow the trigger first.
-  Reproduces under Playwright WebKit, so it can be fixed and verified without SnapEye.
-  Pinned by a documented skip in `__tests__/visual.fidelity.crossengine.test.js`.
+- **`toCanvas.js` `waitForImgPaint` — first WebKit capture blank — FIXED.** The 16x16 probe
+  draw is not predictive of the full-size draw: WebKit decodes a large nested `data:image`
+  asynchronously at a subsampling level picked from the DRAW's scale, so the probe proved a
+  coarse frame and the real draw asked for a finer one and painted nothing while it decoded
+  (instrumented: probe ink, full draw 0 px, both correct 100 ms later). The real draw is now
+  wrapped in `paint()` and, on Safari when the pre-draw probe saw ink, the same 16x16 probe
+  runs ONCE MORE AFTER the draw; blank means a decode is pending, so wait for ink (bounded
+  600 ms) and `paint()` again at the same scale (which cannot request another level). Good
+  path costs one probe draw; only a would-be-blank capture redraws. Non-WebKit runs no new
+  code (the probe is created only under `isSafari()`). The five earlier reverted attempts all
+  kept the verification BEFORE the draw, which cannot see this. Pinned by the now-UN-skipped
+  crop case in `visual.fidelity.crossengine.test.js` (it must stay the first capture of that
+  sprite in the page — the first decode of the data: URL is the trigger). Real-Safari
+  (SnapEye) re-verification of the post-draw probe is still worth doing.
 
-- **`pseudo.js` — scoped `::marker` / `::first-line` skipped when the scan is unreliable.** A
-  cross-origin stylesheet makes `pseudoGatesFor` return `null`, and the scoped emitter treats
-  that as "no rules". Left alone ON PURPOSE: emitting the rule against an unreliable scan would
-  over-apply `::marker` to nodes that never had it, which is a fidelity loss in the other
-  direction. v2 never emitted these rules at all, so v3 is strictly ahead here.
+- **`pseudo.js` — scoped `::marker` / `::first-line` skipped when the scan is unreliable —
+  FIXED.** A cross-origin sheet makes `pseudoGatesFor` return null; the scoped emitter treated
+  null as "no rules". It now PROBES on null (the boxes each pseudo can exist on — list items
+  for `::marker`, block containers for `::first-line`, shadow content excluded), and the
+  emitter only writes a declaration that DIFFERS from the element's own, so it cannot
+  over-apply (the old fear). `-webkit-text-fill-color` joined MARKER_PROPS/FIRST_LINE_PROPS
+  because the full-style read the unreliable path forces pins the element's fill colour, which
+  overrides the pseudo's `color`; read from the pseudo it resolves to the pseudo's colour.
+  Native pseudo rendering in a foreignObject varies by engine (Firefox paints no scoped
+  `::marker` colour), so `module.pseudo.unreliableScan.test.js` pins the emitted RULE, matching
+  how `module.pseudo.test.js` already pins markers. Cross-origin CSS in a test:
+  `commands.serveCrossOriginCss()` (vitest.config.js) serves a sheet on 127.0.0.1 whose
+  `cssRules` throws — the deterministic "unreliable scan" on all three engines.
 
-- **`pseudo.js` `styleFingerprint` — ignores adopted stylesheets' rule counts.** A
-  `replaceSync()` on an already-adopted sheet leaves the whole pseudo pass memoized off. Do NOT
-  "fix" this by censusing sheets per capture: that is the same experiment as the rule-epoch one
-  above, it was measured, it timed out `module.pseudo` on WebKit under `BROWSER=all`, and it was
-  reverted. `module.styles.ruleEpoch.test.js` pins the trade.
+- **`pseudo.js` `styleFingerprint` — ignores adopted stylesheets' rule counts — FIXED.** The
+  fingerprint now sums each adopted sheet's `cssRules.length` (constructed sheets are
+  same-origin, a page has a handful — NOT the per-capture census of every document sheet that
+  timed out under `BROWSER=all` and is still forbidden), and a changed fingerprint on a
+  document seen before calls `invalidateStyleCaches()` so the DOM-epoch memos in styles.js
+  (universe, gates) re-scan with it. A `replaceSync()` on an already-adopted sheet now reaches
+  the pass. Pinned by `module.pseudo.adoptedReplace.test.js`. `ruleEpoch.test.js`'s trade is
+  untouched: this counts adopted sheets only, not a document-wide census.
 
-- **`diff.js` — the differential path skips the live-DOM prep.** Dirty subtrees are rebuilt with
-  a bare `deepClone`, so `lineClampTree` and `forceContentVisibility` never run for them and a
-  spliced frame can render un-clamped text. v3-only code (v2 has no `diff.js`). Threading the
-  live prep through needs its own review of the bail conditions.
+- **`diff.js` — the differential path skipped the live-DOM prep — FIXED.** The dirty subtree
+  is now wrapped in `lineClampTree(src, null)` + `forceContentVisibility(src)` (the same passes
+  capture.js/prepare.js run before the full pipeline's deepClone) with a try/finally undo, so a
+  spliced frame clamps its text and un-skips content-visibility like a full capture. Pinned by
+  the pixel-equal line-clamp test in `core.capture.diff.test.js`.
 
-- **`clone.js` `<img>` min-width/min-height floor.** Written from `offsetWidth` — the BORDER box
-  — onto an element whose min-* resolve against the CONTENT box, so it is nominally too large
-  with padding or a border. Correcting it was tried and REVERTED: the captured box measured
-  102x52 against a live 102x52 either way, so no visible defect could be demonstrated, while
-  `d14-cors-test` (images with `border: 1px solid black`) moved 2.26% / 728px. Revisit only with
-  a case where the capture actually differs from the live element.
+- **`clone.js` `<img>` min-width/min-height floor — FIXED.** The freeze AND the floor were
+  both written from `offsetWidth`/`offsetHeight` (the BORDER box) onto content-box properties,
+  so with padding or a border the picture rendered scaled inside a too-large box (measured
+  against a live screenshot: 18–34% of pixels differ with 20px padding + a 5px border, 0%
+  after; the earlier revert corrected only the floor while the freeze still wrote the border
+  box, so no change showed). Both now subtract padding + border widths unless box-sizing is
+  border-box. `d14-cors-test` (images with `border: 1px solid black`) moved ~2% on all three
+  engines and its LOCAL baselines were re-recorded — a deliberate divergence from v2/main, so a
+  future "compare against main" run expects d14 to differ; every other demo is unchanged.
+
+- **shadow-root `::before`/`::after` never painted — FIXED** (was a `test.skip` in
+  `module.pseudo.subtreeGate.test.js`). Two causes. `canSkipPseudoWalk` bailed on
+  `sessionCache.shadowScopes?.size`, but `shadowScopes` is a WeakMap (`.size` is always
+  undefined) so the walk was never kept for shadow content; it now bails on
+  `sessionCache.__shadowPseudo`, set by deepClone when a shadow root's own CSS declares a
+  pseudo (and the pass's document-level preflight is OR'd with it). And `wrapWithScope`
+  produced `:where([data-sd] .k::after)`, which no parser accepts, so every scoped pseudo rule
+  was dropped: the pseudo-element now stays OUTSIDE the `:where()` wrapper, and a span-inlined
+  `::before`/`::after`/`::first-letter` (which the pseudo pass draws) is replaced by a
+  never-matching selector so it is not painted twice. Pinned by the shadow `::after` (span,
+  drawn once) and shadow `::marker` (native, from the scoped rule) tests.

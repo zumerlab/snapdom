@@ -252,3 +252,41 @@ describe('differential recapture', () => {
     }
   })
 })
+
+describe('differential recapture runs the live-DOM prep on the dirty subtree', () => {
+  // The full pipeline clamps `-webkit-line-clamp` text to its rendered lines on the LIVE
+  // element before cloning (lineClampTree) and un-skips content-visibility:auto; the diff
+  // path rebuilt a dirty subtree with a bare deepClone and spliced the un-clamped text in.
+  // Pixels, not bytes: the clamp's own live-text mutation moves style stamps mid-capture,
+  // which makes the full path inline inert background longhands the retained frame does
+  // not carry (pixel-neutral byte noise, see identityShare's settle()).
+  it('a mutated line-clamped card is clamped like a full capture, pixel for pixel', async () => {
+    const el = buildGrid(8)
+    const p = el.querySelectorAll('p')[3]
+    p.style.cssText = 'font-size:12px;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden'
+    await engageBurst(el)
+
+    p.textContent = 'A much longer sentence that certainly wraps onto several lines inside a narrow card and must be clamped to one.'
+    await new Promise((r) => setTimeout(r, 0))
+    const served0 = __diffStats.served
+    const res = await snapdom(el)
+    expect(__diffStats.served).toBe(served0 + 1)
+    const spliced = decodeURIComponent(res.url.split(',')[1])
+    expect(spliced).toContain('…')
+    expect(spliced).not.toContain('must be clamped to one.')
+
+    const full = await snapdom(el, { burst: false })
+    const px = async (r) => {
+      const c = await r.toCanvas({ scale: 1, dpr: 1 })
+      return [c.width, c.height, c.getContext('2d').getImageData(0, 0, c.width, c.height).data]
+    }
+    const [aw, ah, a] = await px(res)
+    const [bw, bh, b] = await px(full)
+    expect([aw, ah]).toEqual([bw, bh])
+    let differing = 0
+    for (let i = 0; i < a.length; i += 4) {
+      if (Math.abs(a[i] - b[i]) > 8 || Math.abs(a[i + 1] - b[i + 1]) > 8 || Math.abs(a[i + 2] - b[i + 2]) > 8) differing++
+    }
+    expect(differing).toBe(0)
+  })
+})

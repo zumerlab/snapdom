@@ -316,6 +316,27 @@ export async function fixSafariShadows(svg) {
   }
 }
 
+// rAF with a timeout fallback: WebKit suspends rAF in occluded windows and background
+// tabs, and a capture must not hang there.
+const frame = () => new Promise(r => { requestAnimationFrame(r); setTimeout(r, 50) })
+
+/** A 16x16 ink test for the Safari paint waits: draws `img` whole and answers whether any
+ *  pixel has alpha. Null where a 2d context is unavailable. */
+function inkProbe() {
+  const probe = document.createElement('canvas')
+  probe.width = 16
+  probe.height = 16
+  const pctx = probe.getContext('2d', { willReadFrequently: true })
+  if (!pctx) return null
+  return (img) => {
+    pctx.clearRect(0, 0, 16, 16)
+    pctx.drawImage(img, 0, 0, 16, 16)
+    const d = pctx.getImageData(0, 0, 16, 16).data
+    for (let i = 3; i < d.length; i += 4) { if (d[i] > 0) return true }
+    return false
+  }
+}
+
 /**
  * WebKit paints svg-as-image resources late: img.decode() resolves before embedded
  * @font-face fonts (#219770) and nested raster images (#394) are ready, so the first
@@ -327,32 +348,25 @@ export async function fixSafariShadows(svg) {
  * out the short one.
  * @param {HTMLImageElement} img
  * @param {boolean} verify - Svg has fonts/nested images (longer probe deadline)
+ * @param {((img: HTMLImageElement) => boolean) | null} probe - from inkProbe()
+ * @returns {Promise<boolean>} whether ink was seen (false on deadline, or when unknowable)
  */
-async function waitForImgPaint(img, verify) {
+async function waitForImgPaint(img, verify, probe) {
   img.setAttribute('data-snapdom-internal', '')
   img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
   document.body.appendChild(img)
   try {
-    const probe = document.createElement('canvas')
-    probe.width = 16
-    probe.height = 16
-    // rAF with a timeout fallback: WebKit suspends rAF in occluded windows and
-    // background tabs, and a capture must not hang there.
-    const frame = () => new Promise(r => { requestAnimationFrame(r); setTimeout(r, 50) })
-    const pctx = probe.getContext('2d', { willReadFrequently: true })
-    if (!pctx) {
+    if (!probe) {
       await frame()
       await frame()
-      return
+      return false
     }
     const deadline = performance.now() + (verify ? 600 : 150)
     for (;;) {
-      pctx.clearRect(0, 0, 16, 16)
-      try { pctx.drawImage(img, 0, 0, 16, 16) } catch { return }
-      const d = pctx.getImageData(0, 0, 16, 16).data
-      let ink = false
-      for (let i = 3; i < d.length; i += 4) { if (d[i] > 0) { ink = true; break } }
-      if (ink || performance.now() > deadline) return
+      let ink
+      try { ink = probe(img) } catch { return false }
+      if (ink) return true
+      if (performance.now() > deadline) return false
       await frame()
     }
   } finally {
@@ -553,8 +567,10 @@ export async function toCanvas(url, options) {
   }
 
   try {
+    const probe = isSafari() ? inkProbe() : null
+    let inkBefore = false
     if (isSafari()) {
-      await waitForImgPaint(img, needsPaintVerify)
+      inkBefore = await waitForImgPaint(img, needsPaintVerify, probe)
     }
 
     const natW = img.naturalWidth
@@ -630,31 +646,58 @@ export async function toCanvas(url, options) {
 
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('[snapdom] toCanvas: the target canvas has no 2d context')
-    if (dpr !== 1) ctx.scale(dpr, dpr)
 
-    if (backgroundColor) {
-      ctx.save()
-      ctx.fillStyle = backgroundColor
-      ctx.fillRect(0, 0, outW, outH)
-      ctx.restore()
+    const paint = () => {
+      if (dpr !== 1) ctx.scale(dpr, dpr)
+
+      if (backgroundColor) {
+        ctx.save()
+        ctx.fillStyle = backgroundColor
+        ctx.fillRect(0, 0, outW, outH)
+        ctx.restore()
+      }
+
+      if (shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
+        // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
+        // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
+        // re-rasterize the svg). Trades a bit of sharpness for correct shadows.
+        const tmp = document.createElement('canvas')
+        tmp.width = natW
+        tmp.height = natH
+        drawBanded(tmp.getContext('2d'), img, natW, natH)
+        ctx.drawImage(tmp, 0, 0, outW, outH)
+      } else {
+        // Device pixels, identity transform: the bands are cut on whole device rows, and the
+        // dpr scale is folded into the destination size instead of the transform.
+        ctx.save()
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        drawBanded(ctx, img, outW * dpr, outH * dpr)
+        ctx.restore()
+      }
     }
+    paint()
 
-    if (shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
-      // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
-      // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
-      // re-rasterize the svg). Trades a bit of sharpness for correct shadows.
-      const tmp = document.createElement('canvas')
-      tmp.width = natW
-      tmp.height = natH
-      drawBanded(tmp.getContext('2d'), img, natW, natH)
-      ctx.drawImage(tmp, 0, 0, outW, outH)
-    } else {
-      // Device pixels, identity transform: the bands are cut on whole device rows, and the
-      // dpr scale is folded into the destination size instead of the transform.
-      ctx.save()
-      ctx.setTransform(1, 0, 0, 1, 0, 0)
-      drawBanded(ctx, img, outW * dpr, outH * dpr)
-      ctx.restore()
+    if (probe && inkBefore && needsPaintVerify) {
+      // The pre-draw probe is not predictive of the full-size draw (#394, the other half):
+      // WebKit decodes a large nested raster ASYNCHRONOUSLY at a subsampling level picked
+      // from the draw's scale, so the 16x16 probe proved a coarse frame, the real draw asked
+      // for a finer one and painted nothing while it decoded — and until it lands every
+      // draw, the probe included, is blank (measured: probe ink, then full draw 0, probe 0,
+      // both correct 100ms later). Probing AFTER the real draw reads that state exactly:
+      // ink now means the frame the draw used was there; blank means wait for it and draw
+      // again at the same scale, which cannot request another level. Costs one probe draw
+      // on the good path, and only a capture that was going to be blank pays a redraw.
+      let ink = true
+      try { ink = probe(img) } catch { /* keep the draw */ }
+      if (!ink) {
+        const deadline = performance.now() + 600
+        do {
+          await frame()
+          try { ink = probe(img) } catch { break }
+        } while (!ink && performance.now() < deadline)
+        canvas.width = canvas.width // eslint-disable-line no-self-assign -- resets the bitmap and the transform
+        paint()
+      }
     }
     return canvas
   } finally {

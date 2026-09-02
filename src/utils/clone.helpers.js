@@ -18,9 +18,22 @@ function addNotSlottedRightmost(sel, scopeId) {
   return `${sel}:not(${marker})`
 }
 
+// A trailing pseudo-element (double-colon, or the four legacy single-colon ones).
+const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|:(?:before|after|first-letter|first-line)$/
+// The pseudo pass inlines these as spans from the live element's computed style; a native
+// copy in the scoped CSS would paint them twice.
+const SPAN_PSEUDO_RE = /^::?(?:before|after|first-letter)$/
+
 /**
  * Wrap a selector list with :where(scope ...), lowering specificity to 0.
  * Optionally excludes slotted elements on the rightmost selector.
+ *
+ * A pseudo-element stays OUTSIDE the wrapper: `:where(… .k::after)` is not a valid selector
+ * and neither is `.k::after:not(…)`, so every scoped pseudo rule used to be dropped by the
+ * parser — a `li::marker` declared inside a shadow root never coloured its marker. ::marker,
+ * ::first-line, ::placeholder and the rest render natively in the foreignObject from the
+ * scoped rule; ::before/::after/::first-letter are the pseudo pass's (span), so their rule is
+ * replaced by a never-matching selector.
  */
 function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scopeId) {
   return selectorList
@@ -35,9 +48,12 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scope
       // Do not touch @rules here (the caller handles those)
       if (s.startsWith('@')) return s
 
-      const body = excludeSlotted ? addNotSlottedRightmost(s, scopeId) : s
+      const m = s.match(TRAILING_PSEUDO_RE)
+      if (m && SPAN_PSEUDO_RE.test(m[0])) return ':not(*)'
+      const base = m ? s.slice(0, m.index).trim() : s
+      const body = excludeSlotted ? addNotSlottedRightmost(base, scopeId) : base
       // Zero specificity for the whole selector:
-      return `:where(${scopeSelector} ${body})`
+      return `:where(${scopeSelector} ${body})${m ? m[0] : ''}`
     })
     .join(', ')
 }
