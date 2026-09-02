@@ -34,7 +34,10 @@ const CAPTURE_TIMEOUT = 45_000
 // and encode four times the pixels on a retina screen and lose the row for a reason that has
 // nothing to do with capture. Same output size for everyone, or the table means nothing.
 const ADAPTERS = {
-  [SNAP]: async () => async (el) => toDataUrl(await snapdom.toPng(el, { scale: 1, dpr: 1, burst: false })),
+  // toCanvas + the harness's toDataURL: the same finish line as every other row (a PNG data
+  // URL) by the route html2canvas's canvas already takes here. toPng would add the <img>
+  // load no competitor pays. Mirrors __tests__/category.libs.js.
+  [SNAP]: async () => async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1, burst: false })),
   ...COMPETITORS,
 }
 const DEFAULT_ON = [SNAP, 'html2canvas 1.4.1', 'html-to-image 1.11.13', 'modern-screenshot 4.7.0', 'domlens.js 0.1.0']

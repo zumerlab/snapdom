@@ -11,7 +11,7 @@
 // Run:  npx vitest bench __tests__/category.polling.benchmark.js --browser.headless --watch=false
 import { bench, describe, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
-import { loadLibs, dashboardScenario } from './category.libs.js'
+import { loadLibs, dashboardScenario, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
@@ -32,11 +32,11 @@ const OPTS = { warmupIterations: 1, iterations: 6, time: 0 }
 
 describe(`Polling: ${TICKS} captures of a live dashboard (memoization allowed, labeled)`, () => {
   bench('snapDOM defaults (auto-burst memo + diff engage)', async () => {
-    await loop((el) => snapdom.toPng(el, { scale: 1, dpr: 1 }))
+    await loop(async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1 })))
   }, OPTS)
 
   bench('snapDOM burst:false (what the poller would pay without the memo)', async () => {
-    await loop((el) => snapdom.toPng(el, { scale: 1, dpr: 1, burst: false }))
+    await loop(async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1, burst: false })))
   }, OPTS)
 
   bench('modern-screenshot 4.7.0', async () => {

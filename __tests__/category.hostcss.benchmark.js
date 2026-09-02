@@ -14,7 +14,7 @@
 // Run:  npx vitest bench __tests__/category.hostcss.benchmark.js --browser.headless --watch=false
 import { bench, describe, beforeAll, afterAll } from 'vitest'
 import { snapdom } from '../src/index'
-import { loadLibs, bigTableHTML } from './category.libs.js'
+import { loadLibs, bigTableHTML, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
@@ -75,24 +75,24 @@ const OPTS = { warmupIterations: 1, iterations: 8, time: 0 }
 describe('Host CSS: tabla de 500 filas, con y sin reglas de pseudo en la pagina', () => {
   bench('snapDOM · pagina sin reglas de pseudo', async () => {
     withoutHostCss()
-    await snapdom.toPng(root, { scale: 1, dpr: 1, burst: false })
+    await toDataUrl(await snapdom.toCanvas(root, { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('snapDOM · pagina con reglas de pseudo que no matchean', async () => {
     withoutSplittingCss()
     withHostCss()
-    await snapdom.toPng(root, { scale: 1, dpr: 1, burst: false })
+    await toDataUrl(await snapdom.toCanvas(root, { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('snapDOM · elemento fresco, pagina sin reglas', async () => {
     withoutSplittingCss()
     withoutHostCss()
-    await snapdom.toPng(freshRoot(), { scale: 1, dpr: 1, burst: false })
+    await toDataUrl(await snapdom.toCanvas(freshRoot(), { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('snapDOM · elemento fresco, pagina con :hover/:first-child/+ que no matchean', async () => {
     withSplittingCss()
-    await snapdom.toPng(freshRoot(), { scale: 1, dpr: 1, burst: false })
+    await toDataUrl(await snapdom.toCanvas(freshRoot(), { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('html2canvas 1.4.1 · sin reglas (control)', async () => {

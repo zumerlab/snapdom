@@ -12,7 +12,7 @@
 // Run:  npx vitest bench __tests__/category.images.benchmark.js --browser.headless --watch=false
 import { bench, describe, beforeAll, afterAll } from 'vitest'
 import { snapdom } from '../src/index'
-import { loadLibs, imageGridScenario } from './category.libs.js'
+import { loadLibs, imageGridScenario, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
@@ -24,11 +24,11 @@ const OPTS = { warmupIterations: 1, iterations: 4, time: 0 }
 
 describe('Image grid: 40 distinct same-origin PNGs over HTTP', () => {
   bench('snapDOM', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false })
+    await toDataUrl(await snapdom.toCanvas(scene.root, { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('snapDOM, caches wiped before each capture (every image re-fetched)', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false, cache: 'disabled' })
+    await toDataUrl(await snapdom.toCanvas(scene.root, { scale: 1, dpr: 1, burst: false, cache: 'disabled' }))
   }, OPTS)
 
   bench('modern-screenshot 4.7.0', async () => {

@@ -16,7 +16,7 @@
 // Run:  npx vitest bench __tests__/category.deeptree.benchmark.js --browser.headless --watch=false
 import { bench, describe, beforeAll, afterAll } from 'vitest'
 import { snapdom } from '../src/index'
-import { loadLibs, deepTreeScenario } from './category.libs.js'
+import { loadLibs, deepTreeScenario, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
@@ -28,7 +28,7 @@ const OPTS = { warmupIterations: 2, iterations: 6, time: 0 }
 
 describe('Deep tree: 16 chains x 10 levels, ~2100 elements, depth ~11', () => {
   bench('snapDOM (burst:false)', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false })
+    await toDataUrl(await snapdom.toCanvas(scene.root, { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('domlens.js 0.1.0', async () => {

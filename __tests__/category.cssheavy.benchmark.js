@@ -13,7 +13,7 @@
 // Run:  npx vitest bench __tests__/category.cssheavy.benchmark.js --browser.headless --watch=false
 import { bench, describe, beforeAll, afterAll } from 'vitest'
 import { snapdom } from '../src/index'
-import { loadLibs, cssHeavyScenario } from './category.libs.js'
+import { loadLibs, cssHeavyScenario, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
@@ -25,7 +25,7 @@ const OPTS = { warmupIterations: 2, iterations: 10, time: 0 }
 
 describe('CSS-heavy: 10k rules, 1000 class-styled nodes', () => {
   bench('snapDOM', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, burst: false })
+    await toDataUrl(await snapdom.toCanvas(scene.root, { scale: 1, dpr: 1, burst: false }))
   }, OPTS)
 
   bench('modern-screenshot 4.7.0', async () => {

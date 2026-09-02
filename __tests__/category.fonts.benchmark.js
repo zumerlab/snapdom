@@ -18,7 +18,7 @@
 // Run:  npx vitest bench __tests__/category.fonts.benchmark.js --browser.headless --watch=false
 import { bench, describe, beforeAll, afterAll } from 'vitest'
 import { snapdom } from '../src/index'
-import { loadLibs, fontArticleScenario } from './category.libs.js'
+import { loadLibs, fontArticleScenario, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
@@ -30,7 +30,7 @@ const OPTS = { warmupIterations: 1, iterations: 4, time: 0 }
 
 describe('Webfonts: article with Inter 400/700 + mono code spans (configured profile)', () => {
   bench('snapDOM { embedFonts: true }', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false })
+    await toDataUrl(await snapdom.toCanvas(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false }))
   }, OPTS)
 
   bench('snapDOM { embedFonts: true }, font cache wiped before each capture (the first capture on a page)', async () => {
@@ -38,11 +38,11 @@ describe('Webfonts: article with Inter 400/700 + mono code spans (configured pro
     // cache, so iterations 2+ reuse the embedded CSS. A page's FIRST capture pays the walk +
     // woff2 fetch + base64 — `cache: 'disabled'` empties that cache before each iteration,
     // so this arm prices exactly that.
-    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false, cache: 'disabled' })
+    await toDataUrl(await snapdom.toCanvas(scene.root, { scale: 1, dpr: 1, embedFonts: true, burst: false, cache: 'disabled' }))
   }, OPTS)
 
   bench('snapDOM { embedFonts: false } (payload renders in fallback — lower bound, labeled)', async () => {
-    await snapdom.toPng(scene.root, { scale: 1, dpr: 1, embedFonts: false, burst: false })
+    await toDataUrl(await snapdom.toCanvas(scene.root, { scale: 1, dpr: 1, embedFonts: false, burst: false }))
   }, OPTS)
 
   bench('modern-screenshot 4.7.0 (embeds by default)', async () => {

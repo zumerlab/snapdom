@@ -48,7 +48,14 @@ const LOADERS = {
   // on a retina screen snapdom alone rasterized and encoded FOUR TIMES the pixels — a ~10x
   // slower row for a reason that has nothing to do with the pipeline. Headless chromium runs
   // at DPR 1, which is why the repo table never showed it and the live lab did.
-  'snapDOM current': async () => async (el) => toDataUrl(await snapdom.toPng(el, { scale: 1, dpr: 1, burst: false })),
+  // toCanvas + the harness's own toDataURL, the normalization html2canvas's canvas already
+  // gets and the route modern-screenshot and html-to-image take internally (a synchronous
+  // canvas.toDataURL). toPng reaches the same PNG data URL and then loads it into an <img>
+  // for the caller — 40 ms on the 500-row table, 3 ms at 60 rows — a stage no other row pays;
+  // toBlob takes the asynchronous encode plus a FileReader, 3–5 ms of latency per capture
+  // that a 20-tick polling loop turned into 19.8 → 90.6 ms. Same finish line, cheapest
+  // honest route, for everyone.
+  'snapDOM current': async () => async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1, burst: false })),
   ...COMPETITORS,
 }
 
