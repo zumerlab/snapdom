@@ -136,14 +136,32 @@ function say(text) { status.textContent = text }
  *  but leaving it in means this page reports how the visitor scrolled rather than how the
  *  library performs, and it only ever bites the libraries that clone the document.
  *
- *  Snapping back beats `overflow:hidden`, which removes the scrollbar and reflows the very
- *  element being measured. */
+ *  The input has to be blocked, not corrected afterwards: a `scroll` listener that snaps back
+ *  fires AFTER the page has already moved and is outrun by continuous wheel input, which is why
+ *  the first version of this still read 25-28% under a real trackpad. preventDefault on the
+ *  input events keeps the page where it is; the scroll listener stays as a backstop for
+ *  programmatic scrolls, which no amount of preventDefault reaches.
+ *
+ *  Blocking beats `overflow:hidden`, which removes the scrollbar and reflows the very element
+ *  being measured. */
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Spacebar'])
+
 function freezeScroll() {
   const y = window.scrollY
   const x = window.scrollX
+  const block = (e) => e.preventDefault()
+  const blockKey = (e) => { if (SCROLL_KEYS.has(e.key)) e.preventDefault() }
   const snap = () => { if (window.scrollY !== y || window.scrollX !== x) window.scrollTo(x, y) }
+  window.addEventListener('wheel', block, { passive: false })
+  window.addEventListener('touchmove', block, { passive: false })
+  window.addEventListener('keydown', blockKey)
   window.addEventListener('scroll', snap, { passive: true })
-  return () => window.removeEventListener('scroll', snap)
+  return () => {
+    window.removeEventListener('wheel', block)
+    window.removeEventListener('touchmove', block)
+    window.removeEventListener('keydown', blockKey)
+    window.removeEventListener('scroll', snap)
+  }
 }
 
 let mountSeq = 0
