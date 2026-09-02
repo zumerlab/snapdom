@@ -448,6 +448,12 @@ export function styleShareSafe(doc) {
   }
 }
 
+export function importantPropsFor(el) {
+  const doc = el.ownerDocument || document
+  if (el.getRootNode && el.getRootNode() !== doc) return null
+  return scanFor(doc).importantProps
+}
+
 export function universeFor(el) {
   const doc = el.ownerDocument || document
   // Shadow-root content: its own sheets aren't scanned — keep full reads there.
@@ -1060,10 +1066,16 @@ function _resolveCtx(sessionOrCtx, opts) {
  * @param {Element} clone
  * @param {CSSStyleDeclaration} computed
  */
+const CONTEXT_DEPENDENT_VALUE_RE =
+  /%|[\d.](?:em|rem|ex|ch|cap|ic|lh|rlh|v[whib]|vmin|vmax|cq[whbi]|cqmin|cqmax)\b|\b(?:calc|var|min|max|clamp|env|attr)\(|\b(?:auto|inherit|initial|unset|revert|currentcolor|-webkit-fill-available|fit-content|min-content|max-content)\b/i
+
 function normalizeInlineStyleToComputed(source, clone, computed) {
   if (!source.style || source.style.length === 0) return
+  const important = importantPropsFor(source)
+  const canSkip = important != null && !CONTEXT_DEPENDENT_VALUE_RE.test(source.getAttribute('style') || '')
   for (let i = 0; i < source.style.length; i++) {
     const prop = source.style[i]
+    if (canSkip && !important.has(prop) && !prop.startsWith('background')) continue
     const val = computed.getPropertyValue(prop)
     if (val) clone.style.setProperty(prop, val)
   }

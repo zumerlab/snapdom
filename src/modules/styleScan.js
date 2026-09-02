@@ -99,6 +99,7 @@ function scanRules(rules, universe, pseudoSels, state) {
       for (let j = 0; j < style.length; j++) {
         const prop = style[j]
         universe.add(prop)
+        if (style.getPropertyPriority(prop)) state.importantProps.add(prop)
         if (prop.length > 5 && (prop[0] === 'm' || prop[0] === 'p')) {
           const fam = prop.startsWith('margin') ? 'marginUnstable'
             : prop.startsWith('padding') ? 'paddingUnstable' : null
@@ -188,11 +189,11 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
 export function scanAuthorStyles(doc) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, usesHas: true, shareUnsafe: true, marginUnstable: true, paddingUnstable: true, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, usesHas: true, shareUnsafe: true, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafe: false, marginUnstable: false, paddingUnstable: false }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafe: false, marginUnstable: false, paddingUnstable: false, importantProps: new Set() }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -214,7 +215,7 @@ export function scanAuthorStyles(doc) {
         }
       }
     }
-    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareUnsafe: state.shareUnsafe, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable }
+    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareUnsafe: state.shareUnsafe, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
   } catch {
     return unreliable
   }

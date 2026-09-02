@@ -1,8 +1,8 @@
 // normalizeInlineStyleToComputed re-resolves an element's inline declarations through the
-// cascade. Its docstring names one reason — #328, a stylesheet `!important` must still win
-// inside the clone — and it had no test. It has THREE contracts; the other two are
-// undocumented and load-bearing, and each was found by a test going red while scoping the
-// pass. All four assertions below are on painted pixels, never on the payload.
+// cascade. Its docstring named one reason — #328, a stylesheet `!important` must still win
+// inside the clone — and it had no test. It has THREE contracts; the other two were
+// undocumented and load-bearing, and each was found by a test going red while the pass was
+// being scoped. All four assertions below are on painted pixels, never on the payload.
 //
 //  1. #328, for the property the important rule declares.
 //  2. `background`: the selection highlight composes its measured px layers on top of the
@@ -10,15 +10,11 @@
 //  3. Context-dependent values — `width:100%`, `1.2em`, `calc()`, `auto` — resolve against a
 //     containing block the foreignObject does not reproduce (d32-iframe-same-origin).
 //
-// Why that is worth writing down: this pass is 45% of a 500-row-table capture. Stubbed out,
-// toRaw goes 67.6 -> 38.6 ms, because cells carrying `padding` and `border` shorthands pay 20
-// computed reads and 20 writes per node for values their own style attribute already holds.
-// Gating on all three contracts measures 67.6 -> 51.1 ms with the corpus green on chromium,
-// firefox and webkit. NOT landed: the variant that satisfies contract 3 also compares the
-// clone's style attribute against the source's, and that comparison answers differently in the
-// differential-recapture path — it breaks core.capture.diff's "byte-equal to full" on all
-// three engines. The open question is why those two attributes diverge in the full pipeline
-// for d32's elements. Until that is answered the pass stays whole.
+// Everything outside those three is an absolute value being copied onto itself: the clone's
+// own style attribute already carries it. Skipping them took toRaw on a 500-row table from
+// 67.6 ms to 49.7 ms — the pass was 45% of the capture, 20 computed reads and 20 writes per
+// node. These tests are what keeps the gate honest; break any one of the three conditions in
+// styles.js and the matching test here goes red.
 
 import { describe, test, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index'

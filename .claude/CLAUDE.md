@@ -144,6 +144,21 @@ payload, rewrites the header, re-encodes and resamples at a fractional scale —
 through it against 3.1 ms/Mpx just under it. The AREA cap is unchanged. Pinned by
 `exporters.rasterLimit.test.js` (skipped on webkit, which really does cap at 16384).
 
+**`normalizeInlineStyleToComputed` is gated, and it has THREE contracts** (styles.js). It
+re-resolves an element's inline declarations through the cascade; its docstring named only
+#328 (a stylesheet `!important` must still beat an inline declaration inside the clone). The
+other two are load-bearing and were found by tests going red: `background`, whose longhands
+the selection highlight composes its measured px layers on top of, and CONTEXT-DEPENDENT
+inline values (`width:100%`, `1.2em`, `calc()`, `auto`) which resolve against a containing
+block the foreignObject does not reproduce. Everything else is an absolute value copied onto
+itself — the clone's style attribute already has it. The context test is ONE regex over the
+whole style attribute, hoisted deliberately: testing per longhand cost more than the
+resolutions it saved (67.6 → 63 ms instead of 49.7), and an earlier variant that compared the
+clone's style attribute against the source's was PATH-DEPENDENT and broke `core.capture.diff`'s
+byte-equality on all three engines. Pinned by `module.styles.inlineImportant.test.js`.
+`importantPropsFor` rides the author scan that already walks every declaration; a null set
+(untrusted scan) re-resolves everything, as before.
+
 ### Style scan (`src/modules/styleScan.js`)
 
 One pass over the document's author styles yields (a) the property universe — snapshot only props the page can actually touch — and (b) per-pseudo selector gates, so one `el.matches()` replaces three `getComputedStyle` resolutions per node. Both memoized per document + style epoch.
