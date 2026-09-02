@@ -85,7 +85,7 @@ const SCENES = {
   },
   deep: {
     label: 'Deep nested tree (~2,100 nodes)',
-    note: "16 chains, 10 levels each, nested flex and grid all the way down — 16 of the 24 in domlens's own benchmark corpus, as many as fit under the 16384px image limit in one column. It is the scene where every foreignObject library, SnapDOM included, loses to html2canvas's old JavaScript repainter, because the cost is the browser rasterizing a huge SVG image rather than anything the library does.",
+    note: "16 chains, 10 levels each, nested flex and grid all the way down — 16 of the 24 in domlens's own benchmark corpus, as many as fit under the 16384px image limit in one column — with a 2px ::before stripe on every leaf, the cheapest decoration a real page carries. Without it the scene measures html2canvas's old JavaScript repainter on the one input it handles best, bare boxes, and it wins there; with it, its output stops matching the page (the diff column shows it) and its speed edge goes with it. The cost for every foreignObject library is still the browser rasterizing a huge SVG image, not anything the library does.",
     cold: 1, steady: 3,
     heavy: true,
     mount: deepTreeScenario,

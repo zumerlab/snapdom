@@ -213,7 +213,15 @@ export function shadowTreeScenario() {
  *  and the one-output-stage rule ends (their own table has snapdom at 1031x16384 against
  *  1280x20340). Two chains per row fits the height but is 2472px wide, and domlens's
  *  viewport-sized clone iframe paints nothing past the viewport edge — a real limit, but not
- *  what this scene measures. So: the same chain, the same depth, 16 of the 24. */
+ *  what this scene measures. So: the same chain, the same depth, 16 of the 24 — plus ONE
+ *  thing their corpus leaves out: a `::before` stripe on every leaf. Bare boxes are the one
+ *  input html2canvas's repainter handles best and no real page is made of them; a decoration
+ *  of any kind (a rule, a badge, an icon) is where its output stops matching the page.
+ *  The stripe is 2px, `content:""`, a solid colour — the cheapest pseudo there is, and 2px
+ *  so the 16 chains stay under the 16384px image limit (a 3px stripe with a 1px margin put
+ *  the scene at 17426px, where html-to-image clamps and Safari's SnapDOM would too).
+ *  Measured on the docs page, cold, against a screenshot of the live element — see the
+ *  numbers in the README's real-page table and the lab's diff column. */
 export function deepTreeScenario() {
   const style = document.createElement('style')
   style.setAttribute('data-bench-deeptree', '')
@@ -221,7 +229,8 @@ export function deepTreeScenario() {
     [data-deep] .branch{display:flex;gap:2px;padding:2px;border:1px solid rgba(0,0,0,.08);border-radius:3px}
     [data-deep] .branch.col{flex-direction:column}
     [data-deep] .grid-branch{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px;border:1px dashed rgba(30,64,175,.25)}
-    [data-deep] .leaf{flex:1;min-width:8px;min-height:8px;border-radius:2px;text-align:center;overflow:hidden}`
+    [data-deep] .leaf{flex:1;min-width:8px;min-height:8px;border-radius:2px;text-align:center;overflow:hidden}
+    [data-deep] .leaf::before{content:"";display:block;height:2px;background:#222}`
   document.head.appendChild(style)
 
   const root = document.createElement('div')
