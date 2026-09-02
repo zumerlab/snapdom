@@ -144,11 +144,33 @@ payload, rewrites the header, re-encodes and resamples at a fractional scale —
 through it against 3.1 ms/Mpx just under it. The AREA cap is unchanged. Pinned by
 `exporters.rasterLimit.test.js` (skipped on webkit, which really does cap at 16384).
 
+**The identity share asks a SUBTREE question too** (`styleShareSafe`, styles.js; the gate
+is built by styleScan.js). One full computed-style read per structural identity, twins copy
+it — but it was switched off by a DOCUMENT-wide flag whenever any author selector could
+split identical twins: `:hover`, `:first-child`, `p + p`, `:has()`. Every real page has
+those, scoped to classes the captured subtree never contains, so on the docs site the fast
+path never ran: a 500-row table cost 536k `getPropertyValue` calls (178 per node) instead
+of 77k, and the pipeline 150 ms instead of 76 — while the vitest pages, bare of host CSS,
+reported the fast number. Measured 2026-09-02 with a call-site census on the real page
+(cold toPng 316 → 242 ms; domlens 264–278 on the same page). The scan now COLLECTS the
+splitting selectors (`&` resolved first, since `matches()` answers false, not throws, to a
+raw `&`) and the capture asks whether any of them matches under the root right now: a rule
+that matches nobody there styles nobody the snapshot reads, so twins stay identical. The
+list is indexed by each selector's subject compound (first class, else id, else tag) and
+only selectors whose key is present in the subtree reach the `querySelector`: unindexed,
+3000 Tailwind-shaped `.hover\:x:hover` rules cost the gate 55 ms and 15k cost 276; indexed,
+74 and 85 ms for the whole toRaw against 77 with no rules. The root is part of the question
+(`el.matches`). Pinned by `module.styles.shareSubtreeGate.test.js`, proven to fail both
+ways: the document flag turns its first test red, dropping the querySelector half its second.
+
 **`normalizeInlineStyleToComputed` is gated, and it has THREE contracts** (styles.js). It
 re-resolves an element's inline declarations through the cascade; its docstring named only
 #328 (a stylesheet `!important` must still beat an inline declaration inside the clone). The
-other two are load-bearing and were found by tests going red: `background`, whose longhands
-the selection highlight composes its measured px layers on top of, and CONTEXT-DEPENDENT
+other two are load-bearing and were found by tests going red: `background` ON TEXT FIELDS
+only (the selection highlight composes its measured px layers on top of the longhands the
+pass puts on an input's or textarea's clone; on every other node the shorthand copied
+verbatim is the same value, and re-resolving it on a 500-row table was 13.5k reads plus
+13.5k writes for nothing), and CONTEXT-DEPENDENT
 inline values (`width:100%`, `1.2em`, `calc()`, `auto`) which resolve against a containing
 block the foreignObject does not reproduce. Everything else is an absolute value copied onto
 itself — the clone's style attribute already has it. The context test is ONE regex over the

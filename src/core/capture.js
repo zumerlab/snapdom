@@ -113,7 +113,7 @@ export async function captureDOM(element, options) {
   // it off wholesale. Respect an explicit override so tests can pin the slow path.
   if (options.__styleShare === undefined) {
     try {
-      options.__styleShare = styleShareSafe(state.element.ownerDocument || document) &&
+      options.__styleShare = styleShareSafe(state.element) &&
         (typeof state.element.getAnimations !== 'function' ||
           state.element.getAnimations({ subtree: true }).length === 0)
     } catch {

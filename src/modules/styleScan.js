@@ -114,22 +114,32 @@ function scanRules(rules, universe, pseudoSels, state) {
     // restyles ancestors AND, combined with a combinator, their other descendants. A document
     // that uses it keeps document-wide style invalidation (see nodeStamp in styles.js).
     if (sel && sel.includes(':has(')) state.usesHas = true
-    // Selectors that can style two elements with IDENTICAL tag + attributes + ancestor chain
-    // DIFFERENTLY: structural position, sibling relationships, interaction/UA state, and
-    // :has() (content-dependent). Their presence anywhere disables the identity-share fast
-    // path in styles.js — a substring test, deliberately conservative: a false positive only
-    // costs the optimization, a false negative would cost fidelity.
-    if (sel && (SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
-      state.shareUnsafe = true
-    }
-    if (sel && sel.includes(':')) {
-      // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
-      // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
-      // every node out and delete the pseudo. Resolve & against the enclosing style rule,
-      // walking past grouping rules (@media/@supports have no selectorText).
+    // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
+    // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
+    // every node out and delete the pseudo. Resolve & against the enclosing style rule,
+    // walking past grouping rules (@media/@supports have no selectorText). Hoisted above
+    // the share gate, which feeds querySelector and would be silenced the same way.
+    if (sel && sel.includes('&')) {
       for (let p = rule.parentRule; p && sel.includes('&'); p = p.parentRule) {
         if (p.selectorText) sel = sel.replace(/&/g, `:is(${p.selectorText})`)
       }
+    }
+    // Selectors that can style two elements with IDENTICAL tag + attributes + ancestor chain
+    // DIFFERENTLY: structural position, sibling relationships, interaction/UA state, and
+    // :has() (content-dependent). Collected, not flagged: whether one of them can split a
+    // pair of twins is a question about the CAPTURED SUBTREE at capture time
+    // (styleShareSafe in styles.js asks it with one querySelector), not about the document.
+    // A document-wide flag turned the fast path off on every real page — `.btn:hover` or
+    // `.faq p + p` in the host CSS, matching nothing inside the captured table, cost a 500-row
+    // capture 536k computed-style reads instead of 77k. A substring test, deliberately
+    // conservative: a false positive only adds a selector to the gate.
+    if (sel && (SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
+      for (const part of splitTopLevel(sel, ',')) {
+        const one = part.trim()
+        if (one && (SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) state.shareUnsafeSels.add(one)
+      }
+    }
+    if (sel && sel.includes(':')) {
       for (const kind in PSEUDO_KINDS) {
         if (PSEUDO_KINDS[kind].test(sel)) pseudoSels[kind].push(stripPseudo(sel))
       }
@@ -150,6 +160,67 @@ function scanSheet(sheet, universe, pseudoSels, state) {
   return scanRules(rules, universe, pseudoSels, state)
 }
 
+/** Splits `sel` on `sep` outside parentheses, brackets and quotes. */
+function splitTopLevel(sel, sep) {
+  const out = []
+  let depth = 0, quote = null, start = 0
+  for (let i = 0; i < sel.length; i++) {
+    const c = sel[i]
+    if (quote) { if (c === quote && sel[i - 1] !== '\\') quote = null; continue }
+    if (c === '"' || c === '\'') quote = c
+    else if (c === '(' || c === '[') depth++
+    else if (c === ')' || c === ']') depth--
+    else if (depth === 0 && c === sep) { out.push(sel.slice(start, i)); start = i + 1 }
+  }
+  out.push(sel.slice(start))
+  return out
+}
+
+/** A necessary condition for `sel` to match an element, as a cheap subtree-presence key:
+ *  the first class, else the id, else the tag of its RIGHTMOST compound (the compound the
+ *  subject itself must satisfy). null = no usable key, always a candidate. Tailwind-shaped
+ *  sheets carry thousands of `.hover\:x:hover` rules; querying them all against a 3000-node
+ *  subtree cost 55 ms, and 276 ms at 15k — the index makes the gate O(nodes + rules). */
+function subjectKeyOf(sel) {
+  let depth = 0, quote = null, cut = 0
+  for (let i = 0; i < sel.length; i++) {
+    const c = sel[i]
+    if (quote) { if (c === quote && sel[i - 1] !== '\\') quote = null; continue }
+    if (c === '"' || c === '\'') quote = c
+    else if (c === '(' || c === '[') depth++
+    else if (c === ')' || c === ']') depth--
+    else if (depth === 0 && (c === ' ' || c === '>' || c === '+' || c === '~')) cut = i + 1
+  }
+  // Drop functional/attribute arguments: a class inside :not()/[…] is not a condition on the subject.
+  let compound = '', d = 0
+  for (const c of sel.slice(cut)) {
+    if (c === '(' || c === '[') d++
+    else if (c === ')' || c === ']') d--
+    else if (d === 0) compound += c
+  }
+  const ident = (m) => {
+    if (!m) return null
+    if (/\\[0-9a-fA-F]/.test(m)) return null // hex escape: not worth decoding, stay a candidate
+    return m.replace(/\\(.)/g, '$1')
+  }
+  const cls = ident((compound.match(/\.((?:\\.|[\w-])+)/) || [])[1])
+  if (cls) return 'c' + cls
+  const id = ident((compound.match(/#((?:\\.|[\w-])+)/) || [])[1])
+  if (id) return 'i' + id
+  const tag = (compound.match(/^([a-zA-Z][\w-]*)/) || [])[1]
+  return tag ? 't' + tag.toLowerCase() : null
+}
+
+/** One matches()/querySelector-ready selector list from collected parts: '' when there are
+ *  none, null when the joined result cannot be trusted. A & that survived resolution
+ *  (top-level nesting) parses but can never match — worse than no gate, so null. */
+function joinGate(probe, parts) {
+  if (!parts.length) return ''
+  if (parts.some((p) => p.includes('&'))) return null
+  const sel = parts.join(',')
+  try { probe.matches(sel); return sel } catch { return null }
+}
+
 /** Joins collected per-kind selectors into one matches()-ready string, validating the
  *  combined result once (an unparsable selector → null → callers probe every node).
  *  `q` is always included for before/after: UA open/close-quote pseudos have no author rule. */
@@ -159,12 +230,7 @@ function composePseudoGates(doc, pseudoSels) {
   for (const kind in pseudoSels) {
     const parts = pseudoSels[kind]
     if (kind === 'before' || kind === 'after') parts.push('q')
-    if (!parts.length) { gates[kind] = '' ; continue } // no rules → probe nothing
-    // A & that survived resolution (top-level nesting) parses but can never match — that is
-    // worse than no gate at all, so fall back to probing every node.
-    if (parts.some((p) => p.includes('&'))) { gates[kind] = null; continue }
-    const sel = parts.join(',')
-    try { probe.matches(sel); gates[kind] = sel } catch { gates[kind] = null }
+    gates[kind] = joinGate(probe, parts)
   }
   return gates
 }
@@ -180,7 +246,7 @@ function composePseudoGates(doc, pseudoSels) {
  * @param {Document} doc
  * @returns {{universe: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null}}}
  */
-/** See the shareUnsafe note at the selector visitor. Pseudo-ELEMENTS are absent on purpose:
+/** See the share-gate note at the selector visitor. Pseudo-ELEMENTS are absent on purpose:
  *  ::before/::after do not change the HOST element's computed style. `:link` is included
  *  (href-less anchors differ) but `:visited` need not be — getComputedStyle deliberately
  *  answers with unvisited values for privacy, so it cannot split identical elements. */
@@ -189,11 +255,11 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
 export function scanAuthorStyles(doc) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, usesHas: true, shareUnsafe: true, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, usesHas: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafe: false, marginUnstable: false, paddingUnstable: false, importantProps: new Set() }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), marginUnstable: false, paddingUnstable: false, importantProps: new Set() }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -215,7 +281,13 @@ export function scanAuthorStyles(doc) {
         }
       }
     }
-    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareUnsafe: state.shareUnsafe, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
+    // shareGate: null = a splitting selector the engine cannot match against (share off),
+    // else the indexed list styleShareSafe filters by subtree presence and queries with.
+    const shareSels = Array.from(state.shareUnsafeSels)
+    const shareGate = joinGate(doc.createElement('div'), shareSels) === null
+      ? null
+      : shareSels.map((sel) => ({ sel, key: subjectKeyOf(sel) }))
+    return { universe, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
   } catch {
     return unreliable
   }

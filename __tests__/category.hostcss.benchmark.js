@@ -26,7 +26,7 @@ beforeAll(() => {
   root.innerHTML = bigTableHTML(500)
   document.body.appendChild(root)
 })
-afterAll(() => { root?.remove(); sheet?.remove() })
+afterAll(() => { root?.remove(); fresh?.remove(); sheet?.remove(); splitSheet?.remove() })
 
 // La regla es deliberadamente inerte: no matchea un solo nodo de la captura. Lo que mide el
 // arma no es aplicar un pseudo, es el costo de que la pagina MENCIONE uno.
@@ -40,6 +40,36 @@ const withHostCss = () => {
 }
 const withoutHostCss = () => { if (sheet) { sheet.remove(); sheet = null } }
 
+// La otra trampa de la misma clase: selectores que PUEDEN distinguir gemelos identicos
+// (`:hover`, `:first-child`, `p + p`) apagaban el identity share para el documento entero,
+// aunque esten atados a clases que la captura no contiene. Toda pagina real los tiene; la
+// tabla de 500 filas pagaba 536k lecturas de estilo computado en vez de 77k (2026-09-02).
+// Se mide con un elemento FRESCO por iteracion: el share solo pesa en nodos frios, y sobre
+// el mismo elemento recapturado el snapshot cache por nodo esconde la diferencia por completo
+// (medido: 153 vs 153 ms con y sin el fix). Contenido unico por elemento, como en
+// category.cold, para que ninguna etapa se sirva del image cache.
+let splitSheet = null
+let fresh = null
+let salt = 0
+const freshRoot = () => {
+  fresh?.remove()
+  fresh = document.createElement('div')
+  fresh.style.width = '640px'
+  fresh.innerHTML = `<div style="height:14px;font-size:11px">capture #${salt++}</div>` + bigTableHTML(500)
+  document.body.appendChild(fresh)
+  return fresh
+}
+const withSplittingCss = () => {
+  withoutHostCss()
+  if (!splitSheet) {
+    splitSheet = document.createElement('style')
+    splitSheet.setAttribute('data-bench-hostcss', '')
+    splitSheet.textContent = '.hc-btn:hover{color:red}\n.hc-label:first-child{margin:0}\n.hc-faq p + p{margin-top:1em}'
+    document.head.appendChild(splitSheet)
+  }
+}
+const withoutSplittingCss = () => { if (splitSheet) { splitSheet.remove(); splitSheet = null } }
+
 const OPTS = { warmupIterations: 1, iterations: 8, time: 0 }
 
 describe('Host CSS: tabla de 500 filas, con y sin reglas de pseudo en la pagina', () => {
@@ -49,11 +79,24 @@ describe('Host CSS: tabla de 500 filas, con y sin reglas de pseudo en la pagina'
   }, OPTS)
 
   bench('snapDOM · pagina con reglas de pseudo que no matchean', async () => {
+    withoutSplittingCss()
     withHostCss()
     await snapdom.toPng(root, { scale: 1, dpr: 1, burst: false })
   }, OPTS)
 
+  bench('snapDOM · elemento fresco, pagina sin reglas', async () => {
+    withoutSplittingCss()
+    withoutHostCss()
+    await snapdom.toPng(freshRoot(), { scale: 1, dpr: 1, burst: false })
+  }, OPTS)
+
+  bench('snapDOM · elemento fresco, pagina con :hover/:first-child/+ que no matchean', async () => {
+    withSplittingCss()
+    await snapdom.toPng(freshRoot(), { scale: 1, dpr: 1, burst: false })
+  }, OPTS)
+
   bench('html2canvas 1.4.1 · sin reglas (control)', async () => {
+    withoutSplittingCss()
     withoutHostCss()
     await LIBS['html2canvas 1.4.1'](root)
   }, OPTS)

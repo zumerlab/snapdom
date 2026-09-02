@@ -434,15 +434,38 @@ function scanFor(doc) {
   return rec
 }
 /**
- * Whether the identity-share fast path is sound for this document: no author selector can
- * style two elements with identical tag + attributes + ancestor identity chain differently.
- * Derived from the same scan the property universe comes from; an unreadable scan answers
+ * Whether the identity-share fast path is sound for THIS capture: no author selector that
+ * can style two elements with identical tag + attributes + ancestor identity chain
+ * differently (structural, sibling, state, :has — collected by styleScan) matches anything
+ * under the capture root right now. A rule that matches nothing in the subtree at this
+ * instant styles nobody the snapshot will read, so twins are identical by construction;
+ * `.btn:hover` elsewhere on the page cannot split two table cells. One querySelector over
+ * the joined gate, same shape as the pseudo pass's subtree question. Derived from the same
+ * scan the property universe comes from; an unreadable scan or an unmatchable gate answers
  * "unsafe", which only costs the optimization.
+ * @param {Element} el capture root
  */
-export function styleShareSafe(doc) {
+export function styleShareSafe(el) {
   try {
-    const rec = scanFor(doc || document)
-    return !rec.shareUnsafe && !rec.usesHas
+    const gate = scanFor(el.ownerDocument || document).shareGate
+    if (gate === null) return false
+    if (!gate.length) return true
+    // Presence index of the subtree (root included): a selector whose subject compound
+    // names a class/id/tag nobody here carries cannot match here, and stays out of the query.
+    const present = new Set()
+    const note = (n) => {
+      present.add('t' + n.localName)
+      if (n.id) present.add('i' + n.id)
+      const cl = n.classList
+      for (let i = 0; i < cl.length; i++) present.add('c' + cl[i])
+    }
+    note(el)
+    for (const n of el.querySelectorAll('*')) note(n)
+    const parts = []
+    for (const { sel, key } of gate) if (key === null || present.has(key)) parts.push(sel)
+    if (!parts.length) return true
+    const sel = parts.join(',')
+    return !el.matches(sel) && el.querySelector(sel) === null
   } catch {
     return false
   }
@@ -1069,13 +1092,14 @@ function _resolveCtx(sessionOrCtx, opts) {
 const CONTEXT_DEPENDENT_VALUE_RE =
   /%|[\d.](?:em|rem|ex|ch|cap|ic|lh|rlh|v[whib]|vmin|vmax|cq[whbi]|cqmin|cqmax)\b|\b(?:calc|var|min|max|clamp|env|attr)\(|\b(?:auto|inherit|initial|unset|revert|currentcolor|-webkit-fill-available|fit-content|min-content|max-content)\b/i
 
+const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
 function normalizeInlineStyleToComputed(source, clone, computed) {
   if (!source.style || source.style.length === 0) return
   const important = importantPropsFor(source)
   const canSkip = important != null && !CONTEXT_DEPENDENT_VALUE_RE.test(source.getAttribute('style') || '')
   for (let i = 0; i < source.style.length; i++) {
     const prop = source.style[i]
-    if (canSkip && !important.has(prop) && !prop.startsWith('background')) continue
+    if (canSkip && !important.has(prop) && !(prop.startsWith('background') && isTextField(source))) continue
     const val = computed.getPropertyValue(prop)
     if (val) clone.style.setProperty(prop, val)
   }
