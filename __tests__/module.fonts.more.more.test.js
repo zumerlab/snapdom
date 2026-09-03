@@ -40,7 +40,6 @@ vi.mock('../src/modules/snapFetch.js', () => ({
 // ====== SUT + deps ======
 import { embedCustomFonts, collectUsedFontVariants } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
-import * as helpers from '../src/utils/helpers'
 import { snapFetch } from '../src/modules/snapFetch.js'
 
 // ====== utilidades locales ======
@@ -95,7 +94,6 @@ beforeEach(() => {
 
   // limpiar caches y DOM
   try { cache.resource?.clear?.() } catch {}
-  try { cache.font?.clear?.() } catch {}
   cleanInjectedStuff()
 
   // document.fonts is empty by default

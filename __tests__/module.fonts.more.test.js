@@ -60,7 +60,6 @@ const cps = (t) => new Set([...t].map(ch => ch.codePointAt(0)))
 beforeEach(() => {
   if (typeof cache.reset === 'function') cache.reset()
   if (typeof cache.resetCache === 'function') cache.resetCache()
-  cache.font?.clear?.()
   cache.resource?.clear?.()
   vi.clearAllMocks()
   document.querySelectorAll('style,link[rel="stylesheet"]').forEach(n => n.remove())

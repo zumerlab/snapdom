@@ -76,6 +76,5 @@ export function isSafari() {
 
 export function isFirefox() {
   if (typeof navigator === 'undefined') return false
-  const ua = (navigator.userAgent || '').toLowerCase()
-  return ua.includes('firefox') || ua.includes('fxios')
+  return (navigator.userAgent || '').toLowerCase().includes('firefox')
 }

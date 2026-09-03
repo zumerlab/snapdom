@@ -28,7 +28,6 @@ let restoreFonts = () => {}
 
 beforeEach(() => {
   cache.resource.clear()
-  cache.font.clear()
   snapFetch.mockReset()
   snapFetch.mockResolvedValue({ ok: true, data: B64 })
   restoreFonts = stubDocumentFonts([])
@@ -36,12 +35,12 @@ beforeEach(() => {
 
 afterEach(() => { restoreFonts() })
 
-// cache.font is an unbounded "seen" Set; cache.resource (the base64) is FIFO-capped at 150.
-// Treating "seen" as proof of payload left the RAW REMOTE URL in the emitted @font-face, and
-// a remote url() inside a foreignObject is inert: the font silently fails to embed.
+// cache.resource (the base64) is FIFO-capped at 150, and it is the ONLY proof a payload
+// exists. A separate "seen" Set used to stand in for it: treating "seen" as proof left the RAW
+// REMOTE URL in the emitted @font-face, and a remote url() inside a foreignObject is inert,
+// so the font silently failed to embed. The Set is gone; this pins that nothing replaces it.
 describe('an evicted font payload is refetched, never emitted as a remote url()', () => {
-  it('localFonts src: seen but evicted still ends up as a data: URL', async () => {
-    cache.font.add(REMOTE)
+  it('localFonts src: evicted still ends up as a data: URL', async () => {
     expect(cache.resource.has(REMOTE)).toBe(false)
 
     const css = await embedCustomFonts({
@@ -57,12 +56,11 @@ describe('an evicted font payload is refetched, never emitted as a remote url()'
     expect(css).not.toMatch(/url\(\s*['"]?https?:/i)
   })
 
-  it('FontFace._snapdomSrc: seen but evicted still ends up as a data: URL', async () => {
+  it('FontFace._snapdomSrc: evicted still ends up as a data: URL', async () => {
     restoreFonts()
     restoreFonts = stubDocumentFonts([
       { family: 'EvictedDynamic', status: 'loaded', weight: '400', style: 'normal', _snapdomSrc: REMOTE },
     ])
-    cache.font.add(REMOTE)
     expect(cache.resource.has(REMOTE)).toBe(false)
 
     const css = await embedCustomFonts({

@@ -1130,7 +1130,6 @@ function _resolveCtx(sessionOrCtx, opts) {
           image: cache.image,
           resource: cache.resource,
           background: cache.background,
-          font: cache.font,
         },
         options: opts || {},
       }
@@ -1150,7 +1149,6 @@ function _resolveCtx(sessionOrCtx, opts) {
       image: cache.image,
       resource: cache.resource,
       background: cache.background,
-      font: cache.font,
     },
     options: (sessionOrCtx || opts || {}),
   }

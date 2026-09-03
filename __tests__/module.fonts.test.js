@@ -83,7 +83,6 @@ beforeEach(() => {
   // cache.reset() or resetCache(), whichever exists
   if (typeof cache.reset === 'function') cache.reset()
   if (typeof cache.resetCache === 'function') cache.resetCache()
-  if (cache.font?.clear) cache.font.clear?.()
   if (cache.resource?.clear) cache.resource.clear?.()
 
   cleanFontEnvironment()

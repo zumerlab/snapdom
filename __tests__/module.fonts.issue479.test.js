@@ -52,7 +52,6 @@ function faceFor(css, family) {
 describe('#479 — variable font axes must not be pinned by invented descriptors', () => {
   beforeEach(() => {
     cache.resource?.clear?.()
-    cache.font?.clear?.()
   })
   afterEach(() => {
     document.querySelectorAll('style[data-test-479]').forEach((el) => el.remove())

@@ -48,7 +48,6 @@ export const cache = {
   measureHints: new WeakMap(),
   /** Fires the reconcile suggestion at most once per page load (see capture.js). */
   warnedReconcile: false,
-  font: new Set(),
 }
 
 export { EvictingMap }
@@ -86,5 +85,4 @@ export function applyCachePolicy(policy = 'soft') {
   cache.background    = new EvictingMap(MAX_BACKGROUND)
   cache.resource      = new EvictingMap(MAX_RESOURCE)
   cache.compress      = new EvictingMap(MAX_COMPRESS)
-  cache.font          = new Set()
 }

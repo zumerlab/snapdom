@@ -23,7 +23,6 @@ function clearCaches() {
   cache.image?.clear?.()
   cache.background?.clear?.()
   cache.resource?.clear?.()
-  cache.font?.clear?.()
 }
 
 let OrigImage

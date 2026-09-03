@@ -105,7 +105,6 @@ describe('inlineAllStyles – branches y firmas', () => {
         image: cache.image,
         resource: cache.resource,
         background: cache.background,
-        font: cache.font,
       },
       options: { cache: 'auto' },
     }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getStyleKey, collectUsedTagNames, getDefaultStyleForTag } from '../src/utils'
+import { collectUsedTagNames, getDefaultStyleForTag } from '../src/utils'
 
 // The getStyleKey describe that lived here named a 'compress' parameter v3 does not have and
 // asserted only typeof string; the real getStyleKey behavior is pinned in utils.css.test.js.

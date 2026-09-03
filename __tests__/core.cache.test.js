@@ -14,7 +14,6 @@ function snapshotRefs() {
     baseStyle: cache.baseStyle,
     computedStyle: cache.computedStyle,
     measureHints: cache.measureHints,
-    font: cache.font,
   }
 }
 
@@ -26,7 +25,6 @@ function seedSomeData() {
   cache.baseStyle.set('bs', 5)
   cache.computedStyle.set({}, { c: 6 })
   cache.measureHints.set({}, { cssLen: 1, w0: 2, csh: 3, csw: 4 })
-  cache.font.add('Inter__400')
 }
 
 describe('normalizeCachePolicy', () => {
@@ -56,7 +54,6 @@ describe('applyCachePolicy', () => {
     cache.baseStyle = new Map()
     cache.computedStyle = new WeakMap()
     cache.measureHints = new WeakMap()
-    cache.font = new Set()
   })
 
   it('any non-disabled policy: persistent caches kept', () => {
@@ -72,7 +69,6 @@ describe('applyCachePolicy', () => {
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
 
     // The new maps are empty
   })
@@ -92,7 +88,6 @@ describe('applyCachePolicy', () => {
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
 
     // The session is empty
   })
@@ -111,7 +106,6 @@ describe('applyCachePolicy', () => {
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
     // Sessions are per-capture by construction now (createCaptureSession) — there is
     // no shared session bucket left to assert on.
   })
@@ -131,7 +125,6 @@ describe('applyCachePolicy', () => {
     expect(after.baseStyle).not.toBe(before.baseStyle)
     expect(after.computedStyle).not.toBe(before.computedStyle)
     expect(after.measureHints).not.toBe(before.measureHints)
-    expect(after.font).not.toBe(before.font)
 
     // Empty
     expect(cache.image.size).toBe(0)
@@ -139,7 +132,6 @@ describe('applyCachePolicy', () => {
     expect(cache.resource.size).toBe(0)
     expect(cache.defaultStyle.size).toBe(0)
     expect(cache.baseStyle.size).toBe(0)
-    expect(cache.font.size).toBe(0)
   })
 
   it('default (input desconocido): cae en soft', () => {
@@ -156,6 +148,5 @@ describe('applyCachePolicy', () => {
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
   })
 })

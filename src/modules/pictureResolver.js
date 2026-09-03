@@ -13,7 +13,6 @@ export function isPlaceholderSrc(src) {
   if (!src) return true
   if (src.startsWith('data:')) return true
   if (src.startsWith('blob:')) return true
-  if (/^data:image\/(gif|png|svg)/.test(src) && src.length < 200) return true
   return false
 }
 

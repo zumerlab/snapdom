@@ -2,7 +2,7 @@
  * Utilities for inlining background images as data URLs.
  * @module background
  */
-import { isFirefox } from '../utils/browser.js'
+import { isFirefox, isIOS } from '../utils/browser.js'
 
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
 import { needsBackgroundInline, snapshotFor } from './styles.js'
@@ -204,7 +204,7 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
   const attachments = (style.getPropertyValue('background-attachment') || '').split(',').map(s => s.trim())
   // Engines degrade fixed to scroll inside transformed/filtered ancestors, and
   // iOS-lineage engines ignore fixed entirely — match the LIVE rendering: plain rewrite.
-  let degraded = isSafariIOSLike()
+  let degraded = isIOS()
   if (!degraded) {
     for (let p = srcNode.parentElement; p && !degraded; p = p.parentElement) {
       const cs = getStyle(p)
@@ -263,13 +263,6 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
 }
 
 const limitPx = (n) => Math.round(n * 100) / 100
-
-function isSafariIOSLike() {
-  try {
-    const ua = navigator.userAgent
-    return /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
-  } catch { return false }
-}
 
 /**
  * Inlines background-related images and masks from the source tree onto the clone.

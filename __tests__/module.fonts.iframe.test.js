@@ -45,7 +45,6 @@ describe('embedCustomFonts — same-origin iframe document (#441)', () => {
   beforeEach(() => {
     // Cache key now includes doc identity, but each iframe here is a fresh Document
     // anyway — clear defensively so state never leaks across other suites' runs.
-    cache.font?.clear?.()
     cache.resource?.clear?.()
   })
 
