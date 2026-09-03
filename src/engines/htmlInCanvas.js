@@ -17,7 +17,10 @@
  * option. On ANY doubt (API missing, unsupported options, tainted or blank paint) it
  * returns null and the caller runs the SVG engine. Correctness never depends on this module.
  *
- * PLATFORM STATUS (re-checked 2026-09-03 against the WICG explainer): the old
+ * PLATFORM STATUS — VERIFIED ACTIVE in real Chrome (2026-09-03, M148+ with
+ * chrome://flags/#canvas-draw-element): detectDrawApi() found drawElementImage, the mounted
+ * clone painted, the taint probe passed and the capture came back as a PNG data URL —
+ * the first happy-path run on real hardware. Spec context (same date): the old
  * unconditional taint is GONE as a model — the spec is "read-back-allowed rendering":
  * sensitive content (cross-origin iframes/images/url() refs, :visited, system colors, IME,
  * subpixel AA) is EXCLUDED FROM PAINTING instead of tainting, so readback works on Chrome
