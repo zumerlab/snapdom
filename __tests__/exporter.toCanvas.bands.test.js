@@ -97,3 +97,35 @@ describe('toCanvas — banded draw of large captures', () => {
     expect(differing(banded, whole)).toBeLessThan(400)
   }, 60_000)
 })
+
+// Every band re-reads the whole payload: measured 2026-09-03 on chromium, one drawImage of the
+// decoded svg costs ~1.8 ms per MB of embedded data: resources (raster images 1.8, webfonts 1.6)
+// before any pixel is rasterized, and that cost does not shrink with the band. A 19 MB photo went
+// from 42 ms in one draw to 288 ms in eight; liquidGL's home (1.5 MB of video frames and images
+// under 100 KB of markup) from 13.7 to 31.3. The superlinear raster the bands exist for is a
+// property of the MARKUP (deep tree, 2 MB of boxes: 579 → 111), so the bands stay off when the
+// resources outweigh it.
+describe('toCanvas — resource-heavy payloads are drawn in one call', () => {
+  function mountPhoto() {
+    const c = document.createElement('canvas')
+    c.width = 2400
+    c.height = 2400
+    const x = c.getContext('2d')
+    for (let i = 0; i < 400; i++) {
+      x.fillStyle = `hsl(${(i * 37) % 360} 80% ${40 + (i % 5) * 10}%)`
+      x.fillRect((i * 131) % 2400, (i * 71) % 2400, 300, 300)
+    }
+    el = document.createElement('div')
+    el.style.cssText = 'width:2400px'
+    el.innerHTML = `<img src="${c.toDataURL('image/png')}" style="display:block;width:2400px;height:2400px"><p>caption</p>`
+    document.body.appendChild(el)
+    return el
+  }
+  it('a 5.8 Mpx capture that is mostly one image is not banded', async () => {
+    const url = await snapdom.toRaw(mountPhoto(), { burst: false })
+    const spy = vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage')
+    await toCanvas(url, { scale: 1, dpr: 1 })
+    const outputDraws = spy.mock.instances.filter((c) => c.canvas.width > 16).length
+    expect(outputDraws).toBe(1)
+  }, 60_000)
+})
