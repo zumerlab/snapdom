@@ -1,5 +1,5 @@
 import { build } from 'esbuild'
-import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
 
 // The experimental canvas engine (src/engines/htmlInCanvas.js) is dead weight in a shipped
 // build: Chromium taints the canvas unconditionally today, so every engine:'canvas' capture
@@ -75,52 +75,22 @@ async function buildESM() {
 }
 
 /**
- * 3. CommonJS (require)
- * Salida: dist/snapdom.cjs
+ * Two files, and only these two. There is no CommonJS build: v3 is ESM plus the script-tag
+ * IIFE, like v2 in shape (v2's `require()` pointed at the IIFE and returned `{}`, so nothing
+ * that worked is lost). The `/preCache` and `/plugins` subpaths are NOT files either:
+ * package.json maps them to the same dist/snapdom.mjs, so the subpath and the root are one
+ * module instance by construction, one registry, one cache. Bundling them separately gave
+ * each its own module state, so a plugin registered through the subpath was invisible to
+ * snapdom(); re-export stubs fixed that but were four more files for nothing. No splitting,
+ * no chunks. dist/ is emptied first because `files: ["dist/"]` ships whatever is in it, and
+ * scripts/check-pack.mjs fails on any extra file in the tarball.
  */
-async function buildCJS() {
-  await build({
-    ...common,
-    entryPoints: ['src/index.js'],
-    outfile: 'dist/snapdom.cjs',
-    format: 'cjs',
-    minify: true,
-    banner,
-  })
-}
-
-/**
- * 4. SUBPATH EXPORTS (preCache, plugins)
- * Salida: dist/preCache.mjs, dist/plugins.mjs
- *
- * These are NOT bundles. Bundling them separately gave each its own copy of the module
- * state, so `@zumer/snapdom/plugins` registered into an array snapdom() never read and
- * `@zumer/snapdom/preCache` warmed a cache instance the capture never saw. Static
- * re-exports resolve to the same dist/snapdom.mjs instance: one runtime, one registry,
- * one cache. No splitting, no chunks.
- */
-const PLUGIN_EXPORTS = ['registerPlugins', 'clearPlugins', 'getGlobalPlugins', 'normalizePlugin', 'STAGES', 'DEFAULT_STAGE', 'assertNeeds']
-
-function writeSubpathStubs() {
-  writeFileSync('dist/preCache.mjs', `${banner.js}\nexport { preCache } from './snapdom.mjs'\n`)
-  writeFileSync('dist/plugins.mjs', `${banner.js}\nexport { ${PLUGIN_EXPORTS.join(', ')} } from './snapdom.mjs'\n`)
-  // The same stubs for require(). Without them the subpaths were import-only, so a CJS app
-  // that require()d the root and reached the registry through the subpath loaded
-  // snapdom.cjs AND snapdom.mjs — two module instances, two plugin registries, and a
-  // plugin registered through the subpath that snapdom() never saw. One resolution per
-  // module system is the most a dual package can promise; this makes it hold.
-  writeFileSync('dist/preCache.cjs', `${banner.js}\nmodule.exports = { preCache: require('./snapdom.cjs').preCache }\n`)
-  writeFileSync('dist/plugins.cjs', `${banner.js}\nconst r = require('./snapdom.cjs')\nmodule.exports = { ${PLUGIN_EXPORTS.map((n) => `${n}: r.${n}`).join(', ')} }\n`)
-}
-
 async function main() {
-  try { rmSync('dist/modules', { recursive: true, force: true }) } catch { /* ok */ }
+  rmSync('dist', { recursive: true, force: true })
   await Promise.all([
     buildLegacy(),
     buildESM(),
-    buildCJS(),
   ])
-  writeSubpathStubs()
 }
 
 main().catch((err) => {

@@ -3,7 +3,7 @@
   "version": "3.0.0-beta.0",
   "description": "Fast, modern alternative to html2canvas — captures HTML elements to images (PNG, JPG, SVG, WebP) with exceptional speed and accuracy.",
   "type": "module",
-  "main": "./dist/snapdom.cjs",
+  "main": "./dist/snapdom.js",
   "module": "./dist/snapdom.mjs",
   "types": "./types/snapdom.d.ts",
   "sideEffects": false,
@@ -14,24 +14,23 @@
     ".": {
       "types": "./types/snapdom.d.ts",
       "import": "./dist/snapdom.mjs",
-      "require": "./dist/snapdom.cjs",
       "default": "./dist/snapdom.mjs"
     },
     "./preCache": {
-      "types": "./types/preCache.d.ts",
-      "import": "./dist/preCache.mjs",
-      "require": "./dist/preCache.cjs"
+      "types": "./types/snapdom.d.ts",
+      "import": "./dist/snapdom.mjs",
+      "default": "./dist/snapdom.mjs"
     },
     "./plugins": {
-      "types": "./types/plugins.d.ts",
-      "import": "./dist/plugins.mjs",
-      "require": "./dist/plugins.cjs"
+      "types": "./types/snapdom.d.ts",
+      "import": "./dist/snapdom.mjs",
+      "default": "./dist/snapdom.mjs"
     },
     "./package.json": "./package.json"
   },
   "files": [
     "dist/",
-    "types/",
+    "types/snapdom.d.ts",
     "README.md"
   ],
   "scripts": {

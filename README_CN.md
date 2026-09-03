@@ -438,7 +438,7 @@ npx vitest run __tests__/category.capabilities.test.js --browser.headless --repo
 - `src/core/` — 捕获流程、克隆、预处理与插件
 - `src/modules/` — 图片、字体、伪元素、背景与 SVG
 - `src/exporters/` — `toPng`、`toSvg`、`toBlob` 等导出方法
-- `dist/` — 构建产物（`snapdom.js`、`snapdom.mjs`、`preCache.mjs`、`plugins.mjs`）
+- `dist/` — 构建产物（仅 `snapdom.js` 和 `snapdom.mjs`）
 
 **构建：**
 ```sh

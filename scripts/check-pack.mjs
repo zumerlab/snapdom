@@ -17,7 +17,8 @@
  * So this checks the artifact, not the source: delete dist, pack (prepack must rebuild it),
  * assert every entrypoint is inside the tarball, then install it into throwaway consumer
  * projects and typecheck with `skipLibCheck: false` under both module resolution modes,
- * plus a real require()/import smoke test.
+ * plus a real import smoke test. The tarball must also carry NOTHING beyond the listed
+ * files: `files: ["dist/"]` ships whatever sits in dist/, stale stubs included.
  *
  * Run: npm run test:pack
  */
@@ -41,16 +42,10 @@ const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8'
 const REQUIRED = [
   'package/package.json',
   'package/README.md',
+  'package/LICENSE',
   'package/dist/snapdom.js',
   'package/dist/snapdom.mjs',
-  'package/dist/snapdom.cjs',
-  'package/dist/plugins.mjs',
-  'package/dist/plugins.cjs',
-  'package/dist/preCache.mjs',
-  'package/dist/preCache.cjs',
   'package/types/snapdom.d.ts',
-  'package/types/plugins.d.ts',
-  'package/types/preCache.d.ts',
 ]
 
 try {
@@ -64,6 +59,9 @@ try {
     if (listed.includes(f)) pass(f)
     else fail(`MISSING from tarball: ${f}`)
   }
+  const extra = listed.filter((f) => !REQUIRED.includes(f))
+  if (extra.length) fail(`EXTRA files in tarball: ${extra.join(', ')}`)
+  else pass('nothing in the tarball beyond those')
 
   log('\n2. install the tarball into a consumer project')
   const consumer = join(work, 'consumer')
@@ -121,9 +119,6 @@ export async function use(el: HTMLElement) {
   log('\n3. resolve the entrypoints at runtime')
   const pkgDir = join(consumer, 'node_modules', '@zumer', 'snapdom')
   const checks = [
-    ['require root', `const m = require('@zumer/snapdom'); if (typeof m.snapdom !== 'function') throw new Error('snapdom missing')`],
-    ['require /plugins', `const m = require('@zumer/snapdom/plugins'); if (typeof m.registerPlugins !== 'function') throw new Error('registerPlugins missing')`],
-    ['require /preCache', `const m = require('@zumer/snapdom/preCache'); if (typeof m.preCache !== 'function') throw new Error('preCache missing')`],
     ['import root', `import('@zumer/snapdom').then(m => { if (typeof m.snapdom !== 'function') throw new Error('snapdom missing') })`],
     ['import /plugins', `import('@zumer/snapdom/plugins').then(m => { if (typeof m.registerPlugins !== 'function') throw new Error('registerPlugins missing') })`],
     ['import /preCache', `import('@zumer/snapdom/preCache').then(m => { if (typeof m.preCache !== 'function') throw new Error('preCache missing') })`],

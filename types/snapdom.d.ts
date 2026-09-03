@@ -622,8 +622,9 @@ export declare function preCache(
 /* =========================
  * Plugin registry
  * =========================
- * One runtime owns the registry: the `@zumer/snapdom/plugins` subpath re-exports these same
- * bindings from the root module, so registering through either reaches the same list.
+ * One runtime owns the registry: the `@zumer/snapdom/plugins` subpath resolves to the root
+ * module itself (package.json maps it there), so registering through either reaches the
+ * same list.
  */
 
 /** Register plugins globally, deduped by name. A global plugin must run to 'render'. */
@@ -648,11 +649,10 @@ export declare function assertNeeds(
   supported?: readonly CaptureStage[]
 ): CaptureStage;
 
-/* The subpaths declare themselves, in types/plugins.d.ts and types/preCache.d.ts.
- * They used to live here as `declare module "@zumer/snapdom/plugins" { … }`. In a file
- * that is already a module those are AUGMENTATIONS of a specifier TypeScript has to
- * resolve first — and it cannot resolve a package into itself — so every consumer without
- * `skipLibCheck: true` got TS2665. Separate files, reached through the `types` condition
- * in package.json's exports map, are the shape that actually works. */
+/* The `/plugins` and `/preCache` subpaths point at THIS file through the `types` condition
+ * in package.json's exports map. They used to be declared here as
+ * `declare module "@zumer/snapdom/plugins" { … }`. In a file that is already a module those
+ * are AUGMENTATIONS of a specifier TypeScript has to resolve first, and it cannot resolve a
+ * package into itself, so every consumer without `skipLibCheck: true` got TS2665. */
 
 export {};

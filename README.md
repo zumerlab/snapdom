@@ -180,8 +180,9 @@ yarn add @zumer/snapdom@dev
 | Variant | File | Use case |
 |---------|------|----------|
 | **ESM** (tree-shakeable) | `dist/snapdom.mjs` | Bundlers (Vite, webpack), `import` |
-| **CJS** | `dist/snapdom.cjs` | `require('@zumer/snapdom')` |
 | **IIFE** (global) | `dist/snapdom.js` | Script tag, `window.snapdom` |
+
+There is no CommonJS build. `@zumer/snapdom/preCache` and `@zumer/snapdom/plugins` resolve to the same ESM file, so the plugin registry and the caches are one instance however you import them.
 
 **Bundler (npm):**
 ```js
@@ -561,7 +562,7 @@ npx vitest run __tests__/category.capabilities.test.js --browser.headless --repo
 - `src/core/` – Capture pipeline, clone, prepare, plugins
 - `src/modules/` – Images, fonts, pseudo-elements, backgrounds, SVG
 - `src/exporters/` – toPng, toSvg, toBlob, etc.
-- `dist/` – Build output (`snapdom.mjs`, `snapdom.cjs`, `snapdom.js`, plus the `preCache.mjs` / `plugins.mjs` re-export stubs)
+- `dist/` – Build output (`snapdom.mjs` and `snapdom.js`, nothing else)
 
 **Build:**
 ```sh
