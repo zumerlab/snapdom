@@ -141,7 +141,13 @@ export async function tryCanvasEngine(state, context) {
     // A rendering update records the drawable snapshot; on OT builds the `paint` event
     // (armed by requestPaint) is the sync point that guarantees it is current. Bounded:
     // a missed event just draws after the rAF wait and the blank probe below catches it.
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+    // The rAF itself is bounded too (same pattern as toCanvas's frame()): browsers
+    // throttle or suspend rAF in hidden/occluded windows, and an unguarded double-rAF
+    // measured as a flat ~2s per capture in a hidden Chromium 152 window (Electron probe,
+    // 2026-09-03) — the engine must not stall where the svg path would not.
+    const frame = () => new Promise((r) => { requestAnimationFrame(r); setTimeout(r, 50) })
+    await frame()
+    await frame()
     if (typeof canvas.requestPaint === 'function') {
       await new Promise((resolve) => {
         const t = setTimeout(resolve, 200)
