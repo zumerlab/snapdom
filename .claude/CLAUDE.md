@@ -158,6 +158,20 @@ identity transform, so every band uses the exact transform the whole draw would.
 raster, not band edges — and 0 on Firefox. This is NOT the `crop` option: crop rewrites the
 viewBox and re-decodes the svg per window (~47 ms of load+layout each on that tree), which is
 why it got worse past 4 slices (370 / 549 / 982 ms at 4 / 8 / 16) while bands keep improving.
+Two band ideas were MEASURED DEAD on 2026-09-03 — do not re-try without new evidence.
+(1) Partial redraw for mirror loops (diff's dirty rect → `crop`-decode the window → blit
+onto the reused canvas): prototyped with public primitives on a 34 Mpx scene with a small
+ticker mutation — 39.1 ms full redraw vs 37 ms partial, NO win, because `crop` re-decodes
+the whole SVG document (parse+layout is document-sized; only raster area shrinks) and a
+diff-engaged capture already draws cheap; on content-complex pages where redraw IS
+expensive (liquidGL's home: ~230 ms), diff bails anyway (canvas/video/heavy subtrees), so
+no dirty rect exists to exploit. (2) Yielding between bands (MessageChannel task per band)
+to cut main-thread blocking: attributed with PerformanceObserver longtasks on that same
+29 Mpx page — the jank is the DECODE (one ~228 ms task inside img.decode(), the SVG
+parse+layout, unreachable from our code); the whole-draw is already browser-split into
+~75 ms tasks, each band is still a ~78 ms task WITH yields, and the banded+yield variant
+cost 826 ms wall vs 247 one-shot. Both fixes for huge-complex-capture cost live in the
+html-in-canvas engine (native paint, no SVG decode), not in this exporter.
 Two WebKit facts to keep straight: `waitForImgPaint`'s 16x16 probe is a `drawImage` too (the
 call-count test filters it by canvas size), and the exporter's raster differs from a naive
 main-document `new Image()` draw of the same svg by 0.9–24% of the pixels WITH THE BANDS OFF
