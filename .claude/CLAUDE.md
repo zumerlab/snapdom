@@ -430,8 +430,10 @@ guarded the earlier "do not fix" decisions are still real — they are why each 
   code (the probe is created only under `isSafari()`). The five earlier reverted attempts all
   kept the verification BEFORE the draw, which cannot see this. Pinned by the now-UN-skipped
   crop case in `visual.fidelity.crossengine.test.js` (it must stay the first capture of that
-  sprite in the page — the first decode of the data: URL is the trigger). Real-Safari
-  (SnapEye) re-verification of the post-draw probe is still worth doing.
+  sprite in the page — the first decode of the data: URL is the trigger). Re-verified in REAL
+  Safari 26.5.1 through SnapEye 0.3.0 (2026-09-02, `bench/snapeye-dev.mjs` driven by
+  safaridriver): 100/100 captures, the 50 base and the 50 compressed each one sha1, all valid
+  PNG, no size outlier, first capture identical to the rest.
 
 - **`pseudo.js` — scoped `::marker` / `::first-line` skipped when the scan is unreliable —
   FIXED.** A cross-origin sheet makes `pseudoGatesFor` return null; the scoped emitter treated
