@@ -1,4 +1,4 @@
-// EXPERIMENTAL engine (engine:'canvas'): in browsers without drawElement/drawElementImage
+// EXPERIMENTAL engine (engine:'html-in-canvas'): in browsers without drawElement/drawElementImage
 // (all current CI engines), the option must be perfectly transparent — the normal svg
 // pipeline serves the capture. Engine-active behavior is verified separately with a
 // flag-enabled Chromium (see NEXT_NOTES.md).
@@ -17,10 +17,10 @@ function makeCard() {
   return el
 }
 
-describe("engine:'canvas' — unsupported-browser transparency", () => {
+describe("engine:'html-in-canvas' — unsupported-browser transparency", () => {
   it('falls back to the svg pipeline and produces a normal result', async () => {
     const el = makeCard()
-    const res = await snapdom(el, { engine: 'canvas' })
+    const res = await snapdom(el, { engine: 'html-in-canvas' })
     expect(typeof res.url).toBe('string')
     expect(res.url.startsWith('data:image/svg+xml')).toBe(true)
     const canvas = await res.toCanvas()
@@ -54,13 +54,13 @@ describe("engine:'canvas' — unsupported-browser transparency", () => {
     expect(await tryCanvasEngine({ element: el, clone: null }, createContext({}))).toBeNull()
   })
 
-  it('a plugin capture through engine:\'canvas\' still runs every plugin hook', async () => {
+  it('a plugin capture through engine:\'html-in-canvas\' still runs every plugin hook', async () => {
     // Previously the engine ran BEFORE the pipeline, so it had to refuse any capture with
     // plugins. Now the plugin work is already baked into the clone it receives.
     const seen = []
     const el = makeCard()
     const res = await snapdom(el, {
-      engine: 'canvas',
+      engine: 'html-in-canvas',
       plugins: [{ name: 'probe', pure: true, afterClone() { seen.push('afterClone') } }],
     })
     expect(seen).toEqual(['afterClone'])

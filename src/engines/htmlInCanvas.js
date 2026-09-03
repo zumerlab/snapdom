@@ -1,8 +1,8 @@
 /**
- * EXPERIMENTAL render engine: WICG canvas-place-element (`ctx.drawElement`, Chrome ~130+
- * behind chrome://flags/#canvas-draw-element; older flagged builds shipped
- * `drawElementImage`). Paints with the browser's OWN painter, so native form controls come
- * out right and none of the svg-as-image quirks apply.
+ * EXPERIMENTAL render engine: WICG html-in-canvas (`ctx.drawElementImage`, Chrome 148+
+ * origin trial / chrome://flags/#canvas-draw-element; the M138-era dev trial shipped the
+ * same thing as `drawElement`). Paints with the browser's OWN painter, so native form
+ * controls come out right and none of the svg-as-image quirks apply.
  *
  * IT IS A PEER OF engines/svg.js. Both take the SAME input, the finished clone, and differ
  * only in how they turn it into pixels. That is the whole reason this belongs to snapdom
@@ -13,16 +13,27 @@
  * core hands it, with the CSS core assembled, so those features come for free.
  *
  * QUARANTINE CONTRACT (this feature is green): everything lives in src/engines/ — core's
- * only knowledge is a lazy-import seam in captureDOM behind the opt-in `engine: 'canvas'`
+ * only knowledge is a lazy-import seam in captureDOM behind the opt-in `engine: 'html-in-canvas'`
  * option. On ANY doubt (API missing, unsupported options, tainted or blank paint) it
  * returns null and the caller runs the SVG engine. Correctness never depends on this module.
  *
- * PLATFORM STATUS (verified 2026-07-25, flagged Chromium via --enable-blink-features=
- * CanvasDrawElement): drawElement PAINTS pixel-perfectly, including native form controls the
- * svg pipeline cannot reproduce, but currently TAINTS the canvas unconditionally, even for
- * fully local content. No readback (getImageData/toBlob/toDataURL) means no encodable
- * exports, so the taint probe below sends every capture to the SVG engine today. The day
- * Chromium ships same-origin readback this lights up with no code changes.
+ * PLATFORM STATUS — VERIFIED ACTIVE in real Chrome (2026-09-03, M148+ with
+ * chrome://flags/#canvas-draw-element): detectDrawApi() found drawElementImage, the mounted
+ * clone painted, the taint probe passed and the capture came back as a PNG data URL —
+ * the first happy-path run on real hardware. Spec context (same date): the old
+ * unconditional taint is GONE as a model — the spec is "read-back-allowed rendering":
+ * sensitive content (cross-origin iframes/images/url() refs, :visited, system colors, IME,
+ * subpixel AA) is EXCLUDED FROM PAINTING instead of tainting, so readback works on Chrome
+ * 148+ (origin trial through M154). That exclusion is exactly why this engine draws the
+ * FINISHED CLONE and not the live element: the pipeline has already fetched and inlined
+ * cross-origin images/fonts into it, making the clone same-origin by construction — native
+ * paint fidelity AND full content AND readback. The taint probe below stays as the safety
+ * net for pre-OT builds and anything the spec still withholds.
+ *
+ * OT contract this module follows: `layoutsubtree` on the canvas, `drawable` on the drawn
+ * element, snapshots recorded on every rendering update with the `paint` event (after
+ * `canvas.requestPaint()`) as the sync point. On builds without `requestPaint` (the M138
+ * dev trial) the double-rAF wait alone is the rendering update.
  *
  * NOT OPTIMIZED. The mount/draw path is deliberately the simplest thing that consumes the
  * clone: no bbox/bleed math, no size overrides. Those bails are listed in `tryCanvasEngine`.
@@ -32,17 +43,18 @@
 import { debugWarn } from '../utils/debug.js'
 
 /**
- * Which canvas-place-element method this browser exposes, or null. Null sends every capture
- * to the svg engine, which is where every shipping browser lands today.
- * @returns {'drawElement'|'drawElementImage'|null}
+ * Which canvas-place-element method this browser exposes, or null. The origin-trial name
+ * (`drawElementImage`) is checked before the M138 dev-trial one. Null sends every capture to
+ * the svg engine, which is where every unflagged browser lands today.
+ * @returns {'drawElementImage'|'drawElement'|null}
  */
 export function detectDrawApi() {
   try {
     const c = document.createElement('canvas')
     const ctx = c.getContext('2d')
     if (!ctx) return null
-    if (typeof ctx.drawElement === 'function') return 'drawElement'
     if (typeof ctx.drawElementImage === 'function') return 'drawElementImage'
+    if (typeof ctx.drawElement === 'function') return 'drawElement'
   } catch { /* detection is best-effort */ }
   return null
 }
@@ -70,6 +82,9 @@ function mountClone(clone, css, width, height) {
   canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:-2147483647;pointer-events:none'
 
   const wrapper = document.createElement('div')
+  // `drawable` is required by the OT contract for the element handed to drawElementImage
+  // (it implies isolation:isolate — already wanted here) and is inert on legacy builds.
+  wrapper.setAttribute('drawable', '')
   wrapper.style.cssText =
     `all:initial;box-sizing:border-box;display:block;overflow:visible;width:${width}px;height:${height}px`
 
@@ -105,11 +120,12 @@ export async function tryCanvasEngine(state, context) {
   if (context.clip) return null
 
   /* c8 ignore start -- everything below needs a browser that actually exposes
-     ctx.drawElement. It ships behind chrome://flags/#canvas-draw-element only, so
-     `detectDrawApi()` returns null in every CI browser and this code is unreachable by
-     construction — not untested. The reachable half (detection + every bail above, the
-     part that guarantees the SVG engine still runs) IS covered by engines.htmlInCanvas.test.js.
-     Re-measure when Chromium ships same-origin readback and the engine can be enabled. */
+     ctx.drawElementImage. It ships behind chrome://flags/#canvas-draw-element or the
+     Chrome 148+ origin trial only, so `detectDrawApi()` returns null in every CI browser
+     and this code is unreachable by construction — not untested. The reachable half
+     (detection + every bail above, the part that guarantees the SVG engine still runs) IS
+     covered by engines.htmlInCanvas.test.js. Re-measure against a flagged Chrome 148+
+     before enabling anywhere by default. */
   const rect = element.getBoundingClientRect()
   const width = Math.max(1, element.offsetWidth || rect.width || 1)
   const height = Math.max(1, element.offsetHeight || rect.height || 1)
@@ -127,7 +143,23 @@ export async function tryCanvasEngine(state, context) {
   let out
   try {
     canvas.getBoundingClientRect() // force layout of the subtree
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+    // A rendering update records the drawable snapshot; on OT builds the `paint` event
+    // (armed by requestPaint) is the sync point that guarantees it is current. Bounded:
+    // a missed event just draws after the rAF wait and the blank probe below catches it.
+    // The rAF itself is bounded too (same pattern as toCanvas's frame()): browsers
+    // throttle or suspend rAF in hidden/occluded windows, and an unguarded double-rAF
+    // measured as a flat ~2s per capture in a hidden Chromium 152 window (Electron probe,
+    // 2026-09-03) — the engine must not stall where the svg path would not.
+    const frame = () => new Promise((r) => { requestAnimationFrame(r); setTimeout(r, 50) })
+    await frame()
+    await frame()
+    if (typeof canvas.requestPaint === 'function') {
+      await new Promise((resolve) => {
+        const t = setTimeout(resolve, 200)
+        canvas.addEventListener('paint', () => { clearTimeout(t); resolve() }, { once: true })
+        canvas.requestPaint()
+      })
+    }
     const ctx2d = canvas.getContext('2d')
     const fn = ctx2d && ctx2d[drawApi]
     if (typeof fn !== 'function') return null
@@ -136,14 +168,15 @@ export async function tryCanvasEngine(state, context) {
     fn.call(ctx2d, wrapper, 0, 0, width, height)
     ctx2d.restore()
 
-    // Taint probe: cross-origin content painted by drawElement taints the canvas and would
-    // break every toDataURL/toBlob downstream — fall back to the SVG engine, which has
-    // already fetched and inlined those resources into this very clone.
+    // Taint probe: under the OT model a same-origin clone reads back cleanly, but pre-OT
+    // builds tainted unconditionally and future spec churn could reintroduce cases — any
+    // taint would break every toDataURL/toBlob downstream, so fall back to the SVG engine,
+    // which has already fetched and inlined those resources into this very clone.
     let probe
     try {
       probe = ctx2d.getImageData(0, 0, Math.min(64, outW), Math.min(64, outH)).data
     } catch {
-      debugWarn(context, "engine:'canvas': drawElement painted but the canvas is tainted (current Chromium taints unconditionally) — falling back to the svg engine")
+      debugWarn(context, `engine:'html-in-canvas': ${drawApi} painted but the canvas is tainted (pre-origin-trial build?) — falling back to the svg engine`)
       return null
     }
     // Blank probe: a mount that skipped the paint pass draws nothing — don't hand the

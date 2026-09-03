@@ -19,6 +19,11 @@ import { toCanvas } from './toCanvas.js'
 export async function toBlob(url, options) {
   const format = options.format || options.type || 'svg'
   if (format === 'svg') {
+    // An engine:'html-in-canvas' capture is raster from birth: base64-decoding its PNG and
+    // labeling the bytes image/svg+xml would hand back a corrupt file. Fail with the reason.
+    if (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) {
+      throw new Error("[snapdom] toBlob: engine:'html-in-canvas' produces a raster capture; ask for png/jpeg/webp")
+    }
     const svgText = decodeURIComponent(url.split(',')[1])
     return new Blob([svgText], { type: 'image/svg+xml' })
   }

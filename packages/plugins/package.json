@@ -44,5 +44,8 @@
   "homepage": "https://zumerlab.github.io/snapdom/",
   "peerDependencies": {
     "@zumer/snapdom": ">=3.0.0-0"
+  },
+  "devDependencies": {
+    "@zumer/snapdom": "file:../.."
   }
 }

@@ -234,10 +234,24 @@ async function buildResult(url, context) {
   const rendered = stageReaches(stage, 'render')
   const absent = (what) => absentArtifactError(stage, context.__needsLoweredBy || [], what)
 
+  // engine:'html-in-canvas' hands back the painted bitmap itself: PNG-encoding it eagerly
+  // costs 15-22x what the pixel exports actually need (62 vs 4 ms on a card, 4.2 s vs
+  // 210 ms at 29 Mpx, measured 2026-09-03). Pixel exports consume the canvas directly;
+  // the string surfaces (url, toRaw, toImg/toSvg, download) mint the PNG data URL once,
+  // on first read.
+  const engineCanvas = (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) ? url : null
+  let mintedUrl = engineCanvas ? null : url
+  const urlOf = () => (mintedUrl ??= engineCanvas.toDataURL())
+  const pixelSource = engineCanvas || url
+  if (engineCanvas) url = ''
+
   // Lazy decode: exposing the serialized SVG eagerly would double retained string size
   // per live result — exporters that need it (toHtml) pay the decode on demand.
   const lazySvgString = () => {
     if (!rendered) throw absent('svgString')
+    // An engine capture is raster from birth — decoding its PNG data URL as if it were
+    // the serialized SVG would hand back base64 garbage with an svg label on it.
+    if (engineCanvas) throw new Error("[snapdom] svgString: engine:'html-in-canvas' produces a raster capture; there is no serialized SVG")
     const i = url.indexOf(',')
     return i >= 0 ? decodeURIComponent(url.slice(i + 1)) : ''
   }
@@ -251,7 +265,7 @@ async function buildResult(url, context) {
     'url',
     // Same reason as result.url below: the throwing form stays non-enumerable so copying
     // the facade doesn't detonate.
-    rendered ? { value: url, enumerable: true } : { get() { throw absent('export.url') }, enumerable: false, configurable: true }
+    rendered ? { get: urlOf, enumerable: true } : { get() { throw absent('export.url') }, enumerable: false, configurable: true }
   )
 
   // ——— 1) Default core exports (each type is imported lazily) ———
@@ -259,37 +273,37 @@ async function buildResult(url, context) {
   const coreExports = {
     img: async (ctx, opts) => {
       const { toImg } = await import('../exporters/toImg.js')
-      return toImg(url, { ...ctx, ...(opts || {}) })
+      return toImg(urlOf(), { ...ctx, ...(opts || {}) })
     },
     svg: async (ctx, opts) => {
       const { toSvg } = await import('../exporters/toImg.js')
-      return toSvg(url, { ...ctx, ...(opts || {}) })
+      return toSvg(urlOf(), { ...ctx, ...(opts || {}) })
     },
     canvas: async (ctx, opts) => {
       const { toCanvas } = await import('../exporters/toCanvas.js')
-      return toCanvas(url, { ...ctx, ...(opts || {}) })
+      return toCanvas(pixelSource, { ...ctx, ...(opts || {}) })
     },
     blob: async (ctx, opts) => {
       const { toBlob } = await import('../exporters/toBlob.js')
       // Blob keeps its historic svg default (the raw vector output) unless the caller
       // explicitly asked for an image format.
-      return toBlob(url, { ...ctx, ...(opts || {}), format: (opts && opts.__explicitFormat) || 'svg' })
+      return toBlob(pixelSource, { ...ctx, ...(opts || {}), format: (opts && opts.__explicitFormat) || 'svg' })
     },
     png: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(url, { ...ctx, ...(opts || {}), format: 'png' })
+      return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'png' })
     },
     jpeg: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(url, { ...ctx, ...(opts || {}), format: 'jpeg' })
+      return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'jpeg' })
     },
     webp: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(url, { ...ctx, ...(opts || {}), format: 'webp' })
+      return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'webp' })
     },
     download: async (ctx, opts) => {
       const { download } = await import('../exporters/download.js')
-      return download(url, { ...ctx, ...(opts || {}) })
+      return download(pixelSource, { ...ctx, ...(opts || {}) })
     },
   }
 
@@ -427,7 +441,7 @@ async function buildResult(url, context) {
     // reconcile risk. Export-time entries append after the export resolves; burst memo
     // serves retain the originating capture's log.
     warnings: (context.__session && context.__session.warnings) || [],
-    toRaw: () => { if (!rendered) throw absent('toRaw()'); return url },
+    toRaw: () => { if (!rendered) throw absent('toRaw()'); return urlOf() },
     to: (type, opts) => runExport(type, opts),
 
     // "Classic" methods the tests expect:
@@ -446,6 +460,10 @@ async function buildResult(url, context) {
   // result.url still throws, with the reason.
   if (!rendered) {
     Object.defineProperty(result, 'url', { get() { throw absent('url') }, enumerable: false, configurable: true })
+  } else if (engineCanvas) {
+    // Lazy mint (once) so an engine capture that only runs pixel exports never pays the
+    // PNG encode at all.
+    Object.defineProperty(result, 'url', { get: urlOf, enumerable: true, configurable: true })
   }
 
   // Read-only render geometry for document exporters and diagnostics: THE SAME frozen

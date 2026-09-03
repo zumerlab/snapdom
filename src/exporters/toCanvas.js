@@ -491,20 +491,64 @@ function startDecode(image, src) {
 // 16.7M on the deep tree, one grey level each, at rows 256 apart, none at band edges. The
 // `crop` option is not this: it rewrites the viewBox and re-decodes the svg per window
 // (~47 ms of load+layout each on that tree), which is why it got worse past 4 slices.
+//
+// The superlinearity is a property of the MARKUP, and every band re-reads the whole payload
+// before it paints a pixel: measured 2026-09-03 (chromium, flushed draws), one drawImage of the
+// decoded svg costs ~1.8 ms per MB of embedded data: resources (raster images 1.8, webfonts
+// 1.6), and that part does not shrink with the band. A 19 MB photo: 42 ms in one draw, 288 in
+// eight. liquidGL's home, 1.5 MB of video frames under 100 KB of markup: 13.7 → 31.3. The deep
+// tree, 2 MB of boxes and no resources: 579 → 111, and it wins from 288 KB of markup up. Flat
+// markup (a 500-row table, 400 paragraphs, 220 boxes) moves by 3 ms either way. So the bands
+// stay off when the resources outweigh the markup (resourceHeavy), which leaves every
+// resource-free payload on the path measured above.
 const BAND_MIN_AREA = 4e6
 const BAND_AREA = 2e6
 const MAX_BANDS = 8
+
+const MARKUP_MARKS = ['%3C', '%3E', '%20', '%7B', '%7D', '%3B']
 /**
- * Draw `img` into `ctx` at devW x devH, in bands past the area gate above. Pinned by
- * __tests__/exporter.toCanvas.bands.test.js, where a one-row band shift differs by 760k pixels.
+ * Whether embedded data: resources make up more of `src` than the markup does. Sampled, not
+ * scanned: 200 evenly spaced 48-character windows of the ENCODED payload (encodeSvgToDataURL).
+ * A window of markup or css carries an encoded `<`, `>`, space, brace or `;`; a window of
+ * base64 never does. Exact counting is O(payload) per resource, because each resource's end
+ * has to be searched for: 359 ms on 300 thumbnails (6.7 MB). The sample costs microseconds at
+ * any size and lands within a few percent, which is all a half-way threshold needs.
+ * @param {string} src
+ * @returns {boolean}
+ */
+function resourceHeavy(src) {
+  if (typeof src !== 'string') return false
+  const start = src.indexOf(',') + 1
+  const step = Math.max(48, Math.floor((src.length - start) / 200))
+  let windows = 0
+  let clean = 0
+  for (let i = start; i + 48 <= src.length; i += step) {
+    const w = src.slice(i, i + 48)
+    windows++
+    if (!MARKUP_MARKS.some((m) => w.includes(m))) clean++
+  }
+  return clean * 2 > windows
+}
+
+/**
+ * Draw `img` into `ctx` at devW x devH, in bands past the area gate above unless `src` is
+ * resource-heavy. Pinned by __tests__/exporter.toCanvas.bands.test.js, where a one-row band
+ * shift differs by 760k pixels and a 5.8 Mpx photo has to land in one call.
  * @param {CanvasRenderingContext2D} ctx - identity transform, device pixels
- * @param {HTMLImageElement} img
+ * @param {HTMLImageElement|HTMLCanvasElement} img
  * @param {number} devW
  * @param {number} devH
+ * @param {string|HTMLCanvasElement} src - what `img` was decoded from, for resourceHeavy
  */
-function drawBanded(ctx, img, devW, devH) {
+function drawBanded(ctx, img, devW, devH, src) {
+  // The bands exist for the svg-as-image draw, whose cost is superlinear in destination
+  // size. A canvas source (engine capture) is a plain blit — linear, one draw.
+  if (!img.naturalWidth) {
+    ctx.drawImage(img, 0, 0, devW, devH)
+    return
+  }
   const area = devW * devH
-  const bands = area > BAND_MIN_AREA ? Math.min(MAX_BANDS, Math.ceil(area / BAND_AREA)) : 1
+  const bands = area > BAND_MIN_AREA && !resourceHeavy(src) ? Math.min(MAX_BANDS, Math.ceil(area / BAND_AREA)) : 1
   if (bands === 1) {
     ctx.drawImage(img, 0, 0, devW, devH)
     return
@@ -542,6 +586,13 @@ function drawBanded(ctx, img, devW, devH) {
  */
 export async function toCanvas(url, options) {
   let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor, crop = null } = options
+
+  // engine:'html-in-canvas' hands the painted canvas itself: pixels already in hand, so the
+  // decode machinery below has nothing to do. The PNG round trip this skips costs 15-22x
+  // the direct draw (measured 2026-09-03: 62 vs 4 ms on a card, 4.2 s vs 210 ms at 29 Mpx)
+  // — without it the engine is slower than the svg path it replaces. Every string-only
+  // guard below (isSvgDataURL, the Safari rewrites) already passes a canvas through.
+  const srcCanvas = (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) ? url : null
 
   // SVG payloads: the old path decoded the whole multi-MB data URL just to read the <svg>
   // header (#425 clamp check) and again for the Safari box-shadow rewrite, re-encoding after
@@ -589,9 +640,11 @@ export async function toCanvas(url, options) {
 
   // Fetched from the throwaway decode frame and held until the last drawImage: recycling the
   // frame frees this image's pixels along with everything else its document fetched.
-  let img = acquireDecodeImage(src)
+  // A canvas source skips all of it — including the Safari paint waits, which exist for
+  // svg-as-image decode timing and would move the caller's canvas into the document body.
+  let img = srcCanvas || acquireDecodeImage(src)
   try {
-    await startDecode(img, src)
+    if (!srcCanvas) await startDecode(img, src)
   } catch (e) {
     if (!img.__snapdomDecodeFrame) throw e
     // Gecko replaces a freshly inserted iframe's initial about:blank document asynchronously,
@@ -612,14 +665,14 @@ export async function toCanvas(url, options) {
   }
 
   try {
-    const probe = isSafari() ? inkProbe() : null
+    const probe = isSafari() && !srcCanvas ? inkProbe() : null
     let inkBefore = false
-    if (isSafari()) {
+    if (probe) {
       inkBefore = await waitForImgPaint(img, needsPaintVerify, probe)
     }
 
-    const natW = img.naturalWidth
-    const natH = img.naturalHeight
+    const natW = srcCanvas ? srcCanvas.width : img.naturalWidth
+    const natH = srcCanvas ? srcCanvas.height : img.naturalHeight
 
     // Prefer the rasterized viewBox (vbW/vbH, post-bleed) over the pre-bleed
     // content box (w0/h0): under outerShadows an asymmetric shadow/blur/outline
@@ -709,14 +762,14 @@ export async function toCanvas(url, options) {
         const tmp = document.createElement('canvas')
         tmp.width = natW
         tmp.height = natH
-        drawBanded(tmp.getContext('2d'), img, natW, natH)
+        drawBanded(tmp.getContext('2d'), img, natW, natH, src)
         ctx.drawImage(tmp, 0, 0, outW, outH)
       } else {
         // Device pixels, identity transform: the bands are cut on whole device rows, and the
         // dpr scale is folded into the destination size instead of the transform.
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        drawBanded(ctx, img, outW * dpr, outH * dpr)
+        drawBanded(ctx, img, outW * dpr, outH * dpr, src)
         ctx.restore()
       }
     }

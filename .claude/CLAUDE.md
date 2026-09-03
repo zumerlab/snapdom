@@ -60,7 +60,7 @@ All scripts are npm-driven. Tests run in a real browser via Vitest + Playwright 
 - Lint: `npm run lint` · auto-fix: `npm run lint:fix`
 - Tests: `npm test` (runs `lint:fix`, `test:types`, `test:bundle` (compile + the IIFE global-leak check), then `vitest run --browser.headless`)
 - Coverage: `npm run test:coverage`
-- Benchmarks: `npm run test:benchmark`
+- Benchmarks: `npm run test:benchmark` · real page, three arms (liquidGL's NaughtyDOM, published v2, this checkout): `npm run compile && node scripts/bench-liquidgl.mjs` (clones liquidGL into the gitignored `.bench-liquidgl/` once; 2026-09-03: 11 / 53.3 / 53.1 ms)
 - Packaging contract: `npm run test:pack` — packs with no `dist/`, asserts every entrypoint is inside the tarball, installs it into throwaway consumer projects and typechecks with `skipLibCheck: false` under both `node16` and `bundler`, then resolves every entrypoint at runtime and counts the globals the browser bundle leaks. The browser suite cannot see any of this: it imports `src/`.
 - Single test file: `npx vitest run __tests__/<file>.test.js --browser.headless`
 - Single test by name: `npx vitest run --browser.headless -t "<test name substring>"`
@@ -98,11 +98,12 @@ Each of these was a real regression or a real win, with the measurement and the 
 - There is no rule epoch, on purpose; the memo is keyed on the DOM epoch: the note above `getStyleEnvEpoch`, `src/modules/styles.js`. **Do not narrow it without measuring invalidation under `BROWSER=all`**; the census it needs timed WebKit out. `__tests__/module.styles.ruleEpoch.test.js` pins the trade. Two traps of the scan itself (nesting `&`, a gate that can never match) are commented in `styleScan.js` where they bite.
 - An inlined data: URL is written to the clone ONCE: header of `src/modules/images.js`, and `freezeImgSrcset` in `src/utils/clone.helpers.js`.
 - Compress runs on a lazy worker pool and takes the Blob, not the base64 string: `downsampleDataURL` and the worker section, `src/modules/compress.js`.
-- `MAX_RASTER_SIDE` is per engine, and large captures are drawn in horizontal bands: the notes at the top of `src/exporters/toCanvas.js` and `drawBanded`.
+- `MAX_RASTER_SIDE` is per engine, and large captures are drawn in horizontal bands unless embedded resources outweigh the markup (every band re-reads the payload, ~1.8 ms per MB): the notes at the top of `src/exporters/toCanvas.js`, `resourceHeavy` and `drawBanded`.
+- snapdom's own scaffolding is never cloned below the root (the decode iframe `toCanvas` keeps in `document.body` was captured through a nested `toPng` by every later `body` capture): the skip at the top of `deepClone`, `src/core/clone.js`.
 
 ### Experimental canvas engine
 
-`src/engines/htmlInCanvas.js`, opt-in via `engine: 'canvas'`, quarantined: on any doubt it returns null and the svg engine runs on the same clone. Chromium taints the canvas unconditionally today, so every capture falls through. **It is not in the shipped bundle**: `esbuild.config.mjs` defines `__SNAPDOM_CANVAS_ENGINE__ = false` and the seam in `capture.js` folds away; tests import `src`, where it stays live. To build it in: `SNAPDOM_CANVAS_ENGINE=1 npm run compile`. Correctness must never depend on this module.
+`src/engines/htmlInCanvas.js`, opt-in via `engine: 'html-in-canvas'`, quarantined: on any doubt it returns null and the svg engine runs on the same clone. Unflagged browsers have no draw API and fall through; under the Chrome 148+ origin trial it runs (verified in real Chrome 2026-09-03, timings and the OT contract in the file header) and hands the painted bitmap straight to the pixel exports. **It is not in the shipped bundle**: `esbuild.config.mjs` defines `__SNAPDOM_CANVAS_ENGINE__ = false` and the seam in `capture.js` folds away; tests import `src`, where it stays live. To build it in: `SNAPDOM_CANVAS_ENGINE=1 npm run compile`. Correctness must never depend on this module.
 
 ### Safari / WebKit
 
