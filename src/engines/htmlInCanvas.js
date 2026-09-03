@@ -13,7 +13,7 @@
  * core hands it, with the CSS core assembled, so those features come for free.
  *
  * QUARANTINE CONTRACT (this feature is green): everything lives in src/engines/ — core's
- * only knowledge is a lazy-import seam in captureDOM behind the opt-in `engine: 'canvas'`
+ * only knowledge is a lazy-import seam in captureDOM behind the opt-in `engine: 'html-in-canvas'`
  * option. On ANY doubt (API missing, unsupported options, tainted or blank paint) it
  * returns null and the caller runs the SVG engine. Correctness never depends on this module.
  *
@@ -162,7 +162,7 @@ export async function tryCanvasEngine(state, context) {
     try {
       probe = ctx2d.getImageData(0, 0, Math.min(64, outW), Math.min(64, outH)).data
     } catch {
-      debugWarn(context, `engine:'canvas': ${drawApi} painted but the canvas is tainted (pre-origin-trial build?) — falling back to the svg engine`)
+      debugWarn(context, `engine:'html-in-canvas': ${drawApi} painted but the canvas is tainted (pre-origin-trial build?) — falling back to the svg engine`)
       return null
     }
     // Blank probe: a mount that skipped the paint pass draws nothing — don't hand the

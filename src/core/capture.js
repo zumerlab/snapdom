@@ -275,7 +275,7 @@ export async function captureDOM(element, options) {
   // as false for shipped bundles, folding the branch and the module away, while src
   // consumers — the test suite — leave it undefined and keep it live). On ANY doubt it
   // returns null and the SVG engine runs on the same clone.
-  if (state.options.engine === 'canvas' &&
+  if (state.options.engine === 'html-in-canvas' &&
       (typeof __SNAPDOM_CANVAS_ENGINE__ === 'undefined' || __SNAPDOM_CANVAS_ENGINE__)) {
     const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
     assembleCaptureCSS(state, fontsCSS)

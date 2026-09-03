@@ -187,14 +187,14 @@ export interface SnapdomOptions {
   excludeStyleProps?: RegExp | ((prop: string) => boolean);
 
   /**
-   * EXPERIMENTAL: 'canvas' renders raster exports through the WICG html-in-canvas API
-   * (ctx.drawElementImage — Chrome 148+ origin trial / chrome://flags/#canvas-draw-element)
+   * EXPERIMENTAL: 'html-in-canvas' renders raster exports through the WICG html-in-canvas
+   * API (ctx.drawElementImage — Chrome 148+ origin trial / chrome://flags/#canvas-draw-element)
    * when available, using the browser's own painter (native form controls, no svg-as-image
    * quirks). Falls back silently to the svg pipeline whenever unsupported or not
    * applicable. Engine results expose the raster exports plus lazy toRaw()/toSvg();
    * `.url` is not synchronously available.
    */
-  engine?: 'svg' | 'canvas';
+  engine?: 'svg' | 'html-in-canvas';
 
   /** Verbose diagnostics via console.warn. Default false. */
   debug?: boolean;
@@ -433,7 +433,7 @@ export interface BlobOptions {
 export interface CaptureResult {
   /**
    * Canonical data URL of the SVG snapshot (when available). Note: experimental
-   * engine:'canvas' results resolve their SVG lazily — url is '' there and toRaw()
+   * engine:'html-in-canvas' results resolve their SVG lazily — url is '' there and toRaw()
    * returns a Promise; use toRaw()/toSvg() for engine-agnostic access.
    *
    * THROWS when `needs` is not 'render': that capture produced no image, and it is not
