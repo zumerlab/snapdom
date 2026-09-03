@@ -168,4 +168,4 @@ bench/
 AGENTS.md
 .snapeye/
 packages/agent
-.playwright-cli
+.playwright-cli.bench-liquidgl/
