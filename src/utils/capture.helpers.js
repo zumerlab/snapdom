@@ -1,5 +1,12 @@
 /**
- * Helper utilities for DOM capture operations
+ * What the clone needs done to it, between deepClone and the render engine.
+ *
+ * Root-only fixes (`stripRootShadows`, `neutralizeRootZoom`, `neutralizeRootMarginCollapse`),
+ * the fixed/sticky re-anchoring clip mode needs, the height estimate for excludeMode:'remove',
+ * the XHTML scrub the serializer depends on, opt-in reconciliation against the live tree, and
+ * the CSS both engines share (`assembleCaptureCSS`). Everything here writes the CLONE and
+ * reads the live element. The one live-DOM write is the hidden measurement wrapper reconcile
+ * mounts and removes.
  * @module utils/capture.helpers
  */
 
@@ -54,6 +61,7 @@ function composedParent(n) {
   return rn instanceof ShadowRoot ? rn.host : null
 }
 
+/** Ancestor test that crosses shadow boundaries, through composedParent. */
 function composedContains(root, node) {
   for (let n = node; n; n = composedParent(n)) if (n === root) return true
   return false
@@ -114,6 +122,7 @@ export function composeResidual2D(baseTransform, ind) {
  * inheritance doesn't change). Sticky leaves an invisible in-flow placeholder so its flow
  * slot doesn't shift. Shadow-scoped clones depend on [data-sd] descendant selectors, so
  * they freeze in place relative to their composed containing-block ancestor instead.
+ * Pinned by __tests__/module.changeCSS.test.js.
  * @param {Element} root - original capture root
  * @param {Element} cloneRoot
  * @param {Map<Node, Node>} nodeMap - clone → original
@@ -221,7 +230,8 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
 
 /**
  * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, drop-shadow()).
- * Children remain intact.
+ * Children remain intact. The `outerShadows: false` default runs this, so the root's shadow
+ * adds no bleed. Pinned by __tests__/utils.capture.helpers.test.js.
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
  * @param {Object} [opts] - optional { debug } for verbose logging
@@ -257,6 +267,7 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
  * `cloneNode()` and shrinks the content into the top-left corner, leaving blank right/bottom
  * bands. Pin the root to `zoom:1`; descendants keep their own zoom, whose computed sizes are
  * likewise local and therefore still need the scale factor.
+ * Pinned by __tests__/core.capture.zoomRoot.test.js.
  *
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
@@ -330,6 +341,7 @@ function firstInFlowBlockChild(el, side) {
  * captured border box actually shows. Source tree drives the decision; the matching
  * clone node is resolved via the session's clone→source `nodeMap` (not child index,
  * which misaligns once `exclude`/`filter` drop nodes during cloning — see pseudo.js).
+ * Pinned by __tests__/utils.capture.helpers.test.js.
  *
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
@@ -415,6 +427,9 @@ const INVALID_XML_CHARS = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\x00-\x08\x0B\x0C\x0E
 /** Drops the XML-illegal chars above, keeping whole surrogate pairs. */
 const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length === 2 ? m : ''))
 
+/** A base64 payload is XML-safe by alphabet, so the scrub below never scans one. */
+const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/
+
 /**
  * One pass over the finished clone before serialization (was three separate walks):
  * - drops attribute names invalid in XHTML ("@", unknown ":" prefixes, framework directives)
@@ -422,10 +437,11 @@ const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length ===
  *   after cloning, e.g. `input.setAttribute('value', …)` with ExtJS's U+0003 delimiters)
  * - removes HTML comments (invalid XML like "--")
  * Runs after the afterClone plugin hooks (plugins may add attributes), in both the full
- * and diff serialization paths.
+ * and diff serialization paths. Pinned by __tests__/core.capture.rootAttrSanitize.test.js
+ * and __tests__/utils.capture.helpers.test.js.
  * @param {Element} root
+ * @param {{stripFrameworkDirectives?: boolean}} [opts] - directives are stripped by default
  */
-const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
   const { stripFrameworkDirectives = true } = opts
@@ -515,9 +531,12 @@ function shouldShrinkBox(srcEl, cs) {
  *   - remove logical sizes (block-size/inline-size)
  *   - relax min/max to allow collapse
  *
+ * Pinned by __tests__/utils.capture.helpers.test.js.
+ *
  * @param {Element} sourceRoot - original subtree root (for reading computed styles)
  * @param {HTMLElement} cloneRoot - cloned subtree root (to write overrides)
  * @param {Map<Element, CSSStyleDeclaration>} styleCache - optional cache you already build
+ * @param {Map<Node, Node>|null} [nodeMap] - clone → source; without it the walk pairs children by index
  */
 export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(), nodeMap = null) {
   /**
@@ -621,10 +640,10 @@ function willBeExcluded(el, options) {
 }
 
 /**
- * Compute the kept-children vertical span inside container's content box.
- * We take the min(top) and max(bottom) of included, in-flow children,
- * then add container paddings and borders to rebuild total height.
- * This avoids double-counting collapsed margins.
+ * Height the container will have once excludeMode:'remove' drops its children (#294).
+ * Min top to max bottom of the kept, in-flow children, plus the container's own padding and
+ * borders. Measuring the span instead of summing child heights keeps collapsed margins from
+ * counting twice. Pinned by __tests__/utils.capture.helpers.test.js.
  * @param {Element} container
  * @param {any} options
  * @returns {number} estimated outerHeight (border+padding+content)
@@ -643,7 +662,7 @@ export function estimateKeptHeight(container, options) {
     if (willBeExcluded(k, options)) continue
     if (!contributesToParentHeight(k)) continue
     const rk = k.getBoundingClientRect()
-    // usar coordenadas relativas al contenedor
+    // container-relative coordinates
     const top = rk.top - rC.top
     const bottom = rk.bottom - rC.top
     if (bottom <= top) continue
@@ -655,7 +674,7 @@ export function estimateKeptHeight(container, options) {
   // content span of what remains
   const contentSpan = found ? Math.max(0, maxBottom - minTop) : 0
 
-  // reconstruir altura outer: border + padding + contenido
+  // rebuild the outer height: border + padding + content
   const bt = parseFloat(csC.borderTopWidth) || 0
   const bb = parseFloat(csC.borderBottomWidth) || 0
   const pt = parseFloat(csC.paddingTop) || 0
@@ -664,6 +683,13 @@ export function estimateKeptHeight(container, options) {
   return bt + bb + pt + pb + contentSpan
 }
 
+/**
+ * Round to `n` decimals, 3 by default, before a px value goes into a style or the viewBox
+ * (#261). Non-finite input comes back as it is.
+ * @param {number} v
+ * @param {number} [n=3]
+ * @returns {number}
+ */
 export const limitDecimals = (v, n = 3) =>
   Number.isFinite(v) ? Math.round(v * 10 ** n) / 10 ** n : v
 
@@ -680,6 +706,7 @@ const RECONCILE_EPS = 0.75
  * Pins are inline `width`/`height` + `box-sizing:border-box` (rects are border-box), which
  * beat the generated classes by specificity. Single pass: pinning a box can settle its
  * descendants on the next layout, but one pass already removes the systematic divergence.
+ * Pinned by __tests__/core.capture.reconcile.test.js.
  *
  * @param {Element} element - live capture root
  * @param {HTMLElement} clone - detached clone (mutated: pins applied here)
@@ -863,6 +890,8 @@ function collectScrollbarRulesFromRules(rules, seen = new Set()) {
  *  The fingerprint (href + rule count per sheet) is O(#sheets) and catches inserts/removals. */
 const _scrollbarCSSMemo = new WeakMap()
 
+/** href plus rule count per sheet. Moves when a sheet is added, removed or grows; a
+ *  cross-origin sheet counts as -1. */
 function scrollbarFingerprint(doc) {
   let fp = ''
   for (const sheet of doc.styleSheets) {
@@ -874,8 +903,9 @@ function scrollbarFingerprint(doc) {
 }
 
 /**
- * Extract ::-webkit-scrollbar rules from the document's stylesheets.
- * Used so custom scrollbar styling appears in capture (#334).
+ * Extract ::-webkit-scrollbar rules from the document's stylesheets, so custom scrollbar
+ * styling appears in the capture (#334). Memoized per document on the fingerprint above.
+ * Pinned by __tests__/utils.capture.helpers.test.js.
  * @param {Document} doc
  * @returns {string}
  */

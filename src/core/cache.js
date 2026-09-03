@@ -1,3 +1,14 @@
+/**
+ * Cross-capture caches. The only module-level mutable state the library keeps.
+ *
+ * Everything scoped to one capture lives on the session (session.js). What lives here is
+ * reused across captures on purpose: fetched assets, per-tag defaults, the clone-in-document
+ * measurement, the compress output. Each Map is capped and evicts FIFO, so a long-lived SPA
+ * cannot grow them without bound. `cache: 'disabled'` replaces every one of them before a
+ * capture. Pinned by __tests__/core.cache.test.js.
+ * @module cache
+ */
+
 /** Max entries before evicting oldest (FIFO). Keeps lib lightweight, avoids memory leaks. */
 const MAX_IMAGE = 100
 const MAX_BACKGROUND = 100
@@ -29,8 +40,15 @@ class EvictingMap extends Map {
 }
 
 /**
- * Global caches for images, styles, and resources.
- * Persistent caches use EvictingMap to avoid unbounded memory growth.
+ * The global caches. Who writes each one:
+ *  - image ........ <img> data URLs by source URL (images.js; preCache warms it)
+ *  - background ... background-image data URLs by URL (utils/image.js)
+ *  - resource ..... blob: URL contents (clone.helpers resolveBlobUrl; fonts.js reads it)
+ *  - defaultStyle . per-tag UA defaults from the sandbox (utils/css.js)
+ *  - baseStyle .... the base reset CSS per tag set (capture.helpers)
+ *  - compress ..... downsampled images (compress.js), see below
+ *  - computedStyle  getStyle's memo, one CSSStyleDeclaration per element (utils/css.js)
+ *  - measureHints . the clone-in-document measurement (engines/svg.js), see below
  */
 export const cache = {
   image: new EvictingMap(MAX_IMAGE),
@@ -70,8 +88,9 @@ export function normalizeCachePolicy(v) {
 }
 
 /**
- * Applies the cache policy.
- * @param {"soft"|"disabled"} policy
+ * Empties every persistent cache when the policy is 'disabled'. A no-op otherwise.
+ * Called once per capture from createCaptureSession, in the same synchronous tick.
+ * @param {"soft"|"disabled"} [policy='soft']
  */
 export function applyCachePolicy(policy = 'soft') {
   if (policy !== 'disabled') return

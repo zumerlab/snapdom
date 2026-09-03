@@ -106,6 +106,7 @@ function geomOfKey(key) {
   return g
 }
 
+/** Drop the generated `cN` classes so applyStyleClass can renumber from a clean node. */
 function stripGeneratedClasses(node) {
   if (!node.classList || !node.classList.length) return
   for (const cls of Array.from(node.classList)) {
@@ -113,6 +114,8 @@ function stripGeneratedClasses(node) {
   }
 }
 
+/** Forget a replaced clone subtree in nodeMap, srcToClone and styleMap, before the fresh
+ *  one is registered in its place. */
 function pruneSubtreeFromMaps(oldRoot, R) {
   const stack = [oldRoot]
   while (stack.length) {
@@ -129,17 +132,18 @@ function pruneSubtreeFromMaps(oldRoot, R) {
   }
 }
 
+/** Test/diagnostic counters — how often the fast path was attempted and actually served. */
+export const __diffStats = { attempts: 0, served: 0, reconciled: 0 }
+
 /**
  * Attempts a differential recapture. Returns the fresh SVG data URL, or null when the
- * fast path doesn't apply (caller must run the full pipeline).
+ * fast path doesn't apply (caller must run the full pipeline). A throw inside counts as
+ * null too, and bumps nothing but `attempts`.
  * @param {Element} element - burst-tracked capture root
  * @param {object} state - burst state (retained artifacts + dirtyRoots)
  * @param {object} context - normalized capture context
  * @returns {Promise<string|null>}
  */
-/** Test/diagnostic counters — how often the fast path was attempted and actually served. */
-export const __diffStats = { attempts: 0, served: 0, reconciled: 0 }
-
 export async function tryDiffCapture(element, state, context) {
   __diffStats.attempts++
   try {
@@ -151,6 +155,13 @@ export async function tryDiffCapture(element, state, context) {
   }
 }
 
+/**
+ * The fast path itself. Every early `return null` is a bail: the caller runs the full
+ * pipeline and nothing is lost. Cheap checks come first (options, plugins, retained state),
+ * then the stylesheet scan, then the dirty roots. Pixel-equal to a full capture by
+ * __tests__/core.capture.diff.test.js; that it engages at all, by
+ * __tests__/core.capture.diff.engagement.test.js.
+ */
 async function diffCapture(element, state, context) {
   const R = state.retained
   if (!R || !R.clone || !R.styleMap || !R.srcToClone) return null

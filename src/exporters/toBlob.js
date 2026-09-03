@@ -1,4 +1,8 @@
-// src/exporters/toBlob.js
+/**
+ * The Blob exporter. `svg` hands back the decoded svg text as a Blob with no raster step;
+ * every other format goes through toCanvas and the canvas encoder.
+ * @module exporters/toBlob
+ */
 import { toCanvas } from './toCanvas.js'
 
 /**

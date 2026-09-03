@@ -80,6 +80,8 @@ const INHERITED_PROPS = [
 const PSEUDO_BOX_PROPS = ['display', 'width', 'height', 'min-width', 'min-height']
 const PSEUDO_ELEMENT_SEL_RE = /::?(?:before|after|first-letter|first-line|marker)/
 
+/** Rule budget for one scan. Past it the scan answers unreliable, and every reader falls
+ *  back to full reads. */
 const MAX_SCAN_RULES = 20000
 
 /** Margin/padding values that can make two identity twins resolve DIFFERENTLY: their
@@ -186,6 +188,7 @@ function scanRules(rules, universe, pseudoSels, state) {
   return true
 }
 
+/** One sheet through scanRules. False on a cross-origin sheet, whose cssRules getter throws. */
 function scanSheet(sheet, universe, pseudoSels, state) {
   let rules
   try { rules = sheet.cssRules } catch { return false } // cross-origin
@@ -268,23 +271,35 @@ function composePseudoGates(doc, pseudoSels) {
   return gates
 }
 
-/**
- * Scans the document's author styles once, returning:
- * - `universe`: the set of CSS properties any rule can touch, or null when the scan
- *   can't be trusted (cross-origin CSS, rule-budget blown).
- * - `pseudoGates`: per pseudo kind (before/after/firstLetter), a combined selector for
- *   `el.matches()` gating the per-node pseudo probe — `''` = no rules (skip every node),
- *   null = unreliable (probe every node). All null when universe is null.
- * Pure — memoization (per document + style epoch) is the caller's concern.
- * @param {Document} doc
- * @returns {{universe: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null}}}
- */
 /** See the share-gate note at the selector visitor. Pseudo-ELEMENTS are absent on purpose:
  *  ::before/::after do not change the HOST element's computed style. `:link` is included
  *  (href-less anchors differ) but `:visited` need not be — getComputedStyle deliberately
  *  answers with unvisited values for privacy, so it cannot split identical elements. */
 const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-of-type|empty|hover|focus|active|target|checked|indeterminate|disabled|enabled|read-only|read-write|placeholder-shown|autofill|valid|invalid|user-valid|user-invalid|in-range|out-of-range|required|optional|default|link|any-link|scope|defined|modal|fullscreen|picture-in-picture|playing|paused|dir\(|lang\(|has\()/
 
+/**
+ * Scans the document's author styles once: every sheet, the adopted sheets, WAAPI keyframes.
+ * Pure; styles.js memoizes it per document and style epoch (scanFor).
+ *
+ * Everything in the result rides the same rule walk, so none of it costs a second pass:
+ * - `universe`: the properties any rule can touch, plus ALWAYS_PROPS. Null when the scan
+ *   cannot be trusted (a cross-origin sheet, the rule budget blown), and then every other
+ *   field takes its unreliable value as well.
+ * - `pseudoUniverse`: what a pseudo-element's snapshot reads (PSEUDO_BOX_PROPS, the inherited
+ *   props the universe holds, the props pseudo rules declare).
+ * - `pseudoGates`: per kind, one selector for `el.matches()`. '' means no rule, skip every
+ *   node; null means unreliable, probe every node.
+ * - `usesHas`: some rule uses `:has()`, which turns per-node stamp narrowing off. True when
+ *   unreliable.
+ * - `shareGate`: the selectors that can split identity twins, each with its subject key for
+ *   styleShareSafe's presence index. Null when one cannot be matched (share off).
+ * - `marginUnstable` / `paddingUnstable`: a %, auto, calc() or var() value in that family
+ *   anywhere, so twins re-read it.
+ * - `importantProps`: every property some rule declares `!important`.
+ * Pinned by __tests__/module.styleScan.test.js.
+ * @param {Document} doc
+ * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
+ */
 export function scanAuthorStyles(doc) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.

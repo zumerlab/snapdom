@@ -54,10 +54,15 @@
 import { isExternalRecord, getStyleEnvEpoch, getStyleEpoch, invalidateSnapshotsUnder } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
 
+/** Per-element burst state, built by createState. Weak: the element's death frees it. */
 const burstStates = new WeakMap()
 
+/** Auto mode trips on the third capture of one element inside a 2 s sliding window. */
 const AUTO_WINDOW_MS = 2000
 const AUTO_THRESHOLD = 3
+
+/** { count, lastTs } per element — capture-frequency tracking for auto-burst. */
+const autoBurstTracker = new WeakMap()
 
 /**
  * Auto-burst: when the caller passes no explicit `burst` option, repeated captures of the
@@ -65,12 +70,10 @@ const AUTO_THRESHOLD = 3
  * speedup without knowing the option exists. Canvas-bearing elements are excluded: canvas
  * pixel draws are invisible to MutationObserver, so auto mode could silently serve stale
  * frames to chart pollers (explicit `burst: true` still works there, with `invalidate`).
+ * Pinned by __tests__/core.capture.autoburst.test.js.
  * @param {Element} element
  * @returns {boolean}
  */
-/** { count, lastTs } per element — capture-frequency tracking for auto-burst. */
-const autoBurstTracker = new WeakMap()
-
 export function shouldAutoBurst(element) {
   const now = Date.now()
   const entry = autoBurstTracker.get(element)
@@ -167,6 +170,12 @@ function scopesOf(element, state) {
   return state.trackedShadowRoots.size ? [element, ...state.trackedShadowRoots.keys()] : [element]
 }
 
+/**
+ * Listen for frame changes on every <video> in the capture. A playing video repaints with no
+ * mutation record, so `timeupdate` and `seeked` mark the element dirty instead. Re-run per
+ * capture: videos added since are armed, removed ones released. Pinned by the <video> case
+ * in __tests__/core.capture.burst.test.js.
+ */
 function trackVideos(element, state, onMediaDirty) {
   const videos = new Set()
   if (element.tagName === 'VIDEO') videos.add(element)
@@ -286,6 +295,11 @@ function hasTornMutation(records) {
   return false
 }
 
+/**
+ * Build the tracking state for one element: the scoped MutationObserver, the capture-phase
+ * listeners for the record-less half of the matrix, and the shadow, video and image
+ * trackers. Runs once per element; captureWithBurst keeps the result in burstStates.
+ */
 function createState(element) {
   const state = {
     dirty: true,
@@ -457,6 +471,14 @@ function optionsSignature(userOptions) {
 
 /**
  * Run a capture through the burst memoization for this element.
+ *
+ * Calls for the same element are serialized on one queue. Options that differ from the
+ * element's baseline make the call a one-off: it captures fresh and leaves the memo alone,
+ * until a second call repeats the new options and they become the baseline. A frame that
+ * tore mid-capture is never memoized. This is where v3's large wins live: a mutating poll
+ * went from 563 ms to 16 and an animated one from 39 to 7.5 (the polling scene in
+ * docs/compare/live/harness.js). Pinned by __tests__/core.capture.burst.test.js,
+ * __tests__/core.burst.transactional.test.js and __tests__/core.capture.autoburst.rebase.test.js.
  * @param {Element} element
  * @param {object} userOptions - the raw options passed to this call (pre-normalization)
  * @param {object} context - normalized capture context (reads context.invalidate)

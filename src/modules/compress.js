@@ -61,6 +61,7 @@ async function loadImage(src) {
   return img
 }
 
+/** The MIME between `data:` and the first `;` or `,`. Empty when there is none. */
 function sourceMime(dataURL) {
   const m = /^data:([^;,]+)/.exec(dataURL)
   return m ? m[1] : ''
@@ -143,22 +144,12 @@ function gainFactor(nw, nh, targetW, targetH) {
   return (!(raw > 0) || raw >= 0.95) ? 0 : raw
 }
 
-/**
- * Downsample a raster data URL to the largest resolution the target box can show, preserving the
- * source aspect ratio (so object-fit:cover still has enough pixels) and codec. Never upscales.
- * Returns a new data URL, or null when downsampling wouldn't help (vector, already small, or the
- * re-encode grew the string).
- *
- * @param {string} dataURL
- * @param {number} targetW - visible box width in device pixels (cssW × scale × dpr)
- * @param {number} targetH - visible box height in device pixels
- * @returns {Promise<string|null>}
- */
-
-// ——— Worker offload (E) ———
+// ——— Worker offload ———
 // decode + downscale + re-encode are pure pixel work: off the main thread they stop
 // blocking interaction during image-heavy captures and run in parallel with the rest of
 // the pipeline. Inline worker (no build infra); any failure flips to the sync path.
+// The worker repeats gainFactor's guard on its own decoded size (the header fast path in
+// downsampleDataURL only covers containers it can parse) and answers null for "no gain".
 const WORKER_SRC = `self.onmessage = async (e) => {
   const { id, dataURL, blob: given, srcLength, targetW, targetH, resFactor, quality, mime } = e.data
   try {
@@ -196,12 +187,16 @@ let _workers = null // null = not tried, false = unavailable/broken, else lazily
 let _next = 0
 let _seq = 0
 const _pending = new Map()
+
+/** Fail every pending job over to the sync path and close the worker route for good. */
 function disableWorkers() {
   for (const resolve of _pending.values()) resolve(undefined)
   _pending.clear()
   if (Array.isArray(_workers)) for (const w of _workers) { try { w?.terminate() } catch { /* ok */ } }
   _workers = false
 }
+
+/** One pool slot from the inline script. Null when the constructor throws (CSP). */
 function spawnWorker() {
   let src, w = null
   try {
@@ -223,6 +218,10 @@ function spawnWorker() {
   if (src) URL.revokeObjectURL(src)
   return w
 }
+
+/** The next slot round-robin, spawned on first use. `false` once the route is closed, which
+ *  is also the answer where Worker or OffscreenCanvas do not exist.
+ *  Pinned by __tests__/compress.syncfallback.test.js. */
 function getCompressWorker() {
   if (_workers === false) return false
   if (_workers === null) {
@@ -242,7 +241,7 @@ function getCompressWorker() {
 // a typical photo, and still well under a second for a multi-megapixel source on a slow device.
 // Past 5s the worker is wedged, not busy — only `onerror` ever drained `_pending`, so a job that
 // simply never posts back used to hang the capture forever. Falling back costs one redundant
-// main-thread encode and produces the same pixels.
+// main-thread encode and produces the same pixels. Pinned by compress.worker.timeout.test.js.
 const WORKER_JOB_TIMEOUT = 5000
 
 /** Runs the downsample in the worker. Resolves null (no gain / skip), a data URL, or
@@ -266,7 +265,23 @@ function workerDownsample(dataURL, targetW, targetH, mime, blob) {
   })
 }
 
-/** @param {Blob} [blob] the same bytes as `dataURL`, when the inline pass still has them */
+/**
+ * Downsample a raster data URL to the largest resolution the target box can show, preserving the
+ * source aspect ratio (so object-fit:cover still has enough pixels) and codec. Never upscales.
+ * Returns a new data URL, or null when downsampling wouldn't help (vector, already small, or the
+ * re-encode grew the string).
+ *
+ * Three stages, each cheaper than the next: the container header answers "no gain" without
+ * a decode; payloads of 64 KB and up go to the worker pool; everything else, and any worker
+ * failure, decodes on the main thread. Results, null included, are memoized in
+ * cache.compress by a length + head + tail fingerprint. Pinned by __tests__/compress.test.js.
+ *
+ * @param {string} dataURL
+ * @param {number} targetW - visible box width in device pixels (cssW × scale × dpr)
+ * @param {number} targetH - visible box height in device pixels
+ * @param {Blob} [blob] the same bytes as `dataURL`, when the inline pass still has them
+ * @returns {Promise<string|null>}
+ */
 export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
   if (typeof dataURL !== 'string' || !dataURL.startsWith('data:image')) return null
   // SVG data URLs are vectors — rasterizing them here would *lose* fidelity, not save bytes.
@@ -335,6 +350,8 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
 /**
  * Downsample every inlined <img> data URL in the clone to its visible resolution.
  *
+ * The visible box is snapdom's own data-snapdom-width/height when the clone pass wrote them,
+ * else the inline style, else the element's width/height. An <img> with no box is left alone.
  * @param {Element} clone
  * @param {object} options - normalized capture context (reads scale, dpr, compress)
  * @returns {Promise<{count:number, before:number, after:number}>} bytes before/after (for debug)
@@ -396,6 +413,7 @@ function originalBox(el) {
  * sprite addressed by a negative background-position landed outside the shrunken image and
  * painted nothing at all. Absolute lengths crop the same way. Tiled backgrounds (`repeat`,
  * `space`, `round`) are skipped for the related reason that a tile needs its natural size.
+ * Pinned by the background cases in __tests__/compress.test.js.
  *
  * @param {Element} clone
  * @param {object} options
@@ -491,6 +509,8 @@ export async function compressClonedSvgImages(clone, options) {
 
 /**
  * Run all compression passes over the clone (no-op when `compress` is off).
+ * Called from captureDOM after images and backgrounds are inlined, since it works on the
+ * data URLs those passes wrote.
  * @param {Element} clone
  * @param {object} options
  * @param {Map<Node, Node>} [nodeMap] - Session clone→source map; pass the capture's own

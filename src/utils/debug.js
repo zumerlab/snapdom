@@ -25,9 +25,8 @@ export function debugWarn(ctx, msg, err) {
 const MAX_SESSION_WARNINGS = 50
 
 /**
- * Records a capture degradation on the session's warnings log (surfaced as
- * result.warnings) and mirrors it to the console when debug is enabled.
- * Callers that must warn unconditionally keep their own console.warn.
+ * Record a capture degradation on the session's warnings log, surfaced as result.warnings.
+ * Nothing reaches the console from here: a caller that must warn keeps its own console.warn.
  * @param {{warnings?: Array}|undefined} session
  * @param {string} code - stable machine-readable code (e.g. 'image-fallback')
  * @param {string} message

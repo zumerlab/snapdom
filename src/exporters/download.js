@@ -1,10 +1,18 @@
-// src/exporters/download.js
+/**
+ * The download exporter: a capture saved to disk through an <a download> click, or on iOS
+ * through the Web Share sheet. Pinned by __tests__/exporter.download.test.js.
+ * @module exporters/download
+ */
 import { toBlob } from './toBlob.js'
 import { toCanvas } from './toCanvas.js'
 import { isIOS } from '../utils/browser.js'
 
 /**
- * Attempts to share a file via the Web Share API (iOS fallback).
+ * Offer the file through the Web Share sheet.
+ *
+ * On iOS the anchor download did not produce a file (#383), so the blob goes to the share
+ * sheet first and the anchor is only the fallback when sharing is unavailable. A user who
+ * cancels the sheet counts as handled: nothing else should pop up after that.
  * @param {Blob} blob - The image blob.
  * @param {string} filename - The filename to share.
  * @returns {Promise<boolean>} True if share was handled (including user cancel), false if unavailable.
@@ -44,6 +52,8 @@ export async function download(url, options) {
   const rawName = options?.filename || 'snapdom'
   const filename = /\.(png|jpe?g|webp|svg)$/i.test(rawName) ? rawName : `${rawName}.${normalizedFormat}`
   const nextOptions = { ...(options || {}), format: normalizedFormat, type: normalizedFormat }
+  // A download is always dpr 1. The file has the capture's CSS size in pixels and does not
+  // depend on the monitor it was captured on.
   nextOptions.dpr = 1
   const foundIOS = isIOS()
 

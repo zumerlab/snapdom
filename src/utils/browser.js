@@ -1,4 +1,13 @@
 /**
+ * Engine detection by user agent, plus the one frame wait the canvas readback needs.
+ *
+ * Every caller keys a workaround on the rendering ENGINE, not the browser brand: svg-as-image
+ * paint timing, native form controls, the download path. So `isSafari` answers true for any
+ * WebKit shell on iOS, in-app webviews included, and not only for Safari itself.
+ * @module browser
+ */
+
+/**
  * Awaits the next animation frame, but never blocks the capture forever.
  *
  * Canvas readback rides on rAF: a WebGL/WebGPU canvas with `preserveDrawingBuffer: false` clears
@@ -23,6 +32,11 @@ export function nextFrame(timeout = 1000) {
   })
 }
 
+/**
+ * True on iPhone, iPad and iPod. iPadOS 13+ reports itself as Macintosh and is told apart by
+ * its touch points.
+ * @returns {boolean}
+ */
 export function isIOS() {
   if (typeof navigator === 'undefined') return false
   if (navigator.userAgentData) {
@@ -37,6 +51,12 @@ export function isIOS() {
   return isAppleMobile || isIPadOS
 }
 
+/**
+ * True for Safari and for every other WebKit shell on iOS: UIWebView and WKWebView inside
+ * apps, WeChat and WeCom, the Baidu apps (#295). Chrome and Firefox on iOS are excluded by the
+ * first check and included again by the last one, on purpose: they render with WebKit too.
+ * @returns {boolean}
+ */
 export function isSafari() {
   if (typeof navigator === 'undefined') return false
   const ua = navigator.userAgent || ''
@@ -74,6 +94,12 @@ export function isSafari() {
   return isSafariUA || isUIWebView || isWeChatUA || isBaiduUA || isIOSWebKit
 }
 
+/**
+ * True for Firefox on desktop and Android, the Gecko engine. Firefox on iOS (fxios) renders
+ * with WebKit, so it answers false here and true to `isSafari`, and the Gecko-only
+ * workarounds gated on this (background-clip:text, checkbox rendering) never run on it.
+ * @returns {boolean}
+ */
 export function isFirefox() {
   if (typeof navigator === 'undefined') return false
   return (navigator.userAgent || '').toLowerCase().includes('firefox')

@@ -1,28 +1,38 @@
 /**
- * Inline external <defs> and <symbol> dependencies needed by an SVG subtree (or multiple SVGs),
- * so that serialization does not break. Handles:
- *  1) <use href="#..."> targets (symbols/defs)
- *  2) Attributes/inline styles that reference url(#id) (gradients, patterns, filters, clipPath, mask, marker-*)
- *  3) Recursive chains via href/xlink:href and nested url(#...) inside cloned defs
+ * SVG defs and symbols that live outside the captured subtree, copied into the clone.
  *
- * Fast path: no computed styles, no layout reads. Only DOM queries + cloning.
- *
- * @param {Element} element - SVG root or container holding one/more SVGs.
- * @param {Document|ParentNode} [lookupRoot] - Where to search for external defs/symbols (defaults to element.ownerDocument).
- * @param {Element} [htmlSource] - The LIVE capture root. HTML elements reference the same defs
- *   through CSS (`filter: url(#f)`, `clip-path`, `mask`), and that value ends up in the
- *   generated class CSS rather than on the clone, so it cannot be recovered from the clone
- *   alone. Reading it from the source's computed style is the only place it is visible.
+ * An icon sprite's <symbol>s, and the gradients, filters, clip paths and masks a page keeps
+ * in one hidden <svg>, are referenced by id from anywhere in the document. Serialized on
+ * their own, those references dangle and the effect is lost (#70, #178, #262). prepareClone
+ * runs this on the clone so every referenced def travels with it.
+ * @module svgDefs
  */
 
 import { isSVGEl } from '../utils/helpers.js'
+
+/**
+ * Copy every external def or symbol the clone references into a hidden <svg> at its top.
+ *
+ * References are found in three places: `<use href="#id">` (any namespace or prefix),
+ * `url(#id)` in presentation attributes and inline styles (fill, stroke, filter, clip-path,
+ * mask, marker-*), and the same on the root <svg> itself, which querySelectorAll never
+ * matches. HTML elements reach the same defs through CSS (`filter: url(#f)`), and that value
+ * is only visible in the SOURCE's computed style, never on the clone, so the live root is
+ * passed in too and walked only when the document holds a def CSS can reference. Copied defs
+ * are walked for their own references, so chains resolve, each id once. No layout reads:
+ * DOM queries and cloneNode only. Pinned by __tests__/module.svg.test.js and, in pixels,
+ * __tests__/module.svgDefs.htmlRefs.test.js.
+ * @param {Element} element - the clone: an <svg>, or a container holding one or more
+ * @param {Document|ParentNode} [lookupRoot] - where the external defs are searched (element.ownerDocument by default)
+ * @param {Element} [htmlSource] - the LIVE capture root, for references made through CSS
+ */
 export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   if (!element || (element?.nodeType !== 1)) return
 
   const doc = element.ownerDocument || document
   const searchRoot = lookupRoot || doc
 
-  /** Collect all SVG roots under element (or element if it's an <svg>) */
+  /** Every <svg> under element, or element itself when it is one. */
   const svgRoots =
     isSVGEl(element) && element.localName === 'svg'
       ? [element]
@@ -42,11 +52,8 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   const XLINK_NS = 'http://www.w3.org/1999/xlink'
 
   /**
-   * Robustly get any SVG href-like attribute, including namespaced ones:
-   *  - href
-   *  - xlink:href
-   *  - getAttributeNS(xlinkNS, 'href')
-   *  - any other prefix:*:href (e.g. ns1:href used by some serializers)
+   * The element's href, whichever way it was written: `href`, `xlink:href`, the xlink
+   * namespace, or any other `prefix:href` some serializers emit (ns1:href).
    * @param {Element} el
    * @returns {string|null}
    */
@@ -77,20 +84,20 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
     return null
   }
 
-  /** IDs ya presentes en TODO el contenedor root (no solo por-svg) */
+  /** Ids already present anywhere under element, not per <svg>. Grows as defs are copied in. */
   const globalExistingIds = new Set(
     Array.from(element.querySelectorAll('[id]')).map(n => n.id)
   )
 
-  /** Referenced ids (from any of the svgRoots) that are not local yet */
+  /** Referenced ids, from any of the svgRoots, that are not local yet. */
   const neededIds = new Set()
 
-  /** Flag para saber si hubo referencias (aunque luego no existan matches) */
+  /** Whether any reference was seen at all, matched or not. Decides if the container is made. */
   let sawAnyReference = false
 
   /**
-   * Extrae ids de url(#id) de un valor de atributo/inline style.
-   * Optionally also queues the ids for recursive resolution.
+   * Record the ids inside every url(#id) of an attribute or inline style value, and queue
+   * them for resolution when a queue is given.
    * @param {string|null} val
    * @param {Set<string>|null} queueForResolve
    */
@@ -113,7 +120,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   }
 
   const collectReferencesInSvg = (rootSvg) => {
-    // <use ...href="#..."> (cualquier namespace/prefix)
+    // <use href="#..."> in any namespace or prefix
     const uses = rootSvg.querySelectorAll('use')
     for (const u of uses) {
       const href = getHrefAttr(u)
@@ -123,7 +130,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
       if (id && !globalExistingIds.has(id)) neededIds.add(id)
     }
 
-    // url(#...) en attrs/estilos
+    // url(#...) in presentation attributes and inline styles
     const query =
       '*[style*="url("],' +
       '*[fill^="url("], *[stroke^="url("],*[filter^="url("],' +
@@ -177,7 +184,8 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   for (const svg of svgRoots) collectReferencesInSvg(svg)
   collectHtmlReferences(htmlSource)
 
-  // 2) No references: do not create the container (satisfies the "does nothing..." test)
+  // 2) No references: leave the clone untouched, no container
+  //    (module.svg.test.js, "does nothing if there are no <use> references")
   if (!sawAnyReference) return
 
   // 3) Create (or reuse) a SINGLE hidden container inside 'element'
@@ -194,7 +202,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   // 4) Resolve external ones; never take sources that already live inside 'element'
   const findGlobalById = (id) => {
     if (!id) return null
-    if (globalExistingIds.has(id)) return null // ya local en root
+    if (globalExistingIds.has(id)) return null // already local under the root
     const esc = cssEscape(id)
 
     const tryFind = (sel) => {
@@ -210,7 +218,8 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
     )
   }
 
-  // 5) With no global matches we still keep the empty container (satisfies the last test)
+  // 5) References seen but all local already: the empty container stays
+  //    (module.svg.test.js, "creates the hidden container even if no matches are found")
   if (!neededIds.size) return
 
   const queued = new Set(neededIds)
@@ -223,7 +232,7 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
     if (!id || globalExistingIds.has(id) || inlined.has(id)) continue
 
     const source = findGlobalById(id)
-    if (!source) { // no existe externo o ya local en root
+    if (!source) { // not in the document, or already local under the root
       inlined.add(id)
       continue
     }

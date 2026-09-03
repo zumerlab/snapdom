@@ -1,5 +1,5 @@
 /**
- * Entry point for snapDOM library exports.
+ * ESM entry. What is exported here is the whole public surface of `@zumer/snapdom`.
  *
  * @file index.js
  */

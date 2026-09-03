@@ -1,16 +1,21 @@
+/**
+ * One background-image layer to a data URL, through the shared cache.background memo.
+ * Used by the background pass, the pseudo pass and preCache.
+ * @module utils/image
+ */
+
 import { cache } from '../core/cache'
 import { extractURL, safeEncodeURI, resolveURL, resolveImageSetURL } from './helpers'
 import { snapFetch } from '../modules/snapFetch'
 
 /**
- * Inline a single background-image entry (one layer) robustly.
- * - If it's a URL() and fetching fails, degrade to "none" instead of throwing.
- * - Gradients and "none" are returned untouched.
- * - Uses cache.background to avoid repeated work.
- *
- * @param {string} entry - A single background layer (e.g., 'url("...")', 'linear-gradient(...)', 'none')
+ * Inline one background-image layer as `url("data:…")`.
+ * Gradients and `none` pass through. A fetch that fails (404, CORS, timeout) caches null for
+ * that URL and returns `none`, so a missing background never throws and is not fetched again
+ * while the cache holds the miss.
+ * @param {string} entry - one layer: 'url("...")', 'linear-gradient(...)', 'none'
  * @param {{ useProxy?: string }} [options]
- * @returns {Promise<string|undefined>} Inlined CSS value for this layer (e.g., `url("data:...")`), original entry, or "none".
+ * @returns {Promise<string>} the inlined layer, the original entry, or "none"
  */
 export async function inlineSingleBackgroundEntry(entry, options = {}) {
   // Quick checks for non-URL values

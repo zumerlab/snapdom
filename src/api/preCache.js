@@ -1,4 +1,12 @@
-// src/api/preCache.js
+/**
+ * `preCache(root, options)`: warm what a capture will read, before the capture.
+ *
+ * Images, url() style layers and fonts go over the network now and into the cross-capture
+ * caches (core/cache.js), so the capture reads them locally. Given an element, it also runs
+ * a throwaway prepareClone to warm that element's style snapshots, where a cold capture's
+ * time lives. Everything is best-effort: a failed fetch is dropped, never thrown.
+ * @module api/preCache
+ */
 import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { snapFetch } from '../modules/snapFetch.js'
@@ -59,7 +67,7 @@ export async function preCache(root = document, options = {}) {
   // Collect elements for prefetch
   let imgEls = [], allEls = []
   try {
-    // 🔸 Importante: incluir al root si es un Element
+    // The root itself counts when it is an element.
     if (root && root.nodeType === 1 /* ELEMENT_NODE */) {
       const descendants = root.querySelectorAll ? Array.from(root.querySelectorAll('*')) : []
       allEls = [root, ...descendants]
@@ -68,7 +76,7 @@ export async function preCache(root = document, options = {}) {
       if (root.tagName === 'IMG' && root.getAttribute('src')) imgEls.push(root)
       imgEls.push(...Array.from(root.querySelectorAll?.('img[src]') || []))
     } else if (root?.querySelectorAll) {
-      // Document o DocumentFragment
+      // Document or DocumentFragment
       imgEls = Array.from(root.querySelectorAll('img[src]'))
       allEls = Array.from(root.querySelectorAll('*'))
     }
@@ -106,7 +114,7 @@ export async function preCache(root = document, options = {}) {
           getStyle(el).getPropertyValue(prop) || ''
       } catch {}
       if (!val || val === 'none') continue
-      // Extraer SOLO capas url(...) (robusto ante comas de gradients)
+      // Only the url(...) layers. The regex survives the commas inside a gradient.
       const urlEntries = val.match(/url\((?:[^()"']+|"(?:[^"]*)"|'(?:[^']*)')\)/gi) || []
       for (const entry of urlEntries) {
         if (seen.has(entry)) continue

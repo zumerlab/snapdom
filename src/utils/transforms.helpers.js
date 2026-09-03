@@ -1,5 +1,12 @@
 /**
- * Helper utilities for transform and geometry calculations
+ * Bleed and transform math for the bbox the engine draws.
+ *
+ * Bleed is how far each outer effect (box-shadow, text-shadow, blur, outline, drop-shadow)
+ * paints past a box, per side, so the viewBox grows by that much and no more. The transform
+ * half reads the root's matrix with translation and rotation removed
+ * (`normalizeRootTransforms`), the individual rotate/scale/translate properties as strings,
+ * and the bbox of a box under a matrix. Every bleed function takes a computed style and
+ * returns px per side.
  * @module utils/transforms.helpers
  */
 
@@ -7,7 +14,8 @@ import { limitDecimals } from './capture.helpers.js'
 import { getStyle } from './css.js'
 
 /**
- * Parse box-shadow and calculate bleed dimensions
+ * Bleed of every outer box-shadow layer, per side. Inset layers add nothing.
+ * Pinned by __tests__/utils.transforms.helpers.test.js.
  * @param {CSSStyleDeclaration} cs
  * @returns {{top: number, right: number, bottom: number, left: number}}
  */
@@ -15,11 +23,17 @@ export function parseBoxShadow(cs) {
   return shadowListBleed(cs.boxShadow)
 }
 
-/** text-shadow bleeds like box-shadow (offsets + blur, no spread/inset). */
+/**
+ * text-shadow bleeds like box-shadow (offsets + blur, no spread/inset).
+ * @param {CSSStyleDeclaration} cs
+ * @returns {{top: number, right: number, bottom: number, left: number}}
+ */
 export function parseTextShadow(cs) {
   return shadowListBleed(cs.textShadow)
 }
 
+/** Shared by both shadow parsers: per-side reach of a shadow list, outer layers only,
+ *  rounded up to whole px. */
 function shadowListBleed(v) {
   if (!v || v === 'none') return { top: 0, right: 0, bottom: 0, left: 0 }
   // Split into layers on top-level commas only (commas inside rgb()/rgba() must not split).
@@ -52,7 +66,7 @@ function shadowListBleed(v) {
 }
 
 /**
- * Parse filter blur and calculate bleed
+ * Bleed of the `filter: blur()` chain, the same on every side.
  * @param {CSSStyleDeclaration} cs
  * @returns {{top: number, right: number, bottom: number, left: number}}
  */
@@ -79,7 +93,7 @@ export function parseFilterBlur(cs) {
 }
 
 /**
- * Parse outline and calculate bleed
+ * Bleed of the outline: its width plus a positive outline-offset, the same on every side.
  * @param {CSSStyleDeclaration} cs
  * @returns {{top: number, right: number, bottom: number, left: number}}
  */
@@ -94,7 +108,8 @@ export function parseOutline(cs) {
 }
 
 /**
- * Parse filter drop-shadow and calculate bleed
+ * Bleed of every `drop-shadow()` in the filter chain, per side, and whether there was one.
+ * `has` lets the caller tell "no drop-shadow" from "a drop-shadow with zero reach".
  * @param {CSSStyleDeclaration} cs
  * @returns {{bleed: {top: number, right: number, bottom: number, left: number}, has: boolean}}
  */
@@ -128,15 +143,6 @@ export function parseFilterDropShadows(cs) {
   }
 }
 
-/**
- * Remove only translate/rotate from CLONE ROOT transform, keeping scale/skew.
- * Also forces transformOrigin to 0 0 to avoid negative offsets.
- * Returns the applied 2D matrix components so the caller can expand the viewBox accordingly.
- *
- * @param {Element} originalEl
- * @param {HTMLElement} cloneRoot
- * @returns {{a:number,b:number,c:number,d:number}|null} The 2D matrix (without translation) or null if not applicable.
- */
 /** The four outer effects, summed the way the root's own bleed is. */
 function outerInkBleed(cs) {
   const shadow = parseBoxShadow(cs)
@@ -265,6 +271,18 @@ export function measureSubtreeBleed(root, nodeMap, styleCache, perX = 1, perY = 
   }
 }
 
+/**
+ * Strip translate and rotate from the CLONE ROOT's transform, keeping scale and skew.
+ *
+ * The `outerTransforms: false` path. The matrix left on the clone is returned so the caller
+ * can grow the viewBox by it; transform-origin is pinned to 0 0 so that scale never pushes
+ * content into negative coordinates. Reads `matrix()`, `matrix3d()` (#216, the 2D part of
+ * the 4x4) and, through DOMMatrix, any other function. Pinned by
+ * __tests__/utils.transforms.helpers.test.js.
+ * @param {Element} originalEl
+ * @param {HTMLElement} cloneRoot
+ * @returns {{a:number,b:number,c:number,d:number}|null} the matrix without translation, or null when not applicable
+ */
 export function normalizeRootTransforms(originalEl, cloneRoot) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return null
   const cs = getComputedStyle(originalEl)
@@ -358,12 +376,13 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
 }
 
 /**
- * Calculate bounding box with transform origin
+ * Bounding box of a w2 by h2 box under M, transformed about (ox2, oy2), in the box's own
+ * coordinates. The viewBox is sized from this.
  * @param {number} w2
  * @param {number} h2
- * @param {DOMMatrix} M
- * @param {number} ox2
- * @param {number} oy2
+ * @param {DOMMatrix|{a:number,b:number,c:number,d:number,e?:number,f?:number}} M
+ * @param {number} ox2 - transform origin x, px
+ * @param {number} oy2 - transform origin y, px
  * @returns {{minX: number, minY: number, maxX: number, maxY: number, width: number, height: number}}
  */
 export function bboxWithOriginFull(w2, h2, M, ox2, oy2) {
@@ -387,11 +406,12 @@ export function bboxWithOriginFull(w2, h2, M, ox2, oy2) {
 }
 
 /**
- * Parses transform-origin supporting keywords (left/center/right, top/center/bottom).
- * Returns pixel offsets.
+ * transform-origin in px, keywords (left/center/right, top/center/bottom) and percentages
+ * resolved against the box.
  * @param {CSSStyleDeclaration} cs
- * @param {number} w
- * @param {number} h
+ * @param {number} w - box width, px
+ * @param {number} h - box height, px
+ * @returns {{ox: number, oy: number}}
  */
 export function parseTransformOriginPx(cs, w, h) {
   const raw = (cs.transformOrigin || '0 0').trim().split(/\s+/)
@@ -417,8 +437,10 @@ export function parseTransformOriginPx(cs, w, h) {
 }
 
 /**
- * Returns a robust snapshot of individual transform-like properties.
- * Supports CSS Typed OM (CSSScale/CSSRotate/CSSTranslate) and legacy strings.
+ * Read `rotate`, `scale` and `translate` as strings, through the Typed OM when the engine
+ * has it and computed style otherwise. Rotation comes back in degrees, scale as "sx sy",
+ * translate with its units. Null means the property is unset. Pinned by
+ * __tests__/utils.transforms.helpers.test.js.
  * @param {Element} el
  * @returns {{ rotate:string, scale:string|null, translate:string|null }}
  */
@@ -497,6 +519,8 @@ export function readIndividualTransforms(el) {
 
 var __measureHost = null
 
+/** The hidden host the transform probe lives in, created on first use and kept for the page's
+ *  lifetime, contained so the probe never reaches the page's layout. */
 function getMeasureHost() {
   if (__measureHost) return __measureHost
   const n = document.createElement('div')
@@ -525,8 +549,10 @@ function getMeasureHost() {
 }
 
 /**
- * Read total transform matrix from combined transform properties
- * @param {object} t - Transform properties
+ * Compose `transform` and the individual rotate/scale/translate into one DOMMatrix by giving
+ * them to a probe element and reading its computed transform back. `composeResidual2D`
+ * (capture.helpers.js) composes the same inputs without the DOM round-trip.
+ * @param {{baseTransform?: string, rotate?: string, scale?: string|null, translate?: string|null}} t
  * @returns {DOMMatrix}
  */
 export function readTotalTransformMatrix(t) {
@@ -546,6 +572,7 @@ export function readTotalTransformMatrix(t) {
 /**
  * True if any transform (matrix or individual) can affect layout/bbox.
  * @param {Element} el
+ * @returns {boolean}
  */
 export function hasBBoxAffectingTransform(el) {
   // getStyle is cached (cache.computedStyle); on the root this reuses the csEl already read by
@@ -569,7 +596,9 @@ export function hasBBoxAffectingTransform(el) {
 }
 
 /**
- * Get matrix from computed style
+ * The element's computed `transform` as a DOMMatrix, identity for `none`. Only `transform`:
+ * the individual rotate/scale/translate are not part of that value, read them separately.
+ * WebKitCSSMatrix is the fallback where DOMMatrix refuses the string.
  * @param {Element} el
  * @returns {DOMMatrix}
  */

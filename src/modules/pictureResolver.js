@@ -1,11 +1,20 @@
 /**
- * Pure URL-selection helpers for picture / lazy-img resolution. The live-DOM
- * mutation resolver was dissolved into the clone path (freezeImgSrcset resolves
- * lazy placeholders on the CLONE; inlineImages fetches them like any source).
+ * Which URL an <img> is really showing: <picture> sources, srcset candidates, lazy-load
+ * attributes.
+ *
+ * Four pure helpers, no DOM writes. freezeImgSrcset (utils/clone.helpers.js) calls them
+ * while building the clone, so a lazy placeholder or a srcset-only image reaches
+ * inlineImages with a concrete src. The old live-DOM resolver that swapped the page's own
+ * src and undid it later is gone; the clone path replaced it.
+ * Pinned by __tests__/module.pictureResolver.test.js.
+ * @module pictureResolver
  */
 import { SUPPORTED_IMAGE_MIME as SUPPORTED_SOURCE_TYPE } from '../utils/helpers.js'
 
 /**
+ * Whether a src is a lazy-loader stand-in rather than the picture: empty, blob:, or any
+ * data: URL. A tiny inline gif/png/svg is the usual shape, but a data: src of any length is
+ * treated the same, since a real inline image needs no resolving either way.
  * @param {string} src
  * @returns {boolean}
  */
@@ -47,6 +56,12 @@ export function pickSrcsetCandidate(srcset, img) {
 }
 
 /**
+ * The URL a <picture> resolves to for this <img>.
+ *
+ * `currentSrc` wins when it is not a placeholder. Otherwise the first <source> whose media
+ * query matches decides, skipping types the browser cannot decode; with no matching media
+ * query, the first usable source is the fallback, which is the order the browser itself
+ * walks them in.
  * @param {HTMLImageElement} img
  * @param {HTMLPictureElement} picture
  * @returns {string|null}
@@ -78,6 +93,8 @@ export function findRealUrlForPicture(img, picture) {
 }
 
 /**
+ * The real URL a lazy loader parked on the element: data-src, data-lazy-src, data-original,
+ * data-hi-res-src, then the first candidate of data-srcset / data-lazy-srcset.
  * @param {HTMLImageElement} img
  * @returns {string|null}
  */

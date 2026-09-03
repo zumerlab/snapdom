@@ -13,8 +13,10 @@
  *
  * Hook signature: (context, payload?) => void | any | Promise<void|any>
  *
- * Global plugins are registered via registerPlugins()
- * Local (per-capture) plugins can be attached using attachSessionPlugins().
+ * Global plugins are registered via registerPlugins(). Per-capture plugins come in through
+ * `snapdom(el, { plugins })` and attachSessionPlugins(), and win over globals by name.
+ * Spec: PLUGIN_SPEC.md.
+ * @module plugins
  */
 
 // The stage vocabulary travels with the plugin API (this module is the `@zumer/snapdom/
@@ -88,6 +90,7 @@ function getContextPlugins(context) {
  * @param {string} name
  * @param {any} context
  * @param {any} payload
+ * @returns {Promise<any>} the payload, or the last value a hook returned in its place
  */
 export async function runHook(name, context, payload) {
   let acc = payload
@@ -104,10 +107,12 @@ export async function runHook(name, context, payload) {
 /**
  * Collects the values returned by EVERY plugin for one hook.
  * Used by `defineExports`, where each plugin returns a map of its own.
- * Uses the per-capture plugins when present, falling back to the globals.
+ * Uses the per-capture plugins when present, falling back to the globals. Every plugin sees
+ * the same payload; nothing is chained.
  * @param {string} name
  * @param {any} context
  * @param {any} payload
+ * @returns {Promise<any[]>} the non-undefined returns, in plugin order
  */
 export async function runAll(name, context, payload) {
   const outs = []
@@ -128,6 +133,9 @@ export function clearPlugins() { __plugins.length = 0 }
  * Local-first per-capture support, without removing the global APIs.
  * ────────────────────────────────────────────────────────────────────────────── */
 
+/** Counter behind the `anonymous-N` names handed to unnamed local plugins. */
+let __anonSeq = 0
+
 /**
  * Merge local (per-capture) plugin defs with the global registry (local-first).
  * - Local plugins override globals by `name`.
@@ -136,8 +144,6 @@ export function clearPlugins() { __plugins.length = 0 }
  * @param {any[]|undefined} localDefs
  * @returns {ReadonlyArray<any>}
  */
-let __anonSeq = 0
-
 export function mergePlugins(localDefs) {
   /** @type {any[]} */
   const out = []

@@ -1,14 +1,18 @@
-// src/modules/snapFetch.js
+/**
+ * The one fetch every asset pass goes through: images, backgrounds, fonts, SVG defs.
+ *
+ * It never throws. Every call resolves `{ ok, data, status, url, reason, ... }`, so a
+ * missing image is a placeholder, not a failed capture. Identical requests in flight share
+ * one promise, failures are remembered for `errorTTL` so a broken URL is not retried per
+ * node (the cache is capped at 50, sweeping expired entries first), and each request has
+ * a timeout of its own. A cross-origin URL goes through `useProxy` when one is set.
+ * Console noise is deduplicated per reason and origin, with a cap per page.
+ * Pinned by __tests__/module.snapFetch.test.js and module.snapFetch.errorCache.test.js.
+ * @module snapFetch
+ */
 import { safeEncodeURI } from '../utils/helpers.js'
 
 /**
- * snapFetch — unified fetch for SnapDOM
- * - Single inflight queue & error cache (with TTL)
- * - Timeout via AbortController
- * - Optional proxy handling ("...{url}" or "...?url=")
- * - Non-throwing: always resolves { ok, data|null, status, url, reason, ... }
- * - Thin, deduplicated logging: `[snapDOM]` warn/error with TTL + session cap
- *
  * @typedef {'text'|'blob'|'dataURL'} FetchAs
  *
  * @typedef {Object} SnapFetchOptions
@@ -35,6 +39,13 @@ import { safeEncodeURI } from '../utils/helpers.js'
 // Slim logger: dedup + TTL + session cap
 // ---------------------------------------------------------------------------
 
+/**
+ * A console logger that says each thing once. A key is silenced for `ttlMs` after it fires,
+ * and after `maxEntries` messages the logger goes quiet for the rest of the page: a gallery
+ * of 200 broken images gets a handful of lines, not 200.
+ * @param {string} [prefix='[snapDOM]']
+ * @param {{ttlMs?: number, maxEntries?: number}} [opts]
+ */
 function createSnapLogger(prefix = '[snapDOM]', { ttlMs = 5 * 60_000, maxEntries = 12 } = {}) {
   const seen = new Map()
   let emitted = 0
@@ -160,6 +171,7 @@ function applyProxy(url, useProxy) {
   return `${useProxy}${sep}url=${encodeURIComponent(url)}`
 }
 
+/** FileReader round-trip. Rejects with `read_failed`, which the caller reports as a network error. */
 function blobToDataURL(blob) {
   return new Promise((res, rej) => {
     const fr = new FileReader()
@@ -169,6 +181,8 @@ function blobToDataURL(blob) {
   })
 }
 
+/** Inflight and error-cache key. `as`, timeout, proxy and errorTTL are part of it: the same
+ *  URL asked for as text and as a blob is two requests, and two remembered failures. */
 function makeKey(url, o) {
   return [
     o.as || 'blob',
@@ -184,7 +198,14 @@ function makeKey(url, o) {
 // ---------------------------------------------------------------------------
 
 /**
- * Unified, non-throwing fetch with minimal, deduplicated logging.
+ * Fetch a URL as text, Blob or data URL, and never throw.
+ *
+ * data:, blob: and about:blank are answered without the network, the caches or the proxy
+ * (about:blank as a data URL is a 1x1 transparent png). A blob: failure is not remembered,
+ * since a revoked object URL is usually transient. For http(s): a remembered failure comes
+ * back with `fromCache: true`, an identical request in flight is shared, credentials are
+ * `include` for same-origin and `omit` otherwise unless given. In dataURL mode the Blob
+ * rides on the result too, for compress's worker.
  * @param {string} url
  * @param {SnapFetchOptions} [options]
  * @returns {Promise<SnapFetchResult>}
@@ -197,7 +218,7 @@ export async function snapFetch(url, options = {}) {
   const headers = options.headers || {}
   const silent = !!options.silent
 
-  // --- Special schemes: handle explicitly so tests expect data: outputs ---
+  // --- Special schemes: no network, no caches, no proxy ---
 
   // data:
   if (/^data:/i.test(url)) {
@@ -282,7 +303,7 @@ export async function snapFetch(url, options = {}) {
   const inflight = _inflight.get(key)
   if (inflight) return inflight
 
-  // Final URL (with robust proxying) & credentials
+  // Final URL and credentials
   const finalURL = shouldProxy(url, useProxy) ? applyProxy(url, useProxy) : url
 
   let cred = options.credentials

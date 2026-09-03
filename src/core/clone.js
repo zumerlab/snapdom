@@ -1,5 +1,13 @@
 /**
- * Deep cloning utilities for DOM elements, including styles and shadow DOM.
+ * deepClone: a live subtree to a detached clone, one node at a time, with each element's
+ * computed style inlined as it goes.
+ *
+ * Owns what cloneNode cannot copy: exclusion and clip culling, the per-tag strategies for
+ * iframe, canvas, video, audio and object/embed, form-control state (properties, not
+ * attributes), shadow roots and slots. One contract holds the later passes together: every
+ * element clone is registered in `sessionCache.nodeMap` as clone -> source. A replacement
+ * that skips the map is invisible to the pseudo, background and image passes, and a culled
+ * subtree skips it on purpose.
  * @module clone
  */
 
@@ -23,8 +31,6 @@ import {
 } from '../utils/clone.helpers.js'
 import { isFirefox, isSafari, nextFrame } from '../utils/browser.js'
 import { cloneTextWithSelection, inlineTextFieldSelection } from '../modules/selection.js'
-
-// helper implementations moved to ../utils/clone.helpers.js
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Tag handler registry: per-tag clone strategies for elements whose content
@@ -84,8 +90,10 @@ const CLIP_CULL_MARGIN = 200
 const CLIP_REPLACED_TAGS = new Set(['img', 'canvas', 'video', 'iframe', 'object', 'embed'])
 
 /**
+ * Whether a box touches the clip rect, with CLIP_CULL_MARGIN of slack on every side.
  * @param {{left:number,top:number,right:number,bottom:number}} b
  * @param {{left:number,top:number,right:number,bottom:number}} rect
+ * @returns {boolean}
  */
 function intersectsClip(b, rect) {
   return b.right >= rect.left - CLIP_CULL_MARGIN && b.left <= rect.right + CLIP_CULL_MARGIN &&
@@ -204,6 +212,18 @@ function makeClipHusk(node, sessionCache, options) {
   return husk
 }
 
+/**
+ * Clone one node and its subtree for capture, inlining each element's computed style.
+ *
+ * Returns null for what the capture drops (the sandbox, NO_CAPTURE_TAGS, excluded nodes in
+ * 'remove' mode, a nested foreignObject, a <picture>'s <source>), a spacer or husk for nodes
+ * that keep their box but not their content, a DocumentFragment for a <slot>, and otherwise
+ * the clone. Children are cloned concurrently; a child whose clone throws is dropped.
+ * @param {Node} node
+ * @param {object} sessionCache - the per-capture maps, built by prepareClone
+ * @param {object} options - the capture context
+ * @returns {Promise<Node|null>}
+ */
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error('Invalid node')
   const clonedAssignedNodes = new Set()
@@ -370,7 +390,9 @@ export async function deepClone(node, sessionCache, options) {
         // against the CONTENT box unless box-sizing is border-box, so with padding or a border
         // the frozen box was too large by exactly that much and the picture rendered scaled
         // inside it (measured against the live element: 18–34% of pixels differ with 20px
-        // padding + a 5px border, 0% without either).
+        // padding + a 5px border, 0% without either). The fix moved d14-cors-test (images
+        // with a 1px border) by ~2% on all three engines and its baselines were re-recorded:
+        // a deliberate divergence from v2, so a compare-against-main run expects d14 to differ.
         const px = (p) => parseFloat(cs.getPropertyValue(p)) || 0
         const bb = cs.getPropertyValue('box-sizing') === 'border-box'
         const w = parseInt(clone.dataset.snapdomWidth || '0', 10) -
@@ -680,6 +702,8 @@ export async function deepClone(node, sessionCache, options) {
  * Built-in tag handlers (extracted from the former inline branches)
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/** A same-origin iframe is rasterized to an <img>. A cross-origin one keeps its box as a
+ *  striped placeholder, or an invisible spacer with `placeholders: false`. */
 async function cloneIframe(node, sessionCache, options) {
   let sameOrigin = false
   try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch (e) {
@@ -707,7 +731,7 @@ async function cloneIframe(node, sessionCache, options) {
     )
   }
 
-  // Fallback actual (placeholder o spacer)
+  // Placeholder or spacer, both sized to the frame's box.
   if (options.placeholders) {
     const { width, height } = getUnscaledDimensions(node)
     const fallback = document.createElement('div')
@@ -752,6 +776,9 @@ export function isBlankCanvas(node) {
   }
 }
 
+/** <canvas> to <img>. The order of the reads inside is the whole point: the canvas is read
+ *  before it is asked for a context, so a canvas the page has not initialized keeps its mode,
+ *  and a WebGL frame is read inside the frame that drew it (#480). */
 async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
@@ -839,6 +866,8 @@ async function cloneCanvas(node, sessionCache, options) {
   return img
 }
 
+/** <video> to <img>: the current frame drawn through a canvas, or the poster while the
+ *  element is still showing it. */
 async function cloneVideo(node, sessionCache, options) {
   let url = ''
   // The screen shows the poster until playback first starts or a seek (the "show poster

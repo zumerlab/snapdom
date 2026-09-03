@@ -6,10 +6,14 @@
  * - Carries state across siblings in document order
  * - Simple OL/UL indexing (start, li[value]); reversed not handled intentionally
  *
- * @module counters
+ * @module counter
  */
 
-/** Detects if a content string uses counter()/counters(). */
+/**
+ * Whether a `content` value calls counter() or counters(). The cheap gate before any walk.
+ * @param {string} input
+ * @returns {boolean}
+ */
 export function hasCounters(input) {
   return /\bcounter\s*\(|\bcounters\s*\(/.test(input || '')
 }
@@ -40,8 +44,8 @@ function roman(n, upper = true) {
 }
 
 /**
- * Format a numeric counter value according to CSS counter-style keyword.
- * NOTE: Keeps your original clamp to 0 in decimal variants.
+ * Format a counter value in a CSS counter-style keyword. Negative values keep their sign
+ * (`-05` under decimal-leading-zero); alpha and roman clamp to 1, unknown styles print digits.
  * @param {number} value
  * @param {string} style
  * @returns {string}
@@ -100,6 +104,8 @@ function counterPairs(decl, dflt) {
  * - counter-increment on element: add to top, creating top=0 if needed
  * - list-item: sets 'list-item' value for LI in OL/UL (supports start, li[value])
  *
+ * Built once per capture, lazily (pseudo.js lazyCounterContext), so a page with no counter
+ * in any pseudo never pays the walk. Pinned by __tests__/module.counter.test.js.
  * @param {Document|Element} root
  * @returns {{ get(node: Element, name: string): number, getStack(node: Element, name: string): number[] }}
  */
@@ -259,6 +265,7 @@ export function buildCounterContext(root) {
  * @param {string} raw
  * @param {Element} node
  * @param {{get(node: Element, name: string): number, getStack(node: Element, name: string): number[]}} ctx
+ * @returns {string} `raw` with the calls expanded; `'- '` when the context throws
  */
 export function resolveCountersInContent(raw, node, ctx) {
   if (!raw || raw === 'none') return raw

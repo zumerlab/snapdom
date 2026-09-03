@@ -18,6 +18,13 @@
 import { getStyle } from '../utils'
 
 /**
+ * Pre-compose every backdrop-filter in the clone as a frost layer.
+ *
+ * Each target gets its own copy of the clone, taken before any frost is inserted, pruned to
+ * what can reach its box and cut at the target in tree order. The capture root is skipped:
+ * its backdrop is outside the capture. Replaced elements are skipped too, since nothing
+ * prepended inside them paints. Pinned by the frosted-vs-control pixel check in
+ * __tests__/core.capture.diff.test.js and __tests__/audit.tier5.fidelity.test.js.
  * @param {Element} root - Original capture root (for viewport rects)
  * @param {Element} clone - Prepared clone (styles and resources already inlined)
  * @param {Map<Node, Node>} [nodeMap] - Session clone→source map; pass the capture's own
@@ -71,6 +78,16 @@ const REPLACED_ELEMENTS = new Set([
   'EMBED', 'OBJECT', 'PROGRESS', 'METER', 'HR', 'BR',
 ])
 
+/**
+ * Mount the backdrop copy under the element as two layers: the filtered copy at z -2, the
+ * element's own background at z -1, content on top. The copy is positioned so the element's
+ * box lands on the same spot of the copy it occupies in the live page.
+ * @param {HTMLElement} cloneEl
+ * @param {Element} orig - the live element, for its rect and computed background
+ * @param {string} bf - the backdrop-filter value, applied as `filter` on the copy
+ * @param {HTMLElement} copy - the pruned clone copy, from emulateBackdropFilters
+ * @param {DOMRect} rootRect
+ */
 function insertFrost(cloneEl, orig, bf, copy, rootRect) {
   const r = orig.getBoundingClientRect()
   if (!r.width || !r.height) return
@@ -154,6 +171,7 @@ function pathTo(root, node) {
   return path.reverse()
 }
 
+/** The node a pathTo() path points at inside another tree of the same shape. */
 function nodeAtPath(root, path) {
   if (!path) return null
   let n = root

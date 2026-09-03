@@ -31,7 +31,11 @@
 
 import { debugWarn } from '../utils/debug.js'
 
-/** @returns {'drawElement'|'drawElementImage'|null} */
+/**
+ * Which canvas-place-element method this browser exposes, or null. Null sends every capture
+ * to the svg engine, which is where every shipping browser lands today.
+ * @returns {'drawElement'|'drawElementImage'|null}
+ */
 export function detectDrawApi() {
   try {
     const c = document.createElement('canvas')

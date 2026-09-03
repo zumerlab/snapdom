@@ -1,46 +1,63 @@
 /**
- * @typedef {"disabled"|"full"|"auto"|"soft"} CachePolicy
+ * Option normalization. `createContext` turns the caller's option bag into the one context
+ * object every stage and every plugin hook reads. Defaults, aliases and the compiled exclusion
+ * policy are decided here and nowhere else, so a new option is added here first.
+ * @module context
+ */
+
+/**
+ * @typedef {"soft"|"disabled"} CachePolicy
+ * 'soft' is the structural default; the legacy 'auto' and 'full' strings map to it.
  */
 
 import { normalizeCachePolicy } from './cache.js'
 import { compileIconFontMatchers } from '../modules/iconFonts.js'
 
-/**
- * Creates a normalized capture context for SnapDOM.
- * @param {Object} [options={}]
- * @param {boolean} [options.debug]
- * @param {number}  [options.scale]
- * @param {string|((el: Element) => boolean)|Array<string|((el: Element) => boolean)>} [options.exclude] - Selectors and/or predicates (true = exclude)
- * @param {string}  [options.excludeMode]
- * @param {boolean|'auto'} [options.embedFonts]
- * @param {string|string[]} [options.iconFonts]
- * @param {string[]} [options.localFonts]
- * @param {string[]|undefined} [options.excludeFonts]
- * @param {string[]} [options.fontStylesheetDomains]      // extra domains to fetch cross-origin CSS from (#309)
- * @param {string|function} [options.fallbackURL]
- * @param {string}  [options.useProxy]
- * @param {number|null} [options.width]
- * @param {number|null} [options.height]
- * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.format]
- * @param {"svg"|"img"|"canvas"|"blob"} [options.type]
- * @param {number}  [options.quality]
- * @param {number}  [options.dpr]
- * @param {string|null} [options.backgroundColor]
- * @param {string}  [options.filename]
- * @param {unknown} [options.cache] - `'disabled'` (or `false`) empties every persistent cache before the capture, a debug/test escape hatch. Anything else is the default: caching is structural, not a knob (the legacy 'soft'/'auto'/'full' strings all mean this).
- * @param {HTMLCanvasElement} [options.canvas] - Draw the canvas export into this canvas instead of a new one
- * @param {boolean} [options.captureSelection] - Render the user's live text selection into the capture
- * @param {boolean} [options.outerTransforms]
- * @param {boolean} [options.outerShadows]
- * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
- * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
- * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. On by default; pass `false` to embed images verbatim.
- * @returns {Object}
- */
 /** Formats a caller can name in `format` (or legacy `type`). Shared with the export
  *  normalizer in snapdom.js — the same set decides the alias there. */
 const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
 
+/**
+ * Build the normalized capture context from the caller's options.
+ *
+ * Every field below has a default, so downstream code never tests for undefined. Options
+ * marked internal are read by tests and benchmarks and are not public API.
+ * @param {Object} [options={}]
+ * @param {boolean} [options.debug=false]
+ * @param {number}  [options.scale=1]
+ * @param {string|((el: Element) => boolean)|Array<string|((el: Element) => boolean)>} [options.exclude] - Selectors and/or predicates (true = exclude). v2's `filter`/`filterMode` are rejected with a warning, not aliased.
+ * @param {'hide'|'remove'} [options.excludeMode='hide'] - 'hide' leaves a spacer of the node's box, 'remove' drops it
+ * @param {boolean|'auto'} [options.embedFonts='auto'] - 'auto' embeds only webfonts the element uses
+ * @param {string|string[]} [options.iconFonts] - extra families treated as icon fonts (never embedded)
+ * @param {string[]} [options.localFonts]
+ * @param {string[]|undefined} [options.excludeFonts]
+ * @param {string[]} [options.fontStylesheetDomains] - extra domains to fetch cross-origin CSS from (#309)
+ * @param {string|function} [options.fallbackURL]
+ * @param {string}  [options.useProxy]
+ * @param {number|null} [options.width]
+ * @param {number|null} [options.height]
+ * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.format='png'] - 'jpg' resolves to 'jpeg'
+ * @param {"svg"|"img"|"canvas"|"blob"} [options.type='svg']
+ * @param {number}  [options.quality=0.92]
+ * @param {number}  [options.dpr=devicePixelRatio]
+ * @param {string|null} [options.backgroundColor] - defaults to white for jpeg and webp, which have no alpha
+ * @param {string}  [options.filename='snapDOM']
+ * @param {unknown} [options.cache] - `'disabled'` (or `false`) empties every persistent cache before the capture, a debug/test escape hatch. Anything else is the default: caching is structural, not a knob (the legacy 'soft'/'auto'/'full' strings all mean this).
+ * @param {HTMLCanvasElement} [options.canvas] - Draw the canvas export into this canvas instead of a new one
+ * @param {boolean} [options.captureSelection=false] - Render the user's live text selection into the capture
+ * @param {boolean} [options.placeholders=true] - cross-origin iframes get a striped placeholder; false gives an invisible spacer
+ * @param {boolean} [options.outerTransforms=true]
+ * @param {boolean|'subtree'} [options.outerShadows=false]
+ * @param {boolean} [options.reconcile=false] - measure the clone in-document and pin diverging boxes
+ * @param {boolean} [options.burst] - force the memo on or off; unset auto-engages after 3 captures of one element in 2 s (burst.js)
+ * @param {'canvas'} [options.engine] - experimental: the canvas-place-element engine (engines/htmlInCanvas.js)
+ * @param {boolean} [options.invalidate=false] - one fresh capture for changes no observer sees (canvas draws, CSSOM edits)
+ * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
+ * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
+ * @param {boolean} [options.compress=true] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. `false` is internal, for benchmarks that measure the uncompressed pipeline.
+ * @param {boolean} [options.resolvePicturePlaceholders=true] - v2 compat, undocumented in v3
+ * @returns {Object} the context; also carries the compiled `shouldExclude` and the internal `__iconMatchers`, `__explicitFormat`, `__styleShare`
+ */
 export function createContext(options = {}) {
   let resolvedFormat = options.format ?? 'png'
   if (resolvedFormat === 'jpg') resolvedFormat = 'jpeg'

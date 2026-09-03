@@ -1,5 +1,13 @@
 /**
- * Prepares a deep clone of an element, inlining pseudo-elements and generating CSS classes.
+ * The clone step: prepare the live element, deepClone it, then run every pass that needs the
+ * clone and the source side by side.
+ *
+ * Before the clone: layout stabilized, content-visibility forced, lazy shadow icons revealed
+ * (#488). All of it is undone in a finally, so the page is as it was when this returns.
+ * After the clone, in this order: svg defs, pseudo-elements, blob URLs, @media freezing,
+ * shadow CSS extraction, class generation, top-layer lift, fixed/sticky re-anchoring, scroll
+ * compensation, root neutralization. Several of those depend on the one before, and the
+ * comment at each says which.
  * @module prepare
  */
 
@@ -14,18 +22,22 @@ import { prepareSelectionContext } from '../modules/selection.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
 
+/** In-flight #488 reveals, `{ root, promise }`. A concurrent capture whose root contains or
+ *  sits inside one of these waits for it instead of forcing the same styles twice. */
 const visibilityWarmups = new Set()
 
 /**
- * Prepares a clone of an element for capture, inlining pseudo-elements and generating CSS classes.
+ * Clone an element for capture and return the clone with everything the render step needs.
  *
+ * The source is prepared and restored around deepClone (see the module header). Direct
+ * callers without a session get fresh maps; captureDOM always passes its own.
  * @param {Element} element - Element to clone
- * @param {boolean} [embedFonts=false] - Whether to embed custom fonts
- * @param {Object} [options={}] - Capture options
- * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
- * @returns {Promise<Object>} Object containing the clone, generated CSS, style cache, and the session clone→source nodeMap
+ * @param {Object} [options={}] - the normalized context (createContext), plus `__session`
+ * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null}>}
+ *   classCSS is the full stylesheet (prefix included); classPrefixCSS is the shadow, pseudo
+ *   and suppression part alone, which burst re-prepends after a diff; clipWindow is the
+ *   clip rect in the root's own layout pixels
  */
-
 export async function prepareClone(element, options = {}) {
   // Same-tick DOM/style mutations otherwise reach the clone against a stale epoch
   // (MutationObserver delivery is a microtask) — drain them before any epoch-scoped
@@ -319,17 +331,19 @@ export async function prepareClone(element, options = {}) {
     if (sessionCache.clip && originalNode === element) continue
     wrapScrolledClone(cloneNode, originalNode)
   }
+  // The root clone is the foreignObject's content now, so whatever placed it in the page
+  // (margin, inset offsets, float) is zeroed and its transform keeps scale/skew only. The
+  // inlined computed values already hold the current animation frame; animation:none keeps
+  // the svg from replaying it from the start.
   if (element === sessionCache.nodeMap.get(clone)) {
     const computed = sessionCache.styleCache.get(element) || getStyle(element)
     sessionCache.styleCache.set(element, computed)
     const transform = stripTranslate(computed.transform)
     clone.style.margin = '0'
-    // clone.style.position = "static";
     clone.style.top = 'auto'
     clone.style.left = 'auto'
     clone.style.right = 'auto'
     clone.style.bottom = 'auto'
-    //clone.style.zIndex = "auto";
     clone.style.animation = 'none'
     clone.style.transition = 'none'
     clone.style.willChange = 'auto'
@@ -338,6 +352,7 @@ export async function prepareClone(element, options = {}) {
     clone.style.transform = transform || ''
   }
 
+  // #75: a <pre>'s top margin pushed its last line out of the capture box.
   for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
     if (originalNode.tagName === 'PRE') {
       cloneNode.style.marginTop = '0'
@@ -355,7 +370,14 @@ export async function prepareClone(element, options = {}) {
   }
 }
 
-/** See call site: replicates top-layer paint order + ::backdrop for open modals/popovers. */
+/**
+ * Move the clones of open modal dialogs and popovers to the end of the root, each with a
+ * synthesized ::backdrop, so they paint above everything the way the top layer does.
+ * Pinned by __tests__/core.toplayer.test.js.
+ * @param {Element} element - source root
+ * @param {Element} clone - clone root
+ * @param {Map<Node, Node>} nodeMap - clone -> source
+ */
 function liftTopLayerClones(element, clone, nodeMap) {
   const tops = []
   for (const sel of [':modal', ':popover-open']) {
@@ -392,8 +414,6 @@ function liftTopLayerClones(element, clone, nodeMap) {
     z += 1
   }
 }
-
-// helpers (stabilizeLayout, resolveBlobUrlsInTree) ahora vienen de utils; bloque antiguo eliminado.
 
 /**
  * Applies a node's deduped style class (or the shadow-scoped style attribute) plus the

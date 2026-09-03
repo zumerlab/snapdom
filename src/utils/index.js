@@ -1,3 +1,4 @@
+/** Re-export barrel for src/utils. @module utils */
 export { inlineSingleBackgroundEntry } from './image.js'
 export { precacheCommonTags, getDefaultStyleForTag, getStyleKey, softensWidth, softenNeedsAutoWidth, collectUsedTagNames, generateDedupedBaseCSS, generateCSSClasses, getStyle, parseContent, snapshotComputedStyle, splitBackgroundImage, NO_CAPTURE_TAGS, NO_DEFAULTS_TAGS, shouldIgnoreProp } from './css.js'
 export { isIOS, isSafari } from './browser.js'

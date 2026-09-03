@@ -1,5 +1,20 @@
 /**
- * Utilities for inlining ::before and ::after pseudo-elements.
+ * Pseudo-elements, materialized into the clone.
+ *
+ * The svg carries the class CSS snapdom generates, not the page's stylesheets, so an author's
+ * `::before` rule never reaches the foreignObject (a `<style>` inside the captured subtree is
+ * the exception: it is cloned, and its native pseudos are suppressed to avoid a double
+ * paint, #359). This pass reads each pseudo's computed style off the live element and builds
+ * it: `::before`, `::after` and `::first-letter` become a <span> with a style snapshot (icon
+ * glyphs drawn to <img>, `content: url()` fetched, counters resolved); `::marker` and
+ * `::first-line` become a scoped rule on `sessionCache.__pseudoCSS`, folded into the class
+ * prefix CSS by prepareClone, since a span can neither re-fragment a first line nor replace
+ * a native marker.
+ *
+ * Cost control, in order: a document-level preflight (does any sheet mention a pseudo at
+ * all), one subtree `querySelector` over the scan's selector gates (canSkipPseudoWalk), then
+ * per node one `matches()` before any getComputedStyle probe. Pinned by
+ * __tests__/module.pseudo.test.js and the module.pseudo.*.test.js siblings.
  * @module pseudo
  */
 
@@ -32,8 +47,8 @@ const __preflightMemo = new WeakMap()
 const CSS_RULE_SCAN_BUDGET = 1000
 
 /**
- * Returns whether to process pseudos, but also memoizes the last fingerprint
- * seen in the provided sessionCache to avoid stale results between tests/runs.
+ * The document-level preflight, memoized on the session by style fingerprint so one capture
+ * asks it once. Without a session it still drains pending style records first.
  * @param {Document} doc
  * @param {Map|Object} sessionCache
  * @returns {boolean}
@@ -304,12 +319,6 @@ function stripContentAltText(raw) {
   return raw
 }
 
-/**
- * Concatena tokens de CSS `content` (cadenas y resultados de counter()/counters())
- * without the whitespace that separates them in the source: the browser concatenates
- * adjacent tokens with no gap, so `counter(x) ")"` must render `1)` and not `1 )`.
- * @param {string} raw
- */
 /** Decodes CSS string escapes: `\A` (a newline), `\2014` with its optional trailing space,
  *  `\"`, `\\`, and a backslash-newline line continuation (which produces nothing). Without
  *  this the escape sequences were carried through verbatim and PAINTED — a `content: "\201C"`
@@ -324,6 +333,13 @@ function unescapeCssString(str) {
   })
 }
 
+/**
+ * Join the tokens of a CSS `content` value (strings, and what counter()/counters() resolved
+ * to) without the whitespace that separates them in the source. The browser concatenates
+ * adjacent tokens with no gap, so `counter(x) ")"` must render `1)` and not `1 )` (#235).
+ * @param {string} raw
+ * @returns {string}
+ */
 function collapseCssContent(raw) {
   if (!raw) return ''
   const parts = []
@@ -439,22 +455,11 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
     getStack(_node, name) {
       return getStackDerived(name)
     },
-    /** expone increments del pseudo para que el caller pueda propagar a hermanos */
+    /** The pseudo's own increments, so the caller can carry them to the next sibling. */
     __incs: incs
   }
 }
 
-/**
- * Resolves the pseudo's `content` by applying:
- * 1) sibling overrides (so counters stay continuous across siblings),
- * 2) the pseudo's own reset/increment,
- * 3) token collapsing, so `"..."` pieces join with no gap.
- *
- * @param {Element} node
- * @param {'::before'|'::after'} pseudo
- * @param {{get:Function, getStack:Function}} baseCtx
- * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
- */
 /** Properties valid on the respective pseudo that the scoped-rule emitter diffs. */
 // -webkit-text-fill-color is here because it PAINTS the glyphs and overrides `color`: when the
 // element clone carries a full style read (the unreliable-scan path reads every property), it
@@ -538,6 +543,17 @@ function resolveQuoteKeywords(raw, node) {
   })
 }
 
+/**
+ * Resolve the pseudo's `content` to the text it paints, in this order: alt-text suffix
+ * stripped, quote keywords resolved, sibling counter overrides applied (so a sequence stays
+ * continuous across siblings), the pseudo's own reset/increment, counter() expansion, then
+ * token collapsing so `"..."` pieces join with no gap.
+ * @param {Element} node
+ * @param {'::before'|'::after'} pseudo
+ * @param {{get:Function, getStack:Function}} baseCtx
+ * @param {WeakMap<Element, Map<string, number>>} siblingCounters - per-parent overrides, on the session
+ * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
+ */
 function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
   let ps
   try { ps = getStyle(node, pseudo) } catch { }
@@ -546,13 +562,13 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
   raw = stripContentAltText(raw)
   raw = resolveQuoteKeywords(raw, node)
 
-  // 1) aplicar overrides de hermanos
+  // 1) sibling overrides
   const baseWithSiblings = withSiblingOverrides(node, baseCtx, siblingCounters)
 
   // 2) derive (applies the pseudo's reset/increment)
   const derived = deriveCounterCtxForPseudo(node, ps, baseWithSiblings)
 
-  // 3) resolver counter()/counters()
+  // 3) resolve counter()/counters()
   let resolved = hasCounters(raw)
     ? resolveCountersInContent(raw, node, derived)
     : raw
@@ -562,15 +578,6 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
   return { text, incs: derived.__incs || [] }
 }
 
-/**
- * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
- *
- * @param {Element} source - Original element
- * @param {Element} clone - Cloned element
- * @param {Map} sessionCache - styleMap cache etc.
- * @param {Object} options - capture options
- * @returns {Promise<void>}
- */
 /**
  * Can the whole pseudo walk be skipped for this subtree?
  *
@@ -591,6 +598,10 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
  *    used to test `shadowScopes.size`, which is a WeakMap: always undefined, never a bail —
  *    the pinned shadow ::after was skipped right here.) A shadow root that declares no
  *    pseudo cannot get one from the document's sheets, so the light-DOM question stands.
+ *
+ * With the gate that table went from 197 ms back to 66; scenes whose rules do match are
+ * unchanged. Pinned by __tests__/module.pseudo.subtreeGate.test.js, whose descendant-match
+ * test goes red without the querySelector half.
  * @returns {boolean}
  */
 function canSkipPseudoWalk(source, sessionCache) {
@@ -611,6 +622,27 @@ function canSkipPseudoWalk(source, sessionCache) {
   }
 }
 
+/**
+ * Inline every pseudo-element under `source` into `clone`, recursing through nodeMap.
+ *
+ * `::before`, `::after` and `::first-letter` become a <span> (data-snapdom-pseudo) whose
+ * style snapshot is keyed into sessionCache.styleMap; `::marker` and `::first-line` become
+ * scoped rules (emitScopedPseudoRule). A pseudo that paints nothing and takes no space is
+ * skipped, unless it incremented a counter, which still has to reach the next sibling.
+ *
+ * Four things took the pass from 150 to 24 µs per inlined `::before` on 2026-09-02 (deep
+ * tree, a 2px stripe on each of 1,936 leaves: 435 ms to 172): the fingerprint preflight runs
+ * on the root call only; the snapshot reads a pseudo universe of ~45 props instead of ~130;
+ * the per-tag defaults cover the props enumeration skips; twin pseudos share one read
+ * (pseudoSnapshotFor). Pinned by __tests__/module.pseudo.test.js, module.pseudo.subtreeGate,
+ * module.pseudo.twinShare, module.pseudo.unreliableScan and module.pseudo.adoptedReplace.
+ * @param {Element} source - live element
+ * @param {Element} clone - its clone, from deepClone
+ * @param {object} sessionCache - the capture session (styleMap, nodeMap, __pseudoCSS, counters)
+ * @param {object} options - capture context
+ * @param {boolean} [isDescendant=false] - true on the recursive calls; gates the once-per-capture work
+ * @returns {Promise<void>}
+ */
 export async function inlinePseudoElements(source, clone, sessionCache, options, isDescendant = false) {
   if ((source?.nodeType !== 1) || (clone?.nodeType !== 1)) return
   // #447: a textarea's value is its *child text content*, so wrapping characters in a
@@ -869,7 +901,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           }
         }
       } else if (!isIconFont2 && hasExplicitContent) {
-        pseudoEl.textContent = cleanContent // <- ya sin espacios extra
+        pseudoEl.textContent = cleanContent // already collapsed, no stray spaces
       }
 
       // ---- Backgrounds / colors ----

@@ -1,15 +1,20 @@
-// src/exporters/rasterize.js
+/**
+ * PNG, JPEG and WebP export as an <img>: toCanvas, encode, load. The encode route is picked
+ * by pixel count, see the note in `rasterize`. Pinned by
+ * __tests__/exporters.rasterize.routes.test.js.
+ * @module rasterize
+ */
 import { toCanvas } from '../exporters/toCanvas.js'
 import { isSafari } from '../utils/browser'
 
 /**
- * Converts to an HTMLImageElement with raster format.
+ * Rasterize a capture and hand it back as an <img> in the requested format.
  * @param {string} url
  * @param {{ format:'png'|'jpeg'|'webp', dpr:number, quality?:number, backgroundColor?:string }} options
  * @returns {Promise<HTMLImageElement>}
  */
 export async function rasterize(url, options) {
-  const canvas = await toCanvas(url, options) // backgroundColor ya aplicado si existe
+  const canvas = await toCanvas(url, options) // backgroundColor, when set, is already flattened here
 
   // Two encode routes, chosen by output size.
   //

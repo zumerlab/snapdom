@@ -28,9 +28,12 @@
  * mid-selection), so nothing can be rendered for it.
  *
  * Imported from @frostin/snapdom (element-mirror), where it was written as SEL-1.
+ * Pinned by __tests__/module.selection.test.js (the clone) and
+ * module.selection.raster.test.js (the pixels).
  * @module selection
  */
 
+/** The two spellings a computed background-color uses for "paints nothing". */
 const TRANSPARENT = new Set(['rgba(0, 0, 0, 0)', 'transparent'])
 
 /**

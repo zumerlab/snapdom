@@ -1,4 +1,13 @@
-// src/api/snapdom.js
+/**
+ * Public entry: `snapdom(el, options)` and its `to*` shortcuts.
+ *
+ * Owns what happens around a capture, not the capture itself (core/capture.js): option
+ * normalization, the per-capture plugin list, the Safari pre-step, the burst decision, and
+ * `buildResult`, which turns a data URL into the result object with its export queue and
+ * hooks. Burst's differential path calls buildResult straight from the context, so nothing
+ * a result needs may live only inside captureDOM.
+ * @module api/snapdom
+ */
 import { captureDOM } from '../core/capture.js'
 import { isBlankCanvas } from '../core/clone.js'
 import { createContext } from '../core/context.js'
@@ -11,7 +20,11 @@ import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
 export { preCache } from './preCache.js'
 
-// Public API (global plugin registry)
+/**
+ * Register global plugins. Returns snapdom, so `snapdom.plugins(p)(el)` reads as one call.
+ * @param {...any} defs
+ * @returns {typeof snapdom}
+ */
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
 
 /**
@@ -59,11 +72,11 @@ const INTERNAL_TOKEN = Symbol('snapdom.internal')
 const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
 
 /**
- * Main function that captures a DOM element and returns export utilities.
+ * Capture an element and return the result object with its exporters.
  * Local-first plugins: `options.plugins` override globals for this capture.
  *
  * @param {HTMLElement} element - The DOM element to capture.
- * @param {object} userOptions - Options for rendering/exporting.
+ * @param {object} [userOptions] - Options for rendering/exporting.
  * @returns {Promise<object>} Object with exporter methods:
  *   - url: The raw data URL
  *   - toRaw(): Gets raw data URL
@@ -470,6 +483,7 @@ snapdom.toRaw = (el, options) => snapdom(el, options).then(result => result.toRa
  * @returns {Promise<HTMLImageElement>} Loaded image element.
  */
 snapdom.toImg = (el, options) => snapdom(el, options).then(result => result.toImg())
+/** Same function as toImg: exporters/toImg.js exports it under both names. */
 snapdom.toSvg = (el, options) => snapdom(el, options).then(result => result.toSvg())
 
 /**

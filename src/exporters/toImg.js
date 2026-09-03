@@ -1,14 +1,33 @@
-// src/exporters/toImg.js
+/**
+ * The image exporter: a capture's data URL as a sized <img>. Also exported as `toSvg`.
+ *
+ * The output is the capture's own svg, sized, never a PNG of it. On WebKit that takes work:
+ * a scaled svg-as-image corrupts shadows, so the svg text gets the same shadow rewrite
+ * toCanvas uses and its own width/height patched to the display size, and only when that
+ * fails does the PNG raster step in.
+ * @module exporters/toImg
+ */
 import { isSafari, debugWarn } from '../utils'
 import { sessionWarn } from '../utils/debug.js'
 import { rasterize } from '../modules/rasterize'
 import { fixSafariShadows, decodeSvgFromDataURL, encodeSvgToDataURL } from './toCanvas.js'
 /**
- * Converts a data URL to an HTMLImageElement.
- * @param {string} url - The data URL of the image.
- * @param {object} options - Context options including scale.
- * @param {number} [options.scale=1] - Scale factor for the image dimensions.
- * @returns {Promise<HTMLImageElement>} Resolves with the loaded Image element.
+ * Load a capture's data URL into an <img> sized by the shared exporter rule.
+ *
+ * `width`/`height` win, `scale` applies when neither is set, and the aspect reference is the
+ * post-bleed viewBox (`meta.vbW/vbH`) rather than the element box, so an asymmetric
+ * outerShadows bleed does not stretch the picture. With `scale` the svg's own width/height
+ * are patched too, and the image is decoded AGAIN after that write: assigning src restarts
+ * decoding, and the first decode says nothing about the new one. On Safari any scale or size
+ * runs the vector path described above, with PNG rasterize as its error fallback.
+ * Pinned by __tests__/exporter.toImg.test.js and __tests__/exporter.safariPaths.test.js.
+ * @param {string} url - the capture's data URL
+ * @param {object} options
+ * @param {number} [options.scale=1]
+ * @param {number} [options.width] - output width in CSS px
+ * @param {number} [options.height] - output height in CSS px
+ * @param {object} [options.meta] - capture geometry from the svg engine (vbW/vbH, w0/h0)
+ * @returns {Promise<HTMLImageElement>} decoded, with style.width/height set
  */
 export async function toImg(url, options) {
   const { scale = 1, width, height, meta = {} } = options
@@ -104,4 +123,5 @@ export async function toImg(url, options) {
   return img
 }
 
+/** toSvg is the same function: the output is the svg either way. */
 export { toImg as toSvg }

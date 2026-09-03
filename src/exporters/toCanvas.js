@@ -1,4 +1,13 @@
-// src/exporters/toCanvas.js
+/**
+ * Rasterize a capture's data URL into a canvas.
+ *
+ * Every raster export (toPng, toBlob, download, rasterize) ends here. The svg engine's URL is
+ * decoded ONCE, in a hidden throwaway iframe so the browser's image cache dies with it, and
+ * drawn at the requested size. The WebKit paths (shadow rewrite, paint probe, natural-size
+ * draw) exist because svg-as-image is where Safari's quirks live; none of them run on other
+ * engines. The size limits and the banded draw are per engine, see the notes on each.
+ * @module exporters/toCanvas
+ */
 import { isSafari } from '../utils/browser'
 import { sessionWarn } from '../utils/debug.js'
 
@@ -17,6 +26,7 @@ import { sessionWarn } from '../utils/debug.js'
 // clamp against 3.1 ms/Mpx just under it, for the same pixel count. Gecko's canvas side limit is
 // 32767, so it shares the higher bound; the AREA cap is unchanged and still catches the cases
 // that actually exceed what a browser will allocate.
+// Pinned by __tests__/exporters.rasterLimit.test.js (skipped on webkit, which does cap at 16384).
 const MAX_RASTER_SIDE = isSafari() ? 16384 : 32767
 const MAX_RASTER_AREA = 16384 * 16384
 
@@ -24,7 +34,9 @@ const MAX_RASTER_AREA = 16384 * 16384
  * Downscale SVG text whose intrinsic width/height exceed the decode limits.
  * The SVG carries a viewBox, so shrinking width/height just renders the same content at a
  * lower resolution (no clipping). Operates on decoded text (no re-encode round trips).
- * @param {string} svg @returns {string}
+ * @param {string} svg - decoded svg text
+ * @param {object} [session] - for sessionWarn
+ * @returns {string}
  */
 function clampSvgTextRasterSize(svg, session) {
   try {
@@ -56,7 +68,8 @@ function clampSvgTextRasterSize(svg, session) {
  * Window an SVG before decode. The crop is expressed in the serialized SVG's viewBox
  * coordinates (result.meta), so a document exporter can rasterize a long capture page by
  * page instead of allocating one bitmap past the browser decode limits.
- * @param {string} svg @param {{x:number,y:number,width:number,height:number}} crop
+ * @param {string} svg - decoded svg text
+ * @param {{x:number,y:number,width:number,height:number}} crop - in viewBox units
  * @returns {string}
  */
 function cropSvgText(svg, crop) {
@@ -95,18 +108,16 @@ function cropSvgText(svg, crop) {
   return svg.replace(tag, next)
 }
 
-/**
- * Converts a data URL to a Canvas element.
- * Safari: render offscreen in a per-call temporary slot to avoid flicker, then remove it.
- *
- * @param {string} url - The image data URL.
- * @param {{ scale: number, dpr: number }} options - Context including scale and dpr (already normalized upstream).
- * @returns {Promise<HTMLCanvasElement>} Resolves with the rendered Canvas element.
- */
 // ——— helpers ———
 function isSvgDataURL(u) {
   return typeof u === 'string' && /^data:image\/svg\+xml/i.test(u)
 }
+/**
+ * The svg text behind a data URL. Decodes the WHOLE payload, so a caller that only needs
+ * the header uses peekSvgHeader instead.
+ * @param {string} u - data:image/svg+xml URL
+ * @returns {string}
+ */
 export function decodeSvgFromDataURL(u) {
   const i = u.indexOf(',')
   return i >= 0 ? decodeURIComponent(u.slice(i + 1)) : ''
@@ -120,9 +131,16 @@ function peekSvgHeader(u) {
   const chunk = u.slice(i + 1, i + 1201).replace(/%[0-9A-Fa-f]?$/, '')
   try { return decodeURIComponent(chunk) } catch { return '' }
 }
+/**
+ * The inverse of decodeSvgFromDataURL. A data: URL on purpose: Chromium taints a canvas that
+ * draws a foreignObject svg fetched from a blob: URL, and a tainted canvas cannot be read.
+ * @param {string} svgText
+ * @returns {string}
+ */
 export function encodeSvgToDataURL(svgText) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`
 }
+/** Split a declaration list on top-level `;` only, so the `;` inside a data: url() survives. */
 function splitDecls(s) {
   let parts = [], buf = '', depth = 0
   for (let i = 0; i < s.length; i++) {
@@ -134,6 +152,13 @@ function splitDecls(s) {
   if (buf.trim()) parts.push(buf)
   return parts.map(x => x.trim()).filter(Boolean)
 }
+/**
+ * Rewrite a box-shadow value as drop-shadow() filters, for engines that do not paint
+ * box-shadow inside svg-as-image. Inset layers are dropped (no filter equivalent), spread is
+ * dropped (drop-shadow has none) and the blur radius is halved, since WebKit takes it as sigma.
+ * @param {string} value
+ * @returns {string} space-separated drop-shadow() functions, empty when no layer applies
+ */
 function boxShadowToDropShadow(value) {
   // split by layer without breaking the parentheses of color functions
   const layers = []
@@ -153,7 +178,7 @@ function boxShadowToDropShadow(value) {
     // They are intentionally omitted from the canvas export rather than rendered incorrectly.
     if (/\binset\b/i.test(layer)) continue
     const nums = layer.match(/-?\d+(?:\.\d+)?px/gi) || []
-    let [ox='0px', oy='0px', blur='0px'] = nums // spread no existe en drop-shadow
+    let [ox='0px', oy='0px', blur='0px'] = nums // a fourth value (spread) has no drop-shadow equivalent
     // WebKit renders drop-shadow at ~2x the radius (radius taken as sigma): halve
     // so the fallback shadow matches the live box-shadow width.
     blur = `${parseFloat(blur) / 2}px`
@@ -161,11 +186,12 @@ function boxShadowToDropShadow(value) {
     let color = layer.replace(/-?\d+(?:\.\d+)?px/gi, '')
                      .replace(/\binset\b/ig, '')
                      .trim().replace(/\s{2,}/g, ' ')
-    const hasColor = !!color && color !== ',' // muy tolerante
+    const hasColor = !!color && color !== ',' // loose on purpose: any leftover token is the colour
     fns.push(`drop-shadow(${ox} ${oy} ${blur}${hasColor ? ` ${color}` : ''})`)
   }
   return fns.join(' ')
 }
+/** Move a declaration list's box-shadow into its filter and -webkit-filter as drop-shadow(). */
 function rewriteDeclList(list) {
   const decls = splitDecls(list)
   let filter = null, wfilter = null, box = null
@@ -194,9 +220,11 @@ function rewriteDeclList(list) {
   if (wfilter) out.push(['-webkit-filter', wfilter])
   return out.map(([k, v]) => `${k}:${v}`).join(';')
 }
+/** rewriteDeclList over every rule body of a stylesheet. */
 function rewriteCssBlock(css) {
   return css.replace(/([^{}]+)\{([^}]*)\}/g, (_m, sel, body) => `${sel}{${rewriteDeclList(body)}}`)
 }
+/** The drop-shadow rewrite over an svg's <style> blocks and its style="" attributes. */
 function rewriteSvgBoxShadowToDropShadow(svgText) {
   // 1) <style>…</style>
   svgText = svgText.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (m, css) =>
@@ -298,6 +326,8 @@ function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
  * offset direction and magnitude, or drops blurred shadows entirely), so the
  * caller must then draw 1:1 and resample the raster instead of letting WebKit
  * re-rasterize the svg scaled.
+ * @param {string} svg - decoded svg text
+ * @returns {Promise<{svg: string, naturalOnly: boolean}>}
  */
 export async function fixSafariShadows(svg) {
   // Real shadows carry px lengths; `text-shadow:none` defaults must not match.
@@ -388,6 +418,7 @@ async function waitForImgPaint(img, verify, probe) {
 // Recycling only happens while no capture is mid-decode: an image's pixels belong to its
 // document's resource, so tearing that document down under an in-flight decode, or before the
 // final drawImage, would pull the bitmap out from under it.
+// Pinned by __tests__/exporter.toCanvas.decodeFrame.test.js.
 const DECODE_FRAME_BUDGET_BYTES = 24 * 1024 * 1024
 let _decodeFrame = null
 let _decodeFrameBytes = 0
@@ -463,6 +494,14 @@ function startDecode(image, src) {
 const BAND_MIN_AREA = 4e6
 const BAND_AREA = 2e6
 const MAX_BANDS = 8
+/**
+ * Draw `img` into `ctx` at devW x devH, in bands past the area gate above. Pinned by
+ * __tests__/exporter.toCanvas.bands.test.js, where a one-row band shift differs by 760k pixels.
+ * @param {CanvasRenderingContext2D} ctx - identity transform, device pixels
+ * @param {HTMLImageElement} img
+ * @param {number} devW
+ * @param {number} devH
+ */
 function drawBanded(ctx, img, devW, devH) {
   const area = devW * devH
   const bands = area > BAND_MIN_AREA ? Math.min(MAX_BANDS, Math.ceil(area / BAND_AREA)) : 1
@@ -480,8 +519,14 @@ function drawBanded(ctx, img, devW, devH) {
 }
 
 /**
- * Rasterize SVG (o data URL) en un canvas respetando width/height + scale.
- * Supports flattening a background color with no intermediate canvas.
+ * Rasterize a capture (svg data URL, or any image URL) into a canvas.
+ *
+ * One sizing rule for every exporter: `width`/`height` are the absolute output size in CSS
+ * px and win, `scale` applies only when neither is set, `dpr` multiplies device pixels. A
+ * `backgroundColor` is flattened in the same draw, with no intermediate canvas. `crop`
+ * windows the svg's viewBox before decode, so a document exporter can rasterize a long
+ * capture page by page; it exists for svg payloads only and throws for anything else. Pass
+ * `canvas` to draw into your own and skip a full copy per frame.
  * @param {string} url
  * @param {{
  *   width?:number,
@@ -491,7 +536,7 @@ function drawBanded(ctx, img, devW, devH) {
  *   meta?:object,
  *   canvas?:HTMLCanvasElement,
  *   crop?:{x:number,y:number,width:number,height:number},
- *   backgroundColor?: string // optional color used to flatten the background
+ *   backgroundColor?: string
  * }} options
  * @returns {Promise<HTMLCanvasElement>}
  */
@@ -687,6 +732,10 @@ export async function toCanvas(url, options) {
       // ink now means the frame the draw used was there; blank means wait for it and draw
       // again at the same scale, which cannot request another level. Costs one probe draw
       // on the good path, and only a capture that was going to be blank pays a redraw.
+      // Five earlier attempts all verified BEFORE the draw and could not see this. Pinned by
+      // the crop case in __tests__/visual.fidelity.crossengine.test.js, which must stay the
+      // first capture of that sprite in the page: the first decode of the data: URL is the
+      // trigger. Re-verified in real Safari 26.5.1 on 2026-09-02: 100/100 captures identical.
       let ink = true
       try { ink = probe(img) } catch { /* keep the draw */ }
       if (!ink) {

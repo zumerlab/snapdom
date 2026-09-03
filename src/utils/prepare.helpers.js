@@ -1,13 +1,19 @@
 /**
- * Helper utilities for preparing DOM clones
+ * Two edits to the LIVE element before it is cloned, each returning its undo.
+ *
+ * prepareClone runs both and diff.js runs the content-visibility one; every caller undoes
+ * them in a finally, so the page is as it was when the capture returns. Both are skipped by
+ * preCache's warm-only pass, whose clone is thrown away.
  * @module utils/prepare.helpers
  */
 
 import { isHTMLEl } from './helpers.js'
 
 /**
- * Stabilize layout by adding transparent border if element has outline but no border.
- * Returns an undo function to restore the element's original inline border.
+ * Give a root that has an outline but no border a transparent border of the outline's width
+ * while it is cloned (#179), and return the undo that restores the inline border. The gate is
+ * all four computed border widths at 0, for the reason below. Pinned by
+ * __tests__/utils.prepare.helpers.test.js.
  * @param {Element} element
  * @returns {() => void}
  */
@@ -51,7 +57,8 @@ export function stabilizeLayout(element) {
  * Forcing it to 'visible' un-hid the whole subtree into the capture, and also erased the
  * value modules/styles.js reads to carry the declaration into the snapshot, so that guard
  * could never fire.
- * Returns an undo function to restore original values.
+ * Returns an undo function to restore original values. Pinned by
+ * __tests__/utils.prepare.helpers.test.js.
  * @param {Element} root
  * @param {{left:number,top:number,right:number,bottom:number}|null} [clipRect]
  * @returns {() => void}

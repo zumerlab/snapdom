@@ -1,5 +1,12 @@
 /**
- * Utilities for inlining background images as data URLs.
+ * Inline url() backgrounds, masks and border-images onto the clone, per node.
+ *
+ * The style snapshot writes a class rule with `background-image: none` for any remote url()
+ * so the shared CSS never points at a resource the svg cannot load. This pass is the one
+ * that reads the real value from the live node, fetches it, and puts the data URL on the
+ * clone's inline style, together with the layout longhands (position, size, repeat, mask
+ * mode) that keep it where it was. Only nodes the snapshot flagged (needsBackgroundInline)
+ * are visited. A fixed-attachment layer is frozen to the viewport slice the user saw.
  * @module background
  */
 import { isFirefox, isIOS } from '../utils/browser.js'
@@ -51,6 +58,7 @@ const MASK_LAYOUT_PROPS = [
   '-webkit-mask-position-x',
   '-webkit-mask-position-y',
 ]
+/** Background longhands copied only when the node has a background at all (see hasBg). */
 const BG_LAYOUT_PROPS = [
   'background-position', 'background-position-x', 'background-position-y',
   'background-size', 'background-repeat',
@@ -199,7 +207,9 @@ function resolveFixedLayerSize(sizeSpec, iw, ih, vw, vh) {
 }
 
 /** Rewrites fixed background layers to scroll, freezing viewport-resolved size/position
- *  into element-local pixel values so the capture shows the exact slice the user saw. */
+ *  into element-local pixel values so the capture shows the exact slice the user saw.
+ *  A calc() size or position leaves that layer as it was. Runs after asset inlining, so the
+ *  intrinsic size comes from the data URL. Pinned by __tests__/module.background.fixed.test.js. */
 async function freezeFixedBackground(srcNode, cloneNode, style) {
   const attachments = (style.getPropertyValue('background-attachment') || '').split(',').map(s => s.trim())
   // Engines degrade fixed to scroll inside transformed/filtered ancestors, and
@@ -262,6 +272,7 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
   cloneNode.style.setProperty('background-attachment', attachments.map(() => 'scroll').join(', '))
 }
 
+/** Two decimals, enough for a px value and short in the payload. */
 const limitPx = (n) => Math.round(n * 100) / 100
 
 /**
@@ -271,7 +282,11 @@ const limitPx = (n) => Math.round(n * 100) / 100
  * needsBackgroundInline flag computed during the style snapshot, so the pass no longer
  * re-reads ~40 computed properties on every node — only flagged nodes do real work.
  * Walking the clone tree (descending through clone-only wrappers like the scroll-translate
- * wrapper) also reaches subtrees the old source/clone parallel walk skipped.
+ * wrapper) also reaches subtrees the old source/clone parallel walk skipped. Pairing through
+ * nodeMap instead of child index is what keeps a clone-only <svg> of inlined defs from
+ * shifting every background one sibling over (#439). Also runs on the differential path
+ * (diff.js) for the rebuilt subtree. Pinned by __tests__/module.background.test.js and
+ * __tests__/module.background.masks.test.js.
  *
  * @param {HTMLElement} source The original source element.
  * @param {HTMLElement} clone The cloned element receiving inline styles.

@@ -1,4 +1,14 @@
-// src/utils/resolveCSSVars.js
+/**
+ * var() materialization for inline styles and attributes.
+ *
+ * A custom property resolves where the element lives. Inside the foreignObject the cascade
+ * above the capture root is gone, so a `var(--x)` left in an inline style would take its
+ * fallback, or nothing. `resolveCSSVars` writes the computed value onto the clone instead.
+ * The one place that must NOT happen is an SVG template (`<symbol>`, `<defs>`, `<pattern>`,
+ * ...): its content renders through `<use>` / `url(#...)`, where the consumer's custom
+ * properties cascade in, so freezing the value there freezes the fallback (#408).
+ * @module CSSVar
+ */
 
 import { getStyleEpoch } from './styles.js'
 
@@ -16,11 +26,18 @@ const SVG_TEMPLATE_TAGS = new Set([
  *  and ran 3× per SVG element (resolveCSSVars + two clone.js sites). */
 let __tplMemo = new WeakMap()
 let __tplEpoch = -1
+/**
+ * Whether `el` is, or sits inside, an SVG template container. clone.js skips the style
+ * snapshot and the paint-prop pass for those. Pinned by __tests__/module.CSSVar.test.js.
+ * @param {Element} el
+ * @returns {boolean}
+ */
 export function isInSvgTemplate(el) {
   const epoch = getStyleEpoch()
   if (epoch !== __tplEpoch) { __tplMemo = new WeakMap(); __tplEpoch = epoch }
   return tplLookup(el)
 }
+/** The memoized walk: the element's own tag decides, else its parent's answer does. */
 function tplLookup(el) {
   const hit = __tplMemo.get(el)
   if (hit !== undefined) return hit
@@ -47,6 +64,9 @@ function tplLookup(el) {
  * computed value onto the clone. var() applied by stylesheet rules needs no pass of its
  * own: the style snapshot (inlineAllStyles) already captures the resolved values, and
  * SVGs with no snapshot get deepClone's SVG_PAINT_PROPS pass.
+ * Pinned by __tests__/module.CSSVar.test.js.
+ * @param {Element} sourceEl
+ * @param {Element} cloneEl
  */
 export function resolveCSSVars(sourceEl, cloneEl) {
   if ((sourceEl?.nodeType !== 1) || (cloneEl?.nodeType !== 1)) return
@@ -55,7 +75,7 @@ export function resolveCSSVars(sourceEl, cloneEl) {
   // where the cascade lives. Materializing var() here freezes the fallback.
   if (isInSvgTemplate(sourceEl)) return
 
-  // --- 0) Pre-chequeo ultra barato
+  // --- 0) Cheap pre-check: no 'var(' in the style attribute or any other attribute, nothing to do
   const styleAttr = sourceEl.getAttribute?.('style')
   let hasVar = !!(styleAttr && styleAttr.includes('var('))
 
@@ -74,7 +94,7 @@ export function resolveCSSVars(sourceEl, cloneEl) {
     try { cs = getComputedStyle(sourceEl) } catch {}
   }
 
-  // --- 1) Resolver var() en estilos inline
+  // --- 1) Resolve var() in the inline style
   if (hasVar) {
     const author = sourceEl.style
     if (author && author.length) {

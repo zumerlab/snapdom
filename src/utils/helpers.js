@@ -1,5 +1,10 @@
 /**
- * Extracts a URL from a CSS value like background-image.
+ * URL and transform string helpers, the password mask, and realm-safe element type tests.
+ * @module utils/helpers
+ */
+
+/**
+ * Extracts a URL from a CSS value like background-image. A `#fragment` reference is not one.
  *
  * @param {string} value - The CSS value
  * @returns {string|null} The extracted URL or null
@@ -14,6 +19,11 @@ export function extractURL(value) {
   return url
 }
 
+/** Raster/vector types every target engine decodes; anything else (jxl, tiff…) the
+ *  browser's own type-support step would skip. Shared by image-set() and <source type>. */
+export const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
+const SUPPORTED_IMAGE_SET_TYPE = SUPPORTED_IMAGE_MIME
+
 /**
  * Picks the best-matching URL out of a CSS `image-set()`/`-webkit-image-set()` value for a
  * given device pixel ratio — the smallest declared resolution that's >= targetDppx, or the
@@ -23,11 +33,6 @@ export function extractURL(value) {
  * @param {number} [targetDppx=1]
  * @returns {string|null}
  */
-/** Raster/vector types every target engine decodes; anything else (jxl, tiff…) the
- *  browser's own type-support step would skip. Shared by image-set() and <source type>. */
-export const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
-const SUPPORTED_IMAGE_SET_TYPE = SUPPORTED_IMAGE_MIME
-
 export function resolveImageSetURL(value, targetDppx = 1) {
   const m = value.match(/^\s*-?(?:webkit-)?image-set\(([\s\S]*)\)\s*$/i)
   if (!m) return null
@@ -56,6 +61,14 @@ export function resolveImageSetURL(value, targetDppx = 1) {
   return (fit || candidates[candidates.length - 1]).url
 }
 
+/**
+ * Drop the translation from a transform string: translate()/translateX()/translateY() are
+ * removed, matrix() and matrix3d() keep their scale and skew with the offset zeroed.
+ * prepareClone runs the root's transform through this, so the svg engine's bbox math never
+ * sees a translated root (#56, #24). Pinned by __tests__/utils.helpers.test.js.
+ * @param {string} transform - computed `transform`
+ * @returns {string} '' for `none` or empty
+ */
 export function stripTranslate(transform) {
   if (!transform || transform === 'none') return ''
 
@@ -80,6 +93,7 @@ export function stripTranslate(transform) {
   return cleaned.trim().replace(/\s{2,}/g, ' ')
 }
 
+/** encodeURI, unless the string already carries a %XX escape: encoding it again doubles it. */
 export function safeEncodeURI(uri) {
   if (/%[0-9A-Fa-f]{2}/.test(uri)) return uri // prevent reencode
   try { return encodeURI(uri) } catch { return uri }

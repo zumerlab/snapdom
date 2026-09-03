@@ -1,3 +1,15 @@
+/**
+ * The generated CSS a clone carries: tag defaults, per-element style keys, the base reset.
+ *
+ * A computed-style snapshot is diffed against the tag's defaults (`getDefaultStyleForTag`)
+ * into a style key (`getStyleKey`); equal keys share one class (`generateCSSClasses`), and the
+ * defaults themselves become one factored reset rule (`generateDedupedBaseCSS`). The width
+ * rules are the delicate part. A frozen used width re-wraps text when the raster falls back
+ * to a wider font, so content-sized boxes get a min-width floor instead (`softensWidth`,
+ * `softenNeedsAutoWidth`, and the epsilon inside getStyleKey).
+ * @module utils/css
+ */
+
 // -----------------------------------------------------------------------------
 // Central single-source-of-truth sets
 // -----------------------------------------------------------------------------
@@ -20,6 +32,7 @@ export const NO_DEFAULTS_TAGS = new Set([
 import { cache } from '../core/cache'
 import { ALWAYS_PROPS } from '../modules/styleScan'
 
+/** The tags most pages use. preCache warms their defaults ahead of the first capture. */
 const commonTags = [
   'div', 'span', 'p', 'a', 'img', 'ul', 'li', 'button', 'input', 'select', 'textarea', 'label', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'td', 'th'
 ]
@@ -27,6 +40,10 @@ const commonTags = [
 // -----------------------------------------------------------------------------
 // 1) precacheCommonTags → salta NO_CAPTURE y NO_DEFAULTS (no calienta basura)
 // -----------------------------------------------------------------------------
+/**
+ * Warm the default-style memo for the common tags, so the first capture pays no sandbox
+ * probe for them. Called from preCache().
+ */
 export function precacheCommonTags() {
   for (let tag of commonTags) {
     const t = String(tag).toLowerCase()
@@ -39,10 +56,16 @@ export function precacheCommonTags() {
 // -----------------------------------------------------------------------------
 // 2) getDefaultStyleForTag -> single gate on NO_DEFAULTS_TAGS + a marked sandbox
 // -----------------------------------------------------------------------------
-/*
- * Retrieves default CSS property values from a temporary element.
+/**
+ * A tag's default styles, memoized in cache.defaultStyle.
+ *
+ * Read from a fresh element with `all: initial` inside a hidden sandbox div, so the map holds
+ * the INITIAL values, not the UA sheet's. That is the point: the base reset re-states them
+ * inside the foreignObject, where the UA sheet would otherwise add its own margins and
+ * paddings, and getStyleKey keeps only what differs from them. NO_DEFAULTS_TAGS get `{}`,
+ * which means no reset and no class.
  * @param {string} tagName
- * @returns {Object}
+ * @returns {Record<string, string>}
  */
 export function getDefaultStyleForTag(tagName) {
   tagName = String(tagName).toLowerCase()
@@ -257,6 +280,7 @@ const WIDTH_EPSILON = 0.001
  * per-node content/flex bookkeeping for the vast majority of nodes that aren't affected.
  * @param {string} tagName
  * @param {string} display computed display (lowercase)
+ * @returns {boolean}
  */
 export function softensWidth(tagName, display) {
   return !REPLACED_TAGS.has(tagName) &&
@@ -284,6 +308,7 @@ const SHRINK_TO_FIT_DISPLAYS = new Set([
  * @param {string} tagName
  * @param {Record<string,string>} snapshot computed-style snapshot
  * @param {boolean} isFlexItem whether the element is a flex/grid item
+ * @returns {boolean}
  */
 export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
   const display = (snapshot.display || '').toLowerCase()
@@ -298,13 +323,17 @@ export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
 }
 
 /**
- * Builds a style key from a snapshot; returns "" for tags in NO_DEFAULTS_TAGS.
+ * Build an element's style key: the sorted `prop:value` pairs that differ from the tag's
+ * defaults, joined by `;`. Equal keys share one generated class. "" for NO_DEFAULTS_TAGS.
+ * The width softening and the epsilon are pinned by __tests__/snapdom.widthSoftening.test.js
+ * and __tests__/snapdom.issue491.test.js.
  * @param {Record<string,string>} snapshot
  * @param {string} tagName
  * @param {boolean} [sizedByContent=true] whether the element is sized by its own content
  *   (text / child elements). Empty boxes sized by a CSS class keep their width verbatim.
  * @param {boolean} [isFlexItem=false] whether the element is a flex/grid item — those must keep
  *   their natural ability to shrink (#406), so we never give them a synthesized min-width floor.
+ * @returns {string}
  */
 export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem = false) {
   tagName = String(tagName || '').toLowerCase()
@@ -409,10 +438,14 @@ export function collectUsedTagNames(root) {
 // 5) generateDedupedBaseCSS -> skips empty keys, so no junk rules are emitted
 // -----------------------------------------------------------------------------
 /**
- * Generates deduplicated base CSS for the given tag names.
- *
- * @param {string[]} usedTagNames - Array of tag names
- * @returns {string} CSS string
+ * Emit the base reset for the used tags: one shared rule with what every tag's defaults have
+ * in common, then one rule per group of tags whose leftovers are identical.
+ * Pinned by __tests__/utils.css.baseResetFactoring.test.js (the factoring) and
+ * __tests__/utils.css.base-reset-eviction.test.js (tags evicted from the memo still get one).
+ * @param {string[]} usedTagNames
+ * @param {Set<string>|null} [universe] - the property set author CSS can touch (styleScan);
+ *   when given, the reset stays inside it
+ * @returns {string} CSS
  */
 export function generateDedupedBaseCSS(usedTagNames, universe = null) {
   const groups = new Map()
@@ -488,9 +521,10 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
 // 4) generateCSSClasses -> ignores empty keys (defensive)
 // -----------------------------------------------------------------------------
 /**
- * Generates CSS classes from a style map.
- *
- * @returns {Map} Map of style keys to class names
+ * Name the distinct style keys `c1`, `c2`, … in sorted order, so the same keys always get the
+ * same names.
+ * @param {Map<Element, string>} styleMap - element -> style key
+ * @returns {Map<string, string>} style key -> class name
  */
 export function generateCSSClasses(styleMap) {
   const keys = Array.from(new Set(styleMap.values()))
@@ -532,6 +566,9 @@ function getWindowForElement(el) {
 /**
  * Gets the computed style for an element or pseudo-element, with caching.
  *
+ * The memo is cache.computedStyle, a WeakMap of element -> Map of pseudo -> declaration. What
+ * it holds is the live CSSStyleDeclaration, so a value read later reflects the element's
+ * state at that moment, not at the first call. Non-elements bypass the memo.
  * @param {Element} el - The element
  * @param {string|null} [pseudo=null] - The pseudo-element
  * @returns {CSSStyleDeclaration} The computed style
@@ -654,9 +691,10 @@ export function snapshotComputedStyle(style, universe = null) {
 }
 
 /**
- * @export
+ * Split a multi-layer `background-image` on its top-level commas, so a gradient's own commas
+ * stay inside their layer.
  * @param {string} bg
- * @return {string[]}
+ * @returns {string[]}
  */
 export function splitBackgroundImage(bg) {
   const parts = []

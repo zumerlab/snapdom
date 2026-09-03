@@ -1,4 +1,14 @@
-// src/core/lineClamp.js
+/**
+ * Text truncation, baked into the live text before the clone is taken.
+ *
+ * Firefox and Safari ignore `-webkit-line-clamp` and `text-overflow: ellipsis` inside a
+ * foreignObject, so the ellipsis is resolved here on the real node, against its real layout,
+ * and undone right after cloning. This is the one place the pipeline writes into the LIVE
+ * tree: every write goes through textNodeWriter so node identity survives (#485), and undo
+ * leaves alone any text the page changed meanwhile. capture.js runs it before prepareClone,
+ * diff.js on a dirty subtree before the splice. Pinned by __tests__/module.lineClamp.test.js.
+ * @module lineClamp
+ */
 
 /**
  * Bake text truncation for the element AND all descendants that CSS would
@@ -16,6 +26,7 @@
 export function lineClampTree(el, clipRect) {
   if (!el) return () => {}
   const undos = []
+  // 200px of slack around the clip window, the same margin capture.js gives the font walk.
   const M = 200
   function walk(node) {
     if (clipRect) {
@@ -84,7 +95,7 @@ export function lineClamp(el, cs) {
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
     text.write(original.slice(0, safeCut(original, mid)) + '…')
-    // Forzamos layout leyendo scrollHeight
+    // Reading scrollHeight forces layout.
     if (el.scrollHeight <= targetH + 0.5) {
       best = mid; lo = mid + 1
     } else {
@@ -206,6 +217,7 @@ function safeCut(text, n) {
   return c >= 0xd800 && c <= 0xdbff ? n - 1 : n
 }
 
+/** `-webkit-line-clamp` or `line-clamp` as a positive integer, 0 when neither is set. */
 function getClamp(cs) {
   let v = cs.getPropertyValue('-webkit-line-clamp') || cs.getPropertyValue('line-clamp')
   v = (v || '').trim()
@@ -213,6 +225,8 @@ function getClamp(cs) {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
+/** Line height from CSS alone, the fallback when the one-glyph probe measured nothing: px as
+ *  is, unitless and % against font-size, `normal` as 1.2 times it. */
 function usedLineHeightPx(cs) {
   const lh = (cs.lineHeight || '').trim()
   const fs = parseFloat(cs.fontSize) || 16
@@ -223,6 +237,7 @@ function usedLineHeightPx(cs) {
   return Math.round(fs * 1.2)
 }
 
+/** Vertical padding in px; scrollHeight includes it, the line count must not. */
 function vpad(cs) {
   return (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
 }

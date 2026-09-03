@@ -1,5 +1,13 @@
 /**
- * Helper utilities for DOM cloning operations
+ * The parts of a clone that cloneNode cannot produce on its own.
+ *
+ * Shadow DOM: a root's CSS is flattened into a host-scoped <style> with specificity 0
+ * (`rewriteShadowCSS`, `injectScopedStyle`), and slotted subtrees are marked so a parent scope
+ * cannot pierce a child's (#488). <img>: the responsive choice is frozen into `src`
+ * (`freezeImgSrcset`). Same-origin <iframe>: rendered to a bitmap at its content box
+ * (`rasterizeIframe`). Range, checkbox and radio inputs, which Firefox does not paint inside
+ * a foreignObject: rebuilt as inline SVG. And blob: URLs, resolved to data: before the page
+ * can revoke them (`resolveBlobUrlsInTree`).
  * @module utils/clone.helpers
  */
 
@@ -59,12 +67,16 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scope
 }
 
 /**
- * Rewrite Shadow DOM selectors to a flat, host-scoped form with specificity 0.
- * - :host(.foo)           => :where([data-sd="sN"]:is(.foo))
- * - :host                 => :where([data-sd="sN"])
- * - ::slotted(X)          => :where([data-sd="sN"] X)              (no excluye sloteados)
- * - (anything else, e.g. .button) => :where([data-sd="sN"] .button:not([data-sd-slotted~="sN"]))
- * - :host-context(Y)      => :where(:where(Y) [data-sd="sN"])      (aprox)
+ * Rewrite a shadow root's CSS to a flat, host-scoped form with specificity 0.
+ * - :host(.foo)        => :where([data-sd="sN"]:is(.foo))
+ * - :host              => :where([data-sd="sN"])
+ * - :host-context(Y)   => :where(:where(Y) [data-sd="sN"])     (an approximation)
+ * - ::slotted(X)       => :where([data-sd="sN"] X)              (slotted nodes not excluded)
+ * - anything else      => :where([data-sd="sN"] .x:not([data-sd-slotted~="sN"]))
+ * @param {string} cssText
+ * @param {string} scopeSelector - e.g. [data-sd="s3"]
+ * @param {string} scopeId - e.g. s3
+ * @returns {string}
  */
 export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   if (!cssText) return ''
@@ -189,8 +201,10 @@ export function injectScopedStyle(hostClone, cssText, scopeId) {
  * default). Inside a <picture>, resolve the winning source explicitly via the same
  * media-query matching logic pictureResolver already uses instead of trusting an
  * unresolved currentSrc.
+ * The write-once rule below is pinned by __tests__/modules.images.dataUrlPassthrough.test.js.
  * @param {HTMLImageElement} original - Image in the live DOM.
  * @param {HTMLImageElement} cloned - Just-created cloned <img>.
+ * @param {{resolvePicturePlaceholders?: boolean}} [options]
  */
 export function freezeImgSrcset(original, cloned, options = {}) {
   try {
@@ -350,19 +364,12 @@ function measureContentBox(el) {
 }
 
 /**
- * Get the unscaled dimensions of an element (pre-transform layout dimensions).
- * This function returns dimensions that do NOT include ancestor CSS transforms,
- * avoiding the double-scale bug where getBoundingClientRect() returns already-scaled
- * dimensions that then get scaled again by inherited transforms.
- *
- * Priority fallback chain:
- * 1. offsetWidth/offsetHeight (pre-transform layout dimensions)
- * 2. getComputedStyle() width/height
- * 3. getAttribute() width/height
- * 4. Intrinsic dimensions (naturalWidth/naturalHeight for images)
- *
- * @param {Element} el - The element to measure
- * @returns {{width: number, height: number}} Unscaled dimensions in pixels
+ * Layout size before any ancestor transform: offsetWidth/Height first, then computed
+ * width/height, then the width/height attributes, then naturalWidth/Height for images.
+ * getBoundingClientRect returns the transformed box, and a replacement sized from it was
+ * scaled a second time by the inherited transform (#321).
+ * @param {Element} el
+ * @returns {{width: number, height: number}} CSS px
  */
 export function getUnscaledDimensions(el) {
   let width = 0
@@ -491,6 +498,7 @@ export function pinIframeViewport(doc, w, h) {
  * - Capture iframe.contentDocument.documentElement
  * - Force a bitmap (toPng) sized to the iframe viewport (not the content height)
  * - Wrap with a styled container that mimics the <iframe> box (borders, radius, etc.)
+ * Pinned by __tests__/utils.clone.iframe.test.js.
  *
  * @param {HTMLIFrameElement} iframe
  * @param {object} sessionCache
@@ -767,41 +775,42 @@ export function createCheckboxRadioReplacement(node) {
 
 // ========== Blob URL Helpers ==========
 
+/** blob: URL -> data URL, or the read still in flight. 80 entries, FIFO. */
 var _blobToDataUrlCache = new EvictingMap(80)
 
 /**
- * Read a blob: URL and return its data URL, with memoization + shared cache.
- * - Usa snapFetch(as:'dataURL') para convertir directo.
- * - Dedupea inflight guardando la promesa en el Map.
- * - Also writes to cache.resource so other modules can reuse it.
+ * Read a blob: URL as a data URL, once per URL.
+ * Two memos: cache.resource, shared with the other modules, and a local map that also holds
+ * the in-flight promise so concurrent callers share one read. A failed read is dropped from
+ * the local map so the next call can retry.
  * @param {string} blobUrl
  * @returns {Promise<string>} data URL
  */
 export async function blobUrlToDataUrl(blobUrl) {
-  // 1) Hit en cache global compartido
+  // 1) shared cache
   if (cache.resource?.has(blobUrl)) return cache.resource.get(blobUrl)
 
-  // 2) Hit en memo local (puede ser promesa o string resuelto)
+  // 2) local memo (a promise or the resolved string)
   if (_blobToDataUrlCache.has(blobUrl)) return _blobToDataUrlCache.get(blobUrl)
 
-  // 3) Crear promesa inflight y guardarla para dedupe
+  // 3) start the read and park the promise for dedupe
   const p = (async () => {
     const r = await snapFetch(blobUrl, { as: 'dataURL', silent: true })
     if (!r.ok || typeof r.data !== 'string') {
       throw new Error(`[snapDOM] Failed to read blob URL: ${blobUrl}`)
     }
-    cache.resource?.set(blobUrl, r.data)   // cache compartido
+    cache.resource?.set(blobUrl, r.data)   // shared cache
     return r.data
   })()
 
   _blobToDataUrlCache.set(blobUrl, p)
   try {
     const data = await p
-    // Opcional: reemplazar promesa por string ya resuelto (menos retenciones)
+    // Swap the promise for the resolved string: less to retain
     _blobToDataUrlCache.set(blobUrl, data)
     return data
   } catch (e) {
-    // Si falla, limpiamos para permitir reintentos futuros
+    // Drop the failure so a later call can retry
     _blobToDataUrlCache.delete(blobUrl)
     throw e
   }
@@ -809,6 +818,7 @@ export async function blobUrlToDataUrl(blobUrl) {
 
 var BLOB_URL_RE = /\bblob:[^)"'\s]+/g
 
+/** Swap every blob: URL in a CSS string for its data URL. One that fails to read stays. */
 async function replaceBlobUrlsInCssText(cssText) {
   if (!cssText || cssText.indexOf('blob:') === -1) return cssText
   const uniques = Array.from(new Set(cssText.match(BLOB_URL_RE) || []))
@@ -860,6 +870,16 @@ function selfAndDescendants(root, selector) {
   return nodes
 }
 
+/**
+ * Replace every blob: URL in the clone with a data URL: <img> src and srcset, SVG <image>
+ * href, inline styles, <style> text and <video> poster. Runs inside prepareClone, ahead of
+ * the asset passes: a blob URL dies the moment the page revokes it, and a caller that revokes
+ * right after calling snapdom would beat the later passes to it. A URL that fails to read is
+ * logged under `debug` and left as it is.
+ * @param {Element} root - the clone
+ * @param {object|null} [sessionCache] - read for `options.debug`
+ * @returns {Promise<void>}
+ */
 export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
   const ctx = sessionCache

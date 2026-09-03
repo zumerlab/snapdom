@@ -1,9 +1,30 @@
+/**
+ * Style snapshots: one object of computed values per node, and the caches that keep them
+ * across captures.
+ *
+ * `inlineAllStyles` is the entry. Per node it snapshots the computed style (only the props
+ * the page's CSS can touch, see styleScan.js), keys it, and stores the key on the session's
+ * styleMap for the class CSS the engine emits. That snapshot is the dominant cost of a
+ * capture, so most of this file is about not taking it: a cross-capture cache guarded by
+ * per-node stamps and a document epoch, and a per-capture identity share where structural
+ * twins copy one read and re-read only the used values.
+ *
+ * Invalidation for every consumer (burst, pseudo, CSSVar) is wired here, through two epochs:
+ * `__epoch` bumps on any external mutation, `__envEpoch` only on what changes rendering with
+ * no mutation on the node (head, fonts, resize). What no observer can see (CSSOM edits,
+ * canvas draws) goes through `invalidateStyleCaches`.
+ * @module styles
+ */
+
 import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, snapshotComputedStyle } from '../utils/index.js'
 import { isFirefox } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
 import { scanAuthorStyles } from './styleScan.js'
 
+/** element -> { env, stamp, snapshot, embedFonts, excludeStyleProps }. Cross-capture; a hit
+ *  needs the env epoch and the node's stamp unchanged (snapshotIsCurrent). */
 const snapshotCache = new WeakMap()
+/** style signature -> class key. FIFO-bounded at insertion, see MAX_SNAPSHOT_KEY_CACHE. */
 const snapshotKeyCache = new Map()
 /** PERF-4: evict snapshotKeyCache when it grows beyond this size.
  *  Each entry stores a long CSS signature string → key string. In SPAs with many
@@ -12,6 +33,7 @@ const MAX_SNAPSHOT_KEY_CACHE = 2000
 let __epoch = 0
 function bumpEpoch() { __epoch++ }
 
+/** Bumps the style epoch by hand. Nothing in src calls it; tests use it to force a re-snapshot. */
 export function notifyStyleEpoch() { bumpEpoch() }
 
 /** Mutations on snapdom-owned helper nodes (sandbox, measure wrapper, warmup img, injected font
@@ -23,6 +45,11 @@ function isOwnedNode(node) {
   const el = node && (node.nodeType === 1 ? node : node.parentElement)
   return !!(el && el.closest && el.closest(OWNED_SELECTOR))
 }
+/**
+ * Whether any record in a batch comes from outside snapdom's own helper nodes.
+ * @param {MutationRecord[]} records
+ * @returns {boolean}
+ */
 export function hasExternalMutation(records) {
   for (const rec of records) {
     if (isExternalRecord(rec)) return true
@@ -31,7 +58,9 @@ export function hasExternalMutation(records) {
 }
 
 /** Per-record variant of the same ownership filter — burst's differential dirty-tracking
- *  needs to attribute each external record to its subtree, not just a boolean. */
+ *  needs to attribute each external record to its subtree, not just a boolean.
+ *  @param {MutationRecord} rec
+ *  @returns {boolean} */
 export function isExternalRecord(rec) {
   if (isOwnedNode(rec.target)) return false
   if (rec.type === 'childList') {
@@ -43,12 +72,12 @@ export function isExternalRecord(rec) {
   return true
 }
 
-/** Style-RULE epoch: bumps only when the author RULES themselves can have changed — a
- *  <style>/<link> added, removed, retargeted or rewritten anywhere in the tree, plus the
- *  rule sources no mutation record reports at all (below). The scanned property universe
- *  and the pseudo gates are derived from the rule TEXT alone: which rules match is not
- *  their business, so keying them on __epoch made a single text-node change re-scan every
- *  author stylesheet on the next capture — the SPA case v3 exists for. */
+/** There is no separate rule epoch, on purpose. The scanned universe and the pseudo gates
+ *  derive from the rule text alone, so keying them on __epoch re-scans every sheet after a
+ *  plain text mutation. A rule-only epoch was tried and reverted: three rule sources emit no
+ *  mutation record (adoptedStyleSheets, a <link> finishing its load, insertRule), and staying
+ *  correct needed a per-capture census of every sheet, which timed WebKit out under
+ *  BROWSER=all. Pinned by __tests__/module.styles.ruleEpoch.test.js. */
 
 /** Style-ENVIRONMENT epoch: bumps only on <head> mutations and font loads — the events
  *  that change how any element renders without touching it. Consumers (burst) poll it via
@@ -419,8 +448,8 @@ export function snapshotFor(source) {
   return snap
 }
 
-/** Per-document memo of the scanned property universe, invalidated by the style-RULE epoch:
- *  what it holds depends on the author rules only, never on the DOM they apply to.
+/** Per-document memo of the scanned property universe, keyed on __epoch (see the rule-epoch
+ *  note above getStyleEnvEpoch for why not something narrower).
  *  Exported so the base reset prunes itself with the SAME universe the snapshots use:
  *  a reset-stamped prop the class diff can no longer override (e.g. the resolved-black
  *  `-webkit-text-fill-color` overriding a white `color`) must not be emitted either. */
@@ -443,7 +472,9 @@ function scanFor(doc) {
  * the joined gate, same shape as the pseudo pass's subtree question. Derived from the same
  * scan the property universe comes from; an unreadable scan or an unmatchable gate answers
  * "unsafe", which only costs the optimization.
+ * Pinned by __tests__/module.styles.shareSubtreeGate.test.js.
  * @param {Element} el capture root
+ * @returns {boolean}
  */
 export function styleShareSafe(el) {
   try {
@@ -471,12 +502,26 @@ export function styleShareSafe(el) {
   }
 }
 
+/**
+ * The properties some author rule declares `!important`, or null when the scan is unreliable
+ * or `el` lives in a shadow root. normalizeInlineStyleToComputed re-resolves only the inline
+ * declarations a stylesheet can beat; null means re-resolve all of them.
+ * @param {Element} el
+ * @returns {Set<string>|null}
+ */
 export function importantPropsFor(el) {
   const doc = el.ownerDocument || document
   if (el.getRootNode && el.getRootNode() !== doc) return null
   return scanFor(doc).importantProps
 }
 
+/**
+ * The properties the page's CSS can move off their UA default (styleScan.js), or null for
+ * shadow-root content and an unreadable scan, which both mean full reads. The base reset and
+ * diff.js read it too, so everything prunes with the same set the snapshots use.
+ * @param {Element} el
+ * @returns {Set<string>|null}
+ */
 export function universeFor(el) {
   const doc = el.ownerDocument || document
   // Shadow-root content: its own sheets aren't scanned — keep full reads there.
@@ -501,6 +546,18 @@ export function pseudoGatesFor(el) {
   return scanFor(doc).pseudoGates
 }
 
+/**
+ * The full computed-style read for one element: every property in `universe` (all of them
+ * when null) plus the element's own inline props, with the fix-ups the snapshot needs. An
+ * external url() becomes none, text-decoration and text-stroke are read by name because some
+ * engines do not enumerate them, four zero borders collapse to `border: none` (#362), and
+ * Firefox gets the background-clip:text fallback.
+ * @param {CSSStyleDeclaration} style
+ * @param {object} [options] - embedFonts adds the font-feature props; excludeStyleProps filters
+ * @param {Element|null} [el] - for its inline style
+ * @param {Set<string>|null} [universe] - from universeFor; null reads everything
+ * @returns {Record<string, string>}
+ */
 function snapshotComputedStyleFull(style, options = {}, el = null, universe = null) {
   const out = {}
   const excludeStyleProps = options.excludeStyleProps
@@ -638,6 +695,7 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
  * nothing at all (verified on v3: 0 painted pixels against Chromium's 1198 for the same span).
  * Approximate it with a plain text colour — the average of the gradient's stops — which loses
  * the gradient but keeps the words. Only fires when the text would otherwise be invisible.
+ * Pinned by __tests__/module.styles.bgClipText.test.js.
  *
  * Imported from @frostin/snapdom (element-mirror).
  * @param {Record<string,string>} out mutable style snapshot
@@ -822,6 +880,7 @@ function usedWidthDiffersFromAvailable(el, cs) {
 }
 
 const __snapshotSig = new WeakMap()
+/** The snapshot's key into snapshotKeyCache, memoized per snapshot object. */
 function styleSignature(snap) {
   let sig = __snapshotSig.get(snap)
   if (sig) return sig
@@ -906,6 +965,8 @@ const LAYOUT_ALWAYS_RE = /^(width|height|inline-size|block-size|top|right|bottom
 const UNSTABLE_INLINE_RE = /(margin|padding)[a-z-]*\s*:[^;]*(%|\bauto\b|calc\(|var\()/i
 const SHARE_SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'OPTGROUP', 'PROGRESS', 'METER', 'BUTTON', 'DATALIST'])
 
+/** The capture's share state, made on first use: identity ids per node, the intern table,
+ *  one snapshot record per identity. Lives on the session, so it dies with the capture. */
 function shareStateOf(session) {
   let st = session.__styleShare
   if (!st) {
@@ -971,7 +1032,20 @@ function identityFor(el, st) {
  *  container, and `transform` when the identity has one. The base signature covers the props
  *  twins NEVER re-read plus the re-read prop NAMES: a twin's full signature is base + its own
  *  re-read VALUES (+ the strip outcome), injective for the same reason the flat signature
- *  was — every name and value of the final snapshot is represented exactly once. */
+ *  was — every name and value of the final snapshot is represented exactly once.
+ *
+ *  The list is the set of properties CSSOM resolves to USED values, and it was found by a
+ *  defect: with the share on, the deep-tree scene rendered 18.6% of its pixels wrong because
+ *  `grid-template-columns` reads as the used track list (`1fr 1fr` is `42px 388px` on one
+ *  grid and `230px 840px` on its structural twin) and every grid took the first twin's
+ *  columns. A probe of twins with different boxes on all three engines gave the full set.
+ *  Building it on the first twin, and copying the snapshot once on the first hit, is what
+ *  keeps the share free on a tree with no twins: per identity it cost the deep tree 27 ms of
+ *  134, and twins spreading the identity's dictionary-mode object cost the 500-row table 6 ms.
+ *  Pinned by __tests__/module.styles.identityShare.test.js.
+ *  @param {{snap: object, rr: string[]|null, sig: string|null, h: boolean, b: boolean}} rec
+ *  @param {Element} el the identity's first twin
+ *  @returns {string[]} the re-read list, also stored on `rec.rr` */
 function shareLists(rec, el) {
   // Re-copied once here, riders included: the identity's own object was built by keyed
   // stores (dictionary mode in V8) and every twin spreads it — off a spread-made copy the
@@ -1020,8 +1094,10 @@ function shareLists(rec, el) {
  * @param {Element} source
  * @param {string} pseudo '::before' | '::after'
  * @param {CSSStyleDeclaration} style getComputedStyle(source, pseudo)
+ * Pinned by __tests__/module.pseudo.twinShare.test.js.
  * @param {Object} session the capture's sessionCache
  * @param {Object} options capture options (carries __styleShare)
+ * @returns {Record<string, string>}
  */
 export function pseudoSnapshotFor(source, pseudo, style, session, options) {
   const st = options && options.__styleShare ? session && session.__styleShare : null
@@ -1049,6 +1125,15 @@ export function pseudoSnapshotFor(source, pseudo, style, session, options) {
   return snap
 }
 
+/**
+ * The element's snapshot: the cached one while it is current, else a fresh full read, or on
+ * an identity hit a copy of the twin's read with only the used-value props re-read here.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration|null} [preStyle] - getComputedStyle(el), when the caller has it
+ * @param {object} [options]
+ * @param {{st: object, id: number}|null} [shareInfo] - the identity to share under, or null
+ * @returns {Record<string, string>}
+ */
 function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
   const rec = snapshotCache.get(el)
   // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
@@ -1114,6 +1199,9 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
   return snap
 }
 
+/** Turns whatever inlineAllStyles was given into `{ session, persist, options }`: a ready ctx
+ *  as is, a session cache with one ctx memoized on it per options object, or nothing, which
+ *  gets throwaway maps so a direct caller never touches the global session. */
 function _resolveCtx(sessionOrCtx, opts) {
   if (sessionOrCtx && sessionOrCtx.session && sessionOrCtx.persist) return sessionOrCtx
   if (sessionOrCtx && (sessionOrCtx.styleMap || sessionOrCtx.styleCache || sessionOrCtx.nodeMap)) {
@@ -1154,18 +1242,31 @@ function _resolveCtx(sessionOrCtx, opts) {
   }
 }
 
-/**
- * Replaces the clone's inline style with computed (cascade-resolved) values for each
- * property that was authored inline on the source. This ensures !important rules in
- * stylesheets correctly override inline styles in the clone (fixes #328).
- * @param {Element} source
- * @param {Element} clone
- * @param {CSSStyleDeclaration} computed
- */
+/** An inline value that resolves against something the foreignObject does not reproduce:
+ *  a percentage, a font- or viewport-relative unit, calc()/var(), a keyword like auto. */
 const CONTEXT_DEPENDENT_VALUE_RE =
   /%|[\d.](?:em|rem|ex|ch|cap|ic|lh|rlh|v[whib]|vmin|vmax|cq[whbi]|cqmin|cqmax)\b|\b(?:calc|var|min|max|clamp|env|attr)\(|\b(?:auto|inherit|initial|unset|revert|currentcolor|-webkit-fill-available|fit-content|min-content|max-content)\b/i
 
 const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
+/**
+ * Re-resolves the source's inline declarations through the cascade onto the clone.
+ *
+ * Three cases need it. Everything else is an absolute value copied onto itself, which the
+ * clone's style attribute already holds.
+ *  - A stylesheet `!important` must still beat an inline declaration inside the clone (#328).
+ *  - `background` on text fields only: the selection highlight composes its layers on top
+ *    of the longhands this writes on an input's clone. On every other node the shorthand is
+ *    the same value, and re-resolving it cost the 500-row table 13.5k reads plus 13.5k
+ *    writes for nothing.
+ *  - Context-dependent values (`width:100%`, `1.2em`, `calc()`, `auto`) resolve against a
+ *    containing block the foreignObject does not have.
+ * The context test is one regex over the whole style attribute, on purpose: per longhand it
+ * got 67.6 ms down to 63 where the single regex gets 49.7. A null important set (unreliable
+ * scan) re-resolves everything. Pinned by __tests__/module.styles.inlineImportant.test.js.
+ * @param {Element} source
+ * @param {Element} clone
+ * @param {CSSStyleDeclaration} computed - getComputedStyle(source)
+ */
 function normalizeInlineStyleToComputed(source, clone, computed) {
   if (!source.style || source.style.length === 0) return
   const important = importantPropsFor(source)
@@ -1178,6 +1279,23 @@ function normalizeInlineStyleToComputed(source, clone, computed) {
   }
 }
 
+/**
+ * Snapshots the source's computed style and records the clone's style-class key on the
+ * session's styleMap. deepClone calls it for every element in the capture.
+ *
+ * Per node: wire invalidation for the node's own document, re-resolve the inline style where
+ * the cascade can differ (normalizeInlineStyleToComputed), pin `animation` off so a static
+ * frame does not replay from its 0% keyframe, take or share the snapshot, floor a flex item's
+ * min-width at 0 (#406), then key it. Soften-eligible boxes (softensWidth) fold tag, content
+ * and flex-item state into the key and tally reconcileRisk for capture.js's warning.
+ * `<style>` is skipped. NO_DEFAULTS_TAGS (SVG shapes) get an empty key and only the
+ * background-inline flag. Pinned by __tests__/module.styles.test.js.
+ * @param {Element} source
+ * @param {Element} clone
+ * @param {object} [sessionOrCtx] - the session cache (styleMap / styleCache / nodeMap), a
+ *   ready ctx, or nothing for an isolated one-off call
+ * @param {object} [opts] - capture options: cache, embedFonts, excludeStyleProps, __styleShare
+ */
 export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (source.tagName === 'STYLE') return
 
@@ -1323,8 +1441,10 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   session.styleMap.set(clone, key)
 }
 /**
- * Caja “visual”: bg/border/padding u overflow ≠ visible.
+ * A box that paints or clips: a background, a vertical border or padding, or an overflow
+ * other than visible.
  * @param {CSSStyleDeclaration} cs
+ * @returns {boolean}
  */
 function hasBox(cs) {
   if (cs.backgroundImage && cs.backgroundImage !== 'none') return true
@@ -1427,6 +1547,8 @@ function autoContentHeight(el) {
 /**
  * Best-effort: drop height/block-size on transparent flow wrappers so margin collapsing
  * still works, without breaking KaTeX, Orbit, or layouts with an explicit height.
+ * Pinned by __tests__/module.styles.stripHeightForWrappers.test.js, stylesheet-height and
+ * abspos-wrapper.
  *
  * @param {Element} el
  * @param {CSSStyleDeclaration} cs
@@ -1436,19 +1558,19 @@ function stripHeightForWrappers(el, cs, snap) {
   // 1) Respect an author inline height
   if (isHTMLEl(el) && el.style && el.style.height) return
 
-  // 2) Solo div/section/article/main/aside/header/footer/nav (no ol/ul/li: layout de listas)
+  // 2) Only div/section/article/main/aside/header/footer/nav (no ol/ul/li: list layout)
   const tag = el.tagName && el.tagName.toLowerCase()
   const ALLOWED_TAGS = ['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'nav']
   if (!tag || !ALLOWED_TAGS.includes(tag)) return
 
-  // 2c) aspect-ratio define dimensiones derivadas; respetar
+  // 2c) aspect-ratio derives the height from the width; keep it
   if (cs.aspectRatio && cs.aspectRatio !== 'none' && cs.aspectRatio !== 'auto') return
 
   // 3) Orbit: leave the height alone when the element is a flex/grid container
   const disp = cs.display || ''
   if (disp.includes('flex') || disp.includes('grid')) return
 
-  // 4) Guardas existentes
+  // 4) Positioned, transformed, painted, or a flex/grid item: leave it
   //
   // (The replaced-element guard lived here and was removed: it is unreachable.
   // The allow-list in (2) only admits div/section/article/main/aside/header/footer/nav,
@@ -1471,7 +1593,7 @@ function stripHeightForWrappers(el, cs, snap) {
 
   if (cs.visibility === 'hidden' || cs.opacity === '0') return
 
-  // 6) Solo wrappers "en flujo" realmente neutros
+  // 6) Only wrappers with in-flow content of their own
   if (!hasFlowFast(el)) return
 
   // 6b) Last filter: only drop the height when the used height is what the element would

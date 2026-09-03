@@ -42,14 +42,6 @@ import {
 } from '../utils/transforms.helpers.js'
 
 /**
- * Compose + serialize tail of the pipeline: base reset, bbox/bleed math, foreignObject
- * assembly and SVG data-URL encoding. Shared by captureDOM and burst's differential
- * recapture (which rebuilds only dirty subtrees and re-enters here with retained state).
- * `state` is the capture context itself, or (from diff) a wrapper carrying element/options/
- * plugins/clone/classCSS/styleCache/nodeMap, which is folded back onto that context.
- * @returns {Promise<string>} SVG data URL
- */
-/**
  * Intern repeated inline style attributes as attribute-selector rules in the serialized
  * markup. Author inline styles are copied verbatim onto every clone node, so a repetitive
  * tree (tables, lists, grids) serializes the same declaration block thousands of times:
@@ -64,6 +56,7 @@ import {
  * so importance is preserved ([data-sdi] at 0,1,0 beats the class CSS by order, matching
  * what the inline attribute did by level). Safari is excluded: fixSafariShadows rewrites
  * shadow values in style attributes and has not been taught to look inside the sheet.
+ * Pinned by __tests__/engine.svg.intern.test.js.
  * @param {string} foString serialized <foreignObject> markup (first <style> holds the CSS)
  * @returns {string}
  */
@@ -117,6 +110,20 @@ function internInlineStyles(foString) {
   return foString.slice(0, styleClose) + rules.join('') + out
 }
 
+/**
+ * Turn the finished clone into an SVG data URL.
+ *
+ * The compose and serialize tail of the pipeline: base reset, bbox and bleed math,
+ * foreignObject assembly and encoding. Shared by captureDOM and burst's differential
+ * recapture, which rebuilds only dirty subtrees and re-enters here with retained state.
+ * `state` is the capture context itself or, from diff, a wrapper carrying element/options/
+ * plugins/clone/classCSS/styleCache/nodeMap that is folded back onto that context. On the
+ * way out it writes `options.meta` (the public geometry) and `options.__artifacts` (the CSS
+ * strings export plugins read), then drops the clone and maps from the context.
+ * @param {object} state - capture context, or diff's wrapper around one
+ * @param {{clipWindow: object|null, outerTransforms: boolean, outerShadows: boolean|'subtree', rootTransform2D: object|null, fontsCSS: string}} ex
+ * @returns {Promise<string>} SVG data URL
+ */
 export async function composeAndSerialize(state, ex) {
   const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS } = ex
   const options = state.options
@@ -525,6 +532,8 @@ export async function composeAndSerialize(state, ex) {
   return state.dataURL
 }
 
+/** Whether the root carries a transform that moves its bbox. A local name for
+ *  hasBBoxAffectingTransform, nothing more. */
 function hasTFBBox(el) {
   return hasBBoxAffectingTransform(el)
 }
