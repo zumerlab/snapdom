@@ -187,9 +187,9 @@ export interface SnapdomOptions {
   excludeStyleProps?: RegExp | ((prop: string) => boolean);
 
   /**
-   * EXPERIMENTAL: 'canvas' renders raster exports through the WICG canvas-place-element
-   * API (ctx.drawElement — Chrome behind chrome://flags/#canvas-draw-element) when
-   * available, using the browser's own painter (native form controls, no svg-as-image
+   * EXPERIMENTAL: 'canvas' renders raster exports through the WICG html-in-canvas API
+   * (ctx.drawElementImage — Chrome 148+ origin trial / chrome://flags/#canvas-draw-element)
+   * when available, using the browser's own painter (native form controls, no svg-as-image
    * quirks). Falls back silently to the svg pipeline whenever unsupported or not
    * applicable. Engine results expose the raster exports plus lazy toRaw()/toSvg();
    * `.url` is not synchronously available.

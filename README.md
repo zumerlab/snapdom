@@ -235,6 +235,29 @@ const blob = await snapdom.toBlob(el);
 document.body.appendChild(png);
 ```
 
+### DOM as a WebGL texture
+
+Shader effects over real DOM content (three.js shown; any GL wrapper works the same):
+
+```js
+const canvas = document.createElement('canvas');
+const texture = new THREE.CanvasTexture(canvas);
+texture.colorSpace = THREE.SRGBColorSpace;
+
+async function refresh(el) {
+  // `canvas` reuses the same render target every frame (no per-frame copy),
+  // and `scale`/`dpr` pin the pixel size so the texture never reallocates.
+  await snapdom.toCanvas(el, { canvas, scale: 1, dpr: Math.min(2, devicePixelRatio) });
+  texture.needsUpdate = true;
+}
+```
+
+Repeated captures of the same element engage burst memoization automatically, so a
+mutation-driven loop pays differential-recapture prices, not full pipelines. `result.meta`
+(`contentX`/`contentY`, capture box, viewBox) places the raster back over the live element —
+overlays, magnifiers, transition effects that end by revealing the real DOM. Working demos:
+`demos/d-webgl-shatter.html` and the `demos/d-plugin-webgl-*.html` trio.
+
 ## CORS & External Resources
 
 When capturing elements that reference **external stylesheets** (e.g., Google Fonts, Font Awesome, or any CDN‑hosted CSS), you **must** ensure that the resources are served with proper CORS headers. Otherwise, the captured image may lack the expected fonts or icons, even though they render correctly in the browser.
@@ -309,11 +332,13 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 | `invalidate` | `boolean` | `false` | Forces one fresh (non-memoized) capture for changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits) |
 | `reconcile` | `boolean` | `false` | Measure the clone against the live DOM and pin any diverging box to its real size. Fixes rare text re-wrap/layout drift at roughly 2× capture time |
 | `outerTransforms` | `boolean` | `true` | Keep root translate/rotate in the output |
-| `outerShadows` | `boolean` | `false` | Expand bounds to include root shadows/blur/outline |
+| `outerShadows` | `boolean \| 'subtree'` | `false` | Expand bounds to include root shadows/blur/outline. `'subtree'` also widens for shadow ink DESCENDANTS paint past the root's box (a card whose ring is a child's box-shadow) |
+| `captureSelection` | `boolean` | `false` | Render the user's live text selection into the capture (authored `::selection` styles where a rule matches, the UA highlight where none does) |
+| `canvas` | `HTMLCanvasElement` | — | Reuse an existing canvas as the render target for `toCanvas` and everything built on it — a capture loop feeding a WebGL texture skips one full-canvas copy per frame |
 | `excludeStyleProps` | `RegExp \| fn` | — | Skip matching CSS properties when snapshotting (e.g. `/^--/`) |
 | `cache` | `'disabled'` | *(structural)* | `'disabled'` (or `false`) opts out of every cache — a debug/testing switch. The legacy `'soft'`/`'auto'`/`'full'` strings are still accepted and map to the default behavior |
 | `plugins` | `array` | — | Per-capture plugins (override globals by name). A plugin may declare `needs: 'clone' \| 'render'`, how far the capture has to run. Default `'render'`: the full pipeline. At `'clone'` there is no image and every export throws; `result.needs` says what ran |
-| `engine` | `'svg' \| 'canvas'` | `'svg'` | **Experimental**: `'canvas'` renders raster exports through the WICG canvas-place-element API when the browser supports it (native painter, form controls pixel-perfect); falls back to the SVG pipeline automatically. Chromium taints the canvas today, so the engine is left out of the published bundle: build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile` |
+| `engine` | `'svg' \| 'canvas'` | `'svg'` | **Experimental**: `'canvas'` renders raster exports through the WICG html-in-canvas API (`drawElementImage`, Chrome 148+ origin trial / `chrome://flags/#canvas-draw-element`) when the browser supports it — native painter, form controls pixel-perfect, and same-origin readback under the trial; falls back to the SVG pipeline automatically anywhere else. The API is still churning, so the engine is left out of the published bundle: build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile` |
 | `debug` | `boolean` | `false` | Verbose diagnostics via `console.warn` |
 
 📖 **[Full API & every option, explained with examples → snapdom.dev/docs](https://snapdom.dev/docs/)**
