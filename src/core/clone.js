@@ -215,6 +215,15 @@ export async function deepClone(node, sessionCache, options) {
     if (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox')) {
       return null
     }
+    // snapdom's own scaffolding below the root. The decode <iframe> that toCanvas keeps in
+    // document.body outlives its capture, and a later capture of <body> reached it through
+    // cloneIframe and rasterized snapdom's own empty document with a nested toPng (+10 ms per
+    // warm capture and 27.5k extra getPropertyValue reads on liquidGL's home, 2026-09-03).
+    // The root itself is exempt: fromString captures its own marked mount on purpose.
+    // Pinned by `__tests__/core.clone.internalNodes.test.js`.
+    if (node !== options.element && node.hasAttribute('data-snapdom-internal')) {
+      return null
+    }
     if (NO_CAPTURE_TAGS.has(tag)) {
       return null
     }
