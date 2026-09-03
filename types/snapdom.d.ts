@@ -432,9 +432,11 @@ export interface BlobOptions {
 
 export interface CaptureResult {
   /**
-   * Canonical data URL of the SVG snapshot (when available). Note: experimental
-   * engine:'html-in-canvas' results resolve their SVG lazily — url is '' there and toRaw()
-   * returns a Promise; use toRaw()/toSvg() for engine-agnostic access.
+   * Canonical data URL of the capture. On the default engine, the serialized SVG. On an
+   * experimental engine:'html-in-canvas' capture the artifact is a raster bitmap: pixel
+   * exports (toCanvas/toPng/toJpg/toWebp/toBlob) consume it directly, and reading `url`
+   * (or toRaw()) mints a PNG data URL once, lazily — the encode costs 15-22x the direct
+   * draw, so it is paid only when a string is actually asked for.
    *
    * THROWS when `needs` is not 'render': that capture produced no image, and it is not
    * re-captured on demand (it would be a different instant).
