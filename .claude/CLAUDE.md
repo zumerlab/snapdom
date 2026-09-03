@@ -78,9 +78,11 @@ where the clone is finished, and mounts THAT clone (it used to run before the pi
 the live element, which is why it had to bail on plugins/clip/exclude/reconcile — it skipped the
 passes that implement them). Its only remaining bails are geometry: `outerShadows`, `clip` and
 explicit `width`/`height` need the bbox math that lives in the svg engine. It is NOT optimized,
-and it cannot run anywhere yet: Chromium taints the canvas unconditionally, so the taint probe
-sends every capture to the svg engine. `assembleCaptureCSS` (utils/capture.helpers.js) is the
-one place both engines get their CSS from.
+and in unflagged browsers every capture still falls to the svg engine (no draw API). With the
+Chrome 148+ origin trial / flag it CAN run: the spec dropped tainting for "read-back-allowed
+rendering" (sensitive content is excluded from painting instead), and the finished clone is
+same-origin by construction, so the taint probe passes. `assembleCaptureCSS`
+(utils/capture.helpers.js) is the one place both engines get their CSS from.
 
 Linear pipeline orchestrated by `captureDOM(element, options)`:
 
@@ -316,9 +318,9 @@ Two traps this has already sprung: CSS-nesting selectors arrive as raw `& .x::be
 
 ### Experimental canvas engine (`src/engines/htmlInCanvas.js`)
 
-WICG canvas-place-element (`ctx.drawElement`), opt-in via `engine: 'canvas'`. Fully quarantined: core's only knowledge is a 3-line lazy import in `snapdom.js`, and on ANY doubt `tryEngineResult` returns null and the normal pipeline runs. It paints pixel-perfectly (native form controls included) but Chromium currently taints the canvas unconditionally, so there is no readback and every capture falls through today. Keep the quarantine contract intact — correctness must never depend on this module.
+WICG html-in-canvas (`ctx.drawElementImage`; the M138-era dev trial called it `drawElement` and the module detects both, OT name first), opt-in via `engine: 'canvas'`. Fully quarantined: core's only knowledge is a 3-line lazy import in `snapdom.js`, and on ANY doubt `tryEngineResult` returns null and the normal pipeline runs. Status 2026-09-03: the spec dropped unconditional tainting for "read-back-allowed rendering" — sensitive/cross-origin content is excluded from painting and readback is allowed — shipping in the Chrome 148–154 origin trial behind `chrome://flags/#canvas-draw-element`; no Intent to Ship yet. The engine follows the OT contract (`layoutsubtree` on the canvas, `drawable` on the mounted wrapper, `paint` event after `requestPaint()` as the sync point, bounded) and draws the FINISHED CLONE — whose cross-origin content the pipeline already inlined, making it same-origin by construction, so the native-content exclusions don't bite and the taint probe passes. Unflagged browsers still fall through to the svg engine at `detectDrawApi()`. Keep the quarantine contract intact — correctness must never depend on this module.
 
-**It is NOT in the shipped bundle.** Nothing is code-split, so the lazy import still landed in `dist/` and every user downloaded a branch that cannot run. `esbuild.config.mjs` defines `__SNAPDOM_CANVAS_ENGINE__ = false`, and the seam in `snapdom.js` is written so esbuild folds the branch (and the module) away. Tests import `src` directly, where the identifier is undefined and the engine stays live. To build it in: `SNAPDOM_CANVAS_ENGINE=1 npm run compile`. When Chromium ships same-origin readback, flip the default.
+**It is NOT in the shipped bundle.** Nothing is code-split, so the lazy import still landed in `dist/` and every user downloaded a branch that cannot run. `esbuild.config.mjs` defines `__SNAPDOM_CANVAS_ENGINE__ = false`, and the seam in `snapdom.js` is written so esbuild folds the branch (and the module) away. Tests import `src` directly, where the identifier is undefined and the engine stays live. To build it in: `SNAPDOM_CANVAS_ENGINE=1 npm run compile`. Readback already works under the Chrome 148+ origin trial, but the API is still churning (dpr semantics, transform sync) and there is no Intent to Ship — flip the default only when Chromium ships it unflagged.
 
 ### Safari/WebKit handling
 
