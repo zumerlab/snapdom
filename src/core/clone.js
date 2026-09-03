@@ -372,7 +372,9 @@ export async function deepClone(node, sessionCache, options) {
       // escribimos px en línea para evitar que el clon “pierda” la imagen.
       try {
         const authored = node.getAttribute('style') || ''
-        const cs = window.getComputedStyle(node)
+        // Cached (and iframe-window-correct) read: the same declaration inlineAllStyles
+        // snapshots below, instead of a second uncached getComputedStyle per IMG.
+        const cs = getStyle(node)
         const usesPercentOrAuto = (prop) => {
           const a = authored.match(new RegExp(`${prop}\\s*:\\s*([^;]+)`, 'i'))
           const v = a ? a[1].trim() : cs.getPropertyValue(prop)
@@ -441,7 +443,7 @@ export async function deepClone(node, sessionCache, options) {
   // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
   if ((node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) && !node.value && node.placeholder) {
     try {
-      const phStyle = window.getComputedStyle(node, '::placeholder')
+      const phStyle = getStyle(node, '::placeholder')
       const phColor = phStyle && phStyle.color
       if (phColor && phColor !== 'rgba(0, 0, 0, 0)') {
         const uid = 'snapdom-ph-' + (Math.random() * 1e6 | 0)

@@ -12,6 +12,7 @@ import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
+import { seedUsedProps } from '../modules/styles.js'
 
 const visibilityWarmups = new Set()
 
@@ -185,6 +186,11 @@ export async function prepareClone(element, options = {}) {
   }
 
   const undoStabilizeLayout = stabilizeLayout(element)
+
+  // CSSOM fingerprint + allow-list seeding must happen at capture start, before any
+  // computed-style reads, so insertRule/deleteRule/replaceSync/adoptedStyleSheets
+  // changes are visible even though they do not fire MutationObserver.
+  try { seedUsedProps(element) } catch {}
 
   // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
   // Clip mode skips this O(page) walk: on-screen cv:auto content is already rendered by the

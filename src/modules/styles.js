@@ -1,4 +1,4 @@
-import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, _invalidateSplitCaches } from '../utils/index.js'
+import { getDefaultStyleForTag, getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, _invalidateSplitCaches } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 
 const snapshotCache = new WeakMap()
@@ -8,11 +8,10 @@ const snapshotKeyCache = new Map()
  *  unique element styles, this Map can grow without bound and leak memory. */
 const MAX_SNAPSHOT_KEY_CACHE = 2000
 let __epoch = 0
-let __structSnapEpoch = -1
+// Per-document allow-list state: Document -> {epoch, set:Set|null, fingerprint:string|null}
+const __docState = new WeakMap()
 function bumpEpoch() {
   __epoch++
-  __structSnapEpoch = -1
-  __structSnapCache = null
   try { _invalidateSplitCaches?.() } catch {}
   // Evict when oversized — entries are cheap to rebuild on the next capture.
   if (snapshotKeyCache.size > MAX_SNAPSHOT_KEY_CACHE) snapshotKeyCache.clear()
@@ -43,21 +42,26 @@ export function hasExternalMutation(records) {
   return false
 }
 
-let __wired = false
+const __wiredDocs = new WeakMap()
 function setupInvalidationOnce(root = document.documentElement) {
-  if (__wired) return
-  __wired = true
+  const doc = (root && root.ownerDocument) || document
+  if (__wiredDocs.has(doc)) return
+  __wiredDocs.set(doc, true)
   const onRecords = (records) => { if (hasExternalMutation(records)) bumpEpoch() }
   try {
+    const target = doc.documentElement || root
     const domObs = new MutationObserver(onRecords)
-    domObs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true })
+    domObs.observe(target, { subtree: true, childList: true, characterData: true, attributes: true })
   } catch { }
   try {
-    const headObs = new MutationObserver(onRecords)
-    headObs.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true })
+    const head = doc.head
+    if (head) {
+      const headObs = new MutationObserver(onRecords)
+      headObs.observe(head, { subtree: true, childList: true, characterData: true, attributes: true })
+    }
   } catch { }
   try {
-    const f = document.fonts
+    const f = doc.fonts || document.fonts
     if (f) {
       f.addEventListener?.('loadingdone', bumpEpoch)
       f.ready?.then(() => bumpEpoch()).catch(() => { })
@@ -116,11 +120,18 @@ const SHORTHAND_EXPANSIONS = new Map([
 ])
 function addWithExpansion(prop, set) {
   if (shouldIgnoreProp(prop)) return
-  set.add(prop)
   const ex = SHORTHAND_EXPANSIONS.get(prop)
-  if (ex) for (const p of ex) {
-    if (!shouldIgnoreProp(p)) set.add(p)
+  // A shorthand carries exactly its longhands' information, so only the longhands enter
+  // the set: snapshots stay shorthand-free (smaller signatures/keys, fewer
+  // getPropertyValue calls per node) while getStyleKey emits identical CSS from longhands.
+  // Shorthands without an expansion (grid, mask, border-image, …) are kept as-is.
+  if (ex) {
+    for (const p of ex) {
+      if (!shouldIgnoreProp(p)) set.add(p)
+    }
+    return
   }
+  set.add(prop)
 }
 const MODULE_REQUIRED_PROPS = [
   'background-image', 'background-color', 'content-visibility',
@@ -149,134 +160,264 @@ const MODULE_REQUIRED_PROPS = [
   'background-position','background-position-x','background-position-y','background-size','background-repeat','background-origin','background-clip','background-attachment','background-blend-mode',
   'border-image-slice','border-image-width','border-image-outset','border-image-repeat'
 ]
-let __usedPropSet = null
-let __usedPropEpoch = -1
-function getUsedPropSet(epoch) {
-  // Debug escape hatch: window.__SNAPDOM_FULL_PROPS forces the legacy full read
-  // (used by the PERF-5 pixel-equivalence verification test).
-  if (typeof window !== 'undefined' && window.__SNAPDOM_FULL_PROPS) return null
-  if (__usedPropSet && __usedPropEpoch === epoch) {
-    return __usedPropSet
-  }
+/** Collect every open ShadowRoot under a start element, recursing through nested hosts. */
+function collectShadowRootsFrom(startEl) {
+  const out = []
+  try {
+    if (!startEl) return out
+    const stack = [startEl]
+    const seen = new Set()
+    while (stack.length) {
+      const el = stack.pop()
+      if (!el || seen.has(el)) continue
+      seen.add(el)
+      let sr = null
+      try { sr = el.shadowRoot } catch {}
+      if (sr) {
+        out.push(sr)
+        for (let i = sr.children.length - 1; i >= 0; i--) stack.push(sr.children[i])
+      }
+      const kids = el.children
+      if (kids) for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i])
+    }
+  } catch {}
+  return out
+}
+
+/** Shadow scopes relevant to a capture root: descendants' scopes plus any scopes above the
+ *  root (capturing inside a shadow tree still inherits them). Document author styles are
+ *  global, but shadow styles only apply inside their tree, so small captures no longer pay
+ *  a whole-document walk. */
+function collectCaptureShadowRoots(root) {
+  const out = collectShadowRootsFrom(root)
+  try {
+    const seen = new Set(out)
+    let n = root
+    while (n) {
+      const r = n.getRootNode ? n.getRootNode() : null
+      if (r && r instanceof ShadowRoot) {
+        if (!seen.has(r)) { seen.add(r); out.push(r) }
+        n = r.host
+      } else break
+    }
+  } catch {}
+  return out
+}
+
+/**
+ * Build the allow-set and a fingerprint for a document in ONE scan.
+ * Fingerprint is a join of sheet identity + cssText; any CSSOM mutation that
+ * changes values or structure changes the fingerprint. Cross-origin denial
+ * yields {set:null, fingerprint:null} fallback.
+ */
+function buildAllowSetAndFingerprint(doc, root) {
   const set = new Set()
   for (const p of MODULE_REQUIRED_PROPS) addWithExpansion(p, set)
+  const hashParts = []
+  let readable = true
   const collectFromSheets = (sheets) => {
     for (const sheet of sheets) {
       let rules
-      try { rules = sheet.cssRules } catch { continue }
+      try { rules = sheet.cssRules } catch { return false }
       if (!rules) continue
-      collectSheetProps(rules, set)
+      try { hashParts.push(`sheet:${sheet.href||''}:${sheet.disabled}:${sheet.media?sheet.media.mediaText:''}:${rules.length}`) } catch {}
+      if (!collectSheetProps(rules, set, hashParts)) return false
     }
+    return true
   }
   try {
-    collectFromSheets(document.styleSheets)
-    // adoptedStyleSheets (Lit, Constructable Stylesheets)
-    const adopted = document.adoptedStyleSheets
-    if (Array.isArray(adopted) && adopted.length) collectFromSheets(adopted)
-    // Shadow roots in the document (best-effort: walk from capture root when available,
-    // but also scan all elements with shadowRoot)
-    try {
-      const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT)
-      let n
-      while ((n = walker.nextNode())) {
-        const sr = n.shadowRoot
-        if (sr) {
-          if (sr.adoptedStyleSheets && sr.adoptedStyleSheets.length) collectFromSheets(sr.adoptedStyleSheets)
-          // shadowRoot.styleSheets is not standard but some polyfills expose it
-          if (sr.styleSheets) {
-            try { collectFromSheets(sr.styleSheets) } catch {}
-          }
-          // Inline <style> inside shadow root
+    readable = collectFromSheets(doc.styleSheets)
+    if (readable) {
+      const adopted = doc.adoptedStyleSheets
+      if (adopted && adopted.length) readable = collectFromSheets(adopted)
+    }
+    if (readable) {
+      const shadowRoots = (root && root.nodeType === 1)
+        ? collectCaptureShadowRoots(root)
+        : collectShadowRootsFrom(doc.documentElement)
+      for (const sr of shadowRoots) {
+        if (!readable) break
+        if (sr.adoptedStyleSheets && sr.adoptedStyleSheets.length) {
+          readable = collectFromSheets(sr.adoptedStyleSheets)
+        }
+        if (readable && sr.styleSheets) {
+          try { readable = collectFromSheets(sr.styleSheets) } catch { readable = false }
+        }
+        if (readable) {
           for (const st of sr.querySelectorAll('style')) {
             const sheet = st.sheet
             if (sheet) {
-              try { collectSheetProps(sheet.cssRules || [], set) } catch {}
+              let rules
+              try { rules = sheet.cssRules } catch { readable = false; break }
+              if (rules && !collectSheetProps(rules, set, hashParts)) { readable = false; break }
+              try { hashParts.push(`style:${st.textContent?st.textContent.length:0}`) } catch {}
+            } else {
+              try { hashParts.push(`style:text:${st.textContent||''}`) } catch {}
+              const m = st.textContent ? st.textContent.match(/([a-z-]+)\s*:/gi) : null
+              if (m) for (const raw of m) addWithExpansion(raw.slice(0,-1).trim().toLowerCase(), set)
             }
           }
         }
       }
-    } catch {}
-  } catch { /* cross-origin / empty */ }
-  // A3: UA stylesheet diff — ensure properties where UA differs from initial are included
-  // (white-space:pre for <pre>, text-align:center for <th>, list-style-type, etc.)
-  // Cheap: ~30 tags × one style read, diff vs initial, union into allow-set.
-  try {
-    const uaTags = ['pre','th','td','ol','ul','li','sub','sup','select','input','button','table','caption','blockquote','h1','h2','h3','p','a']
-    for (const tag of uaTags) {
-      const defaults = getDefaultStyleForTag(tag)
-      // Probe without all:initial to get UA value
-      let probe
-      try {
-        const sandbox = document.getElementById('snapdom-sandbox')
-        // Reuse sandbox logic: create element without all:initial
-        const tmp = document.createElement(tag)
-        const parent = sandbox || document.body
-        parent.appendChild(tmp)
-        const cs = getComputedStyle(tmp)
-        for (let i = 0; i < cs.length; i++) {
-          const prop = cs[i]
-          if (set.has(prop) || shouldIgnoreProp(prop)) continue
-          const uaVal = cs.getPropertyValue(prop)
-          const initVal = defaults[prop]
-          if (uaVal && initVal !== undefined && uaVal !== initVal) {
-            // Only add if UA value is not initial — it can affect rendering in foreignObject
-            // where we reset to initial via baseCSS
-            addWithExpansion(prop, set)
-          }
-        }
-        parent.removeChild(tmp)
-      } catch {}
     }
-  } catch {}
-  __usedPropSet = set
-  __usedPropEpoch = epoch
+  } catch { readable = false }
+  if (!readable) return { set: null, sorted: null, fingerprint: null, usesVars: true }
+  const sorted = [...set].sort()
+  const fingerprint = hashParts.join('\n')
+  return { set, sorted, fingerprint, usesVars: VAR_RE.test(fingerprint) }
+}
+
+// Epoch-keyed flag: does any scanned author CSS use var()? Lets resolveCSSVars skip its
+// per-node baseline comparison (1 getComputedStyle + 5 getPropertyValue per node) on
+// var-free pages. Unknown epoch → true (today's thorough path). seedUsedProps rebuilds
+// every capture, so CSSOM-inserted var() rules are picked up on the next capture.
+const VAR_RE = /var\(/i
+let __authorVarsEpoch = -1
+let __authorVarsSeen = true
+function noteAuthorVars(epoch, usesVars, readable) {
+  if (__authorVarsEpoch !== epoch) { __authorVarsEpoch = epoch; __authorVarsSeen = false }
+  if (!readable || usesVars) __authorVarsSeen = true
+}
+export function authorUsesCssVars() {
+  return __authorVarsEpoch === __epoch ? __authorVarsSeen : true
+}
+
+function getUsedPropSetForDoc(doc, epoch) {
+  if (typeof window !== 'undefined' && window.__SNAPDOM_FULL_PROPS) return null
+  const state = __docState.get(doc)
+  if (state && state.epoch === epoch) return state.set
+  const { set, sorted, fingerprint, usesVars } = buildAllowSetAndFingerprint(doc, null)
+  noteAuthorVars(epoch, usesVars, fingerprint !== null)
+  __docState.set(doc, { epoch, set, sorted, fingerprint })
   return set
 }
 
-/** Build (once per epoch) the used-prop allow-set and seed it with the captured subtree's
- *  inline-style property names. Call from prepareClone before the snapshot walk. */
+/** Build (once per capture) the used-prop allow-set. Call from prepareClone before the
+ *  snapshot walk. Per-node inline props are piggybacked top-down inside getSnapshot, so no
+ *  whole-subtree pre-walk is needed here (it was a redundant O(n) pass that also desynced
+ *  `sorted` from `set`). */
 export function seedUsedProps(root) {
-  const set = getUsedPropSet(__epoch)
-  if (set) seedInlineProps(root, set)
+  const doc = (root && root.ownerDocument) || document
+  const before = __docState.get(doc)
+  const beforeFp = before ? before.fingerprint : undefined
+  const beforeEpoch = before ? before.epoch : -1
+  const { set, sorted, fingerprint, usesVars } = buildAllowSetAndFingerprint(doc, root)
+  // Any fingerprint change that is not already covered by a DOM-mutation epoch bump
+  // must invalidate snapshots: CSSOM APIs (insertRule/deleteRule/replaceSync,
+  // adoptedStyleSheets assignment, rule.style mutation) do not fire MutationObserver.
+  if (beforeFp !== undefined && fingerprint !== beforeFp && beforeEpoch === __epoch) {
+    if (!(beforeFp === null && fingerprint === null)) bumpEpoch()
+  }
+  noteAuthorVars(__epoch, usesVars, fingerprint !== null)
+  __docState.set(doc, { epoch: __epoch, set, sorted, fingerprint })
 }
-export function getUsedPropSetDebug() { return __usedPropSet }
+export function getUsedPropSetDebug(doc) {
+  const targetDoc = doc || document
+  const state = __docState.get(targetDoc)
+  return state ? state.set : null
+}
+// Back-compat: tests that call getUsedPropSetDebug without arg get top-doc
 export function getCachedSnapshot(el) {
   const rec = snapshotCache.get(el)
   return rec && rec.epoch === __epoch ? rec.snapshot : null
 }
 export { snapshotComputedStyleFull }
-function collectSheetProps(rules, set) {
+function collectSheetProps(rules, set, hashParts) {
   for (const rule of rules) {
-    // @import: CSSImportRule exposes sheet via rule.styleSheet
     if (rule.styleSheet) {
       try {
         const importedRules = rule.styleSheet.cssRules
-        if (importedRules) collectSheetProps(importedRules, set)
-      } catch { /* cross-origin import */ }
+        if (importedRules) {
+          try { hashParts && hashParts.push(`import:${rule.styleSheet.href||''}`) } catch {}
+          if (!collectSheetProps(importedRules, set, hashParts)) return false
+        }
+      } catch { return false }
     }
-    if (rule.style) for (let i = 0; i < rule.style.length; i++) addWithExpansion(rule.style[i], set)
-    if (rule.cssRules) collectSheetProps(rule.cssRules, set)
+    let nestedRules = null
+    try { nestedRules = rule.cssRules } catch { return false }
+    if (nestedRules && nestedRules.length) {
+      // Container rule (@media/@supports/@keyframes/…): its cssText duplicates every nested
+      // rule below, so fingerprint the header only and recurse for contents. Any value,
+      // selector, or condition change still flips the fingerprint via the header or a leaf.
+      try { hashParts && hashParts.push(`@${rule.constructor?.name || rule.type}:${rule.conditionText || rule.name || ''}:${nestedRules.length}`) } catch {}
+      if (!collectSheetProps(nestedRules, set, hashParts)) return false
+      continue
+    }
+    if (rule.style) {
+      for (let i = 0; i < rule.style.length; i++) addWithExpansion(rule.style[i], set)
+    }
+    // rule.cssText already contains the declarations — no separate style.cssText push.
+    try { hashParts && hashParts.push(rule.cssText) } catch {}
   }
+  return true
 }
 
-// Seed the allow-set with the inline-style property names of every node in the captured
-// subtree. O(n) with NO getComputedStyle calls (we read element.style names directly), so
-// it is cheap. Authoring via inline style is extremely common (snapdom itself, component
-// frameworks), and without this the allow-set would wrongly drop such props.
-function seedInlineProps(root, set) {
-  const stack = [root]
-  while (stack.length) {
-    const n = stack.pop()
-    if (n.style) for (let i = 0; i < n.style.length; i++) addWithExpansion(n.style[i], set)
-    const kids = n.children
-    for (let i = 0; i < kids.length; i++) stack.push(kids[i])
+let __uaProbeEpoch = -1
+let __uaProbeKeys = new Set()
+
+function uaProbeKey(el) {
+  let key = el.tagName || ''
+  const attrs = []
+  for (let i = 0; i < el.attributes.length; i++) {
+    const attr = el.attributes[i]
+    const name = attr.name.toLowerCase()
+    // Author selectors for these are already represented by the stylesheet allow-list.
+    // Keep native/presentational attributes, which can change UA styles for form controls,
+    // tables, lists, hidden/details state, writing direction, and legacy HTML markup.
+    if (name === 'class' || name === 'id' || name === 'style' ||
+        name.startsWith('data-') || name.startsWith('aria-')) continue
+    attrs.push(`${name}=${attr.value}`)
+  }
+  if (attrs.length) key += `|${attrs.sort().join('|')}`
+  // Some live form states do not reflect back to attributes.
+  if ('checked' in el) key += `|checked=${!!el.checked}|indeterminate=${!!el.indeterminate}`
+  if ('selected' in el) key += `|selected=${!!el.selected}`
+  return key
+}
+
+/** Add properties whose live UA/presentational value differs from CSS `initial`.
+ *  The caller already owns the computed declaration, so this costs one property-name walk per
+ *  tag/native-attribute variant and no extra getComputedStyle or temporary DOM nodes. */
+function collectElementUAProps(el, style, set, epoch) {
+  if (__uaProbeEpoch !== epoch) {
+    __uaProbeEpoch = epoch
+    __uaProbeKeys = new Set()
+  }
+  const key = uaProbeKey(el)
+  if (__uaProbeKeys.has(key)) return true
+  try {
+    const defaults = getDefaultStyleForTag(el.tagName)
+    for (let i = 0; i < style.length; i++) {
+      const prop = style[i]
+      if (set.has(prop) || shouldIgnoreProp(prop)) continue
+      const value = style.getPropertyValue(prop)
+      if (value && value !== defaults[prop]) addWithExpansion(prop, set)
+    }
+    __uaProbeKeys.add(key)
+    return true
+  } catch {
+    return false
   }
 }
 
 function snapshotComputedStyleFull(style, options = {}) {
   const out = {}
   const excludeStyleProps = options.excludeStyleProps
-  const allow = options.__usedProps || ((typeof window !== 'undefined' && window.__SNAPDOM_FULL_PROPS) ? null : (__usedPropSet && __usedPropEpoch === __epoch ? __usedPropSet : null))
+  let allow = options.__usedProps
+  let allowSorted = options.__usedPropsSorted || null
+  if (allow === undefined) {
+    if (typeof window !== 'undefined' && window.__SNAPDOM_FULL_PROPS) allow = null
+    else {
+      const st = __docState.get(document)
+      allow = st && st.epoch === __epoch ? st.set : null
+      allowSorted = st && st.epoch === __epoch ? st.sorted : null
+      // getSnapshot already passes the per-document set via __usedProps, so this
+      // fallback is only for legacy direct calls without a capture context.
+    }
+  }
+  // Use pre-sorted array when available to build `out` in sorted insertion order
+  // so styleSignature can avoid per-node sort.
+  const allowIter = allowSorted || (allow ? [...allow].sort() : null)
   // C3 micro: normalize exclude predicate once per snapshot, not per prop
   let excludePred = null
   if (excludeStyleProps) {
@@ -287,8 +428,12 @@ function snapshotComputedStyleFull(style, options = {}) {
       excludePred = excludeStyleProps
     }
   }
-  if (allow) {
-    for (const prop of allow) {
+  // Same-declaration re-reads: `out` was just built from `style`, so on the allow path
+  // without exclusions a value missing from `out` is already known-empty — re-reading it
+  // live repeats the C++ call for the identical answer.
+  const needLive = !allowIter || !!excludePred
+  if (allowIter) {
+    for (const prop of allowIter) {
       // A5: custom properties already filtered at insertion, but keep guard for safety
       if (prop[0] === '-' && prop[1] === '-') continue
       if (excludePred && excludePred(prop)) continue
@@ -315,7 +460,7 @@ function snapshotComputedStyleFull(style, options = {}) {
     // C8: Extra decoration/stroke/font loops are already covered by the allow-set
   // (all those props are in MODULE_REQUIRED_PROPS). On the allow path they are
   // guaranteed present, so skip the 17 extra getPropertyValue calls per node.
-  if (!allow) {
+  if (!allowIter) {
     // Asegurar props de decoración de texto (algunos motores no las listan en la iteración)
     const EXTRA_TEXT_DECORATION_PROPS = [
       'text-decoration-line',
@@ -383,14 +528,14 @@ function snapshotComputedStyleFull(style, options = {}) {
     // non-'none' value already in `out` is genuine bg work (gradients / data: urls are never
     // rewritten), so we skip the live read in that case.
     const outBgi = out['background-image']
-    const bgi = (outBgi && outBgi !== 'none') ? outBgi : style.getPropertyValue('background-image')
+    const bgi = (outBgi && outBgi !== 'none') ? outBgi : (needLive ? style.getPropertyValue('background-image') : '')
     if (bgi && bgi !== 'none') needsBg = true
     if (!needsBg) {
       // background-color is never rewritten, so prefer the value already captured in `out`
       // (falls back to the live declaration only when excludeStyleProps dropped it).
       const bgc = (out['background-color'] !== undefined)
         ? out['background-color']
-        : style.getPropertyValue('background-color')
+        : (needLive ? style.getPropertyValue('background-color') : '')
       if (bgc && bgc !== 'rgba(0, 0, 0, 0)' && bgc !== 'transparent') needsBg = true
     }
     if (!needsBg) {
@@ -398,7 +543,7 @@ function snapshotComputedStyleFull(style, options = {}) {
       // back to the live declaration when excludeStyleProps excluded them or the engine did not
       // enumerate them. Skips up to 9 getPropertyValue calls for the common no-mask/no-border-image node.
       for (const p of BG_INLINE_FLAG_PROPS) {
-        const v = (out[p] !== undefined) ? out[p] : style.getPropertyValue(p)
+        const v = (out[p] !== undefined) ? out[p] : (needLive ? style.getPropertyValue(p) : '')
         if (v && v !== 'none') { needsBg = true; break }
       }
     }
@@ -559,40 +704,52 @@ const BORDER_PROPS = [
 function styleSignature(snap) {
   let sig = __snapshotSig.get(snap)
   if (sig) return sig
-  const entries = Object.entries(snap).sort((a, b) => a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0))
-  sig = entries.map(([k, v]) => `${k}:${v}`).join(';')
+  // Snap is built in sorted key order (see snapshotComputedStyleFull with sorted allow),
+  // so Object.keys is already sorted; joining without sort is both faster and canonical.
+  // Fallback to sort only for legacy snaps not built sorted.
+  const keys = Object.keys(snap)
+  let isSorted = true
+  for (let i = 1; i < keys.length; i++) if (keys[i] < keys[i-1]) { isSorted = false; break }
+  if (isSorted) sig = keys.map(k => `${k}:${snap[k]}`).join(';')
+  else {
+    const entries = Object.entries(snap).sort((a, b) => a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0))
+    sig = entries.map(([k, v]) => `${k}:${v}`).join(';')
+  }
   __snapshotSig.set(snap, sig)
   return sig
 }
-// Structural snapshot cache: elements that are structurally identical (same tag, class,
-// inline style, and ancestor chain) are guaranteed to have identical computed styles, so
-// their ~350-property computed snapshot can be computed once and SHARED. In real DOMs the
-// vast majority of nodes are such siblings (e.g. table cells, list items, repeated rows),
-// so this collapses thousands of 350-getPropertyValue snapshots into a handful. The snapshot
-// object is immutable after creation, so sharing it across elements is safe. Keyed by a string
-// derived from the ancestor chain; parents are captured before children during a top-down walk.
-const __structKeyCache = new WeakMap()
-let __structSnapCache = null
-
-function structuralKey(el) {
-  let k = __structKeyCache.get(el)
-  if (k !== undefined) return k
-  const parent = el.parentNode
-  const parentKey = parent && parent.nodeType === 1 ? structuralKey(parent) : ''
-  k = `${parentKey}|${el.tagName}|${el.className}|${el.style ? el.style.cssText : ''}`
-  __structKeyCache.set(el, k)
-  return k
-}
-
 function getSnapshot(el, preStyle = null, options = {}) {
+  const doc = (el && el.ownerDocument) || document
+  const style = preStyle || getStyle(el)
   // PERF-5: piggyback inline-style collection on the snapshot walk itself (no extra
-  // tree walk). Each node's own inline props are added to the global allow-set
+  // tree walk). Each node's own inline props are added to the per-document allow-set
   // before its snapshot is taken, so parents' inline props are already present
   // for children (top-down walk). This keeps the set minimal and pixel-perfect
   // without an extra O(n) pass.
-  const usedSet = getUsedPropSet(__epoch)
+  let usedSet = getUsedPropSetForDoc(doc, __epoch)
+  let usedSorted = null
+  const state = __docState.get(doc)
+  if (state && state.epoch === __epoch) usedSorted = state.sorted || null
   if (usedSet && el.style) {
+    const beforeSize = usedSet.size
     for (let i = 0; i < el.style.length; i++) addWithExpansion(el.style[i], usedSet)
+    if (usedSet.size !== beforeSize && state) {
+      // Keep sorted array in sync without full resort per node when only few props added
+      // Resort is cheap for 137 entries and happens only when a new inline prop appears
+      state.sorted = [...usedSet].sort()
+      usedSorted = state.sorted
+    }
+  }
+  if (usedSet && !collectElementUAProps(el, style, usedSet, __epoch)) {
+    // UA inspection is part of the allow-list's fidelity proof. If it cannot complete,
+    // make this document's epoch use the same conservative full-read fallback as denied stylesheets.
+    __docState.set(doc, { epoch: __epoch, set: null, sorted: null, fingerprint: __docState.get(doc)?.fingerprint ?? null })
+    usedSet = null
+    usedSorted = null
+  } else if (usedSet && state && usedSorted && usedSet.size !== usedSorted.length) {
+    // UA probe added new props — resort
+    state.sorted = [...usedSet].sort()
+    usedSorted = state.sorted
   }
   const rec = snapshotCache.get(el)
   // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
@@ -602,25 +759,11 @@ function getSnapshot(el, preStyle = null, options = {}) {
   const ef = !!(options && options.embedFonts)
   const ex = (options && options.excludeStyleProps) || null
   if (rec && rec.epoch === __epoch && rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
-  // Structural sharing only applies to the common default-options path: embedFonts/exclude
-  // change the snapshot shape, so fall back to the per-element cache for those.
-  if (!ef && !ex) {
-    if (!__structSnapCache || __structSnapEpoch !== __epoch) {
-      __structSnapCache = new Map()
-      __structSnapEpoch = __epoch
-    }
-    const skey = structuralKey(el)
-    const shared = __structSnapCache.get(skey)
-    if (shared) return shared
-    const style = preStyle || getComputedStyle(el)
-    const snap = snapshotComputedStyleFull(style, options)
-    stripHeightForWrappers(el, style, snap)
-    __structSnapCache.set(skey, snap)
-    snapshotCache.set(el, { epoch: __epoch, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
-    return snap
-  }
-  const style = preStyle || getComputedStyle(el)
-  const snap = snapshotComputedStyleFull(style, options)
+  // Pass the per-document allow-set explicitly (null = full-read fallback) and its
+  // pre-sorted array so snapshotComputedStyleFull can build the snap in sorted order
+  // and styleSignature can avoid per-node sort.
+  const snapOptions = { ...options, __usedProps: usedSet, __usedPropsSorted: usedSorted }
+  const snap = snapshotComputedStyleFull(style, snapOptions)
   stripHeightForWrappers(el, style, snap)
   snapshotCache.set(el, { epoch: __epoch, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
   return snap
@@ -693,7 +836,8 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const ctx = _resolveCtx(sessionOrCtx, opts)
   const resetMode = (ctx.options && ctx.options.cache) || 'auto'
 
-  if (resetMode !== 'disabled') setupInvalidationOnce(document.documentElement)
+  const srcDoc = source.ownerDocument || document
+  if (resetMode !== 'disabled') setupInvalidationOnce(srcDoc.documentElement || document.documentElement)
 
   if (resetMode === 'disabled' && !ctx.session.__bumpedForDisabled) {
     bumpEpoch()
@@ -708,8 +852,11 @@ export async function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     // CSSStyleDeclaration in some environments. Wrap defensively so a stale/detached
     // element never throws and callers always receive a usable style object.
     let computed = null
-    try { computed = getComputedStyle(source) } catch { /* detached / cross-origin */ }
-    const final = computed || getComputedStyle(document.documentElement)
+    try { computed = getStyle(source) } catch { /* detached / cross-origin */ }
+    // Fallback to the source's own document root, not the top document, for iframe support
+    let fallback = null
+    try { fallback = getStyle(srcDoc.documentElement) } catch {}
+    const final = computed || fallback || getStyle(document.documentElement)
     session.styleCache.set(source, final)
     // Populate the global cache as well so getStyle(parent) hits without a second gcs
     try {
@@ -797,13 +944,20 @@ function hasBox(cs) {
  * Item de flex/grid (mirando display del padre, 1 getComputedStyle).
  * @param {Element} el
  */
+// Parent display memo: siblings share parents, so this turns N getStyle+includes into one
+// per parent. Epoch-keyed entries simply miss after bumpEpoch — no explicit clear needed.
+const __flexParentMemo = new WeakMap()
 function isFlexOrGridItem(el) {
   const p = el.parentElement
   if (!p) return false
+  const m = __flexParentMemo.get(p)
+  if (m && m.e === __epoch) return m.v
   // getStyle memoizes in cache.computedStyle; raw getComputedStyle forced a fresh resolution
   // per node on every capture (even on snapshot-cache hits).
   const pd = getStyle(p).display || ''
-  return pd.includes('flex') || pd.includes('grid')
+  const v = pd.includes('flex') || pd.includes('grid')
+  try { __flexParentMemo.set(p, { e: __epoch, v }) } catch {}
+  return v
 }
 
 /**
