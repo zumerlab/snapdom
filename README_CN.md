@@ -52,7 +52,7 @@ v3 把捕获引擎彻底重写了一遍。API 的形态没变，v2 的调用方�
 
 **全面更快。**
 - **首次捕获最多快 2 倍。** 引擎先对样式表做一次扫描，得出页面实际可能用到的 CSS 属性，于是每个节点的样式快照只读取约 50 个属性，而不是约 400 个：这是任何 DOM 捕获中开销最大的一环。
-- **重复捕获几乎不花时间。** 同一个元素捕获几次之后，snapdom 会自动开始记忆化：内容没变的重复捕获立即返回；内容*确实*变了的时候，**差分重建**只重做发生变化的子树（在频繁更新的仪表盘上快约 5 倍），输出与完整捕获**逐字节一致**。
+- **重复捕获几乎不花时间。** 每个元素从第一次捕获起就会被记忆化：内容没变的重复捕获立即返回；内容*确实*变了的时候，**差分重建**只重做发生变化的子树（在频繁更新的仪表盘上快约 5 倍），输出与完整捕获**逐字节一致**。
 - 失效追踪是自动且完整的：DOM 变更、`<video>` 帧、图片与字体加载、滚动、视口尺寸变化、`<head>` 中的 CSS 改动，以及 CSS/WAAPI 动画都在追踪范围内。没有新 API 要学，也不需要任何配置。内联图片同样会自动降采样到实际显示分辨率（保留原编码格式，在 Worker 中完成）。
 
 **默认更忠实于原页面。**
@@ -76,7 +76,7 @@ v2 的调用方式仍然可用，未知选项会被忽略而不是报错。发�
 | `embedFonts` 默认值变为 `'auto'`（原先是关闭）。网页字体文字现在会真正嵌入，而不是以回退字体的度量渲染。 | 通常无需处理。除非你依赖的正是那种回退渲染效果，那就传 `embedFonts: false`。 |
 | `cache` 收敛为 `'soft'`（默认）和 `'disabled'`。`'auto'` / `'full'` 仍被接受，并静默映射为 `'soft'`。 | 去掉这个选项即可；调试时可以用 `cache: 'disabled'`。 |
 | `fast` 已被移除。 | 删掉它，它原本的行为现在是无条件生效的。 |
-| 同一元素在 2 秒内被捕获三次之后会自动记忆化，内容变更则触发差分重建。 | 一般无需处理。对于任何观察者都看不到的变化（`sheet.insertRule()`、直接修改 `rule.style.x`、canvas 像素绘制），传入 `invalidate: true`。 |
+| 同一元素从第一次捕获起就自动记忆化，内容变更则触发差分重建。`preCache` 已移除：捕获本身就是预热，`snapdom.preCapture()` 会在点击之前完成它。 | 一般无需处理。对于任何观察者都看不到的变化（`sheet.insertRule()`、直接修改 `rule.style.x`、canvas 像素绘制），传入 `invalidate: true`。 |
 | 内联的位图默认会降采样到实际显示分辨率。 | 无需处理。原始编码格式会被保留，也绝不会放大。 |
 | **`width`/`height` 的优先级现在高于 `scale`。** v2 会把两者相乘（`{ width: 800, scale: 2 }` 光栅化出 1600px 宽）；v3 把 `width`/`height` 视为绝对输出尺寸，只有两者都没设置时才应用 `scale`。这同时修正了 v2 的不一致：`toCanvas` 会乘以 `scale`，而 `toImg`/`toSvg` 会忽略它。 | 如果你依赖的是相乘后的结果，直接传最终尺寸（`width: 1600`）。 |
 | 带有渲染类钩子的插件会暂停自动记忆化，除非声明 `pure: true`。 | 如果你的钩子是确定性且幂等的，加上 `pure: true`。 |
@@ -194,13 +194,20 @@ import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 
 **子路径导入**（同一个运行时的再导出，方便使用：无论从哪条路径导入，插件注册表和缓存都只有一份）：
 ```js
-import { preCache } from '@zumer/snapdom/preCache';
 import { registerPlugins, clearPlugins, getGlobalPlugins } from '@zumer/snapdom/plugins';
 ```
 插件 API 也从根路径导出，`snapdom.plugins(...)` 会进行全局注册：
 ```js
 import { snapdom, registerPlugins } from '@zumer/snapdom';
 ```
+
+**在点击之前就准备好的捕获。** 重复捕获从第一次起就会被记忆化，所以对同一个未改变的元素再点一次，结果直接来自内存。`snapdom.preCapture()` 把这第一次捕获提前到点击之前，就像链接的 prefetch：调用一次，此后当用户对某个控件表现出意图（指针悬停、获得焦点、按下指针）时，snapdom 会用同样的选项捕获该控件上一次请求的元素，比点击落下早 100 到 400 ms。无需声明任何东西，后台也没有任何常驻任务：
+```js
+snapdom.preCapture();
+
+button.onclick = () => snapdom.toPng(hero, { scale: 2 }); // 第一次点击时学习，从第二次起提前捕获
+```
+程序化捕获不需要这些：尽早捕获一次，之后的调用要么命中记忆，要么走差分重建。
 
 
 ## 基本用法
@@ -240,7 +247,7 @@ document.body.appendChild(png);
 - **[API 参考](https://snapdom.dev/docs/api/)** — `snapdom()` 返回的可复用对象、快捷方法，以及各导出方法的专用选项。
 - **[选项](https://snapdom.dev/docs/options/)** — 逐项介绍所有捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`、`compress`、`outerTransforms`、`outerShadows`、`cache`……），并附有示例。
 - **[插件](https://snapdom.dev/docs/plugins/)** — 如何构建、注册和发布自定义插件及导出格式。社区插件见[插件页面](https://snapdom.dev/plugins.html)。
-- **[缓存与 preCache](https://snapdom.dev/docs/cache/)** — 控制多次捕获之间的缓存，并通过 `preCache` 提前加载所需资源。
+- **[缓存](https://snapdom.dev/docs/cache/)** — 捕获如何从第一次起被记忆化、如何失效，以及差分重建。
 
 ### API 速览
 
@@ -342,7 +349,7 @@ PNG 编码成本，名次在不同轮次之间会互换。复杂卡片是唯一�
 | 深层嵌套树——16 条链 × 10 层，约 2,100 个节点 | 656 | **html2canvas 306** | domlens 666 · modern-screenshot 913 · html-to-image 1,356 |
 
 轮询是唯一一行 SnapDOM 使用**默认配置**、开启记忆化的场景：每个 tick 都重新捕获同一个元素的仪表盘，
-正是 auto-burst 与差分重捕获存在的意义。关掉记忆化（`burst: false`）后同样的循环需要 27.4 ms——
+正是记忆化与差分重捕获存在的意义。关掉记忆化（`burst: false`）后同样的循环需要 27.4 ms——
 记忆化在这里带来 1.39× 的收益，而不是「未栅格化」的对比所暗示的数量级差距，因为每个 tick 仍然要
 付出栅格化和 PNG 编码的成本。
 
@@ -434,7 +441,7 @@ npx vitest run __tests__/category.capabilities.test.js --browser.headless --repo
 ## 开发
 
 **源码结构：**
-- `src/api/` — 公开 API（`snapdom`、`preCache`）
+- `src/api/` — 公开 API（`snapdom`、`snapdom.preCapture`）
 - `src/core/` — 捕获流程、克隆、预处理与插件
 - `src/modules/` — 图片、字体、伪元素、背景与 SVG
 - `src/exporters/` — `toPng`、`toSvg`、`toBlob` 等导出方法

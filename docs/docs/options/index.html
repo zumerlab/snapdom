@@ -119,8 +119,8 @@
           <tr><td class="num">outerShadows</td><td class="num">boolean</td><td class="num">false</td><td>Do not expand the root's bounding box for shadows/blur/outline, and strip those visual effects from the cloned root</td></tr>
           <tr><td class="num">compress</td><td class="num">boolean</td><td class="num">true</td><td>Downsample inlined raster images to their visible resolution. Faster raster captures + smaller SVG output, fidelity-neutral. Set <code>false</code> to embed images verbatim</td></tr>
           <tr><td class="num">reconcile</td><td class="num">boolean</td><td class="num">false</td><td>Measures the styled clone against the live DOM and pins any box whose size diverges. Fixes rare text re-wrap/layout drift at the cost of roughly doubling capture time</td></tr>
-          <tr><td class="num">burst</td><td class="num">boolean</td><td class="num">false</td><td>Memoizes repeated captures of this element via a scoped <code>MutationObserver</code> — an unchanged repeat skips the pipeline entirely</td></tr>
-          <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>With <code>burst: true</code>, forces a fresh capture for changes automatic tracking can't see (canvas draws, programmatic CSSOM edits)</td></tr>
+          <tr><td class="num">burst</td><td class="num">boolean</td><td class="num">auto</td><td>Memoization is on from the first capture of every element. <code>false</code> turns it off for a call; <code>true</code> forces it on for canvas-bearing elements and impure render plugins, where it is off by default.</td></tr>
+          <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>Forces one fresh, non-memoized capture for changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits).</td></tr>
         </tbody>
       </table>
     </section>
@@ -294,25 +294,24 @@ await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
 
     <section class="prose">
       <h2 id="burst">burst</h2>
-      <p>Capturing the same unchanged element repeatedly (dashboard polling, a GIF/video export loop) re-walks the tree and re-reads every node's computed style on every single call — real work, even with every image/font/background already cached.</p>
-      <p><code>burst: true</code> watches the element with a scoped <code>MutationObserver</code> and memoizes the last result: an unchanged repeat capture returns the cached result instantly, skipping the pipeline entirely. Any external mutation of the subtree (or of document styles in <code>&lt;head&gt;</code>) marks it dirty again, so the next capture re-runs for real. <code>&lt;video&gt;</code> frame changes (seek, playback) are tracked too, since they touch no DOM attribute. It's opt-in — a persistent observer per element is wasted cost on a one-shot capture.</p>
+      <p>Capturing the same unchanged element repeatedly (dashboard polling, a GIF/video export loop) would re-walk the tree and re-read every node's computed style on every call. In v3 that never happens: every element is memoized from its first capture, without an option. A scoped <code>MutationObserver</code> plus trackers for scroll, form-control state, focus, <code>:hover</code>, <code>&lt;video&gt;</code> frames, image and font loads, animations and <code>&lt;head&gt;</code> CSS watch it. An unchanged repeat returns the last result instantly, and a mutation triggers a differential recapture that rebuilds only the changed subtrees, byte-identical to a full capture. At most 64 elements stay memoized; the least recently captured one is released.</p>
       <pre class="code-block">// Dashboard polling: only the first and the 3rd (mutated) calls do real work.
 for (let i = 0; i < 10; i++) {
   if (i === 3) counter.textContent = 'new value';
-  const result = await snapdom(el, { burst: true });
+  const result = await snapdom(el);
   img.src = (await result.toPng()).src;
 }</pre>
-      <p>Canvas pixel draws and programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) touch no DOM attribute either, so the automatic tracking can't see them. Pass <code>invalidate: true</code> alongside <code>burst: true</code> on the next call to force a fresh capture after one of those:</p>
-      <pre class="code-block">ctx.fillRect(0, 0, 100, 100); // canvas redraw — invisible to the observer
-await snapdom(el, { burst: true, invalidate: true });</pre>
-      <p class="muted"><strong>Discoverability:</strong> if you capture the same element 3+ times within 2s <em>without</em> <code>burst: true</code>, snapdom logs a one-time <code>console.warn</code> suggesting it — that's the only case the (cheap) tracking runs unconditionally.</p>
+      <p><code>burst: false</code> turns the memo off for a call: benchmarks that must measure the pipeline, or a capture you do not want <code>preCapture()</code> to learn. <code>burst: true</code> forces it on where it is off by default: elements that contain a <code>&lt;canvas&gt;</code>, and captures with render-hook plugins that do not declare <code>pure: true</code>.</p>
+      <p>Canvas pixel draws and programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) touch no DOM attribute, so no observer can see them. Pass <code>invalidate: true</code> on the next call to force a fresh capture after one of those:</p>
+      <pre class="code-block">ctx.fillRect(0, 0, 100, 100); // canvas redraw, invisible to the observer
+await snapdom(el, { invalidate: true });</pre>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
         <a class="related-card" href="../api/" data-umami-event="Docs options card api">API reference — methods &amp; exporters <span class="arrow">→</span></a>
-        <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCache — performance <span class="arrow">→</span></a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCapture — performance <span class="arrow">→</span></a>
         <a class="related-card" href="../plugins/" data-umami-event="Docs options card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
         <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs options card h2c">SnapDOM vs html2canvas <span class="arrow">→</span></a>
       </div>

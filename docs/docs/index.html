@@ -99,7 +99,7 @@
         <a class="related-card" href="api/" data-umami-event="Docs hub card api">API reference — methods & exporters <span class="arrow">→</span></a>
         <a class="related-card" href="options/" data-umami-event="Docs hub card options">Options — every capture option <span class="arrow">→</span></a>
         <a class="related-card" href="plugins/" data-umami-event="Docs hub card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
-        <a class="related-card" href="cache/" data-umami-event="Docs hub card cache">Cache & preCache — performance <span class="arrow">→</span></a>
+        <a class="related-card" href="cache/" data-umami-event="Docs hub card cache">Cache & preCapture — performance <span class="arrow">→</span></a>
       </div>
     </section>
 
@@ -150,8 +150,7 @@ yarn add @zumer/snapdom@dev</pre>
         </tbody>
       </table>
       <p><strong>Subpath imports</strong> (lighter bundle if you only need one):</p>
-      <pre class="code-block">import { preCache } from '@zumer/snapdom/preCache';
-import { plugins } from '@zumer/snapdom/plugins';</pre>
+      <pre class="code-block">import { registerPlugins } from '@zumer/snapdom/plugins';</pre>
     </section>
 
     <section class="prose">

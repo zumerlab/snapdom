@@ -20,12 +20,18 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
 - Core masks `type="password"` only. Everything the browser paints in the clear is captured as
   is; use the `redactInputs` plugin for the old behaviour.
 - `embedFonts` defaults to `'auto'`.
+- `preCache` is removed, along with the `/preCache` subpath and `window.preCache`. Every element
+  is memoized from its first capture, so the capture is its own warm-up; `snapdom.preCapture()`
+  takes it before the click.
+- No CommonJS build, by decision. Up to 2.24.1 `require()` pointed at the IIFE and returned `{}`,
+  so nothing that worked is lost.
 
 ⚡ perf
 - Per-capture sessions replace the module-level mutable session; the whole `#463` bug class is
   now structurally unrepresentable.
-- Burst memoization + differential recapture: after three captures of an element in a 2s window,
-  a mutation rebuilds only the affected subtree (mutating poll 563ms → 16ms; animated 39ms → 7.5ms).
+- Memoization + differential recapture from the first capture of every element (at most 64 live
+  memos, least recently used evicted): an unchanged repeat is served from memory and a mutation
+  rebuilds only the affected subtree (mutating poll 563ms → 16ms; animated 39ms → 7.5ms).
 - One author-style scan yields the property universe and per-pseudo selector gates, replacing
   three `getComputedStyle` resolutions per node with one `matches()`.
 
@@ -34,12 +40,13 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
   **Trusted HTML only** — it goes through `innerHTML` into the real document.
 - Plugin stages (`needs`), `defineExports` for custom export formats, and an official plugin
   package: `@zumer/snapdom-plugins`.
-- Real CommonJS build at `dist/snapdom.cjs`. Up to 2.24.1 `require()` returned `{}`.
+- `snapdom.preCapture()`: link prefetch for captures. Intent on a control (pointer over it, focus,
+  pointer down) captures the element that control asked for the last time, with the same options.
 
 🛠 fix
-- The `/plugins` and `/preCache` subpaths re-export from the single runtime instead of being
-  separate bundles with their own module state; registering through a subpath now reaches
-  `snapdom()`. TypeScript declarations ship per subpath, so consumers with `skipLibCheck: false`
+- The `/plugins` subpath maps to the same file as the root instead of being a separate bundle
+  with its own module state; registering through the subpath now reaches `snapdom()`. Its
+  `types` condition points at the root declarations, so consumers with `skipLibCheck: false`
   typecheck.
 - `dist/snapdom.js` is a real IIFE. It was emitting bare top-level statements, publishing 442
   minified bindings as globals to every `<script>` tag user.

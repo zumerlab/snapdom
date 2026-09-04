@@ -15,7 +15,7 @@ A complete technical overview of what **SnapDOM** captures, embeds and exports. 
 - [Export formats](#export-formats)
 - [Options](#options)
 - [Plugin system](#plugin-system)
-- [Caching & preCache](#caching--precache)
+- [Caching & memoization](#caching--memoization)
 - [Cross-browser handling](#cross-browser-handling)
 - [Node-level control attributes](#node-level-control-attributes)
 
@@ -68,7 +68,7 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 - **`localFonts`** — supply your own fonts as `{ family, src, weight?, style?, stretchPct? }` to fetch and embed.
 - **`excludeFonts`** — exclude by `{ families?, domains?, subsets? }`.
 - **Cross-origin stylesheets** — gated by `fontStylesheetDomains` (plus known math libraries like KaTeX/MathJax).
-- **`preCache`** — preloads images, background images and fonts before capture; `embedFonts` defaults to `'auto'`, the same semantics as capture.
+- **`snapdom.preCapture()`** — takes an element's first capture before the click, the way links prefetch: intent on a control (pointer over it, focus, pointer down) captures the element that control asked for the last time, with the same options.
 
 ## Export formats
 
@@ -135,7 +135,7 @@ Plugins are plain objects with lifecycle hooks, registered globally (`snapdom.pl
 
 See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUTING_PLUGINS.md).
 
-## Caching & preCache
+## Caching & memoization
 
 - **Buckets** — FIFO evicting maps for `image`, `background`, `resource`, `baseStyle` and `defaultStyle`; `WeakMap`s for computed styles and layout measurement hints; a `Set` for fonts; and a per-session bucket.
 - **Policies** (`cache` option) — caching is structural in v3, not a knob:
@@ -143,8 +143,8 @@ See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUT
   - `disabled` — opts out of every cache. A debug/testing escape, not a tuning option.
   - `auto` / `full` — accepted for v2 compatibility and silently mapped to `soft`.
 - **Invalidation** — a MutationObserver on the DOM and `<head>` plus font `loadingdone`/`ready` events bump a style epoch, so stale snapshots are dropped automatically. CSSOM edits (`sheet.insertRule`, `rule.style.x = …`) change no DOM node and are invisible to every observer: `invalidate: true` purges the epoch-scoped caches for exactly that case.
-- **`preCache`** — warm the caches ahead of time. `embedFonts` defaults to `'auto'`, same semantics as capture; it takes no cache policy.
-- **Repeat-capture memoization** — engine behavior, no option: capture the same element a few times and snapdom memoizes automatically (scoped `MutationObserver` + video/image/font/scroll/resize/head-CSS/animation tracking); when only subtrees changed, a differential recapture rebuilds just those, byte-identical to a full capture. Pass `invalidate: true` to force one fresh capture after changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits).
+- **`snapdom.preCapture()`** — no arguments: arms document-level intent listeners; a capture within a second of a press is attributed to the pressed control, and later intent on that control captures its element with the same options. Nothing runs without a gesture. `preCache` is gone: with memoization from the first capture, the capture is its own warm-up.
+- **Repeat-capture memoization** — engine behavior, no option: every element is memoized from its first capture (scoped `MutationObserver` + video/image/font/scroll/resize/head-CSS/animation/`:hover` tracking; at most 64 live memos, least recently used evicted); when only subtrees changed, a differential recapture rebuilds just those, byte-identical to a full capture. Pass `invalidate: true` to force one fresh capture after changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits).
 
 ## Cross-browser handling
 

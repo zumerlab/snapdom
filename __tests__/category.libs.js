@@ -38,9 +38,9 @@ import { complexCardHTML, bigTableHTML } from '../docs/compare/live/harness.js'
 // Insertion order is the order every report renders in, so keep snapdom first.
 const LOADERS = {
   // burst:false is load-bearing for FAIRNESS. tinybench runs each library's iterations
-  // against the same mounted element, and snapdom's auto-burst memoizes after 3 captures of
-  // one element inside 2s — so from iteration 3 the "pipeline" column was the memo while
-  // every competitor ran its full pipeline. The memo is a real product win, but it is
+  // against the same mounted element, and snapdom memoizes an element from its first capture,
+  // so from the second iteration on the "pipeline" column would be the memo while every
+  // competitor ran its full pipeline. The memo is a real product win, but it is
   // measured honestly in category.polling.benchmark.js under its own label; this table claims
   // steady-state PIPELINE cost, so it must pin the pipeline.
   //

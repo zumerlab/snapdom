@@ -1,4 +1,4 @@
-// NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
+// NOTE: burst:false pins these benches to the cold pipeline — the memo would
 // otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
@@ -29,14 +29,14 @@ function buildDashboard() {
   return el
 }
 
-describe(`Benchmark burst:true vs plain capture (${REPEATS}x, unchanged element)`, () => {
+describe(`Benchmark memo on vs off (${REPEATS}x, unchanged element)`, () => {
   let el
 
   afterEach(() => {
     if (el) { el.remove(); el = null }
   })
 
-  bench('plain snapdom() called 20x', async () => {
+  bench('snapdom(el, { burst: false }) called 20x (memo off)', async () => {
     el = buildDashboard()
     for (let i = 0; i < REPEATS; i++) {
       await snapdom.toRaw(el, { burst: false })

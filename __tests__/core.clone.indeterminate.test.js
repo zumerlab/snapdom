@@ -8,9 +8,8 @@
 // The middle number is the bug: on two engines it equalled the unchecked one.
 //
 // burst:false is load-bearing here. Setting .indeterminate or .checked programmatically
-// fires no event and produces no mutation record, so auto-burst — which engages after three
-// captures of the same element within 2s — serves the previous state and every reading comes
-// out identical.
+// fires no event and produces no mutation record, so the memo, engaged from the first capture,
+// serves the previous state and every reading comes out identical.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 

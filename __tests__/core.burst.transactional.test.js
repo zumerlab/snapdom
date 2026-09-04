@@ -158,7 +158,7 @@ describe('burst memo is transactional', () => {
 
     const results = []
     for (let i = 0; i < 6; i++) results.push(await snapdom(el))
-    // Auto-burst engages after 3 captures: a later call must return the SAME result object.
+    // The memo engages on the first capture: a later call must return the SAME result object.
     expect(results.some((r, i) => i > 0 && r === results[i - 1])).toBe(true)
   })
 })

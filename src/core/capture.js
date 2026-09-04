@@ -63,7 +63,7 @@ function collectResolveNodeHooks(options) {
  * @param {boolean|'subtree'} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds. 'subtree' additionally widens the capture for the outer-shadow ink DESCENDANTS paint past the root's box (a child's ring drawn against the root's edge), measured per side and bounded by any ancestor that clips.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
- * @param {boolean} [options.burst] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Unset: auto-enables after 3 captures of the same element within 2s (canvas-bearing elements excluded)
+ * @param {boolean} [options.burst] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Unset: memoized from the first capture (canvas-bearing elements and impure render plugins excluded)
  * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
  *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
  */
@@ -255,7 +255,6 @@ export async function captureDOM(element, options) {
       fontsCSS = await embedCustomFonts({
         required,
         usedCodepoints,
-        preCached: false,
         exclude: state.options.excludeFonts,
         localFonts: state.options.localFonts,
         useProxy: state.options.useProxy,

@@ -533,8 +533,8 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
   const sig = optionsSignature(userOptions)
   let isOneOff = sig === null || sig !== state.baselineSignature
   if (isOneOff && sig !== null) {
-    // The usage pattern changed (e.g. auto-burst tripped during one-off calls with other
-    // options, then a polling loop settles on new ones): the SECOND consecutive call with
+    // The usage pattern changed (e.g. the memo was established by calls with other options,
+    // then a polling loop settles on new ones): the SECOND consecutive call with
     // the same new signature adopts it as the baseline so the memo re-engages, instead of
     // treating every future call as a one-off forever.
     if (state.pendingSig === sig) {

@@ -55,7 +55,7 @@ describe('root attribute sanitizing (#8)', () => {
       `<section><div ${DIRTY_ATTRS} style="background:rgb(0,128,0);padding:8px">` +
       `<p ${DIRTY_ATTRS} style="margin:0;color:#fff">before</p></div></section></div>`
     )
-    for (let i = 0; i < 4; i++) await snapdom(el) // engage auto-burst
+    for (let i = 0; i < 4; i++) await snapdom(el) // memoized from the first capture; repeats are hits
 
     el.querySelector('p').textContent = 'after'
     await new Promise((r) => setTimeout(r, 0))

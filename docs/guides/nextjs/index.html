@@ -232,8 +232,7 @@
 
       <details>
         <summary>The captured image is blank in production but works in dev</summary>
-        <p>This usually means a font hasn't finished loading by the time you triggered the capture. Pass <code>{ embedFonts: true }</code> and consider calling the optional <code>preCache</code> helper once on mount:</p>
-        <p><code>import { preCache } from '@zumer/snapdom/preCache';</code></p>
+        <p>This usually means a font hasn't finished loading by the time you triggered the capture. Pass <code>{ embedFonts: true }</code> and await <code>document.fonts.ready</code> before the first capture, or arm <code>snapdom.preCapture()</code> once on mount so that first capture happens on intent, before the click.</p>
       </details>
 
       <details>

@@ -1,7 +1,7 @@
 // Cross-library POLLING — memoization allowed and labeled.
 //
 // This is the one table where snapdom runs with DEFAULTS on purpose: a dashboard poller
-// captures the same element every tick, which is exactly what auto-burst + differential
+// captures the same element every tick, which is exactly what the memo + differential
 // recapture exist for (the 563ms -> 16ms headline win). The category table pins burst:false
 // because it claims one-shot pipeline cost; THIS file claims the opposite scenario and says
 // so in every label. Competitors run as-is — none of them memoizes. One bench iteration =
@@ -31,7 +31,7 @@ async function loop(capture) {
 const OPTS = { warmupIterations: 1, iterations: 6, time: 0 }
 
 describe(`Polling: ${TICKS} captures of a live dashboard (memoization allowed, labeled)`, () => {
-  bench('snapDOM defaults (auto-burst memo + diff engage)', async () => {
+  bench('snapDOM defaults (memo + diff, from the first capture)', async () => {
     await loop(async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1 })))
   }, OPTS)
 

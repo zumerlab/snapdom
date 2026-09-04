@@ -1,4 +1,4 @@
-// NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
+// NOTE: burst:false pins these benches to the cold pipeline — the memo would
 // otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe, afterEach } from 'vitest'
 import { domToDataUrl } from 'https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/+esm'

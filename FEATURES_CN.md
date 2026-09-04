@@ -15,7 +15,7 @@
 - [导出格式](#导出格式)
 - [选项](#选项)
 - [插件系统](#插件系统)
-- [缓存与 preCache](#缓存与-precache)
+- [缓存与记忆化](#缓存与记忆化)
 - [跨浏览器处理](#跨浏览器处理)
 - [节点级控制属性](#节点级控制属性)
 
@@ -68,7 +68,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 - **`localFonts`** — 通过 `{ family, src, weight?, style?, stretchPct? }` 传入自定义字体信息，供 SnapDOM 获取并嵌入。
 - **`excludeFonts`** — 可按 `{ families?, domains?, subsets? }` 排除字体。
 - **跨源样式表** — `fontStylesheetDomains` 用于指定允许读取字体样式表的额外跨源域名；KaTeX、MathJax 等已知数学库也在支持范围内。
-- **`preCache`** — 捕获前预加载图片、背景图和字体；`embedFonts` 默认为 `'auto'`，语义与捕获时一致。
+- **`snapdom.preCapture()`** — 在点击之前完成元素的第一次捕获，就像链接的 prefetch：用户对某个控件表现出意图（指针悬停、获得焦点、按下指针）时，用同样的选项捕获该控件上一次请求的元素。
 
 ## 导出格式
 
@@ -136,7 +136,7 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
 
 参见 [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) 与 [`CONTRIBUTING_PLUGINS.md`](CONTRIBUTING_PLUGINS.md)。
 
-## 缓存与 preCache
+## 缓存与记忆化
 
 - **缓存区** — `image`、`background`、`resource`、`baseStyle` 和 `defaultStyle` 使用按 FIFO 顺序淘汰的 `Map`；计算样式和布局测量提示使用 `WeakMap`；字体使用 `Set`；此外还有本次捕获会话专用的缓存区。
 - **策略**（`cache` 选项）— v3 的缓存是引擎结构的一部分，不再是调优开关：
@@ -144,8 +144,8 @@ SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，�
   - `disabled` — 关闭所有缓存，仅用于调试和测试。
   - `auto` / `full` — 为兼容 v2 仍被接受，并静默映射为 `soft`。
 - **失效机制** — DOM 和 `<head>` 上的 `MutationObserver`，以及字体的 `loadingdone` / `ready` 事件，都会递增样式版本号（epoch），从而自动丢弃过期快照。CSSOM 层面的修改（`sheet.insertRule`、`rule.style.x = …`）不改动任何节点，任何观察者都看不到：这正是 `invalidate: true` 的用途，它会清空按纪元缓存的快照。
-- **`preCache`** — 提前预热缓存；`embedFonts` 默认为 `'auto'`，语义与捕获时一致，此处不再接受缓存策略参数。
-- **重复捕获记忆化** — 引擎默认行为，无需任何选项：同一元素被反复捕获时，snapdom 会自动开始记忆化（限定范围的 `MutationObserver`，以及对 `<video>`、图片、字体、滚动、窗口尺寸、`<head>` CSS 和动画的追踪）；当只有部分子树发生变化时，差分重建只重做这些子树，输出与完整捕获逐字节一致。对于自动追踪无法感知的变化（canvas 像素绘制、以编程方式修改 CSSOM），传入 `invalidate: true` 强制一次全新捕获。
+- **`snapdom.preCapture()`** — 无参数：在文档上安装意图监听；按下后一秒内发生的捕获会归属到被按下的控件，此后对该控件的意图会用同样的选项捕获它的元素。没有手势就不会运行任何东西。`preCache` 已移除：既然从第一次捕获起就记忆化，捕获本身就是预热。
+- **重复捕获记忆化** — 引擎默认行为，无需任何选项：每个元素从第一次捕获起就被记忆化（限定范围的 `MutationObserver`，以及对 `<video>`、图片、字体、滚动、窗口尺寸、`<head>` CSS、动画和 `:hover` 的追踪；最多同时保留 64 个记忆，按最近最少使用淘汰）；当只有部分子树发生变化时，差分重建只重做这些子树，输出与完整捕获逐字节一致。对于自动追踪无法感知的变化（canvas 像素绘制、以编程方式修改 CSSOM），传入 `invalidate: true` 强制一次全新捕获。
 
 ## 跨浏览器处理
 

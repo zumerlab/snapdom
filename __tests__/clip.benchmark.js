@@ -2,7 +2,7 @@
 // The claim under test: viewport capture must be FASTER than full page, because offscreen
 // subtrees are pruned before styling/inlining and the raster area is viewport-sized.
 // Run: `npm run test:benchmark` (or target this file).
-// NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
+// NOTE: burst:false pins these benches to the cold pipeline — the memo would
 // otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index.js'

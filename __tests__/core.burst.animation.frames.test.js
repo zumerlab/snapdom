@@ -22,7 +22,7 @@ describe('animated subtrees ride the diff path', () => {
     host.appendChild(sibling)
     document.body.appendChild(host)
 
-    // Warm up: several static captures engage auto-burst and retain artifacts.
+    // Warm up: static captures memoize from the first one and retain artifacts.
     let last
     for (let i = 0; i < 4; i++) last = await snapdom(host)
     const memoBefore = last

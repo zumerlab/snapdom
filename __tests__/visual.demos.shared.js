@@ -254,8 +254,7 @@ const overrides = {
   'd10-multi-background-text': {
     setup: async (win) => { await until(win, () => win.document.querySelector('body > img')) },
   },
-  // Awaits preCache(document), pure network, during which the page sits perfectly still,
-  // then captures each .test-node and appends the results into #output. Wait for the count
+  // Captures each .test-node in turn and appends the results into #output. Wait for the count
   // the demo intends to produce rather than for the page to merely look quiet.
   'd12-backgrounds-test': {
     setup: async (win) => {

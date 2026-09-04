@@ -29,8 +29,8 @@ The English documents define the intended structure and feature coverage. The im
 Keep these items byte-for-byte equivalent to the English source unless the code itself changes:
 
 - executable code in fenced code blocks;
-- import paths such as `@zumer/snapdom/preCache`;
-- API and method names such as `snapdom`, `preCache`, `toPng`, and `download`;
+- import paths such as `@zumer/snapdom/plugins`;
+- API and method names such as `snapdom`, `preCapture`, `toPng`, and `download`;
 - option names such as `outerShadows`, `embedFonts`, and `useProxy`;
 - hook names such as `beforeClone` and `afterExport`;
 - HTML and SVG names such as `<foreignObject>`, `<canvas>`, and `shadowRoot`;
@@ -52,7 +52,7 @@ Use this table as the default glossary. Context still takes priority over mechan
 | rasterize | 光栅化 | Prefer over a literal or unexplained transliteration. |
 | cross-origin | 跨源 | Do not replace with the less precise “跨域”. |
 | CORS / proxy | 跨源 / 代理 | Preserve `useProxy` and other identifiers. |
-| `preCache` | `preCache` | It is a method name, not the general noun “预缓存”. Never translate it. |
+| `preCapture` | `preCapture` | It is a method name, not the general noun “预捕获”. Never translate it. |
 | Shadow DOM | Shadow DOM | Keep the established platform term in English. |
 | pseudo-element | 伪元素 | Use for `::before`, `::after`, and related concepts. |
 | computed style | 计算样式 | Avoid “样式快照” unless the snapshot action is the point. |
@@ -65,8 +65,8 @@ Use this table as the default glossary. Context still takes priority over mechan
 
 When an identifier also resembles an English noun, its role decides the translation:
 
-- `preCache` as a method name stays `preCache`.
-- “warm the cache ahead of time” as a general action may be translated as “提前预热缓存”.
+- `preCapture` as a method name stays `preCapture`.
+- “capture before the click” as a general action may be translated as “在点击之前捕获”.
 
 ## Chinese writing style
 

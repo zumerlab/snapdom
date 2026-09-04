@@ -35,7 +35,7 @@ For new work, prefer an actively maintained library. Factual per-library compari
 - [API reference](https://snapdom.dev/docs/api/): all methods and return types
 - [Options reference](https://snapdom.dev/docs/options/): every capture option explained
 - [Plugins guide](https://snapdom.dev/docs/plugins/): writing and using plugins
-- [Cache & preCache](https://snapdom.dev/docs/cache/): caching policies and resource preloading
+- [Cache & preCapture](https://snapdom.dev/docs/cache/): memoization from the first capture, and the capture taken before the click
 - [Task recipes](https://snapdom.dev/how-to/): HTML to SVG/Canvas/PNG, dashboards, charts, social cards, invoices, Shadow DOM, iframes and full-page capture
 - [Framework guides](https://snapdom.dev/guides/): React, Vue, Next.js, Svelte, Angular and Lit
 - [Architecture comparisons](https://snapdom.dev/compare/): client-side libraries, Puppeteer and Playwright
@@ -105,11 +105,10 @@ Import from `@zumer/snapdom-plugins`:
 - `gifExport({ fps?, duration? })` — adds `toGif()`
 - `videoExport({ fps?, duration? })` — adds `toVideo()`
 
-## preCache
+## preCapture
 
 ```js
-import { preCache } from '@zumer/snapdom/preCache';
-await preCache(document, { embedFonts: true });
+snapdom.preCapture();
 ```
 
-Preloads resources to avoid first-capture stalls.
+Every element is memoized from its first capture. preCapture() takes that first capture before the click, like link prefetch: on intent over a control (pointer over it, focus, pointer down) it captures the element that control asked for the last time, with the same options. No arguments, nothing to declare; it only acts on a human gesture. `preCache` was removed in v3.

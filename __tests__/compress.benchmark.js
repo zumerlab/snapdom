@@ -4,7 +4,7 @@
 //
 // NOTE: for stable numbers + an output-size + fidelity (pixel-diff) report, prefer the standalone
 // harness `node bench/compress.mjs` (Playwright direct). vitest bench only reports time.
-// NOTE: burst:false pins these benches to the cold pipeline — auto-burst would
+// NOTE: burst:false pins these benches to the cold pipeline — the memo would
 // otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index.js'

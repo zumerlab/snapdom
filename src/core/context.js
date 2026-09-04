@@ -49,7 +49,7 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
  * @param {boolean} [options.outerTransforms=true]
  * @param {boolean|'subtree'} [options.outerShadows=false]
  * @param {boolean} [options.reconcile=false] - measure the clone in-document and pin diverging boxes
- * @param {boolean} [options.burst] - force the memo on or off; unset auto-engages after 3 captures of one element in 2 s (burst.js)
+ * @param {boolean} [options.burst] - force the memo on or off; unset memoizes from the first capture (burst.js)
  * @param {'canvas'} [options.engine] - experimental: the canvas-place-element engine (engines/htmlInCanvas.js)
  * @param {boolean} [options.invalidate=false] - one fresh capture for changes no observer sees (canvas draws, CSSOM edits)
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.

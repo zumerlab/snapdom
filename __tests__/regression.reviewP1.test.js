@@ -87,7 +87,7 @@ describe('burst does not commit a memo torn by a record-less event', () => {
     }
   }
 
-  /** Auto-burst engages after three captures of the same element inside 2s. */
+  /** The memo engages on the first capture; three settled captures leave it warm. */
   async function engageBurst(el, plugins) {
     for (let i = 0; i < 3; i++) { await snapdom(el, { plugins }); await settle() }
   }

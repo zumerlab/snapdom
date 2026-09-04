@@ -35,7 +35,6 @@ import { snapdom } from '@zumer/snapdom';
 
 Subpath exports:
 ```js
-import { preCache } from '@zumer/snapdom/preCache';
 import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, agentMap } from '@zumer/snapdom-plugins';
 ```
 
@@ -172,25 +171,13 @@ Plugin exports appear as toX() methods (e.g. toPdfImage(), toAscii(), toAgentMap
 
 ---
 
-## PRECACHE
+## PRECAPTURE
 
 ```js
-import { preCache } from '@zumer/snapdom/preCache';
-await preCache(root?, options?);
+snapdom.preCapture();
 ```
 
-Preloads images, backgrounds, fonts into cache before capture.
-
-Options:
-| Option | Type | Default |
-|--------|------|---------|
-| root | Element|Document | document |
-| embedFonts | boolean | true |
-| localFonts | LocalFont[] | [] |
-| iconFonts | string|RegExp|Array | - |
-| useProxy | string | '' |
-| cache | CachePolicy | 'full' |
-| excludeFonts | ExcludeFonts | - |
+Every element is memoized from its first capture. `preCapture()` takes that first capture before the click, the way links prefetch: arm it once, and intent on a control (pointer over it, focus, pointer down) captures the element that control asked for the last time, with the same options, 100 to 400 ms before the click lands. No arguments, nothing to declare, nothing runs without a gesture. Captures with `burst: false` are never learned. `preCache` was removed in v3: the capture is its own warm-up.
 
 ---
 
@@ -674,11 +661,10 @@ const jpeg = await result.toJpg({ quality: 0.8 });
 const canvas = await result.toCanvas();
 ```
 
-### preCache for instant captures
+### The capture ready before the click
 ```js
-import { preCache } from '@zumer/snapdom/preCache';
-await preCache(document.querySelector('.app'), { embedFonts: true });
-const img = await snapdom.toPng(element); // fast, resources cached
+snapdom.preCapture();
+button.onclick = () => snapdom.toPng(hero, { scale: 2 }); // learned on the first click, prefetched from the second on
 ```
 
 ### React integration
@@ -749,13 +735,13 @@ Cause: CORS. Fix: useProxy option or crossorigin="anonymous" on images.
 Fix: lazy placeholders resolve automatically on the clone (data-src, data-lazy-src, data-original, data-srcset).
 
 ### Custom fonts missing
-Fix: Set embedFonts: true. Use preCache for faster first capture. Provide localFonts for offline.
+Fix: Set embedFonts: true. Provide localFonts for offline.
 
 ### Icon fonts not rendering
 Fix: Register matchers via iconFonts: ['MyIconFont', /icon/i].
 
 ### Safari first capture blank
-Cause: WebKit #219770. Fix: handled automatically. Use preCache for best results.
+Cause: WebKit #219770. Fix: handled automatically.
 
 ### Capture wrong size
 Fix: Set explicit width/height, or use scale for proportional sizing.
@@ -783,7 +769,7 @@ import type {
   SnapdomOptions, CaptureResult, CaptureContext, SnapdomPlugin,
   PluginUse, PluginFactory, LocalFont, ExcludeFonts, CachePolicy,
   RasterMime, BlobType, DownloadOptions, BlobOptions,
-  Exporter, ExportMap, PreCacheOptions
+  Exporter, ExportMap
 } from '@zumer/snapdom';
 ```
 

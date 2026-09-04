@@ -53,7 +53,7 @@ v3 is a ground-up rework of the capture engine. The API shape is the same and v2
 
 **It's much faster, everywhere.**
 - **First captures are up to 2× faster.** A one-time stylesheet scan tells the engine which CSS properties your page can actually use, so the per-node style snapshot reads ~50 properties instead of ~400 — the single biggest cost in any DOM capture.
-- **Repeat captures are effectively free.** Capture the same element a few times and snapdom starts memoizing automatically: unchanged repeats return instantly, and when something *does* change, a **differential recapture** rebuilds only the mutated subtrees (~5× faster on mutating dashboards) with **byte-identical** output to a full capture.
+- **Repeat captures are effectively free.** Every element is memoized from its first capture: unchanged repeats return instantly, and when something *does* change, a **differential recapture** rebuilds only the mutated subtrees (~5× faster on mutating dashboards) with **byte-identical** output to a full capture.
 - Invalidation is automatic and complete: DOM mutations, `<video>` frames, image and font loads, scroll, viewport resizes, `<head>` CSS changes, and CSS/WAAPI animations are all tracked. No API to learn, nothing to configure. Inlined images are also downsampled to their visible resolution automatically (codec-preserving, worker-offloaded).
 
 **It's more faithful, by default.**
@@ -415,7 +415,7 @@ order can still flip between runs. The complex card is 1.74×.
 | Deep nested tree — 16 chains × 10 levels, ~2,100 nodes, a `::before` stripe on every leaf | **295.5** | html2canvas 708.4 | domlens 1,106.0 · modern-screenshot 1,280.3 · html-to-image 2,240.1 |
 
 Polling is the one row where SnapDOM runs with its **defaults**, memoization on: a dashboard
-that re-captures the same element every tick is exactly what auto-burst and differential
+that re-captures the same element every tick is exactly what the memo and differential
 recapture exist for. Without the memo (`burst: false`) the same loop costs 24.7 ms — the memo
 is worth 1.33× here, not the order of magnitude an unrasterized comparison would suggest,
 because every tick still pays the raster and the PNG encode.
