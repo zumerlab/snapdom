@@ -24,7 +24,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, cpSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, cpSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -67,6 +67,9 @@ try {
   const consumer = join(work, 'consumer')
   mkdirSync(join(consumer, 'node_modules', '@zumer'), { recursive: true })
   run('tar', ['-xzf', tgz, '-C', work])
+  const packedPkg = JSON.parse(readFileSync(join(work, 'package', 'package.json'), 'utf8'))
+  if (Object.hasOwn(packedPkg.exports || {}, './preCache')) fail('removed /preCache subpath is still exported')
+  else pass('removed /preCache subpath is not exported')
   cpSync(join(work, 'package'), join(consumer, 'node_modules', '@zumer', 'snapdom'), { recursive: true })
   // The repo's own tsc, run in place — TypeScript 7 ships its compiler as a platform-specific
   // binary package, so copying node_modules/typescript alone gets you a launcher with nothing
@@ -119,6 +122,14 @@ export async function use(el: HTMLElement) {
   const checks = [
     ['import root', `import('@zumer/snapdom').then(m => { if (typeof m.snapdom !== 'function') throw new Error('snapdom missing') })`],
     ['import /plugins', `import('@zumer/snapdom/plugins').then(m => { if (typeof m.registerPlugins !== 'function') throw new Error('registerPlugins missing') })`],
+    ['root omits removed APIs', `import('@zumer/snapdom').then(m => {
+      if ('preCache' in m || 'prepare' in m) throw new Error('removed named export present')
+      if ('preCache' in m.snapdom || 'prepare' in m.snapdom) throw new Error('removed snapdom method present')
+    })`],
+    ['reject removed /preCache', `import('@zumer/snapdom/preCache').then(
+      () => { throw new Error('removed /preCache subpath resolved') },
+      e => { if (!e || e.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw e }
+    )`],
   ]
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', version: '1.0.0', private: true }))
   for (const [name, src] of checks) {
@@ -146,6 +157,7 @@ vm.runInContext(code, ctx)
 const leaked = Object.keys(ctx).filter((k) => !before.has(k))
 if (leaked.length) throw new Error('leaked ' + leaked.length + ' globals: ' + leaked.slice(0, 8).join(', '))
 if (typeof win.snapdom !== 'function') throw new Error('window.snapdom not assigned')
+if ('preCache' in win.snapdom || 'prepare' in win.snapdom) throw new Error('removed browser API present')
 `)
   try {
     run(process.execPath, [probe], { cwd: consumer })

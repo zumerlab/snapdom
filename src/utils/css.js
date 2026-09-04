@@ -31,6 +31,7 @@ export const NO_DEFAULTS_TAGS = new Set([
 
 import { cache } from '../core/cache'
 import { ALWAYS_PROPS } from '../modules/styleScan'
+import { isInternalNode, markInternalNode } from './ownership.js'
 
 // -----------------------------------------------------------------------------
 // getDefaultStyleForTag -> single gate on NO_DEFAULTS_TAGS + a marked sandbox
@@ -59,9 +60,13 @@ export function getDefaultStyleForTag(tagName) {
     return cache.defaultStyle.get(tagName)
   }
 
-  let sandbox = document.getElementById('snapdom-sandbox')
+  // Duplicate ids are invalid but possible, and this public legacy id belongs to author DOM
+  // unless private provenance says otherwise. Search every match so an author node appearing
+  // first never gets reused as our measurement host.
+  let sandbox = [...document.querySelectorAll('#snapdom-sandbox')].find(isInternalNode)
   if (!sandbox) {
     sandbox = document.createElement('div')
+    markInternalNode(sandbox)
     sandbox.id = 'snapdom-sandbox'
     sandbox.setAttribute('data-snapdom-sandbox', 'true')
     sandbox.setAttribute('aria-hidden', 'true')

@@ -10,6 +10,7 @@
  */
 import { isSafari } from '../utils/browser'
 import { sessionWarn } from '../utils/debug.js'
+import { markInternalNode } from '../utils/ownership.js'
 
 // #425: browsers cap how large an image they will decode and how large a canvas they
 // will back. Chrome/Firefox reject > 16384px on a side and a total decoded-image area
@@ -382,7 +383,7 @@ function inkProbe() {
  * @returns {Promise<boolean>} whether ink was seen (false on deadline, or when unknowable)
  */
 async function waitForImgPaint(img, verify, probe) {
-  img.setAttribute('data-snapdom-internal', '')
+  markInternalNode(img)
   img.style.cssText = 'position:fixed;left:-99999px;top:-99999px;pointer-events:none'
   document.body.appendChild(img)
   try {
@@ -439,7 +440,7 @@ function acquireDecodeImage(src) {
   }
   if (!_decodeFrame) {
     const frame = document.createElement('iframe')
-    frame.setAttribute('data-snapdom-internal', '')
+    markInternalNode(frame)
     frame.setAttribute('aria-hidden', 'true')
     frame.style.cssText =
       'position:absolute;left:-9999px;top:0;width:0;height:0;border:0;visibility:hidden;pointer-events:none'
@@ -499,20 +500,22 @@ function startDecode(image, src) {
 // eight. liquidGL's home, 1.5 MB of video frames under 100 KB of markup: 13.7 → 31.3. The deep
 // tree, 2 MB of boxes and no resources: 579 → 111, and it wins from 288 KB of markup up. Flat
 // markup (a 500-row table, 400 paragraphs, 220 boxes) moves by 3 ms either way. So the bands
-// stay off when the resources outweigh the markup (resourceHeavy), which leaves every
-// resource-free payload on the path measured above.
+// stay off when the sampled payload looks resource-dominated (resourceHeavy), while ordinary
+// resource-free markup takes the path measured above.
 const BAND_MIN_AREA = 4e6
 const BAND_AREA = 2e6
 const MAX_BANDS = 8
 
 const MARKUP_MARKS = ['%3C', '%3E', '%20', '%7B', '%7D', '%3B']
 /**
- * Whether embedded data: resources make up more of `src` than the markup does. Sampled, not
- * scanned: 200 evenly spaced 48-character windows of the ENCODED payload (encodeSvgToDataURL).
- * A window of markup or css carries an encoded `<`, `>`, space, brace or `;`; a window of
- * base64 never does. Exact counting is O(payload) per resource, because each resource's end
- * has to be searched for: 359 ms on 300 thumbnails (6.7 MB). The sample costs microseconds at
- * any size and lands within a few percent, which is all a half-way threshold needs.
+ * Cheap proxy for an encoded payload dominated by embedded data rather than markup: sample
+ * 200 evenly spaced 48-character windows (encodeSvgToDataURL output) and count windows with
+ * none of the common encoded markup delimiters. This deliberately is not a parser — unusual
+ * text can look resource-like and a small resource can fall between samples. A false positive
+ * only disables banding; a false negative only adds repeated draws. Both paths use the same
+ * decoded image and source rectangles, so the consequence is time, never different content.
+ * Exact counting is O(payload) per resource because every data URL end must be found: 359 ms
+ * on 300 thumbnails (6.7 MB). The sample costs microseconds at any size.
  * @param {string} src
  * @returns {boolean}
  */
@@ -702,8 +705,13 @@ export async function toCanvas(url, options) {
       outH = optH
       outW = refW * k
     } else {
-      outW = natW
-      outH = natH
+      // A native html-in-canvas result is already painted at capture scale*dpr. Its
+      // canonical meta remains in logical CSS pixels, like an SVG viewBox; start from that
+      // logical box before applying the requested scale/dpr below or each factor lands
+      // twice. Plain caller-provided canvases carry no meta and keep their natural size.
+      const logicalCanvas = srcCanvas && Number.isFinite(meta.vbW) && Number.isFinite(meta.vbH)
+      outW = logicalCanvas ? meta.vbW : natW
+      outH = logicalCanvas ? meta.vbH : natH
     }
 
     // ONE sizing rule across every exporter (v3): width/height are the absolute output CSS

@@ -1,19 +1,11 @@
-// Two interactions that produce no mutation record and that the invalidation wiring does not
-// cover, reproduced with pixels rather than read off the code: a hover that moved between two
-// captures (styles.js keeps :hover off the epoch on purpose, and burst.js has no row for it),
-// and a selection that changed under captureSelection (nothing listens to selectionchange).
+// Interactions that produce no mutation record, reproduced with pixels rather than inferred
+// from code: hover is synchronously stamped before a memo decision, while selection capture
+// conservatively bypasses memoization.
 // Both drive the REAL pointer / Selection, so green means the frame followed the interaction
 // and red means a memo served the previous one. The control at the end runs the selection
 // case with the memo off, to pin the staleness on the memo and not on the pipeline.
 //
-// 2026-09-04: the two hover cases are FIXED and run as plain `it` (invalidateHoverChanges in
-// styles.js stamps what the :hover chain changed, once per capture; burst.js compares the same
-// chain before serving). The selection case is still open and stays `it.fails`. Original note:
-// PAUSED 2026-09-04: the three defects are real and unfixed, so they are marked `it.fails`
-// to keep the suite green. The agreed fix is a per-capture question, not listeners: diff the
-// hover chain (root.querySelectorAll(':hover') + ancestors, 18 µs on the 500-row table) against
-// the previous capture and stamp what changed; compare a selection signature when serving the
-// memo under captureSelection. When it lands, these go red: drop the `.fails`.
+// The assertions are intentionally independent of event-delivery timing.
 import { describe, it, expect, afterEach, vi, inject } from 'vitest'
 import { userEvent } from '@vitest/browser/context'
 import { snapdom } from '../src/index.js'
@@ -104,12 +96,61 @@ describe('a hover that left between two captures', () => {
     expect(r2).not.toBe(r1)
     expect(hits(await r2.toCanvas(), RED)).toBe(0)
   })
+
+  it('invalidates a captured sibling styled by an outside :hover trigger', async () => {
+    mountCSS('.zz-trigger{display:block;width:40px;height:20px}.zz-hover-sibling{width:240px;height:70px;background:rgb(0,0,255)}.zz-trigger:hover ~ .zz-hover-sibling{background:rgb(255,0,0)}')
+    mounted = document.createElement('div')
+    mounted.innerHTML = '<button class="zz-trigger">H</button><div class="zz-hover-sibling"></div>'
+    document.body.appendChild(mounted)
+    const trigger = mounted.firstElementChild
+    const target = mounted.lastElementChild
+    await snapdom(target, BASE)
+
+    await userEvent.hover(trigger)
+    expect(trigger.matches(':hover')).toBe(true)
+    const automatic = await snapdom.toCanvas(target, BASE)
+    const full = await snapdom.toCanvas(target, { ...BASE, burst: false })
+    expect(hits(full, RED)).toBeGreaterThan(10_000)
+    expect(hits(automatic, RED)).toBeGreaterThan(10_000)
+  })
+
+  it('invalidates :hover sibling styles inside an open shadow root', async () => {
+    mounted = document.createElement('div')
+    document.body.appendChild(mounted)
+    const shadow = mounted.attachShadow({ mode: 'open' })
+    shadow.innerHTML = '<style>.trigger{display:block;width:40px;height:20px}.target{width:240px;height:70px;background:rgb(0,0,255)}.trigger:hover ~ .target{background:rgb(255,0,0)}</style><button class="trigger">H</button><div class="target"></div>'
+    const trigger = shadow.querySelector('.trigger')
+    await snapdom(mounted, BASE)
+
+    await userEvent.hover(trigger)
+    expect(trigger.matches(':hover')).toBe(true)
+    const automatic = await snapdom.toCanvas(mounted, BASE)
+    const full = await snapdom.toCanvas(mounted, { ...BASE, burst: false })
+    expect(hits(full, RED)).toBeGreaterThan(10_000)
+    expect(hits(automatic, RED)).toBeGreaterThan(10_000)
+  })
+
+  it('invalidates shadow siblings from a retargeted focus interaction', async () => {
+    mounted = document.createElement('div')
+    document.body.appendChild(mounted)
+    const shadow = mounted.attachShadow({ mode: 'open' })
+    shadow.innerHTML = '<style>.target{width:240px;height:70px;background:rgb(0,0,255)}.trigger:focus ~ .target{background:rgb(255,0,0)}</style><button class="trigger">FOCUS</button><div class="target"></div>'
+    const trigger = shadow.querySelector('.trigger')
+    await snapdom(mounted, BASE)
+
+    trigger.focus()
+    expect(shadow.activeElement).toBe(trigger)
+    const automatic = await snapdom.toCanvas(mounted, BASE)
+    const full = await snapdom.toCanvas(mounted, { ...BASE, burst: false })
+    expect(hits(full, RED)).toBeGreaterThan(10_000)
+    expect(hits(automatic, RED)).toBeGreaterThan(10_000)
+  })
 })
 
 describe('a selection that changed between two captures', () => {
   const SEL_CSS = '.zzs{background:rgb(255,255,255)} .zzs::selection{background:rgb(255,0,102)}'
 
-  it.fails('is not served again by the burst memo', async () => {
+  it('is not served again by the burst memo', async () => {
     mountCSS(SEL_CSS)
     mountBox('zzs')
     const opts = { ...BASE, burst: true, captureSelection: true }
@@ -131,5 +172,37 @@ describe('a selection that changed between two captures', () => {
     expect(hits(await snapdom.toCanvas(mounted, opts), PINK)).toBeGreaterThan(200)
     window.getSelection().removeAllRanges()
     expect(hits(await snapdom.toCanvas(mounted, opts), PINK)).toBe(0)
+  })
+})
+
+describe(':active captured by preCapture', () => {
+  it('does not leak the pressed frame into the click capture', async () => {
+    mountCSS('.zz-active{color:white;background:rgb(0,0,255)}.zz-active:active{background:rgb(255,0,0)}')
+    mounted = document.createElement('button')
+    mounted.className = 'zz-active'
+    mounted.style.cssText = 'width:240px;height:70px;border:0'
+    mounted.textContent = 'PRESS'
+    document.body.appendChild(mounted)
+    snapdom.preCapture()
+
+    // Learn this button → element mapping the same way an app's pointerdown handler does.
+    mounted.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }))
+    await snapdom(mounted, BASE)
+
+    // The known-control prefetch now starts on the real pointerdown while :active is true.
+    let activeDuringDown = false
+    mounted.addEventListener('pointerdown', () => { activeDuringDown = mounted.matches(':active') })
+    await userEvent.click(mounted)
+    await new Promise((r) => setTimeout(r, 80))
+    expect(mounted.matches(':active')).toBe(false)
+
+    const automatic = await snapdom.toCanvas(mounted, BASE)
+    const full = await snapdom.toCanvas(mounted, { ...BASE, burst: false })
+    expect(hits(full, [0, 0, 255])).toBeGreaterThan(5000)
+    expect(hits(automatic, [0, 0, 255])).toBeGreaterThan(5000)
+    expect(hits(automatic, RED)).toBe(0)
+    // Chromium/WebKit expose :active during pointerdown; Firefox's automation currently
+    // does not. The final frame assertion remains valid in all three engines.
+    expect(activeDuringDown || /Firefox/.test(navigator.userAgent)).toBe(true)
   })
 })

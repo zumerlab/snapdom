@@ -14,6 +14,7 @@ import type {
   PluginFactory,
   ExportMap,
   CaptureContext,
+  BlobType,
 } from './snapdom'
 
 declare const el: Element
@@ -75,6 +76,11 @@ async function invalidateOption() {
   void result
 }
 
+function disabledCacheAlias() {
+  const options: SnapdomOptions = { cache: false }
+  return options
+}
+
 function pluginShape() {
   const plugin: SnapdomPlugin = {
     name: 'example',
@@ -91,6 +97,12 @@ function pluginShape() {
   snapdom.plugins(plugin, factory, [factory, { foo: 1 }], { plugin: factory, options: {} })
 }
 
+function normalizedPluginContext(ctx: CaptureContext) {
+  const format: BlobType = ctx.format
+  const legacyType: BlobType = ctx.type
+  void format; void legacyType
+}
+
 function preCaptureHelper() {
   const armed: void = snapdom.preCapture()
   return armed
@@ -105,6 +117,8 @@ void mainCallable
 void clipOptionShapes
 void staticNamespaceHelpers
 void invalidateOption
+void disabledCacheAlias
 void pluginShape
+void normalizedPluginContext
 void preCaptureHelper
 void canvasTargetOption

@@ -1,6 +1,6 @@
-// Auto-burst: with no explicit `burst` option, repeated captures of the same element in a
-// short window enable memoization automatically. Explicit false disables; canvas-bearing
-// elements never auto-enable (their pixel draws are invisible to MutationObserver).
+// Auto-burst: with no explicit `burst` option, an eligible static element is memoized from
+// its first capture. Explicit false disables it; canvas-bearing elements always capture fresh
+// because their pixel draws are invisible to MutationObserver.
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 

@@ -39,6 +39,7 @@ vi.mock('../src/modules/snapFetch.js', () => ({
 import { embedCustomFonts, ensureFontsReady } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
+import { isInternalNode } from '../src/utils/ownership.js'
 
 /* ----------------- helpers dom & utils ------------------ */
 function addLink(href) {
@@ -195,6 +196,14 @@ describe('embedCustomFonts - @import injection & dedupe', () => {
   it('reaches @import urls via a temporary <link> that is removed afterwards (non-destructive)', async () => {
     const imported = 'https://fonts.googleapis.com/css2?family=Inter:wght@400'
     addStyle(`@import url("${imported}");`)
+    const addedLinks = []
+    const collectAddedLinks = (records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) if (node.localName === 'link') addedLinks.push(node)
+      }
+    }
+    const observer = new MutationObserver(collectAddedLinks)
+    observer.observe(document.head, { childList: true })
 
     // 1) CSS importado
     vi.mocked(snapFetch).mockResolvedValueOnce({
@@ -218,11 +227,15 @@ describe('embedCustomFonts - @import injection & dedupe', () => {
       required: req('Inter__400__normal__100'),
       usedCodepoints: cps('A'),
     })
+    collectAddedLinks(observer.takeRecords())
+    observer.disconnect()
 
     // The temporary <link> injected to reach the @import must be gone afterwards: the
     // capture collected the font CSS but left the user's <head> untouched (#non-destructive).
     const links = [...document.querySelectorAll(`link[rel="stylesheet"][href="${imported}"]`)]
     expect(links.length).toBe(0)
+    expect(addedLinks).toHaveLength(1)
+    expect(isInternalNode(addedLinks[0])).toBe(true)
 
     expect(css).toMatch(/font-family:\s*['"]?Inter['"]?/)
     expect(css).toMatch(/url\(["']?data:/)
@@ -234,6 +247,29 @@ describe('embedCustomFonts - @import injection & dedupe', () => {
     })
     const facesCount = (css2.match(/@font-face/g) || []).length
     expect(facesCount).toBe(1)
+  })
+
+  it('does not remove an author link carrying the injected-import marker', async () => {
+    const imported = 'https://fonts.googleapis.com/css2?family=AuthorMarker:wght@400'
+    const authored = addLink(imported)
+    authored.setAttribute('data-snapdom', 'injected-import')
+    addStyle(`@import url("${imported}");`)
+    vi.mocked(snapFetch).mockResolvedValue({
+      ok: true,
+      data: '',
+      status: 200,
+      url: imported,
+      fromCache: false,
+    })
+
+    await embedCustomFonts({
+      required: req('AuthorMarker__400__normal__100'),
+      usedCodepoints: cps('A'),
+    })
+
+    expect(authored.isConnected).toBe(true)
+    expect(authored.getAttribute('data-snapdom')).toBe('injected-import')
+    expect(isInternalNode(authored)).toBe(false)
   })
 })
 

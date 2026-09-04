@@ -32,7 +32,55 @@ import { hasImpureRenderPlugins } from './plugins.js'
 
 /** Content whose capture involves whole-tree or root-coupled machinery (svg defs hoisting,
  *  nested rasterization, shadow scoping…) — a dirty subtree touching any of these goes full. */
-const HEAVY_SUBTREE = 'svg,iframe,canvas,video,audio,object,embed,slot,template,picture,style'
+const HEAVY_SUBTREE = 'svg,iframe,canvas,video,audio,object,embed,slot,template,picture,style,pre'
+
+/** prepareClone applies these features after the subtree clone/style passes. Replacing one
+ *  descendant cannot reproduce their root-coupled state, so their presence makes a retained
+ *  tree ineligible for differential splicing. */
+function hasTopLayerControls(element) {
+  try {
+    return element.matches?.('dialog,[popover]') || !!element.querySelector?.('dialog,[popover]')
+  } catch {
+    return true
+  }
+}
+
+/** Backdrop-filter is pre-composed after image/background inlining by cloning and pruning
+ *  the whole prepared tree. A splice would leave that copied backdrop at the previous frame.
+ *  The retained style keys preserve the live computed value from before pre-composition. */
+const BACKDROP_FILTER_RE = /(?:^|;)\s*(?:-webkit-)?backdrop-filter:\s*(?!none(?:\s*!important)?(?:;|$))[^;]+/i
+function retainedUsesBackdropFilter(R) {
+  if (R.__usesBackdropFilter !== undefined) return R.__usesBackdropFilter
+  let found = false
+  for (const key of R.styleMap.values()) {
+    if (BACKDROP_FILTER_RE.test(key)) { found = true; break }
+  }
+  R.__usesBackdropFilter = found
+  return found
+}
+
+/** A mutation can activate backdrop-filter where the retained frame had `none`. Only pay the
+ *  computed-style walk when author CSS (or an inline declaration) can set the property, and
+ *  only over the already-dirty subtree. */
+function subtreeUsesBackdropFilter(root, universe) {
+  let possible = universe.has('backdrop-filter') || universe.has('-webkit-backdrop-filter')
+  if (!possible) {
+    const hasInline = (node) => /(?:^|;)\s*(?:-webkit-)?backdrop-filter\s*:/i.test(node.getAttribute?.('style') || '')
+    possible = hasInline(root)
+    if (!possible) {
+      try { possible = !!root.querySelector?.('[style*="backdrop-filter" i]') } catch { possible = true }
+    }
+  }
+  if (!possible) return false
+  const nodes = [root]
+  if (root.querySelectorAll) nodes.push(...root.querySelectorAll('*'))
+  for (const node of nodes) {
+    const style = getComputedStyle(node)
+    const value = style.getPropertyValue('backdrop-filter') || style.getPropertyValue('-webkit-backdrop-filter')
+    if (value && value !== 'none') return true
+  }
+  return false
+}
 
 /** Selector/counter semantics that let a mutation inside one subtree change rendering
  *  OUTSIDE it (sibling combinators, :has(), CSS counters) — the subtree-diff premise breaks.
@@ -166,21 +214,29 @@ async function diffCapture(element, state, context) {
   const R = state.retained
   if (!R || !R.clone || !R.styleMap || !R.srcToClone) return null
   // Root/whole-tree coupled features: their passes read or reshape the entire clone.
-  if (context.reconcile || context.clip || R.clipWindow) return null
+  if (context.reconcile || context.clip || context.captureSelection || R.clipWindow) return null
+  // prepareClone re-anchors fixed/sticky descendants only when the capture ROOT is scrolled.
+  // A rebuilt subtree would skip that pass and paint in viewport rather than root space.
+  if (element.scrollTop || element.scrollLeft) return null
+  // Open/closed state can change without reshaping the DOM, and top-layer preparation moves
+  // clones plus synthesizes sibling backdrops at the capture root. Keep these trees whole.
+  if (hasTopLayerControls(element)) return null
+  // emulateBackdropFilters copies/prunes the complete clone after asset inlining. The copied
+  // layer cannot be incrementally updated when a subtree changes.
+  if (retainedUsesBackdropFilter(R)) return null
   // Fonts were embedded in the retained capture: a dirty subtree can introduce codepoints
   // or faces the embedded set lacks — only the full pipeline recollects usage.
   if (R.fontsCSS) return null
   // Render-affecting plugins: beforeRender would mutate retained state, and the rebuilt
   // subtree would skip whole-tree work. Full pipeline unless declared pure.
   if (hasImpureRenderPlugins(context)) return null
-  // `pure` promises deterministic and idempotent; it does NOT promise SUBTREE-LOCAL, and
-  // these two hooks are exactly where that gap bites. An afterClone that rewrites the whole
-  // clone never re-runs on the spliced region, and resolveNode hooks are collected inside
-  // captureDOM (options.__resolveNodeHooks), which this path never reaches, so the deepClone
-  // below would silently skip every one of them. Bail regardless of `pure`: the memo hit,
-  // which serves an unchanged result, is the path where `pure` still means something.
+  // `pure` promises deterministic and idempotent; it does NOT make a skipped lifecycle hook
+  // optional. beforeSnap/beforeClone may prepare the fresh context/live tree, afterClone may
+  // rewrite the whole clone, and resolveNode hooks are collected inside captureDOM (which this
+  // path never enters). Bail regardless of `pure`: unchanged memo hits are still safe.
   for (const p of context.plugins || []) {
-    if (p && (typeof p.resolveNode === 'function' || typeof p.afterClone === 'function')) return null
+    if (p && (typeof p.beforeSnap === 'function' || typeof p.beforeClone === 'function' ||
+      typeof p.resolveNode === 'function' || typeof p.afterClone === 'function')) return null
   }
   // Scoped ::marker/::first-line rules are attribute-keyed per element — a rebuilt or
   // removed subtree would strand/miss rules and break the byte-equality guarantee.
@@ -207,6 +263,7 @@ async function diffCapture(element, state, context) {
     // Direct children interact with root margin-collapse neutralization — keep it full.
     if (src.parentElement === element) return null
     if (src.matches?.(HEAVY_SUBTREE) || src.querySelector?.(HEAVY_SUBTREE)) return null
+    if (subtreeUsesBackdropFilter(src, universe)) return null
     const oldClone = R.srcToClone.get(src)
     if (!oldClone || !oldClone.parentNode) return null
 

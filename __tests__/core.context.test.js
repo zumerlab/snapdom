@@ -49,7 +49,7 @@ describe('createContext - defaults & normalization', () => {
     expect(ctx.width).toBeNull()
     expect(ctx.height).toBeNull()
     expect(ctx.format).toBe('png')
-    expect(ctx.type).toBe('svg')
+    expect(ctx.type).toBe('png')
     expect(ctx.quality).toBeCloseTo(0.92)
     expect(ctx.dpr).toBe(2) // from mocked devicePixelRatio
     // PNG → no default background color
@@ -146,7 +146,7 @@ describe('createContext - defaults & normalization', () => {
     })
 
     expect(ctx.format).toBe('webp')
-    expect(ctx.type).toBe('svg')
+    expect(ctx.type).toBe('webp')
     expect(ctx.width).toBe(800)
     expect(ctx.height).toBe(600)
     expect(ctx.quality).toBeCloseTo(0.8)

@@ -357,20 +357,40 @@ describe('captureDOM – embedFonts=true (no spies, effect-only)', () => {
 // Sandbox cleanup
 // ──────────────────────────────────────────────────────────────────────────────
 //
-describe('captureDOM – removes #snapdom-sandbox when absolute', () => {
-  it('cleans up the offscreen sandbox', async () => {
-    const sandbox = document.createElement('div')
-    sandbox.id = 'snapdom-sandbox'
-    sandbox.style.position = 'absolute'
-    document.body.appendChild(sandbox)
+describe('captureDOM – sandbox ownership', () => {
+  it('neither reuses nor removes an author sandbox lookalike', async () => {
+    const authored = document.createElement('div')
+    authored.id = 'snapdom-sandbox'
+    authored.setAttribute('data-snapdom-sandbox', 'true')
+    authored.style.position = 'absolute'
+    const sentinel = document.createElement('span')
+    sentinel.textContent = 'author content'
+    authored.appendChild(sentinel)
+    document.body.appendChild(authored)
 
-    const { captureDOM } = await import('../src/core/capture.js')
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 10, 10))
+    try {
+      const { captureDOM } = await import('../src/core/capture.js')
+      const { getDefaultStyleForTag } = await import('../src/utils/css.js')
+      const { isInternalNode } = await import('../src/utils/ownership.js')
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 10, 10))
 
-    const el = document.createElement('div')
-    const url = await captureDOM(el, {})
-    expect(url.startsWith('data:image/svg+xml')).toBe(true)
-    expect(document.getElementById('snapdom-sandbox')).toBeNull()
+      // Force creation of the real measurement host while the author id already exists.
+      getDefaultStyleForTag('snapdom-ownership-probe')
+      const own = [...document.querySelectorAll('#snapdom-sandbox')].find(n => n !== authored)
+      expect(own).toBeTruthy()
+      expect(isInternalNode(authored)).toBe(false)
+      expect(isInternalNode(own)).toBe(true)
+      expect(authored.firstChild).toBe(sentinel)
+
+      const el = document.createElement('div')
+      const url = await captureDOM(el, {})
+      expect(url.startsWith('data:image/svg+xml')).toBe(true)
+      expect(authored.isConnected).toBe(true)
+      expect(sentinel.isConnected).toBe(true)
+      expect(own.isConnected).toBe(false)
+    } finally {
+      authored.remove()
+    }
   })
 })
 

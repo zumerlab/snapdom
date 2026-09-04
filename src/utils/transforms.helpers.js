@@ -12,6 +12,7 @@
 
 import { limitDecimals } from './capture.helpers.js'
 import { getStyle } from './css.js'
+import { markInternalNode } from './ownership.js'
 
 /**
  * Bleed of every outer box-shadow layer, per side. Inset layers add nothing.
@@ -531,7 +532,7 @@ function getMeasureHost() {
   // mutation (styles.js isExternalRecord). Without it every capture of a transformed root
   // bumped the style epoch and re-stamped the whole document, dropping the author-style
   // scan memo and every cached snapshot on the page.
-  n.setAttribute('data-snapdom-internal', '')
+  markInternalNode(n)
   Object.assign(n.style, {
     position: 'absolute',
     left: '-99999px',

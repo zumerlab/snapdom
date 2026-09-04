@@ -31,6 +31,7 @@ import {
 } from '../utils/clone.helpers.js'
 import { isFirefox, isSafari, nextFrame } from '../utils/browser.js'
 import { cloneTextWithSelection, inlineTextFieldSelection } from '../modules/selection.js'
+import { isInternalNode } from '../utils/ownership.js'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Tag handler registry: per-tag clone strategies for elements whose content
@@ -232,7 +233,10 @@ export async function deepClone(node, sessionCache, options) {
   let pendingTextAreaValue = null
   if (node.nodeType === Node.ELEMENT_NODE) {
     const tag = (node.localName || node.tagName || '').toLowerCase()
-    if (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox')) {
+    const internal = isInternalNode(node)
+    // The default-style sandbox is never capture content, even if passed as the root. Its
+    // public id/attribute alone prove nothing; only the private registration authorizes this.
+    if (internal && (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox'))) {
       return null
     }
     // snapdom's own scaffolding below the root. The decode <iframe> that toCanvas keeps in
@@ -241,7 +245,7 @@ export async function deepClone(node, sessionCache, options) {
     // warm capture and 27.5k extra getPropertyValue reads on liquidGL's home, 2026-09-03).
     // The root itself is exempt: fromString captures its own marked mount on purpose.
     // Pinned by `__tests__/core.clone.internalNodes.test.js`.
-    if (node !== options.element && node.hasAttribute('data-snapdom-internal')) {
+    if (node !== options.element && internal) {
       return null
     }
     if (NO_CAPTURE_TAGS.has(tag)) {
@@ -794,21 +798,19 @@ export function isBlankCanvas(node) {
 const FRAME_QUALITY = 0.95
 
 /**
- * Whether every pixel of a drawn frame is opaque, read through a 32x32 scratch so the cost
- * stays O(1) (the downscale blends any transparent pixel into a partial alpha). Video frames
- * are opaque unless the container carries alpha (WebM), and those keep PNG.
- * @param {HTMLCanvasElement} canvas
+ * Whether every pixel of a drawn frame is opaque. A downscaled probe cannot prove this: a
+ * small transparent island can disappear completely during resampling. The exact alpha scan
+ * measured 0.9-1 ms at 1280x720 and 7-10 ms at 3840x2160 across Chromium, Firefox and WebKit
+ * (2026-09-04); that cost applies only while freezing a video frame and prevents lossy JPEG
+ * from erasing real alpha.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} width
+ * @param {number} height
  * @returns {boolean}
  */
-function frameIsOpaque(canvas) {
+function frameIsOpaque(ctx, width, height) {
   try {
-    const scratch = document.createElement('canvas')
-    scratch.width = 32
-    scratch.height = 32
-    const sctx = scratch.getContext('2d', { willReadFrequently: true })
-    if (!sctx) return false
-    sctx.drawImage(canvas, 0, 0, 32, 32)
-    const data = sctx.getImageData(0, 0, 32, 32).data
+    const data = ctx.getImageData(0, 0, width, height).data
     for (let i = 3; i < data.length; i += 4) if (data[i] !== 255) return false
     return true
   } catch {
@@ -932,7 +934,7 @@ async function cloneVideo(node, sessionCache, options) {
         // that is a frame per reply (liquidGL's home, 2026-09-03: 48 ms idle per capture
         // waiting on three replies whose encodes took 0.4 to 4.7 ms). toBlob is idle-
         // scheduled in every engine and starves the same way.
-        url = canvas.toDataURL(frameIsOpaque(canvas) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
+        url = canvas.toDataURL(frameIsOpaque(ctx, canvas.width, canvas.height) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
         if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
       }
     } catch (e) {

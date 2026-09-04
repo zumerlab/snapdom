@@ -36,11 +36,13 @@
  * dev trial) the double-rAF wait alone is the rendering update.
  *
  * NOT OPTIMIZED. The mount/draw path is deliberately the simplest thing that consumes the
- * clone: no bbox/bleed math, no size overrides. Those bails are listed in `tryCanvasEngine`.
+ * clone: no bbox/bleed math, document-root expansion or scroll anchoring. Those bails are
+ * listed in `tryCanvasEngine`.
  * @module engines/htmlInCanvas
  */
 
 import { debugWarn } from '../utils/debug.js'
+import { isInternalNode, markInternalNode } from '../utils/ownership.js'
 
 /**
  * Which canvas-place-element method this browser exposes, or null. The origin-trial name
@@ -76,7 +78,7 @@ export function detectDrawApi() {
 function mountClone(clone, css, width, height) {
   const canvas = document.createElement('canvas')
   canvas.setAttribute('layoutsubtree', '')
-  canvas.setAttribute('data-snapdom-internal', '')
+  markInternalNode(canvas)
   // In-flow and painted (hidden/offscreen skips the paint pass → "no paint record"),
   // but behind everything.
   canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:-2147483647;pointer-events:none'
@@ -112,23 +114,42 @@ export async function tryCanvasEngine(state, context) {
   const clone = state.clone
   if (!element || !clone) return null
 
-  // Remaining bails, and they are about GEOMETRY only now, not about pipeline features:
-  // the canvas is sized to the element box, so anything that changes the output box needs
-  // the bbox/bleed math that lives in the SVG engine.
-  if (context.outerShadows) return null
-  if (Number.isFinite(context.width) || Number.isFinite(context.height)) return null
-  if (context.clip) return null
+  // The native engine paints one plain, untransformed element box. Root/document expansion,
+  // bbox transforms, bleed and scroll anchoring still belong to the SVG engine.
+  const doc = element.ownerDocument || document
+  if (!element.isConnected || doc !== document) return null
+  if (element === doc.body || element === doc.documentElement) return null
+  if (element.scrollTop || element.scrollLeft) return null
+  if (context.outerShadows || context.clip || context.excludeMode === 'remove') return null
+  if (context.width != null || context.height != null) return null
+  try {
+    // getBoundingClientRect includes transforms/zoom from every rendered ancestor, but the
+    // mounted clone no longer has those ancestors. Let SVG's local-box math handle these
+    // cases instead of shrinking the native wrapper and clipping the untransformed clone.
+    // Follow the composed parent chain so a transformed shadow wrapper around a slot is
+    // covered too. Root filters can paint outside the box and also require SVG's bleed math.
+    for (let box = element; box; box = box.assignedSlot || box.parentElement || box.getRootNode?.().host) {
+      const style = getComputedStyle(box)
+      if (style.transform && style.transform !== 'none') return null
+      if (style.rotate && style.rotate !== 'none') return null
+      if (style.scale && style.scale !== 'none') return null
+      if (style.translate && style.translate !== 'none') return null
+      if (box === element && style.filter && style.filter !== 'none') return null
+      const zoom = style.getPropertyValue('zoom')
+      if (zoom && Number.isFinite(parseFloat(zoom)) && Math.abs(parseFloat(zoom) - 1) > 0.0001) return null
+    }
+  } catch {
+    return null
+  }
 
-  /* c8 ignore start -- everything below needs a browser that actually exposes
-     ctx.drawElementImage. It ships behind chrome://flags/#canvas-draw-element or the
-     Chrome 148+ origin trial only, so `detectDrawApi()` returns null in every CI browser
-     and this code is unreachable by construction — not untested. The reachable half
-     (detection + every bail above, the part that guarantees the SVG engine still runs) IS
-     covered by engines.htmlInCanvas.test.js. Re-measure against a flagged Chrome 148+
-     before enabling anywhere by default. */
+  /* c8 ignore start -- the real API still needs a flag/origin trial. CI exercises this
+     contract through a CanvasRenderingContext2D stub that performs real 2D paints/probes;
+     re-measure the native implementation on a flagged Chrome before enabling by default. */
   const rect = element.getBoundingClientRect()
-  const width = Math.max(1, element.offsetWidth || rect.width || 1)
-  const height = Math.max(1, element.offsetHeight || rect.height || 1)
+  // Root and ancestor transforms/zoom already bail above, so this is the local border box.
+  // Prefer it over offsetWidth/offsetHeight, which round fractional CSS pixels to integers.
+  const width = Math.max(1, rect.width || element.offsetWidth || 1)
+  const height = Math.max(1, rect.height || element.offsetHeight || 1)
   const scale = Number.isFinite(context.scale) && context.scale > 0 ? context.scale : 1
   const dpr = Number.isFinite(context.dpr) && context.dpr > 0 ? context.dpr : (window.devicePixelRatio || 1)
   const outW = Math.max(1, Math.round(width * scale * dpr))
@@ -183,7 +204,7 @@ export async function tryCanvasEngine(state, context) {
     // caller an empty capture when the element visibly has content.
     let ink = false
     for (let i = 3; i < probe.length; i += 4) { if (probe[i] > 0) { ink = true; break } }
-    if (!ink && (element.textContent?.trim() || element.querySelector?.('img,svg,canvas,video'))) {
+    if (!ink) {
       const full = ctx2d.getImageData(0, 0, outW, outH).data
       let any = false
       for (let i = 3; i < full.length; i += 4) { if (full[i] > 0) { any = true; break } }
@@ -198,11 +219,42 @@ export async function tryCanvasEngine(state, context) {
     out.getContext('2d').drawImage(canvas, 0, 0)
     out.style.width = `${Math.round(width * scale)}px`
     out.style.height = `${Math.round(height * scale)}px`
+  } catch (error) {
+    debugWarn(context, "engine:'html-in-canvas': native paint failed — falling back to the svg engine", error)
+    return null
   } finally {
     // Removing the mount takes the clone with it. That is fine on the success path, and on
     // a bail the caller still holds `state.clone` and the SVG engine re-parents it.
     try { canvas.remove() } catch { /* ok */ }
   }
+  // Publish the same post-render contract as the SVG engine, then release capture-only
+  // state. The bitmap keeps its own pixels; retaining the detached clone/maps doubles memory.
+  const meta = Object.freeze({
+    w0: width,
+    h0: height,
+    vbW: width,
+    vbH: height,
+    targetW: width,
+    targetH: height,
+    contentX: 0,
+    contentY: 0,
+    clip: null,
+  })
+  Object.defineProperty(context, 'meta', {
+    value: meta, enumerable: true, writable: false, configurable: true,
+  })
+  context.__artifacts = {
+    classCSS: state.classCSS || '',
+    fontsCSS: state.fontsCSS || '',
+    baseCSS: state.baseCSS || '',
+    scrollbarCSS: state.scrollbarCSS || '',
+  }
+  state.clone = state.nodeMap = state.styleCache = state.svgString = null
+
+  // getDefaultStyleForTag's short-lived measurement host belongs to this module instance;
+  // never remove an author node that merely reused the public legacy id.
+  const sandbox = [...document.querySelectorAll('#snapdom-sandbox')].find(isInternalNode)
+  if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()
   return out
   /* c8 ignore stop */
 }

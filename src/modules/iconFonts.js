@@ -9,6 +9,8 @@
  * @module iconFonts
  */
 
+import { markInternalNode } from '../utils/ownership.js'
+
 /** Families treated as icon fonts with no configuration. `iconFonts` adds to this list. */
 export const defaultIconFonts = [
   // /uicons/i,
@@ -248,7 +250,7 @@ export async function materialIconToImage(
 
   // Measure with same family used on canvas
   const span = document.createElement('span')
-  span.setAttribute('data-snapdom-internal', '')
+  markInternalNode(span)
   span.textContent = ligatureText
   span.style.position = 'absolute'
   span.style.visibility = 'hidden'

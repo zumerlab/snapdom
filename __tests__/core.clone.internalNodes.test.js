@@ -36,4 +36,55 @@ describe('deepClone — data-snapdom-internal', () => {
     expect(snaps).toBe(1)
     expect(mapped).toBe(false)
   })
+
+  it('keeps author content that happens to use the public data attribute', async () => {
+    const host = document.createElement('div')
+    host.style.cssText = 'width:40px;height:40px;background:white'
+    const authored = document.createElement('div')
+    authored.setAttribute('data-snapdom-internal', '')
+    authored.style.cssText = 'width:40px;height:40px;background:rgb(255,0,0)'
+    host.appendChild(authored)
+    document.body.appendChild(host)
+
+    let mapped = null
+    const result = await snapdom(host, {
+      burst: false,
+      embedFonts: false,
+      plugins: [{
+        name: 'spy',
+        afterClone(ctx) { mapped = [...ctx.nodeMap.values()].includes(authored) },
+      }],
+    })
+    expect(mapped).toBe(true)
+
+    const canvas = await result.toCanvas({ scale: 1, dpr: 1 })
+    const pixel = canvas.getContext('2d').getImageData(20, 20, 1, 1).data
+    expect([...pixel]).toEqual([255, 0, 0, 255])
+  })
+
+  it('keeps author content that uses the legacy sandbox id and attribute', async () => {
+    const host = document.createElement('div')
+    host.style.cssText = 'width:40px;height:40px;background:white'
+    const authored = document.createElement('div')
+    authored.id = 'snapdom-sandbox'
+    authored.setAttribute('data-snapdom-sandbox', 'true')
+    authored.style.cssText = 'width:40px;height:40px;background:rgb(0,128,0)'
+    host.appendChild(authored)
+    document.body.appendChild(host)
+
+    let mapped = null
+    const result = await snapdom(host, {
+      burst: false,
+      embedFonts: false,
+      plugins: [{
+        name: 'spy',
+        afterClone(ctx) { mapped = [...ctx.nodeMap.values()].includes(authored) },
+      }],
+    })
+    expect(mapped).toBe(true)
+
+    const canvas = await result.toCanvas({ scale: 1, dpr: 1 })
+    const pixel = canvas.getContext('2d').getImageData(20, 20, 1, 1).data
+    expect([...pixel]).toEqual([0, 128, 0, 255])
+  })
 })

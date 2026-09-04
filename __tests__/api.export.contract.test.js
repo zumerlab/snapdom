@@ -1,7 +1,8 @@
 // v3 export contract: `format` is the one option name (type = legacy alias), and ONE
 // sizing rule across exporters — width/height absolute win, scale only when neither set.
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
+import { createContext } from '../src/core/context.js'
 
 function makeEl(w = 100, h = 50) {
   const el = document.createElement('div')
@@ -22,6 +23,37 @@ describe('format option unification', () => {
     // jpeg: universally encodable (WebKit's canvas.toBlob silently falls back on webp)
     const legacy = await res.toBlob({ type: 'jpeg' })
     expect(legacy.type).toBe('image/jpeg')
+  })
+
+  it('normalizes legacy type as the capture format when format is absent', () => {
+    expect(createContext()).toMatchObject({ format: 'png', type: 'png' })
+    expect(createContext({ type: 'svg' })).toMatchObject({ format: 'svg', type: 'svg' })
+    expect(createContext({ type: 'jpg' })).toMatchObject({ format: 'jpeg', type: 'jpeg', backgroundColor: '#ffffff' })
+    expect(createContext({ format: 'webp', type: 'svg' })).toMatchObject({ format: 'webp', type: 'webp' })
+    expect(createContext({ type: 'canvas' })).toMatchObject({ format: 'png', type: 'png' })
+  })
+
+  it('normalizes a format alias changed by beforeSnap', async () => {
+    const plugin = { name: 'legacy-format-hook', beforeSnap(ctx) { ctx.type = 'jpg' } }
+    const result = await snapdom(makeEl(), { cache: 'disabled', plugins: [plugin] })
+    const blob = await result.toBlob()
+    expect(blob.type).toBe('image/jpeg')
+  })
+
+  it('carries a capture-time type alias into download()', async () => {
+    let filename = ''
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+      filename = this.download
+    })
+    try {
+      const result = await snapdom(makeEl(), {
+        cache: 'disabled', type: 'svg', filename: 'legacy-type',
+      })
+      await result.download()
+      expect(filename).toBe('legacy-type.svg')
+    } finally {
+      click.mockRestore()
+    }
   })
 })
 

@@ -39,8 +39,8 @@ async function shareFile(blob, filename) {
  * @returns {Promise<void>}
  */
 export async function download(url, options) {
-  // #339: context.type ('svg'/'img'/'canvas'/'blob') is an output-type, not an image format.
-  // Only use options.type as image format if it's a recognized image format string.
+  // `format` is canonical. Deprecated `type` remains a compatibility alias, but only a
+  // recognized image-format string may participate in download format selection.
   const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
   const rawType = (options?.type || '').toLowerCase()
   const typeAsFormat = IMAGE_FORMATS.has(rawType) ? rawType : ''

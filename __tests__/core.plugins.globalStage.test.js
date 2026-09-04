@@ -1,6 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
-import { registerPlugins, clearPlugins, getGlobalPlugins } from '../src/core/plugins.js'
+import {
+  registerPlugins,
+  clearPlugins,
+  getGlobalPlugins,
+} from '../src/core/plugins.js'
 
 function makeEl() {
   const el = document.createElement('div')

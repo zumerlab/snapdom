@@ -17,8 +17,9 @@ import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRender
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
 import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../modules/styles.js'
-import { captureWithBurst, hasCanvas } from '../core/burst.js'
+import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
+import { markInternalNode } from '../utils/ownership.js'
 
 /**
  * Register global plugins. Returns snapdom, so `snapdom.plugins(p)(el)` reads as one call.
@@ -46,7 +47,7 @@ async function fromString(html, options) {
   if (typeof html !== 'string' || !html.trim()) throw new Error('[snapdom.fromString] html string required')
   const mount = document.createElement('div')
   // data-snapdom-internal: mounting/removing must not bump the style epoch.
-  mount.setAttribute('data-snapdom-internal', '')
+  markInternalNode(mount)
   mount.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none;'
   mount.innerHTML = html
   document.body.appendChild(mount)
@@ -54,7 +55,9 @@ async function fromString(html, options) {
     // One frame so layout (and any already-loaded fonts) settle before measuring.
     await new Promise((r) => requestAnimationFrame(r))
     const target = mount.children.length === 1 ? mount.firstElementChild : mount
-    return await main(target, options)
+    // This live mount is destroyed below and can never be captured again. A burst state would
+    // only keep the detached mount/listeners alive in the LRU, even if the caller passed true.
+    return await main(target, { ...(options || {}), burst: false })
   } finally {
     mount.remove()
   }
@@ -74,6 +77,7 @@ bindCapture(main)
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
 // Internal token for "silent" export calls made from plugins (no hooks)
 const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
+const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
 
 /**
  * Capture an element and return the result object with its exporters.
@@ -95,8 +99,6 @@ const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
  */
 async function main(element, userOptions) {
   if (!element) throw new Error('Element cannot be null or undefined')
-  // preCapture learns which control asked for this element (no-op unless armed).
-  noteCapture(element, userOptions)
 
   // Normalize options into a capture context
   const context = createContext(userOptions)
@@ -119,6 +121,18 @@ async function main(element, userOptions) {
   context.needs = stage
   context.__needsLoweredBy = loweredBy
   const rendersPixels = stageReaches(stage, 'render')
+
+  // Explicit burst controls eligible trees; unset auto-enables from the first capture.
+  // Render-affecting plugins suspend auto mode (a memo serve would skip their hooks) —
+  // explicit burst:true keeps memoizing (the caller opted in), and `pure: true` plugins
+  // re-enable auto. Selection/frame-driven trees remain a fidelity boundary even for true.
+  // Decide before Safari's awaited font/GPU pre-step: a capture started synchronously by a
+  // press/click handler still belongs to that event task, even if preparation finishes later.
+  const pluginAllowsMemo = context.burst === true || !hasImpureRenderPlugins(context)
+  const memoEligible = rendersPixels && !context.captureSelection &&
+    context.burst !== false && pluginAllowsMemo
+  const burst = memoEligible && isAutoBurstSafe(element)
+  if (burst) noteCapture(element, userOptions)
 
   // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
   // first draw is now handled at draw time by toCanvas's verified-draw ladder):
@@ -187,21 +201,6 @@ async function main(element, userOptions) {
     }
   }
 
-  // Explicit burst wins; unset auto-enables on repeated captures of the same element.
-  // Render-affecting plugins suspend auto mode (a memo serve would skip their hooks) —
-  // explicit burst:true keeps memoizing (the caller opted in), and `pure: true` plugins
-  // re-enable auto.
-  // A capture that produces no render artifact has nothing to memoize, and its plugins
-  // read the LIVE tree on every call — a memo serve would be exactly the stale read.
-  // Memoization engages on the FIRST capture (burst.js explains why there is no threshold).
-  // Two exclusions, both for what no observer can see: a render plugin that is not pure
-  // (a memo serve would skip its hooks), and a canvas anywhere in the subtree (pixel draws
-  // produce no record; explicit `burst: true` still memoizes there, with `invalidate`).
-  const burst = !rendersPixels
-    ? false
-    : context.burst === undefined
-      ? (!hasImpureRenderPlugins(context) && element.tagName !== 'CANVAS' && !hasCanvas(element))
-      : context.burst
   if (burst) {
     return captureWithBurst(
       element, userOptions, context,
@@ -235,7 +234,7 @@ snapdom.capture = async (el, context, _token) => {
  * @private
  */
 async function buildResult(url, context) {
-  // A capture that stopped at 'dom' or 'clone' has no render artifact. Every door to one
+  // A capture that stopped at 'clone' has no render artifact. Every door to one
   // throws the SAME error, naming the plugins that lowered the stage: silently
   // re-capturing would hand back pixels of a different instant (stages.js).
   // Read from the STAGE, not from `url`: if some other path ever hands back a non-string,
@@ -247,13 +246,18 @@ async function buildResult(url, context) {
   // engine:'html-in-canvas' hands back the painted bitmap itself: PNG-encoding it eagerly
   // costs 15-22x what the pixel exports actually need (62 vs 4 ms on a card, 4.2 s vs
   // 210 ms at 29 Mpx, measured 2026-09-03). Pixel exports consume the canvas directly;
-  // the string surfaces (url, toRaw, toImg/toSvg, download) mint the PNG data URL once,
-  // on first read.
+  // the raw string surfaces (url, toRaw) mint the PNG data URL once, on first read. Image
+  // and download exporters encode independently so their requested sizing/codec still wins.
   const engineCanvas = (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) ? url : null
   let mintedUrl = engineCanvas ? null : url
   const urlOf = () => (mintedUrl ??= engineCanvas.toDataURL())
   const pixelSource = engineCanvas || url
   if (engineCanvas) url = ''
+
+  const rasterEngineImage = async (ctx, opts) => {
+    const { rasterize } = await import('../modules/rasterize.js')
+    return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'png' })
+  }
 
   // Lazy decode: exposing the serialized SVG eagerly would double retained string size
   // per live result — exporters that need it (toHtml) pay the decode on demand.
@@ -282,10 +286,12 @@ async function buildResult(url, context) {
   // NOTE: the exporters are deliberately not imported statically here.
   const coreExports = {
     img: async (ctx, opts) => {
+      if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toImg } = await import('../exporters/toImg.js')
       return toImg(urlOf(), { ...ctx, ...(opts || {}) })
     },
     svg: async (ctx, opts) => {
+      if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toSvg } = await import('../exporters/toImg.js')
       return toSvg(urlOf(), { ...ctx, ...(opts || {}) })
     },
@@ -295,9 +301,7 @@ async function buildResult(url, context) {
     },
     blob: async (ctx, opts) => {
       const { toBlob } = await import('../exporters/toBlob.js')
-      // Blob keeps its historic svg default (the raw vector output) unless the caller
-      // explicitly asked for an image format.
-      return toBlob(pixelSource, { ...ctx, ...(opts || {}), format: (opts && opts.__explicitFormat) || 'svg' })
+      return toBlob(pixelSource, { ...ctx, ...(opts || {}) })
     },
     png: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
@@ -367,11 +371,10 @@ async function buildResult(url, context) {
   function normalizeExportOptions(type, opts) {
     const raw = opts || {}
     const next = { ...context, ...raw }
-    // v3: `format` is the one documented name for the output format. `type` survives as a
-    // silent runtime alias ONLY when the caller passed an image-format string in it —
-    // context.type is the result TYPE (svg/img/canvas/blob), never a format, and
-    // context.format is always set, so the alias must read the RAW caller opts.
-    const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
+    // v3: `format` is the documented output-format name. Deprecated `type` remains an alias
+    // only when the RAW export call carries a recognized image-format string. The normalized
+    // capture context also retains a legacy `type` value, so reading `context.type` here would
+    // confuse an inherited/default value with an explicit per-export request.
     const rawType = typeof raw.type === 'string' ? raw.type.toLowerCase() : ''
     const explicit = typeof raw.format === 'string' ? raw.format.toLowerCase()
       : (IMAGE_FORMATS.has(rawType) ? rawType : '')
@@ -380,6 +383,11 @@ async function buildResult(url, context) {
     // (blob defaults to svg, download to png), so they need the explicit value, not the
     // context default.
     next.__explicitFormat = explicit ? next.format : (context.__explicitFormat ?? null)
+    // Give hooks the format this exporter will actually use. The normalized capture default
+    // is PNG, but blob historically returns the raw SVG unless a codec was requested; a
+    // native canvas capture has no SVG and therefore defaults to PNG.
+    if (type === 'blob' && !next.__explicitFormat) next.format = engineCanvas ? 'png' : 'svg'
+    next.type = next.format
     // `type` here is the export NAME ('blob'/'canvas'/'download'/'jpeg'/…), not the image
     // format. Resolve the real format (jpg -> jpeg) so the background is flattened the same
     // way createContext does it, or JPEG would encode transparent areas as black.
@@ -421,7 +429,21 @@ async function buildResult(url, context) {
       // object is what work() receives) and replaces one by declaring it in defineExports.
       // runAll, not runHook: runHook CHAINS returns, so one plugin returning anything would
       // hand the next plugin that value instead of the documented payload.
+      const formatBeforeHook = nextOpts.format
+      const typeBeforeHook = nextOpts.type
       await runAll('beforeExport', ctx, { format: type, options: nextOpts })
+      // payload.options is the exporter's actual bag. Reconcile a plugin's format/type
+      // mutation after the hook so toBlob/download do not keep the pre-hook explicit codec.
+      const rawFormat = nextOpts.format !== formatBeforeHook ? nextOpts.format
+        : (nextOpts.type !== typeBeforeHook ? nextOpts.type : '')
+      const requestedFormat = typeof rawFormat === 'string' ? rawFormat.toLowerCase() : ''
+      if (IMAGE_FORMATS.has(requestedFormat)) {
+        nextOpts.format = requestedFormat === 'jpg' ? 'jpeg' : requestedFormat
+        nextOpts.type = nextOpts.format
+        nextOpts.__explicitFormat = nextOpts.format
+        if (/^(?:jpeg|webp)$/.test(nextOpts.format) &&
+            (nextOpts.backgroundColor == null || nextOpts.backgroundColor === 'transparent')) nextOpts.backgroundColor = '#ffffff'
+      }
       const result2 = await work(ctx, nextOpts)
       await runAll('afterExport', ctx, { format: type, options: nextOpts, result: result2 })
       if (!afterSnapFired) {

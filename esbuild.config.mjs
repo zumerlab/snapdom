@@ -2,7 +2,7 @@ import { build } from 'esbuild'
 import { readFileSync, rmSync } from 'node:fs'
 
 // The experimental canvas engine (src/engines/htmlInCanvas.js) is dead weight in a shipped
-// build: Chromium taints the canvas unconditionally today, so every engine:'canvas' capture
+// build: browsers without the origin trial cannot use engine:'html-in-canvas', so every capture
 // falls through to the normal pipeline. Its lazy import still landed in the bundle (nothing
 // is code-split), costing every user ~2KB gzip for a branch that cannot run. This define
 // makes the seam statically false so esbuild drops the branch AND the module. Tests import

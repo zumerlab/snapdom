@@ -45,4 +45,19 @@ describe('burst — options signature discriminates nested objects and callbacks
     const r2 = await snapdom(el, { burst: true, exclude })
     expect(r2).toBe(r1)
   })
+
+  it('serializes baseline adoption for concurrent A, B, B calls', async () => {
+    makeEl()
+    const a = { burst: true, clip: { x: 0, y: 0, width: 40, height: 40 } }
+    const b = { burst: true, clip: { x: 0, y: 0, width: 160, height: 100 } }
+    const [resultA, resultB1, resultB2] = await Promise.all([
+      snapdom(el, a),
+      snapdom(el, b),
+      snapdom(el, b),
+    ])
+    expect(resultA.meta.clip.width).toBe(40)
+    expect(resultB1.meta.clip.width).toBe(160)
+    expect(resultB2.meta.clip.width).toBe(160)
+    expect(resultB2.url).toBe(resultB1.url)
+  })
 })

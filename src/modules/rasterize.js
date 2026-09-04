@@ -9,7 +9,7 @@ import { isSafari } from '../utils/browser'
 
 /**
  * Rasterize a capture and hand it back as an <img> in the requested format.
- * @param {string} url
+ * @param {string|HTMLCanvasElement} url
  * @param {{ format:'png'|'jpeg'|'webp', dpr:number, quality?:number, backgroundColor?:string }} options
  * @returns {Promise<HTMLImageElement>}
  */

@@ -7,6 +7,10 @@ import { snapdom } from '../src/index.js'
 
 const W = 160
 const H = 90
+const ALPHA_W = 1280
+const ALPHA_H = 720
+const HOLE_X = 613
+const HOLE_Y = 347
 
 function solid(color) {
   const c = document.createElement('canvas')
@@ -41,6 +45,13 @@ function blueShare(canvas) {
   let blue = 0
   for (let i = 0; i < d.length; i += 4) if (d[i + 2] > 180 && d[i] < 80 && d[i + 1] < 80) blue++
   return blue / (d.length / 4)
+}
+
+async function decodeImage(src) {
+  const image = new Image()
+  image.src = src
+  await image.decode()
+  return image
 }
 
 const once = (el, ev) => new Promise((resolve, reject) => {
@@ -85,5 +96,45 @@ describe('cloneVideo — frame codec', () => {
     })
     expect(src.startsWith(jpegOk ? 'data:image/jpeg' : 'data:image/')).toBe(true)
     expect(blueShare(await res.toCanvas({ scale: 1, dpr: 1 }))).toBeGreaterThan(0.9)
+  }, 20_000)
+
+  it('keeps PNG when a small alpha island disappears in a 32x32 downscale', async () => {
+    wrap = document.createElement('div')
+    const video = document.createElement('video')
+    video.width = ALPHA_W
+    video.height = ALPHA_H
+    Object.defineProperties(video, {
+      videoWidth: { value: ALPHA_W },
+      videoHeight: { value: ALPHA_H },
+    })
+    wrap.appendChild(video)
+    document.body.appendChild(wrap)
+
+    const originalDrawImage = CanvasRenderingContext2D.prototype.drawImage
+    vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage').mockImplementation(function (source, ...args) {
+      if (source === video) {
+        this.fillStyle = 'rgb(0,0,255)'
+        this.fillRect(0, 0, ALPHA_W, ALPHA_H)
+        this.clearRect(HOLE_X, HOLE_Y, 4, 4)
+        return
+      }
+      return originalDrawImage.call(this, source, ...args)
+    })
+
+    let src = ''
+    await snapdom(video, {
+      burst: false,
+      embedFonts: false,
+      plugins: [{ name: 'spy', afterClone(ctx) { src = ctx.clone.getAttribute('src') || '' } }],
+    })
+    expect(src.startsWith('data:image/png')).toBe(true)
+
+    const image = await decodeImage(src)
+    const canvas = document.createElement('canvas')
+    canvas.width = ALPHA_W
+    canvas.height = ALPHA_H
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(image, 0, 0)
+    expect(ctx.getImageData(HOLE_X, HOLE_Y, 1, 1).data[3]).toBe(0)
   }, 20_000)
 })

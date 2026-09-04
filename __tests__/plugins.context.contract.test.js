@@ -135,6 +135,19 @@ describe('export hooks: two arguments, observational', () => {
     expect(after.result).toBe(canvas)
     expect(canvas).toBeInstanceOf(HTMLCanvasElement)
   })
+
+  it('uses a format selected through payload.options for the blob exporter', async () => {
+    const plugin = {
+      name: 'blob-format',
+      beforeExport(_ctx, payload) {
+        if (payload.format === 'blob') payload.options.format = 'png'
+      },
+    }
+    const result = await snapdom(box('width:40px;height:20px;background:#123456'), {
+      plugins: [plugin], cache: 'disabled',
+    })
+    expect((await result.toBlob()).type).toBe('image/png')
+  })
 })
 
 describe('the single context survives the differential recapture', () => {

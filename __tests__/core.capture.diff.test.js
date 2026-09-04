@@ -140,10 +140,10 @@ describe('differential recapture', () => {
   })
 
   // backdrop-filter is pre-composed by emulateBackdropFilters (the svg rasterizer cannot be
-  // trusted with it, #457). A differential frame must not lose that composition. Metric:
-  // sharp stripe transitions inside the frosted card — the blur erases them, so the
-  // no-backdrop control reads 24 and the frosted one reads 0 on BOTH paths.
-  it('a frosted card survives a differential frame', async () => {
+  // trusted with it, #457). That pass copies and prunes the WHOLE prepared clone, so a
+  // subtree splice cannot refresh the copied backdrop byte-faithfully. The frosted case
+  // must bail while the plain control proves the ordinary diff path is still reachable.
+  it('a frosted card falls back to a byte- and pixel-equal full frame', async () => {
     const build = (withBackdrop) => {
       const el = document.createElement('div')
       el.style.cssText = 'width:400px;padding:20px;font-family:Arial;' +
@@ -187,11 +187,12 @@ describe('differential recapture', () => {
       el.querySelector('.card1 h3').textContent = 'CHANGED'
       await new Promise((r) => setTimeout(r, 0))
       const diffRes = await snapdom(el, OPTS)
-      // The whole test is vacuous unless the fast path actually ran.
-      expect(__diffStats.served).toBe(served0 + 1)
+      expect(__diffStats.served).toBe(served0 + (withBackdrop ? 0 : 1))
+      const fullRes = await snapdom(el, { ...OPTS, burst: false })
+      expect(diffRes.url).toBe(fullRes.url)
       measured[withBackdrop ? 'frosted' : 'plain'] = {
         diff: await edges(diffRes, el),
-        full: await edges(await snapdom(el, { ...OPTS, burst: false }), el),
+        full: await edges(fullRes, el),
       }
       el.remove()
     }

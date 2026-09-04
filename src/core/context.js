@@ -37,10 +37,10 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
  * @param {number|null} [options.width]
  * @param {number|null} [options.height]
  * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.format='png'] - 'jpg' resolves to 'jpeg'
- * @param {"svg"|"img"|"canvas"|"blob"} [options.type='svg']
+ * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.type] - deprecated alias for format
  * @param {number}  [options.quality=0.92]
  * @param {number}  [options.dpr=devicePixelRatio]
- * @param {string|null} [options.backgroundColor] - defaults to white for jpeg and webp, which have no alpha
+ * @param {string|null} [options.backgroundColor] - defaults to white for jpeg and webp exports
  * @param {string}  [options.filename='snapDOM']
  * @param {unknown} [options.cache] - `'disabled'` (or `false`) empties every persistent cache before the capture, a debug/test escape hatch. Anything else is the default: caching is structural, not a knob (the legacy 'soft'/'auto'/'full' strings all mean this).
  * @param {HTMLCanvasElement} [options.canvas] - Draw the canvas export into this canvas instead of a new one
@@ -50,8 +50,8 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
  * @param {boolean|'subtree'} [options.outerShadows=false]
  * @param {boolean} [options.reconcile=false] - measure the clone in-document and pin diverging boxes
  * @param {boolean} [options.burst] - force the memo on or off; unset memoizes from the first capture (burst.js)
- * @param {'canvas'} [options.engine] - experimental: the canvas-place-element engine (engines/htmlInCanvas.js)
- * @param {boolean} [options.invalidate=false] - one fresh capture for changes no observer sees (canvas draws, CSSOM edits)
+ * @param {'html-in-canvas'} [options.engine] - experimental: the canvas-place-element engine (engines/htmlInCanvas.js)
+ * @param {boolean} [options.invalidate=false] - one fresh capture plus style-cache invalidation for changes with no browser signal (notably CSSOM edits)
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
  * @param {boolean} [options.compress=true] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. `false` is internal, for benchmarks that measure the uncompressed pipeline.
@@ -59,15 +59,15 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
  * @returns {Object} the context; also carries the compiled `shouldExclude` and the internal `__iconMatchers`, `__explicitFormat`, `__styleShare`
  */
 export function createContext(options = {}) {
-  let resolvedFormat = options.format ?? 'png'
+  const rawTypeFormat = typeof options.type === 'string' && IMAGE_FORMATS.has(options.type.toLowerCase())
+    ? options.type.toLowerCase()
+    : null
+  let resolvedFormat = options.format ?? rawTypeFormat ?? 'png'
   if (resolvedFormat === 'jpg') resolvedFormat = 'jpeg'
   // Did the CALLER name a format, or is this the default? `format` is always set, so the
   // difference is otherwise unrecoverable downstream — and toBlob needs it: it defaults to
   // the raw vector unless a codec was asked for, and `snapdom.toBlob(el, {format:'png'})`
   // asks at CAPTURE time (the static helpers forward options there, not to the exporter).
-  const rawTypeFormat = typeof options.type === 'string' && IMAGE_FORMATS.has(options.type.toLowerCase())
-    ? options.type.toLowerCase()
-    : null
   const explicitFormat = options.format != null ? resolvedFormat : (rawTypeFormat === 'jpg' ? 'jpeg' : rawTypeFormat)
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
@@ -175,7 +175,9 @@ export function createContext(options = {}) {
     height: options.height ?? null,
     format: resolvedFormat,
     __explicitFormat: explicitFormat,
-    type: options.type ?? 'svg',
+    // `format` is canonical; expose the deprecated alias with the same normalized value so
+    // plugin hooks never receive a contradictory { format, type } pair.
+    type: resolvedFormat,
     quality: options.quality ?? 0.92,
     dpr: options.dpr ?? (window.devicePixelRatio || 1),
     backgroundColor:
@@ -190,16 +192,16 @@ export function createContext(options = {}) {
     // to their live size. Opt-in (adds one in-document layout of the clone).
     reconcile: options.reconcile ?? false,
 
-    // Burst memoization is default engine behavior (auto-engages on repeat captures, see
+    // Burst memoization is default engine behavior (engages from the first capture, see
     // src/core/burst.js). true/false remain INTERNAL-ONLY escapes (tests/benchmarks need
     // deterministic full-pipeline runs), not public API.
     burst: options.burst,
 
-    // EXPERIMENTAL: 'canvas' opts into the WICG canvas-place-element engine when the browser
+    // EXPERIMENTAL: 'html-in-canvas' opts into the WICG canvas-place-element engine when the browser
     // supports it (see src/engines/htmlInCanvas.js); anything else uses the svg pipeline.
     engine: options.engine,
-    // Forces one fresh, non-memoized capture — for changes automatic tracking can't see
-    // (canvas pixel draws, programmatic CSSOM edits). Works under auto-burst too.
+    // Forces one fresh capture and clears lower style caches — for application
+    // changes with no browser signal, notably programmatic CSSOM edits. Frame sources bypass.
     invalidate: options.invalidate ?? false,
 
     // Internal: the nested capture rasterizeIframe takes of a frame's documentElement, pinned

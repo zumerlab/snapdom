@@ -50,9 +50,8 @@ describe('burst:true — memoizes repeated captures of an unchanged element', ()
     expect(r2).toBe(r1)
   })
 
-  // Closes the MutationObserver-only staleness gap: canvas pixel draws and programmatic
-  // CSSOM edits touch no DOM attribute, so automatic tracking can't see them either —
-  // { burst: true, invalidate: true } is the documented manual escape hatch for those.
+  // Programmatic CSSOM edits touch no DOM attribute, so automatic tracking cannot see them;
+  // invalidate is their explicit escape hatch. Canvas-bearing trees bypass burst entirely.
   it('invalidate:true forces a fresh capture for changes automatic tracking cannot see', async () => {
     makeEl()
     const r1 = await snapdom(el, { burst: true })
@@ -63,9 +62,8 @@ describe('burst:true — memoizes repeated captures of an unchanged element', ()
     expect(r3).toBe(r2)
   })
 
-  // <video> frame changes (seek, playback) produce no DOM mutation, so they were part of
-  // the same staleness gap — tracked directly via timeupdate/seeked listeners.
-  it('tracks <video> frame changes that produce no DOM mutation', async () => {
+  // A video can repaint between sparse media events, so its tree never enters burst.
+  it('bypasses memoization for <video> trees', async () => {
     el = document.createElement('div')
     el.style.cssText = 'width:180px;padding:6px'
     const video = document.createElement('video')
@@ -73,7 +71,6 @@ describe('burst:true — memoizes repeated captures of an unchanged element', ()
     document.body.appendChild(el)
 
     const r1 = await snapdom(el, { burst: true })
-    video.dispatchEvent(new Event('timeupdate'))
     const r2 = await snapdom(el, { burst: true })
     expect(r2).not.toBe(r1)
   })
@@ -83,17 +80,16 @@ describe('auto-burst — repeated captures enable memoization without the option
   let el
   afterEach(() => el?.remove())
 
-  it('memoizes from the 3rd rapid capture of the same element on', async () => {
+  it('memoizes the second capture of the same element', async () => {
     el = document.createElement('div')
     el.textContent = 'auto burst target'
     document.body.appendChild(el)
 
-    const a = (await snapdom(el)).url
-    const b = (await snapdom(el)).url
-    const c = (await snapdom(el)).url // threshold hit: memoized from here
-    const d = (await snapdom(el)).url
-    expect(a).toBe(b) // identical input -> identical output either way
-    expect(c).toBe(d) // and the memo keeps serving it
+    const a = await snapdom(el)
+    const b = await snapdom(el)
+    const c = await snapdom(el)
+    expect(b).toBe(a)
+    expect(c).toBe(a)
   })
 
   it('does not accumulate counts across different elements', async () => {

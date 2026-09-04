@@ -14,8 +14,9 @@
 import { debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
-import { inlineAllStyles } from '../modules/styles.js'
+import { inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
+import { markInternalNode } from './ownership.js'
 
 /** Add the current scope's slotted exclusion at the rightmost compound. */
 function addNotSlottedRightmost(sel, scopeId) {
@@ -468,10 +469,14 @@ export function pinIframeViewport(doc, w, h) {
   // Pinned by __tests__/core.burst.nestedIframe.test.js.
   const style = doc.createElement('style')
   style.setAttribute('data-sd-iframe-pin', '')
-  style.setAttribute('data-snapdom-internal', '')
+  markInternalNode(style)
   style.textContent = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
     `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style)
+  // The pin is deliberately invisible to the global style epoch, but it still changes used
+  // values inside this document (notably percentages). Clear only this frame's snapshots so
+  // a fresh nested capture cannot reuse geometry from the previous iframe size.
+  invalidateSnapshotsUnder(doc.documentElement)
 
   // Pinning sets overflow:hidden on html/body, which resets the scroll offset — so a frame
   // the user had scrolled was captured from the top of its document instead of from what
@@ -494,6 +499,9 @@ export function pinIframeViewport(doc, w, h) {
       if (doc.body) { doc.body.scrollLeft = bsl; doc.body.scrollTop = bst }
       if (doc.documentElement) { doc.documentElement.scrollLeft = hsl; doc.documentElement.scrollTop = hst }
     } catch { }
+    // Do not leave snapshots computed under the temporary viewport pin available to a later
+    // direct capture of this document.
+    invalidateSnapshotsUnder(doc.documentElement)
   }
 }
 

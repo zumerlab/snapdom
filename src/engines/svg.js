@@ -20,6 +20,7 @@
 import { isSafari, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 import { runHook } from '../core/plugins.js'
+import { isInternalNode, markInternalNode } from '../utils/ownership.js'
 import {
   assembleCaptureCSS,
   estimateKeptHeight,
@@ -196,7 +197,7 @@ export async function composeAndSerialize(state, ex) {
         if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
       } else {
         const wrap = elDoc.createElement('div')
-        wrap.setAttribute('data-snapdom-internal', '')
+        markInternalNode(wrap)
         wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
         // Shadow DOM: keeps baseCSS's global tag rules from restyling the live page
         // while this mount is attached (#474) — same isolation as reconcileCloneLayout.
@@ -530,7 +531,9 @@ export async function composeAndSerialize(state, ex) {
   // not carry them before), and they read `url` / `__artifacts` instead.
   state.clone = state.nodeMap = state.styleCache = state.svgString = null
 
-  const sandbox = document.getElementById('snapdom-sandbox')
+  // The id is public and may belong to the page. Duplicate ids are possible while our
+  // short-lived sandbox exists, so inspect every match and remove only private provenance.
+  const sandbox = [...document.querySelectorAll('#snapdom-sandbox')].find(isInternalNode)
   if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()
   return state.dataURL
 }

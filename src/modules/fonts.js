@@ -22,6 +22,7 @@ import { isIconFont } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
 import { pseudoGatesFor } from './styles.js'
 import { nextFrame } from '../utils/browser.js'
+import { markInternalNode } from '../utils/ownership.js'
 
 /**
  * Draw one icon-font glyph on a canvas at devicePixelRatio and return it as a data URL.
@@ -43,7 +44,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   try { await document.fonts.ready } catch {}
 
   const span = document.createElement('span')
-  span.setAttribute('data-snapdom-internal', '')
+  markInternalNode(span)
   span.textContent = unicodeChar
   span.style.position = 'absolute'
   span.style.visibility = 'hidden'
@@ -930,6 +931,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       const link = doc.createElement('link')
       link.rel = 'stylesheet'
       link.href = u
+      markInternalNode(link)
       link.setAttribute('data-snapdom', 'injected-import')
       const timer = setTimeout(() => resolve(null), 3000)
       const settle = (v) => { clearTimeout(timer); resolve(v) }
@@ -1268,7 +1270,7 @@ export async function ensureFontsReady(families, warmupRepetitions = 2, doc = do
 
   const warmupOnce = () => {
     const container = doc.createElement('div')
-    container.setAttribute('data-snapdom-internal', '')
+    markInternalNode(container)
     container.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;opacity:0!important;pointer-events:none!important;contain:layout size style;'
 
     for (const fam of fams) {

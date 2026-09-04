@@ -63,7 +63,7 @@ function collectResolveNodeHooks(options) {
  * @param {boolean|'subtree'} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds. 'subtree' additionally widens the capture for the outer-shadow ink DESCENDANTS paint past the root's box (a child's ring drawn against the root's edge), measured per side and bounded by any ancestor that clips.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
- * @param {boolean} [options.burst] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Unset: memoized from the first capture (canvas-bearing elements and impure render plugins excluded)
+ * @param {boolean} [options.burst] - Memoize eligible static captures from the first call. Selection and frame-driven/opaque trees always capture fresh; true overrides only the automatic impure-plugin gate, while false disables memoization.
  * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
  *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
  */
@@ -89,8 +89,22 @@ export async function captureDOM(element, options) {
   // historical pipeline; the checks below are the only two places that read it.
   const stage = options.needs || DEFAULT_STAGE
 
-  // BEFORESNAP
+  // BEFORESNAP. `format` is canonical, but the deprecated `type` alias remains writable in
+  // this hook. Normalize only an actual hook mutation: treating the default PNG as explicit
+  // would change toBlob()'s historical default from SVG to PNG.
+  const formatBeforeSnap = state.format
+  const typeBeforeSnap = state.type
   await runHook('beforeSnap', state)
+  const changedFormat = state.format !== formatBeforeSnap && /^(?:png|jpe?g|webp|svg)$/i.test(state.format)
+  const changedType = state.type !== typeBeforeSnap && /^(?:png|jpe?g|webp|svg)$/i.test(state.type)
+  if (changedFormat || changedType) {
+    const requested = String(changedFormat ? state.format : state.type).toLowerCase()
+    state.format = requested === 'jpg' ? 'jpeg' : requested
+    state.type = state.format
+    state.__explicitFormat = state.format
+    if (/^(?:jpeg|webp)$/.test(state.format) &&
+        (state.backgroundColor == null || state.backgroundColor === 'transparent')) state.backgroundColor = '#ffffff'
+  }
 
   // BEFORECLONE
   await runHook('beforeClone', state)
@@ -274,7 +288,11 @@ export async function captureDOM(element, options) {
   // as false for shipped bundles, folding the branch and the module away, while src
   // consumers — the test suite — leave it undefined and keep it live). On ANY doubt it
   // returns null and the SVG engine runs on the same clone.
-  if (state.options.engine === 'html-in-canvas' &&
+  // The experimental painter cannot expose its bitmap to render-boundary hooks without
+  // creating a different artifact; those hooks make this capture use the exact SVG path.
+  const hasRenderBoundaryHooks = (state.options.plugins || []).some((plugin) => plugin &&
+    (typeof plugin.beforeRender === 'function' || typeof plugin.afterRender === 'function'))
+  if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks &&
       (typeof __SNAPDOM_CANVAS_ENGINE__ === 'undefined' || __SNAPDOM_CANVAS_ENGINE__)) {
     const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
     assembleCaptureCSS(state, fontsCSS)

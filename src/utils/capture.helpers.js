@@ -13,6 +13,7 @@
 import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl } from './index.js'
 import { cache } from '../core/cache.js'
 import { universeFor } from '../modules/styles.js'
+import { markInternalNode } from './ownership.js'
 import {
   bboxWithOriginFull,
   parseTransformOriginPx,
@@ -726,7 +727,7 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   if (Math.abs(sx - sy) > 0.02) return 0
 
   const wrap = elDoc.createElement('div')
-  wrap.setAttribute('data-snapdom-internal', '')
+  markInternalNode(wrap)
   wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' +
     w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
   // Shadow DOM so the capture CSS can't leak into the live tree (#474): baseCSS carries global

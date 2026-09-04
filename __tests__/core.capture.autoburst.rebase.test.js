@@ -1,5 +1,5 @@
-// Auto-burst must re-engage when the caller's options settle on a new signature after the
-// threshold tripped under different options (adaptive baseline) — without this, a mixed
+// Auto-burst must re-engage when the caller's options settle on a new signature after earlier
+// captures used different options (adaptive baseline) — without this, a mixed
 // history (e.g. one cold capture config, then a polling loop) made every poll a one-off
 // forever and the memo never served.
 import { it, expect, afterEach } from 'vitest'
@@ -27,7 +27,7 @@ it('grid scene memoizes under mixed-option history', async () => {
   const warn = console.warn; console.warn = () => {}
   const el = buildScene(1200, 800)
   await new Promise((r) => requestAnimationFrame(r))
-  // mixed history: cold calls with cache:'disabled' trip the auto threshold
+  // mixed history: earlier cold calls establish a different option baseline
   for (let i = 0; i < 3; i++) await snapdom(el, { cache: 'disabled' })
   // then a plain polling loop — must re-engage the memo (adaptive baseline)
   await snapdom(el); await snapdom(el) // 2 consecutive '{}' → rebase + fresh
