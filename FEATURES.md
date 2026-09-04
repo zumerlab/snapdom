@@ -1,6 +1,6 @@
 # SnapDOM — Features
 
-A complete technical overview of what **SnapDOM** captures, embeds and exports. SnapDOM serializes a DOM subtree into a self-contained SVG (via `<foreignObject>`) and rasterizes it to your target format — ultra-fast, dependency-free, and 100% based on standard Web APIs.
+A complete technical overview of what **SnapDOM** captures, embeds and exports. The default engine serializes a DOM subtree into a self-contained SVG (via `<foreignObject>`) and rasterizes it to your target format; the experimental `html-in-canvas` engine can instead paint the finished clone directly to a bitmap — ultra-fast, dependency-free, and 100% based on standard Web APIs.
 
 > 📖 Full API, options and guides: **[snapdom.dev/docs](https://snapdom.dev/docs/)**
 >
@@ -44,7 +44,7 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 - **`counter()` / `counters()`** — a full CSS counter resolver (counter-reset with nesting, counter-increment, counter-set, and counter-style formatting), used in pseudo-element `content`.
 - **`-webkit-line-clamp` & `text-overflow: ellipsis`** — baked into real text (with `…`) because Firefox and Safari don't honor them inside `<foreignObject>`.
 - **Transforms** — base and individual `translate`/`rotate`/`scale` are read into a total matrix with origin-aware bounding-box math (see the `outerTransforms` option).
-- **Shadows, blur & outline bleed** — box-shadow, filter blur, drop-shadow and outline expand the viewBox when `outerShadows` is on; otherwise root shadows are visually stripped (see `outerShadows`).
+- **Shadows, blur & outline bleed** — `outerShadows: false` strips root box/text shadows, outlines and `drop-shadow()` but preserves `blur()` and its bleed. `true` keeps and bounds the root effects; `'subtree'` also accounts for descendant shadow ink. Explicit `clip` edges never expand.
 - **Masks, backgrounds & border-image** — see [Images & backgrounds](#images--backgrounds).
 - **Custom scrollbars** — `::-webkit-scrollbar` rules are injected so custom scrollbar styling appears.
 - **`excludeStyleProps`** — skip properties from the snapshot by RegExp or predicate (e.g. drop all CSS variables).
@@ -68,7 +68,7 @@ Non-renderable content is handled gracefully: invalid XML control characters are
 - **`localFonts`** — supply your own fonts as `{ family, src, weight?, style?, stretchPct? }` to fetch and embed.
 - **`excludeFonts`** — exclude by `{ families?, domains?, subsets? }`.
 - **Cross-origin stylesheets** — gated by `fontStylesheetDomains` (plus known math libraries like KaTeX/MathJax).
-- **`snapdom.preCapture()`** — takes an element's first capture before the click, the way links prefetch: intent on a control (pointer over it, focus, pointer down) captures the element that control asked for the last time, with the same options.
+- **`snapdom.preCapture()`** — takes a memo-eligible element's first capture before the click, the way links prefetch: a capture started in the same event task as a control's press/click event is learned, and later pointer-enter or focus intent repeats it with a shallow copy of that call's top-level options.
 
 ## Export formats
 
@@ -76,16 +76,16 @@ A `snapdom(el)` call returns a reusable result object; capture once, export many
 
 | Method | Returns |
 |---|---|
-| `toRaw()` | Raw `data:image/svg+xml` URL |
-| `toSvg()` / `toImg()` | SVG `HTMLImageElement` |
+| `toRaw()` | Capture data URL: SVG by default; lazily minted PNG after a successful native `html-in-canvas` capture, SVG on fallback |
+| `toSvg()` / `toImg()` | `HTMLImageElement`: SVG-backed normally, PNG-backed after a successful native capture, SVG-backed on fallback |
 | `toCanvas()` | `HTMLCanvasElement` |
-| `toBlob()` | `Blob` (SVG text blob or rasterized) |
+| `toBlob()` | `Blob` (defaults to SVG with the SVG engine and PNG after a successful native-engine capture; an explicit SVG request on the native path rejects) |
 | `toPng()` | PNG image |
-| `toJpg()` | JPG image (white background) |
+| `toJpeg()` / `toJpg()` | JPEG image (white background) |
 | `toWebp()` | WebP image |
 | `download()` | Triggers a file download |
 
-The same methods exist as one-shot static shortcuts (`snapdom.toPng(el)`, `snapdom.download(el)`, …). Lossy formats (JPEG/WebP) auto-flatten transparency to white. Downloads use the Web Share API on iOS. Exports run through a serial per-session queue with `beforeExport` / `afterExport` / `afterSnap` hooks.
+Corresponding one-shot static shortcuts exist (`snapdom.toPng(el)`, `snapdom.toJpg(el)`, `snapdom.download(el)`, …). Lossy formats (JPEG/WebP) auto-flatten transparency to white. Downloads use the Web Share API on iOS. Exports run through a serial per-session queue with `beforeExport` / `afterExport`; `afterSnap` fires once after the first successful export.
 
 ## Options
 
@@ -105,22 +105,24 @@ Defaults as normalized in `src/core/context.js`.
 | `excludeFonts` | `undefined` | `{ families, domains, subsets }` |
 | `fontStylesheetDomains` | `[]` | Extra cross-origin CSS domains |
 | `fallbackURL` | `undefined` | Fallback image URL or callback |
-| `cache` | `'soft'` | `soft` (structural default) or `disabled` (debug/testing escape). `auto` / `full` are accepted as legacy aliases and map to `soft` |
+| `cache` | `'soft'` | Controls persistent resource/style caches: `disabled`/`false` clears and bypasses them for debugging; `auto` / `full` are legacy aliases for `soft`. Repeat memoization is separate |
 | `useProxy` | `''` | CORS proxy template/base |
 | `width` | `null` | Output width (aspect-preserving) |
 | `height` | `null` | Output height |
 | `format` | `'png'` | `png` / `jpg`→`jpeg` / `webp` / `svg` |
-| `type` | `'svg'` | Output type `svg` / `img` / `canvas` / `blob` |
+| `type` | `undefined` | Deprecated alias kept synchronized with canonical `format`; either name is honored, and recognized codecs are `png`, `jpeg`/`jpg`, `webp`, `svg` |
 | `quality` | `0.92` | Lossy encode quality |
 | `dpr` | `devicePixelRatio \|\| 1` | Device pixel ratio |
 | `backgroundColor` | `null` (`#ffffff` for jpeg/webp) | Flatten background |
 | `filename` | `'snapDOM'` | Download filename base |
 | `outerTransforms` | `true` | Normalize root translate/rotate vs. expand bbox for transforms |
-| `outerShadows` | `false` | Strip root shadows vs. expand bleed for shadows/blur/outline |
+| `outerShadows` | `false` | `false` strips root box/text shadows, outline and `drop-shadow()` but keeps `blur()` and its bleed; `true` bounds root effects; `'subtree'` also bounds descendant shadow ink. Explicit clips never expand |
 | `clip` | `null` | Capture a region only: `'viewport'` (what the user currently sees) or `{x,y,width,height}` in page coordinates. Offscreen subtrees are pruned before styling and inlining, so it is faster than a full capture |
-| `engine` | `'svg'` | `'canvas'` opts into the experimental WICG canvas-place-element engine. Not in the published bundle (see below); falls back to the svg pipeline whenever it is unavailable |
+| `captureSelection` | `false` | Render the user's live text or field selection |
+| `canvas` | `null` | Reuse an `HTMLCanvasElement` as the target for `toCanvas()` and exports built on it |
+| `engine` | `'svg'` | `'html-in-canvas'` opts into the experimental WICG canvas-place-element engine. Not in the published bundle; unavailable captures and beforeRender/afterRender plugins fall back to SVG |
 | `reconcile` | `false` | Measure the clone against the live DOM and pin diverging boxes to their real size (roughly doubles capture time) |
-| `invalidate` | `false` | Force one fresh, non-memoized capture — for changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits) |
+| `invalidate` | `false` | Force one fresh capture that is not served from the existing memo and clear style snapshots after unobservable application changes; a stable fresh result may become the new memo |
 | `excludeStyleProps` | `null` | RegExp/predicate to skip style props |
 | `plugins` | — | Per-capture plugin list (local-first) |
 
@@ -128,10 +130,10 @@ Defaults as normalized in `src/core/context.js`.
 
 Plugins are plain objects with lifecycle hooks, registered globally (`snapdom.plugins(...)`, deduped by `name`) or per-capture (`{ plugins: [...] }`, where locals override globals by name).
 
-- **Hooks** (in order): `beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport → afterSnap`.
+- **Hooks / setup** (in order): `beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender → defineExports → [beforeExport → exporter → afterExport] → afterSnap`; the bracketed stage repeats, and `afterSnap` fires once after the first successful export.
 - **Custom exporters** — a plugin's `defineExports` can add or override export formats; each becomes a `to<Name>()` helper on the result object and gets the same export pipeline as core formats.
 - **Accepted forms** — plain object, `[factory, options]`, `{ plugin, options }`, or a factory function.
-- **How far the capture runs** (`needs`) — a plugin declares `'dom'` (live page only, no clone), `'clone'` (frozen tree, no pixels) or `'render'` (default: the whole pipeline). The capture runs to the deepest stage any attached plugin declares, so a capture with no plugins is unchanged. Below `'render'` there is no image: `url` and every export throw, naming the plugin, and `result.needs` reports what ran. Worth it because the clone is ~89% of a capture — a plugin that only reads the live page (a semantic export) can skip it.
+- **How far the capture runs** (`needs`) — a per-capture plugin declares `'clone'` (frozen tree, no pixels) or `'render'` (default: the whole pipeline). The capture runs to the deepest stage any attached plugin declares, so a capture with no plugins is unchanged. At `'clone'` there is no image: `url` and every export throw, naming the plugin, and `result.needs` reports what ran. Global registration rejects clone-only plugins.
 
 See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUTING_PLUGINS.md).
 
@@ -139,12 +141,12 @@ See [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) and [`CONTRIBUTING_PLUGINS.md`](CONTRIBUT
 
 - **Buckets** — FIFO evicting maps for `image`, `background`, `resource`, `baseStyle` and `defaultStyle`; `WeakMap`s for computed styles and layout measurement hints; a `Set` for fonts; and a per-session bucket.
 - **Policies** (`cache` option) — caching is structural in v3, not a knob:
-  - `soft` (default) — per-capture sessions plus content-keyed persistent caches.
-  - `disabled` — opts out of every cache. A debug/testing escape, not a tuning option.
+  - `soft` (default) — content-keyed persistent resource/style caches are enabled.
+  - `disabled` (or `false`) — clears and bypasses those persistent caches. A debug/testing escape, not a tuning option.
   - `auto` / `full` — accepted for v2 compatibility and silently mapped to `soft`.
-- **Invalidation** — a MutationObserver on the DOM and `<head>` plus font `loadingdone`/`ready` events bump a style epoch, so stale snapshots are dropped automatically. CSSOM edits (`sheet.insertRule`, `rule.style.x = …`) change no DOM node and are invisible to every observer: `invalidate: true` purges the epoch-scoped caches for exactly that case.
-- **`snapdom.preCapture()`** — no arguments: arms document-level intent listeners; a capture within a second of a press is attributed to the pressed control, and later intent on that control captures its element with the same options. Nothing runs without a gesture. `preCache` is gone: with memoization from the first capture, the capture is its own warm-up.
-- **Repeat-capture memoization** — engine behavior, no option: every element is memoized from its first capture (scoped `MutationObserver` + video/image/font/scroll/resize/head-CSS/animation/`:hover` tracking; at most 64 live memos, least recently used evicted); when only subtrees changed, a differential recapture rebuilds just those, byte-identical to a full capture. Pass `invalidate: true` to force one fresh capture after changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits).
+- **Invalidation** — a MutationObserver on the DOM and `<head>` plus font `loadingdone`/`ready` events bump a style epoch, so stale snapshots are dropped automatically. CSSOM edits (`sheet.insertRule`, `rule.style.x = …`) change no DOM node and are invisible to every observer: `invalidate: true` makes the next capture bypass the existing memo and purges the epoch-scoped caches for exactly that case. Its stable fresh result may become the new memo.
+- **`snapdom.preCapture()`** — no arguments: arms document-level intent listeners; a memo-eligible capture started in the same event task as a press/click event is attributed to that control, and later intent events on the control capture its element with a shallow copy of that call's top-level options. It reacts to those events and does no background polling. `preCache` is gone: with memoization from the first eligible capture, the capture is its own warm-up.
+- **Repeat-capture memoization** — separate engine behavior, no `cache` option required: eligible elements are memoized from their first capture (scoped `MutationObserver` plus media/image/font/scroll/resize/head-CSS/animation/interaction tracking; at most 64 live memos, least recently used evicted). Safe localized changes use differential recapture; ambiguous changes conservatively use a full capture. Frame-driven trees capture fresh automatically; pass `invalidate: true` after unobservable application changes such as programmatic CSSOM edits.
 
 ## Cross-browser handling
 

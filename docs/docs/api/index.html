@@ -126,18 +126,23 @@ document.body.appendChild(png);</pre>
       <h2 id="reusable">snapdom(el, options?)</h2>
       <p>Returns a reusable object with export methods. The capture (deep clone + asset inlining) runs once; each method on the returned object reuses it, so exporting several formats from the same element does not re-clone the DOM.</p>
       <pre class="code-block">{
-  url: string;
+  url: string;                    // SVG by default; lazy PNG after a successful native html-in-canvas capture
+  needs: 'clone' | 'render';
+  meta: Readonly&lt;CaptureMeta&gt;;
+  warnings: Array&lt;{ code: string; message: string; detail?: unknown }&gt;;
   toRaw(): string;
-  toImg(): Promise&lt;HTMLImageElement&gt;; // deprecated
-  toSvg(): Promise&lt;HTMLImageElement&gt;;
-  toCanvas(): Promise&lt;HTMLCanvasElement&gt;;
+  to(type, options?): Promise&lt;unknown&gt;;
+  toImg(options?): Promise&lt;HTMLImageElement&gt;; // deprecated
+  toSvg(options?): Promise&lt;HTMLImageElement&gt;;
+  toCanvas(options?): Promise&lt;HTMLCanvasElement&gt;;
   toBlob(options?): Promise&lt;Blob&gt;;
   toPng(options?): Promise&lt;HTMLImageElement&gt;;
+  toJpeg(options?): Promise&lt;HTMLImageElement&gt;;
   toJpg(options?): Promise&lt;HTMLImageElement&gt;;
   toWebp(options?): Promise&lt;HTMLImageElement&gt;;
   download(options?): Promise&lt;void&gt;;
 }</pre>
-      <p class="muted"><code>toImg()</code> is <strong>deprecated</strong> — use <code>toSvg()</code> instead.</p>
+      <p class="muted"><code>toImg()</code> is <strong>deprecated</strong> — use <code>toSvg()</code> instead. With the default engine, <code>url</code> / <code>toRaw()</code> is the serialized SVG. A successful <code>html-in-canvas</code> capture is raster, so reading either one lazily materializes and memoizes a PNG data URL.</p>
     </section>
 
     <section class="prose">
@@ -148,14 +153,29 @@ document.body.appendChild(png);</pre>
           <tr><th>Method</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">snapdom.toImg(el, options?)</td><td>Returns an SVG <code>HTMLImageElement</code> (deprecated)</td></tr>
-          <tr><td class="num">snapdom.toSvg(el, options?)</td><td>Returns an SVG <code>HTMLImageElement</code></td></tr>
+          <tr><td class="num">snapdom.toRaw(el, options?)</td><td>Returns the capture data URL (SVG by default; PNG after a successful native <code>html-in-canvas</code> capture, SVG on fallback)</td></tr>
+          <tr><td class="num">snapdom.toImg(el, options?)</td><td>Deprecated alias of <code>toSvg</code></td></tr>
+          <tr><td class="num">snapdom.toSvg(el, options?)</td><td>Returns an <code>HTMLImageElement</code> (SVG by default; PNG-backed after a successful native <code>html-in-canvas</code> capture, SVG on fallback)</td></tr>
           <tr><td class="num">snapdom.toCanvas(el, options?)</td><td>Returns a <code>Canvas</code></td></tr>
-          <tr><td class="num">snapdom.toBlob(el, options?)</td><td>Returns an SVG or raster <code>Blob</code></td></tr>
+          <tr><td class="num">snapdom.toBlob(el, options?)</td><td>Returns an SVG or raster <code>Blob</code>; successful <code>html-in-canvas</code> captures default to PNG</td></tr>
           <tr><td class="num">snapdom.toPng(el, options?)</td><td>Returns a PNG image</td></tr>
           <tr><td class="num">snapdom.toJpg(el, options?)</td><td>Returns a JPG image</td></tr>
           <tr><td class="num">snapdom.toWebp(el, options?)</td><td>Returns a WebP image</td></tr>
           <tr><td class="num">snapdom.download(el, options?)</td><td>Triggers a download</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="prose">
+      <h2 id="top-level">Other top-level API</h2>
+      <table class="cmp-table">
+        <thead>
+          <tr><th>Member</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">snapdom.plugins(...defs)</td><td>Register global plugins, chainably. Per-capture plugins still override globals by name.</td></tr>
+          <tr><td class="num">snapdom.preCapture()</td><td>Arm intent-event-driven pre-capture for memo-eligible captures; see the <a href="../cache/">cache guide</a>.</td></tr>
+          <tr><td class="num">snapdom.version</td><td>The package version baked into the bundle.</td></tr>
         </tbody>
       </table>
     </section>
@@ -189,7 +209,7 @@ const png = await result.toPng();</pre>
           <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">filename</td><td class="num">string</td><td class="num">snapdom</td><td>Download name.</td></tr>
+          <tr><td class="num">filename</td><td class="num">string</td><td class="num">snapDOM</td><td>Download name.</td></tr>
           <tr><td class="num">format</td><td class="num">"png" | "jpeg" | "jpg" | "webp" | "svg"</td><td class="num">"png"</td><td>Output format for the downloaded file.</td></tr>
         </tbody>
       </table>
@@ -206,9 +226,10 @@ const png = await result.toPng();</pre>
           <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">type</td><td class="num">"svg" | "png" | "jpeg" | "jpg" | "webp"</td><td class="num">"svg"</td><td>Blob type to generate.</td></tr>
+          <tr><td class="num">type</td><td class="num">"svg" | "png" | "jpeg" | "jpg" | "webp"</td><td class="num">"svg" / "png" after successful native capture</td><td>Blob type to generate.</td></tr>
         </tbody>
       </table>
+      <p class="muted"><code>toBlob()</code> defaults to SVG on the default engine and PNG after a successful <code>html-in-canvas</code> capture. That native capture has no SVG source, so an explicit <code>type: "svg"</code> or <code>format: "svg"</code> request rejects.</p>
       <p><strong>Example:</strong></p>
       <pre class="code-block">const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });</pre>
     </section>

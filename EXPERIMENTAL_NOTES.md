@@ -1,5 +1,9 @@
 # experimental branch — lab notes
 
+> Historical branch log. Statements below describe the revision being measured at each point,
+> not the current v3 contract. Current decisions live in `ARCHITECTURE.md`, `CHANGELOG.md`, and
+> the owning source-file headers.
+
 Bolder sibling of `next` (branched from it 2026-07-28). Same graduation model as
 NEXT_NOTES → main: each item below states its verdict — **graduate to next**, **keep
 experimenting**, or **discarded (with evidence)**. Source roadmap: 49 adversarially-verified

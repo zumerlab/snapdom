@@ -20,18 +20,19 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
 - Core masks `type="password"` only. Everything the browser paints in the clear is captured as
   is; use the `redactInputs` plugin for the old behaviour.
 - `embedFonts` defaults to `'auto'`.
-- `preCache` is removed, along with the `/preCache` subpath and `window.preCache`. Every element
-  is memoized from its first capture, so the capture is its own warm-up; `snapdom.preCapture()`
-  takes it before the click.
+- `preCache` is removed, along with the `/preCache` subpath and `window.preCache`. Eligible
+  static elements are memoized from their first capture, so the capture is its own warm-up;
+  `snapdom.preCapture()` can take it before the click.
 - No CommonJS build, by decision. Up to 2.24.1 `require()` pointed at the IIFE and returned `{}`,
   so nothing that worked is lost.
 
 ⚡ perf
 - Per-capture sessions replace the module-level mutable session; the whole `#463` bug class is
   now structurally unrepresentable.
-- Memoization + differential recapture from the first capture of every element (at most 64 live
-  memos, least recently used evicted): an unchanged repeat is served from memory and a mutation
-  rebuilds only the affected subtree (mutating poll 563ms → 16ms; animated 39ms → 7.5ms).
+- Automatic memoization from the first eligible static capture (at most 64 live memos, least
+  recently used evicted): an unchanged repeat is served from memory; a local mutation uses
+  differential recapture only when byte-faithful splicing can be proved, otherwise it falls
+  back to a full capture (mutating poll 563ms → 16ms).
 - One author-style scan yields the property universe and per-pseudo selector gates, replacing
   three `getComputedStyle` resolutions per node with one `matches()`.
 
@@ -40,8 +41,9 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
   **Trusted HTML only** — it goes through `innerHTML` into the real document.
 - Plugin stages (`needs`), `defineExports` for custom export formats, and an official plugin
   package: `@zumer/snapdom-plugins`.
-- `snapdom.preCapture()`: link prefetch for captures. Intent on a control (pointer over it, focus,
-  pointer down) captures the element that control asked for the last time, with the same options.
+- `snapdom.preCapture()`: link prefetch for captures. Intent on a control (pointer enter, focus,
+  press) captures the eligible element that control asked for previously, with the same options.
+  Attribution is limited to the triggering event task; unrelated later timers are not learned.
 
 🛠 fix
 - The `/plugins` subpath maps to the same file as the root instead of being a separate bundle
@@ -54,7 +56,23 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
   package.json pointed at files that were not in it.
 - The line-clamp bake no longer reverts a text update the page made while the capture ran.
 - Burst no longer commits a memo torn by an event that carries no mutation record (typing,
-  scrolling, focus, video frames) mid-capture.
+  scrolling, focus) mid-capture.
+- Automatic memoization now covers observable hover/focus/active, media, stylesheet, nested
+  scroll and programmatic form-state changes, including open shadow roots; selection and
+  opaque/frame-driven sources always capture fresh.
+- Same-element captures are serialized, option-baseline changes are committed inside that
+  queue, failed diff exports stay dirty, and LRU eviction cannot resurrect disposed state.
+- Simultaneous local and outside mutations force a full capture; memo keys use the plugins
+  attached to the capture, even if the global registry changes during asynchronous preparation.
+- Differential recapture falls back for geometry/top-layer/backdrop/plugin cases whose output
+  cannot be spliced byte-faithfully.
+- Video alpha detection scans the whole frame before choosing JPEG, so transparency away from
+  a small probe is not flattened.
+- Internal helper ownership is private instead of attribute-based: author nodes that happen to
+  use `data-snapdom-internal` are preserved and never mistaken for SnapDOM scaffolding.
+- The experimental html-in-canvas backend paints the finished clone, preserves fractional and
+  scaled geometry, and exposes coherent canvas/image/blob exports without retaining clone state.
+  Transformed or zoomed ancestors fall back to SVG to preserve the local capture box.
 - Captures inside a same-origin iframe read form controls' live values and see stylesheet edits
   made in that document.
 - A stalled `@import` stylesheet can no longer hang a capture forever.

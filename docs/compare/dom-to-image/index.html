@@ -157,7 +157,7 @@
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
       <p><a href="https://github.com/tsayen/dom-to-image" target="_blank" rel="noopener">dom-to-image</a> introduced the technique most modern libraries still use: clone the node, inline its CSS and assets, wrap it in a <code>&lt;foreignObject&gt;</code>, and let the browser do the painting. It works, it's small, and the API is friendly. The downside is that it stopped receiving meaningful updates, so newer CSS features and edge cases are gradually catching up to it.</p>
-      <p><strong>SnapDOM</strong> is a from-scratch implementation of the same idea, with active development and a plugin system on top. The capture pipeline is exposed through lifecycle hooks (<code>beforeClone</code>, <code>afterClone</code>, <code>beforeRender</code>, <code>afterRender</code>, <code>beforeExport</code>, <code>afterExport</code>) so you can transform the result without forking the library.</p>
+      <p><strong>SnapDOM</strong> is a from-scratch implementation of the same idea, with active development and a plugin system on top. The capture pipeline is exposed through lifecycle hooks (<code>beforeClone</code>, <code>afterClone</code>, <code>beforeRender</code>, <code>afterRender</code>, <code>beforeExport</code>, <code>afterExport</code>) so you can alter capture state, observe exports, and add custom exporters without forking the library.</p>
     </section>
 
     <section class="prose">

@@ -52,12 +52,12 @@ v3 把捕获引擎彻底重写了一遍。API 的形态没变，v2 的调用方�
 
 **全面更快。**
 - **首次捕获最多快 2 倍。** 引擎先对样式表做一次扫描，得出页面实际可能用到的 CSS 属性，于是每个节点的样式快照只读取约 50 个属性，而不是约 400 个：这是任何 DOM 捕获中开销最大的一环。
-- **重复捕获几乎不花时间。** 每个元素从第一次捕获起就会被记忆化：内容没变的重复捕获立即返回；内容*确实*变了的时候，**差分重建**只重做发生变化的子树（在频繁更新的仪表盘上快约 5 倍），输出与完整捕获**逐字节一致**。
-- 失效追踪是自动且完整的：DOM 变更、`<video>` 帧、图片与字体加载、滚动、视口尺寸变化、`<head>` 中的 CSS 改动，以及 CSS/WAAPI 动画都在追踪范围内。没有新 API 要学，也不需要任何配置。内联图片同样会自动降采样到实际显示分辨率（保留原编码格式，在 Worker 中完成）。
+- **重复捕获几乎不花时间。** 每个符合条件的元素从第一次捕获起就会被记忆化：内容没变的重复捕获立即返回；能证明安全的局部变化会用**差分重建**只重做受影响的子树（在频繁更新的仪表盘上快约 5 倍）。无法证明与完整捕获等价时，SnapDOM 会保守地重新完整捕获。
+- 自动记忆化采用保守策略：DOM、样式、交互、滚动和视口等可观察变化会使缓存失效。iframe、视频、canvas、可识别的 GIF/APNG，以及运行中的 CSS/WAAPI 动画等嵌入式或帧驱动内容会走新鲜帧路径，避免连续捕获返回旧帧。内联图片同样会自动降采样到实际显示分辨率（保留原编码格式，在 Worker 中完成）。
 
 **默认更忠实于原页面。**
 - **网页字体自动嵌入**（`embedFonts: 'auto'`）。捕获结果所依赖的那份 SVG 是一个独立文档，看不到页面已加载的字体。在 v2 中，除非你主动开启，网页字体文字会以回退字体的度量悄悄渲染。v3 会检测是否用到了网页字体，并只嵌入真正需要的部分；纯系统字体的页面完全不付出这份开销。
-- **Safari 部分重写。** 隐藏的三次预热捕获已经去掉，取而代之的是验证绘制：WebKit 需要多久就等多久，一帧不多（首次捕获快约 2 倍）。而且 `toSvg()` 在 Safari 上现在返回真正的**矢量 SVG**，不再悄悄光栅化成 PNG。
+- **Safari 部分重写。** 隐藏的三次预热捕获已经去掉，取而代之的是验证绘制：WebKit 需要多久就等多久，一帧不多（首次捕获快约 2 倍）。使用默认 SVG 引擎时，`toSvg()` 在 Safari 上现在返回真正的**矢量 SVG**，不再悄悄光栅化成 PNG。
 - **每次捕获的状态互相隔离。** 造成捕获之间互相干扰的那个模块级可变会话已经不存在，状态改为放在贯穿整条流水线的会话对象上，因此这一类竞态在结构上无法再出现。`iconFonts` 是最后一个例外，现在也改为按捕获编译，并发捕获传入不同列表时不会再互相干扰。
 - 输出也更小：同样的内容，SVG 体积最多减少 **27%**。
 
@@ -65,7 +65,7 @@ v3 把捕获引擎彻底重写了一遍。API 的形态没变，v2 的调用方�
 那些需要调优知识才能用好的选项，已经自己退出了 API：重复捕获的记忆化和图片压缩现在就是引擎的固有行为，`cache` 收敛成一个调试开关，`fast` 则被移除。最好的选项，是你永远不需要去了解的那个。
 
 **并且为下一步做好了准备。**
-实验性的 `engine: 'canvas'` 通过 WICG canvas-place-element API（Chrome 需开启实验开关）用浏览器自身的绘制器输出结果：原生表单控件像素级还原，也没有 SVG 带来的各种怪癖。但目前 Chromium 会无条件污染画布，读不回像素，因此每次捕获都会回退到常规流程；既然这些字节现在还不可能执行，该引擎**不包含在发布产物中**。需要时用 `SNAPDOM_CANVAS_ENGINE=1 npm run compile` 自行构建。
+实验性的 `engine: 'html-in-canvas'` 通过 WICG html-in-canvas API（Chrome 148+ origin trial / 实验开关）用浏览器自身的绘制器绘制已经完成的克隆：原生表单控件像素级还原，也没有 SVG-as-image 带来的问题；`exclude`、`reconcile` 等克隆阶段行为仍然生效。插件含有 `beforeRender` 或 `afterRender` 时，该次捕获会使用 SVG 回退流程。原生引擎成功时，捕获结果本身是位图：像素导出直接使用 canvas；读取 `result.url` / `toRaw()` 会按需生成并复用一个 PNG data URL，而 `toSvg()` / `toImg()` 会另外编码 PNG，并返回以其为数据源的图片。不存在可序列化的 SVG。不可用时会回退到常规 SVG 流程；该引擎**不包含在发布产物中**。需要时用 `SNAPDOM_CANVAS_ENGINE=1 npm run compile` 自行构建。
 
 ## 从 v2 迁移
 
@@ -74,12 +74,12 @@ v2 的调用方式仍然可用，未知选项会被忽略而不是报错。发�
 | 变化 | 你需要做什么 |
 | --- | --- |
 | `embedFonts` 默认值变为 `'auto'`（原先是关闭）。网页字体文字现在会真正嵌入，而不是以回退字体的度量渲染。 | 通常无需处理。除非你依赖的正是那种回退渲染效果，那就传 `embedFonts: false`。 |
-| `cache` 收敛为 `'soft'`（默认）和 `'disabled'`。`'auto'` / `'full'` 仍被接受，并静默映射为 `'soft'`。 | 去掉这个选项即可；调试时可以用 `cache: 'disabled'`。 |
+| 控制持久资源/样式缓存的公开 `cache` 策略收敛为 `'soft'`（默认）和 `'disabled'`。`'auto'` / `'full'` 仍被接受，并静默映射为 `'soft'`；重复捕获记忆化是另一套机制。 | 去掉这个选项即可；调试时可以用 `cache: 'disabled'`。 |
 | `fast` 已被移除。 | 删掉它，它原本的行为现在是无条件生效的。 |
-| 同一元素从第一次捕获起就自动记忆化，内容变更则触发差分重建。`preCache` 已移除：捕获本身就是预热，`snapdom.preCapture()` 会在点击之前完成它。 | 一般无需处理。对于任何观察者都看不到的变化（`sheet.insertRule()`、直接修改 `rule.style.x`、canvas 像素绘制），传入 `invalidate: true`。 |
+| 符合条件的同一元素从第一次捕获起就自动记忆化。可观察变化会使它失效；只有能保持完整捕获结果时才使用差分重建，否则保守地完整重捕获。`preCache` 已移除：捕获本身就是预热，`snapdom.preCapture()` 会在点击之前完成它。 | 一般无需处理。对于浏览器没有信号可观察的应用状态（尤其是 `sheet.insertRule()`、直接修改 `rule.style.x`），传入 `invalidate: true`；canvas、video、iframe 等帧驱动内容本来就会全新捕获。 |
 | 内联的位图默认会降采样到实际显示分辨率。 | 无需处理。原始编码格式会被保留，也绝不会放大。 |
 | **`width`/`height` 的优先级现在高于 `scale`。** v2 会把两者相乘（`{ width: 800, scale: 2 }` 光栅化出 1600px 宽）；v3 把 `width`/`height` 视为绝对输出尺寸，只有两者都没设置时才应用 `scale`。这同时修正了 v2 的不一致：`toCanvas` 会乘以 `scale`，而 `toImg`/`toSvg` 会忽略它。 | 如果你依赖的是相乘后的结果，直接传最终尺寸（`width: 1600`）。 |
-| 带有渲染类钩子的插件会暂停自动记忆化，除非声明 `pure: true`。 | 如果你的钩子是确定性且幂等的，加上 `pure: true`。 |
+| 带有会影响捕获结果的钩子的插件会暂停自动记忆化，除非声明 `pure: true`。 | 如果这些钩子是确定性且幂等的，加上 `pure: true`。 |
 | **`filter` 与 `filterMode` 已移除，不再生效。** 它们与 `exclude`/`excludeMode` 是同一个决定的两扇门，只是极性相反（返回 `true` 表示保留）。传入时会打印警告而不是静默忽略：一个悄悄停止遮蔽的遮蔽选项是最糟的结果。 | 反转判断函数：`filter: el => keep(el)` 改写为 `exclude: el => !keep(el)`；`filterMode` 改为 `excludeMode`。 |
 | 浏览器以明文绘制的输入值（`email`、`tel`、`cc-*`、`one-time-code`）现在会被原样捕获。core 只遮蔽 `type="password"`，因为该控件本来就绘制成圆点，遮蔽不损失任何保真度。 | 需要原来的遮蔽行为，请使用 `@zumer/snapdom-plugins` 中的 `redactInputs` 插件。 |
 
@@ -179,7 +179,9 @@ yarn add @zumer/snapdom@dev
 | 变体 | 文件 | 使用场景 |
 |------|------|----------|
 | **ESM**（支持 Tree Shaking） | `dist/snapdom.mjs` | 打包工具（Vite、webpack）、`import` |
-| **IIFE**（全局变量） | `dist/snapdom.js` | `<script>` 标签、传统 `require` |
+| **IIFE**（全局变量） | `dist/snapdom.js` | `<script>` 标签、`window.snapdom` |
+
+没有 CommonJS 构建产物。`@zumer/snapdom/plugins` 与主入口解析到同一份 ESM 运行时，因此无论从哪个入口导入，插件注册表和缓存都只有一个实例。
 
 **打包工具（npm）：**
 ```js
@@ -201,7 +203,7 @@ import { registerPlugins, clearPlugins, getGlobalPlugins } from '@zumer/snapdom/
 import { snapdom, registerPlugins } from '@zumer/snapdom';
 ```
 
-**在点击之前就准备好的捕获。** 重复捕获从第一次起就会被记忆化，所以对同一个未改变的元素再点一次，结果直接来自内存。`snapdom.preCapture()` 把这第一次捕获提前到点击之前，就像链接的 prefetch：调用一次，此后当用户对某个控件表现出意图（指针悬停、获得焦点、按下指针）时，snapdom 会用同样的选项捕获该控件上一次请求的元素，比点击落下早 100 到 400 ms。无需声明任何东西，后台也没有任何常驻任务：
+**在点击之前就准备好的捕获。** 符合记忆化条件的重复捕获从第一次起就会被记忆化，所以对同一个未改变的元素再点一次，结果直接来自内存。`snapdom.preCapture()` 把这第一次符合条件的捕获提前到点击之前，就像链接的 prefetch：调用一次；在按下或点击事件的同一事件任务中启动、且符合记忆化条件的捕获会归属到该控件，之后指针进入或获得焦点的意图事件会用原始调用顶层选项的浅拷贝再次捕获。无需声明任何东西，也没有后台轮询；它只响应意图事件：
 ```js
 snapdom.preCapture();
 
@@ -245,19 +247,20 @@ document.body.appendChild(png);
 完整参考文档位于 **[snapdom.dev/docs](https://snapdom.dev/docs/)**，会随版本同步更新，也支持站内搜索：
 
 - **[API 参考](https://snapdom.dev/docs/api/)** — `snapdom()` 返回的可复用对象、快捷方法，以及各导出方法的专用选项。
-- **[选项](https://snapdom.dev/docs/options/)** — 逐项介绍所有捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`、`compress`、`outerTransforms`、`outerShadows`、`cache`……），并附有示例。
+- **[选项](https://snapdom.dev/docs/options/)** — 逐项介绍所有公开捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`、`captureSelection`、`clip`、`outerTransforms`、`outerShadows`、`cache`……），并附有示例。
 - **[插件](https://snapdom.dev/docs/plugins/)** — 如何构建、注册和发布自定义插件及导出格式。社区插件见[插件页面](https://snapdom.dev/plugins.html)。
 - **[缓存](https://snapdom.dev/docs/cache/)** — 捕获如何从第一次起被记忆化、如何失效，以及差分重建。
 
 ### API 速览
 
-`snapdom(el, options?)` 返回一个可复用对象（`toPng`、`toSvg`、`toCanvas`、`toBlob`、`toJpg`、`toWebp`、`download`、`to(name)`、`toRaw()`、`url`、`meta`、`warnings`、`needs`）。其中 `meta` 是冻结的渲染几何信息（viewBox 尺寸、逻辑捕获框、精确的 `contentX`/`contentY` 原点、解析后的裁剪窗口），文档类导出器需要它来在图像上定位内容。单次导出可使用快捷方法：
+`snapdom(el, options?)` 返回一个可复用对象（`toPng`、`toSvg`、`toCanvas`、`toBlob`、`toJpeg`/`toJpg`、`toWebp`、`download`、`to(name)`、`toRaw()`、`url`、`meta`、`warnings`、`needs`）。其中 `meta` 是冻结的渲染几何信息（viewBox 尺寸、逻辑捕获框、精确的 `contentX`/`contentY` 原点、解析后的裁剪窗口），文档类导出器需要它来在图像上定位内容。默认引擎的 `url` / `toRaw()` 是 SVG；原生 `html-in-canvas` 引擎成功时则会按需生成 PNG。`snapdom.fromString(trustedHtml, options?)` 会在屏幕外挂载并捕获可信 HTML；用户输入必须先清理。单次导出可使用快捷方法：
 
 | 方法 | 说明 |
 | ------------------------------ | --------------------------------- |
-| `snapdom.toSvg(el, options?)`  | 返回包含 SVG 的 `HTMLImageElement` |
+| `snapdom.toRaw(el, options?)`  | 返回捕获 data URL（默认 SVG；原生 `html-in-canvas` 捕获成功后为 PNG，回退时仍为 SVG） |
+| `snapdom.toSvg(el, options?)`  | 返回 `HTMLImageElement`（默认以 SVG 为数据源；原生 `html-in-canvas` 捕获成功后以 PNG 为数据源，回退时仍为 SVG） |
 | `snapdom.toCanvas(el, options?)` | 返回 `HTMLCanvasElement`        |
-| `snapdom.toBlob(el, options?)` | 返回包含 SVG 或位图数据的 `Blob`  |
+| `snapdom.toBlob(el, options?)` | 返回包含 SVG 或位图数据的 `Blob`（原生引擎捕获成功时默认 PNG） |
 | `snapdom.toPng(el, options?)`  | 返回 PNG 图片                     |
 | `snapdom.toJpg(el, options?)`  | 返回 JPG 图片                     |
 | `snapdom.toWebp(el, options?)` | 返回 WebP 图片                    |
@@ -272,27 +275,33 @@ document.body.appendChild(png);
 | `scale` | `number` | `1` | 输出缩放倍数（仅在既未设置 `width` 也未设置 `height` 时生效：这两个选项表示绝对输出尺寸，优先级更高） |
 | `dpr` | `number` | `devicePixelRatio` | 栅格化输出的像素密度 |
 | `width` / `height` | `number` | `null` | 目标输出尺寸（只设置一个时保持宽高比） |
-| `backgroundColor` | `string` | `null`（JPEG/WebP 为 `#ffffff`） | 背景填充色 |
+| `backgroundColor` | `string \| null` | `null`（JPEG/WebP 为 `#ffffff`） | 背景填充色 |
 | `quality` | `number` | `0.92` | JPEG/WebP 质量（0–1） |
-| `format` | `'png' \| 'jpeg' \| 'webp' \| 'svg'` | `'png'` | `download()` 使用的格式 |
-| `type` | `string` | `'svg'` | `toBlob()` 的 Blob 类型（`'png'`、`'jpeg'`…） |
+| `format` | `'png' \| 'jpeg' \| 'jpg' \| 'webp' \| 'svg'` | `'png'` | `download()` 等可选格式导出的默认值；未明确指定编码时，SVG 引擎的 `toBlob()` 默认 SVG，原生引擎捕获成功时则默认 PNG。`toPng()` 等具名方法自行选择格式 |
+| `type` | 与 `format` 相同 | — | 与规范字段 `format` 保持同步的弃用别名；插件应优先使用 `format`，但两个名称都会生效。`toBlob({ type })` 仍是该导出器的专用选项 |
 | `filename` | `string` | `'snapDOM'` | 下载文件名 |
 | `embedFonts` | `boolean \| 'auto'` | `'auto'` | 内联 `@font-face`，让文字以真实字体渲染。`'auto'` 只在捕获内容确实用到网页字体时才嵌入（纯系统字体的页面会完全跳过这一步）；`true` 强制嵌入，`false` 关闭 |
 | `iconFonts` | `string \| RegExp \| array` | `[]` | 图标字体的字体族（始终内嵌） |
-| `localFonts` | `array` | `[]` | 显式指定字体：`{ family, src, weight?, style? }` |
+| `localFonts` | `array` | `[]` | 显式指定字体：`{ family, src, weight?, style?, stretchPct? }` |
 | `excludeFonts` | `object` | — | 按字体族 / 域名 / 子集跳过字体 |
+| `fontStylesheetDomains` | `string[]` | `[]` | 允许读取字体样式表的额外跨源域名 |
 | `exclude` | `string \| (el) => boolean \| 两者组成的数组` | `[]` | 从捕获中排除的节点：CSS 选择器和/或判断函数（返回 `true` 表示排除），两种形式可混用 |
 | `excludeMode` | `'hide' \| 'remove'` | `'hide'` | 被排除节点的处理方式 |
 | `clip` | `'viewport' \| {x, y, width, height}` | `null` | 只捕获指定区域，视口外内容会被裁剪 |
 | `useProxy` | `string` | `''` | 跨源图片使用的 CORS 代理前缀 |
 | `fallbackURL` | `string \| fn` | — | 加载失败的 `<img>` 的兜底图片 |
-| `cache` | `'disabled'` | *(结构性默认)* | `'disabled'`（或 `false`）会关闭所有缓存，仅用于调试和测试。v3 的缓存是引擎结构的一部分，不再是调优开关；`'soft'` / `'auto'` / `'full'` 仍被接受，并映射到默认行为 |
+| `placeholders` | `boolean` | `true` | 为加载失败的资源显示等尺寸占位符 |
+| `cache` | `'soft' \| 'disabled' \| 'auto' \| 'full' \| false` | `'soft'` | 只控制持久化的资源/样式缓存。`'disabled'`（或 `false`）会清空并绕过它们，仅用于调试；旧值 `'auto'` / `'full'` 映射为 `'soft'`。自动重复捕获记忆化是另一套机制 |
 | `outerTransforms` | `boolean` | `true` | 在输出中保留根元素的平移/旋转 |
-| `outerShadows` | `boolean` | `false` | 扩展边界以包含根元素的阴影/模糊/描边 |
+| `outerShadows` | `boolean \| 'subtree'` | `false` | `false` 会移除根元素的 `box-shadow`、`text-shadow`、`outline` 和 `drop-shadow()`，但保留 `blur()` 并计入其溢出；`true` 保留并计算根效果，`'subtree'` 还会扩展后代阴影的边界。显式 `clip` 的边界不会扩展 |
+| `captureSelection` | `boolean` | `false` | 在捕获中渲染用户当前的文字或表单字段选区 |
+| `canvas` | `HTMLCanvasElement` | — | 为 `toCanvas()` 及基于它的导出复用现有 canvas |
 | `reconcile` | `boolean` | `false` | 对照真实 DOM 测量克隆结果，把尺寸出现偏差的盒模型钉定为真实大小，可修复少见的文字重新换行/布局漂移问题，代价是捕获耗时大约翻倍 — 如果 snapdom 检测到某次捕获可能受益于此选项，会通过 `console.warn` 提示一次 |
-| `invalidate` | `boolean` | `false` | 为自动追踪无法感知的变化（canvas 像素绘制、以编程方式修改 CSSOM）强制触发一次全新捕获，并清空按样式纪元缓存的快照。无需配合任何其他选项 |
-| `engine` | `'svg' \| 'canvas'` | `'svg'` | **实验性**：在浏览器支持时，`'canvas'` 通过 WICG canvas-place-element API 用浏览器自身的绘制器输出位图（原生表单控件像素级还原），不可用时自动回退到 SVG 流程。目前 Chromium 会无条件污染画布，因此该引擎不包含在发布产物中，需要用 `SNAPDOM_CANVAS_ENGINE=1 npm run compile` 自行构建 |
+| `invalidate` | `boolean` | `false` | 对浏览器没有信号可观察的应用变化（尤其是以编程方式修改 CSSOM）强制触发一次不使用现有记忆结果的全新捕获，并清空样式快照；稳定的新结果可以成为新的记忆结果 |
+| `excludeStyleProps` | `RegExp \| fn` | — | 样式快照时跳过匹配的 CSS 属性（例如 `/^--/`） |
+| `engine` | `'svg' \| 'html-in-canvas'` | `'svg'` | **实验性**：浏览器支持时通过 WICG API 输出位图，不可用时回退到 SVG。原生捕获成功时会按需生成 PNG URL，不存在序列化 SVG。该引擎不包含在发布产物中，需要用 `SNAPDOM_CANVAS_ENGINE=1 npm run compile` 自行构建 |
 | `plugins` | `array` | — | 单次捕获插件（按名称覆盖全局插件）。插件可声明 `needs: 'clone' \| 'render'`，即捕获需要运行到哪一步。默认 `'render'`（完整流程）；低于该值时不会产生图像，所有导出方法都会抛错，`result.needs` 报告实际运行到哪一步 |
+| `debug` | `boolean` | `false` | 通过 `console.warn` 输出详细诊断信息 |
 
 📖 **[完整 API 和全部选项（附示例）→ snapdom.dev/docs](https://snapdom.dev/docs/)**
 
@@ -308,7 +317,7 @@ document.body.appendChild(png);
 ## 性能基准测试
 
 所有库都跑到**同一个终点——PNG data URL**，各自使用默认配置、scale 1、锁定版本。这条规则是整张
-表的基础：SnapDOM 的 `toRaw` 返回的是 SVG url，跳过了栅格化和编码，而在大场景里这一步大约占总耗
+表的基础：默认 SVG 引擎下 SnapDOM 的 `toRaw` 返回 SVG URL，跳过了栅格化和编码，而在大场景里这一步大约占总耗
 时的一半。拿它去比别人已经完成的 PNG，正是基准表偏向发布方的原因。
 
 **测试环境：** Chromium（Playwright）、无头模式、DPR 1、Apple Silicon。每个数值是**四轮完整测试
@@ -349,7 +358,7 @@ PNG 编码成本，名次在不同轮次之间会互换。复杂卡片是唯一�
 | 深层嵌套树——16 条链 × 10 层，约 2,100 个节点 | 656 | **html2canvas 306** | domlens 666 · modern-screenshot 913 · html-to-image 1,356 |
 
 轮询是唯一一行 SnapDOM 使用**默认配置**、开启记忆化的场景：每个 tick 都重新捕获同一个元素的仪表盘，
-正是记忆化与差分重捕获存在的意义。关掉记忆化（`burst: false`）后同样的循环需要 27.4 ms——
+正是记忆化与差分重捕获存在的意义。使用基准测试内部的记忆化绕过开关后，同样的循环需要 27.4 ms——
 记忆化在这里带来 1.39× 的收益，而不是「未栅格化」的对比所暗示的数量级差距，因为每个 tick 仍然要
 付出栅格化和 PNG 编码的成本。
 
@@ -418,7 +427,7 @@ conic-gradient 和 `adoptedStyleSheets` 两项。结果也会因引擎而异—�
 2. **同样的像素量。** `scale: 1` **并且** `dpr: 1`。SnapDOM 的 `dpr` 默认取 `devicePixelRatio`，
    否则在高分屏上它编码的像素会是其他库的四倍。
 3. **默认配置、锁定版本。** 不为任何一个库开小灶；调优后的配置单独成行并标注。
-4. **记忆化默认关闭**（`burst: false`），只有轮询场景例外——那里它正是被测对象，并且已在标签里写明。
+4. 除轮询场景（那里记忆化本身就是被测对象）外，基准测试会通过内部测试开关绕过记忆化；这不是公开捕获选项。
 
 上面的数字来自一个纯净的测试环境。真实页面——它自己的样式表、它自己的 Web 字体——会让上述每一个库
 都慢得多；在线实验室是在真实页面内部做捕获，所以它给出的数字普遍会高于这张表。这个差距里曾经有很大

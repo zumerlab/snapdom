@@ -27,8 +27,8 @@ import {
 const SNAP = `SnapDOM v${snapdom.version || '?'}`
 const CAPTURE_TIMEOUT = 45_000
 
-// snapdom's pipeline rows pin burst:false for the same reason the repo benchmark does: after
-// three captures of one element inside 2s the auto-burst memo engages, and a memo timed
+// snapdom's pipeline rows pin burst:false for the same reason the repo benchmark does: the
+// auto-burst memo engages on the first capture, and a memo timed
 // against everyone else's full pipeline is not a pipeline comparison. The memo gets its own
 // scenario ("Polling"), where it runs with defaults and the label says so.
 //

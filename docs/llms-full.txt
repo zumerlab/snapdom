@@ -28,14 +28,22 @@ CDN (IIFE, global window.snapdom):
 <script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.js"></script>
 ```
 
+There is no CommonJS/`require()` build. Use the ESM package entry in bundlers or the IIFE
+through a script tag.
+
 ESM import:
 ```js
 import { snapdom } from '@zumer/snapdom';
 ```
 
-Subpath exports:
+Official plugin package:
 ```js
 import { filter, asciiExport, replaceText, colorTint, timestampOverlay, pdfImage, agentMap } from '@zumer/snapdom-plugins';
+```
+
+Core plugin-registry subpath (the same ESM runtime as the package root):
+```js
+import { registerPlugins, clearPlugins, getGlobalPlugins } from '@zumer/snapdom/plugins';
 ```
 
 ---
@@ -93,7 +101,7 @@ snapdom.toSvg(element, options?)    → Promise<HTMLImageElement>
 snapdom.toImg(element, options?)    → Promise<HTMLImageElement> (deprecated, use toSvg)
 snapdom.toCanvas(element, options?) → Promise<HTMLCanvasElement>
 snapdom.toBlob(element, options?)   → Promise<Blob>
-snapdom.toRaw(element, options?)    → Promise<string> (SVG data URL)
+snapdom.toRaw(element, options?)    → Promise<string> (SVG by default; PNG after successful native html-in-canvas, SVG on fallback)
 snapdom.download(element, options?) → Promise<void>
 ```
 
@@ -103,43 +111,62 @@ snapdom.download(element, options?) → Promise<void>
 snapdom.plugins(...defs) → snapdom  // chainable, global
 ```
 
+### Other top-level members
+
+```js
+snapdom.fromString(trustedHtml, options?) → Promise<CaptureResult>
+snapdom.preCapture()                      → void
+snapdom.version                           → string
+```
+
+`fromString()` mounts the markup in the live document so page CSS/fonts apply. It uses
+`innerHTML`; sanitize user-controlled input before calling it.
+
 ---
 
 ## OPTIONS (SnapdomOptions)
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| scale | number | 1 | Output scale multiplier |
+| scale | number | 1 | Output scale multiplier; ignored when width or height is set |
 | dpr | number | devicePixelRatio | Device pixel ratio for rasterization |
 | width | number | null | Target output width (keeps aspect if only one dimension) |
 | height | number | null | Target output height (keeps aspect if only one dimension) |
-| backgroundColor | string | null (#ffffff for JPEG) | Background color |
+| backgroundColor | string|null | null (#ffffff for JPEG/WebP) | Background color |
 | quality | number | 0.92 | JPEG/WebP quality (0-1) |
-| embedFonts | boolean | false | Embed custom @font-face fonts |
+| embedFonts | boolean|'auto' | 'auto' | Embed the webfonts used by the capture; skip system-font-only pages |
 | localFonts | LocalFont[] | [] | Provide fonts explicitly |
 | iconFonts | string|RegExp|Array | [] | Icon font family matchers (always embedded) |
 | excludeFonts | ExcludeFonts | undefined | Skip fonts by family/domain/subset |
+| fontStylesheetDomains | string[] | [] | Extra domains allowed for cross-origin font CSS |
 | useProxy | string | '' | CORS proxy URL prefix |
 | exclude | string|fn|Array | [] | CSS selectors and/or predicates; a predicate returning TRUE excludes the node |
 | excludeMode | 'hide'|'remove' | 'hide' | hide=visibility:hidden, remove=drop entirely |
+| outerTransforms | boolean | true | Normalize root transforms |
+| outerShadows | boolean|'subtree' | false | false strips root box/text shadow, outline and drop-shadow but preserves blur and its bleed; subtree also bounds descendant shadows; explicit clip edges never expand |
+| fallbackURL | string|((dims)=>string) | undefined | Fallback image for broken <img> |
+| cache | 'soft'|'disabled'|'auto'|'full'|false | 'soft' | Controls persistent resource/style caches only: disabled/false clears and bypasses them; full/auto map to soft. Repeat memoization is separate |
+| placeholders | boolean | true | Show placeholders for missing resources |
+| plugins | PluginUse[] | undefined | Per-capture plugins (override globals by name) |
+| format | 'png'|'jpeg'|'jpg'|'webp'|'svg' | 'png' | Default for format-selecting exports; named helpers choose their codec; jpg normalizes to jpeg |
+| filename | string | 'snapDOM' | Default download filename |
+| type | same as format | undefined | Deprecated alias kept synchronized with canonical format; either name is honored; toBlob({type}) remains valid |
+| excludeStyleProps | RegExp|function | null | Skip CSS properties during snapshot |
+| clip | 'viewport'|{x,y,width,height}|null | null | Capture and prune to a page-coordinate region |
+| captureSelection | boolean | false | Render the live text or field selection |
+| canvas | HTMLCanvasElement | null | Reuse an existing raster target for toCanvas and dependent exports |
+| reconcile | boolean | false | Measure the clone and pin boxes that diverge from the live layout |
+| invalidate | boolean | false | Force one fresh capture not served from the existing memo and clear style snapshots after unobservable application changes; a stable fresh result may become the new memo, while frame-driven trees already capture fresh |
+| engine | 'svg'|'html-in-canvas' | 'svg' | Experimental native painter; successful native captures expose a lazy PNG URL; beforeRender/afterRender hooks force SVG fallback |
+| debug | boolean | false | Emit diagnostics through console.warn |
 
 REMOVED IN v3: `filter` and `filterMode`. They were the same decision as exclude/excludeMode with
 the OPPOSITE polarity (return true to KEEP). Passing one logs a warning and does not filter
 anything, so a ported predicate MUST be inverted: `filter: keep` becomes `exclude: el => !keep(el)`.
-| outerTransforms | boolean | true | Normalize root transforms |
-| outerShadows | boolean | false | Expand bbox for shadows/blur/outline |
-| fallbackURL | string|((dims)=>string) | undefined | Fallback image for broken <img> |
-| cache | 'disabled'|'full'|'auto'|'soft' | 'soft' | Resource cache policy |
-| placeholders | boolean | true | Show placeholders for missing resources |
-| plugins | PluginUse[] | undefined | Per-capture plugins (override globals by name) |
-| format | string | 'png' | Default format: png, jpeg, webp, svg |
-| filename | string | 'snapDOM' | Default download filename |
-| type | string | 'svg' | Default Blob type for toBlob() |
-| excludeStyleProps | RegExp|function | null | Skip CSS properties during snapshot |
 
 ### LocalFont type
 ```ts
-{ family: string; src: string; weight?: string|number; style?: string }
+{ family: string; src: string; weight?: string|number; style?: string; stretchPct?: number }
 ```
 
 ### ExcludeFonts type
@@ -155,13 +182,17 @@ Object returned by snapdom(). All methods accept optional options override.
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| url | string (property) | Raw SVG data URL |
+| url | string (property) | Capture URL: SVG by default; lazily minted PNG after successful native html-in-canvas, SVG on fallback |
+| needs | 'clone'|'render' (property) | Deepest capture stage requested by attached plugins |
+| meta | frozen CaptureMeta (property) | Authoritative render geometry; absent/throws below render |
+| warnings | array (property) | Degradation/fallback records for this capture |
 | toRaw() | string | Same as url |
-| toSvg(opts?) | Promise<HTMLImageElement> | SVG-rendering image |
-| toImg(opts?) | Promise<HTMLImageElement> | Deprecated, same as toSvg |
+| toSvg(opts?) | Promise<HTMLImageElement> | SVG-backed normally; PNG-backed after successful native html-in-canvas, SVG-backed on fallback |
+| toImg(opts?) | Promise<HTMLImageElement> | Deprecated alias of toSvg |
 | toCanvas(opts?) | Promise<HTMLCanvasElement> | Rasterized Canvas |
-| toBlob(opts?) | Promise<Blob> | Blob of specified type |
+| toBlob(opts?) | Promise<Blob> | Defaults to SVG on the SVG engine and PNG after successful native html-in-canvas; explicit SVG rejects on the native path |
 | toPng(opts?) | Promise<HTMLImageElement> | PNG image |
+| toJpeg(opts?) | Promise<HTMLImageElement> | JPEG image (auto white bg) |
 | toJpg(opts?) | Promise<HTMLImageElement> | JPEG image (auto white bg) |
 | toWebp(opts?) | Promise<HTMLImageElement> | WebP image |
 | download(opts?) | Promise<void> | Browser file download |
@@ -177,7 +208,7 @@ Plugin exports appear as toX() methods (e.g. toPdfImage(), toAscii(), toAgentMap
 snapdom.preCapture();
 ```
 
-Every element is memoized from its first capture. `preCapture()` takes that first capture before the click, the way links prefetch: arm it once, and intent on a control (pointer over it, focus, pointer down) captures the element that control asked for the last time, with the same options, 100 to 400 ms before the click lands. No arguments, nothing to declare, nothing runs without a gesture. Captures with `burst: false` are never learned. `preCache` was removed in v3: the capture is its own warm-up.
+Eligible elements are memoized from their first capture. `preCapture()` can take that first capture before the click, the way links prefetch: arm it once; a memo-eligible capture started in the same event task as a press or click event is learned for that control, and later pointer-enter or focus intent repeats it with a shallow copy of the original call's top-level options. No arguments or declarations; it reacts to intent events and does no background polling. `preCache` was removed in v3: an eligible capture is its own warm-up.
 
 ---
 
@@ -208,8 +239,9 @@ const { image, map } = await result.toAgentMap();
 ```
 
 ### 3. Verify actions cheaply — deterministic captures
-Captures of an unchanged DOM are byte-identical (the differential-recapture engine is
-tested on byte equality, not pixel similarity). An agent can hash `result.url` before
+Eligible unchanged captures return the memoized bytes exactly. Localized differential
+recapture is used only where it is validated against full-capture byte equality; ambiguous
+changes fall back to a full capture. An agent can hash `result.url` before
 and after an action to answer "did the UI change?" without visual diffing:
 ```js
 const before = (await snapdom(el)).url;
@@ -236,17 +268,27 @@ A plugin is a plain object with a unique `name` and lifecycle hooks:
 ```js
 {
   name: 'my-plugin',          // required, kebab-case
+  needs: 'render',             // optional: 'clone' | 'render'; default render
+  pure: false,                 // true only for deterministic/idempotent capture-affecting hooks
   beforeSnap(ctx) {},          // before anything
   beforeClone(ctx) {},         // before DOM clone
+  resolveNode(node, ctx) {},   // per node, after the compiled exclusion policy
   afterClone(ctx) {},          // after clone created — MOST COMMON
-  beforeRender(ctx) {},        // before SVG serialization
-  afterRender(ctx) {},         // after SVG rendered
-  beforeExport(ctx) {},        // before each export
-  afterExport(ctx, result) {}, // after each export (can transform result)
-  defineExports(ctx) {},       // register custom export methods
-  afterSnap(ctx) {}            // once after first export
+  beforeRender(ctx) {},        // before the selected renderer
+  afterRender(ctx) {},         // after the render artifact exists
+  beforeExport(ctx, { format, options }) {}, // before each export; mutate options.format/type to steer its codec
+  afterExport(ctx, { format, options, result }) {}, // observes each export; return is ignored
+  defineExports(ctx) {},       // result setup: return custom export methods
+  afterSnap(ctx) {}            // once after first successful export
 }
 ```
+
+Only per-capture plugins may declare `needs: 'clone'`; global registration rejects it.
+Clone/render-affecting hooks suspend automatic repeat memoization unless the plugin declares
+`pure: true`. Purity restores unchanged-repeat memoization. Pure beforeRender/afterRender
+hooks may also use differential recapture; clone-construction hooks still force a full
+recapture after a change. Export-only hooks and `defineExports` keep memoization without a
+purity declaration. A capture stopped at `needs: 'clone'` is never memoized.
 
 ### Factory pattern (recommended)
 
@@ -285,25 +327,38 @@ Plugin input formats:
 
 ### Hook execution order
 
-beforeSnap → beforeClone → afterClone → beforeRender → afterRender → [per export: beforeExport → afterExport] → afterSnap (once)
+beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender → defineExports → [per export: beforeExport → exporter → afterExport] → afterSnap (once, after the first successful export)
 
 ### Hook context (CaptureContext)
 
 All hooks receive a mutable context:
 ```js
 {
-  element,           // original DOM element (do NOT mutate after afterClone)
-  clone,             // cloned DOM (available from afterClone onward)
+  element, options,  // original element; options is a self-reference to this context
+  needs,             // 'clone' | 'render'
+  shouldExclude,     // compiled data-capture/selector/predicate policy
+  clone,             // cloned DOM (afterClone through afterRender, then released)
   debug, scale, dpr, width, height,
-  backgroundColor, quality, embedFonts, useProxy,
-  exclude, excludeMode,
-  outerTransforms, outerShadows, cache, fallbackURL,
-  classCSS, styleCache, fontsCSS, baseCSS,  // intermediate
-  svgString, dataURL,                        // after render
-  export: { type, options, url },            // during export hooks
-  plugins                                     // active plugins
+  format, type, backgroundColor, quality, filename, // format canonical; type synchronized
+  embedFonts, localFonts, iconFonts, excludeFonts, fontStylesheetDomains,
+  useProxy, exclude, excludeMode, placeholders, fallbackURL,
+  outerTransforms, outerShadows, captureSelection, canvas,
+  clip, reconcile, invalidate, excludeStyleProps, cache, engine,
+  classCSS, styleCache, nodeMap, fontsCSS, baseCSS, // intermediate
+  svgString, dataURL, meta,                         // render products
+  artifacts: { classCSS, fontsCSS, baseCSS, scrollbarCSS },
+  export: { type, options, requestedOptions, url, svgString },
+  exports,            // defineExports only: hook-free core exporter facade
+  plugins             // active plugins
 }
 ```
+
+`format` is the canonical image-format field. Deprecated `type` stays synchronized with it;
+changing either in `beforeSnap`, or in `beforeExport` through the payload's `options`, is honored.
+
+During export, `url` is SVG for the default engine and a lazily materialized PNG for a
+successful `html-in-canvas` capture. `svgString()` lazily decodes the SVG and throws for
+that raster engine path.
 
 ### Custom exports (defineExports)
 
@@ -311,7 +366,7 @@ All hooks receive a mutable context:
 defineExports(ctx) {
   return {
     pdf: async (ctx, opts) => {
-      // ctx.export.url = SVG data URL
+      // ctx.export.url = SVG by default; PNG after successful native html-in-canvas
       // ctx.exports.png(opts) = silent PNG access
       return pdfBlob;
     }
@@ -588,19 +643,20 @@ Peer dependency: "@zumer/snapdom": ">=2.0.0"
 The capture flows through these stages:
 
 1. INIT: createContext(options) → normalize all options with defaults
-2. Safari warmup (if needed): pre-capture + canvas draw to prime font pipeline (WebKit #219770)
+2. Safari readiness pre-step (if needed): await used webfonts and materialize canvas backing stores; the WebKit blank-draw workaround runs later, at export
 3. BEFORESNAP hook
-4. Picture/lazy resolution: resolve <picture> and data-src on live DOM (undo after clone)
-5. BEFORECLONE hook + line-clamp handling
-6. DEEP CLONE: recursive clone with computed styles, Shadow DOM, pseudo-elements, CSS variables, counters, iframes, SVG <use> refs, class-based CSS compression
-7. AFTERCLONE hook + undo picture resolver + XHTML sanitization + icon font ligature conversion
+4. BEFORECLONE hook + temporary line-clamp handling
+5. DEEP CLONE: recursive clone with computed styles, Shadow DOM, pseudo-elements, CSS variables, counters, iframes, SVG <use> refs and per-node resolveNode hooks; <picture>/lazy sources are frozen on the clone, without mutating the live DOM
+6. AFTERCLONE hook; restore temporary live line-clamp changes
+7. XHTML sanitization + icon font ligature conversion
 8. RESOURCE INLINING: <img src> → data URLs, background-image url() → data URLs
 9. FONT EMBEDDING (if embedFonts): discover used variants → fetch fonts → embed as @font-face CSS
 10. CSS GENERATION: base reset CSS + scrollbar CSS
 11. BEFORERENDER hook
-12. SVG CONSTRUCTION: wrap clone in foreignObject, serialize with XMLSerializer, encode as data URL
+12. RENDER ENGINE: default SVG wraps the clone in foreignObject and serializes it; html-in-canvas paints to a raster canvas when available and otherwise falls back to SVG
 13. AFTERRENDER hook
-14. EXPORT: lazy-load exporter module → beforeExport → export → afterExport → afterSnap (once)
+14. RESULT SETUP: defineExports installs plugin formats
+15. EXPORT: lazy-load exporter module → beforeExport → export → afterExport → afterSnap (once after the first successful export)
 
 ### Style compression
 
@@ -608,8 +664,11 @@ Instead of inline styles, SnapDOM generates deduped CSS classes (.c0, .c1, ...) 
 
 ### Caching
 
-Multi-tier: image cache, background cache, font cache, style cache, base style cache, measure hints.
-Policies: 'soft' (default, LRU eviction), 'full' (persistent), 'auto' (memory-aware), 'disabled'.
+Per-capture sessions hold transient work; content-keyed resource/style buckets persist across captures.
+The public `cache` policy controls only those persistent buckets: 'soft' is the structural default;
+'disabled' (also selected by `false`) clears and bypasses them for debugging/tests. Automatic
+repeat-capture memoization is separate and remains active for eligible captures.
+Legacy 'full' and 'auto' values are accepted but both normalize to 'soft'.
 
 ---
 
@@ -753,10 +812,10 @@ Fix: Use excludeMode: 'remove' instead of 'hide'.
 Fix: excludeStyleProps: /^--/ to skip custom properties.
 
 ### Memory issues
-Fix: Use cache: 'auto' or 'disabled'. Capture smaller sections. Lower scale.
+Fix: Use cache: 'disabled' to clear/bypass persistent resource/style caches, capture smaller sections, lower scale, and release old result objects. `cache: 'auto'` is only a legacy alias for the default `soft` policy.
 
 ### Cross-origin iframes
-Only same-origin iframes are captured. Cross-origin iframes appear empty.
+Same-origin iframes are captured. Unreadable cross-origin iframes use a striped placeholder by default; with `placeholders: false` they leave an invisible spacer.
 
 ---
 
@@ -779,7 +838,7 @@ import type {
 
 - Chrome/Edge 80+
 - Firefox 78+
-- Safari 14+ (with automatic WebKit warmup)
+- Safari 14+ (with a bounded verified-draw workaround at canvas export time)
 - No Node.js/SSR (requires DOM APIs)
 
 ## LIMITATIONS

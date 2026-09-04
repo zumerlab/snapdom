@@ -41,17 +41,16 @@ behind another one's back. Auto-burst is off below `render`: there is nothing to
 and those plugins read the live tree on every call — which is also why nothing is retained
 at the `clone` cut.
 
-Two things core cannot see, so they are pushed to the edges: a plugin that CANNOT honor a
-stage (agent-map at `dom` would return an empty map that reads like a valid one) rejects it
-itself via `assertNeeds`; and a global plugin declaring less than `render` lowers EVERY
-capture in the app, including call sites that never mentioned it — `snapdom.plugins()` is
-the wrong place for a stage-lowering plugin. Not enforced today; if it bites, the fix is to
-let only per-capture plugins lower the stage.
+Two things core cannot infer, so they are enforced at the edges. A plugin that cannot honor
+a stage rejects it through `assertNeeds`; and only a per-capture plugin may lower the stage.
+`registerPlugins` rejects a global plugin below `render`, because otherwise one registration
+would silently remove pixels from unrelated captures.
 
-Open before the canvas engine can be a real backend rather than a bypass: `mountCopy`
-clones the LIVE element again (`src/engines/htmlInCanvas.js`), so as a render stage it
-would discard whatever plugins did in `afterClone`. Either it paints the clone, or it
-declares itself incompatible with clone-mutating plugins.
+The experimental html-in-canvas engine is a real render backend: it mounts and paints the
+finished clone plus the CSS assembled by core, never a second copy of the live element. Its
+successful artifact is a raster canvas (and therefore has no serialized SVG); unsupported
+geometry, unavailable/unsafe native paint, or render-boundary plugin hooks fall back to the
+SVG backend on the same frozen clone.
 
 ## The invalidation matrix (burst/diff correctness)
 
@@ -60,18 +59,22 @@ authoritative wiring lives in `src/core/burst.js` (this table names each mechani
 
 | Change class | Mechanism | Where |
 |---|---|---|
-| DOM mutations (subtree) | scoped `MutationObserver` + `takeRecords()` flush pre-serve | burst.js `createState` / `captureWithBurst` |
-| `<video>` frames | `timeupdate`/`seeked` listeners per tracked video | burst.js `trackVideos` |
+| DOM mutations (light DOM + open shadow roots) | scoped `MutationObserver`s + synchronous `takeRecords()` flush pre-serve | burst.js `createState` / `trackShadowRoots` |
+| Opaque/frame-driven content | iframe, canvas, video/audio, SMIL and known animated-image trees bypass memoization, even with internal `burst: true` | snapdom.js `main` → burst.js `isAutoBurstSafe` |
 | `<img>` loads mid-capture | `load`/`error` listeners on pending images (dirty even in-flight) | burst.js `trackPendingImages` |
 | Font loads | shared style-environment epoch (`document.fonts` loadingdone/ready) | styles.js `getStyleEnvEpoch` |
-| Scroll (no mutation records) | capture-phase `scroll` listener per burst element | burst.js |
-| Window resize (media queries flip) | resize listener bumps the env epoch | styles.js |
-| `<head>` CSS changes | head `MutationObserver` bumps the env epoch | styles.js |
-| Same-tick style injection | synchronous `takeRecords()` drain at capture start | styles.js `flushStyleInvalidations`, called from prepareClone |
-| CSS/WAAPI animations (no records) | `getAnimations({subtree})` per capture: memo never serves/stores while running; targeted subtrees become dirty roots for the diff path with per-frame snapshot invalidation | burst.js + styles.js `invalidateSnapshotsUnder` |
-| Canvas pixel draws | **excluded** — invisible to every observer; `invalidate: true` is the documented escape | context.js |
+| Scroll (no mutation records) | capture-phase listeners across light/open-shadow trees plus synchronous offsets of known scrollers | burst.js `collectScrollNodes` / `renderStateOf` |
+| Programmatic form state | input/change events plus synchronous signatures of tracked controls (`value`, selected option, checked/indeterminate) | burst.js `renderStateOf` |
+| Hover/focus/active/top-layer/hash state | scoped hover sampling, interaction listeners, root style stamps and synchronous state signature | styles.js + burst.js `renderStateOf` |
+| Viewport and media preference changes | shared resize epoch plus synchronous viewport/DPR/orientation and fixed media-query signature | styles.js + burst.js `renderStateOf` |
+| Stylesheet DOM changes | document observers bump the style/environment epoch; stylesheet nodes are document-wide regardless of where they are inserted | styles.js `onDomRecords` |
+| Adopted stylesheets | sheet identity is sampled for the document and each tracked open shadow root | burst.js `renderStateOf` |
+| Same-tick observable changes | document and scoped observer queues are synchronously drained before a memo decision | styles.js `flushStyleInvalidations` + burst.js |
+| CSS transitions/animations and WAAPI | `getAnimations()` across light/open-shadow scopes; running targetable light-DOM effects rebuild per frame through diff, ambiguous effects force full capture | burst.js + styles.js `invalidateSnapshotsUnder` |
+| Selection capture | bypasses memoization because selection/range state is not a DOM mutation | snapdom.js `main` |
+| Canvas pixel draws | bypass memoization because pixels are invisible to DOM observers | snapdom.js `main` → burst.js `isAutoBurstSafe` |
 | CSSOM rule edits (`sheet.insertRule`, `rule.style.x = …`) | **excluded** — they mutate no node, so no observer can fire and no epoch bumps. `invalidate: true` is the escape, and it has to purge the EPOCH-SCOPED style caches, not just the burst memo: the property universe and style snapshots live below burst, so a `burst: false` capture was stale too. The sharp case is a property the scanned universe never saw (a page that never used `writing-mode` does not snapshot it) | snapdom.js `main` → styles.js `invalidateStyleCaches` |
-| Plugins with render hooks | suspend auto memo/diff unless `pure: true` | plugins.js `hasImpureRenderPlugins` |
+| Plugins with render hooks | impure hooks suspend automatic memoization; pure hooks may memoize, while diff bails whenever it would skip a required lifecycle hook | plugins.js `hasImpureRenderPlugins` + diff.js |
 
 The differential path's correctness oracle is **byte equality** with a full capture of
 the same DOM state (not pixel similarity) — `tryDiffCapture` returns null on ANY doubt.
@@ -106,8 +109,9 @@ This is also a public contract: agents hash `result.url` to detect UI change.
 `compress: false` and `burst: true|false` are **functional but undocumented** — types
 and README don't mention them. They exist because benchmarks and the diff byte-equality
 tests need deterministic full-pipeline runs (without `burst:false` a benchmark measures
-the memo — the historical "342×" mistake). Promotion trigger: if a real user need
-appears that `invalidate: true` can't serve, document them then; don't pre-announce.
+the memo — the historical "342×" mistake). `burst:true` cannot override fidelity
+boundaries for selection or opaque/frame-driven content. Promotion trigger: if a real user
+need appears that `invalidate: true` can't serve, document them then; don't pre-announce.
 
 ## Verifying WebKit changes in REAL Safari
 

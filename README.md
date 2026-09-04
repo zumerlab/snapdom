@@ -53,12 +53,12 @@ v3 is a ground-up rework of the capture engine. The API shape is the same and v2
 
 **It's much faster, everywhere.**
 - **First captures are up to 2× faster.** A one-time stylesheet scan tells the engine which CSS properties your page can actually use, so the per-node style snapshot reads ~50 properties instead of ~400 — the single biggest cost in any DOM capture.
-- **Repeat captures are effectively free.** Every element is memoized from its first capture: unchanged repeats return instantly, and when something *does* change, a **differential recapture** rebuilds only the mutated subtrees (~5× faster on mutating dashboards) with **byte-identical** output to a full capture.
-- Invalidation is automatic and complete: DOM mutations, `<video>` frames, image and font loads, scroll, viewport resizes, `<head>` CSS changes, and CSS/WAAPI animations are all tracked. No API to learn, nothing to configure. Inlined images are also downsampled to their visible resolution automatically (codec-preserving, worker-offloaded).
+- **Repeat captures are effectively free.** Every eligible element is memoized from its first capture: unchanged repeats return instantly, and safe localized changes use a **differential recapture** of the affected subtrees (~5× faster on mutating dashboards). When equivalence cannot be proved, SnapDOM conservatively falls back to a full capture.
+- Automatic memoization is conservative: static captures stay hot while observable DOM, style, interaction, scroll and viewport changes invalidate them. Embedded or frame-driven content — iframes, video, canvases, recognized GIF/APNG sources, and running CSS/WAAPI animation — stays on a fresh-frame path so an instant repeat cannot serve an old frame. Inlined images are also downsampled to their visible resolution automatically (codec-preserving, worker-offloaded).
 
 **It's more faithful, by default.**
 - **Web fonts embed automatically** (`embedFonts: 'auto'`). The SVG your capture rasterizes from can't see the page's loaded fonts — v2 silently rendered webfont text with fallback metrics unless you opted in. v3 detects webfont usage and embeds exactly what's needed; system-font pages pay nothing.
-- **Safari, rewritten.** The hidden triple pre-capture warm-up is gone — replaced by a verified draw that waits exactly as long as WebKit needs (first captures ~2× faster). And `toSvg()` now returns actual **vector SVG** on Safari instead of silently rasterizing to PNG.
+- **Safari, rewritten.** The hidden triple pre-capture warm-up is gone — replaced by a verified draw that waits exactly as long as WebKit needs (first captures ~2× faster). With the default SVG engine, `toSvg()` now returns actual **vector SVG** on Safari instead of silently rasterizing to PNG.
 - **Per-capture state is isolated.** The mutable module-level session that caused cross-capture races is gone: state lives on a session object threaded through the pipeline, so that class of bug is structurally unrepresentable. `iconFonts` was the last exception and is now compiled per capture too, so concurrent captures with different lists no longer interleave.
 - Outputs are smaller too: up to **27% lighter SVGs** from the same content.
 
@@ -66,7 +66,7 @@ v3 is a ground-up rework of the capture engine. The API shape is the same and v2
 Options that required tuning knowledge tuned themselves out of the API: repeat-capture memoization and image compression are simply how the engine works now, `cache` collapsed to a single debug switch, and `fast` is gone. The best option is the one you never have to read about.
 
 **And it's ready for what's next.**
-An experimental `engine: 'html-in-canvas'` renders through the browser's own painter via the WICG html-in-canvas API (`drawElementImage`, Chrome 148+ origin trial / flag): native form controls pixel-perfect, zero SVG quirks, and same-origin readback under the trial. It is a peer of the default SVG engine, not a shortcut around it: both take the same finished clone, so plugins, `exclude` and `reconcile` apply either way — and because the pipeline has already inlined cross-origin content into that clone, the native painter's cross-origin exclusions don't bite. Outside the trial every capture falls through to the normal pipeline; the API is still churning, so the engine is **excluded from the published bundle** rather than shipped as bytes that cannot run. Build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`.
+An experimental `engine: 'html-in-canvas'` renders the finished clone through the browser's own painter via the WICG html-in-canvas API (`drawElementImage`, Chrome 148+ origin trial / flag): native form controls pixel-perfect and no SVG-as-image quirks. Clone-stage behavior such as `exclude` and `reconcile` still applies; a plugin with `beforeRender` or `afterRender` makes that capture use the SVG fallback. A successful native-engine capture is raster: pixel exporters consume its canvas directly; reading `result.url` / `toRaw()` lazily materializes and memoizes one PNG data URL, while `toSvg()` / `toImg()` return an image backed by a PNG encoding of the bitmap. There is no serialized SVG. Outside the trial every capture falls through to the normal SVG pipeline. The API is still churning, so the engine is **excluded from the published bundle** rather than shipped as bytes that cannot run. Build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`.
 
 ## Migrating from v2
 
@@ -75,12 +75,12 @@ Most v2 call sites keep working, and unknown options are ignored rather than rej
 | Change | What to do |
 | --- | --- |
 | `embedFonts` defaults to `'auto'` (was off). Webfont text now embeds instead of rendering with fallback metrics. | Nothing, unless you relied on the fallback rendering: pass `embedFonts: false`. |
-| `cache` collapsed to `'soft'` (default) and `'disabled'`. `'auto'` / `'full'` are accepted and silently mapped to `'soft'`. | Drop the option, or use `cache: 'disabled'` for debugging. |
+| The public `cache` policy for persistent resource/style caches collapsed to `'soft'` (default) and `'disabled'`. `'auto'` / `'full'` are accepted and silently mapped to `'soft'`; repeat-capture memoization is separate. | Drop the option, or use `cache: 'disabled'` for debugging. |
 | `fast` was removed. | Delete it; its behavior is now unconditional. |
-| Repeat captures of the same element memoize automatically from the first capture on, and mutations trigger a differential recapture. `preCache` was removed: the capture is its own warm-up, and `snapdom.preCapture()` takes it before the click. | Nothing normally. For sources no observer can see (`sheet.insertRule()`, direct `rule.style.x` edits, canvas pixel draws) pass `invalidate: true`. |
+| Eligible repeat captures memoize automatically from the first capture. Observable changes invalidate the memo; SnapDOM uses differential recapture only when it can preserve full-capture output, otherwise it recaptures conservatively. `preCache` was removed: the capture is its own warm-up, and `snapdom.preCapture()` takes it before the click. | Nothing normally. After application state no browser signal exposes—notably `sheet.insertRule()` or direct `rule.style.x` edits—pass `invalidate: true`. Canvas/video/iframe and other frame-driven trees already capture fresh. |
 | Inlined raster images are downsampled to their visible resolution by default. | Nothing. This preserves the source codec and never upscales. |
 | **`width`/`height` now win over `scale`.** v2 multiplied them together (`{ width: 800, scale: 2 }` rasterized 1600px wide); v3 treats `width`/`height` as the absolute output size and applies `scale` only when neither is set. This also fixes v2's inconsistency where `toCanvas` multiplied by `scale` but `toImg`/`toSvg` ignored it. | If you relied on the product, pass the final size directly (`width: 1600`). |
-| Plugins with a render hook suspend auto-memoization unless they declare `pure: true`. | Add `pure: true` if your hooks are deterministic and idempotent. |
+| Plugins with a capture-affecting hook suspend auto-memoization unless they declare `pure: true`. | Add `pure: true` if those hooks are deterministic and idempotent. |
 | **`filter` and `filterMode` were removed and are no longer applied.** They were a second door to the same decision as `exclude`/`excludeMode`, with the opposite polarity (return true to KEEP). Passing one logs a warning rather than failing silently, because a redaction option that quietly stops redacting is the worst possible outcome. | Flip the predicate: `filter: el => keep(el)` becomes `exclude: el => !keep(el)`. `filterMode` becomes `excludeMode`. |
 | Input values the browser paints in the clear (`email`, `tel`, `cc-*`, `one-time-code`) are now captured as-is. Core only masks `type="password"`, where the control already paints bullets so the mask costs no fidelity. | Add the `redactInputs` plugin from `@zumer/snapdom-plugins` if you want the old redaction. |
 
@@ -204,7 +204,7 @@ The plugin API is also exported from the root, and `snapdom.plugins(...)` regist
 import { snapdom, registerPlugins } from '@zumer/snapdom';
 ```
 
-**The capture that is ready before the click.** Repeat captures memoize from the first one, so a second click on the same unchanged element is served from memory. `snapdom.preCapture()` moves that first capture ahead of the click, the way links prefetch: arm it once, and from then on intent on a control (pointer over it, focus, pointer down) captures the element that control asked for the last time, with the same options, 100 to 400 ms before the click lands. Nothing to declare, nothing running in the background:
+**The capture that is ready before the click.** Eligible repeat captures memoize from the first one, so a second click on the same unchanged element is served from memory. `snapdom.preCapture()` moves that first eligible capture ahead of the click, the way links prefetch: arm it once; a memo-eligible capture started in the same event task as a press or click event is learned for that control, and later pointer-enter or focus intent repeats it with a shallow copy of the original call's top-level options. Nothing to declare and no background polling — it reacts to intent events:
 ```js
 snapdom.preCapture();
 
@@ -260,7 +260,7 @@ async function refresh(el) {
 }
 ```
 
-Repeated captures of the same element engage burst memoization automatically, so a
+Repeated captures of the same eligible element engage automatic memoization, so a
 mutation-driven loop pays differential-recapture prices, not full pipelines. `result.meta`
 (`contentX`/`contentY`, capture box, viewBox) places the raster back over the live element —
 overlays, magnifiers, transition effects that end by revealing the real DOM. Working demos:
@@ -294,19 +294,20 @@ Add the `crossorigin="anonymous"` attribute to the `<link>` tag when loading ext
 The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)**:
 
 - **[API reference](https://snapdom.dev/docs/api/)** — the `snapdom()` reusable object, shortcut methods, and exporter-specific options.
-- **[Options](https://snapdom.dev/docs/options/)** — every capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`, `compress`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.
+- **[Options](https://snapdom.dev/docs/options/)** — every public capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`, `captureSelection`, `clip`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.
 - **[Plugins](https://snapdom.dev/docs/plugins/)** — build, register and ship custom plugins and export formats. Browse community plugins on the [plugins page](https://snapdom.dev/plugins.html).
 - **[Cache](https://snapdom.dev/docs/cache/)** — how captures memoize from the first one, invalidate, and recapture differentially.
 
 ### API at a glance
 
-`snapdom(el, options?)` returns a reusable object (`toPng`, `toSvg`, `toCanvas`, `toBlob`, `toJpg`, `toWebp`, `download`, `to(name)`, `toRaw()`, `url`, `meta`, `warnings`, `needs`). `meta` is the frozen render geometry (viewBox size, logical capture box, exact `contentX`/`contentY` origin, resolved clip window) that document exporters need to place things over the image. For single exports, use the shortcuts:
+`snapdom(el, options?)` returns a reusable object (`toPng`, `toSvg`, `toCanvas`, `toBlob`, `toJpeg`/`toJpg`, `toWebp`, `download`, `to(name)`, `toRaw()`, `url`, `meta`, `warnings`, `needs`). `meta` is the frozen render geometry (viewBox size, logical capture box, exact `contentX`/`contentY` origin, resolved clip window) that document exporters need to place things over the image. `url` / `toRaw()` is SVG for the default engine and a lazily materialized PNG for a successful `html-in-canvas` capture. `snapdom.fromString(trustedHtml, options?)` captures trusted markup mounted offscreen; sanitize user input first. For single exports, use the shortcuts:
 
 | Method | Description |
 | ------------------------------ | --------------------------------- |
-| `snapdom.toSvg(el, options?)`  | Returns an SVG `HTMLImageElement` |
+| `snapdom.toRaw(el, options?)`  | Returns the capture data URL (SVG by default; PNG after a successful native `html-in-canvas` capture, SVG on fallback) |
+| `snapdom.toSvg(el, options?)`  | Returns an `HTMLImageElement` (SVG by default; PNG-backed after a successful native `html-in-canvas` capture, SVG on fallback) |
 | `snapdom.toCanvas(el, options?)` | Returns a `Canvas`              |
-| `snapdom.toBlob(el, options?)` | Returns an SVG or raster `Blob`   |
+| `snapdom.toBlob(el, options?)` | Returns an SVG or raster `Blob` (successful native-engine captures default to PNG) |
 | `snapdom.toPng(el, options?)`  | Returns a PNG image               |
 | `snapdom.toJpg(el, options?)`  | Returns a JPG image               |
 | `snapdom.toWebp(el, options?)` | Returns a WebP image              |
@@ -321,32 +322,32 @@ All options are optional and can be passed to `snapdom(el, options)` or any shor
 | `scale` | `number` | `1` | Output scale multiplier (applies only when neither `width` nor `height` is set — those are the absolute output size and win) |
 | `dpr` | `number` | `devicePixelRatio` | Pixel density of the rasterized output |
 | `width` / `height` | `number` | `null` | Target output size (keeps aspect ratio if only one is set) |
-| `backgroundColor` | `string` | `null` (`#ffffff` for JPEG/WebP) | Background fill |
+| `backgroundColor` | `string \| null` | `null` (`#ffffff` for JPEG/WebP) | Background fill |
 | `quality` | `number` | `0.92` | JPEG/WebP quality (0–1) |
-| `format` | `'png' \| 'jpeg' \| 'webp' \| 'svg'` | `'png'` | Output format for every exporter (`toBlob()` defaults to `'svg'` unless you ask for a codec) |
+| `format` | `'png' \| 'jpeg' \| 'jpg' \| 'webp' \| 'svg'` | `'png'` | Default for format-selecting exports such as `download()`; without an explicit codec, `toBlob()` defaults to SVG on the SVG engine and PNG after a successful native-engine capture. Named helpers (`toPng()`, etc.) choose their own format |
+| `type` | same as `format` | — | Deprecated alias kept synchronized with canonical `format`; plugins should prefer `format`, though either name is honored. `toBlob({ type })` remains that exporter's dedicated option |
 | `filename` | `string` | `'snapDOM'` | Download filename |
 | `embedFonts` | `boolean \| 'auto'` | `'auto'` | `'auto'` embeds web fonts only when the capture actually uses them (system-font pages skip the pass entirely). `true` forces the embed; `false` disables it |
 | `iconFonts` | `string \| RegExp \| array` | `[]` | Icon font families (always embedded) |
-| `localFonts` | `array` | `[]` | Explicit fonts: `{ family, src, weight?, style? }` — also the path for JS-registered `FontFace` objects |
+| `localFonts` | `array` | `[]` | Explicit fonts: `{ family, src, weight?, style?, stretchPct? }` — also the path for JS-registered `FontFace` objects |
 | `excludeFonts` | `object` | — | Skip fonts by family / domain / subset |
-| `fontStylesheetDomains` | `string[]` | — | Extra cross-origin domains to fetch font CSS from |
+| `fontStylesheetDomains` | `string[]` | `[]` | Extra cross-origin domains to fetch font CSS from |
 | `exclude` | `string \| (el) => boolean \| array of both` | `[]` | Nodes to leave out: selectors and/or predicates (return `true` to exclude) |
 | `excludeMode` | `'hide' \| 'remove'` | `'hide'` | How excluded nodes leave (`hide` keeps layout via an invisible spacer) |
 | `clip` | `'viewport' \| {x, y, width, height}` | `null` | Capture only a region; offscreen content is pruned |
 | `useProxy` | `string` | `''` | CORS proxy prefix for cross-origin images |
 | `fallbackURL` | `string \| fn` | — | Fallback image for broken `<img>` |
 | `placeholders` | `boolean` | `true` | Show sized placeholders for resources that fail to load |
-| `resolvePicturePlaceholders` | `boolean` | `true` | Resolve lazy-load placeholders (`data-src`…) and `<picture>` sources on the clone |
-| `invalidate` | `boolean` | `false` | Forces one fresh (non-memoized) capture for changes automatic tracking can't see (canvas pixel draws, programmatic CSSOM edits) |
+| `invalidate` | `boolean` | `false` | Forces one fresh capture that is not served from the existing memo and clears style snapshots after changes automatic tracking cannot see, notably programmatic CSSOM edits (`insertRule`, `rule.style.*`). A stable fresh result may become the new memo |
 | `reconcile` | `boolean` | `false` | Measure the clone against the live DOM and pin any diverging box to its real size. Fixes rare text re-wrap/layout drift at roughly 2× capture time |
 | `outerTransforms` | `boolean` | `true` | Keep root translate/rotate in the output |
-| `outerShadows` | `boolean \| 'subtree'` | `false` | Expand bounds to include root shadows/blur/outline. `'subtree'` also widens for shadow ink DESCENDANTS paint past the root's box (a card whose ring is a child's box-shadow) |
+| `outerShadows` | `boolean \| 'subtree'` | `false` | `false` strips root `box-shadow`, `text-shadow`, `outline`, and `drop-shadow()` but preserves `blur()` and its bleed. `true` keeps and bounds root effects; `'subtree'` also widens for descendant shadow ink outside the root box. Explicit `clip` edges never expand |
 | `captureSelection` | `boolean` | `false` | Render the user's live text selection into the capture (authored `::selection` styles where a rule matches, the UA highlight where none does) |
 | `canvas` | `HTMLCanvasElement` | — | Reuse an existing canvas as the render target for `toCanvas` and everything built on it — a capture loop feeding a WebGL texture skips one full-canvas copy per frame |
 | `excludeStyleProps` | `RegExp \| fn` | — | Skip matching CSS properties when snapshotting (e.g. `/^--/`) |
-| `cache` | `'disabled'` | *(structural)* | `'disabled'` (or `false`) opts out of every cache — a debug/testing switch. The legacy `'soft'`/`'auto'`/`'full'` strings are still accepted and map to the default behavior |
+| `cache` | `'soft' \| 'disabled' \| 'auto' \| 'full' \| false` | `'soft'` | Controls persistent resource/style caches only. `'disabled'` (or `false`) clears and bypasses them for debugging; legacy `'auto'` / `'full'` map to `'soft'`. Automatic repeat memoization is separate |
 | `plugins` | `array` | — | Per-capture plugins (override globals by name). A plugin may declare `needs: 'clone' \| 'render'`, how far the capture has to run. Default `'render'`: the full pipeline. At `'clone'` there is no image and every export throws; `result.needs` says what ran |
-| `engine` | `'svg' \| 'html-in-canvas'` | `'svg'` | **Experimental**: `'html-in-canvas'` renders raster exports through the WICG html-in-canvas API (`drawElementImage`, Chrome 148+ origin trial / `chrome://flags/#canvas-draw-element`) when the browser supports it — native painter, form controls pixel-perfect, and same-origin readback under the trial; falls back to the SVG pipeline automatically anywhere else. The API is still churning, so the engine is left out of the published bundle: build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile` |
+| `engine` | `'svg' \| 'html-in-canvas'` | `'svg'` | **Experimental**: `'html-in-canvas'` renders raster exports through the WICG API when supported and falls back to SVG elsewhere. Successful native captures expose a lazily materialized PNG URL and no serialized SVG. The engine is left out of the published bundle; build it in with `SNAPDOM_CANVAS_ENGINE=1 npm run compile` |
 | `debug` | `boolean` | `false` | Verbose diagnostics via `console.warn` |
 
 📖 **[Full API & every option, explained with examples → snapdom.dev/docs](https://snapdom.dev/docs/)**
@@ -416,7 +417,7 @@ order can still flip between runs. The complex card is 1.74×.
 
 Polling is the one row where SnapDOM runs with its **defaults**, memoization on: a dashboard
 that re-captures the same element every tick is exactly what the memo and differential
-recapture exist for. Without the memo (`burst: false`) the same loop costs 24.7 ms — the memo
+recapture exist for. With the benchmark's internal memo bypass, the same loop costs 24.7 ms — the memo
 is worth 1.33× here, not the order of magnitude an unrasterized comparison would suggest,
 because every tick still pays the raster and the PNG encode.
 

@@ -168,27 +168,36 @@ snapdom.plugins(
         <tbody>
           <tr><td class="num">beforeSnap</td><td class="feature">Start</td><td>Adjust options before any work.</td></tr>
           <tr><td class="num">beforeClone</td><td class="feature">Pre-clone</td><td>Before DOM clone (modify live DOM carefully).</td></tr>
+          <tr><td class="num">resolveNode</td><td class="feature">Per node</td><td>Replace or skip a node after the compiled exclusion policy.</td></tr>
           <tr><td class="num">afterClone</td><td class="feature">Post-clone</td><td>Modify cloned tree safely (e.g. inject overlay).</td></tr>
-          <tr><td class="num">beforeRender</td><td class="feature">Pre-serialize</td><td>Right before SVG → data URL.</td></tr>
-          <tr><td class="num">afterRender</td><td class="feature">Post-serialize</td><td>Inspect <code>context.svgString</code> / <code>context.dataURL</code>.</td></tr>
+          <tr><td class="num">beforeRender</td><td class="feature">Pre-render</td><td>Right before the selected render engine runs.</td></tr>
+          <tr><td class="num">afterRender</td><td class="feature">Post-render</td><td>Inspect <code>context.dataURL</code> / <code>context.meta</code>, and <code>svgString</code> on the SVG path.</td></tr>
+          <tr><td class="num">defineExports</td><td class="feature">Result setup</td><td>After capture, add custom exporters (e.g. <code>toPdf</code>).</td></tr>
           <tr><td class="num">beforeExport</td><td class="feature">Per export</td><td>Before each <code>toPng</code>, <code>toSvg</code>, etc.</td></tr>
-          <tr><td class="num">afterExport</td><td class="feature">Per export</td><td>Transform returned result.</td></tr>
-          <tr><td class="num">afterSnap</td><td class="feature">Once</td><td>After first export; cleanup.</td></tr>
-          <tr><td class="num">defineExports</td><td class="feature">Setup</td><td>Add custom exporters (e.g. <code>toPdf</code>).</td></tr>
+          <tr><td class="num">afterExport</td><td class="feature">Per export</td><td>Observe the returned result.</td></tr>
+          <tr><td class="num">afterSnap</td><td class="feature">Once</td><td>After the first successful export; cleanup.</td></tr>
         </tbody>
       </table>
-      <p class="muted">Hook order: <code>beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport</code> (with <code>afterSnap</code> firing once after the first export). Returned values from <code>afterExport</code> are chained to the next plugin (transform pipeline).</p>
+      <p class="muted">Order: <code>beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender → defineExports → [beforeExport → exporter → afterExport] → afterSnap</code>. The bracketed segment repeats per export; <code>afterSnap</code> fires once after the first successful one. Export-hook return values are ignored. Use <code>defineExports</code> to define a custom result. A plugin with <code>beforeRender</code> or <code>afterRender</code> makes an <code>html-in-canvas</code> request use the SVG fallback.</p>
     </section>
 
     <section class="prose">
       <h2 id="context">Context object</h2>
       <p>Every hook receives a single <code>context</code> object that contains normalized capture state:</p>
       <ul>
-        <li><strong>Input &amp; options:</strong> <code>element</code>, <code>debug</code>, <code>scale</code>, <code>dpr</code>, <code>width</code>, <code>height</code>, <code>backgroundColor</code>, <code>quality</code>, <code>useProxy</code>, <code>cache</code>, <code>outerTransforms</code>, <code>outerShadows</code>, <code>compress</code>, <code>embedFonts</code>, <code>localFonts</code>, <code>iconFonts</code>, <code>excludeFonts</code>, <code>exclude</code>, <code>excludeMode</code>, <code>filter</code>, <code>filterMode</code>, <code>fallbackURL</code>.</li>
-        <li><strong>Intermediate values</strong> (depending on stage): <code>clone</code>, <code>classCSS</code>, <code>styleCache</code>, <code>fontsCSS</code>, <code>baseCSS</code>, <code>svgString</code>, <code>dataURL</code>.</li>
-        <li><strong>During export:</strong> <code>context.export = { type, options, url }</code> where <code>type</code> is the exporter name (<code>"png"</code>, <code>"jpeg"</code>, <code>"svg"</code>, <code>"blob"</code>, etc.), and <code>url</code> is the serialized SVG base.</li>
+        <li><strong>Input &amp; normalized options:</strong> <code>element</code>; the <code>options</code> self-reference; <code>needs</code>; <code>shouldExclude(element)</code>; and the public capture options such as <code>scale</code>, <code>dpr</code>, <code>width</code>, <code>height</code>, <code>format</code>, <code>backgroundColor</code>, <code>quality</code>, fonts, exclusion, clipping, selection, reconciliation, invalidation, caching, plugins, and engine. <code>format</code> is canonical; deprecated <code>type</code> stays synchronized with it, and changing either in <code>beforeSnap</code> is honored.</li>
+        <li><strong>Intermediate values</strong> (depending on stage): <code>clone</code>, <code>classCSS</code>, <code>styleCache</code>, <code>nodeMap</code>, <code>fontsCSS</code>, <code>baseCSS</code>, <code>svgString</code>, <code>dataURL</code>, and frozen <code>meta</code>. Large clone-stage fields are released after rendering.</li>
+        <li><strong>Result setup:</strong> <code>artifacts = { classCSS, fontsCSS, baseCSS, scrollbarCSS }</code> and <code>exports</code>, the hook-free core exporter facade available to <code>defineExports</code>.</li>
+        <li><strong>During export:</strong> <code>context.export = { type, options, requestedOptions, url, svgString }</code>. <code>type</code> is the exporter name; <code>requestedOptions</code> preserves exactly what that call supplied. Mutating <code>context.export.options.format</code> (canonical) or its deprecated <code>type</code> alias in <code>beforeExport</code> governs that export. <code>url</code> is SVG for the default engine and a lazily materialized PNG for a successful native <code>html-in-canvas</code> capture. <code>svgString()</code> lazily decodes SVG and throws when the capture is raster.</li>
       </ul>
       <p class="muted">You may safely modify <code>context</code> (e.g. override <code>backgroundColor</code> or <code>quality</code>) — but do so early (<code>beforeSnap</code>) for global effects or in <code>beforeExport</code> for single-export changes.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="needs">Pipeline depth and memoization</h2>
+      <p>A per-capture plugin may declare <code>needs: "clone"</code> or <code>needs: "render"</code> (the default). SnapDOM runs to the deepest stage requested by the attached plugins. A clone-only result has <code>result.needs === "clone"</code> and no image; reading <code>url</code> or calling an exporter throws instead of recapturing a different instant. Global plugins must use <code>"render"</code>; registration rejects a global clone-only plugin because it would remove pixels from every capture.</p>
+      <p>Clone/render-affecting hooks suspend automatic repeat memoization unless the plugin declares <code>pure: true</code>. Purity restores unchanged-repeat memoization. Pure <code>beforeRender</code>/<code>afterRender</code> hooks may also use differential recapture, while hooks involved in clone construction still force a conservative full recapture after a change. A capture stopped at <code>needs: "clone"</code> is never memoized because it has no render artifact. Declare purity only for deterministic, idempotent hooks; export-only hooks and <code>defineExports</code> do not need it.</p>
+      <p class="muted"><code>resolveNode(node, context)</code> runs after <code>context.shouldExclude(node)</code> has enforced the compiled exclusion policy. Return a replacement <code>Node</code>, <code>null</code> to skip, or <code>undefined</code> to continue normal cloning.</p>
     </section>
 
     <section class="prose">
@@ -280,37 +289,46 @@ document.body.appendChild(png);</pre>
     /** Unique name used for de-duplication/overrides */
     name: 'my-plugin',
 
+    /** Optional pipeline depth; global plugins must remain at "render". */
+    needs: 'render',
+
+    /** Set true only for deterministic/idempotent clone or render hooks. */
+    pure: false,
+
     /** Early adjustments before any clone/style work. */
     async beforeSnap(context) {},
 
     /** Before subtree cloning (use sparingly if touching the live DOM). */
     async beforeClone(context) {},
 
+    /** Per source node, after context.shouldExclude(node) has been applied. */
+    async resolveNode(node, context) {},
+
     /** After subtree cloning (safe to modify the cloned tree). */
     async afterClone(context) {},
 
-    /** Right before serialization (SVG/dataURL). */
+    /** Right before the selected renderer runs. */
     async beforeRender(context) {},
 
-    /** After serialization; inspect context.svgString/context.dataURL if needed. */
+    /** After rendering; svgString exists only on the SVG path. */
     async afterRender(context) {},
 
-    /** Before EACH export call (toPng/toSvg/toBlob/...). */
-    async beforeExport(context) {},
-
     /**
-     * After EACH export call.
-     * If you return a value, it becomes the result for the next plugin (chaining).
-     */
-    async afterExport(context, result) { return result; },
-
-    /**
-     * Define custom exporters (auto-added as helpers like out.toPdf()).
+     * Define custom exporters during result setup.
      * Return a map { [key: string]: (ctx:any, opts:any) =&gt; Promise&lt;any&gt; }.
      */
     async defineExports(context) { return {}; },
 
-    /** Runs ONCE after the FIRST export finishes (cleanup). */
+    /** Before EACH export call (toPng/toSvg/toBlob/...). */
+    async beforeExport(context, { format, options }) {},
+
+    /**
+     * After EACH export call.
+     * Observes { format, options, result }; return values are ignored.
+     */
+    async afterExport(context, { format, options, result }) {},
+
+    /** Runs ONCE after the FIRST successful export finishes (cleanup). */
     async afterSnap(context) {}
   };
 }</pre>

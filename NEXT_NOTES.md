@@ -1,5 +1,9 @@
 # next branch — what's here and what can graduate to main
 
+> Historical branch log. It records the design as it evolved and is not the current API or
+> correctness contract; use `ARCHITECTURE.md`, `CHANGELOG.md`, and the headers in `src/` for
+> the v3 beta as it stands now.
+
 Working notes for the architecture work on `next`. Each item states its risk profile and
 whether it can cherry-pick to `main` independently.
 

@@ -52,27 +52,32 @@ snapdom.plugins(myPlugin());
 Hooks execute in this order:
 
 ```
-beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport
+beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender
+→ defineExports → [beforeExport → exporter → afterExport] → afterSnap
 ```
 
-Plus `defineExports` for adding custom export methods.
+The bracketed segment runs for every export. `afterSnap` runs once, after the first
+successful export. A plugin with `beforeRender` or `afterRender` makes an
+`engine: 'html-in-canvas'` request use the SVG fallback.
 
 | Hook | When it runs | Common use cases |
 |------|-------------|-----------------|
 | `beforeSnap` | Before anything happens | Validate options, set defaults |
 | `beforeClone` | Before DOM is cloned | Pre-process live DOM (undo in afterClone) |
+| `resolveNode` | Per node, during cloning | Replace/skip individual nodes (redaction, custom widgets) |
 | `afterClone` | After clone is created | Transform clone: overlays, styles, replacements |
-| `beforeRender` | Before SVG serialization | Adjust the clone or the CSS that is about to be serialized |
-| `afterRender` | After SVG is rendered | Read the serialized output (`ctx.svgString`, `ctx.dataURL`, `ctx.meta`) |
+| `beforeRender` | Before the selected renderer runs | Adjust the clone or generated CSS |
+| `afterRender` | After the render artifact exists | Read `ctx.dataURL` / `ctx.meta`, and `ctx.svgString` on the SVG path |
+| `defineExports` | During result setup, after capture | Add new export formats (toPdf, toAscii) |
 | `beforeExport` | Before each export call | Adjust export options (quality, size) |
 | `afterExport` | After each export call | Observe the export result (log, upload, measure) |
-| `defineExports` | During plugin registration | Add new export formats (toPdf, toAscii) |
-| `resolveNode` | Per node, during cloning | Replace/skip individual nodes (redaction, custom widgets) |
+| `afterSnap` | Once, after the first successful export | Cleanup capture-scoped resources |
 
 ### Per-node hook: `resolveNode(node, ctx)`
 
 Unlike the lifecycle hooks, `resolveNode` runs once **per source node** while the clone is
-built (after `exclude`/`filter`, before built-in handling of iframe/canvas/video/audio).
+built (after the compiled exclusion policy, before built-in handling of
+iframe/canvas/video/audio).
 The first plugin that returns a value wins:
 
 - Return a **Node** → used as the finished clone for that node (subtree included). SnapDOM
@@ -105,14 +110,16 @@ Keep it fast: it runs on every node of the captured subtree. Prefer cheap checks
 Every capture hook (`beforeSnap` → `afterRender`, and `afterSnap`) receives **the same
 single context object** (`ctx`): the normalized options at the top level, plus each stage's
 product as it is produced. It is the very object the pipeline reads, so an option you change
-in `beforeSnap` is the option the capture uses. The export hooks get a per-export VIEW of
-that context (same option values, plus the `export` block for the call at hand), so there
-you steer the export through `payload.options`, not through `ctx`.
+in `beforeSnap` is the option the capture uses. `format` is the canonical image-format field;
+the deprecated `type` alias stays synchronized with it, and changing either name in
+`beforeSnap` is honored. The export hooks get a per-export VIEW of that context (same option
+values, plus the `export` block for the call at hand), so there you steer the export through
+`payload.options`, not through `ctx`.
 
 ```js
 {
   // Input & options
-  element,           // The capture root — set on every path, including burst's diff recapture
+  element,           // The capture root — set on full and differential recapture paths
   options,           // Self-reference to this same ctx (for plugins written against ctx.options)
   needs,             // How far this capture runs: 'clone' | 'render'
   debug,             // Mode flags
@@ -121,28 +128,31 @@ you steer the export through `payload.options`, not through `ctx`.
   backgroundColor,   // Background color
   quality,           // Export quality (0-1)
   useProxy,          // CORS proxy URL
-  cache,             // Cache instance
+  cache,             // Persistent resource/style cache policy
   outerTransforms, outerShadows,
-  embedFonts, localFonts, iconFonts, excludeFonts,
+  embedFonts, localFonts, iconFonts, excludeFonts, fontStylesheetDomains,
   exclude, excludeMode,
-  fallbackURL,
-  clip, engine,
+  shouldExclude,     // Compiled data-capture/selector/predicate exclusion policy
+  fallbackURL, placeholders,
+  format, type, filename, canvas, captureSelection, // format is canonical; type is synchronized
+  reconcile, invalidate, excludeStyleProps,
+  clip, engine, plugins,
 
   // Intermediate values (available after their stage)
   clone,             // Cloned DOM tree — from afterClone through afterRender
   classCSS, styleCache, nodeMap,
   fontsCSS, baseCSS,
-  svgString,         // Serialized SVG source — in afterRender (released right after it)
-  dataURL,           // The capture's data: URL — from afterRender on
+  svgString,         // Serialized source on the SVG path — in afterRender, then released
+  dataURL,           // Capture data URL when the selected engine produces one
   meta,              // Frozen render geometry (viewBox, content origin, clip) after render
                      // clone/nodeMap/styleCache/svgString are released once afterRender has
                      // run: keeping them would make every live result retain the whole tree.
 
   // During export hooks (defineExports and beforeExport/afterExport)
   export: {
-    type, options, url,
+    type, options, url, // URL is SVG by default; PNG after a successful native html-in-canvas capture
     requestedOptions, // Exactly what this toXxx() call passed, frozen (omitted keys stay omitted)
-    svgString,       // () => string — LAZY decode of the serialized SVG (call it)
+    svgString,       // () => string — LAZY SVG decode; throws for a raster engine capture
   },
   artifacts: {       // Render CSS the pipeline already holds — never reverse-parse the url
     classCSS, fontsCSS, baseCSS, scrollbarCSS
@@ -163,7 +173,8 @@ afterExport (ctx, { format, options, result })  // result: what the exporter ret
 ```
 
 `options` is the SAME object the exporter is about to receive, so mutating it in
-`beforeExport` steers that export:
+`beforeExport` steers that export. For format-selecting exporters, `options.format` is
+canonical; its deprecated `options.type` alias is also honored and synchronized:
 
 ```js
 {
@@ -174,18 +185,20 @@ afterExport (ctx, { format, options, result })  // result: what the exporter ret
 }
 ```
 
-Both hooks **observe** the result: every plugin receives the same payload, return values are
-ignored, and the caller gets what the exporter produced. To hand back something else, declare
-that format in `defineExports` (it can build on `ctx.exports.png()` and friends).
+Both hooks are **observational with respect to their return values**: every plugin receives
+the same payload, hook returns are ignored, and the caller gets what the exporter produced.
+`beforeExport` may still mutate `options`; only `afterExport` receives `result`. To hand back
+something else, declare that format in `defineExports` (it can build on
+`ctx.exports.png()` and friends).
 
 ### Hook Rules
 
 1. Hooks can be sync or async. SnapDOM awaits all hooks.
 2. Mutate `ctx` freely, e.g. change `ctx.backgroundColor`, `ctx.scale`, `ctx.width`,
    `ctx.clip`, `ctx.outerTransforms` or `ctx.outerShadows` in `beforeSnap`: everything that
-   shapes the picture is read after that hook has run. The exceptions are the options that
-   pick the capture PATH, resolved before any hook can run: `plugins`, `needs`, `engine`,
-   `burst`, `invalidate` and `cache`. Setting those in a hook has no effect.
+   shapes the picture is read after that hook has run. The exceptions are the options resolved
+   before any hook can run: `plugins`, `needs`, `invalidate` and `cache`. Setting those in a
+   hook has no effect.
 3. Export hooks observe; `defineExports` is where an export result is decided.
 4. DOM mutations in `beforeClone` must be undone. The live page should not be affected.
 
@@ -205,6 +218,9 @@ Declare what your plugin needs, and snapdom stops there:
 { name: 'my-plugin' }                   // default 'render': the whole pipeline, as always
 ```
 
+Only a per-capture plugin may lower the stage. Global registration rejects `needs: 'clone'`
+because it would silently remove pixels from every capture in the application.
+
 The clone is the floor. A shallower `'dom'` stage existed and was removed: a capture that
 takes no clone does no capturing, so core contributed nothing to it but option
 normalization and a hook runner, which a plugin can do by calling its own function on the
@@ -223,7 +239,7 @@ Two rules keep this predictable:
    Re-capturing on demand would return pixels of a *different* instant and the caller
    would have no way to tell: the clone IS the freeze, and it cannot be taken afterwards.
 
-`result.needs` reports what actually ran — same word, same three values.
+`result.needs` reports what actually ran — same word, same two values.
 
 **Why it is worth declaring.** Measured on a 601-node subtree: clone 43.3 ms, assets
 2.7 ms, serialize 1.6 ms. Stopping before the render saves a few percent; stopping before
@@ -257,22 +273,28 @@ would hand back an empty map — indistinguishable from a page with nothing inte
 ### Plugins × the engine's fast paths (v3)
 
 snapdom memoizes repeated captures automatically and rebuilds only mutated subtrees
-(differential recapture). Because a memo serve skips render hooks and a subtree splice
+(differential recapture). Because a memo serve skips capture-affecting hooks and a subtree splice
 would drop their work, **any plugin with a clone/render-affecting hook** (`resolveNode`,
 `beforeSnap`, `beforeClone`, `afterClone`, `beforeRender`, `afterRender`) **suspends
 those fast paths** for its captures. Export-only plugins (`defineExports`,
 `beforeExport`, `afterExport`) keep the full speedup.
 
-If your render hooks are **deterministic and idempotent** (same input → same output, no
+If your capture-affecting hooks are **deterministic and idempotent** (same input → same output, no
 external state like timestamps or counters), declare it:
 
 ```js
 { name: 'my-plugin', pure: true, afterClone(ctx) { /* … */ } }
 ```
 
-`pure: true` opts the plugin back into memoization and differential recapture. Declaring
-purity on a hook that reads changing external state will serve stale results — that is
-the contract you sign.
+`pure: true` opts the plugin back into unchanged-repeat memoization. A pure plugin whose
+capture-affecting hooks are limited to `beforeRender` / `afterRender` may also use
+differential recapture, because those boundaries run around the rebuilt render. Hooks that
+participate in clone construction (`beforeSnap`, `beforeClone`, `resolveNode`, `afterClone`)
+still force a conservative full recapture after a change: the splice path cannot skip them.
+Captures stopped at `needs: 'clone'` are never memoized because there is no render artifact
+to serve, regardless of purity.
+Declaring purity on a hook that reads changing external state will serve stale results —
+that is the contract you sign.
 
 ## Adding Custom Exports with defineExports
 
@@ -283,7 +305,7 @@ export function pdfExport(options = {}) {
     defineExports(ctx) {
       return {
         pdf: async (ctx, opts) => {
-          const svgUrl = ctx.export.url;
+          const captureUrl = ctx.export.url; // SVG by default; PNG after successful native html-in-canvas
           // convert to PDF...
           return pdfBlob;
         }
@@ -297,7 +319,7 @@ const result = await snapdom(element, { plugins: [pdfExport()] });
 const blob = await result.toPdf({ width: 800 });
 ```
 
-**Priority.** When multiple sources define the same export key, resolution is **local plugin > global plugin > core**. So a plugin passed via `snapdom(el, { plugins: [...] })` can override `toPng`, `toJpg`, `toCanvas`, etc., and a per-capture plugin beats a globally-registered one with the same key. Use this to swap a core exporter for a plugin implementation (e.g. a plugin-provided `png` that reuses the existing SVG via `ctx.export.url`).
+**Priority.** When multiple sources define the same export key, resolution is **local plugin > global plugin > core**. So a plugin passed via `snapdom(el, { plugins: [...] })` can override `toPng`, `toJpg`, `toCanvas`, etc., and a per-capture plugin beats a globally-registered one with the same key. Use this to swap a core exporter for a plugin implementation (e.g. a plugin-provided `png` that reuses the existing capture through `ctx.export.url`).
 
 ## Distribution
 
@@ -344,10 +366,13 @@ export function example(options = {}) {
 
   return {
     name: 'example',
+    needs: 'render', // per-capture plugins may instead request 'clone'
+    pure: false,     // true only for deterministic/idempotent capture-affecting hooks
 
     // Pick only the hooks you need:
     // beforeSnap(ctx) {},
     // beforeClone(ctx) {},
+    // resolveNode(node, ctx) {},
 
     afterClone(ctx) {
       if (!enabled) return;
@@ -356,9 +381,10 @@ export function example(options = {}) {
 
     // beforeRender(ctx) {},
     // afterRender(ctx) {},
+    // defineExports(ctx) { return { format: async (ctx, opts) => {} }; },
     // beforeExport(ctx, { format, options }) {},
     // afterExport(ctx, { format, options, result }) {},
-    // defineExports(ctx) { return { format: async (ctx, opts) => {} }; },
+    // afterSnap(ctx) {},
   };
 }
 ```
@@ -400,7 +426,7 @@ Then open a PR or issue at [zumerlab/snapdom](https://github.com/zumerlab/snapdo
 
 | Category | Description | Examples |
 |----------|------------|---------|
-| **Capture** | Modify how DOM is captured | pictureResolver, lazy-load handler |
+| **Capture** | Modify how DOM is captured | custom-widget resolver, lazy-load handler |
 | **Transform** | Alter cloned output | overlay, filter, redact, watermark |
 | **Export** | Add output formats | PDF, ASCII, AVIF, animated GIF |
 | **Integration** | Connect to external services | upload to S3, post to Slack |
