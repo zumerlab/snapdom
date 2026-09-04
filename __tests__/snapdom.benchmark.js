@@ -1,17 +1,13 @@
-// NOTE: burst:false pins these benches to the cold pipeline — the memo would
-// otherwise memoize the repeated iterations and measure the cache hit instead.
+// Every arm here is this checkout. burst: false pins the benches to the cold pipeline;
+// the memo would otherwise serve the repeated iterations and measure the hit instead
+// (session.static / session.mutating measure that on purpose). The older snapdom
+// releases that used to run alongside (1.9.9, 2.16.0, 2.24.12) were dropped on
+// 2026-09-04: the v3 line measures itself, and cross-library arms live in
+// category.*.benchmark.js, where every library ends at the same output stage.
 import { bench, describe, afterEach } from 'vitest'
 import { domToDataUrl } from 'https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/+esm'
 import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
 //import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js';
-import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.9.9/dist/snapdom.mjs'
-import { snapdom as sd216 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.16.0/dist/snapdom.mjs'
-// The v2 line's latest release: the "what does upgrading to v3 buy me" arm. Pinned, like the
-// two above, so a run months from now still measures the same baseline — bump it by hand when
-// v2 ships. It takes no `burst` option on purpose: v2 only bursts when explicitly asked
-// (`if (context.burst)` in its snapdom.js, it just warns otherwise), so this IS its cold
-// pipeline, which is what `burst: false` pins the current version to.
-import { snapdom as sd2 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.12/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
 
 let html2canvasLoaded = false
@@ -71,26 +67,8 @@ for (const size of sizes) {
       await snapdom.toRaw(container, { burst: false })
     })
 
-    bench('snapDOM 2.24.12 (latest v2)', async () => {
-      await setupContainer()
-      await sd2.toRaw(container)
-    })
-
-    bench('snapDOM 2.16.0', async () => {
-      await setupContainer()
-      await sd216.toRaw(container)
-    })
-
-     bench('snapDOM V1.9.9', async () => {
-      await setupContainer()
-      await sd.toRaw(container)
-    })
-
-    // Cross-library arms live in category.benchmark.js, where every library ends at the SAME
-    // output stage (PNG data URL). Here snapdom ended at toRaw — an SVG string — against
-    // competitors' rasterized PNG, which flatters snapdom and hides raster-stage regressions
-    // (the category bench is what caught the encode-route win). This file is the VERSION
-    // LINEAGE bench: current vs 2.24.12 vs 2.16.0 vs 1.9.9, all at toRaw, which is fair.
+    // toRaw ends at the SVG string: this is the pipeline without the raster stage. A raster
+    // regression is invisible here and shows in category.benchmark.js, which ends at a PNG.
   })
 }
 
@@ -146,23 +124,6 @@ describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
   bench('snapDOM current toPng (compress ON)', async () => {
     await setupContainer()
     await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true, burst: false })
-  })
-
-  bench('snapDOM 2.24.12 toPng (compress OFF)', async () => {
-    await setupContainer()
-    // Same scale/dpr as every other arm in this describe — without them v2 rasterized ~4x
-    // fewer pixels in a comparison labeled "scale 2" and its number was not comparable.
-    await sd2.toPng(container, { scale: 2, dpr: 1, compress: false })
-  })
-
-  bench('snapDOM 2.16.0 toPng (compress OFF)', async () => {
-    await setupContainer()
-    await sd216.toPng(container, { scale: 2, dpr: 1, compress: false })
-  })
-
-  bench('snapDOM 2.16.0 toPng (compress ON)', async () => {
-    await setupContainer()
-    await sd216.toPng(container, { scale: 2, dpr: 1, compress: true })
   })
 
   bench('html2canvas', async () => {
