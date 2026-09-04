@@ -14,9 +14,18 @@
 // hover chain (root.querySelectorAll(':hover') + ancestors, 18 µs on the 500-row table) against
 // the previous capture and stamp what changed; compare a selection signature when serving the
 // memo under captureSelection. When it lands, these go red: drop the `.fails`.
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi, inject } from 'vitest'
 import { userEvent } from '@vitest/browser/context'
 import { snapdom } from '../src/index.js'
+
+// The real pointer is the slow part of this file, and only under BROWSER=all: the first
+// pointer command in a fresh test iframe took 6.6 s on webkit with eight files running
+// (chromium 0.6 s, firefox 0.8 s) and more than 15 s in the full suite, where the first
+// hover test failed on webkit. Every later pointer command took 40 to 340 ms, a capture
+// under 100 ms, a raw command round trip to node 5 to 35 ms (measured 2026-09-04). Same
+// sizing rule as visual.demos.shared.js: the engine count is the load.
+const ENGINES = inject('engines') ?? 1
+vi.setConfig({ testTimeout: 15000 * ENGINES })
 
 let mounted
 let style

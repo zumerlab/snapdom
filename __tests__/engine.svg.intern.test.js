@@ -9,7 +9,14 @@ import { isSafari } from '../src/utils/browser.js'
 let host
 afterEach(() => { host?.remove(); host = null })
 
-function repetitiveFixture(rows = 40) {
+// 80 rows, not 40: the pass runs only past 2048 saved bytes, and what a row's attribute
+// weighs in the markup is per engine. Firefox keeps the 42-byte authored text verbatim
+// (40 rows saved 1512 bytes and the pass stayed off); Chromium re-serializes it to ~105
+// bytes because the background pass writes the layout longhands and Blink rewrites the
+// attribute on a same-value write. 80 verbatim rows save 3276 bytes on every engine.
+const ROWS = 80
+
+function repetitiveFixture(rows = ROWS) {
   host = document.createElement('div')
   host.style.cssText = 'width:300px;background:#fff'
   let html = ''
@@ -25,19 +32,19 @@ const svgTextOf = (url) => decodeURIComponent(url.split(',').slice(1).join(','))
 
 describe('svg engine: inline-style interning', () => {
   it('dedupes repeated style attributes into [data-sdi] rules and keeps pixels', async () => {
-    const el = repetitiveFixture(40)
+    const el = repetitiveFixture()
     const res = await snapdom(el, { burst: false })
     const svgText = svgTextOf(res.url)
 
     if (!isSafari()) {
-      // byte gate: the 40 rows collapse to 2 rules (red rows / blue rows)
+      // byte gate: the rows collapse to 2 rules (red rows / blue rows)
       const rules = svgText.match(/\[data-sdi="[^"]+"\]\{/g) || []
       expect(rules.length).toBeGreaterThanOrEqual(2)
       const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml')
       expect(doc.querySelector('parsererror')).toBeNull()
       // a couple of rows can carry a node-specific byte (edge normalization) and stay
       // inline — the pass only interns EXACT duplicates
-      expect(doc.querySelectorAll('[data-sdi]').length).toBeGreaterThanOrEqual(36)
+      expect(doc.querySelectorAll('[data-sdi]').length).toBeGreaterThanOrEqual(ROWS - 4)
     }
 
     // pixel gate (both engines/paths): the rows must actually paint
@@ -54,13 +61,15 @@ describe('svg engine: inline-style interning', () => {
   })
 
   it('never rewrites author <style> text, even when it contains the attribute pattern', async () => {
-    const el = repetitiveFixture(30)
+    const el = repetitiveFixture()
     const trap = document.createElement('style')
     // the literal sequence ` style="` inside CSS text — a selector no real node matches
     trap.textContent = 'div[ style="never-matches"]{outline:1px solid lime}'
     el.prepend(trap)
     const res = await snapdom(el, { burst: false })
     const svgText = svgTextOf(res.url)
+    // the pass must have run, or the trap below proves nothing
+    if (!isSafari()) expect(svgText).toContain(' data-sdi="')
     expect(svgText).toContain('div[ style="never-matches"]')
     expect(svgText).not.toContain('div[ data-sdi=')
   })
