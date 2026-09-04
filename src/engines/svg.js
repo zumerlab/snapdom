@@ -155,12 +155,15 @@ export async function composeAndSerialize(state, ex) {
   const elDoc = state.element.ownerDocument || document
   // #449: an iframe doc pinned by rasterizeIframe must be captured at its viewport size.
   // Expanding to scrollHeight there yields a full-page bitmap that gets squashed into the
-  // iframe box (overflow:hidden still reports the full scrollable extent).
+  // iframe box (overflow:hidden still reports the full scrollable extent). The pin flag is
+  // an option of the nested capture, not an attribute on the frame's <html>: an attribute
+  // there was an external record to the frame's own invalidation observer, which stamped
+  // every snapshot in every document and killed the outer element's burst memo.
   // Clip mode: the viewBox is windowed to the clip rect, so the exact full content
   // height is irrelevant — skip the scrollHeight expansion AND the expensive
   // clone-in-document measurement round-trip entirely.
   const isRoot = !clipWindow && (state.element === elDoc.body || state.element === elDoc.documentElement) &&
-    !elDoc.documentElement.hasAttribute('data-sd-pinned')
+    !state.__pinned
   if (isRoot) {
     const docH = Math.max(
       state.element.scrollHeight || 0,

@@ -202,6 +202,11 @@ export function createContext(options = {}) {
     // (canvas pixel draws, programmatic CSSOM edits). Works under auto-burst too.
     invalidate: options.invalidate ?? false,
 
+    // Internal: the nested capture rasterizeIframe takes of a frame's documentElement, pinned
+    // to the frame's viewport (utils/clone.helpers.js). The svg engine reads it instead of
+    // expanding a root capture to scrollHeight; never public.
+    __pinned: options.__pinned === true,
+
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 

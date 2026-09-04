@@ -459,11 +459,16 @@ export function pinIframeViewport(doc, w, h) {
     }
   } catch { }
 
-  // #449: flags the doc as viewport-pinned so captureDOM skips its full-page (scrollHeight) expansion
-  try { doc.documentElement.setAttribute('data-sd-pinned', '') } catch { }
-
+  // Owned, so the frame document's invalidation observer (styles.js, wired per document)
+  // ignores the style's arrival and removal: as an unmarked <head> mutation it bumped the
+  // shared environment epoch twice per capture, which is an unconditional dirtyAll on the
+  // OUTER element's burst memo. The viewport flag itself travels as the nested capture's
+  // `__pinned` option (rasterizeIframe), not as an attribute on this <html>: a record on
+  // <html> is the all-stamp, and it invalidated every snapshot in every document.
+  // Pinned by __tests__/core.burst.nestedIframe.test.js.
   const style = doc.createElement('style')
   style.setAttribute('data-sd-iframe-pin', '')
+  style.setAttribute('data-snapdom-internal', '')
   style.textContent = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
     `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style)
@@ -484,7 +489,6 @@ export function pinIframeViewport(doc, w, h) {
 
   return () => {
     try { style.remove() } catch { }
-    try { doc.documentElement.removeAttribute('data-sd-pinned') } catch { }
     try {
       if (win && typeof win.scrollTo === 'function') win.scrollTo(sx, sy)
       if (doc.body) { doc.body.scrollLeft = bsl; doc.body.scrollTop = bst }
@@ -521,7 +525,9 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   // Avoid double scaling; parent capture decides final scale. Drop clip: a visible iframe
   // is captured whole (offscreen ones were already culled), and 'viewport' would re-resolve
   // against the iframe's own window.
-  const nested = { ...options, scale: 1, clip: null }
+  // `__pinned`: the svg engine captures this documentElement at the pinned viewport, not
+  // at scrollHeight (#449); the flag lives here and not on the frame's <html>, see the pin.
+  const nested = { ...options, scale: 1, clip: null, __pinned: true }
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)

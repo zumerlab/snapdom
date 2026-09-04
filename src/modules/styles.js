@@ -351,7 +351,13 @@ function setupInvalidationOnce(doc = document) {
     const f = doc.fonts
     if (f) {
       f.addEventListener?.('loadingdone', onFonts)
-      f.ready?.then(onFonts).catch(() => { })
+      // Only while the set is still loading. On a settled set `ready` resolves at once, and
+      // that bump, with nothing changed, cost every element its first memo: a page's first
+      // capture wires the document, an iframe's first capture wires the frame, and the NEXT
+      // capture of anything saw a new environment epoch and ran the full pipeline (a seeded
+      // element with a nested iframe was never served its seed). Pinned by
+      // __tests__/core.burst.nestedIframe.test.js.
+      if (f.status === 'loading') f.ready?.then(onFonts).catch(() => { })
     }
   } catch { }
 }
