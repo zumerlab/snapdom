@@ -1,14 +1,20 @@
-// Every arm here is this checkout. burst: false pins the benches to the cold pipeline;
-// the memo would otherwise serve the repeated iterations and measure the hit instead
-// (session.static / session.mutating measure that on purpose). The older snapdom
-// releases that used to run alongside (1.9.9, 2.16.0, 2.24.12) were dropped on
-// 2026-09-04: the v3 line measures itself, and cross-library arms live in
-// category.*.benchmark.js, where every library ends at the same output stage.
+// "current" is this checkout; the published npm `latest` runs alongside as the baseline.
+// That arm is UNPINNED on purpose: the question is always what this checkout buys over
+// what users install today, so it follows the tag instead of a version bumped by hand
+// (the fixed 1.9.9 / 2.16.0 / 2.24.12 arms were dropped on 2026-09-04). burst: false pins
+// both arms to the cold pipeline: the memo would otherwise serve the repeated iterations
+// and measure the hit instead (session.static / session.mutating measure that on purpose);
+// v2 only bursts when the flag is true, and once v3 is `latest` the flag keeps it cold too.
 import { bench, describe, afterEach } from 'vitest'
 import { domToDataUrl } from 'https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/+esm'
 import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
 //import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js';
+import { snapdom as published } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
+
+// The published build carries no version export; the report needs the number.
+const PUBLISHED = await fetch('https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/package.json')
+  .then((r) => r.json()).then((p) => p.version).catch(() => 'unknown version')
 
 let html2canvasLoaded = false
 
@@ -65,6 +71,11 @@ for (const size of sizes) {
     bench('snapDOM current version', async () => {
       await setupContainer()
       await snapdom.toRaw(container, { burst: false })
+    })
+
+    bench(`snapDOM ${PUBLISHED} (npm latest)`, async () => {
+      await setupContainer()
+      await published.toRaw(container, { burst: false })
     })
 
     // toRaw ends at the SVG string: this is the pipeline without the raster stage. A raster
@@ -124,6 +135,18 @@ describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
   bench('snapDOM current toPng (compress ON)', async () => {
     await setupContainer()
     await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true, burst: false })
+  })
+
+  bench(`snapDOM ${PUBLISHED} toPng (compress OFF)`, async () => {
+    await setupContainer()
+    // Same scale/dpr as every other arm in this describe: without them v2 rasterized ~4x
+    // fewer pixels in a comparison labeled "scale 2" and its number was not comparable.
+    await published.toPng(container, { scale: 2, dpr: 1, compress: false, burst: false })
+  })
+
+  bench(`snapDOM ${PUBLISHED} toPng (compress ON)`, async () => {
+    await setupContainer()
+    await published.toPng(container, { scale: 2, dpr: 1, compress: true, burst: false })
   })
 
   bench('html2canvas', async () => {
