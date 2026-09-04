@@ -788,6 +788,34 @@ export function isBlankCanvas(node) {
 /** <canvas> to <img>. The order of the reads inside is the whole point: the canvas is read
  *  before it is asked for a context, so a canvas the page has not initialized keeps its mode,
  *  and a WebGL frame is read inside the frame that drew it (#480). */
+/** JPEG quality for an opaque video frame. Measured 2026-09-03 on a 1280x720 VP9 frame against
+ *  the PNG of the same frame: mean error 1.6 levels, max 25, 0.9% of pixels off by more than 8,
+ *  where the video codec itself had already moved the frame 21 levels from its source. */
+const FRAME_QUALITY = 0.95
+
+/**
+ * Whether every pixel of a drawn frame is opaque, read through a 32x32 scratch so the cost
+ * stays O(1) (the downscale blends any transparent pixel into a partial alpha). Video frames
+ * are opaque unless the container carries alpha (WebM), and those keep PNG.
+ * @param {HTMLCanvasElement} canvas
+ * @returns {boolean}
+ */
+function frameIsOpaque(canvas) {
+  try {
+    const scratch = document.createElement('canvas')
+    scratch.width = 32
+    scratch.height = 32
+    const sctx = scratch.getContext('2d', { willReadFrequently: true })
+    if (!sctx) return false
+    sctx.drawImage(canvas, 0, 0, 32, 32)
+    const data = sctx.getImageData(0, 0, 32, 32).data
+    for (let i = 3; i < data.length; i += 4) if (data[i] !== 255) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
@@ -884,6 +912,8 @@ async function cloneVideo(node, sessionCache, options) {
   // Chromium/Firefox and nothing on WebKit, and even a blank canvas serializes to a valid
   // PNG that shadowed the poster. Read the flag from what it leaves behind instead.
   const showPoster = node.poster && node.paused && !node.currentTime && !node.played.length
+  const img = document.createElement('img')
+  try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
   if (!showPoster) {
     try {
       const canvas = document.createElement('canvas')
@@ -892,16 +922,26 @@ async function cloneVideo(node, sessionCache, options) {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
-        url = canvas.toDataURL('image/png')
-        if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
+        // A decoded frame has no codec to preserve: the video was lossy before it was ever
+        // drawn, so an opaque frame goes out as JPEG. Measured 2026-09-03 on a 1280x720 VP9
+        // frame: encode 3.9 vs 9.3 ms, 153 vs 709 KB, and the svg decodes and draws it in
+        // 1.7 vs 7 ms. A frame with alpha keeps PNG. Pinned by
+        // __tests__/core.clone.videoFrame.test.js.
+        // Encoded here, synchronously, and not in the compress worker pool: the pool's reply
+        // rides the main thread's task queue, and on a page with a render loop of its own
+        // that is a frame per reply (liquidGL's home, 2026-09-03: 48 ms idle per capture
+        // waiting on three replies whose encodes took 0.4 to 4.7 ms). toBlob is idle-
+        // scheduled in every engine and starves the same way.
+        if (!options.__warmOnly) { // preCache's throwaway clone would discard the frame
+          url = canvas.toDataURL(frameIsOpaque(canvas) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
+          if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
+        }
       }
     } catch (e) {
       debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
     }
   }
 
-  const img = document.createElement('img')
-  try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
   if (url) {
     img.src = url
   } else if (node.poster) {
