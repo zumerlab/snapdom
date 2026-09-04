@@ -1,5 +1,6 @@
 // cloneVideo's frame: an opaque frame goes out as JPEG (a decoded video frame has no codec to
-// preserve), and a preCache warm encodes nothing (its clone is discarded).
+// preserve), and a preCache that falls back to its throwaway warm encodes nothing (that clone is
+// discarded; a seeding preCache captures for real and its frame is the one served).
 //
 // Proven to fail: 'image/png' in cloneVideo's mime turns the codec test red; dropping the
 // __warmOnly branch turns the preCache test red.
@@ -88,10 +89,12 @@ describe('cloneVideo — frame codec', () => {
     expect(blueShare(await res.toCanvas({ scale: 1, dpr: 1 }))).toBeGreaterThan(0.9)
   }, 20_000)
 
-  it('a preCache warm encodes no frame', async () => {
+  it('a preCache that falls back to the throwaway warm encodes no frame', async () => {
     await mountPlaying()
     const toDataURL = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL')
-    await preCache(wrap)
+    // A render plugin that is not pure refuses the seed (api/preCache.js), so this is the
+    // throwaway-clone path, whose frame nobody would ever see.
+    await preCache(wrap, { plugins: [{ name: 'stamp', afterClone() {} }] })
     expect(toDataURL).not.toHaveBeenCalled()
   }, 20_000)
 })

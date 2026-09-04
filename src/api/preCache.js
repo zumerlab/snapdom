@@ -1,10 +1,11 @@
 /**
  * `preCache(root, options)`: warm what a capture will read, before the capture.
  *
- * Images, url() style layers and fonts go over the network now and into the cross-capture
- * caches (core/cache.js), so the capture reads them locally. Given an element, it also runs
- * a throwaway prepareClone to warm that element's style snapshots, where a cold capture's
- * time lives. Everything is best-effort: a failed fetch is dropped, never thrown.
+ * Given a document, images, url() style layers and fonts go over the network now and into
+ * the cross-capture caches (core/cache.js), so a later capture reads them locally. Given an
+ * element, it seeds: the real pipeline runs once, now, and the result becomes the element's
+ * burst memo, so the app's first capture is a memo hit (seedCapture). Everything is
+ * best-effort: a failed fetch is dropped, a refused seed falls back to the partial warm.
  * @module api/preCache
  */
 import { getStyle, inlineSingleBackgroundEntry, precacheCommonTags, isSafari } from '../utils'
@@ -16,6 +17,60 @@ import { createCaptureSession } from '../core/session.js'
 import { cache } from '../core/cache.js'
 import { URL_PROPS } from '../modules/background.js'
 import { compileIconFontMatchers } from '../modules/iconFonts.js'
+import { attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
+import { resolveStage, stageReaches } from '../core/stages.js'
+import { markSeeded, hasCanvas } from '../core/burst.js'
+import { debugWarn } from '../utils/debug.js'
+
+/** The public capture entry, bound by api/snapdom.js at load (see bindCapture). */
+let capture = null
+
+/**
+ * Give preCache the capture entry. Called once by api/snapdom.js; a seed goes through the
+ * same function the app calls, so it runs the same hooks and leaves the same burst state.
+ * @param {(element: Element, options?: object) => Promise<object>} fn
+ */
+export function bindCapture(fn) { capture = fn }
+
+/**
+ * Seed the burst memo for `el`: run the real pipeline once, now, with the options the app
+ * will capture with, and keep the result as the element's burst state. The next
+ * `snapdom(el, sameOptions)` is a memo hit, or a differential / full recapture when the
+ * invalidation matrix (core/burst.js) says the element changed. Measured 2026-09-03 over
+ * the 79-demo corpus: first capture 20.4 ms median, memo hit 0, the export that remains
+ * 4.6; a document-level warm recovered 10% of the first capture, the seed all of it,
+ * because fonts are cached by used family and codepoints, compress by image and target
+ * size, snapshots by element.
+ *
+ * Refused, with a debug note, exactly where the memo would refuse to serve: a render plugin
+ * that is not `pure` (a memo hit skips its hooks), a stage below render, a canvas-bearing
+ * element (pixel draws are invisible to the observers). Options must match the app's call
+ * by burst's signature, plugins by identity included.
+ * Pinned by __tests__/api.preCache.seed.test.js.
+ * @param {Element} el
+ * @param {object} options
+ * @returns {Promise<boolean>} whether a seed was taken
+ */
+async function seedCapture(el, options) {
+  if (!capture) return false
+  const probe = attachSessionPlugins(createContext(options), options.plugins)
+  let why = ''
+  if (hasImpureRenderPlugins(probe)) why = 'a render plugin is not pure'
+  else if (!stageReaches(resolveStage(probe).stage, 'render')) why = 'a plugin lowers the capture below render'
+  else if (el.tagName === 'CANVAS' || hasCanvas(el)) why = 'the element carries a canvas'
+  if (why) {
+    debugWarn(options, `preCache: not seeding the capture, ${why}`)
+    return false
+  }
+  try {
+    await capture(el, { ...options, burst: true })
+    markSeeded(el)
+    return true
+  } catch (e) {
+    debugWarn(options, 'preCache: seed capture failed', e)
+    return false
+  }
+}
 
 /**
  * Network prefetch: preloads images, background/mask/border-image URLs and (per
@@ -53,6 +108,10 @@ export async function preCache(root = document, options = {}) {
   // Same idea as domlens's prewarm({element}), scoped to what dominates OUR pipeline.
   // Best-effort and side-effect-free: the clone is discarded, nothing is mounted.
   if (root && root.nodeType === 1 && root !== document.documentElement && root !== document.body) {
+    // The seed is the whole warm: the capture it takes inlines the element's assets, embeds
+    // its fonts and snapshots its styles into the same caches, keyed the way the app's own
+    // capture will ask for them. Only a refused seed falls back to the partial warm below.
+    if (await seedCapture(root, options)) return
     try {
       // Defaults on purpose: the snapshot cache keys on the embedFonts flag, so warming with
       // a non-default value produced snapshots a default capture could never hit (measured:

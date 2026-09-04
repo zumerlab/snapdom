@@ -17,7 +17,8 @@ import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRender
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
 import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../modules/styles.js'
-import { captureWithBurst, shouldAutoBurst } from '../core/burst.js'
+import { captureWithBurst, shouldAutoBurst, isSeeded } from '../core/burst.js'
+import { bindCapture } from './preCache.js'
 export { preCache } from './preCache.js'
 
 /**
@@ -65,6 +66,10 @@ async function fromString(html, options) {
 // package from unpkg unless served by `npm run site`, and a v2 row read as v3 cost an evening.
 const version = typeof __SNAPDOM_VERSION__ === 'string' ? __SNAPDOM_VERSION__ : 'src'
 export const snapdom = Object.assign(main, { plugins, fromString, version })
+// preCache seeds through the public entry so a seed is exactly a capture (hooks, burst
+// state, result). Bound here rather than imported there: preCache.js is imported by this
+// module, and a cycle would leave it a dead binding.
+bindCapture(main)
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
@@ -187,10 +192,11 @@ async function main(element, userOptions) {
   // re-enable auto.
   // A capture that produces no render artifact has nothing to memoize, and its plugins
   // read the LIVE tree on every call — a memo serve would be exactly the stale read.
+  // A seeded element (preCache) engages on its first call: the seed IS the memo it serves.
   const burst = !rendersPixels
     ? false
     : context.burst === undefined
-      ? (!hasImpureRenderPlugins(context) && shouldAutoBurst(element))
+      ? (!hasImpureRenderPlugins(context) && (shouldAutoBurst(element) || isSeeded(element)))
       : context.burst
   if (burst) {
     return captureWithBurst(

@@ -162,8 +162,9 @@ describe('preCache – extra coverage', () => {
 
 describe('preCache(element) warms the style snapshots', () => {
   // The cold capture's dominant cost is the per-node style snapshot (~200 reads per node),
-  // which document-level warming cannot reach. preCache with an element target now pays that
-  // walk ahead of time, so the first real capture starts from the per-element cache.
+  // which document-level warming cannot reach. preCache with an element target seeds a capture
+  // ahead of time, with the options the app will capture with (the snapshot cache keys on
+  // them), so the first real capture starts from the per-element cache.
   it('the first capture after preCache(el) reads a fraction of a cold one', async () => {
     const { preCache, snapdom } = await import('../src/index.js')
     const build = () => {
@@ -193,7 +194,7 @@ describe('preCache(element) warms the style snapshots', () => {
       // WARMED: identical fixture, preCache first.
       await preCache(b, { embedFonts: false })
       await settle()
-      const warm = await countReads(() => snapdom.toRaw(b, { burst: false }))
+      const warm = await countReads(() => snapdom.toRaw(b, { burst: false, embedFonts: false }))
       // Comparative, not absolute: the residue (pseudo probes, inline normalization,
       // softening) is engine- and environment-dependent; the CLAIM is that the snapshot
       // walk itself was pre-paid.

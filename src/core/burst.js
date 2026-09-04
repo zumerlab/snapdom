@@ -88,10 +88,29 @@ export function shouldAutoBurst(element) {
   return true
 }
 
+/**
+ * Mark an element whose burst state was seeded by preCache: the next plain `snapdom(el)`
+ * engages the memo without waiting for the auto threshold, so the seeded capture is what it
+ * serves (api/snapdom.js). The flag outlives the memo on purpose: a seeded element is a
+ * declared capture target, and stays memoized like a poller's would after three calls.
+ * Pinned by __tests__/api.preCache.seed.test.js.
+ * @param {Element} element
+ */
+export function markSeeded(element) {
+  const state = burstStates.get(element)
+  if (state) state.seeded = true
+}
+
+/** @param {Element} element @returns {boolean} */
+export function isSeeded(element) {
+  return burstStates.get(element)?.seeded === true
+}
+
 /** querySelector stops at a shadow boundary, so a charting web component hid its <canvas>
  *  from the exclusion above and auto mode served stale frames to exactly the pollers this
- *  guard exists to protect. Only runs once the auto threshold is reached. */
-function hasCanvas(element) {
+ *  guard exists to protect. Only runs once the auto threshold is reached; preCache asks the
+ *  same question before seeding. */
+export function hasCanvas(element) {
   if (!element.querySelectorAll) return false
   if (element.querySelector('canvas')) return true
   for (const el of element.querySelectorAll('*')) {

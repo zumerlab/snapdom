@@ -99,6 +99,7 @@ Each of these was a real regression or a real win, with the measurement and the 
 - An inlined data: URL is written to the clone ONCE: header of `src/modules/images.js`, and `freezeImgSrcset` in `src/utils/clone.helpers.js`.
 - Compress runs on a lazy worker pool and takes the Blob, not the base64 string: `downsampleDataURL` and the worker section, `src/modules/compress.js`.
 - `MAX_RASTER_SIDE` is per engine, and large captures are drawn in horizontal bands unless embedded resources outweigh the markup (every band re-reads the payload, ~1.8 ms per MB): the notes at the top of `src/exporters/toCanvas.js`, `resourceHeavy` and `drawBanded`.
+- `preCache(el)` seeds: the real pipeline runs once and the result becomes the element's burst memo, so the app's first `snapdom(el, sameOptions)` is a memo hit (79-demo corpus: first capture 20.4 ms median, hit 0, export 4.6; a document-level warm recovered 10% of the first capture, the seed all of it). Refused where the memo would refuse to serve: `seedCapture`, `src/api/preCache.js`; the first-call engagement is `isSeeded` in `src/api/snapdom.js`.
 - snapdom's own scaffolding is never cloned below the root (the decode iframe `toCanvas` keeps in `document.body` was captured through a nested `toPng` by every later `body` capture): the skip at the top of `deepClone`, `src/core/clone.js`.
 
 ### Experimental canvas engine
