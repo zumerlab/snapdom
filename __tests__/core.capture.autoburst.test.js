@@ -1,7 +1,7 @@
 // Auto-burst: with no explicit `burst` option, repeated captures of the same element in a
 // short window enable memoization automatically. Explicit false disables; canvas-bearing
 // elements never auto-enable (their pixel draws are invisible to MutationObserver).
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 
 afterEach(() => { document.body.innerHTML = '' })
@@ -15,12 +15,13 @@ function makeCard(text = 'auto') {
 }
 
 describe('auto-burst', () => {
-  it('kicks in after repeated captures and still reflects mutations', async () => {
+  it('memoizes from the first capture and still reflects mutations', async () => {
     const el = makeCard()
     const urls = []
-    for (let i = 0; i < 5; i++) urls.push((await snapdom(el)).url)
+    for (let i = 0; i < 2; i++) urls.push((await snapdom(el)).url)
     // memoized repeats return byte-identical output
-    expect(urls[4]).toBe(urls[3])
+    expect(urls[1]).toBe(urls[0])
+    for (let i = 0; i < 3; i++) urls.push((await snapdom(el)).url)
 
     // a real mutation must invalidate the memo
     el.textContent = 'changed'
@@ -210,17 +211,20 @@ describe('running animations disable the memo (frames repaint with no mutations)
       expect(svgOf(await snapdom(host))).toContain('LATE-SHADOW')
     })
 
-    it('a <canvas> behind a shadow boundary still blocks auto-burst', async () => {
-      const { shouldAutoBurst } = await import('../src/core/burst.js')
+    it('a <canvas> behind a shadow boundary still blocks the memo', async () => {
       const host = document.createElement('div')
       const comp = document.createElement('div')
       comp.attachShadow({ mode: 'open' }).innerHTML = '<canvas width="40" height="20"></canvas>'
       host.appendChild(comp)
       document.body.appendChild(host)
 
-      shouldAutoBurst(host)
-      shouldAutoBurst(host)
-      expect(shouldAutoBurst(host)).toBe(false)
+      await snapdom(host)
+      // A memo hit reads no computed style; a canvas-bearing element must never be one.
+      const reads = vi.spyOn(window, 'getComputedStyle')
+      await snapdom(host)
+      expect(reads).toHaveBeenCalled()
+      reads.mockRestore()
+      host.remove()
     })
   })
 })

@@ -540,6 +540,18 @@ export declare namespace snapdom {
    */
   function fromString(html: string, options?: SnapdomOptions): Promise<CaptureResult>;
 
+  /**
+   * The capture that is ready before the click: link prefetch, translated. Arm it once at
+   * setup. From then on, intent on a control (pointer over it, focus, pointer down)
+   * captures the element that control asked for the last time, with the same options, so
+   * the click that follows is served from memory and pays only the export; the first
+   * intent on the page warms the visible viewport once. Learned, not declared: a capture
+   * that runs within a second of a press is attributed to the pressed control. Nothing
+   * runs without a human gesture, and a programmatic capture needs none of this, because
+   * memoization engages on every element's first capture.
+   */
+  function preCapture(): void;
+
   /** Shortcut helpers that run a one-off capture+export. */
 
   /** Returns the raw SVG data URL of a one-off capture. */
@@ -591,37 +603,6 @@ export declare namespace snapdom {
 }
 
 /* =========================
- * preCache helper
- * ========================= */
-
-export interface PreCacheOptions {
-  /** Root to scan (defaults to `document`). */
-  root?: Element | Document;
-  /** Font embedding — same semantics as capture: 'auto' (default) embeds only
-   *  document-declared webfonts actually used under root. */
-  embedFonts?: boolean | 'auto';
-  /** Provide fonts explicitly to avoid remote discovery. */
-  localFonts?: LocalFont[];
-  /** Exclude fonts by family/domain/subset. */
-  excludeFonts?: { families?: string[]; domains?: string[]; subsets?: string[] };
-  /** Extra domains to fetch cross-origin font CSS from. */
-  fontStylesheetDomains?: string[];
-  /** Icon-font matchers, as in SnapdomOptions — warms the ligature/glyph rasterization. */
-  iconFonts?: IconFontMatcher | IconFontMatcher[];
-  /** Cross-origin proxy prefix (as in SnapdomOptions.useProxy). */
-  useProxy?: string;
-}
-
-/**
- * Preload external resources for a subtree to avoid first-capture stalls.
- * Uses the same discovery heuristics as the main capture path.
- */
-export declare function preCache(
-  root?: Element | Document,
-  options?: PreCacheOptions
-): Promise<void>;
-
-/* =========================
  * Plugin registry
  * =========================
  * One runtime owns the registry: the `@zumer/snapdom/plugins` subpath resolves to the root
@@ -651,7 +632,7 @@ export declare function assertNeeds(
   supported?: readonly CaptureStage[]
 ): CaptureStage;
 
-/* The `/plugins` and `/preCache` subpaths point at THIS file through the `types` condition
+/* The `/plugins` subpath points at THIS file through the `types` condition
  * in package.json's exports map. They used to be declared here as
  * `declare module "@zumer/snapdom/plugins" { … }`. In a file that is already a module those
  * are AUGMENTATIONS of a specifier TypeScript has to resolve first, and it cannot resolve a

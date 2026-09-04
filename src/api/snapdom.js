@@ -17,9 +17,8 @@ import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRender
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
 import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../modules/styles.js'
-import { captureWithBurst, shouldAutoBurst, isSeeded } from '../core/burst.js'
-import { bindCapture } from './preCache.js'
-export { preCache } from './preCache.js'
+import { captureWithBurst, hasCanvas } from '../core/burst.js'
+import { bindCapture, noteCapture, preCapture } from './preCapture.js'
 
 /**
  * Register global plugins. Returns snapdom, so `snapdom.plugins(p)(el)` reads as one call.
@@ -65,10 +64,10 @@ async function fromString(html, options) {
 // here so a benchmark page can say which build it measured: the live lab loads the published
 // package from unpkg unless served by `npm run site`, and a v2 row read as v3 cost an evening.
 const version = typeof __SNAPDOM_VERSION__ === 'string' ? __SNAPDOM_VERSION__ : 'src'
-export const snapdom = Object.assign(main, { plugins, fromString, version })
-// preCache seeds through the public entry so a seed is exactly a capture (hooks, burst
-// state, result). Bound here rather than imported there: preCache.js is imported by this
-// module, and a cycle would leave it a dead binding.
+export const snapdom = Object.assign(main, { plugins, fromString, version, preCapture })
+// preCapture's prefetch goes through the public entry, so it is exactly a capture (hooks,
+// burst state, result). Bound here rather than imported there: preCapture.js is imported
+// by this module, and a cycle would leave it a dead binding.
 bindCapture(main)
 
 // Token to prevent public use of snapdom.capture
@@ -96,6 +95,8 @@ const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
  */
 async function main(element, userOptions) {
   if (!element) throw new Error('Element cannot be null or undefined')
+  // preCapture learns which control asked for this element (no-op unless armed).
+  noteCapture(element, userOptions)
 
   // Normalize options into a capture context
   const context = createContext(userOptions)
@@ -192,11 +193,14 @@ async function main(element, userOptions) {
   // re-enable auto.
   // A capture that produces no render artifact has nothing to memoize, and its plugins
   // read the LIVE tree on every call — a memo serve would be exactly the stale read.
-  // A seeded element (preCache) engages on its first call: the seed IS the memo it serves.
+  // Memoization engages on the FIRST capture (burst.js explains why there is no threshold).
+  // Two exclusions, both for what no observer can see: a render plugin that is not pure
+  // (a memo serve would skip its hooks), and a canvas anywhere in the subtree (pixel draws
+  // produce no record; explicit `burst: true` still memoizes there, with `invalidate`).
   const burst = !rendersPixels
     ? false
     : context.burst === undefined
-      ? (!hasImpureRenderPlugins(context) && (shouldAutoBurst(element) || isSeeded(element)))
+      ? (!hasImpureRenderPlugins(context) && element.tagName !== 'CANVAS' && !hasCanvas(element))
       : context.burst
   if (burst) {
     return captureWithBurst(

@@ -77,7 +77,7 @@ Most v2 call sites keep working, and unknown options are ignored rather than rej
 | `embedFonts` defaults to `'auto'` (was off). Webfont text now embeds instead of rendering with fallback metrics. | Nothing, unless you relied on the fallback rendering: pass `embedFonts: false`. |
 | `cache` collapsed to `'soft'` (default) and `'disabled'`. `'auto'` / `'full'` are accepted and silently mapped to `'soft'`. | Drop the option, or use `cache: 'disabled'` for debugging. |
 | `fast` was removed. | Delete it; its behavior is now unconditional. |
-| Repeat captures of the same element memoize automatically after three captures in a 2s window, and mutations trigger a differential recapture. | Nothing normally. For sources no observer can see (`sheet.insertRule()`, direct `rule.style.x` edits, canvas pixel draws) pass `invalidate: true`. |
+| Repeat captures of the same element memoize automatically from the first capture on, and mutations trigger a differential recapture. `preCache` was removed: the capture is its own warm-up, and `snapdom.preCapture()` takes it before the click. | Nothing normally. For sources no observer can see (`sheet.insertRule()`, direct `rule.style.x` edits, canvas pixel draws) pass `invalidate: true`. |
 | Inlined raster images are downsampled to their visible resolution by default. | Nothing. This preserves the source codec and never upscales. |
 | **`width`/`height` now win over `scale`.** v2 multiplied them together (`{ width: 800, scale: 2 }` rasterized 1600px wide); v3 treats `width`/`height` as the absolute output size and applies `scale` only when neither is set. This also fixes v2's inconsistency where `toCanvas` multiplied by `scale` but `toImg`/`toSvg` ignored it. | If you relied on the product, pass the final size directly (`width: 1600`). |
 | Plugins with a render hook suspend auto-memoization unless they declare `pure: true`. | Add `pure: true` if your hooks are deterministic and idempotent. |
@@ -182,7 +182,7 @@ yarn add @zumer/snapdom@dev
 | **ESM** (tree-shakeable) | `dist/snapdom.mjs` | Bundlers (Vite, webpack), `import` |
 | **IIFE** (global) | `dist/snapdom.js` | Script tag, `window.snapdom` |
 
-There is no CommonJS build. `@zumer/snapdom/preCache` and `@zumer/snapdom/plugins` resolve to the same ESM file, so the plugin registry and the caches are one instance however you import them.
+There is no CommonJS build. `@zumer/snapdom/plugins` resolves to the same ESM file as the root, so the plugin registry and the caches are one instance however you import them.
 
 **Bundler (npm):**
 ```js
@@ -195,15 +195,22 @@ import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
 <script> snapdom.toPng(document.body).then(img => document.body.appendChild(img)); </script>
 ```
 
-**Subpath imports** (the same single runtime, re-exported for convenience — one plugin registry, one cache, whichever path you import from):
+**Subpath import** (the same single runtime, re-exported for convenience — one plugin registry, one cache, whichever path you import from):
 ```js
-import { preCache } from '@zumer/snapdom/preCache';
 import { registerPlugins, clearPlugins, getGlobalPlugins } from '@zumer/snapdom/plugins';
 ```
 The plugin API is also exported from the root, and `snapdom.plugins(...)` registers globally:
 ```js
 import { snapdom, registerPlugins } from '@zumer/snapdom';
 ```
+
+**The capture that is ready before the click.** Repeat captures memoize from the first one, so a second click on the same unchanged element is served from memory. `snapdom.preCapture()` moves that first capture ahead of the click, the way links prefetch: arm it once, and from then on intent on a control (pointer over it, focus, pointer down) captures the element that control asked for the last time, with the same options, 100 to 400 ms before the click lands. Nothing to declare, nothing running in the background:
+```js
+snapdom.preCapture();
+
+button.onclick = () => snapdom.toPng(hero, { scale: 2 }); // learned on the first click, prefetched from the second on
+```
+A programmatic capture needs none of this: capture early, and the later call is a memo hit or a differential recapture.
 
 
 ## Usage
@@ -289,7 +296,7 @@ The full reference lives on **[snapdom.dev/docs](https://snapdom.dev/docs/)**:
 - **[API reference](https://snapdom.dev/docs/api/)** — the `snapdom()` reusable object, shortcut methods, and exporter-specific options.
 - **[Options](https://snapdom.dev/docs/options/)** — every capture option (`scale`, `dpr`, `embedFonts`, `useProxy`, `exclude`, `compress`, `outerTransforms`, `outerShadows`, `cache`…) explained with examples.
 - **[Plugins](https://snapdom.dev/docs/plugins/)** — build, register and ship custom plugins and export formats. Browse community plugins on the [plugins page](https://snapdom.dev/plugins.html).
-- **[Cache & preCache](https://snapdom.dev/docs/cache/)** — control caching between captures and preload resources.
+- **[Cache](https://snapdom.dev/docs/cache/)** — how captures memoize from the first one, invalidate, and recapture differentially.
 
 ### API at a glance
 
@@ -583,7 +590,7 @@ npx vitest run __tests__/category.capabilities.test.js --browser.headless --repo
 ## Development
 
 **Source layout:**
-- `src/api/` – Public API (`snapdom`, `preCache`)
+- `src/api/` – Public API (`snapdom`, `snapdom.preCapture`)
 - `src/core/` – Capture pipeline, clone, prepare, plugins
 - `src/modules/` – Images, fonts, pseudo-elements, backgrounds, SVG
 - `src/exporters/` – toPng, toSvg, toBlob, etc.

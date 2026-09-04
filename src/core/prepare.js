@@ -14,7 +14,7 @@
 import { generateCSSClasses, stripTranslate, debugWarn, getStyle } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
-import { flushStyleInvalidations } from '../modules/styles.js'
+import { flushStyleInvalidations, invalidateHoverChanges } from '../modules/styles.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree, resolveMediaQueries } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
@@ -43,6 +43,8 @@ export async function prepareClone(element, options = {}) {
   // (MutationObserver delivery is a microtask) — drain them before any epoch-scoped
   // memo (universe, pseudo gates, isInSvgTemplate) is read.
   flushStyleInvalidations()
+  // :hover leaves no record and no event: asked here, once per capture.
+  invalidateHoverChanges(element.ownerDocument || document)
   // captureDOM always provides its own session (createCaptureSession). Direct callers
   // (tests, embedders) get fresh isolated maps.
   const session = options.__session || { styleMap: new Map(), styleCache: new WeakMap(), nodeMap: new Map() }
@@ -194,18 +196,13 @@ export async function prepareClone(element, options = {}) {
     } catch { /* non-blocking */ }
   }
 
-  // __warmOnly (preCache's subtree warm): the clone is discarded, so the live-DOM prep that
-  // exists for clone correctness is pure cost here — and worse than cost: its undo writes
-  // emit mutation records that invalidate the very per-element snapshots the warm just paid
-  // for, which made the warm a no-op (measured: warm == cold, read for read).
-  const warmOnly = !!options.__warmOnly
-  const undoStabilizeLayout = warmOnly ? () => {} : stabilizeLayout(element)
+  const undoStabilizeLayout = stabilizeLayout(element)
 
   // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
   // Clip mode prunes the walk to the window instead of skipping it: a clip rect far from the
   // real viewport lands on UNRENDERED cv:auto placeholders (blank bands in the capture),
   // while content outside the window still gets culled at its placeholder box.
-  const undoContentVisibility = warmOnly ? () => {} : forceContentVisibility(element, clipRect)
+  const undoContentVisibility = forceContentVisibility(element, clipRect)
 
   if (clipRect) {
     // Freeze the window in element-local coords NOW — after cv forcing (which can relayout),

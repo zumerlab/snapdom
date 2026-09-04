@@ -932,10 +932,8 @@ async function cloneVideo(node, sessionCache, options) {
         // that is a frame per reply (liquidGL's home, 2026-09-03: 48 ms idle per capture
         // waiting on three replies whose encodes took 0.4 to 4.7 ms). toBlob is idle-
         // scheduled in every engine and starves the same way.
-        if (!options.__warmOnly) { // preCache's throwaway clone would discard the frame
-          url = canvas.toDataURL(frameIsOpaque(canvas) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
-          if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
-        }
+        url = canvas.toDataURL(frameIsOpaque(canvas) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
+        if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
       }
     } catch (e) {
       debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)

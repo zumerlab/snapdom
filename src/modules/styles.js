@@ -362,6 +362,36 @@ function setupInvalidationOnce(doc = document) {
   } catch { }
 }
 
+/** The `:hover` chain each document had at its last capture (invalidateHoverChanges). */
+const __lastHover = new WeakMap()
+
+/**
+ * Stamp what `:hover` restyled since the last capture. Hover produces no mutation record and
+ * is deliberately not wired as an event (pointer events fire continuously), so a snapshot
+ * taken with the pointer on an element kept serving the hover styles after it left, memo
+ * or no memo. Asked once per capture instead: the chain is a document-wide `:hover` query
+ * (18 µs on the 500-row table), and every node that entered or left it is invalidated the
+ * way a focus change is (invalidateAround), so its snapshot and its neighbourhood's are
+ * re-read. burst.js compares the same chain for the memo.
+ * Pinned by __tests__/regression.interaction.staleness.test.js.
+ * @param {Document} doc
+ */
+export function invalidateHoverChanges(doc) {
+  if (!doc || !doc.querySelectorAll) return
+  let now
+  try { now = Array.from(doc.querySelectorAll(':hover')) } catch { return }
+  const prev = __lastHover.get(doc) || []
+  if (prev.length === now.length && prev.every((n, i) => n === now[i])) return
+  __lastHover.set(doc, now)
+  bumpEpoch()
+  const changed = prev.filter((n) => !now.includes(n)).concat(now.filter((n) => !prev.includes(n)))
+  for (const el of changed) {
+    if (!el.isConnected) continue
+    if (canNarrow(doc)) invalidateAround(el)
+    else { __allStamp++; return }
+  }
+}
+
 /** Synchronously drains pending invalidation records. MutationObserver delivery is a
  *  microtask, so a <style> injected in the same tick as a capture would otherwise be
  *  read against the stale epoch — the scanned universe/pseudo-gates would miss its

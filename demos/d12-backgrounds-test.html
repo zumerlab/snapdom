@@ -98,11 +98,10 @@
   <div id="output"></div>
 
   <script type="module">
-    import { snapdom, preCache } from '../dist/snapdom.mjs';
+    import { snapdom } from '../dist/snapdom.mjs';
 
     window.addEventListener('load', async () => {
       console.log("[Snapdom Demo] Precache iniciado");
-      await preCache(document, { embedFonts: false });
       console.log("[Snapdom Demo] Precache completado");
 
       const nodes = document.querySelectorAll('.test-node');

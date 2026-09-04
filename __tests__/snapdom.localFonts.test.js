@@ -1,4 +1,4 @@
-// localFonts must be honored in the direct capture path (not only via preCache): a user can
+// localFonts must be honored in the direct capture path (not only via a warm-up): a user can
 // supply a font file so the rasterized SVG uses it instead of falling back (e.g. system-ui is
 // unavailable when an SVG renders as an <img>). capture.js previously dropped the option.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'

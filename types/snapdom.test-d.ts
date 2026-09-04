@@ -6,7 +6,7 @@
  * `// @ts-expect-error` lines assert that the given usage must NOT type-check —
  * if the API starts accepting it, tsc fails because the expected error is gone.
  */
-import { snapdom, preCache } from './snapdom'
+import { snapdom } from './snapdom'
 import type {
   SnapdomOptions,
   CaptureResult,
@@ -91,12 +91,9 @@ function pluginShape() {
   snapdom.plugins(plugin, factory, [factory, { foo: 1 }], { plugin: factory, options: {} })
 }
 
-async function preCacheHelper() {
-  await preCache()
-  await preCache(el, { embedFonts: 'auto', useProxy: '/proxy/', excludeFonts: { families: ['X'] } })
-  // Shipped and tested at runtime, but absent from the declarations until the v3 audit:
-  // both of these were a TS2353 for every typed consumer.
-  await preCache(el, { iconFonts: [/material/i, 'my-icons'] })
+function preCaptureHelper() {
+  const armed: void = snapdom.preCapture()
+  return armed
 }
 
 async function canvasTargetOption() {
@@ -109,5 +106,5 @@ void clipOptionShapes
 void staticNamespaceHelpers
 void invalidateOption
 void pluginShape
-void preCacheHelper
+void preCaptureHelper
 void canvasTargetOption

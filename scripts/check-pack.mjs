@@ -74,15 +74,13 @@ try {
   const TSC = join(ROOT, 'node_modules', '.bin', 'tsc')
 
   writeFileSync(join(consumer, 'index.ts'), `
-import { snapdom, preCache as rootPreCache } from '@zumer/snapdom'
-import { preCache } from '@zumer/snapdom/preCache'
+import { snapdom } from '@zumer/snapdom'
 import { registerPlugins, clearPlugins, STAGES } from '@zumer/snapdom/plugins'
 
 export async function use(el: HTMLElement) {
   const res = await snapdom(el, { scale: 2, embedFonts: true })
   const img: HTMLImageElement = await res.toPng()
-  await preCache(document)
-  await rootPreCache(document.body)
+  snapdom.preCapture()
   registerPlugins()
   clearPlugins()
   const stages: readonly string[] = STAGES
@@ -121,7 +119,6 @@ export async function use(el: HTMLElement) {
   const checks = [
     ['import root', `import('@zumer/snapdom').then(m => { if (typeof m.snapdom !== 'function') throw new Error('snapdom missing') })`],
     ['import /plugins', `import('@zumer/snapdom/plugins').then(m => { if (typeof m.registerPlugins !== 'function') throw new Error('registerPlugins missing') })`],
-    ['import /preCache', `import('@zumer/snapdom/preCache').then(m => { if (typeof m.preCache !== 'function') throw new Error('preCache missing') })`],
   ]
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', version: '1.0.0', private: true }))
   for (const [name, src] of checks) {
@@ -149,7 +146,6 @@ vm.runInContext(code, ctx)
 const leaked = Object.keys(ctx).filter((k) => !before.has(k))
 if (leaked.length) throw new Error('leaked ' + leaked.length + ' globals: ' + leaked.slice(0, 8).join(', '))
 if (typeof win.snapdom !== 'function') throw new Error('window.snapdom not assigned')
-if (typeof win.preCache !== 'function') throw new Error('window.preCache not assigned')
 `)
   try {
     run(process.execPath, [probe], { cwd: consumer })

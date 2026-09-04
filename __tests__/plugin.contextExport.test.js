@@ -63,7 +63,7 @@ describe('contextExport', () => {
 
   it('survives auto-burst + a nested mutation (differential recapture path)', async () => {
     const host = fixture()
-    // Past AUTO_THRESHOLD the engine may serve the next capture from the diff path, which
+    // Memoized from the first capture, the engine may serve the next one from the diff path, which
     // builds its result without running captureDOM — the source element has to come from
     // the context itself, not from a capture hook.
     for (let i = 0; i < 4; i++) await snapdom(host, { plugins: [contextExport()] })

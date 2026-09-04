@@ -1,5 +1,5 @@
 /**
- * Browser (IIFE) entry: puts `snapdom` and `preCache` on `window`.
+ * Browser (IIFE) entry: puts `snapdom` on `window`.
  *
  * Exports nothing, on purpose. The build has no `globalName`: with one, esbuild would assign
  * the bundle's empty export object to `window.snapdom` after this file ran and wipe the real
@@ -8,9 +8,7 @@
  */
 
 import { snapdom } from './api/snapdom.js'
-import { preCache } from './api/preCache.js'
 
 if (typeof window !== 'undefined') {
   window.snapdom = snapdom
-  window.preCache = preCache
 }

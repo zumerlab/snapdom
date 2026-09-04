@@ -59,7 +59,7 @@ function extractImageDimensions(img) {
 /**
  * Inline every <img> and SVG <image> in the clone, six at a time.
  *
- * Per <img>: pick one concrete src (srcset and sizes are dropped), reuse a preCache hit,
+ * Per <img>: pick one concrete src (srcset and sizes are dropped), reuse a cached data URL,
  * else fetch. A fetch that fails tries `fallbackURL` (string or async callback), then
  * replaces the element with a grey "img" box of the estimated size (plus an `image-fallback`
  * session warning), or with an invisible spacer under `placeholders: false`.
@@ -100,9 +100,8 @@ export async function inlineImages(clone, options = {}) {
     const src = img.src || ''
     if (!src) return
 
-    // Reuse a dataURL prefetched by preCache (keyed by the same resolved src) so the capture
-    // path doesn't re-fetch it. snapFetch doesn't cache successes, so without this the prefetch
-    // bought nothing.
+    // Reuse the data URL an earlier capture fetched for the same resolved src: snapFetch
+    // caches no successes, so this cross-capture cache is what keeps a repeat from re-fetching.
     const cached = cache.image?.get(src)
     if (cached) {
       img.src = cached

@@ -2,8 +2,7 @@
  * Two edits to the LIVE element before it is cloned, each returning its undo.
  *
  * prepareClone runs both and diff.js runs the content-visibility one; every caller undoes
- * them in a finally, so the page is as it was when the capture returns. Both are skipped by
- * preCache's warm-only pass, whose clone is thrown away.
+ * them in a finally, so the page is as it was when the capture returns.
  * @module utils/prepare.helpers
  */
 

@@ -32,29 +32,8 @@ export const NO_DEFAULTS_TAGS = new Set([
 import { cache } from '../core/cache'
 import { ALWAYS_PROPS } from '../modules/styleScan'
 
-/** The tags most pages use. preCache warms their defaults ahead of the first capture. */
-const commonTags = [
-  'div', 'span', 'p', 'a', 'img', 'ul', 'li', 'button', 'input', 'select', 'textarea', 'label', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'td', 'th'
-]
-
 // -----------------------------------------------------------------------------
-// 1) precacheCommonTags → salta NO_CAPTURE y NO_DEFAULTS (no calienta basura)
-// -----------------------------------------------------------------------------
-/**
- * Warm the default-style memo for the common tags, so the first capture pays no sandbox
- * probe for them. Called from preCache().
- */
-export function precacheCommonTags() {
-  for (let tag of commonTags) {
-    const t = String(tag).toLowerCase()
-    if (NO_CAPTURE_TAGS.has(t)) continue
-    if (NO_DEFAULTS_TAGS.has(t)) continue // evita precache de SVG/body/etc.
-    getDefaultStyleForTag(t)
-  }
-}
-
-// -----------------------------------------------------------------------------
-// 2) getDefaultStyleForTag -> single gate on NO_DEFAULTS_TAGS + a marked sandbox
+// getDefaultStyleForTag -> single gate on NO_DEFAULTS_TAGS + a marked sandbox
 // -----------------------------------------------------------------------------
 /**
  * A tag's default styles, memoized in cache.defaultStyle.

@@ -77,7 +77,7 @@ async function buildESM() {
 /**
  * Two files, and only these two. There is no CommonJS build: v3 is ESM plus the script-tag
  * IIFE, like v2 in shape (v2's `require()` pointed at the IIFE and returned `{}`, so nothing
- * that worked is lost). The `/preCache` and `/plugins` subpaths are NOT files either:
+ * that worked is lost). The `/plugins` subpath is NOT a file either:
  * package.json maps them to the same dist/snapdom.mjs, so the subpath and the root are one
  * module instance by construction, one registry, one cache. Bundling them separately gave
  * each its own module state, so a plugin registered through the subpath was invisible to

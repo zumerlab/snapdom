@@ -16,11 +16,6 @@
       "import": "./dist/snapdom.mjs",
       "default": "./dist/snapdom.mjs"
     },
-    "./preCache": {
-      "types": "./types/snapdom.d.ts",
-      "import": "./dist/snapdom.mjs",
-      "default": "./dist/snapdom.mjs"
-    },
     "./plugins": {
       "types": "./types/snapdom.d.ts",
       "import": "./dist/snapdom.mjs",

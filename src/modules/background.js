@@ -14,7 +14,7 @@ import { isFirefox, isIOS } from '../utils/browser.js'
 import { getStyle, inlineSingleBackgroundEntry, splitBackgroundImage } from '../utils'
 import { needsBackgroundInline, snapshotFor } from './styles.js'
 
-/** Props that can contain url(...) and may need inlining (also drives preCache prefetch) */
+/** Props that can contain url(...) and may need inlining. */
 export const URL_PROPS = [
   'background-image',
 

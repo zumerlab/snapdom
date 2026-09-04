@@ -1,6 +1,6 @@
 /**
  * One background-image layer to a data URL, through the shared cache.background memo.
- * Used by the background pass, the pseudo pass and preCache.
+ * Used by the background pass and the pseudo pass.
  * @module utils/image
  */
 

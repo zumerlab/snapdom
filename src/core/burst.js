@@ -57,59 +57,74 @@ import { tryDiffCapture } from './diff.js'
 /** Per-element burst state, built by createState. Weak: the element's death frees it. */
 const burstStates = new WeakMap()
 
-/** Auto mode trips on the third capture of one element inside a 2 s sliding window. */
-const AUTO_WINDOW_MS = 2000
-const AUTO_THRESHOLD = 3
-
-/** { count, lastTs } per element — capture-frequency tracking for auto-burst. */
-const autoBurstTracker = new WeakMap()
-
 /**
- * Auto-burst: when the caller passes no explicit `burst` option, repeated captures of the
- * same element in a short sliding window enable memoization automatically — pollers get the
- * speedup without knowing the option exists. Canvas-bearing elements are excluded: canvas
- * pixel draws are invisible to MutationObserver, so auto mode could silently serve stale
- * frames to chart pollers (explicit `burst: true` still works there, with `invalidate`).
- * Pinned by __tests__/core.capture.autoburst.test.js.
- * @param {Element} element
- * @returns {boolean}
+ * Memoization engages on an element's FIRST capture (api/snapdom.js): there is no threshold
+ * to trip, because an unchanged element is served and a changed one is invalidated or
+ * rebuilt through the diff path either way (there used to be one, three captures in two
+ * seconds, decided 2026-09-04 to go). What the threshold was really guarding is guarded
+ * here instead: how many elements keep a live memo at once. Past the cap the least recently
+ * served memo is torn down (disposeState); its element captures fresh next time and
+ * re-enters at the back. Pinned by __tests__/core.burst.firstCapture.test.js.
  */
-export function shouldAutoBurst(element) {
-  const now = Date.now()
-  const entry = autoBurstTracker.get(element)
-  if (!entry || now - entry.lastTs > AUTO_WINDOW_MS) {
-    autoBurstTracker.set(element, { count: 1, lastTs: now })
-    return false
+const MAX_LIVE_MEMOS = 64
+/** Elements with a live memo, oldest first. A Map keeps insertion order; re-insert to bump. */
+const liveMemos = new Map()
+
+/** The element's listeners on itself (createState), all capture-phase. */
+const ELEMENT_EVENTS = ['scroll', 'input', 'change', 'focusin', 'focusout']
+
+function touchMemo(element, state) {
+  liveMemos.delete(element)
+  liveMemos.set(element, state)
+  if (liveMemos.size <= MAX_LIVE_MEMOS) return
+  const [oldest, oldState] = liveMemos.entries().next().value
+  disposeState(oldest, oldState)
+}
+
+/** Tear a state down: observers, listeners and the memo go; the element captures fresh. */
+function disposeState(element, state) {
+  liveMemos.delete(element)
+  burstStates.delete(element)
+  for (const o of state.observers) { try { o.disconnect() } catch { /* gone */ } }
+  for (const type of ELEMENT_EVENTS) element.removeEventListener(type, state.onMediaDirty, true)
+  for (const root of state.trackedShadowRoots.keys()) {
+    for (const type of SHADOW_LOCAL_EVENTS) root.removeEventListener(type, state.onMediaDirty, true)
   }
-  entry.lastTs = now
-  entry.count++
-  if (entry.count < AUTO_THRESHOLD) return false
-  if (element.tagName === 'CANVAS' || hasCanvas(element)) return false
-  return true
+  for (const v of state.trackedVideos) {
+    v.removeEventListener('timeupdate', state.onMediaDirty)
+    v.removeEventListener('seeked', state.onMediaDirty)
+  }
+  state.last = null
+  state.retained = null
 }
 
 /**
- * Mark an element whose burst state was seeded by preCache: the next plain `snapdom(el)`
- * engages the memo without waiting for the auto threshold, so the seeded capture is what it
- * serves (api/snapdom.js). The flag outlives the memo on purpose: a seeded element is a
- * declared capture target, and stays memoized like a poller's would after three calls.
- * Pinned by __tests__/api.preCache.seed.test.js.
+ * The `:hover` chain as far as it can restyle this element: the hovered nodes that are the
+ * element itself, its ancestors or its descendants. `:hover` produces no mutation record and
+ * is deliberately not wired as an event (pointer events fire continuously), so it was the one
+ * interaction state a memo served stale: capture with the pointer on a button inside the
+ * element, move away, capture again, and the memo answered with the hover styles. Compared
+ * on every serve. A hovered sibling elsewhere on the page is filtered out, so the price is
+ * one :hover query, not a recapture.
  * @param {Element} element
+ * @returns {Element[]}
  */
-export function markSeeded(element) {
-  const state = burstStates.get(element)
-  if (state) state.seeded = true
+function hoverChain(element) {
+  const out = []
+  try {
+    const doc = element.ownerDocument || document
+    for (const n of doc.querySelectorAll(':hover')) {
+      if (n.contains(element) || element.contains(n)) out.push(n)
+    }
+  } catch { /* :hover unsupported here */ }
+  return out
 }
-
-/** @param {Element} element @returns {boolean} */
-export function isSeeded(element) {
-  return burstStates.get(element)?.seeded === true
-}
+const sameChain = (a, b) => a.length === b.length && a.every((n, i) => n === b[i])
 
 /** querySelector stops at a shadow boundary, so a charting web component hid its <canvas>
- *  from the exclusion above and auto mode served stale frames to exactly the pollers this
- *  guard exists to protect. Only runs once the auto threshold is reached; preCache asks the
- *  same question before seeding. */
+ *  from the exclusion in api/snapdom.js and the memo served stale frames to exactly the
+ *  pollers that exclusion exists to protect: canvas pixel draws are invisible to every
+ *  observer. */
 export function hasCanvas(element) {
   if (!element.querySelectorAll) return false
   if (element.querySelector('canvas')) return true
@@ -336,6 +351,7 @@ function createState(element) {
     envEpoch: getStyleEnvEpoch(), // shared head+fonts environment epoch (styles.js)
     styleEpoch: getStyleEpoch(),  // cheap gate for the out-of-subtree check below
     ancestorSig: ancestorSig(element),
+    hover: [],             // the :hover chain the memo was taken under (hoverChain)
   }
 
   const dirtyAll = () => { state.dirty = true; state.dirtyRoots = null }
@@ -587,7 +603,14 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       }
     } catch { /* no Web Animations API — animations won't be detected */ }
     if (animating) state.last = null // every animated frame is different: never serve OR keep a memo
-    if (!isOneOff && !animating && !state.dirty && state.last) return state.last
+    // :hover moved onto or off the element's own chain since the memo: no record exists
+    // for it, so it is compared here. The capture that follows is taken under the new chain.
+    const hover = hoverChain(element)
+    if (!sameChain(hover, state.hover)) { state.hover = hover; state.dirtyAll() }
+    if (!isOneOff && !animating && !state.dirty && state.last) {
+      touchMemo(element, state)
+      return state.last
+    }
 
     state.capturing = true
     let pendingRetained = null
@@ -620,7 +643,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
         state.dirty = false
         state.dirtyRoots = new Set()
         if (pendingRetained) state.retained = pendingRetained
-        if (!animating) state.last = result
+        if (!animating) { state.last = result; touchMemo(element, state) }
       }
       return result
     } finally {
