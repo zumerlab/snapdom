@@ -92,6 +92,21 @@ try {
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', version: '1.0.0', type: 'module', private: true }))
   run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', tgz, pluginTgz], { cwd: consumer })
   pass('official plugins install with the packed v3 core')
+  // A copied template must install outside the workspace. Relative dev dependencies
+  // can pass every monorepo check while pointing at an unrelated consumer directory.
+  const template = join(work, 'independent-template')
+  cpSync(join(ROOT, 'packages', 'plugin-template'), template, {
+    recursive: true,
+    filter: (path) => !path.split(/[\\/]/).includes('node_modules'),
+  })
+  run('npm', ['install', '--save-dev', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', tgz], { cwd: template })
+  run(process.execPath, ['--input-type=module', '-e', `
+    import { snapdom } from '@zumer/snapdom'
+    import { myPlugin } from './index.js'
+    if (snapdom.version !== ${JSON.stringify(packedPkg.version)}) throw new Error('wrong template core')
+    if (typeof myPlugin().afterClone !== 'function') throw new Error('template hook missing')
+  `], { cwd: template })
+  pass('standalone plugin template installs and imports with the packed v3 core')
   // The repo's own tsc, run in place — TypeScript 7 ships its compiler as a platform-specific
   // binary package, so copying node_modules/typescript alone gets you a launcher with nothing
   // to launch. Where tsc lives is irrelevant; resolution follows the consumer's tsconfig.

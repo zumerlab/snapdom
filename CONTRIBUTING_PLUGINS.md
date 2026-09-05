@@ -6,11 +6,17 @@ checkout and published versions.
 
 ## Quick Start
 
+Before publication, copy the template from this v3 checkout and install the built core:
+
 ```bash
-npx degit zumerlab/snapdom/packages/plugin-template snapdom-plugin-yourname
-cd snapdom-plugin-yourname
-npm install
+npm run compile
+cp -R packages/plugin-template /path/to/snapdom-plugin-yourname
+cd /path/to/snapdom-plugin-yourname
+npm install --save-dev /absolute/path/to/snapdom-v3
 ```
+
+Use your actual paths. After v3 is released, the [template installation guide](./packages/plugin-template/README.md#install)
+also covers scaffolding from GitHub and selecting a published version.
 
 ```js
 // index.js
