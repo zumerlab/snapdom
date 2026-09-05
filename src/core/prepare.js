@@ -12,6 +12,7 @@ import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
+import { seedUsedProps } from '../modules/styles.js'
 
 const visibilityWarmups = new Set()
 
@@ -34,6 +35,12 @@ export async function prepareClone(element, options = {}) {
     styleMap: session.styleMap,
     styleCache: session.styleCache,
     nodeMap: session.nodeMap,
+    tagSet: new Set(),
+    shadowStyleNodes: [],
+    imgClones: [],
+    svgImageClones: [],
+    bgClones: [],
+    blobNodes: [],
     options
   }
 
@@ -180,6 +187,11 @@ export async function prepareClone(element, options = {}) {
 
   const undoStabilizeLayout = stabilizeLayout(element)
 
+  // CSSOM fingerprint + allow-list seeding must happen at capture start, before any
+  // computed-style reads, so insertRule/deleteRule/replaceSync/adoptedStyleSheets
+  // changes are visible even though they do not fire MutationObserver.
+  try { seedUsedProps(element) } catch {}
+
   // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
   // Clip mode skips this O(page) walk: on-screen cv:auto content is already rendered by the
   // browser, and offscreen content gets culled anyway (cv's placeholder box culls correctly).
@@ -213,10 +225,13 @@ export async function prepareClone(element, options = {}) {
   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
 
   try {
-    const styleNodes = clone.querySelectorAll('style[data-sd]')
+    // walk-fusion: reuse shadow style nodes collected during deepClone (avoids querySelectorAll)
+    const styleNodes = (sessionCache.shadowStyleNodes && sessionCache.shadowStyleNodes.length)
+      ? sessionCache.shadowStyleNodes
+      : (clone.querySelectorAll ? clone.querySelectorAll('style[data-sd]') : [])
     for (const s of styleNodes) {
       shadowScopedCSS += s.textContent || ''
-      s.remove() // Do not leave <style> inside the visual clone
+      try { s.remove() } catch {}
     }
   } catch (e) {
     debugWarn(sessionCache, 'Failed to extract shadow CSS from style[data-sd]', e)
@@ -270,54 +285,68 @@ export async function prepareClone(element, options = {}) {
     }
   }
 
+  // Walk-fusion + O(n) fix: collect scrolled nodes once, create wrappers, then
+  // adjust positioned descendants in a single tree walk (see below). Formerly
+  // each scrolled node did cloneNode.querySelectorAll('*') → O(n·s).
+  const _scrolledMap = new Map()
+  const _scrolledNodes = []
   for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
-    // Clip mode: the window is derived from gBCRs, which already encode the root's own
-    // scroll — un-scrolling the root here would compensate twice (blank output when
-    // capturing a scrolled documentElement).
     if (sessionCache.clip && originalNode === element) continue
     const scrollX = originalNode.scrollLeft
     const scrollY = originalNode.scrollTop
-    const hasScroll = scrollX || scrollY
-    // Realm-safe HTML check: iframe-realm clones are not instances of this window's
-    // HTMLElement, but their scroll still needs compensating.
-    if (hasScroll && cloneNode?.nodeType === 1 && cloneNode.namespaceURI === 'http://www.w3.org/1999/xhtml') {
+    if ((scrollX || scrollY) && cloneNode?.nodeType === 1 && cloneNode.namespaceURI === 'http://www.w3.org/1999/xhtml') {
       cloneNode.style.overflow = 'hidden'
       cloneNode.style.scrollbarWidth = 'none'
       cloneNode.style.msOverflowStyle = 'none'
-
-      // #364: Before wrapping with translate, adjust fixed/absolute descendants
-      // so they don't shift when the translate wrapper creates a new containing block.
-      try {
-        const positioned = cloneNode.querySelectorAll('*')
-        for (const child of positioned) {
-          if (child.nodeType !== 1 || child.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue
-          const pos = child.style.position
-          if (pos === 'fixed' || pos === 'absolute') {
-            const curTop = parseFloat(child.style.top) || 0
-            const curLeft = parseFloat(child.style.left) || 0
-            child.style.top = `${curTop + scrollY}px`
-            child.style.left = `${curLeft + scrollX}px`
-            if (pos === 'fixed') child.style.position = 'absolute'
-          }
-        }
-      } catch { /* non-blocking */ }
-
+      _scrolledMap.set(cloneNode, { x: scrollX, y: scrollY })
+      _scrolledNodes.push(cloneNode)
       const inner = document.createElement('div')
-      // #413: baseCSS emits a `div{white-space:normal;font-family:…}` rule (from the tag's
-      // all:initial defaults) that directly targets this wrapper and overrides the inherited
-      // text formatting of the scrolled element (e.g. a <pre>'s pre-wrap/monospace). `all:unset`
-      // lets inherited props flow from the parent again (inline style beats the type selector)
-      // while keeping non-inherited props at initial, so the wrapper stays visually transparent.
       inner.style.all = 'unset'
       inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`
       inner.style.willChange = 'transform'
       inner.style.display = 'inline-block'
       inner.style.width = '100%'
-      while (cloneNode.firstChild) {
-        inner.appendChild(cloneNode.firstChild)
-      }
+      while (cloneNode.firstChild) inner.appendChild(cloneNode.firstChild)
       cloneNode.appendChild(inner)
     }
+  }
+  // Single-pass positioned fix: ONE tree walk threads a running accumulator of
+  // scrolled-ancestor offsets (O(n) total) instead of querySelectorAll('*') plus
+  // a per-element ancestor walk (O(n·depth)). For each fixed/absolute XHTML
+  // descendant, addX/addY = sum of _scrolledMap offsets over every ancestor up to
+  // and including the clone root — identical to the old ancestor walk. The clone
+  // root itself is never a candidate (querySelectorAll('*') returns descendants
+  // only), but its own offset seeds the accumulator so descendants include it.
+  if (_scrolledMap.size && clone?.nodeType === 1) {
+    try {
+      const XHTML = 'http://www.w3.org/1999/xhtml'
+      const rootS = _scrolledMap.get(clone)
+      let startX = 0, startY = 0
+      if (rootS) { startX = rootS.x; startY = rootS.y }
+      const stack = []
+      for (const child of clone.children) stack.push([child, startX, startY])
+      while (stack.length) {
+        const [node, accX, accY] = stack.pop()
+        if (node.namespaceURI === XHTML) {
+          const pos = node.style.position
+          if (pos === 'fixed' || pos === 'absolute') {
+            if (accX || accY) {
+              const curTop = parseFloat(node.style.top) || 0
+              const curLeft = parseFloat(node.style.left) || 0
+              node.style.top = `${curTop + accY}px`
+              node.style.left = `${curLeft + accX}px`
+              if (pos === 'fixed') node.style.position = 'absolute'
+            }
+          }
+        }
+        const s = _scrolledMap.get(node)
+        const childAccX = accX + (s ? s.x : 0)
+        const childAccY = accY + (s ? s.y : 0)
+        for (let i = node.children.length - 1; i >= 0; i--) {
+          stack.push([node.children[i], childAccX, childAccY])
+        }
+      }
+    } catch { /* non-blocking */ }
   }
   if (element === sessionCache.nodeMap.get(clone)) {
     const computed = sessionCache.styleCache.get(element) || getStyle(element)
@@ -344,11 +373,25 @@ export async function prepareClone(element, options = {}) {
       cloneNode.style.marginBlockStart = '0'
     }
   }
+  // attach collected interest lists to clone for walk-fusion consumers (assets, etc.)
+  if (clone) {
+    clone._snapdomCollect = {
+      imgClones: sessionCache.imgClones,
+      svgImageClones: sessionCache.svgImageClones,
+      bgClones: sessionCache.bgClones,
+      blobNodes: sessionCache.blobNodes,
+    }
+  }
   return {
     clone,
     classCSS,
     styleCache: sessionCache.styleCache,
     nodeMap: sessionCache.nodeMap,
+    tagSet: sessionCache.tagSet,
+    imgClones: sessionCache.imgClones,
+    svgImageClones: sessionCache.svgImageClones,
+    bgClones: sessionCache.bgClones,
+    blobNodes: sessionCache.blobNodes,
     reconcileRisk: sessionCache.reconcileRisk || 0,
     clipWindow,
   }

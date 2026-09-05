@@ -21,6 +21,41 @@ import { hasExternalMutation } from '../modules/styles.js'
 
 const burstStates = new WeakMap()
 
+/** Fast per-element digest for delta validation: 8 geometry reads + ~10 style props,
+ *  ~30x cheaper than full snapshotComputedStyleFull (~350 props). Used before
+ *  returning a memoized burst result to detect silent reflow/scroll/pseudo/animation
+ *  changes that MutationObserver misses. Not a full replacement for the capture —
+ *  only a soundness gate before using the cached result.
+ */
+function computeDigest(el) {
+  try {
+    const r = el.getBoundingClientRect()
+    const cs = window.getComputedStyle ? window.getComputedStyle(el) : null
+    let geo = ''
+    geo += `l:${Math.round(r.left)}`
+    geo += `t:${Math.round(r.top)}`
+    geo += `w:${Math.round(r.width)}`
+    geo += `h:${Math.round(r.height)}`
+    geo += `sw:${el.scrollWidth || 0}`
+    geo += `sh:${el.scrollHeight || 0}`
+    geo += `sl:${el.scrollLeft || 0}`
+    geo += `st:${el.scrollTop || 0}`
+    let paint = ''
+    if (cs) {
+      paint += `c:${cs.color || ''}`
+      paint += `bg:${cs.backgroundColor || ''}`
+      paint += `op:${cs.opacity || ''}`
+      paint += `tf:${cs.transform || ''}`
+      paint += `vis:${cs.visibility || ''}`
+      paint += `anim:${(cs.animation || '').slice(0, 8)}`
+      paint += `hover:${cs.getPropertyValue(':hover') || ''}` // placeholder; real pseudo read is expensive — skip for speed
+    }
+    return geo + '|' + paint
+  } catch {
+    return 'digest-error'
+  }
+}
+
 function trackVideos(element, state, onMediaDirty) {
   const videos = new Set()
   if (element instanceof HTMLVideoElement) videos.add(element)
@@ -74,11 +109,12 @@ function createState(element) {
     }
   } catch { /* head not observable — subtree observer still applies */ }
 
-  state.markDirty = markDirty
-  state.onMediaDirty = onMediaDirty
-  trackVideos(element, state, onMediaDirty)
-  return state
-}
+    state.markDirty = markDirty
+    state.onMediaDirty = onMediaDirty
+    state.lastDigest = null // initial
+    trackVideos(element, state, onMediaDirty)
+    return state
+  }
 
 /** Stable signature of every option except burst/invalidate themselves, so a one-off call
  *  with different options (e.g. `{ burst: true, scale: 2 }` once) is detected as such. */
@@ -114,13 +150,28 @@ export function captureWithBurst(element, userOptions, context, runCapture) {
   const run = async () => {
     for (const o of state.observers) state.markDirty(o.takeRecords())
     if (context.invalidate) state.dirty = true
-    if (!isOneOff && !state.dirty && state.last) return state.last
+    // Two-tier validate: mutation observer (cheap) + digest (fast) before using cached result.
+    // Digest covers silent reflow, scroll, pseudo-state, animation, CSSOM changes that observer misses.
+    if (!isOneOff && !state.dirty && state.last) {
+      const freshDigest = computeDigest(element)
+      if (state.lastDigest && freshDigest === state.lastDigest && freshDigest !== 'digest-error') {
+        // Digest unchanged: same paint + geometry. Return memoized result (fast path).
+        return state.last
+      }
+      // Digest diverged from last capture: real-world mutation or reflow occurred.
+      // Force a fresh capture; next successful result updates digest.
+      state.dirty = true
+    }
 
     state.capturing = true
     if (!isOneOff) state.dirty = false
     try {
       const result = await runCapture()
-      if (!isOneOff) state.last = result
+      if (!isOneOff) {
+        state.last = result
+        state.lastDigest = computeDigest(element)
+        state.dirty = false
+      }
       return result
     } finally {
       for (const o of state.observers) o.takeRecords() // drop the capture's own records

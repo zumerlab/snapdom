@@ -153,12 +153,13 @@ export function extractShadowCSS(sr) {
  * @param {string} scopeId like s1
  */
 export function injectScopedStyle(hostClone, cssText, scopeId) {
-  if (!cssText) return
+  if (!cssText) return null
   const style = document.createElement('style')
   style.setAttribute('data-sd', scopeId)
   style.textContent = cssText
   // prepend to ensure it wins over later subtree
   hostClone.insertBefore(style, hostClone.firstChild || null)
+  return style
 }
 
 /**
@@ -723,6 +724,53 @@ function selfAndDescendants(root, selector) {
 export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
   const ctx = sessionCache
+  // walk-fusion: if deepClone pre-collected blob nodes, handle them in one pass (avoid 5x querySelectorAll)
+  if (Array.isArray(root._snapdomCollect?.blobNodes)) {
+    const pre = root._snapdomCollect.blobNodes
+    if (pre.length === 0) return
+    for (const n of pre) {
+      try {
+        if (n.tagName === 'IMG') {
+          const srcAttr = n.getAttribute('src')
+          const effective = srcAttr || n.currentSrc || ''
+          if (isBlobUrl(effective)) {
+            const data = await blobUrlToDataUrl(effective)
+            n.setAttribute('src', data)
+          }
+          const srcset = n.getAttribute('srcset')
+          if (srcset && srcset.includes('blob:')) {
+            const parts = parseSrcset(srcset)
+            let changed = false
+            for (const p of parts) if (isBlobUrl(p.url)) { try { p.url = await blobUrlToDataUrl(p.url); changed = true } catch (e) { debugWarn(ctx, 'blobUrlToDataUrl for srcset item failed', e) } }
+            if (changed) n.setAttribute('srcset', stringifySrcset(parts))
+          }
+        }
+        if (n.localName === 'image') {
+          const XLINK_NS = 'http://www.w3.org/1999/xlink'
+          const href = n.getAttribute('href') || n.getAttributeNS?.(XLINK_NS, 'href')
+          if (isBlobUrl(href)) {
+            const d = await blobUrlToDataUrl(href)
+            n.setAttribute('href', d)
+            n.removeAttributeNS?.(XLINK_NS, 'href')
+          }
+        }
+        const styleText = n.getAttribute?.('style')
+        if (styleText && styleText.includes('blob:')) {
+          const replaced = await replaceBlobUrlsInCssText(styleText)
+          n.setAttribute('style', replaced)
+        }
+        if (n.tagName === 'STYLE') {
+          const css = n.textContent || ''
+          if (css.includes('blob:')) n.textContent = await replaceBlobUrlsInCssText(css)
+        }
+        for (const attr of ['poster']) {
+          const u = n.getAttribute?.(attr)
+          if (isBlobUrl(u)) n.setAttribute(attr, await blobUrlToDataUrl(u))
+        }
+      } catch (e) { debugWarn(ctx, 'resolveBlobUrls pre-collected failed', e) }
+    }
+    return
+  }
 
   const imgs = selfAndDescendants(root, 'img')
   for (const img of imgs) {

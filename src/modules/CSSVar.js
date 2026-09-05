@@ -1,4 +1,6 @@
 // src/utils/resolveCSSVars.js
+import { getStyle, NO_DEFAULTS_TAGS } from '../utils/index.js'
+import { authorUsesCssVars } from './styles.js'
 
 /** Props donde típicamente aparece var() y conviene “materializar” si difieren del baseline */
 const KEY_PROPS = ['fill', 'stroke', 'color', 'background-color', 'stop-color']
@@ -86,10 +88,12 @@ export function resolveCSSVars(sourceEl, cloneEl) {
     }
   }
 
-  // Leemos cs sólo si hace falta o si vamos a comparar con baseline
+  // Leemos cs sólo si hace falta o si vamos a comparar con baseline.
+  // getStyle reuses the memoized declaration (the later inlineAllStyles read hits the same
+  // entry) instead of paying a second uncached getComputedStyle per node.
   let cs = null
   if (hasVar) {
-    try { cs = getComputedStyle(sourceEl) } catch {}
+    try { cs = getStyle(sourceEl) } catch {}
   }
 
   // --- 1) Resolver var() en estilos inline
@@ -133,9 +137,19 @@ export function resolveCSSVars(sourceEl, cloneEl) {
   // comparamos KEY_PROPS contra baseline del mismo tag/namespace y, si difiere,
   // inlinamos el valor computado. Esto materializa p.ej. `.css-var-fill { fill: var(--x) }`
   if (!hasVar) {
+    // Fast path: elements with a style snapshot (all HTML plus <svg>/<text>/…) already
+    // capture color/background-color there, and fill/stroke/stop-color either ride the
+    // snapshot (stylesheet-scanned) or equal the baseline — unless author CSS uses var(),
+    // which needs live resolution. Snapshot-less elements (NO_DEFAULTS_TAGS, e.g. <stop>,
+    // whose stop-color the SVG paint pass does not copy) always take the thorough baseline
+    // comparison below. No author var() anywhere is recomputed every capture, so CSSOM
+    // insertions are picked up; cross-origin opacity forces the thorough path.
+    // Skips 1 getComputedStyle + 5 getPropertyValue per snapshot-covered node.
+    const tagLower = sourceEl.tagName ? sourceEl.tagName.toLowerCase() : ''
+    if (!NO_DEFAULTS_TAGS.has(tagLower) && !authorUsesCssVars()) return
     // Leemos cs aquí sólo si lo vamos a usar
     if (!cs) {
-      try { cs = getComputedStyle(sourceEl) } catch { cs = null }
+      try { cs = getStyle(sourceEl) } catch { cs = null }
     }
     if (!cs) return
 

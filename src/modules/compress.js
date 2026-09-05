@@ -123,10 +123,22 @@ export async function downsampleDataURL(dataURL, targetW, targetH) {
 export async function compressClonedImages(clone, options) {
   if (!options.compress) return { count: 0, before: 0, after: 0 }
   const eff = (options.scale || 1) * (options.dpr || 1)
-  // querySelectorAll never matches clone itself — a capture root that IS the <img> (#461)
-  // was inlined but never downsampled, so compress:true silently did nothing for it.
-  const imgs = Array.from(clone.querySelectorAll('img'))
-  if (clone.tagName === 'IMG') imgs.unshift(clone)
+  // walk-fusion: reuse the pre-collected <img> list from deepClone when present, avoiding a
+  // full querySelectorAll tree walk. Falls back to the walk when _snapdomCollect is absent.
+  let imgs
+  if (clone._snapdomCollect?.imgClones?.length !== undefined) {
+    const pre = clone._snapdomCollect.imgClones
+    // querySelectorAll never matches clone itself — a capture root that IS the <img> (#461)
+    // was inlined but never downsampled, so compress:true silently did nothing for it.
+    if (clone.tagName === 'IMG' && !pre.includes(clone)) {
+      imgs = [clone, ...pre]
+    } else {
+      imgs = pre
+    }
+  } else {
+    imgs = Array.from(clone.querySelectorAll('img'))
+    if (clone.tagName === 'IMG') imgs.unshift(clone)
+  }
   let count = 0, before = 0, after = 0
 
   const process = async (img) => {
@@ -175,8 +187,30 @@ export async function compressClonedBackgrounds(clone, options, nodeMap = cache.
   if (!options.compress) return { count: 0 }
   const eff = (options.scale || 1) * (options.dpr || 1)
   const els = []
-  // include the root clone itself, then descendants
-  const candidates = [clone, ...clone.querySelectorAll('*')]
+  // walk-fusion: reuse the pre-collected bg-bearing clone list from deepClone when present,
+  // avoiding a full querySelectorAll('*') tree walk. bgClones is populated during deepClone
+  // (clone.js) exactly for elements whose source needsBackgroundInline — which is true whenever
+  // the element has any background-image (incl. a data: URL) — so it is a superset of the
+  // elements that actually carry a data:image background; the filter below trims it to the same
+  // set querySelectorAll('*') would have yielded. Falls back to the walk when _snapdomCollect is
+  // absent.
+  let candidates
+  if (clone._snapdomCollect?.bgClones?.length !== undefined) {
+    const pre = clone._snapdomCollect.bgClones
+    // The root clone may itself bear a data:URL background; querySelectorAll never matches the
+    // root, so the old code prepended it. bgClones includes the root only when needsBackgroundInline
+    // was flagged on the root node — guard for the case where it isn't already in the list.
+    if (
+      clone.style && clone.style.backgroundImage &&
+      clone.style.backgroundImage.includes('data:image') && !pre.includes(clone)
+    ) {
+      candidates = [clone, ...pre]
+    } else {
+      candidates = pre
+    }
+  } else {
+    candidates = [clone, ...clone.querySelectorAll('*')]
+  }
   for (const el of candidates) {
     const bg = el.style && el.style.backgroundImage
     if (bg && bg.includes('data:image')) els.push(el)
@@ -223,8 +257,20 @@ export async function compressClonedBackgrounds(clone, options, nodeMap = cache.
 export async function compressClonedSvgImages(clone, options) {
   if (!options.compress) return { count: 0 }
   const eff = (options.scale || 1) * (options.dpr || 1)
-  const imgs = Array.from(clone.querySelectorAll('image'))
-  if (clone.localName === 'image') imgs.unshift(clone)
+  // walk-fusion: reuse the pre-collected SVG <image> list from deepClone when present, avoiding
+  // a full querySelectorAll tree walk. Falls back to the walk when _snapdomCollect is absent.
+  let imgs
+  if (clone._snapdomCollect?.svgImageClones?.length !== undefined) {
+    const pre = clone._snapdomCollect.svgImageClones
+    if (clone.localName === 'image' && !pre.includes(clone)) {
+      imgs = [clone, ...pre]
+    } else {
+      imgs = pre
+    }
+  } else {
+    imgs = Array.from(clone.querySelectorAll('image'))
+    if (clone.localName === 'image') imgs.unshift(clone)
+  }
   let count = 0
 
   const process = async (el) => {

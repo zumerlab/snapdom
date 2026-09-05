@@ -3,7 +3,7 @@
  * @module clone
  */
 
-import { inlineAllStyles } from '../modules/styles.js'
+import { inlineAllStyles, needsBackgroundInline } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
 import { debugWarn, getStyle } from '../utils/index.js'
@@ -96,36 +96,42 @@ function intersectsClip(b, rect) {
  * @param {{rect: {left:number,top:number,right:number,bottom:number}, root: Element}} clip
  * @returns {boolean}
  */
+function _nodeBox(node, _rect) {
+  let r; try { r = node.getBoundingClientRect() } catch { return null }
+  if (r.width === 0 && r.height === 0) return null
+  const cs = getStyle(node)
+  const sw = node.scrollWidth || 0, sh = node.scrollHeight || 0
+  const box = { left: cs.direction === 'rtl' ? Math.min(r.left, r.right - sw) : r.left, top: r.top, right: Math.max(r.right, r.left + sw), bottom: Math.max(r.bottom, r.top + sh) }
+  const wm = cs.writingMode || ''
+  if (wm.startsWith('vertical') || wm.startsWith('sideways')) { box.top = Math.min(r.top, r.bottom - sh); box.left = Math.min(box.left, r.right - sw) }
+  return { box, isInlineNonReplaced: cs.display === 'inline' && !CLIP_REPLACED_TAGS.has((node.localName||'').toLowerCase()) }
+}
+function ensureClipSubtreeCache(clip, rootEl) {
+  if (clip._subtreeCache) return
+  const map = new WeakMap()
+  // bottom-up: reverse document order ensures children before parents
+  const all = []
+  const tw = (rootEl.ownerDocument||document).createTreeWalker(rootEl, NodeFilter.SHOW_ELEMENT)
+  while (tw.nextNode()) all.push(tw.currentNode)
+  for (let i = all.length - 1; i >= 0; i--) {
+    const n = all[i]
+    const info = _nodeBox(n, clip.rect)
+    let hits = info && intersectsClip(info.box, clip.rect)
+    if (!hits) {
+      for (let c = n.firstElementChild; c; c = c.nextElementSibling) if (map.get(c)) { hits = true; break }
+    }
+    map.set(n, hits)
+  }
+  clip._subtreeCache = map
+}
 function isOutsideClip(node, clip) {
   if (node === clip.root) return false
-  let r
-  try { r = node.getBoundingClientRect() } catch { return false }
-  if (r.width === 0 && r.height === 0) return false
-  const cs = getStyle(node)
-  if (cs.display === 'inline' && !CLIP_REPLACED_TAGS.has((node.localName || '').toLowerCase())) return false
-  const rect = clip.rect
-  // Scroll overflow grows right/down in horizontal-ltr; mirror for rtl / vertical modes.
-  const sw = node.scrollWidth || 0
-  const sh = node.scrollHeight || 0
-  const box = {
-    left: cs.direction === 'rtl' ? Math.min(r.left, r.right - sw) : r.left,
-    top: r.top,
-    right: Math.max(r.right, r.left + sw),
-    bottom: Math.max(r.bottom, r.top + sh)
-  }
-  const wm = cs.writingMode || ''
-  if (wm.startsWith('vertical') || wm.startsWith('sideways')) {
-    box.top = Math.min(r.top, r.bottom - sh)
-    box.left = Math.min(box.left, r.right - sw)
-  }
-  if (intersectsClip(box, rect)) return false
-  // Escape scan: any descendant whose painted box reaches the window (gBCR reads only —
-  // no style/clone/inline work) vetoes the cull; deeper levels then cull its siblings.
-  const tw = (node.ownerDocument || document).createTreeWalker(node, NodeFilter.SHOW_ELEMENT)
-  while (tw.nextNode()) {
-    const dr = /** @type {Element} */ (tw.currentNode).getBoundingClientRect()
-    if ((dr.width > 0 || dr.height > 0) && intersectsClip(dr, rect)) return false
-  }
+  const info = _nodeBox(node, clip.rect)
+  if (!info) return false
+  if (info.isInlineNonReplaced) return false
+  if (intersectsClip(info.box, clip.rect)) return false
+  ensureClipSubtreeCache(clip, clip.root)
+  if (clip._subtreeCache.get(node)) return false
   return true
 }
 
@@ -170,6 +176,28 @@ export async function deepClone(node, sessionCache, options) {
   const clonedAssignedNodes = new Set()
   let pendingSelectValue = null
   let pendingTextAreaValue = null
+  // walk-fusion helpers: register clone tag + collect img/image lists to avoid later queries
+  const _track = (el) => {
+    try {
+      if (el && el.tagName && sessionCache.tagSet) sessionCache.tagSet.add(el.tagName.toLowerCase())
+      if (el && el.tagName === 'IMG' && sessionCache.imgClones) sessionCache.imgClones.push(el)
+      if (el && el.localName === 'image' && sessionCache.svgImageClones) sessionCache.svgImageClones.push(el)
+    } catch {}
+  }
+  // Manual recursive walker: tracks the root + every descendant element via _track
+  // WITHOUT allocating a live NodeList (querySelectorAll('*') is O(subtree size) and
+  // was repeated per plugin hook / tag handler). Iterating node.children (element
+  // children only) + recursing covers exactly the same element set as '*'.
+  const trackSubtree = (node) => {
+    try {
+      _track(node)
+      const kids = node.children
+      for (let i = 0; i < kids.length; i++) {
+        trackSubtree(kids[i])
+      }
+    } catch {}
+  }
+  const _trackTree = (root) => trackSubtree(root)
   if (node.nodeType === Node.ELEMENT_NODE) {
     const tag = (node.localName || node.tagName || '').toLowerCase()
     if (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox')) {
@@ -239,7 +267,9 @@ export async function deepClone(node, sessionCache, options) {
   // Clip mode: prune subtrees painting entirely outside the window (before any plugin
   // hooks or tag handlers — no per-node work is spent on culled content).
   if (sessionCache.clip && isOutsideClip(node, sessionCache.clip)) {
-    return makeClipHusk(node, sessionCache, options)
+    const husk = makeClipHusk(node, sessionCache, options)
+    _track(husk)
+    return husk
   }
   // Per-node plugin hook: the first plugin whose resolveNode returns a value wins
   // (Node = finished replacement clone, null = skip node, undefined = continue).
@@ -253,10 +283,10 @@ export async function deepClone(node, sessionCache, options) {
       if (out === null) return null
       if (out instanceof Node) {
         if (out.nodeType === Node.ELEMENT_NODE) {
-          // Same treatment as built-in tag handlers: map to the source and carry its box
-          // styles so the replacement keeps the original layout.
           sessionCache.nodeMap.set(out, node)
           inlineAllStyles(node, /** @type {Element} */ (out), sessionCache, options)
+          _trackTree(/** @type {Element} */ (out))
+          try { if (needsBackgroundInline(node) && sessionCache.bgClones) sessionCache.bgClones.push(/** @type {Element} */ (out)) } catch {}
         }
         return out
       }
@@ -267,7 +297,13 @@ export async function deepClone(node, sessionCache, options) {
     const preHandler = PRE_PLACEHOLDER_TAGS.has(node.tagName) && tagHandlers.get(node.tagName)
     if (preHandler) {
       const handled = await preHandler(node, sessionCache, options)
-      if (handled !== undefined) return handled
+      if (handled !== undefined) {
+        if (handled instanceof Element) {
+          _trackTree(handled)
+          try { if (needsBackgroundInline(node) && sessionCache.bgClones) sessionCache.bgClones.push(handled) } catch {}
+        }
+        return handled
+      }
     }
   }
 
@@ -275,10 +311,12 @@ export async function deepClone(node, sessionCache, options) {
     const clone2 = node.cloneNode(false)
     sessionCache.nodeMap.set(clone2, node)
     inlineAllStyles(node, clone2, sessionCache, options)
+    _track(clone2)
     const placeholder = document.createElement('div')
     placeholder.textContent = node.getAttribute('data-placeholder-text') || ''
     placeholder.style.cssText = 'color:#666;font-size:12px;text-align:center;line-height:1.4;padding:0.5em;box-sizing:border-box;'
     clone2.appendChild(placeholder)
+    _track(placeholder)
     return clone2
   }
 
@@ -286,13 +324,20 @@ export async function deepClone(node, sessionCache, options) {
     const handler = !PRE_PLACEHOLDER_TAGS.has(node.tagName) && tagHandlers.get(node.tagName)
     if (handler) {
       const handled = await handler(node, sessionCache, options)
-      if (handled !== undefined) return handled
+      if (handled !== undefined) {
+        if (handled instanceof Element) {
+          _trackTree(handled)
+          try { if (needsBackgroundInline(node) && sessionCache.bgClones) sessionCache.bgClones.push(handled) } catch {}
+        }
+        return handled
+      }
     }
   }
 
   let clone
   try {
     clone = node.cloneNode(false)
+    _track(clone)
     // ROB-3: strip XML 1.0 invalid control characters from attribute values.
     // These characters are legal in HTML but rejected by XMLSerializer, breaking the SVG output.
     // Most common in data-* attributes with user-generated content.
@@ -327,7 +372,9 @@ export async function deepClone(node, sessionCache, options) {
       // escribimos px en línea para evitar que el clon “pierda” la imagen.
       try {
         const authored = node.getAttribute('style') || ''
-        const cs = window.getComputedStyle(node)
+        // Cached (and iframe-window-correct) read: the same declaration inlineAllStyles
+        // snapshots below, instead of a second uncached getComputedStyle per IMG.
+        const cs = getStyle(node)
         const usesPercentOrAuto = (prop) => {
           const a = authored.match(new RegExp(`${prop}\\s*:\\s*([^;]+)`, 'i'))
           const v = a ? a[1].trim() : cs.getPropertyValue(prop)
@@ -379,6 +426,7 @@ export async function deepClone(node, sessionCache, options) {
     if (isCheckboxOrRadio && isFirefox()) {
       const { el: replacement, applyVisual } = createCheckboxRadioReplacement(node)
       sessionCache.nodeMap.set(replacement, node)
+      _trackTree(replacement)
       applyInputVisual = applyVisual
       clone = replacement
     } else {
@@ -395,7 +443,7 @@ export async function deepClone(node, sessionCache, options) {
   // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
   if ((node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) && !node.value && node.placeholder) {
     try {
-      const phStyle = window.getComputedStyle(node, '::placeholder')
+      const phStyle = getStyle(node, '::placeholder')
       const phColor = phStyle && phStyle.color
       if (phColor && phColor !== 'rgba(0, 0, 0, 0)') {
         const uid = 'snapdom-ph-' + (Math.random() * 1e6 | 0)
@@ -433,6 +481,18 @@ export async function deepClone(node, sessionCache, options) {
     inlineAllStyles(node, clone, sessionCache, options)
   }
   if (applyInputVisual) { applyInputVisual() }
+  // walk-fusion: collect background-inline candidates to avoid later tree walk
+  try { if (needsBackgroundInline(node) && sessionCache.bgClones) sessionCache.bgClones.push(clone) } catch {}
+  // walk-fusion: collect blob URL nodes to avoid later 5x querySelectorAll in resolveBlobUrlsInTree
+  try {
+    const _hasBlob = (node.getAttribute?.('src')||'').includes('blob:') ||
+                     (node.getAttribute?.('srcset')||'').includes('blob:') ||
+                     (node.getAttribute?.('href')||'').includes('blob:') ||
+                     (node.getAttribute?.('poster')||'').includes('blob:') ||
+                     (node.getAttribute?.('style')||'').includes('blob:') ||
+                     (node.tagName==='STYLE' && (node.textContent||'').includes('blob:'))
+    if (_hasBlob && sessionCache.blobNodes) sessionCache.blobNodes.push(clone)
+  } catch {}
   // #365: SVG painting elements — CSS rules override presentation attributes but aren't captured
   // via the class-based mechanism (NO_DEFAULTS_TAGS returns '' key). Copy key SVG presentation
   // properties from computed style as inline styles to ensure CSS-driven fills/strokes survive.
@@ -446,7 +506,11 @@ export async function deepClone(node, sessionCache, options) {
       'marker', 'marker-start', 'marker-mid', 'marker-end', 'visibility', 'display'
     ]
     try {
-      const cs = window.getComputedStyle(node)
+      // Reuse the memoized computed style (cache.computedStyle) instead of a fresh
+      // getComputedStyle per SVG element — captures can contain hundreds of SVG nodes.
+      // getStyle uses the element's ownerDocument window (correct for iframes) and falls
+      // back to an emptyStyle whose getPropertyValue returns '' (still safe here).
+      const cs = getStyle(node)
       for (const prop of SVG_PAINT_PROPS) {
         const val = cs.getPropertyValue(prop)
         if (val) clone.style.setProperty(prop, val)
@@ -477,7 +541,8 @@ export async function deepClone(node, sessionCache, options) {
     const rewritten = rewriteShadowCSS(rawCSS, scopeSelector, scopeId)
     const neededVars = collectCustomPropsFromCSS(rawCSS)
     const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)
-    injectScopedStyle(clone, seed + rewritten, scopeId)
+    const _injected = injectScopedStyle(clone, seed + rewritten, scopeId)
+    if (_injected && sessionCache.shadowStyleNodes) sessionCache.shadowStyleNodes.push(_injected)
     const shadowFrag = document.createDocumentFragment()
     // const, not a declaration: esbuild lowers block-level function declarations to a
     // hoisted `var` of the same name, which would clobber the walker below.

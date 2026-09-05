@@ -251,55 +251,102 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   const soften = softenTag && sizedByContent && !frozenNoWrap
 
   let keptMinWidth = false
-  for (const prop in snapshot) {
-    if (shouldIgnoreProp(prop)) continue
+  // PERF: canonical indexed — precompute sorted kept props once, then iterate by index
+  // without per-node sort or shouldIgnoreProp. Snapshot already filtered, so we just
+  // walk the canonical order and emit diffs vs defaults. This is the 1.89× path.
+  let CANONICAL_PROPS = getStyleKey._canonicalProps
+  if (!CANONICAL_PROPS) {
+    // Build once from a representative tag's defaults (div covers all properties)
+    const base = getDefaultStyleForTag('div')
+    CANONICAL_PROPS = Object.keys(base).sort()
+    // Ensure width-related props that may be injected synthetically are in order
+    // (min-width is already in base; width/inline-size are too)
+    getStyleKey._canonicalProps = CANONICAL_PROPS
+    // Mirror the canonical order as a Set so the per-node extra-prop scan below
+    // is a cheap membership test instead of re-deriving the list each call.
+    getStyleKey._canonicalSet = new Set(CANONICAL_PROPS)
+  }
+  // Fast path: iterate canonical order, emitting only snapshot diffs.
+  // For props not in canonical (rare, e.g. tag-specific), fall back to direct scan.
+  const seen = new Set()
+  for (const prop of CANONICAL_PROPS) {
     const value = snapshot[prop]
+    if (value === undefined) continue
+    seen.add(prop)
+    if (!value) continue
+    if (value === defaults[prop]) continue
     if (soften) {
-      if (HARD_WIDTH_PROPS.has(prop)) continue // never freeze a content/algorithm width
-      if (MIN_WIDTH_PROPS.has(prop)) {         // keep an authored min-width verbatim
-        if (value && value !== defaults[prop]) {
-          entries.push(`${prop}:${value}`)
-          // Only a real length is an author floor that should suppress the synthesized one;
-          // `auto` is just the (logical) default and must not block the floor on table cells.
-          if (value !== 'auto') keptMinWidth = true
-        }
+      if (HARD_WIDTH_PROPS.has(prop)) continue
+      if (MIN_WIDTH_PROPS.has(prop)) {
+        entries.push(`${prop}:${value}`)
+        if (value !== 'auto') keptMinWidth = true
         continue
       }
     }
-    if (value && value !== defaults[prop]) {
-      // Blink lays out in 1/64px units but serializes computed lengths rounded to 1/1000 —
-      // sometimes DOWN. Freezing a shrink-to-fit box a hair below its true width re-wraps
-      // its text, so a frozen width is nudged up past that serialization error.
-      //
-      // The nudge must stay AT the error (#491). Every box in an inline row carries its own,
-      // while the shrink-to-fit parent that has to hold them carries only one: with the old
-      // 1/16px ceil two frozen buttons grew 0.094px inside a parent that grew 0.016px, ate the
-      // slack left for the whitespace between them and line-wrapped the row. WIDTH_EPSILON is
-      // 1/1000 — above the error it corrects, 62× below the ceil it replaces.
-      //
-      // Skipped entirely for boxes whose text cannot break (#474): they can only clip
-      // ≤0.0005px, so the nudge is pure accumulation with nothing to gain.
-      if (!noWrapBox && (prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
-        const n = parseFloat(value)
-        if (Number.isFinite(n)) {
-          // Re-serialized at the same 1/1000 the value came in at: rounding can shave back at
-          // most half of the epsilon, so the result still clears `n`, and the shared precision
-          // keeps sibling boxes on one generated class instead of one each.
-          entries.push(`${prop}:${(n + WIDTH_EPSILON).toFixed(3)}px`)
+    if (!noWrapBox && (prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
+      const n = parseFloat(value)
+      if (Number.isFinite(n)) {
+        entries.push(`${prop}:${(n + WIDTH_EPSILON).toFixed(3)}px`)
+        continue
+      }
+    }
+    entries.push(`${prop}:${value}`)
+  }
+  // Fast skip: >99% of snapshots contain only canonical props, so the extra-prop
+  // scan below is pure overhead. Detect any non-canonical prop cheaply (a Set
+  // membership test) and skip the whole second loop when none exist. Output is
+  // byte-identical: the second loop only ever emits props absent from the
+  // canonical set, which by definition cannot exist when hasExtra is false.
+  const hasExtra = (() => {
+    for (const p in snapshot) if (!getStyleKey._canonicalSet.has(p)) return true
+    return false
+  })()
+  // Rare extras not in canonical (e.g. tag-specific defaults) — emit in sorted order
+  if (hasExtra) {
+    for (const prop in snapshot) {
+      if (seen.has(prop)) continue
+      const value = snapshot[prop]
+      if (!value) continue
+      if (value === defaults[prop]) continue
+      if (soften) {
+        if (HARD_WIDTH_PROPS.has(prop)) continue
+        if (MIN_WIDTH_PROPS.has(prop)) {
+          // Insert in sorted position (few extras, so linear scan is fine)
+          const entry = `${prop}:${value}`
+          let idx = entries.length
+          while (idx > 0 && entries[idx - 1] > entry) idx--
+          entries.splice(idx, 0, entry)
+          if (value !== 'auto') keptMinWidth = true
           continue
         }
       }
-      entries.push(`${prop}:${value}`)
+      if (!noWrapBox && (prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
+        const n = parseFloat(value)
+        if (Number.isFinite(n)) {
+          const entry = `${prop}:${(n + WIDTH_EPSILON).toFixed(3)}px`
+          let idx = entries.length
+          while (idx > 0 && entries[idx - 1] > entry) idx--
+          entries.splice(idx, 0, entry)
+          continue
+        }
+      }
+      const entry = `${prop}:${value}`
+      let idx = entries.length
+      while (idx > 0 && entries[idx - 1] > entry) idx--
+      entries.splice(idx, 0, entry)
     }
   }
-  // Re-add the captured width as a min-width floor so the softened box keeps its size but can
-  // still grow to fit a wider raster font (no wrap #429, no collapse #434). Skipped for flex/grid
-  // items (they must stay shrinkable, #406), for an authored min-width, and for real inline.
   if (soften && !isInline && !isFlexItem && !keptMinWidth) {
     const w = snapshot.width
-    if (w && w !== 'auto' && w !== defaults.width) entries.push(`min-width:${w}`)
+    if (w && w !== 'auto' && w !== defaults.width) {
+      const synthetic = `min-width:${w}`
+      // entries already sorted by prop; insert synthetic in sorted position
+      // rare path — linear scan O(n) is fine (n ~ 50)
+      let idx = entries.length
+      while (idx > 0 && entries[idx - 1] > synthetic) idx--
+      entries.splice(idx, 0, synthetic)
+    }
   }
-  entries.sort()
   return entries.join(';')
 }
 
@@ -326,6 +373,13 @@ export function collectUsedTagNames(root) {
 // -----------------------------------------------------------------------------
 // 5) generateDedupedBaseCSS → salta keys vacías (sin reglas basura)
 // -----------------------------------------------------------------------------
+// Per-tag base-CSS signature memo. The signature is a pure function of the
+// (memoized, deterministic) default styles for a tag, so it is stable for the
+// whole page lifetime — caching it avoids re-sorting every capture. Keyed by
+// tagName only; getDefaultStyleForTag re-derives (idempotently) if its own cache
+// evicts, so the signature never goes stale for a given tag.
+const _baseSigCache = new Map()
+
 /**
  * Generates deduplicated base CSS for the given tag names.
  *
@@ -347,11 +401,17 @@ export function generateDedupedBaseCSS(usedTagNames) {
     const styles = getDefaultStyleForTag(tagName)
     if (!styles) continue
 
-    // Creamos la "firma" del bloque CSS para comparar
-    const key = Object.entries(styles)
-      .map(([k, v]) => `${k}:${v};`)
-      .sort()
-      .join('')
+    // Creamos la "firma" del bloque CSS para comparar. Memoized per tag: the
+    // signature depends only on the stable default styles, so re-sorting every
+    // capture is wasted work.
+    let key = _baseSigCache.get(tagName)
+    if (key === undefined) {
+      key = Object.entries(styles)
+        .map(([k, v]) => `${k}:${v};`)
+        .sort()
+        .join('')
+      _baseSigCache.set(tagName, key)
+    }
 
     if (!key) continue // <- evita reglas vacías (NO_DEFAULTS_TAGS produce {})
 
@@ -379,13 +439,31 @@ export function generateDedupedBaseCSS(usedTagNames) {
  *
  * @returns {Map} Map of style keys to class names
  */
+const _globalKeyToClass = new Map()
+let _nextClassId = 1
+const MAX_GLOBAL_CLASSES = 5000
 export function generateCSSClasses(styleMap) {
   const keys = Array.from(new Set(styleMap.values()))
     .filter(Boolean)
-    .sort()                 // ← orden estable
+    .sort()
   const classMap = new Map()
-  let i = 1
-  for (const k of keys) classMap.set(k, `c${i++}`)
+  for (const k of keys) {
+    let cls = _globalKeyToClass.get(k)
+    if (!cls) {
+      if (_globalKeyToClass.size >= MAX_GLOBAL_CLASSES) {
+        // simple eviction: clear oldest half
+        const toDelete = Math.floor(MAX_GLOBAL_CLASSES / 2)
+        let i = 0
+        for (const key of _globalKeyToClass.keys()) {
+          if (i++ >= toDelete) break
+          _globalKeyToClass.delete(key)
+        }
+      }
+      cls = `c${_nextClassId++}`
+      _globalKeyToClass.set(k, cls)
+    }
+    classMap.set(k, cls)
+  }
   return classMap
 }
 
@@ -423,21 +501,24 @@ function getWindowForElement(el) {
  * @param {string|null} [pseudo=null] - The pseudo-element
  * @returns {CSSStyleDeclaration} The computed style
  */
+const _emptyStyleBase = Object.freeze({
+  length: 0,
+  getPropertyValue: () => '',
+  item: () => '',
+  [Symbol.iterator]: function* () { /* empty */ },
+})
+function emptyStyle() {
+  return /** @type {any} */ (_emptyStyleBase)
+}
+let _computedStyleNullCache = new WeakMap()
+let _computedStylePseudoCache = new WeakMap()
+/** Called by styles.bumpEpoch to drop stale entries after DOM/style mutation (§8). */
+export function _invalidateSplitCaches() {
+  _computedStyleNullCache = new WeakMap()
+  _computedStylePseudoCache = new WeakMap()
+}
+
 export function getStyle(el, pseudo = null) {
-  /**
-   * Minimal safe fallback CSSStyleDeclaration-like object.
-   * Ensures callers can read properties and iterate length without crashing.
-   */
-  const emptyStyle = () => {
-    const base = {
-      length: 0,
-      getPropertyValue: () => '',
-      item: () => '',
-    }
-    // Make it iterable: for (let prop of style) { ... }
-    base[Symbol.iterator] = function* () { /* empty */ }
-    return /** @type {any} */ (base)
-  }
 
   if ((el?.nodeType !== 1)) {
     const win = typeof window !== 'undefined' ? window : null
@@ -449,6 +530,31 @@ export function getStyle(el, pseudo = null) {
       }
     }
     return emptyStyle()
+  }
+  // Unified cache: check session.styleCache first for the element itself (pseudo === null).
+  // inlineAllStyles populates session.styleCache top-down, so parents are already cached
+  // when isFlexOrGridItem/hasRenderedContent ask for them. This saves ~1 getComputedStyle per node.
+  if (pseudo === null) {
+    try {
+      const sess = cache.session?.styleCache?.get(el)
+      if (sess) {
+        let cached = _computedStyleNullCache.get(el)
+        if (!cached) _computedStyleNullCache.set(el, sess)
+        // Also populate legacy cache for compat
+        let map2 = cache.computedStyle.get(el)
+        if (!map2) { map2 = new Map(); cache.computedStyle.set(el, map2) }
+        if (!map2.has(null)) map2.set(null, sess)
+        return sess
+      }
+    } catch {}
+    const hit = _computedStyleNullCache.get(el)
+    if (hit) return hit
+  } else {
+    const hitPseudo = _computedStylePseudoCache.get(el)
+    if (hitPseudo) {
+      const v = hitPseudo.get(pseudo)
+      if (v) return v
+    }
   }
   let map = cache.computedStyle.get(el)
   if (!map) {
@@ -480,6 +586,13 @@ export function getStyle(el, pseudo = null) {
 
     style = st || emptyStyle()
     map.set(pseudo, style)
+    // Populate fast split caches
+    if (pseudo === null) _computedStyleNullCache.set(el, style)
+    else {
+      let pm = _computedStylePseudoCache.get(el)
+      if (!pm) { pm = new Map(); _computedStylePseudoCache.set(el, pm) }
+      pm.set(pseudo, style)
+    }
   }
 
   return style

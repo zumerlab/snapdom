@@ -10,6 +10,54 @@ import { isIconFont } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
 import { nextFrame } from '../utils/browser.js'
 
+// perf: memoize hot font helper string transforms (few unique values)
+const _pickAllCache = new Map()
+const _normWeightCache = new Map()
+const _normStyleCache = new Map()
+const _normStretchCache = new Map()
+
+// perf: memoize the fully-resolved required-font-key list per raw computed-font
+// 4-tuple. Pages use a handful of fonts across thousands of nodes, so after the
+// first node with a given font this skips re-splitting the family list, re-normalizing
+// weight/style/stretch, and rebuilding the `family__w__s__st` strings for every node.
+const _requiredKeysCache = new Map()
+
+/** Runs of CSS whitespace, collapsed to a single space inside family names. */
+const WS_RUN_RE = /[ \t\n\r\f\v\u00a0]+/g
+/** Perf: comma split is on the hot path of every font-family normalization. */
+const GEN_SPLIT_RE = /\s*,\s*/
+/** Shared empty result for pickAllFamilies (avoids a per-call allocation). */
+const EMPTY_FAMILIES = Object.freeze([])
+
+// lightweight pseudo preflight without importing pseudo.js (avoid cycle)
+// returns true if document likely contains ::before/::after/::first-letter or counters
+let _pseudoPreflightCache = new WeakMap()
+function hasPseudoInDoc(doc) {
+  try {
+    const cached = _pseudoPreflightCache.get(doc)
+    if (cached !== undefined) return cached
+    const needles = ['::before','::after','::first-letter',':before',':after',':first-letter','counter(','counters(']
+    // 1) inline <style> text
+    const styles = doc.querySelectorAll('style')
+    for (let i=0;i<styles.length;i++) {
+      const t = styles[i].textContent || ''
+      for (const n of needles) if (t.includes(n)) { _pseudoPreflightCache.set(doc, true); return true }
+    }
+    // 2) adoptedStyleSheets
+    const ass = doc.adoptedStyleSheets
+    if (Array.isArray(ass) && ass.length) {
+      for (const sh of ass) {
+        try {
+          const css = Array.from(sh.cssRules||[]).map(r => r.cssText||'').join(' ')
+          for (const n of needles) if (css.includes(n)) { _pseudoPreflightCache.set(doc, true); return true }
+        } catch {}
+      }
+    }
+    _pseudoPreflightCache.set(doc, false)
+    return false
+  } catch { return true }
+}
+
 /**
  * Converts a unicode character from an icon font into a data URL image.
  *
@@ -77,6 +125,54 @@ const GENERIC_FAMILIES = new Set([
 const FONT_LIBRARIES = ['katex', 'mathjax', 'mathml']
 
 /**
+ * Perf: a CSS font-family entry is a CSS-wide keyword unless it is also a
+ * quoted string, so the handful of keywords can be rejected without either the
+ * RegExp or the quote-stripping allocation on the hot path.
+ */
+const FAMILY_KEYWORDS = new Set([
+  'inherit', 'initial', 'unset', 'revert', 'revert-layer'
+])
+
+/**
+ * Normalize one raw `font-family` list entry to its CSS family name.
+ *
+ * A CSS <family-name> is a sequence of identifiers, and the CSS tokenizer
+ * collapses any run of whitespace to a single space, while leading/trailing
+ * whitespace of the whole declaration is trimmed. So `  "Noto   Sans " `,
+ * `Noto Sans` and `'Noto\tSans'` are all the same family and must produce the
+ * same embedding key — otherwise the same @font-face is collected, matched and
+ * inlined several times (#357 follow-up).
+ *
+ * @param {string} raw - one comma-separated entry of a font-family list
+ * @returns {string} normalized family name ('' when the entry is empty/keyword)
+ */
+function normalizeFamilyName(raw) {
+  if (!raw) return ''
+  // Fast path: most entries are already a bare, single-token family name.
+  if (FAMILY_KEYWORDS.has(raw)) return ''
+  let f = raw.trim()
+  if (!f) return ''
+  const head = f.charCodeAt(0)
+  // Strip one matching pair of surrounding quotes (a quoted family name may
+  // itself contain commas, so this must happen after the comma split).
+  if (head === 34 /* " */ || head === 39 /* ' */) {
+    if (f.length > 1 && f.charCodeAt(f.length - 1) === head) {
+      f = f.slice(1, -1)
+    } else {
+      return ''
+    }
+  }
+  if (!f) return ''
+  // Collapse internal whitespace runs to a single space (CSS tokenizer rules).
+  if (f.indexOf(' ') >= 0 || f.indexOf('\t') >= 0 || f.indexOf('\n') >= 0 ||
+      f.indexOf('\r') >= 0 || f.indexOf('\f') >= 0 || f.indexOf('\v') >= 0 ||
+      f.indexOf('\u00a0') >= 0) {
+    f = f.split(WS_RUN_RE).join(' ')
+  }
+  return f
+}
+
+/**
  * Normalize a CSS font-family list to the first non-generic family.
  * E.g. `"Roboto", Arial, sans-serif` -> `Roboto`
  * @param {string} familyList
@@ -84,8 +180,8 @@ const FONT_LIBRARIES = ['katex', 'mathjax', 'mathml']
  */
 function pickPrimaryFamily(familyList) {
   if (!familyList) return ''
-  for (let raw of familyList.split(',')) {
-    let f = raw.trim().replace(/^['"]+|['"]+$/g, '')
+  for (let raw of familyList.split(GEN_SPLIT_RE)) {
+    const f = normalizeFamilyName(raw)
     if (!f) continue
     if (!GENERIC_FAMILIES.has(f.toLowerCase())) return f
   }
@@ -95,17 +191,34 @@ function pickPrimaryFamily(familyList) {
 /**
  * #357: Return ALL non-generic families from a font-family list (for fallback chain embedding).
  * E.g. `"Roboto", "Noto Sans SC", sans-serif` -> ["Roboto", "Noto Sans SC"]
+ *
+ * Perf: memoized on the raw list string (few unique values per page) AND
+ * de-duplicated case-insensitively, so a stack that repeats a family
+ * (`A, B, A, sans-serif`) or spells it with different whitespace/quoting yields
+ * ONE entry — the embedding pass then matches and inlines each @font-face once
+ * instead of twice. CSS family names are case-insensitive and the embedding
+ * index is keyed lowercase, so `Roboto` + `roboto` are the same font.
+ *
  * @param {string} familyList
  * @returns {string[]}
  */
 function pickAllFamilies(familyList) {
-  if (!familyList) return []
+  if (!familyList) return EMPTY_FAMILIES
+  const cached = _pickAllCache.get(familyList)
+  if (cached !== undefined) return cached
   const out = []
-  for (let raw of familyList.split(',')) {
-    let f = raw.trim().replace(/^['"]+|['"]+$/g, '')
+  for (let raw of familyList.split(GEN_SPLIT_RE)) {
+    const f = normalizeFamilyName(raw)
     if (!f) continue
-    if (!GENERIC_FAMILIES.has(f.toLowerCase())) out.push(f)
+    if (GENERIC_FAMILIES.has(f.toLowerCase())) continue
+    let dup = false
+    const lower = f.toLowerCase()
+    for (let i = 0; i < out.length; i++) {
+      if (out[i].toLowerCase() === lower) { dup = true; break }
+    }
+    if (!dup) out.push(f)
   }
+  _pickAllCache.set(familyList, out)
   return out
 }
 
@@ -114,11 +227,19 @@ function pickAllFamilies(familyList) {
  * @param {string|number} w
  */
 function normWeight(w) {
-  const t = String(w ?? '400').trim().toLowerCase()
-  if (t === 'normal') return 400
-  if (t === 'bold') return 700
-  const n = parseInt(t, 10)
-  return Number.isFinite(n) ? Math.min(900, Math.max(100, n)) : 400
+  const k = String(w ?? '400')
+  const c = _normWeightCache.get(k)
+  if (c !== undefined) return c
+  const t = k.trim().toLowerCase()
+  let r
+  if (t === 'normal') r = 400
+  else if (t === 'bold') r = 700
+  else {
+    const n = parseInt(t, 10)
+    r = Number.isFinite(n) ? Math.min(900, Math.max(100, n)) : 400
+  }
+  _normWeightCache.set(k, r)
+  return r
 }
 
 /**
@@ -127,10 +248,15 @@ function normWeight(w) {
  * @returns {"normal"|"italic"|"oblique"}
  */
 function normStyle(s) {
-  const t = String(s ?? 'normal').trim().toLowerCase()
-  if (t.startsWith('italic')) return 'italic'
-  if (t.startsWith('oblique')) return 'oblique'
-  return 'normal'
+  const k = String(s ?? 'normal')
+  const c = _normStyleCache.get(k)
+  if (c) return c
+  const t = k.trim().toLowerCase()
+  let r = 'normal'
+  if (t.startsWith('italic')) r = 'italic'
+  else if (t.startsWith('oblique')) r = 'oblique'
+  _normStyleCache.set(k, r)
+  return r
 }
 
 /**
@@ -139,8 +265,13 @@ function normStyle(s) {
  * @returns {number}
  */
 function normStretchPct(st) {
-  const m = String(st ?? '100%').match(/(\d+(?:\.\d+)?)\s*%/)
-  return m ? Math.max(50, Math.min(200, parseFloat(m[1]))) : 100
+  const k = String(st ?? '100%')
+  const c = _normStretchCache.get(k)
+  if (c !== undefined) return c
+  const m = k.match(/(\d+(?:\.\d+)?)\s*%/)
+  const r = m ? Math.max(50, Math.min(200, parseFloat(m[1]))) : 100
+  _normStretchCache.set(k, r)
+  return r
 }
 
 function parseWeightSpec(spec) {
@@ -267,6 +398,52 @@ const IMPORT_ANY_RE = /@import\s+(?:url\(\s*(['"]?)([^)"']+)\1\s*\)|(['"])([^"']
 
 const MAX_IMPORT_DEPTH = 4
 
+// ---------------------------------------------------------------------------
+// Perf: fetch-once-per-URL memo for raw stylesheet CSS text.
+//
+// `embedCustomFonts` reads the same stylesheet more than once in a single
+// capture: the <link> pass fetches it as text, every nested @import is fetched
+// by inlineImportsAndRewrite(), and a cross-origin sheet whose CSSOM is blocked
+// is re-fetched on each pass. snapFetch only dedupes *inflight* calls, so
+// sequential reads of one URL still hit the network every time.
+//
+// The cached value is the raw CSS text for a URL — a pure function of the URL +
+// proxy — so it is safe to reuse. The map is created PER embedCustomFonts call
+// (a "capture session"), never module-global: a global memo would leak CSS
+// across captures and serve stale text to a later, unrelated capture.
+//
+// It is also deliberately NOT stored in cache.resource (an EvictingMap shared
+// with base64 payloads) so a big stylesheet cannot evict embedded font data.
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch a stylesheet's raw CSS text at most once per URL (per capture session).
+ * @param {string} url
+ * @param {string} useProxy
+ * @param {Map<string, {ok:boolean, data:string|null}>} memo - per-call memo
+ * @param {boolean} [silent=false]
+ * @returns {Promise<{ok:boolean, data:string|null, status?:number, url?:string, reason?:string}>}
+ */
+async function fetchCssTextOnce(url, useProxy, memo, silent = false) {
+  if (!url) return { ok: false, data: null, status: 0, url }
+  const key = `${useProxy || ''} ${url}`
+  const hit = memo.get(key)
+  if (hit !== undefined) return hit
+  let res
+  try {
+    res = await snapFetch(url, { as: 'text', useProxy, silent })
+  } catch {
+    res = { ok: false, data: null, status: 0, url, reason: 'exception' }
+  }
+  const out = (res && res.ok && typeof res.data === 'string')
+    ? res
+    : { ok: false, data: null, status: (res && res.status) || 0, url, reason: (res && res.reason) || 'fetch_failed' }
+  // Only memoize successes: snapFetch already caches *errors* (with TTL), and
+  // pinning a failure here too would outlive that TTL and hide a recovery.
+  if (out.ok) memo.set(key, out)
+  return out
+}
+
 /**
  * Flattens @import recursively and rewrites relative urls at each level
  * using that sheet's base href. Uses snapFetch (with proxy) on purpose
@@ -274,8 +451,9 @@ const MAX_IMPORT_DEPTH = 4
  * @param {string} cssText
  * @param {string} ownerHref
  * @param {string} useProxy
+ * @param {Map<string, {ok:boolean, data:string|null}>} [memo] - per-capture CSS-text memo
  */
-async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
+async function inlineImportsAndRewrite(cssText, ownerHref, useProxy, memo) {
   if (!cssText) return cssText
 
   const visited = new Set()
@@ -308,7 +486,7 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
 
       let imported = ''
       try {
-        const r = await snapFetch(absUrl, { as: 'text', useProxy, silent: true })
+        const r = await fetchCssTextOnce(absUrl, useProxy, memo, true)
         if (r.ok && typeof r.data === 'string') imported = r.data
       } catch { /* noop */ }
 
@@ -783,6 +961,11 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 
+  // Perf: fetch-once-per-URL memo, scoped to THIS embedCustomFonts call (one
+  // capture session). Created after the cache.resource short-circuit below so a
+  // cache hit never pays for an unused Map.
+  const cssTextMemo = new Map()
+
   const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc)
   if (cache.resource?.has(cacheKey)) {
     return cache.resource.get(cacheKey)
@@ -790,6 +973,16 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   // ---- Ensure only likely @import font styles become reachable (<link>), avoid noise ----
   const requiredFamilies = familiesFromRequired(required)
+
+  // Build the set of existing <link rel="stylesheet"> hrefs ONCE (a single
+  // document scan) instead of running a full-document querySelector per @import
+  // URL below. Raw attribute values are compared, matching the original
+  // `[href="${u}"]` attribute selector exactly.
+  const existingLinkHrefs = new Set(
+    Array.from(doc.querySelectorAll('link[rel="stylesheet"]'))
+      .map((l) => (l.getAttribute('href') || '').trim())
+      .filter(Boolean)
+  )
 
   const importUrls = []
   const IMPORT_ANY_RE_LOCAL = IMPORT_ANY_RE
@@ -799,8 +992,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     for (const m of cssText.matchAll(IMPORT_ANY_RE_LOCAL)) {
       const u = (m[2] || m[4] || '').trim()
       if (!u || isIconFont(u)) continue
-      const hasLink = !!doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)
-      if (!hasLink) importUrls.push(u)
+      const hasLink = existingLinkHrefs.has(u)
+      if (!hasLink && !importUrls.includes(u)) importUrls.push(u)
     }
   }
   // @import font URLs with no matching <link> are made reachable by injecting a temporary
@@ -808,7 +1001,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   const injectedLinks = []
   if (importUrls.length) {
     await Promise.all(importUrls.map((u) => new Promise((resolve) => {
-      if (doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)) return resolve(null)
+      if (existingLinkHrefs.has(u)) return resolve(null)
       const link = doc.createElement('link')
       link.rel = 'stylesheet'
       link.href = u
@@ -861,13 +1054,13 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       }
 
       if (!cssText) {
-        const res = await snapFetch(link.href, { as: 'text', useProxy })
+        const res = await fetchCssTextOnce(link.href, useProxy, cssTextMemo)
         if (res?.ok && typeof res.data === 'string') cssText = res.data
         if (isIconFont(link.href)) continue
       }
 
       // Flatten nested @import and rewrite relative urls per-level using link.href as base
-      cssText = await inlineImportsAndRewrite(cssText, link.href, useProxy)
+      cssText = await inlineImportsAndRewrite(cssText, link.href, useProxy, cssTextMemo)
 
       let facesOut = ''
       for (const face of cssText.match(FACE_RE) || []) {
@@ -1047,6 +1240,8 @@ export function collectFontUsage(root, keep) {
   const required = /* @__PURE__ */ new Set()
   const usedCodepoints = /* @__PURE__ */ new Set()
   if (!root) return { required, usedCodepoints }
+  const _doc = root.ownerDocument || document
+  const _hasPseudos = hasPseudoInDoc(_doc)
 
   const pushText = (txt) => {
     if (!txt) return
@@ -1057,12 +1252,16 @@ export function collectFontUsage(root, keep) {
     // This ensures that if the first font doesn't have a glyph, the fallback font is also embedded.
     const families = pickAllFamilies(cs.fontFamily)
     if (!families.length) return
+    // Perf: the weight/style/stretch suffix is identical for every family in the
+    // stack, so build it once per style instead of once per family.
+    const suffix = `__${normWeight(cs.fontWeight)}__${normStyle(cs.fontStyle)}__${normStretchPct(cs.fontStretch)}`
     for (const family of families) {
-      required.add(`${family}__${normWeight(cs.fontWeight)}__${normStyle(cs.fontStyle)}__${normStretchPct(cs.fontStretch)}`)
+      required.add(family + suffix)
     }
   }
   const visitElement = (el) => {
     addFromStyle(getStyle(el))
+    if (!_hasPseudos) return
     for (const pseudo of ['::before', '::after']) {
       const cs = getStyle(el, pseudo)
       const c = cs && cs.content
