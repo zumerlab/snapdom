@@ -105,11 +105,15 @@ HTML export preserves source markup, including event-handler attributes; treat i
 
 Redaction leaves the live page unchanged. `selector` selects inputs/textareas only; use `blocks: '.private-panel'` for whole subtrees. Blocks honor `excludeMode` (hide by default). `attributes: [{ selector: '[data-token]', names: ['data-token'] }]` removes exact named attributes and their semantic projections. HTML, agent maps and context apply these rules regardless of official plugin order. Attribute removal does not erase copies in visible text, CSS content or pixels. Custom masks and nonempty selector/block/attribute rules disable repeat memoization; block/attribute rules also force the experimental native engine to fall back to SVG. See https://snapdom.dev/docs/plugins/#redaction for examples and limits.
 
+## SnapDOM Pro previews
+
+[SnapDOM Pro](https://snapdom.dev/pro/) contains paid plugin previews for [searchable PDF export](https://snapdom.dev/pro/pdf/) and [editable vector SVG export](https://snapdom.dev/pro/vector/). These are separate from the MIT core and `@zumer/snapdom-plugins`. Preview pages provide samples and current limits. The current previews target SnapDOM 3.0.0-beta.0 or later; consult each product's documentation for supported versions and release status.
+
 ## Scope and limits
 
 Use SnapDOM when a web interface already exists in a real browser and you need images, reusable capture data or plugin exports. It handles browser features such as open Shadow DOM, pseudo-elements, CSS variables, transforms and webfonts, subject to resource access and browser rendering limits.
 
-It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. The PDF plugin is image-based, without selectable text or semantic pagination. Use a browser automation tool when the task requires navigation or rendering a remote URL.
+It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. Core SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. The MIT `pdfImage` plugin is image-based, without selectable text or semantic pagination. Use a browser automation tool when the task requires navigation or rendering a remote URL.
 
 ## Project links
 
