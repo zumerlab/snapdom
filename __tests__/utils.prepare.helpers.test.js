@@ -72,6 +72,54 @@ describe('forceContentVisibility (#281)', () => {
     expect(() => forceContentVisibility(null)).not.toThrow()
     expect(() => forceContentVisibility(document.createElement('div'))).not.toThrow()
   })
+
+  it('overrides an important author rule and restores the inline priority', () => {
+    const el = document.createElement('div')
+    el.style.setProperty('content-visibility', 'auto', 'important')
+    document.body.appendChild(el)
+    const undo = forceContentVisibility(el)
+    expect(getComputedStyle(el).contentVisibility).toBe('visible')
+    undo()
+    expect(el.style.getPropertyValue('content-visibility')).toBe('auto')
+    expect(el.style.getPropertyPriority('content-visibility')).toBe('important')
+  })
+
+  it('does not overwrite an application update made during capture', () => {
+    const el = document.createElement('div')
+    el.style.contentVisibility = 'auto'
+    document.body.appendChild(el)
+    const undo = forceContentVisibility(el)
+    el.style.contentVisibility = 'hidden'
+    undo()
+    expect(el.style.contentVisibility).toBe('hidden')
+  })
+
+  it('keeps the override until both concurrent captures finish', () => {
+    const el = document.createElement('div')
+    el.style.contentVisibility = 'auto'
+    document.body.appendChild(el)
+    const first = forceContentVisibility(el)
+    const second = forceContentVisibility(el)
+    first()
+    expect(el.style.contentVisibility).toBe('visible')
+    first() // A cleanup may be called twice; it must release only its own claim.
+    expect(el.style.contentVisibility).toBe('visible')
+    second()
+    expect(el.style.contentVisibility).toBe('auto')
+  })
+
+  it('forces an important stylesheet rule without leaving an empty style attribute', () => {
+    const css = document.createElement('style')
+    css.textContent = '.auto-content {content-visibility:auto!important}'
+    const el = document.createElement('div')
+    el.className = 'auto-content'
+    document.body.append(css, el)
+    const undo = forceContentVisibility(el)
+    expect(getComputedStyle(el).contentVisibility).toBe('visible')
+    undo()
+    expect(el.getAttribute('style')).toBeNull()
+    expect(getComputedStyle(el).contentVisibility).toBe('auto')
+  })
 })
 
 describe('stabilizeLayout - one-sided borders', () => {
@@ -114,6 +162,53 @@ describe('stabilizeLayout - one-sided borders', () => {
     expect(getComputedStyle(el).borderTopWidth).toBe('2px')
     expect(getComputedStyle(el).borderTopColor).toBe('rgba(0, 0, 0, 0)')
     undo()
+    expect(el.style.border).toBe('')
+  })
+
+  it('restores border longhands and priorities when border-style was none', () => {
+    const el = document.createElement('div')
+    el.style.cssText = 'outline:2px solid red;border-left-color:blue!important;border-top-width:7px'
+    document.body.appendChild(el)
+    const before = el.style.cssText
+    const undo = stabilizeLayout(el)
+    undo()
+    expect(el.style.cssText).toBe(before)
+  })
+
+  it('keeps border-image declarations intact while applying the shim', () => {
+    const el = document.createElement('div')
+    el.style.cssText = 'outline:2px solid red;border-image-source:linear-gradient(red,blue)'
+    document.body.appendChild(el)
+    const source = el.style.borderImageSource
+    const undo = stabilizeLayout(el)
+    expect(el.style.borderImageSource).toBe(source)
+    undo()
+    expect(el.style.borderImageSource).toBe(source)
+  })
+
+  it('preserves application changes made while the border shim is active', () => {
+    const el = document.createElement('div')
+    el.style.cssText = 'outline:2px solid red;border-left-color:blue!important'
+    document.body.appendChild(el)
+    const undo = stabilizeLayout(el)
+    el.style.borderTop = '3px dashed green'
+    el.style.color = 'purple'
+    undo()
+    expect(el.style.borderTop).toBe('3px dashed green')
+    expect(el.style.borderLeftColor).toBe('blue')
+    expect(el.style.getPropertyPriority('border-left-color')).toBe('important')
+    expect(el.style.color).toBe('purple')
+  })
+
+  it('restores the original border after the last concurrent capture', () => {
+    const el = document.createElement('div')
+    el.style.outline = '2px solid red'
+    document.body.appendChild(el)
+    const first = stabilizeLayout(el)
+    const second = stabilizeLayout(el)
+    first()
+    expect(getComputedStyle(el).borderTopWidth).toBe('2px')
+    second()
     expect(el.style.border).toBe('')
   })
 })

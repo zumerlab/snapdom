@@ -24,6 +24,28 @@ export function extractURL(value) {
 export const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
 const SUPPORTED_IMAGE_SET_TYPE = SUPPORTED_IMAGE_MIME
 
+/** Candidate separators occur outside functions and strings: data URLs and quoted
+ * filenames can contain commas that are part of one image source. */
+function imageSetCandidates(value) {
+  const parts = []
+  let start = 0, depth = 0, quote = ''
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i]
+    if (char === '\\') { i++; continue }
+    if (quote) {
+      if (char === quote) quote = ''
+    } else if (char === '"' || char === "'") quote = char
+    else if (char === '(') depth++
+    else if (char === ')') depth--
+    else if (char === ',' && depth === 0) {
+      parts.push(value.slice(start, i))
+      start = i + 1
+    }
+  }
+  parts.push(value.slice(start))
+  return parts
+}
+
 /**
  * Picks the best-matching URL out of a CSS `image-set()`/`-webkit-image-set()` value for a
  * given device pixel ratio — the smallest declared resolution that's >= targetDppx, or the
@@ -37,7 +59,7 @@ export function resolveImageSetURL(value, targetDppx = 1) {
   const m = value.match(/^\s*-?(?:webkit-)?image-set\(([\s\S]*)\)\s*$/i)
   if (!m) return null
   const candidates = []
-  for (const part of m[1].split(',')) {
+  for (const part of imageSetCandidates(m[1])) {
     const urlMatch = part.match(/url\((['"]?)(.*?)(\1)\)/)
     if (!urlMatch) continue
     // The browser's own image-set() selection skips candidates whose type() it can't

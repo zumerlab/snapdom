@@ -228,8 +228,7 @@ function makeClipHusk(node, sessionCache, options) {
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error('Invalid node')
   const clonedAssignedNodes = new Set()
-  let pendingSelectValue = null
-  let pendingSelectedFlags = null
+  let pendingSelectedOptions = null
   let pendingTextAreaValue = null
   if (node.nodeType === Node.ELEMENT_NODE) {
     const tag = (node.localName || node.tagName || '').toLowerCase()
@@ -539,10 +538,9 @@ export async function deepClone(node, sessionCache, options) {
   }
 
   if (isTag(node, 'select')) {
-    pendingSelectValue = node.value
-    // `value` is single-valued, so round-tripping a <select multiple> through it kept only
-    // the first selected option and silently dropped the rest. Carry the whole selection.
-    if (node.multiple) pendingSelectedFlags = Array.from(node.options).map((o) => o.selected)
+    // Values need not be unique, and excluded options change positional indices. Retain
+    // source identity so the selected labels survive both cases and multiple selections.
+    pendingSelectedOptions = new Set(Array.from(node.options).filter(option => option.selected))
   }
   if (isTag(node, 'textarea')) {
     pendingTextAreaValue = node.value
@@ -680,20 +678,24 @@ export async function deepClone(node, sessionCache, options) {
   clone.append(...cloneList.filter(clonedChild => !!clonedChild))
 
   // Adjust select value after children are cloned
-  if (pendingSelectedFlags && isTag(clone, 'select')) {
-    const opts = clone.options
-    for (let i = 0; i < opts.length; i++) {
-      if (pendingSelectedFlags[i]) opts[i].setAttribute('selected', '')
-      else opts[i].removeAttribute('selected')
-    }
-  } else if (pendingSelectValue !== null && isTag(clone, 'select')) {
-    clone.value = pendingSelectValue
+  if (pendingSelectedOptions && isTag(clone, 'select')) {
+    let hasSelectedOption = false
     for (const opt of clone.options) {
-      if (opt.value === pendingSelectValue) {
-        opt.setAttribute('selected', '')
-      } else {
-        opt.removeAttribute('selected')
-      }
+      const selected = pendingSelectedOptions.has(sessionCache.nodeMap.get(opt))
+      opt.selected = selected
+      if (selected) opt.setAttribute('selected', '')
+      else opt.removeAttribute('selected')
+      hasSelectedOption ||= selected
+    }
+    if (!hasSelectedOption && !clone.multiple) {
+      // selectedIndex=-1 is a property with no HTML attribute. Without a selected
+      // placeholder, parsing the SVG chooses the first real option and paints its label.
+      const empty = clone.ownerDocument.createElement('option')
+      empty.hidden = true
+      empty.style.setProperty('display', 'none', 'important')
+      empty.setAttribute('selected', '')
+      empty.value = ''
+      clone.appendChild(empty)
     }
   }
   // Same reason as the select above, and the ordering is load-bearing: a textarea's child

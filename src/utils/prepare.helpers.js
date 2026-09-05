@@ -8,6 +8,54 @@
 
 import { isHTMLEl } from './helpers.js'
 
+const activeBorders = new WeakMap()
+const activeVisibility = new WeakMap()
+
+/** Own only the declarations we temporarily change. Concurrent captures share one
+ * override; the last undo restores it, without erasing application edits made meanwhile. */
+function transientStyles(element, declarations, active) {
+  let patch = active.get(element)
+  const style = element.style
+  if (!patch) {
+    const originalCSS = style.cssText
+    const hadStyle = element.hasAttribute('style')
+    const saved = declarations.map(([property, value]) => {
+      const entry = {
+        property,
+        value: style.getPropertyValue(property),
+        priority: style.getPropertyPriority(property),
+      }
+      style.setProperty(property, value, 'important')
+      entry.forcedValue = style.getPropertyValue(property)
+      return entry
+    })
+    patch = { users: 0, saved, originalCSS, forcedCSS: style.cssText, hadStyle }
+    active.set(element, patch)
+  }
+  patch.users++
+  let undone = false
+  return () => {
+    if (undone) return
+    undone = true
+    if (--patch.users) return
+    active.delete(element)
+    // Preserve exact shorthand/order serialization in the ordinary untouched case.
+    if (style.cssText === patch.forcedCSS) style.cssText = patch.originalCSS
+    else for (const entry of patch.saved) {
+      if (style.getPropertyValue(entry.property) !== entry.forcedValue ||
+          style.getPropertyPriority(entry.property) !== 'important') continue
+      if (entry.value) style.setProperty(entry.property, entry.value, entry.priority)
+      else style.removeProperty(entry.property)
+    }
+    if (!patch.hadStyle && !style.length) {
+      // Blink/WebKit lazily serialize CSSOM writes. Flush the attribute first or removing
+      // an attribute that was originally absent can leave a pending empty style behind.
+      element.getAttribute('style')
+      element.removeAttribute('style')
+    }
+  }
+}
+
 /**
  * Give a root that has an outline but no border a transparent border of the outline's width
  * while it is cloned (#179), and return the undo that restores the inline border. The gate is
@@ -17,6 +65,7 @@ import { isHTMLEl } from './helpers.js'
  * @returns {() => void}
  */
 export function stabilizeLayout(element) {
+  if (activeBorders.has(element)) return transientStyles(element, [], activeBorders)
   const style = getComputedStyle(element)
   const outlineStyle = style.outlineStyle
   const outlineWidth = style.outlineWidth
@@ -35,9 +84,14 @@ export function stabilizeLayout(element) {
     parseFloat(style.borderLeftWidth) === 0
 
   if (outlineVisible && borderAbsent) {
-    const original = element.style.border
-    element.style.border = `${outlineWidth} solid transparent`
-    return () => { element.style.border = original }
+    // A border shorthand also resets border-image and destroys independently authored
+    // longhands. Change only the twelve physical declarations the shim needs.
+    const declarations = []
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      declarations.push([`border-${side}-width`, outlineWidth],
+        [`border-${side}-style`, 'solid'], [`border-${side}-color`, 'transparent'])
+    }
+    return transientStyles(element, declarations, activeBorders)
   }
   return () => {}
 }
@@ -63,14 +117,17 @@ export function stabilizeLayout(element) {
  * @returns {() => void}
  */
 export function forceContentVisibility(root, clipRect = null) {
-  const saved = []
+  const undos = []
   const force = (el) => {
     if (!isHTMLEl(el)) return
+    if (activeVisibility.has(el)) {
+      undos.push(transientStyles(el, [], activeVisibility))
+      return
+    }
     const cs = getComputedStyle(el)
     const computed = cs.contentVisibility || cs.getPropertyValue('content-visibility') || ''
     if (computed === 'auto') {
-      saved.push({ el, original: el.style.contentVisibility || '' })
-      el.style.contentVisibility = 'visible'
+      undos.push(transientStyles(el, [['content-visibility', 'visible']], activeVisibility))
     }
   }
   try {
@@ -95,8 +152,6 @@ export function forceContentVisibility(root, clipRect = null) {
     }
   } catch { /* non-blocking */ }
   return () => {
-    for (const { el, original } of saved) {
-      try { el.style.contentVisibility = original } catch {}
-    }
+    for (const undo of undos) { try { undo() } catch {} }
   }
 }
