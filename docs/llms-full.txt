@@ -257,7 +257,7 @@ const capture = await snapdom(element, {
 });
 ```
 
-`data-capture="exclude"` also excludes an element. Core password handling masks password values. Use the `redactInputs` plugin for additional selected fields, and exclude other sensitive content explicitly.
+`data-capture="exclude"` also excludes an element. Core password handling masks password values. Use the `redactInputs` plugin for additional selected fields, private subtrees (`blocks`) and named attributes (`attributes`); see the redaction example below.
 
 For cross-origin resources, configure CORS on the asset server or supply a proxy you control:
 
@@ -332,7 +332,7 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `colorTint()` | Color overlay | color red, opacity 1 |
 | `replaceText()` | Text substitutions in the clone | replacements: array of `{ find: string or RegExp, replace: string }` |
 | `timestampOverlay()` | Timestamp badge | format datetime, position bottom-right |
-| `redactInputs()` | Masks selected form-control values | types, autocomplete, selector, all, mask |
+| `redactInputs()` | Masks input/textarea values, excludes blocks and removes named attributes | types, autocomplete, selector, all, mask, blocks, attributes |
 | `asciiExport()` | `toAscii()` → string | width 80 characters, charset `' .:-=+*#%@'`, invert false |
 | `pdfImage()` | `toPdfImage()` → object URL, also downloads | portrait A4, JPEG quality 0.92, filename capture.pdf |
 | `htmlExport()` | `toHtml()` → string | fullDocument true, filename capture.html |
@@ -342,6 +342,40 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `videoExport()` | `toMp4()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
 
 The PDF plugin puts a JPEG on a single page with margins. It does not provide selectable text or semantic pagination, and `toPdfImage()` is not a Blob-returning API.
+
+### Redaction across outputs
+
+```js
+import { redactInputs, htmlExport, contextExport } from '@zumer/snapdom-plugins';
+
+const capture = await snapdom(element, {
+  plugins: [
+    redactInputs({
+      all: true,
+      blocks: ['.private-panel', '[data-private-block]'],
+      attributes: [
+        { selector: '[data-token]', names: ['data-token'] },
+        { selector: '.customer', names: ['title', 'aria-label'] }
+      ]
+    }),
+    htmlExport(),
+    contextExport({ format: 'json' })
+  ]
+});
+const image = await capture.toPng();
+const html = await capture.toHtml();
+const context = await capture.toContext();
+```
+
+The live page stays unchanged. Field selection uses `types` (default email/tel), `autocomplete` (default cc-*, current-password, new-password, one-time-code), an extra `selector`, or `all: true`. `selector` applies only to inputs and textareas; use `blocks` for other elements. The default mask replaces values with same-length bullets; custom `mask(value, element)` can return another string. Glyph widths can differ, so wrapping can change.
+
+`blocks` accepts a CSS selector or an array and combines with `exclude`. It preserves invisible space by default; `excludeMode: 'remove'` removes the subtree from layout. Removing a blocked capture root throws; use `'hide'` for that capture. Selectors match source elements, including nodes in open shadow trees.
+
+`attributes` accepts `{ selector: string, names: string[] }` rules. Each rule removes exact named attributes and their projections in agent maps and context; names are not wildcard patterns. A `value` rule on an input or textarea clears its displayed value and omits structured `state.value`. Attribute removal does not erase copies in visible text, CSS `content` or bitmap pixels; use `blocks` for the subtree that paints that content. The rules do not search arbitrary text or images for sensitive information.
+
+HTML uses the sanitized clone. `agentMap` and `contextExport` share the field, block and attribute policy for source-derived data, regardless of official plugin order. Existing default field masks still apply when you add block or attribute rules.
+
+Custom masks and nonempty `selector`, `blocks` or `attributes` rules disable unchanged-capture memoization, so they run on every capture. Nonempty block or attribute rules add a final `beforeRender` pass; the experimental `engine: 'html-in-canvas'` then falls back to SVG. Field-only redaction does not add that pass. Full plugin options: https://github.com/zumerlab/snapdom/blob/main/packages/plugins/README.md#redact-inputs.
 
 ### HTML and structured context
 

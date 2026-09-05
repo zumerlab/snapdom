@@ -280,7 +280,7 @@ BROWSER=all npx vitest run __tests__ --browser.headless
 npm run test:pack
 ```
 
-`npm run site` 使用本地构建产物提供文档站点。`npm test` 还会应用 lint 修复。实现说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+`npm run site` 使用本地构建产物提供文档站点。`npm test` 检查 lint，但不会修改文件；如需自动修复，请运行 `npm run lint:fix`。实现说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 贡献者
 

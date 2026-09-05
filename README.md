@@ -280,7 +280,7 @@ BROWSER=all npx vitest run __tests__ --browser.headless
 npm run test:pack
 ```
 
-`npm run site` serves the docs with the local build. `npm test` also applies lint fixes. See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation notes.
+`npm run site` serves the docs with the local build. `npm test` checks lint without changing files; use `npm run lint:fix` to apply fixes. See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation notes.
 
 ## Contributors
 

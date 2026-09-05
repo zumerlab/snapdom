@@ -152,3 +152,42 @@ consistent with contention and timing limits; it does not establish the precise 
 Keep these parallel-run intermittencies visible when running the release gate. The
 intermediate reports are `output/redact-full-final.json` and
 `output/redact-validation-final.json`.
+
+## Website and documentation follow-up
+
+The public reference now includes block/attribute redaction in the plugin catalogue,
+plugin guide and both LLM references. The catalogue lists the declared options of all
+12 official plugins, with corrected lifecycle hooks and native export context details.
+English and Chinese development notes now describe lint as a check, not an automatic edit.
+The existing API/options/plugins/cache hub, framework guides, task guides, showcase and
+labs provide the main navigation; no site redesign was needed.
+
+Thirty-seven demo calls to action now open the showcase directly. The gallery's Fonts
+anchor and the manifest's icon paths were corrected. The obsolete local prompt-export
+demo now uses agentMap/contextExport and presents image, map and outline outputs through
+the current API; unsupported token estimates were removed.
+
+The local site server now uses both the compiled core and the checkout's official plugins,
+including recording helpers sharing that core runtime. Previously it fetched plugins
+from a CDN. HTML previews now use the sandbox that the showcase description promised.
+Route checks cover entries, helpers, invalid paths and preservation of displayed snippets.
+
+Browser checks against the local v3 build passed for 12 showcase captures (forms, fonts,
+Shadow DOM, canvas, iframe, transforms and other styling), HTML/GIF/video exports, all
+three raster formats and four mask captures. The migrated agent demo passed annotated,
+raw-image and clone-only modes. At 390px width, the updated redaction detail fits the
+viewport and its examples link opens the correct guide section. These are functional
+website checks, in addition to the renderer's 231 existing demo comparisons; they do not
+claim exhaustive testing of every live third-party service or animated lab.
+
+Pro preview pages are now explicitly ignored by `/docs/pro/` in `.gitignore`. Their
+pre-existing home/catalogue/LLM/sitemap integration edits and PDF MIME addition remain
+local and uncommitted, with their original 50 additions/10 deletions preserved. No Pro
+page is tracked or included in the npm package manifests. Deploy the committed website
+files rather than uploading this working directory wholesale while those drafts exist.
+
+At publication, select the intended versions/tags for both core and official plugins,
+ensure public CDN imports resolve to those v3 versions, update the prerelease installation
+notice/release notes, and rerun the final release checks. Local browser checks do not prove
+that an unpublished or differently tagged CDN package is available. The parallel-test
+intermittencies recorded above remain visible; this documentation pass did not alter them.

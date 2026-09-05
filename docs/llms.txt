@@ -92,7 +92,7 @@ Import factories from `@zumer/snapdom-plugins` and pass instances through `plugi
 - `colorTint({ color?, opacity? })`: color overlay
 - `replaceText({ replacements })`: text substitutions in the clone
 - `timestampOverlay({ format?, position? })`: timestamp badge
-- `redactInputs({ types?, all?, mask? })`: masks selected form values
+- `redactInputs({ types?, autocomplete?, selector?, all?, mask?, blocks?, attributes? })`: masks input/textarea values, excludes blocks and removes named attributes
 - `asciiExport({ width?, charset? })`: `toAscii()` returns text
 - `pdfImage({ orientation?, filename? })`: `toPdfImage()` downloads a single-page PDF containing a JPEG and returns its object URL
 - `htmlExport({ fullDocument? })`: `toHtml()` returns captured HTML with styles and assets
@@ -102,6 +102,8 @@ Import factories from `@zumer/snapdom-plugins` and pass instances through `plugi
 - `videoExport({ fps?, duration? })`: `toMp4()` records through MediaRecorder, with WebM fallback; inspect `blob.type`
 
 HTML export preserves source markup, including event-handler attributes; treat it as untrusted when serving it. Context and maps describe captured elements; they do not navigate, click or verify actions.
+
+Redaction leaves the live page unchanged. `selector` selects inputs/textareas only; use `blocks: '.private-panel'` for whole subtrees. Blocks honor `excludeMode` (hide by default). `attributes: [{ selector: '[data-token]', names: ['data-token'] }]` removes exact named attributes and their semantic projections. HTML, agent maps and context apply these rules regardless of official plugin order. Attribute removal does not erase copies in visible text, CSS content or pixels. Custom masks and nonempty selector/block/attribute rules disable repeat memoization; block/attribute rules also force the experimental native engine to fall back to SVG. See https://snapdom.dev/docs/plugins/#redaction for examples and limits.
 
 ## Scope and limits
 

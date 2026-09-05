@@ -1487,6 +1487,7 @@
         const result = await snapdom(document.getElementById('xp-html-src'), { plugins: [htmlExport()] });
         const html = await result.toHtml();
         const iframe = document.createElement('iframe');
+        iframe.setAttribute('sandbox', '');
         iframe.title = 'exported document';
         iframe.style.cssText = 'width:100%;height:240px;border:0;border-radius:8px;background:#fff';
         iframe.srcdoc = html;

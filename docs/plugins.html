@@ -544,8 +544,8 @@
       <div class="plugin-card" data-category="transform" data-plugin="redact-inputs">
         <div class="card-top"><div class="plugin-icon">R</div><span class="category-tag">transform</span></div>
         <h3>redact-inputs</h3>
-        <p>Masks selected input and textarea values in the capture. Core already masks passwords.</p>
-        <div class="hooks"><span class="hook-badge">afterClone</span></div>
+        <p>Masks fields, hides private blocks and removes named attributes from images, HTML and structured exports.</p>
+        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">afterClone</span><span class="hook-badge">beforeRender*</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/redact-inputs.js" data-umami-event="Plugins source redact-inputs">Source</a><span class="expand-hint">details</span></div>
       </div>
 
@@ -554,7 +554,7 @@
         <div class="card-top"><div class="plugin-icon">M</div><span class="category-tag">export</span></div>
         <h3>html-export</h3>
         <p>Exports a self-contained HTML snapshot with styles, fonts and images inlined.</p>
-        <div class="hooks"><span class="hook-badge">defineExports</span></div>
+        <div class="hooks"><span class="hook-badge">afterRender</span><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-export.js" data-umami-event="Plugins source html-export">Source</a><a href="./showcase/#html-export-demo" data-umami-event="Plugins demo html-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
@@ -563,7 +563,7 @@
         <div class="card-top"><div class="plugin-icon">G</div><span class="category-tag">export</span></div>
         <h3>gif-export</h3>
         <p>Records the live element frame by frame and returns an animated GIF with toGif().</p>
-        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
+        <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/gif-export.js" data-umami-event="Plugins source gif-export">Source</a><a href="./showcase/#gif-export-demo" data-umami-event="Plugins demo gif-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
@@ -572,7 +572,7 @@
         <div class="card-top"><div class="plugin-icon">V</div><span class="category-tag">export</span></div>
         <h3>video-export</h3>
         <p>Records the live element with toMp4(). The browser selects a supported MP4 or WebM format.</p>
-        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
+        <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/video-export.js" data-umami-event="Plugins source video-export">Source</a><a href="./showcase/#video-export-demo" data-umami-event="Plugins demo video-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
@@ -702,6 +702,8 @@
         hooks: ['defineExports'],
         options: [
           ['orientation', 'string', "'portrait'", "'portrait' | 'landscape'"],
+          ['quality', 'number', '0.92', 'JPEG quality (0-1)'],
+          ['filename', 'string', "'capture.pdf'", 'Download filename'],
         ],
         usage: `import { pdfImage } from '@zumer/snapdom-plugins/pdf-image';\n\nconst result = await snapdom(el, {\n  plugins: [pdfImage({ orientation: 'landscape' })]\n});\nawait result.toPdfImage(); // downloads PDF`
       },
@@ -716,6 +718,9 @@
           ['maxImageWidth', 'number', '1024', 'Downscale target for the image'],
           ['imageFormat', 'string', "'png'", "'png' | 'jpg' | 'webp'"],
           ['imageQuality', 'number', '0.8', 'Quality for lossy formats (0-1)'],
+          ['interactiveSelector', 'string', 'built-in controls', 'CSS selector for interactive elements; replaces the default'],
+          ['semanticSelector', 'string', 'headings and landmarks', 'CSS selector used when semantic is true; replaces the default'],
+          ['labelStyle', 'object', '{}', 'Override numbered badge styles'],
           ['needs', "'clone' | 'render'", "'render'", 'How far the capture runs'],
         ],
         note: 'Map-only captures use image: false and needs: clone. Sensitive field values are redacted in the map; use redactInputs or exclude to hide them in the image too.',
@@ -736,21 +741,24 @@
       },
       'redact-inputs': {
         icon: 'R', category: 'transform',
-        desc: "Masks selected input and textarea values in the capture. Core already masks passwords.",
-        hooks: ['afterClone'],
+        desc: "Masks fields, hides private blocks and removes named attributes from images, HTML and structured exports. The live page stays unchanged.",
+        hooks: ['beforeSnap', 'afterClone', 'beforeRender*'],
         options: [
-          ['types', 'string[]', 'see source', 'input `type` values to redact'],
-          ['autocomplete', 'string[]', 'see source', "autocomplete tokens to redact; a trailing '*' matches a prefix"],
-          ['selector', 'string', "''", 'Extra CSS selector; anything it matches is redacted'],
+          ['types', 'string[]', "['email', 'tel']", 'Input type values to redact'],
+          ['autocomplete', 'string[]', 'cc-*, current-password, new-password, one-time-code', "Autocomplete tokens to redact; a trailing '*' matches a prefix"],
+          ['selector', 'string', "''", 'Extra CSS selector for inputs and textareas only; use blocks for other elements'],
           ['all', 'boolean', 'false', 'Redact all inputs and textareas, ignoring the lists'],
-          ['mask', 'function', '-', '(value, el) => string — custom masker'],
+          ['mask', 'function', 'same-length bullets', '(value, el) => string — custom masker'],
+          ['blocks', 'string | string[]', '[]', 'CSS selectors for subtrees to exclude, using the capture excludeMode'],
+          ['attributes', '{ selector: string, names: string[] }[]', '[]', 'Remove exact named attributes from matching source elements and semantic projections; no wildcards'],
         ],
-        usage: `import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';\n\nconst result = await snapdom(el, {\n  plugins: [redactInputs({ all: true })]\n});`
+        note: 'Core already masks passwords. Blocks preserve invisible space by default; use excludeMode: remove to drop their layout. HTML, agent-map and context-export share these rules regardless of official plugin order. Attribute removal does not erase copies in visible text, CSS content or pixels; block that subtree instead. Custom masks and nonempty selector, blocks or attributes rules disable repeat memoization. *Nonempty blocks or attributes add beforeRender and force the experimental native engine to fall back to SVG. <a href="./docs/plugins/#redaction">Examples and limits</a>.',
+        usage: `import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';\n\nconst result = await snapdom(el, {\n  plugins: [redactInputs({\n    all: true,\n    blocks: ['.private-panel', '[data-private-block]'],\n    attributes: [\n      { selector: '[data-token]', names: ['data-token'] },\n      { selector: '.customer', names: ['title', 'aria-label'] }\n    ]\n  })]\n});`
       },
       'html-export': {
         icon: 'M', category: 'export',
         desc: "Exports a self-contained HTML snapshot with styles, fonts and images inlined.",
-        hooks: ['defineExports'],
+        hooks: ['afterRender', 'defineExports'],
         options: [
           ['fullDocument', 'boolean', 'true', 'Return a complete document; false returns styles plus an HTML fragment'],
           ['filename', 'string', "'capture.html'", 'Download filename when opts.download is set'],
@@ -760,27 +768,31 @@
       'gif-export': {
         icon: 'G', category: 'export',
         desc: "Records the live element frame by frame and returns an animated GIF with toGif().",
-        hooks: ['beforeSnap', 'defineExports'],
+        hooks: ['defineExports'],
         options: [
           ['fps', 'number', '10', 'Frames per second'],
           ['duration', 'number', '2000', 'Total duration in ms (ignored if frames is set)'],
           ['frames', 'number', '—', 'Explicit frame count (overrides duration)'],
           ['maxColors', 'number', '256', 'Palette size per frame (2-256)'],
           ['background', 'string', "'#ffffff'", 'Color composited under transparent pixels'],
+          ['scale', 'number', 'capture scale', 'Capture scale for the recorded frames'],
           ['repeat', 'number', '0', 'Loop count (0 = forever, -1 = play once)'],
+          ['filename', 'string', "'capture.gif'", 'Download filename'],
         ],
         usage: `import { gifExport } from '@zumer/snapdom-plugins/gif-export';\n\nconst result = await snapdom(el, {\n  plugins: [gifExport()]\n});\nconst blob = await result.toGif({ fps: 12, duration: 1500 });\n// result.toGif({ download: 'spinner.gif' })`
       },
       'video-export': {
         icon: 'V', category: 'export',
         desc: "Records the live element with toMp4(). The browser selects a supported MP4 or WebM format.",
-        hooks: ['beforeSnap', 'defineExports'],
+        hooks: ['defineExports'],
         options: [
           ['fps', 'number', '10', 'Frames per second'],
           ['duration', 'number', '2000', 'Total duration in ms (ignored if frames is set)'],
           ['frames', 'number', '—', 'Explicit frame count (overrides duration)'],
           ['background', 'string', "'#ffffff'", 'Color composited under transparent pixels'],
+          ['scale', 'number', 'capture scale', 'Capture scale for the recorded frames'],
           ['bitrate', 'number', '—', 'videoBitsPerSecond passed to MediaRecorder'],
+          ['filename', 'string', 'capture.mp4 / capture.webm', 'Default follows the recorded container; explicit names are used as supplied'],
         ],
         note: 'Requires MediaRecorder and canvas.captureStream. The output may be MP4 or WebM; Blob.type identifies the actual format.',
         usage: `import { videoExport } from '@zumer/snapdom-plugins/video-export';\n\nconst result = await snapdom(el, {\n  plugins: [videoExport()]\n});\nconst blob = await result.toMp4({ fps: 12, duration: 2000 });\n// Check blob.type for the actual video format`
