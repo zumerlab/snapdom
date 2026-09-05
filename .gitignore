@@ -159,6 +159,7 @@ demos/labs*.html
 
 __tests__/__screenshots__
 __snapshots__
+/output/
 
 .vscode/
 .claude/*
