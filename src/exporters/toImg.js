@@ -1,7 +1,7 @@
 /**
  * The image exporter: a capture's data URL as a sized <img>. Also exported as `toSvg`.
  *
- * The output is the capture's own svg, sized, never a PNG of it. On WebKit that takes work:
+ * The normal output is the capture's own svg, sized. On WebKit that takes work:
  * a scaled svg-as-image corrupts shadows, so the svg text gets the same shadow rewrite
  * toCanvas uses and its own width/height patched to the display size, and only when that
  * fails does the PNG raster step in.
@@ -17,8 +17,8 @@ import { fixSafariShadows, decodeSvgFromDataURL, encodeSvgToDataURL } from './to
  * `width`/`height` win, `scale` applies when neither is set, and the aspect reference is the
  * post-bleed viewBox (`meta.vbW/vbH`) rather than the element box, so an asymmetric
  * outerShadows bleed does not stretch the picture. With `scale` the svg's own width/height
- * are patched too, and the image is decoded AGAIN after that write: assigning src restarts
- * decoding, and the first decode says nothing about the new one. On Safari any scale or size
+ * are patched before decode when the header supplies the dimensions. Assigning src restarts
+ * decoding, so the final URL must always finish decoding. On Safari any scale or size
  * runs the vector path described above, with PNG rasterize as its error fallback.
  * Pinned by __tests__/exporter.toImg.test.js and __tests__/exporter.safariPaths.test.js.
  * @param {string} url - the capture's data URL
@@ -69,11 +69,35 @@ export async function toImg(url, options) {
       return rasterize(url, { ...options, format: 'png', quality: 1, meta })
     }
   }
+  // Normal SVG captures declare their natural dimensions in the header. Resolve a scale
+  // before loading, so a large payload is decoded once at its final size. Unusual SVGs with
+  // relative/missing dimensions retain the measured fallback below.
+  let source = url
+  let scaledSvg = false
+  if (!hasW && !hasH && scale !== 1 && typeof url === 'string' && url.startsWith('data:image/svg+xml')) {
+    try {
+      const svg = decodeSvgFromDataURL(url)
+      const head = (svg.match(/<svg\b[^>]*>/i) || [])[0] || ''
+      const w = Number((head.match(/\bwidth="([\d.]+)"/i) || [])[1])
+      const h = Number((head.match(/\bheight="([\d.]+)"/i) || [])[1])
+      if (w > 0 && h > 0) {
+        const next = head.replace(/\bwidth="[^"]*"/i, `width="${Math.round(w * scale)}"`)
+          .replace(/\bheight="[^"]*"/i, `height="${Math.round(h * scale)}"`)
+        source = encodeSvgToDataURL(svg.replace(head, next))
+        scaledSvg = true
+      }
+    } catch { /* resolve unusual inputs from the decoded image below */ }
+  }
   const img = new Image()
   img.decoding = 'sync'
   img.loading = 'eager'
-  img.src = url
-  await img.decode()
+  img.src = source
+  try { await img.decode() } catch (error) {
+    if (!scaledSvg) throw error
+    img.src = url
+    scaledSvg = false
+    await img.decode()
+  }
   if (hasW && hasH) {
     img.style.width = `${width}px`
     img.style.height = `${height}px`
@@ -94,11 +118,11 @@ export async function toImg(url, options) {
     img.style.height = `${height}px`
     img.style.width = `${Math.round(refW * k)}px`
   } else {
-    const cssW = Math.round(img.naturalWidth * scale)
-    const cssH = Math.round(img.naturalHeight * scale)
+    const cssW = Math.round(img.naturalWidth * (scaledSvg ? 1 : scale))
+    const cssH = Math.round(img.naturalHeight * (scaledSvg ? 1 : scale))
     img.style.width = `${cssW}px`
     img.style.height = `${cssH}px`
-    if (typeof url === 'string' && url.startsWith('data:image/svg+xml')) {
+    if (!scaledSvg && scale !== 1 && typeof url === 'string' && url.startsWith('data:image/svg+xml')) {
       try {
         const decoded = decodeURIComponent(url.split(',')[1])
         const patched = decoded

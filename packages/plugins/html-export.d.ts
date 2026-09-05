@@ -27,3 +27,5 @@ export interface ToHtmlOptions extends HtmlExportOptions {
  * attributes the original nodes had. Treat it as untrusted content when you serve it.
  */
 export declare function htmlExport(options?: HtmlExportOptions): SnapdomPlugin;
+
+export default htmlExport;

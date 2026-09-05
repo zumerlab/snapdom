@@ -22,7 +22,7 @@ import { applyStyleClass, wrapScrolledClone } from './prepare.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
-import { compressCloneAssets } from '../modules/compress.js'
+import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { universeFor, inlineAllStyles } from '../modules/styles.js'
 import { generateCSSClasses } from '../utils/index.js'
@@ -259,6 +259,10 @@ async function diffCapture(element, state, context) {
   }
   if (!roots.length) return null
 
+  context.__compressedAssets = R.__compressedAssets
+  context.__compressionDensity = R.__compressionDensity
+  context.__compressionRootTransform = R.rootTransform2D
+
   for (const src of roots) {
     // Direct children interact with root margin-collapse neutralization — keep it full.
     if (src.parentElement === element) return null
@@ -294,8 +298,10 @@ async function diffCapture(element, state, context) {
     await resolveBlobUrlsInTree(sub, sessionCache)
     sanitizeCloneForXHTML(sub)
     try { await ligatureIconToImage(sub, src, delta) } catch { /* parity with full: non-blocking */ }
-    await inlineImages(sub, context)
-    await inlineBackgroundImages(src, sub, R.styleCache, context, delta)
+    await Promise.all([
+      inlineImages(sub, context),
+      inlineBackgroundImages(src, sub, R.styleCache, context, delta),
+    ])
     if (context.compress) {
       try { await compressCloneAssets(sub, context, delta) } catch { /* parity with full */ }
     }
@@ -327,7 +333,13 @@ async function diffCapture(element, state, context) {
       cs ||= getComputedStyle(srcN)
       if (!sameFrozenLength(cs.getPropertyValue(p), frozen[p])) { drifted = true; break }
     }
-    if (drifted) { __diffStats.reconciled++; await inlineAllStyles(srcN, cloneN, sessionLike, context) }
+    if (drifted) {
+      // A retained image was reduced for its old box. Rebuild from the source if that box
+      // changes, rather than stretching already-discarded pixels during reconciliation.
+      if (context.__compressedAssets?.has(cloneN)) return null
+      __diffStats.reconciled++
+      await inlineAllStyles(srcN, cloneN, sessionLike, context)
+    }
   }
 
   // Class numbering is positional over the sorted key set, so new keys renumber: strip the
@@ -340,7 +352,8 @@ async function diffCapture(element, state, context) {
   const classCSS = (R.classPrefixCSS || '') +
     Array.from(keyToClass.entries()).map(([key, cn]) => `.${cn}{${key}}`).join('')
 
-  return composeAndSerialize(
+  numberCompressedAssets(R.clone, context.__compressedAssets)
+  const url = await composeAndSerialize(
     {
       element,
       options: context,
@@ -358,4 +371,8 @@ async function diffCapture(element, state, context) {
       fontsCSS: R.fontsCSS || ''
     }
   )
+  context.__compressedSnapshot = snapshotCompressedAssets(R.clone, context.__compressedAssets)
+  R.__compressedAssets = context.__compressedAssets
+  R.__compressionDensity = context.__compressionDensity
+  return url
 }

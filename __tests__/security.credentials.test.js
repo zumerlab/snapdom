@@ -105,18 +105,27 @@ describe('credential leak (Phase 0)', () => {
     const host = document.createElement('div')
     host.innerHTML = '<h2>Título</h2><p>Un párrafo largo.</p><button>Acción</button>'
     document.body.appendChild(host)
-    const res = await snapdom(host, { plugins: [agentMap({ semantic: true, image: 'annotated' })], cache: 'disabled' })
+    const res = await snapdom(host, { plugins: [agentMap({ semantic: true, image: 'annotated',
+      labelStyle: { color: 'rgb(220, 0, 0)', backgroundColor: 'rgb(220, 0, 0)', boxShadow: 'none' },
+    })], cache: 'disabled' })
     const out = await res.toAgentMap()
     const semantics = out.map.filter(e => e.isSemanticOnly)
     expect(semantics.length).toBeGreaterThan(0)
-    // Badges live in the annotated clone's overlay — count must equal INTERACTIVE entries.
-    const svg = decodeURIComponent(res.url.split(',')[1])
-    const overlay = svg.match(/data-snap-agent-overlay/g) || []
-    expect(overlay.length).toBeGreaterThan(0)
-    // Badges are <span> children of the overlay carrying the entry index.
-    const overlayMarkup = (svg.split('data-snap-agent-overlay')[1] || '').split('</div>')[0]
-    const badges = (overlayMarkup.match(/<span/g) || []).length
-    const interactive = out.map.length - semantics.length
-    expect(badges).toBe(interactive)
+    // Badges belong to the annotated export, so raw exports of this same capture remain
+    // clean. Paint the label text the same red as its background to sample the centers.
+    const img = new Image()
+    img.src = out.image
+    await img.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(img, 0, 0)
+    for (const entry of out.map) {
+      const [x, y, w, h] = entry.b
+      const pixel = ctx.getImageData(x + w / 2, y + h / 2, 1, 1).data
+      const red = pixel[0] > 150 && pixel[1] < 50 && pixel[2] < 50
+      expect(red).toBe(!entry.isSemanticOnly)
+    }
   })
 })

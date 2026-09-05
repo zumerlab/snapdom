@@ -75,6 +75,9 @@ const safetyScans = new WeakMap()
  *  keep them on the fresh path instead of rebuilding and immediately disposing state on
  *  every capture. Weak ownership means detaching the root still frees the entry. */
 const knownFrameDriven = new WeakSet()
+// Data URLs are immutable; classify each element's current sources only when they change.
+// Weak keys release the last payload with the element. Pinned by core.burst.inlineImages.
+const animationSources = new WeakMap()
 
 /**
  * Memoization engages on an element's FIRST capture (api/snapdom.js): there is no threshold
@@ -182,14 +185,21 @@ export function isAutoBurstSafe(element) {
       if (/^(?:iframe|canvas|video|audio|object|embed|marquee|blink)$/.test(tag)) return false
       if (tag === 'progress' && !el.hasAttribute('value')) return false
       if (/^(?:animate|animatetransform|animatemotion|set)$/.test(tag)) return false
+      let src = ''
       if (tag === 'img') {
         images.push(el)
-        let src = ''
         try { src = el.currentSrc || el.src || '' } catch { }
-        if (containsAnimatedUrl(src)) return false
       }
       if (/^(?:input|textarea|select|option)$/.test(tag)) controls.push(el)
-      if (containsAnimatedUrl(el.getAttribute?.('style') || '')) return false
+      const style = el.getAttribute?.('style') || ''
+      let record = animationSources.get(el)
+      if (src || style) {
+        if (!record || record.src !== src || record.style !== style) {
+          record = { src, style, animated: containsAnimatedUrl(src) || containsAnimatedUrl(style) }
+          animationSources.set(el, record)
+        }
+        if (record.animated) return false
+      } else if (record) animationSources.delete(el)
     }
   }
   safetyScans.set(element, { roots: scopes.slice(1), controls, images })
@@ -488,9 +498,8 @@ function collectScrollNodes(element, state) {
 
 /** State that can change what paints while producing no MutationRecord. It is sampled before
  *  every possible memo serve, so same-task property writes and browser preference changes do
- *  not depend on asynchronous event delivery. The signature is O(1) in subtree size; scoped
- *  events/observers own DOM and interaction changes, while tracked scrollers are sampled
- *  separately. */
+ *  not depend on asynchronous event delivery. Sample the tracked controls/images/scrollers;
+ *  compare their fields directly so a data URL or long textarea is not serialized per hit. */
 function renderStateOf(element, state) {
   const doc = element.ownerDocument || document
   const view = doc.defaultView
@@ -529,13 +538,20 @@ function renderStateOf(element, state) {
   return {
     style: style.join('|'),
     scroll: scroll.join('|'),
-    controls: JSON.stringify(controls),
-    images: JSON.stringify(images),
+    controls,
+    images,
     frameDriven: state.retainedFrameDriven,
   }
 }
 
-function sameRenderState(a, b, key) { return !!a && a[key] === b[key] }
+function sameRenderState(a, b, key) {
+  if (!a) return false
+  const before = a[key], after = b[key]
+  if (before === after) return true
+  if (!Array.isArray(before) || before.length !== after.length) return false
+  for (let i = 0; i < before.length; i++) if (before[i] !== after[i]) return false
+  return true
+}
 
 function animationsInScopes(element, state) {
   const out = new Set()

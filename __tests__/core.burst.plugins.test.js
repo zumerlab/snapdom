@@ -69,11 +69,13 @@ describe('auto-burst × plugins', () => {
     vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15')
     let release
     const gate = new Promise((resolve) => { release = resolve })
-    const ready = vi.spyOn(document.fonts, 'ready', 'get').mockReturnValueOnce(gate)
+    let entered
+    const waiting = new Promise((resolve) => { entered = resolve })
+    vi.spyOn(document.fonts, 'ready', 'get').mockImplementationOnce(() => { entered(); return gate })
     const el = makeEl()
     const options = { embedFonts: true }
     const pending = snapdom(el, options)
-    expect(ready).toHaveBeenCalled()
+    await waiting // preparation now runs inside burst's same-element queue
     try {
       snapdom.plugins({
         name: 'registered-during-font-wait',

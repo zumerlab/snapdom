@@ -15,12 +15,14 @@ export interface VideoExportOptions {
   frames?: number;
   /** Color composited under transparent pixels. */
   background?: string;
+  /** Capture scale; inherits the original capture when omitted. */
   scale?: number;
   /** `videoBitsPerSecond` passed to MediaRecorder. */
   bitrate?: number;
-  /** Download filename; the extension is set to .mp4/.webm automatically. */
+  /** Download filename; the default follows the actual .mp4/.webm container. */
   filename?: string;
 }
 
-/** Adds `result.toVideo()`: records a sequence of captures through MediaRecorder. */
+/** Adds `result.toMp4()`: records through MediaRecorder, with WebM fallback when needed. */
 export declare function videoExport(options?: VideoExportOptions): SnapdomPlugin;
+export default videoExport;

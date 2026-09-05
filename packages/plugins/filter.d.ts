@@ -13,5 +13,5 @@ export interface FilterOptions {
   preset?: 'grayscale' | 'sepia' | 'blur' | 'invert' | 'vintage' | 'dramatic';
 }
 
-/** Applies CSS filter effects to the captured clone. */
+/** Applies CSS filter effects, overriding authored filters. Unchanged captures may reuse a memo. */
 export declare function filter(options?: FilterOptions): SnapdomPlugin;

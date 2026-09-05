@@ -14,5 +14,5 @@ export interface ColorTintOptions {
   opacity?: number;
 }
 
-/** Tints the whole capture using an overlay with `mix-blend-mode`. */
+/** Tints an HTML capture using mix-blend-mode. Opacity zero leaves it unchanged; repeats may reuse a memo. */
 export declare function colorTint(options?: ColorTintOptions): SnapdomPlugin;

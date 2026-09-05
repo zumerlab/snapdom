@@ -61,7 +61,9 @@ export function htmlExport(options = {}) {
      */
     afterRender(state) {
       const container = state.clone?.parentNode;
-      state[BODY] = container ? new XMLSerializer().serializeToString(container) : '';
+      // HTML raw-text elements do not decode XML entities: XMLSerializer turned `>`
+      // and `&` in retained <style> text into different CSS when reopened as HTML.
+      state[BODY] = container ? container.outerHTML : '';
     },
 
     defineExports() {
@@ -71,8 +73,8 @@ export function htmlExport(options = {}) {
           if (typeof frozenBody !== 'string') {
             throw new Error(
               '[snapdom] html-export: this capture produced no render. The plugin\'s afterRender ' +
-              'hook never ran, so there is no markup to export (a capture stopped at needs:\'dom\' ' +
-              'or \'clone\' never reaches the render stage).'
+              'hook never ran, so there is no markup to export (a capture stopped at ' +
+              'needs:\'clone\' never reaches the render stage).'
             );
           }
           const a = ctx.artifacts;
@@ -90,7 +92,10 @@ export function htmlExport(options = {}) {
             const objUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = objUrl;
-            a.download = typeof dl === 'string' ? dl : (opts.filename || filename);
+            const requested = ctx.export?.requestedOptions;
+            a.download = typeof dl === 'string' ? dl
+              : (requested && !Object.hasOwn(requested, 'filename') && opts.filename === ctx.filename
+                ? filename : (opts.filename || filename));
             a.click();
             setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
           }

@@ -36,6 +36,15 @@ async function countPixels(el, rgb) {
 }
 
 describe('inline declarations and stylesheet !important (#328)', () => {
+  test('normalization preserves inline important against a retained ID rule', async () => {
+    const root = mount(document.createElement('div'))
+    root.style.cssText = 'width:100px;height:100px;background:#fff'
+    root.innerHTML = '<style>#ig-important{background:#00c000!important}</style>' +
+      '<div id="ig-important" style="background:#e00000!important;width:80%;height:80px"></div>'
+    expect(await countPixels(root, [0xe0, 0x00, 0x00])).toBeGreaterThan(4000)
+    expect(await countPixels(root, [0x00, 0xc0, 0x00])).toBe(0)
+  }, 30_000)
+
   test('#328: a stylesheet !important still beats the inline declaration', async () => {
     const style = mount(document.createElement('style'))
     style.textContent = '.ig-box{background:#00c000 !important}'

@@ -31,7 +31,7 @@
  * @param {number} [options.maxNodes=800] - Hard cap; output notes truncation
  * @param {boolean} [options.geometry=true] - Include bounding boxes
  * @param {'clone'|'render'} [options.needs='render'] - How far the capture runs.
- *   'dom' skips the clone and the render (~89% cheaper); result.url then throws.
+ *   'clone' skips the render; result.url then throws.
  * @returns {Object} SnapDOM plugin
  */
 
@@ -100,7 +100,9 @@ export function contextExport(options = {}) {
         context: async (ctx, opts = {}) => {
           const snap = ctx.__contextSnapshot
           if (!snap) throw new Error('[snapdom] context-export: this capture carries no snapshot (it never ran beforeClone). It is not re-read on demand — that would be a different instant.')
-          const _format = opts.format ?? format
+          // Core carries its image format in every normalized export bag. Only this
+          // plugin's two formats override its factory default.
+          const _format = opts.format === 'json' || opts.format === 'outline' ? opts.format : format
           const _maxText = opts.maxTextLength ?? maxTextLength
           const _geometry = opts.geometry ?? geometry
 
@@ -223,9 +225,9 @@ function project(node, maxText, geometry) {
   const out = { tag: node.tag }
   if (node.id) out.id = node.id
   if (node.class) out.class = node.class
-  if (geometry && node.box) out.box = node.box
+  if (geometry && node.box) out.box = [...node.box]
   if (node.text) out.text = node.text.length > maxText ? node.text.slice(0, maxText - 1) + '…' : node.text
-  if (node.state) out.state = node.state
+  if (node.state) out.state = { ...node.state }
   if (node.children) out.children = node.children.map((c) => project(c, maxText, geometry))
   return out
 }

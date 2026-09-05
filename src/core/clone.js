@@ -515,6 +515,9 @@ export async function deepClone(node, sessionCache, options) {
       if (node.checked !== void 0) {
         clone.checked = node.checked
         if (node.checked) clone.setAttribute('checked', '')
+        // cloneNode carries the DEFAULT attribute even after the user unchecks the input.
+        // The property alone is lost in XML, so mirror both directions before serialization.
+        else clone.removeAttribute('checked')
         if (node.indeterminate) clone.indeterminate = node.indeterminate
       }
     }

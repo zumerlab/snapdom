@@ -117,8 +117,8 @@ export function getOutsideMutationCount(element) {
  *  getStyleEnvEpoch() instead of wiring their own observers/listeners: one shared stack,
  *  and polling can't root anything (a subscriber callback would leak its closure). */
 let __envEpoch = 0
-export function getStyleEnvEpoch() {
-  setupInvalidationOnce()
+export function getStyleEnvEpoch(doc = document) {
+  setupInvalidationOnce(doc)
   return __envEpoch
 }
 
@@ -136,7 +136,7 @@ export function getStyleEpoch() {
 export function getStyleStamp(element) {
   if (!element) return 0
   setupInvalidationOnce(element.ownerDocument || document)
-  return stampOf(element)
+  return stampOf(element, shadowHostsOf(element))
 }
 
 /** The user's escape hatch (`invalidate: true`), and the ONLY answer to style changes no
@@ -192,8 +192,27 @@ function invalidateAround(el) {
 }
 
 /** The stamp a node's cached snapshot was taken at. */
-function stampOf(el) {
-  return __allStamp * 1e9 + (nodeStamp.get(el) || 0)
+function stampOf(el, hosts = null) {
+  let stamp = nodeStamp.get(el) || 0
+  if (hosts) for (const host of hosts) stamp = Math.max(stamp, nodeStamp.get(host) || 0)
+  return __allStamp * 1e9 + stamp
+}
+
+/** Shadow styles inherit through their hosts. Keep that dependency on the snapshot so a
+ *  warm light-DOM read stays one WeakMap lookup, without walking shadow trees on mutations.
+ *  A move/slot redistribution stamps the host or node and rebuilds this list on the miss. */
+function shadowHostsOf(el) {
+  let root = el.getRootNode?.()
+  if (!root?.host) return null
+  const hosts = []
+  while (root?.host) {
+    // Capturing a child directly never walks its enclosing host in deepClone. Wire that
+    // open root here too, or its internal mutations would have no observer at all.
+    if (root.mode === 'open') observeShadowRoot(root)
+    hosts.push(root.host)
+    root = root.host.getRootNode?.()
+  }
+  return hosts
 }
 
 /** Whether narrowing is sound for this document: no author rule uses `:has()`.
@@ -257,8 +276,9 @@ function ruleSourceDoc(records) {
  *  first flush. Their prune is the host leaving the document, and it drops the WeakSet entry
  *  too so a re-attached host is re-armed.
  *
- *  Stamping is scoped to the tree that changed — shadow CSS is scoped, so a mutation inside
- *  cannot restyle anything but that tree and (via :host / ::slotted) its host. */
+ *  Stamping is scoped to the tree that changed and its host's light subtree: ::slotted and
+ *  inheritance through slots can restyle assigned nodes and their descendants too. Nested
+ *  shadows depend on these hosts through their cached shadowHostsOf list. */
 const shadowObserved = new WeakSet()
 const __shadowObservers = []
 
@@ -272,8 +292,8 @@ function onShadowRecords(records) {
     const root = rec.target.getRootNode && rec.target.getRootNode()
     if (!root || root.nodeType !== 11 || stamped.has(root)) continue
     stamped.add(root)
-    nodeClock++
-    if (root.host) nodeStamp.set(root.host, nodeClock)
+    if (root.host) stampSubtree(root.host)
+    else nodeClock++
     const all = root.querySelectorAll('*')
     for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], nodeClock)
   }
@@ -446,8 +466,8 @@ function invalidateHoverScope(scope, doc) {
   if (scope.nodeType === 11) {
     // Shadow selectors cannot escape this tree except through :host/::slotted. Stamp the
     // whole root and host; this also reaches a capture whose root itself lives in shadow DOM.
-    nodeClock++
-    if (scope.host) nodeStamp.set(scope.host, nodeClock)
+    if (scope.host) stampSubtree(scope.host)
+    else nodeClock++
     for (const el of scope.querySelectorAll('*')) nodeStamp.set(el, nodeClock)
     return
   }
@@ -1033,7 +1053,7 @@ function styleSignature(snap) {
 /** A cached snapshot is current while nothing document-wide happened (env epoch) and nothing
  *  a selector could follow to this node did (its stamp). */
 function snapshotIsCurrent(rec, el) {
-  return rec.env === __envEpoch && rec.stamp === stampOf(el)
+  return rec.env === __envEpoch && rec.stamp === stampOf(el, rec.hosts)
 }
 
 /**
@@ -1313,7 +1333,8 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
     __snapshotSig.set(snap, shared.sig + '\u0002' + dyn.join('\u0001') +
       ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004'))
   }
-  snapshotCache.set(el, { env: __envEpoch, stamp: stampOf(el), snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
+  const hosts = shadowHostsOf(el)
+  snapshotCache.set(el, { env: __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
   return snap
 }
 
@@ -1393,7 +1414,9 @@ function normalizeInlineStyleToComputed(source, clone, computed) {
     const prop = source.style[i]
     if (canSkip && !important.has(prop) && !(prop.startsWith('background') && isTextField(source))) continue
     const val = computed.getPropertyValue(prop)
-    if (val) clone.style.setProperty(prop, val)
+    // A retained <style> can still contain an important ID selector. The live inline
+    // !important wins it; dropping that priority here reverses the cascade in the clone.
+    if (val) clone.style.setProperty(prop, val, source.style.getPropertyPriority(prop))
   }
 }
 
@@ -1472,8 +1495,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (NO_DEFAULTS_TAGS.has(tag)) {
     const stub = {}
     Object.defineProperty(stub, '__needsBgInline', { value: computeNeedsBgInline(pre), enumerable: false })
+    const hosts = shadowHostsOf(source)
     snapshotCache.set(source, {
-      env: __envEpoch, stamp: stampOf(source), snapshot: stub,
+      env: __envEpoch, stamp: stampOf(source, hosts), hosts, snapshot: stub,
       embedFonts: !!(ctx.options && ctx.options.embedFonts),
       excludeStyleProps: (ctx.options && ctx.options.excludeStyleProps) || null,
     })

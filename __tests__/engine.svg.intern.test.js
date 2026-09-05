@@ -68,8 +68,9 @@ describe('svg engine: inline-style interning', () => {
     el.prepend(trap)
     const res = await snapdom(el, { burst: false })
     const svgText = svgTextOf(res.url)
-    // the pass must have run, or the trap below proves nothing
-    if (!isSafari()) expect(svgText).toContain(' data-sdi="')
+    // Attribute-dependent author selectors now conservatively keep styles inline: removing
+    // [style] can change matching inside :not()/:has(), even when it looked harmless before.
+    // The CSS text must remain verbatim whichever safety path this capture takes.
     expect(svgText).toContain('div[ style="never-matches"]')
     expect(svgText).not.toContain('div[ data-sdi=')
   })
@@ -81,5 +82,55 @@ describe('svg engine: inline-style interning', () => {
     document.body.appendChild(host)
     const res = await snapdom(host, { burst: false })
     expect(svgTextOf(res.url)).not.toContain('data-sdi')
+  })
+
+  it.each(['', '!important'])('keeps inline precedence with retained ID and pseudo-element rules (%s)', async (priority) => {
+    const el = repetitiveFixture()
+    el.id = 'intern-cascade'
+    for (const row of el.children) row.style.setProperty('background-color', 'rgb(255,0,0)', priority ? 'important' : '')
+    const css = document.createElement('style')
+    // Pseudo-element rules must not hide normal matches, and commas inside :is() or
+    // attribute strings stay intact when checking retained selectors.
+    const selector = '#intern-cascade :is(div,[data-label="a,b"])'
+    css.textContent = `${selector}::before{content:none}${selector}{background-color:rgb(0,0,255)${priority}}`
+    el.prepend(css)
+    expect(getComputedStyle(el.querySelector('div')).backgroundColor).toBe('rgb(255, 0, 0)')
+    const result = await snapdom(el, { burst: false, embedFonts: false, dpr: 1 })
+    const canvas = await result.toCanvas()
+    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    let red = 0, blue = 0
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] > 180 && data[i + 2] < 80) red++
+      if (data[i + 2] > 180 && data[i] < 80) blue++
+    }
+    expect(red).toBeGreaterThan(ROWS * 2000)
+    expect(blue).toBe(0)
+  })
+
+  it('still interns repetitive styles when retained author rules target unrelated nodes', async () => {
+    const el = repetitiveFixture()
+    const css = document.createElement('style')
+    css.textContent = Array.from({ length: 200 }, (_, i) => `#outside-this-capture-${i}{background:blue}`).join('')
+    el.prepend(css)
+    const doc = new DOMParser().parseFromString(svgTextOf((await snapdom(el, { burst: false })).url), 'image/svg+xml')
+    if (!isSafari()) expect(doc.querySelectorAll('[data-sdi]').length).toBeGreaterThan(70)
+  })
+
+  it('keeps compressed asset styles individually editable for later exports', async () => {
+    const el = repetitiveFixture()
+    el.children[10].setAttribute('data-snapdom-asset', 'asset-0')
+    const doc = new DOMParser().parseFromString(svgTextOf((await snapdom(el, { burst: false })).url), 'image/svg+xml')
+    const asset = doc.querySelector('[data-snapdom-asset="asset-0"]')
+    expect(asset.hasAttribute('style')).toBe(true)
+    expect(asset.hasAttribute('data-sdi')).toBe(false)
+    if (!isSafari()) expect(doc.querySelectorAll('[data-sdi]').length).toBeGreaterThan(30)
+  })
+
+  it('does not duplicate an author data-sdi attribute into malformed XML', async () => {
+    const el = repetitiveFixture()
+    el.children[10].setAttribute('data-sdi', 'author-value')
+    const doc = new DOMParser().parseFromString(svgTextOf((await snapdom(el, { burst: false })).url), 'image/svg+xml')
+    expect(doc.querySelector('parsererror')).toBeNull()
+    expect(doc.querySelector('[data-sdi="author-value"]')).not.toBeNull()
   })
 })

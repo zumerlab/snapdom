@@ -14,5 +14,5 @@ export interface PdfImageOptions {
   filename?: string;
 }
 
-/** Adds `result.toPdfImage()`: the capture as a PNG embedded in a downloadable PDF. */
+/** Adds `result.toPdfImage()`: the capture as a JPEG embedded in a downloadable PDF. */
 export declare function pdfImage(options?: PdfImageOptions): SnapdomPlugin;

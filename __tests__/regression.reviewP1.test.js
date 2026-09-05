@@ -11,7 +11,6 @@ import { snapdom } from '../src/api/snapdom.js'
 import { lineClamp, textEllipsis } from '../src/modules/lineClamp.js'
 import { htmlExport } from '../packages/plugins/html-export.js'
 import { toImg } from '../src/exporters/toImg.js'
-import { isSafari } from '../src/utils/browser.js'
 import { embedCustomFonts } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 
@@ -275,8 +274,8 @@ describe('toImg/toSvg resolves only once the image is decoded', () => {
   /**
    * Deliberately NOT a one-rect svg. A trivial data: URL finishes decoding synchronously in
    * Chromium, so the missing `await` was invisible and the test passed against the bug —
-   * the control has to be able to register. At ~4k nodes the second decode is real work and
-   * the difference shows up as a stale intrinsic size.
+   * the control has to be able to register. Keep a nontrivial payload, and hold the real
+   * decode promise below so the awaited-readiness contract cannot pass by winning a race.
    */
   const svgUrl = (w, h) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
@@ -286,34 +285,35 @@ describe('toImg/toSvg resolves only once the image is decoded', () => {
     '</svg>'
   )
 
-  it('awaits the second decode, not just the first', async () => {
-    // The discriminating assertion, and the only one that is: the scaled path REWRITES
-    // img.src to patch the svg's own width/height, and assigning src restarts decoding.
-    // The decode() the code did await settled for the url that was then thrown away.
-    //
-    // Reading `complete`/`naturalWidth` back does NOT catch this in headless Chromium —
-    // measured both ways, before and after the fix, identical — even though a raw
-    // `img.src = …; img.complete` probe on the same payload reports false. Whatever
-    // absorbs the gap here will not absorb it on a slower decode or another engine, so
-    // count the decodes instead of racing them.
+  it('awaits the single decode of the final scaled URL', async () => {
+    // The final SVG dimensions are now patched BEFORE assigning src. One decode is enough,
+    // but toImg must still await it: observable dimensions alone cannot prove that await.
     const proto = HTMLImageElement.prototype
     const original = proto.decode
     let decodes = 0
-    proto.decode = function (...args) { decodes++; return original.apply(this, args) }
+    let release, entered
+    const held = new Promise(resolve => { release = resolve })
+    const started = new Promise(resolve => { entered = resolve })
+    proto.decode = function (...args) {
+      decodes++
+      const actual = original.apply(this, args)
+      entered()
+      return Promise.all([actual, held]).then(() => undefined)
+    }
     let img
     try {
-      img = await toImg(svgUrl(200, 100), { scale: 3 })
+      let settled = false
+      const pending = toImg(svgUrl(200, 100), { scale: 3 }).then(value => { settled = true; return value })
+      await started
+      await settle()
+      expect(settled).toBe(false)
+      release()
+      img = await pending
     } finally {
+      release()
       proto.decode = original
     }
-    // WebKit takes a different branch entirely: `toImg` keeps the export VECTOR there, so it
-    // patches the svg's width/height BEFORE creating the image and one decode is the correct
-    // count. The bug being pinned is in the other branch, where the patch happens after.
-    expect(decodes).toBe(isSafari() ? 1 : 2)
-    // The decode COUNT is the whole contract here, and it is the only portable statement.
-    // Everything observable about the reassigned image is engine-dependent: Firefox reports
-    // `complete === false` and the pre-patch `naturalWidth` even after decode() resolved,
-    // Chromium reports both post-patch. Asserting either would pin a browser, not the fix.
+    expect(decodes).toBe(1)
 
     const canvas = document.createElement('canvas')
     canvas.width = img.naturalWidth

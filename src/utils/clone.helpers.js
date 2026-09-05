@@ -219,16 +219,17 @@ export function freezeImgSrcset(original, cloned, options = {}) {
       if (m) contentUrl = m[1]
     }
     const picture = original.closest?.('picture')
-    // A data: src needs no resolution, and the currentSrc/src GETTERS would re-serialize
-    // its megabytes (20 ms of a gallery pipeline): take the attribute as it is.
+    // A data: src without responsive candidates needs no resolution, and the
+    // currentSrc/src GETTERS would re-serialize its megabytes. With srcset, though,
+    // that attribute is only the fallback: freeze the image the browser selected.
     const rawSrc = original.getAttribute('src') || ''
+    const srcset = original.getAttribute('srcset') || ''
     let chosen = contentUrl ||
-      (picture ? findRealUrlForPicture(original, picture) : rawSrc.startsWith('data:') ? rawSrc : original.currentSrc) ||
-      original.src ||
+      (picture ? findRealUrlForPicture(original, picture)
+        : !srcset.trim() && rawSrc.startsWith('data:') ? rawSrc : original.currentSrc) ||
       // Chromium/Firefox leave currentSrc empty until the selected candidate has loaded,
-      // so a srcset-only img would reach inlineImages source-less (srcset gets stripped
-      // there). Pick a candidate explicitly, like the <picture> branch does.
-      pickSrcsetCandidate(original.getAttribute('srcset'), original) || ''
+      // so resolve candidates before falling back to src, even when src is present.
+      pickSrcsetCandidate(srcset, original) || original.src || ''
     // Lazy-load placeholders (tiny data:/blob src with the real URL parked in data-src…):
     // resolve on the CLONE. The old live-DOM resolver swapped the user's element and
     // undid it afterwards — visible flicker and an undo dance for something inlineImages
@@ -832,21 +833,6 @@ export async function blobUrlToDataUrl(blobUrl) {
 
 var BLOB_URL_RE = /\bblob:[^)"'\s]+/g
 
-/** Swap every blob: URL in a CSS string for its data URL. One that fails to read stays. */
-async function replaceBlobUrlsInCssText(cssText) {
-  if (!cssText || cssText.indexOf('blob:') === -1) return cssText
-  const uniques = Array.from(new Set(cssText.match(BLOB_URL_RE) || []))
-  if (uniques.length === 0) return cssText
-  let out = cssText
-  for (const u of uniques) {
-    try {
-      const d = await blobUrlToDataUrl(u)
-      out = out.split(u).join(d)
-    } catch { }
-  }
-  return out
-}
-
 function isBlobUrl(u) {
   return typeof u === 'string' && u.startsWith('blob:')
 }
@@ -897,6 +883,33 @@ function selfAndDescendants(root, selector) {
 export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
   const ctx = sessionCache
+  // Plan UNIQUE resources before awaiting: the previous per-node await serialized every
+  // independent fetch + FileReader, including multiple URLs in one CSS value. Four readers
+  // overlap that latency without decoding an unbounded gallery at once. Shared in-flight
+  // dedupe remains blobUrlToDataUrl's job, including callers outside this traversal.
+  const urls = new Set()
+  const writes = []
+  const resolved = new Map()
+  const queueAttribute = (node, name, url, after) => {
+    urls.add(url)
+    writes.push(() => {
+      if (!resolved.has(url)) return
+      node.setAttribute(name, resolved.get(url))
+      after?.()
+    })
+  }
+  const queueCSS = (css, apply) => {
+    if (!css || !css.includes('blob:')) return
+    const matches = css.match(BLOB_URL_RE) || []
+    if (!matches.length) return
+    for (const url of matches) urls.add(url)
+    writes.push(() => {
+      // Replace complete tokens, not split/join prefixes: blob:x and blob:x-long can
+      // coexist and must never rewrite part of each other's URLs.
+      const out = css.replace(BLOB_URL_RE, url => resolved.get(url) || url)
+      if (out !== css) apply(out)
+    })
+  }
 
   const imgs = selfAndDescendants(root, 'img')
   for (const img of imgs) {
@@ -904,24 +917,23 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       const srcAttr = img.getAttribute('src')
       const effective = srcAttr || img.currentSrc || ''
       if (isBlobUrl(effective)) {
-        const data = await blobUrlToDataUrl(effective)
-        img.setAttribute('src', data)
+        queueAttribute(img, 'src', effective)
       }
       const srcset = img.getAttribute('srcset')
       if (srcset && srcset.includes('blob:')) {
         const parts = parseSrcset(srcset)
-        let changed = false
         for (const p of parts) {
-          if (isBlobUrl(p.url)) {
-            try {
-              p.url = await blobUrlToDataUrl(p.url)
-              changed = true
-            } catch (e) {
-              debugWarn(ctx, 'blobUrlToDataUrl for srcset item failed', e)
-            }
-          }
+          if (isBlobUrl(p.url)) urls.add(p.url)
         }
-        if (changed) img.setAttribute('srcset', stringifySrcset(parts))
+        writes.push(() => {
+          let changed = false
+          for (const p of parts) {
+            if (!resolved.has(p.url)) continue
+            p.url = resolved.get(p.url)
+            changed = true
+          }
+          if (changed) img.setAttribute('srcset', stringifySrcset(parts))
+        })
       }
     } catch (e) {
       debugWarn(ctx, 'resolveBlobUrls for img failed', e)
@@ -934,9 +946,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       const XLINK_NS = 'http://www.w3.org/1999/xlink'
       const href = node.getAttribute('href') || node.getAttributeNS?.(XLINK_NS, 'href')
       if (isBlobUrl(href)) {
-        const d = await blobUrlToDataUrl(href)
-        node.setAttribute('href', d)
-        node.removeAttributeNS?.(XLINK_NS, 'href')
+        queueAttribute(node, 'href', href, () => node.removeAttributeNS?.(XLINK_NS, 'href'))
       }
     } catch (e) {
       debugWarn(ctx, 'resolveBlobUrls for SVG image href failed', e)
@@ -947,22 +957,17 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   for (const el of styled) {
     try {
       const styleText = el.getAttribute('style')
-      if (styleText && styleText.includes('blob:')) {
-        const replaced = await replaceBlobUrlsInCssText(styleText)
-        el.setAttribute('style', replaced)
-      }
+      queueCSS(styleText, replaced => el.setAttribute('style', replaced))
     } catch (e) {
       debugWarn(ctx, 'replaceBlobUrls in inline style failed', e)
     }
   }
 
-  const styleTags = root.querySelectorAll ? root.querySelectorAll('style') : []
+  const styleTags = selfAndDescendants(root, 'style')
   for (const s of styleTags) {
     try {
       const css = s.textContent || ''
-      if (css.includes('blob:')) {
-        s.textContent = await replaceBlobUrlsInCssText(css)
-      }
+      queueCSS(css, replaced => { s.textContent = replaced })
     } catch (e) {
       debugWarn(ctx, 'replaceBlobUrls in style tag failed', e)
     }
@@ -975,11 +980,25 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       try {
         const u = n.getAttribute(attr)
         if (isBlobUrl(u)) {
-          n.setAttribute(attr, await blobUrlToDataUrl(u))
+          queueAttribute(n, attr, u)
         }
       } catch (e) {
         debugWarn(ctx, `resolveBlobUrls for ${attr} failed`, e)
       }
     }
+  }
+  if (!urls.size) return
+  const pending = [...urls]
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
+    while (next < pending.length) {
+      const url = pending[next++]
+      try { resolved.set(url, await blobUrlToDataUrl(url)) } catch (e) {
+        debugWarn(ctx, 'blobUrlToDataUrl failed; keeping original URL', e)
+      }
+    }
+  }))
+  for (const write of writes) {
+    try { write() } catch (e) { debugWarn(ctx, 'resolved blob URL write failed', e) }
   }
 }

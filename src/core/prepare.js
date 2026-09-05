@@ -347,6 +347,9 @@ export async function prepareClone(element, options = {}) {
     clone.style.float = 'none'
     clone.style.clear = 'none'
     clone.style.transform = transform || ''
+    // Individual translate is separate from computed transform. Like its matrix e/f,
+    // its page placement has already been discarded by the root's bbox compensation.
+    clone.style.translate = 'none'
   }
 
   // #75: a <pre>'s top margin pushed its last line out of the capture box.

@@ -29,17 +29,18 @@ describe('deepClone – extra coverage', () => {
     expect(c).not.toBe(t)
   })
 
-  it('freezes <img> srcset using src (no currentSrc) and strips srcset/sizes', async () => {
+  it('freezes a responsive candidate before currentSrc loads and strips srcset/sizes', async () => {
     const img = document.createElement('img')
-    // supply a concrete src so freeze picks it
+    // An inline fallback must not hide the responsive candidates.
     img.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='
     img.setAttribute('srcset', 'a.png 1x, b.png 2x')
     img.setAttribute('sizes', '(max-width: 600px) 100vw, 600px')
 
     const clone = await deepClone(img, session, {})
     expect(clone.tagName).toBe('IMG')
-    // chosen copied to src (WebKit resolves currentSrc from srcset even detached)
-    expect(clone.getAttribute('src')).toMatch(/^(data:image\/|https?:)/)
+    // Selection may retain a relative attribute; the reflected URL resolves it against
+    // the document. Either density candidate is valid for the test browser's DPR.
+    expect(['a.png', 'b.png'].map(url => new URL(url, img.baseURI).href)).toContain(clone.src)
     // stripped by freezeImgSrcset
     expect(clone.hasAttribute('srcset')).toBe(false)
     expect(clone.hasAttribute('sizes')).toBe(false)

@@ -15,7 +15,8 @@ export function myPlugin(options = {}) {
     name: 'my-plugin',
 
     // Pick the hook(s) you need. Delete the rest.
-    // Full lifecycle: beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport
+    // Full lifecycle: beforeSnap → beforeClone → resolveNode → afterClone → beforeRender → afterRender
+    // → defineExports → [beforeExport → exporter → afterExport] → afterSnap
 
     // beforeSnap(ctx) {
     //   // Runs before anything happens. ctx.element is the original DOM node.
@@ -35,15 +36,15 @@ export function myPlugin(options = {}) {
     // },
 
     // afterRender(ctx) {
-    //   // Runs after rendering. ctx.svg is the SVG string.
+    //   // Runs after rendering. ctx.svgString is the SVG source; ctx.meta is the geometry.
     // },
 
-    // beforeExport(ctx) {
-    //   // Runs before export methods are called.
+    // beforeExport(ctx, { format, options }) {
+    //   // Change options to steer this export. Hook return values are ignored.
     // },
 
-    // afterExport(ctx) {
-    //   // Runs after export. Good for cleanup.
+    // afterExport(ctx, { format, options, result }) {
+    //   // Observes each export result. Hook return values are ignored.
     // },
 
     // defineExports() {

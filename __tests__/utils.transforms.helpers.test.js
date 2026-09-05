@@ -229,8 +229,8 @@ describe('readIndividualTransforms', () => {
   })
 
   it('reads a uniform rotate/scale through the Typed OM path', () => {
-    // This Chromium returns generic CSSStyleValue objects, so the reader coerces via String/Number:
-    // uniform scale and rotate resolve correctly (two-axis scale is not representable this way).
+    // Generic CSSStyleValue objects must keep their complete serialization; multi-axis and
+    // zero scale are pinned separately in utils.transforms.individual.test.js.
     const div = document.createElement('div')
     div.style.rotate = '45deg'
     div.style.scale = '2'
@@ -413,14 +413,15 @@ describe('normalizeRootTransforms', () => {
   })
 })
 
-describe('measure host ownership', () => {
-  // readTotalTransformMatrix appends and removes a probe node inside #snapdom-measure-slot.
+describe('fallback measure host ownership', () => {
+  // Relative/calc transforms still need a probe inside #snapdom-measure-slot; ordinary
+  // computed matrices now compose directly without any measurement host or layout flush.
   // The host is snapdom's own, but it was the ONE injected node in the capture path missing
   // the ownership marker, so styles.js classified both childList records as EXTERNAL: every
   // capture of a transformed root bumped the style epoch (dropping the author-stylesheet
   // scan memo) and re-stamped the whole document, invalidating every cached snapshot.
   it('marks the measure host as snapdom-owned', () => {
-    readTotalTransformMatrix({ transform: 'rotate(10deg)', rotate: '0deg', scale: null, translate: null })
+    readTotalTransformMatrix({ translate: 'calc(50% + 1px)', width: 100 })
     const host = document.getElementById('snapdom-measure-slot')
     expect(host).not.toBeNull()
     expect(host.hasAttribute('data-snapdom-internal')).toBe(true)
@@ -433,7 +434,7 @@ describe('measure host ownership', () => {
     snapdomStyles.flushStyleInvalidations()
     const before = snapdomStyles.getStyleEpoch()
 
-    readTotalTransformMatrix({ transform: 'scale(2)', rotate: '0deg', scale: null, translate: null })
+    readTotalTransformMatrix({ translate: 'calc(50% + 1px)', width: 100 })
     await new Promise(r => setTimeout(r, 0))
     snapdomStyles.flushStyleInvalidations()
 

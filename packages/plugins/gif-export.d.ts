@@ -17,6 +17,7 @@ export interface GifExportOptions {
   maxColors?: number;
   /** Color composited under transparent pixels. */
   background?: string;
+  /** Capture scale; inherits the original capture when omitted. */
   scale?: number;
   /** Loop count: 0 = forever, -1 = play once. */
   repeat?: number;
@@ -25,3 +26,4 @@ export interface GifExportOptions {
 
 /** Adds `result.toGif()`: records a sequence of captures into an animated GIF. */
 export declare function gifExport(options?: GifExportOptions): SnapdomPlugin;
+export default gifExport;

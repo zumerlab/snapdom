@@ -83,72 +83,84 @@ export function agentMap(options = {}) {
         fields,
         // The capture's ONE exclusion policy (src/core/context.js). Absent only when a
         // caller drives the hook with a hand-built context.
-        typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER
+        typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER,
+        ctx.outerTransforms
       );
+      meta.labelStyle = { ...labelStyle };
       ctx.__agentMapMeta = meta;
-
-      if (image === 'annotated') {
-        addAnnotations(ctx.clone, meta.map, labelStyle);
-      }
     },
 
-    defineExports() {
+    defineExports(capture) {
       return {
         agentMap: async (ctx, opts = {}) => {
           const meta = ctx.__agentMapMeta;
           const wantImage = opts.image !== undefined ? opts.image : image;
-
-          if (!meta || !meta.map.length) {
-            const out = { dimensions: { width: 0, height: 0 }, map: [] };
-            if (wantImage) out.image = ctx.export.url;
-            return out;
-          }
+          if (!meta) throw new Error('[snapdom] agent-map: this capture carries no frozen map.');
 
           const format = opts.imageFormat || imageFormat;
-          const quality = opts.imageQuality || imageQuality;
-          const maxWidth = opts.maxImageWidth || maxImageWidth;
-
-          // Scale dimensions — whether we rasterize or not, bboxes get resized
-          // to the target output size so callers can overlay them on the image.
-          let w, h, dataURL;
-          if (wantImage) {
-            const img = new Image();
-            img.src = ctx.export.url;
-            await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-            const ratio = img.naturalWidth > maxWidth ? maxWidth / img.naturalWidth : 1;
-            w = Math.round(img.naturalWidth * ratio);
-            h = Math.round(img.naturalHeight * ratio);
-            const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            const mime =
-              format === 'jpg' || format === 'jpeg' ? 'image/jpeg'
-              : format === 'webp' ? 'image/webp'
-              : 'image/png';
-            dataURL = canvas.toDataURL(mime, quality);
-          } else {
-            const sourceW = meta.dimensions.width || 1;
-            const ratio = sourceW > maxWidth ? maxWidth / sourceW : 1;
-            w = Math.round(sourceW * ratio);
-            h = Math.round(meta.dimensions.height * ratio);
-          }
-
-          const sx = w / (meta.dimensions.width || 1);
-          const sy = h / (meta.dimensions.height || 1);
+          const quality = opts.imageQuality ?? imageQuality;
+          const maxWidth = opts.maxImageWidth ?? maxImageWidth;
+          const geometry = ctx.meta;
+          const sourceW = geometry?.vbW || meta.dimensions.width || 1;
+          const sourceH = geometry?.vbH || meta.dimensions.height || 1;
+          const hasW = Number.isFinite(opts.width), hasH = Number.isFinite(opts.height);
+          let w = hasW ? opts.width : hasH ? opts.height * sourceW / sourceH : sourceW * (opts.scale ?? 1);
+          let h = hasH ? opts.height : hasW ? opts.width * sourceH / sourceW : sourceH * (opts.scale ?? 1);
+          w *= opts.dpr ?? 1;
+          h *= opts.dpr ?? 1;
+          const ratio = w > maxWidth ? maxWidth / w : 1;
+          w = Math.max(1, Math.round(w * ratio));
+          h = Math.max(1, Math.round(h * ratio));
+          const sx = w / sourceW, sy = h / sourceH;
+          const dx = (geometry?.contentX || 0) - (geometry?.clip?.x || 0);
+          const dy = (geometry?.contentY || 0) - (geometry?.clip?.y || 0);
+          const frame = geometry ? meta.frame : { x: 0, y: 0, sx: 1, sy: 1 };
 
           const scaledMap = meta.map.map(e => {
             const scaled = { ...e, b: [
-              Math.round(e.b[0] * sx),
-              Math.round(e.b[1] * sy),
-              Math.round(e.b[2] * sx),
-              Math.round(e.b[3] * sy),
+              Math.round((e.b[0] * frame.sx + frame.x + dx) * sx),
+              Math.round((e.b[1] * frame.sy + frame.y + dy) * sy),
+              Math.round(e.b[2] * frame.sx * sx),
+              Math.round(e.b[3] * frame.sy * sy),
             ] };
+            if (e.s) scaled.s = { ...e.s };
+            if (e.a) scaled.a = { ...e.a };
             return scaled;
           });
 
           const out = { dimensions: { width: w, height: h }, map: scaledMap };
-          if (wantImage) out.image = dataURL;
+          if (wantImage) {
+            // Core owns Safari drawing and restoration of compressed originals. Decode at
+            // the original aspect ratio first; Firefox letterboxes an SVG decoded with a
+            // different width/height ratio. Only the finished bitmap is stretched below.
+            const density = Math.max(sx, sy);
+            const opaque = format === 'jpg' || format === 'jpeg' || format === 'webp';
+            const backgroundColor = opaque && (opts.backgroundColor == null || opts.backgroundColor === 'transparent')
+              ? '#ffffff' : opts.backgroundColor;
+            const source = await capture.exports.canvas({ width: sourceW * density, height: null,
+              scale: 1, dpr: 1, canvas: null, crop: null, backgroundColor });
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const draw = canvas.getContext('2d');
+            draw.drawImage(source, 0, 0, w, h);
+            if (wantImage === 'annotated' && scaledMap.some(e => !e.isSemanticOnly)) {
+              // Badges belong to this export, not the frozen base image: raw/annotated
+              // overrides and later exports must never inherit another call's overlay.
+              const layer = document.createElement('div');
+              layer.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+              layer.style.cssText = `width:${w}px;height:${h}px;`;
+              addAnnotations(layer, scaledMap, meta.labelStyle);
+              const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(layer)}</foreignObject></svg>`;
+              const overlay = new Image();
+              overlay.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+              await overlay.decode();
+              draw.drawImage(overlay, 0, 0);
+            }
+            const mime = format === 'jpg' || format === 'jpeg' ? 'image/jpeg'
+              : format === 'webp' ? 'image/webp' : 'image/png';
+            out.image = canvas.toDataURL(mime, quality);
+          }
           return out;
         },
       };
@@ -336,7 +348,7 @@ function renderedChildren(el) {
   return [...sr.children, ...Array.from(el.children).filter((c) => !slotted.has(c))];
 }
 
-function extractMap(element, interactiveSelector, semanticSelector, fields, shouldExclude) {
+function extractMap(element, interactiveSelector, semanticSelector, fields, shouldExclude, outerTransforms) {
   const rootRect = element.getBoundingClientRect();
   const map = [];
   let i = 0;
@@ -371,7 +383,41 @@ function extractMap(element, interactiveSelector, semanticSelector, fields, shou
   return {
     map,
     dimensions: { width: rootRect.width, height: rootRect.height },
+    frame: captureFrame(element, rootRect, outerTransforms),
   };
+}
+
+// gBCR starts at the transformed bounding box; render meta starts at the root's
+// pre-transform origin. Freeze that offset with the map, including individual transforms.
+// Ancestor rotation/perspective and stripping a root rotation cannot be reconstructed from
+// axis-aligned source rectangles; those cases still need a capture-space geometry API.
+function captureFrame(element, rect, outerTransforms = true) {
+  const css = getComputedStyle(element);
+  const w = element.offsetWidth || parseFloat(css.width) || rect.width;
+  const h = element.offsetHeight || parseFloat(css.height) || rect.height;
+  // Core keeps scale/skew but anchors the clone at 0 0 when outer transforms are stripped.
+  const [ox, oy] = outerTransforms !== false ? css.transformOrigin.split(/\s+/).map(parseFloat) : [0, 0];
+  const scale = css.scale && css.scale !== 'none' ? css.scale.split(/\s+/).map(Number) : [1];
+  const rotation = css.rotate && css.rotate !== 'none' ? css.rotate.split(/\s+/) : ['0deg'];
+  const angleText = rotation.pop();
+  const angle = parseFloat(angleText) * (angleText.endsWith('turn') ? 360
+    : angleText.endsWith('grad') ? 0.9 : angleText.endsWith('rad') ? 180 / Math.PI : 1);
+  const axis = rotation.length === 3 ? rotation.map(Number)
+    : rotation.length ? ['x', 'y', 'z'].map(name => Number(name === rotation[0])) : [0, 0, 1];
+  // Firefox marks rotateAxisAngle as 3D even around z, so keep the ordinary 2D path.
+  const rotationMatrix = !axis[0] && !axis[1] ? new DOMMatrix().rotate(Math.sign(axis[2]) * angle)
+    : new DOMMatrix().rotateAxisAngle(...axis, angle);
+  const matrix = rotationMatrix.scale(scale[0], scale[1] ?? scale[0], scale[2] ?? 1)
+    .multiply(new DOMMatrix(css.transform === 'none' ? undefined : css.transform));
+  if (!matrix.is2D) return { x: 0, y: 0, sx: 1, sy: 1 };
+  const corners = [[0, 0], [w, 0], [0, h], [w, h]].map(([x, y]) => ({
+    x: (x - ox) * matrix.a + (y - oy) * matrix.c + ox,
+    y: (x - ox) * matrix.b + (y - oy) * matrix.d + oy,
+  }));
+  const x = Math.min(...corners.map(p => p.x)), y = Math.min(...corners.map(p => p.y));
+  return { x, y,
+    sx: rect.width ? (Math.max(...corners.map(p => p.x)) - x) / rect.width : 1,
+    sy: rect.height ? (Math.max(...corners.map(p => p.y)) - y) / rect.height : 1 };
 }
 
 function buildEntry(el, rootRect, i, fields, kind) {

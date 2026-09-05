@@ -20,6 +20,7 @@ import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
 import { markInternalNode } from '../utils/ownership.js'
+import { restoreCompressedAssets } from '../modules/compress.js'
 
 /**
  * Register global plugins. Returns snapdom, so `snapdom.plugins(p)(el)` reads as one call.
@@ -134,62 +135,6 @@ async function main(element, userOptions) {
   const burst = memoEligible && isAutoBurstSafe(element)
   if (burst) noteCapture(element, userOptions)
 
-  // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
-  // first draw is now handled at draw time by toCanvas's verified-draw ladder):
-  // wait for the fonts the element actually uses, and poke GPU-backed <canvas>
-  // stores so cloneCanvas's toDataURL isn't blank. Both are cheap per capture.
-  // Both exist for the RENDER: a capture that stops earlier embeds no font and clones no
-  // canvas, so this whole block would be pure cost on the path that exists to skip cost.
-  if (rendersPixels && isSafari()) {
-    if (context.embedFonts) {
-      try {
-        // 'auto': wait only on families the document actually declares as webfonts —
-        // waiting on system families costs real time per capture (measured ~30ms on
-        // WebKit) and buys nothing. Explicit true keeps the unconditional wait.
-        const doc = element.ownerDocument || document
-        const docFamilies = new Set()
-        if (context.embedFonts === 'auto') {
-          try { for (const f of doc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase()) } catch { /* no Font Loading API */ }
-          if (docFamilies.size === 0) throw null // nothing to wait for
-        }
-        // One walk serves both consumers: fontsPhase reuses this usage instead of
-        // re-walking the subtree (a few frames staler after ensureFontsReady's wait —
-        // narrow missing-glyph exposure, accepted). Clip captures don't thread it:
-        // their fontsPhase walk is clip-scoped, and full-subtree usage would regress
-        // the clip font-subset optimization.
-        const usage = collectFontUsage(element)
-        if (!context.clip) context.__fontUsage = usage
-        const required = usage.required
-        let families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
-        if (context.embedFonts === 'auto') {
-          families = new Set([...families].filter((f) => docFamilies.has(f.toLowerCase())))
-          if (families.size === 0) throw null
-        }
-        await ensureFontsReady(families, 1)
-      } catch { /* non-blocking */ }
-    }
-    // querySelectorAll never matches element itself — a capture root that IS the <canvas>
-    // (e.g. snapdom(canvasEl) for a single chart) must be poked too.
-    const canvases = Array.from(element.querySelectorAll('canvas'))
-    if (element.tagName === 'CANVAS') canvases.unshift(element)
-    for (const c of canvases) {
-      try {
-        // Only poke a canvas that already HAS a context. getContext('2d') on one the page has
-        // not initialized yet creates it and fixes the element's mode for good, so the app's
-        // own later getContext('webgl') returns null — snapdom must not be able to break the
-        // page it is photographing. A canvas with content necessarily has a context (nothing
-        // can be drawn without one), and isBlankCanvas reads it through a scratch canvas,
-        // which binds nothing. A blank one has nothing for the poke to materialize anyway,
-        // and cloneCanvas still runs its own rAF + retry ladder for the GPU-backed case.
-        if (isBlankCanvas(c)) continue
-        const ctx = c.getContext('2d', { willReadFrequently: true })
-        if (ctx) ctx.getImageData(0, 0, 1, 1)
-      } catch (e) {
-        debugWarn(userOptions, 'safari canvas poke failed', e)
-      }
-    }
-  }
-
   if (!context.snap) {
     // NOT a compat shim: this is the dependency injection that lets clone.helpers capture
     // nested iframes (rasterizeIframe) without importing snapdom back and creating a cycle,
@@ -223,6 +168,64 @@ async function main(element, userOptions) {
 snapdom.capture = async (el, context, _token) => {
   if (_token !== INTERNAL_TOKEN) throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.')
 
+  // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
+  // first draw is now handled at draw time by toCanvas's verified-draw ladder):
+  // wait for the fonts the element actually uses, and poke GPU-backed <canvas>
+  // stores so cloneCanvas's toDataURL isn't blank. Run only on a real capture: a memo
+  // hit already passed font/environment invalidation in burst and needs neither wait.
+  // Pinned by __tests__/api.safari.memoPreparation.test.js.
+  // Both exist for the RENDER: a capture that stops earlier embeds no font and clones no
+  // canvas, so this whole block would be pure cost on the path that exists to skip cost.
+  if (stageReaches(context.needs || DEFAULT_STAGE, 'render') && isSafari()) {
+    if (context.embedFonts) {
+      try {
+        // 'auto': wait only on families the document actually declares as webfonts —
+        // waiting on system families costs real time per capture (measured ~30ms on
+        // WebKit) and buys nothing. Explicit true keeps the unconditional wait.
+        const doc = el.ownerDocument || document
+        const docFamilies = new Set()
+        if (context.embedFonts === 'auto') {
+          try { for (const f of doc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase()) } catch { /* no Font Loading API */ }
+          if (docFamilies.size === 0) throw null // nothing to wait for
+        }
+        // One walk serves both consumers: fontsPhase reuses this usage instead of
+        // re-walking the subtree (a few frames staler after ensureFontsReady's wait —
+        // narrow missing-glyph exposure, accepted). Clip captures don't thread it:
+        // their fontsPhase walk is clip-scoped, and full-subtree usage would regress
+        // the clip font-subset optimization.
+        const usage = collectFontUsage(el)
+        if (!context.clip) context.__fontUsage = usage
+        const required = usage.required
+        let families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
+        if (context.embedFonts === 'auto') {
+          families = new Set([...families].filter((f) => docFamilies.has(f.toLowerCase())))
+          if (families.size === 0) throw null
+        }
+        await ensureFontsReady(families, 1, doc)
+      } catch { /* non-blocking */ }
+    }
+    // querySelectorAll never matches the element itself — a capture root that IS the <canvas>
+    // (e.g. snapdom(canvasEl) for a single chart) must be poked too.
+    const canvases = Array.from(el.querySelectorAll('canvas'))
+    if (el.tagName === 'CANVAS') canvases.unshift(el)
+    for (const c of canvases) {
+      try {
+        // Only poke a canvas that already HAS a context. getContext('2d') on one the page has
+        // not initialized yet creates it and fixes the element's mode for good, so the app's
+        // own later getContext('webgl') returns null — snapdom must not be able to break the
+        // page it is photographing. A canvas with content necessarily has a context (nothing
+        // can be drawn without one), and isBlankCanvas reads it through a scratch canvas,
+        // which binds nothing. A blank one has nothing for the poke to materialize anyway,
+        // and cloneCanvas still runs its own rAF + retry ladder for the GPU-backed case.
+        if (isBlankCanvas(c)) continue
+        const ctx = c.getContext('2d', { willReadFrequently: true })
+        if (ctx) ctx.getImageData(0, 0, 1, 1)
+      } catch (e) {
+        debugWarn(context, 'safari canvas poke failed', e)
+      }
+    }
+  }
+
   const url = await captureDOM(el, context)
   return buildResult(url, context)
 }
@@ -253,6 +256,39 @@ async function buildResult(url, context) {
   const urlOf = () => (mintedUrl ??= engineCanvas.toDataURL())
   const pixelSource = engineCanvas || url
   if (engineCanvas) url = ''
+
+  // Keep the captured originals, not live DOM, for exports whose resolution grows later.
+  // Clone registries stay with burst; a result only owns its frozen string records.
+  const originals = context.__compressedSnapshot
+  const density = context.__compressionDensity
+  delete context.__compressedSnapshot
+  delete context.__compressedAssets
+  let originalUrl
+  const meta = context.meta || {}
+  const hasCaptureSize = Number.isFinite(context.width) || Number.isFinite(context.height)
+  const sizedSVG = hasCaptureSize && !isSafari()
+  const intrinsicX = sizedSVG
+    ? (Number.isFinite(context.width) ? meta.targetW / meta.vbW : meta.targetH / meta.vbH) : 1
+  const intrinsicY = sizedSVG
+    ? (Number.isFinite(context.height) ? meta.targetH / meta.vbH : meta.targetW / meta.vbW) : 1
+  const exportSource = (options) => {
+    if (engineCanvas || !originals?.size) return pixelSource
+    let w = meta.vbW, h = meta.vbH
+    const crop = options.crop
+    if (crop) {
+      w = Math.max(1, Math.min(w, crop.x + crop.width) - Math.max(0, crop.x))
+      h = Math.max(1, Math.min(h, crop.y + crop.height) - Math.max(0, crop.y))
+    }
+    const hasW = Number.isFinite(options.width), hasH = Number.isFinite(options.height)
+    // Cropping preserves the SVG header's density and uses its decoded aspect ratio;
+    // width-only/height-only exports can therefore magnify the other axis as well.
+    const requested = (hasW && hasH ? Math.max(options.width / w, options.height / h)
+      : hasW ? options.width / w * (crop ? Math.max(1, intrinsicY / intrinsicX) : 1)
+        : hasH ? options.height / h * (crop ? Math.max(1, intrinsicX / intrinsicY) : 1)
+          : (options.scale || 1) * Math.max(intrinsicX, intrinsicY)) * (options.dpr || 1)
+    if (requested <= density) return pixelSource
+    return originalUrl ??= restoreCompressedAssets(urlOf(), originals)
+  }
 
   const rasterEngineImage = async (ctx, opts) => {
     const { rasterize } = await import('../modules/rasterize.js')
@@ -288,36 +324,44 @@ async function buildResult(url, context) {
     img: async (ctx, opts) => {
       if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toImg } = await import('../exporters/toImg.js')
-      return toImg(urlOf(), { ...ctx, ...(opts || {}) })
+      const options = { ...ctx, ...(opts || {}) }
+      return toImg(exportSource(options), options)
     },
     svg: async (ctx, opts) => {
       if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toSvg } = await import('../exporters/toImg.js')
-      return toSvg(urlOf(), { ...ctx, ...(opts || {}) })
+      const options = { ...ctx, ...(opts || {}) }
+      return toSvg(exportSource(options), options)
     },
     canvas: async (ctx, opts) => {
       const { toCanvas } = await import('../exporters/toCanvas.js')
-      return toCanvas(pixelSource, { ...ctx, ...(opts || {}) })
+      const options = { ...ctx, ...(opts || {}) }
+      return toCanvas(exportSource(options), options)
     },
     blob: async (ctx, opts) => {
       const { toBlob } = await import('../exporters/toBlob.js')
-      return toBlob(pixelSource, { ...ctx, ...(opts || {}) })
+      const options = { ...ctx, ...(opts || {}) }
+      return toBlob(exportSource(options), options)
     },
     png: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'png' })
+      const options = { ...ctx, ...(opts || {}), format: 'png' }
+      return rasterize(exportSource(options), options)
     },
     jpeg: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'jpeg' })
+      const options = { ...ctx, ...(opts || {}), format: 'jpeg' }
+      return rasterize(exportSource(options), options)
     },
     webp: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
-      return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'webp' })
+      const options = { ...ctx, ...(opts || {}), format: 'webp' }
+      return rasterize(exportSource(options), options)
     },
     download: async (ctx, opts) => {
       const { download } = await import('../exporters/download.js')
-      return download(pixelSource, { ...ctx, ...(opts || {}) })
+      const options = { ...ctx, ...(opts || {}) }
+      return download(exportSource(options), options)
     },
   }
 

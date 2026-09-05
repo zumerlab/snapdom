@@ -17,7 +17,8 @@ import { markInternalNode } from './ownership.js'
 import {
   bboxWithOriginFull,
   parseTransformOriginPx,
-  readIndividualTransforms
+  readIndividualTransforms,
+  readTotalTransformMatrix
 } from './transforms.helpers.js'
 
 // Clones whose box was frozen by freezeViewportPositioned. Their branch may have lost a
@@ -98,16 +99,9 @@ function findCBAncestor(node, root) {
  */
 export function composeResidual2D(baseTransform, ind) {
   try {
-    let M = new DOMMatrix()
-    if (ind && ind.rotate && ind.rotate !== '0deg') M = M.multiply(new DOMMatrix(`rotate(${ind.rotate})`))
-    if (ind && ind.scale) {
-      const parts = String(ind.scale).trim().split(/\s+/).filter(Boolean)
-      if (parts.length && parts.every(p => Number.isFinite(Number(p)))) {
-        M = M.multiply(new DOMMatrix(`scale(${parts.join(',')})`))
-      }
-    }
-    if (baseTransform) M = M.multiply(new DOMMatrix(baseTransform))
-    return M
+    // Share keyword/unit/3D handling with the root bbox. Individual translation is omitted
+    // deliberately: gBCR already contributes it to the frozen element's page position.
+    return readTotalTransformMatrix({ baseTransform, rotate: ind?.rotate, scale: ind?.scale })
   } catch {
     return null
   }

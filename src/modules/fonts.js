@@ -20,7 +20,7 @@ import { getStyle } from '../utils/css.js'
 import { cache } from '../core/cache'
 import { isIconFont } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
-import { pseudoGatesFor } from './styles.js'
+import { pseudoGatesFor, getStyleEnvEpoch, flushStyleInvalidations } from './styles.js'
 import { nextFrame } from '../utils/browser.js'
 import { markInternalNode } from '../utils/ownership.js'
 
@@ -587,7 +587,7 @@ function docCacheId(doc) {
  * capture's CSS to another. Pinned by __tests__/module.fonts.iframe.test.js and the digest
  * collision case in __tests__/regression.reviewP1.test.js.
  */
-function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers) {
+function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers, envEpoch) {
   const req = Array.from(required || []).sort().join('|')
   // The emitted CSS is SUBSETTED by unicode-range against the codepoints the captured
   // subtree actually uses, so two captures of the same families but different text are not
@@ -615,7 +615,7 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
     subsets: (exclude.subsets || []).map(s => String(s).toLowerCase()).sort(),
   }) : ''
   const lf = (localFonts || [])
-    .map(f => `${(f.family || '').toLowerCase()}::${f.weight || 'normal'}::${f.style || 'normal'}::${f.src || ''}`)
+    .map(f => `${(f.family || '').toLowerCase()}::${f.weight || 'normal'}::${f.style || 'normal'}::${f.stretchPct ?? 100}::${f.src || ''}`)
     .sort()
     .join('|')
   const px = useProxy || ''
@@ -625,7 +625,7 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
   // out meant the first capture of a page decided for every later one: `iconFonts: 'Brand'`
   // and a plain capture of the same subtree shared one entry, and whichever ran first won.
   const ic = (iconMatchers || []).map(rx => String(rx)).sort().join('|')
-  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}::cp=${cp}::n=${n}::ic=${ic}`
+  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}::cp=${cp}::n=${n}::ic=${ic}::env=${envEpoch}`
 }
 
 // ----------------------------------------------------------------------------
@@ -653,6 +653,10 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
  * @param {number} ctx.depth
  */
 async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
+  const view = ctx.doc?.defaultView || window
+  // Conditions are evaluated in the live document, before the face is emitted without
+  // its grouping wrapper into the SVG. Inactive faces must not win its font matching.
+  if (sheet.disabled || (sheet.media?.mediaText && !view.matchMedia(sheet.media.mediaText).matches)) return
   let rules
   try {
     rules = sheet.cssRules || []
@@ -681,6 +685,13 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
 
       const nextCtx = { ...ctx, depth: (ctx.depth || 0) + 1 }
       await collectFacesFromSheet(rule.styleSheet, childHref, emitFace, nextCtx)
+      continue
+    }
+
+    if (rule.cssRules?.length) {
+      if (rule.type === CSSRule.MEDIA_RULE && !view.matchMedia(rule.conditionText).matches) continue
+      if (rule.type === CSSRule.SUPPORTS_RULE && !view.CSS.supports(rule.conditionText)) continue
+      await collectFacesFromSheet(rule, baseHref, emitFace, ctx)
       continue
     }
 
@@ -894,7 +905,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 
-  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers)
+  // Font bytes remain cached by URL, but assembled face CSS depends on current rules and
+  // descriptors. Reuse the shared environment epoch, not a per-capture stylesheet census.
+  // Wire this document before draining so direct/iframe callers also see same-task edits.
+  getStyleEnvEpoch(doc)
+  flushStyleInvalidations()
+  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers, getStyleEnvEpoch(doc))
   if (cache.resource?.has(cacheKey)) {
     return cache.resource.get(cacheKey)
   }
@@ -1031,6 +1047,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   // ---------- 2) CSSOM (inline/imported) ----------
   const ctx = {
+    doc,
     requiredIndex,
     usedCodepoints,
     faceMatchesRequired,
@@ -1043,10 +1060,13 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     depth: 0
   }
 
-  for (const sheet of doc.styleSheets) {
+  // Constructed/adopted sheets do not appear in document.styleSheets, but their faces
+  // participate in the same font matching as ordinary sheets.
+  const sheets = new Set([...doc.styleSheets, ...(doc.adoptedStyleSheets || [])])
+  for (const sheet of sheets) {
     if (sheet.href && linkNodes.some(l => l.href === sheet.href)) continue
     try {
-      const rootHref = sheet.href || (location.origin + '/')
+      const rootHref = sheet.href || doc.baseURI || (location.origin + '/')
       if (rootHref) ctx.visitedSheets.add(rootHref)
       await collectFacesFromSheet(
         sheet,

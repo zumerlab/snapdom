@@ -53,15 +53,18 @@ import {
  *
  * String-level on purpose: the retained clone is never touched, so burst keeps its
  * artifacts and a differential recapture — which re-serializes through this same path —
- * re-interns consistently. A rule carries the exact declaration text the attribute had,
- * so importance is preserved ([data-sdi] at 0,1,0 beats the class CSS by order, matching
- * what the inline attribute did by level). Safari is excluded: fixSafariShadows rewrites
+ * re-interns consistently. A rule carries the exact declaration text the attribute had.
+ * Its 0,1,0 specificity beats generated classes by order, but NOT retained author rules
+ * with IDs (and cannot reproduce inline !important). Those competing signatures stay
+ * inline, as do assets whose styles must remain individually editable by exporters.
+ * Safari is excluded: fixSafariShadows rewrites
  * shadow values in style attributes and has not been taught to look inside the sheet.
  * Pinned by __tests__/engine.svg.intern.test.js.
  * @param {string} foString serialized <foreignObject> markup (first <style> holds the CSS)
+ * @param {Element} fo finished foreignObject, used only if styles compete or assets are editable
  * @returns {string}
  */
-function internInlineStyles(foString) {
+function internInlineStyles(foString, fo) {
   if (isSafari()) return foString
   const styleClose = foString.indexOf('</style>')
   if (styleClose === -1) return foString
@@ -93,11 +96,14 @@ function internInlineStyles(foString) {
   let saved = 0
   for (const [css, n] of counts) { if (n > 1) saved += (n - 1) * css.length }
   if (saved < 2048) return foString
+  if (foString.includes(' data-sdi=')) return foString
+  const protectedStyles = inlineStylesThatMustStay(fo, segments.some(s => !s.intern), foString.includes('data-snapdom-asset'))
+  if (protectedStyles === null) return foString
   const tokens = new Map()
   let nextToken = 0
   const rules = []
   const swap = (full, css) => {
-    if ((counts.get(css) || 0) < 2) return full
+    if ((counts.get(css) || 0) < 2 || protectedStyles.has(css)) return full
     let t = tokens.get(css)
     if (t === undefined) {
       t = 'i' + (nextToken++).toString(36)
@@ -109,6 +115,63 @@ function internInlineStyles(foString) {
   let out = ''
   for (const seg of segments) out += seg.intern ? seg.text.replace(ATTR, swap) : seg.text
   return foString.slice(0, styleClose) + rules.join('') + out
+}
+
+/** Signatures that cannot trade inline precedence for a class-level attribute selector.
+ *  Run only AFTER the byte threshold. Selectors are evaluated against the finished tree;
+ *  conservatively protect every matching element's whole inline block. Unrelated rules
+ *  therefore don't switch the optimization off for the rest of a repetitive capture.
+ *  `null` means we cannot establish safety (CSS nesting/namespace selectors, @import, or
+ *  selectors whose match itself could change when style/data-sdi attributes change).
+ *  No stylesheet is mounted: parsing must never restyle the live page. */
+function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
+  const values = new Set()
+  if (!hasAuthorStyles && !hasEditableAssets) return values
+  if (!fo) return null
+  // Public markers cannot prove our ownership, but avoiding a duplicate XML attribute is
+  // necessary regardless of who placed it. Existing data-sdi makes this capture ineligible.
+  if (fo.querySelector('[data-sdi]')) return null
+  const protect = (node) => {
+    const value = node.getAttribute('style')
+    if (value) values.add(value)
+  }
+  if (hasEditableAssets) fo.querySelectorAll('[data-snapdom-asset][style]').forEach(protect)
+  if (hasAuthorStyles) {
+    try {
+      const walk = (rules) => {
+        for (const rule of rules) {
+          if (rule.type === CSSRule.IMPORT_RULE || rule.type === CSSRule.NAMESPACE_RULE) throw new Error('External or namespaced CSS')
+          if (rule.selectorText) {
+            // Attribute-dependent matching can CHANGE after interning, including inside
+            // :not()/:has(). Protecting only the elements that match today is insufficient.
+            if (/\[\s*style\b|data-sdi|\[[^\]]*\\|&/i.test(rule.selectorText)) throw new Error('Attribute-dependent or nested CSS')
+            fo.querySelectorAll(rule.selectorText).forEach(protect)
+          }
+          if (rule.cssRules) walk(rule.cssRules)
+        }
+      }
+      for (const style of [...fo.querySelectorAll('style')].slice(1)) {
+        const css = style.textContent || ''
+        // Constructed stylesheets silently discard @import; don't let that look safe.
+        if (/@import\b/i.test(css)) return null
+        const sheet = new CSSStyleSheet()
+        sheet.replaceSync(css)
+        walk(sheet.cssRules)
+      }
+    } catch { return null }
+  }
+  // counts contains XML-escaped attribute text, whereas DOM getters return decoded text.
+  // Use the serializer itself (only once per protected signature), so quotes, ampersands
+  // and whitespace follow this engine's exact escaping rules.
+  const encoded = new Set()
+  const probe = document.createElement('div')
+  const serializer = new XMLSerializer()
+  for (const value of values) {
+    probe.setAttribute('style', value)
+    const match = serializer.serializeToString(probe).match(/ style="([^"]*)"/)
+    if (match) encoded.add(match[1])
+  }
+  return encoded
 }
 
 /**
@@ -341,7 +404,9 @@ export async function composeAndSerialize(state, ex) {
         baseTransform: baseTransform2,
         rotate: ind2.rotate || '0deg',
         scale: ind2.scale,
-        translate: ind2.translate
+        translate: ind2.translate,
+        width: w0,
+        height: h0
       })
       const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0)
       const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString())
@@ -510,7 +575,7 @@ export async function composeAndSerialize(state, ex) {
   const rootFontSize = parseFloat(getStyle(elDoc.documentElement)?.fontSize) || 16
   const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">`
   const svgFooter = '</svg>'
-  svgString = svgHeader + internInlineStyles(foString) + svgFooter
+  svgString = svgHeader + internInlineStyles(foString, fo) + svgFooter
   dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
   state.svgString = svgString
   state.dataURL = dataURL

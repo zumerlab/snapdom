@@ -71,6 +71,27 @@ try {
   if (Object.hasOwn(packedPkg.exports || {}, './preCache')) fail('removed /preCache subpath is still exported')
   else pass('removed /preCache subpath is not exported')
   cpSync(join(work, 'package'), join(consumer, 'node_modules', '@zumer', 'snapdom'), { recursive: true })
+  // Official plugins ship separately. Source aliases in vitest/tsconfig cannot prove that
+  // their published subpaths resolve against the packed v3 core.
+  const pluginWork = join(work, 'plugins')
+  mkdirSync(pluginWork)
+  const pluginPack = run('npm', ['pack', '--pack-destination', pluginWork, '--silent'], {
+    cwd: join(ROOT, 'packages', 'plugins'),
+  })
+  const pluginTgz = join(pluginWork, pluginPack.trim().split('\n').pop().trim())
+  run('tar', ['-xzf', pluginTgz, '-C', pluginWork])
+  const pluginPkg = JSON.parse(readFileSync(join(pluginWork, 'package', 'package.json'), 'utf8'))
+  const pluginEntries = Object.entries(pluginPkg.exports)
+  for (const [subpath, path] of pluginEntries) {
+    for (const target of [path, path.replace(/\.js$/, '.d.ts')]) {
+      try { readFileSync(join(pluginWork, 'package', target)); pass(`plugins ${subpath}: ${target}`) }
+      catch { fail(`MISSING plugin entrypoint: ${target}`) }
+    }
+  }
+  // Install both actual tarballs offline: this also catches incompatible peer dependencies.
+  writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', version: '1.0.0', type: 'module', private: true }))
+  run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', tgz, pluginTgz], { cwd: consumer })
+  pass('official plugins install with the packed v3 core')
   // The repo's own tsc, run in place — TypeScript 7 ships its compiler as a platform-specific
   // binary package, so copying node_modules/typescript alone gets you a launcher with nothing
   // to launch. Where tsc lives is irrelevant; resolution follows the consumer's tsconfig.
@@ -79,6 +100,8 @@ try {
   writeFileSync(join(consumer, 'index.ts'), `
 import { snapdom } from '@zumer/snapdom'
 import { registerPlugins, clearPlugins, STAGES } from '@zumer/snapdom/plugins'
+${pluginEntries.map(([subpath], i) => `import * as official${i} from '@zumer/snapdom-plugins${subpath.slice(1)}'`).join('\n')}
+${pluginEntries.map((_, i) => `export const plugins${i} = official${i}`).join('\n')}
 
 export async function use(el: HTMLElement) {
   const res = await snapdom(el, { scale: 2, embedFonts: true })
@@ -122,6 +145,21 @@ export async function use(el: HTMLElement) {
   const checks = [
     ['import root', `import('@zumer/snapdom').then(m => { if (typeof m.snapdom !== 'function') throw new Error('snapdom missing') })`],
     ['import /plugins', `import('@zumer/snapdom/plugins').then(m => { if (typeof m.registerPlugins !== 'function') throw new Error('registerPlugins missing') })`],
+    ['official plugins', `(async () => {
+      const all = await import('@zumer/snapdom-plugins')
+      const { registerPlugins, clearPlugins, getGlobalPlugins } = await import('@zumer/snapdom')
+      for (const subpath of ${JSON.stringify(pluginEntries.map(([key]) => key.slice(1)))}) {
+        const mod = await import('@zumer/snapdom-plugins' + subpath)
+        for (const [name, factory] of Object.entries(mod)) {
+          if (!Object.values(all).includes(factory)) throw new Error('different factory for ' + name)
+          const plugin = factory()
+          if (!plugin.name) throw new Error('unnamed official plugin ' + name)
+          registerPlugins(plugin)
+        }
+      }
+      if (getGlobalPlugins().length !== Object.keys(all).length) throw new Error('plugin registration mismatch')
+      clearPlugins()
+    })()`],
     ['root omits removed APIs', `import('@zumer/snapdom').then(m => {
       if ('preCache' in m || 'prepare' in m) throw new Error('removed named export present')
       if ('preCache' in m.snapdom || 'prepare' in m.snapdom) throw new Error('removed snapdom method present')

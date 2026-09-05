@@ -1,10 +1,10 @@
 /**
- * snapDOM – ultra-fast DOM-to-image capture
+ * SnapDOM — browser capture engine for web interfaces
  * TypeScript definitions (v3)
  *
  * Notes:
  * - Style compression is internal (no public option).
- * - Icon fonts are always embedded; `embedFonts` controls non-icon fonts only.
+ * - Recognized icon fonts are rendered as images; `embedFonts` controls text fonts.
  * - This file preserves backward compatibility with earlier defs.
  */
 
@@ -145,8 +145,8 @@ export interface SnapdomOptions {
    */
   invalidate?: boolean;
 
-  /** true (default): keep the root's translate/rotate. false: strip them (scale/skew kept)
-   *  and recompute the bbox from the remaining 2D matrix. */
+  /** Root translation is normalized in both modes. true (default) keeps rotation;
+   *  false removes rotation, keeps scale/skew and recomputes the bounding box. */
   outerTransforms?: boolean;
   /**
    * Control root shadow/outline bleed. Default false strips root box/text shadows,
@@ -190,7 +190,8 @@ export interface SnapdomOptions {
   excludeStyleProps?: RegExp | ((prop: string) => boolean);
 
   /**
-   * EXPERIMENTAL: 'html-in-canvas' renders raster exports through the WICG html-in-canvas
+   * Renderer: 'svg' by default. The second engine, 'html-in-canvas', is EXPERIMENTAL and
+   * requires a build with SNAPDOM_CANVAS_ENGINE=1. It renders through the WICG html-in-canvas
    * API (ctx.drawElementImage — Chrome 148+ origin trial / chrome://flags/#canvas-draw-element)
    * when available, using the browser's own painter (native form controls, no svg-as-image
    * quirks). Falls back silently to the svg pipeline whenever unsupported/not applicable,
@@ -368,7 +369,8 @@ export interface SnapdomPlugin {
    * or 'render' (the whole pipeline). Default 'render'.
    * The capture runs to the deepest stage any attached plugin declares, so one plugin can
    * only lower it when every other agrees. Below 'render' there is no image: `url`,
-   * `toPng()` and every other export throw, and `result.needs` reports what ran.
+   * `meta` and core image exports throw. Custom plugin exports still work, and
+   * `result.needs` reports what ran.
    */
   needs?: CaptureStage;
 
@@ -467,7 +469,8 @@ export interface CaptureResult {
 
   /**
    * How far this capture ran — the deepest stage its plugins declared. 'render' unless a
-   * plugin lowered it, in which case there is no image and every export throws.
+   * plugin lowered it, in which case core image exports throw. Custom plugin exports
+   * can still return their own data.
    */
   needs: CaptureStage;
 

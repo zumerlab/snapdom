@@ -15,5 +15,5 @@ export interface TimestampOverlayOptions {
   fontSize?: number;
 }
 
-/** Adds a timestamp label to the captured clone. */
+/** Adds a timestamp label, evaluating the clock/formatter again for every capture. */
 export declare function timestampOverlay(options?: TimestampOverlayOptions): SnapdomPlugin;

@@ -1,6 +1,8 @@
 /**
  * filter - Official SnapDOM Plugin
  * Applies CSS filter effects to the captured clone.
+ * Pinned by __tests__/plugins.transforms.v3.test.js.
+ * @module plugins/filter
  *
  * @param {Object} [options]
  * @param {string} [options.filter=''] - CSS filter string, e.g. 'grayscale(1) blur(2px)'
@@ -26,10 +28,12 @@ export function filter(options = {}) {
 
   return {
     name: 'filter',
+    pure: true,
 
     afterClone(ctx) {
       if (!cssFilter) return;
-      ctx.clone.style.filter = cssFilter;
+      // Retained author !important rules must not cancel the explicitly requested effect.
+      ctx.clone.style.setProperty('filter', cssFilter, 'important');
     }
   };
 }

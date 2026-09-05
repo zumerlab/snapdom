@@ -309,12 +309,8 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
     try { scaleStr = readIndividualTransforms(originalEl).scale } catch { }
     try { cloneRoot.style.transform = 'none' } catch { }
     if (!scaleStr) return { a: 1, b: 0, c: 0, d: 1 }
-    // `scale` is unitless: "sx" or "sx sy". Parse straight to a diagonal matrix — it does not
-    // surface in computed `transform`, so a temp-element round-trip would read back identity.
-    const sv = scaleStr.trim().split(/\s+/).map(parseFloat)
-    const sx = Number.isFinite(sv[0]) ? sv[0] : 1
-    const sy = Number.isFinite(sv[1]) ? sv[1] : sx
-    return { a: sx, b: 0, c: 0, d: sy }
+    const M = readTotalTransformMatrix({ scale: scaleStr })
+    return { a: M.a, b: M.b, c: M.c, d: M.d }
   }
 
   // Helper: decompose 2D matrix components (a,b,c,d) into scale+shear without rotation
@@ -339,6 +335,16 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
     }
   }
 
+  // The clone keeps individual scale separately from its rewritten transform. Its bbox
+  // must carry BOTH too; returning only the decomposed transform clips scale + transform
+  // combinations even though either declaration alone appears correct.
+  const withIndividualScale = (dec) => {
+    const scale = readIndividualTransforms(originalEl).scale
+    if (!scale) return dec
+    const M = readTotalTransformMatrix({ scale, baseTransform: `matrix(${dec.a},${dec.b},${dec.c},${dec.d},0,0)` })
+    return { a: M.a, b: M.b, c: M.c, d: M.d }
+  }
+
   // Composite path: decompose 2D; keep scale/skew, drop translate (e,f) and rotation
   const m2d = tr.match(/^matrix\(\s*([^)]+)\)$/i)
   if (m2d) {
@@ -347,7 +353,7 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
       const [a, b, c, d] = nums // ignore e,f
       const dec = decomposeScaleShear(a, b, c, d)
       try { cloneRoot.style.transform = `matrix(${dec.a}, ${dec.b}, ${dec.c}, ${dec.d}, 0, 0)` } catch { }
-      return dec
+      return withIndividualScale(dec)
     }
   }
 
@@ -361,7 +367,7 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
       const a = nums[0], b = nums[1], c = nums[4], d = nums[5]
       const dec = decomposeScaleShear(a, b, c, d)
       try { cloneRoot.style.transform = `matrix(${dec.a}, ${dec.b}, ${dec.c}, ${dec.d}, 0, 0)` } catch { }
-      return dec
+      return withIndividualScale(dec)
     }
   }
 
@@ -370,7 +376,7 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
     const M = new DOMMatrix(tr)
     const dec = decomposeScaleShear(M.a, M.b, M.c, M.d)
     try { cloneRoot.style.transform = `matrix(${dec.a}, ${dec.b}, ${dec.c}, ${dec.d}, 0, 0)` } catch { }
-    return dec
+    return withIndividualScale(dec)
   } catch {
     return null
   }
@@ -448,7 +454,8 @@ export function parseTransformOriginPx(cs, w, h) {
 export function readIndividualTransforms(el) {
   const out = { rotate: '0deg', scale: null, translate: null }
 
-  const map = (typeof el.computedStyleMap === 'function') ? el.computedStyleMap() : null
+  let map = null
+  try { map = (typeof el.computedStyleMap === 'function') ? el.computedStyleMap() : null } catch { /* legacy fallback */ }
   if (map) {
     const safeGet = (prop) => {
       try {
@@ -467,6 +474,9 @@ export function readIndividualTransforms(el) {
         out.rotate = (ang.unit === 'rad')
           ? (ang.value * 180 / Math.PI) + 'deg'
           : (ang.value + ang.unit)
+        if (rot.is2D === false && rot.x && rot.y && rot.z) {
+          out.rotate = `${rot.x.value} ${rot.y.value} ${rot.z.value} ${out.rotate}`
+        }
       } else if (rot.unit) {
         // CSSUnitValue
         out.rotate = rot.unit === 'rad'
@@ -486,9 +496,16 @@ export function readIndividualTransforms(el) {
     if (sc) {
       // Chrome: CSSScale { x: CSSUnitValue, y: CSSUnitValue, z? }
       // Safari TP / spec variants can differ; be permissive:
-      const sx = ('x' in sc && sc.x?.value != null) ? sc.x.value : (Array.isArray(sc) ? sc[0]?.value : Number(sc) || 1)
-      const sy = ('y' in sc && sc.y?.value != null) ? sc.y.value : (Array.isArray(sc) ? sc[1]?.value : sx)
-      out.scale = `${sx} ${sy}`
+      const number = (v) => v && v.value != null ? `${v.value}${v.unit === 'percent' ? '%' : ''}` : null
+      if ('x' in sc && sc.x?.value != null) {
+        out.scale = [number(sc.x), number(sc.y) ?? number(sc.x), ...(sc.is2D === false ? [number(sc.z) ?? '1'] : [])].join(' ')
+      } else if (Array.isArray(sc)) {
+        out.scale = sc.map(number).join(' ')
+      } else {
+        // Chromium/WebKit often return generic CSSStyleValue, including "2 3" and "0".
+        // Number(sc)||1 erased nonuniform AND zero scale. Preserve its complete CSS text.
+        out.scale = String(sc)
+      }
     } else {
       const cs = getComputedStyle(el)
       out.scale = (cs.scale && cs.scale !== 'none') ? cs.scale : null
@@ -498,15 +515,21 @@ export function readIndividualTransforms(el) {
     const tr = safeGet('translate')
     if (tr) {
       // CSSTranslate: { x: CSSNumericValue, y: CSSNumericValue }
-      const tx = ('x' in tr && 'value' in tr.x) ? tr.x.value : (Array.isArray(tr) ? tr[0]?.value : 0)
-      const ty = ('y' in tr && 'value' in tr.y) ? tr.y.value : (Array.isArray(tr) ? tr[1]?.value : 0)
-      const ux = ('x' in tr && tr.x?.unit) ? tr.x.unit : 'px'
-      const uy = ('y' in tr && tr.y?.unit) ? tr.y.unit : 'px'
-      out.translate = `${tx}${ux} ${ty}${uy}`
+      const length = (v) => v && v.value != null ? `${v.value}${v.unit === 'percent' ? '%' : v.unit || 'px'}` : null
+      if ('x' in tr && tr.x?.value != null) {
+        out.translate = [length(tr.x), length(tr.y) ?? '0px', ...(tr.is2D === false ? [length(tr.z) ?? '0px'] : [])].join(' ')
+      } else if (Array.isArray(tr)) {
+        out.translate = tr.map(length).join(' ')
+      } else {
+        out.translate = String(tr)
+      }
     } else {
       const cs = getComputedStyle(el)
       out.translate = (cs.translate && cs.translate !== 'none') ? cs.translate : null
     }
+    if (!out.rotate || out.rotate === 'none') out.rotate = '0deg'
+    if (!out.scale || out.scale === 'none') out.scale = null
+    if (!out.translate || out.translate === 'none') out.translate = null
     return out
   }
 
@@ -523,7 +546,7 @@ var __measureHost = null
 /** The hidden host the transform probe lives in, created on first use and kept for the page's
  *  lifetime, contained so the probe never reaches the page's layout. */
 function getMeasureHost() {
-  if (__measureHost) return __measureHost
+  if (__measureHost?.isConnected) return __measureHost
   const n = document.createElement('div')
   n.id = 'snapdom-measure-slot'
   n.setAttribute('aria-hidden', 'true')
@@ -550,24 +573,72 @@ function getMeasureHost() {
 }
 
 /**
- * Compose `transform` and the individual rotate/scale/translate into one DOMMatrix by giving
- * them to a probe element and reading its computed transform back. `composeResidual2D`
- * (capture.helpers.js) composes the same inputs without the DOM round-trip.
- * @param {{baseTransform?: string, rotate?: string, scale?: string|null, translate?: string|null}} t
+ * Compose in CSS order: translate, rotate, scale, then transform. Computed `transform`
+ * excludes the individual properties, so setting them on a probe and reading that property
+ * silently returned identity for e.g. scale:2. Ordinary computed px/angle/number values
+ * compose directly, with no live-DOM writes or layout flush. Relative lengths/calc use a
+ * bounded probe fallback with the SAME transform functions and the caller's reference box.
+ * @param {{baseTransform?: string, rotate?: string, scale?: string|null, translate?: string|null, width?: number, height?: number}} t
  * @returns {DOMMatrix}
  */
 export function readTotalTransformMatrix(t) {
-  const host = getMeasureHost()
-  const tmp = document.createElement('div')
-  tmp.style.transformOrigin = '0 0'
-  if (t.baseTransform) tmp.style.transform = t.baseTransform
-  if (t.rotate) tmp.style.rotate = t.rotate
-  if (t.scale) tmp.style.scale = t.scale
-  if (t.translate) tmp.style.translate = t.translate
-  host.appendChild(tmp)
-  const M = matrixFromComputed(tmp)
-  host.removeChild(tmp)
-  return M
+  const split = (value) => {
+    const parts = []
+    let depth = 0, start = 0
+    const text = String(value).trim()
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '(') depth++
+      else if (text[i] === ')') depth--
+      else if (/\s/.test(text[i]) && !depth) {
+        if (i > start) parts.push(text.slice(start, i))
+        start = i + 1
+      }
+    }
+    if (start < text.length) parts.push(text.slice(start))
+    return parts
+  }
+  const active = value => value && value !== 'none'
+  const functions = []
+  if (active(t.translate)) {
+    const parts = split(t.translate)
+    for (let i = 0; i < 2 && i < parts.length; i++) {
+      const basis = i === 0 ? t.width : t.height
+      if (/^[+-]?(?:\d*\.)?\d+%$/.test(parts[i]) && Number.isFinite(basis)) {
+        parts[i] = `${parseFloat(parts[i]) * basis / 100}px`
+      }
+    }
+    functions.push(parts.length > 2 ? `translate3d(${parts.join(',')})` : `translate(${parts.join(',')})`)
+  }
+  if (active(t.rotate) && t.rotate !== '0deg') {
+    const parts = split(t.rotate)
+    if (parts.length === 4) functions.push(`rotate3d(${parts.join(',')})`)
+    else if (parts.length === 2 && /^[xyz]$/i.test(parts[0])) functions.push(`rotate${parts[0].toUpperCase()}(${parts[1]})`)
+    else functions.push(`rotate(${parts.join(' ')})`)
+  }
+  if (active(t.scale)) {
+    const parts = split(t.scale).map(value => /%$/.test(value) ? String(parseFloat(value) / 100) : value)
+    functions.push(parts.length > 2 ? `scale3d(${parts.join(',')})` : `scale(${parts.join(',')})`)
+  }
+  if (active(t.baseTransform)) functions.push(t.baseTransform)
+  if (!functions.length) return new DOMMatrix()
+  const transform = functions.join(' ')
+  try {
+    // WebKit accepts calc(% + px) in DOMMatrix but silently resolves % against zero.
+    // A remaining percentage needs an actual reference box even when parsing succeeds.
+    if (transform.includes('%')) throw new Error('Transform needs a reference box')
+    return new DOMMatrix(transform)
+  } catch {
+    const host = getMeasureHost()
+    const tmp = document.createElement('div')
+    // Author div/* !important rules must not change the probe's box or transform.
+    tmp.style.cssText = 'all:initial!important;display:block!important;transform-origin:0 0!important'
+    tmp.style.setProperty('width', `${Number.isFinite(t.width) ? t.width : 0}px`, 'important')
+    tmp.style.setProperty('height', `${Number.isFinite(t.height) ? t.height : 0}px`, 'important')
+    tmp.style.setProperty('transform', transform, 'important')
+    if (!tmp.style.transform) throw new Error('Invalid transform composition')
+    host.appendChild(tmp)
+    try { return matrixFromComputed(tmp) } finally { tmp.remove() }
+  }
 }
 
 /**

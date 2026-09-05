@@ -534,8 +534,8 @@ describe('captureDOM – Typed OM readIndividualTransforms', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 // Strict path: ensure element is attached so computedStyle picks transforms
 // ──────────────────────────────────────────────────────────────────────────────
-describe('captureDOM – strict path uses measure host and matrix pipeline', () => {
-  it('creates snapdom-measure-slot once and reuses it; output includes transform work', async () => {
+describe('captureDOM – computed matrices avoid the measurement host', () => {
+  it('composes matrices without creating probe nodes; output includes transform work', async () => {
     const { captureDOM } = await import('../src/core/capture.js')
 
     // Force the bbox-transform path: a matrix with rotation + translate (not a pure translate)
@@ -548,16 +548,15 @@ describe('captureDOM – strict path uses measure host and matrix pipeline', () 
     vi.spyOn(Element.prototype, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(0, 0, 120, 60))
 
-    // First capture: it should create the measurement host
+    const beforeCount = document.querySelectorAll('#snapdom-measure-slot').length
+    // Computed absolute matrices now take the direct path: no mounting or forced layout.
     const svg1 = decodeSvg(await captureDOM(el, { embedFonts: false }))
-    const host1 = document.getElementById('snapdom-measure-slot')
-    expect(host1).toBeTruthy()
+    expect(document.querySelectorAll('#snapdom-measure-slot').length).toBe(beforeCount)
 
     // Some transform must be applied on the container (cancel/scale/etc.)
     expect(/style="[^"]*transform:[^"]+/.test(svg1)).toBe(true)
 
-    // 2ª captura: reutiliza el mismo host (no duplica nodos)
-    const beforeCount = document.querySelectorAll('#snapdom-measure-slot').length
+    // A repeated capture also introduces no measurement host.
     const svg2 = decodeSvg(await captureDOM(el, { embedFonts: false }))
     const afterCount = document.querySelectorAll('#snapdom-measure-slot').length
     expect(afterCount).toBe(beforeCount)

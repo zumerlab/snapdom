@@ -71,6 +71,46 @@ describe('open shadow roots invalidate their style snapshots', () => {
     expect(await centrePixel(host)).toBe('255,255,0')
   })
 
+  it('inherits a changed host color through a warm shadow snapshot', async () => {
+    const { host } = shadowHost('<style>.box{width:60px;height:60px;background:currentColor}</style><div class="box"></div>')
+    host.style.color = 'rgb(255,0,0)'
+    expect(await centrePixel(host)).toBe('255,0,0')
+    host.style.color = 'rgb(0,0,255)'
+    expect(await centrePixel(host)).toBe('0,0,255')
+  })
+
+  it('inherits changed custom properties through nested shadow hosts', async () => {
+    const { host, root } = shadowHost('<div class="inner"></div>')
+    host.style.setProperty('--paint', 'rgb(255,0,0)')
+    const inner = root.querySelector('.inner').attachShadow({ mode: 'open' })
+    inner.innerHTML = '<style>.box{width:60px;height:60px;background:var(--paint)}</style><div class="box"></div>'
+    expect(await centrePixel(host)).toBe('255,0,0')
+    host.style.setProperty('--paint', 'rgb(0,0,255)')
+    expect(await centrePixel(host)).toBe('0,0,255')
+  })
+
+  it('observes the enclosing shadow root when capturing its child directly', async () => {
+    const { root } = shadowHost('<style>.box{width:60px;height:60px;background:red}.box.changed{background:blue}</style><div class="box"></div>')
+    const child = root.querySelector('.box')
+    expect(await centrePixel(child)).toBe('255,0,0')
+    child.classList.add('changed')
+    expect(await centrePixel(child)).toBe('0,0,255')
+  })
+
+  it('invalidates assigned light content when its slot changes inherited styles', async () => {
+    const { host, root } = shadowHost('<style>slot{color:rgb(255,0,0)}slot.changed{color:rgb(0,0,255)}</style><slot></slot>')
+    const sheet = document.createElement('style')
+    sheet.textContent = '.shadow-slotted-paint{width:60px;height:60px;background:currentColor}'
+    document.head.appendChild(sheet)
+    mounted.push(sheet)
+    const assigned = document.createElement('div')
+    assigned.innerHTML = '<div class="shadow-slotted-paint"></div>'
+    host.appendChild(assigned)
+    expect(await centrePixel(host)).toBe('255,0,0')
+    root.querySelector('slot').classList.add('changed')
+    expect(await centrePixel(host)).toBe('0,0,255')
+  })
+
   // The fix must not become "never cache shadow content": snapshots still have to survive a
   // capture where nothing changed, or every web component pays a cold pass on every frame.
   it('still caches shadow snapshots when nothing changes', async () => {

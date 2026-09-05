@@ -12,12 +12,12 @@
  * @param {number}  [options.frames] - Explicit frame count (overrides duration)
  * @param {number}  [options.maxColors=256] - Palette size per frame (2-256)
  * @param {string}  [options.background='#ffffff'] - Color composited under transparent pixels
- * @param {number}  [options.scale=1] - Capture scale
+ * @param {number}  [options.scale] - Capture scale (inherits the capture when omitted)
  * @param {number}  [options.repeat=0] - Loop count (0 = forever, -1 = play once)
  * @param {string}  [options.filename='capture.gif'] - Download filename
  * @returns {Object} SnapDOM plugin
  */
-import { snapdom } from '@zumer/snapdom';
+import { rememberCanvas, exportOption, frameOptions } from './capture-frames.js';
 
 export function gifExport(options = {}) {
   const {
@@ -26,7 +26,7 @@ export function gifExport(options = {}) {
     frames: frameOpt = null,
     maxColors = 256,
     background = '#ffffff',
-    scale = 1,
+    scale,
     repeat = 0,
     filename = 'capture.gif',
   } = options;
@@ -34,26 +34,26 @@ export function gifExport(options = {}) {
   return {
     name: 'gif-export',
 
-    defineExports() {
+    defineExports(context) {
+      rememberCanvas(context);
       return {
         gif: async (ctx, opts = {}) => {
           const el = ctx.element;
           if (!el) throw new Error('[snapdom] gif-export: no source element on context');
 
-          const _fps = opts.fps ?? fps;
-          const _dur = opts.duration ?? duration;
-          const _count = Math.max(1, opts.frames ?? frameOpt ?? Math.round((_dur / 1000) * _fps));
-          const _max = Math.min(256, Math.max(2, opts.maxColors ?? maxColors));
-          const _bg = opts.background ?? background;
-          const _scale = opts.scale ?? scale ?? ctx.scale ?? 1;
-          const _repeat = opts.repeat ?? repeat;
+          const recording = frameOptions(ctx, opts, { fps, duration, frames: frameOpt, scale, background }, 'gif-export');
+          const { fps: _fps, count: _count, background: _bg } = recording;
+          const colors = exportOption(ctx, opts, 'maxColors', maxColors);
+          if (!Number.isFinite(colors)) throw new RangeError('[snapdom] gif-export: maxColors must be finite');
+          const _max = Math.min(256, Math.max(2, Math.floor(colors)));
+          const _repeat = exportOption(ctx, opts, 'repeat', repeat);
+          if (!Number.isInteger(_repeat) || _repeat < -1 || _repeat > 65535) throw new RangeError('[snapdom] gif-export: repeat must be an integer from -1 to 65535');
           const delayCs = Math.max(2, Math.round(100 / _fps)); // GIF delay unit is 1/100 s
 
           let W = 0, H = 0;
           const frames = [];
           for (let i = 0; i < _count; i++) {
-            const cap = await snapdom(el, { scale: _scale, backgroundColor: _bg });
-            const src = await cap.toCanvas();
+            const src = await recording.next();
             if (i === 0) { W = src.width; H = src.height; }
             const fc = document.createElement('canvas');
             fc.width = W; fc.height = H;
@@ -73,7 +73,7 @@ export function gifExport(options = {}) {
             const objUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = objUrl;
-            a.download = typeof dl === 'string' ? dl : filename;
+            a.download = typeof dl === 'string' ? dl : exportOption(ctx, opts, 'filename', filename);
             a.click();
             setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
           }

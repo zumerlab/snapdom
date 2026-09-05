@@ -1,5 +1,5 @@
 /**
- * Cross-capture caches. The only module-level mutable state the library keeps.
+ * Cross-capture asset caches and shared style defaults.
  *
  * Everything scoped to one capture lives on the session (session.js). What lives here is
  * reused across captures on purpose: fetched assets, per-tag defaults, the clone-in-document
@@ -56,8 +56,8 @@ export const cache = {
   resource: new EvictingMap(MAX_RESOURCE),
   defaultStyle: new EvictingMap(MAX_DEFAULT_STYLE),
   baseStyle: new EvictingMap(MAX_BASE_STYLE),
-  /** Downsampled data URLs keyed by source fingerprint + target size, so repeated captures
-   *  of the same element don't re-decode + re-encode every inlined image. */
+  /** {source, result} records keyed by a sampled lookup hint + target size. compress.js
+   *  verifies exact source equality and also bounds the retained source/result bytes. */
   compress: new EvictingMap(MAX_COMPRESS),
   computedStyle: new WeakMap(),
   /** Persistent cache for clone-in-document layout measurements (PERF-3).

@@ -13,12 +13,12 @@
  * @param {number} [options.duration=2000] - Total duration in ms (ignored if options.frames is set)
  * @param {number} [options.frames] - Explicit frame count (overrides duration)
  * @param {string} [options.background='#ffffff'] - Color composited under transparent pixels
- * @param {number} [options.scale=1] - Capture scale
+ * @param {number} [options.scale] - Capture scale (inherits the capture when omitted)
  * @param {number} [options.bitrate] - videoBitsPerSecond passed to MediaRecorder
- * @param {string} [options.filename] - Download filename (extension auto-set to .mp4/.webm)
+ * @param {string} [options.filename] - Download filename (default follows the recorded container)
  * @returns {Object} SnapDOM plugin
  */
-import { snapdom } from '@zumer/snapdom';
+import { rememberCanvas, exportOption, frameOptions } from './capture-frames.js';
 
 const MIME_CANDIDATES = [
   'video/mp4;codecs=avc1',
@@ -34,7 +34,7 @@ export function videoExport(options = {}) {
     duration = 2000,
     frames: frameOpt = null,
     background = '#ffffff',
-    scale = 1,
+    scale,
     bitrate = null,
     filename = null,
   } = options;
@@ -42,28 +42,27 @@ export function videoExport(options = {}) {
   return {
     name: 'video-export',
 
-    defineExports() {
+    defineExports(context) {
+      rememberCanvas(context);
       return {
         mp4: async (ctx, opts = {}) => {
           if (typeof MediaRecorder === 'undefined') {
             throw new Error('[snapdom] video-export: MediaRecorder is not available in this environment');
           }
+          if (typeof HTMLCanvasElement.prototype.captureStream !== 'function') {
+            throw new Error('[snapdom] video-export: canvas.captureStream is not available in this environment');
+          }
           const el = ctx.element;
           if (!el) throw new Error('[snapdom] video-export: no source element on context');
 
-          const _fps = opts.fps ?? fps;
-          const _dur = opts.duration ?? duration;
-          const _count = Math.max(1, opts.frames ?? frameOpt ?? Math.round((_dur / 1000) * _fps));
-          const _bg = opts.background ?? background;
-          const _scale = opts.scale ?? scale ?? ctx.scale ?? 1;
-          const _bitrate = opts.bitrate ?? bitrate;
+          const recording = frameOptions(ctx, opts, { fps, duration, frames: frameOpt, scale, background }, 'video-export');
+          const { fps: _fps, count: _count, background: _bg } = recording;
+          const _bitrate = exportOption(ctx, opts, 'bitrate', bitrate);
           const frameMs = 1000 / _fps;
 
-          // 1) First frame sizes the stage; capture rides the engine's automatic
-          // memoization/differential recapture (animated subtrees rebuild only what
-          // changed), so per-frame cost tracks the mutation, not the tree.
-          const firstCap = await snapdom(el, { scale: _scale, backgroundColor: _bg });
-          const firstSrc = await firstCap.toCanvas();
+          // 1) Recapture the live first frame, retaining the caller's capture policy.
+          // Later frames use the same options and the engine's normal freshness checks.
+          const firstSrc = await recording.next();
           const W = firstSrc.width, H = firstSrc.height;
 
           // 2) Pick the best supported container/codec.
@@ -74,10 +73,8 @@ export function videoExport(options = {}) {
             console.warn(`[snapdom] video-export: MP4 not supported by this browser's MediaRecorder; falling back to ${mimeType}`);
           }
 
-          // 3) Explicit-frame recording: captureStream(0) + requestFrame() pushes each
-          // frame at its exact place in the timeline, so output timing is deterministic
-          // even when a capture takes longer than the frame budget (the old realtime
-          // stream + setTimeout pacing drifted and duplicated/dropped frames under load).
+          // 3) Request each painted frame where supported. MediaRecorder uses a real-time
+          // clock: slow captures can still stretch timing; requestFrame supplies no timestamp.
           const stage = document.createElement('canvas');
           stage.width = W; stage.height = H;
           const sctx = stage.getContext('2d');
@@ -86,37 +83,58 @@ export function videoExport(options = {}) {
             sctx.fillRect(0, 0, W, H);
             sctx.drawImage(src, 0, 0, W, H);
           };
-          const stream = stage.captureStream(0);
-          const track = stream.getVideoTracks()[0];
-          const pushFrame = () => { if (track && typeof track.requestFrame === 'function') track.requestFrame(); };
-
           const recOpts = {};
           if (mimeType) recOpts.mimeType = mimeType;
           if (_bitrate) recOpts.videoBitsPerSecond = _bitrate;
-          const rec = new MediaRecorder(stream, recOpts);
-
           const chunks = [];
-          rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-          const stopped = new Promise(res => { rec.onstop = res; });
+          let stream, rec;
+          try {
+            stream = stage.captureStream(0);
+            let track = stream.getVideoTracks()[0];
+            if (!track) throw new Error('[snapdom] video-export: captureStream produced no video track');
+            if (typeof track.requestFrame !== 'function') {
+              // A zero-rate track without requestFrame never receives later paintings.
+              for (const t of stream.getTracks()) t.stop();
+              stream = stage.captureStream(_fps);
+              track = stream.getVideoTracks()[0];
+              if (!track) throw new Error('[snapdom] video-export: captureStream produced no video track');
+            }
+            const pushFrame = () => track.requestFrame?.();
+            rec = new MediaRecorder(stream, recOpts);
+            rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+            const stopped = new Promise(resolve => { rec.onstop = resolve; });
+            const failed = new Promise((_, reject) => {
+              rec.onerror = event => reject(event.error || new Error('[snapdom] video-export: MediaRecorder failed'));
+            });
+            // An error can arrive between awaited frame operations. Mark it handled now;
+            // every wait below still observes the original rejection and exits the recorder.
+            failed.catch(() => {});
+            const wait = promise => Promise.race([promise, failed]);
+            const sleep = ms => wait(new Promise(resolve => setTimeout(resolve, ms)));
 
-          rec.start();
-          paint(firstSrc);
-          pushFrame();
-          for (let i = 1; i < _count; i++) {
-            const t0 = performance.now();
-            const cap = await snapdom(el, { scale: _scale, backgroundColor: _bg });
-            paint(await cap.toCanvas());
+            rec.start();
+            paint(firstSrc);
             pushFrame();
-            // Latency-compensated pacing: sleep only the remainder of the frame budget.
-            const spent = performance.now() - t0;
-            if (spent < frameMs) await new Promise(r => setTimeout(r, frameMs - spent));
+            // Hold the first frame too; immediately painting the second used to erase it.
+            await sleep(frameMs);
+            for (let i = 1; i < _count; i++) {
+              const t0 = performance.now();
+              paint(await wait(recording.next()));
+              pushFrame();
+              const remaining = frameMs - (performance.now() - t0);
+              // Give the last painting a full frame interval before stopping the encoder.
+              if (i === _count - 1 || remaining > 0) await sleep(i === _count - 1 ? frameMs : remaining);
+            }
+            rec.stop();
+            await wait(stopped);
+          } finally {
+            if (rec && rec.state !== 'inactive') { try { rec.stop(); } catch { /* already failed */ } }
+            for (const track of stream?.getTracks() || []) track.stop();
           }
-          await new Promise(r => setTimeout(r, frameMs)); // let the last frame land
-          rec.stop();
-          await stopped;
 
-          const isMp4 = mimeType.startsWith('video/mp4');
-          const blob = new Blob(chunks, { type: (mimeType || 'video/webm').split(';')[0] });
+          const actualType = (rec.mimeType || chunks.find(chunk => chunk.type)?.type || mimeType || 'video/webm').split(';')[0];
+          const isMp4 = actualType.startsWith('video/mp4');
+          const blob = new Blob(chunks, { type: actualType });
 
           const dl = opts.download;
           if (dl) {
@@ -124,7 +142,7 @@ export function videoExport(options = {}) {
             const a = document.createElement('a');
             a.href = objUrl;
             const fallbackName = isMp4 ? 'capture.mp4' : 'capture.webm';
-            a.download = typeof dl === 'string' ? dl : (opts.filename || filename || fallbackName);
+            a.download = typeof dl === 'string' ? dl : exportOption(ctx, opts, 'filename', filename || fallbackName);
             a.click();
             setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
           }

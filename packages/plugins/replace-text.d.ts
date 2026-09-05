@@ -16,5 +16,5 @@ export interface ReplaceTextOptions {
   replacements?: TextReplacement[];
 }
 
-/** Find-and-replace text in the captured clone. */
+/** Replaces DOM text in the clone, leaving stylesheet/script text unchanged. */
 export declare function replaceText(options?: ReplaceTextOptions): SnapdomPlugin;

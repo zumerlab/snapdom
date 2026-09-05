@@ -10,19 +10,21 @@
  * Redacting anything else is a deliberate loss of fidelity, so it is opt-in and lives here.
  * Defaults cover the fields that are usually sensitive AND rendered in the clear.
  *
- * The mask keeps the ORIGINAL LENGTH, so line breaks, field widths and truncation stay
- * where they were. `mask: () => ''` is the way to blank a field outright.
+ * The default mask keeps the string's length. Glyph widths can differ, so wrapping and
+ * truncation may change. `mask: () => ''` blanks a field outright.
  *
- * Note: this plugin declares `afterClone`, so a capture using it always runs the full
- * pipeline (the differential fast path cannot prove a whole-clone hook is subtree-local).
- * That costs repeat-capture speed, never correctness.
+ * The built-in mask without a selector permits unchanged-repeat memoization. Custom maskers
+ * and selectors run on every capture because they may read changing external state.
+ * A changed tree rebuilds fully: the differential path cannot skip this afterClone transformation.
+ * Pinned by __tests__/plugins.transforms.v3.test.js.
+ * @module plugins/redact-inputs
  *
  * @param {Object} [options]
  * @param {string[]} [options.types] - input `type` values to redact. Default:
  *   ['email', 'tel']. Note 'password' is already masked by core.
  * @param {string[]} [options.autocomplete] - autocomplete tokens to redact. A trailing '*'
  *   matches by prefix. Default: ['cc-*', 'current-password', 'new-password', 'one-time-code'].
- * @param {string} [options.selector] - extra CSS selector; anything it matches is redacted
+ * @param {string} [options.selector] - extra CSS selector for inputs and textareas
  *   (use it for textareas and app-specific fields).
  * @param {boolean} [options.all=false] - redact EVERY input and textarea, ignoring the lists.
  * @param {(value: string, el: Element) => string} [options.mask] - custom masker.
@@ -65,15 +67,15 @@ export function redactInputs(options = {}) {
         if (el.matches(selector)) return true;
       } catch { /* invalid selector: the other rules still apply */ }
     }
-    if (el.tagName !== 'INPUT') return false;
     // Read the ATTRIBUTE, not el.type: an unknown type attribute reflects as 'text' through
     // the property, so a `type="email"` the engine does not implement would slip through.
-    if (typeSet.has((el.getAttribute('type') || 'text').toLowerCase())) return true;
+    if (el.tagName === 'INPUT' && typeSet.has((el.getAttribute('type') || 'text').toLowerCase())) return true;
     return matchesAutocomplete(el);
   }
 
   return {
     name: 'redact-inputs',
+    pure: options.mask === undefined && !selector,
 
     afterClone(ctx) {
       const root = ctx.clone;
@@ -84,14 +86,28 @@ export function redactInputs(options = {}) {
       if (root.matches?.('input, textarea')) nodes.unshift(root);
 
       for (const el of nodes) {
-        if (!shouldRedact(el)) continue;
+        // Core turns date/time controls into text on Firefox/WebKit. Their source still
+        // carries the type and selector state the caller asked to match.
+        if (!shouldRedact(ctx.nodeMap?.get(el) || el)) continue;
         if (el.tagName === 'TEXTAREA') {
-          // Core transfers the live value as the clone's text content, so that is what paints.
-          el.textContent = mask(el.textContent || '', el);
+          const masked = String(mask(el.textContent || '', el));
+          // Native canvas rendering and later plugins read value; SVG serialization reads text.
+          el.value = masked;
+          el.textContent = masked;
           continue;
         }
-        const masked = mask(el.value || '', el);
-        el.value = masked;
+        const masked = String(mask(el.value || '', el));
+        try { el.value = masked; } catch {
+          // File inputs reject non-empty values. A redacted clone must display the mask,
+          // not abort the capture before the remaining fields have been processed.
+          el.type = 'text';
+          el.value = masked;
+        }
+        if (el.value !== masked) {
+          // Number/date controls silently sanitize arbitrary mask text to an empty value.
+          el.type = 'text';
+          el.value = masked;
+        }
         el.setAttribute('value', masked);
       }
     }

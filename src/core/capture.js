@@ -21,7 +21,7 @@ import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { styleShareSafe } from '../modules/styles.js'
 import { stageReaches, DEFAULT_STAGE } from './stages.js'
-import { compressCloneAssets } from '../modules/compress.js'
+import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { applyTextFieldSelectionLayers } from '../modules/selection.js'
 import { composeAndSerialize } from '../engines/svg.js'
 import {
@@ -70,6 +70,9 @@ function collectResolveNodeHooks(options) {
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
   options.__session = createCaptureSession(options.cache)
+  delete options.__compressedAssets
+  delete options.__compressedSnapshot
+  delete options.__compressionDensity
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
   // ONE context for the whole capture: hooks receive the normalized option bag itself, so
   // `ctx.scale` / `ctx.backgroundColor` / … are the very values the pipeline reads and the
@@ -215,6 +218,8 @@ export async function captureDOM(element, options) {
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {
+      options.__compressionClip = clipWindow
+      options.__compressionRootTransform = rootTransform2D
       await runIdle(() => compressCloneAssets(state.clone, state.options, state.nodeMap))
     }
     // Field-selection highlights compose last: the background pass above rewrites a field's
@@ -305,7 +310,10 @@ export async function captureDOM(element, options) {
     if (canvas) return canvas
   }
 
+  const renderedClone = state.clone
+  numberCompressedAssets(renderedClone, options.__compressedAssets)
   const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS })
+  options.__compressedSnapshot = snapshotCompressedAssets(renderedClone, options.__compressedAssets)
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential
   // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty
   // subtrees). Internal-only; absent for plain captures.
@@ -313,7 +321,9 @@ export async function captureDOM(element, options) {
     try {
       options.__retain({
         clone, nodeMap, styleCache, styleMap: options.__session.styleMap,
-        classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D
+        classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
+        __compressedAssets: options.__compressedAssets,
+        __compressionDensity: options.__compressionDensity,
       })
     } catch { /* retention is best-effort */ }
   }

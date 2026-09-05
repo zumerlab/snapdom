@@ -21,3 +21,5 @@ export interface ContextExportOptions {
 
 /** Adds `result.toContext()`: the captured tree as a text outline or JSON instead of pixels. */
 export declare function contextExport(options?: ContextExportOptions): SnapdomPlugin;
+
+export default contextExport;

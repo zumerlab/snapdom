@@ -79,8 +79,8 @@ function formatCounter(value, style) {
  * @param {number} dflt - value when a name carries no integer (0 for reset/set, 1 for increment)
  * @returns {Array<[string, number]>}
  */
-function counterPairs(decl, dflt) {
-  const toks = decl.trim().split(/[\s,]+/).filter(Boolean)
+export function counterPairs(decl, dflt) {
+  const toks = (decl || '').trim().split(/[\s,]+/).filter(Boolean)
   const out = []
   for (let i = 0; i < toks.length; i++) {
     const name = toks[i]
@@ -114,12 +114,9 @@ export function buildCounterContext(root) {
   const rootEl = (root instanceof Document) ? root.documentElement : root
 
   const isLi = (el) => el && el.tagName === 'LI'
-  const countPrevLi = (li) => {
-    let c = 0, p = li?.parentElement
-    if (!p) return 0
-    for (const sib of p.children) { if (sib === li) break; if (sib.tagName === 'LI') c++ }
-    return c
-  }
+  // The walk is already in document order. Carry each list's ordinal instead of counting
+  // all previous siblings for every LI (quadratic), and continue from explicit li[value].
+  const listOrdinals = new WeakMap()
   const cloneMap = (m) => {
     const out = new Map()
     for (const [k, arr] of m) out.set(k, arr.slice())
@@ -129,10 +126,12 @@ export function buildCounterContext(root) {
   // Apply resets/increments/list-item given base map and the *parent* map (to decide push vs replace)
   const applyTo = (baseMap, parentMap, el) => {
     const map = cloneMap(baseMap)
+    let cs
+    try { cs = getComputedStyle(el) } catch { cs = el.style }
 
     // counter-reset
     let reset
-    try { reset = el.style?.counterReset || getComputedStyle(el).counterReset } catch {}
+    try { reset = cs?.counterReset } catch {}
     if (reset && reset !== 'none') {
       for (const [name, val] of counterPairs(reset, 0)) {
         const parentStack = parentMap.get(name)
@@ -148,7 +147,7 @@ export function buildCounterContext(root) {
 
     // counter-set (sets top value without creating a new scope)
     let set
-    try { set = el.style?.counterSet || getComputedStyle(el).counterSet } catch {}
+    try { set = cs?.counterSet } catch {}
     if (set && set !== 'none') {
       for (const [name, val] of counterPairs(set, 0)) {
         const stack = map.get(name) || []
@@ -160,7 +159,7 @@ export function buildCounterContext(root) {
 
     // counter-increment
     let inc
-    try { inc = el.style?.counterIncrement || getComputedStyle(el).counterIncrement } catch {}
+    try { inc = cs?.counterIncrement } catch {}
     if (inc && inc !== 'none') {
       for (const [name, by] of counterPairs(inc, 1)) {
         const stack = map.get(name) || []
@@ -172,19 +171,14 @@ export function buildCounterContext(root) {
 
     // list-item for LI in OL/UL (start, li[value])
     try {
-      const cs = getComputedStyle(el)
-      if (cs.display === 'list-item' && isLi(el)) {
+      if (cs?.display === 'list-item' && isLi(el)) {
         const p = el.parentElement
-        let idx = 1
-        if (p && p.tagName === 'OL') {
-          const startAttr = p.getAttribute('start')
-          const start = Number.isFinite(Number(startAttr)) ? Number(startAttr) : 1
-          const prev = countPrevLi(el)
-          const ownAttr = el.getAttribute('value')
-          idx = Number.isFinite(Number(ownAttr)) ? Number(ownAttr) : (start + prev)
-        } else {
-          idx = 1 + countPrevLi(el)
-        }
+        const previous = p && listOrdinals.get(p)
+        const start = p?.tagName === 'OL' ? parseInt(p.getAttribute('start'), 10) : NaN
+        let idx = previous === undefined ? (Number.isFinite(start) ? start : 1) : previous + 1
+        const own = p?.tagName === 'OL' ? parseInt(el.getAttribute('value'), 10) : NaN
+        if (Number.isFinite(own)) idx = own
+        if (p) listOrdinals.set(p, idx)
         const s = map.get('list-item') || []
         if (s.length === 0) s.push(0)
         s[s.length - 1] = idx

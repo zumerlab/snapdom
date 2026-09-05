@@ -34,7 +34,8 @@ import { isIconFont } from '../modules/iconFonts.js'
 import {
   buildCounterContext,
   resolveCountersInContent,
-  hasCounters
+  hasCounters,
+  counterPairs
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
 import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, flushStyleInvalidations, invalidateStyleCaches } from './styles.js'
@@ -399,21 +400,12 @@ function withSiblingOverrides(node, base, siblingCounters) {
 function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
   const modStacks = new Map()
 
-  function parseListDecl(value) {
-    const out = []
-    if (!value || value === 'none') return out
-    for (const part of String(value).split(',')) {
-      const toks = part.trim().split(/\s+/)
-      const name = toks[0]
-      const num = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : undefined
-      if (name) out.push({ name, num })
-    }
-    return out
-  }
-
-  const resets = parseListDecl(pseudoStyle?.counterReset)
-  const sets = parseListDecl(pseudoStyle?.counterSet)
-  const incs = parseListDecl(pseudoStyle?.counterIncrement)
+  // Elements and pseudos use the same whitespace-separated grammar. Keeping a second
+  // comma-based parser here silently discarded every counter after the first.
+  const pairs = (value, dflt) => counterPairs(value, dflt).map(([name, num]) => ({ name, num }))
+  const resets = pairs(pseudoStyle?.counterReset, 0)
+  const sets = pairs(pseudoStyle?.counterSet, 0)
+  const incs = pairs(pseudoStyle?.counterIncrement, 1)
 
   function getStackDerived(name) {
     if (modStacks.has(name)) return modStacks.get(name).slice()
