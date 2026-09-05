@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Live HTML-to-Image Benchmark — Run It In Your Own Browser</title>
-  <meta name="description" content="Run the SnapDOM comparison yourself: real-world scenes, nine HTML-to-image libraries, one output stage, cold and steady columns, plus a pixel-verified capability matrix." />
+  <meta name="description" content="Run the SnapDOM comparison yourself: real-world scenes, eight HTML-to-image libraries, one output stage, cold and steady columns, plus a pixel-verified capability matrix." />
   <meta name="keywords" content="html to image benchmark, html2canvas benchmark, snapdom vs html2canvas, html-to-image speed, dom to image comparison" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/live/" />
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Live HTML-to-Image Benchmark — Run It In Your Own Browser" />
-  <meta property="og:description" content="Nine libraries, real-world scenes, one output stage. Nothing is pre-recorded: the numbers come from your machine." />
+  <meta property="og:description" content="Eight libraries, real-world scenes, one output stage. Nothing is pre-recorded: the numbers come from your machine." />
   <meta property="og:url" content="https://snapdom.dev/compare/live/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -38,7 +38,7 @@
     .lab-lib input:disabled + * , .lab-lib input:disabled { cursor: not-allowed; }
     .lab-status { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 700; margin: 16px 0 0; min-height: 1.4em; }
     .lab-stamp { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin: 6px 0 0; word-break: break-word; }
-    /* No max-height, no overflow: html2canvas and domlens clone the whole document and cut the
+    /* No max-height, no overflow: whole-document cloners such as html2canvas cut the
        element's REGION out of it, so a stage that scrolls hands them 300px of scene and the
        rest of the page below it — a wrong picture, fast. The scene has to be fully laid out. */
     .lab-stage { margin: 16px 0 0; border: 1px dashed var(--border-soft); background: #fff; padding: 10px; }
@@ -71,7 +71,7 @@
       <ul>
         <li><strong>One output stage for everyone.</strong> Every library is timed through to a PNG data URL. Comparing an SVG URL with a PNG would omit rasterization and encoding from one side.</li>
         <li><strong>Cold and repeat are different numbers.</strong> <em>First capture</em> builds a new element for every run. <em>Repeat</em> captures the same element again. Compare both columns because reuse can change the timing and ranking.</li>
-        <li><strong>Defaults, scale 1, pinned versions.</strong> No library is configured for advantage. SnapDOM runs with <code>burst: false</code> in every scene except <em>Polling</em>, so its memoization is not compared against everyone else's full pipeline. One option is passed for correctness, not speed: domlens gets <code>viewport: { scrollY: 0 }</code>, because with its defaults the region it cuts is offset by however far this page is scrolled — on a page scrolled down to this button, its row rendered the wrong part of the document.</li>
+        <li><strong>Defaults, scale 1, pinned versions.</strong> No library is configured for advantage. SnapDOM runs with <code>burst: false</code> in every scene except <em>Polling</em>, so its memoization is not compared against everyone else's full pipeline.</li>
         <li><strong>The table does not know who should win.</strong> Rows are sorted by measured time and the fastest is highlighted, whoever it is. On some scenes that is not SnapDOM.</li>
       </ul>
       <p class="muted">Absolute milliseconds depend on your CPU, your browser and how busy the machine is. The ratios are the part worth quoting.</p>
@@ -90,7 +90,7 @@
         <p class="lab-note" id="lab-scene-note"></p>
         <div class="lab-libs" id="lab-libs"></div>
         <p class="lab-status" id="lab-status"></p>
-        <p class="lab-note">The page is held still while a run is in progress. A library that clones the whole document crops at viewport-relative coordinates, so a page that scrolls mid-capture hands it the wrong region — measured at 46% divergence on a scene that reads 0% when the page stays put.</p>
+        <p class="lab-note">The page is held still while a run is in progress. A library that clones the whole document crops at viewport-relative coordinates, so scrolling mid-capture can change the region it captures.</p>
         <p class="lab-stamp" id="lab-stamp"></p>
         <div class="lab-stage" id="lab-stage"></div>
       </div>

@@ -38,7 +38,7 @@ const COMPETITORS = [
     id: 'domlens',
     imp: "import { capture as __c_domlens } from 'https://cdn.jsdelivr.net/npm/domlens.js@0.1.0/+esm'; window.__c_domlens = __c_domlens",
     // Nested on purpose: domlens silently ignores a flat `scale` and falls back to
-    // devicePixelRatio, which only shows up off headless. See docs/compare/live/harness.js.
+    // devicePixelRatio, which only shows up off headless. See helpers/domlens.js.
     call: (win, el) => win.__c_domlens(el, { output: { scale: 1 } }),
   },
 ]

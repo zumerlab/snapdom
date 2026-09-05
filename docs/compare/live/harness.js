@@ -1,4 +1,4 @@
-// Shared comparison harness — the SINGLE source of the competitor adapters, the realistic
+// Shared comparison harness — the SINGLE source of the public competitor adapters, the realistic
 // scenes and the capability oracle.
 //
 // It lives under docs/ because the live lab (docs/compare/live/) is a static page on the
@@ -75,21 +75,6 @@ export const COMPETITORS = {
   'dom-to-image-modern 1.0.2': async () => {
     const m = pick(await cdn('https://cdn.jsdelivr.net/npm/dom-to-image-modern@1.0.2/+esm'))
     return async (el) => toDataUrl(await m.toPng(el, { scale: 1 }))
-  },
-
-  // domlens nests its options: `{ output: { scale } }`. A flat `{ scale: 1 }` is silently
-  // ignored and the capture comes out at devicePixelRatio — 4x the pixels of every other row
-  // on a retina screen, and a comparison that is no longer like-for-like. Headless chromium
-  // runs at DPR 1, which is why this only surfaced in the live lab.
-  // `viewport.scrollY` pinned to 0: domlens's default viewport reads the window's current
-  // scroll and the region it cuts comes out offset by exactly that much — on the lab page
-  // scrolled 300px the table's capture starts at row #9, at 1000px at row #29, against a
-  // screenshot of the live element (0.00% with the option, at any scroll; html2canvas and
-  // SnapDOM are scroll-independent with their defaults). Every visitor has scrolled down to
-  // the Run button, so without it the row compared scroll handling, not rendering.
-  'domlens.js 0.1.0': async () => {
-    const m = await cdn('https://cdn.jsdelivr.net/npm/domlens.js@0.1.0/+esm')
-    return async (el) => toDataUrl(await m.capture(el, { output: { scale: 1 }, viewport: { scrollX: 0, scrollY: 0 } }))
   },
 
   '@renoun/screenshot 0.3.3': async () => {
@@ -203,18 +188,11 @@ export function shadowTreeScenario() {
 }
 
 /** Deep nested flex/grid tree: 16 top-level chains, 10 levels each, 11 leaves per level —
- *  ~2,100 elements at depth ~11. Ported from domlens's own benchmark corpus
- *  (tests/bench/pages/deep-tree.html), which is the scene their published table has snapdom
- *  losing worst on. Nothing else here nests this deep, and depth is its own cost: every level
- *  is a flex or grid container whose children resolve used values against it.
+ *  ~2,100 elements at depth ~11. Every level is a flex or grid container whose children
+ *  resolve used values against it, isolating the cost of deep layout.
  *
- *  Their page stacks 24 chains: 1232x20340, past the 16384px decode limit, where snapdom
- *  downscales to 16384 and html2canvas/domlens rasterize the full height — two output sizes,
- *  and the one-output-stage rule ends (their own table has snapdom at 1031x16384 against
- *  1280x20340). Two chains per row fits the height but is 2472px wide, and domlens's
- *  viewport-sized clone iframe paints nothing past the viewport edge — a real limit, but not
- *  what this scene measures. So: the same chain, the same depth, 16 of the 24 — plus ONE
- *  thing their corpus leaves out: a `::before` stripe on every leaf. Bare boxes are the one
+ *  Sixteen chains keep the scene under the 16384px image limit in one column, so libraries
+ *  can produce the same output size. A `::before` stripe decorates every leaf. Bare boxes are the one
  *  input html2canvas's repainter handles best and no real page is made of them; a decoration
  *  of any kind (a rule, a badge, an icon) is where its output stops matching the page.
  *  The stripe is 2px, `content:""`, a solid colour — the cheapest pseudo there is, and 2px

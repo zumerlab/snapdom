@@ -4,11 +4,10 @@
 // bench() calls, which throw "bench() is only available in benchmark mode" and take the whole
 // test file down with them — so anything both a bench and a test need lives here instead.
 //
-// The competitor adapters, the fixture-free scenes and the capability oracle live one level
-// out, in `docs/compare/live/harness.js`, because the LIVE LAB on the docs site runs the same
-// comparison in the user's own browser and can only import what the site serves. Same
-// adapters, same scenes, same oracle, one place: a lab that drifts from the measured table is
-// how a demo starts contradicting the README.
+// The public competitor adapters, fixture-free scenes and capability oracle live in
+// `docs/compare/live/harness.js`, shared with the live lab on the docs site. Repository-only
+// competitors are added here from helpers/, so benchmark coverage can extend beyond the
+// public lab while keeping its shared adapters, scenes and oracle consistent.
 //
 // Competitors are fetched from a CDN. A STATIC `import ... from 'https://…'` aborts
 // collection of every file importing this module when the link is down or slow, which is why
@@ -21,6 +20,7 @@
 
 import { snapdom } from '../src/index'
 import { COMPETITORS, toDataUrl } from '../docs/compare/live/harness.js'
+import { loadDomlens } from './helpers/domlens.js'
 
 export {
   toDataUrl,
@@ -58,6 +58,7 @@ const LOADERS = {
   // honest route, for everyone.
   'snapDOM current': async () => async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1, burst: false })),
   ...COMPETITORS,
+  'domlens.js 0.1.0': () => loadDomlens(toDataUrl),
 }
 
 /** Every library name the category covers, in report order. */

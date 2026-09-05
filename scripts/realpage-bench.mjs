@@ -13,16 +13,27 @@
 //   terminal 2:  node scripts/realpage-bench.mjs [iterations=5]
 //
 // Prints a markdown table (median per cell). Chromium via Playwright, headless, DPR 1.
+import { readFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 
 const N = Number(process.argv[2] || 5)
+const domlensHelper = await readFile(new URL('../__tests__/helpers/domlens.js', import.meta.url), 'utf8')
 const browser = await chromium.launch()
 const page = await browser.newPage({ deviceScaleFactor: 1 })
 page.on('pageerror', (e) => console.error('[page]', e.message))
+// This module is available only inside this benchmark's browser; the docs server serves no tests.
+await page.route('http://127.0.0.1:8123/__bench/domlens.js', (route) => route.fulfill({
+  body: domlensHelper,
+  contentType: 'text/javascript',
+}))
 await page.goto('http://127.0.0.1:8123/compare/', { waitUntil: 'load' })
+// Keep the helper in the module cache, then restore HTTP caching before measuring captures.
+await page.evaluate(async () => { await import('/__bench/domlens.js') })
+await page.unroute('http://127.0.0.1:8123/__bench/domlens.js')
 
 const rows = await page.evaluate(async ({ N }) => {
   const H = await import('/compare/live/harness.js')
+  const { loadDomlens } = await import('/__bench/domlens.js')
   const { snapdom } = await import('/__dist/snapdom.mjs')
   const tick = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
   const now = () => performance.now()
@@ -42,7 +53,7 @@ const rows = await page.evaluate(async ({ N }) => {
   }
   const libs = {
     'SnapDOM': async (el) => H.toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1, burst: false })),
-    'domlens.js 0.1.0': await H.COMPETITORS['domlens.js 0.1.0'](),
+    'domlens.js 0.1.0': await loadDomlens(H.toDataUrl),
     'html2canvas 1.4.1': await H.COMPETITORS['html2canvas 1.4.1'](),
     'modern-screenshot 4.7.0': await H.COMPETITORS['modern-screenshot 4.7.0'](),
     'html-to-image 1.11.13': await H.COMPETITORS['html-to-image 1.11.13'](),

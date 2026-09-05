@@ -43,7 +43,7 @@ const ADAPTERS = {
   [SNAP]: async () => async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1, burst: false })),
   ...COMPETITORS,
 }
-const DEFAULT_ON = [SNAP, 'html2canvas 1.4.1', 'html-to-image 1.11.13', 'modern-screenshot 4.7.0', 'domlens.js 0.1.0']
+const DEFAULT_ON = [SNAP, 'html2canvas 1.4.1', 'html-to-image 1.11.13', 'modern-screenshot 4.7.0']
 
 // ── Scenes ──────────────────────────────────────────────────────────────────
 // `mount` returns { root, cleanup }. Everything is built fresh for the cold arm, so a scene
@@ -85,7 +85,7 @@ const SCENES = {
   },
   deep: {
     label: 'Deep nested tree (~2,100 nodes)',
-    note: "16 chains, 10 levels each, nested flex and grid all the way down — 16 of the 24 in domlens's own benchmark corpus, as many as fit under the 16384px image limit in one column — with a 2px ::before stripe on every leaf, the cheapest decoration a real page carries. Without it the scene measures html2canvas's old JavaScript repainter on the one input it handles best, bare boxes, and it wins there; with it, its output stops matching the page (the diff column shows it) and its speed edge goes with it. The cost for every foreignObject library is still the browser rasterizing a huge SVG image, not anything the library does.",
+    note: '16 chains, 10 levels each, with nested flex and grid and a 2px ::before stripe on every leaf. The scene stays under the 16384px image limit in one column. It exercises deep layout, pseudo-element rendering and the cost of rasterizing a large output. Read the diff column alongside the timing to compare what each library rendered.',
     cold: 1, steady: 3,
     heavy: true,
     mount: deepTreeScenario,
@@ -144,10 +144,8 @@ function say(text) { status.textContent = text }
  *
  *  A whole-document cloner crops the element's REGION out of a clone it re-laid out, at
  *  viewport-relative coordinates — so if the page scrolls between the clone and the crop, the
- *  capture is of somewhere else entirely. Measured on the complex card with domlens: 0.0%
- *  divergence with the page still, 45.9% while scrolling through the run. That is their bug,
- *  but leaving it in means this page reports how the visitor scrolled rather than how the
- *  library performs, and it only ever bites the libraries that clone the document.
+ *  capture is of somewhere else entirely. Keeping the page still prevents scroll input from
+ *  changing the region captured by libraries that clone the document.
  *
  *  The input has to be blocked, not corrected afterwards: a `scroll` listener that snaps back
  *  fires AFTER the page has already moved and is outrun by continuous wheel input, which is why
@@ -304,10 +302,8 @@ async function decorate(rows) {
     } catch { r.dim = null }
   }
   // Milliseconds alone cannot tell a fast capture from a fast capture OF THE WRONG THING.
-  // domlens clones the whole document and cuts the element's region out of it; while the
-  // stage was a 300px scroll box it came back with 300px of scene and the page below it —
-  // correctly sized, full of ink, and the fastest row in the table. The stage no longer
-  // clips, and this column is the guard: how far each output is from SnapDOM's, in pixels.
+  // A whole-document cloner can capture the wrong region if the stage clips the scene.
+  // This column checks how far each output is from SnapDOM's, in pixels.
   const ref = rows.find((r) => r.name === SNAP)?.thumb
   if (!ref) return
   for (const r of rows) r.diff = r.thumb && r.name !== SNAP ? thumbDiff(ref, r.thumb) : null
@@ -384,8 +380,7 @@ function render(rows, scene, withGallery = false) {
     if (r.name === SNAP) tags.push(scene.polling ? 'defaults, memo ON' : 'burst:false')
     if (r.fewSamples) tags.push('few samples')
     // A library whose output is a different SIZE is not on the same output stage, and its
-    // milliseconds are not comparable — domlens takes its scale in a nested
-    // `{ output: { scale } }` and silently captured at devicePixelRatio until this caught it.
+    // milliseconds are not comparable, even if the captured content looks correct.
     // A pixel or two apart is rounding (845.4 floored vs ceiled), not a different stage.
     if (offBy(r.dim, ref) > 2) tags.push(`output ${r.dim} ≠ ${ref}, not comparable`)
     if (r.blank) tags.push('blank output — captured nothing')
@@ -473,7 +468,7 @@ async function run() {
   }
 
   stage.innerHTML = ''
-  // Only now. html2canvas and domlens clone the WHOLE document, so every result image left in
+  // Only now. Libraries such as html2canvas clone the WHOLE document, so every result image left in
   // the page while the run is still going gets cloned and re-encoded by whoever captures next
   // — the page would be measuring itself.
   render(rows, scene, true)
