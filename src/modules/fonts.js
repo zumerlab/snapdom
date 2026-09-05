@@ -1209,10 +1209,13 @@ export function collectFontUsage(root, keep) {
   // Same selector gate as inlinePseudoElements: skip the two pseudo style resolutions
   // for nodes no collected ::before/::after selector matches (null gate → probe).
   const gates = pseudoGatesFor(root)
+  const scope = root.getRootNode()
   const visitElement = (el) => {
     addFromStyle(getStyle(el))
+    // Document selectors cannot rule out pseudos in a component's own stylesheet.
+    const elementGates = el.getRootNode() === scope ? gates : pseudoGatesFor(el)
     for (const pseudo of ['::before', '::after']) {
-      const gate = pseudo === '::before' ? gates.before : gates.after
+      const gate = pseudo === '::before' ? elementGates.before : elementGates.after
       if (gate !== null) {
         if (gate === '') continue
         try { if (!el.matches(gate)) continue } catch { /* probe */ }
@@ -1234,16 +1237,24 @@ export function collectFontUsage(root, keep) {
     }
   }
 
-  visitElement(root)
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null)
-  while (walker.nextNode()) {
-    const n = walker.currentNode
-    if (n.nodeType === Node.TEXT_NODE) {
-      if (keep && n.parentElement && !keep(n.parentElement)) continue
-      pushText(n.nodeValue || '')
-    } else {
-      if (keep && !keep(/** @type {Element} */ (n))) continue
-      visitElement(/** @type {Element} */ (n))
+  // TreeWalker stops at shadow boundaries, while deepClone includes their painted
+  // content. Walk each open root as well so font subsets and auto-embedding see it.
+  const trees = [root]
+  for (let i = 0; i < trees.length; i++) {
+    const tree = trees[i]
+    if (tree.nodeType === Node.ELEMENT_NODE) visitElement(tree)
+    if (tree.shadowRoot) trees.push(tree.shadowRoot)
+    const walker = (root.ownerDocument || document).createTreeWalker(tree, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null)
+    while (walker.nextNode()) {
+      const n = walker.currentNode
+      if (n.nodeType === Node.TEXT_NODE) {
+        if (keep && n.parentElement && !keep(n.parentElement)) continue
+        pushText(n.nodeValue || '')
+      } else {
+        if (keep && !keep(/** @type {Element} */ (n))) continue
+        visitElement(/** @type {Element} */ (n))
+        if (n.shadowRoot) trees.push(n.shadowRoot)
+      }
     }
   }
   return { required, usedCodepoints }

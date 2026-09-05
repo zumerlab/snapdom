@@ -43,6 +43,9 @@ export const ALWAYS_PROPS = [
   'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-stretch',
   'line-height', 'letter-spacing', 'word-spacing', 'white-space', 'text-align',
   'text-transform', 'text-indent', 'text-overflow', 'text-shadow', 'direction', 'unicode-bidi',
+  // These can be inherited from an inline-styled ancestor outside the capture, without
+  // any stylesheet declaration for the scanner to find.
+  'writing-mode', 'text-orientation',
   'word-break', 'overflow-wrap', 'tab-size',
   'list-style-type', 'list-style-position', 'list-style-image',
   'counter-reset', 'counter-increment', 'counter-set',
@@ -67,6 +70,7 @@ const INHERITED_PROPS = [
   'font-kerning', 'font-feature-settings', 'font-variation-settings', 'line-height', 'letter-spacing',
   'word-spacing', 'white-space', 'text-align', 'text-align-last', 'text-indent', 'text-transform',
   'text-shadow', 'text-rendering', 'direction', 'unicode-bidi', 'word-break', 'overflow-wrap',
+  'writing-mode', 'text-orientation',
   'hyphens', 'tab-size', 'visibility', 'list-style-type', 'list-style-position', 'list-style-image',
   'border-collapse', 'border-spacing', 'caption-side', 'empty-cells', 'quotes',
   'color-scheme', '-webkit-text-fill-color', '-webkit-font-smoothing', 'image-rendering',

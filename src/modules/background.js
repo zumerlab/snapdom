@@ -184,7 +184,9 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
 function resolveFixedLayerSize(sizeSpec, iw, ih, vw, vh) {
   const spec = (sizeSpec || 'auto').trim()
   if (spec === 'cover' || spec === 'contain') {
-    if (!iw || !ih) return null
+    // Gradients have neither intrinsic dimensions nor an aspect ratio: cover/contain
+    // both fill the positioning area, and explicit sizes below still apply to them.
+    if (!iw || !ih) return { w: vw, h: vh }
     const s = spec === 'cover' ? Math.max(vw / iw, vh / ih) : Math.min(vw / iw, vh / ih)
     return { w: iw * s, h: ih * s }
   }
@@ -199,7 +201,7 @@ function resolveFixedLayerSize(sizeSpec, iw, ih, vw, vh) {
   const hRaw = comp(parts[1], vh)
   if (wRaw === undefined || hRaw === undefined) return null
   let w = wRaw, h = hRaw
-  if (w == null && h == null) { w = iw; h = ih }
+  if (w == null && h == null) { w = iw || vw; h = ih || vh }
   else if (w == null) w = iw && ih ? h * (iw / ih) : vw
   else if (h == null) h = iw && ih ? w * (ih / iw) : vh
   if (!w || !h) return null
@@ -226,8 +228,9 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
     return
   }
   const rect = srcNode.getBoundingClientRect()
-  const vw = window.innerWidth
-  const vh = window.innerHeight
+  const view = srcNode.ownerDocument?.defaultView || window
+  const vw = view.innerWidth
+  const vh = view.innerHeight
   const layers = splitBackgroundImage(cloneNode.style.backgroundImage || style.getPropertyValue('background-image') || '')
   const sizes = (cloneNode.style.backgroundSize || style.getPropertyValue('background-size') || 'auto').split(',').map(s => s.trim())
   const positions = (cloneNode.style.backgroundPosition || style.getPropertyValue('background-position') || '0% 0%').split(',').map(s => s.trim())
@@ -249,9 +252,7 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
         iw = img.naturalWidth; ih = img.naturalHeight
       } catch { outSizes.push(size); outPositions.push(pos); continue }
     }
-    const resolved = urlMatch
-      ? resolveFixedLayerSize(size, iw, ih, vw, vh)
-      : { w: vw, h: vh } // gradient: positioning area is the viewport
+    const resolved = resolveFixedLayerSize(size, iw, ih, vw, vh)
     if (!resolved) { outSizes.push(size); outPositions.push(pos); continue }
     // Position % resolves against (area - image); px is absolute. calc() → bail this layer.
     const posParts = pos.split(/\s+/)

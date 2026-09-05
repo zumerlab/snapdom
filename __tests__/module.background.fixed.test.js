@@ -48,4 +48,33 @@ describe('background-attachment: fixed freeze', () => {
     // no compensation: original size keyword survives
     expect(svg).not.toMatch(/background-size:\s*[\d.]+px\s+[\d.]+px.*background-position:\s*-[\d.]+px/)
   })
+
+  it('resolves fixed background percentages against the owning iframe viewport', async () => {
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'width:300px;height:200px;border:0'
+    document.body.appendChild(iframe)
+    const doc = iframe.contentDocument
+    const el = doc.createElement('div')
+    el.id = 'frame-fixed-background'
+    el.style.cssText = `width:100px;height:80px;background-image:url("${bigPng(40, 40)}");` +
+      'background-size:50% 50%;background-attachment:fixed;background-position:0% 0%'
+    doc.body.appendChild(el)
+    const result = await snapdom(el, { cache: 'disabled', burst: false })
+    const svg = new DOMParser().parseFromString(decodeURIComponent(result.url.split(',')[1]), 'image/svg+xml')
+    const style = svg.querySelector('#frame-fixed-background').getAttribute('style')
+    expect(style).toMatch(/background-size:\s*150px 100px/)
+  })
+
+  it.each(['50% 25%', '120px auto'])('honors an explicit %s size on a fixed gradient', async (size) => {
+    const el = document.createElement('div')
+    el.id = 'sized-fixed-gradient'
+    el.style.cssText = 'width:100px;height:80px;background-image:linear-gradient(red,blue);' +
+      `background-size:${size};background-attachment:fixed;background-position:0% 0%`
+    document.body.appendChild(el)
+    const result = await snapdom(el, { cache: 'disabled', burst: false })
+    const svg = new DOMParser().parseFromString(decodeURIComponent(result.url.split(',')[1]), 'image/svg+xml')
+    const style = svg.querySelector('#sized-fixed-gradient').getAttribute('style')
+    const expected = size === '50% 25%' ? `${window.innerWidth / 2}px ${window.innerHeight / 4}px` : `120px ${window.innerHeight}px`
+    expect(style).toContain(`background-size: ${expected}`)
+  })
 })

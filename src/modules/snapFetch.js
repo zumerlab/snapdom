@@ -105,16 +105,15 @@ function isSpecialURL(url) {
 function isAlreadyProxied(url, useProxy) {
   try {
     const baseHref = (typeof location !== 'undefined' && location.href) ? location.href : 'http://localhost/'
-    const proxyBaseRaw = useProxy.includes('{url}') ? useProxy.split('{url}')[0] : useProxy
+    const proxyBaseRaw = useProxy.split(/\{url(?:Raw)?\}/)[0]
     const proxyBase = new URL(proxyBaseRaw || '.', baseHref)
     const u = new URL(url, baseHref)
 
     // Same origin as proxy → likely already proxied
     if (u.origin === proxyBase.origin) return true
 
-    // Common query keys used by proxies
-    const sp = u.searchParams
-    if (sp && (sp.has('url') || sp.has('target'))) return true
+    // Query parameter names alone do not identify this proxy: image CDNs commonly
+    // expose their own ?url= or ?target= endpoints, which still need CORS proxying.
   } catch {}
   return false
 }
@@ -146,7 +145,7 @@ function applyProxy(url, useProxy) {
   if (!useProxy) return url
 
   // Template tokens
-  if (useProxy.includes('{url}')) {
+  if (/\{url(?:Raw)?\}/.test(useProxy)) {
     return useProxy
       .replace('{urlRaw}', safeEncodeURI(url))     // path-style: proxies that take the URL as a path segment
       .replace('{url}', encodeURIComponent(url))  // query-style
@@ -181,16 +180,30 @@ function blobToDataURL(blob) {
   })
 }
 
-/** Inflight and error-cache key. `as`, timeout, proxy and errorTTL are part of it: the same
- *  URL asked for as text and as a blob is two requests, and two remembered failures. */
+/** Requests carrying custom headers bypass shared caches: headers can contain credentials
+ *  and must neither cross request boundaries nor survive in a global cache key. Credential
+ *  mode participates for ordinary requests, so an anonymous failure cannot suppress an
+ *  authenticated retry. JSON keeps URL/proxy delimiters unambiguous. */
 function makeKey(url, o) {
-  return [
+  if (!new Headers(o.headers || {}).keys().next().done) return null
+  return JSON.stringify([
     o.as || 'blob',
     o.timeout ?? 3000,
     o.useProxy || '',
     o.errorTTL ?? 8000,
+    o.credentials || '',
     url
-  ].join('|')
+  ])
+}
+
+/** Logging malformed URLs must not turn a failed asset into a thrown capture error. */
+function originForLog(url) {
+  try { return new URL(url, globalThis.location?.href || 'http://localhost/').origin } catch { return 'invalid-url' }
+}
+
+/** An observational hook cannot change the request's non-throwing result contract. */
+function notifyError(options, result) {
+  try { options.onError?.(result) } catch { /* preserve the original failure */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +302,14 @@ export async function snapFetch(url, options = {}) {
 
   // ---- Normal http(s) path ----
 
-  const key = makeKey(url, { as, timeout, useProxy, errorTTL })
+  let key
+  try {
+    key = makeKey(url, { as, timeout, useProxy, errorTTL, credentials: options.credentials, headers })
+  } catch {
+    const result = { ok: false, data: null, status: 0, url, fromCache: false, reason: 'network' }
+    notifyError(options, result)
+    return result
+  }
 
   // Error cache
   const e = _errorCache.get(key)
@@ -328,15 +348,15 @@ export async function snapFetch(url, options = {}) {
 
       if (!resp.ok) {
         const result = { ok: false, data: null, status: resp.status, url: finalURL, fromCache: false, reason: 'http_error' }
-        if (errorTTL > 0) rememberError(key, result, errorTTL)
+        if (key !== null && errorTTL > 0) rememberError(key, result, errorTTL)
         if (!silent) {
           const short = `${resp.status} ${resp.statusText || ''}`.trim()
           snapLogger.warnOnce(
-            `http:${resp.status}:${as}:${(new URL(url, (location?.href ?? 'http://localhost/'))).origin}`,
+            `http:${resp.status}:${as}:${originForLog(url)}`,
             `HTTP error ${short} while fetching ${as} ${url}`
           )
         }
-        options.onError && options.onError(result)
+        notifyError(options, result)
         return result
       }
 
@@ -372,12 +392,12 @@ export async function snapFetch(url, options = {}) {
       const result = { ok: false, data: null, status: 0, url: finalURL, fromCache: false, reason }
 
       // Persist HTTP network failures; avoid memoizing non-HTTP (handled above)
-      if (!/^blob:/i.test(url) && errorTTL > 0) {
+      if (key !== null && !/^blob:/i.test(url) && errorTTL > 0) {
         rememberError(key, result, errorTTL)
       }
 
       if (!silent) {
-        const k = `${reason}:${as}:${(new URL(url, (location?.href ?? 'http://localhost/'))).origin}`
+        const k = `${reason}:${as}:${originForLog(url)}`
         const tips = reason === 'timeout'
           ? `Timeout after ${timeout}ms. Consider increasing timeout or using a proxy for ${url}`
           : reason === 'abort'
@@ -386,7 +406,7 @@ export async function snapFetch(url, options = {}) {
         snapLogger.errorOnce(k, tips)
       }
 
-      options.onError && options.onError(result)
+      notifyError(options, result)
       return result
 
     } finally {
@@ -395,6 +415,6 @@ export async function snapFetch(url, options = {}) {
     }
   })()
 
-  _inflight.set(key, p)
+  if (key !== null) _inflight.set(key, p)
   return p
 }
