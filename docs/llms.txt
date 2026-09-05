@@ -38,6 +38,7 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 - [How-to](https://snapdom.dev/how-to/): capture recipes
 - [Guides](https://snapdom.dev/guides/): framework integration
 - [Compare](https://snapdom.dev/compare/): capture approaches and alternatives
+- [Blog](https://snapdom.dev/blog/): capture architecture, tiled rasterization and plugin experiments
 
 ## Core API
 

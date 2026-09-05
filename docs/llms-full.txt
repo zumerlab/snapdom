@@ -484,5 +484,8 @@ If output differs, read `capture.warnings` after export, use `debug: true`, and 
 - How-to: https://snapdom.dev/how-to/
 - Framework guides: https://snapdom.dev/guides/
 - Compare: https://snapdom.dev/compare/
+- Blog: https://snapdom.dev/blog/
+- DOM capture boundaries: https://snapdom.dev/blog/dom-capture-boundaries/
+- Tiled rasterization: https://snapdom.dev/blog/huge-page-mosaic/
 - Plugin gallery: https://snapdom.dev/plugins.html
 - Plugin contract: https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md
