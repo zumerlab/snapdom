@@ -102,14 +102,22 @@ yarn add @zumer/snapdom
 
 ### NPM / Yarn (dev builds)
 
-For early access to new features and fixes:
+The `@dev` tag is independent of `@latest` and can point to an older build.
+Check the published versions before choosing a development build:
+
+```bash
+npm view @zumer/snapdom dist-tags
+```
+
+Install `@dev` only when its listed version is the one you intend to test:
 
 ```bash
 npm i @zumer/snapdom@dev
 yarn add @zumer/snapdom@dev
 ```
 
-⚠️ The `@dev` tag usually includes improvements before they reach production, but may be less stable.
+`@dev` does not identify the v3 beta. Until v3 is published, use its local checkout;
+when a beta is available, install its explicit version or announced tag.
 
 
 ### CDN (stable)

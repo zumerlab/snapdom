@@ -118,7 +118,9 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });</pre>
 yarn add @zumer/snapdom</pre>
 
       <h3>NPM / Yarn (dev builds)</h3>
-      <p>For early access to new features and fixes. The <code>@dev</code> tag usually includes improvements before they reach production, but may be less stable.</p>
+      <p>The <code>@dev</code> tag is independent of <code>@latest</code> and can point to an older build. Check the versions before installing a development build:</p>
+      <pre class="code-block">npm view @zumer/snapdom dist-tags</pre>
+      <p>Install <code>@dev</code> only if its listed version is the one you intend to test. This tag does not identify the v3 beta; use the local v3 checkout before publication, then its explicit published version or announced tag.</p>
       <pre class="code-block">npm i @zumer/snapdom@dev
 yarn add @zumer/snapdom@dev</pre>
 

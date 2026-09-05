@@ -101,14 +101,20 @@ yarn add @zumer/snapdom
 
 ### NPM / Yarn（开发版）
 
-如需提前体验新功能和修复：
+`@dev` 与 `@latest` 是独立标签，可能指向更旧的版本。选择开发版前请先检查：
+
+```bash
+npm view @zumer/snapdom dist-tags
+```
+
+仅当列出的版本正是你要测试的版本时，才安装 `@dev`：
 
 ```bash
 npm i @zumer/snapdom@dev
 yarn add @zumer/snapdom@dev
 ```
 
-⚠️ `@dev` 标签通常会提前包含尚未发布的改进，但稳定性可能不及正式版。
+`@dev` 不代表 v3 beta。v3 发布前请使用本地源码；beta 发布后，请安装公告中的明确版本或标签。
 
 ### CDN（稳定版）
 
