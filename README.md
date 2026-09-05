@@ -340,7 +340,7 @@ Shipping something built with SnapDOM? Add the badge to your README:
 Projects using SnapDOM include:
 
 - [LobeHub](https://github.com/lobehub/lobehub) — platform for operating AI agents
-- [Trilium Notes](https://github.com/TriliumNext/Trilium) — hierarchical personal knowledge base
+- [Hugging Face Chat UI](https://github.com/huggingface/chat-ui) — HuggingChat interface with artifact preview captures
 - [Sealos](https://github.com/labring/sealos) — AI-native cloud operating system
 - [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — low-code page editor
 - [Playroom](https://github.com/seek-oss/playroom) — JSX design tool by SEEK

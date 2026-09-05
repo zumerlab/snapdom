@@ -340,7 +340,7 @@ npm run test:pack
 以下项目正在使用 SnapDOM：
 
 - [LobeHub](https://github.com/lobehub/lobehub) — AI 智能体平台
-- [Trilium Notes](https://github.com/TriliumNext/Trilium) — 层级式个人知识库
+- [Hugging Face Chat UI](https://github.com/huggingface/chat-ui) — HuggingChat 界面，使用 SnapDOM 截取作品预览
 - [Sealos](https://github.com/labring/sealos) — AI 原生云操作系统
 - [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — 低代码页面编辑器
 - [Playroom](https://github.com/seek-oss/playroom) — SEEK 推出的 JSX 设计工具
