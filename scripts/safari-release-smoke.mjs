@@ -7,10 +7,17 @@ import { readFile } from 'node:fs/promises'
 const endpoint = process.env.SAFARI_WEBDRIVER_URL || 'http://127.0.0.1:4447'
 const bundle = await readFile(new URL('../dist/snapdom.mjs', import.meta.url))
 const font = await readFile(new URL('../__tests__/fixtures/fonts/jbmono-400.woff2', import.meta.url))
+// Serve only these plugin entrypoints and their fixed local dependencies. Request paths
+// never become filesystem paths, so the smoke server cannot expose the checkout.
+const pluginModules = new Map(await Promise.all([
+  'redact-inputs.js', 'redact-clone.js', 'privacy-policy.js',
+  'agent-map.js', 'context-export.js', 'html-export.js',
+].map(async name => [`/plugins/${name}`, await readFile(new URL(`../packages/plugins/${name}`, import.meta.url))])))
 const server = createServer((req, res) => {
   const asset = req.url === '/snapdom.mjs' ? [bundle, 'text/javascript']
     : req.url === '/font.woff2' ? [font, 'font/woff2']
-      : req.url === '/' ? ['<!doctype html><meta charset="utf-8"><title>SnapDOM Safari release check</title>', 'text/html'] : null
+      : pluginModules.has(req.url) ? [pluginModules.get(req.url), 'text/javascript']
+        : req.url === '/' ? ['<!doctype html><meta charset="utf-8"><title>SnapDOM Safari release check</title>', 'text/html'] : null
   res.writeHead(asset ? 200 : 404, { 'content-type': asset?.[1] || 'text/plain' })
   res.end(asset?.[0] || 'Not found')
 })
@@ -92,6 +99,92 @@ async function smoke() {
   const mixed = await snapdom.fromString('Before <strong>inside</strong> after', options)
   const mixedRaw = decodeURIComponent((await mixed.toRaw()).split(',').slice(1).join(','))
   check(['Before', 'inside', 'after'].every(text => mixedRaw.includes(text)), 'mixed fragment text retained')
+
+  // Exercise published-style ESM plugin modules against the built core, on real Safari.
+  // This group has its own deadline so a privacy export cannot silently hang the smoke.
+  const privacySmoke = async () => {
+    const [{ redactInputs }, { agentMap }, { contextExport }, { htmlExport }] = await Promise.all([
+      import('/plugins/redact-inputs.js'), import('/plugins/agent-map.js'),
+      import('/plugins/context-export.js'), import('/plugins/html-export.js'),
+    ])
+    const privateRoot = mount(
+      '<section class="private-region"><h2>BLOCK_SECRET_SAFARI</h2><button>PRIVATE_ACTION_SAFARI</button></section>' +
+      '<button id="privacy-public" title="TITLE_SECRET_SAFARI" aria-label="LABEL_SECRET_SAFARI" data-account="DATA_SECRET_SAFARI">Public action</button>' +
+      '<a id="privacy-link" href="/?token=HREF_SECRET_SAFARI">Public link</a>' +
+      '<input type="email" value="email-secret@safari.test">' +
+      '<div id="privacy-style" style="width:90px;height:24px;background-image:linear-gradient(red,blue)">Public style</div>',
+      'width:420px;height:220px;background:white;color:black;font:16px Arial',
+    )
+    let hiddenRoot, hiddenStyle
+    try {
+      const original = privateRoot.outerHTML
+      const capture = await snapdom(privateRoot, {
+        ...options, reconcile: true,
+        // Semantic plugins deliberately come first: policy discovery must not depend on
+        // afterClone order, since their snapshots read the original source attributes.
+        plugins: [contextExport(), agentMap({ image: false, fields: 'full' }), redactInputs({
+          blocks: '.private-region',
+          attributes: [
+            { selector: '#privacy-public', names: ['title', 'aria-label', 'data-account'] },
+            { selector: '#privacy-link', names: ['href'] },
+            { selector: '#privacy-style', names: ['style'] },
+          ],
+        }), htmlExport()],
+      })
+      const captureSvg = decodeURIComponent((await capture.toRaw()).split(',').slice(1).join(','))
+      const captureHtml = await capture.toHtml()
+      const semantic = JSON.stringify({
+        map: await capture.toAgentMap(),
+        outline: await capture.toContext(),
+        tree: await capture.toContext({ format: 'json' }),
+      })
+      const secrets = [
+        'BLOCK_SECRET_SAFARI', 'PRIVATE_ACTION_SAFARI', 'TITLE_SECRET_SAFARI',
+        'LABEL_SECRET_SAFARI', 'DATA_SECRET_SAFARI', 'HREF_SECRET_SAFARI', 'email-secret@safari.test',
+      ]
+      for (const [name, text] of [['SVG', captureSvg], ['HTML', captureHtml], ['semantic exports', semantic]]) {
+        check(secrets.every(secret => !text.includes(secret)), `privacy ${name} omits blocks and metadata`)
+      }
+      check([captureSvg, captureHtml, semantic].every(text => text.includes('Public action') && text.includes('Public link')),
+        'privacy public content retained')
+      check(privateRoot.outerHTML === original && privateRoot.querySelector('input').value === 'email-secret@safari.test',
+        'privacy source attributes and fields untouched')
+      const svgDoc = new DOMParser().parseFromString(captureSvg, 'image/svg+xml')
+      const htmlDoc = new DOMParser().parseFromString(captureHtml, 'text/html')
+      check([svgDoc, htmlDoc].every(doc => {
+        const node = doc.querySelector('#privacy-style')
+        return node && !node.hasAttribute('style')
+      }), 'privacy late style removal survives reconciliation')
+
+      hiddenRoot = mount('<strong>HIDDEN_ROOT_SECRET_SAFARI</strong>', 'width:80px;height:40px;background:white')
+      hiddenRoot.id = 'privacy-hidden-root'
+      const hiddenImage = media.toDataURL()
+      hiddenRoot.style.backgroundImage = `url("${hiddenImage}")`
+      hiddenStyle = document.createElement('style')
+      hiddenStyle.textContent = '#privacy-hidden-root::before{content:"HIDDEN_PSEUDO_SECRET_SAFARI"}'
+      document.head.append(hiddenStyle)
+      const hidden = await snapdom(hiddenRoot, {
+        ...options, plugins: [redactInputs({ blocks: '#privacy-hidden-root' })],
+      })
+      const hiddenSvg = decodeURIComponent((await hidden.toRaw()).split(',').slice(1).join(','))
+      check(!hiddenSvg.includes('HIDDEN_ROOT_SECRET_SAFARI') && !hiddenSvg.includes('HIDDEN_PSEUDO_SECRET_SAFARI') &&
+        !hiddenSvg.includes(hiddenImage), 'privacy blocked root omits late resources and pseudos')
+      const hiddenCanvas = await hidden.toCanvas()
+      const pixels = hiddenCanvas.getContext('2d').getImageData(0, 0, hiddenCanvas.width, hiddenCanvas.height).data
+      check(!pixels.some((value, i) => i % 4 === 3 && value !== 0), 'privacy blocked root paints transparent')
+    } finally {
+      privateRoot.remove()
+      hiddenRoot?.remove()
+      hiddenStyle?.remove()
+    }
+  }
+  let privacyTimer
+  try {
+    await Promise.race([
+      privacySmoke(),
+      new Promise((_, reject) => { privacyTimer = setTimeout(() => reject(new Error('Safari privacy smoke exceeded 30 seconds')), 30000) }),
+    ])
+  } finally { clearTimeout(privacyTimer) }
   return { version: snapdom.version, userAgent: navigator.userAgent, checks: results }
 }
 

@@ -111,3 +111,44 @@ Before publication:
    when publishing that tag. Check the intended package version and npm dist-tag.
 
 No package was published and no commits were pushed by this review.
+
+## Optional privacy plugin follow-up
+
+`redactInputs` now accepts `blocks` selectors and exact `attributes` rules. The same
+per-capture policy is applied by the official HTML, agent-map and context exporters,
+regardless of plugin order. Existing field options remain supported, and the source DOM
+is never edited. Block hiding preserves space by default; removal uses `excludeMode`.
+
+Regression coverage includes frozen/concurrent exports, external labels, open shadow
+trees and slots, selected options, source-ancestor selectors, copied SVG definitions,
+late resources, dirty form values and invalid rules. Pixel comparisons check that
+metadata removal leaves the rendered image unchanged and hidden blocks preserve public
+layout. The extended rules add optional work and disable automatic reuse of unchanged
+captures, because selectors can depend on state outside the captured root. Default
+field-only redaction retains its existing memoization behavior.
+
+The core ESM and script-tag bundles are byte-identical to the reviewed build above.
+Attribute removal does not search for copies in arbitrary text, CSS content or bitmaps;
+use block rules for the subtree painting visible private content. Extended rules use
+the SVG render path, including in builds with the experimental canvas engine enabled.
+
+Final validation of this follow-up:
+
+- Full suites run one engine at a time with `REQUIRE_VISUAL=1`: 1,627 Chromium,
+  1,627 Firefox and 1,622 WebKit tests passed (4,876 total; 20 expected skips).
+  This includes 108 new privacy cases and all 231 eligible demo comparisons.
+- Real Safari 26.6.2: all 23 smoke checks passed, including 8 privacy checks against
+  the compiled core and plugin modules.
+- Lint, declarations, four release-check regressions, bundle and package checks passed.
+- Results are retained in `output/redact-release-{chromium,firefox,webkit}.json`,
+  `output/redact-safari.json` and `output/redact-pack.log`.
+
+Two concurrent three-engine runs hit existing test deadlines outside the privacy code:
+the 15-second compression identity check and the recording test's 1.5-second timeout.
+The latter leaves pending work that can affect the next test's spy count. Compression
+passed all six isolated cases in 11–37 ms, and both suites passed in the complete final
+per-engine runs. No renderer code, assertion or timeout was changed. The evidence is
+consistent with contention and timing limits; it does not establish the precise cause.
+Keep these parallel-run intermittencies visible when running the release gate. The
+intermediate reports are `output/redact-full-final.json` and
+`output/redact-validation-final.json`.

@@ -112,8 +112,9 @@ snapdom(el, {
 
 ### `redact-inputs`
 
-Masks input and textarea values in the captured clone. Core already masks password fields
-to match their visible bullets; other field values remain visible unless you redact them.
+Masks input and textarea values, excludes selected blocks, and removes named attributes
+from captured outputs. Core already masks password fields to match their visible bullets;
+other field values remain visible unless you redact them. The live page stays unchanged.
 
 ```js
 import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';
@@ -127,6 +128,19 @@ snapdom(el, { plugins: [redactInputs({ all: true })] });
 
 // App-specific fields, blanked rather than bulleted:
 snapdom(el, { plugins: [redactInputs({ selector: '[data-private]', mask: () => '' })] });
+
+// Exclude whole blocks and remove metadata attributes:
+const redaction = redactInputs({
+  blocks: ['.private-panel', '[data-private-block]'],
+  attributes: [
+    { selector: '[data-token]', names: ['data-token'] },
+    { selector: '.customer', names: ['title', 'aria-label'] }
+  ]
+});
+snapdom(el, { plugins: [redaction] });
+
+// Remove those blocks from the layout as well:
+snapdom(el, { excludeMode: 'remove', plugins: [redaction] });
 ```
 
 The default mask keeps the string's length. Glyph widths can differ, so wrapping and truncation may change.
@@ -136,11 +150,34 @@ The default mask keeps the string's length. Glyph widths can differ, so wrapping
 | `types` | `string[]` | `['email', 'tel']` | Input `type` attribute values to redact |
 | `autocomplete` | `string[]` | `['cc-*', 'current-password', 'new-password', 'one-time-code']` | Autocomplete tokens; a trailing `*` matches by prefix |
 | `selector` | `string` | `''` | Extra CSS selector for inputs and textareas |
-| `all` | `boolean` | `false` | Redact every input and textarea, ignoring the lists |
+| `all` | `boolean` | `false` | Redact every input and textarea, regardless of `types`, `autocomplete` or `selector` |
 | `mask` | `(value, el) => string` | same-length bullets | Custom masker |
+| `blocks` | `string \| string[]` | `[]` | CSS selectors for whole subtrees to exclude; uses the capture's `excludeMode` |
+| `attributes` | `Array<{ selector: string, names: string[] }>` | `[]` | Remove exact named attributes from clones of matching source elements and their semantic projections; names are not wildcard patterns |
 
-The built-in mask without a selector permits reuse of unchanged captures. Custom masks and
-selectors run on every capture. Changed content runs the full pipeline so no field skips redaction.
+`blocks` keeps an invisible space by default (`excludeMode: 'hide'`); `'remove'` drops the
+subtree from the captured layout. It combines with the capture's existing `exclude` rules.
+If the capture root itself belongs to a blocked subtree, `'remove'` throws; use `'hide'`
+for that capture. Selectors match source elements, including nodes in open shadow trees.
+
+`attributes` removes the listed DOM attributes and their projections in `agent-map` and
+`context-export`, such as accessible names or structured state. It does not erase copies
+of those values already materialized as visible text, CSS `content`, or bitmap pixels.
+Use `blocks` to hide the subtree that paints visible content. A `value` attribute rule on
+an input or textarea clears its displayed value and omits its structured `state.value`.
+Existing default field masks still apply when you add block or attribute rules.
+
+HTML exports use the sanitized clone. `agent-map` and `context-export` apply the same
+block, attribute and field rules to their source-derived data, regardless of official
+plugin order. The rules do not search arbitrary text or images for sensitive content.
+
+The built-in mask without custom selectors permits reuse of unchanged captures. Custom
+masks and nonempty `selector`, `blocks` or `attributes` rules run on every capture. Changed
+content runs the full pipeline so no field skips redaction.
+
+Nonempty `blocks` or `attributes` rules add a final `beforeRender` pass. In builds with the
+experimental `engine: 'html-in-canvas'` enabled, that pass makes the capture use the SVG
+renderer. Field-only redaction does not add this pass.
 
 `agent-map` and `context-export` omit sensitive values and mask other typed values in their
 structured state fields. Ordinary page text and labels remain. An attached image still

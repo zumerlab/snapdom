@@ -33,6 +33,7 @@
  *   'clone' skips rendering entirely — requires image: false, and result.url throws.
  * @returns {Object} SnapDOM plugin
  */
+import { getPrivacyPolicy } from './privacy-policy.js';
 
 const DEFAULT_INTERACTIVE =
   'a[href], button, input, select, textarea, ' +
@@ -84,7 +85,8 @@ export function agentMap(options = {}) {
         // The capture's ONE exclusion policy (src/core/context.js). Absent only when a
         // caller drives the hook with a hand-built context.
         typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER,
-        ctx.outerTransforms
+        ctx.outerTransforms,
+        getPrivacyPolicy(ctx)
       );
       meta.labelStyle = { ...labelStyle };
       ctx.__agentMapMeta = meta;
@@ -170,13 +172,15 @@ export function agentMap(options = {}) {
 
 /* ── Role derivation ────────────────────────────── */
 
-function deriveRole(el) {
-  const explicit = el.getAttribute('role');
+function deriveRole(el, attribute, policy) {
+  const explicit = attribute(el, 'role');
   if (explicit) return explicit;
   const tag = el.tagName.toLowerCase();
-  const type = (el.type || '').toLowerCase();
+  // Preserve native reflection (unknown input types resolve to text). Only an explicit
+  // type-attribute rule changes what can be inferred from that reflected property.
+  const type = (policy?.redactsAttribute(el, 'type') ? '' : el.type || '').toLowerCase();
   if (tag === 'button') return 'button';
-  if (tag === 'a' && el.hasAttribute('href')) return 'link';
+  if (tag === 'a' && attribute(el, 'href') !== null) return 'link';
   if (tag === 'input') {
     if (type === 'checkbox') return 'checkbox';
     if (type === 'radio') return 'radio';
@@ -203,11 +207,11 @@ function deriveRole(el) {
 
 /* ── Accessible name ────────────────────────────── */
 
-function accessibleName(el, textOf) {
-  const ariaLabel = el.getAttribute('aria-label');
+function accessibleName(el, textOf, attribute, policy) {
+  const ariaLabel = attribute(el, 'aria-label');
   if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
 
-  const labelledBy = el.getAttribute('aria-labelledby');
+  const labelledBy = attribute(el, 'aria-labelledby');
   if (labelledBy) {
     const root = el.getRootNode();
     const getById = (id) =>
@@ -219,12 +223,12 @@ function accessibleName(el, textOf) {
     if (parts.length) return parts.join(' ');
   }
 
-  if (el.tagName === 'IMG' || (el.tagName === 'INPUT' && (el.type || '').toLowerCase() === 'image')) {
-    const alt = el.getAttribute('alt');
+  if (el.tagName === 'IMG' || (el.tagName === 'INPUT' && !policy?.redactsAttribute(el, 'type') && (el.type || '').toLowerCase() === 'image')) {
+    const alt = attribute(el, 'alt');
     if (alt && alt.trim()) return alt.trim();
   }
 
-  const title = el.getAttribute('title');
+  const title = attribute(el, 'title');
   if (title && title.trim()) return title.trim();
 
   if (el.labels && el.labels[0]) {
@@ -264,29 +268,30 @@ function maskedValue(value) {
   return '\u2022'.repeat(Math.min(String(value ?? '').length, 12));
 }
 
-function deriveState(el, role, rect) {
+function deriveState(el, role, rect, attribute, policy, textOf, blocked) {
   const s = {};
+  const redacts = policy ? name => policy.redactsAttribute(el, name) : NEVER;
 
   try {
-    if (el.matches(':checked')) s.checked = true;
-    else if (role === 'checkbox' || role === 'radio') {
+    if (!redacts('checked') && el.matches(':checked')) s.checked = true;
+    else if (!redacts('checked') && (role === 'checkbox' || role === 'radio')) {
       // include checked:false for form groups where an agent needs to
       // know "unchecked" is a valid state distinct from "not a checkbox".
       s.checked = false;
     }
-    if (el.matches(':disabled')) s.disabled = true;
+    if (!redacts('disabled') && el.matches(':disabled')) s.disabled = true;
     if (el.matches(':focus')) s.focus = true;
   } catch { /* exotic nodes */ }
 
-  const expanded = el.getAttribute('aria-expanded');
+  const expanded = attribute(el, 'aria-expanded');
   if (expanded === 'true') s.expanded = true;
   else if (expanded === 'false') s.expanded = false;
 
-  const pressed = el.getAttribute('aria-pressed');
+  const pressed = attribute(el, 'aria-pressed');
   if (pressed === 'true') s.pressed = true;
   else if (pressed === 'false') s.pressed = false;
 
-  const selected = el.getAttribute('aria-selected');
+  const selected = attribute(el, 'aria-selected');
   if (selected === 'true') s.selected = true;
   else if (selected === 'false' && (role === 'tab' || role === 'option')) s.selected = false;
 
@@ -297,18 +302,28 @@ function deriveState(el, role, rect) {
       // Remaining inputs: masked by default — the agent learns "field has content"
       // without the output carrying user data.
       if (!isSensitiveInput(el)) {
-        s.value = maskedValue(el.value);
+        if (!policy?.isField(el)) s.value = maskedValue(el.value);
         s.hasValue = true;
       }
     }
   } else if (el.tagName === 'TEXTAREA') {
-    if (el.value) { s.value = maskedValue(el.value); s.hasValue = true; }
+    if (el.value) {
+      if (!policy?.isField(el)) s.value = maskedValue(el.value);
+      s.hasValue = true;
+    }
   } else if (el.tagName === 'SELECT') {
-    s.value = el.value;
     const opt = el.options && el.options[el.selectedIndex];
-    if (opt) s.selectedText = opt.text || '';
+    if (!opt || !blocked(opt)) {
+      // HTMLOptionElement.text collapses ASCII whitespace, preserving nonbreaking spaces.
+      if (opt) s.selectedText = policy ? textOf(opt).replace(/[\t\n\f\r ]+/g, ' ').replace(/^ | $/g, '') : opt.text || '';
+      if (!redacts('value') && !(opt && policy?.redactsAttribute(opt, 'value'))) {
+        // Without an explicit value attribute, select.value derives from the option's
+        // text too, so use the same permitted text as selectedText under a privacy policy.
+        s.value = policy && opt && !opt.hasAttribute('value') ? s.selectedText : el.value;
+      }
+    }
   } else if (el.tagName === 'DETAILS') {
-    s.open = !!el.open;
+    if (!redacts('open')) s.open = !!el.open;
   }
 
   // Covered — element visually occluded by something else at its center.
@@ -332,6 +347,7 @@ function deriveState(el, role, rect) {
 /* ── Map extraction ─────────────────────────────── */
 
 const NEVER = () => false;
+const sourceAttribute = (el, name) => el.getAttribute(name);
 
 /** What actually paints under `el`, mirroring deepClone: a <slot> renders its assigned
  *  elements, and an open shadow root renders in place of the host's light children —
@@ -348,22 +364,28 @@ function renderedChildren(el) {
   return [...sr.children, ...Array.from(el.children).filter((c) => !slotted.has(c))];
 }
 
-function extractMap(element, interactiveSelector, semanticSelector, fields, shouldExclude, outerTransforms) {
+function extractMap(element, interactiveSelector, semanticSelector, fields, shouldExclude, outerTransforms, policy) {
   const rootRect = element.getBoundingClientRect();
   const map = [];
   let i = 0;
   const tracked = new Set();
+  const attribute = policy ? policy.attribute : sourceAttribute;
+  const excluded = policy ? el => shouldExclude(el) || policy.isBlocked(el) : shouldExclude;
+  const blocked = (el) => {
+    for (let ancestor = el; ancestor; ancestor = ancestor.parentElement || ancestor.getRootNode()?.host) {
+      if (excluded(ancestor)) return true;
+    }
+    return false;
+  };
 
   // Names/full text must obey the same redaction boundary as the entry walk. Plain
   // textContent resurrects excluded descendants, and textarea defaults bypass masked
   // state. Referenced labels may also live under an excluded ancestor outside this root.
   const textOf = (el) => {
-    for (let ancestor = el; ancestor; ancestor = ancestor.parentElement || ancestor.getRootNode()?.host) {
-      if (shouldExclude(ancestor)) return '';
-    }
+    if (blocked(el)) return '';
     const read = (node) => {
       if (node.nodeType === 3) return node.nodeValue || '';
-      if (node.nodeType !== 1 || node.tagName === 'TEXTAREA' || shouldExclude(node)) return '';
+      if (node.nodeType !== 1 || node.tagName === 'TEXTAREA' || excluded(node)) return '';
       return Array.from(node.childNodes, read).join('');
     };
     return read(el);
@@ -375,7 +397,7 @@ function extractMap(element, interactiveSelector, semanticSelector, fields, shou
   // subtrees so a redacted node cannot come back as an actionable badge.
   const els = [];
   const visit = (el) => {
-    if (shouldExclude(el)) return;
+    if (excluded(el)) return;
     els.push(el);
     for (const c of renderedChildren(el)) visit(c);
   };
@@ -383,14 +405,14 @@ function extractMap(element, interactiveSelector, semanticSelector, fields, shou
 
   for (const el of els) {
     if (!el.matches(interactiveSelector)) continue;
-    const entry = buildEntry(el, rootRect, i, fields, 'interactive', textOf);
+    const entry = buildEntry(el, rootRect, i, fields, 'interactive', textOf, attribute, policy, blocked);
     if (entry) { map.push(entry); tracked.add(el); i++; }
   }
 
   if (semanticSelector) {
     for (const el of els) {
       if (tracked.has(el) || !el.matches(semanticSelector)) continue;
-      const entry = buildEntry(el, rootRect, i, fields, 'semantic', textOf);
+      const entry = buildEntry(el, rootRect, i, fields, 'semantic', textOf, attribute, policy, blocked);
       if (entry) { map.push(entry); i++; }
     }
   }
@@ -435,7 +457,7 @@ function captureFrame(element, rect, outerTransforms = true) {
     sy: rect.height ? (Math.max(...corners.map(p => p.y)) - y) / rect.height : 1 };
 }
 
-function buildEntry(el, rootRect, i, fields, kind, textOf) {
+function buildEntry(el, rootRect, i, fields, kind, textOf, attribute, policy, blocked) {
   const rect = el.getBoundingClientRect();
   // The annotation pass filters on this flag — without it, semantic:true put badges
   // on headings/paragraphs (the filter was a no-op because nothing ever set it).
@@ -448,14 +470,14 @@ function buildEntry(el, rootRect, i, fields, kind, textOf) {
   ];
   if (b[2] <= 0 && b[3] <= 0) return null;
 
-  const role = deriveRole(el);
-  const n = accessibleName(el, textOf);
+  const role = deriveRole(el, attribute, policy);
+  const n = accessibleName(el, textOf, attribute, policy);
 
   const entry = { i, n, r: role, b };
   if (kind === 'semantic') entry.isSemanticOnly = true;
 
   if (kind === 'interactive') {
-    const s = deriveState(el, role, rect);
+    const s = deriveState(el, role, rect, attribute, policy, textOf, blocked);
     if (s) entry.s = s;
   }
 
@@ -464,7 +486,7 @@ function buildEntry(el, rootRect, i, fields, kind, textOf) {
     if (t && t !== n) entry.t = t.length > 160 ? t.slice(0, 159) + '…' : t;
     const a = {};
     for (const name of ['href', 'type', 'name', 'placeholder', 'alt', 'title', 'role', 'aria-label']) {
-      const v = el.getAttribute(name);
+      const v = attribute(el, name);
       if (v && v !== 'false') a[name] = v;
     }
     if (Object.keys(a).length) entry.a = a;

@@ -34,6 +34,7 @@
  *   'clone' skips the render; result.url then throws.
  * @returns {Object} SnapDOM plugin
  */
+import { getPrivacyPolicy } from './privacy-policy.js'
 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'META', 'LINK', 'TITLE'])
 
@@ -84,12 +85,16 @@ export function contextExport(options = {}) {
     // capture's instant is still the page's instant.
     beforeClone(ctx) {
       const el = ctx.element
+      const policy = getPrivacyPolicy(ctx)
+      const shouldExclude = typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER
       const state = {
         count: 0,
         truncated: false,
         // The capture's ONE exclusion policy (src/core/context.js). Absent only when a
         // caller drives the hook with a hand-built context.
-        exclude: typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER,
+        exclude: policy ? node => shouldExclude(node) || policy.isBlocked(node) : shouldExclude,
+        attribute: policy ? policy.attribute : sourceAttribute,
+        policy,
       }
       const root = buildNode(el, el.getBoundingClientRect(), maxNodes, geometry, state)
       ctx.__contextSnapshot = { root, truncated: state.truncated, nodes: state.count }
@@ -121,6 +126,7 @@ export function contextExport(options = {}) {
 }
 
 const NEVER = () => false
+const sourceAttribute = (el, name) => el.getAttribute(name)
 
 function visibleText(node) {
   // A textarea's child text is its default value, not a label. nodeState already emits
@@ -156,25 +162,46 @@ function isHidden(el) {
   } catch { return false }
 }
 
-function nodeState(el) {
+function permittedOptionText(node, exclude) {
+  if (node.nodeType === 3) return node.nodeValue || ''
+  if (node.nodeType !== 1 || node.tagName === 'TEXTAREA' || exclude(node)) return ''
+  return Array.from(node.childNodes, child => permittedOptionText(child, exclude)).join('')
+}
+
+function nodeState(el, { attribute, policy, exclude }) {
   const s = {}
-  if (el.tagName === 'A' && el.getAttribute('href')) s.href = el.getAttribute('href')
-  if (el.disabled) s.disabled = true
-  if (el.checked !== undefined && (el.type === 'checkbox' || el.type === 'radio')) s.checked = !!el.checked
+  const redacts = policy ? name => policy.redactsAttribute(el, name) : NEVER
+  if (el.tagName === 'A' && attribute(el, 'href')) s.href = attribute(el, 'href')
+  if (el.disabled && !redacts('disabled')) s.disabled = true
+  if (!redacts('checked') && el.checked !== undefined && (el.type === 'checkbox' || el.type === 'radio')) s.checked = !!el.checked
   if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
     // Sensitive inputs: value NEVER emitted (exclusion, not truncation — a truncated
     // password is still a leak). Other inputs: masked; the agent sees "has content".
-    if (el.value && !isSensitiveInput(el)) { s.value = maskedValue(el.value); s.hasValue = true }
-    else if (el.value) s.hasValue = true
-    if (el.placeholder) s.placeholder = el.placeholder
+    if (el.value) {
+      if (!isSensitiveInput(el) && !policy?.isField(el)) s.value = maskedValue(el.value)
+      s.hasValue = true
+    }
+    if (!redacts('placeholder') && el.placeholder) s.placeholder = el.placeholder
   }
-  if (el.tagName === 'SELECT' && el.selectedOptions?.[0]) s.value = el.selectedOptions[0].textContent.trim().slice(0, 40)
-  if (el.tagName === 'IMG') s.alt = el.getAttribute('alt') || ''
-  const aria = el.getAttribute('aria-label')
+  if (el.tagName === 'SELECT' && el.selectedOptions?.[0] && !redacts('value')) {
+    const option = el.selectedOptions[0]
+    let blocked = false
+    for (let ancestor = option; ancestor; ancestor = ancestor.parentElement || ancestor.getRootNode()?.host) {
+      if (exclude(ancestor)) { blocked = true; break }
+    }
+    if (!blocked) {
+      // DOM-created/customizable options can contain excluded descendants. Their text
+      // must not return through selected state after the regular tree walk pruned it.
+      const text = policy ? permittedOptionText(option, exclude) : option.textContent
+      s.value = text.trim().slice(0, 40)
+    }
+  }
+  if (el.tagName === 'IMG' && !redacts('alt')) s.alt = attribute(el, 'alt') || ''
+  const aria = attribute(el, 'aria-label')
   if (aria) s.label = aria
-  const role = el.getAttribute('role')
+  const role = attribute(el, 'role')
   if (role) s.role = role
-  if (el.tagName === 'DETAILS') s.open = el.hasAttribute('open')
+  if (el.tagName === 'DETAILS' && !redacts('open')) s.open = attribute(el, 'open') !== null
   return Object.keys(s).length ? s : null
 }
 
@@ -185,8 +212,9 @@ function buildNode(el, rootRect, maxNodes, geometry, state) {
   if (state.exclude(el)) return null
   state.count++
   const node = { tag: el.localName }
-  if (el.id) node.id = el.id
-  const cls = (el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2)
+  const id = state.policy?.redactsAttribute(el, 'id') ? '' : el.id
+  if (id) node.id = id
+  const cls = (state.attribute(el, 'class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2)
   if (cls.length) node.class = cls.join('.')
   if (geometry) {
     try {
@@ -199,7 +227,7 @@ function buildNode(el, rootRect, maxNodes, geometry, state) {
   }
   const text = visibleText(el)
   if (text) node.text = text
-  const st = nodeState(el)
+  const st = nodeState(el, state)
   if (st) node.state = st
 
   const children = []
