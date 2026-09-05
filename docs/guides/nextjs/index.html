@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Capture HTML to PNG in Next.js with SnapDOM</title>
-  <meta name="description" content="How to use SnapDOM in a Next.js 14 app router project. Client component, dynamic import, the SSR pitfall and a working example." />
+  <meta name="description" content="How to use SnapDOM in a Next.js App Router project. Client component, dynamic import, the SSR pitfall and a working example." />
   <meta name="keywords" content="snapdom nextjs, html to png nextjs, next.js screenshot div, next.js html2canvas alternative, nextjs capture component" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/guides/nextjs/" />
@@ -94,16 +94,8 @@
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../../docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="../" class="current" data-umami-event="Nav guides">Guides</a>
-    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Next.js Guide</div>
@@ -119,29 +111,29 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p>SnapDOM is a browser-only library — it must run on the client. Mark your component with <code>'use client'</code> (app router) or import SnapDOM dynamically with <code>ssr: false</code>. Then it's a regular React capture: <code>useRef</code> + <code>snapdom.toPng(ref.current)</code>.</p>
+      <p>SnapDOM needs a browser DOM. Use a client component for the ref and event handler, then import SnapDOM inside the handler. This keeps capture code out of server rendering.</p>
     </div>
 
     <section class="prose">
       <h2 id="install">1. Install</h2>
       <pre class="code-block">npm install @zumer/snapdom</pre>
-      <p class="muted">Works with Next.js 13, 14 and 15. No special config required.</p>
+      <p class="muted">Run the capture in a browser event handler after the component has hydrated.</p>
     </section>
 
     <section class="prose">
       <h2 id="client">2. App Router — client component</h2>
-      <p>Create a client component that owns the ref and the capture logic. The <code>'use client'</code> directive on top is critical: without it Next.js will try to evaluate SnapDOM during the server render and crash.</p>
+      <p>Create a client component that owns the ref and capture logic. <code>'use client'</code> defines a client boundary, but client components may still be prerendered. Importing SnapDOM inside the click handler keeps that import in the browser.</p>
       <pre class="code-block"><span class="cm">// app/capture/CaptureCard.tsx</span>
 <span class="str">'use client'</span>;
 
 <span class="kw">import</span> { useRef } <span class="kw">from</span> <span class="str">'react'</span>;
-<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
 <span class="kw">export default function</span> <span class="fn">CaptureCard</span>() {
   <span class="kw">const</span> cardRef = <span class="fn">useRef</span>&lt;HTMLDivElement&gt;(<span class="kw">null</span>);
 
   <span class="kw">async function</span> <span class="fn">handleCapture</span>() {
     <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
+    <span class="kw">const</span> { snapdom } = <span class="kw">await</span> <span class="kw">import</span>(<span class="str">'@zumer/snapdom'</span>);
     <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(cardRef.current, { scale: <span class="num">2</span> });
     document.body.<span class="fn">appendChild</span>(img);
   }
@@ -178,7 +170,7 @@
 
     <section class="prose">
       <h2 id="use">3. Use it from a server page</h2>
-      <p>Server components can render the client component as a child. The boundary is the <code>'use client'</code> directive — anything below it runs in the browser:</p>
+      <p>Server components can render this client component as a child. The <code>'use client'</code> boundary allows its event handler and ref; the dynamic import inside the handler runs when the user captures:</p>
       <pre class="code-block"><span class="cm">// app/capture/page.tsx</span>
 <span class="kw">import</span> CaptureCard <span class="kw">from</span> <span class="str">'./CaptureCard'</span>;
 
@@ -194,7 +186,7 @@
 
     <section class="prose">
       <h2 id="dynamic">4. Alternative — dynamic import (lazy load)</h2>
-      <p>If you want to keep SnapDOM out of the initial bundle, import the client component dynamically with SSR disabled. One catch: since Next.js 14, <code>ssr: false</code> is not allowed inside a server component — the file doing the <code>dynamic()</code> call must itself be a client component:</p>
+      <p>The handler above already loads SnapDOM on demand. You can also load the entire capture component dynamically with SSR disabled. Put this <code>dynamic()</code> call inside a client component:</p>
       <pre class="code-block"><span class="cm">// app/capture/CaptureLazy.tsx</span>
 <span class="str">'use client'</span>;
 
@@ -212,7 +204,8 @@
       <p>SnapDOM is great for generating share cards on the fly when the user clicks "share". Capture the rendered card to a Blob, upload it to your CDN, and use that URL as the <code>og:image</code> for the share link:</p>
       <pre class="code-block"><span class="kw">async function</span> <span class="fn">share</span>() {
   <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
-  <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.current, { scale: <span class="num">2</span>, type: <span class="str">'png'</span> });
+  const { snapdom } = await import('@zumer/snapdom');
+  <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.current, { scale: <span class="num">2</span>, format: <span class="str">'png'</span> });
 
   <span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
   form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'share.png'</span>);
@@ -227,18 +220,18 @@
 
       <details>
         <summary>"window is not defined" / "document is not defined" errors</summary>
-        <p>You imported SnapDOM at the top of a server component. Either add <code>'use client'</code> at the top of the file, or use <code>dynamic(() =&gt; import('./CaptureCard'), { ssr: false })</code> from inside a client component (Next.js 14+ rejects <code>ssr: false</code> in server components).</p>
+        <p>Import SnapDOM inside a browser event handler, as shown above, or load the capture component with <code>dynamic(() =&gt; import('./CaptureCard'), { ssr: false })</code> from a client component. A <code>'use client'</code> directive alone does not prevent prerendering.</p>
       </details>
 
       <details>
         <summary>The captured image is blank in production but works in dev</summary>
-        <p>This usually means a font hasn't finished loading by the time you triggered the capture. Pass <code>{ embedFonts: true }</code> and await <code>document.fonts.ready</code> before the first capture, or arm <code>snapdom.preCapture()</code> once on mount so that first capture happens on intent, before the click.</p>
+        <p>Check that the target is mounted, has a nonzero size and contains the expected data. Wait for layout-changing assets such as fonts. SnapDOM v3 embeds used web fonts with <code>embedFonts: 'auto'</code> by default; a blank capture can have causes beyond font loading.</p>
       </details>
 
       <details>
         <summary>Should I use SnapDOM or @vercel/og for OG images?</summary>
-        <p>Different tools. <code>@vercel/og</code> renders Satori-compatible JSX on the server (no real browser, no full CSS). SnapDOM runs client-side in a real browser and supports the entire CSS engine including pseudo-elements, custom fonts, animations and Web Components.</p>
-        <p>Use <code>@vercel/og</code> when the card is fully described in JSX and you don't need real browser fidelity. Use SnapDOM when you want to capture a piece of your live UI with pixel accuracy.</p>
+        <p>Different tools. <code>@vercel/og</code> renders Satori-compatible JSX on the server (no real browser, no full CSS). SnapDOM runs client-side in a real browser and captures the rendered DOM, including supported pseudo-elements, custom fonts and open Web Components.</p>
+        <p>Use <code>@vercel/og</code> when the card is fully described in JSX and you don't need real browser fidelity. Use SnapDOM when you want to capture a piece of your live UI with its current browser layout.</p>
       </details>
 
       <details>
@@ -253,7 +246,7 @@
 
       <details>
         <summary>Does it work with Turbopack?</summary>
-        <p>Yes. SnapDOM is a plain ES module with no native dependencies, so Turbopack and Webpack handle it identically.</p>
+        <p>SnapDOM has an ES module entry and no native runtime dependencies. Keep its import and capture calls inside the browser boundary when using Turbopack or Webpack.</p>
       </details>
     </section>
 
@@ -262,7 +255,7 @@
       <div class="related-grid">
         <a class="related-card" href="../react/">SnapDOM in React <span class="arrow">→</span></a>
         <a class="related-card" href="../vue/">SnapDOM in Vue <span class="arrow">→</span></a>
-        <a class="related-card" href="../../compare/html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a>
         <a class="related-card" href="../../how-to/html-to-png/">How to convert HTML to PNG <span class="arrow">→</span></a>
       </div>
     </section>
@@ -270,9 +263,9 @@
     <section class="cta-section">
       <div class="cta-card">
         <h2>Try it in your app router project</h2>
-        <p>Drop SnapDOM into a client component and capture your first element in under a minute.</p>
+        <p>Capture from a client event handler after the component has rendered.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Guide nextjs cta home">Open the demo</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide nextjs cta npm">Install from npm</a>
+        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide nextjs cta npm">Installation</a>
       </div>
     </section>
   </main>

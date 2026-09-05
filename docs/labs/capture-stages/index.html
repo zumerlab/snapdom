@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Capture Stages — a plugin decides how far the pipeline runs</title>
-  <meta name="description" content="A capture is live DOM, then clone, then render. Plugins declare the deepest stage they need, and SnapDOM stops there. Measure the three stages side by side and see what an absent artifact does."/>
+  <meta name="description" content="A capture freezes a clone and can continue through rendering. Compare the clone and render stages declared by plugins, and see which exports each stage produces."/>
   <link rel="canonical" href="https://snapdom.dev/labs/capture-stages/"/>
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
@@ -32,6 +32,8 @@
   </style>
 </head>
 <body>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 <main class="page">
   <p class="crumbs"><a href="../../">SnapDOM</a> / <a href="../../labs.html">Labs</a> / Capture Stages</p>
 
@@ -41,12 +43,14 @@
   <b>render</b> turns that clone into pixels. Not every consumer needs the whole chain, and
   the plugin is the one that knows. So it declares it:</p>
 
-  <pre><code>{ name: 'my-plugin', needs: 'clone' }  // annotates the frozen tree, no pixels
-{ name: 'my-plugin' }                  // default: the whole pipeline, as always</code></pre>
+  <pre><code>// Clone only, no image
+{ name: 'my-plugin', needs: 'clone' }
+
+// Complete capture (the default)
+{ name: 'my-plugin' }</code></pre>
 
   <p class="muted">v3 removed a third, shallower stage — <code>needs: 'dom'</code> — which ran the
-  plugin against the live page and took no clone at all. A capture that takes no clone is not a
-  capture, so the stage is gone and declaring it now throws.</p>
+  plugin against the live page and took no clone at all. Declaring that removed stage now throws.</p>
 
   <p>The stage of a capture is the <b>deepest</b> stage its plugins declare, so one undeclared
   plugin keeps everything. A capture with no plugins behaves exactly as it always did.</p>
@@ -54,7 +58,7 @@
   <div class="lab-stages">
     <div class="sample" id="sample"></div>
     <p class="run">
-      <button id="go" class="btn">Run the three stages</button>
+      <button id="go" class="btn">Run both stages</button>
       <span class="note" id="status"></span>
     </p>
     <div class="grid" id="cards"></div>
@@ -62,11 +66,9 @@
   </div>
 
   <h2>What the numbers say</h2>
-  <p>Stopping before the render saves almost nothing: serialization is a few percent of a
-  capture. Stopping before the <b>clone</b> is the cut that matters, and it is exactly the one a
-  plugin can know about and a caller cannot.</p>
+  <p>The <b>clone</b> stage skips render-stage asset embedding and serialization. The saving depends on the page and resources. Compare the timings above; neither stage promises a fixed fraction of a full capture.</p>
 
-  <h2>What was never produced is never faked</h2>
+  <h2>Unavailable exports</h2>
   <p>Ask a shallow capture for pixels and it throws, naming the plugin that lowered the stage.
   Re-capturing on demand would hand back an image of a <i>different</i> instant, and the caller
   would have no way to tell.</p>
@@ -169,9 +171,8 @@ document.getElementById('go').addEventListener('click', async () => {
   status.textContent = `${sample.querySelectorAll('*').length + 1} nodes, median of ${REPS} runs`
   document.getElementById('verdict').innerHTML =
     `Stopping at <b>clone</b> skipped ${Math.max(0, 100 - clone.ms / render.ms * 100).toFixed(0)}% of the capture. ` +
-    'It is a modest cut, and that is the honest result: the clone is the expensive half, ' +
-    'serialization is a few percent of the work. Declare the shallower stage when you truly ' +
-    'do not need pixels — not expecting it to change the shape of the cost.'
+    'These timings compare the clone stage with a full capture of this element. ' +
+    'Use the clone stage when your plugin only needs structured data; image exports require render.'
 })
 </script>
 </main>

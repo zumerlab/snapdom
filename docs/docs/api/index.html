@@ -19,7 +19,7 @@
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="SnapDOM API Reference" />
-  <meta name="twitter:description" content="API reference, options, plugins and cache control for the fast html2canvas alternative." />
+  <meta name="twitter:description" content="SnapDOM v3 methods for reusable captures, image exports, HTML input and capture metadata." />
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg" />
 
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
@@ -62,16 +62,8 @@
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../" class="current" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Documentation</div>
@@ -81,7 +73,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>SnapDOM <span class="accent">API</span> Reference</h1>
-    <p class="lead">The complete SnapDOM surface: the reusable <code>snapdom(el)</code> object, the one-step shortcut methods, and the export-only options each exporter accepts.</p>
+    <p class="lead">Create a reusable capture with <code>snapdom(el)</code>, export it in several formats, or use a shortcut for one output. This page documents the v3 API.</p>
     <div class="hero-actions">
       <a href="#methods" class="btn btn-primary" data-umami-event="Docs api hero methods">Shortcut methods</a>
       <a href="../options/" class="btn btn-ghost" data-umami-event="Docs api hero options">Capture options</a>
@@ -91,7 +83,7 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">At a glance</div>
-      <p>Call <strong><code>snapdom(el)</code></strong> to get a reusable result object — clone once, export many times to SVG, PNG, JPG, WebP, Canvas or Blob, or trigger a download. For a single export, the <strong><code>snapdom.to*</code></strong> shortcut methods do the same in one call. Every method also accepts the full set of <a href="../options/">capture options</a>.</p>
+      <p><strong><code>snapdom(el)</code></strong> returns image exporters, capture geometry and diagnostics for one captured state. <strong>Plugins</strong> add outputs such as HTML, JSON context and PDFs. Pass <a href="../options/">capture options</a> when creating the result; later exports can change output size, format and quality without recapturing the page.</p>
     </div>
 
     <section class="prose">
@@ -118,7 +110,7 @@ await result.download({ format: 'jpg', filename: 'my-capture.jpg' });</pre>
       <h3 id="shortcuts">One-step shortcuts</h3>
       <p>Direct export when you need a single format:</p>
       <pre class="code-block">const png = await snapdom.toPng(el);
-const blob = await snapdom.toBlob(el);
+const blob = await snapdom.toBlob(el, { format: 'png' });
 document.body.appendChild(png);</pre>
     </section>
 
@@ -126,7 +118,7 @@ document.body.appendChild(png);</pre>
       <h2 id="reusable">snapdom(el, options?)</h2>
       <p>Returns a reusable object with export methods. The capture (deep clone + asset inlining) runs once; each method on the returned object reuses it, so exporting several formats from the same element does not re-clone the DOM.</p>
       <pre class="code-block">{
-  url: string;                    // SVG by default; lazy PNG after a successful native html-in-canvas capture
+  url: string;                    // SVG by default; PNG after native capture
   needs: 'clone' | 'render';
   meta: Readonly&lt;CaptureMeta&gt;;
   warnings: Array&lt;{ code: string; message: string; detail?: unknown }&gt;;
@@ -142,28 +134,29 @@ document.body.appendChild(png);</pre>
   toWebp(options?): Promise&lt;HTMLImageElement&gt;;
   download(options?): Promise&lt;void&gt;;
 }</pre>
-      <p class="muted"><code>toImg()</code> is <strong>deprecated</strong> — use <code>toSvg()</code> instead. With the default engine, <code>url</code> / <code>toRaw()</code> is the serialized SVG. A successful <code>html-in-canvas</code> capture is raster, so reading either one lazily materializes and memoizes a PNG data URL.</p>
+      <p class="muted">With the default SVG engine, <code>url</code> and <code>toRaw()</code> return serialized SVG without drawing pixels. A successful native capture lazily encodes PNG instead. <code>toImg()</code> is deprecated; use <code>toSvg()</code>. Frozen <code>meta</code> records the viewBox size, output target, content origin and clip rectangle. A plugin capture that stops at <code>needs: 'clone'</code> has no rendered image or render metadata; image access throws.</p>
     </section>
 
     <section class="prose">
       <h2 id="methods">Shortcut methods</h2>
-      <p>Each shortcut captures and exports in a single call. They accept the same element and the full set of <a href="../options/">capture options</a>.</p>
+      <p>Each shortcut captures and exports in a single call. They accept the same element and the full set of <a href="../options/">capture options</a>. The table describes the default SVG engine.</p>
       <table class="cmp-table">
         <thead>
           <tr><th>Method</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">snapdom.toRaw(el, options?)</td><td>Returns the capture data URL (SVG by default; PNG after a successful native <code>html-in-canvas</code> capture, SVG on fallback)</td></tr>
+          <tr><td class="num">snapdom.toRaw(el, options?)</td><td>Returns the serialized SVG data URL without rasterizing it.</td></tr>
           <tr><td class="num">snapdom.toImg(el, options?)</td><td>Deprecated alias of <code>toSvg</code></td></tr>
-          <tr><td class="num">snapdom.toSvg(el, options?)</td><td>Returns an <code>HTMLImageElement</code> (SVG by default; PNG-backed after a successful native <code>html-in-canvas</code> capture, SVG on fallback)</td></tr>
+          <tr><td class="num">snapdom.toSvg(el, options?)</td><td>Returns a decoded <code>HTMLImageElement</code> backed by SVG.</td></tr>
           <tr><td class="num">snapdom.toCanvas(el, options?)</td><td>Returns a <code>Canvas</code></td></tr>
-          <tr><td class="num">snapdom.toBlob(el, options?)</td><td>Returns an SVG or raster <code>Blob</code>; successful <code>html-in-canvas</code> captures default to PNG</td></tr>
+          <tr><td class="num">snapdom.toBlob(el, options?)</td><td>Returns an SVG <code>Blob</code> unless an image format was explicitly requested.</td></tr>
           <tr><td class="num">snapdom.toPng(el, options?)</td><td>Returns a PNG image</td></tr>
           <tr><td class="num">snapdom.toJpg(el, options?)</td><td>Returns a JPG image</td></tr>
           <tr><td class="num">snapdom.toWebp(el, options?)</td><td>Returns a WebP image</td></tr>
           <tr><td class="num">snapdom.download(el, options?)</td><td>Triggers a download</td></tr>
         </tbody>
       </table>
+      <p>SnapDOM's second engine, experimental <code>html-in-canvas</code>, needs the browser feature flag and an enabled build; see <a href="../options/#all-options">engine requirements</a>. On a successful native capture, <code>toRaw()</code> returns PNG, <code>toSvg()</code> returns a PNG-backed image, and <code>toBlob()</code> defaults to PNG. There is no SVG source; requesting an SVG Blob rejects. SVG fallback uses the table's behavior.</p>
     </section>
 
     <section class="prose">
@@ -182,26 +175,22 @@ document.body.appendChild(png);</pre>
 
     <section class="prose">
       <h2 id="fromstring">snapdom.fromString(html, options?)</h2>
-      <p>New in v3. Captures a markup string — SSR output, a template, an email body — without
-      the caller wiring up a mount. The markup is attached offscreen in the live document, so
-      the page's CSS and fonts apply exactly as they would to anything else on it, captured, and
-      removed. When the string has a single root element that element is the target; otherwise
-      the wrapper is.</p>
+      <p>Capture trusted markup such as a template or SSR output in the browser. SnapDOM mounts
+      it offscreen so the page's CSS and fonts apply, captures it, then removes the mount.
+      A single root element becomes the target; multiple roots use the mount's wrapper.</p>
       <pre class="code-block">const result = await snapdom.fromString(
   '&lt;article class="card"&gt;&lt;h2&gt;Hello&lt;/h2&gt;&lt;/article&gt;'
 );
 const png = await result.toPng();</pre>
-      <p class="muted"><strong>Trusted HTML only.</strong> The string goes through
-      <code>innerHTML</code> into the real document, so it is parsed and ACTIVATED like any
-      markup you wrote yourself: <code>&lt;img onerror&gt;</code> and friends run, in your origin,
-      with your cookies. That is inherent — there is no capture without a live layout — so the
-      trust boundary is yours to hold. Sanitize anything user-supplied (DOMPurify or equivalent)
-      before passing it here.</p>
+      <p class="muted"><strong>Trusted HTML only.</strong> The mount uses <code>innerHTML</code>
+      in your page. Event handlers in the markup can run in your origin. Sanitize untrusted
+      input before calling this method; <code>fromString()</code> is not a sanitizer or a
+      server-side renderer.</p>
     </section>
 
     <section class="prose">
       <h2 id="exporter-options">Exporter-specific options</h2>
-      <p>Some exporters accept a small set of <strong>export-only options</strong> in addition to the global <a href="../options/">capture options</a>.</p>
+      <p>Export options override the values captured with the result. <code>width</code> or <code>height</code> takes precedence over <code>scale</code>; <code>dpr</code> multiplies raster pixels. <code>toCanvas({ crop: { x, y, width, height } })</code> crops in capture viewBox coordinates. To exclude content before capture work runs, use the <a href="../options/#all-options">capture <code>clip</code> option</a>.</p>
 
       <h3 id="download">download()</h3>
       <table class="cmp-table">
@@ -226,12 +215,12 @@ const png = await result.toPng();</pre>
           <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">type</td><td class="num">"svg" | "png" | "jpeg" | "jpg" | "webp"</td><td class="num">"svg" / "png" after successful native capture</td><td>Blob type to generate.</td></tr>
+          <tr><td class="num">format</td><td class="num">"svg" | "png" | "jpeg" | "jpg" | "webp"</td><td class="num">"svg"</td><td>Blob format. The deprecated <code>type</code> alias remains accepted.</td></tr>
         </tbody>
       </table>
-      <p class="muted"><code>toBlob()</code> defaults to SVG on the default engine and PNG after a successful <code>html-in-canvas</code> capture. That native capture has no SVG source, so an explicit <code>type: "svg"</code> or <code>format: "svg"</code> request rejects.</p>
+      <p class="muted">Without an explicit format at capture or export time, <code>toBlob()</code> defaults to SVG on the SVG engine and PNG after successful native capture. For example, a result created with <code>snapdom(el, { format: 'png' })</code> also uses PNG for <code>result.toBlob()</code>.</p>
       <p><strong>Example:</strong></p>
-      <pre class="code-block">const blob = await result.toBlob({ type: 'jpeg', quality: 0.92 });</pre>
+      <pre class="code-block">const blob = await result.toBlob({ format: 'jpeg', quality: 0.92 });</pre>
     </section>
 
     <section class="related">
@@ -247,7 +236,7 @@ const png = await result.toPng();</pre>
     <section class="cta-section">
       <div class="cta-card">
         <h2>Ready to capture?</h2>
-        <p>Drop SnapDOM into your project and capture your first element in one line.</p>
+        <p>Try the browser demo, then use the API reference to choose your output.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Docs api cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs api cta npm">Install from npm</a>
       </div>

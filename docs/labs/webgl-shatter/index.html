@@ -49,22 +49,17 @@
   </style>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>A capture, <span class="accent">shattered</span></h1><p class="lead">Five WebGL shaders, one starting point: a SnapDOM capture of a live, editable card, turned into a WebGL texture. Nothing here exists without rasterizing the DOM first.</p></section>
   <main class="page">
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A custom <code>defineExports</code> plugin (<code>shatterExport</code>) adds a genuinely new export type — <code>result.toShatter()</code> — that isn't a thin wrapper around <code>toPng</code>/<code>toCanvas</code>. It reuses the core canvas exporter internally via the "silent" <code>ctx.exports.canvas()</code> facade (no re-triggered <code>beforeExport</code>/<code>afterExport</code> hooks), then slices that canvas into a grid of small canvases for the physics simulation to grab as WebGL textures. The other four effects — ripple, glitch, dissolve, metal — don't need the plugin at all: they just take the whole card as one texture via plain <code>snapdom.toCanvas()</code>.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A custom <code>defineExports</code> plugin (<code>shatterExport</code>) adds a custom export type — <code>result.toShatter()</code> — that isn't a thin wrapper around <code>toPng</code>/<code>toCanvas</code>. It reuses the core canvas exporter internally via the "silent" <code>ctx.exports.canvas()</code> facade (no re-triggered <code>beforeExport</code>/<code>afterExport</code> hooks), then slices that canvas into a grid of small canvases for the physics simulation to grab as WebGL textures. The other four effects — ripple, glitch, dissolve, metal — don't need the plugin at all: they just take the whole card as one texture via plain <code>snapdom.toCanvas()</code>.</p></div>
 
     <section class="prose">
       <h2>What you're looking at</h2>
-      <p>The card's heading and paragraph are <code>contenteditable</code> — genuinely editable HTML, not a canned image behind a fake cursor. Whatever you type is what ends up baked into the WebGL texture, because SnapDOM captures the card exactly as it currently renders: your text, your font metrics, the gradient, the shadow. Edit the copy, then apply an effect, and you're watching your own words get shattered, rippled, or dissolved.</p>
+      <p>The card's heading and paragraph are <code>contenteditable</code> — editable HTML. Whatever you type is what ends up baked into the WebGL texture, because SnapDOM captures the card exactly as it currently renders: your text, your font metrics, the gradient, the shadow. Edit the copy, then apply an effect, and you're watching your own words get shattered, rippled, or dissolved.</p>
     </section>
 
     <section class="prose">
@@ -151,7 +146,7 @@
       <pre class="code-block">const result = await snapdom(card, { plugins: [shatterExport({ cols: 16, rows: 11 })] })
 const { pieces } = await result.toShatter()
 // pieces[i] = { u, v, du, dv, canvas } — grid position (0..1) plus a
-// small <canvas>, ready to hand to texImage2D as its own WebGL texture</pre>
+// small &lt;canvas&gt;, ready to hand to texImage2D as its own WebGL texture</pre>
       <p>The other four effects skip the plugin entirely — one capture, one texture:</p>
       <pre class="code-block">const canvas = await snapdom.toCanvas(card, { scale: 2 })
 const tex = makeTexture(canvas) // gl.texImage2D(..., canvas)</pre>
@@ -160,14 +155,14 @@ const tex = makeTexture(canvas) // gl.texImage2D(..., canvas)</pre>
 
     <section class="prose">
       <h2>Limits and things to watch</h2>
-      <p><code>ctx.exports.canvas()</code> is an internal facade — not yet part of the public <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">PLUGIN_SPEC.md</a> hook table, but a real, stable pattern in the codebase, meant specifically for plugins that need to build on a core export without re-triggering the whole export pipeline. Slicing one large canvas into many small ones has a real per-piece <code>drawImage</code> cost: this demo's 16×11 grid is already 176 pieces, and pushing much finer than that will start to show on lower-end GPUs.</p>
+      <p>The <code>ctx.exports.canvas()</code> facade is documented in <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">PLUGIN_SPEC.md</a>. It lets a custom exporter reuse core Canvas output without invoking its own export hooks again. Splitting this capture into a 16×11 grid creates 176 pieces; finer grids add draw calls, textures and memory.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../webgl-live-mirror/">WebGL Live Mirror — same toCanvas → texture pipeline, no plugin <span class="arrow">→</span></a>
-        <a class="related-card" href="../webgl-seamless-dom/">WebGL Seamless DOM — another plain toCanvas texture <span class="arrow">→</span></a>
+        <a class="related-card" href="../webgl-live-mirror/">WebGL Live Mirror — a custom export updates a live texture <span class="arrow">→</span></a>
+        <a class="related-card" href="../webgl-seamless-dom/">WebGL Seamless DOM — a custom export blends texture updates <span class="arrow">→</span></a>
         <a class="related-card" href="../../plugins.html">Browse the plugin directory <span class="arrow">→</span></a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec <span class="arrow">→</span></a>
       </div>

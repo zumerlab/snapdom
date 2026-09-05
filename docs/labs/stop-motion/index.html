@@ -45,13 +45,8 @@
   </style>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>You <span class="accent">choose</span> the frames</h1><p class="lead">No continuous sampling here. You pose an actor, press the shutter, and move on — the sequence is exactly the poses you decided were worth keeping, like a physical stop-motion rig.</p></section>
   <main class="page">
@@ -65,7 +60,7 @@
 
     <section class="prose">
       <h2 id="live-demo">Try it</h2>
-      <p>Drag the sliders to pose the actor, capture a few poses from different positions, then hit play. Every thumbnail in the filmstrip below is a separate, independent PNG capture — there's no shared state between them.</p>
+      <p>Drag the sliders to pose the actor, capture a few poses from different positions, then hit play. Every thumbnail in the filmstrip below is a separate, independent SVG snapshot — there's no shared state between them.</p>
       <div class="lab-stop-motion">
         <div class="stage-wrap">
           <div id="pose-scene">
@@ -90,7 +85,7 @@
     <section class="prose">
       <h2>How it works</h2>
       <ol class="steps">
-        <li><h4>The plugin factory closes over a counter</h4><p><code>frameCollector(onFrame)</code> returns a plugin holding a private <code>index</code> variable — nothing else. No clone, no DOM reference, no persisted state.</p></li>
+        <li><h4>The plugin factory closes over a counter</h4><p><code>frameCollector(onFrame)</code> returns a plugin holding a private <code>index</code> variable — nothing else. It persists the frame count, but no clone or DOM reference.</p></li>
         <li><h4>Moving a slider never captures anything</h4><p>Dragging Horizontal, Vertical, or Rotation just updates inline styles and a CSS custom property on the live <code>#actor</code> element. SnapDOM is not involved yet.</p></li>
         <li><h4>Capture pose runs one real capture</h4><p>The button calls <code>snapdom(poseScene, { plugins: [collector] })</code> against the current, live state of the stage — whatever pose the sliders are showing right now.</p></li>
         <li><h4><code>afterRender</code> fires with the finished context</h4><p>Once SnapDOM renders the SVG, the plugin's <code>afterRender(ctx)</code> hook runs, increments its counter, and calls back with <code>{ index, url: ctx.dataURL }</code>.</p></li>
@@ -102,7 +97,7 @@
     <section class="prose">
       <h2>Why this needed a plugin</h2>
       <p>Contrast this with the accumulation pattern in the paint-canvas and target-range labs: there, a plugin mutates <code>ctx.clone</code> and persists it across calls so the next capture builds on the last one. Here the plugin does neither. It never touches <code>ctx.clone</code>, and it doesn't need to remember anything about the DOM from one capture to the next — each pose is a fresh, self-contained render.</p>
-      <p>What it does need is a way to get data <em>out</em> of a capture that a plain <code>snapdom()</code> call, used only for its side effect of producing an image, wouldn't otherwise return to the caller. The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterRender</code></a> hook is documented as firing "After SVG is rendered" to "Post-process rendered output," and by that point <code>ctx.dataURL</code> is already available on the context. This lab uses that hook purely as a tap on the pipeline — proof that plugin hooks aren't only for mutating the DOM before a render; <code>afterRender</code> and <code>afterExport</code> are just as much a seam for pulling values back out once a render has finished.</p>
+      <p>The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterRender</code></a> hook centralizes frame collection after capture, using the SVG data URL in <code>ctx.dataURL</code>. An application could also collect <code>result.url</code> after awaiting <code>snapdom()</code>; this demo uses a plugin callback to keep that bookkeeping in one place.</p>
     </section>
 
     <section class="prose">
@@ -129,13 +124,13 @@ const collector = frameCollector(frame => {
 
 // runs once per "Capture pose" click, against whatever
 // pose the sliders are showing at that moment
-await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</pre>
+await snapdom(poseScene, { plugins: [collector] })</pre>
       <div class="flow-strip">slider input <b>→</b> live style change (no capture) <b>→</b> Capture pose <b>→</b> snapdom() <b>→</b> afterRender (ctx.dataURL) <b>→</b> capturedFrames.push()</div>
     </section>
 
     <section class="prose">
       <h2>Limits and things to watch</h2>
-      <p>Every pose is a full, independent SnapDOM capture — nothing is diffed or reused between frames — so a large filmstrip means proportionally more capture time, not a fixed cost. And because frames are plain dataURLs held in memory, footprint scales linearly with frame count and resolution. Fine for a dozen poses on a small stage; not a strategy for hundreds of frames or a full-resolution scene.</p>
+      <p>The collector has a stateful <code>afterRender</code> hook, so these poses run fresh captures in v3. Resource caches can still be reused. Each SVG data URL stays in memory, so filmstrip size grows with the number and content of the frames.</p>
     </section>
 
     <section class="related">
@@ -200,7 +195,7 @@ await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })</p
       addFrame.disabled = true
       frameStatus.textContent = 'Capturing pose…'
       try {
-        await snapdom(poseScene, { plugins: [collector], cache: 'full', fast: true })
+        await snapdom(poseScene, { plugins: [collector] })
       } finally {
         addFrame.disabled = false
       }

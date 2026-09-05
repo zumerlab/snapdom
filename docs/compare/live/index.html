@@ -56,16 +56,8 @@
   </style>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../../docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../" class="current" data-umami-event="Nav compare">Compare</a>
-    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a>
-    <a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Live benchmark</div>
@@ -77,8 +69,8 @@
     <section class="prose">
       <h2>How to read it</h2>
       <ul>
-        <li><strong>One output stage for everyone.</strong> Every library is timed all the way to a PNG data URL. Timing SnapDOM's SVG url against a competitor's rasterized PNG leaves out the raster and encode step — on a large scene that step is roughly half the total, and it is how comparison tables end up flattering whoever publishes them.</li>
-        <li><strong>Cold and repeat are different numbers.</strong> <em>First capture</em> builds a brand-new element every time — capturing something you have never captured before. <em>Repeat</em> re-captures the same element. They differ by ~1.4× for SnapDOM, and the ranking is not always the same in both columns.</li>
+        <li><strong>One output stage for everyone.</strong> Every library is timed through to a PNG data URL. Comparing an SVG URL with a PNG would omit rasterization and encoding from one side.</li>
+        <li><strong>Cold and repeat are different numbers.</strong> <em>First capture</em> builds a new element for every run. <em>Repeat</em> captures the same element again. Compare both columns because reuse can change the timing and ranking.</li>
         <li><strong>Defaults, scale 1, pinned versions.</strong> No library is configured for advantage. SnapDOM runs with <code>burst: false</code> in every scene except <em>Polling</em>, so its memoization is not compared against everyone else's full pipeline. One option is passed for correctness, not speed: domlens gets <code>viewport: { scrollY: 0 }</code>, because with its defaults the region it cuts is offset by however far this page is scrolled — on a page scrolled down to this button, its row rendered the wrong part of the document.</li>
         <li><strong>The table does not know who should win.</strong> Rows are sorted by measured time and the fastest is highlighted, whoever it is. On some scenes that is not SnapDOM.</li>
       </ul>
@@ -110,7 +102,7 @@
         <tbody id="lab-tbody"></tbody>
       </table>
 
-      <p class="lab-note">The last column is <strong>the share of pixels that differ from SnapDOM's capture</strong> beyond a per-channel tolerance — not a correctness verdict, since SnapDOM is only the reference because it is the library this page ships. Under a percent is antialiasing and font rasterization. A large number means the two libraries did not render the same thing, and the gallery below shows which: milliseconds cannot tell a fast capture from a fast capture of the <em>wrong thing</em>.</p>
+      <p class="lab-note">The last column is <strong>the share of pixels that differ from SnapDOM's capture</strong> beyond a per-channel tolerance — not a correctness verdict, since SnapDOM is only the reference because it is the library this page ships. Small differences may come from antialiasing or font rasterization, but can also reveal a real defect. A large number means the two libraries did not render the same thing, and the gallery below shows which: milliseconds cannot tell a fast capture from a fast capture of the <em>wrong thing</em>.</p>
 
       <p class="lab-note">Every row must also produce the <strong>same output size</strong>, and must actually paint something. A row tagged <em>not comparable</em> rendered at a different resolution, and one tagged <em>blank output</em> returned a correctly-sized image with nothing in it — in both cases the milliseconds are measuring the wrong thing. Treat those rows as bug reports, not results.</p>
 
@@ -144,7 +136,7 @@
         <li><strong>Speed is not fidelity.</strong> A library that skips shadow DOM has less work to do. Read the output gallery and the capability matrix alongside the milliseconds, never instead of them.</li>
         <li><strong>These are synthetic scenes.</strong> They were chosen because they isolate a cost — per-node work, author-stylesheet scanning, shadow traversal, large-output raster — not because they are your page.</li>
       </ul>
-      <p>The same scenes run in the repository as <code>__tests__/category.*.benchmark.js</code>, and the numbers quoted in the README come from there. If a run here disagrees with the README, the README is the one that needs re-measuring — please <a href="https://github.com/zumerlab/snapdom/issues" target="_blank" rel="noopener">open an issue</a> with the copied results.</p>
+      <p>The same scenes run in the repository as <code>__tests__/category.*.benchmark.js</code>. Compare library versions, browser, scene and capture mode when investigating a difference. You can <a href="https://github.com/zumerlab/snapdom/issues" target="_blank" rel="noopener">open an issue</a> with the copied results and output.</p>
     </section>
 
     <section class="cta-section">

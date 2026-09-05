@@ -60,7 +60,7 @@
         "name": "Can I convert HTML to PNG without a server?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes — SnapDOM runs entirely in the browser. There is no server required and no network round-trip. The conversion uses SVG foreignObject and the browser's own renderer."
+          "text": "Yes. SnapDOM runs in the browser and does not need a screenshot server. Its SVG foreignObject pipeline uses the browser's renderer; fonts and images may still require network requests."
         }
       },
       {
@@ -68,7 +68,7 @@
         "name": "What about high-DPI / retina output?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "SnapDOM auto-detects the device pixel ratio via the dpr option, so retina screens already render sharp. To force a specific density, pass dpr: 2 (or any value). The scale option is different — it multiplies the captured size (zoom)."
+          "text": "SnapDOM auto-detects the device pixel ratio via the dpr option, so retina screens already render sharp. To force a specific density, pass dpr: 2 (or any value). The scale option enlarges output when no explicit width or height is set."
         }
       }
     ]
@@ -89,23 +89,15 @@
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
-      { "@type": "ListItem", "position": 2, "name": "How-To", "item": "https://snapdom.dev/how-to/" },
+      { "@type": "ListItem", "position": 2, "name": "How-to", "item": "https://snapdom.dev/how-to/" },
       { "@type": "ListItem", "position": 3, "name": "HTML to PNG", "item": "https://snapdom.dev/how-to/html-to-png/" }
     ]
   }
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../../docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="../" class="current" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">How-To Recipe</div>
@@ -121,7 +113,7 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p><code>const img = await snapdom.toPng(element);</code> — that returns an <code>HTMLImageElement</code>. Append it, download it, or convert to a Blob with <code>snapdom.toBlob(element)</code> if you need to upload.</p>
+      <p><code>const img = await snapdom.toPng(element);</code> — that returns an <code>HTMLImageElement</code>. Append it, download it, or convert to a Blob with <code>snapdom.toBlob(element, { format: 'png' })</code> if you need a PNG Blob to upload.</p>
     </div>
 
     <section class="prose">
@@ -148,7 +140,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
       <pre class="code-block"><span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
       <p>If you need more control, build the download yourself with a Blob and an anchor tag:</p>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { type: <span class="str">'png'</span> });
+      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { format: <span class="str">'png'</span> });
 <span class="kw">const</span> url = URL.<span class="fn">createObjectURL</span>(blob);
 
 <span class="kw">const</span> a = document.<span class="fn">createElement</span>(<span class="str">'a'</span>);
@@ -162,7 +154,7 @@ URL.<span class="fn">revokeObjectURL</span>(url);</pre>
     <section class="prose">
       <h2 id="upload">Pattern 3 — Upload the PNG to a server</h2>
       <p>Capture the element to a Blob, wrap it in <code>FormData</code>, and POST it to your endpoint:</p>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { type: <span class="str">'png'</span> });
+      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { format: <span class="str">'png'</span> });
 
 <span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
 form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'card.png'</span>);
@@ -185,7 +177,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
           <div id="demo-card" style="max-width:320px;padding:22px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6 55%,#ec4899);border:2px dashed rgba(255,255,255,0.5);color:#fff;">
             <span style="display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,0.22);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">HTML → PNG</span>
             <h3 style="margin:12px 0 6px;font-size:20px;color:#fff;">Gradients, borders &amp; shadows</h3>
-            <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.9);">Rounded corners, a dashed border, a gradient — captured exactly as rendered.</p>
+            <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.9);">Rounded corners, a dashed border, a gradient — ready to capture together.</p>
             <span style="display:inline-block;padding:8px 14px;border-radius:8px;background:#fff;color:#4f46e5;font-size:13px;font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,0.35);">⚡ Even this shadow</span>
           </div>
         </div>
@@ -209,7 +201,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
       <h2 id="hi-dpi">High-DPI / retina output</h2>
       <p>SnapDOM picks up the device's <code>devicePixelRatio</code> automatically through the <code>dpr</code> option, so retina screens already get sharp output without configuration. Override it with <code>dpr</code> when you want a fixed pixel density (e.g. exporting a 2× asset on a non-retina machine):</p>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, { dpr: <span class="num">2</span> });</pre>
-      <p><code>scale</code> is different — it multiplies the captured size (zoom). Use <code>scale</code> when you want a larger image; use <code>dpr</code> when you want the same logical size at higher pixel density. They can be combined:</p>
+      <p><code>scale</code> multiplies the captured size when no explicit <code>width</code> or <code>height</code> is set. Use <code>scale</code> when you want a larger image; use <code>dpr</code> when you want the same logical size at higher pixel density. They can be combined:</p>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el, {
   dpr: <span class="num">2</span>,            <span class="cm">// retina pixel density</span>
   scale: <span class="num">1.5</span>,        <span class="cm">// zoom 1.5×</span>
@@ -222,7 +214,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Can I convert HTML to PNG without a server?</summary>
-        <p>Yes. SnapDOM runs entirely in the browser. There is no server required and no network round-trip — the conversion uses SVG <code>foreignObject</code> and the browser's own renderer.</p>
+        <p>Yes. SnapDOM runs in the browser and does not need a screenshot server. Its SVG <code>foreignObject</code> pipeline uses the browser's renderer; fonts and images may still require network requests.</p>
       </details>
 
       <details>
@@ -232,12 +224,12 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>How do I render custom fonts correctly?</summary>
-        <p>Pass <code>{ embedFonts: true }</code>. SnapDOM will inline the matching <code>@font-face</code> declarations into the SVG so the captured image renders with your real fonts instead of falling back to system ones.</p>
+        <p>SnapDOM v3 defaults to <code>embedFonts: 'auto'</code>, which embeds used web fonts when their files are accessible. Use <code>localFonts</code> or <code>excludeFonts</code> when you need more control.</p>
       </details>
 
       <details>
         <summary>Can I exclude some elements from the capture?</summary>
-        <p>Yes. Pass <code>{ exclude: ['.skip-me'] }</code> with a list of CSS selectors, or <code>{ filter: node =&gt; …  }</code> for fine-grained control.</p>
+        <p>Yes. Pass <code>{ exclude: ['.skip-me'] }</code> with a list of CSS selectors, or <code>{ exclude: node =&gt; … }</code> for a predicate that returns true for nodes to omit.</p>
       </details>
 
       <details>
@@ -247,7 +239,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Does it handle Shadow DOM and Web Components?</summary>
-        <p>Yes. SnapDOM walks open Shadow DOM trees during cloning, so Web Components render the same way they do in the live page.</p>
+        <p>Yes. SnapDOM walks open Shadow DOM trees during cloning, and preserves their rendered styles subject to the same resource and browser limits as other captures.</p>
       </details>
     </section>
 
@@ -257,7 +249,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
         <a class="related-card" href="../screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
         <a class="related-card" href="../../guides/react/">SnapDOM in React <span class="arrow">→</span></a>
         <a class="related-card" href="../../guides/nextjs/">SnapDOM in Next.js <span class="arrow">→</span></a>
-        <a class="related-card" href="../../compare/html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a>
       </div>
     </section>
 
@@ -266,7 +258,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
         <h2>Try the live demo</h2>
         <p>Capture any element on snapdom.dev to see the output before installing.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Howto png cta home">Open the demo</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Howto png cta npm">Install from npm</a>
+        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Howto png cta npm">Installation</a>
       </div>
     </section>
   </main>

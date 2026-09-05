@@ -1,167 +1,143 @@
-# SnapDOM — 功能特性
+# SnapDOM 功能特性
 
-本文完整介绍 **SnapDOM** 能够捕获、嵌入和导出的内容。默认引擎会通过 `<foreignObject>` 将 DOM 子树序列化为自包含的 SVG，再将其光栅化为目标格式；实验性的 `html-in-canvas` 引擎则可直接把完成的克隆绘制为位图。整个过程速度快、零依赖，完全基于标准 Web API。
+SnapDOM 在浏览器内捕获渲染后的界面状态。核心引擎提供可复用的图片和 Canvas 导出；插件提供 HTML、结构化上下文、元素映射、PDF 和录制功能。
 
-> 📖 完整 API、选项与指南：**[snapdom.dev/docs](https://snapdom.dev/docs/)**
->
-> 🌐 English: **[FEATURES.md](FEATURES.md)**
-
-## 目录
-
-- [捕获与克隆](#捕获与克隆)
-- [样式](#样式)
-- [图片与背景](#图片与背景)
-- [字体与图标字体](#字体与图标字体)
-- [导出格式](#导出格式)
-- [选项](#选项)
-- [插件系统](#插件系统)
-- [缓存与记忆化](#缓存与记忆化)
-- [跨浏览器处理](#跨浏览器处理)
-- [节点级控制属性](#节点级控制属性)
+本文是 v3 的技术功能参考。安装与示例见 [README](README.md) 和 [API 文档](https://snapdom.dev/docs/)。[English](FEATURES.md)。
 
 ## 捕获与克隆
 
-SnapDOM 会逐节点深度克隆 DOM，并记录每个节点的计算样式，从而还原浏览器实际渲染的效果。
+核心引擎克隆选定的子树，记录计算样式并嵌入资源。`snapdom.fromString()` 也可捕获挂载在屏幕外的可信或已清理的 HTML。
 
-- **Shadow DOM** — 遍历 `shadowRoot`，提取 CSS 并限定其作用域，补齐所需的 CSS 自定义属性，再通过 `assignedNodes({ flatten: true })` 解析 `<slot>` 中分配的内容（会标记插槽子树，避免重复克隆）。
-- **同源 iframe** — 在当前位置转为位图并嵌入，字体从 iframe 自身的文档中读取。跨源 iframe 无法读取，因此会显示为条纹占位框；关闭 `placeholders` 后则只保留不可见的占位空间。
-- **`<canvas>`** — 转存为 PNG 格式的 `<img>`（包含针对 Safari 的重试机制），并保留画布的固有尺寸和 CSS 盒模型尺寸。
-- **`<video>`** — 将当前帧绘制为图片；如果失败，则使用 `poster`；同时遵循 `object-fit: contain`。
-- **`<audio controls>`** — 按元素尺寸绘制播放器示意图来替代原控件。
-- **表单控件状态** — 保留 `<input>` 的 `value` / `checked` / `indeterminate`、`<textarea>` 的值，以及 `<select>` 的选中项。还会复制 `disabled`、`required`、`readonly`、`min`、`max`、`pattern`、`aria-invalid` 等状态属性，使 `:disabled`、`:required`、`:read-only`、`:invalid`、`:in-range` 等伪类样式能够正确渲染。`::placeholder` 的颜色也会保留。由于 Firefox 无法在 SVG `<foreignObject>` 中可靠渲染原生复选框和单选按钮，SnapDOM 会改用等效的内联 SVG 图形，并保留控件状态和强调色。
-- **`<img>`** — 固定 `srcset` 的解析结果，记录应用变换前的尺寸；当样式中使用 `%` 或 `auto` 时，将尺寸固定为像素值；同时保留 `object-fit` 和 `object-position`。
-- **SVG** — 将 `fill`、`stroke` 及其各子属性、透明度相关属性、`fill-rule` / `clip-rule`、marker、`visibility`、`display` 等绘制属性复制为内联样式。对于 `<use>` 引用的外部 `<defs>` / `<symbol>`，会将定义一并内联，使 `var()` 能在 `<use>` 所在位置正确解析。
-- **滚动位置** — 对已经滚动的容器，SnapDOM 会移动其内部内容并裁剪溢出区域，以还原当前滚动位置；同时调整 `fixed` / `absolute` 定位的后代元素，并将 `sticky` 页眉和页脚固定在当前显示位置。
-- **有意跳过的内容** — `meta`、`script`、`noscript`、`title`、`link`、`template`、SnapDOM 沙箱，以及嵌套的 `<foreignObject>`。
+| 内容 | 捕获行为 |
+| --- | --- |
+| 开放的 Shadow DOM | 展开 shadow root，限定样式作用域并解析已分配的 slot 内容 |
+| 同源 iframe | 捕获 iframe，并从其自身文档中读取资源和字体 |
+| 跨源 iframe | 使用等尺寸占位框；`placeholders: false` 时保留不可见的占位空间 |
+| Canvas | 捕获当前位图，保留固有尺寸和 CSS 尺寸 |
+| 视频 | 可读取时捕获当前帧，否则回退到 poster |
+| 音频控件 | 使用绘制的播放器示意图 |
+| 表单控件 | 保留当前值、选中/不确定状态、选区及依赖状态的样式 |
+| 图片与 picture | 固定已选中的响应式资源和渲染尺寸，包括 `object-fit` 和 `object-position` |
+| 内联 SVG | 保留绘制样式，并内联引用的外部定义和符号 |
+| 滚动容器 | 保留滚动位置、裁剪和定位后代元素 |
 
-无法渲染的内容也会得到妥善处理：删除非法的 XML 控制字符，强制让 `content-visibility` 对应的屏幕外内容参与渲染，并将根元素的外边距归零。
+核心会遮蔽密码。其他可见输入值仍会显示，除非由插件或排除规则移除。Firefox 中的复选框和单选按钮使用等效的内联 SVG 图形。
+
+脚本、模板等不参与渲染的节点会被跳过。克隆根元素的外边距会归零，屏幕外的 `content-visibility` 内容也会参与捕获。
 
 ## 样式
 
-- **内联计算样式** — 固化每个节点的计算样式，再合并相同样式并生成 CSS 类，以减小输出体积。源元素上的内联样式会替换为计算后的值，确保样式表中的 `!important` 仍按浏览器计算结果生效。
-- **扫描出的属性全集** — 先对文档的作者样式做一次扫描，得出页面实际可能影响到的属性集合，于是每个节点的快照只需读取约 50 个属性，而不是约 400 个。同一次扫描还会得出各伪元素的选择器判定，用一次 `matches()` 取代每个节点三次 `getComputedStyle`。两者都按文档和样式纪元缓存。
-- **保留样式细节** — 保留 `text-decoration` 的具体属性（`line`、`color`、`style`、`thickness`、`underline-offset`、`skip-ink`）、`-webkit-text-stroke`、`paint-order`；嵌入字体时，还会保留字体特性、可变轴、字距调整、变体和光学尺寸等设置。
-- **`counter()` / `counters()`** — 内置完整的 CSS 计数器解析器，支持嵌套的 `counter-reset`、`counter-increment`、`counter-set` 和 `counter-style` 格式化，用于生成伪元素的 `content`。
-- **`-webkit-line-clamp` 与 `text-overflow: ellipsis`** — 直接转换为带 `…` 的实际文本，因为 Firefox 和 Safari 无法在 `<foreignObject>` 中正确应用这些样式。
-- **变换** — 将 `transform` 与独立的 `translate` / `rotate` / `scale` 合并为完整矩阵，并在计算边界框时考虑变换原点（见 `outerTransforms` 选项）。
-- **阴影、模糊和轮廓的边界扩展** — `outerShadows: false` 会移除根元素的 `box-shadow`、`text-shadow`、`outline` 和 `drop-shadow()`，但保留 `blur()` 并计入其溢出。`true` 保留并计算根效果；`'subtree'` 还会计算后代阴影。显式 `clip` 的边界不会扩展。
-- **蒙版、背景与 `border-image`** — 见[图片与背景](#图片与背景)。
-- **自定义滚动条** — 注入 `::-webkit-scrollbar` 规则，使自定义滚动条样式显示出来。
-- **`excludeStyleProps`** — 通过正则表达式或判断函数跳过某些样式属性（例如排除所有 CSS 变量）。
-- **`reconcile`** — 将带样式的克隆结果挂载到屏幕外，逐节点与真实 DOM 对比测量，只把尺寸出现偏差的盒模型钉定为真实值，可修复少见的文字重新换行/布局漂移问题，代价是捕获耗时大约翻倍；默认关闭。如果 snapdom 检测到某次捕获对已知可能需要该选项的元素做了宽度软化处理，会通过 `console.warn` 提示一次。
+- 复制计算样式，并将相同样式合并为生成的 CSS 类。保留作者样式的 `!important` 规则和内联样式优先级。
+- 捕获伪元素、文字装饰、文字描边、字体可变轴和 OpenType 设置。
+- 伪元素内容中的 CSS 计数器支持重置、递增、嵌套和计数器样式。
+- SVG 渲染需要时，将行数限制和省略号转换为捕获文本。
+- 根元素变换包括独立的 `translate`、`rotate` 和 `scale`，计算边界时会考虑变换原点。根元素的位移会被规范化；`outerTransforms: false` 还会移除旋转，但保留 `scale` 和 `skew`。
+- `outerShadows: false` 移除根元素的阴影、轮廓和 `drop-shadow()`，但保留模糊。`true` 包含根元素效果；`'subtree'` 还包含后代元素的阴影。显式裁剪边界不会扩展。
+- 背景、蒙版、边框图片、裁剪路径和混合模式保留捕获时的样式。
+- 捕获路径支持时会包含自定义滚动条样式；已滚动的内容会被捕获，但不包含自定义滚动条。
+
+`reconcile: true` 对照源元素测量带样式的克隆，校正有偏差的盒模型。它可以修复文字换行或布局差异，但需要额外的测量流程。`excludeStyleProps` 根据 RegExp 或判断函数省略指定属性。
 
 ## 图片与背景
 
-- **内联 `<img>`** — 解析 `currentSrc` / `src`，获取图片并转为 Data URL，缓存结果，同时确保尺寸正确。请求会分批处理，以避免超过 HTTP/1.1 的连接数限制。SVG 的 `<image href>` 也会一并内联。
-- **背景与蒙版** — 内联 `background-image`（以及 `background` 简写）、`mask` / `-webkit-mask*` 和 `border-image` 中各层的 `url()`，保留多层值以及 `position`、`size`、`repeat`、`origin`、`clip`、`blend-mode`、`composite` 等相关布局属性。支持 `background-clip: text`。
-- **`<picture>` 与懒加载图片** — 克隆前，将 `<picture>` 的资源和常见懒加载属性（`data-src`、`data-lazy-src`、`data-original`、`data-hi-res-src`、`data-srcset` 等）解析为实际的资源 URL。
-- **跨源 / 代理** — 内置不会向外抛出异常的资源请求层，支持合并并发的相同请求、缓存错误、超时控制和自动判断凭据。`useProxy` 支持多种模板写法（`{url}`、`{urlRaw}`、以 `?url=` 结尾等）；已经过代理的 URL 以及 `data:` / `blob:` URL 会被跳过。
-- **加载失败时的回退方案** — 依次尝试可配置的 `fallbackURL`（字符串或回调）、占位框，最后保留不可见的占位空间。
-- **感知降采样** — 按图片的实际显示分辨率（显示区域 × `scale` × `dpr`）对已内联的位图重新采样，保留原始编码格式且绝不放大，只有在结果确实更小的时候才采用。这是引擎行为而非选项：被丢弃的像素本来就无法在输出中显示。
-- **`image-set()` / `-webkit-image-set()`** — 在 `background-image` 和伪元素 `content` 中，会内联与当前设备像素比匹配的候选图片，而不是简单取第一个出现的 `url()`。
-- **解码尺寸保护** — 将 SVG 光栅化时，尺寸会限制在安全范围内（单边最大 16384 px，总面积约 2.68 亿像素）；超出限制时会自动缩小并发出警告。
+图片、SVG 图片引用、CSS 背景层、蒙版和边框图片会被嵌入。多层背景保留定位、尺寸、重复和混合设置。`image-set()` 根据页面的设备像素比选择候选资源。
+
+响应式图片使用浏览器已选中的资源，而非备用 `src`，同时也会解析常见的懒加载属性。图片请求复用进行中的任务并缓存资源。`useProxy` 支持代理 URL 或模板；`fallbackURL` 为加载失败的图片提供回退资源。
+
+内联的位图会降采样到捕获所需的分辨率，并尽可能保留原编码格式。只有体积确实更小时才使用缩小后的图片。导出更大尺寸时，可恢复捕获时保存的原图，不会读取实时页面上后来更换的图片。
+
+Canvas 尺寸受浏览器安全限制约束。过大的输出可能被缩小，并发出警告。
 
 ## 字体与图标字体
 
-- **嵌入 `@font-face`**（`embedFonts`） — 扫描文档和 iframe 中的样式表，只嵌入与**实际使用**的字体系列、字重、样式和拉伸比例相匹配的 `@font-face` 规则，并裁剪到**实际用到的 Unicode 码点**范围，从而减小输出体积。支持近似字重匹配，并可在缺少斜体字形时合成斜体。
-- **图标字体** — 自动识别 Font Awesome、Material Icons / Symbols、Ionicons、Glyphicons、Feather、Bootstrap Icons、Remix、Heroicons、Layui 和 Lucide，并通过补充规则识别其他图标字体；随后将字形（包括连字图标）渲染为图片。可通过 `iconFonts` 选项或 `window.__SNAPDOM_ICON_FONTS__` 扩展识别范围。
-- **`localFonts`** — 通过 `{ family, src, weight?, style?, stretchPct? }` 传入自定义字体信息，供 SnapDOM 获取并嵌入。
-- **`excludeFonts`** — 可按 `{ families?, domains?, subsets? }` 排除字体。
-- **跨源样式表** — `fontStylesheetDomains` 用于指定允许读取字体样式表的额外跨源域名；KaTeX、MathJax 等已知数学库也在支持范围内。
-- **`snapdom.preCapture()`** — 在点击之前完成符合记忆化条件的元素第一次捕获，就像链接的 prefetch：与控件的按下/点击事件处于同一事件任务中的捕获会被学习，之后指针进入或获得焦点的意图事件会使用该调用顶层选项的浅拷贝再次捕获。
+`embedFonts: 'auto'` 嵌入捕获子树实际使用的网页字体。字体处理会匹配字体族、字重、样式、拉伸比例和使用到的 Unicode 范围；纯系统字体的捕获会跳过嵌入。`true` 和 `false` 分别显式开启或关闭网页字体嵌入。
+
+| 选项 | 用途 |
+| --- | --- |
+| `localFonts` | 提供包含字体族和资源地址的字体描述，可选字重、样式和拉伸比例 |
+| `excludeFonts` | 排除字体族、域名或子集 |
+| `fontStylesheetDomains` | 为跨源样式表扫描添加域名 |
+| `iconFonts` | 通过字体族名称或匹配规则扩展图标字体识别 |
+
+识别出的图标字体会渲染为图片，包括连字图标。资源访问仍受浏览器权限和 CORS 限制。仅通过 JavaScript 创建的字体可能需要通过 `localFonts` 显式提供资源地址。
 
 ## 导出格式
 
-`snapdom(el)` 调用返回一个可复用的结果对象；一次捕获，多次导出。
+同一个捕获结果可以多次导出，无需再次克隆实时页面上的元素。
 
 | 方法 | 返回 |
-|---|---|
-| `toRaw()` | 捕获 data URL：默认是 SVG；原生 `html-in-canvas` 捕获成功时按需生成 PNG，回退时仍为 SVG |
-| `toSvg()` / `toImg()` | `HTMLImageElement`：通常以 SVG 为数据源；原生捕获成功后以 PNG 为数据源；回退时仍为 SVG |
+| --- | --- |
+| `toRaw()` / `url` | SVG Data URL |
+| `toSvg()` | 以 SVG 为数据源的 `HTMLImageElement` |
 | `toCanvas()` | `HTMLCanvasElement` |
-| `toBlob()` | `Blob`（SVG 引擎默认 SVG，原生引擎捕获成功后默认 PNG；原生路径显式请求 SVG 会报错） |
-| `toPng()` | PNG 图片 |
-| `toJpeg()` / `toJpg()` | JPEG 图片（白色背景） |
-| `toWebp()` | WebP 图片 |
-| `download()` | 触发文件下载 |
+| `toBlob()` | 若捕获或导出时未显式指定格式，则返回 SVG `Blob` |
+| `toPng()` | PNG `HTMLImageElement` |
+| `toJpg()` / `toJpeg()` | JPEG `HTMLImageElement` |
+| `toWebp()` | WebP `HTMLImageElement`；浏览器无法编码 WebP 时返回 PNG |
+| `download()` | 下载指定格式 |
+| `to(name, options?)` | 调用核心或插件导出器 |
 
-对应的一次性静态快捷调用也已提供（`snapdom.toPng(el)`、`snapdom.toJpg(el)`、`snapdom.download(el)` 等）。JPEG / WebP 等有损格式会自动用白色填充透明区域。iOS 上下载时会使用 Web Share API 作为回退方案。同一捕获会话内的导出任务会进入串行队列并触发 `beforeExport` / `afterExport`；`afterSnap` 只在第一次成功导出后触发一次。
+静态快捷方法包括 `snapdom.toPng(element)`、`snapdom.toCanvas(element)` 和 `snapdom.download(element)`。`toImg()` 为兼容性而保留，SVG 图片请使用 `toSvg()`。JPEG 和 WebP 默认使用白色背景。iOS 上下载可使用 Web Share API。
+
+SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可能无法渲染。`result.meta` 提供冻结的捕获几何信息，用于覆盖层和图片定位。`result.warnings` 提供捕获诊断信息。
 
 ## 选项
 
-默认值以 `src/core/context.js` 中的规范化结果为准。
+所有公开选项见[选项参考](https://snapdom.dev/docs/options/)，单次导出的选项见 [API 参考](https://snapdom.dev/docs/api/)。
 
-| 选项 | 默认值 | 行为 |
-|---|---|---|
-| `debug` | `false` | 输出调试警告 |
-| `scale` | `1` | 输出缩放倍数（仅在既未设置 `width` 也未设置 `height` 时生效） |
-| `exclude` | `[]` | 需要排除的节点：CSS 选择器和/或判断函数 `(el) => true`（返回 `true` 表示排除），两种形式可混用 |
-| `excludeMode` | `'hide'` | `'hide'`（保留布局空间）或 `'remove'`（移除节点） |
-| `placeholders` | `true` | 为加载失败的图片 / 跨源 iframe 显示占位符 |
-| `embedFonts` | `'auto'` | 自动检测并嵌入捕获内容实际使用的网页字体；设为 `true` / `false` 可强制开启 / 关闭 |
-| `iconFonts` | `[]` | 额外的图标字体名称或正则表达式 |
-| `localFonts` | `[]` | 自定义字体描述信息 |
-| `excludeFonts` | `undefined` | 字体排除规则 `{ families, domains, subsets }` |
-| `fontStylesheetDomains` | `[]` | 允许读取字体样式表的额外跨源域名 |
-| `fallbackURL` | `undefined` | 备用图片 URL 或回调 |
-| `cache` | `'soft'` | 只控制持久化资源/样式缓存：`disabled`/`false` 会清空并绕过它们；旧值 `auto` / `full` 映射为 `soft`。自动重复捕获记忆化是另一套机制 |
-| `useProxy` | `''` | 跨源代理模板或基础地址 |
-| `width` | `null` | 输出宽度（保持宽高比） |
-| `height` | `null` | 输出高度 |
-| `format` | `'png'` | `png` / `jpg` → `jpeg` / `webp` / `svg` |
-| `type` | `undefined` | 与规范字段 `format` 保持同步的弃用别名；两个名称都会生效，可识别的编码为 `png`、`jpeg`/`jpg`、`webp`、`svg` |
-| `quality` | `0.92` | 有损编码质量 |
-| `dpr` | `devicePixelRatio \|\| 1` | 设备像素比 |
-| `backgroundColor` | `null`（jpeg/webp 为 `#ffffff`） | 背景填充色 |
-| `filename` | `'snapDOM'` | 下载文件名（不含扩展名） |
-| `outerTransforms` | `true` | 规范化根元素的位移/旋转，或扩展边界以容纳变换 |
-| `outerShadows` | `false` | `false` 移除根元素的 box/text shadow、outline 和 `drop-shadow()`，但保留 `blur()` 及其溢出；`true` 计算根效果；`'subtree'` 还计算后代阴影。显式裁剪边界不会扩展 |
-| `clip` | `null` | 只捕获指定区域：`'viewport'`（用户当前看到的部分）或页面坐标下的 `{x,y,width,height}`。视口外的子树会在样式处理和资源内联之前被剪除，因此比整体捕获更快 |
-| `captureSelection` | `false` | 渲染用户当前的文字或表单字段选区 |
-| `canvas` | `null` | 为 `toCanvas()` 及基于它的导出复用一个 `HTMLCanvasElement` |
-| `engine` | `'svg'` | `'html-in-canvas'` 启用实验性的 WICG canvas-place-element 引擎。它不包含在发布产物中；不可用或插件含有 beforeRender/afterRender 钩子时回退到 SVG |
-| `reconcile` | `false` | 对照真实 DOM 测量克隆结果，把尺寸有偏差的盒模型钉定为真实大小（捕获耗时大约翻倍） |
-| `invalidate` | `false` | 为自动追踪无法感知的变化强制触发一次不使用现有记忆结果的全新捕获，并清空按样式纪元缓存的快照；稳定的新结果可以成为新的记忆结果 |
-| `excludeStyleProps` | `null` | 用于跳过样式属性的正则表达式或判断函数 |
-| `plugins` | — | 当前捕获使用的插件列表（局部插件优先） |
+- 尺寸：`width`/`height` 优先于 `scale`，最终像素尺寸还会乘以 `dpr`。
+- 内容：`exclude`、`excludeMode`、`clip` 和 `captureSelection` 决定捕获哪些内容。
+- 渲染：`backgroundColor`、`quality`、`outerTransforms`、`outerShadows` 和 `reconcile` 控制输出。
+- 资源：字体选项、`useProxy`、`fallbackURL` 和 `placeholders` 控制嵌入及回退方案。
+- 复用：`canvas` 接受现有渲染目标，`invalidate` 在无法自动观察的变化后刷新捕获。
 
 ## 插件系统
 
-插件是包含生命周期钩子的普通对象，可以全局注册（`snapdom.plugins(...)`，按 `name` 去重），也可以只为单次捕获注册（`{ plugins: [...] }`，同名的局部插件会覆盖全局插件）。
+插件可以修改克隆、替换源节点或定义导出器。通过 `snapdom.plugins(...)` 全局注册，或通过 `plugins` 选项局部注册。局部插件先运行，并覆盖同名的全局插件。
 
-- **钩子 / 结果设置**（按顺序）：`beforeSnap → beforeClone → resolveNode（逐节点）→ afterClone → beforeRender → afterRender → defineExports → [beforeExport → 导出器 → afterExport] → afterSnap`；方括号内会按每次导出重复，`afterSnap` 只在第一次成功导出后触发一次。
-- **自定义导出方法** — 插件的 `defineExports` 可以新增或覆盖导出格式；每种格式都会在结果对象上生成对应的 `to<Name>()` 方法，并复用与内置格式相同的导出流程。
-- **支持的写法** — 普通对象、`[factory, options]`、`{ plugin, options }` 或工厂函数。
-- **捕获运行到哪一步**（`needs`）— 单次捕获插件可声明 `'clone'`（冻结的克隆树，不出像素）或 `'render'`（默认：完整流程）。捕获会运行到所有已附加插件声明的最深一步，因此不带插件的捕获行为完全不变。使用 `'clone'` 时不会产生图像：`url` 与所有导出方法都会抛错并指出是哪个插件，`result.needs` 则报告实际运行到哪一步。全局注册会拒绝只需 clone 的插件。
+| 官方插件 | 输出或效果 |
+| --- | --- |
+| `html-export` | 包含嵌入样式和字体的捕获 HTML |
+| `context-export` | 文本大纲或 JSON 页面上下文 |
+| `agent-map` | 图片与元素映射，包含角色、名称、状态和边界框 |
+| `pdf-image` | 包含 JPEG 捕获图像的可下载 PDF |
+| `gif-export` / `video-export` | 在一段时间内录制当前元素 |
+| `ascii-export` | 图像的文本表示 |
+| `filter` / `color-tint` / `timestamp-overlay` | 修改克隆的视觉效果 |
+| `replace-text` / `redact-inputs` | 替换文字和遮蔽表单值 |
 
-参见 [`PLUGIN_SPEC.md`](PLUGIN_SPEC.md) 与 [`CONTRIBUTING_PLUGINS.md`](CONTRIBUTING_PLUGINS.md)。
+单次捕获插件可声明 `needs: 'clone'` 以跳过渲染。此时核心图片导出不可用，插件仍可返回自己的数据。捕获会运行到所有附加插件所请求的最深阶段。全局注册会拒绝只需 clone 的插件。
+
+会影响捕获的钩子默认禁用自动记忆化，除非插件声明 `pure: true`；仅处理导出的插件保留记忆化。每个结果的导出调用按顺序执行，`afterSnap` 在第一次成功导出后触发一次。
+
+参见[官方插件参考](packages/plugins/README.md)、[钩子契约](PLUGIN_SPEC.md)和[贡献指南](CONTRIBUTING_PLUGINS.md)。
 
 ## 缓存与记忆化
 
-- **缓存区** — `image`、`background`、`resource`、`baseStyle` 和 `defaultStyle` 使用按 FIFO 顺序淘汰的 `Map`；计算样式和布局测量提示使用 `WeakMap`；字体使用 `Set`；此外还有本次捕获会话专用的缓存区。
-- **策略**（`cache` 选项）— v3 的缓存是引擎结构的一部分，不再是调优开关：
-  - `soft`（默认） — 启用按内容寻址的持久资源/样式缓存。
-  - `disabled`（或 `false`） — 清空并绕过这些持久缓存，仅用于调试和测试。
-  - `auto` / `full` — 为兼容 v2 仍被接受，并静默映射为 `soft`。
-- **失效机制** — DOM 和 `<head>` 上的 `MutationObserver`，以及字体的 `loadingdone` / `ready` 事件，都会递增样式版本号（epoch），从而自动丢弃过期快照。CSSOM 层面的修改（`sheet.insertRule`、`rule.style.x = …`）不改动任何节点，任何观察者都看不到：`invalidate: true` 会让下一次捕获绕过现有记忆结果，并清空按纪元缓存的快照。这个稳定的新结果仍可成为新的记忆结果。
-- **`snapdom.preCapture()`** — 无参数：在文档上安装意图监听；与按下/点击事件处于同一事件任务中启动且符合记忆化条件的捕获会归属到该控件，此后控件上的意图事件会用该调用顶层选项的浅拷贝捕获它的元素。它只响应这些事件，不会在后台轮询。`preCache` 已移除：既然从第一次符合条件的捕获起就记忆化，捕获本身就是预热。
-- **重复捕获记忆化** — 独立于 `cache` 选项的引擎默认行为：符合条件的元素从第一次捕获起就被记忆化（限定范围的 `MutationObserver`，以及媒体、图片、字体、滚动、窗口尺寸、`<head>` CSS、动画和交互追踪；最多保留 64 个记忆，按最近最少使用淘汰）。能证明安全的局部变化使用差分重建；有歧义时保守地完整重捕获。帧驱动内容会自动全新捕获；对于浏览器没有信号可观察的应用变化（例如以编程方式修改 CSSOM），传入 `invalidate: true`。
+符合条件且未变化的元素复用第一次捕获的结果。可安全处理的局部变化只重建受影响的子树，不确定的变化使用完整流程。Canvas、视频、iframe 和可识别的动画会重新捕获。
+
+DOM 变化、交互状态、滚动、尺寸变化和资源事件会使相关缓存失效。`sheet.insertRule()` 等编程修改 CSSOM 的操作没有变化通知；下一次捕获请传入 `invalidate: true`。
+
+资源/样式缓存与结果记忆化相互独立。`cache: 'soft'` 为默认值，旧值 `'auto'` 和 `'full'` 映射到它。`cache: 'disabled'` 或 `false` 清空并绕过持久缓存，供调试使用。
+
+`snapdom.preCapture()` 根据用户意图提前准备捕获。它学习在控件按下/点击事件中开始的、符合条件的捕获，之后在指针进入或获得焦点时再次执行。该方法无参数，也不会轮询页面。
 
 ## 跨浏览器处理
 
-- **Safari 验证绘制** — 针对 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770) 的绘制时规避方案：`toCanvas` 会以探测方式反复小幅绘制，直到检测到实际像素（有上限），因此等待时间正好是 WebKit 所需的时间。无需预热，也没有配置项。
-- **Safari canvas** — 将 `box-shadow` 转换为 SVG `drop-shadow`，并在绘制前等待图片合成完成。
-- **Firefox** — 原生复选框和单选按钮无法在 SVG `<foreignObject>` 中可靠渲染时，改用等效的内联 SVG 图形。
-- **iOS** — `download()` 无法直接下载时，改用 Web Share API。
+Safari 的 SVG 图片路径会等待嵌入图片和字体完成绘制，再返回位图结果。Firefox 中原生 SVG 渲染不同的表单控件使用替代图形。编码和 Canvas 尺寸限制仍取决于浏览器。
+
+SnapDOM 有两个渲染引擎，默认使用 SVG。第二个引擎 `html-in-canvas` 通过浏览器原生 Canvas API 绘制同一份已完成处理的克隆；使用 `engine: 'html-in-canvas'` 选择它。
+
+第二个引擎仍处于实验阶段，需要兼容的浏览器开启 Canvas 绘制标志。通过 `SNAPDOM_CANVAS_ENGINE=1` 将它包含在构建中；默认构建只包含 SVG。不支持的捕获会回退到 SVG。
+
+上面的导出表针对 SVG 捕获。成功的原生捕获生成位图：`url` 和 `toRaw()` 返回 PNG 数据 URL，`toSvg()` 和 `toImg()` 返回以 PNG 为源的图片，`toBlob()` 默认返回 PNG。显式请求 SVG Blob 会失败，因为该引擎不序列化 SVG。
 
 ## 节点级控制属性
 
-可以直接在 HTML 标记中精细控制节点的捕获方式：
+| 属性 | 效果 |
+| --- | --- |
+| `data-capture="exclude"` | 按选定的 `excludeMode` 排除节点 |
+| `data-capture="placeholder"` | 将节点替换为占位框 |
+| `data-placeholder-text` | 设置占位框文本 |
 
-- `data-capture="exclude"` — 按 `excludeMode` 隐藏或移除该节点。
-- `data-capture="placeholder"` + `data-placeholder-text` — 用占位框替代该节点。
-- `data-snapdom-sandbox` / `#snapdom-sandbox` — 完全不参与捕获。
-
----
-
-需要完整 API 和每个选项的示例？→ **[snapdom.dev/docs](https://snapdom.dev/docs/)**
+SnapDOM 自身用于捕获的辅助节点始终被排除。

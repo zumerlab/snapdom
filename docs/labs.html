@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SnapDOM Labs — Plugin Demos &amp; Experimental APIs</title>
+  <title>SnapDOM Labs — Plugin Demos &amp; Rendering Engines</title>
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
-  <meta name="description" content="Six playable SnapDOM plugin demos — paint, shoot, animate and render to WebGL — plus experimental browser API captures like html-in-canvas."/>
+  <meta name="description" content="Playable SnapDOM demos for drawing, animation, WebGL and capture stages. Try SVG and the experimental html-in-canvas engine."/>
   <meta name="robots" content="index, follow"/>
   <link rel="canonical" href="https://snapdom.dev/labs.html"/>
   <link rel="stylesheet" href="./shared.css"><link rel="stylesheet" href="./page.css">
@@ -144,18 +144,11 @@
     ]
   }
   </script>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="./" data-umami-event="Nav showcase">Showcase</a>
-    <a href="./docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="./plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="./compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="./guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="./labs.html" class="current" data-umami-event="Nav labs">Labs</a><a href="./blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="./site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html">Plugins</a><a href="./labs.html" aria-current="page">Labs</a><a href="./blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html">Plugins</a><a href="./labs.html" aria-current="page">Labs</a><a href="./blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Labs github repo">
@@ -164,30 +157,27 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <img src="./assets/mrsnapdom-pose.png" alt="Mr SnapDOM pointing up" class="hero-mascot" width="160" height="138" />
-    <h1><span class="accent">Snap</span><span class="accent-ink">DOM</span> Labs</h1>
-    <p>Plugin-powered demos, playable instruments, and experimental browser APIs — each one a working example of what a SnapDOM plugin can actually do.</p>
+    <h1>SnapDOM Labs</h1>
+    <p>Plugin demos, playable instruments and rendering engines. Explore capture and export hooks, then try SVG alongside SnapDOM's experimental html-in-canvas engine.</p>
   </section>
 
   <main style="max-width:1040px; width:100%; padding:0 24px 100px;">
     <div class="section-label">Plugin demos</div>
     <div class="hub-grid">
-      <a class="hub-card" href="./labs/paint-canvas/" data-umami-event="Labs card paint-canvas"><span class="tag">afterClone · afterRender</span><h3>The PNG is the canvas</h3><p>No &lt;canvas&gt; element anywhere — a plugin accumulates every brush stroke onto the last captured clone.</p></a>
+      <a class="hub-card" href="./labs/paint-canvas/" data-umami-event="Labs card paint-canvas"><span class="tag">afterClone · afterRender</span><h3>The PNG is the canvas</h3><p>An image forms the drawing surface; a plugin accumulates brush strokes on its saved clone.</p></a>
       <a class="hub-card" href="./labs/target-range/" data-umami-event="Labs card target-range"><span class="tag">afterClone · afterRender</span><h3>Target Range</h3><p>Every shot is a fresh SnapDOM capture layered on top of the last one — the bullet holes live in the clone, not the DOM.</p></a>
       <a class="hub-card" href="./labs/stop-motion/" data-umami-event="Labs card stop-motion"><span class="tag">afterRender</span><h3>Stop Motion</h3><p>Pose an actor, capture the frame, repeat — a tiny plugin collects the dataURLs into a flipbook you play back.</p></a>
       <a class="hub-card" href="./labs/webgl-shatter/" data-umami-event="Labs card webgl-shatter"><span class="tag">defineExports</span><h3>A capture, shattered</h3><p>A custom export slices a SnapDOM canvas into a grid and hands the pieces to a WebGL physics sim — plus four more shaders on the same texture.</p></a>
       <a class="hub-card" href="./labs/webgl-live-mirror/" data-umami-event="Labs card webgl-live-mirror"><span class="tag">defineExports</span><h3>DOM, live on the GPU</h3><p>Type into a contenteditable card and watch a plugin push each capture into a live WebGL texture.</p></a>
-      <a class="hub-card" href="./labs/capture-stages/" data-umami-event="Labs card capture-stages"><span class="tag">needs</span><h3>Capture stages</h3><p>A plugin declares how far the pipeline has to run. Watch the same capture stop at the live DOM, at the clone, or at the render, timed side by side.</p></a>
+      <a class="hub-card" href="./labs/capture-stages/" data-umami-event="Labs card capture-stages"><span class="tag">needs</span><h3>Capture stages</h3><p>A plugin declares how far the pipeline has to run. Compare capture stopping at the clone with the full render stage, timed side by side.</p></a>
       <a class="hub-card" href="./labs/webgl-seamless-dom/" data-umami-event="Labs card webgl-seamless-dom"><span class="tag">defineExports</span><h3>The text you see isn't text</h3><p>A transparent proxy owns the caret; a hidden element gets captured; a double-buffered WebGL crossfade hides every update.</p></a>
     </div>
 
-    <div class="section-label">New option</div>
-    <!-- burst:true -->
+    <div class="section-label">Capture freshness</div>
+    <!-- Automatic capture reuse -->
     <section class="panel" id="demo-session">
-      <div class="section-label">burst: true — memoized repeat captures</div>
-      <p>
-        <code>burst: true</code> watches the element with a scoped <code>MutationObserver</code> and memoizes the
-        last result — unchanged polls skip the pipeline entirely. Numbers below are timed live, in your browser, right now.
-      </p>
+      <div class="section-label">Automatic repeat captures</div>
+      <p>SnapDOM v3 automatically reuses eligible captures of an unchanged element and checks for changes before reuse. This demo compares forced full captures with memoization enabled. The numbers are measured in your browser.</p>
 
       <div class="demo-target poke-target" id="target-session">
         <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" alt="Pikachu" width="72" height="72" loading="lazy" />
@@ -207,42 +197,40 @@
 
       <div class="output-row">
         <div class="output-col">
-          <label>Without burst</label>
+          <label>Forced full captures</label>
           <div class="tick-row" id="ticks-plain"></div>
           <div class="output-box" id="box-plain"><span class="ph">—</span></div>
           <div class="col-readout" id="out-session-plain">—</div>
         </div>
         <div class="output-col">
-          <label>With burst: true</label>
+          <label>Memoization enabled</label>
           <div class="tick-row" id="ticks-session"></div>
           <div class="output-box" id="box-session"><span class="ph">—</span></div>
           <div class="col-readout" id="out-session-session">—</div>
         </div>
       </div>
       <div class="legend-mini">
-        <span><i class="dot" style="background:var(--accent)"></i> full pipeline run</span>
-        <span><i class="dot" style="background:var(--green)"></i> memoized — instant</span>
+        <span><i class="dot" style="background:var(--accent)"></i> new capture</span>
+        <span><i class="dot" style="background:var(--green)"></i> reused capture</span>
       </div>
       <div class="status-msg" id="status-session"></div>
       <p class="credit">Pikachu artwork via <a href="https://pokeapi.co/" target="_blank" rel="noopener">PokeAPI</a>. Pokémon © Nintendo / Game Freak.</p>
     </section>
 
-    <div class="section-label">Experimental browser APIs</div>
+    <div class="section-label">Rendering engines</div>
     <!-- html-in-canvas -->
     <section class="panel" id="demo-htmlcanvas">
-      <div class="section-label">WICG html-in-canvas (Issue #172)</div>
-      <p>
-        Uses <code>drawElementImage()</code> to render the clone directly into canvas, bypassing SVG/foreignObject.
-        Requires Chrome with <code>chrome://flags/#canvas-draw-element</code> enabled.
-      </p>
+      <div class="section-label">SVG and html-in-canvas</div>
+      <p>SnapDOM has two rendering engines. SVG is the default; <code>engine: 'html-in-canvas'</code> paints the captured clone through the browser's native canvas API. Both exports below are PNG images.</p>
+      <p>The second engine is experimental and still needs a compatible browser with its canvas drawing flag enabled. For local development, run <code>SNAPDOM_CANVAS_ENGINE=1 npm run site</code> to include it in the build. Unsupported captures fall back to SVG.</p>
 
       <div class="demo-target" id="target-htmlcanvas">
         <strong>Target for html-in-canvas</strong>
-        <p>This box is captured via both PNG and drawElementImage.</p>
+        <p>One target, two SnapDOM rendering engines.</p>
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-ghost" id="btn-htmlcanvas-default" data-umami-event="Labs capture png">Capture</button>
+        <button class="btn btn-ghost" id="btn-htmlcanvas-default" data-umami-event="Labs capture png">Capture via SVG</button>
         <button class="btn btn-primary" id="btn-htmlcanvas-api" data-umami-event="Labs capture html-in-canvas">Capture via html-in-canvas</button>
       </div>
 
@@ -284,111 +272,28 @@
     const outApi = document.getElementById('out-htmlcanvas-api');
     const statusApi = document.getElementById('status-htmlcanvas');
 
-    // The WICG canvas-place-element spec evolved: Chrome ~130+ ships drawElement(),
-    // earlier flagged builds shipped drawElementImage(). Detect either.
+    // Experimental browser builds have exposed either name. Detect support
+    // instead of assuming an API from the browser version.
     function detectDrawApi() {
       try {
         const c = document.createElement('canvas');
         const ctx = c.getContext('2d');
         if (!ctx) return null;
-        if (typeof ctx.drawElement === 'function') return 'drawElement';
         if (typeof ctx.drawElementImage === 'function') return 'drawElementImage';
+        if (typeof ctx.drawElement === 'function') return 'drawElement';
         return null;
       } catch { return null; }
     }
 
     const drawApi = detectDrawApi();
     const available = !!drawApi;
+    document.getElementById('btn-htmlcanvas-api').disabled = !available;
     if (!available) {
-      statusApi.innerHTML = '<span style="color:var(--rose)">drawElement not available. Enable <code>chrome://flags/#canvas-draw-element</code> in Chrome.</span>';
+      statusApi.innerHTML = '<span style="color:var(--rose)">Browser drawing API unavailable. Enable the canvas drawing flag in a compatible browser to try the second engine.</span>';
     } else {
       statusApi.textContent = `${drawApi}() available`;
       statusApi.style.color = 'var(--green)';
     }
-
-    const htmlInCanvasPlugin = () => ({
-      name: 'html-in-canvas',
-      beforeRender(state) {
-        if (!available || !state.clone || !state.element) return;
-        state.options.__htmlInCanvas = {
-          clone: state.clone,
-          baseCSS: state.baseCSS || '',
-          fontsCSS: state.fontsCSS || '',
-          classCSS: state.classCSS || '',
-          element: state.element,
-          w0: null, h0: null
-        };
-      },
-      afterRender(state) {
-        if (!available) return;
-        const meta = state.options?.meta;
-        const stored = state.options?.__htmlInCanvas;
-        if (meta && stored) { stored.w0 = meta.w0; stored.h0 = meta.h0; }
-      },
-      async defineExports(ctx) {
-        if (!available) return {};
-        const stored = ctx.__htmlInCanvas || ctx.options?.__htmlInCanvas;
-        if (!stored) return {};
-        return {
-          htmlInCanvas: async (opts = {}) => {
-            const { clone, baseCSS, fontsCSS, classCSS, element } = stored;
-            const w0 = stored.w0 ?? element?.offsetWidth;
-            const h0 = stored.h0 ?? element?.offsetHeight;
-            const scale = opts.scale ?? ctx.scale ?? 1;
-            const dpr = window.devicePixelRatio || 1;
-            const rect = element?.getBoundingClientRect?.();
-            const width = w0 ?? rect?.width ?? 100;
-            const height = h0 ?? rect?.height ?? 100;
-            const outW = Math.round(width * scale * dpr);
-            const outH = Math.round(height * scale * dpr);
-
-            const canvas = document.createElement('canvas');
-            canvas.width = outW;
-            canvas.height = outH;
-            canvas.setAttribute('layoutsubtree', '');
-
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = `width:${width}px;height:${height}px;overflow:visible;box-sizing:border-box;`;
-            wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-
-            const styleTag = document.createElement('style');
-            styleTag.textContent = (baseCSS || '') + (fontsCSS || '') + 'svg{overflow:visible;}' + (classCSS || '');
-            wrapper.appendChild(styleTag);
-            wrapper.appendChild(clone.cloneNode(true));
-
-            canvas.appendChild(wrapper);
-
-            // Append directly to body, taken out of flow with position:fixed +
-            // z-index:-1 so the body's background covers it visually while the
-            // browser still paints it (paint record needed for drawElement).
-            canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:-1;';
-            document.body.appendChild(canvas);
-
-            try {
-              canvas.getBoundingClientRect();
-              await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-              const ctx2d = canvas.getContext('2d');
-              const fn = ctx2d && (ctx2d[drawApi] || ctx2d.drawElement || ctx2d.drawElementImage);
-              if (typeof fn !== 'function') throw new Error('drawElement / drawElementImage not available');
-
-              ctx2d.save();
-              ctx2d.scale(dpr * scale, dpr * scale);
-              fn.call(ctx2d, wrapper, 0, 0, width, height);
-              ctx2d.restore();
-              return canvas;
-            } catch (e) {
-              if (e && /paint record/i.test(e.message || '')) {
-                throw new Error('Browser had no paint record for the element. Make sure the page is fully loaded and visible before capturing.');
-              }
-              throw e;
-            } finally {
-              try { canvas.remove(); } catch {}
-            }
-          }
-        };
-      }
-    });
 
     document.getElementById('btn-htmlcanvas-default').onclick = async () => {
       outDefault.textContent = 'Capturing…';
@@ -404,24 +309,29 @@
 
     document.getElementById('btn-htmlcanvas-api').onclick = async () => {
       if (!available) return;
+      const button = document.getElementById('btn-htmlcanvas-api');
+      button.disabled = true;
       outApi.textContent = 'Capturing…';
+      statusApi.textContent = '';
       try {
-        const result = await snapdom(target, { embedFonts: true, plugins: [htmlInCanvasPlugin()] });
-        const canvas = await result.toHtmlInCanvas();
-        outApi.innerHTML = '';
-        if (canvas) {
-          const img = document.createElement('img');
-          img.src = canvas.toDataURL('image/png');
-          outApi.appendChild(img);
-        } else {
-          outApi.innerHTML = '<span style="color:var(--rose)">toHtmlInCanvas not available</span>';
-        }
+        const result = await snapdom(target, { engine: 'html-in-canvas', embedFonts: true });
+        const native = result.toRaw().startsWith('data:image/png');
+        const img = await result.toPng();
+        outApi.replaceChildren(img);
+        statusApi.textContent = native
+          ? `Captured with html-in-canvas (${drawApi}).`
+          : 'SVG fallback. The build must include html-in-canvas and the browser must be able to paint this capture.';
+        statusApi.style.color = native ? 'var(--green)' : 'var(--text-muted)';
       } catch (e) {
-        outApi.innerHTML = `<span style="color:var(--rose)">${e.message}</span>`;
+        outApi.textContent = 'Capture failed.';
+        statusApi.textContent = e.message;
+        statusApi.style.color = 'var(--rose)';
+      } finally {
+        button.disabled = false;
       }
     };
   </script>
-  <!-- burst:true logic -->
+  <!-- Automatic capture reuse logic -->
   <script type="module">
     import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
 
@@ -484,27 +394,23 @@
     buildTicks(ticksPlainEl);
     buildTicks(ticksSessionEl);
 
-    // Runs REPEATS real captures, one at a time, updating the preview and a
-    // tick per poll as it lands. isFull(i) marks whether poll i is a full
-    // pipeline run (colors the tick) — for the burst lane this comes
-    // straight out of when we mutate the card, not a guess.
-    //
-    // captureFn returns the capture RESULT (not a raw SVG url): timing wraps only that call,
-    // so it still measures pipeline time alone. The preview is then rasterized via toPng() —
-    // assigning the raw SVG directly as an <img src> (toRaw()) doesn't reliably apply an
-    // embedded @font-face on first paint in that "SVG-as-image" context (Chromium quirk); a
-    // canvas rasterization forces the decode to wait for the font, same as a real export.
-    async function pollLoop(ticks, box, captureFn, isFull) {
+    // Result identity tells us whether V3 actually served a memo. Resource events
+    // and other invalidations can force a capture even when we did not mutate it.
+    // Time capture only; PNG export and the display delay stay outside the total.
+    async function pollLoop(ticks, box, captureFn) {
       let capturedMs = 0;
+      let previous = null;
       box.innerHTML = '';
       for (let i = 0; i < REPEATS; i++) {
         if (mode === 'mutating' && i % 4 === 0) mutateCard(i / 4);
         const t0 = performance.now();
         const result = await captureFn();
         capturedMs += performance.now() - t0;
+        const reused = result === previous;
+        previous = result;
         const png = await result.toPng();
         box.replaceChildren(png);
-        ticks[i].classList.add(isFull(i) ? 'cost' : 'fast');
+        ticks[i].classList.add(reused ? 'fast' : 'cost');
         await new Promise(r => setTimeout(r, STEP_MS));
       }
       resetCard();
@@ -522,25 +428,28 @@
       const plainTicks = buildTicks(ticksPlainEl);
       const burstTicks = buildTicks(ticksSessionEl);
 
-      // embedFonts: true — if the page ever loads a webfont again, the foreignObject would
-      // otherwise fall back to a substitute font whose metrics don't match, and the width
-      // snapdom froze from the live measurement can re-wrap the counter line.
-      // reconcile: true — belt-and-suspenders: measures the clone against the live card and
-      // pins any box that still diverges, whatever the cause. The card is tiny, so the ~2x
-      // capture-time cost is negligible in absolute terms here.
-      const captureOpts = { embedFonts: true, reconcile: true };
-      const plainMs = await pollLoop(plainTicks, boxPlain, () => snapdom(card, captureOpts), () => true);
-      outPlain.textContent = plainMs.toFixed(2) + ' ms';
+      try {
+        // Keep font and layout handling identical. invalidate forces a fresh
+        // capture; omitting it uses V3's automatic reuse and invalidation.
+        const captureOpts = { embedFonts: true, reconcile: true };
+        const plainMs = await pollLoop(plainTicks, boxPlain,
+          () => snapdom(card, { ...captureOpts, invalidate: true }));
+        outPlain.textContent = plainMs.toFixed(2) + ' ms';
 
-      const burstIsFull = (i) => i === 0 || (mode === 'mutating' && i % 4 === 0);
-      const burstMs = await pollLoop(burstTicks, boxSession, () => snapdom(card, { ...captureOpts, burst: true }), burstIsFull);
-      outSession.textContent = burstMs.toFixed(2) + ' ms';
-      const winner = burstMs <= plainMs ? outSession : outPlain;
-      winner.classList.add('win');
-      status.textContent = `${(plainMs / burstMs).toFixed(2)}× faster — pipeline time only, timed live just now.`;
-
-      modeRow.querySelectorAll('button').forEach(b => { b.disabled = false; });
-      runBtn.disabled = false;
+        const automaticMs = await pollLoop(burstTicks, boxSession,
+          () => snapdom(card, captureOpts));
+        outSession.textContent = automaticMs.toFixed(2) + ' ms';
+        const automaticWins = automaticMs <= plainMs;
+        (automaticWins ? outSession : outPlain).classList.add('win');
+        const ratio = automaticWins ? plainMs / automaticMs : automaticMs / plainMs;
+        status.textContent = `${automaticWins ? 'Automatic reuse' : 'Forced captures'}: ${ratio.toFixed(2)}× faster in this run — capture time only.`;
+      } catch (error) {
+        status.textContent = `Capture failed: ${error.message}`;
+      } finally {
+        resetCard();
+        modeRow.querySelectorAll('button').forEach(b => { b.disabled = false; });
+        runBtn.disabled = false;
+      }
     });
   </script>
   <script defer src="/copy-code.js"></script>

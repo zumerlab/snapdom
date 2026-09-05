@@ -66,7 +66,7 @@
         "name": "Does SnapDOM work with React 18 strict mode?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. SnapDOM does not subscribe to any React lifecycle, so the double-invocation in strict mode does not affect captures triggered from event handlers."
+          "text": "Yes. SnapDOM doesn't subscribe to React lifecycle, so the double-invocation in development strict mode doesn't affect captures triggered from event handlers."
         }
       }
     ]
@@ -94,16 +94,8 @@
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../../docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="../" class="current" data-umami-event="Nav guides">Guides</a>
-    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">React Guide</div>
@@ -195,7 +187,7 @@
 
   <span class="kw">const</span> handleCapture = <span class="kw">async</span> () =&gt; {
     <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
-    <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.current, { type: <span class="str">'png'</span> });
+    <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.current, { format: <span class="str">'png'</span> });
     <span class="fn">setPreviewUrl</span>(URL.<span class="fn">createObjectURL</span>(blob));
   };
 
@@ -252,12 +244,12 @@
 
       <details>
         <summary>Web fonts render as Times New Roman</summary>
-        <p>Pass <code>{ embedFonts: true }</code> in the options. SnapDOM will inline the matching <code>@font-face</code> declarations into the SVG output so the captured image uses your real fonts.</p>
+        <p>SnapDOM v3 defaults to <code>embedFonts: 'auto'</code> and embeds used web fonts when their files are accessible. Wait for application data and fonts to settle before capture if they can change the layout.</p>
       </details>
 
       <details>
         <summary>Cross-origin images don't render</summary>
-        <p>SnapDOM fetches external images and inlines them as data URLs. If your CDN doesn't send <code>Access-Control-Allow-Origin: *</code>, configure a proxy with <code>{ useProxy: 'https://your-proxy.example.com/' }</code>.</p>
+        <p>SnapDOM fetches external images and inlines them as data URLs. If your CDN doesn't send <code>Access-Control-Allow-Origin</code>, configure a proxy with <code>{ useProxy: 'https://your-proxy.example.com/' }</code>.</p>
       </details>
 
       <details>
@@ -281,7 +273,7 @@
       <div class="related-grid">
         <a class="related-card" href="../nextjs/">SnapDOM in Next.js <span class="arrow">→</span></a>
         <a class="related-card" href="../vue/">SnapDOM in Vue <span class="arrow">→</span></a>
-        <a class="related-card" href="../../compare/html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a>
         <a class="related-card" href="../../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
       </div>
     </section>
@@ -289,9 +281,9 @@
     <section class="cta-section">
       <div class="cta-card">
         <h2>Try it in your project</h2>
-        <p>Drop SnapDOM into your React app and capture your first component in under a minute.</p>
+        <p>Drop SnapDOM into your React app and capture your first component from a click handler.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Guide react cta home">Open the demo</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide react cta npm">Install from npm</a>
+        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide react cta npm">Installation</a>
       </div>
     </section>
   </main>

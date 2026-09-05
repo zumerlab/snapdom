@@ -62,16 +62,8 @@
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../" class="current" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Documentation</div>
@@ -81,7 +73,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>SnapDOM <span class="accent">Cache</span> Behavior</h1>
-    <p class="lead">Understand persistent resource/style caches, automatic repeat memoization, and how <code>snapdom.preCapture()</code> moves an eligible capture ahead of the click.</p>
+    <p class="lead">Reuse captured results, assets and styles across calls. <code>snapdom.preCapture()</code> can prepare an eligible capture when a user focuses or approaches its control.</p>
     <div class="hero-actions">
       <a href="#cache" class="btn btn-primary" data-umami-event="Docs cache hero cache">Cache control</a>
       <a href="#precapture" class="btn btn-ghost" data-umami-event="Docs cache hero precapture">preCapture()</a>
@@ -90,13 +82,13 @@
 
   <main class="page">
     <div class="tldr">
-      <div class="tldr-label">TL;DR</div>
-      <p>The <code>cache</code> option controls persistent resource/style caches only: <code>"soft"</code> is the default and <code>"disabled"</code> clears and bypasses them for debugging. Automatic repeat-capture memoization is separate, and <code>snapdom.preCapture()</code> can move an eligible element's first capture ahead of the click.</p>
+      <div class="tldr-label">Three kinds of reuse</div>
+      <p>A result supports multiple exports of the same captured state. A later <code>snapdom(el)</code> call may reuse an unchanged capture. Resource and style caches also reduce work when a fresh capture is needed; the <code>cache</code> option controls those caches.</p>
     </div>
 
     <section class="prose">
       <h2 id="cache">Cache control</h2>
-      <p>SnapDOM maintains persistent resource/style caches across captures. In v3 they are structural, not a tuning knob; the <code>cache</code> option is a debug switch:</p>
+      <p>Leave <code>cache</code> at its default for normal use. The other modes support debugging or older callers:</p>
       <table class="cmp-table">
         <thead>
           <tr><th>Mode</th><th>Description</th></tr>
@@ -113,19 +105,19 @@
       <p><strong>Example:</strong></p>
       <pre class="code-block">// Clear and bypass persistent resource/style caches (debugging)
 await snapdom.toPng(el, { cache: 'disabled' });</pre>
-      <p>Repeat-capture memoization is a separate engine behavior: eligible unchanged repeats return instantly. Safe localized changes use differential recapture; ambiguous changes conservatively use a full capture. Frame-driven trees capture fresh automatically. After application changes for which the browser exposes no signal—notably <code>sheet.insertRule()</code> or direct <code>rule.style.x</code> edits—pass <code>invalidate: true</code>. That call is not served from the existing memo and clears style snapshots; if its fresh result is stable, it may become the new memo.</p>
+      <p>Eligible unchanged captures reuse the saved result. Observable changes invalidate it; supported local changes rebuild the affected subtree, while other changes trigger a full capture. Canvas, video and other frame-driven content capture fresh. After a CSSOM edit such as <code>sheet.insertRule()</code> or <code>rule.style.color = 'red'</code>, pass <code>invalidate: true</code> because those edits have no mutation event. It clears style snapshots and takes a fresh capture, which may become the next reusable result.</p>
     </section>
 
     <section class="prose">
       <h2 id="precapture">preCapture()</h2>
-      <p>Eligible elements are memoized from their first capture: an unchanged repeat is served from memory, while a changed one is invalidated and either rebuilt differentially or recaptured in full. <code>snapdom.preCapture()</code> moves that first capture ahead of the click, the way links prefetch. Arm it once; a memo-eligible capture started in the same event task as a press or click event is learned for that control, and later pointer-enter or focus intent repeats it with a shallow copy of the original call's top-level options. The first unknown pointer-enter or focus also warms the visible viewport once.</p>
+      <p>Call <code>snapdom.preCapture()</code> once during setup. When an eligible capture starts in a press or click handler, SnapDOM remembers that control, target and a shallow copy of the call's options. Later pointer-enter, focus or press events on that control can prepare the same capture before the handler needs it. Normal invalidation still applies. The first intent event on an unknown control also warms the visible viewport once.</p>
       <pre class="code-block">import { snapdom } from '@zumer/snapdom';
 
 snapdom.preCapture();
 
-// learned on the first click, prefetched from the second one on
+// The first click teaches the association; later intent can prepare the capture.
 button.onclick = () => snapdom.toPng(hero, { scale: 2 });</pre>
-      <p class="muted">Nothing to declare and no background polling: it reacts to intent events. A programmatic capture needs none of this: capture early, and the later call is a memo hit or a differential recapture. <code>preCache()</code> was removed in v3; an eligible capture is its own warm-up.</p>
+      <p class="muted"><code>preCapture()</code> takes no arguments and reacts to intent events, with no polling. Programmatic callers can capture early themselves. The old <code>preCache()</code> API was removed in v3.</p>
     </section>
 
     <section class="related">
@@ -141,7 +133,7 @@ button.onclick = () => snapdom.toPng(hero, { scale: 2 });</pre>
     <section class="cta-section">
       <div class="cta-card">
         <h2>Ready to capture?</h2>
-        <p>Drop SnapDOM into your project and capture your first element in one line.</p>
+        <p>Try the browser demo, then use the API reference to choose your output.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Docs cache cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs cache cta npm">Install from npm</a>
       </div>

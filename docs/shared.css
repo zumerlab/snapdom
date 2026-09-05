@@ -38,34 +38,128 @@
 }
 .github-stars svg { color: #F5A623; font-size: 11px; }
 
-/* ── Page nav (plain top bar) ── */
-.page-nav {
+/* ── Site header ── */
+.site-shell {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   width: 100%;
+  color: #0F1E4D;
+  background: rgba(247,249,252,0.94);
+  border-bottom: 1px solid rgba(15,30,77,0.14);
+  backdrop-filter: blur(12px);
+  font-family: Arial, Helvetica, sans-serif;
+}
+.site-shell-main {
+  width: min(1180px, calc(100% - 48px));
+  min-height: 72px;
+  margin: 0 auto;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0 4px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.16)));
-  font-family: var(--font-mono, Arial, Helvetica, sans-serif);
+  align-items: center;
+  gap: 24px;
 }
-.page-nav a {
-  font-family: var(--font-mono, Arial, Helvetica, sans-serif);
-  font-size: 10px;
-  color: var(--text-muted, var(--sd-text-muted, #55617C));
+.site-shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  color: #0F1E4D;
+  font-size: 24px;
   text-decoration: none;
-  padding: 6px 12px;
-  transition: color 0.15s;
+}
+.site-shell-mark {
+  width: 46px;
+  height: 54px;
+  flex: 0 0 auto;
+  background: url('./assets/mr-snapdom-wave.png') center / contain no-repeat;
+  mix-blend-mode: multiply;
+}
+.site-shell-links { display: flex; align-items: center; gap: 16px; }
+.site-shell-links a, .site-shell-mobile a {
+  color: #59647D;
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+}
+.site-shell-links a:hover, .site-shell-links a[aria-current='page'], .site-shell-mobile a:hover, .site-shell-mobile a[aria-current='page'] { color: #2D5BFF; }
+.site-shell-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: #0F1E4D;
+  background: #FFFFFF;
+  border: 1px solid rgba(15,30,77,0.3);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 1.2px;
+  text-decoration: none;
+}
+.site-shell-github:hover { color: #2D5BFF; border-color: #2D5BFF; }
+.site-shell-stars { padding-left: 10px; border-left: 1px solid rgba(15,30,77,0.18); }
+.site-shell-stars::first-letter { color: #F5A623; }
+.site-shell-mobile { display: none; }
+.site-shell + .hero > .github-badge { display: none; }
+
+/* Content-page heroes keep their own content, but share the home page hierarchy. */
+body > .site-shell + .hero {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  margin: 0 auto;
+  padding: 76px 0 44px;
+  text-align: left;
+}
+body > .site-shell + .hero h1 {
+  max-width: 880px;
+  margin-left: 0;
+  margin-right: 0;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  text-align: left;
+}
+body > .site-shell + .hero p,
+body > .site-shell + .hero p.lead {
+  max-width: 680px;
+  margin-left: 0;
+  margin-right: 0;
+  text-align: left;
+}
+body > .site-shell + .hero .hero-actions { justify-content: flex-start; }
+body > .site-shell + .hero .hero-badge {
+  display: block;
+  width: auto;
+  margin: 0 0 18px;
+  padding: 0;
+  color: #2D5BFF;
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  white-space: nowrap;
 }
-.page-nav a:hover {
-  color: var(--accent, var(--sd-accent, #2D5BFF));
+.site-shell ~ * .btn { border-radius: 0; }
+
+/* Keyboard focus is part of the capture-instrument language: visible and exact. */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--accent, var(--sd-accent, #2D5BFF));
+  outline-offset: 3px;
 }
-.page-nav a.current {
-  color: var(--text, var(--sd-text, #0F1E4D));
-  text-decoration: underline;
-  text-underline-offset: 4px;
+
+@media (max-width: 1080px) {
+  .site-shell-links { display: none; }
+  .site-shell-mobile { display: flex; overflow-x: auto; border-top: 1px solid rgba(15,30,77,0.14); scrollbar-width: none; }
+  .site-shell-mobile::-webkit-scrollbar { display: none; }
+  .site-shell-mobile-inner { width: min(1180px, calc(100% - 48px)); margin: 0 auto; display: flex; }
+  .site-shell-mobile a { flex: 1 0 auto; padding: 11px 14px; text-align: center; font-size: 12px; font-weight: 700; }
+}
+
+@media (max-width: 600px) {
+  .site-shell-main { width: calc(100% - 28px); min-height: 62px; }
+  .site-shell-brand { font-size: 21px; }
+  .site-shell-github > span:first-child { display: none; }
+  .site-shell-stars { padding-left: 0; border-left: 0; }
+  .site-shell-mobile-inner { width: calc(100% - 28px); margin: 0 auto; display: flex; }
+  body > .site-shell + .hero { width: calc(100% - 28px); padding: 52px 0 34px; }
 }

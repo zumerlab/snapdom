@@ -1,5 +1,9 @@
 # Contributing Plugins to SnapDOM
 
+Plugins can transform captured state, add exports or connect captures to another service.
+This guide targets the v3 beta. See [Installation](./README.md#installation) for the current
+checkout and published versions.
+
 ## Quick Start
 
 ```bash
@@ -39,30 +43,40 @@ Then open a PR to list it in the [Plugin Directory](https://snapdom.dev/plugins)
 
 ## How plugins are distributed
 
-**Official plugins** ship as `@zumer/snapdom-plugins`, a separate package that keeps the core lightweight. They live in `packages/plugins/` inside the snapdom monorepo.
+Official plugins ship as `@zumer/snapdom-plugins` and live in `packages/plugins/` in this repository.
 
-**Community plugins** go on npm as `snapdom-plugin-[name]`. Your repo, your rules.
+Community plugins use the npm name `snapdom-plugin-[name]` and are maintained in their own repositories.
 
 Both show up in the same plugin directory on the site.
 
 ## Conventions
 
 **Naming:**
+
 - npm package: `snapdom-plugin-[name]`
 - Plugin `name` field: lowercase kebab-case (e.g., `'my-plugin'`)
 - Main export: camelCase factory function (e.g., `myPlugin`)
 
 **Structure:**
+
 - Always use the factory pattern (accept options, return plugin object)
 - Set sensible defaults for all options
-- Export as both named and default export
+- Export a named factory function; the template also includes a default export
 
 **Hooks:**
-`beforeSnap` → `beforeClone` → `afterClone` → `beforeRender` → `afterRender` → `beforeExport` → `afterExport` + `defineExports`
+
+```text
+beforeSnap → beforeClone → resolveNode → afterClone → beforeRender → afterRender
+→ defineExports → [beforeExport → exporter → afterExport] → afterSnap
+```
+
+`resolveNode` runs per source node. The bracketed segment runs per export; `afterSnap`
+runs once after the first successful export.
 
 Full reference in [PLUGIN_SPEC.md](./PLUGIN_SPEC.md).
 
 **Categories:**
+
 Tag yours with one of: `capture`, `transform`, `export`, `integration`, `utility`
 
 ## Submitting to the Plugin Directory
@@ -81,7 +95,7 @@ Example:
 | snapdom-plugin-watermark | Add text or image watermarks to captures | transform | snapdom-plugin-watermark | https://github.com/you/snapdom-plugin-watermark | @you |
 ```
 
-The plugin directory page loads this file automatically — no HTML editing needed.
+The plugin directory page loads this file automatically.
 
 ### Option B: Open an Issue
 
@@ -89,28 +103,35 @@ Provide: plugin name, npm link, GitHub link, category, one-line description.
 
 ### Make it discoverable
 
-Add the [`snapdom-plugin`](https://github.com/topics/snapdom-plugin) **GitHub topic** to your repository (repo home → ⚙️ next to *About* → Topics). Every plugin that carries the topic shows up on the shared [github.com/topics/snapdom-plugin](https://github.com/topics/snapdom-plugin) page — a zero-maintenance directory that complements the curated list on the site.
+Add the [`snapdom-plugin`](https://github.com/topics/snapdom-plugin) GitHub topic to your
+repository under **About → Topics**. The topic directory complements the curated plugin
+list on the SnapDOM site.
 
 ## Quality Guidelines
 
-1. Works with `snapdom@latest` and `snapdom@dev`.
-2. Zero side effects. Restore DOM mutations.
-3. Handles errors. Wrap risky code in `try/catch`.
-4. Has a README with install, usage, options, and an example.
-5. Lists `@zumer/snapdom` as a peerDependency.
-6. Minimal dependencies. Ideally zero.
-7. Includes `snapdom` and `snapdom-plugin` keywords in package.json.
+1. Test against the SnapDOM versions you declare as supported, including v3 beta when targeting this checkout.
+2. Restore any changes to the live DOM.
+3. Recover from errors where possible; otherwise report the failure instead of returning incomplete output.
+4. Write a README with installation, usage, options and an example.
+5. List `@zumer/snapdom` as a peerDependency.
+6. Keep dependencies minimal, ideally zero.
+7. Include `snapdom` and `snapdom-plugin` keywords in package.json.
+
+Test in the browsers you support, including repeated captures and delayed exports from an
+older result. Mark capture hooks `pure: true` only when they are deterministic and idempotent;
+see [fast paths](./PLUGIN_SPEC.md#plugins--the-engines-fast-paths-v3).
 
 ## Plugin Ideas
 
-Some things the community has asked for:
+Check [existing plugins](./packages/plugins/README.md) before starting. Plugins can add
+workflows such as:
 
 - **Redact** blur or black-bar sensitive content by selector
 - **Watermark** text/image watermarks with positioning
-- **PDF Export** export captures as PDF
+- **PDF Export** custom layouts or pagination beyond the official image-PDF export
 - **Annotations** arrows, circles, and callouts
 - **Dark Mode** force dark/light theme on captures
-- **Crop** crop to a region within the capture
+- **Crop** region-selection tools around core's `clip` option
 - **Responsive** capture at multiple viewport sizes
 - **Diff** visual diff between two captures
 - **Upload** direct upload to S3, Cloudinary, Imgur

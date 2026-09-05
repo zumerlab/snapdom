@@ -1,8 +1,10 @@
 # Simplified Chinese Documentation Translation Guide
 
-This document is a reusable reference for people and AI systems maintaining SnapDOM's Simplified Chinese documentation. It records translation decisions established during the technical review requested in [Discussion #450](https://github.com/zumerlab/snapdom/discussions/450) and refined in [PR #455](https://github.com/zumerlab/snapdom/pull/455).
+Use this guide to maintain SnapDOM's Simplified Chinese documentation. It records decisions
+from [Discussion #450](https://github.com/zumerlab/snapdom/discussions/450) and
+[PR #455](https://github.com/zumerlab/snapdom/pull/455).
 
-> This is a translation-maintenance guide, not an `AGENTS.md`, `SKILL.md`, prompt, or tool configuration. It does not override the repository's contribution rules.
+The repository's contribution rules still apply; this document governs translation choices.
 
 ## Scope
 
@@ -20,7 +22,7 @@ The English documents define the intended structure and feature coverage. The im
 1. **Translate meaning, not sentence structure.** Chinese prose should read as if it were originally written for front-end developers in China.
 2. **Preserve technical identifiers exactly.** Do not translate or rewrite API names, option keys, package paths, hooks, HTML tags, CSS properties, CSS values, or code symbols.
 3. **Preserve verified human edits.** When syncing a later English change, update the affected Chinese passage instead of regenerating an entire file.
-4. **Keep both Chinese documents consistent.** A recurring term should use the same translation in `README_CN.md` and `FEATURES_CN.md` unless the context genuinely requires different wording.
+4. **Keep both Chinese documents consistent.** A recurring term should use the same translation in `README_CN.md` and `FEATURES_CN.md` unless the context requires different wording.
 5. **Verify technical claims against code.** If the English wording is ambiguous, inspect the implementation before translating it.
 6. **Prefer an explanation over a misleading literal term.** For example, describe visual content that extends outside an element's bounds instead of translating `bleed` mechanically as “出血”.
 
@@ -45,7 +47,7 @@ Use this table as the default glossary. Context still takes priority over mechan
 
 | English concept or identifier | Preferred Chinese wording | Notes |
 |---|---|---|
-| DOM Capture Engine | DOM 截图引擎 | Use in the reader-facing introduction. |
+| browser capture engine | 浏览器捕获引擎 | Use in the introduction. Covers rendered state, images and plugin data outputs. |
 | capture | 捕获 | Use for the internal capture operation or pipeline. |
 | embed / embedded | 嵌入 | Example: 嵌入字体. |
 | inline / inlined | 内联 | Use when styles, images, or definitions are serialized into the output. |
@@ -144,7 +146,7 @@ for file in README.md README_CN.md FEATURES.md FEATURES_CN.md; do
 done
 ```
 
-Matching counts do not prove a correct translation, but mismatched counts usually reveal a dropped section, table row, or code fence.
+Mismatched counts can reveal a missing section, row or code fence. Check meaning separately.
 
 Also verify manually that:
 

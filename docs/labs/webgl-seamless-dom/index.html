@@ -62,22 +62,17 @@
   </style>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html" class="current">Labs</a><a href="../../blog/">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero"><div class="hero-badge">Labs Experiment</div><h1>The text you see <span class="accent">isn't text</span></h1><p class="lead">Click into the box below and type. Every glyph you "see" is a WebGL texture rendered from the last SnapDOM capture — the real, editable DOM is invisible on purpose, and updates cross-fade in so nothing ever pops.</p></section>
   <main class="page">
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two DOM elements do the work: a transparent <code>contenteditable</code> proxy that exists only to give the browser a real caret and real keystroke handling, and a hidden source element that mirrors the typed text and is what SnapDOM actually captures. A <code>defineExports</code> plugin feeds each capture into a WebGL renderer that double-buffers two textures and cross-fades between them, so updates never visibly pop — you always see the previous frame smoothly blend into the new one.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two DOM elements do the work: a transparent <code>contenteditable</code> proxy that exists only to give the browser a real caret and real keystroke handling, and a hidden source element that mirrors the typed text and is what SnapDOM actually captures. A <code>defineExports</code> plugin feeds each capture into a WebGL renderer that double-buffers two textures and cross-fades between them, so the previous frame can blend into the new one.</p></div>
 
     <section class="prose">
       <h2>What you're looking at</h2>
-      <p>Clicking into the box and typing feels like a normal text field — you get a blinking caret, text selection, the works. None of that text is being rendered by the browser's text engine, though. Every glyph on screen is a pixel in a WebGL texture, produced by capturing a completely different, hidden DOM element with SnapDOM and mixing the result into the canvas underneath your cursor. Pick a shader from the dropdown to see the same texture pipeline reused for very different visual effects — the capture and the compositing don't change, only what the fragment shader does with the finished frame.</p>
+      <p>Clicking into the box and typing feels like a normal text field — you get a blinking caret, text selection, the works. The visible text is displayed through WebGL after the browser renders the captured source. Every glyph on screen is a pixel in a WebGL texture, produced by capturing a completely different, hidden DOM element with SnapDOM and mixing the result into the canvas underneath your cursor. Pick a shader from the dropdown to see the same texture pipeline reused for very different visual effects — the capture and the compositing don't change, only what the fragment shader does with the finished frame.</p>
     </section>
 
     <section class="prose">
@@ -115,7 +110,7 @@
     <section class="prose">
       <h2>How it works</h2>
       <ol class="steps">
-        <li><h4>A transparent proxy owns the caret</h4><p>The <code>.input-layer</code> sits visually on top of the WebGL canvas with fully transparent text and background. It exists only to give the browser something to place a real caret on and to receive real keyboard and paste events — it never renders anything visible itself.</p></li>
+        <li><h4>A transparent proxy owns the caret</h4><p>The <code>.input-layer</code> sits visually on top of the WebGL canvas with fully transparent text and background. It exists only to give the browser something to place a real caret on and to receive real keyboard and paste events — its text is transparent while the caret and selection remain visible.</p></li>
         <li><h4>Every edit is mirrored to a hidden element</h4><p>On every <code>input</code> event — plus paste, plus Enter (a <code>beforeinput</code> override inserts a literal newline instead of letting <code>contenteditable</code> create a new <code>&lt;div&gt;</code>) — the proxy's text is copied into the hidden <code>#dom-source</code> element and <code>refresh()</code> runs.</p></li>
         <li><h4><code>refresh()</code> coalesces bursts</h4><p>Same <code>dirty</code>/<code>working</code> loop as the live-mirror demo: if a capture is already in flight when new input arrives, it's flagged dirty and picked up by the loop that's already running, instead of stacking up parallel captures. It captures <code>#dom-source</code> with the <code>seamlessWebgl</code> plugin attached.</p></li>
         <li><h4>The plugin exports into the renderer</h4><p>The plugin's <code>defineExports</code> returns a <code>webgl</code> export. Calling it hands the capture's URL to <code>renderer.update(ctx.export.url)</code> instead of returning an image to the page.</p></li>
@@ -162,7 +157,7 @@ async function refresh () {
   working = true
   while (dirty) {
     dirty = false
-    const capture = await snapdom(source, { plugins: [plugin], cache: 'full', fast: true })
+    const capture = await snapdom(source, { plugins: [plugin] })
     await capture.to('webgl')
   }
   working = false
@@ -406,7 +401,7 @@ async function refresh () {
       working = true
       while (dirty) {
         dirty = false
-        const capture = await snapdom(source, { plugins: [plugin], cache: 'full', fast: true })
+        const capture = await snapdom(source, { plugins: [plugin] })
         await capture.to('webgl')
       }
       working = false

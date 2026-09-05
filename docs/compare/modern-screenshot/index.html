@@ -34,7 +34,7 @@
     "headline": "SnapDOM vs modern-screenshot — Compared",
     "datePublished": "2026-06-29",
     "dateModified": "2026-06-29",
-    "description": "Side-by-side comparison of SnapDOM and modern-screenshot: feature matrix, output formats, plugin system and a 1:1 migration map.",
+    "description": "Side-by-side comparison of SnapDOM and modern-screenshot: feature matrix, output formats, plugin system and a migration map.",
     "url": "https://snapdom.dev/compare/modern-screenshot/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "author": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab" },
@@ -65,16 +65,8 @@
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../../docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../" class="current" data-umami-event="Nav compare">Compare</a>
-    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Library Comparison</div>
@@ -94,7 +86,7 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p>Both are actively maintained, fast, zero-dependency, and use the same <code>foreignObject</code> rendering approach — so basic captures look near-identical. <strong>modern-screenshot</strong> is minimal and TypeScript-first. <strong>SnapDOM</strong> layers on a <a href="https://snapdom.dev/plugins.html" data-umami-event="Cmp ms tldr plugins">plugin system</a>, a broad output API (SVG, PNG, JPG, WebP, Canvas, Blob) and extra fidelity work for tricky CSS — at the same zero-dependency footprint, so the extra capability comes for free. Both are MIT.</p>
+      <p>Both libraries render cloned DOM through <code>foreignObject</code> and export SVG, PNG, JPEG, WebP, Canvas and Blob. <strong>modern-screenshot</strong> has a TypeScript API. <strong>SnapDOM</strong> also provides a <a href="https://snapdom.dev/plugins.html" data-umami-event="Cmp ms tldr plugins">plugin system</a> for HTML, structured context and maps, PDF images, GIF and video. Both are MIT-licensed.</p>
     </div>
 
     <section class="bench-section" id="benchmark">
@@ -128,8 +120,8 @@
 
     <section class="prose">
       <h2 id="overview">Same approach, different scope</h2>
-      <p><a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener" data-umami-event="Cmp ms overview repo">modern-screenshot</a> and <strong>SnapDOM</strong> belong to the same family as html-to-image: instead of re-implementing the CSS painter the way html2canvas does, they deep-clone the DOM, inline styles/fonts/images, and wrap the clone in an SVG <code>&lt;foreignObject&gt;</code> so the browser performs the actual render. That shared foundation is why both produce high-fidelity output and run quickly.</p>
-      <p>The differences are about <em>scope</em>, not approach. modern-screenshot keeps a tight, TypeScript-first surface focused on doing the capture well. SnapDOM aims wider: an extensible plugin pipeline, a larger export API, and a body of workarounds for edge cases (Safari quirks, font embedding, a clone-in-document measurement pass) that show up on complex real-world UIs.</p>
+      <p><a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener" data-umami-event="Cmp ms overview repo">modern-screenshot</a> and <strong>SnapDOM</strong> belong to the same family as html-to-image: instead of re-implementing the CSS painter the way html2canvas does, they deep-clone the DOM, inline styles/fonts/images, and wrap the clone in an SVG <code>&lt;foreignObject&gt;</code> so the browser performs the actual render. The shared rendering approach does not guarantee identical output or timing; test the content and browsers you use.</p>
+      <p>The core output formats overlap. SnapDOM exposes an extensible capture and export lifecycle, with official plugins for additional representations and transformations. Both libraries have browser-specific rendering behavior to check on complex pages.</p>
     </section>
 
     <section class="prose">
@@ -144,7 +136,7 @@
           <tr><td class="feature">Plugin system</td><td class="yes">Yes</td><td class="no">No</td></tr>
           <tr><td class="feature">Web fonts (<code>@font-face</code>)</td><td class="yes">Embedded</td><td class="yes">Yes</td></tr>
           <tr><td class="feature">Pseudo-elements</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-          <tr><td class="feature">Shadow DOM</td><td class="yes">Yes</td><td class="partial">Partial</td></tr>
+          <tr><td class="feature">Shadow DOM</td><td class="yes">Open roots</td><td class="partial">Open roots</td></tr>
           <tr><td class="feature">TypeScript-first API</td><td class="partial">Typed, JS core</td><td class="yes">Yes</td></tr>
           <tr><td class="feature">Runtime dependencies</td><td class="num">0</td><td class="num">0</td></tr>
           <tr><td class="feature">Maintained</td><td class="yes">Active</td><td class="yes">Active</td></tr>
@@ -167,12 +159,12 @@
           </ul>
         </div>
         <div class="verdict-card other">
-          <h4>What a minimal library leaves to you…</h4>
+          <h4>Check your existing workflow…</h4>
           <ul>
-            <li>Watermarks, filters, PDF and custom exports become code you write and maintain yourself.</li>
-            <li>Shadow DOM and Web Component edge cases are yours to debug.</li>
-            <li>Safari rendering quirks and complex <code>@font-face</code> setups need hand-rolled workarounds.</li>
-            <li>Fewer output formats means extra conversion plumbing in your app.</li>
+            <li>Decide whether post-processing or capture lifecycle hooks suit your transformations.</li>
+            <li>Test your Web Components in the browsers you support.</li>
+            <li>Compare Safari output and complex <code>@font-face</code> setups with your assets.</li>
+            <li>Core image formats overlap; optional SnapDOM plugins add HTML, context, PDF and animation exports.</li>
           </ul>
         </div>
       </div>
@@ -196,23 +188,23 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 <span class="kw">const</span> <span class="op">img</span> = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 document.body.<span class="fn">appendChild</span>(img);</pre>
 
-      <p>modern-screenshot's <code>domToPng</code> resolves to a data-URL string; SnapDOM's <code>toPng</code> resolves to a ready-to-append <code>HTMLImageElement</code>. If you want the raw data URL from SnapDOM instead, use <code>snapdom.toRaw(el)</code>.</p>
+      <p>modern-screenshot's <code>domToPng</code> resolves to a data-URL string; SnapDOM's <code>toPng</code> resolves to a ready-to-append <code>HTMLImageElement</code>. For a PNG data URL, read <code>(await snapdom.toPng(el)).src</code>. <code>snapdom.toRaw(el)</code> returns an SVG data URL.</p>
     </section>
 
     <section class="prose">
       <h2 id="migrate">Migration map</h2>
-      <p>The method names map cleanly. The main behavioural difference: SnapDOM's <code>to*</code> helpers return DOM-ready objects (an <code>Image</code>, <code>Canvas</code> or <code>Blob</code>) rather than data-URL strings.</p>
+      <p>Check the format and return type at each call site. SnapDOM image helpers return <code>HTMLImageElement</code>; read <code>.src</code> for a data URL. Its default Blob format is SVG, so request PNG explicitly when migrating a PNG Blob export.</p>
       <table class="cmp-table">
         <thead>
           <tr><th>modern-screenshot</th><th>SnapDOM</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">domToPng(node)</td><td class="num">snapdom.toPng(node)</td></tr>
-          <tr><td class="num">domToJpeg(node)</td><td class="num">snapdom.toJpg(node)</td></tr>
-          <tr><td class="num">domToWebp(node)</td><td class="num">snapdom.toWebp(node)</td></tr>
-          <tr><td class="num">domToSvg(node)</td><td class="num">snapdom.toSvg(node)</td></tr>
+          <tr><td class="num">domToPng(node)</td><td class="num">(await snapdom.toPng(node)).src</td></tr>
+          <tr><td class="num">domToJpeg(node)</td><td class="num">(await snapdom.toJpg(node)).src</td></tr>
+          <tr><td class="num">domToWebp(node)</td><td class="num">(await snapdom.toWebp(node)).src</td></tr>
+          <tr><td class="num">domToSvg(node)</td><td class="num">snapdom.toRaw(node)</td></tr>
           <tr><td class="num">domToCanvas(node)</td><td class="num">snapdom.toCanvas(node)</td></tr>
-          <tr><td class="num">domToBlob(node)</td><td class="num">snapdom.toBlob(node)</td></tr>
+          <tr><td class="num">domToBlob(node)</td><td class="num">snapdom.toBlob(node, { format: 'png' })</td></tr>
         </tbody>
       </table>
     </section>
@@ -222,41 +214,41 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>Is SnapDOM or modern-screenshot faster?</summary>
-        <p>They're in the same performance class because both delegate rendering to the browser via <code>foreignObject</code> rather than repainting in JavaScript. Real-world differences come down to element complexity, fonts and images — benchmark both on your own content rather than trusting a single headline number.</p>
+        <p>Timing depends on the element, assets, browser and whether the capture is fresh or repeated. Use the live benchmark with its displayed library versions, then test both libraries on your own content.</p>
       </details>
 
       <details>
         <summary>What does SnapDOM offer that modern-screenshot doesn't?</summary>
-        <p>A plugin system for extending the capture pipeline, a broad export API (SVG, PNG, JPG, WebP, Canvas, Blob), reliable Shadow DOM capture, and a set of workarounds for tricky cases like Safari rendering and font embedding. modern-screenshot intentionally keeps a smaller surface area.</p>
+        <p>SnapDOM has a plugin lifecycle and official plugins for portable HTML, structured context and maps, PDF images, GIF and video. The two libraries share the core SVG, raster image, Canvas and Blob output formats.</p>
       </details>
 
       <details>
         <summary>Can I migrate from modern-screenshot without rewriting everything?</summary>
-        <p>Mostly yes — the method names map almost 1:1 (see the migration map above). The one adjustment is that SnapDOM returns DOM-ready objects (Image/Canvas/Blob) instead of data-URL strings; use <code>snapdom.toRaw(el)</code> if you specifically need a data URL.</p>
+        <p>Common exports have equivalents, but return types and options need review. For a PNG string use <code>(await snapdom.toPng(el)).src</code>; <code>snapdom.toRaw(el)</code> returns SVG. Request <code>format: 'png'</code> when a Blob consumer expects PNG.</p>
       </details>
 
       <details>
         <summary>Are both libraries free for commercial use?</summary>
-        <p>Yes. Both SnapDOM and modern-screenshot are MIT-licensed and run entirely client-side, so there's no server cost or per-render fee.</p>
+        <p>Yes. SnapDOM and modern-screenshot are MIT-licensed. Neither library charges a per-capture fee or requires a screenshot server.</p>
       </details>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../">Best HTML-to-image library <span class="arrow">→</span></a>
-        <a class="related-card" href="../html-to-image/">snapdom vs html-to-image <span class="arrow">→</span></a>
-        <a class="related-card" href="../html2canvas/">snapdom vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../">HTML-to-image library comparison <span class="arrow">→</span></a>
+        <a class="related-card" href="../html-to-image/">SnapDOM vs html-to-image <span class="arrow">→</span></a>
+        <a class="related-card" href="../html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a>
         <a class="related-card" href="../../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
       </div>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Try SnapDOM in 30 seconds</h2>
-        <p>Capture any DOM element to PNG with a single import. No build step, no dependencies.</p>
+        <h2>Try SnapDOM on your page</h2>
+        <p>Capture a rendered element as PNG, SVG or Canvas. Add other exports through plugins.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Cmp ms cta home">Open the demo</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp ms cta npm">Install from npm</a>
+        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp ms cta npm">Installation</a>
       </div>
     </section>
   </main>

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plugins — SnapDOM</title>
+  <meta name="description" content="Official SnapDOM plugins for HTML, context for agents, PDF, GIF, video and capture transforms. Browse examples, options and the plugin API.">
   <link rel="canonical" href="https://snapdom.dev/plugins.html" />
   <meta name="robots" content="index, follow" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -243,18 +244,11 @@
     ]
   }
   </script>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="./" data-umami-event="Nav showcase">Showcase</a>
-    <a href="./docs/" data-umami-event="Nav docs">Docs</a>
-    <a href="./plugins.html" class="current" data-umami-event="Nav plugins">Plugins</a>
-    <a href="./compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="./guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="./how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="./labs.html" data-umami-event="Nav labs">Labs</a><a href="./blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="./site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html" aria-current="page">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html" aria-current="page">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div></nav></header>
 
   <!-- ── Hero ── -->
   <section class="hero" id="top">
@@ -264,13 +258,13 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <img src="./assets/mrsnapdom-plugin.png" alt="Mr SnapDOM holding a plugin" class="hero-mascot" width="170" height="155" />
-    <h1>Extend <span class="accent">Snap</span><span class="accent-ink">DOM</span></h1>
-    <p>Transform your captures with a wide range of plugins, or build and share your own in minutes.</p>
+    <h1>Extend SnapDOM</h1>
+    <p>Add HTML, context for agents, PDF and recordings to SnapDOM. Transform captures with filters, timestamps and input redaction, or build your own plugin.</p>
     <div class="hero-actions">
       <a href="#playground" class="btn btn-primary" data-umami-event="Plugins hero playground">Playground</a>
-      <a href="#quickstart" class="btn btn-ghost" data-umami-event="Plugins hero quick start">Quick Start</a>
-      <a href="#official" class="btn btn-ghost" data-umami-event="Plugins hero browse plugins">Browse Plugins</a>
-      <a href="#build-plugin" class="btn btn-ghost" data-umami-event="Plugins hero build plugin">Build a Plugin</a>
+      <a href="#quickstart" class="btn btn-ghost" data-umami-event="Plugins hero quick start">Quick start</a>
+      <a href="#official" class="btn btn-ghost" data-umami-event="Plugins hero browse plugins">Browse plugins</a>
+      <a href="#build-plugin" class="btn btn-ghost" data-umami-event="Plugins hero build plugin">Build a plugin</a>
     </div>
   </section>
 
@@ -419,7 +413,7 @@
   <!-- ── Install & Usage ── -->
   <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
   <section class="install-section" id="quickstart">
-    <div class="section-label">Install</div>
+    <div class="section-label">Install · <a href="./docs/#installation">V3 prerelease instructions</a></div>
     <div class="install-grid">
       <div class="install-card">
         <div class="install-label">Install core</div>
@@ -442,7 +436,7 @@
   </section>
 
   <section class="usage-section">
-    <div class="section-label">Usage Example</div>
+    <div class="section-label">Usage example</div>
     <div class="code-block-wrap">
       <button class="copy-btn" data-copy="usageCode" data-umami-event="Plugins quickstart copy">Copy</button>
       <div class="code-block" id="usageCode">
@@ -477,7 +471,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="timestamp-overlay">
         <div class="card-top"><div class="plugin-icon">T</div><span class="category-tag">transform</span></div>
         <h3>timestamp-overlay</h3>
-        <p>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</p>
+        <p>Adds a timestamp to the capture, with configurable date formats and positions.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/timestamp-overlay.js" data-umami-event="Plugins source timestamp-overlay">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -486,7 +480,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="filter">
         <div class="card-top"><div class="plugin-icon">F</div><span class="category-tag">transform</span></div>
         <h3>filter</h3>
-        <p>Applies CSS filter effects to captures. Ships with presets: grayscale, sepia, blur, vintage, dramatic.</p>
+        <p>Applies CSS filters to the capture, using presets or a custom filter string.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/filter.js" data-umami-event="Plugins source filter">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -495,7 +489,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="replace-text">
         <div class="card-top"><div class="plugin-icon">R</div><span class="category-tag">transform</span></div>
         <h3>replace-text</h3>
-        <p>Find-and-replace text in the captured clone. Supports strings and regex patterns.</p>
+        <p>Replaces text in the capture using strings or regular expressions.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/replace-text.js" data-umami-event="Plugins source replace-text">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -504,7 +498,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="color-tint">
         <div class="card-top"><div class="plugin-icon">C</div><span class="category-tag">transform</span></div>
         <h3>color-tint</h3>
-        <p>Tints the entire capture to a specified color using an overlay with mix-blend-mode.</p>
+        <p>Tints the capture with a color overlay. Set the color and opacity.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/color-tint.js" data-umami-event="Plugins source color-tint">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -513,7 +507,7 @@
       <div class="plugin-card" data-category="export" data-plugin="ascii-export">
         <div class="card-top"><div class="plugin-icon">A</div><span class="category-tag">export</span></div>
         <h3>ascii-export</h3>
-        <p>Adds a toAscii() method that converts captures to ASCII art. Configurable width, charset, and luminance.</p>
+        <p>Converts the capture to ASCII art with toAscii(). Set the width, character set and contrast direction.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/ascii-export.js" data-umami-event="Plugins source ascii-export">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -522,7 +516,7 @@
       <div class="plugin-card" data-category="export" data-plugin="pdf-image">
         <div class="card-top"><div class="plugin-icon">D</div><span class="category-tag">export</span></div>
         <h3>pdf-image</h3>
-        <p>Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.</p>
+        <p>Exports the capture as a JPEG embedded in a downloadable PDF, in portrait or landscape.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><span class="expand-hint">details</span></div>
       </div>
@@ -532,7 +526,7 @@
       <div class="plugin-card" data-category="export" data-plugin="agent-map">
         <div class="card-top"><div class="plugin-icon">A</div><span class="category-tag">export</span></div>
         <h3>agent-map</h3>
-        <p>Adds a toAgentMap() method for visual agents: an annotated screenshot plus a structured map of the interactive elements with their bounding boxes.</p>
+        <p>Returns an annotated image and a map of interactive elements, with names, roles and bounding boxes.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/agent-map.js" data-umami-event="Plugins source agent-map">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -541,7 +535,7 @@
       <div class="plugin-card" data-category="export" data-plugin="context-export">
         <div class="card-top"><div class="plugin-icon">C</div><span class="category-tag">export</span></div>
         <h3>context-export</h3>
-        <p>Adds a toContext() method that emits the captured tree as a text outline or JSON instead of pixels.</p>
+        <p>Exports a text outline or JSON tree with text, roles, states and optional bounding boxes.</p>
         <div class="hooks"><span class="hook-badge">beforeClone</span><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/context-export.js" data-umami-event="Plugins source context-export">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -550,7 +544,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="redact-inputs">
         <div class="card-top"><div class="plugin-icon">R</div><span class="category-tag">transform</span></div>
         <h3>redact-inputs</h3>
-        <p>Masks form-control values before they reach the serialized capture. Core masks passwords only, because that mask is fidelity-neutral; everything else is opt-in here.</p>
+        <p>Masks selected input and textarea values in the capture. Core already masks passwords.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/redact-inputs.js" data-umami-event="Plugins source redact-inputs">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -559,27 +553,27 @@
       <div class="plugin-card" data-category="export" data-plugin="html-export">
         <div class="card-top"><div class="plugin-icon">M</div><span class="category-tag">export</span></div>
         <h3>html-export</h3>
-        <p>Adds a toHtml() method that returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels.</p>
+        <p>Exports a self-contained HTML snapshot with styles, fonts and images inlined.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-export.js" data-umami-event="Plugins source html-export">Source</a><a href="./index.html#html-export-demo" data-umami-event="Plugins demo html-export">Demo</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-export.js" data-umami-event="Plugins source html-export">Source</a><a href="./showcase/#html-export-demo" data-umami-event="Plugins demo html-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- gif-export -->
       <div class="plugin-card" data-category="export" data-plugin="gif-export">
         <div class="card-top"><div class="plugin-icon">G</div><span class="category-tag">export</span></div>
         <h3>gif-export</h3>
-        <p>Adds a toGif() method that records an animating element frame by frame into an animated GIF (median-cut palette + LZW, no dependencies).</p>
+        <p>Records the live element frame by frame and returns an animated GIF with toGif().</p>
         <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/gif-export.js" data-umami-event="Plugins source gif-export">Source</a><a href="./index.html#gif-export-demo" data-umami-event="Plugins demo gif-export">Demo</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/gif-export.js" data-umami-event="Plugins source gif-export">Source</a><a href="./showcase/#gif-export-demo" data-umami-event="Plugins demo gif-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- video-export -->
       <div class="plugin-card" data-category="export" data-plugin="video-export">
         <div class="card-top"><div class="plugin-icon">V</div><span class="category-tag">export</span></div>
         <h3>video-export</h3>
-        <p>Adds a toMp4() method that records an animating element to video via the native MediaRecorder (MP4 on Safari, WebM on Chromium/Firefox).</p>
+        <p>Records the live element with toMp4(). The browser selects a supported MP4 or WebM format.</p>
         <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/video-export.js" data-umami-event="Plugins source video-export">Source</a><a href="./index.html#video-export-demo" data-umami-event="Plugins demo video-export">Demo</a><span class="expand-hint">details</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/video-export.js" data-umami-event="Plugins source video-export">Source</a><a href="./showcase/#video-export-demo" data-umami-event="Plugins demo video-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
     </div>
@@ -606,8 +600,8 @@
   <!-- ── CTA ── -->
   <section class="cta-section" id="build-plugin">
     <div class="cta-card">
-      <h2>Build a Plugin in 5 Minutes</h2>
-      <p>SnapDOM's hook system gives you full control over every stage of the capture pipeline.</p>
+      <h2>Build a plugin</h2>
+      <p>Use lifecycle hooks to transform captures and register custom exporters. Start with the template and the plugin specification.</p>
       <div class="cta-steps">
         <div class="cta-step"><div class="step-num">01</div><code>npx degit zumerlab/snapdom/packages/plugin-template my-plugin</code><div class="step-label">Clone the template</div></div>
         <div class="cta-step"><div class="step-num">02</div><code>export function myPlugin() {}</code><div class="step-label">Write your hook logic</div></div>
@@ -651,7 +645,7 @@
     const pluginData = {
       'timestamp-overlay': {
         icon: 'T', category: 'transform',
-        desc: 'Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.',
+        desc: "Adds a timestamp to the capture, with configurable date formats and positions.",
         hooks: ['afterClone'],
         options: [
           ['format', 'string | fn', "'datetime'", "'datetime' | 'date' | 'time' | 'iso' | custom function"],
@@ -664,7 +658,7 @@
       },
       'filter': {
         icon: 'F', category: 'transform',
-        desc: 'Applies CSS filter effects to captures. Ships with presets: grayscale, sepia, blur, vintage, dramatic.',
+        desc: "Applies CSS filters to the capture, using presets or a custom filter string.",
         hooks: ['afterClone'],
         options: [
           ['filter', 'string', "''", "CSS filter string, e.g. 'grayscale(1) blur(2px)'"],
@@ -674,7 +668,7 @@
       },
       'replace-text': {
         icon: 'R', category: 'transform',
-        desc: 'Find-and-replace text in the captured clone. Supports strings and regex patterns.',
+        desc: "Replaces text in the capture using strings or regular expressions.",
         hooks: ['afterClone'],
         options: [
           ['replacements', 'array', '[]', "Array of { find: string|RegExp, replace: string }"],
@@ -683,7 +677,7 @@
       },
       'color-tint': {
         icon: 'C', category: 'transform',
-        desc: 'Tints the entire capture to a specified color using an overlay with mix-blend-mode.',
+        desc: "Tints the capture with a color overlay. Set the color and opacity.",
         hooks: ['afterClone'],
         options: [
           ['color', 'string', "'red'", 'CSS color value for the tint'],
@@ -693,7 +687,7 @@
       },
       'ascii-export': {
         icon: 'A', category: 'export',
-        desc: 'Adds a toAscii() method that converts captures to ASCII art. Configurable width, charset, and luminance.',
+        desc: "Converts the capture to ASCII art with toAscii(). Set the width, character set and contrast direction.",
         hooks: ['defineExports'],
         options: [
           ['width', 'number', '80', 'Character width of output'],
@@ -704,7 +698,7 @@
       },
       'pdf-image': {
         icon: 'D', category: 'export',
-        desc: 'Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.',
+        desc: "Exports the capture as a JPEG embedded in a downloadable PDF, in portrait or landscape.",
         hooks: ['defineExports'],
         options: [
           ['orientation', 'string', "'portrait'", "'portrait' | 'landscape'"],
@@ -713,7 +707,7 @@
       },
       'agent-map': {
         icon: 'A', category: 'export',
-        desc: 'Adds a toAgentMap() method for visual agents: an annotated screenshot plus a structured map of interactive elements with bounding boxes. (Formerly published as prompt-export.)',
+        desc: "Returns an annotated image and a map of interactive elements, with names, roles and bounding boxes.",
         hooks: ['afterClone', 'defineExports'],
         options: [
           ['image', "'annotated' | 'raw' | false", "'annotated'", 'Image output, or false for no image'],
@@ -724,15 +718,16 @@
           ['imageQuality', 'number', '0.8', 'Quality for lossy formats (0-1)'],
           ['needs', "'clone' | 'render'", "'render'", 'How far the capture runs'],
         ],
-        usage: `import { agentMap } from '@zumer/snapdom-plugins/agent-map';\n\nconst result = await snapdom(el, {\n  plugins: [agentMap({ semantic: true })]\n});\nconst { image, elements } = await result.toAgentMap();`
+        note: 'Map-only captures use image: false and needs: clone. Sensitive field values are redacted in the map; use redactInputs or exclude to hide them in the image too.',
+        usage: `import { agentMap } from '@zumer/snapdom-plugins/agent-map';\n\nconst result = await snapdom(el, {\n  plugins: [agentMap({ semantic: true })]\n});\nconst { image, map, dimensions } = await result.toAgentMap();`
       },
       'context-export': {
         icon: 'C', category: 'export',
-        desc: 'Adds a toContext() method that emits the captured tree as a text outline or JSON instead of pixels.',
+        desc: "Exports a text outline or JSON tree with text, roles, states and optional bounding boxes.",
         hooks: ['beforeClone', 'defineExports'],
         options: [
           ['format', "'outline' | 'json'", "'outline'", 'Output shape'],
-          ['maxTextLength', 'number', '120', 'Per-node text cap (ellipsised)'],
+          ['maxTextLength', 'number', '120', 'Limit for text content; accessible names are kept'],
           ['maxNodes', 'number', '800', 'Hard cap; the output notes truncation'],
           ['geometry', 'boolean', 'true', 'Include bounding boxes'],
           ['needs', "'clone' | 'render'", "'render'", 'How far the capture runs'],
@@ -741,30 +736,30 @@
       },
       'redact-inputs': {
         icon: 'R', category: 'transform',
-        desc: 'Masks form-control values before they reach the serialized capture. Core masks passwords only (that mask is fidelity-neutral); anything the browser paints in plain text is opt-in here.',
+        desc: "Masks selected input and textarea values in the capture. Core already masks passwords.",
         hooks: ['afterClone'],
         options: [
           ['types', 'string[]', 'see source', 'input `type` values to redact'],
           ['autocomplete', 'string[]', 'see source', "autocomplete tokens to redact; a trailing '*' matches a prefix"],
           ['selector', 'string', "''", 'Extra CSS selector; anything it matches is redacted'],
-          ['all', 'boolean', 'false', 'Redact EVERY input and textarea, ignoring the lists'],
+          ['all', 'boolean', 'false', 'Redact all inputs and textareas, ignoring the lists'],
           ['mask', 'function', '-', '(value, el) => string — custom masker'],
         ],
         usage: `import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';\n\nconst result = await snapdom(el, {\n  plugins: [redactInputs({ all: true })]\n});`
       },
       'html-export': {
         icon: 'M', category: 'export',
-        desc: 'Adds a toHtml() method that returns the capture as a self-contained, re-renderable HTML document — markup plus inlined styles and fonts, not pixels.',
+        desc: "Exports a self-contained HTML snapshot with styles, fonts and images inlined.",
         hooks: ['defineExports'],
         options: [
-          ['fullDocument', 'boolean', 'true', 'Wrap in a full <!DOCTYPE html>; false returns a <style> + fragment'],
+          ['fullDocument', 'boolean', 'true', 'Return a complete document; false returns styles plus an HTML fragment'],
           ['filename', 'string', "'capture.html'", 'Download filename when opts.download is set'],
         ],
-        usage: `import { htmlExport } from '@zumer/snapdom-plugins/html-export';\n\nconst result = await snapdom(el, {\n  plugins: [htmlExport()]\n});\nconst html = await result.toHtml();        // self-contained document\n// result.toHtml({ fullDocument: false })  // → <style> + fragment\n// result.toHtml({ download: 'card.html' })`
+        usage: `import { htmlExport } from '@zumer/snapdom-plugins/html-export';\n\nconst result = await snapdom(el, {\n  plugins: [htmlExport()]\n});\nconst html = await result.toHtml();        // self-contained document\n// result.toHtml({ fullDocument: false })  // styles + HTML fragment\n// result.toHtml({ download: 'card.html' })`
       },
       'gif-export': {
         icon: 'G', category: 'export',
-        desc: 'Adds a toGif() method that records an animating element frame by frame into an animated GIF (median-cut palette + LZW, no dependencies).',
+        desc: "Records the live element frame by frame and returns an animated GIF with toGif().",
         hooks: ['beforeSnap', 'defineExports'],
         options: [
           ['fps', 'number', '10', 'Frames per second'],
@@ -778,7 +773,7 @@
       },
       'video-export': {
         icon: 'V', category: 'export',
-        desc: 'Adds a toMp4() method that records an animating element to video via the native MediaRecorder. Safari produces MP4; Chromium/Firefox typically produce WebM (auto-fallback).',
+        desc: "Records the live element with toMp4(). The browser selects a supported MP4 or WebM format.",
         hooks: ['beforeSnap', 'defineExports'],
         options: [
           ['fps', 'number', '10', 'Frames per second'],
@@ -787,8 +782,8 @@
           ['background', 'string', "'#ffffff'", 'Color composited under transparent pixels'],
           ['bitrate', 'number', '—', 'videoBitsPerSecond passed to MediaRecorder'],
         ],
-        note: 'Output container depends on the browser: MP4 (H.264) on Safari, WebM on Chromium/Firefox. Blob.type reflects what was produced.',
-        usage: `import { videoExport } from '@zumer/snapdom-plugins/video-export';\n\nconst result = await snapdom(el, {\n  plugins: [videoExport()]\n});\nconst blob = await result.toMp4({ fps: 12, duration: 2000 });\n// blob.type is video/mp4 (Safari) or video/webm (Chromium/FF)`
+        note: 'Requires MediaRecorder and canvas.captureStream. The output may be MP4 or WebM; Blob.type identifies the actual format.',
+        usage: `import { videoExport } from '@zumer/snapdom-plugins/video-export';\n\nconst result = await snapdom(el, {\n  plugins: [videoExport()]\n});\nconst blob = await result.toMp4({ fps: 12, duration: 2000 });\n// Check blob.type for the actual video format`
       },
     };
 
@@ -816,7 +811,7 @@
           </table>`;
       }
 
-      let noteHtml = d.note ? `<h4>Requirements</h4><p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">${d.note}</p>` : '';
+      let noteHtml = d.note ? `<h4>Notes</h4><p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">${d.note}</p>` : '';
 
       body.innerHTML = `
         <div class="modal-icon" style="background:${c.bg};color:${c.fg};">${d.icon}</div>
@@ -1053,7 +1048,7 @@
       };
     }
 
-    // PDF image plugin — renders the capture as a PNG inside a downloadable PDF
+    // PDF image plugin — renders the capture as a JPEG inside a downloadable PDF
     function pdfImagePlugin(options = {}) {
       const { orientation = 'portrait' } = options;
       return {

@@ -28,17 +28,12 @@
   </style>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../">Showcase</a><a href="../../docs/">Docs</a><a href="../../plugins.html">Plugins</a>
-    <a href="../../compare/">Compare</a>
-    <a href="../../guides/">Guides</a>
-    <a href="../../how-to/">How-to</a>
-    <a href="../../labs.html">Labs</a><a href="../../blog/" class="current">Blog</a><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" target="_blank" rel="noopener">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
 
   <section class="hero"><div class="hero-badge">SnapDOM Blog</div><h1>Painting without a <span class="accent">canvas</span> element</h1><p class="lead">And a couple of other things that fell out of giving a screenshot library a plugin system with two hooks: <code>afterClone</code> and <code>afterRender</code>.</p></section>
   <main class="page">
-    <p class="byline">Zumerlab · July 21, 2026</p>
+    <p class="byline">Zumerlab · July 21, 2026 · Historical API examples. In v3, eligible captures can be reused; the stateful plugins here request fresh work. The default export URL is SVG, and the current <a href="../../docs/plugins/">plugin guide</a> supersedes the cache options shown below.</p>
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM captures a DOM subtree by cloning it, serializing the clone to an SVG <code>&lt;foreignObject&gt;</code>, and rasterizing that. Its plugin hooks fire on every capture with access to the same closure, so a plugin can hold state across calls that the library itself never persists. Three demos built on that: a <a href="../../labs/paint-canvas/">paint app with no <code>&lt;canvas&gt;</code> element</a>, a <a href="../../labs/webgl-seamless-dom/">contenteditable box that's secretly rendering through WebGL</a>, and a <a href="../../labs/target-range/">shooting gallery</a> that uses the exact same trick as the paint app.</p></div>
 

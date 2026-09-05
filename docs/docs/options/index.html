@@ -19,7 +19,7 @@
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="SnapDOM Options Reference" />
-  <meta name="twitter:description" content="API reference, options, plugins and cache control for the fast html2canvas alternative." />
+  <meta name="twitter:description" content="SnapDOM v3 options for output size, fonts, exclusion, clipping, cache behavior and capture fidelity." />
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg" />
 
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
@@ -62,16 +62,8 @@
   </script>
 </head>
 <body>
-  <nav class="page-nav">
-    <a href="../../" data-umami-event="Nav showcase">Showcase</a>
-    <a href="../" class="current" data-umami-event="Nav docs">Docs</a>
-    <a href="../../plugins.html" data-umami-event="Nav plugins">Plugins</a>
-    <a href="../../compare/" data-umami-event="Nav compare">Compare</a>
-    <a href="../../guides/" data-umami-event="Nav guides">Guides</a>
-    <a href="../../how-to/" data-umami-event="Nav how-to">How-to</a>
-    <a href="../../labs.html" data-umami-event="Nav labs">Labs</a><a href="../../blog/" data-umami-event="Nav blog">Blog</a>
-    <a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="Nav snapdiff" target="_blank">SnapDIFF ↗</a>
-  </nav>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Documentation</div>
@@ -81,7 +73,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>SnapDOM <span class="accent">Options</span></h1>
-    <p class="lead">Every public capture option SnapDOM accepts, explained one by one — scale and DPR, font embedding, cross-origin proxying, leaving nodes out, and the transform/shadow bleed controls.</p>
+    <p class="lead">Set output size, load capture assets, exclude private content and control clipping. These options describe the v3 prerelease.</p>
     <div class="hero-actions">
       <a href="#all-options" class="btn btn-primary" data-umami-event="Docs options all">All options</a>
       <a href="../api/" class="btn btn-ghost" data-umami-event="Docs options api">API reference</a>
@@ -106,7 +98,7 @@
           <tr><td class="num">backgroundColor</td><td class="num">string | null</td><td class="num">null</td><td>Background fill; defaults to <code>#ffffff</code> only for JPEG/WebP.</td></tr>
           <tr><td class="num">quality</td><td class="num">number</td><td class="num">0.92</td><td>JPEG/WebP quality from 0 to 1.</td></tr>
           <tr><td class="num">filename</td><td class="num">string</td><td class="num">snapDOM</td><td>Download filename base.</td></tr>
-          <tr><td class="num">embedFonts</td><td class="num">boolean | "auto"</td><td class="num">"auto"</td><td>Embed only webfonts used by the capture; true/false force the behavior.</td></tr>
+          <tr><td class="num">embedFonts</td><td class="num">boolean | "auto"</td><td class="num">"auto"</td><td>Embed used webfonts; skip the font phase on system-font-only pages. <code>true</code> forces discovery; <code>false</code> skips text-font embedding.</td></tr>
           <tr><td class="num">localFonts</td><td class="num">array</td><td class="num">[]</td><td>Local fonts <code>{ family, src, weight?, style?, stretchPct? }</code>.</td></tr>
           <tr><td class="num">iconFonts</td><td class="num">string | RegExp | Array</td><td class="num">[]</td><td>Extra icon-font matchers.</td></tr>
           <tr><td class="num">excludeFonts</td><td class="num">object</td><td class="num">undefined</td><td>Exclude font families, domains or subsets.</td></tr>
@@ -117,7 +109,7 @@
           <tr><td class="num">useProxy</td><td class="num">string</td><td class="num">''</td><td>CORS proxy template/base.</td></tr>
           <tr><td class="num">fallbackURL</td><td class="num">string | function</td><td class="num">undefined</td><td>Fallback for a broken <code>&lt;img&gt;</code>.</td></tr>
           <tr><td class="num">placeholders</td><td class="num">boolean</td><td class="num">true</td><td>Show placeholders for failed resources/CORS iframes.</td></tr>
-          <tr><td class="num">outerTransforms</td><td class="num">boolean</td><td class="num">true</td><td>Keep root transforms.</td></tr>
+          <tr><td class="num">outerTransforms</td><td class="num">boolean</td><td class="num">true</td><td>Keep the root's rotation and scale/skew. <code>false</code> removes rotation while preserving scale/skew; root translation is normalized.</td></tr>
           <tr><td class="num">outerShadows</td><td class="num">boolean | "subtree"</td><td class="num">false</td><td>Strip or bound root effects; <code>"subtree"</code> also bounds descendant shadow ink. Blur bleed is included unless <code>clip</code> fixes the edges.</td></tr>
           <tr><td class="num">reconcile</td><td class="num">boolean</td><td class="num">false</td><td>Measure and pin clone boxes that diverge from the live DOM.</td></tr>
           <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>Force one fresh capture that is not served from the existing memo and clear style snapshots after unobservable application changes. A stable fresh result may become the new memo.</td></tr>
@@ -126,26 +118,28 @@
           <tr><td class="num">excludeStyleProps</td><td class="num">RegExp | function</td><td class="num">null</td><td>Skip matching computed-style properties.</td></tr>
           <tr><td class="num">cache</td><td class="num">"soft" | "disabled" | "auto" | "full" | false</td><td class="num">"soft"</td><td>Controls persistent resource/style caches only. <code>disabled</code>/<code>false</code> clears and bypasses them; legacy values map to <code>soft</code>. Repeat memoization is separate.</td></tr>
           <tr><td class="num">plugins</td><td class="num">array</td><td class="num">undefined</td><td>Per-capture plugin definitions.</td></tr>
-          <tr><td class="num">engine</td><td class="num">"svg" | "html-in-canvas"</td><td class="num">"svg"</td><td>Experimental native-painter engine with automatic SVG fallback (also used for beforeRender/afterRender plugins). A successful native capture exposes a lazily materialized PNG URL, not serialized SVG.</td></tr>
+          <tr><td class="num">engine</td><td class="num">"svg" | "html-in-canvas"</td><td class="num">"svg"</td><td>Select one of SnapDOM's two integrated render engines. <code>svg</code> serializes the finished clone; experimental <code>html-in-canvas</code> paints that same clone through the browser's native API, with SVG fallback.</td></tr>
         </tbody>
       </table>
+      <p><code>html-in-canvas</code> still requires the browser's experimental feature flag or applicable origin trial; supported Chrome builds expose it through <code>chrome://flags/#canvas-draw-element</code>. It also needs a build compiled with <code>SNAPDOM_CANVAS_ENGINE=1 npm run compile</code>; the default build currently omits it. Unsupported captures fall back to SVG, including geometry and render hooks the native engine cannot handle.</p>
+      <p>A successful native capture is a bitmap: <code>url</code>/<code>toRaw()</code> lazily encode PNG, <code>toSvg()</code> returns a PNG-backed image, and <code>toBlob()</code> defaults to PNG unless a format was explicitly selected. Requesting an SVG Blob from that bitmap rejects. Select <code>engine: 'svg'</code> when serialized SVG is required.</p>
     </section>
 
     <section class="prose">
       <h2 id="debug">debug</h2>
-      <p>When <code>debug: true</code>, SnapDOM logs normally suppressed errors to <code>console.warn</code> (with the <code>[snapdom]</code> prefix). Useful for troubleshooting capture issues (canvas failures, blob resolution, style stripping, etc.) without noisy output in production.</p>
+      <p>Set <code>debug: true</code> to log suppressed errors with the <code>[snapdom]</code> prefix. The result also exposes <code>warnings</code> for recorded capture fallbacks and limits.</p>
       <pre class="code-block">await snapdom.toPng(el, { debug: true });</pre>
     </section>
 
     <section class="prose">
       <h2 id="image-downsampling">Automatic image downsampling</h2>
-      <p>SnapDOM automatically downsamples oversized inlined rasters to the resolution the output can display (<code>display box × scale × dpr</code>), preserving aspect ratio and never upscaling. This is engine behavior rather than a public option. It covers <code>&lt;img&gt;</code> (including cloned canvas/video), non-repeating CSS <code>background-image</code>, and SVG <code>&lt;image&gt;</code>.</p>
+      <p>SnapDOM reduces oversized raster assets to the resolution the requested output needs, accounting for output size, transforms and DPR. It preserves aspect ratio and never upscales the source. This covers <code>&lt;img&gt;</code>, captured canvas/video frames, non-repeating backgrounds and SVG <code>&lt;image&gt;</code>.</p>
       <p>The benefit depends on the export:</p>
       <ul>
-        <li><strong>Raster</strong> (<code>toPng</code> / <code>toJpg</code> / <code>toCanvas</code> / <code>toBlob</code>): <strong>much faster</strong> — the browser decodes/composites small images instead of huge ones. Output size is essentially unchanged (the final bitmap is the same visible pixels).</li>
-        <li><strong>SVG</strong> (<code>toSvg</code> / raw): <strong>much smaller</strong> output — the downsampled images are embedded in the SVG.</li>
+        <li><strong>Raster exports</strong> decode smaller embedded images, reducing work when the source images greatly exceed their display size.</li>
+        <li><strong>SVG exports</strong> carry smaller image data. <code>url</code> and <code>toRaw()</code> return that serialized capture without rasterizing it.</li>
       </ul>
-      <p>It is a no-op for images already shown at or below their natural resolution, so the common case pays virtually nothing.</p>
+      <p>The SVG engine keeps the original asset data for later exports at a larger resolution. Images that already fit the requested resolution are left unchanged. A successful native-engine capture is already a bitmap, so enlarging it scales those captured pixels.</p>
     </section>
 
     <section class="prose">
@@ -158,7 +152,7 @@ await snapdom.toSvg(element, {
 
 // 2) Dynamic placeholder via callback
 await snapdom.toSvg(element, {
-  fallbackURL: ({ width: 300, height: 150 }) =&gt;
+  fallbackURL: ({ width = 300, height = 150 }) =&gt;
     `https://placehold.co/${width}x${height}`
 });
 
@@ -178,7 +172,7 @@ await snapdom.toSvg(element, {
     <section class="prose">
       <h2 id="dimensions">Dimensions (scale, width, height)</h2>
       <ul>
-        <li>If <code>width</code> or <code>height</code> is provided, it <strong>takes precedence</strong> over <code>scale</code>. (This is the reverse of v2.)</li>
+        <li>If <code>width</code> or <code>height</code> is provided, it <strong>takes precedence</strong> over <code>scale</code>. <code>dpr</code> still multiplies raster pixels.</li>
         <li>If only <code>width</code> is provided, height scales proportionally (and vice versa).</li>
         <li>Providing both <code>width</code> and <code>height</code> forces an exact size (may distort).</li>
       </ul>
@@ -186,9 +180,9 @@ await snapdom.toSvg(element, {
 
     <section class="prose">
       <h2 id="useproxy">Cross-Origin Images &amp; Fonts (useProxy)</h2>
-      <p>By default SnapDOM tries <code>crossOrigin="anonymous"</code> (or <code>use-credentials</code> for same-origin). If an asset is CORS-blocked, you can set <code>useProxy</code> to a prefix URL that forwards the actual <code>src</code>:</p>
+      <p>SnapDOM fetches assets directly when their origin and CORS policy allow it. Set <code>useProxy</code> to a proxy you trust for assets the browser cannot read directly:</p>
       <pre class="code-block">await snapdom.toPng(el, {
-  useProxy: 'https://proxy.corsfix.com/?' // Note: Any cors proxy could be used 'https://proxy.corsfix.com/?'
+  useProxy: 'https://your-proxy.example/?url='
 });</pre>
       <ul>
         <li>The proxy is only used as a <strong>fallback</strong>; same-origin and CORS-enabled assets skip it.</li>
@@ -199,10 +193,10 @@ await snapdom.toSvg(element, {
       <h2 id="fonts">Fonts</h2>
 
       <h3 id="embedfonts">embedFonts</h3>
-      <p>When <code>true</code>, SnapDOM embeds <strong>non-icon</strong> <code>@font-face</code> rules detected as used within the captured subtree. Icon fonts (Font Awesome, Material Icons, etc.) are embedded <strong>always</strong>.</p>
+      <p>The default, <code>'auto'</code>, embeds webfonts used by the capture and skips font discovery for system-font-only content. Use <code>true</code> to force discovery or <code>false</code> to skip text-font embedding. Icon-font glyphs use a separate rendering path.</p>
 
       <h3 id="localfonts">localFonts</h3>
-      <p>If you serve fonts yourself or have data URLs, you can declare them here to avoid extra CSS discovery:</p>
+      <p>Declare font files or data URLs explicitly when stylesheet discovery cannot supply them:</p>
       <pre class="code-block">await snapdom.toPng(el, {
   embedFonts: true,
   localFonts: [
@@ -228,23 +222,20 @@ await snapdom.toSvg(element, {
 });</pre>
       <p><em>Notes</em></p>
       <ul>
-        <li><code>excludeFonts</code> only applies to <strong>non-icon</strong> fonts. Icon fonts are always embedded.</li>
+        <li><code>excludeFonts</code> applies to text-font embedding, not the icon-font rendering path.</li>
         <li>Matching is case-insensitive for <code>families</code>. Hosts are matched by substring against the resolved URL.</li>
       </ul>
     </section>
 
     <section class="prose">
       <h2 id="filtering">Leaving nodes out: <code>exclude</code></h2>
-      <p class="muted"><strong>Breaking change in v3:</strong> <code>filter</code> and <code>filterMode</code> have been
-      <strong>removed</strong>. They were a second door to the same decision with the opposite polarity, so
-      <code>exclude</code> now accepts selectors and predicates alike — but a predicate returning
-      <code>true</code> <strong>excludes</strong> the node, where <code>filter</code> returning
-      <code>true</code> <em>kept</em> it. Passing <code>filter</code> to v3 logs a warning and changes
-      nothing about the capture, so <strong>invert your predicate when you port it</strong> — otherwise the
-      elements you meant to leave out stay in the image.</p>
+      <p class="muted"><strong>v3 migration:</strong> <code>filter</code> and <code>filterMode</code> are removed.
+      Use <code>exclude</code>, where a predicate returning <code>true</code> excludes the node.
+      This reverses the old <code>filter</code> predicate: migrate <code>filter: keep</code> to
+      <code>exclude: node =&gt; !keep(node)</code>. The removed options log a warning and do not exclude anything.</p>
       <ul>
         <li><code>exclude</code>: a selector, a predicate, or any mix of both in an array.</li>
-        <li><code>excludeMode</code>: <code>hide</code> applies a <code>visibility:hidden</code> rule to excluded nodes and the layout stays as the original; <code>remove</code> does not clone them at all.</li>
+        <li><code>excludeMode</code>: <code>hide</code> leaves an invisible spacer; <code>remove</code> drops the node and lets the remaining content reflow. Both exclude its content.</li>
       </ul>
       <p><strong>Example: leave out elements with <code>display:none</code>:</strong></p>
       <pre class="code-block">/**
@@ -269,9 +260,9 @@ await snapdom.toPng(document.body, { exclude: isHidden });</pre>
 
     <section class="prose">
       <h2 id="outertransforms">outerTransforms</h2>
-      <p>When capturing rotated or translated elements, you may want use <strong>outerTransforms: false</strong> option if you want to eliminate those external transforms. So, the output is <strong>flat, upright, and ready</strong> to use elsewhere.</p>
+      <p><code>outerTransforms: false</code> removes the captured root's rotation while retaining its scale and skew. Root translation is normalized during capture. Descendant transforms keep their own layout.</p>
       <ul>
-        <li><strong><code>outerTransforms: true (default)</code></strong> — <strong>Keeps the original <code>transforms</code> and <code>rotate</code></strong>.</li>
+        <li><strong><code>outerTransforms: true (default)</code></strong> keeps the root's rotation and scale/skew, including individual CSS transforms.</li>
       </ul>
     </section>
 
@@ -290,15 +281,15 @@ await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
 
     <section class="prose">
       <h2 id="reconcile">reconcile</h2>
-      <p>SnapDOM translates live computed styles into a generated CSS class per element, which lays out inside a <code>&lt;foreignObject&gt;</code> instead of the page's own stylesheet cascade. That translation matches the live DOM almost everywhere, but a narrow class of boxes — inline text, table cells — get their width from layout algorithms rather than an authored value, and can re-wrap a hair differently if the SVG rasterizer falls back to a slightly different font metric.</p>
-      <p>With <code>reconcile: true</code>, SnapDOM mounts the styled clone off-screen in the real document, measures every node against its live counterpart, and pins <code>width</code>/<code>height</code> only on the boxes that actually diverge — measurement instead of a heuristic, so it's always correct where it applies. The cost is a second real layout pass over the whole captured subtree, which roughly doubles capture time, so it's opt-in rather than default. If SnapDOM detects a capture that used width-softening on the kind of element known to sometimes re-wrap, it logs a one-time <code>console.warn</code> suggesting this option — that warning only fires when <code>reconcile</code> isn't already set.</p>
+      <p>With the SVG engine, captured HTML lays out inside <code>&lt;foreignObject&gt;</code>. Inline text and table cells can wrap differently when font metrics or layout constraints differ from the live page.</p>
+      <p><code>reconcile: true</code> measures the styled clone offscreen against the live subtree and pins boxes that diverge. It adds a layout pass and can roughly double capture time. Use it when you see wrapping differences; SnapDOM also emits a one-time suggestion for captures that may benefit.</p>
       <pre class="code-block">await snapdom.toPng(el, { reconcile: true });</pre>
     </section>
 
     <section class="prose">
       <h2 id="memoization">Automatic repeat-capture memoization</h2>
       <p>Capturing the same unchanged element repeatedly would otherwise re-walk the tree and re-read every node's computed style on every call. SnapDOM memoizes eligible static elements from their first capture. Observable DOM, style, media and interaction changes invalidate that result; frame-driven content that cannot be observed reliably is captured fresh. A mutation may trigger a conservative full capture or a differential rebuild when that rebuild is provably equivalent. At most 64 elements stay memoized; the least recently captured one is released.</p>
-      <pre class="code-block">// Dashboard polling: only the first and the 3rd (mutated) calls do real work.
+      <pre class="code-block">// Stable captures can reuse the result; the text mutation invalidates it.
 for (let i = 0; i < 10; i++) {
   if (i === 3) counter.textContent = 'new value';
   const result = await snapdom(el);
@@ -322,7 +313,7 @@ await snapdom(el, { invalidate: true });</pre>
     <section class="cta-section">
       <div class="cta-card">
         <h2>Ready to capture?</h2>
-        <p>Drop SnapDOM into your project and capture your first element in one line.</p>
+        <p>Try the browser demo, then use the API reference to choose your output.</p>
         <a href="../../" class="btn btn-primary" data-umami-event="Docs options cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs options cta npm">Install from npm</a>
       </div>
