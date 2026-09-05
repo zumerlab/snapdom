@@ -80,6 +80,9 @@ export default defineConfig({
     alias: { '@zumer/snapdom': new URL('./src/index.js', import.meta.url).pathname },
   },
   test: {
+    // Scratch benchmarks can import aliases from their own config. Loading them here
+    // raises Vite's error overlay over every test, corrupting screenshots and input.
+    include: ['__tests__/**/*.test.js'],
     // An agent worktree checked out under .claude/worktrees/ carries its own __tests__/, and
     // the default glob ran both copies — a filter by file name matched twice.
     exclude: [...configDefaults.exclude, '**/.claude/**'],
@@ -88,6 +91,7 @@ export default defineConfig({
       // Suites size their own timeouts from this: the same demo has three times the machine
       // and three times the link contention under BROWSER=all.
       engines: browsers.length,
+      requireVisual: ['1', 'true', 'yes'].includes(String(process.env.REQUIRE_VISUAL || '').toLowerCase()),
     },
     // The visual suite tests compiled dist/ — never let it pixel-diff a stale build.
     globalSetup: ['./scripts/ensure-fresh-dist.mjs', './scripts/require-visual.mjs'],

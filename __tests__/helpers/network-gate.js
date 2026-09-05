@@ -26,6 +26,7 @@
 //   beforeEach(networkGuard((name) => name.startsWith('cdn:')))
 //
 import { commands } from '@vitest/browser/context'
+import { inject } from 'vitest'
 
 // A run asks this once per test. The node side caches the reading, but a round trip per
 // test is still pointless traffic, so hold it here too and let node decide when to re-probe.
@@ -82,7 +83,11 @@ export function networkGuard(needsNetwork, { laneWaitMs = LANE_WAIT_MS } = {}) {
 
     // ctx.skip() throws a PendingError: the test is reported as skipped WITH this note,
     // rather than as a green pass that quietly covered nothing.
-    if (status.mode === 'skip') ctx.skip(`slow connection: ${status.reading}`)
+    const unavailable = (reason) => {
+      if (inject('requireVisual', false)) throw new Error(`Release coverage incomplete: ${reason}`)
+      ctx.skip(reason)
+    }
+    if (status.mode === 'skip') unavailable(`slow connection: ${status.reading}`)
 
     const lease = await commands.netGateEnter(laneWaitMs).catch(() => ({ granted: true, token: null }))
     // Released here rather than in an afterEach: the lease belongs to this test, and
@@ -95,7 +100,7 @@ export function networkGuard(needsNetwork, { laneWaitMs = LANE_WAIT_MS } = {}) {
     if (!lease.granted) {
       const waited = lease.waitedMs > 0 ? `after ${Math.round(lease.waitedMs / 1000)}s` : 'immediately'
       const queue = lease.ahead ? `, ${lease.ahead} ahead` : ''
-      ctx.skip(`network lane full, gave up ${waited}${queue}: ${status.reading}`)
+      unavailable(`network lane full, gave up ${waited}${queue}: ${status.reading}`)
     }
   }
 }

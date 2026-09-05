@@ -25,6 +25,11 @@
 import { describe, it, beforeEach, afterAll, inject, vi } from 'vitest'
 import { defineDemoSuite } from '@zumer/snapdiff/vitest/suite'
 import { networkGuard, networkStatus, pageNeedsNetwork } from './helpers/network-gate.js'
+import { skippedVisualDemos, assertVisualBaselineMode } from '../scripts/visual-policy.mjs'
+
+// Vite also reads .env files: process.env alone cannot see every way this flag arrives.
+const UPDATE_BASELINES = ['1', 'true', 'yes'].includes(String(import.meta.env.VITE_UPDATE_VISUAL || '').toLowerCase())
+assertVisualBaselineMode(inject('requireVisual', false), UPDATE_BASELINES)
 
 // import.meta.glob is a Vite primitive, evaluated at module load, returns
 // a map of URL → loader. We only use the keys.
@@ -209,12 +214,10 @@ const urlByName = new Map()
 const overrides = {
   // The snapVisual demo toggles a `body.mutated` class with new bg gradients
   // and pseudo content: large legitimate visual diff, not a snapdom bug.
-  'demo': { skip: true },
   // Continuous WebGL blend/wipe transition re-triggered on every DOM-to-texture
   // update (~70-110ms cross-fade), never at rest, so no fixed wait lands on a
   // stable frame. Diff is always a moving wipe boundary, not a snapdom bug.
-  'd-plugin-webgl-seamless-dom': { skip: true },
-  'd-plugin-webgl-time-tunnel': { skip: true },
+  ...Object.fromEntries([...skippedVisualDemos].map(name => [name, { skip: true }])),
   // The features imported from @frostin/snapdom (element-mirror) in one shot: a rendered text
   // selection, a child's ring kept by outerShadows:'subtree', the native controls no engine
   // paints in a foreignObject, and background-clip:text. The selection is paint state that no
@@ -363,11 +366,11 @@ export function defineDemoShard (shardIndex, shardCount) {
     // browser (vitest browser mode) where `process` doesn't exist, so UPDATE_VISUAL never reaches
     // it. Vite DOES expose VITE_-prefixed vars to import.meta.env in the browser, so re-record
     // baselines with: `VITE_UPDATE_VISUAL=1 npm test` (or =true).
-    updateBaselines: ['1', 'true', 'yes'].includes(String(import.meta.env.VITE_UPDATE_VISUAL || '').toLowerCase()),
+    updateBaselines: UPDATE_BASELINES,
 
     baseDir: '__snapshots__/visual',
     threshold: 0.1,
-    failureRatio: 0.005, // tolerate 0.1% drift from font-hinting jitter
+    failureRatio: 0.005, // tolerate 0.5% drift from font-hinting jitter
     defaultTarget: '#target',
     defaultWait: 200,
     snapdomUrl: '/dist/snapdom.mjs',

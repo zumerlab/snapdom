@@ -5,6 +5,7 @@
 import { readdirSync, statSync, existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 function newestMtime(dir) {
   let newest = 0
@@ -18,14 +19,21 @@ function newestMtime(dir) {
   return newest
 }
 
-export default function ensureFreshDist() {
-  const root = new URL('..', import.meta.url).pathname
-  const distMain = join(root, 'dist', 'snapdom.mjs')
+export function distNeedsBuild(root) {
   const srcNewest = Math.max(
     newestMtime(join(root, 'src')),
-    statSync(join(root, 'esbuild.config.mjs')).mtimeMs
+    statSync(join(root, 'esbuild.config.mjs')).mtimeMs,
+    statSync(join(root, 'package.json')).mtimeMs
   )
-  if (existsSync(distMain) && statSync(distMain).mtimeMs >= srcNewest) return
+  return ['snapdom.mjs', 'snapdom.js'].some(name => {
+    const output = join(root, 'dist', name)
+    return !existsSync(output) || statSync(output).mtimeMs < srcNewest
+  })
+}
+
+export default function ensureFreshDist() {
+  const root = fileURLToPath(new URL('..', import.meta.url))
+  if (!distNeedsBuild(root)) return
   console.log('[ensure-fresh-dist] dist/ is stale — recompiling before tests')
   const res = spawnSync('node', ['esbuild.config.mjs'], { cwd: root, stdio: 'inherit' })
   if (res.status !== 0) throw new Error('[ensure-fresh-dist] compile failed — refusing to test a stale dist/')
