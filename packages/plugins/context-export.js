@@ -123,6 +123,9 @@ export function contextExport(options = {}) {
 const NEVER = () => false
 
 function visibleText(node) {
+  // A textarea's child text is its default value, not a label. nodeState already emits
+  // only a mask/hasValue; reading the children would leak that value through `text`.
+  if (node.tagName === 'TEXTAREA') return ''
   let out = ''
   for (let c = node.firstChild; c; c = c.nextSibling) {
     if (c.nodeType === 3) out += c.nodeValue

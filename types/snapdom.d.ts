@@ -448,6 +448,8 @@ export interface DownloadOptions {
 
 export interface BlobOptions {
   /** Blob codec. Defaults to SVG for the default engine and PNG for a successful native capture. */
+  format?: BlobType;
+  /** @deprecated Legacy alias kept synchronized with canonical `format`; either key is honored. */
   type?: BlobType;
   quality?: number;
   width?: number;

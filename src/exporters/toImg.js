@@ -49,9 +49,9 @@ export async function toImg(url, options) {
       const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : natH
       let cssW, cssH
       if (hasW && hasH) { cssW = width; cssH = height }
-      else if (hasW) { cssW = width; cssH = Math.round(refH * (width / Math.max(1, refW))) }
-      else if (hasH) { cssH = height; cssW = Math.round(refW * (height / Math.max(1, refH))) }
-      else { cssW = Math.round(natW * scale); cssH = Math.round(natH * scale) }
+      else if (hasW) { cssW = width; cssH = Math.max(1, Math.round(refH * (width / Math.max(1, refW)))) }
+      else if (hasH) { cssH = height; cssW = Math.max(1, Math.round(refW * (height / Math.max(1, refH)))) }
+      else { cssW = Math.max(1, Math.round(natW * scale)); cssH = Math.max(1, Math.round(natH * scale)) }
       const patched = svg
         .replace(/width="[^"]*"/, `width="${cssW}"`)
         .replace(/height="[^"]*"/, `height="${cssH}"`)
@@ -81,8 +81,8 @@ export async function toImg(url, options) {
       const w = Number((head.match(/\bwidth="([\d.]+)"/i) || [])[1])
       const h = Number((head.match(/\bheight="([\d.]+)"/i) || [])[1])
       if (w > 0 && h > 0) {
-        const next = head.replace(/\bwidth="[^"]*"/i, `width="${Math.round(w * scale)}"`)
-          .replace(/\bheight="[^"]*"/i, `height="${Math.round(h * scale)}"`)
+        const next = head.replace(/\bwidth="[^"]*"/i, `width="${Math.max(1, Math.round(w * scale))}"`)
+          .replace(/\bheight="[^"]*"/i, `height="${Math.max(1, Math.round(h * scale))}"`)
         source = encodeSvgToDataURL(svg.replace(head, next))
         scaledSvg = true
       }
@@ -110,16 +110,16 @@ export async function toImg(url, options) {
     const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : img.naturalHeight
     const k = width / Math.max(1, refW)
     img.style.width = `${width}px`
-    img.style.height = `${Math.round(refH * k)}px`
+    img.style.height = `${Math.max(1, Math.round(refH * k))}px`
   } else if (hasH) {
     const refW = Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : img.naturalWidth
     const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : img.naturalHeight
     const k = height / Math.max(1, refH)
     img.style.height = `${height}px`
-    img.style.width = `${Math.round(refW * k)}px`
+    img.style.width = `${Math.max(1, Math.round(refW * k))}px`
   } else {
-    const cssW = Math.round(img.naturalWidth * (scaledSvg ? 1 : scale))
-    const cssH = Math.round(img.naturalHeight * (scaledSvg ? 1 : scale))
+    const cssW = Math.max(1, Math.round(img.naturalWidth * (scaledSvg ? 1 : scale)))
+    const cssH = Math.max(1, Math.round(img.naturalHeight * (scaledSvg ? 1 : scale)))
     img.style.width = `${cssW}px`
     img.style.height = `${cssH}px`
     if (!scaledSvg && scale !== 1 && typeof url === 'string' && url.startsWith('data:image/svg+xml')) {

@@ -55,7 +55,10 @@ async function fromString(html, options) {
   try {
     // One frame so layout (and any already-loaded fonts) settle before measuring.
     await new Promise((r) => requestAnimationFrame(r))
-    const target = mount.children.length === 1 ? mount.firstElementChild : mount
+    // Element count alone misses a mixed fragment such as `Hello <strong>world</strong>`.
+    // Keep surrounding text; indentation and comments around a sole root still unwrap.
+    const hasText = Array.from(mount.childNodes).some(node => node.nodeType === 3 && node.textContent.trim())
+    const target = mount.children.length === 1 && !hasText ? mount.firstElementChild : mount
     // This live mount is destroyed below and can never be captured again. A burst state would
     // only keep the detached mount/listeners alive in the LRU, even if the caller passed true.
     return await main(target, { ...(options || {}), burst: false })

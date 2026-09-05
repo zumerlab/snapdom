@@ -75,6 +75,20 @@ describe('one sizing rule across exporters', () => {
     expect(canvas.height).toBe(100)
   })
 
+  it('keeps downscaled thin captures drawable in every exporter', async () => {
+    const result = await snapdom(makeEl(100, 1), { embedFonts: false, dpr: 1 })
+    const options = { scale: 0.1, dpr: 1 }
+    const canvas = await result.toCanvas(options)
+    expect([canvas.width, canvas.height]).toEqual([10, 1])
+    const svg = await result.toSvg(options)
+    expect([svg.naturalWidth, svg.naturalHeight]).toEqual([10, 1])
+    const png = await result.toPng(options)
+    expect([png.naturalWidth, png.naturalHeight]).toEqual([10, 1])
+    const blob = await result.toBlob({ ...options, format: 'png' })
+    expect(blob).toBeInstanceOf(Blob)
+    expect(blob.type).toBe('image/png')
+  })
+
   // toBlob defaults to the raw vector unless a codec is asked for — but the static helper
   // forwards its options to the CAPTURE, not to the exporter, so a capture-time format has
   // to survive into the export. It did not: `snapdom.toBlob(el, {type:'png'})` (the shape

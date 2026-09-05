@@ -745,8 +745,10 @@ export async function toCanvas(url, options) {
     const canvas = (typeof HTMLCanvasElement !== 'undefined' && options.canvas instanceof HTMLCanvasElement)
       ? options.canvas
       : document.createElement('canvas')
-    canvas.width = outW * dpr
-    canvas.height = outH * dpr
+    // Positive CSS sizes may become subpixel after downscaling (e.g. a 1px divider at
+    // scale: 0.5). Canvas truncates those to zero, producing null Blobs/data:, URLs.
+    canvas.width = Math.max(1, outW * dpr)
+    canvas.height = Math.max(1, outH * dpr)
     canvas.style.width = `${outW}px`
     canvas.style.height = `${outH}px`
 

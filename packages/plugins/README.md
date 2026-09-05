@@ -400,7 +400,8 @@ await result.toMp4({ download: true });
 ```
 
 The plugin tries supported MP4 codecs first, then WebM. A WebM fallback logs a warning;
-the download extension matches the recorded `.mp4` or `.webm` container.
+the default download filename matches the recorded `.mp4` or `.webm` container. Explicit
+filenames and `download` strings are used as supplied.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -410,7 +411,7 @@ the download extension matches the recorded `.mp4` or `.webm` container.
 | `background` | `string` | `'#ffffff'` | Color composited under transparent pixels |
 | `scale` | `number` | capture's scale | Capture scale |
 | `bitrate` | `number` | — | `videoBitsPerSecond` passed to `MediaRecorder` |
-| `filename` | `string` | — | Download filename (extension auto-set to `.mp4` / `.webm`) |
+| `filename` | `string` | — | Download filename; the default follows the recorded `.mp4` / `.webm` container |
 
 Requires `MediaRecorder` and `canvas.captureStream()`, which may be unavailable in headless
 environments. Per-call `opts` override constructor options and accept `download`

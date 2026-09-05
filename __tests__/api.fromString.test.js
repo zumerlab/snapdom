@@ -26,6 +26,20 @@ describe('snapdom.fromString', () => {
     expect(svg).toContain('dos')
   })
 
+  it('preserves text surrounding a single element in a mixed fragment', async () => {
+    const result = await snapdom.fromString('Before <strong>inside</strong> after')
+    const svg = decodeURIComponent(result.url.split(',')[1])
+    expect(svg).toContain('Before ')
+    expect(svg).toContain('inside')
+    expect(svg).toContain(' after')
+    expect(document.querySelector('[data-snapdom-internal]')).toBeNull()
+  })
+
+  it('still unwraps a single root surrounded by whitespace and comments', async () => {
+    const result = await snapdom.fromString('\n<!-- template -->\n<div style="width:120px;height:40px">inside</div>\n')
+    expect([result.meta.w0, result.meta.h0]).toEqual([120, 40])
+  })
+
   it('rejects empty input', async () => {
     await expect(snapdom.fromString('')).rejects.toThrow()
   })

@@ -203,7 +203,7 @@ function deriveRole(el) {
 
 /* ── Accessible name ────────────────────────────── */
 
-function accessibleName(el) {
+function accessibleName(el, textOf) {
   const ariaLabel = el.getAttribute('aria-label');
   if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
 
@@ -214,7 +214,7 @@ function accessibleName(el) {
       root && typeof root.getElementById === 'function'
         ? root.getElementById(id) : document.getElementById(id);
     const parts = labelledBy.trim().split(/\s+/)
-      .map(id => { const r = getById(id); return r ? (r.textContent || '').trim() : ''; })
+      .map(id => { const r = getById(id); return r ? textOf(r).trim() : ''; })
       .filter(Boolean);
     if (parts.length) return parts.join(' ');
   }
@@ -228,11 +228,11 @@ function accessibleName(el) {
   if (title && title.trim()) return title.trim();
 
   if (el.labels && el.labels[0]) {
-    const t = (el.labels[0].textContent || '').trim();
+    const t = textOf(el.labels[0]).trim();
     if (t) return t;
   }
 
-  const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+  const text = textOf(el).replace(/\s+/g, ' ').trim();
   if (text) return text.length > 60 ? text.slice(0, 59) + '…' : text;
   return '';
 }
@@ -354,6 +354,21 @@ function extractMap(element, interactiveSelector, semanticSelector, fields, shou
   let i = 0;
   const tracked = new Set();
 
+  // Names/full text must obey the same redaction boundary as the entry walk. Plain
+  // textContent resurrects excluded descendants, and textarea defaults bypass masked
+  // state. Referenced labels may also live under an excluded ancestor outside this root.
+  const textOf = (el) => {
+    for (let ancestor = el; ancestor; ancestor = ancestor.parentElement || ancestor.getRootNode()?.host) {
+      if (shouldExclude(ancestor)) return '';
+    }
+    const read = (node) => {
+      if (node.nodeType === 3) return node.nodeValue || '';
+      if (node.nodeType !== 1 || node.tagName === 'TEXTAREA' || shouldExclude(node)) return '';
+      return Array.from(node.childNodes, read).join('');
+    };
+    return read(el);
+  };
+
   // querySelectorAll never matches the root and never crosses a shadow boundary, so a
   // capture root that IS a button, and every shadow-DOM control, were missing from the
   // map while both render in the image. Walk what core clones instead, and prune excluded
@@ -368,14 +383,14 @@ function extractMap(element, interactiveSelector, semanticSelector, fields, shou
 
   for (const el of els) {
     if (!el.matches(interactiveSelector)) continue;
-    const entry = buildEntry(el, rootRect, i, fields, 'interactive');
+    const entry = buildEntry(el, rootRect, i, fields, 'interactive', textOf);
     if (entry) { map.push(entry); tracked.add(el); i++; }
   }
 
   if (semanticSelector) {
     for (const el of els) {
       if (tracked.has(el) || !el.matches(semanticSelector)) continue;
-      const entry = buildEntry(el, rootRect, i, fields, 'semantic');
+      const entry = buildEntry(el, rootRect, i, fields, 'semantic', textOf);
       if (entry) { map.push(entry); i++; }
     }
   }
@@ -420,7 +435,7 @@ function captureFrame(element, rect, outerTransforms = true) {
     sy: rect.height ? (Math.max(...corners.map(p => p.y)) - y) / rect.height : 1 };
 }
 
-function buildEntry(el, rootRect, i, fields, kind) {
+function buildEntry(el, rootRect, i, fields, kind, textOf) {
   const rect = el.getBoundingClientRect();
   // The annotation pass filters on this flag — without it, semantic:true put badges
   // on headings/paragraphs (the filter was a no-op because nothing ever set it).
@@ -434,7 +449,7 @@ function buildEntry(el, rootRect, i, fields, kind) {
   if (b[2] <= 0 && b[3] <= 0) return null;
 
   const role = deriveRole(el);
-  const n = accessibleName(el);
+  const n = accessibleName(el, textOf);
 
   const entry = { i, n, r: role, b };
   if (kind === 'semantic') entry.isSemanticOnly = true;
@@ -445,7 +460,7 @@ function buildEntry(el, rootRect, i, fields, kind) {
   }
 
   if (fields === 'full') {
-    const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    const t = textOf(el).replace(/\s+/g, ' ').trim();
     if (t && t !== n) entry.t = t.length > 160 ? t.slice(0, 159) + '…' : t;
     const a = {};
     for (const name of ['href', 'type', 'name', 'placeholder', 'alt', 'title', 'role', 'aria-label']) {

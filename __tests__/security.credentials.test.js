@@ -92,6 +92,49 @@ describe('credential leak (Phase 0)', () => {
     expect(out).toContain('hasValue')
   })
 
+  it('textarea defaults never bypass masked state through semantic names or text', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = '<section><label>Notes <textarea>PRIVATE-TEXTAREA-DEFAULT</textarea></label><textarea aria-label="Comment">PRIVATE-LABELED-DEFAULT</textarea><textarea>PRIVATE-UNLABELED-DEFAULT</textarea></section>'
+    form.querySelector('textarea').value = 'PRIVATE-LIVE-VALUE'
+    document.body.append(form)
+    const result = await snapdom(form, { plugins: [
+      agentMap({ image: false, fields: 'full', semantic: true }), contextExport(),
+    ], cache: 'disabled' })
+    const map = await result.toAgentMap()
+    const outline = await result.toContext()
+    const tree = await result.toContext({ format: 'json' })
+    for (const output of [JSON.stringify(map), outline, JSON.stringify(tree)]) {
+      expect(output).not.toContain('PRIVATE-')
+      expect(output).toContain('hasValue')
+    }
+    expect(map.map.filter(entry => entry.r === 'textbox').map(entry => entry.n)).toEqual(['Notes', 'Comment', ''])
+  })
+
+  it('agent names and full text omit excluded descendants of retained entries', async () => {
+    const host = document.createElement('section')
+    host.innerHTML = '<button>Public <span class="private">PRIVATE-DESCENDANT</span> action</button><button aria-label="Safe label">Public <span data-capture="exclude">PRIVATE-FULL-TEXT</span> action</button>'
+    document.body.append(host)
+    const result = await snapdom(host, {
+      exclude: '.private', plugins: [agentMap({ image: false, fields: 'full', semantic: true })],
+    })
+    const output = await result.toAgentMap()
+    expect(JSON.stringify(output)).not.toContain('PRIVATE-')
+    expect(output.map[0].n).toBe('Public action')
+    expect(output.map[1].t).toBe('Public action')
+  })
+
+  it('agent names respect excluded ancestors of referenced labels outside the capture', async () => {
+    const host = document.createElement('div')
+    host.innerHTML = '<div class="private"><span id="private-name">PRIVATE-REFERENCED-LABEL</span></div><button aria-labelledby="private-name">Public fallback</button>'
+    document.body.append(host)
+    const result = await snapdom(host.querySelector('button'), {
+      exclude: '.private', plugins: [agentMap({ image: false, fields: 'full' })],
+    })
+    const output = await result.toAgentMap()
+    expect(JSON.stringify(output)).not.toContain('PRIVATE-')
+    expect(output.map[0].n).toBe('Public fallback')
+  })
+
   it('the canvas engine inherits the rule instead of reimplementing it', async () => {
     // It used to sync form state into its own live-DOM copy, with its own masking call.
     // It consumes core's clone now, so there is exactly one place that decides this and

@@ -15,6 +15,7 @@ import type {
   ExportMap,
   CaptureContext,
   BlobType,
+  BlobOptions,
 } from './snapdom'
 
 declare const el: Element
@@ -81,6 +82,18 @@ function disabledCacheAlias() {
   return options
 }
 
+async function canonicalBlobFormat() {
+  const options: BlobOptions = { format: 'png' }
+  const legacy: BlobOptions = { type: 'jpeg' }
+  const result = await snapdom(el)
+  const blob: Blob = await result.toBlob(options)
+  await snapdom.toBlob(el, options)
+  await result.toBlob(legacy)
+  // @ts-expect-error Only supported image formats are accepted.
+  const invalid: BlobOptions = { format: 'pdf' }
+  void blob; void invalid
+}
+
 function pluginShape() {
   const plugin: SnapdomPlugin = {
     name: 'example',
@@ -118,6 +131,7 @@ void clipOptionShapes
 void staticNamespaceHelpers
 void invalidateOption
 void disabledCacheAlias
+void canonicalBlobFormat
 void pluginShape
 void normalizedPluginContext
 void preCaptureHelper
