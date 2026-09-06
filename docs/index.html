@@ -197,13 +197,15 @@
     footer { padding: 30px 0 44px; border-top: 1px solid var(--line); color: var(--muted); }
     .footer-row { display: flex; justify-content: space-between; gap: 24px; }
     .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
-    @media (max-width: 1080px) {
+    @media (max-width: 1180px) {
       .nav-links > a:not(.github-badge) { display: none; }
       .mobile-nav { display: flex; overflow-x: auto; border-top: 1px solid var(--line); scrollbar-width: none; }
       .mobile-nav::-webkit-scrollbar { display: none; }
       .mobile-nav .wrap { display: flex; }
       .mobile-nav a { flex: 1 0 auto; padding: 11px 14px; color: var(--muted); text-align: center; text-decoration: none; font-size: 12px; font-weight: 700; }
       .mobile-nav a:hover { color: var(--blue); }
+    }
+    @media (max-width: 1080px) {
       .hero { padding-top: 64px; }
       .hero-grid, .section-heading, .pro-panel, .showcase-callout { grid-template-columns: 1fr; }
       .demo-shell { max-width: 620px; }
@@ -256,6 +258,7 @@
         <a href="./compare/">Compare</a>
         <a href="./showcase/">Showcase</a>
         <a href="./made-with/">Made with</a>
+        <a href="./ecosystem/">Ecosystem</a>
         <a href="./plugins.html">Plugins</a>
         <a href="./labs.html">Labs</a>
         <a href="./blog/">Blog</a>
@@ -266,7 +269,7 @@
         </a>
       </nav>
     </div>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div></nav>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./ecosystem/">Ecosystem</a><a href="./plugins.html">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div></nav>
   </header>
 
   <main>
@@ -426,7 +429,7 @@
   <footer>
     <div class="wrap footer-row">
       <span>MIT © <a href="https://zumerlab.com/">Zumerlab</a></span>
-      <div class="footer-links"><a href="./docs/">Docs</a><a href="./showcase/">Showcase</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)">X</a></div>
+      <div class="footer-links"><a href="./docs/">Docs</a><a href="./showcase/">Showcase</a><a href="./ecosystem/">Ecosystem</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)">X</a></div>
     </div>
   </footer>
 

@@ -519,6 +519,16 @@ Open Shadow DOM and same-origin iframe contents can be captured. Closed shadow r
 
 If output differs, read `capture.warnings` after export, use `debug: true`, and check the affected resource, font and capture dimensions. Verify the source is laid out with its final styles before capture. A missing webfont changes measurements; inaccessible assets can produce placeholders; oversized output can be clamped. `reconcile: true` adds clone measurement when layout diverges. Do not discard CSS properties or disable font embedding merely to hide a fidelity problem.
 
+## Ecosystem
+
+[SnapDOM Ecosystem](https://snapdom.dev/ecosystem/) compares tools built on the capture engine:
+
+- SnapEye provides capture, visual diff and recording operations for coding agents, with JSON results and artifacts. It uses SnapDIFF's diff engine and does not navigate or click.
+- SnapSurf provides browser navigation, compact page observations, typed changes and assertions through MCP or CLI. Its semantic verification is different from comparing pixels against a saved visual baseline.
+- SnapDIFF provides repeatable visual regression tests, saved baselines and review tools in the page or a Vitest browser suite in CI.
+
+An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect an edit, and SnapDIFF to maintain regression coverage. These steps require explicit setup; baselines are managed separately. SnapEye's URL trigger reloads the page; use its in-page API for states already reached through interaction.
+
 ## Further reading
 
 - API: https://snapdom.dev/docs/api/

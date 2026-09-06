@@ -147,7 +147,7 @@ body > .site-shell + .hero .hero-badge {
   outline-offset: 3px;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .site-shell-links { display: none; }
   .site-shell-mobile { display: flex; overflow-x: auto; border-top: 1px solid rgba(15,30,77,0.14); scrollbar-width: none; }
   .site-shell-mobile::-webkit-scrollbar { display: none; }
