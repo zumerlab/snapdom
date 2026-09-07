@@ -27,8 +27,12 @@ it.each(['local', 'global'])('a %s plugin handles a memo returning the currently
   if (scope === 'global') snapdom.plugins(...plugins)
   const result = await snapdom(el, { dpr: 1, ...(scope === 'local' ? { plugins } : {}) })
   recapture.mockResolvedValue(result)
-  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('export queue deadlock')), 1500))
-  const blobs = await Promise.race([Promise.all([result.toGif({ frames: 2, fps: 100 }), result.toGif({ frames: 1 })]), timeout])
+  // The public toCanvas is queued behind the toGif that is running, so a frame that reaches
+  // it waits on itself forever. Fail at that call rather than racing a timer: a fixed 1500 ms
+  // budget expired under machine load, and the frames of the timed-out case kept running into
+  // the next case's recapture count (3 expected, 5 seen).
+  result.toCanvas = () => { throw new Error('gif-export re-entered the occupied export queue') }
+  const blobs = await Promise.all([result.toGif({ frames: 2, fps: 100 }), result.toGif({ frames: 1 })])
   expect(blobs.every(blob => blob instanceof Blob && blob.type === 'image/gif')).toBe(true)
   expect(recapture).toHaveBeenCalledTimes(3)
   expect(events).toEqual(['before:gif', 'after:gif', 'done', 'before:gif', 'after:gif'])
