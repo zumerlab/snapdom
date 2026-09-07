@@ -87,6 +87,37 @@ export function isIconFont(input, matchers) {
 }
 
 /**
+ * Whether a stylesheet URL is an icon-font-only stylesheet that can be skipped wholesale.
+ *
+ * `isIconFont` is a loose name heuristic (`/icon/`, `/symbols/`, ...) meant for one family at a
+ * time. Run over a whole URL it also reads the query string, and Google Fonts bundles every
+ * requested family there: a single icon-ish name (`Noto+Sans+Symbols`, `Material+Symbols+Outlined`)
+ * used to discard the text families sharing the request, so nothing got embedded (#493).
+ * When the URL carries `family` params, judge those names one by one and skip only if every
+ * one is an icon font; the per-face family check downstream still drops the icon ones.
+ * URLs without `family` params keep the path heuristic.
+ * @param {string} href
+ * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
+ * @returns {boolean}
+ */
+export function isIconFontStylesheet(href, matchers) {
+  if (typeof href !== 'string' || !href) return false
+  let url
+  try {
+    url = new URL(href, typeof location !== 'undefined' ? location.href : undefined)
+  } catch {
+    return isIconFont(href, matchers)
+  }
+  // css?family=A|B (legacy API) and css2?family=A&family=B; ":wght@..." axes are not a name
+  const names = url.searchParams.getAll('family')
+    .flatMap((v) => v.split('|'))
+    .map((v) => v.split(':')[0].trim())
+    .filter(Boolean)
+  if (names.length) return names.every((name) => isIconFont(name, matchers))
+  return isIconFont(href, matchers)
+}
+
+/**
  * Whether a family is Material Icons or Material Symbols, the two ligature-based sets.
  * @param {string} [family='']
  * @returns {boolean}

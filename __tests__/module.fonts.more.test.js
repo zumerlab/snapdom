@@ -18,6 +18,7 @@ vi.mock('../src/utils/helpers', async (importOriginal) => {
 
 vi.mock('../src/modules/iconFonts.js', () => ({
   isIconFont: vi.fn(() => false),
+  isIconFontStylesheet: vi.fn(() => false),
 }))
 
 vi.mock('../src/modules/snapFetch.js', () => ({

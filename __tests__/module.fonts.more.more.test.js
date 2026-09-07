@@ -17,6 +17,7 @@ vi.mock('../src/utils/helpers', async (importOriginal) => {
 // iconFonts siempre falso para no excluir
 vi.mock('../src/modules/iconFonts.js', () => ({
   isIconFont: vi.fn(() => false),
+  isIconFontStylesheet: vi.fn(() => false),
 }))
 
 // 🔴 Nuevo: mock de snapFetch (API no-throw)

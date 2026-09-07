@@ -18,7 +18,7 @@
 import { extractURL } from '../utils/helpers'
 import { getStyle } from '../utils/css.js'
 import { cache } from '../core/cache'
-import { isIconFont } from '../modules/iconFonts.js'
+import { isIconFont, isIconFontStylesheet } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
 import { pseudoGatesFor, getStyleEnvEpoch, flushStyleInvalidations } from './styles.js'
 import { nextFrame } from '../utils/browser.js'
@@ -925,7 +925,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     const cssText = styleTag.textContent || ''
     for (const m of cssText.matchAll(IMPORT_ANY_RE_LOCAL)) {
       const u = (m[2] || m[4] || '').trim()
-      if (!u || isIconFont(u, iconMatchers)) continue
+      if (!u || isIconFontStylesheet(u, iconMatchers)) continue
       const hasLink = !!doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)
       if (!hasLink) importUrls.push(u)
     }
@@ -975,7 +975,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   for (const link of linkNodes) {
     try {
-      if (isIconFont(link.href, iconMatchers)) continue
+      // Whole-URL skip: only for stylesheets that hold nothing but icon fonts (#493)
+      if (isIconFontStylesheet(link.href, iconMatchers)) continue
 
       let cssText = ''
       let sameOrigin = false
@@ -1001,7 +1002,6 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!cssText) {
         const res = await snapFetch(link.href, { as: 'text', useProxy })
         if (res?.ok && typeof res.data === 'string') cssText = res.data
-        if (isIconFont(link.href, iconMatchers)) continue
       }
 
       // Flatten nested @import and rewrite relative urls per-level using link.href as base
