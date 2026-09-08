@@ -156,6 +156,8 @@ const result = await snapdom(card, {
 | `backgroundColor` | 透明；JPG/WebP 为白色 | 输出背景 |
 | `exclude` | 无 | 选择器或判断函数；`true` 表示排除 |
 | `excludeMode` | `'hide'` | 保留不可见的占位空间，或设为 `'remove'` |
+| `filter` | 无 | 判断函数；`true` 保留节点，`false` 过滤节点 |
+| `filterMode` | `'hide'` | 独立控制被 `filter` 过滤节点的布局方式 |
 | `clip` | 未设置 | 捕获视口或页面坐标下的矩形区域 |
 | `captureSelection` | `false` | 包含用户的文字选区 |
 | `canvas` | 未设置 | 复用现有 Canvas |
@@ -234,10 +236,46 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 | 重复捕获记忆化需要手动开启 | 符合条件的捕获自动记忆化 | 在 `sheet.insertRule()` 等无法自动观察的变化后使用 `invalidate: true` |
 | `preCache` 用于准备资源 | 已移除；`preCapture()` 学习捕获意图 | 删除 `preCache`；`preCapture()` 不是直接改名后的替代方法 |
 | `fast` 选择优化路径 | 已移除 | 删除该选项 |
-| `filter` 返回 true 表示保留节点 | `exclude` 返回 true 表示排除节点 | 反转判断函数，并将 `filterMode` 改为 `excludeMode` |
+| `filter` / `filterMode` 可与 `exclude` / `excludeMode` 同时使用 | 两种控制及其独立模式仍受支持；`exclude` 还支持判断函数 | 保留原有规则和模式；需要时再使用新增判断函数形式 |
 | `cache: 'auto'` 或 `'full'` | 两者均映射为 `'soft'` | 通常可以省略；`'disabled'` / `false` 用于调试 |
 | 部分可见输入值会被遮蔽 | 核心只遮蔽密码 | 其他字段需要使用 `redactInputs()` |
-| `afterExport` 的返回值可以替换结果 | 钩子返回值被忽略 | 使用 `defineExports` 替换导出器 |
+| `afterExport` 返回值成为下一个钩子的参数，但不改变调用者收到的结果 | 返回值被忽略；钩子收到同一份导出参数 | 不再通过返回值串联钩子；用 `defineExports` 生成不同输出 |
+| TypeScript 导出 `PluginExportFacade` | 该类型名称已移除；`ctx.exports` 仍提供核心导出器 | 在 `defineExports` 中使用类型推导，或使用 `NonNullable<CaptureContext['exports']>` |
+
+### 同时使用 filter 和 exclude
+
+与 v2 一样，`filter` 和 `exclude` 是独立的控制项。`filter(node)` 返回 true 表示保留节点，返回 false 表示过滤掉节点；`filterMode` 决定被过滤节点如何影响布局。`exclude` 用选择器或判断函数指定额外排除的节点；其判断函数返回 true 表示排除。`excludeMode` 决定这些排除如何影响布局。一次捕获中可以同时使用两个控制项，并为它们设置不同模式：
+
+```js
+// v2 和 v3 均支持：隐藏私有字段，移除工具栏。
+await snapdom(card, {
+  filter: node => !node.matches('[data-private]'),
+  filterMode: 'hide',
+  exclude: ['.toolbar'],
+  excludeMode: 'remove'
+});
+```
+
+`'hide'` 保留不可见的占位空间；`'remove'` 删除节点并允许剩余内容重新排版。两者都会排除节点内容。v3 还允许 `exclude` 混合选择器和判断函数，例如 `exclude: ['.toolbar', node => node.dataset.export === 'omit']`，任意规则匹配即可排除节点。这是可选的扩展，不会替代 `filter`，也不会合并两个模式。单独提供 CSS 效果的 `filter` 插件仍然可用。
+
+两个模式都默认为 `'hide'`。对每个节点，先检查 `data-capture="exclude"`，再检查 `exclude`，最后检查 `filter`。首个排除决定所用模式，并停止对该节点继续检查：即使 `filter` 也会以不同模式过滤该节点，只要先匹配 `exclude`，就使用 `excludeMode`。`filter` 保留 v2 的真值规则：任何假值返回都会过滤节点。
+
+### 读取应用动态状态的回调
+
+当 `filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，每次新的捕获都会重新执行所需流程，让适用的回调读取当前应用状态，不复用旧捕获或先前回调的样式、替代图片决策。仅回调闭包状态改变时，无需使用 `invalidate`：
+
+```js
+let privateMode = false;
+const options = {
+  exclude: node => privateMode && node.matches('[data-private]'),
+  excludeMode: 'remove'
+};
+const before = await snapdom(card, options);
+privateMode = true;
+const after = await snapdom(card, options); // 使用当前策略
+```
+
+`before` 仍保留原来的捕获状态；再次导出它不会应用新策略。请使用 `after` 这样的新捕获。节点排除和样式属性判断函数应保持同步并返回布尔值。直接修改 CSSOM 等无法自动观察的变化，仍需要 `invalidate: true`。
 
 会影响捕获结果的插件暂停自动记忆化，除非声明 `pure: true`。只有确定性钩子才应这样声明；时间戳和读取外部状态的回调需要再次运行。参见 [v3 插件契约](PLUGIN_SPEC.md)。
 

@@ -1,8 +1,10 @@
-// v3 exclude unification: ONE option accepts selectors and/or predicates (true = exclude).
-// v2's keep-polarity `filter` is removed rather than aliased, so the polarity assertions
-// here are load-bearing: getting them backwards would silently invert what a capture hides.
+// Exclusion (true = omit) and filtering (truthy = keep) coexist with independent modes.
+// Exclusion wins on overlaps, preserving the public v2 traversal contract.
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
+import { contextExport } from '../packages/plugins/context-export.js'
+import { agentMap } from '../packages/plugins/agent-map.js'
+import { htmlExport } from '../packages/plugins/html-export.js'
 
 function page() {
   const host = document.createElement('div')
@@ -39,21 +41,13 @@ describe('unified exclude', () => {
     expect(svg).not.toContain('also-me')
   })
 
-  // v3 removed `filter`/`filterMode`: one decision, one door. Ignoring them QUIETLY would be
-  // the worst outcome for a redaction option (the capture would just stop hiding what the
-  // caller asked to hide), so the removal has to be audible.
-  it('legacy filter is NOT applied, and says so', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const svg = await svgOf(page(), { filter: (el) => !el.classList?.contains('drop'), filterMode: 'remove' })
-    expect(warn).toHaveBeenCalled()
-    expect(String(warn.mock.calls[0][0])).toContain('exclude')
-    // Nothing was excluded: the caller has to migrate, and now knows it.
+  it.each([null, undefined, false, 0, ''])('ignores non-function filters (%s) without dropping valid exclusions', async absent => {
+    const svg = await svgOf(page(), { filter: absent, filterMode: absent, exclude: '.drop' })
     expect(svg).toContain('keep-me')
-    expect(svg).toContain('drop-me')
-    warn.mockRestore()
+    expect(svg).not.toContain('drop-me')
   })
 
-  it('the migration is a polarity flip: filter(keep) becomes exclude(!keep)', async () => {
+  it.each(['hide', 'remove'])('filter coexists with exclusion selectors (%s)', async filterMode => {
     const host = page()
     const extra = document.createElement('span')
     extra.className = 'also-drop'
@@ -61,12 +55,65 @@ describe('unified exclude', () => {
     host.appendChild(extra)
     const keep = (el) => !el.classList?.contains('also-drop')
     const svg = await svgOf(host, {
-      exclude: ['.drop', (el) => !keep(el)],
-      excludeMode: 'remove',
+      exclude: ['.drop'], excludeMode: 'hide', filter: keep, filterMode,
     })
     expect(svg).toContain('keep-me')
     expect(svg).not.toContain('drop-me')
     expect(svg).not.toContain('also-me')
+  })
+
+  it.each([false, undefined, null, 0, '', NaN])('filter omits every falsy v2 keep result (%s)', async keepResult => {
+    // The published v2 pipeline checked `!filter(node)`, not `filter(node) === false`.
+    const keep = el => el.classList?.contains('drop') ? keepResult : 'truthy-keep'
+    const svg = await svgOf(page(), { filter: keep, filterMode: 'remove' })
+    expect(svg).toContain('keep-me')
+    expect(svg).not.toContain('drop-me')
+  })
+
+  it.each(['selector', 'predicate', 'attribute'])('exclude short-circuits filter before resolveNode (%s)', async kind => {
+    const host = page()
+    const secret = host.querySelector('.drop')
+    if (kind === 'attribute') secret.setAttribute('data-capture', 'exclude')
+    const filter = vi.fn(el => el !== secret)
+    const resolveNode = vi.fn()
+    const exclude = kind === 'selector' ? '.drop' : kind === 'predicate' ? el => el === secret : []
+    const svg = await svgOf(host, {
+      exclude, excludeMode: 'hide', filter, filterMode: 'remove',
+      plugins: [{ name: 'node-observer', resolveNode }],
+    })
+    expect(svg).not.toContain('drop-me')
+    expect(filter.mock.calls.some(([node]) => node === secret)).toBe(false)
+    expect(resolveNode.mock.calls.some(([node]) => node === secret)).toBe(false)
+  })
+
+  it('shares both policies with HTML and semantic exports, including beforeSnap changes', async () => {
+    const host = page()
+    host.querySelector('.keep').outerHTML = '<button class="keep">keep-me</button>'
+    const extra = document.createElement('button')
+    extra.className = 'filtered'
+    extra.textContent = 'filtered-secret'
+    host.append(extra)
+    const original = host.outerHTML
+    const result = await snapdom(host, {
+      exclude: '.drop', excludeMode: 'hide',
+      plugins: [{
+        name: 'configure-filter',
+        beforeSnap(ctx) { ctx.filter = el => !el.matches('.filtered'); ctx.filterMode = 'remove' },
+        afterClone(ctx) {
+          expect(ctx.shouldExclude(host.querySelector('.drop'))).toBe(true)
+          expect(ctx.shouldExclude(extra)).toBe(true)
+          expect(ctx.shouldExclude(host.querySelector('.keep'))).toBe(false)
+        },
+      }, htmlExport(), contextExport(), agentMap({ image: false })],
+    })
+    const outputs = [decodeURIComponent(result.url.split(',')[1]), await result.toHtml(),
+      JSON.stringify(await result.toContext()), JSON.stringify(await result.toAgentMap())]
+    for (const output of outputs) {
+      expect(output).not.toContain('drop-me')
+      expect(output).not.toContain('filtered-secret')
+      expect(output).toContain('keep-me')
+    }
+    expect(host.outerHTML).toBe(original)
   })
 
   // 'hide' mode substitutes a layout-preserving spacer. Hardcoding it to inline-block

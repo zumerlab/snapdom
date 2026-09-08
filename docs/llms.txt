@@ -75,7 +75,8 @@ With `engine: 'svg'`, `url` and synchronous `result.toRaw()` return the serializ
 - `quality`: JPEG/WebP quality, default `0.92`.
 - `format`: canonical format field. The normal default is PNG; `toBlob()` has the engine-dependent default above. `type` is a deprecated alias.
 - `engine`: `'svg'` (default) or experimental `'html-in-canvas'`, subject to the browser/build requirements above.
-- `exclude`: selector, predicate returning true to exclude, or an array mixing both. `excludeMode: 'hide'` preserves layout with an invisible spacer; `'remove'` drops the node.
+- `exclude`: selector, synchronous predicate returning true to exclude, or an array mixing both. Any matching rule excludes the node. `excludeMode: 'hide'` preserves layout with an invisible spacer; `'remove'` drops the node.
+- `filter`: independent inclusion predicate; true keeps a node, false filters it out. `filterMode` independently selects `'hide'` (default) or `'remove'`. It can be used with `exclude` in the same capture.
 - `clip`: `'viewport'` or a rectangle in page coordinates; prunes outside subtrees before capture work. Export-level canvas `crop` uses capture viewBox coordinates instead.
 - `cache`: `'soft'` by default. `'disabled'`/`false` clears and bypasses persistent resource/style caches; automatic repeat memoization is separate.
 - `invalidate: true`: forces a fresh capture and clears style snapshots after changes without observable browser signals, such as direct CSSOM edits.
@@ -84,6 +85,27 @@ With `engine: 'svg'`, `url` and synchronous `result.toRaw()` return the serializ
 Eligible unchanged captures reuse a memo from the first successful capture. Observed mutations invalidate it; supported changes can use differential recapture. Frame-driven canvas, video and iframe trees capture fresh. `snapdom.preCapture()` learns which control triggers which capture, then prefetches on later pointer/focus intent. It takes no arguments and does no polling.
 
 Plugins may request the `clone` stage for structured output without rendering an image. A clone-only result has no `url` or `meta`, and core image exporters throw. Its plugin exports remain available.
+
+## Migrating from v2.24.16
+
+- Keep `filter` / `filterMode` and `exclude` / `excludeMode`: both remain supported together with independent hide/remove modes, defaulting to hide. `filter` retains truthy results and filters out falsy ones, as in v2. `exclude` adds omissions; its new predicate form returns true to omit and is optional. The CSS-effect plugin named `filter` is unaffected.
+- Per-node precedence is `data-capture="exclude"`, then `exclude`, then `filter`. The first omission decides the mode and stops evaluation: the attribute or an `exclude` match uses `excludeMode`, even if `filter` would also reject it with a different mode. Any selector or predicate match within an `exclude` array excludes the node.
+- Remove `preCache` and its subpath; normal capture reuse and optional `preCapture()` replace the preparation workflow, not as a direct rename.
+- Remove public `fast` and `burst` switches; optimizations and eligible memoization are automatic. `cache: 'disabled'` controls resource/style caches, not memoization.
+- Remove `compress`, `resolvePicturePlaceholders` and `pictureResolver` settings. Image optimization and responsive/lazy image resolution remain automatic; there is no public compression opt-out or replacement picture-resolver tuning object. Handle custom image loading/timeouts in the app before capture.
+- `embedFonts` defaults to `'auto'`; width/height win over scale. Core masks passwords only; use `redactInputs()` for other visible fields.
+- `afterExport` returns no longer become the next hook's payload. They never replaced the caller's output in v2.24.16; use `defineExports` for custom output.
+- The TypeScript name `PluginExportFacade` is removed; `ctx.exports` remains. Infer it in `defineExports` or use `NonNullable<CaptureContext['exports']>`.
+
+```js
+// Works in v2 and v3: two controls and two independent modes in one capture.
+await snapdom(element, {
+  filter: node => !node.matches('[data-private]'),
+  filterMode: 'hide',
+  exclude: ['.toolbar'],
+  excludeMode: 'remove'
+});
+```
 
 ## Official plugins
 

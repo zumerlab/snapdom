@@ -120,7 +120,8 @@ export async function tryCanvasEngine(state, context) {
   if (!element.isConnected || doc !== document) return null
   if (element === doc.body || element === doc.documentElement) return null
   if (element.scrollTop || element.scrollLeft) return null
-  if (context.outerShadows || context.clip || context.excludeMode === 'remove') return null
+  if (context.outerShadows || context.clip || context.excludeMode === 'remove' ||
+      (typeof context.filter === 'function' && context.filterMode === 'remove')) return null
   if (context.width != null || context.height != null) return null
   try {
     // getBoundingClientRect includes transforms/zoom from every rendered ancestor, but the

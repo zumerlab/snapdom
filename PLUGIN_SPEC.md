@@ -133,8 +133,8 @@ options through the second argument's `options` object.
   cache,             // Persistent resource/style cache policy
   outerTransforms, outerShadows,
   embedFonts, localFonts, iconFonts, excludeFonts, fontStylesheetDomains,
-  exclude, excludeMode,
-  shouldExclude,     // Compiled data-capture/selector/predicate exclusion policy
+  filter, filterMode, exclude, excludeMode,
+  shouldExclude,     // Combined data-capture/exclude/filter content decision
   fallbackURL, placeholders,
   format, type, filename, canvas, captureSelection, // format is canonical; type is synchronized
   reconcile, invalidate, excludeStyleProps,
@@ -223,7 +223,11 @@ Only a per-capture plugin may lower the stage. Global registration rejects `need
 because it would silently remove pixels from every capture in the application.
 
 The supported stages are `'clone'` and `'render'`; the former `'dom'` stage is no longer
-supported. `ctx.shouldExclude` provides the compiled exclusion policy at either stage.
+supported. `ctx.shouldExclude` covers both the exclusion rules and the inclusion filter at
+either stage, following changes made in `beforeSnap`. For cloning, `data-capture="exclude"`
+and `exclude` are checked before `filter`; the first omission supplies `excludeMode` or
+`filterMode` respectively. Both modes default to `hide` and can differ in one capture.
+`resolveNode` runs after these content-selection checks.
 
 The capture runs to the deepest stage requested by its plugins. An undeclared `needs`
 means `'render'`, so every attached plugin must request `'clone'` to skip rendering.

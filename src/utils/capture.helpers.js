@@ -613,7 +613,8 @@ function contributesToParentHeight(el) {
  */
 function willBeExcluded(el, options) {
   if ((el?.nodeType !== 1)) return false
-  if (el.getAttribute('data-capture') === 'exclude' && options?.excludeMode === 'remove') return true
+  // A hide exclusion wins over a remove filter, including the data-capture attribute.
+  if (el.getAttribute('data-capture') === 'exclude') return options?.excludeMode === 'remove'
   if (Array.isArray(options?.exclude)) {
     for (const sel of options.exclude) {
       try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
@@ -621,9 +622,7 @@ function willBeExcluded(el, options) {
       }
     }
   }
-  // Predicates were missing here while the removed `filter` option had its own branch, so
-  // `exclude: [fn]` with excludeMode:'remove' estimated a height that counted nodes the
-  // clone then dropped. Selectors and predicates are the same policy and must agree.
+  // Selector and predicate exclusions share excludeMode and take precedence over filter.
   if (Array.isArray(options?.excludePredicates)) {
     for (const pred of options.excludePredicates) {
       try { if (pred(el)) return options.excludeMode === 'remove' } catch (e) {
@@ -631,11 +630,16 @@ function willBeExcluded(el, options) {
       }
     }
   }
+  if (typeof options?.filter === 'function' && options.filterMode === 'remove') {
+    try { if (!options.filter(el)) return true } catch (e) {
+      debugWarn(options, 'filter function failed', e)
+    }
+  }
   return false
 }
 
 /**
- * Height the container will have once excludeMode:'remove' drops its children (#294).
+ * Height the container will have once excludeMode/filterMode:'remove' drops children (#294).
  * Min top to max bottom of the kept, in-flow children, plus the container's own padding and
  * borders. Measuring the span instead of summing child heights keeps collapsed margins from
  * counting twice. Pinned by __tests__/utils.capture.helpers.test.js.

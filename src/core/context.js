@@ -25,8 +25,10 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
  * @param {Object} [options={}]
  * @param {boolean} [options.debug=false]
  * @param {number}  [options.scale=1]
- * @param {string|((el: Element) => boolean)|Array<string|((el: Element) => boolean)>} [options.exclude] - Selectors and/or predicates (true = exclude). v2's `filter`/`filterMode` are rejected with a warning, not aliased.
+ * @param {string|((el: Element) => boolean)|Array<string|((el: Element) => boolean)>} [options.exclude] - Selectors and/or predicates (true = exclude), evaluated before filter
  * @param {'hide'|'remove'} [options.excludeMode='hide'] - 'hide' leaves a spacer of the node's box, 'remove' drops it
+ * @param {(el: Element) => boolean} [options.filter] - Independent keep predicate: truthy keeps, falsy omits
+ * @param {'hide'|'remove'} [options.filterMode='hide'] - How nodes rejected only by filter leave
  * @param {boolean|'auto'} [options.embedFonts='auto'] - 'auto' embeds only webfonts the element uses
  * @param {string|string[]} [options.iconFonts] - extra families treated as icon fonts (never embedded)
  * @param {string[]} [options.localFonts]
@@ -72,17 +74,9 @@ export function createContext(options = {}) {
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
 
-  // ONE decision, ONE pair of options. `exclude` accepts selectors and/or predicates
-  // ((el) => true EXCLUDES it, matching the option's name) in any mix; `excludeMode` says
-  // how excluded nodes leave ('hide' spacer | 'remove'). Split ONCE here so the per-node
-  // hot loop never typeof-dispatches.
-  //
-  // v2's `filter`/`filterMode` are GONE, not silently aliased. They were a second door to
-  // this same decision with the opposite polarity (return true to KEEP), so every reader
-  // had to hold both in their head and every call site checked both. Ignoring them quietly
-  // would be the worst outcome for a redaction feature: the capture would simply stop
-  // hiding what the caller asked to hide. So passing one is a loud warning, once, naming
-  // the exact replacement.
+  // Exclude and filter are independent policies with independent layout modes. Exclude
+  // wins when both match: the clone stops at the first omission, as it did in v2.
+  // Split exclude selectors/predicates once so the per-node loop need not dispatch types.
   const excludeRaw = options.exclude == null ? [] : (Array.isArray(options.exclude) ? options.exclude : [options.exclude])
   const excludeSelectors = []
   const excludePredicates = []
@@ -91,41 +85,36 @@ export function createContext(options = {}) {
     else if (typeof e === 'function') excludePredicates.push(e)
     else if (e != null) console.warn('[snapdom] Ignored invalid exclude entry (expected selector string or predicate):', e)
   }
-  if (options.filter != null || options.filterMode != null) {
-    console.warn(
-      '[snapdom] `filter`/`filterMode` were removed in v3 and are NOT applied. ' +
-      'Use `exclude` (opposite polarity: return true to EXCLUDE) and `excludeMode`: ' +
-      'filter: el => keep(el)  ->  exclude: el => !keep(el)'
-    )
-  }
   const excludeMode = options.excludeMode ?? 'hide'
 
-  // THE exclusion policy, compiled once. deepClone applies exactly these three rules per node
-  // (src/core/clone.js: data-capture, selectors, predicates);
-  // everything else that decides what a capture contains — semantic exports, agent maps —
-  // asks here instead of reimplementing them, because a node the user redacted from the
-  // image must not survive in a text view of the same capture.
+  // Semantic exporters must omit anything either policy hides/removes from the image.
+  // Read the context at call time so beforeSnap changes use the same policy as deepClone.
   const shouldExclude = (el) => {
     if (!el || el.nodeType !== 1) return false
     if (el.getAttribute('data-capture') === 'exclude') return true
-    for (const sel of excludeSelectors) {
+    for (const sel of Array.isArray(context.exclude) ? context.exclude : []) {
       try { if (el.matches(sel)) return true } catch { /* invalid selector: deepClone warns */ }
     }
-    for (const pred of excludePredicates) {
+    for (const pred of Array.isArray(context.excludePredicates) ? context.excludePredicates : []) {
       try { if (pred(el)) return true } catch { /* deepClone warns */ }
+    }
+    if (typeof context.filter === 'function') {
+      try { if (!context.filter(el)) return true } catch { /* deepClone warns */ }
     }
     return false
   }
 
-  return {
+  const context = {
     // Debug & perf
     debug: options.debug ?? false,
     scale: options.scale ?? 1,
 
-    // Node exclusion (see the unification note above)
+    // Independent omission policies; exclusion takes precedence over filter.
     exclude: excludeSelectors,
     excludePredicates: excludePredicates.length ? excludePredicates : null,
     excludeMode,
+    filter: options.filter ?? null,
+    filterMode: options.filterMode ?? 'hide',
     /** @type {(el: Element) => boolean} true when the capture drops or blanks this node. */
     shouldExclude,
 
@@ -227,4 +216,5 @@ export function createContext(options = {}) {
     // Plugins (reservado)
     // plugins: normalizePlugins(...),
   }
+  return context
 }

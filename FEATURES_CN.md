@@ -86,7 +86,7 @@ SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可�
 所有公开选项见[选项参考](https://snapdom.dev/docs/options/)，单次导出的选项见 [API 参考](https://snapdom.dev/docs/api/)。
 
 - 尺寸：`width`/`height` 优先于 `scale`，最终像素尺寸还会乘以 `dpr`。
-- 内容：`exclude`、`excludeMode`、`clip` 和 `captureSelection` 决定捕获哪些内容。
+- 内容：`filter` / `filterMode` 与 `exclude` / `excludeMode` 可同时使用，并各自保留独立模式；`clip` 和 `captureSelection` 进一步控制捕获内容。
 - 渲染：`backgroundColor`、`quality`、`outerTransforms`、`outerShadows` 和 `reconcile` 控制输出。
 - 资源：字体选项、`useProxy`、`fallbackURL` 和 `placeholders` 控制嵌入及回退方案。
 - 复用：`canvas` 接受现有渲染目标，`invalidate` 在无法自动观察的变化后刷新捕获。

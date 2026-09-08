@@ -105,6 +105,8 @@
           <tr><td class="num">fontStylesheetDomains</td><td class="num">string[]</td><td class="num">[]</td><td>Extra domains allowed for cross-origin font CSS.</td></tr>
           <tr><td class="num">exclude</td><td class="num">string | function | Array</td><td class="num">[]</td><td>Selectors and/or predicates; returning true excludes the node.</td></tr>
           <tr><td class="num">excludeMode</td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>Keep an invisible spacer or remove the node.</td></tr>
+          <tr><td class="num">filter</td><td class="num">function</td><td class="num">null</td><td>Inclusion predicate; true keeps a node, false filters it out. Can be used together with <code>exclude</code>.</td></tr>
+          <tr><td class="num">filterMode</td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>Independent layout mode for nodes rejected by <code>filter</code>.</td></tr>
           <tr><td class="num">clip</td><td class="num">"viewport" | rect</td><td class="num">null</td><td>Capture only a viewport or page-coordinate rectangle.</td></tr>
           <tr><td class="num">useProxy</td><td class="num">string</td><td class="num">''</td><td>CORS proxy template/base.</td></tr>
           <tr><td class="num">fallbackURL</td><td class="num">string | function</td><td class="num">undefined</td><td>Fallback for a broken <code>&lt;img&gt;</code>.</td></tr>
@@ -228,19 +230,26 @@ await snapdom.toSvg(element, {
     </section>
 
     <section class="prose">
-      <h2 id="filtering">Leaving nodes out: <code>exclude</code></h2>
-      <p class="muted"><strong>v3 migration:</strong> <code>filter</code> and <code>filterMode</code> are removed.
-      Use <code>exclude</code>, where a predicate returning <code>true</code> excludes the node.
-      This reverses the old <code>filter</code> predicate: migrate <code>filter: keep</code> to
-      <code>exclude: node =&gt; !keep(node)</code>. The removed options log a warning and do not exclude anything.</p>
+      <h2 id="filtering">Selecting content: <code>filter</code> and <code>exclude</code></h2>
+      <p><code>filter</code> and <code>exclude</code> remain independent, as in v2.24.16. Use them together in one capture, with separate layout modes. V3 adds optional predicates to <code>exclude</code>; this does not replace <code>filter</code>. The separate CSS-effect plugin named <code>filter</code> is also available.</p>
       <ul>
-        <li><code>exclude</code>: a selector, a predicate, or any mix of both in an array.</li>
-        <li><code>excludeMode</code>: <code>hide</code> leaves an invisible spacer; <code>remove</code> drops the node and lets the remaining content reflow. Both exclude its content.</li>
+        <li><code>filter</code>: a synchronous boolean predicate. True keeps a node; false filters it out. As in v2, any falsy return filters it out.</li>
+        <li><code>filterMode</code>: <code>hide</code> keeps an invisible spacer for filtered nodes; <code>remove</code> drops them and allows reflow. Defaults to <code>hide</code>.</li>
+        <li><code>exclude</code>: a selector, a synchronous boolean predicate, or any mix of both in an array. A node is excluded if <em>any</em> rule matches.</li>
+        <li><code>excludeMode</code>: the separate hide/remove mode for exclusions; defaults to <code>hide</code>. Both modes omit the affected node's content.</li>
       </ul>
+      <pre class="code-block">// Supported in v2 and v3: hide private fields, remove the toolbar.
+await snapdom(el, {
+  filter: node =&gt; !node.matches('[data-private]'),
+  filterMode: 'hide',
+  exclude: ['.toolbar'],
+  excludeMode: 'remove'
+});</pre>
+      <p>Per node, <code>data-capture="exclude"</code> is checked first, then <code>exclude</code>, then <code>filter</code>. The first omission determines its mode and stops evaluation for that node. The attribute uses <code>excludeMode</code>; a matching <code>exclude</code> also wins if <code>filter</code> would reject the same node with a different mode. A true <code>filter</code> result does not override an exclusion.</p>
       <p><strong>Example: leave out elements with <code>display:none</code>:</strong></p>
       <pre class="code-block">/**
  * @param {Element} el
- * @returns {boolean} true = EXCLUDE this node (v2's `filter` was the opposite)
+ * @returns {boolean} true = EXCLUDE this node (`filter` uses the opposite polarity)
  */
 function isHidden(el) {
   return window.getComputedStyle(el).display === 'none';

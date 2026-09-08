@@ -117,14 +117,13 @@ export interface SnapdomOptions {
   excludeMode?: "hide" | "remove";
 
   /**
-   * @deprecated REMOVED in v3 and no longer applied. It was a second door to the same
-   * decision as `exclude`, with the opposite polarity. Flip the predicate and pass it to
-   * `exclude`: `filter: el => keep(el)` becomes `exclude: el => !keep(el)`. Still declared
-   * so the compiler points at this note instead of reporting an unknown property, and
-   * passing it logs a warning at runtime.
+   * Independent keep predicate, evaluated after exclude. Truthy keeps the node; falsy
+   * omits it using filterMode. An exclusion takes precedence and skips this predicate
+   * for that node. Synchronous callbacks run again for each capture so application-state
+   * changes do not reuse an earlier filtering decision.
    */
   filter?: (el: Element) => boolean;
-  /** @deprecated REMOVED in v3 and no longer applied. Use `excludeMode`. */
+  /** Mode for nodes omitted only by filter; independent of excludeMode. Default "hide". */
   filterMode?: "hide" | "remove";
 
   /**
@@ -274,8 +273,8 @@ export interface CaptureContext extends SnapdomOptions {
   /** Self-reference to this same context, for plugins written against `ctx.options`. */
   readonly options: CaptureContext;
 
-  /** Compiled exclusion policy for this capture. Returns true for data-capture="exclude",
-   *  selector matches, and exclusion predicates. Available at every hook stage. */
+  /** Combined omission policy: true for data-capture="exclude", exclusion selectors or
+   *  predicates, and nodes rejected by filter. Available at every hook stage. */
   readonly shouldExclude: (el: Element) => boolean;
 
   /** How far this capture runs (the deepest `needs` of its plugins). A plugin that

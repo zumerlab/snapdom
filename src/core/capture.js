@@ -184,8 +184,9 @@ export async function captureDOM(element, options) {
   if (!stageReaches(stage, 'render')) return null
 
   sanitizeCloneForXHTML(state.clone)
-  // Shrink pass when excludeMode === 'remove' dropped clone children
-  if (state.options?.excludeMode === 'remove') {
+  // Either omission policy can remove children and collapse their former layout slots.
+  if (state.options?.excludeMode === 'remove' ||
+      (typeof state.options?.filter === 'function' && state.options.filterMode === 'remove')) {
     try {
       shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache, state.nodeMap)
     } catch (e) {

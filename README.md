@@ -156,6 +156,8 @@ const result = await snapdom(card, {
 | `backgroundColor` | Transparent; white for JPG/WebP | Output background |
 | `exclude` | None | Selectors or predicates; `true` means exclude |
 | `excludeMode` | `'hide'` | Keep an invisible spacer, or use `'remove'` |
+| `filter` | None | Predicate; `true` keeps a node and `false` filters it out |
+| `filterMode` | `'hide'` | Independent layout mode for nodes rejected by `filter` |
 | `clip` | Unset | Capture the viewport or a page-coordinate rectangle |
 | `captureSelection` | `false` | Include the user's text selection |
 | `canvas` | Unset | Reuse an existing canvas |
@@ -234,10 +236,46 @@ The main capture pattern remains `snapdom(element, options)`. Review these chang
 | Repeat memoization was opt-in | Eligible captures memoize automatically | Use `invalidate: true` after unobservable changes such as `sheet.insertRule()` |
 | `preCache` prepared resources | Removed; `preCapture()` learns capture intent | Remove `preCache`; `preCapture()` is not a drop-in rename |
 | `fast` selected an optimization path | Removed | Delete the option |
-| `filter` returned true to keep a node | `exclude` returns true to omit a node | Invert the predicate and replace `filterMode` with `excludeMode` |
+| `filter` / `filterMode` and `exclude` / `excludeMode` could be used together | Both controls and their independent modes remain supported; `exclude` also accepts predicates | Keep existing rules and modes; use the additional predicate form only when useful |
 | `cache: 'auto'` or `'full'` | Both map to `'soft'` | Usually omit it; `'disabled'` / `false` is for debugging |
 | Some visible input values were redacted | Core masks passwords only | Add `redactInputs()` for other fields |
-| `afterExport` returns could replace a result | Hook returns are ignored | Use `defineExports` to replace an exporter |
+| `afterExport` returns became the next hook's payload, not the caller's result | Returns are ignored; hooks receive the same export payload | Stop chaining through return values; use `defineExports` to produce a different output |
+| TypeScript exported `PluginExportFacade` | The named type is removed; `ctx.exports` still provides core exporters | Infer it in `defineExports`, or use `NonNullable<CaptureContext['exports']>` |
+
+### Use filter and exclude together
+
+`filter` and `exclude` are independent controls, as in v2. `filter(node)` returns true to keep a node and false to filter it out; `filterMode` controls how a filtered node affects layout. `exclude` specifies additional omissions using selectors or predicates; an exclusion predicate returns true to omit the node. `excludeMode` controls those omissions. You can keep both controls and different modes in the same capture:
+
+```js
+// Works in v2 and v3: hide private fields, remove the toolbar.
+await snapdom(card, {
+  filter: node => !node.matches('[data-private]'),
+  filterMode: 'hide',
+  exclude: ['.toolbar'],
+  excludeMode: 'remove'
+});
+```
+
+`'hide'` keeps an invisible spacer; `'remove'` drops the node and allows reflow. Both omit its content. V3 additionally lets `exclude` mix selectors and predicates, such as `exclude: ['.toolbar', node => node.dataset.export === 'omit']`; any matching rule excludes the node. This is optional and does not replace `filter` or merge the two modes. The separate CSS-effect plugin named `filter` is also available.
+
+Both modes default to `'hide'`. Per node, `data-capture="exclude"` is checked first, then `exclude`, then `filter`. The first omission decides the mode and stops evaluation for that node: if it matches `exclude`, `excludeMode` wins even when `filter` would reject it with a different mode. `filter` uses the v2 truthiness rule: any falsy return filters the node out.
+
+### Callbacks that read changing application state
+
+Captures with function-valued `filter`, `exclude`, `excludeStyleProps` or `fallbackURL` run fresh so applicable callbacks can read current application state on each new capture. They do not reuse an unchanged capture or an earlier callback's style/fallback decision. You do not need `invalidate` just because a callback's closure changed:
+
+```js
+let privateMode = false;
+const options = {
+  exclude: node => privateMode && node.matches('[data-private]'),
+  excludeMode: 'remove'
+};
+const before = await snapdom(card, options);
+privateMode = true;
+const after = await snapdom(card, options); // evaluates the current policy
+```
+
+`before` still contains its original captured state; exporting it again does not apply a new policy. Use a new capture such as `after`. Keep exclusion and style predicates synchronous and boolean-returning. `invalidate: true` remains necessary after unobservable changes such as direct CSSOM edits.
 
 Capture-affecting plugins suspend memoization unless they declare `pure: true`. Declare it only for deterministic hooks; timestamps and callbacks reading external state must run again. See the [v3 plugin contract](PLUGIN_SPEC.md).
 

@@ -280,7 +280,8 @@ export async function composeAndSerialize(state, ex) {
     } catch { /* fallback: use doc dimensions above */ }
   }
   // === recompute height using the kept-children span (no offscreen) ===
-  if (state.options?.excludeMode === 'remove') {
+  if (state.options?.excludeMode === 'remove' ||
+      (typeof state.options?.filter === 'function' && state.options.filterMode === 'remove')) {
     const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
     // Safety: never larger than the original, with an epsilon so rounding cannot clip
     const EPS = 1 // px

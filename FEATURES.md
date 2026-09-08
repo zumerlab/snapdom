@@ -86,7 +86,7 @@ SVG captures contain HTML inside `<foreignObject>`; non-browser SVG viewers may 
 Every public option is documented in the [options reference](https://snapdom.dev/docs/options/). The [API reference](https://snapdom.dev/docs/api/) covers per-export options.
 
 - Size: `width`/`height` take precedence over `scale`; `dpr` multiplies pixel dimensions.
-- Content: `exclude`, `excludeMode`, `clip` and `captureSelection` choose what is captured.
+- Content: `filter` / `filterMode` and `exclude` / `excludeMode` can be used together with independent modes; `clip` and `captureSelection` further control what is captured.
 - Rendering: `backgroundColor`, `quality`, `outerTransforms`, `outerShadows` and `reconcile` control the output.
 - Resources: font options, `useProxy`, `fallbackURL` and `placeholders` control embedding and fallbacks.
 - Reuse: `canvas` accepts an existing render target, and `invalidate` refreshes after unobservable changes.

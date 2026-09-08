@@ -9,9 +9,6 @@ All notable changes to this project will be documented in this file.
 The first v3 beta. **Breaking**: read the migration table in the README before upgrading.
 
 💥 breaking
-- `filter` / `filterMode` removed. `exclude` now takes selectors AND predicates, with the
-  opposite polarity — a predicate returning `true` EXCLUDES the node. Passing `filter` logs a
-  warning and filters nothing, so ported predicates must be inverted.
 - `width` / `height` now win over `scale`. v2 multiplied them; v3 treats `width`/`height` as the
   absolute output size and applies `scale` only when neither is set.
 - The `needs: 'dom'` plugin stage is gone. A capture that takes no clone does no capturing.
@@ -46,6 +43,17 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
   Attribution is limited to the triggering event task; unrelated later timers are not learned.
 
 🛠 fix
+- Restore the v2 `filter` / `filterMode` contract alongside `exclude` / `excludeMode`.
+  Both can operate in the same capture with independent hide/remove modes. The earlier
+  beta's removal of `filter` was a compatibility regression, not an equivalent rename.
+  Predicate support in `exclude` remains an optional addition.
+- Hidden block spacers retain precise CSS dimensions, including fractional sizes and
+  padding/borders. Safari page zoom can round integer layout measurements upward;
+  those rounded values no longer shift content after filtered or excluded blocks.
+- Function-valued `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` cause new captures to
+  evaluate current callback state instead of reusing an earlier capture/style/fallback
+  decision. Changing a closure does not require `invalidate`; exporting an existing result
+  still uses its original captured state.
 - The `/plugins` subpath maps to the same file as the root instead of being a separate bundle
   with its own module state; registering through the subpath now reaches `snapdom()`. Its
   `types` condition points at the root declarations, so consumers with `skipLibCheck: false`

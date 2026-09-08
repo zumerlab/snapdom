@@ -27,8 +27,7 @@ async function mainCallable() {
     outerTransforms: false,
     outerShadows: true,
     clip: 'viewport',
-    exclude: ['.skip'],
-    filter: (node) => node.tagName !== 'SCRIPT',
+    exclude: ['.skip', (node) => node.tagName === 'SCRIPT'],
     cache: 'soft',
   }
   const result: CaptureResult = await snapdom(el, options)
@@ -51,6 +50,30 @@ function clipOptionShapes() {
   const b: SnapdomOptions['clip'] = { x: 0, y: 0, width: 100, height: 100 }
   const c: SnapdomOptions['clip'] = null
   void a; void b; void c
+}
+
+async function independentFilterOptions() {
+  await snapdom(el, { filter: (node) => !node.matches('.private'), filterMode: 'remove' })
+  await snapdom.toPng(el, { filterMode: 'remove' })
+
+  // Stored v2 call options keep working, including simultaneous modes and spread objects.
+  const legacyFilter = { scale: 1, filter: (node: Element) => !node.matches('.private') }
+  await snapdom(el, legacyFilter)
+  const legacyMode = { scale: 1, filterMode: 'hide' as const }
+  const stored: SnapdomOptions = legacyMode
+  await snapdom.toPng(el, { ...legacyFilter, dpr: 1 })
+
+  const combined: SnapdomOptions = {
+    exclude: ['.skip', (node) => node.matches('.exclude-too')], excludeMode: 'hide',
+    filter: legacyFilter.filter, filterMode: 'remove',
+  }
+  await snapdom(el, combined)
+  // @ts-expect-error A keep predicate must be a function.
+  await snapdom(el, { filter: '.private' })
+  // @ts-expect-error Only the supported independent layout modes are accepted.
+  const invalid: SnapdomOptions = { filterMode: 'collapse' }
+  void stored
+  void invalid
 }
 
 async function staticNamespaceHelpers() {
@@ -128,6 +151,7 @@ async function canvasTargetOption() {
 
 void mainCallable
 void clipOptionShapes
+void independentFilterOptions
 void staticNamespaceHelpers
 void invalidateOption
 void disabledCacheAlias
