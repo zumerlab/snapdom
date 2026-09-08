@@ -208,7 +208,7 @@ Export methods accept relevant overrides, such as size, background and quality. 
 | `outerShadows` | `false` | Strip root shadow/outline/drop-shadow; true keeps them; subtree also bounds descendant shadow ink |
 | `clip` | `null` | `'viewport'` or `{ x, y, width, height }` in page coordinates |
 | `captureSelection: boolean` | `false` | Include the live text or focused-field selection |
-| `fallbackURL` | unset | Fixed image URL or callback receiving measured width/height for failed images |
+| `fallbackURL` | unset | Fixed image URL or callback receiving measured width/height for failed images; callback decisions use current state on each new capture that needs a fallback |
 | `placeholders: boolean` | `true` | Use placeholders for missing resources |
 | `canvas: HTMLCanvasElement` | unset | Reuse a raster output target |
 | `reconcile: boolean` | `false` | Measure the styled clone and pin boxes that differ from the live layout; adds a layout pass |
@@ -286,6 +286,21 @@ There are three forms of reuse:
 `cache: 'disabled'` or `false` controls the third form. It does not disable automatic repeat memoization. Legacy `cache: 'auto'` and `'full'` are accepted as `'soft'`.
 
 Eligible static captures can be memoized from their first successful capture. DOM, style, font and environment changes observed by the engine invalidate relevant work. Canvas, video and iframe trees capture fresh because their visual contents can change without a DOM mutation. Live selection also requires fresh capture.
+
+Function-valued `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` suspend capture memoization. Applicable callbacks are evaluated again on each new capture; previous callback decisions are not reused through style or fallback caches. A changed closure needs no `invalidate`:
+
+```js
+let privateMode = false;
+const options = {
+  exclude: node => privateMode && node.matches('[data-private]'),
+  excludeMode: 'remove'
+};
+const before = await snapdom(element, options);
+privateMode = true;
+const after = await snapdom(element, options); // applies the current policy
+```
+
+Exporting `before` again keeps the earlier captured content; use a new capture to apply a changed policy. Callbacks run where applicable, so do not depend on an exact invocation count. Keep exclusion predicates synchronous and boolean-returning. This callback behavior does not make direct CSSOM edits observable.
 
 Direct stylesheet edits such as `sheet.insertRule()` or `cssRule.style.color = ...` do not emit the DOM mutations used for style invalidation. After such changes, use:
 

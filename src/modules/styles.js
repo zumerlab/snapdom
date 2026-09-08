@@ -1280,11 +1280,13 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
   const rec = snapshotCache.get(el)
   // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
   // (skipped props), which no invalidation signal tracks. Capturing the same element twice
-  // with different options must not reuse the snapshot (#348). excludeStyleProps is compared
-  // by reference: a fresh value misses safely.
+  // with different options must not reuse the snapshot (#348). Callback identity cannot
+  // reveal changes to its closure, so function policies always take a fresh snapshot even
+  // when the caller already bypassed result memoization.
   const ef = !!(options && options.embedFonts)
   const ex = (options && options.excludeStyleProps) || null
-  if (rec && snapshotIsCurrent(rec, el) && rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
+  if (typeof ex !== 'function' && rec && snapshotIsCurrent(rec, el) &&
+      rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
   const style = preStyle || getComputedStyle(el)
   let snap
   let dyn = null

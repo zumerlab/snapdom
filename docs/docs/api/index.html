@@ -117,6 +117,7 @@ document.body.appendChild(png);</pre>
     <section class="prose">
       <h2 id="reusable">snapdom(el, options?)</h2>
       <p>Returns a reusable object with export methods. The capture (deep clone + asset inlining) runs once; each method on the returned object reuses it, so exporting several formats from the same element does not re-clone the DOM.</p>
+      <p>Pass content-selection options when capturing. <a href="../options/#filtering"><code>filter</code> and <code>exclude</code> can be used together</a>, with independent <code>filterMode</code> and <code>excludeMode</code> settings. A new call with function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> or <code>fallbackURL</code> evaluates current callback state instead of serving an unchanged memo. A closure change needs no <code>invalidate</code>; an existing result remains frozen and its exporters do not reapply a changed policy.</p>
       <pre class="code-block">{
   url: string;                    // SVG by default; PNG after native capture
   needs: 'clone' | 'render';

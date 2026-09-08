@@ -116,6 +116,8 @@ See the [official plugin reference](packages/plugins/README.md), [hook contract]
 
 Eligible unchanged elements reuse a result from their first capture. Safe localized changes can rebuild affected subtrees; uncertain changes use the full pipeline. Canvas, video, iframes and recognized animations are captured fresh.
 
+Function-valued `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` also require fresh captures. Applicable callback decisions, including style and fallback decisions, are reevaluated on each new capture. A changed closure needs no `invalidate`; an already returned result retains its original captured state.
+
 DOM mutations, interaction state, scrolling, resizing and resource events invalidate the relevant caches. Programmatic CSSOM edits such as `sheet.insertRule()` have no mutation signal; pass `invalidate: true` for the next capture.
 
 Resource/style caching is separate from result memoization. `cache: 'soft'` is the default; legacy `'auto'` and `'full'` values map to it. `cache: 'disabled'` or `false` clears and bypasses persistent caches for debugging.

@@ -681,11 +681,9 @@ function createState(element) {
 }
 
 /** Identity tags for values that have no structural form (functions, class instances, DOM
- *  nodes). Comparing them by identity keeps the memo alive for the normal case — a polling
- *  loop passing the SAME `exclude` callback every frame — while a DIFFERENT callback yields
- *  a different signature and correctly forces a fresh capture. A freshly-allocated inline
- *  closure gets a new tag on every call, so it degrades to "always a one-off": slower, never
- *  wrong. */
+ *  nodes). Different references must never collide. Identity does not prove that external
+ *  state stayed unchanged: the public entry bypasses this memo for capture callbacks,
+ *  while render-affecting plugins follow their explicit purity contract. */
 let __refSeq = 0
 const __refTags = new WeakMap()
 function refTag(value) {

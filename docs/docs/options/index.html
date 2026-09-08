@@ -109,7 +109,7 @@
           <tr><td class="num">filterMode</td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>Independent layout mode for nodes rejected by <code>filter</code>.</td></tr>
           <tr><td class="num">clip</td><td class="num">"viewport" | rect</td><td class="num">null</td><td>Capture only a viewport or page-coordinate rectangle.</td></tr>
           <tr><td class="num">useProxy</td><td class="num">string</td><td class="num">''</td><td>CORS proxy template/base.</td></tr>
-          <tr><td class="num">fallbackURL</td><td class="num">string | function</td><td class="num">undefined</td><td>Fallback for a broken <code>&lt;img&gt;</code>.</td></tr>
+          <tr><td class="num">fallbackURL</td><td class="num">string | function</td><td class="num">undefined</td><td>Fallback for a broken <code>&lt;img&gt;</code>. A function reads current state when a new capture needs a fallback.</td></tr>
           <tr><td class="num">placeholders</td><td class="num">boolean</td><td class="num">true</td><td>Show placeholders for failed resources/CORS iframes.</td></tr>
           <tr><td class="num">outerTransforms</td><td class="num">boolean</td><td class="num">true</td><td>Keep the root's rotation and scale/skew. <code>false</code> removes rotation while preserving scale/skew; root translation is normalized.</td></tr>
           <tr><td class="num">outerShadows</td><td class="num">boolean | "subtree"</td><td class="num">false</td><td>Strip or bound root effects; <code>"subtree"</code> also bounds descendant shadow ink. Blur bleed is included unless <code>clip</code> fixes the edges.</td></tr>
@@ -117,7 +117,7 @@
           <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>Force one fresh capture that is not served from the existing memo and clear style snapshots after unobservable application changes. A stable fresh result may become the new memo.</td></tr>
           <tr><td class="num">captureSelection</td><td class="num">boolean</td><td class="num">false</td><td>Render the live text or field selection.</td></tr>
           <tr><td class="num">canvas</td><td class="num">HTMLCanvasElement</td><td class="num">null</td><td>Reuse an existing raster target.</td></tr>
-          <tr><td class="num">excludeStyleProps</td><td class="num">RegExp | function</td><td class="num">null</td><td>Skip matching computed-style properties.</td></tr>
+          <tr><td class="num">excludeStyleProps</td><td class="num">RegExp | function</td><td class="num">null</td><td>Skip matching computed-style properties. A function is evaluated afresh for each new capture.</td></tr>
           <tr><td class="num">cache</td><td class="num">"soft" | "disabled" | "auto" | "full" | false</td><td class="num">"soft"</td><td>Controls persistent resource/style caches only. <code>disabled</code>/<code>false</code> clears and bypasses them; legacy values map to <code>soft</code>. Repeat memoization is separate.</td></tr>
           <tr><td class="num">plugins</td><td class="num">array</td><td class="num">undefined</td><td>Per-capture plugin definitions.</td></tr>
           <tr><td class="num">engine</td><td class="num">"svg" | "html-in-canvas"</td><td class="num">"svg"</td><td>Select one of SnapDOM's two integrated render engines. <code>svg</code> serializes the finished clone; experimental <code>html-in-canvas</code> paints that same clone through the browser's native API, with SVG fallback.</td></tr>
@@ -307,6 +307,7 @@ for (let i = 0; i < 10; i++) {
       <p>Frame-driven canvas/video/iframe trees already bypass the memo and capture fresh. Programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) expose no browser signal, so pass <code>invalidate: true</code> on the next call. That call is not served from the existing memo and clears style snapshots; if its fresh result is stable, it may become the new memo:</p>
       <pre class="code-block">sheet.insertRule('.card { color: rebeccapurple }');
 await snapdom(el, { invalidate: true });</pre>
+      <p>Function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> or <code>fallbackURL</code> already force a new capture and reevaluate applicable callback decisions. A changed closure needs no <code>invalidate</code>. Previous style/fallback decisions are not reused for those callbacks. Exporting an existing result still uses its original captured state.</p>
     </section>
 
     <section class="related">

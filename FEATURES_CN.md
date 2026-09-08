@@ -116,6 +116,8 @@ SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可�
 
 符合条件且未变化的元素复用第一次捕获的结果。可安全处理的局部变化只重建受影响的子树，不确定的变化使用完整流程。Canvas、视频、iframe 和可识别的动画会重新捕获。
 
+函数形式的 `filter`、`exclude`、`excludeStyleProps` 和 `fallbackURL` 也会触发新的捕获。每次新捕获都会重新执行适用的回调决策，包括样式和替代图片决策。仅闭包状态改变时无需 `invalidate`；已经返回的结果仍保留原来的捕获状态。
+
 DOM 变化、交互状态、滚动、尺寸变化和资源事件会使相关缓存失效。`sheet.insertRule()` 等编程修改 CSSOM 的操作没有变化通知；下一次捕获请传入 `invalidate: true`。
 
 资源/样式缓存与结果记忆化相互独立。`cache: 'soft'` 为默认值，旧值 `'auto'` 和 `'full'` 映射到它。`cache: 'disabled'` 或 `false` 清空并绕过持久缓存，供调试使用。

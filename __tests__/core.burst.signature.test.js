@@ -38,12 +38,14 @@ describe('burst — options signature discriminates nested objects and callbacks
     expect(s2).toContain('alpha')
   })
 
-  it('the SAME callback identity still memoizes (the fast path is not lost)', async () => {
+  it('the same callback identity still runs on each capture', async () => {
     makeEl()
     const exclude = (n) => n.classList?.contains('a')
     const r1 = await snapdom(el, { burst: true, exclude })
     const r2 = await snapdom(el, { burst: true, exclude })
-    expect(r2).toBe(r1)
+    expect(r2).not.toBe(r1)
+    expect(decodeURIComponent(r2.url)).toContain('bravo')
+    expect(decodeURIComponent(r2.url)).not.toContain('alpha')
   })
 
   it('serializes baseline adoption for concurrent A, B, B calls', async () => {

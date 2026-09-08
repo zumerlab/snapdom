@@ -130,11 +130,16 @@ async function main(element, userOptions) {
   // Render-affecting plugins suspend auto mode (a memo serve would skip their hooks) —
   // explicit burst:true keeps memoizing (the caller opted in), and `pure: true` plugins
   // re-enable auto. Selection/frame-driven trees remain a fidelity boundary even for true.
+  // Capture callbacks may read external state without changing their identity or the DOM.
+  // Always run their pipeline again, including with the internal burst override. A pure
+  // plugin says nothing about the caller's filter, exclusion, style or fallback callbacks.
   // Decide before Safari's awaited font/GPU pre-step: a capture started synchronously by a
   // press/click handler still belongs to that event task, even if preparation finishes later.
   const pluginAllowsMemo = context.burst === true || !hasImpureRenderPlugins(context)
+  const hasCaptureCallbacks = typeof context.filter === 'function' || !!context.excludePredicates ||
+    typeof context.excludeStyleProps === 'function' || typeof context.fallbackURL === 'function'
   const memoEligible = rendersPixels && !context.captureSelection &&
-    context.burst !== false && pluginAllowsMemo
+    context.burst !== false && pluginAllowsMemo && !hasCaptureCallbacks
   const burst = memoEligible && isAutoBurstSafe(element)
   if (burst) noteCapture(element, userOptions)
 

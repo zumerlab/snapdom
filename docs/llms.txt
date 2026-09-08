@@ -84,6 +84,8 @@ With `engine: 'svg'`, `url` and synchronous `result.toRaw()` return the serializ
 
 Eligible unchanged captures reuse a memo from the first successful capture. Observed mutations invalidate it; supported changes can use differential recapture. Frame-driven canvas, video and iframe trees capture fresh. `snapdom.preCapture()` learns which control triggers which capture, then prefetches on later pointer/focus intent. It takes no arguments and does no polling.
 
+Function-valued `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` suspend capture memoization and reevaluate applicable decisions on each new capture, including style and fallback decisions. Changing a callback's closure needs no `invalidate`. Exporting an existing result still uses its original captured state; capture again to apply the current policy. Direct CSSOM edits still require `invalidate: true`.
+
 Plugins may request the `clone` stage for structured output without rendering an image. A clone-only result has no `url` or `meta`, and core image exporters throw. Its plugin exports remain available.
 
 ## Migrating from v2.24.16

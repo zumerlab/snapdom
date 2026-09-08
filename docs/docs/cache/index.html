@@ -106,6 +106,17 @@
       <pre class="code-block">// Clear and bypass persistent resource/style caches (debugging)
 await snapdom.toPng(el, { cache: 'disabled' });</pre>
       <p>Eligible unchanged captures reuse the saved result. Observable changes invalidate it; supported local changes rebuild the affected subtree, while other changes trigger a full capture. Canvas, video and other frame-driven content capture fresh. After a CSSOM edit such as <code>sheet.insertRule()</code> or <code>rule.style.color = 'red'</code>, pass <code>invalidate: true</code> because those edits have no mutation event. It clears style snapshots and takes a fresh capture, which may become the next reusable result.</p>
+      <p><strong>Callbacks that read application state:</strong> function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> and <code>fallbackURL</code> suspend capture memoization. Each new capture reevaluates applicable callbacks, including their style or fallback decisions; changing a closure does not require <code>invalidate</code>.</p>
+      <pre class="code-block">let privateMode = false;
+const options = {
+  exclude: node =&gt; privateMode &amp;&amp; node.matches('[data-private]'),
+  excludeMode: 'remove'
+};
+const before = await snapdom(el, options);
+privateMode = true;
+const after = await snapdom(el, options); // current policy, no invalidate needed</pre>
+      <p>Exporting <code>before</code> again still exports the earlier content. Use the new result <code>after</code> when policy changes. Callbacks run where applicable during capture; do not depend on an exact number of invocations.</p>
+      <p class="muted"><strong>V2 migration:</strong> remove the public <code>burst</code> switch. Eligible repeat memoization is automatic in v3. Resource-cache settings and image exports remain separate from this reuse policy; <code>cache: 'disabled'</code> is not a replacement for <code>burst: false</code>.</p>
     </section>
 
     <section class="prose">

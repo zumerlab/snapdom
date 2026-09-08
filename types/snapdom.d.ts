@@ -111,6 +111,8 @@ export interface SnapdomOptions {
   /**
    * Nodes to leave out of the capture: a CSS selector, a predicate returning true to
    * EXCLUDE the element, or any mix of both in an array.
+   * Predicates are synchronous and run on each new capture; result memoization is bypassed
+   * when a predicate is present so it can read current application state.
    */
   exclude?: string | ((el: Element) => boolean) | Array<string | ((el: Element) => boolean)>;
   /** How excluded nodes leave ("hide" keeps layout via an invisible spacer; "remove" drops them). Default "hide". */
@@ -185,6 +187,7 @@ export interface SnapdomOptions {
   /**
    * Skip style properties when snapshotting computed styles (e.g. `/^--/` to exclude
    * CSS variables on pages with thousands of custom props).
+   * A function is reevaluated on each new capture, without reusing a prior style snapshot.
    */
   excludeStyleProps?: RegExp | ((prop: string) => boolean);
 
@@ -213,6 +216,8 @@ export interface SnapdomOptions {
   /**
    * Fallback image when <img> fails to load.
    * Can be a fixed URL or a callback that receives measured dimensions.
+   * With a callback, each new capture retries the capture pipeline and calls it when a
+   * fallback is needed; an earlier capture result keeps its original image.
    */
   fallbackURL?:
     | string

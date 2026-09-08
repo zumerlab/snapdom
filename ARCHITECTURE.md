@@ -70,6 +70,7 @@ exceptions below are implemented in `src/core/burst.js` and the related modules:
 | Canvas pixel draws | bypass memoization because pixels are invisible to DOM observers | snapdom.js `main` → burst.js `isAutoBurstSafe` |
 | CSSOM rule edits (`sheet.insertRule`, `rule.style.x = …`) | not automatically observed; use `invalidate: true` to clear style caches as well as the result memo. This also refreshes the set of captured properties when a rule introduces one that was not previously used | snapdom.js `main` → styles.js `invalidateStyleCaches` |
 | Plugins with render hooks | impure hooks suspend automatic memoization; pure hooks may memoize, while diff bails whenever it would skip a required lifecycle hook | plugins.js `hasImpureRenderPlugins` + diff.js |
+| Function-valued capture policies | `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` bypass memoization even when their function identity is unchanged; applicable style/fallback decisions are reevaluated on each new capture | snapdom.js `main` + styles.js |
 
 Differential-capture tests require byte equality with a full capture of the same DOM
 state. `tryDiffCapture` returns `null` when it cannot safely reuse the retained clone,
@@ -102,8 +103,9 @@ Other constraints to preserve when changing the pipeline:
 `compress: false` and `burst: true|false` are internal test controls, outside the public API.
 Benchmarks and differential byte-equality tests use them to isolate compression or force
 the full pipeline; otherwise a repeated-capture benchmark can measure a memo lookup.
-`burst: true` cannot override freshness boundaries for selection or opaque/frame-driven
-content. The supported public option for forcing a fresh capture is `invalidate: true`.
+`burst: true` cannot override freshness boundaries for selection, opaque/frame-driven
+content or function-valued capture policies. The supported public option for forcing a
+fresh capture is `invalidate: true`; a changed callback closure does not require it.
 
 ## Verifying WebKit changes in real Safari
 
