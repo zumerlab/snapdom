@@ -25,6 +25,10 @@ import { isInternalNode } from '../utils/ownership.js'
 /** element -> { env, stamp, snapshot, embedFonts, excludeStyleProps }. Cross-capture; a hit
  *  needs the env epoch and the node's stamp unchanged (snapshotIsCurrent). */
 const snapshotCache = new WeakMap()
+const MARGIN_PROPS = [
+  'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+  'margin-block-start', 'margin-block-end', 'margin-inline-start', 'margin-inline-end',
+]
 /** style signature -> class key. FIFO-bounded at insertion, see MAX_SNAPSHOT_KEY_CACHE. */
 const snapshotKeyCache = new Map()
 /** PERF-4: evict snapshotKeyCache when it grows beyond this size.
@@ -1326,8 +1330,27 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
       shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null, sig: null, h: 'height' in snap, b: 'block-size' in snap })
     }
   }
+  // Chromium can report a zero used margin after a partial container layout even
+  // though the box remains centered. Typed OM retains the resolved `auto` keyword;
+  // carrying it lets the frozen parent/child dimensions reproduce that alignment.
+  // Keep ordinary nonzero used margins unchanged, and respect excluded properties.
+  let restoredAutoMargin = false
+  if (typeof el.computedStyleMap === 'function') {
+    let typed
+    for (const prop of MARGIN_PROPS) {
+      if (snap[prop] !== '0px') continue
+      try {
+        typed ||= el.computedStyleMap()
+        if (typed.get(prop)?.toString() === 'auto') {
+          snap[prop] = 'auto'
+          restoredAutoMargin = true
+        }
+      } catch { /* Typed OM is optional; keep the computed style if unsupported. */ }
+    }
+  }
   stripHeightForWrappers(el, style, snap)
   if (dyn !== null) {
+    if (restoredAutoMargin) dyn.push('\u0005', ...MARGIN_PROPS.map(prop => snap[prop]))
     // Seed the signature memo AFTER the strip: it deletes at most height/block-size, and two
     // twins with different strip outcomes must not collide onto one key.
     __snapshotSig.set(snap, shared.sig + '\u0002' + dyn.join('\u0001') +
@@ -1518,6 +1541,14 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     if (eligible) shareInfo = { st, id }
   }
   const snap = getSnapshot(source, pre, ctx.options, shareInfo)
+  // Inline author declarations were normalized above from getComputedStyle too.
+  // Override their zero margin (including logical shorthands) with the retained auto.
+  if (source.getAttribute?.('style')) {
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      const prop = `margin-${side}`
+      if (snap[prop] === 'auto') clone.style.setProperty(prop, 'auto', 'important')
+    }
+  }
 
   // Firefox background-clip:text fallback (see applyBgClipTextFallback): the class carries the
   // substitute colour, but resolveCSSVars and the authored inline-style normalization re-inline
