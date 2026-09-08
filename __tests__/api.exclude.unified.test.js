@@ -164,5 +164,101 @@ describe('unified exclude', () => {
       expect(hidden).toBe(baseline)
       expect(removed).toBeLessThan(baseline)
     })
+
+    it.each(['exclude', 'filter'])('ignores zoom-rounded offsets when %s hides a block', async policy => {
+      const host = scene('height:30px;background:#ccc')
+      const baseline = await greenTop(host)
+      const secret = host.querySelector('.pii')
+      // Safari at page zoom 85% reports 31 for this actual 30px CSS box. Simulating
+      // that browser measurement keeps this regression deterministic in every engine.
+      Object.defineProperty(secret, 'offsetHeight', { configurable: true, value: 31 })
+      const opts = policy === 'exclude' ? { exclude: '.pii' } : { filter: el => el !== secret }
+      expect(await greenTop(host, opts)).toBe(baseline)
+      expect(host.querySelector('.pii')).toBe(secret)
+    })
+
+    it('does not move a flex sibling when offsetWidth rounds up', async () => {
+      const host = document.createElement('div')
+      host.style.cssText = 'display:flex;width:100px;height:20px;background:white'
+      host.innerHTML = '<div style="width:20px;background:blue"></div>' +
+        '<div class="pii" style="width:30px;background:#ccc">secret</div>' +
+        '<div style="width:20px;background:green"></div>'
+      document.body.append(host)
+      const greenLeft = async opts => {
+        const canvas = await (await snapdom(host, { dpr: 1, embedFonts: false, ...opts })).toCanvas()
+        const row = canvas.getContext('2d').getImageData(0, 10, canvas.width, 1).data
+        for (let x = 0; x < canvas.width; x++) {
+          const i = x * 4
+          if (row[i] < 80 && row[i + 1] > 100 && row[i + 2] < 80 && row[i + 3] > 40) return x
+        }
+        return -1
+      }
+      const baseline = await greenLeft()
+      Object.defineProperty(host.querySelector('.pii'), 'offsetWidth', { configurable: true, value: 31 })
+      expect(await greenLeft({ exclude: '.pii' })).toBe(baseline)
+      expect(baseline).toBe(50)
+    })
+
+    it('keeps fractional block sizes instead of accumulating integer rounding', async () => {
+      const host = scene('height:10.25px;background:#ccc')
+      const secret = host.querySelector('.pii')
+      secret.after(secret.cloneNode(true), secret.cloneNode(true))
+      const baseline = await greenTop(host)
+      expect(await greenTop(host, { exclude: '.pii' })).toBe(baseline)
+      expect(baseline).toBe(51)
+    })
+
+    it.each(['content-box', 'border-box'])('uses the complete %s size under an ancestor transform', async boxSizing => {
+      const cssHeight = boxSizing === 'content-box' ? 20 : 32
+      const host = scene(`box-sizing:${boxSizing};height:${cssHeight}px;padding:4px;border:2px solid black;background:#ccc`)
+      host.style.transform = 'scale(2)'
+      host.style.transformOrigin = 'top left'
+      const baseline = await greenTop(host)
+      Object.defineProperty(host.querySelector('.pii'), 'offsetHeight', { configurable: true, value: 33 })
+      expect(await greenTop(host, { exclude: '.pii' })).toBe(baseline)
+      // The exporter pads transformed capture bounds; compare its actual baseline
+      // while verifying the scale really applied, rather than assuming a zero inset.
+      expect(baseline).toBeGreaterThan(100)
+    })
+
+    it.each(['hide', 'remove'])('filter and existing selectors preserve %s layout', async filterMode => {
+      const host = scene('height:30px;background:#ccc')
+      const extra = document.createElement('div')
+      extra.className = 'also-pii'
+      extra.style.cssText = 'height:15px;background:#ccc'
+      extra.textContent = 'also-secret'
+      host.insertBefore(extra, host.lastElementChild)
+      const baseline = await greenTop(host)
+      const keep = el => !el.matches('.also-pii')
+      const opts = { exclude: ['.pii'], excludeMode: 'hide', filter: keep, filterMode }
+      const svg = await svgOf(host, opts)
+      expect(svg).not.toContain('secreto')
+      expect(svg).not.toContain('also-secret')
+      expect(await greenTop(host, opts)).toBe(filterMode === 'hide' ? baseline : baseline - 15)
+    })
+
+    it.each([
+      ['hide', 'hide', 60], ['hide', 'remove', 40],
+      ['remove', 'hide', 20], ['remove', 'remove', 0],
+    ])('independent modes preserve overlap precedence (%s/%s)', async (excludeMode, filterMode, greenY) => {
+      const host = document.createElement('div')
+      host.style.cssText = 'width:200px;background:white;font:16px Arial'
+      host.innerHTML = '<div class="excluded" style="height:30px">excluded-secret</div>' +
+        '<div class="filtered" style="height:20px">filtered-secret</div>' +
+        '<div class="overlap" data-capture="exclude" style="height:10px">overlap-secret</div>' +
+        '<div style="height:20px;background:green">Public</div>'
+      document.body.append(host)
+      const original = host.outerHTML
+      const opts = { exclude: '.excluded', excludeMode, filter: el => !el.matches('.filtered, .overlap'), filterMode }
+      const result = await snapdom(host, { ...opts, dpr: 1, embedFonts: false })
+      const svg = decodeURIComponent(result.url.split(',')[1])
+      expect(svg).not.toContain('-secret')
+      expect(svg).toContain('Public')
+      // Existing canvas bounds may retain trailing space; remove must collapse the flow
+      // position of the public marker without clipping it out of the export.
+      expect((await result.toCanvas()).height).toBeGreaterThanOrEqual(greenY + 20)
+      expect(await greenTop(host, opts)).toBe(greenY)
+      expect(host.outerHTML).toBe(original)
+    })
   })
 })

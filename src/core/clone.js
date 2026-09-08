@@ -61,24 +61,42 @@ export function registerTagHandler(tag, handler) {
  * excluded/filtered in 'hide' mode. Forces at most one getBoundingClientRect (the inline form
  * could read it twice per node in the hot path).
  * @param {Element} node
- * @returns {HTMLDivElement}
+ * @returns {HTMLDivElement|null}
  */
 function makeHideSpacer(node) {
   // A display:none node occupies nothing live, so ANY spacer shifts the layout; and a
   // hardcoded inline-block spacer for a block-level node adds a whole line box (baseline
   // + descender) on top of its height. `exclude` is the redaction feature, routinely
   // pointed at selectors that also match hidden elements — both cases moved content down.
-  const display = getStyle(node).display
+  const style = getStyle(node)
+  const display = style.display
   if (display === 'none') return null
-  const { width, height } = getUnscaledDimensions(node)
-  let w = width, h = height
-  if (!w || !h) {
-    const rect = node.getBoundingClientRect()
-    w = w || rect.width || 0
-    h = h || rect.height || 0
+  // Safari at fractional page zoom can report offsetHeight=31 for a 30px box.
+  // Used CSS sizes preserve both fractions and pre-transform layout; offsets are only
+  // a fallback. Inline text and table/ruby boxes have different sizing rules, so keep
+  // their existing measurement rather than interpreting their CSS as ordinary boxes.
+  const ordinaryBox = /^(block|inline-block|flow-root|flex|inline-flex|grid|inline-grid|list-item)$/.test(display)
+  const borderBoxSize = (value, ...extras) => {
+    if (!ordinaryBox || !value?.endsWith('px')) return null
+    const size = parseFloat(value)
+    if (!Number.isFinite(size) || size < 0) return null
+    return size + (style.boxSizing === 'border-box' ? 0 : extras.reduce((sum, v) => sum + (parseFloat(v) || 0), 0))
+  }
+  let w = borderBoxSize(style.width, style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth)
+  let h = borderBoxSize(style.height, style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth)
+  if (w === null || h === null) {
+    const { width, height } = getUnscaledDimensions(node)
+    let fallbackW = width, fallbackH = height
+    if ((w === null && !fallbackW) || (h === null && !fallbackH)) {
+      const rect = node.getBoundingClientRect()
+      fallbackW ||= rect.width || 0
+      fallbackH ||= rect.height || 0
+    }
+    w ??= fallbackW
+    h ??= fallbackH
   }
   const spacer = document.createElement('div')
-  spacer.style.cssText = `display:${display === 'inline' ? 'inline-block' : display};width:${w}px;height:${h}px;visibility:hidden;`
+  spacer.style.cssText = `display:${display === 'inline' ? 'inline-block' : display};box-sizing:border-box;width:${w}px;height:${h}px;visibility:hidden;`
   return spacer
 }
 
