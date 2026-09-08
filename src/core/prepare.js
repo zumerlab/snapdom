@@ -11,7 +11,7 @@
  * @module prepare
  */
 
-import { generateCSSClasses, stripTranslate, debugWarn, getStyle } from '../utils/index.js'
+import { generateCSSClasses, stripTranslate, debugWarn, getStyle, isShadowRoot } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { flushStyleInvalidations, invalidateHoverChanges } from '../modules/styles.js'
@@ -426,7 +426,7 @@ function liftTopLayerClones(element, clone, nodeMap) {
 export function applyStyleClass(node, key, keyToClass) {
   if (node.tagName === 'STYLE') return
   /* c8 ignore next 4 */
-  if (node.getRootNode && node.getRootNode() instanceof ShadowRoot) {
+  if (node.getRootNode && isShadowRoot(node.getRootNode())) {
     node.setAttribute('style', key.replace(/;/g, '; '))
     return
   }

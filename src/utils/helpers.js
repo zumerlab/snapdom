@@ -180,3 +180,13 @@ export function isHTMLEl(node) {
 export function isSVGEl(node) {
   return node?.nodeType === 1 && node.namespaceURI === SVG_NS
 }
+
+/** Realm-safe `node instanceof ShadowRoot`: a DocumentFragment that has a host. */
+export function isShadowRoot(node) {
+  return node?.nodeType === 11 && !!node.host
+}
+
+/** Realm-safe `node instanceof Document`. */
+export function isDocument(node) {
+  return node?.nodeType === 9
+}

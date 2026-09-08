@@ -10,7 +10,7 @@
  * @module utils/capture.helpers
  */
 
-import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl } from './index.js'
+import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl, isShadowRoot } from './index.js'
 import { cache } from '../core/cache.js'
 import { universeFor } from '../modules/styles.js'
 import { markInternalNode } from './ownership.js'
@@ -60,7 +60,7 @@ export function resolveClipRect(element, clip) {
 function composedParent(n) {
   if (n.parentElement) return n.parentElement
   const rn = n.getRootNode && n.getRootNode()
-  return rn instanceof ShadowRoot ? rn.host : null
+  return isShadowRoot(rn) ? rn.host : null
 }
 
 /** Ancestor test that crosses shadow boundaries, through composedParent. */
@@ -155,7 +155,7 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
       w = /** @type {HTMLElement} */ (orig).offsetWidth || r.width
       h = /** @type {HTMLElement} */ (orig).offsetHeight || r.height
     }
-    const inShadow = orig.getRootNode && orig.getRootNode() instanceof ShadowRoot
+    const inShadow = orig.getRootNode && isShadowRoot(orig.getRootNode())
     let baseR = rootR, baseBL = root.clientLeft || 0, baseBT = root.clientTop || 0
     if (inShadow) {
       const cb = findCBAncestor(orig, root)

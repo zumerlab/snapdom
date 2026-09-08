@@ -1,3 +1,4 @@
+import { isDocument } from '../utils/helpers.js'
 
 /**
  * Lightweight CSS counter resolver for SnapDOM.
@@ -111,7 +112,7 @@ export function counterPairs(decl, dflt) {
  */
 export function buildCounterContext(root) {
   const nodeCounters = new WeakMap()
-  const rootEl = (root instanceof Document) ? root.documentElement : root
+  const rootEl = isDocument(root) ? root.documentElement : root
 
   const isLi = (el) => el && el.tagName === 'LI'
   // The walk is already in document order. Carry each list's ordinal instead of counting

@@ -182,7 +182,9 @@ function scanRules(rules, universe, pseudoSels, state) {
     if (rule.styleSheet) { // @import
       if (!scanSheet(rule.styleSheet, universe, pseudoSels, state)) return false
     } else if (rule.cssRules && rule.cssRules.length) { // @media/@supports/@keyframes/…
-      const container = typeof CSSContainerRule !== 'undefined' && rule instanceof CSSContainerRule
+      // constructor.name instead of instanceof: a rule from an iframe document belongs to
+      // that window's CSSContainerRule, so the parent realm's constructor never claims it.
+      const container = rule.constructor?.name === 'CSSContainerRule'
       if (container) state.inContainer++
       const ok = scanRules(rule.cssRules, universe, pseudoSels, state)
       if (container) state.inContainer--

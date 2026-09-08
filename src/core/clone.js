@@ -600,7 +600,7 @@ export async function deepClone(node, sessionCache, options) {
   // clone instead of wrapped in a span.
   if (
     options.captureSelection &&
-    (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)
+    (isTag(node, 'input') || isTag(node, 'textarea'))
   ) {
     try {
       inlineTextFieldSelection(node, clone)
