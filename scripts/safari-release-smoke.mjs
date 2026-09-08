@@ -14,6 +14,12 @@ const pluginModules = new Map(await Promise.all([
   'agent-map.js', 'context-export.js', 'html-export.js',
 ].map(async name => [`/plugins/${name}`, await readFile(new URL(`../packages/plugins/${name}`, import.meta.url))])))
 const server = createServer((req, res) => {
+  if (req.url.startsWith('/progress?')) {
+    console.error(`[safari-smoke] ${new URL(req.url, 'http://127.0.0.1').searchParams.get('step')}`)
+    res.writeHead(204)
+    res.end()
+    return
+  }
   const asset = req.url === '/snapdom.mjs' ? [bundle, 'text/javascript']
     : req.url === '/font.woff2' ? [font, 'font/woff2']
       : pluginModules.has(req.url) ? [pluginModules.get(req.url), 'text/javascript']
@@ -31,17 +37,20 @@ async function request(path, method = 'GET', body) {
     signal: AbortSignal.timeout(180000),
   })
   const { value } = await response.json()
-  if (!response.ok || value?.error) throw new Error(value?.message || response.statusText)
+  if (!response.ok || value?.error) throw new Error(value?.message || value?.error || response.statusText)
   return value
 }
 
 // Passed directly to WebDriver, so this function executes in Safari against the built ESM.
 async function smoke() {
+  const progress = step => fetch('/progress?step=' + encodeURIComponent(step)).catch(() => {})
+  await progress('import core')
   const { snapdom } = await import('/snapdom.mjs')
   const results = []
   const check = (condition, name, details = {}) => {
     if (!condition) throw new Error(name + ': ' + JSON.stringify(details))
     results.push({ name, ...details })
+    void progress('passed: ' + name)
   }
   const mount = (html, css) => {
     const node = document.createElement('div')
@@ -99,6 +108,75 @@ async function smoke() {
   const mixed = await snapdom.fromString('Before <strong>inside</strong> after', options)
   const mixedRaw = decodeURIComponent((await mixed.toRaw()).split(',').slice(1).join(','))
   check(['Before', 'inside', 'after'].every(text => mixedRaw.includes(text)), 'mixed fragment text retained')
+
+  // Migration regressions: these must hold on the shipped bundle in real Safari as well
+  // as WebKit in the browser suite. Only closure state changes between repeat captures.
+  const migrationRoot = mount('<p>PUBLIC_CALLBACK_SAFARI</p><p class="private-callback">PRIVATE_CALLBACK_SAFARI</p>',
+    'width:240px;background:white;color:black;font:16px Arial')
+  const rawSvg = capture => decodeURIComponent(capture.toRaw().split(',').slice(1).join(','))
+  let combinedRoot, callbackRoot, callbackSheet
+  try {
+    const original = migrationRoot.outerHTML
+    combinedRoot = mount('<div class="excluded" style="height:30px">EXCLUDED_SECRET_SAFARI</div>' +
+      '<div class="filtered" style="height:20px">FILTERED_SECRET_SAFARI</div>' +
+      '<div class="overlap" data-capture="exclude" style="height:10px">OVERLAP_SECRET_SAFARI</div>' +
+      '<div style="height:20px;background:green">Public combined</div>',
+    'width:240px;background:white;color:black;font:16px Arial')
+    const combinedOriginal = combinedRoot.outerHTML
+    for (const [excludeMode, filterMode, expectedY] of [['hide', 'remove', 40], ['remove', 'hide', 20]]) {
+      await progress(`mixed ${excludeMode}/${filterMode}: capture`)
+      const capture = await snapdom(combinedRoot, {
+        ...options, exclude: '.excluded', excludeMode,
+        filter: el => !el.matches('.filtered, .overlap'), filterMode,
+      })
+      const captured = rawSvg(capture)
+      await progress(`mixed ${excludeMode}/${filterMode}: canvas`)
+      const canvas = await capture.toCanvas()
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+      let greenY = -1
+      for (let y = 0; y < canvas.height; y++) {
+        const i = (y * canvas.width + canvas.width - 2) * 4
+        if (pixels[i] < 30 && pixels[i + 1] > 100 && pixels[i + 2] < 30 && pixels[i + 3] > 230) {
+          greenY = y
+          break
+        }
+      }
+      check(!captured.includes('_SECRET_SAFARI') && captured.includes('Public combined') &&
+        greenY === expectedY && canvas.height >= expectedY + 20 && combinedRoot.outerHTML === combinedOriginal,
+      `filter and exclude keep independent modes ${excludeMode}/${filterMode}`, { greenY, height: canvas.height })
+    }
+
+    let privateMode = false
+    const callbackOptions = {
+      ...options, exclude: el => privateMode && el.matches('.private-callback'), excludeMode: 'remove',
+    }
+    await snapdom(migrationRoot, callbackOptions)
+    const previous = await snapdom(migrationRoot, callbackOptions)
+    privateMode = true
+    const current = await snapdom(migrationRoot, callbackOptions)
+    check(previous !== current && rawSvg(previous).includes('PRIVATE_CALLBACK_SAFARI') &&
+      !rawSvg(current).includes('PRIVATE_CALLBACK_SAFARI') && rawSvg(current).includes('PUBLIC_CALLBACK_SAFARI') &&
+      migrationRoot.outerHTML === original, 'exclusion callback refreshes without a DOM change')
+
+    callbackSheet = document.createElement('style')
+    callbackSheet.textContent = '.safari-callback-spacing { letter-spacing: 7px }'
+    document.head.append(callbackSheet)
+    callbackRoot = mount('<span class="safari-callback-spacing">Spacing callback</span>',
+      'width:240px;background:white;color:black;font:16px Arial')
+    let omitSpacing = false
+    const styleOptions = { ...options, excludeStyleProps: prop => omitSpacing && prop === 'letter-spacing' }
+    await snapdom(callbackRoot, styleOptions)
+    const previousStyle = await snapdom(callbackRoot, styleOptions)
+    omitSpacing = true
+    const currentStyle = await snapdom(callbackRoot, styleOptions)
+    check(/letter-spacing:\s*7px\b/.test(rawSvg(previousStyle)) &&
+      !/letter-spacing:\s*7px\b/.test(rawSvg(currentStyle)), 'style callback refreshes cached snapshots')
+  } finally {
+    migrationRoot.remove()
+    combinedRoot?.remove()
+    callbackRoot?.remove()
+    callbackSheet?.remove()
+  }
 
   // Exercise published-style ESM plugin modules against the built core, on real Safari.
   // This group has its own deadline so a privacy export cannot silently hang the smoke.
@@ -185,7 +263,12 @@ async function smoke() {
       new Promise((_, reject) => { privacyTimer = setTimeout(() => reject(new Error('Safari privacy smoke exceeded 30 seconds')), 30000) }),
     ])
   } finally { clearTimeout(privacyTimer) }
-  return { version: snapdom.version, userAgent: navigator.userAgent, checks: results }
+  return {
+    version: snapdom.version, userAgent: navigator.userAgent,
+    devicePixelRatio: window.devicePixelRatio,
+    viewport: { width: innerWidth, height: innerHeight, visualScale: visualViewport?.scale ?? null },
+    checks: results,
+  }
 }
 
 let session
@@ -195,7 +278,7 @@ try {
   await request(`/session/${session}/timeouts`, 'POST', { script: 180000 })
   await request(`/session/${session}/url`, 'POST', { url: `http://127.0.0.1:${server.address().port}/` })
   const report = await request(`/session/${session}/execute/async`, 'POST', {
-    script: `const done = arguments[arguments.length - 1]; (${smoke.toString()})().then(done, e => done({ error: e.stack || String(e) }));`,
+    script: `const done = arguments[arguments.length - 1]; (${smoke.toString()})().then(done, e => done({ error: [e?.name, e?.message, e?.stack].filter(Boolean).join(String.fromCharCode(10)) || String(e) }));`,
     args: [],
   })
   assert.ok(!report.error, report.error)

@@ -29,6 +29,19 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const ROOT = resolve(import.meta.dirname, '..')
+const args = process.argv.slice(2)
+if (args.length && (args.length !== 2 || args[0] !== '--keep-artifacts' || !args[1])) {
+  throw new Error('Usage: node scripts/check-pack.mjs [--keep-artifacts NEW_DIRECTORY]')
+}
+const keepArtifacts = args.length ? resolve(args[1]) : null
+if (keepArtifacts) {
+  try {
+    readdirSync(keepArtifacts)
+    throw new Error(`Artifact directory already exists: ${keepArtifacts}`)
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
+}
 const work = mkdtempSync(join(tmpdir(), 'snapdom-pack-'))
 let failures = 0
 
@@ -220,6 +233,13 @@ if ('preCache' in win.snapdom || 'prepare' in win.snapdom) throw new Error('remo
   }
 
   log(`\ntarball: ${readdirSync(work).find((f) => f.endsWith('.tgz'))} (${listed.length} entries)`)
+  // Keep the very bytes consumed above, rather than packing a second candidate afterward.
+  if (!failures && keepArtifacts) {
+    mkdirSync(keepArtifacts)
+    cpSync(tgz, join(keepArtifacts, readdirSync(work).find(name => name.endsWith('.tgz'))))
+    cpSync(pluginTgz, join(keepArtifacts, readdirSync(pluginWork).find(name => name.endsWith('.tgz'))))
+    log(`validated core and plugin tarballs retained: ${keepArtifacts}`)
+  }
 } finally {
   rmSync(work, { recursive: true, force: true })
 }
