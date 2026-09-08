@@ -14,6 +14,14 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
 - The `needs: 'dom'` plugin stage is gone. A capture that takes no clone does no capturing.
 - `cache` collapsed to `'soft'` (default) and `'disabled'`; `'auto'`/`'full'` map to `'soft'`.
 - `fast` removed — its behaviour is unconditional now.
+- `burst`, `compress`, `resolvePicturePlaceholders` and `pictureResolver` are no longer
+  public options. Capture reuse, image downsampling and responsive/lazy image resolution
+  remain engine behavior. Remove these settings; custom image loading/timeouts belong in
+  the application before capture. There is no public compression opt-out.
+- The named TypeScript interface `PluginExportFacade` is removed, but the `ctx.exports`
+  facade remains. Infer it in `defineExports` or use `NonNullable<CaptureContext['exports']>`.
+- `afterExport` return values are ignored. In v2.24.16 they only became the next hook's
+  payload; they never replaced the caller's export result. Use `defineExports` for custom output.
 - Core masks `type="password"` only. Everything the browser paints in the clear is captured as
   is; use the `redactInputs` plugin for the old behaviour.
 - `embedFonts` defaults to `'auto'`.

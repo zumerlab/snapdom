@@ -265,6 +265,18 @@ await snapdom.toPng(document.body, { exclude: isHidden });</pre>
       <pre class="code-block">await snapdom.toPng(el, {
   exclude: ['.cookie-banner', '.tooltip', '[data-test="debug"]']
 });</pre>
+      <p>Function-valued rules are evaluated when applicable on every new capture, including when the same function reads changing application state. They suspend unchanged-capture memoization; no <code>invalidate</code> is needed just because their closure changed. An already returned result keeps its original content until you capture again.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="v2-options">Other v2 option changes</h2>
+      <p>Compared with v2.24.16, the following settings no longer belong to the public v3 options. The underlying capture capabilities remain:</p>
+      <ul>
+        <li><code>fast</code> and <code>burst</code>: remove these switches. Optimizations and eligible repeat memoization are automatic. Use <code>invalidate: true</code> for one fresh capture after an otherwise unobservable change.</li>
+        <li><code>compress</code>: remove the switch. Embedded bitmap optimization is automatic, with no public opt-out for embedding the original resources verbatim.</li>
+        <li><code>resolvePicturePlaceholders</code> and <code>pictureResolver</code>: remove these settings. The clone resolves responsive images and common lazy-loading attributes. There is no replacement core tuning object; handle custom loading, concurrency or timeout requirements in the application before capture.</li>
+      </ul>
+      <p>See the <a href="https://github.com/zumerlab/snapdom#migrating-from-v2">migration guide</a> for removed APIs, TypeScript names and plugin-hook changes.</p>
     </section>
 
     <section class="prose">

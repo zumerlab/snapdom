@@ -193,6 +193,18 @@ what the exporter produced.
 something else, declare that format in `defineExports` (it can build on
 `ctx.exports.png()` and friends).
 
+Compared with v2.24.16, `afterExport` no longer chains its return value as the next hook's
+payload. That return never replaced the result received by the caller in v2 either.
+Remove return-value chaining; custom output belongs in `defineExports`.
+
+The v2 named TypeScript interface `PluginExportFacade` is no longer exported. The runtime
+facade still exists; infer `ctx.exports` inside `defineExports`, or derive its type:
+
+```ts
+import type { CaptureContext } from '@zumer/snapdom';
+type CoreExports = NonNullable<CaptureContext['exports']>;
+```
+
 ### Hook Rules
 
 1. Hooks can be sync or async. SnapDOM awaits all hooks.

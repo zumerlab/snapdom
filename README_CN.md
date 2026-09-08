@@ -233,11 +233,13 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 | --- | --- | --- |
 | 网页字体需要手动开启嵌入 | `embedFonts: 'auto'` | 通常无需调整；仅在需要省略字体时使用 `false` |
 | 位图的 width/height 可能再乘以 `scale` | width/height 优先于 scale | 直接传最终尺寸，如用 `width: 400` 替代 `width: 200, scale: 2` |
-| 重复捕获记忆化需要手动开启 | 符合条件的捕获自动记忆化 | 在 `sheet.insertRule()` 等无法自动观察的变化后使用 `invalidate: true` |
+| 使用 `burst` 手动开启重复捕获记忆化 | 符合条件的捕获自动记忆化；`burst` 不再是公开选项 | 删除 `burst`；在 `sheet.insertRule()` 等无法自动观察的变化后，用 `invalidate: true` 重新捕获一次 |
 | `preCache` 用于准备资源 | 已移除；`preCapture()` 学习捕获意图 | 删除 `preCache`；`preCapture()` 不是直接改名后的替代方法 |
 | `fast` 选择优化路径 | 已移除 | 删除该选项 |
 | `filter` / `filterMode` 可与 `exclude` / `excludeMode` 同时使用 | 两种控制及其独立模式仍受支持；`exclude` 还支持判断函数 | 保留原有规则和模式；需要时再使用新增判断函数形式 |
 | `cache: 'auto'` 或 `'full'` | 两者均映射为 `'soft'` | 通常可以省略；`'disabled'` / `false` 用于调试 |
+| `compress` 控制内嵌图片降采样 | 图片优化自动进行；该开关不再公开 | 删除 `compress`；不再提供原样嵌入图片资源的公开关闭开关 |
+| `resolvePicturePlaceholders` / `pictureResolver` 配置懒加载图片预处理 | 在克隆节点上解析响应式和懒加载图片；这些选项不再公开 | 删除这些选项；自定义加载和超时策略应在应用中、捕获前完成 |
 | 部分可见输入值会被遮蔽 | 核心只遮蔽密码 | 其他字段需要使用 `redactInputs()` |
 | `afterExport` 返回值成为下一个钩子的参数，但不改变调用者收到的结果 | 返回值被忽略；钩子收到同一份导出参数 | 不再通过返回值串联钩子；用 `defineExports` 生成不同输出 |
 | TypeScript 导出 `PluginExportFacade` | 该类型名称已移除；`ctx.exports` 仍提供核心导出器 | 在 `defineExports` 中使用类型推导，或使用 `NonNullable<CaptureContext['exports']>` |

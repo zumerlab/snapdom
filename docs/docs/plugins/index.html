@@ -202,6 +202,7 @@ snapdom.plugins(
         </tbody>
       </table>
       <p class="muted">Order: <code>beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender → defineExports → [beforeExport → exporter → afterExport] → afterSnap</code>. The bracketed segment repeats per export; <code>afterSnap</code> fires once after the first successful one. Export-hook return values are ignored. Change an export's options in <code>beforeExport</code>, or use <code>defineExports</code> to produce a custom result.</p>
+      <p><strong>V2.24.16 migration:</strong> an <code>afterExport</code> return used to become the next hook's payload; it never replaced the output returned to the caller. V3 ignores those returns and gives hooks the same export payload. Remove return-value chaining. The TypeScript name <code>PluginExportFacade</code> is also removed, but <code>ctx.exports</code> remains available inside <code>defineExports</code>. Infer its type there or use <code>NonNullable&lt;CaptureContext['exports']&gt;</code> after importing the <code>CaptureContext</code> type.</p>
     </section>
 
     <section class="prose">

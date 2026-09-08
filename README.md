@@ -233,11 +233,13 @@ The main capture pattern remains `snapdom(element, options)`. Review these chang
 | --- | --- | --- |
 | Web fonts were opt-in | `embedFonts: 'auto'` | Usually nothing; use `false` only if you want to omit them |
 | Raster width/height could be multiplied by `scale` | Width/height win over scale | Pass the final size: `width: 400` instead of `width: 200, scale: 2` |
-| Repeat memoization was opt-in | Eligible captures memoize automatically | Use `invalidate: true` after unobservable changes such as `sheet.insertRule()` |
+| `burst` opted into repeat memoization | Eligible captures memoize automatically; `burst` is no longer a public option | Remove `burst`; use `invalidate: true` for one fresh capture after unobservable changes such as `sheet.insertRule()` |
 | `preCache` prepared resources | Removed; `preCapture()` learns capture intent | Remove `preCache`; `preCapture()` is not a drop-in rename |
 | `fast` selected an optimization path | Removed | Delete the option |
 | `filter` / `filterMode` and `exclude` / `excludeMode` could be used together | Both controls and their independent modes remain supported; `exclude` also accepts predicates | Keep existing rules and modes; use the additional predicate form only when useful |
 | `cache: 'auto'` or `'full'` | Both map to `'soft'` | Usually omit it; `'disabled'` / `false` is for debugging |
+| `compress` controlled embedded image downsampling | Image optimization is automatic; the switch is no longer public | Remove `compress`; there is no public opt-out for embedding original assets verbatim |
+| `resolvePicturePlaceholders` / `pictureResolver` configured lazy-image preparation | Responsive/lazy image resolution happens on the clone; these options are no longer public | Remove the options; handle custom loading/timeouts in your app before capture |
 | Some visible input values were redacted | Core masks passwords only | Add `redactInputs()` for other fields |
 | `afterExport` returns became the next hook's payload, not the caller's result | Returns are ignored; hooks receive the same export payload | Stop chaining through return values; use `defineExports` to produce a different output |
 | TypeScript exported `PluginExportFacade` | The named type is removed; `ctx.exports` still provides core exporters | Infer it in `defineExports`, or use `NonNullable<CaptureContext['exports']>` |
