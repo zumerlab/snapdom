@@ -227,7 +227,7 @@ The second engine is experimental: it still needs a compatible browser with its 
 
 ## Migrating from v2
 
-The main capture pattern remains `snapdom(element, options)`. Review these changes before upgrading:
+The main capture pattern remains `snapdom(element, options)`. This guide compares v3 with **v2.24.16**; review these changes before upgrading:
 
 | In v2 | In v3 | What to change |
 | --- | --- | --- |

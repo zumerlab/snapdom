@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 #### v3.0.0-beta.0
 
-> 15 August 2026
+> Unreleased
 
 The first v3 beta. **Breaking**: read the migration table in the README before upgrading.
 

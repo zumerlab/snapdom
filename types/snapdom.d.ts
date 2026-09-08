@@ -5,7 +5,7 @@
  * Notes:
  * - Style compression is internal (no public option).
  * - Recognized icon fonts are rendered as images; `embedFonts` controls text fonts.
- * - This file preserves backward compatibility with earlier defs.
+ * - These are the v3 public declarations; see the migration guide for removed options.
  */
 
 /* =========================
