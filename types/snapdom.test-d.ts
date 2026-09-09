@@ -16,9 +16,19 @@ import type {
   CaptureContext,
   BlobType,
   BlobOptions,
+  CachePolicy,
+  CaptureMeta,
+  CaptureStage,
+  WarningCode,
 } from './snapdom'
 
 declare const el: Element
+
+// CaptureResult carries an index signature, so a removed or mistyped member silently becomes
+// `any` and an assignment like `const c: HTMLCanvasElement = await result.toCanvas()` still
+// compiles. These two aliases refuse `any`: Equal<any, X> is false, and Expect only takes true.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type Expect<T extends true> = T
 
 async function mainCallable() {
   const options: SnapdomOptions = {
@@ -105,6 +115,81 @@ function disabledCacheAlias() {
   return options
 }
 
+// v2 options that v3 removed. Each must be rejected as an excess property; the moment one
+// of them is declared again the expected error disappears and tsc fails here.
+function removedV2Options() {
+  // @ts-expect-error burst is engine behavior in v3, not an option.
+  const burst: SnapdomOptions = { burst: true }
+  // @ts-expect-error compress is engine behavior in v3, not an option.
+  const compress: SnapdomOptions = { compress: false }
+  // @ts-expect-error fast was removed in v3.
+  const fast: SnapdomOptions = { fast: true }
+  // @ts-expect-error preCache was removed in v3 (snapdom.preCapture() is the only prefetch).
+  const preCache: SnapdomOptions = { preCache: {} }
+  // @ts-expect-error resolvePicturePlaceholders was removed in v3.
+  const picture: SnapdomOptions = { resolvePicturePlaceholders: true }
+  // @ts-expect-error v2's 'auto' maps to 'soft' at runtime but is not part of the v3 type.
+  const auto: SnapdomOptions = { cache: 'auto' }
+  // @ts-expect-error v2's 'full' maps to 'soft' at runtime but is not part of the v3 type.
+  const full: SnapdomOptions = { cache: 'full' }
+  // @ts-expect-error A keep predicate must be a function (the array form belongs to exclude).
+  const stringFilter: SnapdomOptions = { filter: '.private' }
+  void burst; void compress; void fast; void preCache; void picture; void auto; void full; void stringFilter
+}
+
+// Pins that survive the index signature: the declared member types, checked with Equal.
+type _cachePolicy = Expect<Equal<CachePolicy, 'soft' | 'disabled'>>
+type _cacheOption = Expect<Equal<SnapdomOptions['cache'], CachePolicy | false | undefined>>
+type _url = Expect<Equal<CaptureResult['url'], string>>
+type _needs = Expect<Equal<CaptureResult['needs'], CaptureStage>>
+type _meta = Expect<Equal<CaptureResult['meta'], Readonly<CaptureMeta>>>
+type _warnings = Expect<Equal<CaptureResult['warnings'], Array<{ code: WarningCode; message: string; detail?: unknown }>>>
+type _toRaw = Expect<Equal<ReturnType<CaptureResult['toRaw']>, string>>
+type _toSvg = Expect<Equal<ReturnType<CaptureResult['toSvg']>, Promise<HTMLImageElement>>>
+type _toImg = Expect<Equal<ReturnType<CaptureResult['toImg']>, Promise<HTMLImageElement>>>
+type _toCanvas = Expect<Equal<ReturnType<CaptureResult['toCanvas']>, Promise<HTMLCanvasElement>>>
+type _toBlob = Expect<Equal<ReturnType<CaptureResult['toBlob']>, Promise<Blob>>>
+type _toPng = Expect<Equal<ReturnType<CaptureResult['toPng']>, Promise<HTMLImageElement>>>
+type _toJpeg = Expect<Equal<ReturnType<CaptureResult['toJpeg']>, Promise<HTMLImageElement>>>
+type _toJpg = Expect<Equal<ReturnType<CaptureResult['toJpg']>, Promise<HTMLImageElement>>>
+type _toWebp = Expect<Equal<ReturnType<CaptureResult['toWebp']>, Promise<HTMLImageElement>>>
+type _download = Expect<Equal<ReturnType<CaptureResult['download']>, Promise<void>>>
+type _to = Expect<Equal<ReturnType<CaptureResult['to']>, Promise<any>>>
+type _ctxExclude = Expect<Equal<CaptureContext['exclude'], readonly string[]>>
+type _ctxPredicates = Expect<Equal<CaptureContext['excludePredicates'], ReadonlyArray<(el: Element) => boolean> | null>>
+type _ctxFilter = Expect<Equal<CaptureContext['filter'], ((el: Element) => boolean) | null>>
+type _ctxShouldExclude = Expect<Equal<CaptureContext['shouldExclude'], (el: Element) => boolean>>
+type _fallbackInfo = Expect<Equal<
+  Parameters<Extract<SnapdomOptions['fallbackURL'], (...args: any) => any>>[0],
+  { width?: number; height?: number; src?: string; element?: HTMLImageElement }
+>>
+type _fallbackReturn = Expect<Equal<
+  ReturnType<Extract<SnapdomOptions['fallbackURL'], (...args: any) => any>>,
+  string | Promise<string>
+>>
+
+function warningCodes(result: CaptureResult) {
+  const known: WarningCode = 'backdrop-filter-failed'
+  const custom: WarningCode = 'my-plugin-code'
+  const first = result.warnings[0]
+  const detail: unknown = first.detail
+  void known; void custom; void detail
+}
+
+async function fallbackCallback() {
+  await snapdom(el, {
+    fallbackURL: async ({ width, height, src, element }) => {
+      const w: number | undefined = width
+      const h: number | undefined = height
+      const s: string | undefined = src
+      const img: HTMLImageElement | undefined = element
+      void w; void h; void s; void img
+      return 'https://example.com/fallback.png'
+    },
+  })
+  await snapdom(el, { fallbackURL: () => 'https://example.com/fallback.png' })
+}
+
 async function canonicalBlobFormat() {
   const options: BlobOptions = { format: 'png' }
   const legacy: BlobOptions = { type: 'jpeg' }
@@ -155,6 +240,9 @@ void independentFilterOptions
 void staticNamespaceHelpers
 void invalidateOption
 void disabledCacheAlias
+void removedV2Options
+void warningCodes
+void fallbackCallback
 void canonicalBlobFormat
 void pluginShape
 void normalizedPluginContext

@@ -25,10 +25,27 @@ export type IconFontMatcher = string | RegExp;
 export type CaptureStage = "clone" | "render";
 /**
  * Persistent resource/style cache policy. 'soft' is the v3 default; 'disabled' (or
- * `cache: false`) clears and bypasses those caches for debugging. The legacy 'full' and
- * 'auto' strings remain accepted but both normalize to 'soft'.
+ * `cache: false`) empties and bypasses those caches for debugging. v2's 'auto' and 'full'
+ * are no longer part of the type: at runtime both map to 'soft' (see the README migration
+ * table), so a stored v2 value keeps working while new code gets the v3 vocabulary.
  */
-export type CachePolicy = "soft" | "disabled" | "auto" | "full";
+export type CachePolicy = "soft" | "disabled";
+
+/**
+ * Stable codes of the degradations a capture records in `result.warnings`. Every literal
+ * here is pushed by the runtime (grep `sessionWarn(` in src); the trailing `string & {}`
+ * keeps the union open without widening the literals away.
+ */
+export type WarningCode =
+  | "image-fallback"
+  | "raster-clamp"
+  | "canvas-clamp"
+  | "safari-png-fallback"
+  | "reconcile-risk"
+  | "backdrop-filter-failed"
+  | "selection-compose-failed"
+  | "shrink-failed"
+  | (string & {});
 
 /** Geometry of the rendered capture, expressed in viewBox-style CSS pixels. */
 export interface CaptureMeta {
@@ -214,20 +231,21 @@ export interface SnapdomOptions {
   filename?: string;
 
   /**
-   * Fallback image when <img> fails to load.
-   * Can be a fixed URL or a callback that receives measured dimensions.
-   * With a callback, each new capture retries the capture pipeline and calls it when a
-   * fallback is needed; an earlier capture result keeps its original image.
+   * Fallback image when an <img> fails to inline. A fixed URL, or a callback that receives
+   * the measured box, the failing `src` and the source `<img>` and returns the URL to fetch
+   * instead (a Promise is awaited). A falsy return, a throw or a failed fallback fetch falls
+   * through to the placeholder. With a callback, each new capture runs the pipeline again
+   * and calls it when a fallback is needed; an earlier capture result keeps its image.
    */
   fallbackURL?:
     | string
-    | ((dims: { width?: number; height?: number }) => string);
+    | ((info: { width?: number; height?: number; src?: string; element?: HTMLImageElement }) => string | Promise<string>);
 
   /**
-   * Persistent resource/style cache behavior. 'disabled' (or false) clears and bypasses
-   * those persistent caches whenever the capture pipeline runs — a debug/testing escape
-   * hatch. 'soft' is the default; legacy 'auto'/'full' values remain accepted and normalize
-   * to it. Automatic repeat-capture memoization and differential recapture are separate.
+   * Persistent resource/style cache behavior. 'disabled' (or false) empties and bypasses
+   * those persistent caches whenever the capture pipeline runs, a debug/testing escape
+   * hatch. 'soft' is the default. v2's 'auto'/'full' map to 'soft' at runtime and are gone
+   * from the type. Automatic repeat-capture memoization and differential recapture are separate.
    */
   cache?: CachePolicy | false;
 
@@ -265,9 +283,20 @@ export interface SnapdomOptions {
  * `invalidate`, `cache`). `format` is canonical; deprecated `type` stays synchronized with
  * it, and changing either supported name in `beforeSnap` is honored.
  */
-export interface CaptureContext extends SnapdomOptions {
+export interface CaptureContext extends Omit<SnapdomOptions, "exclude" | "filter"> {
   /** Input element being captured. */
   element: Element;
+
+  /** Exclusion selectors only, always an array here: createContext splits the option's
+   *  predicates off into `excludePredicates`. A plugin deciding whether a node stays should
+   *  call `shouldExclude(el)` rather than re-run either list. */
+  exclude: readonly string[];
+
+  /** The predicates passed through `exclude`, or null when there were none. */
+  readonly excludePredicates: ReadonlyArray<(el: Element) => boolean> | null;
+
+  /** The keep predicate, or null when the option was not set. */
+  filter: ((el: Element) => boolean) | null;
 
   /** Canonical normalized capture format. */
   format: BlobType;
@@ -437,6 +466,8 @@ export type PluginUse =
  * Capture result API
  * ========================= */
 
+/** Options of `download()`. A `dpr` passed alongside is ignored: the file is always written
+ *  at dpr 1, the capture's CSS size in pixels, independent of the monitor it was taken on. */
 export interface DownloadOptions {
   filename?: string;
   /** Output format for the downloaded file. Default "png". */
@@ -482,11 +513,10 @@ export interface CaptureResult {
 
   /**
    * Degradation log for this capture — empty in the common case. Entries record the
-   * capture's silent fallbacks: {code: 'image-fallback' | 'raster-clamp' | 'canvas-clamp'
-   * | 'safari-png-fallback' | 'reconcile-risk' | string, message, detail?}. Export-time
-   * entries (clamps, PNG fallback) append after the corresponding export resolves.
+   * capture's silent fallbacks, keyed by `WarningCode`. Export-time entries (clamps, PNG
+   * fallback) append after the corresponding export resolves.
    */
-  warnings: Array<{ code: string; message: string; detail?: unknown }>;
+  warnings: Array<{ code: WarningCode; message: string; detail?: unknown }>;
 
   /**
    * Authoritative render viewBox/content geometry — the same frozen record the exporters
