@@ -1083,7 +1083,9 @@ function snapshotIsCurrent(rec, el) {
  *    once per capture in captureDOM → options.__styleShare.
  *  - element: never for form controls (UA styles their state without author CSS), never for
  *    the focused element (UA :focus-visible ring), never for shadow-root content (its sheets
- *    are outside the scan — universeFor already forces full reads there).
+ *    are outside the scan — universeFor already forces full reads there), and never for a
+ *    shadow host or a slotted node, which that unscanned sheet styles through :host() and
+ *    ::slotted(). Pinned by __tests__/regression.shadowHostStructural.test.js.
  *
  * The share map lives on the SESSION — one capture — so no cross-capture staleness is
  * possible; the per-element snapshotCache (cross-capture, stamp-guarded) sits in front
@@ -1244,7 +1246,8 @@ function shareLists(rec, el) {
 export function pseudoSnapshotFor(source, pseudo, style, session, options) {
   const st = options && options.__styleShare ? session && session.__styleShare : null
   const id = st ? st.ids.get(source) : undefined
-  if (id === undefined || id === -1) return snapshotComputedStyle(style, pseudoUniverseFor(source))
+  // Same shadow-host and slotted escape as the element share (`:host(:nth-child(2))::before`).
+  if (id === undefined || id === -1 || source.shadowRoot || source.assignedSlot) return snapshotComputedStyle(style, pseudoUniverseFor(source))
   const key = id + pseudo
   const snaps = st.pseudo || (st.pseudo = new Map())
   const rec = snaps.get(key)
@@ -1536,10 +1539,14 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     const id = identityFor(source, st)
     const doc = source.ownerDocument || document
     const active = doc.activeElement
+    // A shadow host and a slotted node are styled by a root sheet the scan never read:
+    // `:host(:not(:first-child))` split three identical #488 groups and the twins painted
+    // the first one's zero margin (the same rule inside ::slotted() splits slotted twins).
     const eligible = id !== -1 &&
       !SHARE_SKIP_TAGS.has(source.tagName) &&
       !(active && active !== doc.body && active !== doc.documentElement && active === source) &&
-      (!source.getRootNode || source.getRootNode() === doc)
+      (!source.getRootNode || source.getRootNode() === doc) &&
+      !source.shadowRoot && !source.assignedSlot
     if (eligible) shareInfo = { st, id }
   }
   const snap = getSnapshot(source, pre, ctx.options, shareInfo)

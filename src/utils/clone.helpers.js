@@ -82,16 +82,18 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scope
 export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   if (!cssText) return ''
 
-  // 1) :host(.foo) y :host
+  // 1) :host-context(Y) before :host: `\b` sits between the `t` and the `-`, so the bare
+  //    :host pass used to eat its head and leave `-context(Y)`, a selector the parser drops.
+  cssText = cssText.replace(/:host-context\(([^)]+)\)/g, (_, sel) => {
+    return `:where(:where(${sel.trim()}) ${scopeSelector})`
+  })
+
+  // 2) :host(.foo) and :host. `[^)]+` stops at the first `)` of `:host(:not(:first-child))`,
+  //    and the leftover one closes the `:is(` it opened, so the output stays balanced.
   cssText = cssText.replace(/:host\(([^)]+)\)/g, (_, sel) => {
     return `:where(${scopeSelector}:is(${sel.trim()}))`
   })
   cssText = cssText.replace(/:host\b/g, `:where(${scopeSelector})`)
-
-  // 2) :host-context(Y)
-  cssText = cssText.replace(/:host-context\(([^)]+)\)/g, (_, sel) => {
-    return `:where(:where(${sel.trim()}) ${scopeSelector})`
-  })
 
   // 3) ::slotted(X) -> a descendant inside the scope, without excluding slotted nodes
   cssText = cssText.replace(/::slotted\(([^)]+)\)/g, (_, sel) => {
