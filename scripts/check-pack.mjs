@@ -95,12 +95,22 @@ try {
   run('tar', ['-xzf', pluginTgz, '-C', pluginWork])
   const pluginPkg = JSON.parse(readFileSync(join(pluginWork, 'package', 'package.json'), 'utf8'))
   const pluginEntries = Object.entries(pluginPkg.exports)
-  for (const [subpath, path] of pluginEntries) {
-    for (const target of [path, path.replace(/\.js$/, '.d.ts')]) {
-      try { readFileSync(join(pluginWork, 'package', target)); pass(`plugins ${subpath}: ${target}`) }
-      catch { fail(`MISSING plugin entrypoint: ${target}`) }
-    }
+  // Same guard as the core tarball. `files: ["*.js", "*.d.ts"]` ships whatever sits next to the
+  // plugins, so the listing must be exactly every export with its declarations plus the three
+  // modules the plugins share between them, and nothing else.
+  const PLUGIN_REQUIRED = [
+    'package/package.json', 'package/README.md', 'package/LICENSE',
+    ...pluginEntries.flatMap(([, path]) => [path, path.replace(/\.js$/, '.d.ts')].map((p) => 'package/' + p.slice(2))),
+    'package/capture-frames.js', 'package/privacy-policy.js', 'package/redact-clone.js',
+  ]
+  const pluginListed = run('tar', ['-tzf', pluginTgz]).split('\n').map((s) => s.trim()).filter(Boolean)
+  for (const f of PLUGIN_REQUIRED) {
+    if (pluginListed.includes(f)) pass(`plugins ${f}`)
+    else fail(`MISSING from plugins tarball: ${f}`)
   }
+  const pluginExtra = pluginListed.filter((f) => !PLUGIN_REQUIRED.includes(f))
+  if (pluginExtra.length) fail(`EXTRA files in plugins tarball: ${pluginExtra.join(', ')}`)
+  else pass('nothing in the plugins tarball beyond those')
   // Install both actual tarballs offline: this also catches incompatible peer dependencies.
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', version: '1.0.0', type: 'module', private: true }))
   run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', tgz, pluginTgz], { cwd: consumer })
