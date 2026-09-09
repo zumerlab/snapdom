@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom",
-  "version": "3.0.0-alpha.0",
+  "version": "3.0.0-beta.0",
   "description": "Browser capture engine for web interfaces. Reusable images and canvas, with plugins for HTML, context, PDF and recordings.",
   "type": "module",
   "main": "./dist/snapdom.js",
