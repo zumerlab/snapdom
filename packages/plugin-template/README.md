@@ -6,32 +6,25 @@ name, description and example option with your own before publishing. See the
 
 ## Install
 
-Before v3 is published, start from the template in the v3 checkout. Build the core,
-copy this directory to your own project, then install that built checkout explicitly:
+Install SnapDOM as a dev dependency:
 
 ```bash
-# Inside the SnapDOM v3 checkout:
-npm run compile
-cp -R packages/plugin-template /path/to/snapdom-plugin-yourname
-cd /path/to/snapdom-plugin-yourname
-npm install --save-dev /absolute/path/to/snapdom-v3
+npm install --save-dev @zumer/snapdom
 ```
 
-Replace the example paths with your actual directories. The template has no relative
-core dependency: it works independently of the monorepo's directory layout.
-
-After v3 and this template are published in the main repository, scaffold with:
+Scaffold a plugin from this template:
 
 ```bash
 npx degit zumerlab/snapdom/packages/plugin-template snapdom-plugin-yourname
 cd snapdom-plugin-yourname
-npm install --save-dev @zumer/snapdom@3
+npm install --save-dev @zumer/snapdom
 ```
 
-For a published beta, install its explicit version instead of `@3`. Keep the peer range
-aligned with the versions you test. The public [installation notes](https://github.com/zumerlab/snapdom#installation)
-and [plugin specification](https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md)
-track the released core; use the specification in your v3 checkout before publication.
+The template has no relative core dependency, so it works independently of the monorepo's
+directory layout. Keep the peer range aligned with the versions you test. The public
+[installation notes](https://github.com/zumerlab/snapdom#installation) and
+[plugin specification](https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md)
+track the released core.
 
 ## Usage
 

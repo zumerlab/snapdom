@@ -26,6 +26,6 @@ export interface AgentMapOptions {
 
 /**
  * Adds `result.toAgentMap()` for visual agents: an annotated screenshot plus a structured map
- * of the interactive elements and their bounding boxes. Published as `prompt-export` before v3.
+ * of the interactive elements and their bounding boxes. Published as `prompt-export` until 2.12.0 renamed it.
  */
 export declare function agentMap(options?: AgentMapOptions): SnapdomPlugin;

@@ -41,7 +41,7 @@
   "bugs": {
     "url": "https://github.com/zumerlab/snapdom/issues"
   },
-  "homepage": "https://zumerlab.github.io/snapdom/",
+  "homepage": "https://snapdom.dev/",
   "peerDependencies": {
     "@zumer/snapdom": ">=3.0.0-0"
   },

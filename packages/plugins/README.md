@@ -4,17 +4,18 @@ Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a capture e
 web apps. Core exports images and canvases; this package adds HTML, structured context,
 element maps, PDF, ASCII, visual transforms and live GIF/video recording.
 
-This reference covers the v3 beta checkout. See [Installation](../../README.md#installation)
-for release availability. Image, HTML and structured exports use captured state; GIF and
-video start a sequence of live captures when their export method is called.
+Image, HTML and structured exports use captured state; GIF and video start a sequence of
+live captures when their export method is called.
 
 ## Install
 
+Install the plugins next to a matching core:
+
 ```bash
-npm install @zumer/snapdom-plugins
+npm install @zumer/snapdom @zumer/snapdom-plugins
 ```
 
-This installs the published package. Use matching core and plugin versions.
+Plugins 3.x need a 3.x core; npm refuses to install them next to an older core.
 
 ## Usage
 
@@ -51,7 +52,7 @@ import { filter } from 'https://esm.sh/@zumer/snapdom-plugins/filter';
 ### `filter`
 
 Applies CSS filter effects to the clone, overriding authored filters. `preset` takes
-precedence over `filter`.
+precedence over `filter`; an unknown preset logs a warning and `filter` applies.
 
 ```js
 import { filter } from '@zumer/snapdom-plugins/filter';
@@ -144,6 +145,7 @@ snapdom(el, { excludeMode: 'remove', plugins: [redaction] });
 ```
 
 The default mask keeps the string's length. Glyph widths can differ, so wrapping and truncation may change.
+A `<select>` is not masked (its visible option label stays); hide it with a `blocks` rule instead.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -219,6 +221,8 @@ console.log(art);
 | `width` | `number` | `80` | Character width of output |
 | `charset` | `string` | `' .:-=+*#%@'` | Characters from lightest to darkest |
 | `invert` | `boolean` | `false` | Invert luminance mapping |
+
+`toAscii({ width, charset, invert })` overrides any of the three per call.
 
 ---
 
@@ -486,6 +490,7 @@ Start from the plugin template:
 
 ```bash
 npx degit zumerlab/snapdom/packages/plugin-template my-plugin
+cd my-plugin && npm install --save-dev @zumer/snapdom
 ```
 
 See [PLUGIN_SPEC.md](../../PLUGIN_SPEC.md) for the full hook specification and [CONTRIBUTING_PLUGINS.md](../../CONTRIBUTING_PLUGINS.md) to get your plugin listed on the community page.

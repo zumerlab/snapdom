@@ -1,22 +1,27 @@
 # Contributing Plugins to SnapDOM
 
 Plugins can transform captured state, add exports or connect captures to another service.
-This guide targets the v3 beta. See [Installation](./README.md#installation) for the current
-checkout and published versions.
+This guide targets SnapDOM v3. See [Installation](./README.md#installation) for the published
+versions.
 
 ## Quick Start
 
-Before publication, copy the template from this v3 checkout and install the built core:
+Install SnapDOM as a dev dependency:
 
 ```bash
-npm run compile
-cp -R packages/plugin-template /path/to/snapdom-plugin-yourname
-cd /path/to/snapdom-plugin-yourname
-npm install --save-dev /absolute/path/to/snapdom-v3
+npm install --save-dev @zumer/snapdom
 ```
 
-Use your actual paths. After v3 is released, the [template installation guide](./packages/plugin-template/README.md#install)
-also covers scaffolding from GitHub and selecting a published version.
+Scaffold a plugin from the template:
+
+```bash
+npx degit zumerlab/snapdom/packages/plugin-template snapdom-plugin-yourname
+cd snapdom-plugin-yourname
+npm install --save-dev @zumer/snapdom
+```
+
+The [template installation guide](./packages/plugin-template/README.md#install)
+covers the same steps and the peer range to keep.
 
 ```js
 // index.js
@@ -115,7 +120,7 @@ list on the SnapDOM site.
 
 ## Quality Guidelines
 
-1. Test against the SnapDOM versions you declare as supported, including v3 beta when targeting this checkout.
+1. Test against the SnapDOM versions you declare as supported, including v3.
 2. Restore any changes to the live DOM.
 3. Recover from errors where possible; otherwise report the failure instead of returning incomplete output.
 4. Write a README with installation, usage, options and an example.

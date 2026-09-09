@@ -22,8 +22,10 @@
  *
  * The snapshot is taken during the capture, not when toContext() is called: a deferred read
  * would describe whatever the page looks like THEN, which is a different instant from the
- * image. toContext() only formats what was already frozen — `format` and `maxTextLength`
- * still apply per call; `maxNodes` and `geometry` are decided when the snapshot is taken.
+ * image. toContext() only formats what was already frozen. `format`, `maxTextLength` and
+ * `geometry` apply per call, but a per-call `geometry: true` can only show boxes the
+ * snapshot recorded; `maxNodes` and whether boxes are recorded at all are decided when the
+ * snapshot is taken.
  *
  * @param {Object} [options]
  * @param {'outline'|'json'} [options.format='outline']
