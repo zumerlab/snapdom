@@ -32,4 +32,34 @@ describe('entry keyframe animations do not blank the captured element', () => {
     expect(px[0]).toBeLessThan(60)
     expect(px[3]).toBeGreaterThan(200) // fully opaque, not the 0% frame
   })
+
+  it('a currently non-generated pseudo does not reappear when its cloned animation restarts', async () => {
+    const style = mount(document.createElement('style'))
+    style.textContent = `
+      @keyframes snapPseudoDisappear {
+        from { display: block; }
+        to { display: none; }
+      }
+      .animated-pseudo::before {
+        content: "";
+        display: block;
+        width: 60px;
+        height: 60px;
+        background: rgb(255, 0, 0);
+        animation: snapPseudoDisappear 10s linear both;
+      }
+    `
+    const box = mount(document.createElement('div'))
+    box.className = 'animated-pseudo'
+    box.style.cssText = 'width:60px;height:60px;background:white;margin:0;'
+    const [animation] = box.getAnimations({ subtree: true })
+    animation.currentTime = 10000
+    animation.pause()
+    expect(getComputedStyle(box, '::before').display).toBe('none')
+
+    const canvas = await snapdom.toCanvas(document.body, { dpr: 1 })
+    const pixel = canvas.getContext('2d').getImageData(30, 30, 1, 1).data
+
+    expect([...pixel]).toEqual([255, 255, 255, 255])
+  })
 })

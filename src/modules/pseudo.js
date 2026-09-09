@@ -474,6 +474,19 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
     try {
       const style = getStyle(source, pseudo)
       if (!style) continue
+      // ::before and ::after do not generate a box when content is none/normal,
+      // and no pseudo-element generates a box when display is none. Paint and
+      // layout styles cannot make those non-generated boxes visible.
+      const nonGenerated = style.display === 'none' ||
+        (pseudo !== '::first-letter' && (style.content === 'none' || style.content === 'normal'))
+      if (nonGenerated) {
+        // A cloned stylesheet can restart a pseudo animation from a visible
+        // keyframe, so suppress the native pseudo even though no replacement
+        // node is needed for the currently captured frame.
+        if (pseudo === '::before') clone.dataset.snapdomHasBefore = '1'
+        if (pseudo === '::after') clone.dataset.snapdomHasAfter = '1'
+        continue
+      }
       // Skip visually empty pseudo-elements early
       const isEmptyPseudo =
         style.content === 'none' &&
