@@ -119,6 +119,26 @@ describe('iconToImage', () => {
     expect(width).toBeGreaterThan(0)
     expect(height).toBeGreaterThan(0)
   })
+
+  it('applies font style while measuring and rasterizing icon glyphs', async () => {
+    const context = {
+      scale: vi.fn(),
+      font: '',
+      textAlign: '',
+      textBaseline: '',
+      fillStyle: '',
+      fillText: vi.fn(),
+    }
+    ctxSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context)
+    toDataURLSpy = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => 'data:image/png;base64,TEST')
+    const appendSpy = vi.spyOn(document.body, 'appendChild')
+
+    await iconToImage('\ue001', 'MultiIcon', '700', 32, '#123456', 'italic')
+
+    const measurement = appendSpy.mock.calls.find(([node]) => node instanceof HTMLSpanElement)?.[0]
+    expect(measurement?.style.fontStyle).toBe('italic')
+    expect(context.font).toBe('italic 700 32px "MultiIcon"')
+  })
 })
 
 // ========== embedCustomFonts ==========

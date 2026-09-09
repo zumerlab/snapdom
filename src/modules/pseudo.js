@@ -546,6 +546,7 @@ const { text: cleanContent, incs } =
       const fontFamily = style.fontFamily
       const fontSize = parseInt(style.fontSize) || 32
       const fontWeight = parseInt(style.fontWeight) || false
+      const fontStyle = style.fontStyle || 'normal'
       const color = style.color || '#000'
       const transform = style.transform
 
@@ -642,7 +643,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // ---- Content handling (icon-font glyphs / url() / text) ----
       if (isIconFont2 && cleanContent && cleanContent.length === 1) {
         const { dataUrl, width: w, height: h } =
-          await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color)
+          await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color, fontStyle)
         const imgEl = document.createElement('img')
         imgEl.src = dataUrl
         imgEl.style = `height:${fontSize}px;width:${(w / h) * fontSize}px;object-fit:contain;`

@@ -19,9 +19,10 @@ import { nextFrame } from '../utils/browser.js'
  * @param {string|number} fontWeight - The font weight
  * @param {number} [fontSize=32] - The font size in pixels
  * @param {string} [color="#000"] - The color to use
+ * @param {string} [fontStyle="normal"] - The font style
  * @returns {Promise<{dataUrl:string,width:number,height:number}>} Data URL and intrinsic size
  */
-export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = '#000') {
+export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = '#000', fontStyle = 'normal') {
   fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, '')
   const dpr = window.devicePixelRatio || 1
 
@@ -34,6 +35,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   span.style.visibility = 'hidden'
   span.style.fontFamily = `"${fontFamily}"`
   span.style.fontWeight = fontWeight || 'normal'
+  span.style.fontStyle = fontStyle || 'normal'
   span.style.fontSize = `${fontSize}px`
   span.style.lineHeight = '1'
   span.style.whiteSpace = 'nowrap'
@@ -52,7 +54,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
 
   const ctx = canvas.getContext('2d')
   ctx.scale(dpr, dpr)
-  ctx.font = fontWeight ? `${fontWeight} ${fontSize}px "${fontFamily}"` : `${fontSize}px "${fontFamily}"`
+  ctx.font = `${fontStyle || 'normal'} ${fontWeight || 'normal'} ${fontSize}px "${fontFamily}"`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
   ctx.fillStyle = color

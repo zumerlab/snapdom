@@ -93,6 +93,35 @@ describe('inlinePseudoElements', () => {
     window.getComputedStyle.mockRestore()
   })
 
+  it('passes the pseudo-element font style to icon rasterization', async () => {
+    const el = document.createElement('div')
+    const clone = document.createElement('div')
+    const styleTag = document.createElement('style')
+    styleTag.textContent = `.pseudo-font-style-target::before {
+      content: "\\e001";
+      font-family: "Font Awesome";
+      font-size: 32px;
+      font-weight: 700;
+      font-style: italic;
+      color: rgb(18, 52, 86);
+    }`
+    document.head.appendChild(styleTag)
+    el.className = 'pseudo-font-style-target'
+    document.body.appendChild(el)
+    fonts.iconToImage.mockResolvedValue({ dataUrl: 'data:image/png;base64,icon', width: 32, height: 32 })
+    const pseudoStyle = getComputedStyle(el, '::before')
+
+    try {
+      await inlinePseudoElements(el, clone, sessionCache, {})
+      expect(fonts.iconToImage).toHaveBeenCalledWith(
+        '\ue001', pseudoStyle.fontFamily, 700, 32, pseudoStyle.color, 'italic'
+      )
+    } finally {
+      el.remove()
+      styleTag.remove()
+    }
+  })
+
   it('handles ::before with url content', async () => {
     const el = document.createElement('div')
     const clone = document.createElement('div')
