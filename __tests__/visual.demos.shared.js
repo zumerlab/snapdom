@@ -22,7 +22,7 @@
 //
 // The static review report is written to __snapshots__/visual/report.html.
 
-import { describe, it, beforeEach, afterAll, inject, vi } from 'vitest'
+import { describe, it, beforeEach, afterEach, afterAll, inject, vi } from 'vitest'
 import { defineDemoSuite } from '@zumer/snapdiff/vitest/suite'
 import { networkGuard, networkStatus, pageNeedsNetwork } from './helpers/network-gate.js'
 import { skippedVisualDemos, assertVisualBaselineMode } from '../scripts/visual-policy.mjs'
@@ -282,7 +282,6 @@ const overrides = {
   },
   // Real KaTeX from CDN (issue #454 repro): needs time to load and lay out fonts.
   'd454-katex-hide-tail': { wait: 2500 },
-  // (This demo and d489 below live in the v2 checkout; the override is inert without them.)
   // Paginates one capture into three crop'd canvases at load. The baseline holds the
   // live document next to the rasterized pages, so a wrong crop origin or a stretched
   // page shows up as the tiles no longer reconstructing the source.
@@ -331,6 +330,14 @@ export function defineDemoShard (shardIndex, shardCount) {
   // link (six shards times three engines is eighteen workers pulling from CDNs at once),
   // so the reading has to come from the moment the demo is about to load.
   beforeEach(guard)
+
+  // `retry: 1` above reports a demo that failed once and passed on the retry as plain green,
+  // which is also what an intermittent capture bug looks like. Name each one in the run log so
+  // a flaky capture stays visible instead of being absorbed by the gate's second chance.
+  afterEach((ctx) => {
+    const result = ctx.task.result
+    if (result.state === 'pass' && result.retryCount > 0) console.log(`[visual] ${ctx.task.name} passed on retry`)
+  })
 
   // Say which mode the run ended up in. A serialised or skipped demo is not the same
   // coverage as a green one, and a run that quietly downgraded itself should say so.

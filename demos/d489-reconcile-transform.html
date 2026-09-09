@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>#489 — reconcile with nested transforms</title>
+        <script src="/dist/snapdom.js"></script>
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                padding: 28px;
+                background: #eef1f5;
+                color: #172033;
+                font: 14px/1.4 system-ui, sans-serif;
+            }
+            #target {
+                max-width: 1160px;
+                margin: 0 auto;
+                padding: 24px;
+                border: 1px solid #cbd2dc;
+                border-radius: 12px;
+                background: #fff;
+            }
+            h1 { margin: 0 0 6px; font-size: 22px; }
+            .intro { margin: 0 0 20px; color: #4b566b; }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+            .card {
+                min-width: 0;
+                padding: 12px;
+                border: 1px solid #d9dee7;
+                border-radius: 8px;
+                background: #f8f9fb;
+            }
+            h2 { margin: 0 0 10px; font-size: 14px; }
+            .stage, .output {
+                width: 334px;
+                height: 169px;
+                overflow: hidden;
+                border: 1px solid #aeb7c5;
+                background: #fff;
+            }
+            .scene {
+                position: relative;
+                width: 220px;
+                height: 110px;
+                overflow: hidden;
+                transform: scale(1.5);
+                transform-origin: 0 0;
+                background: #fee47a;
+            }
+            .stripe {
+                position: absolute;
+                inset: 0 0 auto;
+                height: 18px;
+                background: #2674c8;
+            }
+            .probe {
+                position: absolute;
+                left: 50px;
+                top: 42px;
+                width: 80px;
+                height: 32px;
+                transform: scale(1.5);
+                transform-origin: 0 0;
+                background: rgb(234, 61, 47);
+            }
+            canvas { display: block; }
+            .metric {
+                margin: 9px 0 0;
+                color: #657086;
+                font-variant-numeric: tabular-nums;
+            }
+            .metric.ok { color: #14733a; font-weight: 650; }
+            .metric.bad { color: #b42318; font-weight: 650; }
+            @media (max-width: 1120px) {
+                .grid { grid-template-columns: 1fr; }
+            }
+        </style>
+    </head>
+    <body>
+        <main id="target">
+            <h1>#489 — transformed boxes with <code>reconcile</code></h1>
+            <p class="intro">The red box must stay 180 × 72 px in all three panels.</p>
+            <div class="grid">
+                <section class="card">
+                    <h2>Live DOM</h2>
+                    <div class="stage">
+                        <div class="scene" id="source">
+                            <div class="stripe"></div>
+                            <div class="probe" id="probe"></div>
+                        </div>
+                    </div>
+                    <p class="metric ok" id="live-metric">measuring…</p>
+                </section>
+                <section class="card">
+                    <h2><code>reconcile: false</code></h2>
+                    <div class="output" id="default-output"></div>
+                    <p class="metric" id="default-metric">capturing…</p>
+                </section>
+                <section class="card">
+                    <h2><code>reconcile: true</code></h2>
+                    <div class="output" id="reconcile-output"></div>
+                    <p class="metric" id="reconcile-metric">capturing…</p>
+                </section>
+            </div>
+        </main>
+        <script>
+            function redBounds(canvas) {
+                const { width, height } = canvas
+                const data = canvas.getContext("2d", { willReadFrequently: true })
+                    .getImageData(0, 0, width, height).data
+                let minX = width, minY = height, maxX = -1, maxY = -1
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const i = (y * width + x) * 4
+                        if (data[i] > 200 && data[i + 1] < 90 && data[i + 2] < 90 && data[i + 3] > 200) {
+                            if (x < minX) minX = x
+                            if (x > maxX) maxX = x
+                            if (y < minY) minY = y
+                            if (y > maxY) maxY = y
+                        }
+                    }
+                }
+                return { width: maxX - minX + 1, height: maxY - minY + 1 }
+            }
+
+            function showMetric(node, width, height) {
+                const ok = Math.abs(width - 180) <= 1 && Math.abs(height - 72) <= 1
+                node.textContent = `${width} × ${height} px — ${ok ? "correct" : "regression"}`
+                node.className = `metric ${ok ? "ok" : "bad"}`
+            }
+
+            async function render() {
+                const source = document.getElementById("source")
+                const live = document.getElementById("probe").getBoundingClientRect()
+                showMetric(document.getElementById("live-metric"), live.width, live.height)
+
+                for (const entry of [
+                    { reconcile: false, output: "default-output", metric: "default-metric" },
+                    { reconcile: true, output: "reconcile-output", metric: "reconcile-metric" },
+                ]) {
+                    const result = await snapdom(source, {
+                        reconcile: entry.reconcile,
+                        dpr: 1,
+                        embedFonts: false,
+                        compress: false,
+                    })
+                    const canvas = await result.toCanvas()
+                    document.getElementById(entry.output).replaceChildren(canvas)
+                    const bounds = redBounds(canvas)
+                    showMetric(document.getElementById(entry.metric), bounds.width, bounds.height)
+                }
+                document.title = "#489 — ready"
+            }
+
+            window.__ready = render().catch((error) => {
+                document.getElementById("reconcile-metric").textContent = `ERROR: ${error.message}`
+                document.getElementById("reconcile-metric").className = "metric bad"
+                throw error
+            })
+        </script>
+    </body>
+</html>
