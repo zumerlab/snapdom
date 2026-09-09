@@ -10,6 +10,7 @@
  */
 import { isSafari } from '../utils/browser'
 import { sessionWarn } from '../utils/debug.js'
+import { isHTMLEl, isTag } from '../utils/helpers.js'
 import { markInternalNode } from '../utils/ownership.js'
 
 // #425: browsers cap how large an image they will decode and how large a canvas they
@@ -742,7 +743,8 @@ export async function toCanvas(url, options) {
     // caller looping captures otherwise pays a full-canvas copy per frame to move the pixels
     // onto its own. Assigning width/height resets the canvas state and clears it, so a reused
     // canvas starts as clean as a fresh one.
-    const canvas = (typeof HTMLCanvasElement !== 'undefined' && options.canvas instanceof HTMLCanvasElement)
+    // Canvas targets from iframe documents have a different HTMLCanvasElement constructor.
+    const canvas = (isHTMLEl(options.canvas) && isTag(options.canvas, 'canvas'))
       ? options.canvas
       : document.createElement('canvas')
     // Positive CSS sizes may become subpixel after downscaling (e.g. a 1px divider at
