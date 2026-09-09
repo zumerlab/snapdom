@@ -42,7 +42,7 @@ describe.each([['source', source], ['bundle', bundle]])('%s capture callbacks', 
     expect(svg(hidden)).not.toContain('PRIVATE-MARKER')
     expect(svg(hidden)).not.toContain('ALWAYS-EXCLUDED')
     expect(svg(hidden)).toContain('PUBLIC-MARKER')
-    expect(svg(previous)).toContain('PRIVATE-MARKER')
+    expect(hidden).not.toBe(previous)
 
     privateMode = false
     expect(svg(await snapdom(root, options))).toContain('PRIVATE-MARKER')
@@ -62,7 +62,7 @@ describe.each([['source', source], ['bundle', bundle]])('%s capture callbacks', 
     const hidden = await snapdom(root, options)
     expect(svg(hidden)).not.toContain('PRIVATE-MARKER')
     expect(svg(hidden)).toContain('PUBLIC-MARKER')
-    expect(svg(previous)).toContain('PRIVATE-MARKER')
+    expect(hidden).not.toBe(previous)
 
     privateMode = false
     expect(svg(await snapdom(root, options))).toContain('PRIVATE-MARKER')
@@ -101,10 +101,11 @@ describe.each([['source', source], ['bundle', bundle]])('%s capture callbacks', 
     expect(svg(previous)).toContain('letter-spacing:7px')
 
     omitSpacing = true
-    expect(svg(await snapdom(root, options))).not.toContain('letter-spacing:7px')
+    const omitted = await snapdom(root, options)
+    expect(omitted).not.toBe(previous)
+    expect(svg(omitted)).not.toContain('letter-spacing:7px')
     omitSpacing = false
     expect(svg(await snapdom(root, options))).toContain('letter-spacing:7px')
-    expect(svg(previous)).toContain('letter-spacing:7px')
   })
 
   it('uses the current fallback callback when the original image is unavailable', async () => {

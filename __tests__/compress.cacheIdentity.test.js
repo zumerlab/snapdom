@@ -35,6 +35,8 @@ function png(r,g,b) {
   return 'data:image/png;base64,'+btoa(bin)
 }
 
+// 30 s because each test runs up to three downsampleDataURL calls in a row, and under contention each
+// can wait out a whole WORKER_JOB_TIMEOUT (5 s) before it falls back, past the 15 s default.
 it('does not substitute pixels when distinct PNGs share the sampled cache key', async () => {
   const red = png(255, 0, 0), blue = png(0, 0, 255)
   expect(red.length).toBe(blue.length)
@@ -47,11 +49,11 @@ it('does not substitute pixels when distinct PNGs share the sampled cache key', 
   expect(await firstPixel(second)).toEqual([0, 0, 255, 255])
   const again = await downsampleDataURL(red, 32, 32)
   expect(await firstPixel(again)).toEqual([255, 0, 0, 255])
-})
+}, 30_000)
 
 it('keeps concurrent colliding jobs independent', async () => {
   const sources = [png(255, 0, 0), png(0, 0, 255)]
   const results = await Promise.all(sources.map(src => downsampleDataURL(src, 32, 32)))
   expect(await firstPixel(results[0])).toEqual([255, 0, 0, 255])
   expect(await firstPixel(results[1])).toEqual([0, 0, 255, 255])
-})
+}, 30_000)
