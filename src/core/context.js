@@ -12,6 +12,7 @@
 
 import { normalizeCachePolicy } from './cache.js'
 import { compileIconFontMatchers } from '../modules/iconFonts.js'
+import { isTag } from '../utils/helpers.js'
 
 /** Formats a caller can name in `format` (or legacy `type`). Shared with the export
  *  normalizer in snapdom.js — the same set decides the alias there. */
@@ -130,9 +131,9 @@ export function createContext(options = {}) {
     // Canvas exporter target. A caller looping captures (a live mirror) otherwise pays a
     // full-canvas copy per frame moving the pixels off a throwaway canvas onto its own.
     // Anything that is not a canvas is ignored, so the exporter always has one to draw into.
-    canvas: (typeof HTMLCanvasElement !== 'undefined' && options.canvas instanceof HTMLCanvasElement)
-      ? options.canvas
-      : null,
+    // isTag, not instanceof: a canvas from an iframe document belongs to that window's
+    // HTMLCanvasElement (#494). Pinned by `__tests__/core.context.test.js`.
+    canvas: isTag(options.canvas, 'canvas') ? options.canvas : null,
 
     // Fonts
     // 'auto' (default): embed webfonts only when the element actually uses families the

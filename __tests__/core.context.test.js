@@ -153,3 +153,19 @@ describe('createContext - defaults & normalization', () => {
     expect(ctx.scale).toBe(2)
   })
 })
+
+describe('createContext - canvas target', () => {
+  it('keeps a canvas created by a same-origin iframe document', () => {
+    const iframe = document.createElement('iframe')
+    document.body.appendChild(iframe)
+    try {
+      const canvas = iframe.contentDocument.createElement('canvas')
+      // The control: the parent realm's HTMLCanvasElement does not claim it (#494).
+      expect(canvas instanceof HTMLCanvasElement).toBe(false)
+      expect(createContext({ canvas }).canvas).toBe(canvas)
+      expect(createContext({ canvas: iframe.contentDocument.createElement('div') }).canvas).toBe(null)
+    } finally {
+      iframe.remove()
+    }
+  })
+})

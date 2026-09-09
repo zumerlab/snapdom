@@ -138,7 +138,9 @@ export function resolveMediaQueries(rules) {
       let matches = false
       try { matches = window.matchMedia(rule.conditionText || rule.media.mediaText).matches } catch { }
       if (matches) out += resolveMediaQueries(rule.cssRules)
-    } else if (rule instanceof CSSSupportsRule) {
+    } else if (rule.constructor?.name === 'CSSSupportsRule') {
+      // constructor.name instead of instanceof: a rule from an iframe document belongs to
+      // that window's CSSSupportsRule, so the parent realm's constructor never claims it.
       out += `@supports ${rule.conditionText}{${resolveMediaQueries(rule.cssRules)}}`
     } else if (rule.cssRules && rule.cssRules.length && /@media/i.test(rule.cssText)) {
       // Any other rule that can NEST (a CSS-nesting style rule, @scope, @container): passing
