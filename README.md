@@ -42,7 +42,7 @@ Export images and canvas with the core. Use plugins for self-contained HTML, pag
 
 [Documentation and demos](https://snapdom.dev/) · [Technical features](FEATURES.md) · [Official plugins](packages/plugins/README.md) · [简体中文](README_CN.md)
 
-This checkout documents **v3, currently a prerelease**. The npm and CDN commands below install the published release. Check its version before using the v3 migration guide; a v3 npm tag is not yet available.
+This checkout documents **v3**. The migration guide below compares it with 2.24.16, the last v2 release.
 
 ## What you can build
 
@@ -81,10 +81,10 @@ The result keeps that capture even if the source element later changes. Call `sn
 
 ## Installation
 
-For the published release:
+Install the core and, when you need them, the official plugins; use matching major versions:
 
 ```sh
-npm i @zumer/snapdom
+npm i @zumer/snapdom @zumer/snapdom-plugins
 ```
 
 Or load it in a browser:
@@ -98,7 +98,16 @@ Or load it in a browser:
 </script>
 ```
 
-For v3 before publication, work from this checkout:
+As an ES module from a CDN:
+
+```js
+import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins/html-export';
+```
+
+`https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs` serves the same module. Pin package versions in production.
+
+To run the docs site against a local build of this checkout instead:
 
 ```sh
 npm install
@@ -106,7 +115,7 @@ npm run compile
 npm run site
 ```
 
-The local site runs the local build. The public site's demos load the published package. Pin package versions in production.
+The local site runs the local build. The public site's demos load the published package.
 
 ### Build outputs
 
@@ -167,7 +176,7 @@ const result = await snapdom(card, {
 
 ### Export HTML or structured context
 
-Official plugins are distributed separately as `@zumer/snapdom-plugins`. Use the version that matches your core; this checkout includes the v3 plugin sources.
+Official plugins are published separately as `@zumer/snapdom-plugins` and must match the core major version; they declare a peer dependency on a v3 core. Their sources live in `packages/plugins/` in this checkout.
 
 ```js
 import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
@@ -189,7 +198,7 @@ const result = await snapdom.fromString('<article>Hello</article>');
 const image = await result.toPng();
 ```
 
-`fromString()` mounts the markup offscreen and removes it after capture. Pass trusted or sanitized HTML.
+`fromString()` mounts the markup offscreen and removes it after capture. The string is parsed and activated like markup you wrote yourself: inline handlers such as `<img onerror>` run in the caller's origin, and can keep running after the mount is removed. Sanitize untrusted HTML first, with DOMPurify or equivalent.
 
 ### Feed a WebGL texture
 
@@ -233,13 +242,13 @@ The main capture pattern remains `snapdom(element, options)`. This guide compare
 | --- | --- | --- |
 | Web fonts were opt-in | `embedFonts: 'auto'` | Usually nothing; use `false` only if you want to omit them |
 | Raster width/height could be multiplied by `scale` | Width/height win over scale | Pass the final size: `width: 400` instead of `width: 200, scale: 2` |
-| `burst` opted into repeat memoization | Eligible captures memoize automatically; `burst` is no longer a public option | Remove `burst`; use `invalidate: true` for one fresh capture after unobservable changes such as `sheet.insertRule()` |
+| `burst` opted into repeat memoization | Eligible captures memoize automatically; `burst` is no longer documented or supported | Remove `burst` (the engine still reads it for internal use, do not rely on it) and use `invalidate: true` for one fresh capture after unobservable changes such as `sheet.insertRule()` |
 | `preCache` prepared resources | Removed; `preCapture()` learns capture intent | Remove `preCache`; `preCapture()` is not a drop-in rename |
 | `fast` selected an optimization path | Removed | Delete the option |
 | `filter` / `filterMode` and `exclude` / `excludeMode` could be used together | Both controls and their independent modes remain supported; `exclude` also accepts predicates | Keep existing rules and modes; use the additional predicate form only when useful |
 | `cache: 'auto'` or `'full'` | Both map to `'soft'` | Usually omit it; `'disabled'` / `false` is for debugging |
-| `compress` controlled embedded image downsampling | Image optimization is automatic; the switch is no longer public | Remove `compress`; there is no public opt-out for embedding original assets verbatim |
-| `resolvePicturePlaceholders` / `pictureResolver` configured lazy-image preparation | Responsive/lazy image resolution happens on the clone; these options are no longer public | Remove the options; handle custom loading/timeouts in your app before capture |
+| `compress` controlled embedded image downsampling | Image optimization is automatic; `compress` is no longer documented or supported | Remove `compress`; the engine still reads it for internal use, do not rely on it |
+| `resolvePicturePlaceholders` / `pictureResolver` configured lazy-image preparation | Responsive/lazy image resolution happens on the clone; these options are no longer documented or supported | Remove the options and handle custom loading/timeouts in your app before capture; the engine still reads `resolvePicturePlaceholders` for internal use, do not rely on it |
 | Some visible input values were redacted | Core masks passwords only | Add `redactInputs()` for other fields |
 | `afterExport` returns became the next hook's payload, not the caller's result | Returns are ignored; hooks receive the same export payload | Stop chaining through return values; use `defineExports` to produce a different output |
 | TypeScript exported `PluginExportFacade` | The named type is removed; `ctx.exports` still provides core exporters | Infer it in `defineExports`, or use `NonNullable<CaptureContext['exports']>` |
@@ -264,7 +273,7 @@ Both modes default to `'hide'`. Per node, `data-capture="exclude"` is checked fi
 
 ### Callbacks that read changing application state
 
-Captures with function-valued `filter`, `exclude`, `excludeStyleProps` or `fallbackURL` run fresh so applicable callbacks can read current application state on each new capture. They do not reuse an unchanged capture or an earlier callback's style/fallback decision. You do not need `invalidate` just because a callback's closure changed:
+Captures with function-valued `filter`, `exclude`, `excludeStyleProps` or `fallbackURL` run fresh so applicable callbacks can read current application state on each new capture. They do not reuse an unchanged capture or an earlier callback's style/fallback decision. You do not need `invalidate` just because a callback's closure changed. That freshness has a cost: a function-valued `filter`, `exclude`, `excludeStyleProps` or `fallbackURL` turns off memoization and differential recapture for the capture, so a polling loop with a predicate pays a full capture on every tick. When the rule can be written as a selector, pass the selector and keep the reuse:
 
 ```js
 let privateMode = false;

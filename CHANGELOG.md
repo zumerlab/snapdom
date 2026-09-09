@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 #### v3.0.0-beta.0
 
-> Unreleased
+> 8 September 2026
 
 The first v3 beta. **Breaking**: read the migration table in the README before upgrading.
 
@@ -15,9 +15,10 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
 - `cache` collapsed to `'soft'` (default) and `'disabled'`; `'auto'`/`'full'` map to `'soft'`.
 - `fast` removed — its behaviour is unconditional now.
 - `burst`, `compress`, `resolvePicturePlaceholders` and `pictureResolver` are no longer
-  public options. Capture reuse, image downsampling and responsive/lazy image resolution
-  remain engine behavior. Remove these settings; custom image loading/timeouts belong in
-  the application before capture. There is no public compression opt-out.
+  documented or supported options. Capture reuse, image downsampling and responsive/lazy
+  image resolution remain engine behavior. Remove these settings; custom image
+  loading/timeouts belong in the application before capture. The engine still reads
+  `burst`, `compress` and `resolvePicturePlaceholders` for internal use; do not rely on them.
 - The named TypeScript interface `PluginExportFacade` is removed, but the `ctx.exports`
   facade remains. Infer it in `defineExports` or use `NonNullable<CaptureContext['exports']>`.
 - `afterExport` return values are ignored. In v2.24.16 they only became the next hook's
@@ -28,8 +29,11 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
 - `preCache` is removed, along with the `/preCache` subpath and `window.preCache`. Eligible
   static elements are memoized from their first capture, so the capture is its own warm-up;
   `snapdom.preCapture()` can take it before the click.
-- No CommonJS build, by decision. Up to 2.24.1 `require()` pointed at the IIFE and returned `{}`,
-  so nothing that worked is lost.
+- No CommonJS build, by decision, and no `require` condition in `exports`. Up to 2.24.1
+  `require()` pointed at the IIFE and returned `{}`, so nothing that worked is lost. On Node
+  20.19+ / 22.12+ `require()` loads the ESM build; older Node throws `ERR_REQUIRE_ESM`.
+- The `@zumer/snapdom-plugins/html-in-canvas` subpath of plugins 2.2.2 is gone. Use the
+  core's `engine: 'html-in-canvas'` instead (experimental, not in the shipped bundle).
 
 ⚡ perf
 - Per-capture sessions replace the module-level mutable session; the whole `#463` bug class is
@@ -52,8 +56,8 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
 
 🛠 fix
 - Restore the v2 `filter` / `filterMode` contract alongside `exclude` / `excludeMode`.
-  Both can operate in the same capture with independent hide/remove modes. The earlier
-  beta's removal of `filter` was a compatibility regression, not an equivalent rename.
+  Both can operate in the same capture with independent hide/remove modes. A pre-release
+  checkout briefly removed `filter`; it is restored, with both controls and modes independent.
   Predicate support in `exclude` remains an optional addition.
 - Hidden block spacers retain precise CSS dimensions, including fractional sizes and
   padding/borders. Safari page zoom can round integer layout measurements upward;
@@ -94,6 +98,79 @@ The first v3 beta. **Breaking**: read the migration table in the README before u
 - A stalled `@import` stylesheet can no longer hang a capture forever.
 - `htmlExport` keeps its markup per capture instead of on the plugin instance, so concurrent and
   reused captures no longer export each other's HTML.
+
+Includes every fix shipped on the v2 line through 2.24.16 (#483 to #494).
+
+#### [v2.24.16](https://github.com/zumerlab/snapdom/compare/v2.24.15...v2.24.16)
+
+> 8 September 2026
+
+- exposed internal visual demos for SnapDOM  testing and add new tests [`5766151`](https://github.com/zumerlab/snapdom/commit/5766151f8867eb2e64a6321a0af6f01fe25d65f0)
+- fix: stop discarding a whole stylesheet when one family looks like an icon font [`a154f18`](https://github.com/zumerlab/snapdom/commit/a154f18a7acd24e511f2a8abdefab5a765b5ec51)
+- docs: acknowledge open-source program support [`5b30335`](https://github.com/zumerlab/snapdom/commit/5b3033597e8218a33a2465e7c8bf31c5527ad663)
+
+
+#### [v2.24.15](https://github.com/zumerlab/snapdom/compare/v2.24.12...v2.24.15)
+
+> 30 August 2026
+
+- fix: fractional with. Ref #491 [`cffd222`](https://github.com/zumerlab/snapdom/commit/cffd222a1c125bb3b57ea5a23e1d862efa31e381)
+- fix: update network gate logic to manage lane budget and improve test reliability [`8ae2371`](https://github.com/zumerlab/snapdom/commit/8ae237176e7cc4af32add41f54eb58811fd846ca)
+- fix(clone): drop light DOM that no slot accepted [`b75e88b`](https://github.com/zumerlab/snapdom/commit/b75e88b27480f111ab19983b27d8e79ca1e559d8)
+
+
+#### [v2.24.12](https://github.com/zumerlab/snapdom/compare/v2.24.10...v2.24.12)
+
+> 28 August 2026
+
+- Split visual demo suite into 6 shards and gate network-bound demos [`56b1e01`](https://github.com/zumerlab/snapdom/commit/56b1e013e843e528b8256baacea12b22090e599a)
+- Fix legacy bundle global leakage. Ref #490 [`80fe19d`](https://github.com/zumerlab/snapdom/commit/80fe19d5edc5a38fae9ca53291a2e8261c4575fe)
+
+#### [v2.24.10](https://github.com/zumerlab/snapdom/compare/v2.24.7...v2.24.10)
+
+> 25 August 2026
+
+- fix: transformed reconciliation. Ref #489 [`9b28ab4`](https://github.com/zumerlab/snapdom/commit/9b28ab4d28b7ac56f324e2677ae47b3c22ba55ba)
+- fix: offscreen captures. Ref #488 [`460b75e`](https://github.com/zumerlab/snapdom/commit/460b75ec0108436c874bf623d3d3c5f1adea134c)
+- fix(iframe): stop suggesting an option that is already on [`98de375`](https://github.com/zumerlab/snapdom/commit/98de37594af6e3891173d091695bf021240482ff)
+- add funding [`e839ec0`](https://github.com/zumerlab/snapdom/commit/e839ec0475a6f950927e146f18c041d9bc9a160b)
+
+
+#### [v2.24.7](https://github.com/zumerlab/snapdom/compare/v2.24.3...v2.24.7)
+
+> 21 August 2026
+
+- fix: measure text truncation without replacing live text nodes (Ref #485) [`418d18f`](https://github.com/zumerlab/snapdom/commit/418d18fcbd3336d1ba1546797f398db893d62d5e)
+- fix: bound the canvas frame wait, warn on an empty canvas (Ref #486) [`de521b8`](https://github.com/zumerlab/snapdom/commit/de521b819afad1586bfdb91677d8e6b0a6b2639d)
+- fix: let &lt;use&gt; icons inherit fill from the use site (Ref #487) [`1b6cd96`](https://github.com/zumerlab/snapdom/commit/1b6cd968d5ecce1bc125619eda6baf38bb18c105)
+
+#### [v2.24.3](https://github.com/zumerlab/snapdom/compare/v2.24.0...v2.24.3)
+
+> 18 August 2026
+
+- fix: keep an author-specified width on blockified spans (Ref #484) [`f3c75d3`](https://github.com/zumerlab/snapdom/commit/f3c75d3afd64e3bda751c952295b97994d634dd9)
+- fix: neutralize CSS zoom on the capture root (Ref #483) [`14b2047`](https://github.com/zumerlab/snapdom/commit/14b204701483d66ffa6dfa0866dcdb906fa9bcc8)
+
+#### [v2.24.0](https://github.com/zumerlab/snapdom/compare/v2.23.2...v2.24.0)
+
+> 10 August 2026
+
+- fix: stripe height [`df94e3e`](https://github.com/zumerlab/snapdom/commit/df94e3ee361679c83224c4e989529dfb761ec93e)
+- feat(plugins): expose capture geometry, exact export options and canvas cropping [`7abb29a`](https://github.com/zumerlab/snapdom/commit/7abb29a40ebb2b8159cc539dfb94254e675fac46)
+- fix(styles): reproduce visibility and content-visibility the way browsers do [`21251f7`](https://github.com/zumerlab/snapdom/commit/21251f70ea6153b73541fcf6eed20d766d283c0c)
+- update [`1c8e12f`](https://github.com/zumerlab/snapdom/commit/1c8e12fce6028060b74836bbc0794a154acd3934)
+- fix(fonts): emit only the @font-face descriptors the source declared [`8d0345a`](https://github.com/zumerlab/snapdom/commit/8d0345a4843dd255e293f67f45a5ad13ba0c6ed2)
+- fix(clone): keep the pre-toDataURL frame for WebGL canvases [`1c44d1d`](https://github.com/zumerlab/snapdom/commit/1c44d1d468f8fb40a44a4fbaa7fad1fbeb9fad91)
+- test: pin devicePixelRatio in DPR-dependent tests [`fb7311a`](https://github.com/zumerlab/snapdom/commit/fb7311ab34de7db28fb29abf352ee03d73a36d7a)
+- fix(clone): clone slotted light DOM only once [`f4b1859`](https://github.com/zumerlab/snapdom/commit/f4b18590445a2bb1eff980f0b27948dbdf637abb)
+- chore: bump version to 2.24.0 [`4a2ced5`](https://github.com/zumerlab/snapdom/commit/4a2ced52a60a93b3ed912b18a71ff771709ded0d)
+
+#### [v2.23.2](https://github.com/zumerlab/snapdom/compare/v2.23.1...v2.23.2)
+
+> 4 August 2026
+
+- fix(fonts): keep a custom @font-face when the page asks for a far weight/stretch [`#478`](https://github.com/zumerlab/snapdom/pull/478)
+
 
 #### [v2.23.1](https://github.com/zumerlab/snapdom/compare/v2.23.0...v2.23.1)
 

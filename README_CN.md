@@ -42,7 +42,7 @@ SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM �
 
 [文档与演示](https://snapdom.dev/) · [技术功能](FEATURES.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
 
-本仓库介绍的是 **v3，目前仍为预发布版本**。下方 npm 和 CDN 命令安装的是已发布版本。使用 v3 迁移指南前，请先确认版本；npm 上目前还没有 v3 标签。
+本仓库介绍的是 **v3**。下方迁移指南以 2.24.16（最后一个 v2 版本）为比较基准。
 
 ## 可以用它做什么
 
@@ -81,10 +81,10 @@ await result.download({ format: 'jpg', filename: 'card' });
 
 ## 安装
 
-安装已发布版本：
+安装核心，并按需安装官方插件；两者的主版本号必须一致：
 
 ```sh
-npm i @zumer/snapdom
+npm i @zumer/snapdom @zumer/snapdom-plugins
 ```
 
 也可以在浏览器中加载：
@@ -98,7 +98,16 @@ npm i @zumer/snapdom
 </script>
 ```
 
-v3 发布之前，可直接使用本仓库：
+以 ES Module 形式从 CDN 加载：
+
+```js
+import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins/html-export';
+```
+
+`https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs` 提供同一份模块。生产环境应固定依赖版本。
+
+如需用本仓库的本地构建运行文档站点：
 
 ```sh
 npm install
@@ -106,7 +115,7 @@ npm run compile
 npm run site
 ```
 
-本地站点使用本地构建产物，官网演示则加载已发布的包。生产环境应固定依赖版本。
+本地站点使用本地构建产物，官网演示则加载已发布的包。
 
 ### 构建产物
 
@@ -167,7 +176,7 @@ const result = await snapdom(card, {
 
 ### 导出 HTML 或结构化上下文
 
-官方插件单独发布为 `@zumer/snapdom-plugins`。请使用与核心匹配的版本；本仓库包含 v3 插件源码。
+官方插件单独发布为 `@zumer/snapdom-plugins`，主版本号必须与核心一致；插件声明了对 v3 核心的 peer 依赖。插件源码位于本仓库的 `packages/plugins/`。
 
 ```js
 import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
@@ -189,7 +198,7 @@ const result = await snapdom.fromString('<article>Hello</article>');
 const image = await result.toPng();
 ```
 
-`fromString()` 在屏幕外挂载 HTML，并在捕获后移除。请传入可信或已清理的 HTML。
+`fromString()` 在屏幕外挂载 HTML，并在捕获后移除。这段字符串会像你自己编写的页面标记一样被解析和激活：`<img onerror>` 之类的内联事件处理器会在调用方的源（origin）中执行，挂载被移除后也可能继续执行。不受信任的 HTML 请先清理，例如使用 DOMPurify。
 
 ### 用于 WebGL 纹理
 
@@ -233,13 +242,13 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 | --- | --- | --- |
 | 网页字体需要手动开启嵌入 | `embedFonts: 'auto'` | 通常无需调整；仅在需要省略字体时使用 `false` |
 | 位图的 width/height 可能再乘以 `scale` | width/height 优先于 scale | 直接传最终尺寸，如用 `width: 400` 替代 `width: 200, scale: 2` |
-| 使用 `burst` 手动开启重复捕获记忆化 | 符合条件的捕获自动记忆化；`burst` 不再是公开选项 | 删除 `burst`；在 `sheet.insertRule()` 等无法自动观察的变化后，用 `invalidate: true` 重新捕获一次 |
+| 使用 `burst` 手动开启重复捕获记忆化 | 符合条件的捕获自动记忆化；`burst` 不再记录在文档中，也不再受支持 | 删除 `burst`（引擎仍会读取它供内部使用，请勿依赖），并在 `sheet.insertRule()` 等无法自动观察的变化后，用 `invalidate: true` 重新捕获一次 |
 | `preCache` 用于准备资源 | 已移除；`preCapture()` 学习捕获意图 | 删除 `preCache`；`preCapture()` 不是直接改名后的替代方法 |
 | `fast` 选择优化路径 | 已移除 | 删除该选项 |
 | `filter` / `filterMode` 可与 `exclude` / `excludeMode` 同时使用 | 两种控制及其独立模式仍受支持；`exclude` 还支持判断函数 | 保留原有规则和模式；需要时再使用新增判断函数形式 |
 | `cache: 'auto'` 或 `'full'` | 两者均映射为 `'soft'` | 通常可以省略；`'disabled'` / `false` 用于调试 |
-| `compress` 控制内嵌图片降采样 | 图片优化自动进行；该开关不再公开 | 删除 `compress`；不再提供原样嵌入图片资源的公开关闭开关 |
-| `resolvePicturePlaceholders` / `pictureResolver` 配置懒加载图片预处理 | 在克隆节点上解析响应式和懒加载图片；这些选项不再公开 | 删除这些选项；自定义加载和超时策略应在应用中、捕获前完成 |
+| `compress` 控制内嵌图片降采样 | 图片优化自动进行；`compress` 不再记录在文档中，也不再受支持 | 删除 `compress`；引擎仍会读取它供内部使用，请勿依赖 |
+| `resolvePicturePlaceholders` / `pictureResolver` 配置懒加载图片预处理 | 在克隆节点上解析响应式和懒加载图片；这些选项不再记录在文档中，也不再受支持 | 删除这些选项，自定义加载和超时策略应在应用中、捕获前完成；引擎仍会读取 `resolvePicturePlaceholders` 供内部使用，请勿依赖 |
 | 部分可见输入值会被遮蔽 | 核心只遮蔽密码 | 其他字段需要使用 `redactInputs()` |
 | `afterExport` 返回值成为下一个钩子的参数，但不改变调用者收到的结果 | 返回值被忽略；钩子收到同一份导出参数 | 不再通过返回值串联钩子；用 `defineExports` 生成不同输出 |
 | TypeScript 导出 `PluginExportFacade` | 该类型名称已移除；`ctx.exports` 仍提供核心导出器 | 在 `defineExports` 中使用类型推导，或使用 `NonNullable<CaptureContext['exports']>` |
@@ -264,7 +273,7 @@ await snapdom(card, {
 
 ### 读取应用动态状态的回调
 
-当 `filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，每次新的捕获都会重新执行所需流程，让适用的回调读取当前应用状态，不复用旧捕获或先前回调的样式、替代图片决策。仅回调闭包状态改变时，无需使用 `invalidate`：
+当 `filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，每次新的捕获都会重新执行所需流程，让适用的回调读取当前应用状态，不复用旧捕获或先前回调的样式、替代图片决策。仅回调闭包状态改变时，无需使用 `invalidate`。这种即时性有代价：`filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，该捕获会关闭记忆化和差异化重捕获，因此带判断函数的轮询循环每一轮都要付出一次完整捕获的开销。规则能用选择器表达时，请传选择器，以保留复用：
 
 ```js
 let privateMode = false;

@@ -6,7 +6,7 @@ This is the technical feature reference for v3. For setup and examples, see the 
 
 ## Capture & clone
 
-The core clones the selected subtree, snapshots computed styles and embeds its resources. `snapdom.fromString()` can also capture trusted or sanitized HTML mounted offscreen.
+The core clones the selected subtree, snapshots computed styles and embeds its resources. `snapdom.fromString()` can also capture an HTML string mounted offscreen; the markup is activated like page markup, so inline handlers such as `<img onerror>` run in the caller's origin. Sanitize untrusted HTML first.
 
 | Content | Capture behavior |
 | --- | --- |
