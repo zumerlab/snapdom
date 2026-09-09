@@ -63,3 +63,32 @@ describe('burst — options signature discriminates nested objects and callbacks
     expect(resultB2.url).toBe(resultB1.url)
   })
 })
+
+// The render-state signature sampled before every memo serve pushed `el.value` for every
+// tracked input, so a password typed and then cleared stayed in the memo's memory in
+// plaintext. A password input pushes its value LENGTH instead: the clone renders a
+// same-length bullet mask, so a same-length change is the same frame and a different
+// length is not. The state is module-private, so this pins it through the public path.
+describe('burst — password values never enter the render-state signature', () => {
+  let form
+  afterEach(() => form?.remove())
+
+  it('serves the memo across a same-length password change, recaptures on a different length', async () => {
+    form = document.createElement('form')
+    form.style.cssText = 'width:200px;background:#fff'
+    form.innerHTML = '<input type="password" value="hunter2">'
+    document.body.appendChild(form)
+    const input = form.firstElementChild
+    const r1 = await snapdom(form, { burst: true })
+    expect(decodeURIComponent(r1.url)).toContain('\u2022'.repeat(7))
+    input.value = 'swordfi'
+    // A memo hit hands back the SAME result object; a signature that compared plaintext
+    // values would recapture here and build a new one.
+    const r2 = await snapdom(form, { burst: true })
+    expect(r2).toBe(r1)
+    input.value = ''
+    const r3 = await snapdom(form, { burst: true })
+    expect(r3).not.toBe(r1)
+    expect(decodeURIComponent(r3.url)).not.toContain('\u2022')
+  })
+})

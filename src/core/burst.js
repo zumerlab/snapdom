@@ -65,6 +65,7 @@ import {
   invalidateSnapshotsUnder,
 } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
+import { isPasswordInput } from '../utils/helpers.js'
 
 /** Per-element state lookup; the bounded LRU below retains and disposes live memos. */
 const burstStates = new WeakMap()
@@ -524,7 +525,10 @@ function renderStateOf(element, state) {
   const controls = []
   for (const el of state.controls) {
     const tag = String(el.localName || '').toLowerCase()
-    if (tag === 'input') controls.push(el.type, el.value, el.checked ? 1 : 0, el.indeterminate ? 1 : 0)
+    // A password input contributes its value LENGTH: the clone renders a same-length bullet
+    // mask, so the frame is the same, and the plaintext never sits in the memo.
+    // Pinned by `__tests__/core.burst.signature.test.js`.
+    if (tag === 'input') controls.push(el.type, isPasswordInput(el) ? el.value.length : el.value, el.checked ? 1 : 0, el.indeterminate ? 1 : 0)
     else if (tag === 'textarea') controls.push(el.value)
     else if (tag === 'select') controls.push(el.selectedIndex, el.value)
     else controls.push(el.selected ? 1 : 0)
