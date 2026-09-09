@@ -61,7 +61,7 @@ export function frameOptions(ctx, opts, defaults, name) {
   // particular createContext splits exclusion predicates out of exclude: put them back.
   const capture = {};
   for (const key of ['debug', 'width', 'height', 'dpr', 'backgroundColor', 'quality', 'format',
-    'exclude', 'excludeMode', 'placeholders', 'captureSelection', 'canvas', 'embedFonts',
+    'exclude', 'excludeMode', 'filter', 'filterMode', 'placeholders', 'captureSelection', 'canvas', 'embedFonts',
     'iconFonts', 'localFonts', 'excludeFonts', 'fontStylesheetDomains', 'fallbackURL', 'cache',
     'useProxy', 'outerTransforms', 'outerShadows', 'reconcile', 'burst', 'engine', 'invalidate',
     'clip', 'compress', 'excludeStyleProps', 'resolvePicturePlaceholders', 'plugins']) {

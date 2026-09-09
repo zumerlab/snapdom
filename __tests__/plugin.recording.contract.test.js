@@ -100,6 +100,21 @@ describe('recording plugins preserve v3 capture contracts', () => {
     expect(pixel(canvas)).toEqual([255, 255, 255, 255])
   })
 
+  // A blue sibling after the filtered box: 'hide' keeps a white spacer at (8,8), 'remove'
+  // shifts the sibling into that spot, so a recapture that drops filterMode goes red.
+  it.each(['hide', 'remove'])('GIF and video recaptures retain filter with filterMode %s', async filterMode => {
+    const rec = recorder()
+    const el = source()
+    el.style.display = 'flex'
+    el.innerHTML = '<div class="secret" style="width:16px;height:16px;background:red"></div><div style="width:16px;height:16px;background:blue"></div>'
+    const filter = node => !node.matches('.secret')
+    const expected = filterMode === 'remove' ? [0, 0, 255, 255] : [255, 255, 255, 255]
+    const result = await snapdom(el, { dpr: 1, filter, filterMode, plugins: [gifExport(), videoExport()] })
+    expect(pixel(await gifCanvas(await result.toGif({ frames: 2, fps: 100 })))).toEqual(expected)
+    await result.toMp4({ frames: 2, fps: 100 })
+    expect(rec.painted.map(frame => frame.color)).toEqual([expected, expected])
+  })
+
   it('GIF recaptures retain local capture plugins', async () => {
     const tint = { name: 'recording-tint', afterClone(ctx) { ctx.clone.style.backgroundColor = 'lime' } }
     const result = await snapdom(source(), { dpr: 1, plugins: [gifExport(), tint] })
