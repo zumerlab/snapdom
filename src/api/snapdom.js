@@ -11,7 +11,7 @@
 import { captureDOM } from '../core/capture.js'
 import { isBlankCanvas } from '../core/clone.js'
 import { createContext } from '../core/context.js'
-import { isSafari } from '../utils/browser.js'
+import { isSafari, nextFrame } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
@@ -53,8 +53,10 @@ async function fromString(html, options) {
   mount.innerHTML = html
   document.body.appendChild(mount)
   try {
-    // One frame so layout (and any already-loaded fonts) settle before measuring.
-    await new Promise((r) => requestAnimationFrame(r))
+    // One frame so layout (and any already-loaded fonts) settle before measuring. nextFrame,
+    // not a bare requestAnimationFrame: an occluded document never fires one and the capture
+    // hung here (#486). Pinned by `__tests__/api.fromString.test.js`.
+    await nextFrame()
     // Element count alone misses a mixed fragment such as `Hello <strong>world</strong>`.
     // Keep surrounding text; indentation and comments around a sole root still unwrap.
     const hasText = Array.from(mount.childNodes).some(node => node.nodeType === 3 && node.textContent.trim())
