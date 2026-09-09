@@ -174,3 +174,10 @@ AGENTS.md
 packages/agent
 .playwright-cli
 .bench-liquidgl/
+
+# Development notes and release runbooks stay local; the tracked docs are the ones README links.
+NEXT_NOTES.md
+EXPERIMENTAL_NOTES.md
+RELEASE_REVIEW.md
+RELEASE_CHECKLIST.md
+CHINESE_TRANSLATION_GUIDE.md

@@ -1,7 +1,7 @@
 // EXPERIMENTAL engine (engine:'html-in-canvas'): in browsers without drawElement/drawElementImage
 // (all current CI engines), the option must be perfectly transparent — the normal svg
 // pipeline serves the capture. Engine-active behavior is verified separately with a
-// flag-enabled Chromium (see NEXT_NOTES.md).
+// flag-enabled Chromium (the header of src/engines/htmlInCanvas.js has the contract).
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 import { detectDrawApi, tryCanvasEngine } from '../src/engines/htmlInCanvas.js'

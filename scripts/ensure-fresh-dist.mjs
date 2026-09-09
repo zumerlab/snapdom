@@ -1,6 +1,6 @@
 // Vitest globalSetup: the visual suite pixel-diffs the COMPILED dist/ (snapdomUrl:
 // '/dist/snapdom.mjs', demos load ../dist/snapdom.js), so a stale build silently tests
-// old code — this already masked a real styleScan regression once (see NEXT_NOTES.md).
+// old code — this already masked a real styleScan regression once.
 // Recompile automatically whenever any src file is newer than the newest dist output.
 import { readdirSync, statSync, existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
