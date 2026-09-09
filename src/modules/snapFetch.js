@@ -144,11 +144,13 @@ function shouldProxy(url, useProxy) {
 function applyProxy(url, useProxy) {
   if (!useProxy) return url
 
-  // Template tokens
+  // Template tokens. Replacer functions, not strings: a string replacement reads `$&` and
+  // `$'` out of the URL, and encodeURI leaves both characters alone.
+  // Pinned by `__tests__/module.snapFetch.requestIdentity.test.js`.
   if (/\{url(?:Raw)?\}/.test(useProxy)) {
     return useProxy
-      .replace('{urlRaw}', safeEncodeURI(url))     // path-style: proxies that take the URL as a path segment
-      .replace('{url}', encodeURIComponent(url))  // query-style
+      .replace('{urlRaw}', () => safeEncodeURI(url))     // path-style: proxies that take the URL as a path segment
+      .replace('{url}', () => encodeURIComponent(url))  // query-style
   }
 
   // Explicit query base

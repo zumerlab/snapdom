@@ -37,6 +37,15 @@ describe('asset fetch request identity and proxy routing', () => {
     expect(result.url).toBe('https://proxy.example/https://assets.example/image%20name.png')
   })
 
+  it('keeps $-patterns of the asset URL literal through a {urlRaw} proxy', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('image'))
+    // encodeURI leaves $ & ' alone, and String.prototype.replace reads `$&` (the match) and
+    // `$'` (the text after it) out of a string replacement.
+    const url = "https://assets.example/a$&b$'c.png"
+    const result = await snapFetch(url, { as: 'text', useProxy: 'https://proxy.example/{urlRaw}' })
+    expect(result.url).toBe('https://proxy.example/' + url)
+  })
+
   it.each(['url', 'target'])('proxies an ordinary cross-origin asset with a %s query parameter', async (key) => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('image'))
     const url = `https://assets.example/resize?${key}=source.png`
