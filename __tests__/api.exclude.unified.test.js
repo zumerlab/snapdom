@@ -177,26 +177,64 @@ describe('unified exclude', () => {
       expect(host.querySelector('.pii')).toBe(secret)
     })
 
-    it('does not move a flex sibling when offsetWidth rounds up', async () => {
+    const flexRow = (piiStyle) => {
       const host = document.createElement('div')
-      host.style.cssText = 'display:flex;width:100px;height:20px;background:white'
+      host.style.cssText = 'display:flex;width:300px;height:40px;background:white'
       host.innerHTML = '<div style="width:20px;background:blue"></div>' +
-        '<div class="pii" style="width:30px;background:#ccc">secret</div>' +
+        `<div class="pii" style="${piiStyle}">secret</div>` +
         '<div style="width:20px;background:green"></div>'
       document.body.append(host)
-      const greenLeft = async opts => {
-        const canvas = await (await snapdom(host, { dpr: 1, embedFonts: false, ...opts })).toCanvas()
-        const row = canvas.getContext('2d').getImageData(0, 10, canvas.width, 1).data
-        for (let x = 0; x < canvas.width; x++) {
-          const i = x * 4
-          if (row[i] < 80 && row[i + 1] > 100 && row[i + 2] < 80 && row[i + 3] > 40) return x
-        }
-        return -1
+      return host
+    }
+    const greenLeft = async (host, opts) => {
+      const canvas = await (await snapdom(host, { dpr: 1, embedFonts: false, ...opts })).toCanvas()
+      const row = canvas.getContext('2d').getImageData(0, 10, canvas.width, 1).data
+      for (let x = 0; x < canvas.width; x++) {
+        const i = x * 4
+        if (row[i] < 80 && row[i + 1] > 100 && row[i + 2] < 80 && row[i + 3] > 40) return x
       }
-      const baseline = await greenLeft()
+      return -1
+    }
+
+    it('does not move a flex sibling when offsetWidth rounds up', async () => {
+      const host = flexRow('width:30px;background:#ccc')
+      const baseline = await greenLeft(host)
       Object.defineProperty(host.querySelector('.pii'), 'offsetWidth', { configurable: true, value: 31 })
-      expect(await greenLeft({ exclude: '.pii' })).toBe(baseline)
+      expect(await greenLeft(host, { exclude: '.pii' })).toBe(baseline)
       expect(baseline).toBe(50)
+    })
+
+    // Blink and WebKit resolve the `width` of a content-box scroller WITHOUT its classic
+    // scrollbar, while offsetWidth spans it; the spacer built from the used value lost the
+    // gutter and pulled the sibling left (WebKit: 205 for 220). A border-box scroller's
+    // used width already spans the scrollbar, so it guards against counting it twice.
+    it.each(['content-box', 'border-box'])('keeps the scrollbar gutter of an overflow:scroll %s in its spacer', async boxSizing => {
+      const host = flexRow(`box-sizing:${boxSizing};width:200px;overflow:scroll;background:#ccc`)
+      const pii = host.querySelector('.pii')
+      // A styled scrollbar is never overlay in WebKit, so the gutter exists even where the
+      // system setting hides scrollbars until scrolled (macOS). Playwright's headless
+      // Chromium runs with --hide-scrollbars, where every scrollbar measures 0.
+      host.prepend(Object.assign(document.createElement('style'), { textContent: '.pii::-webkit-scrollbar{width:15px;height:15px}' }))
+      if (pii.offsetWidth - pii.clientWidth <= 0) {
+        console.log('no scrollbar gutter on this engine (overlay or hidden scrollbars): assertion skipped')
+        return
+      }
+      const baseline = await greenLeft(host)
+      expect(baseline).toBe(220)
+      expect(await greenLeft(host, { exclude: '.pii' })).toBe(baseline)
+    })
+
+    it('does not add a gutter the resolved width already spans', async () => {
+      const host = flexRow('width:200px;overflow:scroll;background:#ccc')
+      const pii = host.querySelector('.pii')
+      const baseline = await greenLeft(host)
+      expect(baseline).toBe(220)
+      // Gecko resolves `width` to 200px with a 15px classic scrollbar inside it, so offset
+      // minus client is the scrollbar alone. Faked, because no engine paints a classic
+      // scrollbar on a headless macOS run and the spacer reads exactly these three values.
+      Object.defineProperty(pii, 'offsetWidth', { configurable: true, value: 200 })
+      Object.defineProperty(pii, 'clientWidth', { configurable: true, value: 185 })
+      expect(await greenLeft(host, { exclude: '.pii' })).toBe(baseline)
     })
 
     it('keeps fractional block sizes instead of accumulating integer rounding', async () => {

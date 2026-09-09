@@ -76,14 +76,27 @@ function makeHideSpacer(node) {
   // a fallback. Inline text and table/ruby boxes have different sizing rules, so keep
   // their existing measurement rather than interpreting their CSS as ordinary boxes.
   const ordinaryBox = /^(block|inline-block|flow-root|flex|inline-flex|grid|inline-grid|list-item)$/.test(display)
-  const borderBoxSize = (value, ...extras) => {
+  const px = v => parseFloat(v) || 0
+  const borderBoxSize = (value, padding, border, offset, client) => {
     if (!ordinaryBox || !value?.endsWith('px')) return null
     const size = parseFloat(value)
     if (!Number.isFinite(size) || size < 0) return null
-    return size + (style.boxSizing === 'border-box' ? 0 : extras.reduce((sum, v) => sum + (parseFloat(v) || 0), 0))
+    if (style.boxSizing === 'border-box') return size
+    // Blink and WebKit resolve a content-box scroller's `width`/`height` WITHOUT its classic
+    // scrollbar (WebKit: 185px for `width:200px;overflow:scroll`), Gecko keeps the scrollbar
+    // inside the resolved value, and the spacer has no scrollbar to lose. Offset minus client
+    // minus the borders is that scrollbar (0 for an overlay or absent one); it goes back only
+    // where the resolved size fell short of the client box, so neither engine counts it twice.
+    const gutter = offset - client - border
+    return size + padding + border + (gutter > 0 && size + padding < client + gutter / 2 ? gutter : 0)
   }
-  let w = borderBoxSize(style.width, style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth)
-  let h = borderBoxSize(style.height, style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth)
+  // Pinned by `__tests__/api.exclude.unified.test.js`; headless Chromium hides scrollbars.
+  const [ow, cw, oh, ch] = /scroll|auto/.test(style.overflow)
+    ? [node.offsetWidth, node.clientWidth, node.offsetHeight, node.clientHeight] : [0, 0, 0, 0]
+  let w = borderBoxSize(style.width, px(style.paddingLeft) + px(style.paddingRight),
+    px(style.borderLeftWidth) + px(style.borderRightWidth), ow, cw)
+  let h = borderBoxSize(style.height, px(style.paddingTop) + px(style.paddingBottom),
+    px(style.borderTopWidth) + px(style.borderBottomWidth), oh, ch)
   if (w === null || h === null) {
     const { width, height } = getUnscaledDimensions(node)
     let fallbackW = width, fallbackH = height
