@@ -6,7 +6,7 @@ SnapDOM (`@zumer/snapdom`) captures a DOM subtree, its styles and its assets int
 
 Two integrated engines render the same finished clone: `svg` (default) serializes it, while experimental `html-in-canvas` paints it through the browser's native API. The second engine still needs the browser feature flag or applicable origin trial (supported Chrome builds: `chrome://flags/#canvas-draw-element`) and a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`; the default build currently omits it. Unsupported captures fall back to SVG.
 
-This reference describes the v3 prerelease checkout. The npm and CDN commands install the published release, which may differ. To try v3, run `npm install` and `npm run compile` inside its checkout. See the [installation notes](https://github.com/zumerlab/snapdom#installation).
+This reference describes SnapDOM v3. See the [installation notes](https://github.com/zumerlab/snapdom#installation).
 
 ## Quick start
 
@@ -111,14 +111,14 @@ await snapdom(element, {
 
 ## Official plugins
 
-Import factories from `@zumer/snapdom-plugins` and pass instances through `plugins`.
+Import factories from `@zumer/snapdom-plugins` and pass instances through `plugins`. Use the plugin version that matches the core major version.
 
 - `filter({ preset?, filter? })`: CSS effects
 - `colorTint({ color?, opacity? })`: color overlay
 - `replaceText({ replacements })`: text substitutions in the clone
 - `timestampOverlay({ format?, position? })`: timestamp badge
-- `redactInputs({ types?, autocomplete?, selector?, all?, mask?, blocks?, attributes? })`: masks input/textarea values, excludes blocks and removes named attributes
-- `asciiExport({ width?, charset? })`: `toAscii()` returns text
+- `redactInputs({ types?, autocomplete?, selector?, all?, mask?, blocks?, attributes? })`: masks input/textarea values, excludes blocks and removes named attributes; `<select>` values are not masked, hide them with `blocks`
+- `asciiExport({ width?, charset?, invert? })`: `toAscii(opts?)` returns text; `width`, `charset` and `invert` can be overridden per call
 - `pdfImage({ orientation?, filename? })`: `toPdfImage()` downloads a single-page PDF containing a JPEG and returns its object URL
 - `htmlExport({ fullDocument? })`: `toHtml()` returns captured HTML with styles and assets
 - `contextExport({ format?, geometry? })`: `toContext()` returns an outline or JSON tree

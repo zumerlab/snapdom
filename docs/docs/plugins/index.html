@@ -88,7 +88,7 @@
 
     <section class="prose">
       <h2 id="official">Official plugins</h2>
-      <p>Install the official plugin package:</p>
+      <p>Install the official plugin package; use the version that matches your core major version:</p>
       <pre class="code-block">npm install @zumer/snapdom-plugins</pre>
       <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';
 import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pre>
@@ -101,8 +101,8 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pr
           <tr><td class="num">filter</td><td class="feature">Transform</td><td>Applies CSS filter effects to captures. Ships with presets: <code>grayscale</code>, <code>sepia</code>, <code>blur</code>, <code>vintage</code>, <code>dramatic</code>.</td></tr>
           <tr><td class="num">replace-text</td><td class="feature">Transform</td><td>Find-and-replace text in the captured clone. Supports strings and regex patterns.</td></tr>
           <tr><td class="num">color-tint</td><td class="feature">Transform</td><td>Tints the entire capture to a specified color using an overlay with <code>mix-blend-mode</code>.</td></tr>
-          <tr><td class="num">redact-inputs</td><td class="feature">Transform</td><td>Masks input and textarea values, excludes private blocks and removes named attributes from captured images, HTML and structured outputs. <a href="#redaction">Redaction options and limits</a>.</td></tr>
-          <tr><td class="num">ascii-export</td><td class="feature">Export</td><td>Adds a <code>toAscii()</code> method that converts captures to ASCII art. Configurable width, charset, and luminance.</td></tr>
+          <tr><td class="num">redact-inputs</td><td class="feature">Transform</td><td>Masks input and textarea values, excludes private blocks and removes named attributes from captured images, HTML and structured outputs. <code>&lt;select&gt;</code> values are not masked; hide them with a <code>blocks</code> rule. <a href="#redaction">Redaction options and limits</a>.</td></tr>
+          <tr><td class="num">ascii-export</td><td class="feature">Export</td><td>Adds a <code>toAscii()</code> method that converts captures to ASCII art. Configurable width, charset, and luminance, per plugin or per <code>toAscii()</code> call.</td></tr>
           <tr><td class="num">pdf-image</td><td class="feature">Export</td><td><code>toPdfImage()</code> embeds a JPEG in a downloadable, single-page A4 PDF. Supports portrait and landscape.</td></tr>
           <tr><td class="num">html-export</td><td class="feature">Export</td><td><code>toHtml()</code> returns the captured markup, styles and fonts as a self-contained HTML document or fragment.</td></tr>
           <tr><td class="num">gif-export</td><td class="feature">Export</td><td>Adds a <code>toGif()</code> method that records a sequence of captures into an animated GIF.</td></tr>

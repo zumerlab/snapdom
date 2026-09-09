@@ -8,7 +8,7 @@ SnapDOM has two integrated render engines: `svg` (default) and experimental `htm
 
 Package: `@zumer/snapdom`. License: MIT. Source: https://github.com/zumerlab/snapdom. Documentation: https://snapdom.dev/docs/.
 
-This reference describes the v3 prerelease checkout. The npm and CDN commands below install the published release, which may differ from this API. To try v3, run `npm install` and `npm run compile` inside its checkout. Release details: https://github.com/zumerlab/snapdom#installation.
+This reference describes SnapDOM v3. Release details: https://github.com/zumerlab/snapdom#installation.
 
 ## Installation
 
@@ -34,7 +34,7 @@ For a browser ES module:
 </script>
 ```
 
-The package entry is ESM; there is no CommonJS build. The core has no runtime dependencies. Official plugins are a separate package:
+The package entry is ESM; there is no CommonJS build. The core has no runtime dependencies. Official plugins are a separate package; use the plugin version that matches the core major version:
 
 ```bash
 npm install @zumer/snapdom-plugins
@@ -349,8 +349,8 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `colorTint()` | Color overlay | color red, opacity 1 |
 | `replaceText()` | Text substitutions in the clone | replacements: array of `{ find: string or RegExp, replace: string }` |
 | `timestampOverlay()` | Timestamp badge | format datetime, position bottom-right |
-| `redactInputs()` | Masks input/textarea values, excludes blocks and removes named attributes | types, autocomplete, selector, all, mask, blocks, attributes |
-| `asciiExport()` | `toAscii()` → string | width 80 characters, charset `' .:-=+*#%@'`, invert false |
+| `redactInputs()` | Masks input/textarea values, excludes blocks and removes named attributes; `<select>` values are not masked, hide them with `blocks` | types, autocomplete, selector, all, mask, blocks, attributes |
+| `asciiExport()` | `toAscii(opts?)` → string; `width`, `charset` and `invert` can be overridden per call | width 80 characters, charset `' .:-=+*#%@'`, invert false |
 | `pdfImage()` | `toPdfImage()` → object URL, also downloads | portrait A4, JPEG quality 0.92, filename capture.pdf |
 | `htmlExport()` | `toHtml()` → string | fullDocument true, filename capture.html |
 | `contextExport()` | `toContext()` → outline string or JSON | format outline, geometry true, maxTextLength 120, maxNodes 800 |
