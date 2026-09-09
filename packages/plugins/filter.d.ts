@@ -8,7 +8,7 @@
 import type { SnapdomPlugin } from '@zumer/snapdom';
 
 export interface FilterOptions {
-  /** CSS filter string, e.g. 'grayscale(1) blur(2px)'. Ignored when `preset` is set. */
+  /** CSS filter string, e.g. 'grayscale(1) blur(2px)'. Applies when `preset` is unset or unknown. */
   filter?: string;
   preset?: 'grayscale' | 'sepia' | 'blur' | 'invert' | 'vintage' | 'dramatic';
 }

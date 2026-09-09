@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { timestampOverlay } from '../packages/plugins/timestamp-overlay.js'
 import { filter } from '../packages/plugins/filter.js'
@@ -43,6 +43,19 @@ describe('official transform plugins against v3', () => {
     for (let i = 0; i < painted.data.length; i += 4) if (painted.data[i] < 20 && painted.data[i + 1] > 230 && painted.data[i + 2] > 230) cyan++
     expect(cyan).toBeGreaterThan(15000)
     expect(getComputedStyle(root).filter).toBe('none')
+  })
+
+  it('applies the filter string when the preset is unknown', async () => {
+    const root = mount('')
+    root.style.background = 'rgb(255,0,0)'
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await snapdom(root, { ...options, plugins: [filter({ preset: 'nope', filter: 'invert(1)' })] })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('nope'))
+    warn.mockRestore()
+    const painted = await rgba(result)
+    let cyan = 0
+    for (let i = 0; i < painted.data.length; i += 4) if (painted.data[i] < 20 && painted.data[i + 1] > 230 && painted.data[i + 2] > 230) cyan++
+    expect(cyan).toBeGreaterThan(15000)
   })
 
   it('replaces visible text without rewriting retained stylesheet text', async () => {
