@@ -33,7 +33,7 @@ describe('entry keyframe animations do not blank the captured element', () => {
     expect(px[3]).toBeGreaterThan(200) // fully opaque, not the 0% frame
   })
 
-  it('a currently non-generated pseudo does not reappear when its cloned animation restarts', async () => {
+  it('preserves native suppression when a painted pseudo is currently display:none', async () => {
     const style = mount(document.createElement('style'))
     style.textContent = `
       @keyframes snapPseudoDisappear {
@@ -56,6 +56,8 @@ describe('entry keyframe animations do not blank the captured element', () => {
     animation.currentTime = 10000
     animation.pause()
     expect(getComputedStyle(box, '::before').display).toBe('none')
+    // The non-generated fast path must retain the suppression marker that the
+    // previous materialization path added, or cloned CSS can replay the red frame.
 
     const canvas = await snapdom.toCanvas(document.body, { dpr: 1 })
     const pixel = canvas.getContext('2d').getImageData(30, 30, 1, 1).data

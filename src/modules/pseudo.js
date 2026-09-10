@@ -474,6 +474,17 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
     try {
       const style = getStyle(source, pseudo)
       if (!style) continue
+      // Skip default, visually empty pseudo styles before adding suppression markers.
+      const isEmptyPseudo =
+        style.content === 'none' &&
+        style.backgroundImage === 'none' &&
+        (style.backgroundColor === 'transparent' || style.backgroundColor === 'rgba(0, 0, 0, 0)') &&
+        !hasPaintedBorder(style) &&
+        (!style.transform || style.transform === 'none') &&
+        style.display === 'inline'
+
+      if (isEmptyPseudo) continue
+
       // ::before and ::after do not generate a box when content is none/normal,
       // and no pseudo-element generates a box when display is none. Paint and
       // layout styles cannot make those non-generated boxes visible.
@@ -487,16 +498,6 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         if (pseudo === '::after') clone.dataset.snapdomHasAfter = '1'
         continue
       }
-      // Skip visually empty pseudo-elements early
-      const isEmptyPseudo =
-        style.content === 'none' &&
-        style.backgroundImage === 'none' &&
-        style.backgroundColor === 'transparent' &&
-        !hasPaintedBorder(style) &&
-        (!style.transform || style.transform === 'none') &&
-        style.display === 'inline'
-
-      if (isEmptyPseudo) continue
 
       if (pseudo === '::first-letter') {
         const normal = getStyle(source)
