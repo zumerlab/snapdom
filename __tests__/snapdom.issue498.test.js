@@ -134,11 +134,12 @@ describe('#498 fractional image dimensions', () => {
     wrap.appendChild(inner)
     await new Promise((r) => (img.complete ? r() : (img.onload = r)))
     expect(img.offsetWidth).toBe(26)
-    expect(parseFloat(getComputedStyle(img).width)).toBeCloseTo(25.594, 2)
+    // Blink serializes 25.594, Gecko 25.6: both fractional, neither the integer 26.
+    expect(parseFloat(getComputedStyle(img).width)).toBeCloseTo(25.6, 1)
 
     const { clone } = await prepareClone(wrap, { embedFonts: false })
     const cimg = clone.querySelector('img')
-    expect(parseFloat(cimg.dataset.snapdomWidth)).toBeCloseTo(25.594, 2)
+    expect(parseFloat(cimg.dataset.snapdomWidth)).toBeCloseTo(25.6, 1)
     // The min-width guard must not be larger than the frozen width.
     expect(parseFloat(cimg.style.minWidth)).toBeLessThanOrEqual(25.6)
   })
