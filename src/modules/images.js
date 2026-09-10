@@ -43,8 +43,8 @@ function getSvgImageHref(el) {
  * @returns {{ width: number, height: number }}
  */
 function extractImageDimensions(img) {
-  const dsW = parseInt(img.dataset?.snapdomWidth || '', 10) || 0
-  const dsH = parseInt(img.dataset?.snapdomHeight || '', 10) || 0
+  const dsW = parseFloat(img.dataset?.snapdomWidth || '') || 0
+  const dsH = parseFloat(img.dataset?.snapdomHeight || '') || 0
   const attrW = parseInt(img.getAttribute('width') || '', 10) || 0
   const attrH = parseInt(img.getAttribute('height') || '', 10) || 0
   const styleW = parseFloat(img.style?.width || '') || 0

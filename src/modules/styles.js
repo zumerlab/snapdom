@@ -1570,6 +1570,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     clone.style.setProperty('-webkit-text-fill-color', snap.__bgClipTextFix, 'important')
   }
 
+  addScrollbarGutter(source, pre, snap)
+
   const flexItem = isFlexOrGridItem(source)
 
   // #406: foreignObject may resolve min-width:auto differently than normal DOM
@@ -1622,6 +1624,39 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   }
   session.styleMap.set(clone, key)
 }
+/**
+ * #498: on a content-box scroll container `getComputedStyle().width/height` return the box
+ * MINUS its classic (non-overlay) scrollbars — the live element is that much bigger. Freezing
+ * the bare value shrinks the box by the scrollbar size, the content no longer fits, and a
+ * vertical scrollbar that does not exist in the live page appears in the capture (which in
+ * turn steals width from the rows). Add the measured gutters back so the frozen box matches
+ * the live one. Border-box values already include the scrollbars; overlay scrollbars
+ * (macOS default) measure 0 and change nothing.
+ * @param {Element} source
+ * @param {CSSStyleDeclaration} pre
+ * @param {Record<string,string>} snap
+ */
+export function addScrollbarGutter(source, pre, snap) {
+  const ox = pre.getPropertyValue('overflow-x')
+  const oy = pre.getPropertyValue('overflow-y')
+  if ((ox === 'visible' || !ox) && (oy === 'visible' || !oy)) return
+  if (pre.getPropertyValue('box-sizing') === 'border-box') return
+  if (typeof source.clientWidth !== 'number' || !source.offsetWidth) return
+  const px = (v) => parseFloat(v) || 0
+  const vGutter = source.offsetWidth - source.clientWidth -
+    px(pre.getPropertyValue('border-left-width')) - px(pre.getPropertyValue('border-right-width'))
+  const hGutter = source.offsetHeight - source.clientHeight -
+    px(pre.getPropertyValue('border-top-width')) - px(pre.getPropertyValue('border-bottom-width'))
+  const bump = (prop, gutter) => {
+    const v = snap[prop]
+    if (!v || !v.endsWith('px')) return
+    const n = parseFloat(v)
+    if (Number.isFinite(n)) snap[prop] = `${Math.round((n + gutter) * 1000) / 1000}px`
+  }
+  if (vGutter > 0.5) { bump('width', vGutter); bump('inline-size', vGutter) }
+  if (hGutter > 0.5) { bump('height', hGutter); bump('block-size', hGutter) }
+}
+
 /**
  * A box that paints or clips: a background, a vertical border or padding, or an overflow
  * other than visible.

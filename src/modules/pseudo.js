@@ -787,9 +787,14 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // layout space even with no visible paint — e.g. antd's `::before { content:'';
       // display:inline-block; height:100%; vertical-align:middle }` that vertically centers a
       // modal. Dropping it collapses the layout it controls (#418).
+      // #498: an atomic inline box (inline-block / inline-flex / inline-grid / inline-table)
+      // takes part in line layout even at 0×0 — it is a justification opportunity, so
+      // `text-align-last: justify` spreads the text differently with and without it
+      // ("A   B   C" vs "A     B     C"). Block-level 0×0 boxes change nothing and stay dropped.
       const boxGenerating = rawContent !== 'none' && rawContent !== 'normal'
+      const atomicInline = /^inline-/.test(style.display || '')
       const hasLayoutBox = boxGenerating &&
-        ((parseFloat(style.width) || 0) > 0 || (parseFloat(style.height) || 0) > 0)
+        ((parseFloat(style.width) || 0) > 0 || (parseFloat(style.height) || 0) > 0 || atomicInline)
 
       // A box-generating pseudo can paint with box-shadow/outline alone (no bg, border,
       // text or size — a zero-size box with a blur/spread shadow still renders a glow).

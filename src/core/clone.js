@@ -419,11 +419,36 @@ export async function deepClone(node, sessionCache, options) {
     sessionCache.nodeMap.set(clone, node)
     if (node.tagName === 'IMG') {
       freezeImgSrcset(node, clone, options)
-      // Record original image dimensions (pre-transform) for fallback usage when inlining fails
+      // Record original image dimensions (pre-transform) for fallback usage when inlining fails.
+      // #498: keep them fractional. `offsetWidth` is an integer, and the `min-width` written below
+      // from a rounded-up value (25.6px → 26px) beats the frozen `width`, grows the image and
+      // pushes the text after it past its frozen container (last word wraps). The computed
+      // style carries the used size at 1/1000px; offset/attribute/natural sizes stay as fallback.
       try {
-        const { width, height } = getUnscaledDimensions(node)
-        const w = Math.round(width || 0)
-        const h = Math.round(height || 0)
+        const cs = window.getComputedStyle(node)
+        let width = parseFloat(cs.width)
+        let height = parseFloat(cs.height)
+        if (!(width > 0) || !(height > 0)) {
+          // getUnscaledDimensions is the BORDER box (offsetWidth); width/height and min-* resolve
+          // against the CONTENT box unless box-sizing is border-box, so with padding or a border
+          // the frozen box was too large by exactly that much and the picture rendered scaled
+          // inside it (measured against the live element: 18–34% of pixels differ with 20px
+          // padding + a 5px border, 0% without either). The computed style above is already the
+          // content box; only this fallback needs the correction.
+          const dims = getUnscaledDimensions(node)
+          const px = (p) => parseFloat(cs.getPropertyValue(p)) || 0
+          const bb = cs.getPropertyValue('box-sizing') === 'border-box'
+          if (!(width > 0)) {
+            width = dims.width -
+              (bb ? 0 : px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width'))
+          }
+          if (!(height > 0)) {
+            height = dims.height -
+              (bb ? 0 : px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width'))
+          }
+        }
+        const w = Math.round((width || 0) * 1000) / 1000
+        const h = Math.round((height || 0) * 1000) / 1000
         if (w) clone.dataset.snapdomWidth = String(w)
         if (h) clone.dataset.snapdomHeight = String(h)
       } catch (e) {
@@ -441,19 +466,8 @@ export async function deepClone(node, sessionCache, options) {
           return /%|auto/i.test(String(v || ''))
         }
 
-        // getUnscaledDimensions is the BORDER box (offsetWidth); width/height and min-* resolve
-        // against the CONTENT box unless box-sizing is border-box, so with padding or a border
-        // the frozen box was too large by exactly that much and the picture rendered scaled
-        // inside it (measured against the live element: 18–34% of pixels differ with 20px
-        // padding + a 5px border, 0% without either). The fix moved d14-cors-test (images
-        // with a 1px border) by ~2% on all three engines and its baselines were re-recorded:
-        // a deliberate divergence from v2, so a compare-against-main run expects d14 to differ.
-        const px = (p) => parseFloat(cs.getPropertyValue(p)) || 0
-        const bb = cs.getPropertyValue('box-sizing') === 'border-box'
-        const w = parseInt(clone.dataset.snapdomWidth || '0', 10) -
-          (bb ? 0 : px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width'))
-        const h = parseInt(clone.dataset.snapdomHeight || '0', 10) -
-          (bb ? 0 : px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width'))
+        const w = parseFloat(clone.dataset.snapdomWidth || '0') || 0
+        const h = parseFloat(clone.dataset.snapdomHeight || '0') || 0
 
         const needFreezeW = usesPercentOrAuto('width') || !(w > 0)
         const needFreezeH = usesPercentOrAuto('height') || !(h > 0)

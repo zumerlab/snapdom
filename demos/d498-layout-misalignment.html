@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Layout misalignments: justify pseudos, scrollbar gutter, fractional img (#498)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 20px; margin: 0; }
+      h1 { font-size: 18px; }
+      p { font-size: 14px; color: #555; max-width: 62ch; }
+      #target {
+        width: 320px;
+        font-size: 32px;
+        padding-bottom: 16px;
+        border: 1px dashed #ccc;
+      }
+      .case { font-size: 12px; color: #777; }
+      /* 1: empty inline-block pseudos as justification opportunities */
+      .just { text-align: justify; text-align-last: justify; border: 1px solid #000; }
+      .just::before, .just::after { content: ""; display: inline-block; }
+      #justEn { text-justify: inter-character; margin-top: 5px; }
+      /* 2: content-box scroll container with a classic (non-overlay) horizontal scrollbar */
+      #scroll { border: 1px solid #000; padding: 5px; }
+      #scroll > div { border: 1px solid #000; overflow-x: auto; }
+      #scroll > div::-webkit-scrollbar { height: 14px; background: #eee; }
+      #scroll > div::-webkit-scrollbar-thumb { background: #999; }
+      /* 3: fractional image width inside a flex item followed by spaced text */
+      #flex { font-size: 16px; display: flex; }
+      #flex img { width: 1.6rem; vertical-align: middle; }
+      button.capture {
+        display: block; margin: 20px 0; padding: 8px 24px; border: 0;
+        border-radius: 8px; background: #0d0; cursor: pointer; font-size: 14px;
+      }
+      .out { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+      .out figure { margin: 0; }
+      .out figcaption { font-size: 12px; color: #555; margin-bottom: 6px; }
+      .out img { border: 1px dashed #d95350; }
+    </style>
+  </head>
+  <body>
+    <h1>Layout misalignments (#498)</h1>
+    <p>
+      Three boxes that used to diverge from the live page: empty inline-block pseudos that drive
+      <code>text-align-last: justify</code>, a scroll container whose frozen height lost its
+      scrollbar gutter (a phantom vertical scrollbar appeared), and an image whose integer
+      <code>min-width</code> pushed the last word of the flex item onto a new line.
+    </p>
+
+    <div id="target">
+      <div class="case">1 · justify with empty inline-block pseudos</div>
+      <div class="just">中日文字</div>
+      <div class="just" id="justEn">ABC</div>
+      <div class="case">2 · scroll container, classic scrollbar</div>
+      <div id="scroll">
+        <div>0123456789<br>012345678901234567890123456789<br>0123456789<br>0123456789</div>
+      </div>
+      <div class="case">3 · fractional img in a flex item</div>
+      <div id="flex"><div><img src="./assets/wolf.jpg" alt="">A BB CCC</div></div>
+    </div>
+
+    <button class="capture" onclick="run()">Capture</button>
+    <div class="out">
+      <figure><figcaption>Live (screenshot it yourself)</figcaption></figure>
+      <figure id="captured"><figcaption>snapdom.toPng</figcaption></figure>
+    </div>
+
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+      window.run = async () => {
+        const img = await snapdom.toPng(document.getElementById('target'), { embedFonts: true })
+        const fig = document.getElementById('captured')
+        fig.querySelector('img')?.remove()
+        fig.appendChild(img)
+      }
+    </script>
+  </body>
+</html>
