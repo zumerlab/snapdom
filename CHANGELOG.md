@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.0.0-beta.1](https://github.com/zumerlab/snapdom-v3/compare/v3.0.0-beta.0...v3.0.0-beta.1)
+
+> 10 September 2026
+
+- fix: three layout misalignments in pseudo boxes, scroll containers and images [`#498`](https://github.com/zumerlab/snapdom-v3/pull/498)
+- fix: reuse canvas targets from iframe documents [`7befc15`](https://github.com/zumerlab/snapdom-v3/commit/7befc150c28b70f1fb8b66cf215fdbf998fcc25c)
+- test: accept Gecko's serialization of the fractional image width (#498) [`6050325`](https://github.com/zumerlab/snapdom-v3/commit/60503257d197526a7cb9f8e537c43aa92b70c4c5)
+
 #### v3.0.0-beta.0
 
 > 8 September 2026
