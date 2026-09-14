@@ -116,7 +116,7 @@
 
     <section class="prose">
       <h2 id="install">1. Install</h2>
-      <pre class="code-block">npm install @zumer/snapdom@3.0.0</pre>
+      <pre class="code-block">npm install @zumer/snapdom@latest</pre>
       <p class="muted">Run the capture in a browser event handler after the component has hydrated.</p>
     </section>
 
@@ -225,7 +225,7 @@
 
       <details>
         <summary>The captured image is blank in production but works in dev</summary>
-        <p>Check that the target is mounted, has a nonzero size and contains the expected data. Wait for layout-changing assets such as fonts. SnapDOM v3 embeds used web fonts with <code>embedFonts: 'auto'</code> by default; a blank capture can have causes beyond font loading.</p>
+        <p>Check that the target is mounted, has a nonzero size and contains the expected data. Wait for layout-changing assets such as fonts. SnapDOM v3.x.x embeds used web fonts with <code>embedFonts: 'auto'</code> by default; a blank capture can have causes beyond font loading.</p>
       </details>
 
       <details>

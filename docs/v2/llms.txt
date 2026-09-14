@@ -8,10 +8,10 @@ SnapDOM (`@zumer/snapdom`) captures any HTML element as a self-contained image (
 
 ## Quick Start
 
-This archive uses SnapDOM 2.24.18 and official plugins 2.2.2. Use these exact versions with this reference.
+This archive covers SnapDOM v2.x.x and matching official plugins.
 
 ```bash
-npm install @zumer/snapdom@2.24.18
+npm install @zumer/snapdom@2.x.x
 ```
 
 ```js
@@ -120,7 +120,7 @@ Also read from the source DOM: `data-capture="exclude"`, `data-capture="placehol
 
 ## Official Plugins
 
-Separate MIT package: `npm install @zumer/snapdom-plugins@2.2.2`. Import from the package root or a per-plugin subpath (`@zumer/snapdom-plugins/filter`).
+Separate MIT package: `npm install @zumer/snapdom-plugins@2.x.x`. Import from the package root or a per-plugin subpath (`@zumer/snapdom-plugins/filter`).
 
 - `filter({ preset?, filter? })`: CSS filter effects (grayscale, sepia, blur, invert, vintage, dramatic)
 - `colorTint({ color?, opacity? })`: color overlay with blend mode

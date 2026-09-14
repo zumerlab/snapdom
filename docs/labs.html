@@ -178,7 +178,7 @@
     <!-- Automatic capture reuse -->
     <section class="panel" id="demo-session">
       <div class="section-label">Automatic repeat captures</div>
-      <p>SnapDOM v3 automatically reuses eligible captures of an unchanged element and checks for changes before reuse. This demo compares forced full captures with memoization enabled. The numbers are measured in your browser.</p>
+      <p>SnapDOM v3.x.x automatically reuses eligible captures of an unchanged element and checks for changes before reuse. This demo compares forced full captures with memoization enabled. The numbers are measured in your browser.</p>
 
       <div class="demo-target poke-target" id="target-session">
         <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" alt="Pikachu" width="72" height="72" loading="lazy" />
@@ -266,7 +266,7 @@
 
   <!-- html-in-canvas logic -->
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 
     const target = document.getElementById('target-htmlcanvas');
     const outDefault = document.getElementById('out-htmlcanvas-default');
@@ -334,7 +334,7 @@
   </script>
   <!-- Automatic capture reuse logic -->
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 
     const card = document.getElementById('target-session');
     const counter = document.getElementById('poke-counter');

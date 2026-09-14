@@ -37,7 +37,7 @@
     "description": "Capture any DOM element as SVG, PNG, JPG or WebP with fonts, pseudo-elements and open Shadow DOM included.",
     "url": "https://snapdom.dev/v2/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
-    "softwareVersion": "2.24.18",
+    "softwareVersion": "v2.x.x",
     "codeRepository": "https://github.com/zumerlab/snapdom",
     "license": "https://spdx.org/licenses/MIT.html",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
@@ -249,8 +249,8 @@
 </head>
 <body>
   <aside class="v2-archive-notice" aria-label="Documentation version">
-    <strong>SnapDOM v2.24.18 archive</strong>
-    <span>Examples use core 2.24.18 and plugins 2.2.2.</span>
+    <strong>SnapDOM v2.x.x archive</strong>
+    <span>Examples use SnapDOM v2.x.x and matching plugins.</span>
     <a href="/docs/">Current documentation</a>
   </aside>
   <header class="site-header">
@@ -289,11 +289,11 @@
             <a class="btn btn-secondary" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
           </div>
           <div class="install-stack">
-            <div class="install"><span>npm i @zumer/snapdom@2.24.18</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom@2.24.18">copy</button></div>
-            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom@2.24.18/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom@2.24.18/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
+            <div class="install"><span>npm i @zumer/snapdom@2.x.x</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom@2.x.x">copy</button></div>
+            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom@2.x.x/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom@2.x.x/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
           </div>
           <div class="proof" aria-label="Project stats">
-            <span><strong id="version-count">v2.24.18</strong> archived version</span>
+            <span><strong id="version-count">v2.x.x</strong> archived version</span>
             <span><strong id="download-count">1m+</strong> downloads/month</span>
             <span><strong>MIT</strong> licensed</span>
           </div>
@@ -489,7 +489,7 @@
     })
   </script>
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@2.24.18/dist/snapdom.mjs'
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@2.x.x/dist/snapdom.mjs'
 
     const pluginRolls = [
       { mod: 'filter', fn: 'filter', opts: { preset: 'vintage' }, label: "filter({ preset: 'vintage' })" },
@@ -531,7 +531,7 @@
         let label = 'snapdom.toPng()'
         if (roll) {
           try {
-            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins@2.2.2/${roll.mod}?deps=@zumer/snapdom@2.24.18`)
+            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins@2.x.x/${roll.mod}?deps=@zumer/snapdom@2.x.x`)
             plugins = [plugin[roll.fn](roll.opts)]
             label = roll.label
           } catch (error) {

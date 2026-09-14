@@ -12,7 +12,7 @@ live captures when their export method is called.
 Install the plugins next to a matching core:
 
 ```bash
-npm install @zumer/snapdom@3.0.0 @zumer/snapdom-plugins@3.0.0
+npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
 Plugins 3.x require a 3.x core. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
@@ -41,8 +41,8 @@ import { filter, timestampOverlay, replaceText } from '@zumer/snapdom-plugins';
 CDN (no install):
 
 ```js
-import { snapdom } from 'https://esm.sh/@zumer/snapdom@3.0.0';
-import { filter } from 'https://esm.sh/@zumer/snapdom-plugins@3.0.0/filter';
+import { snapdom } from 'https://esm.sh/@zumer/snapdom@latest';
+import { filter } from 'https://esm.sh/@zumer/snapdom-plugins@latest/filter';
 ```
 
 ---
@@ -490,7 +490,7 @@ Start from the plugin template:
 
 ```bash
 npx degit zumerlab/snapdom/packages/plugin-template my-plugin
-cd my-plugin && npm install --save-dev @zumer/snapdom@3.0.0
+cd my-plugin && npm install --save-dev @zumer/snapdom@latest
 ```
 
 See [PLUGIN_SPEC.md](../../PLUGIN_SPEC.md) for the full hook specification and [CONTRIBUTING_PLUGINS.md](../../CONTRIBUTING_PLUGINS.md) to get your plugin listed on the community page.

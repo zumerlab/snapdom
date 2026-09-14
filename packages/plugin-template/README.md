@@ -9,7 +9,7 @@ name, description and example option with your own before publishing. See the
 Install SnapDOM as a dev dependency:
 
 ```bash
-npm install --save-dev @zumer/snapdom@3.0.0
+npm install --save-dev @zumer/snapdom@latest
 ```
 
 Scaffold a plugin from this template:
@@ -17,7 +17,7 @@ Scaffold a plugin from this template:
 ```bash
 npx degit zumerlab/snapdom/packages/plugin-template snapdom-plugin-yourname
 cd snapdom-plugin-yourname
-npm install --save-dev @zumer/snapdom@3.0.0
+npm install --save-dev @zumer/snapdom@latest
 ```
 
 The template has no relative core dependency, so it works independently of the monorepo's

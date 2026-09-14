@@ -2,7 +2,7 @@
 
 > Archived v2 documentation. Current documentation: https://snapdom.dev/docs/
 
-> Package: @zumer/snapdom | Version: 2.24.18 (archived v2 reference) | License: MIT
+> Package: @zumer/snapdom | Version: v2.x.x (archived v2 reference) | License: MIT
 > Ultra-fast, zero-dependency DOM-to-image capture engine for the browser.
 > GitHub: https://github.com/zumerlab/snapdom
 > Website: https://snapdom.dev/v2
@@ -11,23 +11,23 @@
 
 ## INSTALLATION
 
-This archive uses SnapDOM 2.24.18 and official plugins 2.2.2. Use these exact versions with this reference.
+This archive covers SnapDOM v2.x.x and matching official plugins.
 
 npm:
 ```bash
-npm install @zumer/snapdom@2.24.18
+npm install @zumer/snapdom@2.x.x
 ```
 
 CDN (ESM):
 ```html
 <script type="module">
-  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.18/dist/snapdom.mjs';
+  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.x.x/dist/snapdom.mjs';
 </script>
 ```
 
 CDN (IIFE, global window.snapdom):
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.18/dist/snapdom.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.x.x/dist/snapdom.js"></script>
 ```
 
 ESM import:
@@ -42,7 +42,7 @@ import { preCache } from '@zumer/snapdom/preCache';
 
 Official plugins live in a separate MIT package:
 ```bash
-npm install @zumer/snapdom-plugins@2.2.2
+npm install @zumer/snapdom-plugins@2.x.x
 ```
 ```js
 import { filter, colorTint, replaceText, timestampOverlay, asciiExport, pdfImage, agentMap, htmlExport, gifExport, videoExport, htmlInCanvas } from '@zumer/snapdom-plugins';
@@ -424,7 +424,7 @@ Inside defineExports, ctx.exports provides silent access to core exports: img, s
 
 ## OFFICIAL PLUGINS
 
-Separate MIT package: `npm install @zumer/snapdom-plugins@2.2.2`. Import from the package root or a per-plugin subpath:
+Separate MIT package: `npm install @zumer/snapdom-plugins@2.x.x`. Import from the package root or a per-plugin subpath:
 
 ```js
 import { filter } from '@zumer/snapdom-plugins';
@@ -762,7 +762,7 @@ export function jsonExport() {
 
 Package name: snapdom-plugin-<name>
 Plugin name field: kebab-case
-Peer dependency: "@zumer/snapdom": ">=2.0.0"
+Peer dependency: "@zumer/snapdom": ">=2"
 
 ---
 

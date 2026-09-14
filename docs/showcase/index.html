@@ -1446,10 +1446,10 @@
   </script>
 
   <script type="importmap">
-    { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs" } }
+    { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs" } }
   </script>
   <script type="module">
-        import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
+        import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 
 
     window.snapdom = snapdom;
@@ -1457,7 +1457,7 @@
     // ── Export plugin demos ──
     // Plugins are lazy-loaded from npm (via esm.sh) on first click, so an
     // unpublished/offline CDN only breaks its own demo, never the whole page.
-    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins@3.0.0';
+    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins@latest';
     let _xpCount = 0;
     setInterval(() => {
       const s = String((_xpCount = (_xpCount + 1) % 100)).padStart(2, '0');

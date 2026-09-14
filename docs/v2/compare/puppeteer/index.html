@@ -24,8 +24,8 @@
 </head>
 <body>
   <aside class="v2-archive-notice" aria-label="Documentation version">
-    <strong>SnapDOM v2.24.18 archive</strong>
-    <span>Examples use core 2.24.18 and plugins 2.2.2.</span>
+    <strong>SnapDOM v2.x.x archive</strong>
+    <span>Examples use SnapDOM v2.x.x and matching plugins.</span>
     <a href="/docs/">Current documentation</a>
   </aside>
 <script defer src="../../site.js"></script>
@@ -94,7 +94,7 @@ await page.setBypassCSP(true)
 await page.goto('https://example.com/report', { waitUntil: 'networkidle2' })
 await page.waitForSelector('#report[data-ready="true"]')
 await page.addScriptTag({
-  url: 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.18/dist/snapdom.js'
+  url: 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.x.x/dist/snapdom.js'
 })
 
 const artifacts = await page.$eval('#report', async element =&gt; {

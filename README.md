@@ -42,7 +42,7 @@ Export images and canvas with the core. Use plugins for self-contained HTML, pag
 
 [Documentation and demos](https://snapdom.dev/) · [Technical features](FEATURES.md) · [Official plugins](packages/plugins/README.md) · [简体中文](README_CN.md)
 
-This checkout documents **v3.0.0**. The migration guide below compares it with **v2.24.18**. The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) and [v2 documentation](https://snapdom.dev/v2/) remain available.
+This checkout documents **v3.x.x**. The migration guide below compares it with **v2.x.x**. The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) and [v2 documentation](https://snapdom.dev/v2/) remain available.
 
 ## What you can build
 
@@ -84,13 +84,13 @@ The result keeps that capture even if the source element later changes. Call `sn
 Install the core and, when you need them, the official plugins; use matching major versions:
 
 ```sh
-npm i @zumer/snapdom@3.0.0 @zumer/snapdom-plugins@3.0.0
+npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
 Or load it in a browser:
 
 ```html
-<script src="https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.js"></script>
+<script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"></script>
 <script>
   snapdom.toPng(document.querySelector('#card')).then(image => {
     document.body.appendChild(image);
@@ -101,11 +101,11 @@ Or load it in a browser:
 As an ES module from a CDN:
 
 ```js
-import { snapdom } from 'https://esm.sh/@zumer/snapdom@3.0.0';
-import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins@3.0.0/html-export';
+import { snapdom } from 'https://esm.sh/@zumer/snapdom@latest';
+import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins@latest/html-export';
 ```
 
-`https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs` serves the same module. These examples pin core and plugins to the same release.
+`https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs` serves the same module. These examples load the latest published core and plugins.
 
 To run the docs site against a local build of this checkout instead:
 
@@ -236,7 +236,7 @@ The second engine is experimental: it still needs a compatible browser with its 
 
 ## Migrating from v2
 
-The main capture pattern remains `snapdom(element, options)`. This guide compares v3 with **v2.24.18**; review these changes before upgrading:
+The main capture pattern remains `snapdom(element, options)`. This guide compares v3 with **v2.x.x**; review these changes before upgrading:
 
 | In v2 | In v3 | What to change |
 | --- | --- | --- |
@@ -251,7 +251,7 @@ The main capture pattern remains `snapdom(element, options)`. This guide compare
 | `resolvePicturePlaceholders` / `pictureResolver` configured lazy-image preparation | Responsive/lazy image resolution happens on the clone; these options are no longer documented or supported | Remove the options and handle custom loading/timeouts in your app before capture; the engine still reads `resolvePicturePlaceholders` for internal use, do not rely on it |
 | Some visible input values were redacted | Core masks passwords only | Add `redactInputs()` for other fields |
 | `afterExport` returns became the next hook's payload, not the caller's result | Returns are ignored; hooks receive the same export payload | Stop chaining through return values; use `defineExports` to produce a different output |
-| Plugins 2.2.2 exposed `@zumer/snapdom-plugins/html-in-canvas` | That subpath is removed | Use the experimental core `engine: 'html-in-canvas'` with a compatible custom build; the default build uses SVG |
+| Plugins v2.x.x exposed `@zumer/snapdom-plugins/html-in-canvas` | That subpath is removed | Use the experimental core `engine: 'html-in-canvas'` with a compatible custom build; the default build uses SVG |
 | TypeScript exported `PluginExportFacade` | The named type is removed; `ctx.exports` still provides core exporters | Infer it in `defineExports`, or use `NonNullable<CaptureContext['exports']>` |
 
 ### Use filter and exclude together

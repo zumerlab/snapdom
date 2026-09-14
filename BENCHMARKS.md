@@ -75,7 +75,7 @@ The capability fixtures check painted marker pixels with a negative control. The
 
 ## SVG vs html-in-canvas
 
-Measured September 4, 2026: local v3.0.0-beta.0, headed Chrome 152.0.7977.76 with the canvas drawing flag enabled, Apple M5, DPR 1 and scale 1. The native engine was confirmed active in every native sample; none used SVG fallback.
+Measured September 4, 2026: local v3.x.x prerelease, headed Chrome 152.0.7977.76 with the canvas drawing flag enabled, Apple M5, DPR 1 and scale 1. The native engine was confirmed active in every native sample; none used SVG fallback.
 
 These are **recaptures with warm resource caches**, not memoized results. Each engine/scene has 30 measured samples across two rounds, with engine order reversed in the second round. Each combination uses a fresh browser context and three excluded warmups per round. Times below are medians.
 

@@ -118,10 +118,10 @@
 
     <section class="prose">
       <h2 id="install">Step 1 — Install SnapDOM</h2>
-      <pre class="code-block">npm install @zumer/snapdom@3.0.0</pre>
+      <pre class="code-block">npm install @zumer/snapdom@latest</pre>
       <p>If you don't use a bundler, you can also use the CDN build:</p>
       <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> type=<span class="str">"module"</span><span class="op">&gt;</span>
-  <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">"https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs"</span>;
+  <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">"https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"</span>;
 <span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span></pre>
     </section>
 
@@ -173,7 +173,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
   <span class="op">&lt;</span><span class="fn">button</span> id=<span class="str">"go"</span><span class="op">&gt;</span>Capture<span class="op">&lt;/</span><span class="fn">button</span><span class="op">&gt;</span>
 
   <span class="op">&lt;</span><span class="kw">script</span> type=<span class="str">"module"</span><span class="op">&gt;</span>
-    <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">"https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs"</span>;
+    <span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">"https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"</span>;
 
     document.<span class="fn">getElementById</span>(<span class="str">'go'</span>).<span class="fn">addEventListener</span>(<span class="str">'click'</span>, <span class="kw">async</span> () =&gt; {
       <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">getElementById</span>(<span class="str">'card'</span>));
@@ -224,7 +224,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Does this work with web fonts?</summary>
-        <p>Yes. SnapDOM v3 embeds used web fonts by default with <code>embedFonts: 'auto'</code>, provided their files are accessible.</p>
+        <p>Yes. SnapDOM v3.x.x embeds used web fonts by default with <code>embedFonts: 'auto'</code>, provided their files are accessible.</p>
       </details>
 
       <details>

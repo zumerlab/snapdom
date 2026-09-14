@@ -418,24 +418,24 @@
     <div class="install-grid">
       <div class="install-card">
         <div class="install-label">Install core</div>
-        <code>npm i @zumer/snapdom@3.0.0</code>
+        <code>npm i @zumer/snapdom@latest</code>
       </div>
       <div class="install-card">
         <div class="install-label">Install plugins</div>
-        <code>npm i @zumer/snapdom-plugins@3.0.0</code>
+        <code>npm i @zumer/snapdom-plugins@latest</code>
       </div>
       <div class="install-card">
         <div class="install-label">CDN (no install)</div>
         <code>&lt;script type="importmap"&gt;</code>
         <code>{ "imports": {</code>
         <code>&nbsp;&nbsp;"@zumer/snapdom":</code>
-        <code>&nbsp;&nbsp;&nbsp;&nbsp;"https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs"</code>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;"https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"</code>
         <code>} }</code>
         <code>&lt;/script&gt;</code>
         <code>&lt;script type="module"&gt;</code>
         <code>&nbsp;&nbsp;import { snapdom } from '@zumer/snapdom';</code>
         <code>&nbsp;&nbsp;import { filter } from</code>
-        <code>&nbsp;&nbsp;&nbsp;&nbsp;'https://esm.sh/@zumer/snapdom-plugins@3.0.0/filter?external=@zumer/snapdom';</code>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;'https://esm.sh/@zumer/snapdom-plugins@latest/filter?external=@zumer/snapdom';</code>
         <code>&lt;/script&gt;</code>
       </div>
     </div>
@@ -959,7 +959,7 @@
 
   <!-- Playground -->
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 
     // ── Plugin factories ──
     function filterPlugin(options = {}) {

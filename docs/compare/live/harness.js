@@ -11,7 +11,7 @@
 // Two rules everything here exists to enforce:
 //   1. ONE OUTPUT STAGE for every library: a PNG data URL. Comparing snapdom's SVG url
 //      against a competitor's rasterized PNG is what produced the old "0.5 ms" README table.
-//   2. DEFAULTS PROFILE at scale 1, versions pinned. Configured profiles get their own label.
+//   2. DEFAULTS PROFILE at scale 1, competitor versions pinned. Configured profiles get their own label.
 //
 // No imports, no build step, no framework: it runs as-is in a browser and under vite.
 
@@ -44,8 +44,8 @@ function loadScript(src) {
 
 /** name -> async () => (el) => Promise<pngDataUrl>.
  *  Competitors only: snapdom is added by each caller from the build it means to measure
- *  (the repo suite from src/, the live lab from the published bundle). Versions are pinned
- *  because an unpinned CDN specifier silently re-benchmarks a different library. */
+ *  (the repo suite from src/, the live lab from the latest published bundle). Competitor
+ *  versions are pinned so their results do not change with a new CDN release. */
 export const COMPETITORS = {
   'html2canvas 1.4.1': async () => {
     if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')

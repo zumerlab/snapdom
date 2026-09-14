@@ -71,7 +71,7 @@
       <ul>
         <li><strong>One output stage for everyone.</strong> Every library is timed through to a PNG data URL. Comparing an SVG URL with a PNG would omit rasterization and encoding from one side.</li>
         <li><strong>Cold and repeat are different numbers.</strong> <em>First capture</em> builds a new element for every run. <em>Repeat</em> captures the same element again. Compare both columns because reuse can change the timing and ranking.</li>
-        <li><strong>Defaults, scale 1, pinned versions.</strong> No library is configured for advantage. SnapDOM runs with <code>burst: false</code> in every scene except <em>Polling</em>, so its memoization is not compared against everyone else's full pipeline.</li>
+        <li><strong>Defaults, scale 1.</strong> This lab loads SnapDOM from <code>@latest</code> and uses fixed competitor versions. No library is configured for advantage. SnapDOM runs with <code>burst: false</code> in every scene except <em>Polling</em>, so its memoization is not compared against everyone else's full pipeline.</li>
         <li><strong>The table does not know who should win.</strong> Rows are sorted by measured time and the fastest is highlighted, whoever it is. On some scenes that is not SnapDOM.</li>
       </ul>
       <p class="muted">Absolute milliseconds depend on your CPU, your browser and how busy the machine is. The ratios are the part worth quoting.</p>

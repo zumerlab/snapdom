@@ -10,7 +10,7 @@
 let _snapdom = null
 async function loadSnapdom() {
   if (!_snapdom) {
-    _snapdom = import('https://unpkg.com/@zumer/snapdom@2.24.18/dist/snapdom.mjs').then((m) => {
+    _snapdom = import('https://unpkg.com/@zumer/snapdom@2.x.x/dist/snapdom.mjs').then((m) => {
       window.snapdom = m.snapdom
       return m.snapdom
     })

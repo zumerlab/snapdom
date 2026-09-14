@@ -70,7 +70,7 @@
     "description": "Capture any DOM element as an image. Convert any DOM subtree to SVG, PNG, JPG, or WebP with full CSS fidelity, including pseudo-elements, web fonts, and Shadow DOM.",
     "url": "https://snapdom.dev/v2/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
-    "softwareVersion": "2.24.18",
+    "softwareVersion": "v2.x.x",
     "codeRepository": "https://github.com/zumerlab/snapdom",
     "license": "https://spdx.org/licenses/MIT.html",
     "image": "https://snapdom.dev/v2/assets/og-card.jpg",
@@ -611,8 +611,8 @@
 
 <body>
   <aside class="v2-archive-notice" aria-label="Documentation version">
-    <strong>SnapDOM v2.24.18 archive</strong>
-    <span>Examples use core 2.24.18 and plugins 2.2.2.</span>
+    <strong>SnapDOM v2.x.x archive</strong>
+    <span>Examples use SnapDOM v2.x.x and matching plugins.</span>
     <a href="/docs/">Current documentation</a>
   </aside>
   <script defer src="../site.js"></script>
@@ -1444,7 +1444,7 @@
   </script>
 
   <script type="module">
-        import { snapdom } from 'https://unpkg.com/@zumer/snapdom@2.24.18/dist/snapdom.mjs';
+        import { snapdom } from 'https://unpkg.com/@zumer/snapdom@2.x.x/dist/snapdom.mjs';
 
 
     window.snapdom = snapdom;
@@ -1452,7 +1452,7 @@
     // ── Export plugin demos ──
     // Plugins are lazy-loaded from npm (via esm.sh) on first click, so an
     // unpublished/offline CDN only breaks its own demo, never the whole page.
-    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins@2.2.2';
+    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins@2.x.x';
     let _xpCount = 0;
     setInterval(() => {
       const s = String((_xpCount = (_xpCount + 1) % 100)).padStart(2, '0');
@@ -1492,7 +1492,7 @@
       const out = document.getElementById('xp-html-out');
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Exporting…</div>';
       try {
-        const { htmlExport } = await import(`${PLUGIN_CDN}/html-export?deps=@zumer/snapdom@2.24.18`);
+        const { htmlExport } = await import(`${PLUGIN_CDN}/html-export?deps=@zumer/snapdom@2.x.x`);
         const result = await snapdom(document.getElementById('xp-html-src'), { plugins: [htmlExport()] });
         const html = await result.toHtml();
         const iframe = document.createElement('iframe');
@@ -1510,7 +1510,7 @@
       const out = document.getElementById('xp-gif-out');
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording frames…</div>';
       try {
-        const { gifExport } = await import(`${PLUGIN_CDN}/gif-export?deps=@zumer/snapdom@2.24.18`);
+        const { gifExport } = await import(`${PLUGIN_CDN}/gif-export?deps=@zumer/snapdom@2.x.x`);
         const src = document.getElementById('xp-gif-src');
         const result = await snapdom(src, { plugins: [gifExport()] });
         const blob = await result.toGif({ fps: 12, duration: 1500 });
@@ -1532,7 +1532,7 @@
       const out = document.getElementById('xp-vid-out');
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording…</div>';
       try {
-        const { videoExport } = await import(`${PLUGIN_CDN}/video-export?deps=@zumer/snapdom@2.24.18`);
+        const { videoExport } = await import(`${PLUGIN_CDN}/video-export?deps=@zumer/snapdom@2.x.x`);
         const src = document.getElementById('xp-vid-src');
         const result = await snapdom(src, { plugins: [videoExport()] });
         const blob = await result.toMp4({ fps: 12, duration: 2000 });

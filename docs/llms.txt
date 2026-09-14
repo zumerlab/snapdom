@@ -6,12 +6,12 @@ SnapDOM (`@zumer/snapdom`) captures a DOM subtree, its styles and its assets int
 
 Two integrated engines render the same finished clone: `svg` (default) serializes it, while experimental `html-in-canvas` paints it through the browser's native API. The second engine still needs the browser feature flag or applicable origin trial (supported Chrome builds: `chrome://flags/#canvas-draw-element`) and a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`; the default build currently omits it. Unsupported captures fall back to SVG.
 
-This reference describes SnapDOM 3.0.0. See the [installation notes](https://github.com/zumerlab/snapdom#installation). Older projects can use the [archived v2 documentation](https://snapdom.dev/v2/) and [preserved v2 branch](https://github.com/zumerlab/snapdom/tree/v2).
+This reference describes SnapDOM v3.x.x. See the [installation notes](https://github.com/zumerlab/snapdom#installation). Older projects can use the [archived v2 documentation](https://snapdom.dev/v2/) and [preserved v2 branch](https://github.com/zumerlab/snapdom/tree/v2).
 
 ## Quick start
 
 ```bash
-npm install @zumer/snapdom@3.0.0
+npm install @zumer/snapdom@latest
 ```
 
 ```js
@@ -88,7 +88,7 @@ Function-valued `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` suspe
 
 Plugins may request the `clone` stage for structured output without rendering an image. A clone-only result has no `url` or `meta`, and core image exporters throw. Its plugin exports remain available.
 
-## Migrating from v2.24.18
+## Migrating from v2.x.x
 
 - Keep `filter` / `filterMode` and `exclude` / `excludeMode`: both remain supported together with independent hide/remove modes, defaulting to hide. `filter` retains truthy results and filters out falsy ones, as in v2. `exclude` adds omissions; its new predicate form returns true to omit and is optional. The CSS-effect plugin named `filter` is unaffected.
 - Per-node precedence is `data-capture="exclude"`, then `exclude`, then `filter`. The first omission decides the mode and stops evaluation: the attribute or an `exclude` match uses `excludeMode`, even if `filter` would also reject it with a different mode. Any selector or predicate match within an `exclude` array excludes the node.
@@ -96,7 +96,7 @@ Plugins may request the `clone` stage for structured output without rendering an
 - Remove public `fast` and `burst` switches; optimizations and eligible memoization are automatic. `cache: 'disabled'` controls resource/style caches, not memoization.
 - Remove `compress`, `resolvePicturePlaceholders` and `pictureResolver` settings. Image optimization and responsive/lazy image resolution remain automatic; there is no public compression opt-out or replacement picture-resolver tuning object. Handle custom image loading/timeouts in the app before capture.
 - `embedFonts` defaults to `'auto'`; width/height win over scale. Core masks passwords only; use `redactInputs()` for other visible fields.
-- `afterExport` returns no longer become the next hook's payload. They never replaced the caller's output in v2.24.18; use `defineExports` for custom output.
+- `afterExport` returns no longer become the next hook's payload. They never replaced the caller's output in v2.x.x; use `defineExports` for custom output.
 - The TypeScript name `PluginExportFacade` is removed; `ctx.exports` remains. Infer it in `defineExports` or use `NonNullable<CaptureContext['exports']>`.
 
 ```js
@@ -132,7 +132,7 @@ Redaction leaves the live page unchanged. `selector` selects inputs/textareas on
 
 ## SnapDOM Pro previews
 
-[SnapDOM Pro](https://snapdom.dev/pro/) contains paid plugin previews for [searchable PDF export](https://snapdom.dev/pro/pdf/) and [editable vector SVG export](https://snapdom.dev/pro/vector/). These are separate from the MIT core and `@zumer/snapdom-plugins`. Preview pages provide samples and current limits. The current previews target SnapDOM 3.0.0-beta.0 or later; consult each product's documentation for supported versions and release status.
+[SnapDOM Pro](https://snapdom.dev/pro/) contains paid plugin previews for [searchable PDF export](https://snapdom.dev/pro/pdf/) and [editable vector SVG export](https://snapdom.dev/pro/vector/). These are separate from the MIT core and `@zumer/snapdom-plugins`. Preview pages provide samples and current limits. The current previews target SnapDOM v3.x.x; consult each product's documentation for supported versions and release status.
 
 ## Scope and limits
 

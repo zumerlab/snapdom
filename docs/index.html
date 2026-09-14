@@ -286,11 +286,11 @@
             <a class="btn btn-secondary" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
           </div>
           <div class="install-stack">
-            <div class="install"><span>npm i @zumer/snapdom@3.0.0</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom@3.0.0">copy</button></div>
-            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
+            <div class="install"><span>npm i @zumer/snapdom@latest</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom@latest">copy</button></div>
+            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
           </div>
           <div class="proof" aria-label="Project stats">
-            <span><strong>v3.0.0</strong> documentation</span>
+            <span><strong>v3.x.x</strong> documentation</span>
             <span><strong id="download-count">1m+</strong> downloads/month</span>
             <span><strong>MIT</strong> licensed</span>
           </div>
@@ -492,10 +492,10 @@
     })
   </script>
   <script type="importmap">
-    { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs" } }
+    { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs" } }
   </script>
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs'
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'
 
     const pluginRolls = [
       { mod: 'filter', fn: 'filter', opts: { preset: 'vintage' }, label: "filter({ preset: 'vintage' })" },
@@ -537,7 +537,7 @@
         let label = 'snapdom.toPng()'
         if (roll) {
           try {
-            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins@3.0.0/${roll.mod}?external=@zumer/snapdom`)
+            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins@latest/${roll.mod}?external=@zumer/snapdom`)
             plugins = [plugin[roll.fn](roll.opts)]
             label = roll.label
           } catch (error) {

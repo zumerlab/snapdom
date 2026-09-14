@@ -102,7 +102,7 @@
 
     <section class="prose">
       <h2>Why this needed a plugin</h2>
-      <p>SnapDOM v3 can reuse eligible captures, but the accumulated drawing here belongs to the plugin. On each shot, the plugin replaces the new clone with its saved clone and adds the latest mark. Its stateful hooks run on fresh captures.</p>
+      <p>SnapDOM v3.x.x can reuse eligible captures, but the accumulated drawing here belongs to the plugin. On each shot, the plugin replaces the new clone with its saved clone and adds the latest mark. Its stateful hooks run on fresh captures.</p>
       <p>The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks share the plugin closure. <code>afterClone</code> adds the new mark to <code>savedClone</code>; <code>afterRender</code> saves the resulting tree for the next call. The plugin owns this drawing state independently of capture reuse.</p>
     </section>
 
@@ -173,7 +173,7 @@ function shoot (xPct, yPct) {
 
   <script defer src="/copy-code.js"></script>
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs'
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'
 
     const RINGS = [
       { r: 0.10, points: 50, color: '#facc15' },

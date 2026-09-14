@@ -89,7 +89,7 @@
     <section class="prose">
       <h2 id="official">Official plugins</h2>
       <p>Install the official plugin package; use the version that matches your core major version:</p>
-      <pre class="code-block">npm install @zumer/snapdom-plugins@3.0.0</pre>
+      <pre class="code-block">npm install @zumer/snapdom-plugins@latest</pre>
       <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';
 import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pre>
       <table class="cmp-table">
@@ -202,7 +202,7 @@ snapdom.plugins(
         </tbody>
       </table>
       <p class="muted">Order: <code>beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender → defineExports → [beforeExport → exporter → afterExport] → afterSnap</code>. The bracketed segment repeats per export; <code>afterSnap</code> fires once after the first successful one. Export-hook return values are ignored. Change an export's options in <code>beforeExport</code>, or use <code>defineExports</code> to produce a custom result.</p>
-      <p><strong>V2.24.18 migration:</strong> an <code>afterExport</code> return used to become the next hook's payload; it never replaced the output returned to the caller. V3 ignores those returns and gives hooks the same export payload. Remove return-value chaining. The TypeScript name <code>PluginExportFacade</code> is also removed, but <code>ctx.exports</code> remains available inside <code>defineExports</code>. Infer its type there or use <code>NonNullable&lt;CaptureContext['exports']&gt;</code> after importing the <code>CaptureContext</code> type.</p>
+      <p><strong>v2.x.x migration:</strong> an <code>afterExport</code> return used to become the next hook's payload; it never replaced the output returned to the caller. V3 ignores those returns and gives hooks the same export payload. Remove return-value chaining. The TypeScript name <code>PluginExportFacade</code> is also removed, but <code>ctx.exports</code> remains available inside <code>defineExports</code>. Infer its type there or use <code>NonNullable&lt;CaptureContext['exports']&gt;</code> after importing the <code>CaptureContext</code> type.</p>
     </section>
 
     <section class="prose">

@@ -186,7 +186,7 @@ editable.addEventListener('input', updateMirror)</pre>
 
     <section class="prose">
       <h2>Limits and things to watch</h2>
-      <p>A keystroke can trigger a fresh capture and texture upload. Keep the captured element small or debounce the input handler for heavier content. SnapDOM v3 handles eligible reuse automatically; the timing hooks in this demo are stateful and force fresh capture work. Resource caches can still be reused.</p>
+      <p>A keystroke can trigger a fresh capture and texture upload. Keep the captured element small or debounce the input handler for heavier content. SnapDOM v3.x.x handles eligible reuse automatically; the timing hooks in this demo are stateful and force fresh capture work. Resource caches can still be reused.</p>
     </section>
 
     <section class="related">
@@ -205,7 +205,7 @@ editable.addEventListener('input', updateMirror)</pre>
 
   <script defer src="/copy-code.js"></script>
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs'
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'
 
     class WebGLMirror {
       constructor(canvas) {

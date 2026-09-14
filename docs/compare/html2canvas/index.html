@@ -60,7 +60,7 @@
         "name": "html2canvas doesn't render web fonts correctly, what do I use?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "First check that your fonts load before capture. SnapDOM v3 uses embedFonts: 'auto' by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser."
+          "text": "First check that your fonts load before capture. SnapDOM v3.x.x uses embedFonts: 'auto' by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser."
         }
       },
       {
@@ -324,7 +324,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>html2canvas doesn't render web fonts correctly, what do I use?</summary>
-        <p>First check that your fonts load before capture. SnapDOM v3 uses <code>embedFonts: 'auto'</code> by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser.</p>
+        <p>First check that your fonts load before capture. SnapDOM v3.x.x uses <code>embedFonts: 'auto'</code> by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser.</p>
       </details>
 
       <details>
@@ -373,7 +373,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
   </script>
 
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 
     let html2canvas = null;
     async function loadH2C() {

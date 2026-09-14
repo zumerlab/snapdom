@@ -42,7 +42,7 @@ SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM �
 
 [文档与演示](https://snapdom.dev/) · [技术功能](FEATURES.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
 
-本仓库介绍的是 **v3.0.0**。下方迁移指南以 **v2.24.18** 为比较基准。[v2 源码](https://github.com/zumerlab/snapdom/tree/v2)和 [v2 文档](https://snapdom.dev/v2/)仍可访问。
+本仓库介绍的是 **v3.x.x**。下方迁移指南以 **v2.x.x** 为比较基准。[v2 源码](https://github.com/zumerlab/snapdom/tree/v2)和 [v2 文档](https://snapdom.dev/v2/)仍可访问。
 
 ## 可以用它做什么
 
@@ -84,13 +84,13 @@ await result.download({ format: 'jpg', filename: 'card' });
 安装核心，并按需安装官方插件；两者的主版本号必须一致：
 
 ```sh
-npm i @zumer/snapdom@3.0.0 @zumer/snapdom-plugins@3.0.0
+npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
 也可以在浏览器中加载：
 
 ```html
-<script src="https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.js"></script>
+<script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"></script>
 <script>
   snapdom.toPng(document.querySelector('#card')).then(image => {
     document.body.appendChild(image);
@@ -101,11 +101,11 @@ npm i @zumer/snapdom@3.0.0 @zumer/snapdom-plugins@3.0.0
 以 ES Module 形式从 CDN 加载：
 
 ```js
-import { snapdom } from 'https://esm.sh/@zumer/snapdom@3.0.0';
-import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins@3.0.0/html-export';
+import { snapdom } from 'https://esm.sh/@zumer/snapdom@latest';
+import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins@latest/html-export';
 ```
 
-`https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs` 提供同一份模块。这些示例将核心和插件固定为同一发布版本。
+`https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs` 提供同一份模块。这些示例加载核心和插件的最新发布版本。
 
 如需用本仓库的本地构建运行文档站点：
 
@@ -236,7 +236,7 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 
 ## 从 v2 迁移
 
-主要调用方式仍是 `snapdom(element, options)`。本指南以 **v2.24.18** 为迁移基准。升级前请检查以下变化：
+主要调用方式仍是 `snapdom(element, options)`。本指南以 **v2.x.x** 为迁移基准。升级前请检查以下变化：
 
 | v2 | v3 | 需要调整的地方 |
 | --- | --- | --- |
@@ -251,7 +251,7 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 | `resolvePicturePlaceholders` / `pictureResolver` 配置懒加载图片预处理 | 在克隆节点上解析响应式和懒加载图片；这些选项不再记录在文档中，也不再受支持 | 删除这些选项，自定义加载和超时策略应在应用中、捕获前完成；引擎仍会读取 `resolvePicturePlaceholders` 供内部使用，请勿依赖 |
 | 部分可见输入值会被遮蔽 | 核心只遮蔽密码 | 其他字段需要使用 `redactInputs()` |
 | `afterExport` 返回值成为下一个钩子的参数，但不改变调用者收到的结果 | 返回值被忽略；钩子收到同一份导出参数 | 不再通过返回值串联钩子；用 `defineExports` 生成不同输出 |
-| 插件 2.2.2 提供 `@zumer/snapdom-plugins/html-in-canvas` | 该子路径已移除 | 使用兼容的自定义构建和核心的实验性 `engine: 'html-in-canvas'`；默认构建使用 SVG |
+| 插件 v2.x.x 提供 `@zumer/snapdom-plugins/html-in-canvas` | 该子路径已移除 | 使用兼容的自定义构建和核心的实验性 `engine: 'html-in-canvas'`；默认构建使用 SVG |
 | TypeScript 导出 `PluginExportFacade` | 该类型名称已移除；`ctx.exports` 仍提供核心导出器 | 在 `defineExports` 中使用类型推导，或使用 `NonNullable<CaptureContext['exports']>` |
 
 ### 同时使用 filter 和 exclude

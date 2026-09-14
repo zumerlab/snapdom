@@ -2,10 +2,10 @@
 
 All notable changes to this project will be documented in this file. 
 
-#### v3.0.0 (Unreleased)
+#### Unreleased
 
-Release notes for `@zumer/snapdom` and `@zumer/snapdom-plugins` 3.0.0. Read the
-[migration guide](README.md#migrating-from-v2) before upgrading from **v2.24.18**.
+Release notes for `@zumer/snapdom` and `@zumer/snapdom-plugins` v3.x.x. Read the
+[migration guide](README.md#migrating-from-v2) before upgrading from **v2.x.x**.
 The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) and
 [v2 documentation](https://snapdom.dev/v2/) remain available.
 
@@ -13,10 +13,10 @@ The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) and
   rebuilding affected subtrees. Per-capture sessions isolate concurrent work.
 - Embed used web fonts automatically, capture HTML strings with `fromString()`, and prepare
   learned captures on hover or focus with `preCapture()`.
-- Align core and official plugins at 3.0.0 for HTML, context, element maps, PDF,
+- Align core and official plugins on v3.x.x for HTML, context, element maps, PDF,
   image effects and GIF/video recording. The SVG engine remains the default; the native
   html-in-canvas engine remains experimental and requires a custom build.
-- Include the v2 fixes through **2.24.18**, including italic icon glyphs
+- Carry over v2.x.x fixes for italic icon glyphs
   ([#496](https://github.com/zumerlab/snapdom/pull/496)), non-generated pseudo-elements and
   animation suppression ([#497](https://github.com/zumerlab/snapdom/pull/497)), and layout
   alignment ([#498](https://github.com/zumerlab/snapdom/issues/498)).
