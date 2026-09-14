@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapDOM v3 Is Out | SnapDOM Blog</title>
+  <meta name="description" content="SnapDOM 3.0.0 brings automatic capture reuse, incremental recapture, automatic font embedding and new APIs. What changed, how it works and how to upgrade." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/blog/snapdom-v3/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="SnapDOM v3 is out" />
+  <meta property="og:description" content="Automatic capture reuse, incremental recapture, fewer setup options and a live comparison you can run on your own machine." />
+  <meta property="og:url" content="https://snapdom.dev/blog/snapdom-v3/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta property="article:published_time" content="2026-09-14" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "SnapDOM v3 is out",
+    "description": "SnapDOM 3.0.0 brings automatic capture reuse, incremental recapture, automatic font embedding and new APIs. What changed, how it works and how to upgrade.",
+    "url": "https://snapdom.dev/blog/snapdom-v3/",
+    "mainEntityOfPage": "https://snapdom.dev/blog/snapdom-v3/",
+    "image": "https://snapdom.dev/assets/og-card.jpg",
+    "datePublished": "2026-09-14",
+    "dateModified": "2026-09-14",
+    "author": { "@type": "Person", "name": "Juan Martin Muda", "url": "https://github.com/tinchox5" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://zumerlab.com" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://snapdom.dev/blog/" },
+      { "@type": "ListItem", "position": 3, "name": "SnapDOM v3 is out", "item": "https://snapdom.dev/blog/snapdom-v3/" }
+    ]
+  }
+  </script>
+  <style>
+    .byline { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+  </style>
+</head>
+<body>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
+
+  <section class="hero">
+    <div class="hero-badge">Release · 3.0.0</div>
+    <h1>SnapDOM <span class="accent">v3 is out</span></h1>
+    <p class="lead">Automatic capture reuse, incremental recapture, fewer setup options and a live comparison you can run on your own machine.</p>
+  </section>
+
+  <main class="page">
+    <article>
+      <p class="byline">Juan Martin Muda · <time datetime="2026-09-14">September 14, 2026</time></p>
+
+      <div class="prose">
+        <p>SnapDOM 3.0.0 is out, along with v3 of the official plugins. I put a lot of work into this release, especially into making repeated captures cheaper without returning stale content. I'm happy to finally ship it.</p>
+        <p>If you're new to SnapDOM, it captures a DOM element with its styles and assets, then lets you export SVG, PNG, JPG, WebP, canvas or blobs. It runs in the browser. The familiar <code>snapdom(element, options)</code> entry point stays the same in v3; much of the work happened underneath it.</p>
+      </div>
+
+      <section class="prose" aria-labelledby="repeat-captures">
+        <h2 id="repeat-captures">The second capture matters</h2>
+        <p>A share card may be exported several times without changing. A dashboard may update one value between captures. Rebuilding the whole capture every time repeats style reads, cloning and asset work that could still be valid.</p>
+        <p>In v3, the first successful capture of an eligible static element creates a memo. A later capture can reuse it if the relevant state is unchanged. For supported local mutations, the engine rebuilds the affected subtrees and splices them into the previous capture. This happens automatically.</p>
+        <p>Working out when that shortcut is safe took a lot of care. A local DOM edit can affect layout elsewhere. A scroll or focus change can alter the image without changing the text. Canvas, video and iframe contents can change without a useful DOM mutation at all.</p>
+        <p>The incremental path is deliberately conservative: it runs only when the engine can preserve the full capture's output. Other changes fall back to a full capture, and frame-driven content captures fresh. Direct stylesheet edits such as <code>sheet.insertRule()</code> still need <code>invalidate: true</code>, because they do not produce the DOM mutations used for style invalidation. The <a href="../../docs/cache/">cache guide</a> explains those boundaries.</p>
+        <p>Image exports from an existing result still use its captured state. If the page changes, call <code>snapdom()</code> again to read that change. PNG encoding and rasterization also still cost time; reusing capture work does not remove those steps.</p>
+        <p>Concurrent captures now keep their working state in separate sessions. Capturing two different elements at once no longer relies on one shared mutable session inside the engine.</p>
+      </section>
+
+      <section class="prose" aria-labelledby="fonts-and-layout">
+        <h2 id="fonts-and-layout">Fonts by default, and a lot of small rendering fixes</h2>
+        <p>Web fonts now embed automatically when the captured content uses them. The default is <code>embedFonts: 'auto'</code>; a capture using only system fonts skips that work. You can still pass <code>false</code> to leave text fonts out or <code>true</code> to force discovery.</p>
+        <p>A large part of the release also went into rendering details. Fractional widths could introduce an extra line wrap. Pseudo-element boxes, scrolled containers and images could end up misaligned. Transformed and offscreen elements needed fixes, too. These are easy defects to notice in an export: a label wraps, an icon moves, or a shadow ends up in the wrong place.</p>
+        <p>V3 fixes those cases, preserves inherited fill colors in SVG <code>&lt;use&gt;</code> icons, and corrects how slotted Shadow DOM content is cloned. Font handling also preserves icon styles and keeps unrelated font families when an icon font shares their stylesheet. The <a href="https://github.com/zumerlab/snapdom/blob/main/CHANGELOG.md">changelog</a> links to the individual fixes and reports.</p>
+      </section>
+
+      <section class="prose" aria-labelledby="new-apis">
+        <h2 id="new-apis">Two APIs for the work around a capture</h2>
+        <p><code>fromString()</code> handles the temporary mount when your input is HTML rather than an element already on the page. It places the markup offscreen in the live document, captures it and removes the mount. Page CSS and fonts apply.</p>
+        <pre class="code-block">import { snapdom } from '@zumer/snapdom'
+
+const capture = await snapdom.fromString(
+  '&lt;article class="share-card"&gt;&lt;h2&gt;SnapDOM v3&lt;/h2&gt;&lt;/article&gt;'
+)
+
+const image = await capture.toPng({ width: 1200, dpr: 1 })
+document.body.append(image)</pre>
+        <p>That string goes into the real document through <code>innerHTML</code>. Use trusted markup or sanitize it first. This API still needs a browser DOM.</p>
+        <p><code>preCapture()</code> prepares eligible captures on user intent. Enable it once, then keep the capture call in your control's handler. For a button and card already mounted in your app:</p>
+        <pre class="code-block">const button = document.querySelector('#export-button')
+const card = document.querySelector('#card')
+
+snapdom.preCapture()
+
+button.addEventListener('click', () =&gt;
+  snapdom.download(card, { format: 'png', filename: 'card.png' })
+)</pre>
+        <p>The first capture started during the control's press or click event teaches SnapDOM which element and options belong to that control. On later hover or focus, it can prepare the same capture before the next click. It has to learn that association first, and a capture deferred to an unrelated later timer will not teach it. There are no arguments to configure and no background polling.</p>
+      </section>
+
+      <section class="prose" aria-labelledby="plugins">
+        <h2 id="plugins">Core and official plugins share the v3 release line</h2>
+        <p>The official <code>@zumer/snapdom-plugins</code> package is on v3 as well. It covers HTML exports, text and JSON context, annotated element maps, image-based PDFs, image effects, and GIF or video recording. Match its major version to the core when you upgrade. Recording exports take new frames from the live element when recording starts.</p>
+        <p>Plugins also get capture geometry, the exact export options and canvas cropping support. Those details matter when an export has to line up with the source interface or when a plugin needs to use the same crop as a core exporter. The <a href="../../plugins.html">plugin gallery</a> has examples, and the <a href="../../docs/plugins/">plugin reference</a> documents the hooks and custom exports.</p>
+        <p>The default renderer is still SVG. The experimental native <code>html-in-canvas</code> engine requires a compatible browser and a custom build; it is omitted from the standard bundle.</p>
+      </section>
+
+      <section class="prose" aria-labelledby="site-and-comparison">
+        <h2 id="site-and-comparison">Run the comparison on your own machine</h2>
+        <p>I also worked on the site alongside this release. The <a href="../../docs/">reference</a>, <a href="../../how-to/">capture recipes</a> and <a href="../../guides/">framework guides</a> cover different parts of an integration. The <a href="../dom-capture-boundaries/">capture boundaries article</a> explains where SnapDOM runs when Node, browser automation or cross-origin frames are involved.</p>
+        <p>The part I'd particularly like people to try is the <a href="../../compare/live/">live comparison</a>. Pick a scene and the libraries you want to compare, then run it in your own browser, on your own hardware. It includes html2canvas, html-to-image, modern-screenshot and other DOM capture libraries.</p>
+        <p>Every library is timed through to a PNG data URL. First and repeat captures have separate columns, and the page shows the rendered output alongside the timings. The regular scenes disable SnapDOM's capture memoization; choose the Polling scene to exercise automatic reuse. Compare the images as well as the timings: a fast result with missing content is still a broken export. Pixel differences are measured against SnapDOM's output, which is a reference image rather than an independent correctness verdict.</p>
+        <p>There is also a capability matrix that captures small fixtures and checks whether their marker colors survive. It tests features such as Shadow DOM, pseudo-elements and painted canvas content. The results come from running the captures in your browser, so the scene, browser and hardware all matter.</p>
+      </section>
+
+      <section class="prose" aria-labelledby="upgrade">
+        <h2 id="upgrade">Before upgrading from v2</h2>
+        <p>This is a major release. Read the <a href="https://github.com/zumerlab/snapdom#migrating-from-v2">migration guide</a> before changing the version in an existing app. A few changes deserve a close look:</p>
+        <ul>
+          <li><code>width</code> and <code>height</code> take precedence over <code>scale</code>. To request a width of 400, use <code>width: 400</code> instead of <code>width: 200, scale: 2</code>. Raster <code>dpr</code> still applies; use <code>dpr: 1</code> when you need that exact pixel width.</li>
+          <li>Remove <code>preCache</code> and its subpath import. Normal capture reuse is automatic, and <code>preCapture()</code> learns capture intent. It is not a direct rename.</li>
+          <li>Remove the old <code>fast</code>, <code>burst</code>, <code>compress</code>, <code>resolvePicturePlaceholders</code> and <code>pictureResolver</code> options. Those public switches are no longer supported. Handle custom image loading and timeouts in your app before capture.</li>
+          <li>Core redaction masks password fields only. Use the <code>redactInputs()</code> plugin if your application needs other visible fields masked.</li>
+          <li><code>afterExport</code> hooks observe the export result; their return values no longer become the next hook's payload. Use <code>defineExports</code> for custom output.</li>
+        </ul>
+        <p><code>filter</code> and <code>exclude</code> remain supported together, each with its own hide/remove mode. Function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> and <code>fallbackURL</code> make each new capture run fresh so callbacks can read current application state. The <a href="../../v2/">v2 documentation</a> and <a href="https://github.com/zumerlab/snapdom/tree/v2">v2 branch</a> remain available for projects staying on that release.</p>
+        <pre class="code-block">npm install @zumer/snapdom@3
+
+# If your app uses the official plugins:
+npm install @zumer/snapdom-plugins@3</pre>
+        <p>Thanks to everyone who sent bug reports and small reproductions. They helped track down several of the rendering fixes in this release. Try v3 on your own UI, and if a capture looks wrong, <a href="https://github.com/zumerlab/snapdom/issues">open an issue</a> with the browser, the source element and the exported result.</p>
+      </section>
+    </article>
+
+    <section class="related">
+      <div class="section-label">Try it and read more</div>
+      <div class="related-grid">
+        <a class="related-card" href="../../compare/live/">Run the live comparison <span class="arrow">→</span></a>
+        <a class="related-card" href="../../docs/cache/">Capture reuse and preCapture <span class="arrow">→</span></a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom#migrating-from-v2">Migration guide <span class="arrow">→</span></a>
+        <a class="related-card" href="../">All blog posts <span class="arrow">→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <script defer src="/copy-code.js"></script>
+</body>
+</html>
