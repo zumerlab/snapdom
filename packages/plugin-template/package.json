@@ -29,6 +29,6 @@
   },
   "homepage": "https://snapdom.dev/",
   "peerDependencies": {
-    "@zumer/snapdom": ">=3.0.0-0"
+    "@zumer/snapdom": "^3.0.0"
   }
 }

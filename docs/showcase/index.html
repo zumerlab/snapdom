@@ -1445,8 +1445,11 @@
     }
   </script>
 
+  <script type="importmap">
+    { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs" } }
+  </script>
   <script type="module">
-        import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
+        import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
 
 
     window.snapdom = snapdom;
@@ -1454,7 +1457,7 @@
     // ── Export plugin demos ──
     // Plugins are lazy-loaded from npm (via esm.sh) on first click, so an
     // unpublished/offline CDN only breaks its own demo, never the whole page.
-    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins';
+    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins@3.0.0';
     let _xpCount = 0;
     setInterval(() => {
       const s = String((_xpCount = (_xpCount + 1) % 100)).padStart(2, '0');
@@ -1494,7 +1497,7 @@
       const out = document.getElementById('xp-html-out');
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Exporting…</div>';
       try {
-        const { htmlExport } = await import(`${PLUGIN_CDN}/html-export`);
+        const { htmlExport } = await import(`${PLUGIN_CDN}/html-export?external=@zumer/snapdom`);
         const result = await snapdom(document.getElementById('xp-html-src'), { plugins: [htmlExport()] });
         const html = await result.toHtml();
         const iframe = document.createElement('iframe');
@@ -1513,7 +1516,7 @@
       const out = document.getElementById('xp-gif-out');
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording frames…</div>';
       try {
-        const { gifExport } = await import(`${PLUGIN_CDN}/gif-export`);
+        const { gifExport } = await import(`${PLUGIN_CDN}/gif-export?external=@zumer/snapdom`);
         const src = document.getElementById('xp-gif-src');
         const result = await snapdom(src, { plugins: [gifExport()] });
         const blob = await result.toGif({ fps: 12, duration: 1500 });
@@ -1535,7 +1538,7 @@
       const out = document.getElementById('xp-vid-out');
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording…</div>';
       try {
-        const { videoExport } = await import(`${PLUGIN_CDN}/video-export`);
+        const { videoExport } = await import(`${PLUGIN_CDN}/video-export?external=@zumer/snapdom`);
         const src = document.getElementById('xp-vid-src');
         const result = await snapdom(src, { plugins: [videoExport()] });
         const blob = await result.toMp4({ fps: 12, duration: 2000 });

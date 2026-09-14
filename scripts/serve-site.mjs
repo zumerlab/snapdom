@@ -68,9 +68,11 @@ createServer((req, res) => {
     if (!file) { res.writeHead(404).end(); return }
     let body = readFileSync(file)
     const ext = extname(file)
-    if (ext === '.html') body = rewriteHtml(body.toString())
+    // The archive must keep its pinned v2 dependencies even during v3 development.
+    const archived = path.startsWith('/v2/')
+    if (ext === '.html' && !archived) body = rewriteHtml(body.toString())
     else if (plugin) body = rewritePluginJs(body.toString())
-    else if (ext === '.js' && !dist) body = rewriteJs(body.toString())
+    else if (ext === '.js' && !dist && !archived) body = rewriteJs(body.toString())
     res.writeHead(200, { 'content-type': MIME[ext] || 'application/octet-stream' })
     res.end(body)
   } catch {

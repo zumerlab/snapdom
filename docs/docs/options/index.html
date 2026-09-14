@@ -231,7 +231,7 @@ await snapdom.toSvg(element, {
 
     <section class="prose">
       <h2 id="filtering">Selecting content: <code>filter</code> and <code>exclude</code></h2>
-      <p><code>filter</code> and <code>exclude</code> remain independent, as in v2.24.16. Use them together in one capture, with separate layout modes. V3 adds optional predicates to <code>exclude</code>; this does not replace <code>filter</code>. The separate CSS-effect plugin named <code>filter</code> is also available.</p>
+      <p><code>filter</code> and <code>exclude</code> remain independent, as in v2.24.18. Use them together in one capture, with separate layout modes. V3 adds optional predicates to <code>exclude</code>; this does not replace <code>filter</code>. The separate CSS-effect plugin named <code>filter</code> is also available.</p>
       <ul>
         <li><code>filter</code>: a synchronous boolean predicate. True keeps a node; false filters it out. As in v2, any falsy return filters it out.</li>
         <li><code>filterMode</code>: <code>hide</code> keeps an invisible spacer for filtered nodes; <code>remove</code> drops them and allows reflow. Defaults to <code>hide</code>.</li>
@@ -270,7 +270,7 @@ await snapdom.toPng(document.body, { exclude: isHidden });</pre>
 
     <section class="prose">
       <h2 id="v2-options">Other v2 option changes</h2>
-      <p>Compared with v2.24.16, the following settings no longer belong to the public v3 options. The underlying capture capabilities remain:</p>
+      <p>Compared with v2.24.18, the following settings no longer belong to the public v3 options. The underlying capture capabilities remain:</p>
       <ul>
         <li><code>fast</code> and <code>burst</code>: remove these switches. Optimizations and eligible repeat memoization are automatic. Use <code>invalidate: true</code> for one fresh capture after an otherwise unobservable change.</li>
         <li><code>compress</code>: remove the switch. Embedded bitmap optimization is automatic, with no public opt-out for embedding the original resources verbatim.</li>

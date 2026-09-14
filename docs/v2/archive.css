@@ -1,0 +1,21 @@
+/* Version notice only; the archived site keeps its original styles. */
+.v2-archive-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px 18px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #c9d5ff;
+  background: #eef3ff;
+  color: #0f1e4d;
+  font: 14px/1.5 Arial, Helvetica, sans-serif;
+  text-align: center;
+}
+.v2-archive-notice strong { font-weight: 700; }
+.v2-archive-notice a { color: #1d43d7; text-decoration: underline; }
+.v2-archive-notice a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+@media (max-width: 560px) {
+  .v2-archive-notice { padding: 10px 16px; gap: 4px 12px; }
+  .v2-archive-notice span { flex-basis: 100%; }
+}

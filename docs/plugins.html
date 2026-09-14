@@ -136,7 +136,7 @@
     .install-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
     .install-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 0; padding: 20px 24px; }
     .install-card .install-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; }
-    .install-card code { font-family: var(--font-code); font-size: 13px; color: var(--accent); display: block; line-height: 1.6; font-weight: 600; }
+    .install-card code { font-family: var(--font-code); font-size: 13px; color: var(--accent); display: block; line-height: 1.6; font-weight: 600; overflow-wrap: anywhere; }
 
     /* ── Usage ── */
     .usage-section { max-width: 1100px; margin: 0 auto 60px; padding: 0 24px; }
@@ -418,22 +418,28 @@
     <div class="install-grid">
       <div class="install-card">
         <div class="install-label">Install core</div>
-        <code>npm i @zumer/snapdom</code>
+        <code>npm i @zumer/snapdom@3.0.0</code>
       </div>
       <div class="install-card">
         <div class="install-label">Install plugins</div>
-        <code>npm i @zumer/snapdom-plugins</code>
+        <code>npm i @zumer/snapdom-plugins@3.0.0</code>
       </div>
       <div class="install-card">
         <div class="install-label">CDN (no install)</div>
+        <code>&lt;script type="importmap"&gt;</code>
+        <code>{ "imports": {</code>
+        <code>&nbsp;&nbsp;"@zumer/snapdom":</code>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;"https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs"</code>
+        <code>} }</code>
+        <code>&lt;/script&gt;</code>
         <code>&lt;script type="module"&gt;</code>
-        <code>&nbsp;&nbsp;import { snapdom } from</code>
-        <code>&nbsp;&nbsp;&nbsp;&nbsp;'https://esm.sh/@zumer/snapdom';</code>
+        <code>&nbsp;&nbsp;import { snapdom } from '@zumer/snapdom';</code>
         <code>&nbsp;&nbsp;import { filter } from</code>
-        <code>&nbsp;&nbsp;&nbsp;&nbsp;'https://esm.sh/@zumer/snapdom-plugins/filter';</code>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;'https://esm.sh/@zumer/snapdom-plugins@3.0.0/filter?external=@zumer/snapdom';</code>
         <code>&lt;/script&gt;</code>
       </div>
     </div>
+    <p>Use matching core and plugin versions. The import map lets recording plugins share the same core runtime.</p>
   </section>
 
   <section class="usage-section">
@@ -953,7 +959,7 @@
 
   <!-- Playground -->
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
 
     // ── Plugin factories ──
     function filterPlugin(options = {}) {

@@ -1,0 +1,20 @@
+SnapDOM v2 documentation archive
+
+Source repository: https://github.com/zumerlab/snapdom
+Source commit: 26d5b688ad409b79e38402ec81d11f964eab3f83
+Source directory: docs/
+Archived at: https://snapdom.dev/v2/
+Core package: @zumer/snapdom@2.24.18
+Official plugins: @zumer/snapdom-plugins@2.2.2
+
+The original documentation pages and assets are retained. Site links, canonical
+URLs, metadata and the sitemap point to /v2/. Installation and CDN examples use
+exact v2 package versions; esm.sh plugin imports also pin their core dependency.
+The archive adds a version notice linking to current documentation, replaces the
+mutable dev-install section with that link, and repairs favicon manifest paths.
+The version badge is fixed to v2.24.18; source/specification links use the source
+commit above so they continue to show the v2 API contract.
+CNAME and BingSiteAuth.xml are deployment/domain settings and are not copied.
+
+This is a historical reference, with no support deadline implied.
+Current documentation: https://snapdom.dev/docs/

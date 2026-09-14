@@ -1,6 +1,6 @@
 # SnapDOM Plugin Specification v2.0 (snapdom v3)
 
-This guide covers the plugin contract for the SnapDOM v3 beta. SnapDOM captures the rendered
+This guide covers the plugin contract for SnapDOM v3. SnapDOM captures the rendered
 state of web apps and exports images and canvases. Plugins can transform that capture,
 export HTML, context, element maps or PDF, and record a live element as GIF or video.
 
@@ -193,7 +193,7 @@ what the exporter produced.
 something else, declare that format in `defineExports` (it can build on
 `ctx.exports.png()` and friends).
 
-Compared with v2.24.16, `afterExport` no longer chains its return value as the next hook's
+Compared with v2.24.18, `afterExport` no longer chains its return value as the next hook's
 payload. That return never replaced the result received by the caller in v2 either.
 Remove return-value chaining; custom output belongs in `defineExports`.
 
@@ -325,11 +325,11 @@ plugin can override `toPng`, `toJpg`, `toCanvas` or another exporter. Use `ctx.e
 
 ### Official plugins
 
-Official plugins ship separately. This installs the published package; for the v3 beta
-checkout, follow [Installation](./README.md#installation).
+Official plugins ship separately and require a matching core major version. See
+[Installation](./README.md#installation) for core and CDN examples.
 
 ```bash
-npm i @zumer/snapdom-plugins
+npm i @zumer/snapdom@3.0.0 @zumer/snapdom-plugins@3.0.0
 ```
 
 ```js
@@ -410,7 +410,7 @@ npm init -y
   "main": "index.js",
   "exports": { ".": "./index.js" },
   "keywords": ["snapdom", "snapdom-plugin", "dom-capture"],
-  "peerDependencies": { "@zumer/snapdom": ">=3.0.0-0" },
+  "peerDependencies": { "@zumer/snapdom": "^3.0.0" },
   "license": "MIT"
 }
 ```

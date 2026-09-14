@@ -54,7 +54,7 @@
     <section class="prose">
       <h2>Give Node a real browser</h2>
       <p>This Playwright script loads the installed IIFE bundle, opens a report, waits for an application-owned ready signal and makes two files from one SnapDOM capture. Node manages the process and filesystem. The page creates the SVG and PNG.</p>
-      <pre class="code-block">npm install @zumer/snapdom playwright
+      <pre class="code-block">npm install @zumer/snapdom@3.0.0 playwright
 npx playwright install chromium</pre>
       <pre class="code-block">import { chromium } from 'playwright'
 import { writeFile } from 'node:fs/promises'

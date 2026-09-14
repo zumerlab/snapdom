@@ -9,7 +9,7 @@ versions.
 Install SnapDOM as a dev dependency:
 
 ```bash
-npm install --save-dev @zumer/snapdom
+npm install --save-dev @zumer/snapdom@3.0.0
 ```
 
 Scaffold a plugin from the template:
@@ -17,7 +17,7 @@ Scaffold a plugin from the template:
 ```bash
 npx degit zumerlab/snapdom/packages/plugin-template snapdom-plugin-yourname
 cd snapdom-plugin-yourname
-npm install --save-dev @zumer/snapdom
+npm install --save-dev @zumer/snapdom@3.0.0
 ```
 
 The [template installation guide](./packages/plugin-template/README.md#install)

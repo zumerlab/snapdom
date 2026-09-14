@@ -286,11 +286,11 @@
             <a class="btn btn-secondary" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
           </div>
           <div class="install-stack">
-            <div class="install"><span>npm i @zumer/snapdom</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom">copy</button></div>
-            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
+            <div class="install"><span>npm i @zumer/snapdom@3.0.0</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom@3.0.0">copy</button></div>
+            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
           </div>
           <div class="proof" aria-label="Project stats">
-            <span><strong id="version-count">v2.24.15</strong> on npm</span>
+            <span><strong>v3.0.0</strong> documentation</span>
             <span><strong id="download-count">1m+</strong> downloads/month</span>
             <span><strong>MIT</strong> licensed</span>
           </div>
@@ -430,7 +430,7 @@
   <footer>
     <div class="wrap footer-row">
       <span>MIT © <a href="https://zumerlab.com/">Zumerlab</a></span>
-      <div class="footer-links"><a href="./docs/">Docs</a><a href="./showcase/">Showcase</a><a href="./ecosystem/">Ecosystem</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a><a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)">X</a></div>
+      <div class="footer-links"><a href="./docs/">Docs</a><a href="./v2/">v2 docs</a><a href="./showcase/">Showcase</a><a href="./ecosystem/">Ecosystem</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a><a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)">X</a></div>
     </div>
   </footer>
 
@@ -481,22 +481,21 @@
 
     Promise.allSettled([
       fetch('https://api.github.com/repos/zumerlab/snapdom').then(response => response.json()),
-      fetch('https://api.npmjs.org/downloads/point/last-month/%40zumer%2Fsnapdom').then(response => response.json()),
-      fetch('https://registry.npmjs.org/%40zumer%2Fsnapdom/latest').then(response => response.json())
-    ]).then(([github, npm, latest]) => {
+      fetch('https://api.npmjs.org/downloads/point/last-month/%40zumer%2Fsnapdom').then(response => response.json())
+    ]).then(([github, npm]) => {
       if (github.status === 'fulfilled' && github.value.stargazers_count) {
         document.getElementById('star-count').textContent = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(github.value.stargazers_count)
       }
       if (npm.status === 'fulfilled' && npm.value.downloads) {
         document.getElementById('download-count').textContent = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(npm.value.downloads)
       }
-      if (latest.status === 'fulfilled' && latest.value.version) {
-        document.getElementById('version-count').textContent = `v${latest.value.version}`
-      }
     })
   </script>
+  <script type="importmap">
+    { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs" } }
+  </script>
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs'
 
     const pluginRolls = [
       { mod: 'filter', fn: 'filter', opts: { preset: 'vintage' }, label: "filter({ preset: 'vintage' })" },
@@ -538,7 +537,7 @@
         let label = 'snapdom.toPng()'
         if (roll) {
           try {
-            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins/${roll.mod}`)
+            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins@3.0.0/${roll.mod}?external=@zumer/snapdom`)
             plugins = [plugin[roll.fn](roll.opts)]
             label = roll.label
           } catch (error) {

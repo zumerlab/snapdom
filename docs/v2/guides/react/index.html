@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture HTML to PNG in React with SnapDOM</title>
+  <meta name="description" content="How to capture a React component to PNG, JPG or SVG with SnapDOM. Copy-paste useRef hook, common gotchas and a working example." />
+  <meta name="keywords" content="snapdom react, html to png react, screenshot div react, react useref screenshot, react capture component" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/v2/guides/react/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/v2/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/v2/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture HTML to PNG in React with SnapDOM" />
+  <meta property="og:description" content="A copy-paste React hook to screenshot any component, with the gotchas to watch out for." />
+  <meta property="og:url" content="https://snapdom.dev/v2/guides/react/" />
+  <meta property="og:image" content="https://snapdom.dev/v2/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F7F9FC">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Capture HTML to PNG in React with SnapDOM",
+    "datePublished": "2026-04-09",
+    "dateModified": "2026-08-22",
+    "description": "Step-by-step guide to using SnapDOM inside a React component, with a copy-paste useRef hook.",
+    "url": "https://snapdom.dev/v2/guides/react/",
+    "image": "https://snapdom.dev/v2/assets/og-card.jpg",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev/v2" },
+    "mainEntityOfPage": "https://snapdom.dev/v2/guides/react/",
+    "proficiencyLevel": "Beginner"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How do I capture a React component as a PNG?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Attach a useRef to the element you want to capture, then call snapdom.toPng(ref.current) inside an event handler. SnapDOM returns an HTMLImageElement you can append, download, or set as the src of an <img>."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why is my captured image blank?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The most common reason is calling snapdom before the ref is attached. Always trigger the capture from a user event (button click) or inside useEffect after the component has mounted."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SnapDOM work with React 18 strict mode?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. SnapDOM does not subscribe to any React lifecycle, so the double-invocation in strict mode does not affect captures triggered from event handlers."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/v2/" },
+      { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://snapdom.dev/v2/guides/" },
+      { "@type": "ListItem", "position": 3, "name": "React", "item": "https://snapdom.dev/v2/guides/react/" }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/v2/archive.css">
+</head>
+<body>
+  <aside class="v2-archive-notice" aria-label="Documentation version">
+    <strong>SnapDOM v2.24.18 archive</strong>
+    <span>Examples use core 2.24.18 and plugins 2.2.2.</span>
+    <a href="/docs/">Current documentation</a>
+  </aside>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/" aria-current="page">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
+
+  <section class="hero">
+    <div class="hero-badge">React Guide</div>
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Guide react github">
+      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
+    </a>
+    <h1>Capture HTML to PNG in <span class="accent">React</span></h1>
+    <p class="lead">A copy-paste hook, the right place in the lifecycle to call it, and the one mistake that produces blank screenshots.</p>
+  </section>
+
+  <main class="page">
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p>Attach a <code>useRef</code> to the element you want to capture, install <code>@zumer/snapdom</code>, and call <code>snapdom.toPng(ref.current)</code> from a button handler. SnapDOM returns the <code>HTMLImageElement</code> ready to append.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="install">1. Install</h2>
+      <pre class="code-block">npm install @zumer/snapdom@2.24.18</pre>
+      <p class="muted">SnapDOM has zero runtime dependencies and ships as an ES module, so it works with Vite, Create React App, Parcel, esbuild and any modern bundler out of the box.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="component">2. Minimal capture component</h2>
+      <pre class="code-block"><span class="kw">import</span> { useRef } <span class="kw">from</span> <span class="str">'react'</span>;
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">export function</span> <span class="fn">CaptureCard</span>() {
+  <span class="kw">const</span> cardRef = <span class="fn">useRef</span>(<span class="kw">null</span>);
+
+  <span class="kw">const</span> handleCapture = <span class="kw">async</span> () =&gt; {
+    <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
+    <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(cardRef.current, { scale: <span class="num">2</span> });
+    document.body.<span class="fn">appendChild</span>(img);
+  };
+
+  <span class="kw">return</span> (
+    &lt;<span class="fn">div</span>&gt;
+      &lt;<span class="fn">div</span> ref={cardRef} className=<span class="str">"card"</span>&gt;
+        &lt;<span class="fn">h3</span>&gt;Hello SnapDOM&lt;/<span class="fn">h3</span>&gt;
+        &lt;<span class="fn">p</span>&gt;This whole div will be captured.&lt;/<span class="fn">p</span>&gt;
+      &lt;/<span class="fn">div</span>&gt;
+      &lt;<span class="fn">button</span> onClick={handleCapture}&gt;Capture&lt;/<span class="fn">button</span>&gt;
+    &lt;/<span class="fn">div</span>&gt;
+  );
+}</pre>
+      <p>That's the entire integration. Click the button, get a PNG appended at the bottom of the document.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Try it live</h2>
+      <p>This is the component above, running on this page. The button fires <code>snapdom.toPng(cardRef.current)</code> and the captured PNG appears below. SnapDOM only sees the DOM node, so the call is identical whether React, Vue or plain HTML rendered it.</p>
+      <div class="demo-box">
+        <div class="demo-stage">
+          <div class="card" id="demo-card" style="max-width:320px;">
+            <h3>Hello SnapDOM</h3>
+            <p>This whole div will be captured.</p>
+          </div>
+        </div>
+        <div class="demo-actions">
+          <button type="button" class="btn btn-primary" data-demo-action="png" data-demo-target="demo-card" data-demo-output="demo-output" data-umami-event="Guide react demo capture">Capture</button>
+          <button type="button" class="btn btn-ghost" data-demo-action="download" data-demo-target="demo-card" data-demo-output="demo-output" data-demo-filename="card" data-umami-event="Guide react demo download">Download</button>
+        </div>
+        <div class="demo-output" id="demo-output"><span class="demo-hint">The captured PNG will appear here.</span></div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2 id="download">3. Download instead of appending</h2>
+      <p>Most apps want to download the image rather than insert it. SnapDOM exposes a one-liner:</p>
+      <pre class="code-block"><span class="kw">const</span> handleDownload = <span class="kw">async</span> () =&gt; {
+  <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(cardRef.current);
+  <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });
+};</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="state">4. Keep the captured image in state</h2>
+      <p>If you want to render a preview inside your component, store the image as an object URL using <code>toBlob</code> + <code>URL.createObjectURL</code>:</p>
+      <pre class="code-block"><span class="kw">import</span> { useRef, useState } <span class="kw">from</span> <span class="str">'react'</span>;
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">export function</span> <span class="fn">CapturePreview</span>() {
+  <span class="kw">const</span> cardRef = <span class="fn">useRef</span>(<span class="kw">null</span>);
+  <span class="kw">const</span> [previewUrl, setPreviewUrl] = <span class="fn">useState</span>(<span class="kw">null</span>);
+
+  <span class="kw">const</span> handleCapture = <span class="kw">async</span> () =&gt; {
+    <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
+    <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.current, { type: <span class="str">'png'</span> });
+    <span class="fn">setPreviewUrl</span>(URL.<span class="fn">createObjectURL</span>(blob));
+  };
+
+  <span class="kw">return</span> (
+    &lt;&gt;
+      &lt;<span class="fn">div</span> ref={cardRef}&gt;…&lt;/<span class="fn">div</span>&gt;
+      &lt;<span class="fn">button</span> onClick={handleCapture}&gt;Capture&lt;/<span class="fn">button</span>&gt;
+      {previewUrl &amp;&amp; &lt;<span class="fn">img</span> src={previewUrl} alt=<span class="str">"preview"</span> /&gt;}
+    &lt;/&gt;
+  );
+}</pre>
+      <p class="muted">Remember to revoke the object URL with <code>URL.revokeObjectURL(previewUrl)</code> when you're done with it to avoid leaks.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="custom-hook">5. Reusable React hook</h2>
+      <p>If you call SnapDOM from many components, extract a small hook:</p>
+      <pre class="code-block"><span class="cm">// useSnapdom.js</span>
+<span class="kw">import</span> { useCallback, useRef } <span class="kw">from</span> <span class="str">'react'</span>;
+<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+
+<span class="kw">export function</span> <span class="fn">useSnapdom</span>(options = {}) {
+  <span class="kw">const</span> ref = <span class="fn">useRef</span>(<span class="kw">null</span>);
+
+  <span class="kw">const</span> capture = <span class="fn">useCallback</span>(<span class="kw">async</span> (format = <span class="str">'png'</span>) =&gt; {
+    <span class="kw">if</span> (!ref.current) <span class="kw">return null</span>;
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(ref.current, options);
+    <span class="kw">return</span> result.<span class="fn">to</span>(format);
+  }, [options]);
+
+  <span class="kw">return</span> { ref, capture };
+}</pre>
+
+      <p>Use it like this:</p>
+      <pre class="code-block"><span class="kw">const</span> { ref, capture } = <span class="fn">useSnapdom</span>({ scale: <span class="num">2</span>, embedFonts: <span class="kw">true</span> });
+
+<span class="kw">return</span> (
+  &lt;&gt;
+    &lt;<span class="fn">div</span> ref={ref}&gt;…&lt;/<span class="fn">div</span>&gt;
+    &lt;<span class="fn">button</span> onClick={() =&gt; <span class="fn">capture</span>(<span class="str">'png'</span>)}&gt;Capture&lt;/<span class="fn">button</span>&gt;
+  &lt;/&gt;
+);</pre>
+    </section>
+
+    <section class="prose faq">
+      <h2 id="faq">Common gotchas</h2>
+
+      <details>
+        <summary>My captured image is blank or empty</summary>
+        <p>The two most common causes:</p>
+        <p>1. You called <code>snapdom</code> before the ref was attached. Always trigger the capture from a user event (button click) or inside <code>useEffect</code> after mount, never directly inside the component body.</p>
+        <p>2. The captured element has <code>display: none</code> or is detached from the document. SnapDOM needs the element to be in the live DOM tree.</p>
+      </details>
+
+      <details>
+        <summary>Web fonts render as Times New Roman</summary>
+        <p>Pass <code>{ embedFonts: true }</code> in the options. SnapDOM will inline the matching <code>@font-face</code> declarations into the SVG output so the captured image uses your real fonts.</p>
+      </details>
+
+      <details>
+        <summary>Cross-origin images don't render</summary>
+        <p>SnapDOM fetches external images and inlines them as data URLs. If your CDN doesn't send <code>Access-Control-Allow-Origin: *</code>, configure a proxy with <code>{ useProxy: 'https://your-proxy.example.com/' }</code>.</p>
+      </details>
+
+      <details>
+        <summary>Does SnapDOM work with React 18 strict mode?</summary>
+        <p>Yes. SnapDOM doesn't subscribe to React lifecycle, so the double-invocation in development strict mode doesn't affect captures triggered from event handlers.</p>
+      </details>
+
+      <details>
+        <summary>Can I use SnapDOM in Next.js?</summary>
+        <p>Yes. Put the ref and capture handler in a Client Component (<code>'use client'</code>). A static SnapDOM import works; dynamically importing it inside the handler is optional when you want to defer the client chunk. For server-generated output, a Node runtime can inject SnapDOM into a Playwright- or Puppeteer-controlled page. See the dedicated <a href="../nextjs/">Next.js guide</a>.</p>
+      </details>
+
+      <details>
+        <summary>Does SnapDOM work with React Native?</summary>
+        <p>No. SnapDOM requires a browser DOM and SVG <code>foreignObject</code>; React Native views do not provide those APIs. A browser-controlled capture applies only when the UI is rendered as HTML in a browser.</p>
+      </details>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../nextjs/">SnapDOM in Next.js <span class="arrow">→</span></a>
+        <a class="related-card" href="../vue/">SnapDOM in Vue <span class="arrow">→</span></a>
+        <a class="related-card" href="../angular/">SnapDOM in Angular <span class="arrow">→</span></a>
+        <a class="related-card" href="../svelte/">SnapDOM in Svelte <span class="arrow">→</span></a>
+        <a class="related-card" href="../lit/">SnapDOM in Lit <span class="arrow">→</span></a>
+        <a class="related-card" href="../../compare/html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="cta-card">
+        <h2>Try it in your project</h2>
+        <p>Drop SnapDOM into your React app and capture your first component in under a minute.</p>
+        <a href="../../showcase/" class="btn btn-primary" data-umami-event="Guide react cta home">Open the demo</a>
+        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide react cta npm">Install from npm</a>
+      </div>
+    </section>
+  </main>
+
+
+  <script>
+    (async function(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+  <script defer src="/v2/copy-code.js"></script>
+  <script type="module" src="../../demo.js"></script>
+</body>
+</html>

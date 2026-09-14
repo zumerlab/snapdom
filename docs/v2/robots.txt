@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Tracking query strings (?ref=, ?utm_*, etc.): Google ignores unknown robots directives for this;
+# each HTML page sets rel=canonical to the preferred URL so duplicates consolidate in Search.
+
+Sitemap: https://snapdom.dev/v2/sitemap.xml

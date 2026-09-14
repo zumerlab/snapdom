@@ -13,7 +13,7 @@
 //     ~1.4x for snapdom, and the ranking is not the same in both columns. They get their own
 //     columns, never an average.
 
-import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+import { snapdom } from 'https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs'
 import {
   COMPETITORS, toDataUrl,
   complexCardHTML, bigTableHTML, cssHeavyScenario, shadowTreeScenario, deepTreeScenario,

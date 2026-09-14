@@ -2,7 +2,7 @@
 
 SnapDOM captures the rendered state of web apps. Core produces reusable image and canvas
 exports; official plugins add HTML, structured context, element maps, PDF and live
-recordings. These notes explain the v3 beta pipeline and the constraints behind it.
+recordings. These notes explain the v3 pipeline and the constraints behind it.
 
 ## Why the pipeline looks like this
 

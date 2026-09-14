@@ -8,12 +8,12 @@ SnapDOM has two integrated render engines: `svg` (default) and experimental `htm
 
 Package: `@zumer/snapdom`. License: MIT. Source: https://github.com/zumerlab/snapdom. Documentation: https://snapdom.dev/docs/.
 
-This reference describes SnapDOM v3. Release details: https://github.com/zumerlab/snapdom#installation.
+This reference describes SnapDOM 3.0.0. Release details: https://github.com/zumerlab/snapdom#installation. Archived v2 documentation: https://snapdom.dev/v2/. Preserved v2 branch: https://github.com/zumerlab/snapdom/tree/v2.
 
 ## Installation
 
 ```bash
-npm install @zumer/snapdom
+npm install @zumer/snapdom@3.0.0
 ```
 
 ```js
@@ -23,25 +23,37 @@ import { snapdom } from '@zumer/snapdom';
 For a browser script tag, use the IIFE build, which exposes `window.snapdom`:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom@3.0.0/dist/snapdom.js"></script>
 ```
 
 For a browser ES module:
 
 ```html
 <script type="module">
-  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom/dist/snapdom.mjs';
+  import { snapdom } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@3.0.0/dist/snapdom.mjs';
 </script>
 ```
 
 The package entry is ESM; there is no CommonJS build. The core has no runtime dependencies. Official plugins are a separate package; use the plugin version that matches the core major version:
 
 ```bash
-npm install @zumer/snapdom-plugins
+npm install @zumer/snapdom-plugins@3.0.0
 ```
 
 ```js
 import { htmlExport, contextExport, agentMap } from '@zumer/snapdom-plugins';
+```
+
+For plugins loaded from a CDN, map the core import and keep it external in the plugin URL so recordings share the same runtime:
+
+```html
+<script type="importmap">
+  { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@3.0.0/dist/snapdom.mjs" } }
+</script>
+<script type="module">
+  import { snapdom } from '@zumer/snapdom';
+  import { gifExport } from 'https://esm.sh/@zumer/snapdom-plugins@3.0.0/gif-export?external=@zumer/snapdom';
+</script>
 ```
 
 The core registry subpath uses the same runtime as the package root:
@@ -513,7 +525,7 @@ The key `bundle` creates both `result.toBundle(options)` and `result.to('bundle'
 
 Capture-affecting hooks disable automatic memo reuse unless the plugin declares `pure: true`. Use that declaration only for deterministic, idempotent hooks. Pure render hooks can use differential recapture; clone-construction hooks still need a full recapture after a change. Clone-only captures are not memoized. Time-dependent plugins should not claim purity.
 
-## Migrating from v2.24.16
+## Migrating from v2.24.18
 
 `filter` / `filterMode` and `exclude` / `excludeMode` remain supported together, with independent modes as in v2. `filter(node)` retains a node when truthy and filters it out when falsy. `exclude` adds omissions through selectors or optional new predicates; a truthy exclusion predicate omits the node. This optional predicate form does not replace `filter`. The separate CSS-effect plugin named `filter` is also available.
 
@@ -531,7 +543,7 @@ Both modes default to `hide`, which keeps an invisible spacer; `remove` drops th
 
 V3 additionally allows mixed exclusion rules such as `exclude: ['.toolbar', node => node.dataset.export === 'omit']`. Any matching selector or predicate excludes the node. Existing selector exclusions and inclusion filters need no conversion or mode merging.
 
-Other changes from v2.24.16:
+Other changes from v2.24.18:
 
 - Remove `preCache()`, its subpath and the browser `preCache` global. Normal capture reuse and optional no-argument `preCapture()` replace the preparation workflow; this is not a direct rename.
 - Remove public `fast` and `burst` switches. Internal optimizations and eligible capture memoization are automatic. `invalidate: true` takes a fresh capture after unobservable changes; `cache: 'disabled'` controls persistent resource/style caches, not memoization.
@@ -540,7 +552,7 @@ Other changes from v2.24.16:
 - `embedFonts` defaults to `'auto'`. Width or height wins over scale across exporters; pass the final desired dimension instead of relying on multiplication by scale.
 - Core masks passwords only. Other visible fields remain visible unless `redactInputs()` or an exclusion hides them.
 - `cache: 'auto'` and `'full'` map to `'soft'`. Prefer canonical `format` to deprecated `type`.
-- `afterExport` return values no longer become the next hook's payload; hooks receive the same export payload. Those returns never replaced the caller's result in v2.24.16. Use `defineExports` to return another format or shape.
+- `afterExport` return values no longer become the next hook's payload; hooks receive the same export payload. Those returns never replaced the caller's result in v2.24.18. Use `defineExports` to return another format or shape.
 - The TypeScript name `PluginExportFacade` is no longer exported, but the core-export facade still exists. Infer `ctx.exports` in `defineExports` or derive the type as below.
 
 ```ts
@@ -548,7 +560,7 @@ import type { CaptureContext } from '@zumer/snapdom';
 type CoreExports = NonNullable<CaptureContext['exports']>;
 ```
 
-For older prerelease/plugin examples: supported stage names are `clone` and `render`, agent maps use `toAgentMap()`, and video uses `toMp4()` with possible WebM fallback. These names are not all new changes from v2.24.16.
+For older prerelease/plugin examples: supported stage names are `clone` and `render`, agent maps use `toAgentMap()`, and video uses `toMp4()` with possible WebM fallback. These names are not all new changes from v2.24.18.
 
 ## Browser boundaries and troubleshooting
 

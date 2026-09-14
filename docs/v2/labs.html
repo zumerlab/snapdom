@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>SnapDOM Labs: Plugin Demos &amp; Experimental APIs</title>
+  <link rel="help" type="text/plain" href="https://snapdom.dev/v2/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/v2/llms-full.txt" title="LLM full reference">
+  <meta name="description" content="Six playable SnapDOM plugin demos: paint, shoot, animate and render to WebGL: plus experimental browser API captures like html-in-canvas."/>
+  <meta name="robots" content="index, follow"/>
+  <link rel="canonical" href="https://snapdom.dev/v2/labs.html"/>
+  <link rel="stylesheet" href="./shared.css"><link rel="stylesheet" href="./page.css">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="7ec718e8-f0c5-4abb-8f4f-144f57f61937"></script>
+  <script>
+    window.addEventListener('load',function(){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1';document.head.appendChild(s);s.onload=function(){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4G88ZHG7S1',{transport_type:'beacon'});};});
+  </script>
+  <style>
+    :root {
+      --bg: #F7F9FC;
+      --surface: #FFFFFF;
+      --surface-hover: #F0F4FB;
+      --border: #0F1E4D;
+      --border-soft: rgba(15,30,77,0.16);
+      --hairline: rgba(15,30,77,0.12);
+      --text: #0F1E4D;
+      --text-muted: #55617C;
+      --accent: #2D5BFF;
+      --accent-hover: #1D3FD8;
+      --accent-soft: rgba(45,91,255,0.08);
+      --green: #1E9F6E;
+      --green-soft: rgba(30,159,110,0.12);
+      --amber: #F5A623;
+      --amber-ink: #8A4F00;
+      --amber-soft: rgba(245,166,35,0.18);
+      --rose: #E63946;
+      --rose-soft: rgba(230,57,70,0.12);
+      --cyan: #2BA8C9;
+      --cyan-soft: rgba(43,168,201,0.12);
+      --code-bg: #0F1E4D;
+      --code-text: #D9E2F7;
+      --shadow-sticker: none;
+      --shadow-sticker-sm: none;
+      --shadow-sticker-lg: none;
+      --font-display: Arial, Helvetica, sans-serif;
+      --font-body: Arial, Helvetica, sans-serif;
+      --font-mono: Arial, Helvetica, sans-serif;
+      --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
+      --font-hand: Arial, Helvetica, sans-serif;
+      --grid-color: transparent;
+      --halftone-color: transparent;
+      --halftone-size: 5px;
+      --halftone-dot: 0px;
+      --halftone-offset: 0px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0; }
+    ::selection { background: rgba(45,91,255,0.18); }
+
+    /* ── Hero ── */
+    .hero { padding: 64px 24px 40px; text-align: center; position: relative; width: 100%; }
+    .hero-mascot { display: block; margin: 18px auto 10px; width: clamp(120px, 18vw, 160px); height: auto; }
+    .hero h1 { font-family: var(--font-display); font-size: clamp(34px, 5vw, 56px); font-weight: 400; letter-spacing: 0.5px; line-height: 1.02; margin-bottom: 12px; }
+    .hero p { color: var(--text-muted); font-size: 16px; max-width: 480px; margin: 0 auto 24px; line-height: 1.6; }
+
+    .github-badge { margin-bottom: 22px; }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 999px; font-size: 14px; font-weight: 600; white-space: nowrap; font-family: var(--font-body); text-decoration: none; cursor: pointer; border: 1.5px solid transparent; transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--accent); color: #FFFFFF; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-ghost { background: transparent; color: var(--text); border-color: rgba(15,30,77,0.28); }
+    .btn-ghost:hover { border-color: var(--border); }
+
+    /* ── Section label ── */
+    .section-label { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 2.5px; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 14px; font-weight: 700; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--hairline); }
+
+    /* ── Panel ── */
+    .panel { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 32px; max-width: 720px; width: 100%; margin: 0 auto; }
+    .panel::before { content: ''; position: absolute; top: -1px; left: -1px; width: 18px; height: 18px; border-top: 3px solid var(--accent); border-left: 3px solid var(--accent); pointer-events: none; }
+    .panel::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 18px; height: 18px; border-bottom: 3px solid var(--accent); border-right: 3px solid var(--accent); pointer-events: none; }
+    .panel h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; font-family: var(--font-body); color: var(--text); }
+    .panel p { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+    .panel code { font-family: var(--font-code); font-size: 12px; color: #1D3FD8; background: var(--accent-soft); padding: 2px 6px; border-radius: 0; font-weight: 600; }
+
+    /* ── Demo target (capture subject) ── */
+    .demo-target { background: linear-gradient(135deg, #2D5BFF 0%, #5C7CFF 100%); color: #FFFFFF; padding: 20px; border-radius: 10px; margin: 16px 0; border: 0; }
+    .demo-target strong { font-size: 16px; }
+    .demo-target p { color: rgba(255,255,255,0.85); margin: 8px 0 0; }
+
+    .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+
+    /* ── Output ── */
+    .output-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+    .output-col label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); display: block; margin-bottom: 8px; font-weight: 700; }
+    .output-box { min-height: 100px; border: 1px solid var(--border-soft); border-radius: 0; padding: 12px; display: flex; align-items: flex-start; justify-content: center; color: var(--text-muted); font-size: 13px; overflow: hidden; background: var(--surface-hover); }
+    .output-box img { max-width: 100%; height: auto; border: 1px solid rgba(15,30,77,0.2); background: #fff; padding: 4px; object-fit: contain; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); }
+    .status-msg { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+    /* ── session() demo ── */
+    .poke-target { display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, #F5A623 0%, #FFD873 100%); }
+    /* Mutation themes: the "Changes 1-in-4 polls" mode cycles these so each
+       mutation is unmissable in both the live card and the captures. */
+    .poke-target.t1 { background: linear-gradient(135deg, #2D5BFF 0%, #7C97FF 100%); }
+    .poke-target.t2 { background: linear-gradient(135deg, #1E9F6E 0%, #6FD9AC 100%); }
+    .poke-target.t3 { background: linear-gradient(135deg, #E63946 0%, #FF8B95 100%); }
+    .poke-target img { width: 72px; height: 72px; object-fit: contain; flex: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25)); }
+    .poke-target .poke-hp { font-weight: 400; opacity: 0.85; font-size: 13px; }
+    /* Comfortable slack over the live text's own width: a few px of font-fallback/emoji-glyph
+       drift between live rendering and the rasterized capture must never be enough to push
+       "caught × N" onto its own line — give the frozen width real headroom instead of exactly
+       matching live content. */
+    .poke-target .poke-info { min-width: 230px; white-space: nowrap; }
+    .output-box .ph { color: var(--text-muted); margin: auto; }
+    .tick-row { display: flex; gap: 3px; justify-content: center; margin-bottom: 8px; }
+    .tick { width: 10px; height: 16px; border: 1.5px solid var(--border-soft); background: #fff; border-radius: 1px; flex: none; transition: background .15s ease, border-color .15s ease; }
+    .tick.cost { background: var(--accent); border-color: var(--accent); }
+    .tick.fast { background: var(--green); border-color: var(--green); }
+    .col-readout { font-family: var(--font-code); font-size: 15px; font-weight: 700; text-align: center; margin-top: 8px; color: var(--text); }
+    .col-readout.win { color: var(--green); }
+    .legend-mini { display: flex; gap: 18px; justify-content: center; margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+    .legend-mini .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+    .credit { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .hero { padding: 56px 20px 30px; }
+      .panel { padding: 20px; }
+      .output-row { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/v2/" },
+      { "@type": "ListItem", "position": 2, "name": "Labs", "item": "https://snapdom.dev/v2/labs.html" }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/v2/archive.css">
+</head>
+<body>
+  <aside class="v2-archive-notice" aria-label="Documentation version">
+    <strong>SnapDOM v2.24.18 archive</strong>
+    <span>Examples use core 2.24.18 and plugins 2.2.2.</span>
+    <a href="/docs/">Current documentation</a>
+  </aside>
+  <script defer src="./site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html">Plugins</a><a href="./labs.html" aria-current="page">Labs</a><a href="./blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html">Plugins</a><a href="./labs.html" aria-current="page">Labs</a><a href="./blog/">Blog</a></div></nav></header>
+
+  <section class="hero">
+    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Labs github repo">
+      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+      <span>zumerlab/snapdom</span>
+      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
+    </a>
+    <img src="./assets/mrsnapdom-pose.png" alt="Mr SnapDOM pointing up" class="hero-mascot" width="160" height="138" />
+    <h1><span class="accent">Snap</span><span class="accent-ink">DOM</span> Labs</h1>
+    <p>Plugin-powered demos, playable instruments, and experimental browser APIs, each one a working example of what a SnapDOM plugin can actually do.</p>
+  </section>
+
+  <main style="max-width:1040px; width:100%; padding:0 24px 100px;">
+    <div class="section-label">Plugin demos</div>
+    <div class="hub-grid">
+      <a class="hub-card" href="./labs/paint-canvas/" data-umami-event="Labs card paint-canvas"><span class="tag">afterClone · afterRender</span><h3>The PNG is the canvas</h3><p>No &lt;canvas&gt; element anywhere: a plugin accumulates every brush stroke onto the last captured clone.</p></a>
+      <a class="hub-card" href="./labs/target-range/" data-umami-event="Labs card target-range"><span class="tag">afterClone · afterRender</span><h3>Target Range</h3><p>Every shot is a fresh SnapDOM capture layered on top of the last one, so the bullet holes live in the clone, not the DOM.</p></a>
+      <a class="hub-card" href="./labs/stop-motion/" data-umami-event="Labs card stop-motion"><span class="tag">afterRender</span><h3>Stop Motion</h3><p>Pose an actor, capture the frame, repeat: a tiny plugin collects the dataURLs into a flipbook you play back.</p></a>
+      <a class="hub-card" href="./labs/webgl-shatter/" data-umami-event="Labs card webgl-shatter"><span class="tag">defineExports</span><h3>A capture, shattered</h3><p>A custom export slices a SnapDOM canvas into a grid and hands the pieces to a WebGL physics sim, plus four more shaders on the same texture.</p></a>
+      <a class="hub-card" href="./labs/webgl-live-mirror/" data-umami-event="Labs card webgl-live-mirror"><span class="tag">defineExports</span><h3>DOM, live on the GPU</h3><p>Type into a contenteditable card and watch a plugin push each capture into a live WebGL texture.</p></a>
+      <a class="hub-card" href="./labs/webgl-seamless-dom/" data-umami-event="Labs card webgl-seamless-dom"><span class="tag">defineExports</span><h3>The text you see isn't text</h3><p>A transparent proxy owns the caret; a hidden element gets captured; a double-buffered WebGL crossfade hides every update.</p></a>
+    </div>
+
+    <div class="section-label">New option</div>
+    <!-- burst:true -->
+    <section class="panel" id="demo-session">
+      <div class="section-label">burst: true, memoized repeat captures</div>
+      <p>
+        <code>burst: true</code> watches the element with a scoped <code>MutationObserver</code> and memoizes the
+        last result, so unchanged polls skip the pipeline entirely. Numbers below are timed live, in your browser, right now.
+      </p>
+
+      <div class="demo-target poke-target" id="target-session">
+        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" alt="Pikachu" width="72" height="72" loading="lazy" />
+        <div class="poke-info">
+          <strong>Pikachu <span class="poke-hp">35 HP</span></strong>
+          <p>⚡ Electric · caught × <span id="poke-counter">0</span></p>
+        </div>
+      </div>
+
+      <div class="btn-row" id="session-mode-row">
+        <button class="btn btn-primary" data-mode="static" data-umami-event="Labs session mode static">No changes</button>
+        <button class="btn btn-ghost" data-mode="mutating" data-umami-event="Labs session mode mutating">Changes 1-in-4 polls</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-session-run" data-umami-event="Labs session run">Poll it 20×</button>
+      </div>
+
+      <div class="output-row">
+        <div class="output-col">
+          <label>Without burst</label>
+          <div class="tick-row" id="ticks-plain"></div>
+          <div class="output-box" id="box-plain"><span class="ph">…</span></div>
+          <div class="col-readout" id="out-session-plain">…</div>
+        </div>
+        <div class="output-col">
+          <label>With burst: true</label>
+          <div class="tick-row" id="ticks-session"></div>
+          <div class="output-box" id="box-session"><span class="ph">…</span></div>
+          <div class="col-readout" id="out-session-session">…</div>
+        </div>
+      </div>
+      <div class="legend-mini">
+        <span><i class="dot" style="background:var(--accent)"></i> full pipeline run</span>
+        <span><i class="dot" style="background:var(--green)"></i> memoized: instant</span>
+      </div>
+      <div class="status-msg" id="status-session"></div>
+      <p class="credit">Pikachu artwork via <a href="https://pokeapi.co/" target="_blank" rel="noopener">PokeAPI</a>. Pokémon © Nintendo / Game Freak.</p>
+    </section>
+
+    <div class="section-label">Experimental browser APIs</div>
+    <!-- html-in-canvas -->
+    <section class="panel" id="demo-htmlcanvas">
+      <div class="section-label">WICG html-in-canvas (Issue #172)</div>
+      <p>
+        Uses <code>drawElementImage()</code> to render the clone directly into canvas, bypassing SVG/foreignObject.
+        Requires Chrome with <code>chrome://flags/#canvas-draw-element</code> enabled.
+      </p>
+
+      <div class="demo-target" id="target-htmlcanvas">
+        <strong>Target for html-in-canvas</strong>
+        <p>This box is captured via both PNG and drawElementImage.</p>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btn-htmlcanvas-default" data-umami-event="Labs capture png">Capture</button>
+        <button class="btn btn-primary" id="btn-htmlcanvas-api" data-umami-event="Labs capture html-in-canvas">Capture via html-in-canvas</button>
+      </div>
+
+      <div class="output-row">
+        <div class="output-col">
+          <label>Default (SVG)</label>
+          <div class="output-box" id="out-htmlcanvas-default">…</div>
+        </div>
+        <div class="output-col">
+          <label>html-in-canvas</label>
+          <div class="output-box" id="out-htmlcanvas-api">…</div>
+          <div class="status-msg" id="status-htmlcanvas"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+  <!-- GitHub stars -->
+  <script>
+    (async function updateGitHubStars(){
+      try {
+        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
+      } catch(e) {
+        document.getElementById('star-count').textContent = '';
+      }
+    })();
+  </script>
+
+  <!-- html-in-canvas logic -->
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@2.24.18/dist/snapdom.mjs';
+
+    const target = document.getElementById('target-htmlcanvas');
+    const outDefault = document.getElementById('out-htmlcanvas-default');
+    const outApi = document.getElementById('out-htmlcanvas-api');
+    const statusApi = document.getElementById('status-htmlcanvas');
+
+    // The WICG canvas-place-element spec evolved: Chrome ~130+ ships drawElement(),
+    // earlier flagged builds shipped drawElementImage(). Detect either.
+    function detectDrawApi() {
+      try {
+        const c = document.createElement('canvas');
+        const ctx = c.getContext('2d');
+        if (!ctx) return null;
+        if (typeof ctx.drawElement === 'function') return 'drawElement';
+        if (typeof ctx.drawElementImage === 'function') return 'drawElementImage';
+        return null;
+      } catch { return null; }
+    }
+
+    const drawApi = detectDrawApi();
+    const available = !!drawApi;
+    if (!available) {
+      statusApi.innerHTML = '<span style="color:var(--rose)">drawElement not available. Enable <code>chrome://flags/#canvas-draw-element</code> in Chrome.</span>';
+    } else {
+      statusApi.textContent = `${drawApi}() available`;
+      statusApi.style.color = 'var(--green)';
+    }
+
+    const htmlInCanvasPlugin = () => ({
+      name: 'html-in-canvas',
+      beforeRender(state) {
+        if (!available || !state.clone || !state.element) return;
+        state.options.__htmlInCanvas = {
+          clone: state.clone,
+          baseCSS: state.baseCSS || '',
+          fontsCSS: state.fontsCSS || '',
+          classCSS: state.classCSS || '',
+          element: state.element,
+          w0: null, h0: null
+        };
+      },
+      afterRender(state) {
+        if (!available) return;
+        const meta = state.options?.meta;
+        const stored = state.options?.__htmlInCanvas;
+        if (meta && stored) { stored.w0 = meta.w0; stored.h0 = meta.h0; }
+      },
+      async defineExports(ctx) {
+        if (!available) return {};
+        const stored = ctx.__htmlInCanvas || ctx.options?.__htmlInCanvas;
+        if (!stored) return {};
+        return {
+          htmlInCanvas: async (opts = {}) => {
+            const { clone, baseCSS, fontsCSS, classCSS, element } = stored;
+            const w0 = stored.w0 ?? element?.offsetWidth;
+            const h0 = stored.h0 ?? element?.offsetHeight;
+            const scale = opts.scale ?? ctx.scale ?? 1;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = element?.getBoundingClientRect?.();
+            const width = w0 ?? rect?.width ?? 100;
+            const height = h0 ?? rect?.height ?? 100;
+            const outW = Math.round(width * scale * dpr);
+            const outH = Math.round(height * scale * dpr);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = outW;
+            canvas.height = outH;
+            canvas.setAttribute('layoutsubtree', '');
+
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = `width:${width}px;height:${height}px;overflow:visible;box-sizing:border-box;`;
+            wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+
+            const styleTag = document.createElement('style');
+            styleTag.textContent = (baseCSS || '') + (fontsCSS || '') + 'svg{overflow:visible;}' + (classCSS || '');
+            wrapper.appendChild(styleTag);
+            wrapper.appendChild(clone.cloneNode(true));
+
+            canvas.appendChild(wrapper);
+
+            // Append directly to body, taken out of flow with position:fixed +
+            // z-index:-1 so the body's background covers it visually while the
+            // browser still paints it (paint record needed for drawElement).
+            canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:-1;';
+            document.body.appendChild(canvas);
+
+            try {
+              canvas.getBoundingClientRect();
+              await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+              const ctx2d = canvas.getContext('2d');
+              const fn = ctx2d && (ctx2d[drawApi] || ctx2d.drawElement || ctx2d.drawElementImage);
+              if (typeof fn !== 'function') throw new Error('drawElement / drawElementImage not available');
+
+              ctx2d.save();
+              ctx2d.scale(dpr * scale, dpr * scale);
+              fn.call(ctx2d, wrapper, 0, 0, width, height);
+              ctx2d.restore();
+              return canvas;
+            } catch (e) {
+              if (e && /paint record/i.test(e.message || '')) {
+                throw new Error('Browser had no paint record for the element. Make sure the page is fully loaded and visible before capturing.');
+              }
+              throw e;
+            } finally {
+              try { canvas.remove(); } catch {}
+            }
+          }
+        };
+      }
+    });
+
+    document.getElementById('btn-htmlcanvas-default').onclick = async () => {
+      outDefault.textContent = 'Capturing…';
+      try {
+        const result = await snapdom(target, { embedFonts: true });
+        const img = await result.toPng();
+        outDefault.innerHTML = '';
+        outDefault.appendChild(img);
+      } catch (e) {
+        outDefault.innerHTML = `<span style="color:var(--rose)">${e.message}</span>`;
+      }
+    };
+
+    document.getElementById('btn-htmlcanvas-api').onclick = async () => {
+      if (!available) return;
+      outApi.textContent = 'Capturing…';
+      try {
+        const result = await snapdom(target, { embedFonts: true, plugins: [htmlInCanvasPlugin()] });
+        const canvas = await result.toHtmlInCanvas();
+        outApi.innerHTML = '';
+        if (canvas) {
+          const img = document.createElement('img');
+          img.src = canvas.toDataURL('image/png');
+          outApi.appendChild(img);
+        } else {
+          outApi.innerHTML = '<span style="color:var(--rose)">toHtmlInCanvas not available</span>';
+        }
+      } catch (e) {
+        outApi.innerHTML = `<span style="color:var(--rose)">${e.message}</span>`;
+      }
+    };
+  </script>
+  <!-- burst:true logic -->
+  <script type="module">
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@2.24.18/dist/snapdom.mjs';
+
+    const card = document.getElementById('target-session');
+    const counter = document.getElementById('poke-counter');
+    const hp = card.querySelector('.poke-hp');
+
+    // One visible "life event" per mutation poll: card color flips, HP drops,
+    // caught count rises. The class change lands on the observed root, the text
+    // changes on child nodes — both are real subtree mutations for burst.
+    const THEMES = ['', 't1', 't2', 't3'];
+    function mutateCard(step) {
+      card.classList.remove('t1', 't2', 't3');
+      const theme = THEMES[step % THEMES.length];
+      if (theme) card.classList.add(theme);
+      hp.textContent = Math.max(35 - step * 7, 7) + ' HP';
+      counter.textContent = String(step);
+    }
+    function resetCard() {
+      card.classList.remove('t1', 't2', 't3');
+      hp.textContent = '35 HP';
+      counter.textContent = '0';
+    }
+    const modeRow = document.getElementById('session-mode-row');
+    const runBtn = document.getElementById('btn-session-run');
+    const ticksPlainEl = document.getElementById('ticks-plain');
+    const ticksSessionEl = document.getElementById('ticks-session');
+    const boxPlain = document.getElementById('box-plain');
+    const boxSession = document.getElementById('box-session');
+    const outPlain = document.getElementById('out-session-plain');
+    const outSession = document.getElementById('out-session-session');
+    const status = document.getElementById('status-session');
+
+    const REPEATS = 20;
+    const STEP_MS = 130; // paced so each poll is actually visible, not just a number
+    let mode = 'static';
+
+    modeRow.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-mode]');
+      if (!btn) return;
+      mode = btn.dataset.mode;
+      modeRow.querySelectorAll('button').forEach(b => {
+        const active = b === btn;
+        b.classList.toggle('btn-primary', active);
+        b.classList.toggle('btn-ghost', !active);
+      });
+    });
+
+    function buildTicks(container) {
+      container.innerHTML = '';
+      const els = [];
+      for (let i = 0; i < REPEATS; i++) {
+        const t = document.createElement('div');
+        t.className = 'tick';
+        container.appendChild(t);
+        els.push(t);
+      }
+      return els;
+    }
+    buildTicks(ticksPlainEl);
+    buildTicks(ticksSessionEl);
+
+    // Runs REPEATS real captures, one at a time, updating the preview and a
+    // tick per poll as it lands. isFull(i) marks whether poll i is a full
+    // pipeline run (colors the tick) — for the burst lane this comes
+    // straight out of when we mutate the card, not a guess.
+    //
+    // captureFn returns the capture RESULT (not a raw SVG url): timing wraps only that call,
+    // so it still measures pipeline time alone. The preview is then rasterized via toPng() —
+    // assigning the raw SVG directly as an <img src> (toRaw()) doesn't reliably apply an
+    // embedded @font-face on first paint in that "SVG-as-image" context (Chromium quirk); a
+    // canvas rasterization forces the decode to wait for the font, same as a real export.
+    async function pollLoop(ticks, box, captureFn, isFull) {
+      let capturedMs = 0;
+      box.innerHTML = '';
+      for (let i = 0; i < REPEATS; i++) {
+        if (mode === 'mutating' && i % 4 === 0) mutateCard(i / 4);
+        const t0 = performance.now();
+        const result = await captureFn();
+        capturedMs += performance.now() - t0;
+        const png = await result.toPng();
+        box.replaceChildren(png);
+        ticks[i].classList.add(isFull(i) ? 'cost' : 'fast');
+        await new Promise(r => setTimeout(r, STEP_MS));
+      }
+      resetCard();
+      return capturedMs;
+    }
+
+    runBtn.addEventListener('click', async () => {
+      runBtn.disabled = true;
+      modeRow.querySelectorAll('button').forEach(b => { b.disabled = true; });
+      outPlain.classList.remove('win');
+      outSession.classList.remove('win');
+      outPlain.textContent = '—';
+      outSession.textContent = '—';
+      status.textContent = '';
+      const plainTicks = buildTicks(ticksPlainEl);
+      const burstTicks = buildTicks(ticksSessionEl);
+
+      // embedFonts: true — if the page ever loads a webfont again, the foreignObject would
+      // otherwise fall back to a substitute font whose metrics don't match, and the width
+      // snapdom froze from the live measurement can re-wrap the counter line.
+      // reconcile: true — belt-and-suspenders: measures the clone against the live card and
+      // pins any box that still diverges, whatever the cause. The card is tiny, so the ~2x
+      // capture-time cost is negligible in absolute terms here.
+      const captureOpts = { embedFonts: true, reconcile: true };
+      const plainMs = await pollLoop(plainTicks, boxPlain, () => snapdom(card, captureOpts), () => true);
+      outPlain.textContent = plainMs.toFixed(2) + ' ms';
+
+      const burstIsFull = (i) => i === 0 || (mode === 'mutating' && i % 4 === 0);
+      const burstMs = await pollLoop(burstTicks, boxSession, () => snapdom(card, { ...captureOpts, burst: true }), burstIsFull);
+      outSession.textContent = burstMs.toFixed(2) + ' ms';
+      const winner = burstMs <= plainMs ? outSession : outPlain;
+      winner.classList.add('win');
+      status.textContent = `${(plainMs / burstMs).toFixed(2)}× faster — pipeline time only, timed live just now.`;
+
+      modeRow.querySelectorAll('button').forEach(b => { b.disabled = false; });
+      runBtn.disabled = false;
+    });
+  </script>
+  <script defer src="/v2/copy-code.js"></script>
+</body>
+</html>
