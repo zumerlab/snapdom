@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>snapdom-vector — the capture, as geometry</title>
+<title>snapdom-vector: the capture, as geometry</title>
 <meta name="description" content="Export any element to a vector document: real shapes, real text, real layers, and a written record of everything that had to be approximated. Flat SVG, Figma, PDF.">
 <style>
-  /* This page is built out of the same parts as the pdf one next door — same
-     tokens, same shelf, same price block — because they are one product line and
+  /* This page is built out of the same parts as the pdf one next door (same
+     tokens, same shelf, same price block) because they are one product line and
      a visitor who has seen one should recognise the other. What changes is the
      signature: there, the proof was selecting text; here it is zooming. */
   :root {
@@ -18,7 +18,7 @@
     --wash:  #f6f7fb;
     --accent:#2e4bf0;
     --sel:   rgba(46, 75, 240, .22);
-    /* Amber is "look here", grey is what is dead — the raster panel wears it. */
+    /* Amber is "look here", grey is what is dead, and the raster panel wears it. */
     --mark:  #f0910a;
     --dead:  #94a3b8;
     --good:  #0d8a5f;
@@ -46,7 +46,7 @@
   h1 em { font-style: normal; }
   .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--dim); max-width: 56ch; margin: 20px 0 0; }
 
-  /* ——— the signature: one capture, two exports, one zoom ——— */
+  /* the signature: one capture, two exports, one zoom */
   .proof { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 38px 0 0; }
   .panel { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; background: var(--wash);
            margin: 0; }
@@ -69,7 +69,7 @@
            box-shadow: 0 1px 3px rgba(11,16,32,.1), 0 8px 24px rgba(11,16,32,.07); }
   .stage.dragging { cursor: grabbing; }
   /* Height-fitted rather than stretched: the transform origin has to be a point on
-     the ARTWORK, and with `object-fit` it would be a point on the box instead —
+     the ARTWORK, and with `object-fit` it would be a point on the box instead,
      which is how the two panels would end up looking at different places. */
   .stage img { height: 100%; width: auto; max-width: none; display: block;
                user-select: none; -webkit-user-drag: none; }
@@ -101,7 +101,7 @@
   h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -.025em; font-weight: 800; margin: 14px 0 0; }
   .sub { color: var(--dim); margin: 10px 0 0; max-width: 64ch; }
 
-  /* ——— samples ——— */
+  /* samples */
   .files { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
            gap: 14px; margin: 28px 0 0; }
   .file { display: flex; flex-direction: column; text-decoration: none; color: inherit;
@@ -110,7 +110,7 @@
   .file:hover { border-color: var(--accent); transform: translateY(-2px); }
   .file:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   /* The thumbnail is the sample itself, rendered from the very file the link
-     downloads — so the picture cannot drift from the thing it advertises. */
+     downloads, so the picture cannot drift from the thing it advertises. */
   .file .thumb { height: 150px; margin: -16px -17px 14px; border-bottom: 1px solid var(--rule);
                  background: var(--wash); overflow: hidden; }
   .file .thumb img { width: 100%; height: 100%; object-fit: cover;
@@ -121,7 +121,7 @@
   .file .meta { display: block; font-family: var(--mono); font-size: 11px; color: var(--dim);
                 margin-top: auto; padding-top: 10px; letter-spacing: .03em; }
 
-  /* ——— spec list ——— */
+  /* spec list */
   .spec { margin: 26px 0 0; border-top: 1px solid var(--rule); }
   .spec > div { display: grid; grid-template-columns: 190px 1fr; gap: 22px;
                 padding: 17px 0; border-bottom: 1px solid var(--rule); }
@@ -133,7 +133,7 @@
   .spec dd code, .lede code, .sub code, p code { font-family: var(--mono); font-size: 12.5px;
     background: #eef1f8; padding: 1px 5px; border-radius: 4px; }
 
-/* ——— code ——— */
+/* code */
   .code { margin: 26px 0 0; padding: 20px 22px; border-radius: 12px; background: #0f1729;
           color: #e2e8f0; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
           line-height: 1.7; }
@@ -143,7 +143,7 @@
   .code .n { color: #f5c377; }
   .code .c { color: #7b88a1; }
 
-  /* ——— destinations ——— */
+  /* destinations */
   .dest { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;
           margin: 28px 0 0; }
   .dest > div { border: 1px solid var(--rule); border-radius: 12px; padding: 20px 21px; }
@@ -153,7 +153,7 @@
   .dest p { margin: 10px 0 0; font-size: 15px; color: #26304a; }
   .dest .cost { margin: 12px 0 0; font-size: 14px; color: var(--dim); }
 
-  /* ——— price ——— */
+  /* price */
   .price { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 30px 0 0; }
   .tier { border: 1px solid var(--rule); border-radius: 14px; padding: 26px; display: flex;
           flex-direction: column; }
@@ -181,7 +181,7 @@
   .who-made p { margin: 0; font-size: 15.5px; color: #26304a; max-width: 76ch; }
   .who-made b { color: var(--ink); font-weight: 650; }
 
-  /* ——— faq ——— */
+  /* faq */
   .faq { margin: 24px 0 0; }
   .faq > div { padding: 20px 0; border-bottom: 1px solid var(--rule); display: grid;
                grid-template-columns: 320px 1fr; gap: 24px; }
@@ -403,15 +403,15 @@
 
 <section>
   <span class="eyebrow">Licence</span>
-  <h2>Choose a licence</h2>
-  <p class="sub">One payment. Twelve months of updates. When they run out you keep using the
-  version you have, forever. You just stop receiving new ones. No activation, no seat counting,
-  no phoning home.</p>
+  <h2>An annual subscription</h2>
+  <p class="sub">While it is active you get every release, the private repository and support.
+  When it ends you keep using the versions you have, forever. You just stop receiving new ones.
+  No activation, no seat counting, no phoning home.</p>
 
   <div class="price">
     <div class="tier">
       <span class="who">Individual</span>
-      <div class="amount">$39<small>USD</small></div>
+      <div class="amount">$39<small>USD / year</small></div>
       <p class="for">One person, your own projects.</p>
       <ul>
         <li>Unlimited projects</li>
@@ -419,15 +419,15 @@
         <li>The Figma plugin</li>
         <li>Minified and readable builds</li>
         <li>Private repo: releases and issues</li>
-        <li>12 months of updates</li>
-        <li>Keep using it after that</li>
+        <li>Every release while subscribed</li>
+        <li>Keep your versions when it ends</li>
       </ul>
       <a class="buy" href="#" data-checkout="individual">Buy Individual</a>
     </div>
 
     <div class="tier pick">
       <span class="who">Business</span>
-      <div class="amount">$99<small>USD</small></div>
+      <div class="amount">$99<small>USD / year</small></div>
       <p class="for">Companies, and work you deliver to clients.</p>
       <ul>
         <li>Unlimited developers</li>
@@ -436,22 +436,21 @@
         <li>The Figma plugin</li>
         <li>Minified and readable builds</li>
         <li>Private repo: releases and issues</li>
-        <li>12 months of updates</li>
-        <li>Keep using it after that</li>
+        <li>Every release while subscribed</li>
+        <li>Keep your versions when it ends</li>
       </ul>
       <a class="buy" href="#" data-checkout="business">Buy Business</a>
     </div>
   </div>
 
   <div class="who-made">
-    <p><b>I maintain SnapDOM and want it to remain current and free.</b> Pro plugin sales help pay
-    for that work. In return, you get a focused tool built to the same quality standard as the
-    open-source engine, with support from the person who made it at
-    <a href="https://zumerlab.com">Zumerlab</a>.</p>
+    <p><b>Made by the maintainer of SnapDOM.</b> Support comes from the person who wrote the
+    plugin, at <a href="https://zumerlab.com">Zumerlab</a>.</p>
   </div>
 
-  <p class="fineprint">Distributing it inside a product you sell to many customers?
-  <a href="mailto:hello@zumerlab.com">Write to us</a>. That one we should talk about.</p>
+  <p class="fineprint">Building a platform, design tool or SDK that lets other people generate
+  vector files with it? <a href="mailto:hello@zumerlab.com">Write to us</a>. That one needs its own
+  agreement.</p>
 </section>
 
 <section>
@@ -482,7 +481,7 @@
       <h3>Does anything leave the machine?</h3>
       <p>No. The engine runs in your page and the Figma plugin's manifest declares
       <code>networkAccess: none</code>, so it could not make a request if it wanted to. For a lot
-      of teams that is not a preference, it is the only option that is legal.</p>
+      of teams that is a legal requirement.</p>
     </div>
     <div>
       <h3>Which browsers?</h3>
@@ -499,7 +498,7 @@
 
 <footer>
   <span>© Zumerlab · <a href="https://snapdom.dev">snapdom.dev</a></span>
-  <span>snapdom-vector is a paid plugin. <a href="https://github.com/zumerlab/snapdom">SnapDOM itself stays free.</a></span>
+  <span>snapdom-vector is a SnapDOM Pro plugin. <a href="https://github.com/zumerlab/snapdom">SnapDOM itself stays free.</a></span>
 </footer>
 
 </div>
@@ -507,7 +506,7 @@
 <script>
 /**
  * The zoom. Both panels are the same picture at the same magnification over the
- * same focal point — anything less and the comparison would be between two crops
+ * same focal point. Anything less and the comparison would be between two crops
  * rather than between two formats.
  *
  * The focal point is kept in the artwork's own 0..1 space and applied as
@@ -563,7 +562,7 @@
       if (!dragging) return
       const r = s.getBoundingClientRect()
       // One pixel of drag moves the artwork one pixel, so the focal point moves by
-      // that pixel over the ENLARGED width — which is where the (zoom - 1) comes
+      // that pixel over the ENLARGED width, which is where the (zoom - 1) comes
       // from and why the gearing feels right at 12× and at 2×.
       fx = clamp(fx - (e.clientX - lastX) / (r.width * (zoom - 1)))
       fy = clamp(fy - (e.clientY - lastY) / (r.height * (zoom - 1)))

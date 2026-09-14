@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>snapdom-pdf — looks like a screenshot, reads like text</title>
+<title>snapdom-pdf: looks like a screenshot, reads like text</title>
 <meta name="description" content="Export a SnapDOM capture to PDF. The pixels remain SnapDOM's; an aligned text layer adds selection, search, copy and safe links.">
 <style>
   /* The selection highlight is this page's accent on purpose: what is being sold
@@ -18,7 +18,7 @@
     --accent:#2e4bf0;
     --sel:   rgba(46, 75, 240, .22);
     /* Two colours doing two jobs: blue is what is alive and selectable, amber is
-       "look here". Grey is what is dead — the left panel wears it. */
+       "look here". Grey is what is dead, and the left panel wears it. */
     --mark:  #f0910a;
     --dead:  #94a3b8;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -32,7 +32,7 @@
   .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
 
   /* Eyebrows and labels are monospace because the product's inner life is PDF
-     operators — `3 Tr`, `Tz`, `/SMask`. The utility face says so. */
+     operators, like `3 Tr`, `Tz` and `/SMask`. The utility face says so. */
   .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
              text-transform: uppercase; color: var(--accent); }
 
@@ -47,7 +47,7 @@
   .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--dim); max-width: 54ch;
           margin: 20px 0 0; }
 
-  /* ——— the signature: two panels, one document, one difference ——— */
+  /* the signature: two panels, one document, one difference */
   .proof { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 40px 0 0; }
   .panel { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden;
            background: var(--wash); }
@@ -79,7 +79,7 @@
   .card .layer span { position: absolute; white-space: pre; color: transparent;
                       transform-origin: 0 0; line-height: 1; overflow: hidden; }
   /* The page-wide ::selection gives selected text a colour, which would make this
-     layer VISIBLE the moment you drag over it — two copies of every word. Here the
+     layer VISIBLE the moment you drag over it, as two copies of every word. Here the
      highlight is the whole point and the glyphs must stay invisible. */
   .card .layer ::selection { color: transparent; background: var(--sel); }
   .card .layer span::selection { color: transparent; background: var(--sel); }
@@ -89,7 +89,7 @@
      and a fake cursor would be a lie about what is happening. */
   .card .layer span.hit { background: var(--sel); }
   .card .layer span { transition: background .18s ease; }
-  /* The left panel has no layer at all — there is nothing to select, which is the
+  /* The left panel has no layer at all. There is nothing to select, which is the
      whole point. Its image is inert. */
   .panel.flat .card img { user-select: none; }
 
@@ -106,7 +106,7 @@
        margin: 14px 0 0; }
   .sub { color: var(--dim); margin: 10px 0 0; max-width: 62ch; }
 
-  /* ——— samples ——— */
+  /* samples */
   .files { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
            gap: 12px; margin: 28px 0 0; }
   .file { display: flex; flex-direction: column; text-decoration: none; color: inherit; border: 1px solid var(--rule);
@@ -120,7 +120,7 @@
   .file .meta { display: block; font-family: var(--mono); font-size: 11px; color: var(--dim);
                 margin-top: auto; padding-top: 10px; letter-spacing: .03em; }
 
-  /* ——— spec list ——— */
+  /* spec list */
   .spec { margin: 26px 0 0; border-top: 1px solid var(--rule); }
   .spec > div { display: grid; grid-template-columns: 190px 1fr; gap: 22px;
                 padding: 17px 0; border-bottom: 1px solid var(--rule); }
@@ -129,7 +129,7 @@
   .spec dd { margin: 0; color: #26304a; }
   .spec dd b { font-weight: 650; color: var(--ink); }
 
-/* ——— code ——— */
+/* code */
   .code { margin: 26px 0 0; padding: 20px 22px; border-radius: 12px; background: #0f1729;
           color: #e2e8f0; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
           line-height: 1.7; }
@@ -142,7 +142,7 @@
   .spec.opts dd code, .spec dd code { font-family: var(--mono); font-size: 12.5px;
     background: #eef1f8; padding: 1px 5px; border-radius: 4px; }
 
-  /* ——— price ——— */
+  /* price */
   .price { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 30px 0 0; }
   .tier { border: 1px solid var(--rule); border-radius: 14px; padding: 26px; display: flex;
           flex-direction: column; }
@@ -169,13 +169,13 @@
   .prelaunch { margin: 18px 0 0; padding: 12px 15px; border-radius: 9px; background: #fff8ec;
                border-left: 3px solid var(--mark); color: #5b441b; font-size: 14px; }
 
-/* Who is behind it — stated once, quietly, next to the commercial status. */
+/* Who is behind it, stated once and quietly, next to the licence. */
   .who-made { margin: 26px 0 0; padding: 18px 22px; border-radius: 12px;
               background: var(--wash); border-left: 3px solid var(--accent); }
   .who-made p { margin: 0; font-size: 15.5px; color: #26304a; max-width: 76ch; }
   .who-made b { color: var(--ink); font-weight: 650; }
 
-  /* ——— faq ——— */
+  /* faq */
   .faq { margin: 24px 0 0; }
   .faq > div { padding: 20px 0; border-bottom: 1px solid var(--rule); display: grid;
                grid-template-columns: 320px 1fr; gap: 24px; }
@@ -200,7 +200,7 @@
 
 <header>
   <div class="bar">
-    <span class="eyebrow">SnapDOM Pro · PDF · Pre-release</span>
+    <span class="eyebrow">SnapDOM Pro · PDF</span>
     <nav><a href="docs.html">Reference</a> · <a href="https://snapdom.dev">← SnapDOM</a></nav>
   </div>
 
@@ -211,8 +211,8 @@
   layout.</p>
 
   <p class="prelaunch"><b>Preview, not a checkout.</b> The plugin is not on sale yet, and this
-  page will not take payment until prices are set. The terms are settled: an annual subscription
-  and a perpetual licence to every version obtained while it is active. It requires SnapDOM 3.</p>
+  page takes no payment until checkout opens. It is an annual subscription with a perpetual licence
+  to every version you get while it is active, and it requires SnapDOM 3.</p>
 
   <!-- Both panels are real PDFs, rendered here by pdf.js. Same element, same
        exporter; the left one was written with `text: false`, which is the file every
@@ -294,7 +294,7 @@
     <div>
       <dt>Multilingual text</dt>
       <dd>CJK, Cyrillic, Greek, Arabic, Hebrew and emoji carry a <b>/ToUnicode</b> CMap, so selection,
-      search and copy work for every script — whether or not a glyph travels with the file.</dd>
+      search and copy work for every script, whether or not a glyph travels with the file.</dd>
     </div>
     <div>
       <dt>Pagination</dt>
@@ -319,7 +319,7 @@
     <div>
       <dt>Embedded fonts</dt>
       <dd>The faces the page painted with travel inside the file, <b>subset</b> to the glyphs the
-      document actually drew — a ~320&nbsp;kB face reaches a Latin page as a few kB. Turn on
+      document actually drew. A ~320&nbsp;kB face reaches a Latin page as a few kB. Turn on
       <b>vectorText</b> and eligible runs are painted as real vector glyphs instead of sitting
       invisible over the raster: crisp at any zoom, and an image-free export of the same page drops
       from ~420&nbsp;kB to ~22&nbsp;kB.</dd>
@@ -327,7 +327,7 @@
     <div>
       <dt>Fillable forms</dt>
       <dd>A captured form is still a form. Inputs, textareas, checkboxes, radio groups and selects
-      become real AcroForm fields — fillable, tabbable, extractable — carrying their name, value,
+      become real AcroForm fields (fillable, tabbable, extractable) carrying their name, value,
       options, checked state, required and read-only flags, and the accessible label as the tooltip a
       screen reader speaks. No JavaScript actions, no submit URLs, and a password field is written
       empty.</dd>
@@ -336,7 +336,7 @@
       <dt>Encrypted downloads</dt>
       <dd>A file that leaves the browser can be <b>AES-256</b> encrypted on the way out, so the
       download itself is protected once it is attached and forwarded. Standard security handler
-      revision 6, from the browser's own <b>crypto.subtle</b> — no cipher code ships in the plugin and
+      revision 6, from the browser's own <b>crypto.subtle</b>, so no cipher code ships in the plugin and
       RC4 is not offered at any setting. A user password is required: the flavour of "encryption" that
       opens without asking is refused rather than produced.</dd>
     </div>
@@ -344,7 +344,7 @@
       <dt>Identity and determinism</dt>
       <dd>Title, author, subject and keywords reach <b>/Info</b> and a mirrored XMP packet; a title
       also makes viewers show the document's name instead of its filename. Dates are never invented
-      and the trailer <b>/ID</b> is a content hash, so the same input produces the same bytes.</dd>
+      and the trailer <b>/ID</b> is a content hash, so the same unencrypted input produces the same bytes.</dd>
     </div>
     <div>
       <dt>Progress, cancellation, diagnostics</dt>
@@ -356,7 +356,7 @@
       <dt>Transparency</dt>
       <dd>A capture with alpha carries a Flate <b>/SMask</b>. Flatten it onto a colour to remove
       the mask. For every image, <b>codec: auto</b> compares JPEG with lossless Flate and keeps
-      the smaller result — and the lossless candidate is written in the narrowest colour space that
+      the smaller result. The lossless candidate is written in the narrowest colour space that
       reproduces the pixels exactly, which is one byte per pixel instead of three on the grey or
       few-coloured regions most page artwork turns out to be.</dd>
     </div>
@@ -416,8 +416,8 @@ snapdom.plugins(pdf())
   tagged: <span class="k">true</span>,                            <span class="c">// structure, not a PDF/UA badge</span>
   download: <span class="s">'report.pdf'</span>                   <span class="c">// also downloads it</span>
 })</code></pre>
-  <p class="sub">On first PDF export, the plugin reads SnapDOM's final serialized clone—not the
-  original live DOM—so real node removal/replacement stays aligned. Page regions are rasterized
+  <p class="sub">On first PDF export, the plugin reads SnapDOM's final serialized clone, not the
+  original live DOM, so real node removal/replacement stays aligned. Page regions are rasterized
   lazily and cached for later exports. Geometry-preserving final-artifact replacements stay aligned;
   aspect-preserving width/height scaling is allowed, while incompatible viewBox, root paint/layout or
   intrinsic-aspect changes fail instead of guessing coordinates. For secrets, remove or replace the
@@ -473,7 +473,7 @@ snapdom.plugins(pdf())
       <code>false</code>.</dd></div>
     <div><dt>cover / toc / back</dt><dd>Captured front/back pages and generated linked contents.</dd></div>
     <div><dt>watermark</dt><dd>Text or an element, drawn over every page.</dd></div>
-    <div><dt>encrypt</dt><dd><code>{userPassword, ownerPassword, permissions}</code> — AES-256 (R6).
+    <div><dt>encrypt</dt><dd><code>{userPassword, ownerPassword, permissions}</code>. AES-256 (R6).
       The password is what protects the file; the permission flags are a request a viewer may honour.
       Needs https or localhost.</dd></div>
     <div><dt>meta</dt><dd><code>{title, author, subject, keywords, creator, created, modified}</code>
@@ -482,8 +482,8 @@ snapdom.plugins(pdf())
       to need a bar.</dd></div>
     <div><dt>signal</dt><dd>An <code>AbortSignal</code>. Aborting rejects between pages with
       <code>AbortError</code> and produces nothing.</dd></div>
-    <div><dt>onReport</dt><dd>The structured diagnostics report once the Blob is finished — stable
-      warning codes, counts, pages, bytes, fields, annotations.</dd></div>
+    <div><dt>onReport</dt><dd>The structured diagnostics report once the Blob is finished, with stable
+      warning codes, counts, pages, bytes, fields and annotations.</dd></div>
     <div><dt>download</dt><dd>A filename. Downloads the blob as well as returning it.</dd></div>
     <div><dt>backgroundColor</dt><dd>Flatten at capture, plugin-default or export time. Resolution
       remains a <code>snapdom(...)</code> concern.</dd></div>
@@ -494,14 +494,14 @@ snapdom.plugins(pdf())
 <section>
   <span class="eyebrow">Licence</span>
   <h2>An annual subscription</h2>
-  <p class="sub">Individual and Business are the two plans, and checkout opens once prices are
-  set. While a subscription is active you get every release, the private repository and support.
-  When it ends you keep using the versions you have, in anything the plan allowed.</p>
+  <p class="sub">Individual and Business are the two plans. While a subscription is active you get
+  every release, the private repository and support. When it ends you keep using the versions you
+  have, in anything the plan allowed.</p>
 
   <div class="price">
     <div class="tier">
       <span class="who">Individual</span>
-      <div class="amount">TBD<small>before launch</small></div>
+      <div class="amount">$39<small>USD / year</small></div>
       <p class="for">One person, your own projects.</p>
       <ul>
         <li>Unlimited projects</li>
@@ -515,7 +515,7 @@ snapdom.plugins(pdf())
 
     <div class="tier pick">
       <span class="who">Business</span>
-      <div class="amount">TBD<small>before launch</small></div>
+      <div class="amount">$99<small>USD / year</small></div>
       <p class="for">Companies, and work you deliver to clients.</p>
       <ul>
         <li>Unlimited developers</li>
@@ -530,10 +530,8 @@ snapdom.plugins(pdf())
   </div>
 
   <div class="who-made">
-    <p><b>I maintain SnapDOM and want it to remain current and free.</b> Pro plugin sales help pay
-    for that work. In return, you get a focused tool built to the same quality standard as the
-    open-source engine, with support from the person who made it at
-    <a href="https://zumerlab.com">Zumerlab</a>.</p>
+    <p><b>Made by the maintainer of SnapDOM.</b> Support comes from the person who wrote the
+    plugin, at <a href="https://zumerlab.com">Zumerlab</a>.</p>
   </div>
 
   <p class="fineprint"><b>Platforms, builders and SDKs need a separate agreement.</b> Running the
@@ -586,18 +584,18 @@ snapdom.plugins(pdf())
       pixels. The invisible layer adds selection, search and copy without repainting the type.</p>
       <p>You can have the other model: <code>vectorText: true</code> paints eligible runs as real
       glyphs from the embedded fonts, and with <code>image: false</code> the result is a small, fully
-      vector text PDF. It is opt-in because it is a different fidelity promise — RTL and complex
+      vector text PDF. It is opt-in because it is a different fidelity promise. RTL and complex
       scripts are never painted this way, and they stay on the raster.</p>
     </div>
     <div>
       <h3>Can the PDF be password protected?</h3>
-      <p>Yes — <code>encrypt: { userPassword }</code> writes an AES-256 file, so the download is
+      <p>Yes. <code>encrypt: { userPassword }</code> writes an AES-256 file, so the download is
       protected once it is shared. It uses the browser's own crypto, so no cipher code ships in the
       plugin, and it needs a secure context: https or localhost.</p>
       <p>Two things it will not do. It does not offer RC4 or the older PDF revisions, whose 40-bit key
       is broken. And it will not write an empty user password: that produces a file that is encrypted
       and still opens without asking anyone anything, which is worse than no protection because it
-      looks like some. Permission flags — no printing, no copying — are written when you ask for them,
+      looks like some. Permission flags (no printing, no copying) are written when you ask for them,
       but they are a request a viewer may honour, not a lock.</p>
     </div>
     <div>
@@ -611,7 +609,7 @@ snapdom.plugins(pdf())
 
 <footer>
   <span>© Zumerlab · <a href="https://snapdom.dev">snapdom.dev</a></span>
-  <span>SnapDOM PDF is a paid-plugin preview. <a href="https://github.com/zumerlab/snapdom">SnapDOM itself stays free.</a></span>
+  <span>SnapDOM PDF is a SnapDOM Pro plugin. <a href="https://github.com/zumerlab/snapdom">SnapDOM itself stays free.</a></span>
 </footer>
 
 </div>
@@ -704,7 +702,7 @@ async function start() {
       if (card.closest('.live') && !swept) { swept = true; setTimeout(() => sweep(spans), 500) }
     } catch (err) {
       // The posters stay, the download links below still work, and the page still
-      // makes its case — so a failure here is a downgrade, not a broken page.
+      // makes its case, so a failure here is a downgrade, not a broken page.
       console.warn('[pro] could not render', card.dataset.pdf, err)
     }
   }
