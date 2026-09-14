@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "2.2.2",
+  "version": "3.0.0-beta.0",
   "description": "Official plugins for SnapDOM",
   "type": "module",
   "exports": {
@@ -8,19 +8,23 @@
     "./timestamp-overlay": "./timestamp-overlay.js",
     "./ascii-export": "./ascii-export.js",
     "./replace-text": "./replace-text.js",
+    "./redact-inputs": "./redact-inputs.js",
     "./filter": "./filter.js",
     "./color-tint": "./color-tint.js",
-    "./html-in-canvas": "./html-in-canvas.js",
     "./pdf-image": "./pdf-image.js",
     "./agent-map": "./agent-map.js",
+    "./context-export": "./context-export.js",
     "./html-export": "./html-export.js",
     "./gif-export": "./gif-export.js",
     "./video-export": "./video-export.js"
   },
   "files": [
     "*.js",
-    "README.md"
+    "*.d.ts",
+    "README.md",
+    "LICENSE"
   ],
+  "types": "./index.d.ts",
   "keywords": [
     "snapdom",
     "snapdom-plugin",
@@ -39,6 +43,9 @@
   },
   "homepage": "https://snapdom.dev/",
   "peerDependencies": {
-    "@zumer/snapdom": ">=2.12.1"
+    "@zumer/snapdom": ">=3.0.0-0"
+  },
+  "devDependencies": {
+    "@zumer/snapdom": "file:../.."
   }
 }

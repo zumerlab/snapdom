@@ -1,14 +1,21 @@
 /**
- * Deep cloning utilities for DOM elements, including styles and shadow DOM.
+ * deepClone: a live subtree to a detached clone, one node at a time, with each element's
+ * computed style inlined as it goes.
+ *
+ * Owns what cloneNode cannot copy: exclusion and clip culling, the per-tag strategies for
+ * iframe, canvas, video, audio and object/embed, form-control state (properties, not
+ * attributes), shadow roots and slots. One contract holds the later passes together: every
+ * element clone is registered in `sessionCache.nodeMap` as clone -> source. A replacement
+ * that skips the map is invisible to the pseudo, background and image passes, and a culled
+ * subtree skips it on purpose.
  * @module clone
  */
 
-import { inlineAllStyles } from '../modules/styles.js'
+import { inlineAllStyles, observeShadowRoot } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
-import { debugWarn, getStyle } from '../utils/index.js'
+import { debugWarn, getStyle, isPasswordInput, maskValue, isTag, isSVGEl } from '../utils/index.js'
 import {
-  idleCallback,
   rewriteShadowCSS,
   nextShadowScopeId,
   extractShadowCSS,
@@ -19,12 +26,12 @@ import {
   markSlottedSubtree,
   rasterizeIframe,
   getUnscaledDimensions,
-  createCheckboxRadioReplacement
+  createCheckboxRadioReplacement,
+  createRangeReplacement
 } from '../utils/clone.helpers.js'
 import { isFirefox, isSafari, nextFrame } from '../utils/browser.js'
-import { isHTMLTag, isSVGElement, isNode } from '../utils/dom.js'
-
-// helper implementations moved to ../utils/clone.helpers.js
+import { cloneTextWithSelection, inlineTextFieldSelection } from '../modules/selection.js'
+import { isInternalNode } from '../utils/ownership.js'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Tag handler registry: per-tag clone strategies for elements whose content
@@ -54,18 +61,55 @@ export function registerTagHandler(tag, handler) {
  * excluded/filtered in 'hide' mode. Forces at most one getBoundingClientRect (the inline form
  * could read it twice per node in the hot path).
  * @param {Element} node
- * @returns {HTMLDivElement}
+ * @returns {HTMLDivElement|null}
  */
 function makeHideSpacer(node) {
-  const { width, height } = getUnscaledDimensions(node)
-  let w = width, h = height
-  if (!w || !h) {
-    const rect = node.getBoundingClientRect()
-    w = w || rect.width || 0
-    h = h || rect.height || 0
+  // A display:none node occupies nothing live, so ANY spacer shifts the layout; and a
+  // hardcoded inline-block spacer for a block-level node adds a whole line box (baseline
+  // + descender) on top of its height. `exclude` is the redaction feature, routinely
+  // pointed at selectors that also match hidden elements — both cases moved content down.
+  const style = getStyle(node)
+  const display = style.display
+  if (display === 'none') return null
+  // Safari at fractional page zoom can report offsetHeight=31 for a 30px box.
+  // Used CSS sizes preserve both fractions and pre-transform layout; offsets are only
+  // a fallback. Inline text and table/ruby boxes have different sizing rules, so keep
+  // their existing measurement rather than interpreting their CSS as ordinary boxes.
+  const ordinaryBox = /^(block|inline-block|flow-root|flex|inline-flex|grid|inline-grid|list-item)$/.test(display)
+  const px = v => parseFloat(v) || 0
+  const borderBoxSize = (value, padding, border, offset, client) => {
+    if (!ordinaryBox || !value?.endsWith('px')) return null
+    const size = parseFloat(value)
+    if (!Number.isFinite(size) || size < 0) return null
+    if (style.boxSizing === 'border-box') return size
+    // Blink and WebKit resolve a content-box scroller's `width`/`height` WITHOUT its classic
+    // scrollbar (WebKit: 185px for `width:200px;overflow:scroll`), Gecko keeps the scrollbar
+    // inside the resolved value, and the spacer has no scrollbar to lose. Offset minus client
+    // minus the borders is that scrollbar (0 for an overlay or absent one); it goes back only
+    // where the resolved size fell short of the client box, so neither engine counts it twice.
+    const gutter = offset - client - border
+    return size + padding + border + (gutter > 0 && size + padding < client + gutter / 2 ? gutter : 0)
+  }
+  // Pinned by `__tests__/api.exclude.unified.test.js`; headless Chromium hides scrollbars.
+  const [ow, cw, oh, ch] = /scroll|auto/.test(style.overflow)
+    ? [node.offsetWidth, node.clientWidth, node.offsetHeight, node.clientHeight] : [0, 0, 0, 0]
+  let w = borderBoxSize(style.width, px(style.paddingLeft) + px(style.paddingRight),
+    px(style.borderLeftWidth) + px(style.borderRightWidth), ow, cw)
+  let h = borderBoxSize(style.height, px(style.paddingTop) + px(style.paddingBottom),
+    px(style.borderTopWidth) + px(style.borderBottomWidth), oh, ch)
+  if (w === null || h === null) {
+    const { width, height } = getUnscaledDimensions(node)
+    let fallbackW = width, fallbackH = height
+    if ((w === null && !fallbackW) || (h === null && !fallbackH)) {
+      const rect = node.getBoundingClientRect()
+      fallbackW ||= rect.width || 0
+      fallbackH ||= rect.height || 0
+    }
+    w ??= fallbackW
+    h ??= fallbackH
   }
   const spacer = document.createElement('div')
-  spacer.style.cssText = `display:inline-block;width:${w}px;height:${h}px;visibility:hidden;`
+  spacer.style.cssText = `display:${display === 'inline' ? 'inline-block' : display};box-sizing:border-box;width:${w}px;height:${h}px;visibility:hidden;`
   return spacer
 }
 
@@ -78,8 +122,10 @@ const CLIP_CULL_MARGIN = 200
 const CLIP_REPLACED_TAGS = new Set(['img', 'canvas', 'video', 'iframe', 'object', 'embed'])
 
 /**
+ * Whether a box touches the clip rect, with CLIP_CULL_MARGIN of slack on every side.
  * @param {{left:number,top:number,right:number,bottom:number}} b
  * @param {{left:number,top:number,right:number,bottom:number}} rect
+ * @returns {boolean}
  */
 function intersectsClip(b, rect) {
   return b.right >= rect.left - CLIP_CULL_MARGIN && b.left <= rect.right + CLIP_CULL_MARGIN &&
@@ -160,20 +206,76 @@ function makeClipHusk(node, sessionCache, options) {
     husk.style.maxHeight = `${height}px`
   }
   husk.style.visibility = 'hidden'
-  husk.style.overflow = 'hidden'
+  // Deliberately NOT overflow:hidden — that manufactures a BFC the original may not
+  // have had, un-collapsing its margins with neighbors: 68 husks drifted deep-scroll
+  // Wikipedia +812px, shifting the whole clip window one viewport. The husk is empty
+  // (shallow clone), so there is nothing to clip anyway; it keeps the original's own
+  // computed overflow from inlineAllStyles.
+  // Escaped-margin compensation: an empty husk can't reproduce the child margins that
+  // collapsed THROUGH the original's edges (Wikipedia loses 16px per husked <section>
+  // — the whole flow drifts). Assign the LIVE measured gap to both husk edges: since
+  // adjoining margins collapse to their max and the live gap already IS that max,
+  // husk↔husk and husk↔content spacing land exactly on the live layout. Block flow
+  // only — flex/grid/table parents don't collapse margins, and there the computed
+  // margins already inlined are correct.
+  const parentDisplay = node.parentElement ? getStyle(node.parentElement).display : ''
+  const ownPos = getStyle(node).position
+  if (!/flex|grid|table/.test(parentDisplay) && (ownPos === 'static' || ownPos === 'relative')) {
+    const inFlow = (el) => {
+      const cs = getStyle(el)
+      return cs.display !== 'none' && cs.position !== 'absolute' && cs.position !== 'fixed'
+    }
+    const r = node.getBoundingClientRect()
+    let prev = node.previousElementSibling
+    while (prev && !inFlow(prev)) prev = prev.previousElementSibling
+    if (prev) {
+      const g = r.top - prev.getBoundingClientRect().bottom
+      if (g >= 0) husk.style.marginTop = `${g}px`
+    }
+    let next = node.nextElementSibling
+    while (next && !inFlow(next)) next = next.nextElementSibling
+    if (next) {
+      const g = next.getBoundingClientRect().top - r.bottom
+      if (g >= 0) husk.style.marginBottom = `${g}px`
+    }
+  }
   // offset* are border-box; content-box elements with padding/border would inflate
   husk.style.boxSizing = 'border-box'
   return husk
 }
 
+/**
+ * Clone one node and its subtree for capture, inlining each element's computed style.
+ *
+ * Returns null for what the capture drops (the sandbox, NO_CAPTURE_TAGS, excluded nodes in
+ * 'remove' mode, a nested foreignObject, a <picture>'s <source>), a spacer or husk for nodes
+ * that keep their box but not their content, a DocumentFragment for a <slot>, and otherwise
+ * the clone. Children are cloned concurrently; a child whose clone throws is dropped.
+ * @param {Node} node
+ * @param {object} sessionCache - the per-capture maps, built by prepareClone
+ * @param {object} options - the capture context
+ * @returns {Promise<Node|null>}
+ */
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error('Invalid node')
   const clonedAssignedNodes = new Set()
-  let pendingSelectValue = null
+  let pendingSelectedOptions = null
   let pendingTextAreaValue = null
   if (node.nodeType === Node.ELEMENT_NODE) {
     const tag = (node.localName || node.tagName || '').toLowerCase()
-    if (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox')) {
+    const internal = isInternalNode(node)
+    // The default-style sandbox is never capture content, even if passed as the root. Its
+    // public id/attribute alone prove nothing; only the private registration authorizes this.
+    if (internal && (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox'))) {
+      return null
+    }
+    // snapdom's own scaffolding below the root. The decode <iframe> that toCanvas keeps in
+    // document.body outlives its capture, and a later capture of <body> reached it through
+    // cloneIframe and rasterized snapdom's own empty document with a nested toPng (+10 ms per
+    // warm capture and 27.5k extra getPropertyValue reads on liquidGL's home, 2026-09-03).
+    // The root itself is exempt: fromString captures its own marked mount on purpose.
+    // Pinned by `__tests__/core.clone.internalNodes.test.js`.
+    if (node !== options.element && internal) {
       return null
     }
     if (NO_CAPTURE_TAGS.has(tag)) {
@@ -197,6 +299,12 @@ export async function deepClone(node, sessionCache, options) {
     }
   }
   if (node.nodeType === Node.TEXT_NODE) {
+    // Selected text is cloned with its highlight painted in: the selection itself is paint
+    // state, not DOM, so a structural clone cannot carry it.
+    if (sessionCache.selection) {
+      const highlighted = cloneTextWithSelection(node, sessionCache.selection)
+      if (highlighted) return highlighted
+    }
     return node.cloneNode(true)
   }
   if (node.nodeType !== Node.ELEMENT_NODE) {
@@ -224,14 +332,27 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
+  // Unified exclude predicates ((el) => true excludes). Split from selectors once in
+  // createContext — zero typeof dispatch per node.
+  if (options.excludePredicates) {
+    for (const pred of options.excludePredicates) {
+      try {
+        if (pred(node)) {
+          if (options.excludeMode === 'remove') return null
+          return makeHideSpacer(node)
+        }
+      } catch (err) {
+        console.warn('Error in exclude predicate:', err)
+      }
+    }
+  }
+  // Preserve v2's independent keep predicate and mode. Exclusions above take precedence,
+  // so filter is never asked to override a node already hidden or removed by exclude.
   if (typeof options.filter === 'function') {
     try {
       if (!options.filter(node)) {
-        if (options.filterMode === 'hide') {
-          return makeHideSpacer(node)
-        } else if (options.filterMode === 'remove') {
-          return null
-        }
+        if (options.filterMode === 'hide') return makeHideSpacer(node)
+        if (options.filterMode === 'remove') return null
       }
     } catch (err) {
       console.warn('Error in filter function:', err)
@@ -252,7 +373,7 @@ export async function deepClone(node, sessionCache, options) {
         debugWarn(sessionCache, 'resolveNode plugin hook failed', e)
       }
       if (out === null) return null
-      if (isNode(out)) {
+      if (out?.nodeType) {
         if (out.nodeType === Node.ELEMENT_NODE) {
           // Same treatment as built-in tag handlers: map to the source and carry its box
           // styles so the replacement keeps the original layout.
@@ -294,25 +415,10 @@ export async function deepClone(node, sessionCache, options) {
   let clone
   try {
     clone = node.cloneNode(false)
-    // ROB-3: strip XML 1.0 invalid control characters from attribute values.
-    // These characters are legal in HTML but rejected by XMLSerializer, breaking the SVG output.
-    // Most common in data-* attributes with user-generated content.
-    // Invalid chars: U+0000–U+0008, U+000B, U+000C, U+000E–U+001F, U+FFFE, U+FFFF
-    if (clone.attributes?.length) {
-      try {
-        for (const attr of clone.attributes) {
-          /* eslint-disable no-control-regex */
-          if (/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/.test(attr.value)) {
-            clone.setAttribute(attr.name, attr.value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g, ''))
-          }
-          /* eslint-enable no-control-regex */
-        }
-      } catch { /* read-only attr or live collection change — non-blocking */ }
-    }
     resolveCSSVars(node, clone)
     sessionCache.nodeMap.set(clone, node)
     if (node.tagName === 'IMG') {
-      freezeImgSrcset(node, clone)
+      freezeImgSrcset(node, clone, options)
       // Record original image dimensions (pre-transform) for fallback usage when inlining fails.
       // #498: keep them fractional. `offsetWidth` is an integer, and the `min-width` written below
       // from a rounded-up value (25.6px → 26px) beats the frozen `width`, grows the image and
@@ -323,9 +429,23 @@ export async function deepClone(node, sessionCache, options) {
         let width = parseFloat(cs.width)
         let height = parseFloat(cs.height)
         if (!(width > 0) || !(height > 0)) {
+          // getUnscaledDimensions is the BORDER box (offsetWidth); width/height and min-* resolve
+          // against the CONTENT box unless box-sizing is border-box, so with padding or a border
+          // the frozen box was too large by exactly that much and the picture rendered scaled
+          // inside it (measured against the live element: 18–34% of pixels differ with 20px
+          // padding + a 5px border, 0% without either). The computed style above is already the
+          // content box; only this fallback needs the correction.
           const dims = getUnscaledDimensions(node)
-          if (!(width > 0)) width = dims.width
-          if (!(height > 0)) height = dims.height
+          const px = (p) => parseFloat(cs.getPropertyValue(p)) || 0
+          const bb = cs.getPropertyValue('box-sizing') === 'border-box'
+          if (!(width > 0)) {
+            width = dims.width -
+              (bb ? 0 : px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width'))
+          }
+          if (!(height > 0)) {
+            height = dims.height -
+              (bb ? 0 : px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width'))
+          }
         }
         const w = Math.round((width || 0) * 1000) / 1000
         const h = Math.round((height || 0) * 1000) / 1000
@@ -335,8 +455,8 @@ export async function deepClone(node, sessionCache, options) {
         debugWarn(sessionCache, 'getUnscaledDimensions for IMG failed', e)
       }
 
-      // Si el autor usó % o auto, o el alto/ ancho efectivos dan 0,
-      // escribimos px en línea para evitar que el clon “pierda” la imagen.
+      // When the author used % or auto, or the effective width/height resolve to 0,
+      // write px inline so the clone does not "lose" the image.
       try {
         const authored = node.getAttribute('style') || ''
         const cs = window.getComputedStyle(node)
@@ -349,11 +469,11 @@ export async function deepClone(node, sessionCache, options) {
         const w = parseFloat(clone.dataset.snapdomWidth || '0') || 0
         const h = parseFloat(clone.dataset.snapdomHeight || '0') || 0
 
-        const needFreezeW = usesPercentOrAuto('width') || !w
-        const needFreezeH = usesPercentOrAuto('height') || !h
+        const needFreezeW = usesPercentOrAuto('width') || !(w > 0)
+        const needFreezeH = usesPercentOrAuto('height') || !(h > 0)
 
-        if (needFreezeW && w) clone.style.width = `${w}px`
-        if (needFreezeH && h) clone.style.height = `${h}px`
+        if (needFreezeW && w > 0) clone.style.width = `${w}px`
+        if (needFreezeH && h > 0) clone.style.height = `${h}px`
 
         // #337: Preserve object-fit and object-position for correct image proportions
         const objectFit = cs.getPropertyValue('object-fit')
@@ -364,9 +484,11 @@ export async function deepClone(node, sessionCache, options) {
           // When object-fit is active, minWidth/minHeight can distort the image
           // Only set min dimensions if no object-fit override is in play
         } else {
-          // Blindaje extra: evita que una clase agregada luego anule el fix
-          if (w) clone.style.minWidth = `${w}px`
-          if (h) clone.style.minHeight = `${h}px`
+          // Extra shielding: stops a class added later from overriding the fix. Content-box
+          // values (see above): an earlier attempt corrected only this floor, saw no change on
+          // a fixture whose freeze above still wrote the border box, and was reverted.
+          if (w > 0) clone.style.minWidth = `${w}px`
+          if (h > 0) clone.style.minHeight = `${h}px`
         }
       } catch (e) {
         debugWarn(sessionCache, 'IMG dimension freeze failed', e)
@@ -378,34 +500,87 @@ export async function deepClone(node, sessionCache, options) {
     throw err
   }
   let applyInputVisual = null
-  if (isHTMLTag(node, 'textarea')) {
+  if (isTag(node, 'textarea')) {
     const { width, height } = getUnscaledDimensions(node)
     const w = width || node.getBoundingClientRect().width || 0
     const h = height || node.getBoundingClientRect().height || 0
     if (w) clone.style.width = `${w}px`
     if (h) clone.style.height = `${h}px`
   }
-  if (isHTMLTag(node, 'input')) {
+  if (isTag(node, 'input')) {
     const type = (node.type || 'text').toLowerCase()
     const isCheckboxOrRadio = type === 'checkbox' || type === 'radio'
-    if (isCheckboxOrRadio && isFirefox()) {
+    // Firefox paints no native control inside a foreignObject, hence the replacement. It is
+    // ALSO the only faithful path for an INDETERMINATE checkbox on any engine: that state
+    // lives in a DOM property, XMLSerializer cannot emit it, and the cloned native control
+    // therefore renders as plain unchecked. Measured on the same 30px box (dark pixels,
+    // unchecked / indeterminate / checked): chromium 116 / 116 / 778 and webkit 10 / 10 / 57
+    // — the middle state was indistinguishable from unchecked — against firefox 224 / 272 /
+    // 826, where the replacement already drew the dash. An approximated dash is closer to the
+    // truth than a checkbox that silently reads as "off".
+    if (isCheckboxOrRadio && (isFirefox() || node.indeterminate)) {
       const { el: replacement, applyVisual } = createCheckboxRadioReplacement(node)
       sessionCache.nodeMap.set(replacement, node)
       applyInputVisual = applyVisual
       clone = replacement
+    } else if (type === 'range' && (isFirefox() || isSafari())) {
+      // Same reason as the checkbox above: Firefox paints no native control inside a
+      // foreignObject, so a cloned slider lost its track, its fill and its thumb. WebKit is
+      // included beyond the fork's Firefox-only gate because it paints the slider without any
+      // of its accent either (measured: 0 accent-coloured pixels on both engines).
+      const { el: replacement, applyVisual } = createRangeReplacement(node)
+      sessionCache.nodeMap.set(replacement, node)
+      applyInputVisual = applyVisual
+      clone = replacement
+    } else if (type === 'color' && isSafari()) {
+      // WebKit paints a cloned colour well as a text field showing the hex value. The value
+      // painted as a swatch is closer to the control than the value spelled out; !important
+      // so the styles inlined from the (natively rendered) source cannot put the text back.
+      const swatch = /** @type {HTMLInputElement} */ (clone)
+      const colorValue = node.value || '#000000'
+      applyInputVisual = () => {
+        swatch.style.setProperty('background-color', colorValue, 'important')
+        swatch.style.setProperty('color', 'transparent', 'important')
+        swatch.style.setProperty('-webkit-text-fill-color', 'transparent', 'important')
+        swatch.style.setProperty('appearance', 'none', 'important')
+        swatch.style.setProperty('-webkit-appearance', 'none', 'important')
+      }
+      swatch.removeAttribute('value')
+    } else if (
+      (type === 'date' || type === 'time' || type === 'datetime-local') &&
+      (isFirefox() || isSafari())
+    ) {
+      // The formatted text of these controls lives in UA shadow content that neither engine
+      // paints inside a foreignObject: WebKit shows the raw machine value, Firefox nothing at
+      // all. A text clone carrying the locale-formatted value reads like the control instead.
+      clone.setAttribute('type', 'text')
+      let shown = node.value
+      if (type === 'date' && node.valueAsDate) {
+        shown = node.valueAsDate.toLocaleDateString(undefined, { timeZone: 'UTC' })
+      }
+      clone.value = shown
+      clone.setAttribute('value', shown)
     } else {
-      clone.value = node.value
-      clone.setAttribute('value', node.value)
+      // Password only, and only because the mask is fidelity-NEUTRAL: the control already
+      // paints bullets, so a same-length bullet mask renders identically while the typed
+      // secret stays out of the serialized SVG. Values the browser shows in plain text are
+      // captured as-is; redacting those is the `redactInputs` plugin's job, not core's.
+      const safeValue = isPasswordInput(node) ? maskValue(node.value) : node.value
+      clone.value = safeValue
+      clone.setAttribute('value', safeValue)
       if (node.checked !== void 0) {
         clone.checked = node.checked
         if (node.checked) clone.setAttribute('checked', '')
+        // cloneNode carries the DEFAULT attribute even after the user unchecks the input.
+        // The property alone is lost in XML, so mirror both directions before serialization.
+        else clone.removeAttribute('checked')
         if (node.indeterminate) clone.indeterminate = node.indeterminate
       }
     }
   }
 
   // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
-  if (isHTMLTag(node, 'input', 'textarea') && !node.value && node.placeholder) {
+  if ((isTag(node, 'input') || isTag(node, 'textarea')) && !node.value && node.placeholder) {
     try {
       const phStyle = window.getComputedStyle(node, '::placeholder')
       const phColor = phStyle && phStyle.color
@@ -419,15 +594,17 @@ export async function deepClone(node, sessionCache, options) {
     } catch { /* non-blocking */ }
   }
 
-  if (isHTMLTag(node, 'select')) {
-    pendingSelectValue = node.value
+  if (isTag(node, 'select')) {
+    // Values need not be unique, and excluded options change positional indices. Retain
+    // source identity so the selected labels survive both cases and multiple selections.
+    pendingSelectedOptions = new Set(Array.from(node.options).filter(option => option.selected))
   }
-  if (isHTMLTag(node, 'textarea')) {
+  if (isTag(node, 'textarea')) {
     pendingTextAreaValue = node.value
   }
   // Copy form validation/state attributes so :disabled, :required, :read-only,
   // :invalid, :in-range/:out-of-range pseudo-class styles render correctly in the capture.
-  if (isHTMLTag(node, 'input', 'textarea', 'select')) {
+  if (isTag(node, 'input') || isTag(node, 'textarea') || isTag(node, 'select')) {
     if (node.disabled) clone.setAttribute('disabled', '')
     if (node.required) clone.setAttribute('required', '')
     if ((/** @type {HTMLInputElement|HTMLTextAreaElement} */ (node)).readOnly) clone.setAttribute('readonly', '')
@@ -445,17 +622,33 @@ export async function deepClone(node, sessionCache, options) {
     inlineAllStyles(node, clone, sessionCache, options)
   }
   if (applyInputVisual) { applyInputVisual() }
+  // A text field's selection lives on selectionStart/End rather than in a document Range, and
+  // the field renders its own value, so the highlight is painted as background layers on the
+  // clone instead of wrapped in a span.
+  if (
+    options.captureSelection &&
+    (isTag(node, 'input') || isTag(node, 'textarea'))
+  ) {
+    try {
+      inlineTextFieldSelection(node, clone)
+    } catch (e) {
+      debugWarn(sessionCache, 'inlineTextFieldSelection failed', e)
+    }
+  }
   // #365: SVG painting elements — CSS rules override presentation attributes but aren't captured
   // via the class-based mechanism (NO_DEFAULTS_TAGS returns '' key). Copy key SVG presentation
   // properties from computed style as inline styles to ensure CSS-driven fills/strokes survive.
   // #408: skip descendants of <symbol>/<defs>/etc. — their var() must resolve at the <use> site,
   // not be materialized to the (dead) template's fallback computed value.
-  if (isSVGElement(node) && !isInSvgTemplate(node)) {
+  if (isSVGEl(node) && !isInSvgTemplate(node)) {
     const SVG_PAINT_PROPS = [
       'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset',
       'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'opacity',
       'fill-opacity', 'stroke-opacity', 'fill-rule', 'clip-rule',
-      'marker', 'marker-start', 'marker-mid', 'marker-end', 'visibility', 'display'
+      'marker', 'marker-start', 'marker-mid', 'marker-end', 'visibility', 'display',
+      // fill/stroke: currentColor resolves against inherited color, which SVG children
+      // without a style snapshot would otherwise lose (was resolveCSSVars' part 3).
+      'color'
     ]
     try {
       const cs = window.getComputedStyle(node)
@@ -466,6 +659,10 @@ export async function deepClone(node, sessionCache, options) {
     } catch { }
   }
   if (node.shadowRoot) {
+    // Wire this root into the style-snapshot invalidation. Nothing else can see inside it:
+    // the document observer stops at the boundary, so without this a component that
+    // re-renders between captures keeps serving its previous frame's snapshots.
+    observeShadowRoot(node.shadowRoot)
     try {
       const slots = node.shadowRoot.querySelectorAll('slot')
       for (const s of slots) {
@@ -486,26 +683,22 @@ export async function deepClone(node, sessionCache, options) {
     } catch {
     }
     const rawCSS = extractShadowCSS(node.shadowRoot)
+    // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
+    // among them, and a page whose only ::after lives in a shadow root skipped the pass
+    // entirely (the pinned shadow ::after that never painted).
+    if (!sessionCache.__shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.__shadowPseudo = true
     const rewritten = rewriteShadowCSS(rawCSS, scopeSelector, scopeId)
     const neededVars = collectCustomPropsFromCSS(rawCSS)
     const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)
     injectScopedStyle(clone, seed + rewritten, scopeId)
+    // Children clone concurrently (sibling iframe/canvas work overlaps); a failed child
+    // resolves to null and is dropped — same semantics the promise-wrapper scaffolding had.
     const shadowFrag = document.createDocumentFragment()
-    // const, not a declaration: esbuild lowers block-level function declarations to a
-    // hoisted `var` of the same name, which would clobber the walker below.
-    const cloneShadowChild = (child, resolve) => {
-      if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE') {
-        return resolve(null)
-      } else {
-        deepClone(child, sessionCache, options).then((clonedChild) => {
-          resolve(clonedChild || null)
-        }).catch(() => {
-          resolve(null)
-        })
-      }
-    }
-
-    const cloneList = await idleCallback(Array.from(node.shadowRoot.childNodes), cloneShadowChild, options.fast)
+    const cloneList = await Promise.all(Array.from(node.shadowRoot.childNodes).map((child) =>
+      (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE')
+        ? null
+        : deepClone(child, sessionCache, options).catch(() => null)
+    ))
     shadowFrag.append(...cloneList.filter(clonedChild => !!clonedChild))
     clone.appendChild(shadowFrag)
   }
@@ -515,50 +708,66 @@ export async function deepClone(node, sessionCache, options) {
     const assigned = directAssigned.length ? node.assignedNodes?.({ flatten: true }) || directAssigned : []
     const nodesToClone = assigned.length ? assigned : Array.from(node.childNodes)
     const fragment = document.createDocumentFragment()
-
-    const cloneSlottedChild = (child, resolve) => {
+    const cloneList = await Promise.all(nodesToClone.map((child) =>
       deepClone(child, sessionCache, options).then((clonedChild) => {
-        if (clonedChild && directAssigned.length) {
-          markSlottedSubtree(clonedChild, scopeId)
-        }
-        resolve(clonedChild || null)
-      }).catch(() => {
-        resolve(null)
-      })
-    }
-    const cloneList = await idleCallback(Array.from(nodesToClone), cloneSlottedChild, options.fast)
+        // Only real assignments carry a scope token; a slot's own fallback content belongs to
+        // the shadow tree itself and must keep matching that tree's rules.
+        if (clonedChild && directAssigned.length) markSlottedSubtree(clonedChild, scopeId)
+        return clonedChild || null
+      }).catch(() => null)
+    ))
     fragment.append(...cloneList.filter(clonedChild => !!clonedChild))
     return fragment
   }
 
-  function cloneLightChild(child, resolve) {
-    if (clonedAssignedNodes.has(child)) return resolve(null)
-    // A shadow host renders its light DOM only through slots: a child that no slot accepted
-    // (name mismatch, or a shadow tree with no <slot> at all) is not in the flat tree and
-    // paints nothing. Cloning it anyway injects content the page never shows, and shows it
-    // twice when the component mirrors its light DOM into its own shadow tree.
-    if (node.shadowRoot && !child.assignedSlot) return resolve(null)
-    deepClone(child, sessionCache, options).then((clonedChild) => {
-      resolve(clonedChild || null)
-    }).catch(() => {
-      resolve(null)
-    })
-  }
-  const cloneList = await idleCallback(Array.from(node.childNodes), cloneLightChild, options.fast)
+  // A shadow host renders its light DOM only through slots: a child already cloned at its slot
+  // is skipped here, and a child that no slot accepted (its slot="name" matches nothing, or the
+  // shadow tree has no <slot> at all) is outside the flat tree and paints nothing. Cloning the
+  // latter injected content the page never shows, twice over for the common component that
+  // reads its own light DOM and renders a copy inside its shadow tree.
+  const skipLightChild = (child) =>
+    clonedAssignedNodes.has(child) || (node.shadowRoot && !child.assignedSlot)
+  const cloneList = await Promise.all(Array.from(node.childNodes).map((child) =>
+    skipLightChild(child)
+      ? null
+      : deepClone(child, sessionCache, options).catch(() => null)
+  ))
   clone.append(...cloneList.filter(clonedChild => !!clonedChild))
 
   // Adjust select value after children are cloned
-  if (pendingSelectValue !== null && isHTMLTag(clone, 'select')) {
-    clone.value = pendingSelectValue
+  if (pendingSelectedOptions && isTag(clone, 'select')) {
+    let hasSelectedOption = false
     for (const opt of clone.options) {
-      if (opt.value === pendingSelectValue) {
-        opt.setAttribute('selected', '')
-      } else {
-        opt.removeAttribute('selected')
-      }
+      const selected = pendingSelectedOptions.has(sessionCache.nodeMap.get(opt))
+      opt.selected = selected
+      if (selected) opt.setAttribute('selected', '')
+      else opt.removeAttribute('selected')
+      hasSelectedOption ||= selected
+    }
+    if (!hasSelectedOption && !clone.multiple) {
+      // selectedIndex=-1 is a property with no HTML attribute. Without a selected
+      // placeholder, parsing the SVG chooses the first real option and paints its label.
+      const empty = clone.ownerDocument.createElement('option')
+      empty.hidden = true
+      empty.style.setProperty('display', 'none', 'important')
+      empty.setAttribute('selected', '')
+      empty.value = ''
+      clone.appendChild(empty)
     }
   }
-  if (pendingTextAreaValue !== null && isHTMLTag(clone, 'textarea')) {
+  // Same reason as the select above, and the ordering is load-bearing: a textarea's child
+  // nodes ARE its default value, so the recursion cloned that text and the append above just
+  // put it back. Assigning here wipes those children and leaves exactly the live value.
+  //
+  // Move this up next to the other textarea handling, where it reads like it belongs, and it
+  // runs BEFORE that append: the default text then lands after the value and the capture
+  // shows the content twice. Verified, not assumed — that edit makes
+  // core.clone.textarea.test.js report "expected 2 to be 1". Invisible on a textarea without
+  // default content, which is most of them.
+  //
+  // Empty string is a real value, so the guard tests against null: `if (value)` would fall
+  // through on a cleared textarea and leak the default back.
+  if (pendingTextAreaValue !== null && isTag(clone, 'textarea')) {
     clone.textContent = pendingTextAreaValue
   }
   return clone
@@ -568,6 +777,8 @@ export async function deepClone(node, sessionCache, options) {
  * Built-in tag handlers (extracted from the former inline branches)
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/** A same-origin iframe is rasterized to an <img>. A cross-origin one keeps its box as a
+ *  striped placeholder, or an invisible spacer with `placeholders: false`. */
 async function cloneIframe(node, sessionCache, options) {
   let sameOrigin = false
   try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch (e) {
@@ -584,9 +795,9 @@ async function cloneIframe(node, sessionCache, options) {
     }
   }
 
-  // NEW-7: warn that this iframe was skipped so callers can react. `placeholders` is on by
-  // default, so what lands in the capture is the striped placeholder below; only mention the
-  // opt-out, never suggest enabling an option that is already on.
+  // Warn that this iframe was skipped so callers can react. `placeholders` is on by default,
+  // so what lands in the capture is the striped placeholder below; only mention the opt-out,
+  // never suggest enabling an option that is already on.
   if (!sameOrigin) {
     console.warn(
       '[snapdom] cross-origin <iframe> skipped (its document cannot be read). Captured as a ' +
@@ -595,7 +806,7 @@ async function cloneIframe(node, sessionCache, options) {
     )
   }
 
-  // Fallback actual (placeholder o spacer)
+  // Placeholder or spacer, both sized to the frame's box.
   if (options.placeholders) {
     const { width, height } = getUnscaledDimensions(node)
     const fallback = document.createElement('div')
@@ -616,12 +827,13 @@ async function cloneIframe(node, sessionCache, options) {
 
 /**
  * Whether nothing has been drawn into this canvas yet (fully transparent).
- * Sampled through a small scratch canvas so the check stays O(1) regardless of the source size;
- * only ever called under `{ debug: true }`.
+ * Sampled through a small scratch canvas so the check stays O(1) regardless of the source
+ * size. Reading FROM the source with drawImage binds no context to it, which is what lets
+ * cloneCanvas decide whether probing the source is safe at all.
  * @param {HTMLCanvasElement} node
  * @returns {boolean}
  */
-function isBlankCanvas(node) {
+export function isBlankCanvas(node) {
   try {
     const w = Math.max(1, Math.min(32, node.width))
     const h = Math.max(1, Math.min(32, node.height))
@@ -639,34 +851,80 @@ function isBlankCanvas(node) {
   }
 }
 
+/** <canvas> to <img>. The order of the reads inside is the whole point: the canvas is read
+ *  before it is asked for a context, so a canvas the page has not initialized keeps its mode,
+ *  and a WebGL frame is read inside the frame that drew it (#480). */
+/** JPEG quality for an opaque video frame. Measured 2026-09-03 on a 1280x720 VP9 frame against
+ *  the PNG of the same frame: mean error 1.6 levels, max 25, 0.9% of pixels off by more than 8,
+ *  where the video codec itself had already moved the frame 21 levels from its source. */
+const FRAME_QUALITY = 0.95
+
+/**
+ * Whether every pixel of a drawn frame is opaque. A downscaled probe cannot prove this: a
+ * small transparent island can disappear completely during resampling. The exact alpha scan
+ * measured 0.9-1 ms at 1280x720 and 7-10 ms at 3840x2160 across Chromium, Firefox and WebKit
+ * (2026-09-04); that cost applies only while freezing a video frame and prevents lossy JPEG
+ * from erasing real alpha.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} width
+ * @param {number} height
+ * @returns {boolean}
+ */
+function frameIsOpaque(ctx, width, height) {
+  try {
+    const data = ctx.getImageData(0, 0, width, height).data
+    for (let i = 3; i < data.length; i += 4) if (data[i] !== 255) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
   try {
-    const ctx = node.getContext('2d', { willReadFrequently: true })
-    try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
-    // A canvas that already holds a WebGL/WebGPU context returns null above, and those are
-    // exactly the ones that need a frame: with preserveDrawingBuffer:false the drawing
-    // buffer is cleared as soon as the frame composites, so toDataURL called from a plain
-    // task (a click handler, say) reads back fully transparent. Awaiting rAF resumes inside
-    // the frame, right after the app's own render callback, while the buffer is still
-    // intact — the blank-result retry below can't cover this because a transparent canvas
-    // still serializes to a perfectly valid PNG, not to 'data:,' (#480).
+    // Read the canvas BEFORE asking it for a context. getContext('2d') on a canvas the page
+    // has not initialized yet does not just answer the question — it CREATES the context and
+    // permanently fixes the element's mode, so the page's own later getContext('webgl')
+    // returns null and its renderer never starts. Snapdom must not be able to break the host
+    // that way. isBlankCanvas reads through a scratch canvas (drawImage FROM the source),
+    // which binds nothing to it.
     //
-    // WebKit needs the same frame for the 2D poke to materialize the buffer; on other
-    // engines toDataURL is synchronous with issued commands, so an unconditional rAF cost a
-    // serialized frame (≥16ms) per canvas — dashboards with N 2D charts paid N frames.
-    if (isSafari() || !ctx) await nextFrame()
+    // The discriminator: a canvas with content necessarily HAS a context, because nothing can
+    // be drawn without one. So once it reads non-blank, getContext is safe by construction —
+    // it returns the existing 2d context, or null when the context is WebGL/WebGPU.
+    let blank = isBlankCanvas(node)
+    if (blank) {
+      // Blank means one of two things, and one frame separates them. A WebGL/WebGPU canvas
+      // with preserveDrawingBuffer:false has its drawing buffer cleared as soon as the frame
+      // composites, so a read from a plain task (a click handler, say) comes back fully
+      // transparent; awaiting rAF resumes inside the frame, right after the app's own render
+      // callback, while the buffer is still intact (#480). A canvas nobody has drawn into
+      // stays blank across that frame — and it has nothing to capture, so it never needs the
+      // poke that would have locked it.
+      await nextFrame()
+      blank = isBlankCanvas(node)
+    }
+    // WebKit needs a frame for the 2D poke to materialize the backing store; on other engines
+    // toDataURL is synchronous with issued commands, so an unconditional rAF cost a serialized
+    // frame (>=16ms) per canvas — dashboards with N 2D charts paid N frames.
+    let ctx = null
+    if (!blank) {
+      ctx = node.getContext('2d', { willReadFrequently: true })
+      try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
+      if (isSafari()) await nextFrame()
+    }
 
     url = node.toDataURL('image/png')
 
     if (!url || url === 'data:,') {
-      // reintento rápido
+      // quick retry
       try { ctx && ctx.getImageData(0, 0, 1, 1) } catch { }
       await nextFrame()
       url = node.toDataURL('image/png')
 
-      // último recurso: copiar a un scratch-canvas y leer desde ahí
+      // last resort: copy into a scratch canvas and read from there
       if (!url || url === 'data:,') {
         const scratch = document.createElement('canvas')
         scratch.width = node.width
@@ -695,11 +953,11 @@ async function cloneCanvas(node, sessionCache, options) {
   }
   if (url) img.src = url
 
-  // conservar dimensiones intrínsecas del bitmap
+  // keep the bitmap's intrinsic dimensions
   img.width = node.width
   img.height = node.height
 
-  // conservar caja CSS para no romper layout usando dimensiones pre-transform
+  // keep the CSS box so layout is not broken, using pre-transform dimensions
   const { width, height } = getUnscaledDimensions(node)
   if (width > 0) img.style.width = `${width}px`
   if (height > 0) img.style.height = `${height}px`
@@ -709,25 +967,43 @@ async function cloneCanvas(node, sessionCache, options) {
   return img
 }
 
+/** <video> to <img>: the current frame drawn through a canvas, or the poster while the
+ *  element is still showing it. */
 async function cloneVideo(node, sessionCache, options) {
   let url = ''
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = node.videoWidth || node.offsetWidth || 320
-    canvas.height = node.videoHeight || node.offsetHeight || 240
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
-      url = canvas.toDataURL('image/png')
-      // blank canvas = cross-origin or no frame loaded
-      if (!url || url === 'data:,') url = ''
-    }
-  } catch (e) {
-    debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
-  }
-
+  // The screen shows the poster until playback first starts or a seek (the "show poster
+  // flag"), whatever frames are already decoded: drawImage would paint frame 0 on
+  // Chromium/Firefox and nothing on WebKit, and even a blank canvas serializes to a valid
+  // PNG that shadowed the poster. Read the flag from what it leaves behind instead.
+  const showPoster = node.poster && node.paused && !node.currentTime && !node.played.length
   const img = document.createElement('img')
   try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
+  if (!showPoster) {
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = node.videoWidth || node.offsetWidth || 320
+      canvas.height = node.videoHeight || node.offsetHeight || 240
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
+        // A decoded frame has no codec to preserve: the video was lossy before it was ever
+        // drawn, so an opaque frame goes out as JPEG. Measured 2026-09-03 on a 1280x720 VP9
+        // frame: encode 3.9 vs 9.3 ms, 153 vs 709 KB, and the svg decodes and draws it in
+        // 1.7 vs 7 ms. A frame with alpha keeps PNG. Pinned by
+        // __tests__/core.clone.videoFrame.test.js.
+        // Encoded here, synchronously, and not in the compress worker pool: the pool's reply
+        // rides the main thread's task queue, and on a page with a render loop of its own
+        // that is a frame per reply (liquidGL's home, 2026-09-03: 48 ms idle per capture
+        // waiting on three replies whose encodes took 0.4 to 4.7 ms). toBlob is idle-
+        // scheduled in every engine and starves the same way.
+        url = canvas.toDataURL(frameIsOpaque(ctx, canvas.width, canvas.height) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
+        if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
+      }
+    } catch (e) {
+      debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
+    }
+  }
+
   if (url) {
     img.src = url
   } else if (node.poster) {
@@ -783,7 +1059,43 @@ async function cloneAudio(node, sessionCache, options) {
   return img
 }
 
+/** <object>/<embed>: no handler meant their external data/src survived into the
+ *  svg-as-image output, where external loads and nested browsing contexts are blocked —
+ *  they rendered blank (or painted the object's FALLBACK children instead of the embedded
+ *  content). Image-typed embeds become an <img> that inlineImages fetches like any source;
+ *  same-origin embedded documents reuse the iframe rasterizer; the rest fall through to
+ *  the generic clone (fallback children are the honest output there). */
+async function cloneObjectEmbed(node, sessionCache, options) {
+  const url = node.getAttribute('data') || node.getAttribute('src') || ''
+  const type = (node.getAttribute('type') || '').toLowerCase()
+  const looksImage = /^image\//.test(type) || /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)(\?|#|$)/i.test(url)
+  if (url && looksImage) {
+    const img = document.createElement('img')
+    try { img.decoding = 'sync'; img.loading = 'eager' } catch { }
+    img.src = url
+    const { width, height } = getUnscaledDimensions(node)
+    if (width > 0) img.style.width = `${width}px`
+    if (height > 0) img.style.height = `${height}px`
+    sessionCache.nodeMap.set(img, node)
+    inlineAllStyles(node, img, sessionCache, options)
+    return img // fallback children deliberately dropped — both would paint otherwise
+  }
+  // Same-origin embedded document (e.g. text/html object) → rasterize like an iframe.
+  let doc = null
+  try { doc = node.contentDocument } catch { /* cross-origin */ }
+  if (doc) {
+    try {
+      const out = await rasterizeIframe(node, sessionCache, options)
+      if (out) return out
+    } catch { /* fall through */ }
+  }
+  if (url) console.warn(`[snapdom] <${node.localName}> content could not be captured (${type || 'unknown type'}): rendering its fallback children`)
+  return undefined // generic clone: fallback children render, matching the no-plugin browser behavior
+}
+
 registerTagHandler('IFRAME', cloneIframe)
 registerTagHandler('CANVAS', cloneCanvas)
 registerTagHandler('VIDEO', cloneVideo)
 registerTagHandler('AUDIO', cloneAudio)
+registerTagHandler('OBJECT', cloneObjectEmbed)
+registerTagHandler('EMBED', cloneObjectEmbed)

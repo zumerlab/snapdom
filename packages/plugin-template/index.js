@@ -15,10 +15,8 @@ export function myPlugin(options = {}) {
     name: 'my-plugin',
 
     // Pick the hook(s) you need. Delete the rest.
-    // Full lifecycle: beforeSnap → beforeClone → afterClone → beforeRender → afterRender →
-    // [per export: beforeExport → afterExport] → afterSnap. Plus resolveNode(node, ctx) per element
-    // during the clone walk, and defineExports() for custom output formats.
-    // Clone-phase hooks read options from ctx.options; export-phase hooks get them flattened on ctx.
+    // Full lifecycle: beforeSnap → beforeClone → resolveNode → afterClone → beforeRender → afterRender
+    // → defineExports → [beforeExport → exporter → afterExport] → afterSnap
 
     // beforeSnap(ctx) {
     //   // Runs before anything happens. ctx.element is the original DOM node.
@@ -30,9 +28,7 @@ export function myPlugin(options = {}) {
 
     afterClone(ctx) {
       // Runs after cloning + style inlining. ctx.clone is the cloned DOM tree.
-      // This is the most common hook: modify the clone here.
-      // To hand data to a custom export, write it to ctx.options as well:
-      //   ctx.options.__myData = data
+      // This is the most common hook — modify the clone here.
     },
 
     // beforeRender(ctx) {
@@ -40,21 +36,20 @@ export function myPlugin(options = {}) {
     // },
 
     // afterRender(ctx) {
-    //   // Runs after rendering. ctx.svgString is the SVG text, ctx.dataURL the encoded URL.
+    //   // Runs after rendering. ctx.svgString is the SVG source; ctx.meta is the geometry.
     // },
 
     // beforeExport(ctx, { format, options }) {
-    //   // Runs before each export call. Adjust `options` for this export.
+    //   // Change options to steer this export. Hook return values are ignored.
     // },
 
     // afterExport(ctx, { format, options, result }) {
-    //   // Runs after each export. Observation only: returning a value does not
-    //   // replace what the caller receives. Use afterSnap(ctx) for one-time cleanup.
+    //   // Observes each export result. Hook return values are ignored.
     // },
 
     // defineExports() {
     //   // Return an object of custom export methods.
-    //   // They become available as result.toMyFormat() and result.to('myFormat')
+    //   // They become available as result.toMyFormat()
     //   return {
     //     myFormat: async (ctx, opts = {}) => {
     //       // ctx.export.url has the data URL

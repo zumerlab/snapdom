@@ -396,7 +396,7 @@ textarea{
   <nav>
     <a href="#basic">Basic</a>
      <a href="#transition">Transition Animation</a>
-      <a href="fonts-demo">Fonts</a>
+      <a href="#fonts-demo">Fonts</a>
     <a href="#shadow">Shadow DOM</a>
     
      
@@ -829,11 +829,10 @@ customElements.define("custom-text", CustomText);
   }
 </script>
 <script type="module">
- import { snapdom, preCache } from '../dist/snapdom.mjs'; 
+ import { snapdom } from '../dist/snapdom.mjs'; 
  window.snapdom = snapdom;
     window.addEventListener('load', async () => {
      
-     //   await preCache();
       
    
     });
@@ -841,4 +840,3 @@ customElements.define("custom-text", CustomText);
  
 </body>
 </html>
-

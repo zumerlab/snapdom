@@ -1,7 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { pinIframeViewport, rasterizeIframe } from '../src/utils/clone.helpers.js'
 import { snapdom } from '../src/api/snapdom.js'
-import { cache } from '../src/core/cache.js'
 
 // #393: pinIframeViewport applies `overflow: hidden` to the iframe html/body,
 // which clamps the scroll position to 0. The live page must be left untouched
@@ -88,9 +87,9 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     expect(doc.documentElement.scrollHeight).toBeGreaterThan(1000)
 
     const session = {
-      styleMap: cache.session.styleMap,
-      styleCache: cache.session.styleCache,
-      nodeMap: cache.session.nodeMap,
+      styleMap: new Map(),
+      styleCache: new WeakMap(),
+      nodeMap: new Map(),
     }
     // Pin dpr: the nested capture defaults to window.devicePixelRatio, so on a Retina
     // runner the bitmap is legitimately 600x400 and a CSS-pixel assertion fails for a
@@ -108,5 +107,37 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     expect(img.naturalHeight / img.naturalWidth).toBeCloseTo(200 / 300, 2)
     // and the live doc is left clean
     expect(doc.documentElement.hasAttribute('data-sd-pinned')).toBe(false)
+  })
+})
+
+// Pinning clamps the frame's scroll to 0, so a frame the user had scrolled was captured
+// from the top of its document instead of from what they were looking at. Asserted on the
+// pixel the browser actually paints at the top of the frame viewport.
+describe('a scrolled same-origin iframe captures what the user sees', () => {
+  afterEach(() => { document.body.innerHTML = '' })
+
+  it('keeps the scroll offset through the capture', async () => {
+    const host = document.createElement('div')
+    const f = document.createElement('iframe')
+    f.style.cssText = 'width:300px;height:200px;border:0'
+    f.srcdoc = '<body style="margin:0">' +
+      ['red', 'lime', 'blue', 'yellow', 'magenta', 'cyan']
+        .map((c) => `<div style="height:100px;background:${c}"></div>`).join('') + '</body>'
+    host.appendChild(f)
+    document.body.appendChild(host)
+    await new Promise((r) => { f.onload = r; setTimeout(r, 500) })
+    await new Promise((r) => setTimeout(r, 100))
+
+    f.contentWindow.scrollTo(0, 200)
+    await new Promise((r) => setTimeout(r, 100))
+    const doc = f.contentDocument
+    // Precondition: the frame really is scrolled and paints the third band on top.
+    const livePainted = doc.defaultView.getComputedStyle(doc.elementFromPoint(5, 5)).backgroundColor
+    expect(livePainted).toBe('rgb(0, 0, 255)')
+
+    const res = await snapdom(host, { dpr: 1, scale: 1 })
+    const c = await res.toCanvas()
+    const px = c.getContext('2d').getImageData(5, 5, 1, 1).data
+    expect(`rgb(${px[0]}, ${px[1]}, ${px[2]})`).toBe(livePainted)
   })
 })

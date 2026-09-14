@@ -94,9 +94,10 @@ describe('isFirefox', () => {
     setUA('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0')
     expect(isFirefox()).toBe(true)
   })
-  it('returns true for Firefox on iOS (fxios)', () => {
+  it('returns false for Firefox on iOS (fxios): it renders with WebKit, and isSafari owns it', () => {
     setUA('Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 FxiOS/120.0 Mobile/15E148 Safari/605.1.15')
-    expect(isFirefox()).toBe(true)
+    expect(isFirefox()).toBe(false)
+    expect(isSafari()).toBe(true)
   })
   it('returns false for Chrome', () => {
     setUA('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0 Safari/537.36')

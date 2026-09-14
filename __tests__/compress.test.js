@@ -2,7 +2,6 @@
 // Verifies BOTH halves of the promise: smaller/faster output AND no fidelity loss.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { downsampleDataURL, compressClonedImages, compressClonedBackgrounds, compressClonedSvgImages } from '../src/modules/compress.js'
-import { cache } from '../src/core/cache.js'
 import { snapdom } from '../src/index.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -75,13 +74,14 @@ describe('downsampleDataURL', () => {
     expect(out.startsWith('data:image/png')).toBe(true)
   })
 
-  it('targets below the visible resolution (aggression factor) for oversized images', async () => {
-    // 1000² shown at 500² → plain cover would be 500px; the aggression factor trims further.
+  it('targets EXACTLY the visible resolution, never below it', async () => {
+    // 1000 shown at 500 → 500, full stop. RES_FACTOR is 1 on purpose: aiming under the visible
+    // resolution buys a little payload on heavily-oversized images and costs visible detail on
+    // barely-oversized sharp content, which is not a trade core makes for the caller.
     const src = bigPhoto(1000, 1000, 14)
     const out = await downsampleDataURL(src, 500, 500)
     const { w, h } = await imageSize(out)
-    expect(w).toBeLessThan(500)    // strictly below the plain visible target → aggression applied
-    expect(w).toBeGreaterThan(150) // but still sane
+    expect(w).toBe(500)
     expect(Math.abs(w - h)).toBeLessThanOrEqual(2)
   })
 
@@ -156,17 +156,57 @@ describe('compressClonedBackgrounds', () => {
   beforeEach(() => { orig = document.createElement('div'); document.body.appendChild(orig) })
   afterEach(() => orig.remove())
 
-  it('downsamples a no-repeat background-image to the element box', async () => {
-    orig.style.cssText = 'width:120px;height:90px;background-repeat:no-repeat'
+  it('downsamples a no-repeat background-image sized to the box (cover)', async () => {
+    orig.style.cssText = 'width:120px;height:90px;background-repeat:no-repeat;background-size:cover'
     const cloneEl = document.createElement('div')
     cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 11)}")`
     const before = cloneEl.style.backgroundImage.length
-    cache.session.nodeMap.set(cloneEl, orig)
+    const nodeMap = new Map([[cloneEl, orig]])
 
-    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true })
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true }, nodeMap)
     expect(r.count).toBe(1)
     expect(cloneEl.style.backgroundImage.length).toBeLessThan(before)
     expect(cloneEl.style.backgroundImage).toContain('data:image')
+  })
+
+  it('downsamples a percentage-sized background', async () => {
+    orig.style.cssText = 'width:120px;height:90px;background-repeat:no-repeat;background-size:100% 100%'
+    const cloneEl = document.createElement('div')
+    cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 21)}")`
+    const before = cloneEl.style.backgroundImage.length
+    const nodeMap = new Map([[cloneEl, orig]])
+
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true }, nodeMap)
+    expect(r.count).toBe(1)
+    expect(cloneEl.style.backgroundImage.length).toBeLessThan(before)
+  })
+
+  // `background-size: auto` is the CSS default, and under it the box CROPS the layer instead
+  // of scaling it: the visible resolution is the image's own. Shrinking the source there
+  // changes the picture — the whole photo gets squeezed into the box, and a sprite addressed
+  // by a negative background-position lands outside the smaller image and paints nothing.
+  it('skips a background-size:auto layer — the box crops it, it does not scale it', async () => {
+    orig.style.cssText = 'width:120px;height:90px;background-repeat:no-repeat'
+    const cloneEl = document.createElement('div')
+    cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 22)}")`
+    const before = cloneEl.style.backgroundImage
+    const nodeMap = new Map([[cloneEl, orig]])
+
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true }, nodeMap)
+    expect(r.count).toBe(0)
+    expect(cloneEl.style.backgroundImage).toBe(before)
+  })
+
+  it('skips an absolutely-sized background layer', async () => {
+    orig.style.cssText = 'width:120px;height:90px;background-repeat:no-repeat;background-size:1800px 1200px'
+    const cloneEl = document.createElement('div')
+    cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 23)}")`
+    const before = cloneEl.style.backgroundImage
+    const nodeMap = new Map([[cloneEl, orig]])
+
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true }, nodeMap)
+    expect(r.count).toBe(0)
+    expect(cloneEl.style.backgroundImage).toBe(before)
   })
 
   it('skips repeating (tiled) backgrounds — they need natural tile resolution', async () => {
@@ -174,9 +214,9 @@ describe('compressClonedBackgrounds', () => {
     const cloneEl = document.createElement('div')
     cloneEl.style.backgroundImage = `url("${bigPhoto(1800, 1200, 12)}")`
     const before = cloneEl.style.backgroundImage
-    cache.session.nodeMap.set(cloneEl, orig)
+    const nodeMap = new Map([[cloneEl, orig]])
 
-    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true })
+    const r = await compressClonedBackgrounds(cloneEl, { scale: 1, dpr: 1, compress: true }, nodeMap)
     expect(r.count).toBe(0)
     expect(cloneEl.style.backgroundImage).toBe(before)
   })
@@ -195,6 +235,23 @@ describe('compressClonedSvgImages', () => {
     const r = await compressClonedSvgImages(svg, { scale: 1, dpr: 1, compress: true })
     expect(r.count).toBe(1)
     expect(image.getAttribute('href').length).toBeLessThan(before)
+  })
+
+  // parseFloat('100%') is 100, so a percentage-sized <image> was treated as a 100x100 target
+  // and a full-width photo came back roughly 10x too small. The clone is not laid out, so
+  // there is no used value to substitute — the layer has to be left alone.
+  it('skips a percentage-sized SVG <image> instead of reading 100% as 100px', async () => {
+    const svg = document.createElementNS(SVG_NS, 'svg')
+    const image = document.createElementNS(SVG_NS, 'image')
+    image.setAttribute('href', bigPhoto(1600, 1200, 31))
+    image.setAttribute('width', '100%')
+    image.setAttribute('height', '100%')
+    svg.appendChild(image)
+    const before = image.getAttribute('href')
+
+    const r = await compressClonedSvgImages(svg, { scale: 1, dpr: 1, compress: true })
+    expect(r.count).toBe(0)
+    expect(image.getAttribute('href')).toBe(before)
   })
 
   it('downsamples when the clone itself IS the SVG <image>, not just a descendant', async () => {

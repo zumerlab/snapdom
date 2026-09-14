@@ -24,8 +24,8 @@
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="snapdom – HTML capture reinvented">
-  <meta name="twitter:description" content="A high-fidelity alternative to html2canvas. Export DOM to SVG, PNG, JPG with full CSS and pseudo support.">
+  <meta name="twitter:title" content="snapdom – browser capture engine">
+  <meta name="twitter:description" content="Try image exports, HTML, GIF and video alongside fonts, forms, Shadow DOM and canvas captures.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
 
   <!-- === Favicons === -->
@@ -55,7 +55,7 @@
     "@id": "https://snapdom.dev/#website",
     "name": "SnapDOM",
     "url": "https://snapdom.dev/",
-    "description": "Documentation and demos for SnapDOM — the DOM-to-image capture library.",
+    "description": "Documentation and demos for SnapDOM, the browser capture engine.",
     "publisher": { "@id": "https://snapdom.dev/#organization" }
   }
   </script>
@@ -67,10 +67,9 @@
     "alternateName": "@zumer/snapdom",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
-    "description": "Capture any DOM element as an image. Convert any DOM subtree to SVG, PNG, JPG, or WebP with full CSS fidelity, including pseudo-elements, web fonts, and Shadow DOM.",
+    "description": "SnapDOM captures web interfaces as reusable images and canvas. Plugins add HTML, context, PDF and recordings.",
     "url": "https://snapdom.dev/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
-    "softwareVersion": "2.23.2",
     "codeRepository": "https://github.com/zumerlab/snapdom",
     "license": "https://spdx.org/licenses/MIT.html",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -260,6 +259,14 @@
     .print.r3 { transform: rotate(1.1deg); }
 
     /* ═══ Contact sheet (demo index) ═══ */
+    #menu-container { width: min(1180px, calc(100% - 48px)); margin: 36px auto 0; }
+    .showcase-intro { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 40px; align-items: center; margin-bottom: 28px; }
+    .showcase-intro .menu-label { margin: 0; color: var(--sd-text); font-family: var(--font-display); font-size: clamp(28px, 3.5vw, 44px); font-weight: 700; letter-spacing: -.035em; line-height: 1.1; text-transform: none; }
+    @media (max-width: 600px) {
+      #menu-container { width: calc(100% - 28px); margin-top: 28px; }
+      .showcase-intro { grid-template-columns: minmax(0, 1fr) 110px; gap: 16px; }
+      .showcase-intro .section-mascot { padding: 5px; }
+    }
     .menu-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--sd-annot); margin: 48px 0 14px; text-transform: uppercase; }
     nav.demo-menu { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: rgba(15,30,77,0.14); border: 1px solid rgba(15,30,77,0.14); padding: 0; margin: 0; }
     nav.demo-menu a { position: relative; display: flex; align-items: center; background: var(--sd-surface); color: var(--sd-text); text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; letter-spacing: 0.3px; padding: 13px; border: 0; border-radius: 0; transition: background 0.15s, color 0.15s; min-height: 54px; }
@@ -610,19 +617,22 @@
 
 <body>
   <script defer src="../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/" aria-current="page">Showcase</a><a href="../made-with/">Made with</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/" aria-current="page">Showcase</a><a href="../made-with/">Made with</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/" aria-current="page">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/" aria-current="page">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
   <div id="menu-container">
-      <h1 class="menu-label" id="demo-index">Contact sheet: live demos, every cell runs the real library</h1>
+      <div class="showcase-intro">
+        <h1 class="menu-label" id="demo-index">Showcase: 21 live capture and export demos</h1>
+        <img class="section-mascot" src="../assets/mascots/mr-snapdom-showcase.webp" alt="Mr. SnapDOM presenting an image frame" width="1254" height="1254" decoding="async">
+      </div>
       <nav id="demo-menu" class="demo-menu">
         <a href="#benchmark">Benchmark</a>
         <a href="#basic">Basic</a>
         <a href="#transition">Transition</a>
         <a href="#opts-demo">Shadows</a>
         <a href="#orbit">Orbit</a>
-        <a href="#html-export-demo">toHtml <span class="new-badge">New</span></a>
-        <a href="#gif-export-demo">toGif <span class="new-badge">New</span></a>
-        <a href="#video-export-demo">toMp4 <span class="new-badge">New</span></a>
-        <a href="#video">Video <span class="new-badge">New</span></a>
+        <a href="#html-export-demo">HTML <span class="new-badge">Plugin</span></a>
+        <a href="#gif-export-demo">GIF <span class="new-badge">Plugin</span></a>
+        <a href="#video-export-demo">Video <span class="new-badge">Plugin</span></a>
+        <a href="#video">Video frame <span class="new-badge">Core</span></a>
         <a href="#fonts-demo">Fonts</a>
         <a href="#shadow">Shadow DOM</a>
         <a href="#canvas">Canvas</a>
@@ -643,10 +653,9 @@
 
     <!-- Benchmark -->
     <section id="benchmark">
-      <h2>Benchmark: snapdom vs html2canvas</h2>
+      <h2>SnapDOM vs html2canvas</h2>
       <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
-        Each library will capture the same DOM element to canvas 5 times. We'll calculate average speed and show the
-        winner.
+        Capture the same element to canvas five times with each library and compare the average time in this browser.
       </p>
       <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 0.95rem;">
         <a href="../compare/html2canvas/" data-umami-event="Home compare html2canvas">SnapDOM vs html2canvas</a>
@@ -844,8 +853,8 @@
     </style>
 
     <section id="html-export-demo">
-      <h2>toHtml() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>html-export</code> plugin returns the capture as a self-contained, re-renderable HTML document: markup plus inlined styles and fonts, not pixels. The preview renders it inside a sandboxed <code>&lt;iframe&gt;</code> to prove it stands alone.</p>
+      <h2>HTML export <span class="new-badge">Plugin</span></h2>
+      <p class="demo-explanation">The <code>html-export</code> plugin returns a self-contained HTML snapshot with styles, fonts and images inlined. The preview opens that document in a sandboxed <code>&lt;iframe&gt;</code>.</p>
       <div class="card xp-card" id="xp-html-src">
         <h3>Provisioning manifest</h3>
         <p style="margin:0 0 12px; opacity:.85">A surface with <strong style="color:#ffd166">varied</strong> controls and a pseudo-element dot.</p>
@@ -856,8 +865,8 @@
     </section>
 
     <section id="gif-export-demo">
-      <h2>toGif() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>gif-export</code> plugin records an animating element frame by frame and encodes an animated GIF (median-cut palette + LZW, no dependencies). The spinner and counter make the motion visible.</p>
+      <h2>GIF recording <span class="new-badge">Plugin</span></h2>
+      <p class="demo-explanation">The <code>gif-export</code> plugin records the live element frame by frame and returns an animated GIF. Recording starts when you call <code>toGif()</code>.</p>
       <div class="card xp-anim" id="xp-gif-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
       </div>
@@ -866,8 +875,8 @@
     </section>
 
     <section id="video-export-demo">
-      <h2>toMp4() <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">The <code>video-export</code> plugin records via the native <code>MediaRecorder</code>. Safari produces MP4 (H.264); Chromium and Firefox typically produce WebM (auto-fallback). The returned <code>Blob.type</code> reflects what was produced.</p>
+      <h2>Video recording <span class="new-badge">Plugin</span></h2>
+      <p class="demo-explanation">The <code>video-export</code> plugin records the live element using <code>MediaRecorder</code>. The browser selects a supported MP4 or WebM format; check <code>Blob.type</code> for the result.</p>
       <div class="card xp-anim" id="xp-vid-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
       </div>
@@ -877,10 +886,8 @@
 
     <!-- Video Frame -->
     <section id="video">
-      <h2>Video frame <span class="new-badge">New</span></h2>
-      <p class="demo-explanation">
-        <code>&lt;video&gt;</code> pixels are painted by the GPU compositor and don't serialize into <code>&lt;foreignObject&gt;</code>. The pattern: draw the current frame into a <code>&lt;canvas&gt;</code>, then let SnapDOM capture it like any other node. Press play, then capture any frame. The clip is an MDN CC0 sample served with CORS so the canvas isn't tainted.
-      </p>
+      <h2>Video frame <span class="new-badge">Core</span></h2>
+      <p class="demo-explanation">Capture the current frame of a <code>&lt;video&gt;</code> along with its surrounding interface. Press play, then capture a frame. This demo uses a CORS-enabled sample video.</p>
       <div class="card" id="video-box" style="text-align:center; padding:12px;">
         <video id="demo-video"
           src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
@@ -1131,7 +1138,7 @@
       </div>
 
       <div class="output" id="proxy-output"></div>
-    </section> 
+    </section>
 
     <!-- Full Page -->
     <section id="fullbody">
@@ -1144,20 +1151,21 @@
     <!-- Powered by SnapDOM -->
     <section id="powered-by">
       <p class="section-kicker">Ecosystem</p>
-      <h2>Powered by SnapDOM</h2>
+      <h2>Tools built on SnapDOM</h2>
       <div class="card">
-        <h3><a href="https://zumerlab.com/snapdiff/?utm_source=snapdom" data-umami-event="To snapdiff site" target="_blank">SnapDIFF</a></h3>
-        <p>Visual regression testing that runs in the browser: captures DOM elements with SnapDOM, compares them to saved baselines, and shows what changed. <a href="https://github.com/zumerlab/snapdiff?utm_source=snapdom" data-umami-event="To snapdiff repo" target="_blank">Go to repo</a>.</p>
+        <p>SnapEye gives coding agents visual evidence. SnapSurf navigates and verifies web pages. SnapDIFF runs visual regression tests against saved baselines.</p>
+        <p><a href="../ecosystem/" data-umami-event="Showcase ecosystem">Compare the tools and see how they work together →</a></p>
       </div>
     </section>
 
   </main>
 
   <footer class="site-footer">
-    <span>MIT © <a href="https://github.com/zumerlab" target="_blank" rel="noopener">Zumerlab</a></span>
-    <span>DOM → anything</span>
+    <span>MIT © <a href="https://zumerlab.com/" target="_blank" rel="noopener">Zumerlab</a></span>
+    <span>Browser capture engine</span>
     <span class="f-links">
       <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="Footer github">GitHub</a>
+      <a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)" data-umami-event="Footer x">X</a>
       <a href="https://www.npmjs.com/package/@zumer/snapdom" target="_blank" rel="noopener" data-umami-event="Footer npm">npm</a>
       <a href="../llms.txt" data-umami-event="Footer llms">llms.txt</a>
     </span>
@@ -1490,6 +1498,7 @@
         const result = await snapdom(document.getElementById('xp-html-src'), { plugins: [htmlExport()] });
         const html = await result.toHtml();
         const iframe = document.createElement('iframe');
+        iframe.setAttribute('sandbox', '');
         iframe.title = 'exported document';
         iframe.style.cssText = 'width:100%;height:240px;border:0;border-radius:8px;background:#fff';
         iframe.srcdoc = html;

@@ -1,16 +1,29 @@
 /**
- * Helper utilities for DOM capture operations
+ * What the clone needs done to it, between deepClone and the render engine.
+ *
+ * Root-only fixes (`stripRootShadows`, `neutralizeRootZoom`, `neutralizeRootMarginCollapse`),
+ * the fixed/sticky re-anchoring clip mode needs, the height estimate for excludeMode:'remove',
+ * the XHTML scrub the serializer depends on, opt-in reconciliation against the live tree, and
+ * the CSS both engines share (`assembleCaptureCSS`). Everything here writes the CLONE and
+ * reads the live element. The one live-DOM write is the hidden measurement wrapper reconcile
+ * mounts and removes.
  * @module utils/capture.helpers
  */
 
-import { debugWarn, getStyle } from './index.js'
+import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl, isShadowRoot } from './index.js'
+import { cache } from '../core/cache.js'
+import { universeFor } from '../modules/styles.js'
+import { markInternalNode } from './ownership.js'
 import {
   bboxWithOriginFull,
   parseTransformOriginPx,
-  readIndividualTransforms
+  readIndividualTransforms,
+  readTotalTransformMatrix
 } from './transforms.helpers.js'
-import { HTML_NS, isHTMLTag, isSVGElement, isShadowRoot } from './dom.js'
 
+// Clones whose box was frozen by freezeViewportPositioned. Their branch may have lost a
+// transform that the live source still carries, so the reconcile pass has to compare layout
+// boxes there instead of visual rects (#489).
 const viewportFrozenClones = new WeakSet()
 
 /**
@@ -50,6 +63,7 @@ function composedParent(n) {
   return isShadowRoot(rn) ? rn.host : null
 }
 
+/** Ancestor test that crosses shadow boundaries, through composedParent. */
 function composedContains(root, node) {
   for (let n = node; n; n = composedParent(n)) if (n === root) return true
   return false
@@ -85,16 +99,9 @@ function findCBAncestor(node, root) {
  */
 export function composeResidual2D(baseTransform, ind) {
   try {
-    let M = new DOMMatrix()
-    if (ind && ind.rotate && ind.rotate !== '0deg') M = M.multiply(new DOMMatrix(`rotate(${ind.rotate})`))
-    if (ind && ind.scale) {
-      const parts = String(ind.scale).trim().split(/\s+/).filter(Boolean)
-      if (parts.length && parts.every(p => Number.isFinite(Number(p)))) {
-        M = M.multiply(new DOMMatrix(`scale(${parts.join(',')})`))
-      }
-    }
-    if (baseTransform) M = M.multiply(new DOMMatrix(baseTransform))
-    return M
+    // Share keyword/unit/3D handling with the root bbox. Individual translation is omitted
+    // deliberately: gBCR already contributes it to the frozen element's page position.
+    return readTotalTransformMatrix({ baseTransform, rotate: ind?.rotate, scale: ind?.scale })
   } catch {
     return null
   }
@@ -110,6 +117,7 @@ export function composeResidual2D(baseTransform, ind) {
  * inheritance doesn't change). Sticky leaves an invisible in-flow placeholder so its flow
  * slot doesn't shift. Shadow-scoped clones depend on [data-sd] descendant selectors, so
  * they freeze in place relative to their composed containing-block ancestor instead.
+ * Pinned by __tests__/module.changeCSS.test.js.
  * @param {Element} root - original capture root
  * @param {Element} cloneRoot
  * @param {Map<Node, Node>} nodeMap - clone → original
@@ -118,13 +126,12 @@ export function composeResidual2D(baseTransform, ind) {
  */
 export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, edge) {
   const rootR = root.getBoundingClientRect()
-  if (cloneRoot?.nodeType === 1 && cloneRoot.namespaceURI === HTML_NS &&
-      getStyle(root).position === 'static') {
+  if (isHTMLEl(cloneRoot) && getStyle(root).position === 'static') {
     cloneRoot.style.position = 'relative'
   }
   const hoisted = []
   for (const [cloneEl, orig] of nodeMap) {
-    if (cloneEl?.nodeType !== 1 || cloneEl.namespaceURI !== HTML_NS || orig?.nodeType !== 1) continue
+    if (!isHTMLEl(cloneEl) || (orig?.nodeType !== 1)) continue
     if (orig === root || !composedContains(root, orig)) continue
     const cs = styleCache.get(orig) || getStyle(orig)
     const pos = cs.position
@@ -218,7 +225,8 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
 
 /**
  * Strip shadow-like visuals on the CLONE ROOT ONLY (box/text-shadow, outline, drop-shadow()).
- * Children remain intact.
+ * Children remain intact. The `outerShadows: false` default runs this, so the root's shadow
+ * adds no bleed. Pinned by __tests__/utils.capture.helpers.test.js.
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
  * @param {Object} [opts] - optional { debug } for verbose logging
@@ -254,6 +262,7 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
  * `cloneNode()` and shrinks the content into the top-left corner, leaving blank right/bottom
  * bands. Pin the root to `zoom:1`; descendants keep their own zoom, whose computed sizes are
  * likewise local and therefore still need the scale factor.
+ * Pinned by __tests__/core.capture.zoomRoot.test.js.
  *
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
@@ -327,6 +336,7 @@ function firstInFlowBlockChild(el, side) {
  * captured border box actually shows. Source tree drives the decision; the matching
  * clone node is resolved via the session's clone→source `nodeMap` (not child index,
  * which misaligns once `exclude`/`filter` drop nodes during cloning — see pseudo.js).
+ * Pinned by __tests__/utils.capture.helpers.test.js.
  *
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
@@ -369,58 +379,27 @@ export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap) {
   }
 }
 
-/** Remove all HTML comments (prevents invalid XML like "--") */
-export function removeAllComments(root) {
-  const it = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
-  const toRemove = []
-  while (it.nextNode()) toRemove.push(it.currentNode)
-  for (const n of toRemove) n.remove()
-}
+const XMLNS_ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
 
-/**
- * Sanitize attributes to produce valid XHTML inside foreignObject.
- * - Drop "@", unknown ":" prefixes
- * - Drop common framework directives (x-*, v-*, :*, on:*, bind:*, let:*, class:*)
- */
-export function sanitizeAttributesForXHTML(root, opts = {}) {
-  const { stripFrameworkDirectives = true } = opts
-  const ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
-
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
-  while (walker.nextNode()) {
-    const el = walker.currentNode
-    // Copy first—NamedNodeMap is live
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name
-
-      if (name.startsWith('*')) { el.removeAttribute(name); continue }
-
-      // "@": never valid in XML attribute names
-      if (name.includes('@')) { el.removeAttribute(name); continue }
-
-      // ":" requires a declared namespace (xml:, xlink:)
-      if (name.includes(':')) {
-        const prefix = name.split(':', 1)[0]
-        if (!ALLOWED_PREFIXES.has(prefix)) { el.removeAttribute(name); continue }
-      }
-
-      if (!stripFrameworkDirectives) continue
-
-      // Common framework directives that break XHTML
-      if (
-        name.startsWith('x-') ||     // Alpine
-        name.startsWith('v-') ||     // Vue
-        name.startsWith(':') ||      // Vue/Alpine shorthand
-        name.startsWith('on:') ||    // Svelte
-        name.startsWith('bind:') ||  // Svelte
-        name.startsWith('let:') ||   // Svelte
-        name.startsWith('class:')    // Svelte
-      ) {
-        el.removeAttribute(name)
-        continue
-      }
-    }
+/** True when an attribute name can't survive XHTML serialization (or is a framework directive). */
+function isInvalidXHTMLAttr(name, stripFrameworkDirectives) {
+  if (name.startsWith('*')) return true
+  // "@": never valid in XML attribute names
+  if (name.includes('@')) return true
+  // ":" requires a declared namespace (xml:, xlink:)
+  if (name.includes(':')) {
+    const prefix = name.split(':', 1)[0]
+    if (!XMLNS_ALLOWED_PREFIXES.has(prefix)) return true
   }
+  if (!stripFrameworkDirectives) return false
+  // Common framework directives that break XHTML
+  return name.startsWith('x-') ||     // Alpine
+    name.startsWith('v-') ||          // Vue
+    name.startsWith(':') ||           // Vue/Alpine shorthand
+    name.startsWith('on:') ||         // Svelte
+    name.startsWith('bind:') ||       // Svelte
+    name.startsWith('let:') ||        // Svelte
+    name.startsWith('class:')         // Svelte
 }
 
 /* eslint-disable no-control-regex */
@@ -429,46 +408,68 @@ export function sanitizeAttributesForXHTML(root, opts = {}) {
  * C0 controls except TAB (\x09), LF (\x0A), CR (\x0D), plus the noncharacters U+FFFE/U+FFFF.
  * If any survive into the serialized SVG, the data: URL fails to parse and the browser throws
  * "EncodingError: The source image cannot be decoded" at img.decode() time.
+ *
+ * UNPAIRED SURROGATES are worse than that: encodeURIComponent (engines/svg.js) THROWS on them,
+ * so one truncated emoji anywhere in the page \u2014 `title.slice(0, 60)` cutting a 4-byte codepoint
+ * in half is the usual source \u2014 rejects the whole capture with an opaque "URI malformed" and
+ * the user gets no image at all. lineClamp's safeCut already avoids MINTING one; this catches
+ * the ones the page arrived with. Valid pairs are matched first by the leading alternative so
+ * the replacer can hand them back untouched \u2014 do not reorder.
  */
-const INVALID_XML_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g
+const INVALID_XML_CHARS = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g
 /* eslint-enable no-control-regex */
 
-/**
- * #425: strip XML-1.0-invalid characters from every attribute value AND text node in the
- * clone. clone.js already scrubs attributes during cloning, but values re-applied afterwards
- * (e.g. `input.setAttribute('value', node.value)` for form fields — ExtJS hidden inputs use
- * U+0003 as a delimiter) and text content were not covered. This runs once over the finished
- * clone, right before serialization, so no invalid char can reach the SVG.
- * @param {Element} root
- */
-export function stripInvalidXMLChars(root) {
-  if (!root) return
-  const clean = (node) => {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      if (node.attributes) {
-        for (const attr of Array.from(node.attributes)) {
-          const cv = attr.value.replace(INVALID_XML_CHARS, '')
-          if (cv !== attr.value) {
-            try { node.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
-          }
-        }
-      }
-    } else if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.CDATA_SECTION_NODE) {
-      const cv = node.data.replace(INVALID_XML_CHARS, '')
-      if (cv !== node.data) node.data = cv
-    }
-  }
-  clean(root)
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
-  let n
-  while ((n = walker.nextNode())) clean(n)
-}
+/** Drops the XML-illegal chars above, keeping whole surrogate pairs. */
+const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length === 2 ? m : ''))
 
+/** A base64 payload is XML-safe by alphabet, so the scrub below never scans one. */
+const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/
+
+/**
+ * One pass over the finished clone before serialization (was three separate walks):
+ * - drops attribute names invalid in XHTML ("@", unknown ":" prefixes, framework directives)
+ * - strips XML-1.0-invalid chars from attribute values and text (#425 — values re-applied
+ *   after cloning, e.g. `input.setAttribute('value', …)` with ExtJS's U+0003 delimiters)
+ * - removes HTML comments (invalid XML like "--")
+ * Runs after the afterClone plugin hooks (plugins may add attributes), in both the full
+ * and diff serialization paths. Pinned by __tests__/core.capture.rootAttrSanitize.test.js
+ * and __tests__/utils.capture.helpers.test.js.
+ * @param {Element} root
+ * @param {{stripFrameworkDirectives?: boolean}} [opts] - directives are stripped by default
+ */
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
-  sanitizeAttributesForXHTML(root, opts)
-  removeAllComments(root)
-  stripInvalidXMLChars(root)
+  const { stripFrameworkDirectives = true } = opts
+  const scrubEl = (el) => {
+    // Copy first: NamedNodeMap is live
+    for (const attr of Array.from(el.attributes)) {
+      if (isInvalidXHTMLAttr(attr.name, stripFrameworkDirectives)) { el.removeAttribute(attr.name); continue }
+      // A base64 payload is XML-safe by alphabet: skip the regex over multi-MB inlined images.
+      if (BASE64_DATA_URL.test(attr.value)) continue
+      const cv = stripInvalidXML(attr.value)
+      if (cv !== attr.value) {
+        try { el.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
+      }
+    }
+  }
+  // The walker yields descendants only, so the root is scrubbed here: an invalid attribute
+  // name on the capture root (or on a diff-rebuilt subtree root) breaks XMLSerializer just
+  // like one on a child, and the SVG then fails to decode.
+  if (root.nodeType === Node.ELEMENT_NODE) scrubEl(root)
+  const comments = []
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT)
+  let n
+  while ((n = walker.nextNode())) {
+    if (n.nodeType === Node.ELEMENT_NODE) {
+      scrubEl(n)
+    } else if (n.nodeType === Node.COMMENT_NODE) {
+      comments.push(n) // invalid XML like "--"
+    } else {
+      const cv = stripInvalidXML(n.data)
+      if (cv !== n.data) n.data = cv
+    }
+  }
+  for (const c of comments) c.remove()
 }
 
 /**
@@ -483,13 +484,15 @@ function authorHasExplicitSize(el) {
   } catch { return false }
 }
 
+const REPLACED_TAGS = new Set(['img', 'canvas', 'video', 'iframe', 'object', 'embed'])
+
 /**
  * Replaced elements (img, canvas, video, iframe, svg, object, embed) have intrinsic sizing;
  * we do not auto-shrink them here.
  * @param {Element} el
  */
 function isReplacedElement(el) {
-  return isHTMLTag(el, 'img', 'canvas', 'video', 'iframe', 'object', 'embed') || isSVGElement(el)
+  return isSVGEl(el) || REPLACED_TAGS.has(el?.localName)
 }
 
 /**
@@ -523,11 +526,14 @@ function shouldShrinkBox(srcEl, cs) {
  *   - remove logical sizes (block-size/inline-size)
  *   - relax min/max to allow collapse
  *
+ * Pinned by __tests__/utils.capture.helpers.test.js.
+ *
  * @param {Element} sourceRoot - original subtree root (for reading computed styles)
  * @param {HTMLElement} cloneRoot - cloned subtree root (to write overrides)
  * @param {Map<Element, CSSStyleDeclaration>} styleCache - optional cache you already build
+ * @param {Map<Node, Node>|null} [nodeMap] - clone → source; without it the walk pairs children by index
  */
-export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map()) {
+export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(), nodeMap = null) {
   /**
    * @param {Element} src
    * @param {Element} cln
@@ -563,11 +569,25 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
       }
     }
 
-    // Walk element children in order (pseudo wrappers are already inlined elsewhere)
-    const sKids = Array.from(src.children)
+    // Pair each clone child with its OWN source through the capture's clone->source map.
+    // Walking both child lists by index is the pairing this function exists to handle the
+    // fallout of: it runs only when excludeMode:'remove' has already dropped nodes, so the
+    // two lists are guaranteed to be misaligned from the first removal onward, and the
+    // pseudo-element wrappers the pipeline inserts shift them again. Every child past the
+    // first divergence was then measured against an unrelated element. Clone nodes with no
+    // source (snapdom's own inserted wrappers) simply have nothing to compare and are
+    // skipped. The index walk stays as the fallback for callers with no map.
     const cKids = Array.from(cln.children)
-    for (let i = 0; i < Math.min(sKids.length, cKids.length); i++) {
-      walk(sKids[i], cKids[i])
+    if (nodeMap) {
+      for (const cKid of cKids) {
+        const sKid = nodeMap.get(cKid)
+        if (sKid && sKid.nodeType === 1) walk(sKid, cKid)
+      }
+    } else {
+      const sKids = Array.from(src.children)
+      for (let i = 0; i < Math.min(sKids.length, cKids.length); i++) {
+        walk(sKids[i], cKids[i])
+      }
     }
   }
 
@@ -593,13 +613,22 @@ function contributesToParentHeight(el) {
  */
 function willBeExcluded(el, options) {
   if ((el?.nodeType !== 1)) return false
-  if (el.getAttribute('data-capture') === 'exclude' && options?.excludeMode === 'remove') return true
+  // A hide exclusion wins over a remove filter, including the data-capture attribute.
+  if (el.getAttribute('data-capture') === 'exclude') return options?.excludeMode === 'remove'
   if (Array.isArray(options?.exclude)) {
     for (const sel of options.exclude) {
-    try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
-      debugWarn(options, 'exclude selector match failed', e)
+      try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
+        debugWarn(options, 'exclude selector match failed', e)
+      }
     }
   }
+  // Selector and predicate exclusions share excludeMode and take precedence over filter.
+  if (Array.isArray(options?.excludePredicates)) {
+    for (const pred of options.excludePredicates) {
+      try { if (pred(el)) return options.excludeMode === 'remove' } catch (e) {
+        debugWarn(options, 'exclude predicate failed', e)
+      }
+    }
   }
   if (typeof options?.filter === 'function' && options.filterMode === 'remove') {
     try { if (!options.filter(el)) return true } catch (e) {
@@ -610,10 +639,10 @@ function willBeExcluded(el, options) {
 }
 
 /**
- * Compute the kept-children vertical span inside container's content box.
- * We take the min(top) and max(bottom) of included, in-flow children,
- * then add container paddings and borders to rebuild total height.
- * This avoids double-counting collapsed margins.
+ * Height the container will have once excludeMode/filterMode:'remove' drops children (#294).
+ * Min top to max bottom of the kept, in-flow children, plus the container's own padding and
+ * borders. Measuring the span instead of summing child heights keeps collapsed margins from
+ * counting twice. Pinned by __tests__/utils.capture.helpers.test.js.
  * @param {Element} container
  * @param {any} options
  * @returns {number} estimated outerHeight (border+padding+content)
@@ -626,13 +655,13 @@ export function estimateKeptHeight(container, options) {
   let maxBottom = -Infinity
   let found = false
 
-  // Consider only direct children; incluir floats (contribuyen a la altura del contenedor)
+  // Consider only direct children, floats included: they contribute to the container height
   const kids = Array.from(container.children)
   for (const k of kids) {
     if (willBeExcluded(k, options)) continue
     if (!contributesToParentHeight(k)) continue
     const rk = k.getBoundingClientRect()
-    // usar coordenadas relativas al contenedor
+    // container-relative coordinates
     const top = rk.top - rC.top
     const bottom = rk.bottom - rC.top
     if (bottom <= top) continue
@@ -641,10 +670,10 @@ export function estimateKeptHeight(container, options) {
     found = true
   }
 
-  // content span de lo que queda
+  // content span of what remains
   const contentSpan = found ? Math.max(0, maxBottom - minTop) : 0
 
-  // reconstruir altura outer: border + padding + contenido
+  // rebuild the outer height: border + padding + content
   const bt = parseFloat(csC.borderTopWidth) || 0
   const bb = parseFloat(csC.borderBottomWidth) || 0
   const pt = parseFloat(csC.paddingTop) || 0
@@ -653,6 +682,13 @@ export function estimateKeptHeight(container, options) {
   return bt + bb + pt + pb + contentSpan
 }
 
+/**
+ * Round to `n` decimals, 3 by default, before a px value goes into a style or the viewBox
+ * (#261). Non-finite input comes back as it is.
+ * @param {number} v
+ * @param {number} [n=3]
+ * @returns {number}
+ */
 export const limitDecimals = (v, n = 3) =>
   Number.isFinite(v) ? Math.round(v * 10 ** n) / 10 ** n : v
 
@@ -669,6 +705,7 @@ const RECONCILE_EPS = 0.75
  * Pins are inline `width`/`height` + `box-sizing:border-box` (rects are border-box), which
  * beat the generated classes by specificity. Single pass: pinning a box can settle its
  * descendants on the next layout, but one pass already removes the systematic divergence.
+ * Pinned by __tests__/core.capture.reconcile.test.js.
  *
  * @param {Element} element - live capture root
  * @param {HTMLElement} clone - detached clone (mutated: pins applied here)
@@ -688,7 +725,7 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   if (Math.abs(sx - sy) > 0.02) return 0
 
   const wrap = elDoc.createElement('div')
-  wrap.setAttribute('data-snapdom-internal', '')
+  markInternalNode(wrap)
   wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' +
     w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
   // Shadow DOM so the capture CSS can't leak into the live tree (#474): baseCSS carries global
@@ -744,7 +781,7 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
         const m = mKids[i]
         const src = nodeMap.get(c)
         const inFrozenTree = frozenAncestor || viewportFrozenClones.has(c)
-        if (src?.nodeType === 1 && c?.namespaceURI === HTML_NS && c.style && src.isConnected) {
+        if (src?.nodeType === 1 && isHTMLEl(c) && c.style && src.isConnected) {
           const sr = src.getBoundingClientRect()
           if (sr.width > 0 && sr.height > 0) {
             const mr = m.getBoundingClientRect()
@@ -852,6 +889,8 @@ function collectScrollbarRulesFromRules(rules, seen = new Set()) {
  *  The fingerprint (href + rule count per sheet) is O(#sheets) and catches inserts/removals. */
 const _scrollbarCSSMemo = new WeakMap()
 
+/** href plus rule count per sheet. Moves when a sheet is added, removed or grows; a
+ *  cross-origin sheet counts as -1. */
 function scrollbarFingerprint(doc) {
   let fp = ''
   for (const sheet of doc.styleSheets) {
@@ -863,8 +902,9 @@ function scrollbarFingerprint(doc) {
 }
 
 /**
- * Extract ::-webkit-scrollbar rules from the document's stylesheets.
- * Used so custom scrollbar styling appears in capture (#334).
+ * Extract ::-webkit-scrollbar rules from the document's stylesheets, so custom scrollbar
+ * styling appears in the capture (#334). Memoized per document on the fingerprint above.
+ * Pinned by __tests__/utils.capture.helpers.test.js.
  * @param {Document} doc
  * @returns {string}
  */
@@ -885,4 +925,35 @@ export function collectScrollbarCSS(doc) {
   }
   _scrollbarCSSMemo.set(doc, { fp, css: out })
   return out
+}
+
+/**
+ * The CSS that makes a finished clone render like the page it came from, assembled once and
+ * stamped onto the capture state.
+ *
+ * It lives here rather than inside a render engine because it belongs to the CLONE, not to
+ * any one way of painting it: `classCSS` already arrives from prepareClone, and these two
+ * complete the set. Both engines need the identical string, and an engine that recomputed it
+ * would be one refactor away from disagreeing with the other.
+ *
+ * @param {object} state - capture state carrying `clone` and `element`
+ * @param {string} fontsCSS - embedded @font-face payload for this capture
+ * @returns {{baseCSS: string, scrollbarCSS: string, fontsCSS: string}}
+ */
+export function assembleCaptureCSS(state, fontsCSS) {
+  const usedTags = collectUsedTagNames(state.clone).sort()
+  const tagKey = usedTags.join(',')
+  let baseCSS
+  if (cache.baseStyle.has(tagKey)) {
+    baseCSS = cache.baseStyle.get(tagKey)
+  } else {
+    baseCSS = generateDedupedBaseCSS(usedTags, universeFor(state.element))
+    cache.baseStyle.set(tagKey, baseCSS)
+  }
+  // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
+  const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
+  state.fontsCSS = fontsCSS
+  state.baseCSS = baseCSS
+  state.scrollbarCSS = scrollbarCSS
+  return { baseCSS, scrollbarCSS, fontsCSS }
 }

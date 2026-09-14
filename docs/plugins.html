@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plugins: SnapDOM</title>
-  <meta name="description" content="Use official SnapDOM plugins for capture, DOM transforms and export formats, or build a plugin against the documented lifecycle hooks.">
+  <title>Plugins — SnapDOM</title>
+  <meta name="description" content="Official SnapDOM plugins for HTML, context for agents, PDF, GIF, video and capture transforms. Browse examples, options and the plugin API.">
   <link rel="canonical" href="https://snapdom.dev/plugins.html" />
   <meta name="robots" content="index, follow" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -59,8 +59,9 @@
 
     /* ── Hero ── */
     .hero { padding: 64px 24px 60px; text-align: center; position: relative; }
-    .hero-mascot { display: block; margin: 18px auto 10px; width: clamp(120px, 18vw, 165px); height: auto; }
     .hero h1 { font-family: var(--font-display); font-size: clamp(38px, 6vw, 66px); font-weight: 400; letter-spacing: 0.5px; line-height: 1.02; margin-bottom: 16px; }
+    .hero h1 .accent { color: var(--accent); }
+    .hero h1 .accent-ink { color: var(--text); }
     .hero p { color: var(--text-muted); font-size: 18px; max-width: 520px; margin: 0 auto 32px; line-height: 1.6; }
     .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
@@ -242,27 +243,30 @@
     ]
   }
   </script>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
 </head>
 <body>
   <script defer src="./site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html" aria-current="page">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html" aria-current="page">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./ecosystem/">Ecosystem</a><a href="./plugins.html" aria-current="page">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./ecosystem/">Ecosystem</a><a href="./plugins.html" aria-current="page">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div></nav></header>
 
   <!-- ── Hero ── -->
-  <section class="hero" id="top">
-    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Plugins github repo">
-      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
-      <span class="repo-link">zumerlab/snapdom</span>
-      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
-    </a>
-    <img src="./assets/mrsnapdom-plugin.png" alt="Mr SnapDOM holding a plugin" class="hero-mascot" width="170" height="155" />
-    <h1>Plugins for <span class="accent">Snap</span><span class="accent-ink">DOM</span></h1>
-    <p>Add export formats, transform the cloned DOM or handle content before capture. Use an official plugin or build your own.</p>
-    <div class="hero-actions">
-      <a href="#playground" class="btn btn-primary" data-umami-event="Plugins hero playground">Playground</a>
-      <a href="#quickstart" class="btn btn-ghost" data-umami-event="Plugins hero quick start">Quick Start</a>
-      <a href="#official" class="btn btn-ghost" data-umami-event="Plugins hero browse plugins">Browse Plugins</a>
-      <a href="#build-plugin" class="btn btn-ghost" data-umami-event="Plugins hero build plugin">Build a Plugin</a>
+  <section class="hero section-hero" id="top">
+    <div class="section-hero-copy">
+      <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Plugins github repo">
+        <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+        <span class="repo-link">zumerlab/snapdom</span>
+        <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
+      </a>
+      <h1>Extend SnapDOM</h1>
+      <p>Add HTML, context for agents, PDF and recordings to SnapDOM. Transform captures with filters, timestamps and input redaction, or build your own plugin.</p>
+      <div class="hero-actions">
+        <a href="#playground" class="btn btn-primary" data-umami-event="Plugins hero playground">Playground</a>
+        <a href="#quickstart" class="btn btn-ghost" data-umami-event="Plugins hero quick start">Quick start</a>
+        <a href="#official" class="btn btn-ghost" data-umami-event="Plugins hero browse plugins">Browse plugins</a>
+        <a href="#build-plugin" class="btn btn-ghost" data-umami-event="Plugins hero build plugin">Build a plugin</a>
+      </div>
     </div>
+    <img class="section-mascot" src="./assets/mascots/mr-snapdom-plugins.webp" alt="Mr. SnapDOM holding a plugin puzzle piece" width="1254" height="1254" decoding="async">
   </section>
 
   <!-- ── Playground ── -->
@@ -383,25 +387,6 @@
                   </div>
                 </div>
               </div>
-              <div class="pg-plugin" data-pg="prompt">
-                <div class="pg-plugin-header">
-                  <input type="checkbox" id="pgChkPrompt">
-                  <span>agent-map</span>
-                </div>
-                <div class="pg-plugin-opts">
-                  <div class="pg-opt">
-                    <label for="pgPromptAnnotate">Annotate</label>
-                    <select id="pgPromptAnnotate">
-                      <option value="true">on</option>
-                      <option value="false">off</option>
-                    </select>
-                  </div>
-                  <div class="pg-opt">
-                    <label for="pgPromptMaxW">Max width</label>
-                    <input type="text" id="pgPromptMaxW" value="1024" placeholder="px">
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
           <button class="pg-capture-btn" id="pgCapture" data-umami-event="Plugins playground capture">Capture</button>
@@ -429,7 +414,7 @@
   <!-- ── Install & Usage ── -->
   <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
   <section class="install-section" id="quickstart">
-    <div class="section-label">Install</div>
+    <div class="section-label">Install · <a href="./docs/#installation">Install instructions</a></div>
     <div class="install-grid">
       <div class="install-card">
         <div class="install-label">Install core</div>
@@ -452,7 +437,7 @@
   </section>
 
   <section class="usage-section">
-    <div class="section-label">Usage Example</div>
+    <div class="section-label">Usage example</div>
     <div class="code-block-wrap">
       <button class="copy-btn" data-copy="usageCode" data-umami-event="Plugins quickstart copy">Copy</button>
       <div class="code-block" id="usageCode">
@@ -479,23 +464,15 @@
   </div>
 
   <section class="grid-section" id="official">
-    <div class="section-label">Official: @zumer/snapdom-plugins</div>
+    <div class="section-label">Official — @zumer/snapdom-plugins</div>
     <div class="plugin-grid" id="officialGrid">
 
-      <!-- picture-resolver (built into core) -->
-      <div class="plugin-card" data-category="capture" data-plugin="picture-resolver">
-        <div class="card-top"><div class="plugin-icon">P</div><span class="category-tag">capture</span></div>
-        <h3>picture-resolver</h3>
-        <p>Built into core, not a separate package: lazy <code>&lt;picture&gt;</code> and <code>data-src</code> placeholders are resolved before the clone. Tune it with the <code>pictureResolver</code> option.</p>
-        <div class="hooks"><span class="hook-badge">core</span></div>
-        <div class="card-footer"><span class="official-badge">built in</span><a href="https://github.com/zumerlab/snapdom/blob/main/src/modules/pictureResolver.js" data-umami-event="Plugins source picture-resolver">Source</a><span class="expand-hint">details</span></div>
-      </div>
 
       <!-- timestamp-overlay -->
       <div class="plugin-card" data-category="transform" data-plugin="timestamp-overlay">
         <div class="card-top"><div class="plugin-icon">T</div><span class="category-tag">transform</span></div>
         <h3>timestamp-overlay</h3>
-        <p>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</p>
+        <p>Adds a timestamp to the capture, with configurable date formats and positions.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/timestamp-overlay.js" data-umami-event="Plugins source timestamp-overlay">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -504,7 +481,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="filter">
         <div class="card-top"><div class="plugin-icon">F</div><span class="category-tag">transform</span></div>
         <h3>filter</h3>
-        <p>Applies CSS filter effects to captures. Ships with presets: grayscale, sepia, blur, vintage, dramatic.</p>
+        <p>Applies CSS filters to the capture, using presets or a custom filter string.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/filter.js" data-umami-event="Plugins source filter">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -513,7 +490,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="replace-text">
         <div class="card-top"><div class="plugin-icon">R</div><span class="category-tag">transform</span></div>
         <h3>replace-text</h3>
-        <p>Find-and-replace text in the captured clone. Supports strings and regex patterns.</p>
+        <p>Replaces text in the capture using strings or regular expressions.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/replace-text.js" data-umami-event="Plugins source replace-text">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -522,7 +499,7 @@
       <div class="plugin-card" data-category="transform" data-plugin="color-tint">
         <div class="card-top"><div class="plugin-icon">C</div><span class="category-tag">transform</span></div>
         <h3>color-tint</h3>
-        <p>Tints the entire capture to a specified color using an overlay with mix-blend-mode.</p>
+        <p>Tints the capture with a color overlay. Set the color and opacity.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/color-tint.js" data-umami-event="Plugins source color-tint">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -531,7 +508,7 @@
       <div class="plugin-card" data-category="export" data-plugin="ascii-export">
         <div class="card-top"><div class="plugin-icon">A</div><span class="category-tag">export</span></div>
         <h3>ascii-export</h3>
-        <p>Adds a toAscii() method that converts captures to ASCII art. Configurable width, charset, and luminance.</p>
+        <p>Converts the capture to ASCII art with toAscii(). Set the width, character set and contrast direction.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/ascii-export.js" data-umami-event="Plugins source ascii-export">Source</a><span class="expand-hint">details</span></div>
       </div>
@@ -540,60 +517,75 @@
       <div class="plugin-card" data-category="export" data-plugin="pdf-image">
         <div class="card-top"><div class="plugin-icon">D</div><span class="category-tag">export</span></div>
         <h3>pdf-image</h3>
-        <p>Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.</p>
+        <p>Exports the capture as a JPEG embedded in a downloadable PDF, in portrait or landscape.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><span class="expand-hint">details</span></div>
       </div>
 
-      <!-- html-in-canvas -->
-      <div class="plugin-card" data-category="export" data-plugin="html-in-canvas">
-        <div class="card-top"><div class="plugin-icon">H</div><span class="category-tag">export</span></div>
-        <h3>html-in-canvas</h3>
-        <p>Uses the experimental WICG drawElement API for direct DOM-to-canvas rendering where supported.</p>
-        <div class="hooks"><span class="hook-badge">beforeRender</span><span class="hook-badge">afterRender</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-in-canvas.js" data-umami-event="Plugins source html-in-canvas">Source</a><span class="expand-hint">details</span></div>
-      </div>
 
       <!-- agent-map -->
       <div class="plugin-card" data-category="export" data-plugin="agent-map">
-        <div class="card-top"><div class="plugin-icon">L</div><span class="category-tag">export</span></div>
+        <div class="card-top"><div class="plugin-icon">A</div><span class="category-tag">export</span></div>
         <h3>agent-map</h3>
-        <p>Adds a toAgentMap() method that returns a Set-of-Mark package for visual agents: annotated screenshot plus a numbered map of interactive elements with role, name and bounding box.</p>
+        <p>Returns an annotated image and a map of interactive elements, with names, roles and bounding boxes.</p>
         <div class="hooks"><span class="hook-badge">afterClone</span><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/agent-map.js" data-umami-event="Plugins source agent-map">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- context-export -->
+      <div class="plugin-card" data-category="export" data-plugin="context-export">
+        <div class="card-top"><div class="plugin-icon">C</div><span class="category-tag">export</span></div>
+        <h3>context-export</h3>
+        <p>Exports a text outline or JSON tree with text, roles, states and optional bounding boxes.</p>
+        <div class="hooks"><span class="hook-badge">beforeClone</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/context-export.js" data-umami-event="Plugins source context-export">Source</a><span class="expand-hint">details</span></div>
+      </div>
+
+      <!-- redact-inputs -->
+      <div class="plugin-card" data-category="transform" data-plugin="redact-inputs">
+        <div class="card-top"><div class="plugin-icon">R</div><span class="category-tag">transform</span></div>
+        <h3>redact-inputs</h3>
+        <p>Masks fields, hides private blocks and removes named attributes from images, HTML and structured exports.</p>
+        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">afterClone</span><span class="hook-badge">beforeRender*</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/redact-inputs.js" data-umami-event="Plugins source redact-inputs">Source</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- html-export -->
       <div class="plugin-card" data-category="export" data-plugin="html-export">
         <div class="card-top"><div class="plugin-icon">M</div><span class="category-tag">export</span></div>
         <h3>html-export</h3>
-        <p>Adds a toHtml() method that returns the capture as a self-contained, re-renderable HTML document: markup plus inlined styles and fonts, not pixels.</p>
-        <div class="hooks"><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-export.js" data-umami-event="Plugins source html-export">Source</a><a href="./index.html#html-export-demo" data-umami-event="Plugins demo html-export">Demo</a><span class="expand-hint">details</span></div>
+        <p>Exports a self-contained HTML snapshot with styles, fonts and images inlined.</p>
+        <div class="hooks"><span class="hook-badge">afterRender</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/html-export.js" data-umami-event="Plugins source html-export">Source</a><a href="./showcase/#html-export-demo" data-umami-event="Plugins demo html-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- gif-export -->
       <div class="plugin-card" data-category="export" data-plugin="gif-export">
         <div class="card-top"><div class="plugin-icon">G</div><span class="category-tag">export</span></div>
         <h3>gif-export</h3>
-        <p>Adds a toGif() method that records an animating element frame by frame into an animated GIF (median-cut palette + LZW, no dependencies).</p>
-        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/gif-export.js" data-umami-event="Plugins source gif-export">Source</a><a href="./index.html#gif-export-demo" data-umami-event="Plugins demo gif-export">Demo</a><span class="expand-hint">details</span></div>
+        <p>Records the live element frame by frame and returns an animated GIF with toGif().</p>
+        <div class="hooks"><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/gif-export.js" data-umami-event="Plugins source gif-export">Source</a><a href="./showcase/#gif-export-demo" data-umami-event="Plugins demo gif-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- video-export -->
       <div class="plugin-card" data-category="export" data-plugin="video-export">
         <div class="card-top"><div class="plugin-icon">V</div><span class="category-tag">export</span></div>
         <h3>video-export</h3>
-        <p>Adds a toMp4() method that records an animating element to video via the native MediaRecorder (MP4 on Safari, WebM on Chromium/Firefox).</p>
-        <div class="hooks"><span class="hook-badge">beforeSnap</span><span class="hook-badge">defineExports</span></div>
-        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/video-export.js" data-umami-event="Plugins source video-export">Source</a><a href="./index.html#video-export-demo" data-umami-event="Plugins demo video-export">Demo</a><span class="expand-hint">details</span></div>
+        <p>Records the live element with toMp4(). The browser selects a supported MP4 or WebM format.</p>
+        <div class="hooks"><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/video-export.js" data-umami-event="Plugins source video-export">Source</a><a href="./showcase/#video-export-demo" data-umami-event="Plugins demo video-export">Demo</a><span class="expand-hint">details</span></div>
       </div>
 
     </div>
   </section>
 
   <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
+  <section class="usage-section" id="pro" aria-labelledby="pro-heading">
+    <h2 class="section-label" id="pro-heading">SnapDOM Pro · Preview</h2>
+    <p style="color:var(--text-muted);line-height:1.6;">Paid plugins for searchable PDFs and editable vector SVGs are in preview. They are separate from the MIT plugins above. <a href="./pro/" style="color:var(--accent);">View samples and current limits</a>.</p>
+  </section>
+
   <section class="grid-section" id="community">
     <div class="section-label">Community Plugins &amp; Integrations</div>
     <p style="margin:-8px 0 20px;font-family:var(--font-mono);font-size:12.5px;color:var(--text-muted);line-height:1.6;">
@@ -614,8 +606,8 @@
   <!-- ── CTA ── -->
   <section class="cta-section" id="build-plugin">
     <div class="cta-card">
-      <h2>Build a Plugin in 5 Minutes</h2>
-      <p>SnapDOM's hook system gives you full control over every stage of the capture pipeline.</p>
+      <h2>Build a plugin</h2>
+      <p>Use lifecycle hooks to transform captures and register custom exporters. Start with the template and the plugin specification.</p>
       <div class="cta-steps">
         <div class="cta-step"><div class="step-num">01</div><code>npx degit zumerlab/snapdom/packages/plugin-template my-plugin</code><div class="step-label">Clone the template</div></div>
         <div class="cta-step"><div class="step-num">02</div><code>export function myPlugin() {}</code><div class="step-label">Write your hook logic</div></div>
@@ -657,22 +649,9 @@
   <!-- Plugin modal data -->
   <script>
     const pluginData = {
-      'picture-resolver': {
-        icon: 'P', category: 'capture',
-        desc: 'Built into core, not a separate package. Resolves lazy <picture> and data-src placeholders before the clone; configure it with the pictureResolver capture option.',
-        hooks: ['core'],
-        options: [
-          ['timeout', 'number', '5000', 'Max ms per image fetch'],
-          ['concurrency', 'number', '4', 'Max parallel fetches'],
-          ['resolveLazySrc', 'boolean', 'true', 'Also resolve data-src/data-srcset patterns'],
-          ['silent', 'boolean', 'false', 'Suppress console warnings'],
-          ['useProxy', 'string', "''", 'CORS proxy URL for cross-origin images'],
-        ],
-        usage: `// Built into core. No import needed.\nconst result = await snapdom(el, {\n  pictureResolver: { timeout: 3000 }\n});\n\n// To turn it off:\n// await snapdom(el, { resolvePicturePlaceholders: false });`
-      },
       'timestamp-overlay': {
         icon: 'T', category: 'transform',
-        desc: 'Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.',
+        desc: "Adds a timestamp to the capture, with configurable date formats and positions.",
         hooks: ['afterClone'],
         options: [
           ['format', 'string | fn', "'datetime'", "'datetime' | 'date' | 'time' | 'iso' | custom function"],
@@ -685,7 +664,7 @@
       },
       'filter': {
         icon: 'F', category: 'transform',
-        desc: 'Applies CSS filter effects to captures. Ships with presets: grayscale, sepia, blur, vintage, dramatic.',
+        desc: "Applies CSS filters to the capture, using presets or a custom filter string.",
         hooks: ['afterClone'],
         options: [
           ['filter', 'string', "''", "CSS filter string, e.g. 'grayscale(1) blur(2px)'"],
@@ -695,7 +674,7 @@
       },
       'replace-text': {
         icon: 'R', category: 'transform',
-        desc: 'Find-and-replace text in the captured clone. Supports strings and regex patterns.',
+        desc: "Replaces text in the capture using strings or regular expressions.",
         hooks: ['afterClone'],
         options: [
           ['replacements', 'array', '[]', "Array of { find: string|RegExp, replace: string }"],
@@ -704,7 +683,7 @@
       },
       'color-tint': {
         icon: 'C', category: 'transform',
-        desc: 'Tints the entire capture to a specified color using an overlay with mix-blend-mode.',
+        desc: "Tints the capture with a color overlay. Set the color and opacity.",
         hooks: ['afterClone'],
         options: [
           ['color', 'string', "'red'", 'CSS color value for the tint'],
@@ -714,7 +693,7 @@
       },
       'ascii-export': {
         icon: 'A', category: 'export',
-        desc: 'Adds a toAscii() method that converts captures to ASCII art. Configurable width, charset, and luminance.',
+        desc: "Converts the capture to ASCII art with toAscii(). Set the width, character set and contrast direction.",
         hooks: ['defineExports'],
         options: [
           ['width', 'number', '80', 'Character width of output'],
@@ -725,75 +704,104 @@
       },
       'pdf-image': {
         icon: 'D', category: 'export',
-        desc: 'Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.',
+        desc: "Exports the capture as a JPEG embedded in a downloadable PDF, in portrait or landscape.",
         hooks: ['defineExports'],
         options: [
           ['orientation', 'string', "'portrait'", "'portrait' | 'landscape'"],
+          ['quality', 'number', '0.92', 'JPEG quality (0-1)'],
+          ['filename', 'string', "'capture.pdf'", 'Download filename'],
         ],
         usage: `import { pdfImage } from '@zumer/snapdom-plugins/pdf-image';\n\nconst result = await snapdom(el, {\n  plugins: [pdfImage({ orientation: 'landscape' })]\n});\nawait result.toPdfImage(); // downloads PDF`
       },
-      'html-in-canvas': {
-        icon: 'H', category: 'export',
-        desc: 'Uses the experimental WICG drawElement API for direct DOM-to-canvas rendering where supported.',
-        hooks: ['beforeRender', 'afterRender', 'defineExports'],
-        options: [],
-        note: 'Requires Chrome with chrome://flags/#canvas-draw-element enabled.',
-        usage: `import { htmlInCanvasPlugin } from '@zumer/snapdom-plugins/html-in-canvas';\n\nconst result = await snapdom(el, {\n  plugins: [htmlInCanvasPlugin()]\n});\nconst canvas = await result.toHtmlInCanvas({ scale: 2 });`
-      },
       'agent-map': {
-        icon: 'L', category: 'export',
-        desc: 'Adds a toAgentMap() method that returns a Set-of-Mark package for visual agents: annotated screenshot plus a numbered map of interactive elements (role, accessible name, bbox, state).',
+        icon: 'A', category: 'export',
+        desc: "Returns an annotated image and a map of interactive elements, with names, roles and bounding boxes.",
         hooks: ['afterClone', 'defineExports'],
         options: [
-          ['image', "'annotated' | 'raw' | false", "'annotated'", 'Numbered badges drawn on the image, image without badges, or no image at all'],
-          ['fields', "'minimal' | 'full'", "'minimal'", "minimal entries are {i, n, r, b, s?}; full adds {t, a}"],
-          ['semantic', 'boolean', 'false', 'Also map non-interactive semantic elements (headings, landmarks)'],
-          ['maxImageWidth', 'number', '1024', 'Max output width in px; downscales and rescales bboxes'],
+          ['image', "'annotated' | 'raw' | false", "'annotated'", 'Image output, or false for no image'],
+          ['fields', "'minimal' | 'full'", "'minimal'", 'Per-entry shape'],
+          ['semantic', 'boolean', 'false', 'Also include non-interactive semantic elements'],
+          ['maxImageWidth', 'number', '1024', 'Downscale target for the image'],
           ['imageFormat', 'string', "'png'", "'png' | 'jpg' | 'webp'"],
           ['imageQuality', 'number', '0.8', 'Quality for lossy formats (0-1)'],
-          ['interactiveSelector', 'string', 'see docs', 'CSS selector for the interactive element set'],
-          ['semanticSelector', 'string', 'see docs', 'CSS selector for the semantic element set'],
-          ['labelStyle', 'object', '{}', 'Override styles for the numbered badges'],
+          ['interactiveSelector', 'string', 'built-in controls', 'CSS selector for interactive elements; replaces the default'],
+          ['semanticSelector', 'string', 'headings and landmarks', 'CSS selector used when semantic is true; replaces the default'],
+          ['labelStyle', 'object', '{}', 'Override numbered badge styles'],
+          ['needs', "'clone' | 'render'", "'render'", 'How far the capture runs'],
         ],
-        usage: `import { agentMap } from '@zumer/snapdom-plugins/agent-map';\n\nconst result = await snapdom(el, {\n  plugins: [agentMap()]\n});\nconst { image, map, dimensions } = await result.toAgentMap();\n// model says "click element 2" -> map[2].b is [x, y, w, h]`
+        note: 'Map-only captures use image: false and needs: clone. Sensitive field values are redacted in the map; use redactInputs or exclude to hide them in the image too.',
+        usage: `import { agentMap } from '@zumer/snapdom-plugins/agent-map';\n\nconst result = await snapdom(el, {\n  plugins: [agentMap({ semantic: true })]\n});\nconst { image, map, dimensions } = await result.toAgentMap();`
+      },
+      'context-export': {
+        icon: 'C', category: 'export',
+        desc: "Exports a text outline or JSON tree with text, roles, states and optional bounding boxes.",
+        hooks: ['beforeClone', 'defineExports'],
+        options: [
+          ['format', "'outline' | 'json'", "'outline'", 'Output shape'],
+          ['maxTextLength', 'number', '120', 'Limit for text content; accessible names are kept'],
+          ['maxNodes', 'number', '800', 'Hard cap; the output notes truncation'],
+          ['geometry', 'boolean', 'true', 'Include bounding boxes'],
+          ['needs', "'clone' | 'render'", "'render'", 'How far the capture runs'],
+        ],
+        usage: `import { contextExport } from '@zumer/snapdom-plugins/context-export';\n\nconst result = await snapdom(el, {\n  plugins: [contextExport({ format: 'json' })]\n});\nconst context = await result.toContext();`
+      },
+      'redact-inputs': {
+        icon: 'R', category: 'transform',
+        desc: "Masks fields, hides private blocks and removes named attributes from images, HTML and structured exports. The live page stays unchanged.",
+        hooks: ['beforeSnap', 'afterClone', 'beforeRender*'],
+        options: [
+          ['types', 'string[]', "['email', 'tel']", 'Input type values to redact'],
+          ['autocomplete', 'string[]', 'cc-*, current-password, new-password, one-time-code', "Autocomplete tokens to redact; a trailing '*' matches a prefix"],
+          ['selector', 'string', "''", 'Extra CSS selector for inputs and textareas only; use blocks for other elements'],
+          ['all', 'boolean', 'false', 'Redact all inputs and textareas, ignoring the lists'],
+          ['mask', 'function', 'same-length bullets', '(value, el) => string — custom masker'],
+          ['blocks', 'string | string[]', '[]', 'CSS selectors for subtrees to exclude, using the capture excludeMode'],
+          ['attributes', '{ selector: string, names: string[] }[]', '[]', 'Remove exact named attributes from matching source elements and semantic projections; no wildcards'],
+        ],
+        note: 'Core already masks passwords. Blocks preserve invisible space by default; use excludeMode: remove to drop their layout. HTML, agent-map and context-export share these rules regardless of official plugin order. Attribute removal does not erase copies in visible text, CSS content or pixels; block that subtree instead. Custom masks and nonempty selector, blocks or attributes rules disable repeat memoization. *Nonempty blocks or attributes add beforeRender and force the experimental native engine to fall back to SVG. <a href="./docs/plugins/#redaction">Examples and limits</a>.',
+        usage: `import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';\n\nconst result = await snapdom(el, {\n  plugins: [redactInputs({\n    all: true,\n    blocks: ['.private-panel', '[data-private-block]'],\n    attributes: [\n      { selector: '[data-token]', names: ['data-token'] },\n      { selector: '.customer', names: ['title', 'aria-label'] }\n    ]\n  })]\n});`
       },
       'html-export': {
         icon: 'M', category: 'export',
-        desc: 'Adds a toHtml() method that returns the capture as a self-contained, re-renderable HTML document: markup plus inlined styles and fonts, not pixels.',
-        hooks: ['defineExports'],
+        desc: "Exports a self-contained HTML snapshot with styles, fonts and images inlined.",
+        hooks: ['afterRender', 'defineExports'],
         options: [
-          ['fullDocument', 'boolean', 'true', 'Wrap in a full <!DOCTYPE html>; false returns a <style> + fragment'],
+          ['fullDocument', 'boolean', 'true', 'Return a complete document; false returns styles plus an HTML fragment'],
           ['filename', 'string', "'capture.html'", 'Download filename when opts.download is set'],
         ],
-        usage: `import { htmlExport } from '@zumer/snapdom-plugins/html-export';\n\nconst result = await snapdom(el, {\n  plugins: [htmlExport()]\n});\nconst html = await result.toHtml();        // self-contained document\n// result.toHtml({ fullDocument: false })  // → <style> + fragment\n// result.toHtml({ download: 'card.html' })`
+        usage: `import { htmlExport } from '@zumer/snapdom-plugins/html-export';\n\nconst result = await snapdom(el, {\n  plugins: [htmlExport()]\n});\nconst html = await result.toHtml();        // self-contained document\n// result.toHtml({ fullDocument: false })  // styles + HTML fragment\n// result.toHtml({ download: 'card.html' })`
       },
       'gif-export': {
         icon: 'G', category: 'export',
-        desc: 'Adds a toGif() method that records an animating element frame by frame into an animated GIF (median-cut palette + LZW, no dependencies).',
-        hooks: ['beforeSnap', 'defineExports'],
+        desc: "Records the live element frame by frame and returns an animated GIF with toGif().",
+        hooks: ['defineExports'],
         options: [
           ['fps', 'number', '10', 'Frames per second'],
           ['duration', 'number', '2000', 'Total duration in ms (ignored if frames is set)'],
           ['frames', 'number', '—', 'Explicit frame count (overrides duration)'],
           ['maxColors', 'number', '256', 'Palette size per frame (2-256)'],
           ['background', 'string', "'#ffffff'", 'Color composited under transparent pixels'],
+          ['scale', 'number', 'capture scale', 'Capture scale for the recorded frames'],
           ['repeat', 'number', '0', 'Loop count (0 = forever, -1 = play once)'],
+          ['filename', 'string', "'capture.gif'", 'Download filename'],
         ],
         usage: `import { gifExport } from '@zumer/snapdom-plugins/gif-export';\n\nconst result = await snapdom(el, {\n  plugins: [gifExport()]\n});\nconst blob = await result.toGif({ fps: 12, duration: 1500 });\n// result.toGif({ download: 'spinner.gif' })`
       },
       'video-export': {
         icon: 'V', category: 'export',
-        desc: 'Adds a toMp4() method that records an animating element to video via the native MediaRecorder. Safari produces MP4; Chromium/Firefox typically produce WebM (auto-fallback).',
-        hooks: ['beforeSnap', 'defineExports'],
+        desc: "Records the live element with toMp4(). The browser selects a supported MP4 or WebM format.",
+        hooks: ['defineExports'],
         options: [
           ['fps', 'number', '10', 'Frames per second'],
           ['duration', 'number', '2000', 'Total duration in ms (ignored if frames is set)'],
           ['frames', 'number', '—', 'Explicit frame count (overrides duration)'],
           ['background', 'string', "'#ffffff'", 'Color composited under transparent pixels'],
+          ['scale', 'number', 'capture scale', 'Capture scale for the recorded frames'],
           ['bitrate', 'number', '—', 'videoBitsPerSecond passed to MediaRecorder'],
+          ['filename', 'string', 'capture.mp4 / capture.webm', 'Default follows the recorded container; explicit names are used as supplied'],
         ],
-        note: 'Output container depends on the browser: MP4 (H.264) on Safari, WebM on Chromium/Firefox. Blob.type reflects what was produced.',
-        usage: `import { videoExport } from '@zumer/snapdom-plugins/video-export';\n\nconst result = await snapdom(el, {\n  plugins: [videoExport()]\n});\nconst blob = await result.toMp4({ fps: 12, duration: 2000 });\n// blob.type is video/mp4 (Safari) or video/webm (Chromium/FF)`
+        note: 'Requires MediaRecorder and canvas.captureStream. The output may be MP4 or WebM; Blob.type identifies the actual format.',
+        usage: `import { videoExport } from '@zumer/snapdom-plugins/video-export';\n\nconst result = await snapdom(el, {\n  plugins: [videoExport()]\n});\nconst blob = await result.toMp4({ fps: 12, duration: 2000 });\n// Check blob.type for the actual video format`
       },
     };
 
@@ -821,7 +829,7 @@
           </table>`;
       }
 
-      let noteHtml = d.note ? `<h4>Requirements</h4><p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">${d.note}</p>` : '';
+      let noteHtml = d.note ? `<h4>Notes</h4><p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">${d.note}</p>` : '';
 
       body.innerHTML = `
         <div class="modal-icon" style="background:${c.bg};color:${c.fg};">${d.icon}</div>
@@ -1058,7 +1066,7 @@
       };
     }
 
-    // PDF image plugin — renders the capture as a PNG inside a downloadable PDF
+    // PDF image plugin — renders the capture as a JPEG inside a downloadable PDF
     function pdfImagePlugin(options = {}) {
       const { orientation = 'portrait' } = options;
       return {
@@ -1185,213 +1193,6 @@
       };
     }
 
-    // agent-map: Set-of-Mark package for visual agents (annotated image + numbered map)
-    function agentMapPlugin(options = {}) {
-      const {
-        image = 'annotated',
-        fields = 'minimal',
-        semantic = false,
-        imageFormat = 'png',
-        imageQuality = 0.8,
-        maxImageWidth = 1024,
-        labelStyle = {},
-      } = options;
-      const INTERACTIVE = 'a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="checkbox"], [role="radio"], [role="switch"], [role="slider"], [role="combobox"], [role="textbox"], [tabindex]:not([tabindex="-1"]), summary, [contenteditable="true"]';
-      const SEMANTIC = 'h1, h2, h3, h4, h5, h6, nav, main, article, section, header, footer, figcaption, blockquote, legend, p';
-
-      function deriveRole(el) {
-        const explicit = el.getAttribute('role');
-        if (explicit) return explicit;
-        const tag = el.tagName.toLowerCase();
-        const type = (el.type || '').toLowerCase();
-        if (tag === 'button') return 'button';
-        if (tag === 'a' && el.hasAttribute('href')) return 'link';
-        if (tag === 'input') {
-          if (type === 'checkbox') return 'checkbox';
-          if (type === 'radio') return 'radio';
-          if (type === 'range') return 'slider';
-          if (type === 'file') return 'file';
-          if (type === 'submit' || type === 'button' || type === 'reset' || type === 'image') return 'button';
-          return 'textbox';
-        }
-        if (tag === 'select') return 'combobox';
-        if (tag === 'textarea') return 'textbox';
-        if (tag === 'summary') return 'button';
-        if (/^h[1-6]$/.test(tag)) return 'heading';
-        if (tag === 'nav') return 'navigation';
-        if (tag === 'main') return 'main';
-        if (tag === 'header') return 'banner';
-        if (tag === 'footer') return 'contentinfo';
-        if (tag === 'p') return 'paragraph';
-        if (tag === 'img') return 'image';
-        return tag;
-      }
-      function accessibleName(el) {
-        const ariaLabel = el.getAttribute('aria-label');
-        if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
-        if (el.tagName === 'IMG') {
-          const alt = el.getAttribute('alt');
-          if (alt && alt.trim()) return alt.trim();
-        }
-        const title = el.getAttribute('title');
-        if (title && title.trim()) return title.trim();
-        if (el.labels && el.labels[0]) {
-          const t = (el.labels[0].textContent || '').trim();
-          if (t) return t;
-        }
-        const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (text) return text.length > 60 ? text.slice(0, 59) + '…' : text;
-        return '';
-      }
-      function deriveState(el, role) {
-        const s = {};
-        try {
-          if (el.matches(':checked')) s.checked = true;
-          else if (role === 'checkbox' || role === 'radio') s.checked = false;
-          if (el.matches(':disabled')) s.disabled = true;
-        } catch { /* exotic nodes */ }
-        const expanded = el.getAttribute('aria-expanded');
-        if (expanded === 'true') s.expanded = true;
-        else if (expanded === 'false') s.expanded = false;
-        if (el.tagName === 'SELECT') s.value = el.value;
-        else if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.value) s.value = el.value;
-        return Object.keys(s).length ? s : null;
-      }
-
-      function buildEntry(el, rootRect, i, kind) {
-        const rect = el.getBoundingClientRect();
-        const b = [
-          Math.round(rect.left - rootRect.left),
-          Math.round(rect.top - rootRect.top),
-          Math.round(rect.width),
-          Math.round(rect.height),
-        ];
-        if (b[2] <= 0 && b[3] <= 0) return null;
-        const role = deriveRole(el);
-        const entry = { i, n: accessibleName(el), r: role, b };
-        if (kind === 'interactive') {
-          const s = deriveState(el, role);
-          if (s) entry.s = s;
-        } else {
-          entry.isSemanticOnly = true;
-        }
-        if (fields === 'full') {
-          const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
-          if (t && t !== entry.n) entry.t = t.length > 160 ? t.slice(0, 159) + '…' : t;
-          const a = {};
-          for (const name of ['href', 'type', 'name', 'placeholder', 'alt', 'title', 'role', 'aria-label']) {
-            const v = el.getAttribute(name);
-            if (v && v !== 'false') a[name] = v;
-          }
-          if (Object.keys(a).length) entry.a = a;
-        }
-        return entry;
-      }
-      function extractMap(element) {
-        const rootRect = element.getBoundingClientRect();
-        const map = [];
-        let i = 0;
-        const tracked = new Set();
-        for (const el of element.querySelectorAll(INTERACTIVE)) {
-          const entry = buildEntry(el, rootRect, i, 'interactive');
-          if (entry) { map.push(entry); tracked.add(el); i++; }
-        }
-        if (semantic) {
-          for (const el of element.querySelectorAll(SEMANTIC)) {
-            if (tracked.has(el)) continue;
-            const entry = buildEntry(el, rootRect, i, 'semantic');
-            if (entry) { map.push(entry); i++; }
-          }
-        }
-        return { map, dimensions: { width: rootRect.width, height: rootRect.height } };
-      }
-      function addAnnotations(clone, entries) {
-        const interactive = entries.filter(e => !e.isSemanticOnly);
-        if (!interactive.length) return;
-        const overlay = document.createElement('div');
-        Object.assign(overlay.style, {
-          position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
-          pointerEvents: 'none', zIndex: '2147483647', overflow: 'visible',
-        });
-        for (const e of interactive) {
-          const badge = document.createElement('span');
-          badge.textContent = String(e.i);
-          Object.assign(badge.style, {
-            position: 'absolute',
-            left: (e.b[0] + e.b[2] / 2) + 'px', top: (e.b[1] + e.b[3] / 2) + 'px',
-            transform: 'translate(-50%, -50%)', minWidth: '18px', height: '18px',
-            lineHeight: '18px', fontSize: '11px', fontWeight: '700',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            color: '#fff', backgroundColor: 'rgba(220, 38, 38, 0.92)',
-            borderRadius: '9px', textAlign: 'center', padding: '0 4px',
-            boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            ...labelStyle,
-          });
-          overlay.appendChild(badge);
-        }
-        clone.style.position = 'relative';
-        clone.appendChild(overlay);
-      }
-
-      return {
-        name: 'agent-map',
-        afterClone(ctx) {
-          const meta = extractMap(ctx.element);
-          // snapdom spreads a fresh ctx for the export phase from ctx.options,
-          // so stash on both for the agentMap() call below to find it.
-          ctx.__agentMapMeta = meta;
-          if (ctx.options) ctx.options.__agentMapMeta = meta;
-          if (image === 'annotated') addAnnotations(ctx.clone, meta.map);
-        },
-        defineExports() {
-          return {
-            agentMap: async (ctx, opts = {}) => {
-              const meta = ctx.__agentMapMeta;
-              const wantImage = opts.image !== undefined ? opts.image : image;
-              if (!meta || !meta.map.length) {
-                const out = { dimensions: { width: 0, height: 0 }, map: [] };
-                if (wantImage) out.image = ctx.export.url;
-                return out;
-              }
-              const fmt = opts.imageFormat || imageFormat;
-              const q = opts.imageQuality || imageQuality;
-              const maxW = opts.maxImageWidth || maxImageWidth;
-              let w, h, dataURL;
-              if (wantImage) {
-                const img = new Image();
-                img.src = ctx.export.url;
-                await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-                const ratio = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1;
-                w = Math.round(img.naturalWidth * ratio);
-                h = Math.round(img.naturalHeight * ratio);
-                const canvas = document.createElement('canvas');
-                canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                const mime = fmt === 'jpg' || fmt === 'jpeg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
-                dataURL = canvas.toDataURL(mime, q);
-              } else {
-                const sourceW = meta.dimensions.width || 1;
-                const ratio = sourceW > maxW ? maxW / sourceW : 1;
-                w = Math.round(sourceW * ratio);
-                h = Math.round(meta.dimensions.height * ratio);
-              }
-              const sx = w / (meta.dimensions.width || 1);
-              const sy = h / (meta.dimensions.height || 1);
-              const map = meta.map.map(e => ({
-                ...e,
-                b: [
-                  Math.round(e.b[0] * sx), Math.round(e.b[1] * sy),
-                  Math.round(e.b[2] * sx), Math.round(e.b[3] * sy),
-                ],
-              }));
-              const out = { dimensions: { width: w, height: h }, map };
-              if (wantImage) out.image = dataURL;
-              return out;
-            },
-          };
-        },
-      };
-    }
 
     // ── DOM refs ──
     const $ = id => document.getElementById(id);
@@ -1434,8 +1235,6 @@
       const calls = [];
       let hasAscii = false;
       let hasPdf = false;
-      let hasPrompt = false;
-      let promptOpts = null;
 
       if ($('pgChkFilter').checked) {
         const preset = $('pgFilterPreset').value;
@@ -1478,23 +1277,11 @@
         calls.push(orient !== 'portrait' ? `pdfImage({ orientation: '${orient}' })` : `pdfImage()`);
         hasPdf = true;
       }
-      if ($('pgChkPrompt').checked) {
-        const annotate = $('pgPromptAnnotate').value === 'true';
-        const maxW = parseInt($('pgPromptMaxW').value, 10) || 1024;
-        promptOpts = { image: annotate ? 'annotated' : 'raw', maxImageWidth: maxW };
-        plugins.push(agentMapPlugin(promptOpts));
-        imports.push(`import { agentMap } from '@zumer/snapdom-plugins/agent-map';`);
-        const parts = [];
-        if (!annotate) parts.push("image: 'raw'");
-        if (maxW !== 1024) parts.push(`maxImageWidth: ${maxW}`);
-        calls.push(parts.length ? `agentMap({ ${parts.join(', ')} })` : `agentMap()`);
-        hasPrompt = true;
-      }
-      return { plugins, imports, calls, hasAscii, hasPdf, hasPrompt, promptOpts };
+      return { plugins, imports, calls, hasAscii, hasPdf };
     }
 
     function updateCode() {
-      const { imports, calls, hasAscii, hasPdf, hasPrompt } = getActivePlugins();
+      const { imports, calls, hasAscii, hasPdf } = getActivePlugins();
       if (!calls.length) {
         pgCode.textContent = '// Select plugins to see the code';
         return;
@@ -1510,7 +1297,6 @@
         `const png = await result.toPng();`;
       if (hasAscii) code += `\nconst ascii = await result.toAscii();`;
       if (hasPdf) code += `\nawait result.toPdfImage(); // downloads PDF`;
-      if (hasPrompt) code += `\nconst { image, map, dimensions } = await result.toAgentMap();`;
       pgCode.textContent = code;
     }
 
@@ -1520,38 +1306,11 @@
       pgStatus.textContent = 'Capturing...';
       try {
         const t0 = performance.now();
-        const { plugins, calls, hasAscii, hasPdf, hasPrompt } = getActivePlugins();
+        const { plugins, calls, hasAscii, hasPdf } = getActivePlugins();
         const result = await snapdom(pgTarget, { plugins });
         pgOutput.innerHTML = '';
 
-        if (hasPrompt) {
-          // agent-map mode: annotated image + the numbered map an agent consumes
-          const { image, map, dimensions } = await result.toAgentMap();
-          const wrap = document.createElement('div');
-          wrap.style.cssText = 'display:flex;flex-direction:column;gap:12px;width:100%;';
-          const img = document.createElement('img');
-          img.src = image;
-          img.alt = 'Annotated capture';
-          img.style.cssText = 'max-width:100%;border-radius:6px;display:block;';
-          wrap.appendChild(img);
-          const promptBox = document.createElement('pre');
-          promptBox.textContent = `${dimensions.width}x${dimensions.height}px, ${map.length} elements mapped\n\n` +
-            map.map(e => `  [${e.i}] ${e.r}${e.n ? ` "${e.n}"` : ''} (${e.b.join(', ')})${e.s ? ' ' + JSON.stringify(e.s) : ''}`).join('\n');
-          promptBox.style.cssText = 'margin:0;padding:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:11px;line-height:1.45;font-family:ui-monospace,Menlo,monospace;color:#cfd8dc;overflow:auto;max-height:260px;white-space:pre-wrap;';
-          wrap.appendChild(promptBox);
-          const elementsBox = document.createElement('details');
-          elementsBox.style.cssText = 'font-size:11px;color:#8b97a5;';
-          const summary = document.createElement('summary');
-          summary.textContent = `map JSON: ${map.length} items`;
-          summary.style.cssText = 'cursor:pointer;padding:4px 0;';
-          elementsBox.appendChild(summary);
-          const elementsPre = document.createElement('pre');
-          elementsPre.textContent = JSON.stringify(map, null, 2);
-          elementsPre.style.cssText = 'margin:8px 0 0 0;padding:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:11px;line-height:1.45;font-family:ui-monospace,Menlo,monospace;color:#cfd8dc;overflow:auto;max-height:200px;';
-          elementsBox.appendChild(elementsPre);
-          wrap.appendChild(elementsBox);
-          pgOutput.appendChild(wrap);
-        } else if (hasAscii) {
+        if (hasAscii) {
           // ASCII mode — call toAscii directly (same pattern as docs/index.html)
           const cols = parseInt($('pgAsciiW').value) || 100;
           const asciiHTML = await result.toAscii({ cols, invert: true });

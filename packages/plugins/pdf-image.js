@@ -1,6 +1,8 @@
 /**
  * pdfImage - Official SnapDOM Plugin
- * Exports the capture as a PNG embedded in a downloadable PDF.
+ * Exports the capture as a JPEG embedded in a downloadable PDF.
+ * Pinned by __tests__/plugins.imageExports.v3.test.js.
+ * @module plugins/pdf-image
  *
  * @param {Object} [options]
  * @param {string} [options.orientation='portrait'] - 'portrait' | 'landscape'
@@ -18,12 +20,14 @@ export function pdfImage(options = {}) {
   return {
     name: 'pdf-image',
 
-    defineExports() {
+    defineExports({ exports }) {
       return {
-        pdfImage: async (ctx) => {
-          const img = new Image();
-          img.src = ctx.export.url;
-          await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+        pdfImage: async (_ctx, opts) => {
+          // Core owns sizing, captured originals and Safari's image/font paint workarounds.
+          const canvas = await exports.canvas({
+            ...opts, canvas: null,
+            backgroundColor: !opts.backgroundColor || opts.backgroundColor === 'transparent' ? '#ffffff' : opts.backgroundColor,
+          });
 
           const isLandscape = orientation === 'landscape';
           const pageW = isLandscape ? 841.89 : 595.28; // A4 in points
@@ -31,17 +35,13 @@ export function pdfImage(options = {}) {
           const margin = 40;
           const maxW = pageW - margin * 2;
           const maxH = pageH - margin * 2;
-          const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-          const w = img.width * scale;
-          const h = img.height * scale;
+          const scale = Math.min(maxW / canvas.width, maxH / canvas.height, 1);
+          const w = canvas.width * scale;
+          const h = canvas.height * scale;
           const x = (pageW - w) / 2;
           const y = (pageH - h) / 2;
 
           // Get image as JPEG data
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          canvas.getContext('2d').drawImage(img, 0, 0);
           const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
           const jpegBase64 = jpegDataUrl.split(',')[1];
           const jpegBytes = atob(jpegBase64);
@@ -61,7 +61,7 @@ export function pdfImage(options = {}) {
 
           // Obj 4 — image with binary JPEG stream
           realOffsets.push(textPart.length);
-          const imgHeader = `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegLen} >>\nstream\n`;
+          const imgHeader = `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegLen} >>\nstream\n`;
 
           const imgHeaderBytes = enc.encode(imgHeader);
           const preImgBytes = enc.encode(textPart);

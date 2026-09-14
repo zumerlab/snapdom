@@ -1,5 +1,10 @@
 /**
- * Extracts a URL from a CSS value like background-image.
+ * URL and transform string helpers, the password mask, and realm-safe element type tests.
+ * @module utils/helpers
+ */
+
+/**
+ * Extracts a URL from a CSS value like background-image. A `#fragment` reference is not one.
  *
  * @param {string} value - The CSS value
  * @returns {string|null} The extracted URL or null
@@ -14,6 +19,33 @@ export function extractURL(value) {
   return url
 }
 
+/** Raster/vector types every target engine decodes; anything else (jxl, tiff…) the
+ *  browser's own type-support step would skip. Shared by image-set() and <source type>. */
+export const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
+const SUPPORTED_IMAGE_SET_TYPE = SUPPORTED_IMAGE_MIME
+
+/** Candidate separators occur outside functions and strings: data URLs and quoted
+ * filenames can contain commas that are part of one image source. */
+function imageSetCandidates(value) {
+  const parts = []
+  let start = 0, depth = 0, quote = ''
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i]
+    if (char === '\\') { i++; continue }
+    if (quote) {
+      if (char === quote) quote = ''
+    } else if (char === '"' || char === "'") quote = char
+    else if (char === '(') depth++
+    else if (char === ')') depth--
+    else if (char === ',' && depth === 0) {
+      parts.push(value.slice(start, i))
+      start = i + 1
+    }
+  }
+  parts.push(value.slice(start))
+  return parts
+}
+
 /**
  * Picks the best-matching URL out of a CSS `image-set()`/`-webkit-image-set()` value for a
  * given device pixel ratio — the smallest declared resolution that's >= targetDppx, or the
@@ -23,20 +55,21 @@ export function extractURL(value) {
  * @param {number} [targetDppx=1]
  * @returns {string|null}
  */
-const SUPPORTED_IMAGE_SET_TYPE = /^image\/(jpeg|jpg|png|gif|webp|avif|apng|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)\s*(;|$)/i
-
 export function resolveImageSetURL(value, targetDppx = 1) {
   const m = value.match(/^\s*-?(?:webkit-)?image-set\(([\s\S]*)\)\s*$/i)
   if (!m) return null
   const candidates = []
-  for (const part of m[1].split(',')) {
+  for (const part of imageSetCandidates(m[1])) {
     const urlMatch = part.match(/url\((['"]?)(.*?)(\1)\)/)
     if (!urlMatch) continue
     // The browser's own image-set() selection skips candidates whose type() it can't
     // decode — mirror that, or an unsupported format out-ranks what the page painted.
     const typeMatch = part.match(/type\(\s*["']([^"']+)["']\s*\)/i)
     if (typeMatch && !SUPPORTED_IMAGE_SET_TYPE.test(typeMatch[1].trim())) continue
-    const resMatch = part.match(/(\d+(?:\.\d+)?)\s*(x|dpi|dppx)/i)
+    // Match the descriptor OUTSIDE the url(): scanning the whole candidate picked the first
+    // digits-then-'x' anywhere in it, so `url("hero-2x.png") 3x` resolved as a 2x candidate
+    // and a retina source could out- or under-rank the one the page actually paints.
+    const resMatch = part.replace(/url\((['"]?)[\s\S]*?\1\)/, ' ').match(/(\d+(?:\.\d+)?)\s*(x|dpi|dppx)\b/i)
     let dppx = 1
     if (resMatch) {
       const n = parseFloat(resMatch[1])
@@ -51,27 +84,13 @@ export function resolveImageSetURL(value, targetDppx = 1) {
 }
 
 /**
- * Determines if a font family or URL is an icon font.
- *
- * @param {string} familyOrUrl - The font family or URL
- * @returns {boolean} True if it is an icon font
+ * Drop the translation from a transform string: translate()/translateX()/translateY() are
+ * removed, matrix() and matrix3d() keep their scale and skew with the offset zeroed.
+ * prepareClone runs the root's transform through this, so the svg engine's bbox math never
+ * sees a translated root (#56, #24). Pinned by __tests__/utils.helpers.test.js.
+ * @param {string} transform - computed `transform`
+ * @returns {string} '' for `none` or empty
  */
-export function isIconFont(familyOrUrl) {
-  const iconFontPatterns = [
-    /font\s*awesome/i,
-    /material\s*icons/i,
-    /ionicons/i,
-    /glyphicons/i,
-    /feather/i,
-    /bootstrap\s*icons/i,
-    /remix\s*icons/i,
-    /heroicons/i,
-    /layui/i,
-    /lucide/i
-  ]
-  return iconFontPatterns.some(rx => rx.test(familyOrUrl))
-}
-
 export function stripTranslate(transform) {
   if (!transform || transform === 'none') return ''
 
@@ -96,6 +115,7 @@ export function stripTranslate(transform) {
   return cleaned.trim().replace(/\s{2,}/g, ' ')
 }
 
+/** encodeURI, unless the string already carries a %XX escape: encoding it again doubles it. */
 export function safeEncodeURI(uri) {
   if (/%[0-9A-Fa-f]{2}/.test(uri)) return uri // prevent reencode
   try { return encodeURI(uri) } catch { return uri }
@@ -115,4 +135,58 @@ export function resolveURL(url, base) {
   } catch {
     return url
   }
+}
+
+/** The ONE input core masks, and it costs no fidelity: the browser already paints a password
+ *  field as bullets, so a same-length bullet mask renders IDENTICALLY to the live control
+ *  while keeping the typed secret out of the serialized SVG (which is a string callers log,
+ *  upload and cache). Everything the browser shows in PLAIN TEXT (email, tel, cc-*,
+ *  one-time-code) is captured as-is: redacting it would be a real fidelity loss, and fidelity
+ *  is core's job. Redaction is opt-in, via the `redactInputs` plugin. */
+export function isPasswordInput(el) {
+  return !!el && el.tagName === 'INPUT' && (el.getAttribute('type') || '').toLowerCase() === 'password'
+}
+
+/** Same-length bullet mask: rendered width stays plausible, the secret is gone. */
+export function maskValue(value) {
+  return '\u2022'.repeat(String(value ?? '').length)
+}
+
+/* ---------------- realm-safe type tests ----------------
+ *
+ * `node instanceof HTMLInputElement` asks whether the node was built by THIS window's
+ * constructor. A same-origin <iframe> is a second window with its own constructor set, so
+ * every one of those tests answered false for nodes inside a frame \u2014 and the answers were
+ * load-bearing: the branches they guard are what copy a form control's LIVE value
+ * (`.value`, `.checked`) onto the clone. Capturing inside an iframe silently fell through
+ * to the plain-element path and serialized the HTML-attribute defaults, so a typed-in form
+ * came out empty. Namespace + localName are realm-independent, and being plain string
+ * compares they are also cheaper than instanceof in the per-node clone loop. */
+
+const HTML_NS = 'http://www.w3.org/1999/xhtml'
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+/** Realm-safe `node instanceof HTMLxxxElement` for a known tag (lowercase). */
+export function isTag(node, name) {
+  return node?.nodeType === 1 && node.localName === name
+}
+
+/** Realm-safe `node instanceof HTMLElement`. */
+export function isHTMLEl(node) {
+  return node?.nodeType === 1 && node.namespaceURI === HTML_NS
+}
+
+/** Realm-safe `node instanceof SVGElement`. */
+export function isSVGEl(node) {
+  return node?.nodeType === 1 && node.namespaceURI === SVG_NS
+}
+
+/** Realm-safe `node instanceof ShadowRoot`: a DocumentFragment that has a host. */
+export function isShadowRoot(node) {
+  return node?.nodeType === 11 && !!node.host
+}
+
+/** Realm-safe `node instanceof Document`. */
+export function isDocument(node) {
+  return node?.nodeType === 9
 }

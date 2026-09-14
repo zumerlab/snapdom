@@ -163,7 +163,7 @@ describe("::after { content: ' Pro' } — position parity vs live DOM", () => {
   // foreignObject sizing that clips/overlaps content.
   it('captureDOM output: " Pro" does NOT overlap "zumerlab" inside the rendered SVG', async () => {
     const row = mounted.live.querySelector('.avatar-row')
-    const dataURL = await captureDOM(row, { fast: true, embedFonts: false })
+    const dataURL = await captureDOM(row, { embedFonts: false })
 
     // Decode and inline the SVG so its foreignObject lays out in the same doc.
     const svgText = decodeURIComponent(dataURL.replace(/^data:image\/svg\+xml(?:;charset=utf-8)?,/, ''))
@@ -284,7 +284,7 @@ describe('.card capture (full demo chain) — pseudo wrap repro', () => {
     // The snapVisual demo uses embedFonts:true. If the embedded font has wider
     // metrics than the system font, "Juan Martin Pro" can wrap inside the SVG
     // even though the live DOM doesn't wrap.
-    const dataURL = await captureDOM(card, { fast: true, embedFonts: true })
+    const dataURL = await captureDOM(card, { embedFonts: true })
     const svgText = decodeURIComponent(dataURL.replace(/^data:image\/svg\+xml(?:;charset=utf-8)?,/, ''))
 
     const wrap = document.createElement('div')
@@ -315,7 +315,7 @@ describe('.card capture (full demo chain) — pseudo wrap repro', () => {
   // We assert directly on the cloned strong since pixel-level inspection in
   // chromium-headless doesn't manifest the metric drift this fix targets.
   it('fix: cloned <strong> gets white-space:nowrap when single-line + multi-char pseudo', async () => {
-    const dataURL = await captureDOM(card, { fast: true, embedFonts: false })
+    const dataURL = await captureDOM(card, { embedFonts: false })
     const svgText = decodeURIComponent(dataURL.replace(/^data:image\/svg\+xml(?:;charset=utf-8)?,/, ''))
     const wrap = document.createElement('div')
     wrap.style.cssText = 'position:absolute;left:-99999px;top:0;'
@@ -341,7 +341,7 @@ describe('.card capture (full demo chain) — pseudo wrap repro', () => {
     // sanity: live now has > 1 line
     expect(strong.getBoundingClientRect().height).toBeGreaterThan(28)
 
-    const dataURL = await captureDOM(card, { fast: true, embedFonts: false })
+    const dataURL = await captureDOM(card, { embedFonts: false })
     const svgText = decodeURIComponent(dataURL.replace(/^data:image\/svg\+xml(?:;charset=utf-8)?,/, ''))
     const wrap = document.createElement('div')
     wrap.style.cssText = 'position:absolute;left:-99999px;top:0;'

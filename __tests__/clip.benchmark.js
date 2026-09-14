@@ -2,6 +2,8 @@
 // The claim under test: viewport capture must be FASTER than full page, because offscreen
 // subtrees are pruned before styling/inlining and the raster area is viewport-sized.
 // Run: `npm run test:benchmark` (or target this file).
+// NOTE: burst:false pins these benches to the cold pipeline — the memo would
+// otherwise memoize the repeated iterations and measure the cache hit instead.
 import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index.js'
 
@@ -27,21 +29,21 @@ const benchOpts = { time: 3000, warmupIterations: 2 }
 describe('clip: long page (~60 sections, ~1500 cards)', () => {
   bench('full page (toRaw)', async () => {
     setupPage()
-    await snapdom.toRaw(document.body, { cache: 'disabled' })
+    await snapdom.toRaw(document.body, { cache: 'disabled', burst: false })
   }, benchOpts)
 
   bench("clip: 'viewport' (toRaw)", async () => {
     setupPage()
-    await snapdom.toRaw(document.body, { cache: 'disabled', clip: 'viewport' })
+    await snapdom.toRaw(document.body, { cache: 'disabled', burst: false, clip: 'viewport' })
   }, benchOpts)
 
   bench('full page (toCanvas)', async () => {
     setupPage()
-    await snapdom.toCanvas(document.body, { cache: 'disabled' })
+    await snapdom.toCanvas(document.body, { cache: 'disabled', burst: false })
   }, benchOpts)
 
   bench("clip: 'viewport' (toCanvas)", async () => {
     setupPage()
-    await snapdom.toCanvas(document.body, { cache: 'disabled', clip: 'viewport' })
+    await snapdom.toCanvas(document.body, { cache: 'disabled', burst: false, clip: 'viewport' })
   }, benchOpts)
 })

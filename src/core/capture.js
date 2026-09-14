@@ -1,5 +1,9 @@
 /**
- * Core logic for capturing DOM elements as SVG data URLs.
+ * Core capture: element -> finished, self-contained clone.
+ *
+ * The pipeline splits at the clone. This module owns `element -> clone` (freeze, style
+ * snapshot, image and font inlining); turning that clone into pixels belongs to a render
+ * engine, and the default one lives in src/engines/svg.js.
  * @module capture
  */
 
@@ -8,53 +12,28 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
-import { idle, collectUsedTagNames, generateDedupedBaseCSS, isSafari, getStyle } from '../utils/index.js'
+import { isSafari } from '../utils/index.js'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
-import { cache, applyCachePolicy } from '../core/cache.js'
+import { cache } from '../core/cache.js'
+import { createCaptureSession } from './session.js'
+import { sessionWarn } from '../utils/debug.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
-import { runPictureResolverBeforeClone } from '../modules/pictureResolver.js'
-import { compressCloneAssets } from '../modules/compress.js'
+import { styleShareSafe } from '../modules/styles.js'
+import { stageReaches, DEFAULT_STAGE } from './stages.js'
+import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
+import { applyTextFieldSelectionLayers } from '../modules/selection.js'
+import { composeAndSerialize } from '../engines/svg.js'
 import {
+  assembleCaptureCSS,
   stripRootShadows,
   neutralizeRootMarginCollapse,
   neutralizeRootZoom,
   sanitizeCloneForXHTML,
   shrinkAutoSizeBoxes,
-  estimateKeptHeight,
-  limitDecimals,
-  collectScrollbarCSS,
-  reconcileCloneLayout,
-  resolveClipRect,
-  composeResidual2D
+  resolveClipRect
 } from '../utils/capture.helpers.js'
-import {
-  parseBoxShadow,
-  parseTextShadow,
-  parseFilterBlur,
-  parseOutline,
-  parseFilterDropShadows,
-  normalizeRootTransforms,
-  bboxWithOriginFull,
-  parseTransformOriginPx,
-  readIndividualTransforms,
-  readTotalTransformMatrix,
-  hasBBoxAffectingTransform,
-} from '../utils/transforms.helpers.js'
-
-/**
- * @param {object} options
- * @returns {boolean}
- */
-function hasPictureResolverPlugin(options) {
-  if (Array.isArray(options.plugins)) {
-    for (const d of options.plugins) {
-      const inst = normalizePlugin(d)
-      if (inst?.name === 'picture-resolver') return true
-    }
-  }
-  return getGlobalPlugins().some(p => p?.name === 'picture-resolver')
-}
+import { normalizeRootTransforms } from '../utils/transforms.helpers.js'
 
 /**
  * Collect per-node resolveNode hooks once per capture, so deepClone pays a single falsy
@@ -72,104 +51,106 @@ function collectResolveNodeHooks(options) {
   return hooks.length ? hooks : null
 }
 
-const BURST_WINDOW_MS = 2000
-const BURST_THRESHOLD = 3
-
-/**
- * Suggests { burst: true } when the same element is captured BURST_THRESHOLD+ times within
- * BURST_WINDOW_MS without it. A plain repeat capture re-walks the tree and rereads computed
- * styles every time even with every asset cache warm (measured ~15ms for a 450-node subtree);
- * burst:true skips that entirely on an unchanged element. Only runs when burst ISN'T already
- * set — the whole point is discoverability for callers who don't know it exists yet, so
- * gating it behind the option it's advertising would be circular. The Date.now()+WeakMap
- * bookkeeping this costs is cheap enough to always run.
- * @param {Element} element
- */
-function checkBurstAdvice(element) {
-  const now = Date.now()
-  const entry = cache.burstAdvice.get(element)
-  if (!entry || now - entry.firstTs > BURST_WINDOW_MS) {
-    cache.burstAdvice.set(element, { count: 1, firstTs: now, warned: false })
-    return
-  }
-  entry.count++
-  if (entry.count >= BURST_THRESHOLD && !entry.warned) {
-    entry.warned = true
-    console.warn('[snapdom] Captured this element multiple times. Pass { burst: true } to increase the speed.')
-  }
-}
-
 /**
  * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
  *
  * @param {Element} element - DOM element to capture
  * @param {Object} [options={}] - Capture options
- * @param {boolean} [options.embedFonts=false] - Whether to embed custom fonts
- * @param {boolean} [options.fast=true] - Whether to skip idle delay for faster results
+ * @param {boolean|'auto'} [options.embedFonts='auto'] - Font embedding ('auto': only document-declared webfonts actually used)
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
- * @param {Function} [options.filter] - Custom filter function
- * @param {boolean} [options.outerTransforms=false] - Normalize root by removing translate/rotate (keep scale/skew)
- * @param {boolean} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds.
+ * @param {boolean} [options.outerTransforms=true] - Keep root translate/rotate; false strips them (keeps scale/skew)
+ * @param {boolean|'subtree'} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds. 'subtree' additionally widens the capture for the outer-shadow ink DESCENDANTS paint past the root's box (a child's ring drawn against the root's edge), measured per side and bounded by any ancestor that clips.
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
- * @param {boolean} [options.burst=false] - Memoize repeated captures of this element via a scoped MutationObserver (see src/core/burst.js). Without it, snapdom warns once if the same element is captured 3+ times within 2s
- * @returns {Promise<string>} Promise that resolves to an SVG data URL
+ * @param {boolean} [options.burst] - Memoize eligible static captures from the first call. Selection and frame-driven/opaque trees always capture fresh; true overrides only the automatic impure-plugin gate, while false disables memoization.
+ * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
+ *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
  */
 export async function captureDOM(element, options) {
   if (!element) throw new Error('Element cannot be null or undefined')
-  applyCachePolicy(options.cache)
-  // cache.session is reassigned at every capture start: snapshot THIS capture's maps in the
-  // same synchronous tick, before any await, or a concurrently started capture swaps them
-  // and both captures share one nodeMap (double scroll-compensation, cross-contaminated CSS).
-  options.__session = {
-    styleMap: cache.session.styleMap,
-    styleCache: cache.session.styleCache,
-    nodeMap: cache.session.nodeMap
-  }
-  if (!options.burst) checkBurstAdvice(element)
+  options.__session = createCaptureSession(options.cache)
+  delete options.__compressedAssets
+  delete options.__compressedSnapshot
+  delete options.__compressionDensity
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
-  const fast = options.fast
-  const outerTransforms = options.outerTransforms !== false   // default: true
+  // ONE context for the whole capture: hooks receive the normalized option bag itself, so
+  // `ctx.scale` / `ctx.backgroundColor` / … are the very values the pipeline reads and the
+  // documented "mutate ctx in beforeSnap" actually lands. Per-stage fields are written onto
+  // it as they are produced. `options` is a NON-enumerable self-reference: plugins reading
+  // `ctx.options` keep working, without adding a cycle to every `{...ctx}` spread.
+  const state = options
+  state.element = element
+  Object.defineProperty(state, 'options', { value: state, configurable: true })
 
-  const outerShadows = !!options.outerShadows
-  // Region capture (clip: 'viewport' | {x,y,width,height}). The GEOMETRY window is resolved
-  // once, inside prepareClone (same instant as culling), and returned as clipWindow in
-  // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
-  const preClipRect = options.clip ? resolveClipRect(element, options.clip) : null
-  let state = { element, options, plugins: options.plugins }
-
-  let clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow
+  let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow
   let fontsCSS = ''
-  let baseCSS = ''
-  let dataURL
-  let svgString
-  // NEW: store root transform (scale/skew) when outerTransforms is on
+  // Root transform (scale/skew), kept when outerTransforms is on
   let rootTransform2D = null
-  // BEFORESNAP
-  await runHook('beforeSnap', state)
+  // How far this capture has to run: the maximum `needs` of the attached plugins
+  // (see stages.js). 'render' — the default, and every capture without plugins — is the
+  // historical pipeline; the checks below are the only two places that read it.
+  const stage = options.needs || DEFAULT_STAGE
 
-  /** @type {(() => Promise<void>)|null} */
-  let undoPictureResolver = null
-  if (options.resolvePicturePlaceholders !== false && !hasPictureResolverPlugin(options)) {
-    undoPictureResolver = await runPictureResolverBeforeClone(state.element, state.options)
+  // BEFORESNAP. `format` is canonical, but the deprecated `type` alias remains writable in
+  // this hook. Normalize only an actual hook mutation: treating the default PNG as explicit
+  // would change toBlob()'s historical default from SVG to PNG.
+  const formatBeforeSnap = state.format
+  const typeBeforeSnap = state.type
+  await runHook('beforeSnap', state)
+  const changedFormat = state.format !== formatBeforeSnap && /^(?:png|jpe?g|webp|svg)$/i.test(state.format)
+  const changedType = state.type !== typeBeforeSnap && /^(?:png|jpe?g|webp|svg)$/i.test(state.type)
+  if (changedFormat || changedType) {
+    const requested = String(changedFormat ? state.format : state.type).toLowerCase()
+    state.format = requested === 'jpg' ? 'jpeg' : requested
+    state.type = state.format
+    state.__explicitFormat = state.format
+    if (/^(?:jpeg|webp)$/.test(state.format) &&
+        (state.backgroundColor == null || state.backgroundColor === 'transparent')) state.backgroundColor = '#ffffff'
   }
 
   // BEFORECLONE
   await runHook('beforeClone', state)
+
+  // Read AFTER the hooks: beforeSnap is the documented place to set capture defaults, and
+  // these three decide the geometry, so reading them earlier ignored the plugin that set them.
+  const outerTransforms = state.outerTransforms !== false   // default: true
+  // Kept as given rather than coerced: 'subtree' also widens the capture for what descendants
+  // paint outside the root's box, and every truthy value means "the root keeps its shadows".
+  const outerShadows = state.outerShadows === 'subtree' ? 'subtree' : !!state.outerShadows
+  // Region capture (clip: 'viewport' | {x,y,width,height}). The GEOMETRY window is resolved
+  // once, inside prepareClone (same instant as culling), and returned as clipWindow in
+  // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
+  const preClipRect = state.clip ? resolveClipRect(state.element, state.clip) : null
+
+  // Identity-share fast path (see styles.js): decided ONCE per capture, before any clone
+  // work. Both gates are cheap and both err toward full reads: an unscannable stylesheet or
+  // any selector that can split identical identities answers unsafe, and one running
+  // animation/transition anywhere under the root (computed styles differ per frame) turns
+  // it off wholesale. Respect an explicit override so tests can pin the slow path.
+  if (options.__styleShare === undefined) {
+    try {
+      options.__styleShare = styleShareSafe(state.element) &&
+        (typeof state.element.getAnimations !== 'function' ||
+          state.element.getAnimations({ subtree: true }).length === 0)
+    } catch {
+      options.__styleShare = false
+    }
+  }
+
   const undoClamp = lineClampTree(state.element, preClipRect)
   try {
-    // Keep this capture's own clone→source map: nested iframe captures reassign
-    // cache.session.nodeMap concurrently (see rasterizeIframe), so the global cannot be
-    // trusted after the clone phase — every later pass must use this reference.
-    ({ clone, classCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
+    // Keep this capture's own clone→source map — every later pass must use this
+    // reference (sessions are per-capture; there is no shared session global).
+    ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
 
-    if (reconcileRisk > 0 && !options.reconcile && !cache.warnedReconcile) {
-      cache.warnedReconcile = true
-      console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+    if (reconcileRisk > 0 && !options.reconcile) {
+      sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
+      if (!cache.warnedReconcile) {
+        cache.warnedReconcile = true
+        console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+      }
     }
-
-    // state = {clone, classCSS, styleCache, ...state}
 
     if (!outerTransforms && clone) {
       rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
@@ -190,15 +171,26 @@ export async function captureDOM(element, options) {
   }
 
   // AFTERCLONE
-  state = { clone, classCSS, styleCache, nodeMap, ...state }
+  state.clone = clone
+  state.classCSS = classCSS
+  state.styleCache = styleCache
+  state.nodeMap = nodeMap
   await runHook('afterClone', state)
-  if (undoPictureResolver) await undoPictureResolver()
+
+  // needs: 'clone' — the plugins wanted the frozen tree, not pixels. Everything from here
+  // (XHTML sanitizing, asset inlining, fonts, foreignObject, serialization) exists only
+  // to feed a renderer, so it is skipped whole. Nothing is retained for burst: it is off
+  // below 'render' (src/api/snapdom.js), so there is no memo to feed.
+  if (!stageReaches(stage, 'render')) return null
+
   sanitizeCloneForXHTML(state.clone)
-  // Shrink pass when excludeMode/filterMode === 'remove' dropped clone children
-  if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {
+  // Either omission policy can remove children and collapse their former layout slots.
+  if (state.options?.excludeMode === 'remove' ||
+      (typeof state.options?.filter === 'function' && state.options.filterMode === 'remove')) {
     try {
-      shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache)
+      shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache, state.nodeMap)
     } catch (e) {
+      sessionWarn(options.__session, 'shrink-failed', 'shrink pass failed', e)
       console.warn('[snapdom] shrink pass failed:', e)
     }
   }
@@ -209,9 +201,8 @@ export async function captureDOM(element, options) {
   // Asset phases are network/decode-bound and independent: images ∥ backgrounds ∥ fonts run
   // concurrently (they were serialized before, stacking their network latencies). Compress
   // depends on the inlined data URLs, so it waits for images+backgrounds only.
-  const runIdle = (fn) => new Promise((resolve, reject) => {
-    idle(() => { Promise.resolve().then(fn).then(resolve, reject) }, { fast })
-  })
+  // Microtask boundary only — keeps the parallel asset phases' Promise.all concurrency.
+  const runIdle = (fn) => Promise.resolve().then(fn)
 
   const assetsPhase = (async () => {
     await Promise.all([
@@ -223,16 +214,33 @@ export async function captureDOM(element, options) {
     try {
       emulateBackdropFilters(state.element, state.clone, state.nodeMap)
     } catch (e) {
+      sessionWarn(options.__session, 'backdrop-filter-failed', 'backdrop-filter emulation failed', e)
       console.warn('[snapdom] backdrop-filter emulation failed:', e)
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {
+      options.__compressionClip = clipWindow
+      options.__compressionRootTransform = rootTransform2D
       await runIdle(() => compressCloneAssets(state.clone, state.options, state.nodeMap))
+    }
+    // Field-selection highlights compose last: the background pass above rewrites a field's
+    // background longhands, and an inlined url() background has to end up under the highlight.
+    if (options.captureSelection) {
+      try {
+        applyTextFieldSelectionLayers(state.nodeMap)
+      } catch (e) {
+        sessionWarn(options.__session, 'selection-compose-failed', 'field selection compose failed', e)
+      }
     }
   })()
 
   let fontsPhase = Promise.resolve()
-  if (options.embedFonts) {
+  // 'auto' pre-gate: no FontFace registered in the element's document → no webfonts to
+  // embed, skip even the usage walk. Explicit true keeps the full pass unconditionally.
+  const fontsWanted = options.embedFonts === 'auto'
+    ? ((state.element.ownerDocument || document).fonts?.size || 0) > 0
+    : !!options.embedFonts
+  if (fontsWanted) {
     fontsPhase = runIdle(async () => {
       // #441: read fonts from the element's own document (same-origin iframe support)
       const ownerDoc = state.element.ownerDocument || document
@@ -245,7 +253,19 @@ export async function captureDOM(element, options) {
                  r.bottom >= preClipRect.top - 200 && r.top <= preClipRect.bottom + 200
         } catch { return true }
       } : null
-      const { required, usedCodepoints } = collectFontUsage(state.element, clipKeep)
+      // Safari's pre-step already walked this subtree — reuse its usage (threaded only
+      // for non-clip captures; clip needs the clipKeep-scoped walk).
+      const { required, usedCodepoints } = (!preClipRect && options.__fontUsage) || collectFontUsage(state.element, clipKeep)
+      // 'auto': embed only when a used family is actually a document-declared webfont.
+      if (options.embedFonts === 'auto') {
+        const docFamilies = new Set()
+        try {
+          for (const f of ownerDoc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase())
+        } catch { /* no Font Loading API — treat as no webfonts */ }
+        const usesWebfont = docFamilies.size > 0 &&
+          Array.from(required).some((k) => docFamilies.has(String(k).split('__')[0].toLowerCase()))
+        if (!usesWebfont) return
+      }
       if (isSafari()) {
         const families = new Set(
           Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
@@ -255,11 +275,11 @@ export async function captureDOM(element, options) {
       fontsCSS = await embedCustomFonts({
         required,
         usedCodepoints,
-        preCached: false,
         exclude: state.options.excludeFonts,
         localFonts: state.options.localFonts,
         useProxy: state.options.useProxy,
         fontStylesheetDomains: state.options.fontStylesheetDomains,
+        iconMatchers: state.options.__iconMatchers,
         doc: ownerDoc
       })
     })
@@ -267,362 +287,46 @@ export async function captureDOM(element, options) {
 
   await Promise.all([assetsPhase, fontsPhase])
 
-  const usedTags = collectUsedTagNames(state.clone).sort()
-  const tagKey = usedTags.join(',')
-  if (cache.baseStyle.has(tagKey)) {
-    baseCSS = cache.baseStyle.get(tagKey)
-  } else {
-    await new Promise((resolve) => {
-      idle(() => {
-        baseCSS = generateDedupedBaseCSS(usedTags)
-        cache.baseStyle.set(tagKey, baseCSS)
-        resolve()
-      }, { fast })
-    })
+  // ——— Render engine ———
+  // The clone is finished. Which engine turns it into pixels is the only choice left, and
+  // both take the SAME input. The experimental one is opt-in and quarantined behind a lazy
+  // import; the `typeof` guard is the build switch (esbuild defines __SNAPDOM_CANVAS_ENGINE__
+  // as false for shipped bundles, folding the branch and the module away, while src
+  // consumers — the test suite — leave it undefined and keep it live). On ANY doubt it
+  // returns null and the SVG engine runs on the same clone.
+  // The experimental painter cannot expose its bitmap to render-boundary hooks without
+  // creating a different artifact; those hooks make this capture use the exact SVG path.
+  const hasRenderBoundaryHooks = (state.options.plugins || []).some((plugin) => plugin &&
+    (typeof plugin.beforeRender === 'function' || typeof plugin.afterRender === 'function'))
+  if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks &&
+      (typeof __SNAPDOM_CANVAS_ENGINE__ === 'undefined' || __SNAPDOM_CANVAS_ENGINE__)) {
+    const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
+    assembleCaptureCSS(state, fontsCSS)
+    const canvas = await tryCanvasEngine(state, state.options)
+    // The painted bitmap itself, not a data URL: encoding it eagerly costs 15-22x what the
+    // pixel exports need (toDataURL+decode vs direct draw: 62 vs 4 ms on a card, 4.2 s vs
+    // 210 ms at 29 Mpx, measured 2026-09-03) — without this handoff the engine is SLOWER
+    // than the svg path it replaces. buildResult routes pixel exports straight at the
+    // canvas and mints the PNG data URL lazily for the string surfaces (url, toRaw, toImg).
+    if (canvas) return canvas
   }
-  // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
-  const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
-  state = { fontsCSS, baseCSS, scrollbarCSS, ...state }
-  await runHook('beforeRender', state)
 
-  await new Promise((resolve) => {
-    idle(() => {
-      const csEl = getStyle(state.element)
-
-      const rect = state.element.getBoundingClientRect()
-      let w0 = Math.max(1, limitDecimals(state.element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
-      let h0 = Math.max(1, limitDecimals(state.element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
-      // body/documentElement: measure clone in-document to get true content height (Chrome clamps offset/scroll)
-      // Use element's ownerDocument for iframe support (#371)
-      const elDoc = state.element.ownerDocument || document
-      // #449: an iframe doc pinned by rasterizeIframe must be captured at its viewport size.
-      // Expanding to scrollHeight there yields a full-page bitmap that gets squashed into the
-      // iframe box (overflow:hidden still reports the full scrollable extent).
-      // Clip mode: the viewBox is windowed to the clip rect, so the exact full content
-      // height is irrelevant — skip the scrollHeight expansion AND the expensive
-      // clone-in-document measurement round-trip entirely.
-      const isRoot = !clipWindow && (state.element === elDoc.body || state.element === elDoc.documentElement) &&
-        !elDoc.documentElement.hasAttribute('data-sd-pinned')
-      if (isRoot) {
-        const docH = Math.max(
-          state.element.scrollHeight || 0,
-          elDoc.documentElement?.scrollHeight || 0,
-          elDoc.body?.scrollHeight || 0
-        )
-        const docW = Math.max(
-          state.element.scrollWidth || 0,
-          elDoc.documentElement?.scrollWidth || 0,
-          elDoc.body?.scrollWidth || 0
-        )
-        if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
-        if (docW > 0) w0 = Math.max(w0, limitDecimals(docW))
-        // Also measure clone in a temp container with injected styles (clone may layout differently).
-        // PERF-3: cache result per element — this cloneNode(true) + layout round-trip is expensive
-        // for large DOMs; reuse when the same element is captured with the same total CSS length.
-        try {
-          const cssLen = (state.scrollbarCSS || '').length + (state.baseCSS || '').length +
-                         (state.fontsCSS || '').length + (state.classCSS || '').length
-          const hint = cache.measureHints.get(state.element)
-          if (hint && hint.cssLen === cssLen && hint.w0 === w0) {
-            if (hint.csh > 0) h0 = Math.max(h0, limitDecimals(hint.csh))
-            if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
-          } else {
-            const wrap = elDoc.createElement('div')
-            wrap.setAttribute('data-snapdom-internal', '')
-            wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
-            // Shadow DOM: keeps baseCSS's global tag rules from restyling the live page
-            // while this mount is attached (#474) — same isolation as reconcileCloneLayout.
-            const mShadow = wrap.attachShadow({ mode: 'open' })
-            const styleNode = elDoc.createElement('style')
-            styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
-            mShadow.appendChild(styleNode)
-            mShadow.appendChild(state.clone.cloneNode(true))
-            elDoc.body.appendChild(wrap)
-            const csh = wrap.scrollHeight
-            const csw = wrap.scrollWidth
-            elDoc.body.removeChild(wrap)
-            cache.measureHints.set(state.element, { cssLen, w0, csh, csw })
-            if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
-            if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
-          }
-        } catch { /* fallback: use doc dimensions above */ }
-      }
-      // === NEW: recompute height using the kept-children span (no offscreen) ===
-      if (state.options?.excludeMode === 'remove' || state.options?.filterMode === 'remove') {
-        const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
-        // Safety: nunca mayor al original, y con un epsilon para evitar recortes por redondeo
-        const EPS = 1 // px
-        if (Number.isFinite(hEst) && hEst > 0) {
-          h0 = Math.max(1, Math.min(h0, limitDecimals(hEst + EPS)))
-        }
-        // En ancho casi nunca conviene ajustar; si lo necesitás, podés hacer análogo con estimateKeptWidth(...)
-      }
-      // Opt-in layout reconciliation: measure the styled clone in-document and pin only the
-      // boxes whose size diverges from the live tree (measurement over heuristics).
-      if (state.options?.reconcile) {
-        try {
-          // No fontsCSS here (#474): every embedded face came from this document, so family
-          // names already resolve to loaded faces. Re-declaring them as data: URLs makes the
-          // fresh (still-loading) faces shadow the loaded ones and both the live tree and the
-          // measured clone briefly re-layout with fallback metrics — poisoning every rect.
-          const cssAll = (state.scrollbarCSS || '') + state.baseCSS +
-            'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
-          reconcileCloneLayout(state.element, state.clone, cssAll, state.nodeMap, w0, h0)
-        } catch (e) {
-          console.warn('[snapdom] reconcile pass failed:', e)
-        }
-      }
-
-      const coerceNum = (v, def = NaN) => {
-        const n = typeof v === 'string' ? parseFloat(v) : v
-        return Number.isFinite(n) ? n : def
-      }
-
-      const optW = coerceNum(state.options.width)
-      const optH = coerceNum(state.options.height)
-      // Output basis: the element box, or the clip window in clip mode (width/height
-      // options and the default output size scale against what will be shown).
-      const baseW = clipWindow ? limitDecimals(clipWindow.width) : w0
-      const baseH = clipWindow ? limitDecimals(clipWindow.height) : h0
-      let w = baseW, h = baseH
-
-      const hasW = Number.isFinite(optW)
-      const hasH = Number.isFinite(optH)
-      const aspect0 = baseH > 0 ? baseW / baseH : 1
-
-      if (hasW && hasH) {
-        w = Math.max(1, limitDecimals(optW))
-        h = Math.max(1, limitDecimals(optH))
-      } else if (hasW) {
-        w = Math.max(1, limitDecimals(optW))
-        h = Math.max(1, limitDecimals(w / (aspect0 || 1)))
-      } else if (hasH) {
-        h = Math.max(1, limitDecimals(optH))
-        w = Math.max(1, limitDecimals(h * (aspect0 || 1)))
-      }
-
-      // ——— BBOX ———
-      let minX = 0, minY = 0, maxX = w0, maxY = h0
-
-      if (clipWindow) {
-        // clipWindow is already element-local (frozen at cull time). When the root carries
-        // a bbox-affecting transform, its gBCR (used to derive the window) includes the
-        // transform's bbox offset while the clone re-applies the residual linear part —
-        // shift the window origin by that residual bbox so it isn't applied twice.
-        let offX = 0, offY = 0
-        if (hasTFBBox(state.element)) {
-          let M0 = null
-          if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
-            M0 = { a: rootTransform2D.a, b: rootTransform2D.b || 0, c: rootTransform2D.c || 0, d: rootTransform2D.d || 1, e: 0, f: 0 }
-          } else {
-            const indR = readIndividualTransforms(state.element)
-            const MR = composeResidual2D(csEl.transform && csEl.transform !== 'none' ? csEl.transform : '', indR)
-            if (MR && MR.is2D) M0 = { a: MR.a, b: MR.b, c: MR.c, d: MR.d, e: 0, f: 0 }
-          }
-          if (M0 && !(M0.a === 1 && M0.b === 0 && M0.c === 0 && M0.d === 1)) {
-            const { ox: cox, oy: coy } = parseTransformOriginPx(csEl, w0, h0)
-            const bbR = bboxWithOriginFull(w0, h0, M0, cox, coy)
-            offX = bbR.minX
-            offY = bbR.minY
-          }
-        }
-        minX = limitDecimals(clipWindow.x + offX)
-        minY = limitDecimals(clipWindow.y + offY)
-        maxX = limitDecimals(minX + clipWindow.width)
-        maxY = limitDecimals(minY + clipWindow.height)
-      } else if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
-        const M2 = {
-          a: rootTransform2D.a,
-          b: rootTransform2D.b || 0,
-          c: rootTransform2D.c || 0,
-          d: rootTransform2D.d || 1,
-          e: 0,
-          f: 0
-        }
-        const bb2 = bboxWithOriginFull(w0, h0, M2, 0, 0)
-        minX = limitDecimals(bb2.minX)
-        minY = limitDecimals(bb2.minY)
-        maxX = limitDecimals(bb2.maxX)
-        maxY = limitDecimals(bb2.maxY)
-      } else {
-        const useTFBBox = outerTransforms && hasTFBBox(state.element)
-        if (useTFBBox) {
-          const baseTransform2 = csEl.transform && csEl.transform !== 'none' ? csEl.transform : ''
-          const ind2 = readIndividualTransforms(state.element)
-          const TOTAL = readTotalTransformMatrix({
-            baseTransform: baseTransform2,
-            rotate: ind2.rotate || '0deg',
-            scale: ind2.scale,
-            translate: ind2.translate
-          })
-          const { ox: ox2, oy: oy2 } = parseTransformOriginPx(csEl, w0, h0)
-          const M = TOTAL.is2D ? TOTAL : new DOMMatrix(TOTAL.toString())
-          // prepareClone always strips the root's translation (stripTranslate), so the bbox
-          // must be computed WITHOUT it — otherwise the foreignObject compensates a shift the
-          // clone no longer has and the content renders offset/cut (e.g. the fixed-centering
-          // left:50% + translateX(-50%) pattern captured on its own).
-          const M0 = { a: M.a, b: M.b, c: M.c, d: M.d, e: 0, f: 0 }
-          const bb = bboxWithOriginFull(w0, h0, M0, ox2, oy2)
-          minX = limitDecimals(bb.minX)
-          minY = limitDecimals(bb.minY)
-          maxX = limitDecimals(bb.maxX)
-          maxY = limitDecimals(bb.maxY)
-        }
-      }
-
-      // ——— BLEED ———
-      const bleedShadow = parseBoxShadow(csEl)
-      const bleedText = parseTextShadow(csEl)
-      const bleedBlur = parseFilterBlur(csEl)
-      const bleedOutline = parseOutline(csEl)
-      const drop = parseFilterDropShadows(csEl)
-
-      // A region capture defines its own exact edges — never expand it for root bleed.
-      // blur() is not an outer-shadow effect: the root keeps it, so its bleed is
-      // always included; shadows/outline/drop-shadow only under outerShadows.
-      const bleed = clipWindow
-        ? { top: 0, right: 0, bottom: 0, left: 0 }
-        : outerShadows
-          ? {
-            top: limitDecimals(Math.max(bleedShadow.top, bleedText.top) + bleedBlur.top + bleedOutline.top + drop.bleed.top),
-            right: limitDecimals(Math.max(bleedShadow.right, bleedText.right) + bleedBlur.right + bleedOutline.right + drop.bleed.right),
-            bottom: limitDecimals(Math.max(bleedShadow.bottom, bleedText.bottom) + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
-            left: limitDecimals(Math.max(bleedShadow.left, bleedText.left) + bleedBlur.left + bleedOutline.left + drop.bleed.left)
-          }
-          : { top: bleedBlur.top, right: bleedBlur.right, bottom: bleedBlur.bottom, left: bleedBlur.left }
-
-      minX = limitDecimals(minX - bleed.left)
-      minY = limitDecimals(minY - bleed.top)
-      maxX = limitDecimals(maxX + bleed.right)
-      maxY = limitDecimals(maxY + bleed.bottom)
-
-      const vbW0 = Math.max(1, limitDecimals(maxX - minX))
-      const vbH0 = Math.max(1, limitDecimals(maxY - minY))
-      const scaleW = (hasW || hasH) ? limitDecimals(w / baseW) : 1
-      const scaleH = (hasH || hasW) ? limitDecimals(h / baseH) : 1
-      const outW = Math.max(1, limitDecimals(vbW0 * scaleW))
-      const outH = Math.max(1, limitDecimals(vbH0 * scaleH))
-
-      const svgNS = 'http://www.w3.org/2000/svg'
-      // A transformed root's bbox is fractional, so its far edges land flush against the
-      // raster boundary and browsers shave the last 1-2px at some zoom/display scales
-      // (Safari always did; Chrome at zoom ≠ 100%). Pad the viewBox so rotated corners
-      // never touch the edge. Was Safari-only; the shaving is not.
-      const basePad = hasTFBBox(state.element) ? 2 : 0
-      const extraPad = !outerTransforms ? 1 : 0
-      const pad = limitDecimals(basePad + extraPad)
-
-      // Ceil so a fractional content extent (rotated bbox, fractional bleed) is never
-      // truncated when the svg size is rasterized to whole pixels (bottom/right edge loss).
-      const vbW = Math.ceil(vbW0 + pad * 2)
-      const vbH = Math.ceil(vbH0 + pad * 2)
-
-      // Stable Chrome doesn't paint foreignObject overflow when rasterizing svg-as-image
-      // (headless chromium does — don't trust it): the fo must cover the whole viewBox and
-      // the bbox offset must move the CONTENT. The offset can't be fo x/y (leaves the
-      // top/left band as unpainted overflow) nor position/margin/transform on the fo's
-      // root element (Chrome double-paints those at browser zoom ≠ 100%) — padding on the
-      // container is the one mechanism that survives both.
-      // Negative offsets (clip window right/below the element origin) can't be padding —
-      // there fo x/y is safe: the band it leaves unpainted is exactly the culled region.
-      const offX = limitDecimals(-(limitDecimals(minX) - pad))
-      const offY = limitDecimals(-(limitDecimals(minY) - pad))
-      const padL = Math.max(0, offX)
-      const padT = Math.max(0, offY)
-      const foW = limitDecimals(vbW - Math.min(0, offX))
-      const foH = limitDecimals(vbH - Math.min(0, offY))
-      const fo = document.createElementNS(svgNS, 'foreignObject')
-      fo.setAttribute('x', String(Math.min(0, offX)))
-      fo.setAttribute('y', String(Math.min(0, offY)))
-      fo.setAttribute('width', String(foW))
-      fo.setAttribute('height', String(foH))
-      fo.style.overflow = 'visible'
-
-      const styleTag = document.createElement('style')
-      // #349/#351: handled per-element in inlineAllStyles (#406) instead of blanket foreignObject rules
-      // #327: disable WebKit text autosizer inside the foreignObject. iOS WebKit re-applies
-      // text-size-adjust during drawImage, inflating font-size while inlined container heights
-      // stay fixed → text crowding. Rule form (not inline) because WebKit expands `all:initial`
-      // on the container last and clobbers inline overrides. 100% (not `none`) preserves zoom.
-      const foNormalize =
-        'svg{overflow:visible;} foreignObject{overflow:visible;} ' +
-        'foreignObject>div{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;}'
-      styleTag.textContent =
-        (state.scrollbarCSS || '') + state.baseCSS + state.fontsCSS + foNormalize + state.classCSS
-      fo.appendChild(styleTag)
-
-      const container = document.createElement('div')
-      container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-      // #372: isolate wrapper from iframe CSS cascade (e.g. div { border: 10px solid red })
-      // The container spans the whole fo, so the (rotated/bled) content never overflows
-      // its border-box — standalone-SVG Chromium clips fo content at the container box.
-      container.style.cssText =
-        'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
-        `width:${foW}px;height:${foH}px` +
-        // !important: Chromium 140 serializes the `all:initial` expansion with
-        // `padding-inline: initial` AFTER this shorthand, so on data-URL re-parse it
-        // would reset the left/right padding (rotated-root offset) unless it loses
-        // the cascade to importance.
-        ((padL !== 0 || padT !== 0) ? `;padding:${padT}px 0 0 ${padL}px !important` : '')
-
-      //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-      container.appendChild(state.clone)
-      fo.appendChild(container)
-
-      const serializer = new XMLSerializer()
-      const foString = serializer.serializeToString(fo)
-      const wantsSize = hasW || hasH
-
-      // Public export geometry. `contentX/contentY` are the exact viewBox-space
-      // origin of the logical capture box; unlike `(vbW - w0) / 2`, they remain
-      // correct for asymmetric shadows, transformed roots and clip windows.
-      const captureMeta = Object.freeze({
-        w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h,
-        contentX: limitDecimals(offX + (clipWindow ? minX : 0)),
-        contentY: limitDecimals(offY + (clipWindow ? minY : 0)),
-        clip: clipWindow
-          ? Object.freeze({
-            x: limitDecimals(minX), y: limitDecimals(minY),
-            width: baseW, height: baseH,
-          })
-          : null,
+  const renderedClone = state.clone
+  numberCompressedAssets(renderedClone, options.__compressedAssets)
+  const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS })
+  options.__compressedSnapshot = snapshotCompressedAssets(renderedClone, options.__compressedAssets)
+  // Hand this capture's artifacts to whoever wants to retain them (burst's differential
+  // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty
+  // subtrees). Internal-only; absent for plain captures.
+  if (typeof options.__retain === 'function') {
+    try {
+      options.__retain({
+        clone, nodeMap, styleCache, styleMap: options.__session.styleMap,
+        classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
+        __compressedAssets: options.__compressedAssets,
+        __compressionDensity: options.__compressionDensity,
       })
-      // The context object continues through afterRender and every later export.
-      // Pin the binding as well as freezing the value so a hook cannot silently
-      // desynchronise the canonical SVG from the geometry result consumers see.
-      // Stays configurable on purpose: `options` is caller-owned (toPng/toJpg/toWebp
-      // hand their raw opts straight to captureDOM), so a reused bag must be able to
-      // take a second capture's geometry. Non-configurable would make that a
-      // "Cannot redefine property" TypeError instead. Strict mode still rejects
-      // plain assignment, which is the write this guards against.
-      Object.defineProperty(options, 'meta', {
-        value: captureMeta, enumerable: true, writable: false, configurable: true,
-      })
-
-      const svgOutW = (!wantsSize || isSafari())
-        ? vbW
-        : limitDecimals(outW + pad * 2)
-      const svgOutH = (!wantsSize || isSafari())
-        ? vbH
-        : limitDecimals(outH + pad * 2)
-
-      const rootFontSize = parseFloat(getStyle(elDoc.documentElement)?.fontSize) || 16
-      const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">`
-      const svgFooter = '</svg>'
-      svgString = svgHeader + foString + svgFooter
-      dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
-      state = { svgString, dataURL, ...state }
-      resolve()
-    }, { fast })
-  })
-  // afterRender(context)
-  await runHook('afterRender', state)
-
-  const sandbox = document.getElementById('snapdom-sandbox')
-  if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()
-  return state.dataURL
-}
-
-function hasTFBBox(el) {
-  return hasBBoxAffectingTransform(el)
+    } catch { /* retention is best-effort */ }
+  }
+  return url
 }

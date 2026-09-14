@@ -33,7 +33,7 @@ afterEach(() => {
 
 //
 // ──────────────────────────────────────────────────────────────────────────────
-// Edge cases (los que ya tenías, sin cambios)
+// Edge cases
 // ──────────────────────────────────────────────────────────────────────────────
 //
 describe('captureDOM edge cases', () => {
@@ -54,7 +54,7 @@ describe('captureDOM edge cases', () => {
       .mockImplementation(() => { throw new Error('fail') })
 
     const el = document.createElement('div')
-    await expect(captureDOM(el, { fast: true })).rejects.toThrow(/fail/)
+    await expect(captureDOM(el, {})).rejects.toThrow(/fail/)
   })
 })
 
@@ -73,7 +73,7 @@ describe('captureDOM functional', () => {
 
     const el = document.createElement('div')
     el.textContent = 'test'
-    const url = await captureDOM(el, { fast: true, embedFonts: false })
+    const url = await captureDOM(el, { embedFonts: false })
     expect(url.startsWith('data:image/svg+xml')).toBe(true)
 
     const svg = decodeSvg(url)
@@ -81,48 +81,10 @@ describe('captureDOM functional', () => {
     expect(svg).toMatch(/foreignObject\{overflow:visible;?\}/)
   })
 
-  it('supports scale and width/height options (wrapper sizing behavior)', async () => {
-    const { captureDOM } = await import('../src/core/capture.js')
+  // The combined scale+width+height test that lived here asserted the same facts as the
+  // per-branch 'width/height/scale branches (precise)' describe below, with less precision —
+  // deleted as a duplicate (v3 test-suite review).
 
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
-      rect(10, 20, 100, 50) // aspect = 2
-    )
-
-    const el = document.createElement('div')
-
-    // scale → mantiene tamaño natural en <svg>, usa viewBox y no agrega transform: scale(...)
-    const svg1 = decodeSvg(await captureDOM(el, { fast: true, scale: 2, embedFonts: false }))
-    expect(svg1).toContain('width="100"')
-    expect(svg1).toContain('height="50"')
-    expect(svg1).toContain('viewBox="0 0 100 50"')
-    expect(svg1).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
-    expect(svg1).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
-    expect(/transform:[^"]*scale\(/.test(svg1)).toBe(false)
-
-    // width only → el <svg> adopta 200x100; el wrapper interno permanece 100x50 (natural)
-    const svg2 = decodeSvg(await captureDOM(el, { fast: true, width: 200, embedFonts: false }))
-    expect(svg2).toContain(sizedW(200, 100))
-    expect(svg2).toContain(sizedH(100, 50))
-    expect(svg2).toContain('viewBox="0 0 100 50"')
-    expect(svg2).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
-    expect(svg2).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
-
-    // height only → el <svg> adopta 200x100; el wrapper permanece 100x50 (natural)
-    const svg3 = decodeSvg(await captureDOM(el, { fast: true, height: 100, embedFonts: false }))
-    expect(svg3).toContain(sizedW(200, 100))
-    expect(svg3).toContain(sizedH(100, 50))
-    expect(svg3).toContain('viewBox="0 0 100 50"')
-    expect(svg3).toMatch(/<div[^>]*style="[^"]*width:\s*100px/)
-    expect(svg3).toMatch(/<div[^>]*style="[^"]*height:\s*50px/)
-  })
-
-  it('supports fast=false (idle scheduling path)', async () => {
-    const { captureDOM } = await import('../src/core/capture.js')
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 10, 10))
-    const el = document.createElement('div')
-    const url = await captureDOM(el, { fast: false, embedFonts: false })
-    expect(url.startsWith('data:image/svg+xml')).toBe(true)
-  })
 })
 
 //
@@ -138,8 +100,8 @@ describe('captureDOM – baseCSS presence (no ESM spies)', () => {
     const el1 = document.createElement('div')
     const el2 = document.createElement('div')
 
-    const s1 = decodeSvg(await captureDOM(el1, { fast: true, embedFonts: false }))
-    const s2 = decodeSvg(await captureDOM(el2, { fast: true, embedFonts: false }))
+    const s1 = decodeSvg(await captureDOM(el1, { embedFonts: false }))
+    const s2 = decodeSvg(await captureDOM(el2, { embedFonts: false }))
 
     expect(s1).toMatch(/svg\{overflow:visible;?\}/)
     expect(s1).toMatch(/foreignObject\{overflow:visible;?\}/)
@@ -150,7 +112,7 @@ describe('captureDOM – baseCSS presence (no ESM spies)', () => {
 
 //
 // ──────────────────────────────────────────────────────────────────────────────
-// Width/Height/Scale branches (precise, alineado a tu implementación actual)
+// Width/Height/Scale branches (precise, matching the current implementation)
 // ──────────────────────────────────────────────────────────────────────────────
 //
 describe('captureDOM – width/height/scale branches (precise)', () => {
@@ -158,7 +120,7 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     const { captureDOM } = await import('../src/core/capture.js')
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50))
     const el = document.createElement('div')
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
     expect(svg).toContain('width="100"')
     expect(svg).toContain('height="50"')
   })
@@ -167,7 +129,7 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     const { captureDOM } = await import('../src/core/capture.js')
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50))
     const el = document.createElement('div')
-    const svg = decodeSvg(await captureDOM(el, { fast: true, width: 200, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { width: 200, embedFonts: false }))
     expect(svg).toContain(sizedW(200, 100))
     expect(svg).toContain(sizedH(100, 50))
     expect(svg).toContain('viewBox="0 0 100 50"')
@@ -179,7 +141,7 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     const { captureDOM } = await import('../src/core/capture.js')
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50))
     const el = document.createElement('div')
-    const svg = decodeSvg(await captureDOM(el, { fast: true, height: 100, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { height: 100, embedFonts: false }))
     expect(svg).toContain(sizedW(200, 100))
     expect(svg).toContain(sizedH(100, 50))
     expect(svg).toContain('viewBox="0 0 100 50"')
@@ -191,7 +153,7 @@ describe('captureDOM – width/height/scale branches (precise)', () => {
     const { captureDOM } = await import('../src/core/capture.js')
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 50))
     const el = document.createElement('div')
-    const svg = decodeSvg(await captureDOM(el, { fast: true, scale: 2, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { scale: 2, embedFonts: false }))
     expect(svg).toContain('width="100"')
     expect(svg).toContain('height="50"')
     expect(svg).toContain('viewBox="0 0 100 50"')
@@ -209,9 +171,9 @@ describe('captureDOM – viewport path sanity', () => {
     const { captureDOM } = await import('../src/core/capture.js')
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(5, 7, 80, 30))
     const el = document.createElement('div')
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // No imponemos un cálculo exacto; validamos la presencia de x="" y y="" numéricos.
+    // No exact arithmetic is required; only that numeric x="" and y="" are present.
     expect(svg).toMatch(/<foreignObject[^>]*\sx="[-\d]+"/)
     expect(svg).toMatch(/<foreignObject[^>]*\sy="[-\d]+"/)
   })
@@ -236,7 +198,7 @@ describe('captureDOM – #348 CSS vars fidelity', () => {
 
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 80, 20))
 
-    const url = await captureDOM(el, { fast: true, embedFonts: false })
+    const url = await captureDOM(el, { embedFonts: false })
     document.body.removeChild(wrap)
 
     const svg = decodeSvg(url)
@@ -267,7 +229,7 @@ describe('captureDOM – #372 iframe CSS isolation', () => {
 
     const doc = iframe.contentDocument
     const root = doc.documentElement
-    const url = await captureDOM(root, { fast: true, embedFonts: false })
+    const url = await captureDOM(root, { embedFonts: false })
     document.body.removeChild(iframe)
 
     const svg = decodeSvg(url)
@@ -302,7 +264,7 @@ describe('captureDOM – #362 canvas Tailwind border', () => {
       new DOMRect(0, 0, 80, 40)
     )
 
-    const url = await captureDOM(wrap, { fast: true, embedFonts: false })
+    const url = await captureDOM(wrap, { embedFonts: false })
     document.body.removeChild(wrap)
 
     const svg = decodeSvg(url)
@@ -324,9 +286,9 @@ describe('captureDOM – transform handling (lenient heuristic)', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(0, 0, 120, 60))
 
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // 1) SVG válido
+    // 1) Valid SVG
     expect(svg.startsWith('<svg')).toBe(true)
 
     // 2) El wrapper suele incluir transform-origin aunque no tenga shorthand transform
@@ -354,9 +316,9 @@ describe('captureDOM – baseTransform & individual props on clone (lenient)', (
 
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 100, 100))
 
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // Aceptamos presencia inline o, si la implementación normaliza, resets en CSS base.
+    // Accept it inline, or as base-CSS resets when the implementation normalizes.
     const hasInlineAny = /style="[^"]*(?:rotate|scale|translate):/.test(svg)
     const hasBaseResets = /\b(rotate|scale|translate):\s*none\b/.test(svg)
     expect(hasInlineAny || hasBaseResets).toBe(true)
@@ -382,10 +344,10 @@ describe('captureDOM – embedFonts=true (no spies, effect-only)', () => {
     const el = document.createElement('div')
     el.textContent = 'Hello'
 
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: true }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: true }))
 
     // No afirmamos siempre la presencia de CSS de fuentes (depende de IO/hints),
-    // pero sí que sea SVG válido.
+    // but it must be a valid SVG.
     expect(svg.startsWith('<svg')).toBe(true)
   })
 })
@@ -395,20 +357,40 @@ describe('captureDOM – embedFonts=true (no spies, effect-only)', () => {
 // Sandbox cleanup
 // ──────────────────────────────────────────────────────────────────────────────
 //
-describe('captureDOM – removes #snapdom-sandbox when absolute', () => {
-  it('cleans up the offscreen sandbox', async () => {
-    const sandbox = document.createElement('div')
-    sandbox.id = 'snapdom-sandbox'
-    sandbox.style.position = 'absolute'
-    document.body.appendChild(sandbox)
+describe('captureDOM – sandbox ownership', () => {
+  it('neither reuses nor removes an author sandbox lookalike', async () => {
+    const authored = document.createElement('div')
+    authored.id = 'snapdom-sandbox'
+    authored.setAttribute('data-snapdom-sandbox', 'true')
+    authored.style.position = 'absolute'
+    const sentinel = document.createElement('span')
+    sentinel.textContent = 'author content'
+    authored.appendChild(sentinel)
+    document.body.appendChild(authored)
 
-    const { captureDOM } = await import('../src/core/capture.js')
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 10, 10))
+    try {
+      const { captureDOM } = await import('../src/core/capture.js')
+      const { getDefaultStyleForTag } = await import('../src/utils/css.js')
+      const { isInternalNode } = await import('../src/utils/ownership.js')
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 10, 10))
 
-    const el = document.createElement('div')
-    const url = await captureDOM(el, { fast: true })
-    expect(url.startsWith('data:image/svg+xml')).toBe(true)
-    expect(document.getElementById('snapdom-sandbox')).toBeNull()
+      // Force creation of the real measurement host while the author id already exists.
+      getDefaultStyleForTag('snapdom-ownership-probe')
+      const own = [...document.querySelectorAll('#snapdom-sandbox')].find(n => n !== authored)
+      expect(own).toBeTruthy()
+      expect(isInternalNode(authored)).toBe(false)
+      expect(isInternalNode(own)).toBe(true)
+      expect(authored.firstChild).toBe(sentinel)
+
+      const el = document.createElement('div')
+      const url = await captureDOM(el, {})
+      expect(url.startsWith('data:image/svg+xml')).toBe(true)
+      expect(authored.isConnected).toBe(true)
+      expect(sentinel.isConnected).toBe(true)
+      expect(own.isConnected).toBe(false)
+    } finally {
+      authored.remove()
+    }
   })
 })
 
@@ -427,24 +409,23 @@ describe('captureDOM – width & height together apply size (scale or wrapper si
 
     // Ask for 150x120
     const svg = decodeSvg(await captureDOM(el, {
-      fast: true,
-      width: 150,
+            width: 150,
       height: 120,
       embedFonts: false,
     }))
 
-    // SVG header adopta el tamaño pedido (Safari mantiene el natural y escala al exportar)
+    // The SVG header adopts the requested size (Safari keeps the natural one and scales on export)
     expect(svg).toContain(sizedW(150, 100))
     expect(svg).toContain(sizedH(120, 50))
 
-    // Implementación puede elegir:
+    // The implementation may choose:
     // A) non-uniform scale en container
     const hasScale = /transform:[^"]*scale\(\s*1\.5[0-9]*\s*,\s*2\.4[0-9]*\s*\)/.test(svg)
     // B) explicit wrapper sizing via style width/height
     const hasWrapperSize =
       /<div[^>]*style="[^"]*width:\s*150px[^"]*height:\s*120px/.test(svg) ||
       /<div[^>]*style="[^"]*height:\s*120px[^"]*width:\s*150px/.test(svg)
-    // C) solo viewBox natural con wrapper natural (lo que estás emitiendo)
+    // C) natural viewBox with a natural wrapper (what is emitted today)
     const usesViewBoxOnly =
       svg.includes('viewBox="0 0 100 50"') &&
       /<div[^>]*style="[^"]*width:\s*100px/.test(svg) &&
@@ -466,14 +447,14 @@ describe('captureDOM – fractional viewport sizes and tx/ty computation', () =>
       .mockReturnValue(new DOMRect(10.3, 20.6, 100.4, 50.6))
 
     const el = document.createElement('div')
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
     // Algunas implementaciones conservan fracciones; otras hacen ceil.
     // Aceptamos '100.4' o '101' y '50.6' o '51'.
     expect(/width="(100\.4|101)"/.test(svg)).toBe(true)
     expect(/height="(50\.6|51)"/.test(svg)).toBe(true)
 
-    // x/y del foreignObject: solo exigimos que existan y sean numéricos (con o sin signo/decimales)
+    // foreignObject x/y: only required to exist and be numeric (sign/decimals allowed)
     expect(/<foreignObject[^>]*\sx="[-\d.]+"/.test(svg)).toBe(true)
     expect(/<foreignObject[^>]*\sy="[-\d.]+"/.test(svg)).toBe(true)
   })
@@ -482,7 +463,9 @@ describe('captureDOM – fractional viewport sizes and tx/ty computation', () =>
 // ──────────────────────────────────────────────────────────────────────────────
 // Cache policy path (no internal assert, but forces applyCachePolicy branch)
 // ──────────────────────────────────────────────────────────────────────────────
-describe('captureDOM – honors cache policy "none"', () => {
+describe('captureDOM – unknown cache strings normalize to soft', () => {
+  // 'none' is not a v3 policy: normalizeCachePolicy maps everything but false/'disabled' to
+  // 'soft', silently. What this pins is exactly that — an unknown string still captures fine.
   it('works with cache: "none" and still returns a valid SVG data URL', async () => {
     const { captureDOM } = await import('../src/core/capture.js')
 
@@ -490,7 +473,7 @@ describe('captureDOM – honors cache policy "none"', () => {
       .mockReturnValue(new DOMRect(0, 0, 64, 32))
 
     const el = document.createElement('div')
-    const url = await captureDOM(el, { fast: true, cache: 'none', embedFonts: false })
+    const url = await captureDOM(el, { cache: 'none', embedFonts: false })
     expect(url.startsWith('data:image/svg+xml')).toBe(true)
 
     const svg = decodeSvg(url)
@@ -506,7 +489,7 @@ describe('captureDOM – Typed OM readIndividualTransforms', () => {
   it('reads rotate/scale/translate from computedStyleMap (Typed OM) and propagates to clone', async () => {
     const { captureDOM } = await import('../src/core/capture.js')
 
-    // BCR estándar
+    // Standard BCR
     vi.spyOn(Element.prototype, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(0, 0, 100, 50))
 
@@ -514,7 +497,7 @@ describe('captureDOM – Typed OM readIndividualTransforms', () => {
 
     // Stub Typed OM en el elemento
     el.computedStyleMap = () => ({
-      // rotate: ángulo en radianes → debe convertirse a deg
+      // rotate: an angle in radians must be converted to deg
       get(prop) {
         if (prop === 'rotate') {
           return { angle: { value: Math.PI / 2, unit: 'rad' } } // 90deg
@@ -530,7 +513,7 @@ describe('captureDOM – Typed OM readIndividualTransforms', () => {
       },
     })
 
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
     // Si el pipeline mapea Typed OM, veremos los valores inline…
     const gotInlineRot = /style="[^"]*rotate:\s*90deg/.test(svg)
@@ -551,11 +534,11 @@ describe('captureDOM – Typed OM readIndividualTransforms', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 // Strict path: ensure element is attached so computedStyle picks transforms
 // ──────────────────────────────────────────────────────────────────────────────
-describe('captureDOM – strict path uses measure host and matrix pipeline', () => {
-  it('creates snapdom-measure-slot once and reuses it; output includes transform work', async () => {
+describe('captureDOM – computed matrices avoid the measurement host', () => {
+  it('composes matrices without creating probe nodes; output includes transform work', async () => {
     const { captureDOM } = await import('../src/core/capture.js')
 
-    // Fuerza bbox-transform: matrix con rotación + translate (no es translate puro)
+    // Force the bbox-transform path: a matrix with rotation + translate (not a pure translate)
     const el = document.createElement('div')
     el.style.transform = 'matrix(0.9396926,0.3420201,-0.3420201,0.9396926,5,-7)'
 
@@ -565,17 +548,16 @@ describe('captureDOM – strict path uses measure host and matrix pipeline', () 
     vi.spyOn(Element.prototype, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(0, 0, 120, 60))
 
-    // 1ª captura: debería crear el host de medición
-    const svg1 = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
-    const host1 = document.getElementById('snapdom-measure-slot')
-    expect(host1).toBeTruthy()
+    const beforeCount = document.querySelectorAll('#snapdom-measure-slot').length
+    // Computed absolute matrices now take the direct path: no mounting or forced layout.
+    const svg1 = decodeSvg(await captureDOM(el, { embedFonts: false }))
+    expect(document.querySelectorAll('#snapdom-measure-slot').length).toBe(beforeCount)
 
-    // Debe haber algún transform aplicado en el container (cancel/scale/etc.)
+    // Some transform must be applied on the container (cancel/scale/etc.)
     expect(/style="[^"]*transform:[^"]+/.test(svg1)).toBe(true)
 
-    // 2ª captura: reutiliza el mismo host (no duplica nodos)
-    const beforeCount = document.querySelectorAll('#snapdom-measure-slot').length
-    const svg2 = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    // A repeated capture also introduces no measurement host.
+    const svg2 = decodeSvg(await captureDOM(el, { embedFonts: false }))
     const afterCount = document.querySelectorAll('#snapdom-measure-slot').length
     expect(afterCount).toBe(beforeCount)
 
@@ -602,17 +584,17 @@ describe('captureDOM – pure translate does not trigger strict path', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(10, 20, 100, 50))
 
-    const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+    const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
 
-    // Viewport path: el tamaño del <svg> refleja el rect (ceil), sin obligación de transform en container.
+    // Viewport path: the <svg> size mirrors the rect (ceil), with no container transform required.
     expect(svg).toContain('width="100"')
     expect(svg).toContain('height="50"')
 
     // Aceptamos que el container NO tenga transform o solo tenga transform-origin.
-    // Si por implementación hubiese un transform, igual no debería contener translate de "cancelación".
+    // If the implementation does emit a transform, it still must not contain a cancelling translate.
     const hasTransform = /style="[^"]*transform:[^"]+/.test(svg)
     if (hasTransform) {
-      // No esperaríamos un translate(...) de cancelación (estrict path) en este caso.
+      // No cancelling translate(...) is expected on this path.
       expect(/transform:[^"]*translate\(/.test(svg)).toBe(false)
     }
   })
@@ -625,7 +607,7 @@ describe('captureDOM – pure translate does not trigger strict path', () => {
     document.body.appendChild(el)
     try {
       const { captureDOM } = await import('../src/core/capture.js')
-      const svg = decodeSvg(await captureDOM(el, { fast: true, embedFonts: false }))
+      const svg = decodeSvg(await captureDOM(el, { embedFonts: false }))
       const fo = svg.match(/<foreignObject[^>]* x="(-?[\d.]+)"/)
       expect(fo).toBeTruthy()
       expect(Math.abs(parseFloat(fo[1]))).toBeLessThan(1)

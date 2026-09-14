@@ -44,13 +44,13 @@ function makeUsedCodepoints(text='A') {
 }
 
 /**
- * Mock seguro de document.fonts (FontFaceSet "mínimo pero compatible")
+ * Safe document.fonts mock (a minimal but compatible FontFaceSet)
  * @param {Array<{ family:string, status:string, weight?:string, style?:string, _snapdomSrc?:string }>} fontsArray
  */
 function setDocumentFonts(fontsArray = []) {
   const items = [...fontsArray]
 
-  // iterables y helpers típicos
+  // the usual iterables and helpers
   const iter = function* () { yield* items }
   const fakeSet = {
     // iterator por defecto
@@ -64,7 +64,7 @@ function setDocumentFonts(fontsArray = []) {
     delete(ff) { const i = items.indexOf(ff); if (i >= 0) items.splice(i, 1) },
     clear() { items.length = 0 },
     ready: Promise.resolve(),
-    // extra mínimo
+    // minimal extra
     size: items.length
   }
 
@@ -80,15 +80,14 @@ function setDocumentFonts(fontsArray = []) {
 let restoreFonts = () => {}
 
 beforeEach(() => {
-  // cache.reset() o resetCache() según exista
+  // cache.reset() or resetCache(), whichever exists
   if (typeof cache.reset === 'function') cache.reset()
   if (typeof cache.resetCache === 'function') cache.resetCache()
-  if (cache.font?.clear) cache.font.clear?.()
   if (cache.resource?.clear) cache.resource.clear?.()
 
   cleanFontEnvironment()
   vi.restoreAllMocks()
-  restoreFonts = setDocumentFonts([]) // mock vacío por defecto
+  restoreFonts = setDocumentFonts([]) // empty mock by default
 })
 
 afterEach(() => {
@@ -104,7 +103,7 @@ describe('iconToImage', () => {
     toDataURLSpy?.mockRestore?.()
   })
 
-  it('devuelve un data URL válido con dimensiones > 0', async () => {
+  it('returns a valid data URL with dimensions > 0', async () => {
     ctxSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => ({
       scale: vi.fn(),
       font: '',
@@ -329,5 +328,26 @@ describe('embedCustomFonts - single weight fallback', () => {
     expect(css).toMatch(/data:font\/woff2;base64,AA==/)
 
     document.head.removeChild(style)
+  })
+
+  // The emitted @font-face set is subsetted by unicode-range against the codepoints the
+  // capture uses, so the cache key must include them: a latin capture warmed the cache and
+  // a Cyrillic one was then served the latin-only faces. Asserted through embedCustomFonts
+  // directly so it does not depend on which fonts the test runner's OS happens to have.
+  it('the fonts cache key accounts for the codepoints actually used', async () => {
+    addStyleTag(`
+      @font-face { font-family: 'ZZSub'; src: url(data:font/woff2;base64,AA==); unicode-range: U+0000-00FF; }
+      @font-face { font-family: 'ZZSub'; src: url(data:font/woff2;base64,BB==); unicode-range: U+0400-04FF; }
+    `)
+    const required = makeRequired('ZZSub', '400', 'normal', 100)
+
+    const latin = await embedCustomFonts({ required, usedCodepoints: makeUsedCodepoints('Hello') })
+    const cyrillic = await embedCustomFonts({ required, usedCodepoints: makeUsedCodepoints('Привет') })
+
+    // Precondition: subsetting really happened for the latin call.
+    expect(latin).toMatch(/AA==/)
+    expect(latin).not.toMatch(/BB==/)
+    // The bug: this second call used to be served the first call's cached CSS.
+    expect(cyrillic).toMatch(/BB==/)
   })
 })

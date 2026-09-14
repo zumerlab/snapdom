@@ -14,9 +14,8 @@ vm.runInNewContext(
 
 assert.equal(sandbox.$, jquery, 'dist/snapdom.js overwrote window.$')
 assert.equal(typeof sandbox.snapdom, 'function', 'window.snapdom is not a function')
-assert.equal(typeof sandbox.preCache, 'function', 'window.preCache is not a function')
 assert.deepEqual(
   Object.getOwnPropertyNames(sandbox).filter((name) => !before.has(name)).sort(),
-  ['preCache', 'snapdom'],
+  ['snapdom'],
   'dist/snapdom.js leaked internal globals'
 )

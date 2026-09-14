@@ -1,14 +1,18 @@
-// src/modules/snapFetch.js
+/**
+ * The one fetch every asset pass goes through: images, backgrounds, fonts, SVG defs.
+ *
+ * It never throws. Every call resolves `{ ok, data, status, url, reason, ... }`, so a
+ * missing image is a placeholder, not a failed capture. Identical requests in flight share
+ * one promise, failures are remembered for `errorTTL` so a broken URL is not retried per
+ * node (the cache is capped at 50, sweeping expired entries first), and each request has
+ * a timeout of its own. A cross-origin URL goes through `useProxy` when one is set.
+ * Console noise is deduplicated per reason and origin, with a cap per page.
+ * Pinned by __tests__/module.snapFetch.test.js and module.snapFetch.errorCache.test.js.
+ * @module snapFetch
+ */
 import { safeEncodeURI } from '../utils/helpers.js'
 
 /**
- * snapFetch — unified fetch for SnapDOM
- * - Single inflight queue & error cache (with TTL)
- * - Timeout via AbortController
- * - Optional proxy handling ("...{url}" or "...?url=")
- * - Non-throwing: always resolves { ok, data|null, status, url, reason, ... }
- * - Thin, deduplicated logging: `[snapDOM]` warn/error with TTL + session cap
- *
  * @typedef {'text'|'blob'|'dataURL'} FetchAs
  *
  * @typedef {Object} SnapFetchOptions
@@ -35,6 +39,13 @@ import { safeEncodeURI } from '../utils/helpers.js'
 // Slim logger: dedup + TTL + session cap
 // ---------------------------------------------------------------------------
 
+/**
+ * A console logger that says each thing once. A key is silenced for `ttlMs` after it fires,
+ * and after `maxEntries` messages the logger goes quiet for the rest of the page: a gallery
+ * of 200 broken images gets a handful of lines, not 200.
+ * @param {string} [prefix='[snapDOM]']
+ * @param {{ttlMs?: number, maxEntries?: number}} [opts]
+ */
 function createSnapLogger(prefix = '[snapDOM]', { ttlMs = 5 * 60_000, maxEntries = 12 } = {}) {
   const seen = new Map()
   let emitted = 0
@@ -64,7 +75,22 @@ const snapLogger = createSnapLogger('[snapDOM]', { ttlMs: 3 * 60_000, maxEntries
 // ---------------------------------------------------------------------------
 
 const _inflight = new Map()
+
+// Errors are memoized per key with their own TTL, but an expired entry is only dropped when
+// that exact key is requested again, and a page that fails many distinct URLs never asks
+// twice. Bounded the same way as the logger above (TTL + cap): at the cap, expired entries
+// go first, and only if that frees nothing does the oldest live one go.
+const ERROR_CACHE_MAX = 50
 const _errorCache = new Map()
+
+function rememberError(key, result, ttlMs) {
+  if (_errorCache.size >= ERROR_CACHE_MAX) {
+    const now = Date.now()
+    for (const [k, v] of _errorCache) if (v.until <= now) _errorCache.delete(k)
+    while (_errorCache.size >= ERROR_CACHE_MAX) _errorCache.delete(_errorCache.keys().next().value)
+  }
+  _errorCache.set(key, { until: Date.now() + ttlMs, result })
+}
 
 // ---------------------------------------------------------------------------
 // Utilities
@@ -79,16 +105,15 @@ function isSpecialURL(url) {
 function isAlreadyProxied(url, useProxy) {
   try {
     const baseHref = (typeof location !== 'undefined' && location.href) ? location.href : 'http://localhost/'
-    const proxyBaseRaw = useProxy.includes('{url}') ? useProxy.split('{url}')[0] : useProxy
+    const proxyBaseRaw = useProxy.split(/\{url(?:Raw)?\}/)[0]
     const proxyBase = new URL(proxyBaseRaw || '.', baseHref)
     const u = new URL(url, baseHref)
 
     // Same origin as proxy → likely already proxied
     if (u.origin === proxyBase.origin) return true
 
-    // Common query keys used by proxies
-    const sp = u.searchParams
-    if (sp && (sp.has('url') || sp.has('target'))) return true
+    // Query parameter names alone do not identify this proxy: image CDNs commonly
+    // expose their own ?url= or ?target= endpoints, which still need CORS proxying.
   } catch {}
   return false
 }
@@ -119,11 +144,13 @@ function shouldProxy(url, useProxy) {
 function applyProxy(url, useProxy) {
   if (!useProxy) return url
 
-  // Template tokens
-  if (useProxy.includes('{url}')) {
+  // Template tokens. Replacer functions, not strings: a string replacement reads `$&` and
+  // `$'` out of the URL, and encodeURI leaves both characters alone.
+  // Pinned by `__tests__/module.snapFetch.requestIdentity.test.js`.
+  if (/\{url(?:Raw)?\}/.test(useProxy)) {
     return useProxy
-      .replace('{urlRaw}', safeEncodeURI(url))     // path-style (1.9.9 compatible)
-      .replace('{url}', encodeURIComponent(url))  // query-style
+      .replace('{urlRaw}', () => safeEncodeURI(url))     // path-style: proxies that take the URL as a path segment
+      .replace('{url}', () => encodeURIComponent(url))  // query-style
   }
 
   // Explicit query base
@@ -145,6 +172,7 @@ function applyProxy(url, useProxy) {
   return `${useProxy}${sep}url=${encodeURIComponent(url)}`
 }
 
+/** FileReader round-trip. Rejects with `read_failed`, which the caller reports as a network error. */
 function blobToDataURL(blob) {
   return new Promise((res, rej) => {
     const fr = new FileReader()
@@ -154,14 +182,30 @@ function blobToDataURL(blob) {
   })
 }
 
+/** Requests carrying custom headers bypass shared caches: headers can contain credentials
+ *  and must neither cross request boundaries nor survive in a global cache key. Credential
+ *  mode participates for ordinary requests, so an anonymous failure cannot suppress an
+ *  authenticated retry. JSON keeps URL/proxy delimiters unambiguous. */
 function makeKey(url, o) {
-  return [
+  if (!new Headers(o.headers || {}).keys().next().done) return null
+  return JSON.stringify([
     o.as || 'blob',
     o.timeout ?? 3000,
     o.useProxy || '',
     o.errorTTL ?? 8000,
+    o.credentials || '',
     url
-  ].join('|')
+  ])
+}
+
+/** Logging malformed URLs must not turn a failed asset into a thrown capture error. */
+function originForLog(url) {
+  try { return new URL(url, globalThis.location?.href || 'http://localhost/').origin } catch { return 'invalid-url' }
+}
+
+/** An observational hook cannot change the request's non-throwing result contract. */
+function notifyError(options, result) {
+  try { options.onError?.(result) } catch { /* preserve the original failure */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +213,14 @@ function makeKey(url, o) {
 // ---------------------------------------------------------------------------
 
 /**
- * Unified, non-throwing fetch with minimal, deduplicated logging.
+ * Fetch a URL as text, Blob or data URL, and never throw.
+ *
+ * data:, blob: and about:blank are answered without the network, the caches or the proxy
+ * (about:blank as a data URL is a 1x1 transparent png). A blob: failure is not remembered,
+ * since a revoked object URL is usually transient. For http(s): a remembered failure comes
+ * back with `fromCache: true`, an identical request in flight is shared, credentials are
+ * `include` for same-origin and `omit` otherwise unless given. In dataURL mode the Blob
+ * rides on the result too, for compress's worker.
  * @param {string} url
  * @param {SnapFetchOptions} [options]
  * @returns {Promise<SnapFetchResult>}
@@ -182,7 +233,7 @@ export async function snapFetch(url, options = {}) {
   const headers = options.headers || {}
   const silent = !!options.silent
 
-  // --- Special schemes: handle explicitly so tests expect data: outputs ---
+  // --- Special schemes: no network, no caches, no proxy ---
 
   // data:
   if (/^data:/i.test(url)) {
@@ -223,7 +274,7 @@ export async function snapFetch(url, options = {}) {
       const mime = blob.type || resp.headers.get('content-type') || ''
       if (as === 'dataURL') {
         const dataURL = await blobToDataURL(blob)
-        return { ok: true, data: dataURL, status: resp.status, url, fromCache: false, mime }
+        return { ok: true, data: dataURL, blob, status: resp.status, url, fromCache: false, mime }
       }
       if (as === 'text') {
         const text = await blob.text()
@@ -253,7 +304,14 @@ export async function snapFetch(url, options = {}) {
 
   // ---- Normal http(s) path ----
 
-  const key = makeKey(url, { as, timeout, useProxy, errorTTL })
+  let key
+  try {
+    key = makeKey(url, { as, timeout, useProxy, errorTTL, credentials: options.credentials, headers })
+  } catch {
+    const result = { ok: false, data: null, status: 0, url, fromCache: false, reason: 'network' }
+    notifyError(options, result)
+    return result
+  }
 
   // Error cache
   const e = _errorCache.get(key)
@@ -267,7 +325,7 @@ export async function snapFetch(url, options = {}) {
   const inflight = _inflight.get(key)
   if (inflight) return inflight
 
-  // Final URL (with robust proxying) & credentials
+  // Final URL and credentials
   const finalURL = shouldProxy(url, useProxy) ? applyProxy(url, useProxy) : url
 
   let cred = options.credentials
@@ -292,15 +350,15 @@ export async function snapFetch(url, options = {}) {
 
       if (!resp.ok) {
         const result = { ok: false, data: null, status: resp.status, url: finalURL, fromCache: false, reason: 'http_error' }
-        if (errorTTL > 0) _errorCache.set(key, { until: Date.now() + errorTTL, result })
+        if (key !== null && errorTTL > 0) rememberError(key, result, errorTTL)
         if (!silent) {
           const short = `${resp.status} ${resp.statusText || ''}`.trim()
           snapLogger.warnOnce(
-            `http:${resp.status}:${as}:${(new URL(url, (location?.href ?? 'http://localhost/'))).origin}`,
+            `http:${resp.status}:${as}:${originForLog(url)}`,
             `HTTP error ${short} while fetching ${as} ${url}`
           )
         }
-        options.onError && options.onError(result)
+        notifyError(options, result)
         return result
       }
 
@@ -313,28 +371,35 @@ export async function snapFetch(url, options = {}) {
       const mime = blob.type || resp.headers.get('content-type') || ''
 
       if (as === 'dataURL') {
+        // The Blob rides along: compress hands it to its worker instead of a base64 string
+        // the worker would have to decode again (140 ms for 26 MB of gallery photos).
         const dataURL = await blobToDataURL(blob)
-        return { ok: true, data: dataURL, status: resp.status, url: finalURL, fromCache: false, mime }
+        return { ok: true, data: dataURL, blob, status: resp.status, url: finalURL, fromCache: false, mime }
       }
 
       // default 'blob'
       return { ok: true, data: blob, status: resp.status, url: finalURL, fromCache: false, mime }
 
     } catch (err) {
-      const reason =
-        (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError')
-          ? (String(err.message || '').includes('timeout') ? 'timeout' : 'abort')
-          : 'network'
+      // `ctrl.abort('timeout')` makes fetch reject with the abort REASON itself — the bare
+      // string 'timeout', not a DOMException — so the old `typeof err === 'object'` test never
+      // matched and every one of OUR OWN deadlines was reported as 'network'. That is not a
+      // cosmetic mislabel: it cached the failure as a network error, and told the user to set
+      // up a CORS proxy for a server that was simply slow. This controller is the only thing
+      // that aborts this request, so its signal is the authoritative answer.
+      const reason = ctrl.signal.aborted
+        ? (ctrl.signal.reason === 'timeout' ? 'timeout' : 'abort')
+        : (err && typeof err === 'object' && err.name === 'AbortError') ? 'abort' : 'network'
 
       const result = { ok: false, data: null, status: 0, url: finalURL, fromCache: false, reason }
 
       // Persist HTTP network failures; avoid memoizing non-HTTP (handled above)
-      if (!/^blob:/i.test(url) && errorTTL > 0) {
-        _errorCache.set(key, { until: Date.now() + errorTTL, result })
+      if (key !== null && !/^blob:/i.test(url) && errorTTL > 0) {
+        rememberError(key, result, errorTTL)
       }
 
       if (!silent) {
-        const k = `${reason}:${as}:${(new URL(url, (location?.href ?? 'http://localhost/'))).origin}`
+        const k = `${reason}:${as}:${originForLog(url)}`
         const tips = reason === 'timeout'
           ? `Timeout after ${timeout}ms. Consider increasing timeout or using a proxy for ${url}`
           : reason === 'abort'
@@ -343,7 +408,7 @@ export async function snapFetch(url, options = {}) {
         snapLogger.errorOnce(k, tips)
       }
 
-      options.onError && options.onError(result)
+      notifyError(options, result)
       return result
 
     } finally {
@@ -352,6 +417,6 @@ export async function snapFetch(url, options = {}) {
     }
   })()
 
-  _inflight.set(key, p)
+  if (key !== null) _inflight.set(key, p)
   return p
 }

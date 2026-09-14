@@ -1,5 +1,20 @@
 /**
- * Utilities for inlining ::before and ::after pseudo-elements.
+ * Pseudo-elements, materialized into the clone.
+ *
+ * The svg carries the class CSS snapdom generates, not the page's stylesheets, so an author's
+ * `::before` rule never reaches the foreignObject (a `<style>` inside the captured subtree is
+ * the exception: it is cloned, and its native pseudos are suppressed to avoid a double
+ * paint, #359). This pass reads each pseudo's computed style off the live element and builds
+ * it: `::before`, `::after` and `::first-letter` become a <span> with a style snapshot (icon
+ * glyphs drawn to <img>, `content: url()` fetched, counters resolved); `::marker` and
+ * `::first-line` become a scoped rule on `sessionCache.__pseudoCSS`, folded into the class
+ * prefix CSS by prepareClone, since a span can neither re-fragment a first line nor replace
+ * a native marker.
+ *
+ * Cost control, in order: a document-level preflight (does any sheet mention a pseudo at
+ * all), one subtree `querySelector` over the scan's selector gates (canSkipPseudoWalk), then
+ * per node one `matches()` before any getComputedStyle probe. Pinned by
+ * __tests__/module.pseudo.test.js and the module.pseudo.*.test.js siblings.
  * @module pseudo
  */
 
@@ -19,9 +34,11 @@ import { isIconFont } from '../modules/iconFonts.js'
 import {
   buildCounterContext,
   resolveCountersInContent,
-  hasCounters
+  hasCounters,
+  counterPairs
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
+import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, flushStyleInvalidations, invalidateStyleCaches } from './styles.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
@@ -31,17 +48,23 @@ const __preflightMemo = new WeakMap()
 const CSS_RULE_SCAN_BUDGET = 1000
 
 /**
- * Returns whether to process pseudos, but also memoizes the last fingerprint
- * seen in the provided sessionCache to avoid stale results between tests/runs.
+ * The document-level preflight, memoized on the session by style fingerprint so one capture
+ * asks it once. Without a session it still drains pending style records first.
  * @param {Document} doc
  * @param {Map|Object} sessionCache
  * @returns {boolean}
  */
 function preflightWithFp(doc, sessionCache) {
   const fp = styleFingerprint(doc)
-  if (!sessionCache) return shouldProcessPseudos(doc, fp)
+  if (!sessionCache) {
+    flushStyleInvalidations()
+    return shouldProcessPseudos(doc, fp)
+  }
   // Recompute when the fingerprint changes
   if (sessionCache.__pseudoPreflightFp !== fp) {
+    // Styles changed (or first visit this capture): drain pending observer records so the
+    // scanned universe/pseudo-gates can't be read against a stale epoch (same-tick <style>).
+    flushStyleInvalidations()
     sessionCache.__pseudoPreflight = shouldProcessPseudos(doc, fp)
     sessionCache.__pseudoPreflightFp = fp
   }
@@ -93,8 +116,13 @@ function styleFingerprint(doc) {
     }
   }
 
+  // Adopted sheets by rule count, not just by number: `replaceSync()` on a sheet already
+  // adopted changes no length and emits no mutation record, and the pass stayed memoized
+  // off. Constructed sheets are same-origin by definition, and a page has a handful.
   const ass = /** @type {any} */ (doc).adoptedStyleSheets
-  fp += `ass:${Array.isArray(ass) ? ass.length : 0}|tr:${totalRules}`
+  let assRules = 0
+  if (Array.isArray(ass)) for (const s of ass) { const r = safeRules(s); if (r) assRules += r.length }
+  fp += `ass:${Array.isArray(ass) ? ass.length : 0}/${assRules}|tr:${totalRules}`
 
   return fp
 }
@@ -119,6 +147,10 @@ function sheetHasNeedles(sheet, needles, state) {
     for (const k of needles) {
       if (css.includes(k)) return true
     }
+    // @import: the rule's own cssText is only the url, so the needles live one sheet down.
+    // Missing them skips the ENTIRE pseudo pass for any site that keeps its component CSS
+    // behind an import.
+    if (rule && rule.styleSheet && sheetHasNeedles(rule.styleSheet, needles, state)) return true
     // Nested group rules: @media, @supports, etc.
     // @ts-ignore - CSSGroupingRule may not exist in all envs
     if (rule && rule.cssRules && rule.cssRules.length) {
@@ -156,12 +188,22 @@ function sheetHasNeedles(sheet, needles, state) {
 export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc)) {
   const memo = __preflightMemo.get(doc)
   if (memo && memo.fingerprint === fp) return memo.result
+  // A `<style>`/`<link>` mount or edit already bumps the DOM epoch through its mutation
+  // record, so the styles.js memos (universe, gates) re-scan for those on their own. The one
+  // rule change that emits NO record is on adoptedStyleSheets (assignment or replaceSync), so
+  // ONLY when the adopted portion of the fingerprint moved is a manual epoch bump needed —
+  // and doing it for every fingerprint change bumped epochs mid-capture and cost three
+  // read-count/byte-equality tests their invariants.
+  const adopted = (s) => (s.match(/\|ass:[^|]*/) || [''])[0]
+  if (memo && adopted(fp) !== adopted(memo.fingerprint)) invalidateStyleCaches()
 
   const NEEDLES = [
-    // double-colon
-    '::before', '::after', '::first-letter',
+    // double-colon — ::marker/::first-line ship as scoped rules (emitScopedPseudoRule),
+    // and this preflight is what gates that code: omitting them made a page whose only
+    // author pseudo is a marker skip the pass entirely.
+    '::before', '::after', '::first-letter', '::marker', '::first-line',
     // single-colon robustness
-    ':before', ':after', ':first-letter',
+    ':before', ':after', ':first-letter', ':first-line',
     // counters
     'counter(', 'counters(', 'counter-increment', 'counter-reset'
   ]
@@ -278,21 +320,39 @@ function stripContentAltText(raw) {
   return raw
 }
 
+/** Decodes CSS string escapes: `\A` (a newline), `\2014` with its optional trailing space,
+ *  `\"`, `\\`, and a backslash-newline line continuation (which produces nothing). Without
+ *  this the escape sequences were carried through verbatim and PAINTED — a `content: "\201C"`
+ *  quotation mark rendered as the literal text `\201C`. */
+function unescapeCssString(str) {
+  return str.replace(/\\(?:([0-9a-fA-F]{1,6})[ \t\n]?|([\s\S]))/g, (_, hex, ch) => {
+    if (hex) {
+      const cp = parseInt(hex, 16)
+      return (cp === 0 || cp > 0x10FFFF) ? '\uFFFD' : String.fromCodePoint(cp)
+    }
+    return ch === '\n' ? '' : ch
+  })
+}
+
 /**
- * Concatena tokens de CSS `content` (cadenas y resultados de counter()/counters())
- * sin el whitespace que los separa en el source — el browser concatena tokens
- * adyacentes sin espacios, así que `counter(x) ")"` debe renderizar `1)` y no `1 )`.
+ * Join the tokens of a CSS `content` value (strings, and what counter()/counters() resolved
+ * to) without the whitespace that separates them in the source. The browser concatenates
+ * adjacent tokens with no gap, so `counter(x) ")"` must render `1)` and not `1 )` (#235).
  * @param {string} raw
+ * @returns {string}
  */
 function collapseCssContent(raw) {
   if (!raw) return ''
   const parts = []
-  const rx = /"([^"]*)"/g
+  // A string token runs to its matching unescaped quote. `[^"]*` ended the token at the
+  // first `\"`, so `content: "say \"hi\""` was split mid-string and the tail leaked out as
+  // an unquoted token. Both quote styles, since a stylesheet may use either.
+  const rx = /"((?:\\[\s\S]|[^"\\])*)"|'((?:\\[\s\S]|[^'\\])*)'/g
   let lastIndex = 0, m
   while ((m = rx.exec(raw))) {
     const between = raw.slice(lastIndex, m.index).trim()
     if (between) parts.push(between)
-    parts.push(m[1])
+    parts.push(unescapeCssString(m[1] !== undefined ? m[1] : m[2]))
     lastIndex = rx.lastIndex
   }
   const tail = raw.slice(lastIndex).trim()
@@ -301,7 +361,7 @@ function collapseCssContent(raw) {
 }
 
 /**
- * Crea un contexto base envuelto que aplica overrides de hermanos (si existen).
+ * Builds a wrapped base context that applies sibling overrides when there are any.
  * @param {Element} node
  * @param {{get:Function, getStack:Function}} base
  */
@@ -313,7 +373,7 @@ function withSiblingOverrides(node, base, siblingCounters) {
     get(n, name) {
       const v = base.get(n, name)
       const ov = map.get(name)
-      // usar el mayor (o el override si existe) para mantener secuencia
+      // take the larger one (or the override when present) to keep the sequence going
       return typeof ov === 'number' ? Math.max(v, ov) : v
     },
     getStack(n, name) {
@@ -331,8 +391,8 @@ function withSiblingOverrides(node, base, siblingCounters) {
 }
 
 /**
- * Aplica counter-reset / counter-increment del pseudo *solo para este nodo*,
- * partiendo de un contexto base (ya envuelto con overrides de hermanos).
+ * Applies the pseudo's counter-reset / counter-increment for THIS node only, starting
+ * from a base context (already wrapped with the sibling overrides).
  * @param {Element} node
  * @param {CSSStyleDeclaration|null} pseudoStyle
  * @param {{get:Function, getStack:Function}} baseCtx
@@ -340,35 +400,26 @@ function withSiblingOverrides(node, base, siblingCounters) {
 function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
   const modStacks = new Map()
 
-  function parseListDecl(value) {
-    const out = []
-    if (!value || value === 'none') return out
-    for (const part of String(value).split(',')) {
-      const toks = part.trim().split(/\s+/)
-      const name = toks[0]
-      const num = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : undefined
-      if (name) out.push({ name, num })
-    }
-    return out
-  }
-
-  const resets = parseListDecl(pseudoStyle?.counterReset)
-  const sets = parseListDecl(pseudoStyle?.counterSet)
-  const incs = parseListDecl(pseudoStyle?.counterIncrement)
+  // Elements and pseudos use the same whitespace-separated grammar. Keeping a second
+  // comma-based parser here silently discarded every counter after the first.
+  const pairs = (value, dflt) => counterPairs(value, dflt).map(([name, num]) => ({ name, num }))
+  const resets = pairs(pseudoStyle?.counterReset, 0)
+  const sets = pairs(pseudoStyle?.counterSet, 0)
+  const incs = pairs(pseudoStyle?.counterIncrement, 1)
 
   function getStackDerived(name) {
     if (modStacks.has(name)) return modStacks.get(name).slice()
     let stack = baseCtx.getStack(node, name)
     stack = stack.length ? stack.slice() : []
 
-    // reset: push si hay stack, replace si no
+    // reset: push when there is a stack, replace otherwise
     const r = resets.find(x => x.name === name)
     if (r) {
       const val = Number.isFinite(r.num) ? r.num : 0
       stack = stack.length ? [...stack, val] : [val]
     }
 
-    // counter-set: fija el valor del top sin crear scope (orden CSS: reset → set → increment)
+    // counter-set: sets the top value without creating a scope (CSS order: reset -> set -> increment)
     const s = sets.find(x => x.name === name)
     if (s) {
       const val = Number.isFinite(s.num) ? s.num : 0
@@ -376,7 +427,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
       stack[stack.length - 1] = val
     }
 
-    // increment: sobre el top, crear top=0 si no existe
+    // increment: on the top entry, creating top=0 when there is none
     const inc = incs.find(x => x.name === name)
     if (inc) {
       const by = Number.isFinite(inc.num) ? inc.num : 1
@@ -396,20 +447,103 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
     getStack(_node, name) {
       return getStackDerived(name)
     },
-    /** expone increments del pseudo para que el caller pueda propagar a hermanos */
+    /** The pseudo's own increments, so the caller can carry them to the next sibling. */
     __incs: incs
   }
 }
 
+/** Properties valid on the respective pseudo that the scoped-rule emitter diffs. */
+// -webkit-text-fill-color is here because it PAINTS the glyphs and overrides `color`: when the
+// element clone carries a full style read (the unreliable-scan path reads every property), it
+// gets the element's own fill colour, which then defeats the pseudo's `color`. Read from the
+// pseudo it resolves to the pseudo's own colour (initial is currentColor), so emitting it makes
+// the first line / marker actually paint. Only written when it differs from the element's.
+const MARKER_PROPS = ['color', '-webkit-text-fill-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'line-height']
+const FIRST_LINE_PROPS = [
+  'color', '-webkit-text-fill-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-variant',
+  'letter-spacing', 'word-spacing', 'text-transform', 'text-decoration-line',
+  'text-decoration-color', 'text-decoration-style', 'line-height', 'background-color', 'vertical-align',
+]
+
+/** Emits `[data-sd-pN]::marker{…}` / `…::first-line{…}` for elements an author selector
+ *  matches, with only the properties that differ from the element's own computed style
+ *  (plus non-normal marker content). Rules accumulate on sessionCache.__pseudoCSS;
+ *  prepareClone folds them into the class prefix CSS. */
+function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) {
+  try {
+    if (gate === null) {
+      // No selector to ask: only the boxes the pseudo can exist on pay the probe — list
+      // items for ::marker, block containers for ::first-line (shadow content excluded: its
+      // own scoped rules render there).
+      if (source.getRootNode() !== (source.ownerDocument || document)) return
+      const d = getStyle(source).display || ''
+      if (pseudo === '::marker' ? !d.includes('list-item') : !(d === 'block' || d === 'flow-root' || d === 'list-item' || d === 'inline-block' || d === 'table-cell' || d === 'table-caption')) return
+    } else if (!source.matches(gate)) return
+    if (pseudo === '::marker' && !(getStyle(source).display || '').includes('list-item')) return
+    const ps = getStyle(source, pseudo)
+    const base = getStyle(source)
+    if (!ps) return
+    let decls = ''
+    for (const p of props) {
+      const v = ps.getPropertyValue(p)
+      // background-color and vertical-align are not inherited: the pseudo's initial value
+      // differs from a painted element's own and is not an authored rule (a probed block
+      // with a background emitted an inert rule per node, which also tripped diff.js's
+      // "new scoped rules → full pipeline" bail).
+      if (v && v !== base.getPropertyValue(p) &&
+          !(p === 'background-color' && v === 'rgba(0, 0, 0, 0)') && !(p === 'vertical-align' && v === 'baseline')) decls += `${p}:${v};`
+    }
+    if (pseudo === '::marker') {
+      const c = ps.getPropertyValue('content')
+      if (c && c !== 'normal' && c !== 'none') decls += `content:${c};`
+    }
+    if (!decls) return
+    const n = sessionCache.__pseudoRuleSeq = (sessionCache.__pseudoRuleSeq || 0) + 1
+    const attr = `data-sd-p${n}`
+    clone.setAttribute(attr, '')
+    sessionCache.__pseudoCSS = (sessionCache.__pseudoCSS || '') + `[${attr}]${pseudo}{${decls}}`
+  } catch { /* fidelity extra — never blocks the capture */ }
+}
+
+/** Computed `content` returns quote KEYWORDS un-resolved (open-quote stays the literal
+ *  token), so without this the capture paints the text "open-quote". Resolve from the
+ *  element's computed `quotes` (first pair — depth-0 approximation), falling back to
+ *  typographic quotes when it computes 'auto' (Chromium) and nothing for 'none'. */
+function resolveQuoteKeywords(raw, node) {
+  if (!/\b(?:no-)?(?:open|close)-quote\b/.test(raw)) return raw
+  let openQ = '“', closeQ = '”'
+  try {
+    const q = getStyle(node).quotes
+    if (q === 'none') { openQ = ''; closeQ = '' }
+    else if (q && q !== 'auto') {
+      const pairs = q.match(/"[^"]*"|'[^']*'/g)
+      if (pairs && pairs.length >= 2) {
+        openQ = pairs[0].slice(1, -1)
+        closeQ = pairs[1].slice(1, -1)
+      }
+    }
+  } catch { }
+  // Emit as quoted strings so collapseCssContent treats them as text; embedded double
+  // quotes would break its tokenizer, so strip them from the glyphs.
+  openQ = openQ.replace(/"/g, '')
+  closeQ = closeQ.replace(/"/g, '')
+  return raw.replace(/"[^"]*"|\b(no-open-quote|no-close-quote|open-quote|close-quote)\b/g, (tok, kw) => {
+    if (!kw) return tok // quoted string — untouched
+    if (kw === 'open-quote') return `"${openQ}"`
+    if (kw === 'close-quote') return `"${closeQ}"`
+    return '""' // no-open-quote / no-close-quote render nothing
+  })
+}
+
 /**
- * Resuelve el `content` del pseudo aplicando:
- * 1) overrides de hermanos (para continuidad entre siblings),
- * 2) reset/increment del pseudo,
- * 3) colapso de tokens `"..."` sin espacios intermedios.
- *
+ * Resolve the pseudo's `content` to the text it paints, in this order: alt-text suffix
+ * stripped, quote keywords resolved, sibling counter overrides applied (so a sequence stays
+ * continuous across siblings), the pseudo's own reset/increment, counter() expansion, then
+ * token collapsing so `"..."` pieces join with no gap.
  * @param {Element} node
  * @param {'::before'|'::after'} pseudo
  * @param {{get:Function, getStack:Function}} baseCtx
+ * @param {WeakMap<Element, Map<string, number>>} siblingCounters - per-parent overrides, on the session
  * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
  */
 function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
@@ -418,43 +552,108 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
   let raw = ps?.content
   if (!raw || raw === 'none' || raw === 'normal') return { text: '', incs: [] }
   raw = stripContentAltText(raw)
+  raw = resolveQuoteKeywords(raw, node)
 
-  // 1) aplicar overrides de hermanos
+  // 1) sibling overrides
   const baseWithSiblings = withSiblingOverrides(node, baseCtx, siblingCounters)
 
-  // 2) derivar (aplica reset/increment del pseudo)
+  // 2) derive (applies the pseudo's reset/increment)
   const derived = deriveCounterCtxForPseudo(node, ps, baseWithSiblings)
 
-  // 3) resolver counter()/counters()
+  // 3) resolve counter()/counters()
   let resolved = hasCounters(raw)
     ? resolveCountersInContent(raw, node, derived)
     : raw
 
-  // 4) colapsar tokens (quita espacios entre "1" "." -> "1.")
+  // 4) collapse tokens (drops the gap between "1" and "." -> "1.")
   const text = collapseCssContent(resolved)
   return { text, incs: derived.__incs || [] }
 }
 
 /**
- * Creates elements to represent ::before, ::after, and ::first-letter pseudo-elements, inlining their styles and content.
+ * Can the whole pseudo walk be skipped for this subtree?
  *
- * @param {Element} source - Original element
- * @param {Element} clone - Cloned element
- * @param {Map} sessionCache - styleMap cache etc.
- * @param {Object} options - capture options
+ * `shouldProcessPseudos` answers a DOCUMENT-level question — "does any stylesheet here
+ * mention a pseudo?" — and every real page answers yes, so the pass then recurses over every
+ * node of the capture to discover, usually, that nothing matches. Measured on a 500-row table:
+ * one `.zz::before` rule matching zero nodes took `toRaw` from 75 ms to 197 ms, and the
+ * instrumented counters showed 0 gate passes and 0 getComputedStyle probes. The walk itself
+ * was the whole cost.
+ *
+ * The subtree-level question is the one worth asking, and one `querySelector` answers it.
+ * Two cases must still walk:
+ *  - a `null` gate — the scan could not be trusted (cross-origin CSS), so nothing may be ruled out;
+ *  - a shadow root in the capture whose own CSS declares a pseudo — those sheets are never
+ *    scanned, so `pseudoGatesFor` returns null gates per node there and the walk probes them.
+ *    `__shadowPseudo` is set by deepClone, which always runs first (prepare.js) and reads
+ *    every shadow root's CSS anyway; diff.js bails on shadow content before this pass. (It
+ *    used to test `shadowScopes.size`, which is a WeakMap: always undefined, never a bail —
+ *    the pinned shadow ::after was skipped right here.) A shadow root that declares no
+ *    pseudo cannot get one from the document's sheets, so the light-DOM question stands.
+ *
+ * With the gate that table went from 197 ms back to 66; scenes whose rules do match are
+ * unchanged. Pinned by __tests__/module.pseudo.subtreeGate.test.js, whose descendant-match
+ * test goes red without the querySelector half.
+ * @returns {boolean}
+ */
+function canSkipPseudoWalk(source, sessionCache) {
+  if (sessionCache.__shadowPseudo) return false
+  const gates = pseudoGatesFor(source)
+  const sels = []
+  for (const kind of ['before', 'after', 'firstLetter', 'marker', 'firstLine']) {
+    const gate = gates[kind]
+    if (gate === null) return false
+    if (gate) sels.push(gate)
+  }
+  if (!sels.length) return true
+  const sel = sels.join(',')
+  try {
+    return !source.matches(sel) && source.querySelector(sel) === null
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Inline every pseudo-element under `source` into `clone`, recursing through nodeMap.
+ *
+ * `::before`, `::after` and `::first-letter` become a <span> (data-snapdom-pseudo) whose
+ * style snapshot is keyed into sessionCache.styleMap; `::marker` and `::first-line` become
+ * scoped rules (emitScopedPseudoRule). A pseudo that paints nothing and takes no space is
+ * skipped, unless it incremented a counter, which still has to reach the next sibling.
+ *
+ * Four things took the pass from 150 to 24 µs per inlined `::before` on 2026-09-02 (deep
+ * tree, a 2px stripe on each of 1,936 leaves: 435 ms to 172): the fingerprint preflight runs
+ * on the root call only; the snapshot reads a pseudo universe of ~45 props instead of ~130;
+ * the per-tag defaults cover the props enumeration skips; twin pseudos share one read
+ * (pseudoSnapshotFor). Pinned by __tests__/module.pseudo.test.js, module.pseudo.subtreeGate,
+ * module.pseudo.twinShare, module.pseudo.unreliableScan and module.pseudo.adoptedReplace.
+ * @param {Element} source - live element
+ * @param {Element} clone - its clone, from deepClone
+ * @param {object} sessionCache - the capture session (styleMap, nodeMap, __pseudoCSS, counters)
+ * @param {object} options - capture context
+ * @param {boolean} [isDescendant=false] - true on the recursive calls; gates the once-per-capture work
  * @returns {Promise<void>}
  */
-export async function inlinePseudoElements(source, clone, sessionCache, options) {
+export async function inlinePseudoElements(source, clone, sessionCache, options, isDescendant = false) {
   if ((source?.nodeType !== 1) || (clone?.nodeType !== 1)) return
   // #447: a textarea's value is its *child text content*, so wrapping characters in a
   // <span> (as the ::first-letter path does) drops them from the rendered value.
   // Browsers don't render pseudo-elements on textarea anyway.
   if (source.tagName === 'TEXTAREA') return
-  // --- NEW: preflight once per session/doc ---
+  // --- preflight, once per session/doc ---
   const doc = source.ownerDocument || document
-  if (!preflightWithFp(doc, sessionCache)) {
+  // Once per capture, on the ROOT call: the recursion below reaches every node, and the
+  // preflight's fingerprint is a document-wide querySelectorAll plus a walk of every sheet —
+  // per node that was quadratic (deep tree with a ::before per leaf: 64 ms of a 295 ms
+  // capture went to querySelectorAll, on a page holding one <style>). `__shadowPseudo`: a
+  // shadow root in the capture declares a pseudo (deepClone reads its CSS); the
+  // document-level preflight cannot see it.
+  if (!isDescendant && !preflightWithFp(doc, sessionCache) && !sessionCache.__shadowPseudo) {
     return
   }
+  // Asked once, on the root call only: the recursion below is exactly what this skips.
+  if (!isDescendant && canSkipPseudoWalk(source, sessionCache)) return
 
   // Sibling-counter overrides are per-capture state: they live on sessionCache (whose
   // lifetime is exactly one capture), not on a module global — a concurrently starting
@@ -470,7 +669,26 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
   }
   const counterCtx = sessionCache.__counterCtx
 
+  // Selector gate from the stylesheet scan: only nodes a collected selector matches pay
+  // the 3-pseudo getComputedStyle probe. '' = no author rules for that kind, null =
+  // scan unreliable (cross-origin CSS, shadow roots) → probe like before.
+  const gates = pseudoGatesFor(source)
+
+  // Authored ::marker / ::first-line: a scoped CSS rule (not a span) is the faithful
+  // mechanism — markers re-render natively in the foreignObject and first-line
+  // re-fragments there. '' = no author rule for that kind; a selector gates the probe; null
+  // (unreliable scan: a cross-origin sheet) probes like ::before does — the emitter only
+  // writes what differs from the element's own style, so it cannot over-apply. Shadow
+  // content carries these rules through injectScopedStyle instead.
+  if (gates.marker !== '') emitScopedPseudoRule(source, clone, sessionCache, gates.marker, '::marker', MARKER_PROPS)
+  if (gates.firstLine !== '') emitScopedPseudoRule(source, clone, sessionCache, gates.firstLine, '::first-line', FIRST_LINE_PROPS)
+
   for (const pseudo of ['::before', '::after', '::first-letter']) {
+    const gate = gates[pseudo === '::before' ? 'before' : pseudo === '::after' ? 'after' : 'firstLetter']
+    if (gate !== null) {
+      if (gate === '') continue
+      try { if (!source.matches(gate)) continue } catch { /* unparsable at match time → probe */ }
+    }
     try {
       const style = getStyle(source, pseudo)
       if (!style) continue
@@ -530,21 +748,28 @@ export async function inlinePseudoElements(source, clone, sessionCache, options)
         if (!textNode) continue
 
         const text = textNode.textContent
-        const match = text.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u)
+        // Leading white space is not part of ::first-letter and does not stop it (CSS Pseudo
+        // §3.2). The pattern was anchored at index 0 with \s excluded from both halves, so
+        // any indented markup — `<p>\n  Hello` — matched nothing and the whole pseudo was
+        // dropped. Skip the run, match after it, and put it back in front of the span.
+        const lead = /^\s*/.exec(text)[0]
+        const body = text.slice(lead.length)
+        const match = body.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u)
         const first = match?.[0]
-        const rest = text.slice(first?.length || 0)
+        const rest = body.slice(first?.length || 0)
         if (!first || /[\uD800-\uDFFF]/.test(first)) continue
 
         const span = document.createElement('span')
         span.textContent = first
         span.dataset.snapdomPseudo = '::first-letter'
-        const snapshot = snapshotComputedStyle(style)
+        const snapshot = snapshotComputedStyle(style, pseudoUniverseFor(source))
         const key = getStyleKey(snapshot, 'span')
         sessionCache.styleMap.set(span, key)
 
         const restNode = document.createTextNode(rest)
         clone.replaceChild(restNode, textNode)
         clone.insertBefore(span, restNode)
+        if (lead) clone.insertBefore(document.createTextNode(lead), span)
         continue
       }
 
@@ -564,7 +789,7 @@ const { text: cleanContent, incs } =
       const color = style.color || '#000'
       const transform = style.transform
 
-      const isIconFont2 = isIconFont(fontFamily)
+      const isIconFont2 = isIconFont(fontFamily, options?.__iconMatchers)
 
 const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasBg = bg && bg !== 'none'
@@ -598,14 +823,14 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         hasShadow || hasOutline
 
       if (!shouldRender) {
-        // Aun si no renderizamos caja, si el pseudo tenía increments, propagar a hermanos
+        // Even with no box rendered, a pseudo that had increments must propagate to siblings
         if (incs && incs.length && source.parentElement) {
           const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
-          // Para cada counter incrementado en el pseudo, guardar el valor resuelto final
+          // For each counter the pseudo incremented, store the final resolved value
           for (const { name } of incs) {
             if (!name) continue
-            // reconstruir valor final desde derived: volvemos a pedirlo
-            // Usamos withSiblingOverrides + derive para ser consistentes
+            // Rebuild the final value from `derived` by asking for it again, using
+            // withSiblingOverrides + derive so it stays consistent with the read above
             const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
             const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
             const finalVal = derived.get(source, name)
@@ -644,7 +869,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // pseudoEl.style.verticalAlign = 'baseline'
       pseudoEl.style.pointerEvents = 'none'
       if (pinNowrap) pseudoEl.style.whiteSpace = 'nowrap'
-      const snapshot = snapshotComputedStyle(style)
+      const snapshot = pseudoSnapshotFor(source, pseudo, style, sessionCache, options)
       // #452: mirror the styles.js width-softening flags. An empty pseudo box sized by
       // CSS (width/height, content:'') is the #433 "empty box" case — its width must be
       // kept verbatim, otherwise a blockified flex-item dot collapses to 0 and a
@@ -688,7 +913,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           }
         }
       } else if (!isIconFont2 && hasExplicitContent) {
-        pseudoEl.textContent = cleanContent // <- ya sin espacios extra
+        pseudoEl.textContent = cleanContent // already collapsed, no stray spaces
       }
 
       // ---- Backgrounds / colors ----
@@ -714,7 +939,10 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if (hasBg) {
         try {
           const bgSplits = splitBackgroundImage(bg)
-          const newBgParts = await Promise.all(bgSplits.map(inlineSingleBackgroundEntry))
+          // Arrow form, not a bare reference: map passes (entry, INDEX, array), so the
+          // layer index landed where options belongs and useProxy/CORS settings never
+          // reached a pseudo-element background. background.js:119 has it right.
+          const newBgParts = await Promise.all(bgSplits.map((entry) => inlineSingleBackgroundEntry(entry, options)))
           pseudoEl.style.backgroundImage = newBgParts.join(', ')
         } catch (e) {
           console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e)
@@ -722,13 +950,34 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       }
       if (hasBgColor) pseudoEl.style.backgroundColor = bgColor
 
+      // The reset above blanks maskImage so a stale mask can't leak in; restoring it was
+      // missing entirely, so every masked icon pseudo (the standard way to tint an SVG
+      // icon) captured as a solid rectangle. The mask must be INLINED like a background —
+      // a url() mask would otherwise point at an asset the SVG cannot reach.
+      const maskImage = style.maskImage || style.webkitMaskImage
+      if (maskImage && maskImage !== 'none') {
+        try {
+          const parts = await Promise.all(
+            splitBackgroundImage(maskImage).map((entry) => inlineSingleBackgroundEntry(entry, options))
+          )
+          const value = parts.join(', ')
+          pseudoEl.style.maskImage = value
+          pseudoEl.style.webkitMaskImage = value
+          for (const prop of ['maskSize', 'maskRepeat', 'maskPosition', 'maskMode', 'maskComposite', 'maskOrigin', 'maskClip']) {
+            if (style[prop]) pseudoEl.style[prop] = style[prop]
+          }
+        } catch (e) {
+          console.warn(`[snapdom] Failed to inline mask-image for ${pseudo}`, e)
+        }
+      }
+
       const hasContent2 =
         pseudoEl.childNodes.length > 0 || (pseudoEl.textContent?.trim() !== '')
       const hasVisibleBox =
         hasContent2 || hasBg || hasBgColor || hasBorder || hasTransform || hasLayoutBox ||
         hasShadow || hasOutline
 
-      // Antes de insertar, si hubo increments en el pseudo, propagar valor final a los hermanos
+      // Before inserting: when the pseudo incremented anything, propagate the final value to siblings
       if (incs && incs.length && source.parentElement) {
         const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
         const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
@@ -764,13 +1013,13 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
     for (const cChild of cChildren) {
       const sChild = sessionCache.nodeMap.get(cChild)
       if (sChild?.nodeType === 1) {
-        await inlinePseudoElements(sChild, cChild, sessionCache, options)
+        await inlinePseudoElements(sChild, cChild, sessionCache, options, true)
       }
     }
   } else {
     const sChildren = Array.from(source.children)
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
-      await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options)
+      await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options, true)
     }
   }
 }

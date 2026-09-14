@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { inlineBackgroundImages } from '../src/modules/background.js'
-import { cache } from '../src/core/cache.js'
 
 describe('inlineBackgroundImages', () => {
   let source, clone
@@ -22,7 +21,10 @@ describe('inlineBackgroundImages', () => {
 
   it('processes a valid background-image', async () => {
     source.style.backgroundImage = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")'
-    await expect(inlineBackgroundImages(source, clone, new WeakMap())).resolves.toBeUndefined()
+    // resolves.toBeUndefined could not fail: the per-node work runs under Promise.allSettled,
+    // so a rejection or a no-op never rejects the outer promise. Assert the inlining landed.
+    await inlineBackgroundImages(source, clone, new WeakMap())
+    expect(clone.style.backgroundImage).toContain('data:image/png')
   })
 
   describe('child alignment with clone-only elements (#439)', () => {
@@ -43,12 +45,13 @@ describe('inlineBackgroundImages', () => {
       return el
     }
 
-    /** Register clone→source in nodeMap */
+    /** Register clone→source in nodeMap (passed explicitly — no session global) */
+    let nodeMap
     function link(cloneEl, srcEl) {
-      cache.session.nodeMap.set(cloneEl, srcEl)
+      nodeMap.set(cloneEl, srcEl)
     }
 
-    beforeEach(() => { cache.session.nodeMap = new Map() })
+    beforeEach(() => { nodeMap = new Map() })
     afterEach(() => { attached.forEach(el => el.remove()) })
 
     it('skips injected SVG and applies gradient to correct clone child', async () => {
@@ -63,7 +66,7 @@ describe('inlineBackgroundImages', () => {
       const clnBody = div(cln)
 
       link(cln, src); link(clnHeader, srcHeader); link(clnBody, srcBody)
-      await inlineBackgroundImages(src, cln, new WeakMap())
+      await inlineBackgroundImages(src, cln, new WeakMap(), {}, nodeMap)
 
       expect(clnHeader.style.backgroundImage).not.toContain('linear-gradient')
       expect(clnBody.style.backgroundImage).toContain('linear-gradient')
@@ -79,7 +82,7 @@ describe('inlineBackgroundImages', () => {
       const cln2 = div(cln)
 
       link(cln, src); link(cln1, src1); link(cln2, src2)
-      await inlineBackgroundImages(src, cln, new WeakMap())
+      await inlineBackgroundImages(src, cln, new WeakMap(), {}, nodeMap)
 
       expect(cln1.style.backgroundImage).toContain('rgb(0, 128, 0)')
       expect(cln2.style.backgroundImage).toContain('rgb(128, 0, 128)')
@@ -99,7 +102,7 @@ describe('inlineBackgroundImages', () => {
       const clnB = div(cln)
 
       link(cln, src); link(clnA, srcA); link(clnB, srcB)
-      await inlineBackgroundImages(src, cln, new WeakMap())
+      await inlineBackgroundImages(src, cln, new WeakMap(), {}, nodeMap)
 
       expect(clnA.style.backgroundImage).toContain('linear-gradient')
       expect(clnB.style.backgroundImage || '').not.toContain('linear-gradient')

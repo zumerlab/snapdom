@@ -7,9 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous"> <!-- Add Font Awesome -->
 
   <script type="module">
-    import { snapdom, preCache } from '../dist/snapdom.mjs';
+    import { snapdom } from '../dist/snapdom.mjs';
     window.snapdom = snapdom;
-    window.preCache = preCache;
   </script>
   <style>
  body {
@@ -322,7 +321,6 @@ header {
 
 <script>
     window.addEventListener('load', async () => {
-    // await preCache();
       console.log('📦 Recursos precargados');
     });
   async function captureDemo(inputId, outputId, button) {

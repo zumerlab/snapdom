@@ -50,13 +50,15 @@ describe('toCanvas – backgroundColor', () => {
   it('fills background when backgroundColor is set', async () => {
     const canvas = await toCanvas(ONE_BY_ONE_PNG, { scale: 1, backgroundColor: '#ff0000' })
     expect(canvas).toBeInstanceOf(HTMLCanvasElement)
-    expect(canvas.width).toBeGreaterThan(0)
-    expect(canvas.height).toBeGreaterThan(0)
+    // The source is a transparent pixel, so ANY ink here is the flatten — deleting the
+    // fillRect in toCanvas left the old instance/width assertions green.
+    const d = canvas.getContext('2d').getImageData(0, 0, 1, 1).data
+    expect([d[0], d[1], d[2], d[3]]).toEqual([255, 0, 0, 255])
   })
 })
 
 describe('toCanvas – Safari SVG box-shadow path', () => {
-  it('converts box-shadow to drop-shadow for Safari on SVG URLs', async () => {
+  it('SVG-with-box-shadow path on Safari does not crash (smoke — the rewrite itself is pinned by exporter.safariPaths.test.js)', async () => {
     vi.mocked(browser.isSafari).mockReturnValue(true)
     const svgWithBoxShadow = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">' +

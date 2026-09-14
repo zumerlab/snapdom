@@ -70,19 +70,45 @@ describe('resolveCSSVars', () => {
     expect(clone.style.fill).toBe('rgb(255, 0, 0)')
   })
 
-  it('materializes a class-driven KEY_PROP that differs from the baseline', () => {
+  // Class-driven var() values need no pass of their own anymore: the style snapshot
+  // (inlineAllStyles) captures the resolved value for HTML, and the SVG_PAINT_PROPS
+  // pass in deepClone covers SVG children without a snapshot. Pipeline-level proof:
+  it('captures a class-driven var() color through the style snapshot', async () => {
     const style = document.createElement('style')
-    style.textContent = '.cssvar-fill { color: var(--x); }'
+    style.textContent = '.cssvar-color { color: var(--x); }'
     document.head.appendChild(style)
 
     const src = document.createElement('div')
-    src.className = 'cssvar-fill'
+    src.className = 'cssvar-color'
+    src.textContent = 'texto'
     host.appendChild(src)
 
-    const clone = document.createElement('div')
-    resolveCSSVars(src, clone)
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const res = await snapdom(src, { cache: 'disabled' })
+    const svg = decodeURIComponent(res.url.split(',')[1])
+    expect(svg).toContain('rgb(255, 0, 0)')
+    style.remove()
+  })
 
-    expect(clone.style.color).toBe('rgb(255, 0, 0)')
+  it('captures a class-driven var() fill on an svg child via the SVG paint pass', async () => {
+    const style = document.createElement('style')
+    style.textContent = '.cssvar-rect { fill: var(--x); }'
+    document.head.appendChild(style)
+
+    const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svgEl.setAttribute('width', '20')
+    svgEl.setAttribute('height', '20')
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    rect.setAttribute('width', '20')
+    rect.setAttribute('height', '20')
+    rect.setAttribute('class', 'cssvar-rect')
+    svgEl.appendChild(rect)
+    host.appendChild(svgEl)
+
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const res = await snapdom(svgEl, { cache: 'disabled' })
+    const out = decodeURIComponent(res.url.split(',')[1])
+    expect(out).toContain('rgb(255, 0, 0)')
     style.remove()
   })
 })

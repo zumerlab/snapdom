@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM vs html2canvas: A Modern html2canvas Alternative</title>
-  <meta name="description" content="SnapDOM vs html2canvas compared head-to-head: pseudo-elements, web fonts, Shadow DOM, plugins and benchmarks. Includes a 1:1 migration snippet." />
+  <title>SnapDOM vs html2canvas — A Modern html2canvas Alternative</title>
+  <meta name="description" content="SnapDOM vs html2canvas compared head-to-head: pseudo-elements, web fonts, Shadow DOM, plugins and benchmarks. Includes migration notes." />
   <meta name="keywords" content="snapdom vs html2canvas, html2canvas alternative, html2canvas pseudo elements, html2canvas web fonts, html2canvas shadow dom" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/html2canvas/" />
@@ -13,8 +13,8 @@
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
 
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="SnapDOM vs html2canvas · A Modern Alternative" />
-  <meta property="og:description" content="Pseudo-elements, web fonts and Shadow DOM with full fidelity. Side-by-side comparison and migration guide." />
+  <meta property="og:title" content="SnapDOM vs html2canvas — A Modern Alternative" />
+  <meta property="og:description" content="Compare pseudo-elements, web fonts, open Shadow DOM and export contracts. Includes migration notes." />
   <meta property="og:url" content="https://snapdom.dev/compare/html2canvas/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -52,7 +52,7 @@
         "name": "Why does html2canvas not render my Shadow DOM?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "html2canvas re-implements the CSS painter and only walks the light DOM, so Shadow DOM trees are skipped and Web Components render empty in the capture. SnapDOM clones the DOM including open Shadow roots and lets the browser render the result inside a foreignObject, so anything the browser paints, SnapDOM captures."
+          "text": "Shadow DOM support depends on the capture implementation. SnapDOM walks accessible open Shadow roots, copies resolved styles and renders the clone through SVG <foreignObject>. Closed roots are not accessible through the standard DOM API."
         }
       },
       {
@@ -60,7 +60,7 @@
         "name": "html2canvas doesn't render web fonts correctly, what do I use?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "html2canvas relies on whatever the document already loaded; @font-face files often fall back to system fonts because the canvas painter doesn't see them in time. SnapDOM exposes embedFonts: true, which inlines the relevant @font-face declarations into the SVG output so the captured image uses your actual fonts."
+          "text": "First check that your fonts load before capture. SnapDOM v3 uses embedFonts: 'auto' by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser."
         }
       },
       {
@@ -68,7 +68,7 @@
         "name": "html2canvas is slow on large DOMs, is there a faster alternative?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "html2canvas re-paints every node in JavaScript, which is what makes it slow on dense trees. SnapDOM clones the DOM once and offloads the actual rendering to the browser's native engine via foreignObject, which is typically several times faster on the same element. The embedded benchmark on this page lets you measure the gap on your own hardware."
+          "text": "SnapDOM uses a different rendering path and can reuse eligible captures in v3. The gain depends on the DOM, assets and capture pattern. Use the live benchmark above and compare your own elements before choosing."
         }
       },
       {
@@ -76,7 +76,7 @@
         "name": "Is html2canvas still maintained in 2026?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The latest stable release is 1.4.1 from January 2022. The repository remains available, but it has not published another stable release. Its README still describes the project as experimental and recommends against using it in production."
+          "text": "This page compares html2canvas 1.4.1. For current maintenance status, check its releases and issue tracker. A release date alone does not establish whether a library meets your capture requirements."
         }
       }
     ]
@@ -149,7 +149,7 @@
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/" aria-current="page">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Library Comparison</div>
@@ -159,7 +159,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>SnapDOM vs <span class="accent">html2canvas</span></h1>
-    <p class="lead">Compare their rendering approaches, supported features, maintenance status and APIs, then test the migration on your own DOM.</p>
+    <p class="lead">Compare DOM-to-canvas and SVG-based capture, then review output types, font handling and the options needed to migrate.</p>
     <div class="hero-actions">
       <a href="#matrix" class="btn btn-primary" data-umami-event="Cmp h2c hero matrix">Feature matrix</a>
       <a href="#migrate" class="btn btn-ghost" data-umami-event="Cmp h2c hero migrate">Migration snippet</a>
@@ -168,17 +168,17 @@
 
   <main class="page">
     <aside class="maint-callout" aria-label="html2canvas maintenance status">
-      <div class="maint-label">⚠ html2canvas: maintenance status</div>
-      <p>The latest stable release is <strong>v1.4.1 from January 2022</strong>. The repository currently has hundreds of <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c issues link">open issues</a>, and its README still describes the project as experimental and recommends against production use.</p>
+      <div class="maint-label">html2canvas — version under comparison</div>
+      <p>This demo loads <strong>html2canvas 1.4.1</strong>. Check the repository's <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c issues link">issue tracker</a> and releases for the status of bugs relevant to your app. Benchmark results apply to the version loaded here.</p>
     </aside>
 
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p><strong>html2canvas</strong> implements its own CSS painter and has not shipped a stable release since 2022. <strong>SnapDOM</strong> uses the browser's SVG renderer, supports open Shadow DOM and plugins, and ships regular releases. Both are MIT-licensed and run in the browser.</p>
+      <p><strong>html2canvas</strong> normally paints the captured DOM onto Canvas with its JavaScript renderer. <strong>SnapDOM</strong> renders a styled clone through SVG, then exports images or Canvas as needed. SnapDOM also exposes a plugin lifecycle. Both are MIT-licensed and run in the browser.</p>
     </div>
 
     <section class="bench-section" id="benchmark">
-      <div class="section-label">Live benchmark: runs in your browser</div>
+      <div class="section-label">Live benchmark — runs in your browser</div>
       <h2>SnapDOM vs html2canvas, head to head</h2>
       <p class="bench-lead">Both libraries capture the same DOM element five times. Times are averaged, the faster one is highlighted. Run it on your machine; the gap is hardware- and content-dependent.</p>
 
@@ -212,8 +212,8 @@
 
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
-      <p><a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> works by reading the DOM and re-painting every element onto a <code>&lt;canvas&gt;</code> using its own CSS engine. It has been around since 2012, has wide adoption, and a long backlog of edge cases that come from re-implementing the browser's renderer.</p>
-      <p><strong>SnapDOM</strong> takes a different approach: it deep-clones the DOM, inlines the styles, fonts and images, and wraps the clone in an SVG <code>&lt;foreignObject&gt;</code>. The browser does the actual rendering, which means anything the browser can paint, SnapDOM can capture, including pseudo-elements, CSS variables, custom counters and Shadow DOM.</p>
+      <p><a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> reads the DOM and paints elements onto a <code>&lt;canvas&gt;</code>. Its default renderer implements CSS support itself, so its supported properties and output can differ from the browser's page rendering.</p>
+      <p><strong>SnapDOM</strong> clones the DOM, inlines styles and accessible fonts and images, and wraps the clone in an SVG <code>&lt;foreignObject&gt;</code>. It handles pseudo-elements, CSS variables, counters and open Shadow DOM, subject to browser rendering and resource-access limits.</p>
     </section>
 
     <section class="prose">
@@ -223,13 +223,13 @@
           <tr><th>Feature</th><th>SnapDOM</th><th>html2canvas</th></tr>
         </thead>
         <tbody>
-          <tr><td class="feature">Pseudo-elements (<code>::before</code> / <code>::after</code>)</td><td class="yes">Full</td><td class="partial">Partial</td></tr>
+          <tr><td class="feature">Pseudo-elements (<code>::before</code> / <code>::after</code>)</td><td class="yes">Supported</td><td class="partial">Passes tested fixture</td></tr>
           <tr><td class="feature">Web fonts (<code>@font-face</code>)</td><td class="yes">Embedded</td><td class="partial">Best-effort</td></tr>
-          <tr><td class="feature">Shadow DOM</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Shadow DOM</td><td class="yes">Open roots</td><td class="no">Passes tested fixture</td></tr>
           <tr><td class="feature">CSS variables</td><td class="yes">Yes</td><td class="partial">Partial</td></tr>
-          <tr><td class="feature">CSS <code>counter()</code> / <code>counters()</code></td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">CSS <code>counter()</code> / <code>counters()</code></td><td class="yes">Yes</td><td class="no">Depends on the case</td></tr>
           <tr><td class="feature">Same-origin <code>&lt;iframe&gt;</code> capture</td><td class="yes">Yes</td><td class="partial">Limited</td></tr>
-          <tr><td class="feature">Line-clamp / multi-line ellipsis</td><td class="yes">Yes</td><td class="no">No</td></tr>
+          <tr><td class="feature">Line-clamp / multi-line ellipsis</td><td class="yes">Yes</td><td class="no">Depends on the case</td></tr>
           <tr><td class="feature">Plugin system</td><td class="yes">Yes</td><td class="no">No</td></tr>
           <tr><td class="feature">Output formats</td><td class="num">SVG · PNG · JPG · WebP · Canvas · Blob</td><td class="num">PNG, JPG (via canvas.toDataURL)</td></tr>
           <tr><td class="feature">Runtime dependencies</td><td class="num">0</td><td class="num">0</td></tr>
@@ -237,7 +237,8 @@
           <tr><td class="feature">License</td><td class="num">MIT</td><td class="num">MIT</td></tr>
         </tbody>
       </table>
-      <p class="muted">Run the live benchmark suite locally with <code>npm run test:benchmark</code> to reproduce the numbers on your hardware. Performance varies a lot depending on element complexity, fonts and image content.</p>
+      <p>Support varies by fixture and rendering mode; test your own UI. See the <a href="../live/">live benchmark</a> for its pixel fixtures and loaded versions.</p>
+      <p class="muted">Run the live benchmark suite locally with <code>npm run test:benchmark</code> to reproduce the numbers on your hardware — performance varies a lot depending on element complexity, fonts and image content.</p>
     </section>
 
     <section class="prose">
@@ -249,17 +250,16 @@
             <li>You use modern CSS: variables, <code>::before/::after</code>, gradients, transforms, line-clamp.</li>
             <li>Your UI uses Web Components or Shadow DOM.</li>
             <li>You need to embed custom fonts in the output.</li>
-            <li>You want to pipe the capture through plugins (filters, watermarks, OCR-friendly output, ASCII, PDF…).</li>
+            <li>You need plugins for transformations or exports such as HTML, structured context, maps, ASCII or PDF images.</li>
             <li>You care about bundle size and zero dependencies.</li>
           </ul>
         </div>
         <div class="verdict-card other">
           <h4>Keep html2canvas when…</h4>
           <ul>
-            <li>An existing project already depends on its rendering behaviour.</li>
-            <li>Your supported CSS has been tested and produces the output you need.</li>
+            <li>Your existing captures meet your requirements and migration would add work without a measured benefit.</li>
           </ul>
-          <p style="font-size:13px; color:var(--text-muted); margin: 12px 0 0; line-height:1.55;">For new work, compare both libraries against the CSS and browser versions your product actually uses.</p>
+          <p style="font-size:13px; color:var(--text-muted); margin: 12px 0 0; line-height:1.55;">Compare representative output before changing libraries. Check the <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c verdict issues">issue tracker</a> for known problems affecting your content, then measure both implementations.</p>
         </div>
       </div>
     </section>
@@ -282,29 +282,29 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 <span class="kw">const</span> <span class="op">img</span> = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 document.body.<span class="fn">appendChild</span>(img);</pre>
 
-      <p>SnapDOM returns the <code>HTMLImageElement</code> ready to be appended: no manual <code>toDataURL</code>, no intermediate canvas. If you do need a canvas, call <code>snapdom.toCanvas(el)</code> instead.</p>
+      <p>SnapDOM returns the <code>HTMLImageElement</code> ready to be appended — no manual <code>toDataURL</code> call. If you do need a canvas, call <code>snapdom.toCanvas(el)</code> instead.</p>
     </section>
 
     <section class="prose">
-      <h2 id="migrate">Migration in 5 minutes</h2>
-      <p>The two libraries cover the same surface for the most common operations. Here's the 1:1 mapping:</p>
+      <h2 id="migrate">Migration notes</h2>
+      <p>Common operations have equivalents, but image return types and option meanings differ. These examples preserve the requested output format:</p>
       <table class="cmp-table">
         <thead>
           <tr><th>html2canvas</th><th>SnapDOM</th></tr>
         </thead>
         <tbody>
           <tr><td class="num">html2canvas(el)</td><td class="num">snapdom.toCanvas(el)</td></tr>
-          <tr><td class="num">canvas.toDataURL('image/png')</td><td class="num">snapdom.toPng(el)</td></tr>
-          <tr><td class="num">canvas.toDataURL('image/jpeg', 0.9)</td><td class="num">snapdom.toJpg(el, { quality: 0.9 })</td></tr>
-          <tr><td class="num">canvas.toBlob(cb, 'image/png')</td><td class="num">await snapdom.toBlob(el, { type: 'png' })</td></tr>
+          <tr><td class="num">canvas.toDataURL('image/png')</td><td class="num">(await snapdom.toPng(el)).src</td></tr>
+          <tr><td class="num">canvas.toDataURL('image/jpeg', 0.9)</td><td class="num">(await snapdom.toJpg(el, { quality: 0.9 })).src</td></tr>
+          <tr><td class="num">canvas.toBlob(cb, 'image/png')</td><td class="num">await snapdom.toBlob(el, { format: 'png' })</td></tr>
           <tr><td class="num">{ scale: 2 }</td><td class="num">{ dpr: 2 }</td></tr>
           <tr><td class="num">{ backgroundColor: '#fff' }</td><td class="num">{ backgroundColor: '#fff' }</td></tr>
-          <tr><td class="num">{ ignoreElements: el =&gt; … }</td><td class="num">{ exclude: ['.skip'] }</td></tr>
-          <tr><td class="num">not supported</td><td class="num">{ embedFonts: true }</td></tr>
+          <tr><td class="num">{ ignoreElements: skip }</td><td class="num">{ exclude: skip }</td></tr>
+          <tr><td class="num">— (not supported)</td><td class="num">{ embedFonts: true }</td></tr>
         </tbody>
       </table>
 
-      <p>A typical migration boils down to a one-line change:</p>
+      <p>For a Canvas consumer, start with this change and compare the output:</p>
       <pre class="code-block"><span class="cm">// Before</span>
 <span class="kw">import</span> html2canvas <span class="kw">from</span> <span class="str">'html2canvas'</span>;
 <span class="kw">const</span> canvas = <span class="kw">await</span> <span class="fn">html2canvas</span>(el, { scale: <span class="num">2</span> });
@@ -319,22 +319,22 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>Why does html2canvas not render my Shadow DOM?</summary>
-        <p>html2canvas re-implements the CSS painter and only walks the light DOM, so Shadow DOM trees are skipped entirely. Web Components show up empty in the capture. SnapDOM clones the DOM (including open Shadow roots), inlines the resolved styles, and lets the browser render the result inside an SVG <code>&lt;foreignObject&gt;</code>. Anything the browser paints, SnapDOM captures.</p>
+        <p>Shadow DOM support depends on the capture implementation. SnapDOM walks accessible open Shadow roots, copies resolved styles and renders the clone through SVG <code>&lt;foreignObject&gt;</code>. Closed roots are not accessible through the standard DOM API.</p>
       </details>
 
       <details>
         <summary>html2canvas doesn't render web fonts correctly, what do I use?</summary>
-        <p>html2canvas relies on whatever the document already loaded; downloaded <code>@font-face</code> files often fall back to system fonts because the canvas painter doesn't see them in time. SnapDOM exposes <code>{ embedFonts: true }</code>, which inlines the relevant <code>@font-face</code> declarations into the SVG output so the captured image uses your real fonts.</p>
+        <p>First check that your fonts load before capture. SnapDOM v3 uses <code>embedFonts: 'auto'</code> by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser.</p>
       </details>
 
       <details>
         <summary>html2canvas is slow on large DOMs, is there a faster alternative?</summary>
-        <p>html2canvas re-paints every node in JavaScript, which is what makes it slow on dense trees. SnapDOM clones the DOM once and offloads the actual rendering to the browser's native engine via <code>&lt;foreignObject&gt;</code>, which is typically several times faster on the same element. Use the <a href="#benchmark">live benchmark above</a> to measure the gap on your own hardware.</p>
+        <p>SnapDOM uses a different rendering path and can reuse eligible captures in v3. The gain depends on the DOM, assets and capture pattern. Use the <a href="#benchmark">live benchmark above</a> and compare your own elements before choosing.</p>
       </details>
 
       <details>
         <summary>Is html2canvas still maintained in 2026?</summary>
-        <p>The latest stable release (<a href="https://github.com/niklasvh/html2canvas/releases/tag/v1.4.1" target="_blank" rel="noopener" data-umami-event="Cmp h2c faq release">1.4.1</a>) shipped in <strong>January 2022</strong>. The repository remains accessible and receives issue activity, but it has not published another stable release. Its README still describes the project as experimental and recommends against production use.</p>
+        <p>This page compares <a href="https://github.com/niklasvh/html2canvas/releases/tag/v1.4.1" target="_blank" rel="noopener" data-umami-event="Cmp h2c faq release">html2canvas 1.4.1</a>. For current maintenance status, check its releases and <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c faq issues">issue tracker</a>. A release date alone does not establish whether a library meets your capture requirements.</p>
       </details>
     </section>
 
@@ -350,10 +350,10 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Test the migration</h2>
+        <h2>Ready to switch?</h2>
         <p>Drop SnapDOM into your project, capture your first element, and decide for yourself.</p>
         <a href="../../showcase/" class="btn btn-primary" data-umami-event="Cmp h2c cta home">Open the demo</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp h2c cta npm">Install from npm</a>
+        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp h2c cta npm">Installation</a>
       </div>
     </section>
   </main>

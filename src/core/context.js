@@ -1,69 +1,152 @@
 /**
- * @typedef {"disabled"|"full"|"auto"|"soft"} CachePolicy
+ * Option normalization. `createContext` turns the caller's option bag into the one context
+ * object every stage and every plugin hook reads. Defaults, aliases and the compiled exclusion
+ * policy are decided here and nowhere else, so a new option is added here first.
+ * @module context
+ */
+
+/**
+ * @typedef {"soft"|"disabled"} CachePolicy
+ * 'soft' is the structural default; the legacy 'auto' and 'full' strings map to it.
  */
 
 import { normalizeCachePolicy } from './cache.js'
+import { compileIconFontMatchers } from '../modules/iconFonts.js'
+import { isTag } from '../utils/helpers.js'
+
+/** Formats a caller can name in `format` (or legacy `type`). Shared with the export
+ *  normalizer in snapdom.js — the same set decides the alias there. */
+const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
 
 /**
- * Creates a normalized capture context for SnapDOM.
+ * Build the normalized capture context from the caller's options.
+ *
+ * Every field below has a default, so downstream code never tests for undefined. Options
+ * marked internal are read by tests and benchmarks and are not public API.
  * @param {Object} [options={}]
- * @param {boolean} [options.debug]
- * @param {boolean} [options.fast]
- * @param {number}  [options.scale]
- * @param {Array<string|RegExp>} [options.exclude]
- * @param {string}  [options.excludeMode]
- * @param {(node: Node)=>boolean} [options.filter]
- * @param {string}  [options.filterMode]
- * @param {boolean} [options.embedFonts]
- * @param {string|string[]} [options.iconFonts]
+ * @param {boolean} [options.debug=false]
+ * @param {number}  [options.scale=1]
+ * @param {string|((el: Element) => boolean)|Array<string|((el: Element) => boolean)>} [options.exclude] - Selectors and/or predicates (true = exclude), evaluated before filter
+ * @param {'hide'|'remove'} [options.excludeMode='hide'] - 'hide' leaves a spacer of the node's box, 'remove' drops it
+ * @param {(el: Element) => boolean} [options.filter] - Independent keep predicate: truthy keeps, falsy omits
+ * @param {'hide'|'remove'} [options.filterMode='hide'] - How nodes rejected only by filter leave
+ * @param {boolean|'auto'} [options.embedFonts='auto'] - 'auto' embeds only webfonts the element uses
+ * @param {string|string[]} [options.iconFonts] - extra families treated as icon fonts (never embedded)
  * @param {string[]} [options.localFonts]
  * @param {string[]|undefined} [options.excludeFonts]
- * @param {string[]} [options.fontStylesheetDomains]      // extra domains to fetch cross-origin CSS from (#309)
+ * @param {string[]} [options.fontStylesheetDomains] - extra domains to fetch cross-origin CSS from (#309)
  * @param {string|function} [options.fallbackURL]
  * @param {string}  [options.useProxy]
  * @param {number|null} [options.width]
  * @param {number|null} [options.height]
- * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.format]
- * @param {"svg"|"img"|"canvas"|"blob"} [options.type]
- * @param {number}  [options.quality]
- * @param {number}  [options.dpr]
- * @param {string|null} [options.backgroundColor]
- * @param {string}  [options.filename]
- * @param {unknown} [options.cache] // "disabled"|"full"|"auto"|"soft"
- * @param {boolean} [options.outerTransforms] // NEW
- * @param {boolean} [options.outerShadows]      // NEW
+ * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.format='png'] - 'jpg' resolves to 'jpeg'
+ * @param {"png"|"jpg"|"jpeg"|"webp"|"svg"} [options.type] - deprecated alias for format
+ * @param {number}  [options.quality=0.92]
+ * @param {number}  [options.dpr=devicePixelRatio]
+ * @param {string|null} [options.backgroundColor] - defaults to white for jpeg and webp exports
+ * @param {string}  [options.filename='snapDOM']
+ * @param {unknown} [options.cache] - `'disabled'` (or `false`) empties every persistent cache before the capture, a debug/test escape hatch. Anything else is the default: caching is structural, not a knob (the legacy 'soft'/'auto'/'full' strings all mean this).
+ * @param {HTMLCanvasElement} [options.canvas] - Draw the canvas export into this canvas instead of a new one
+ * @param {boolean} [options.captureSelection=false] - Render the user's live text selection into the capture
+ * @param {boolean} [options.placeholders=true] - cross-origin iframes get a striped placeholder; false gives an invisible spacer
+ * @param {boolean} [options.outerTransforms=true]
+ * @param {boolean|'subtree'} [options.outerShadows=false]
+ * @param {boolean} [options.reconcile=false] - measure the clone in-document and pin diverging boxes
+ * @param {boolean} [options.burst] - force the memo on or off; unset memoizes from the first capture (burst.js)
+ * @param {'html-in-canvas'} [options.engine] - experimental: the canvas-place-element engine (engines/htmlInCanvas.js)
+ * @param {boolean} [options.invalidate=false] - one fresh capture plus style-cache invalidation for changes with no browser signal (notably CSSOM edits)
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
  * @param {RegExp|((prop: string) => boolean)} [options.excludeStyleProps] - Skip props when snapshotting (#348). e.g. /^--/ to exclude CSS vars
- * @param {boolean} [options.resolvePicturePlaceholders] - Resolve &lt;picture&gt; placeholders / lazy data-src before clone (default true)
- * @param {{ timeout?: number, concurrency?: number, resolveLazySrc?: boolean, silent?: boolean }} [options.pictureResolver] - Fine-tune built-in picture resolver
- * @param {boolean} [options.compress] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. On by default; pass `false` to embed images verbatim.
- * @returns {Object}
+ * @param {boolean} [options.compress=true] - Downsample inlined raster images to their visible resolution (display box × scale × dpr), preserving the source codec. `false` is internal, for benchmarks that measure the uncompressed pipeline.
+ * @param {boolean} [options.resolvePicturePlaceholders=true] - v2 compat, undocumented in v3
+ * @returns {Object} the context; also carries the compiled `shouldExclude` and the internal `__iconMatchers`, `__explicitFormat`, `__styleShare`
  */
 export function createContext(options = {}) {
-  let resolvedFormat = options.format ?? 'png'
+  const rawTypeFormat = typeof options.type === 'string' && IMAGE_FORMATS.has(options.type.toLowerCase())
+    ? options.type.toLowerCase()
+    : null
+  let resolvedFormat = options.format ?? rawTypeFormat ?? 'png'
   if (resolvedFormat === 'jpg') resolvedFormat = 'jpeg'
+  // Did the CALLER name a format, or is this the default? `format` is always set, so the
+  // difference is otherwise unrecoverable downstream — and toBlob needs it: it defaults to
+  // the raw vector unless a codec was asked for, and `snapdom.toBlob(el, {format:'png'})`
+  // asks at CAPTURE time (the static helpers forward options there, not to the exporter).
+  const explicitFormat = options.format != null ? resolvedFormat : (rawTypeFormat === 'jpg' ? 'jpeg' : rawTypeFormat)
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
 
-  return {
+  // Exclude and filter are independent policies with independent layout modes. Exclude
+  // wins when both match: the clone stops at the first omission, as it did in v2.
+  // Split exclude selectors/predicates once so the per-node loop need not dispatch types.
+  const excludeRaw = options.exclude == null ? [] : (Array.isArray(options.exclude) ? options.exclude : [options.exclude])
+  const excludeSelectors = []
+  const excludePredicates = []
+  for (const e of excludeRaw) {
+    if (typeof e === 'string') excludeSelectors.push(e)
+    else if (typeof e === 'function') excludePredicates.push(e)
+    else if (e != null) console.warn('[snapdom] Ignored invalid exclude entry (expected selector string or predicate):', e)
+  }
+  const excludeMode = options.excludeMode ?? 'hide'
+
+  // Semantic exporters must omit anything either policy hides/removes from the image.
+  // Read the context at call time so beforeSnap changes use the same policy as deepClone.
+  const shouldExclude = (el) => {
+    if (!el || el.nodeType !== 1) return false
+    if (el.getAttribute('data-capture') === 'exclude') return true
+    for (const sel of Array.isArray(context.exclude) ? context.exclude : []) {
+      try { if (el.matches(sel)) return true } catch { /* invalid selector: deepClone warns */ }
+    }
+    for (const pred of Array.isArray(context.excludePredicates) ? context.excludePredicates : []) {
+      try { if (pred(el)) return true } catch { /* deepClone warns */ }
+    }
+    if (typeof context.filter === 'function') {
+      try { if (!context.filter(el)) return true } catch { /* deepClone warns */ }
+    }
+    return false
+  }
+
+  const context = {
     // Debug & perf
     debug: options.debug ?? false,
-    fast: options.fast ?? true,
     scale: options.scale ?? 1,
 
-    // DOM filters
-    exclude: options.exclude ?? [],
-    excludeMode: options.excludeMode ?? 'hide',
+    // Independent omission policies; exclusion takes precedence over filter.
+    exclude: excludeSelectors,
+    excludePredicates: excludePredicates.length ? excludePredicates : null,
+    excludeMode,
     filter: options.filter ?? null,
     filterMode: options.filterMode ?? 'hide',
+    /** @type {(el: Element) => boolean} true when the capture drops or blanks this node. */
+    shouldExclude,
 
     // Placeholders
     placeholders: options.placeholders !== false, // default true
 
+    // Render the user's live text selection into the capture: selected runs of text are
+    // wrapped in the styles the browser paints them with (authored ::selection where a rule
+    // matches, the UA highlight colour where none does). Opt-in — a screenshot taken while
+    // the user happens to have text selected should look selected only when asked.
+    captureSelection: options.captureSelection ?? false,
+
+    // Canvas exporter target. A caller looping captures (a live mirror) otherwise pays a
+    // full-canvas copy per frame moving the pixels off a throwaway canvas onto its own.
+    // Anything that is not a canvas is ignored, so the exporter always has one to draw into.
+    // isTag, not instanceof: a canvas from an iframe document belongs to that window's
+    // HTMLCanvasElement (#494). Pinned by `__tests__/core.context.test.js`.
+    canvas: isTag(options.canvas, 'canvas') ? options.canvas : null,
+
     // Fonts
-    embedFonts: options.embedFonts ?? false,
+    // 'auto' (default): embed webfonts only when the element actually uses families the
+    // document declares — svg-as-image is an isolated document that can't see page fonts,
+    // so skipping the embed on webfont text is silent infidelity; system-font pages skip
+    // the whole phase at zero cost. true/false remain explicit overrides.
+    embedFonts: options.embedFonts ?? 'auto',
     iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts
       : (options.iconFonts ? [options.iconFonts] : []),
+    // Compiled here, once, and passed explicitly to every isIconFont call: this used to be
+    // a module-level array each capture overwrote, so concurrent captures with different
+    // lists read each other's matchers.
+    __iconMatchers: compileIconFontMatchers(options.iconFonts),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
     fontStylesheetDomains: Array.isArray(options.fontStylesheetDomains) ? options.fontStylesheetDomains : [],
@@ -71,6 +154,8 @@ export function createContext(options = {}) {
 
     /** @type {CachePolicy} */
     cache: cachePolicy,
+    // Internal: identity-share override (undefined = decide per capture in captureDOM).
+    __styleShare: options.__styleShare,
 
     // Network
     useProxy: typeof options.useProxy === 'string' ? options.useProxy : '',
@@ -79,14 +164,17 @@ export function createContext(options = {}) {
     width: options.width ?? null,
     height: options.height ?? null,
     format: resolvedFormat,
-    type: options.type ?? 'svg',
+    __explicitFormat: explicitFormat,
+    // `format` is canonical; expose the deprecated alias with the same normalized value so
+    // plugin hooks never receive a contradictory { format, type } pair.
+    type: resolvedFormat,
     quality: options.quality ?? 0.92,
     dpr: options.dpr ?? (window.devicePixelRatio || 1),
     backgroundColor:
       options.backgroundColor ?? (['jpeg', 'webp'].includes(resolvedFormat) ? '#ffffff' : null),
     filename: options.filename ?? 'snapDOM',
 
-    // NEW flags (user-friendly)
+    // Root transform / shadow handling
     outerTransforms: options.outerTransforms ?? true,
     outerShadows: options.outerShadows ?? false,
 
@@ -94,34 +182,40 @@ export function createContext(options = {}) {
     // to their live size. Opt-in (adds one in-document layout of the clone).
     reconcile: options.reconcile ?? false,
 
-    // Memoizes repeated captures of an unchanged element (scoped MutationObserver + cached
-    // result, see src/core/burst.js) — dashboard polling, video/gif frame loops. Opt-in: it
-    // costs a persistent observer per element, wasted on a one-shot capture. When this is
-    // NOT set, snapdom instead tracks capture frequency cheaply and suggests it once if the
-    // same element is captured repeatedly (see checkBurstAdvice in capture.js).
-    burst: options.burst ?? false,
-    // One-off with burst:true — force a fresh capture for changes automatic tracking can't
-    // see (canvas pixel draws, programmatic CSSOM edits). Ignored without burst:true.
+    // Burst memoization is default engine behavior (engages from the first capture, see
+    // src/core/burst.js). true/false remain INTERNAL-ONLY escapes (tests/benchmarks need
+    // deterministic full-pipeline runs), not public API.
+    burst: options.burst,
+
+    // EXPERIMENTAL: 'html-in-canvas' opts into the WICG canvas-place-element engine when the browser
+    // supports it (see src/engines/htmlInCanvas.js); anything else uses the svg pipeline.
+    engine: options.engine,
+    // Forces one fresh capture and clears lower style caches — for application
+    // changes with no browser signal, notably programmatic CSSOM edits. Frame sources bypass.
     invalidate: options.invalidate ?? false,
+
+    // Internal: the nested capture rasterizeIframe takes of a frame's documentElement, pinned
+    // to the frame's viewport (utils/clone.helpers.js). The svg engine reads it instead of
+    // expanding a root capture to scrollHeight; never public.
+    __pinned: options.__pinned === true,
 
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 
-    // Perceptual image downsampling. On by default (big speed win on image-heavy raster captures,
-    // ~free on the common case, fidelity-neutral). Pass `compress: false` to embed images verbatim.
+    // Perceptual image downsampling — always-on engine behavior (fidelity-neutral: codecs
+    // preserved, output adopted only when smaller). `compress: false` is INTERNAL-ONLY
+    // (benchmarks/tests measuring the uncompressed pipeline), not public API.
     compress: options.compress !== false,
 
     // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
     excludeStyleProps: options.excludeStyleProps ?? null,
 
-    // Built-in picture / lazy-src resolver (see src/modules/pictureResolver.js)
+    // Lazy <picture>/data-src placeholders resolve on the CLONE (freezeImgSrcset).
+    // Accepted for v2 compat, undocumented in v3 (the engine just does the right thing).
     resolvePicturePlaceholders: options.resolvePicturePlaceholders !== false,
-    pictureResolver:
-      options.pictureResolver && typeof options.pictureResolver === 'object'
-        ? options.pictureResolver
-        : {},
 
     // Plugins (reservado)
     // plugins: normalizePlugins(...),
   }
+  return context
 }

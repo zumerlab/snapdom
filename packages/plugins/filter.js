@@ -1,10 +1,13 @@
 /**
  * filter - Official SnapDOM Plugin
  * Applies CSS filter effects to the captured clone.
+ * Pinned by __tests__/plugins.transforms.v3.test.js.
+ * @module plugins/filter
  *
  * @param {Object} [options]
  * @param {string} [options.filter=''] - CSS filter string, e.g. 'grayscale(1) blur(2px)'
- * @param {string} [options.preset] - 'grayscale' | 'sepia' | 'blur' | 'invert' | 'vintage' | 'dramatic'
+ * @param {string} [options.preset] - 'grayscale' | 'sepia' | 'blur' | 'invert' | 'vintage' | 'dramatic'.
+ *   An unknown preset logs a warning and `filter` applies.
  * @returns {Object} SnapDOM plugin
  */
 export function filter(options = {}) {
@@ -22,14 +25,18 @@ export function filter(options = {}) {
     preset,
   } = options;
 
-  const cssFilter = preset ? (presets[preset] || '') : filterValue;
+  // An unknown preset must not turn the plugin off when a filter string was also given.
+  if (preset && !presets[preset]) console.warn(`[snapdom] filter: unknown preset ${JSON.stringify(preset)}`);
+  const cssFilter = presets[preset] || filterValue;
 
   return {
     name: 'filter',
+    pure: true,
 
     afterClone(ctx) {
       if (!cssFilter) return;
-      ctx.clone.style.filter = cssFilter;
+      // Retained author !important rules must not cancel the explicitly requested effect.
+      ctx.clone.style.setProperty('filter', cssFilter, 'important');
     }
   };
 }

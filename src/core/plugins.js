@@ -13,9 +13,17 @@
  *
  * Hook signature: (context, payload?) => void | any | Promise<void|any>
  *
- * Global plugins are registered via registerPlugins()
- * Local (per-capture) plugins can be attached using attachSessionPlugins().
+ * Global plugins are registered via registerPlugins(). Per-capture plugins come in through
+ * `snapdom(el, { plugins })` and attachSessionPlugins(), and win over globals by name.
+ * Spec: PLUGIN_SPEC.md.
+ * @module plugins
  */
+
+// The stage vocabulary travels with the plugin API (this module is the `@zumer/snapdom/
+// plugins` subpath export), so a plugin declares and validates `needs` with the same
+// words core resolves it by. See stages.js.
+import { DEFAULT_STAGE } from './stages.js'
+export { STAGES, DEFAULT_STAGE, assertNeeds } from './stages.js'
 
 const __plugins = []
 
@@ -41,13 +49,23 @@ export function normalizePlugin(spec) {
 
 /**
  * Register global plugins (deduped by name, preserves order).
+ *
+ * A global plugin may NOT lower the stage. resolveStage runs over the merged list, so a
+ * global `needs: 'clone'` would stop every capture in the application before it produced
+ * pixels, including call sites that never heard of the plugin. Lowering is a per-capture
+ * decision by construction, so this is rejected at registration instead of surfacing later
+ * as a result with no url.
  * @param  {...any} defs
+ * @throws {Error} when a global plugin declares `needs` other than 'render'
  */
 export function registerPlugins(...defs) {
   const flat = defs.flat()
   for (const d of flat) {
     const inst = normalizePlugin(d)
     if (!inst) continue
+    if (inst.needs !== undefined && inst.needs !== DEFAULT_STAGE) {
+      throw new Error(`[snapdom] global plugin '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(inst.needs)}. A global plugin must run to '${DEFAULT_STAGE}': lowering it here would stop EVERY capture in the app short of pixels. Pass it per capture instead: snapdom(el, { plugins: [<plugin>] }).`)
+    }
     // 🔒 de-dup por name
     if (!__plugins.some(p => p && p.name && inst.name && p.name === inst.name)) {
       __plugins.push(inst)
@@ -67,11 +85,12 @@ function getContextPlugins(context) {
 }
 
 /**
- * Llama un hook y propaga un acumulador (compat con tu runHook actual).
- * Usa los plugins locales si existen, o los globales en fallback.
+ * Calls a hook and threads an accumulator through it.
+ * Uses the per-capture plugins when present, falling back to the globals.
  * @param {string} name
  * @param {any} context
  * @param {any} payload
+ * @returns {Promise<any>} the payload, or the last value a hook returned in its place
  */
 export async function runHook(name, context, payload) {
   let acc = payload
@@ -86,12 +105,14 @@ export async function runHook(name, context, payload) {
 }
 
 /**
- * NUEVO: recolecta los valores devueltos por TODOS los plugins para un hook.
- * Útil para `defineExports` (cada plugin devuelve un mapa propio).
- * Usa plugins locales si existen, o los globales en fallback.
+ * Collects the values returned by EVERY plugin for one hook.
+ * Used by `defineExports`, where each plugin returns a map of its own.
+ * Uses the per-capture plugins when present, falling back to the globals. Every plugin sees
+ * the same payload; nothing is chained.
  * @param {string} name
  * @param {any} context
  * @param {any} payload
+ * @returns {Promise<any[]>} the non-undefined returns, in plugin order
  */
 export async function runAll(name, context, payload) {
   const outs = []
@@ -109,8 +130,11 @@ export async function runAll(name, context, payload) {
 export function clearPlugins() { __plugins.length = 0 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
- * NEW: Local-first per-capture support (without removing global APIs)
+ * Local-first per-capture support, without removing the global APIs.
  * ────────────────────────────────────────────────────────────────────────────── */
+
+/** Counter behind the `anonymous-N` names handed to unnamed local plugins. */
+let __anonSeq = 0
 
 /**
  * Merge local (per-capture) plugin defs with the global registry (local-first).
@@ -128,7 +152,12 @@ export function mergePlugins(localDefs) {
   if (Array.isArray(localDefs)) {
     for (const d of localDefs) {
       const inst = normalizePlugin(d)
-      if (!inst || !inst.name) continue
+      if (!inst) continue
+      // An unnamed plugin used to be dropped here with no error and no warning, so its hooks
+      // simply never ran — indistinguishable from a plugin that does nothing. `name` exists
+      // for dedup and local-over-global override; a plugin that opts out of both is still a
+      // plugin. Give it a per-instance name so it runs and can never collide.
+      if (!inst.name) inst.name = `anonymous-${++__anonSeq}`
       const i = out.findIndex(x => x && x.name === inst.name)
       if (i >= 0) out.splice(i, 1)
       out.push(inst)
@@ -165,4 +194,30 @@ export function attachSessionPlugins(context, localDefs, force = false) {
  */
 export function getGlobalPlugins() {
   return __plugins.slice()
+}
+
+/** Hooks that touch the clone or the render — the ones memo/diff fast paths would skip
+ *  or re-run against retained state. Export-only plugins (defineExports/beforeExport/
+ *  afterExport) are served correctly by buildResult on every path. */
+const RENDER_HOOKS = ['resolveNode', 'beforeSnap', 'beforeClone', 'afterClone', 'beforeRender', 'afterRender']
+
+/**
+ * True when the capture's plugin list contains a render-affecting plugin that has NOT
+ * declared itself pure. Auto-burst and the diff path bail on these — serving a memo would
+ * skip their hooks, and splicing a rebuilt subtree would drop their transformations —
+ * mirroring the engine seam's conservative hasPlugins rule. A plugin whose hooks are
+ * deterministic/idempotent can set `pure: true` to opt back into the fast paths.
+ * @param {{plugins?: any[]}} context
+ * @returns {boolean}
+ */
+export function hasImpureRenderPlugins(context) {
+  const defs = Array.isArray(context && context.plugins) ? context.plugins : []
+  for (const d of defs) {
+    const inst = normalizePlugin(d)
+    if (!inst || inst.pure === true) continue
+    for (const h of RENDER_HOOKS) {
+      if (typeof inst[h] === 'function') return true
+    }
+  }
+  return false
 }

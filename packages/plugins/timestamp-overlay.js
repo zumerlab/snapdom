@@ -1,9 +1,12 @@
 /**
  * timestampOverlay - Official SnapDOM Plugin
  * Adds a translucent timestamp label to the captured clone.
+ * Reads the clock/formatter for every capture; it does not opt into unchanged-repeat memoization.
+ * Pinned by __tests__/plugins.transforms.v3.test.js.
+ * @module plugins/timestamp-overlay
  *
  * @param {Object} [options]
- * @param {string} [options.format='datetime'] - 'datetime' | 'date' | 'time' | 'iso' | custom function
+ * @param {string|((date: Date) => string)} [options.format='datetime'] - 'datetime' | 'date' | 'time' | 'iso' | custom formatter
  * @param {string} [options.position='bottom-right'] - 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
  * @param {string} [options.background='rgba(0,0,0,0.6)']
  * @param {string} [options.color='#fff']

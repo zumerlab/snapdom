@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM 2.24 windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-08-11","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM 2.24 windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-09-05","author":{"@type":"Organization","name":"Zumerlab"}}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"Tiled Rasterization","item":"https://snapdom.dev/blog/huge-page-mosaic/"}]}</script>
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
@@ -85,7 +85,7 @@
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
 
   <section class="hero"><div class="hero-badge">SnapDOM Blog</div><h1><span class="accent">Tiled rasterization</span> for large DOM captures</h1><p class="lead">SnapDOM 2.24 can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.</p></section>
   <main class="page">
@@ -255,20 +255,20 @@ await tileCapture(capture, {}, async ({ canvas, row, col }) => {
     <section class="prose">
       <h2>Where tile windows are useful</h2>
       <p>We added crop and immutable geometry for document exporters, where a tall capture naturally becomes PDF pages. The same mechanism also fits map-style viewers, poster printing, zoomable archives and multipart uploads. They all need one stable source and a way to ask for one rectangle at a time.</p>
-      <p>Plugin authors get the same path through <code>ctx.exports.canvas({ crop })</code>, a silent core-export facade that reuses the canonical capture without recursively firing export hooks. That makes “mosaic” a small custom export instead of a second rendering engine—and keeps the extra work out of SnapDOM's capture hot path.</p>
+      <p>In <code>defineExports(ctx)</code>, plugin authors can retain <code>ctx.exports</code> and call its <code>canvas({ crop })</code> method from their custom exporter. This core-export facade reuses the canonical capture without recursively firing export hooks. That makes “mosaic” a small custom export instead of a second rendering engine—and keeps the extra work out of SnapDOM's capture hot path.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Keep reading</div>
       <div class="related-grid">
         <a class="related-card" href="../../how-to/capture-full-page/">Capture a full page <span class="arrow">→</span></a>
-        <a class="related-card" href="../../docs/api/#canvas-crop">Canvas crop API <span class="arrow">→</span></a>
+        <a class="related-card" href="../../docs/api/#exporter-options">Canvas crop API <span class="arrow">→</span></a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Plugin export API <span class="arrow">→</span></a>
         <a class="related-card" href="../painting-without-canvas/">Painting without canvas <span class="arrow">→</span></a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2>Capture once. Rasterize in pieces.</h2><p><code>toCanvas({ crop })</code> and immutable capture geometry are available in SnapDOM 2.24.</p><a href="../../docs/api/#canvas-crop" class="btn btn-primary">Read the API</a><a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2>Capture once. Rasterize in pieces.</h2><p><code>toCanvas({ crop })</code> and immutable capture geometry are available in SnapDOM 2.24.</p><a href="../../docs/api/#exporter-options" class="btn btn-primary">Read the API</a><a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a></div></section>
   </main>
 
   <script type="module">

@@ -19,14 +19,14 @@ const LIBS = {
     name: 'html-to-image',
     async load() {
       const m = await import('https://cdn.jsdelivr.net/npm/html-to-image/+esm')
-      return async (el) => m.toPng(el)
+      return async (el) => m.toPng(el, { pixelRatio: 1 })
     },
   },
   'modern-screenshot': {
     name: 'modern-screenshot',
     async load() {
       const m = await import('https://cdn.jsdelivr.net/npm/modern-screenshot/+esm')
-      return async (el) => m.domToPng(el)
+      return async (el) => m.domToPng(el, { scale: 1 })
     },
   },
   'dom-to-image': {
@@ -103,7 +103,10 @@ async function runBenchmark(btn) {
     progress(snapBox, 'SnapDOM: capture ' + (i + 1) + '/' + RUNS + '…')
     await tick()
     const t0 = performance.now()
-    const img = await snapdom.toPng(el)
+    // dpr:1, like the competitors above. snapdom defaults `dpr` to devicePixelRatio, so on a
+    // retina screen it was encoding four times the pixels of a library pinned to 1 — a
+    // handicap this page was quietly applying to itself.
+    const img = await snapdom.toPng(el, { dpr: 1 })
     snapTotal += performance.now() - t0
     snapBox.innerHTML = ''
     snapBox.appendChild(img)
@@ -133,8 +136,8 @@ async function runBenchmark(btn) {
         const dataUrl = await otherFn(el)
         otherTotal += performance.now() - t0
         const img = await dataUrlToImg(dataUrl)
-        // Competitor libs rasterize at devicePixelRatio; display at the element's
-        // CSS size so both previews render at the same scale.
+        // Display at the element's CSS size so both previews render at the same scale,
+        // whatever resolution the library ended up choosing.
         img.style.width = Math.round(el.getBoundingClientRect().width) + 'px'
         img.style.height = 'auto'
         otherBox.innerHTML = ''

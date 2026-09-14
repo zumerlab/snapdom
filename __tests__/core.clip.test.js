@@ -55,32 +55,6 @@ describe('clip option (region capture)', () => {
     expect(svg).toMatch(new RegExp(`height="${clip.height}"`))
   })
 
-  it('publishes immutable clip and content-origin geometry on the capture result', async () => {
-    const wrap = mount(buildBlocks(4, 200))
-    const target = wrap.children[2]
-    const box = target.getBoundingClientRect()
-    const clip = {
-      x: box.left + window.scrollX,
-      y: box.top + window.scrollY,
-      width: box.width,
-      height: box.height,
-    }
-    const result = await snapdom(document.body, { clip })
-
-    expect(Object.isFrozen(result.meta)).toBe(true)
-    expect(Object.isFrozen(result.meta.clip)).toBe(true)
-    expect(Object.getOwnPropertyDescriptor(result, 'meta')).toMatchObject({
-      writable: false, configurable: false, enumerable: true,
-    })
-    expect(() => { result.meta = null }).toThrow(TypeError)
-    expect(result.meta.w0).toBeCloseTo(clip.width, 3)
-    expect(result.meta.h0).toBeCloseTo(clip.height, 3)
-    expect(result.meta.contentX).toBeCloseTo(0, 3)
-    expect(result.meta.contentY).toBeCloseTo(0, 3)
-    expect(result.meta.clip.width).toBeCloseTo(clip.width, 3)
-    expect(result.meta.clip.height).toBeCloseTo(clip.height, 3)
-  })
-
   it('culled siblings keep their layout slot: clipped region pixels match the live DOM', async () => {
     const wrap = mount(buildBlocks(8, 400))
     const target = wrap.children[5]
@@ -302,6 +276,67 @@ describe('clip option (region capture)', () => {
     expect(px[0]).toBeGreaterThan(200)
     expect(px[1]).toBeLessThan(60)
     expect(px[3]).toBeGreaterThan(200)
+  })
+
+  it('deep clip window renders content-visibility:auto sections (no blank band)', async () => {
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'width:400px;margin:0;'
+    for (let i = 0; i < 10; i++) {
+      const sec = document.createElement('div')
+      sec.style.cssText = 'content-visibility:auto;contain-intrinsic-size:auto 400px;height:400px;margin:0;'
+      const inner = document.createElement('div')
+      inner.style.cssText = 'height:400px;margin:0;background:rgb(255,0,0);'
+      inner.textContent = `CV_SECTION_${i}_MARKER`
+      sec.appendChild(inner)
+      wrap.appendChild(sec)
+    }
+    window.scrollTo(0, 0)
+    // section 8 (y 3200–3600) is far below the real viewport: its cv contents are skipped
+    // by the browser, and pre-fix the clip path never forced them back
+    const target = wrap.children[8]
+    const r = target.getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    const sx = canvas.width / clip.width
+    const sy = canvas.height / clip.height
+    const px = ctx.getImageData(Math.round(clip.width / 2 * sx), Math.round(clip.height / 2 * sy), 1, 1).data
+    expect(px[0]).toBeGreaterThan(200)
+    expect(px[1]).toBeLessThan(60)
+    // forcing is pruned to the window: far sections stay culled
+    const url = await snapdom.toRaw(document.body, { clip })
+    const svg = decodeSvg(url)
+    expect(svg).toContain('CV_SECTION_8_MARKER')
+    expect(svg).not.toContain('CV_SECTION_0_MARKER')
+  })
+
+  it('husks keep the margins that collapsed through culled sections (no cumulative drift)', async () => {
+    // Each section's only child carries 20px margins that escape the section's edges.
+    // An empty husk has no children to escape, so pre-fix every culled section lost its
+    // 20px of separation: by section 15 the flow had drifted 300px and the clip window
+    // captured the wrong band (real-world repro: wikipedia at scroll 73k, +812px drift).
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'width:400px;margin:0;'
+    for (let i = 0; i < 20; i++) {
+      const sec = document.createElement('section')
+      sec.style.cssText = 'margin:0;'
+      const inner = document.createElement('div')
+      inner.style.cssText = 'height:160px;margin:20px 0;background:rgb(0,128,255);'
+      inner.textContent = `DRIFT_SEC_${i}`
+      sec.appendChild(inner)
+      wrap.appendChild(sec)
+    }
+    window.scrollTo(0, 0)
+    const target = wrap.children[15].firstElementChild
+    const r = target.getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    const sx = canvas.width / clip.width
+    const sy = canvas.height / clip.height
+    const px = ctx.getImageData(Math.round(clip.width / 2 * sx), Math.round(clip.height / 2 * sy), 1, 1).data
+    expect(px[2]).toBeGreaterThan(200)
+    expect(px[0]).toBeLessThan(60)
   })
 
   it('clip: null behaves exactly like a normal capture', async () => {

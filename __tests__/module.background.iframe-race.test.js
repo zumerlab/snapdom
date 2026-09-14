@@ -84,30 +84,40 @@ function makeContainer(bgUrl, iframeCount) {
   return container
 }
 
-/** count of nodes in the output SVG whose inline style has a data: background-image */
+/** count of nodes in the output SVG that CARRY a data: background-image — inline, or
+ *  through the engine's [data-sdi] interning (identical style attributes are deduped into
+ *  one attribute-selector rule, so the style can live in the sheet instead of the node) */
 function countInlinedBackgrounds(dataUrl) {
   const svgText = decodeURIComponent(dataUrl.split(',').slice(1).join(','))
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml')
+  const BG = /background-image:\s*url\(["']?data:/
+  const internedBg = new Set()
+  for (const styleEl of doc.querySelectorAll('style')) {
+    for (const m of (styleEl.textContent || '').matchAll(/\[data-sdi="([^"]+)"\]\{([^}]*)\}/g)) {
+      if (BG.test(m[2])) internedBg.add(m[1])
+    }
+  }
   let count = 0
-  for (const el of doc.querySelectorAll('[style]')) {
-    const s = el.getAttribute('style') || ''
-    if (/background-image:\s*url\(["']?data:/.test(s)) count++
+  for (const el of doc.querySelectorAll('[style], [data-sdi]')) {
+    if (BG.test(el.getAttribute('style') || '') || internedBg.has(el.getAttribute('data-sdi'))) count++
   }
   return count
 }
 
 describe('background-image inlining races with same-origin iframe rasterization', () => {
-  for (const fast of [true, false]) {
-    it(`fast:${fast} — backgrounds survive 3 concurrent same-origin iframes (6 runs)`, async () => {
-      const bgUrl = await findFetchableUrl()
-      for (let run = 0; run < 6; run++) {
-        const container = makeContainer(bgUrl, 3)
-        const res = await snapdom(container, { fast })
-        const inlined = countInlinedBackgrounds(res.url)
-        mounted.forEach((el) => el.remove())
-        mounted = []
-        expect(inlined, `fast:${fast} run ${run}`).toBe(3)
-      }
-    }, 60000)
-  }
+  // The old fast:true/fast:false parametrization passed a v2-era option v3 never had —
+  // unknown options are silently ignored, so both arms ran byte-identical pipelines. One
+  // arm, same total repro count (the pre-fix failure rate in the header was measured under
+  // v2's fast:false, kept there for history).
+  it('backgrounds survive 3 concurrent same-origin iframes (12 runs)', async () => {
+    const bgUrl = await findFetchableUrl()
+    for (let run = 0; run < 12; run++) {
+      const container = makeContainer(bgUrl, 3)
+      const res = await snapdom(container)
+      const inlined = countInlinedBackgrounds(res.url)
+      mounted.forEach((el) => el.remove())
+      mounted = []
+      expect(inlined, `run ${run}`).toBe(3)
+    }
+  }, 120000)
 })

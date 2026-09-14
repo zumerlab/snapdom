@@ -1,10 +1,13 @@
-# SnapDOM Plugin Specification v1.0
+# SnapDOM Plugin Specification v2.0 (snapdom v3)
 
-The official guide for creating SnapDOM plugins.
+This guide covers the plugin contract for the SnapDOM v3 beta. SnapDOM captures the rendered
+state of web apps and exports images and canvases. Plugins can transform that capture,
+export HTML, context, element maps or PDF, and record a live element as GIF or video.
 
 ## What is a Plugin?
 
-A SnapDOM plugin is a plain JavaScript object with a unique `name` and one or more lifecycle hooks. Plugins can modify the capture at any stage.
+A plugin is a plain JavaScript object with a unique `name` and one or more lifecycle hooks.
+Each hook runs at a defined point in capture or export.
 
 ```js
 const myPlugin = {
@@ -21,7 +24,7 @@ Wrap your plugin in a factory function to accept options:
 
 ```js
 export function myPlugin(options = {}) {
-  const { color = 'red', opacity = 0.5 } = options;
+  const { color = 'red' } = options;
 
   return {
     name: 'my-plugin',
@@ -52,28 +55,32 @@ snapdom.plugins(myPlugin());
 Hooks execute in this order:
 
 ```
-beforeSnap → beforeClone → afterClone → beforeRender → afterRender → [per export: beforeExport → afterExport] → afterSnap
+beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender
+→ defineExports → [beforeExport → exporter → afterExport] → afterSnap
 ```
 
-Plus `defineExports` for adding custom export methods, and `resolveNode` per node during the clone walk.
+The bracketed segment runs for every export. `afterSnap` runs once, after the first
+successful export. A plugin with `beforeRender` or `afterRender` makes an
+`engine: 'html-in-canvas'` request use the SVG fallback.
 
 | Hook | When it runs | Common use cases |
 |------|-------------|-----------------|
-| `beforeSnap` | Before anything happens | Validate options, set defaults |
+| `beforeSnap` | Before capture work begins | Validate options, set defaults |
 | `beforeClone` | Before DOM is cloned | Pre-process live DOM (undo in afterClone) |
-| `afterClone` | After clone is created | Transform clone: overlays, styles, replacements |
-| `beforeRender` | Before SVG serialization | Modify SVG string or rendering options |
-| `afterRender` | After SVG is rendered | Post-process rendered output |
-| `beforeExport` | Before each export call | Modify export options (quality, type) |
-| `afterExport` | After each export call | Observe the produced output (it cannot replace it) |
-| `afterSnap` | Once, after the first export | Cleanup |
-| `defineExports` | While the result object is built | Add new export formats (toPdf, toAscii) |
 | `resolveNode` | Per node, during cloning | Replace/skip individual nodes (redaction, custom widgets) |
+| `afterClone` | After DOM and styles are cloned | Transform clone: overlays, styles, replacements |
+| `beforeRender` | Before the selected renderer runs | Adjust the clone or generated CSS |
+| `afterRender` | After the render artifact exists | Read `ctx.dataURL` / `ctx.meta`, and `ctx.svgString` on the SVG path |
+| `defineExports` | During result setup, after capture | Add new export formats (toPdf, toAscii) |
+| `beforeExport` | Before each export call | Adjust export options (quality, size) |
+| `afterExport` | After each export call | Observe the export result (log, upload, measure) |
+| `afterSnap` | Once, after the first successful export | Cleanup capture-scoped resources |
 
 ### Per-node hook: `resolveNode(node, ctx)`
 
-Unlike the lifecycle hooks, `resolveNode` runs once **per source node** while the clone is
-built (after `exclude`/`filter`, before built-in handling of iframe/canvas/video/audio).
+`resolveNode` runs once per source node while the clone is
+built (after the compiled exclusion policy, before built-in handling of
+iframe/canvas/video/audio).
 The first plugin that returns a value wins:
 
 - Return a **Node** → used as the finished clone for that node (subtree included). SnapDOM
@@ -103,77 +110,189 @@ Keep it fast: it runs on every node of the captured subtree. Prefer cheap checks
 
 ### Hook Context
 
-There are **two** context shapes. Mixing them up is the most common plugin bug.
+Capture hooks (`beforeSnap` through `afterRender`, plus `afterSnap`) share one context object,
+`ctx`. It holds normalized options and the values produced at each stage. Changes to capture
+options in `beforeSnap` affect the capture, with the exceptions listed under [Hook Rules](#hook-rules).
+`format` is the canonical image-format field; the deprecated `type` alias stays synchronized.
 
-**Clone-phase hooks** (`beforeSnap`, `beforeClone`, `afterClone`, `beforeRender`, `afterRender`)
-receive the capture state. Capture options are **not** flattened onto it: they live on `ctx.options`.
-
-```js
-{
-  element,        // Original DOM element
-  options,        // Normalized capture options (scale, dpr, embedFonts, backgroundColor, …)
-  plugins,        // Active plugins for this capture
-
-  clone,          // Cloned DOM tree            (from afterClone)
-  classCSS, styleCache, nodeMap,             // (from afterClone)
-  fontsCSS, baseCSS, scrollbarCSS,           // (from beforeRender)
-  svgString, dataURL                         // (from afterRender)
-}
-```
-
-**Export-phase hooks** (`beforeExport`, `afterExport`, `defineExports`) receive a spread of the
-normalized options plus export info. There is no `clone` or `nodeMap` here: the clone is already
-serialized into `export.url`.
+Export hooks receive a per-export copy with an `export` block for that call. Change export
+options through the second argument's `options` object.
 
 ```js
 {
-  // every normalized option, flattened: scale, dpr, width, height, quality, format, type,
-  // backgroundColor, embedFonts, iconFonts, localFonts, excludeFonts, exclude, filter,
-  // clip, compress, reconcile, burst, cache, useProxy, fallbackURL, placeholders, …
-  element,        // Original DOM element
-  meta,           // Frozen render geometry (same value as result.meta)
-  export: { type, options, requestedOptions, url },
-  exports         // Silent core exporters (defineExports only)
+  // Input & options
+  element,           // Capture root, set on full and differential recapture paths
+  options,           // Self-reference to this same ctx (for plugins written against ctx.options)
+  needs,             // How far this capture runs: 'clone' | 'render'
+  debug,             // Mode flags
+  scale, dpr,        // Resolution
+  width, height,     // Dimensions
+  backgroundColor,   // Background color
+  quality,           // Export quality (0-1)
+  useProxy,          // CORS proxy URL
+  cache,             // Persistent resource/style cache policy
+  outerTransforms, outerShadows,
+  embedFonts, localFonts, iconFonts, excludeFonts, fontStylesheetDomains,
+  filter, filterMode, exclude, excludeMode,
+  shouldExclude,     // Combined data-capture/exclude/filter content decision
+  fallbackURL, placeholders,
+  format, type, filename, canvas, captureSelection, // format is canonical; type is synchronized
+  reconcile, invalidate, excludeStyleProps,
+  clip, engine, plugins,
+
+  // Intermediate values (available after their stage)
+  clone,             // Cloned DOM tree, from afterClone through afterRender
+  classCSS, styleCache, nodeMap,
+  fontsCSS, baseCSS,
+  svgString,         // Serialized SVG source, available in afterRender, then released
+  dataURL,           // Capture data URL when the selected engine produces one
+  meta,              // Frozen render geometry (viewBox, content origin, clip) after render
+                     // clone/nodeMap/styleCache/svgString are released once afterRender has
+                     // run: keeping them would make every live result retain the whole tree.
+
+  // During export hooks (defineExports and beforeExport/afterExport)
+  export: {
+    type, options, url, // URL is SVG by default; PNG after a successful native html-in-canvas capture
+    requestedOptions, // Exactly what this toXxx() call passed, frozen (omitted keys stay omitted)
+    svgString,       // () => string; lazily decodes SVG, throws for a raster engine capture
+  },
+  artifacts: {       // Captured render CSS, available without parsing the URL
+    classCSS, fontsCSS, baseCSS, scrollbarCSS
+  },
+  exports,           // defineExports only: core exporters (png, canvas, blob, …)
+                     // without their hooks, so a custom format can build on them
+                     // without re-entering the export pipeline
 }
 ```
 
-**Passing data from the clone phase to an export.** `ctx.__myData` set in `afterClone` does **not**
-reach `defineExports`: they are different objects. Mirror it on `ctx.options`, the object the export
-context is spread from:
+### The export hooks take a payload
+
+`beforeExport` and `afterExport` receive a second argument describing the export at hand:
 
 ```js
-afterClone(ctx) {
-  const data = collect(ctx.clone);
-  ctx.__myData = data;                            // later clone-phase hooks
-  if (ctx.options) ctx.options.__myData = data;   // export hooks and defineExports
-},
-defineExports() {
-  return { mine: async (ctx) => ctx.__myData };   // arrives through the options spread
+beforeExport(ctx, { format, options })          // format: 'png' | 'blob' | 'download' | your key
+afterExport (ctx, { format, options, result })  // result: what the exporter returned
+```
+
+`options` is the object the exporter receives, so mutating it in
+`beforeExport` steers that export. For format-selecting exporters, `options.format` is
+canonical; its deprecated `options.type` alias is also honored and synchronized:
+
+```js
+{
+  name: 'jpeg-quality',
+  beforeExport(ctx, { format, options }) {
+    if (format === 'jpeg') options.quality = 0.6
+  },
 }
 ```
 
-**Payloads.** `beforeExport(ctx, { format, options })` and
-`afterExport(ctx, { format, options, result })` receive a second argument.
+Every plugin receives the same payload. Hook return values are ignored; the caller gets
+what the exporter produced.
+`beforeExport` may still mutate `options`; only `afterExport` receives `result`. To hand back
+something else, declare that format in `defineExports` (it can build on
+`ctx.exports.png()` and friends).
 
-During an export, `export.options` is the normalized merge of capture defaults and
-the export call. `export.requestedOptions` is a frozen shallow copy of exactly what
-the caller passed to `toXxx(...)`: key presence is preserved, including explicit
-values equal to a capture default. It is snapped synchronously when `toXxx()` is
-called, before that export waits behind any earlier job in the capture's queue.
-Plugin exporters should use it when applying their own defaults. In
-`defineExports`, only the final canonical `export.url` is guaranteed because no
-export call is active yet. `element` remains the original source element in both
-`defineExports` and export-hook contexts, including when it belongs to a
-same-origin iframe.
+Compared with v2.24.16, `afterExport` no longer chains its return value as the next hook's
+payload. That return never replaced the result received by the caller in v2 either.
+Remove return-value chaining; custom output belongs in `defineExports`.
+
+The v2 named TypeScript interface `PluginExportFacade` is no longer exported. The runtime
+facade still exists; infer `ctx.exports` inside `defineExports`, or derive its type:
+
+```ts
+import type { CaptureContext } from '@zumer/snapdom';
+type CoreExports = NonNullable<CaptureContext['exports']>;
+```
 
 ### Hook Rules
 
 1. Hooks can be sync or async. SnapDOM awaits all hooks.
-2. Mutate `ctx` freely, e.g. change `ctx.backgroundColor` in `beforeSnap`.
-3. `afterExport` observes; it does not transform. What it returns becomes the payload passed to the
-   next plugin's `afterExport`, but the caller always receives what the exporter produced. To change
-   an output, register your own export with `defineExports`.
+2. Set capture options in `beforeSnap`, e.g. `ctx.backgroundColor`, `ctx.scale`, `ctx.width`,
+   `ctx.clip`, `ctx.outerTransforms` or `ctx.outerShadows`. The exceptions are options resolved
+   before hooks run: `plugins`, `needs`, `invalidate` and `cache`. Setting those in a
+   hook has no effect.
+3. Use `beforeExport` to change export options and `afterExport` to observe the result.
+   Use `defineExports` to provide a different exporter.
 4. DOM mutations in `beforeClone` must be undone. The live page should not be affected.
+
+### How far the pipeline runs: `needs`
+
+The pipeline has two capture stages, followed by exports:
+
+```
+element ──▶ [clone] ──▶ [render] ──▶ exports
+```
+
+Plugins that only need captured DOM or structured data can skip rendering:
+
+```js
+{ name: 'my-plugin', needs: 'clone' }   // through afterClone; nothing is rendered
+{ name: 'my-plugin' }                   // default 'render': clone and render
+```
+
+Only a per-capture plugin may lower the stage. Global registration rejects `needs: 'clone'`
+because it would silently remove pixels from every capture in the application.
+
+The supported stages are `'clone'` and `'render'`; the former `'dom'` stage is no longer
+supported. `ctx.shouldExclude` covers both the exclusion rules and the inclusion filter at
+either stage, following changes made in `beforeSnap`. For cloning, `data-capture="exclude"`
+and `exclude` are checked before `filter`; the first omission supplies `excludeMode` or
+`filterMode` respectively. Both modes default to `hide` and can differ in one capture.
+`resolveNode` runs after these content-selection checks.
+
+The capture runs to the deepest stage requested by its plugins. An undeclared `needs`
+means `'render'`, so every attached plugin must request `'clone'` to skip rendering.
+Captures without plugins render normally. `result.needs` reports which stage ran.
+
+If the capture stopped at `'clone'`, `url`, `toRaw()`, `toPng()`, `toCanvas()` and other image
+exports throw, naming the plugins that lowered the stage. They never recapture on demand:
+that would produce an image from a later moment. Skipping render still pays the cost of
+cloning; it is useful when a caller needs only the plugin's non-image output.
+
+Plugins that support both stages should accept a `needs` option:
+
+```js
+export function myPlugin(options = {}) {
+  return { name: 'my-plugin', needs: options.needs ?? 'render', /* hooks */ }
+}
+```
+
+`contextExport({ needs: 'clone' })` and `agentMap({ image: false, needs: 'clone' })` are the
+official examples. Both default to `'render'` so the caller can choose whether to omit images.
+
+Core rejects unknown stages. Validate any narrower stage requirements in your plugin:
+
+```js
+import { assertNeeds } from '@zumer/snapdom/plugins'
+const needs = assertNeeds('my-plugin', options.needs, ['clone', 'render'])  // rejects 'dom'
+```
+
+`STAGES`, exported from the same entry point, is `['clone', 'render']`.
+For example, `agent-map` requires `image: false` when `needs: 'clone'`.
+
+### Plugins × the engine's fast paths (v3)
+
+SnapDOM can reuse an unchanged capture (memoization) or rebuild changed subtrees
+(differential recapture). By default, plugins with `resolveNode`, `beforeSnap`, `beforeClone`,
+`afterClone`, `beforeRender` or `afterRender` disable these paths so their work is never skipped.
+Export-only plugins (`defineExports`, `beforeExport`, `afterExport`) keep them available.
+
+If your capture hooks are deterministic and idempotent (same input → same output, no
+external state like timestamps or counters), declare it:
+
+```js
+{ name: 'my-plugin', pure: true, afterClone(ctx) { /* … */ } }
+```
+
+`pure: true` opts the plugin back into unchanged-repeat memoization. A pure plugin whose
+capture-affecting hooks are limited to `beforeRender` / `afterRender` may also use
+differential recapture, because those boundaries run around the rebuilt render. Hooks that
+participate in clone construction (`beforeSnap`, `beforeClone`, `resolveNode`, `afterClone`)
+still force a conservative full recapture after a change: the splice path cannot skip them.
+Captures stopped at `needs: 'clone'` are never memoized because there is no render artifact
+to serve, regardless of purity.
+Declaring a hook pure when it reads changing external state can serve stale results.
 
 ## Adding Custom Exports with defineExports
 
@@ -184,7 +303,7 @@ export function pdfExport(options = {}) {
     defineExports(ctx) {
       return {
         pdf: async (ctx, opts) => {
-          const svgUrl = ctx.export.url;
+          const captureUrl = ctx.export.url; // SVG by default; PNG after successful native html-in-canvas
           // convert to PDF...
           return pdfBlob;
         }
@@ -195,32 +314,19 @@ export function pdfExport(options = {}) {
 
 // After registration:
 const result = await snapdom(element, { plugins: [pdfExport()] });
-const blob = await result.toPdf({ width: 800 });   // or result.to('pdf', { width: 800 })
-// (result.pdf() is not generated: only the toX() helper and to(name).)
+const blob = await result.toPdf({ width: 800 });
 ```
 
-**Priority.** When multiple sources define the same export key, resolution is **local plugin > global plugin > core**. So a plugin passed via `snapdom(el, { plugins: [...] })` can override `toPng`, `toJpg`, `toCanvas`, etc., and a per-capture plugin beats a globally-registered one with the same key. Use this to swap a core exporter for a plugin implementation (e.g. a plugin-provided `png` that reuses the existing SVG via `ctx.export.url`).
-
-`defineExports(ctx)` also receives `ctx.exports`, a silent facade over the core
-exporters. It reuses this capture without recursively firing export hooks. Its
-`canvas()` method accepts `crop: { x, y, width, height }` in SVG viewBox
-coordinates; SnapDOM windows the SVG before image decode, allowing document
-plugins to rasterize page-sized regions instead of one browser-limited bitmap.
-A crop is clipped to the intersection with the viewBox, and it never degrades
-silently: a non-finite or empty window, a window fully outside the viewBox, or a
-payload that is not a serialized SVG capture all reject with a `RangeError`
-rather than returning the whole capture where one page was requested.
-The returned capture object exposes the same immutable render geometry as
-`result.meta`; both the metadata value and the result property that holds it are
-non-writable/non-configurable. Auxiliary element captures can therefore measure
-their own final SVG artifact without consulting the live source tree or risking
-URL/geometry drift.
+When export keys collide, priority is **local plugin > global plugin > core**. A per-capture
+plugin can override `toPng`, `toJpg`, `toCanvas` or another exporter. Use `ctx.export.url` or
+`ctx.exports` to build that export from the existing capture.
 
 ## Distribution
 
 ### Official plugins
 
-Official plugins ship as a separate package to keep the core lightweight:
+Official plugins ship separately. This installs the published package; for the v3 beta
+checkout, follow [Installation](./README.md#installation).
 
 ```bash
 npm i @zumer/snapdom-plugins
@@ -261,10 +367,13 @@ export function example(options = {}) {
 
   return {
     name: 'example',
+    needs: 'render', // per-capture plugins may instead request 'clone'
+    pure: false,     // true only for deterministic/idempotent capture-affecting hooks
 
     // Pick only the hooks you need:
     // beforeSnap(ctx) {},
     // beforeClone(ctx) {},
+    // resolveNode(node, ctx) {},
 
     afterClone(ctx) {
       if (!enabled) return;
@@ -273,9 +382,10 @@ export function example(options = {}) {
 
     // beforeRender(ctx) {},
     // afterRender(ctx) {},
-    // beforeExport(ctx) {},
-    // afterExport(ctx) {},
     // defineExports(ctx) { return { format: async (ctx, opts) => {} }; },
+    // beforeExport(ctx, { format, options }) {},
+    // afterExport(ctx, { format, options, result }) {},
+    // afterSnap(ctx) {},
   };
 }
 ```
@@ -300,7 +410,7 @@ npm init -y
   "main": "index.js",
   "exports": { ".": "./index.js" },
   "keywords": ["snapdom", "snapdom-plugin", "dom-capture"],
-  "peerDependencies": { "@zumer/snapdom": ">=0.9.0" },
+  "peerDependencies": { "@zumer/snapdom": ">=3.0.0-0" },
   "license": "MIT"
 }
 ```
@@ -317,7 +427,7 @@ Then open a PR or issue at [zumerlab/snapdom](https://github.com/zumerlab/snapdo
 
 | Category | Description | Examples |
 |----------|------------|---------|
-| **Capture** | Modify how DOM is captured | node redaction via `resolveNode`, lazy-load handlers |
+| **Capture** | Modify how DOM is captured | custom-widget resolver, lazy-load handler |
 | **Transform** | Alter cloned output | overlay, filter, redact, watermark |
 | **Export** | Add output formats | PDF, ASCII, AVIF, animated GIF |
 | **Integration** | Connect to external services | upload to S3, post to Slack |
@@ -325,11 +435,11 @@ Then open a PR or issue at [zumerlab/snapdom](https://github.com/zumerlab/snapdo
 
 ## Best Practices
 
-1. Be opt-in. Zero overhead when not active.
+1. Keep plugin work inside the hooks that need it.
 2. Restore the DOM. If you mutate in `beforeClone`, undo in `afterClone`.
 3. Use the factory pattern. Always accept options, always set defaults.
 4. Name uniquely. Check the directory first.
-5. Handle errors gracefully. `try/catch` your logic.
+5. Recover from errors where possible; otherwise throw a useful error instead of returning incomplete output.
 6. Document your options. Type, default, description.
 7. Keep dependencies minimal. Ideally zero.
 8. Test with `scale: 2`. High-DPI exposes pixel math issues.
@@ -377,4 +487,4 @@ export function watermark(options = {}) {
 }
 ```
 
-Questions? Open a [Discussion](https://github.com/zumerlab/snapdom/discussions) or check the [Plugin Directory](https://snapdom.dev/plugins).
+For help, open a [Discussion](https://github.com/zumerlab/snapdom/discussions) or browse the [Plugin Directory](https://snapdom.dev/plugins).

@@ -18,7 +18,7 @@ describe('snapdom API (lazy exporters + plugins)', () => {
     el = null
   })
 
-  // -------- Core: básicos --------
+  // -------- Core: basics --------
 
   it('toRaw devuelve un data URL SVG', async () => {
     const url = await snapdom.toRaw(el)
@@ -66,9 +66,9 @@ describe('snapdom API (lazy exporters + plugins)', () => {
     expect(blob.type).toBe('image/svg+xml')
   })
 
-  // -------- Runner .to(type) y helpers dinámicos --------
+  // -------- Runner .to(type) and dynamic helpers --------
 
-  it('result.to("png") funciona y sólo expone helpers para exports existentes', async () => {
+  it('result.to("png") works and only exposes helpers for exports that exist', async () => {
     const result = await snapdom(el)
     const png = await result.to('png')
     expect(png).toBeInstanceOf(HTMLImageElement)
@@ -77,15 +77,15 @@ describe('snapdom API (lazy exporters + plugins)', () => {
     await expect(result.to('doesNotExist')).rejects.toThrow(/Unknown export type/i)
   })
 
-  // -------- Plugins: defineExports() agrega helpers dinámicos --------
+  // -------- Plugins: defineExports() adds dynamic helpers --------
 
-  it('plugin via defineExports agrega un helper dinámico (p.ej., toAscii)', async () => {
-    // Plugin mínimo que define un exportador "ascii"
+  it('a plugin defineExports adds a dynamic helper (e.g. toAscii)', async () => {
+    // Minimal plugin defining an "ascii" exporter
     const asciiPlugin = {
       name: 'ascii-export',
       async defineExports(ctx) {
         return {
-          // demo: retorna un string simple; en tu real devolverías Blob/URL/etc.
+          // demo: returns a plain string; a real one would return a Blob/URL/etc.
           ascii: async () => {
             // acceso a ctx.export.url si te sirve (SVG data URL)
             const url = ctx?.export?.url
@@ -96,10 +96,10 @@ describe('snapdom API (lazy exporters + plugins)', () => {
       }
     }
 
-    // Registro local-first (sólo para esta captura)
+    // Local-first registration (this capture only)
     const result = await snapdom(el, { plugins: [asciiPlugin] })
 
-    // El helper se crea dinámicamente: toAscii()
+    // The helper is created dynamically: toAscii()
     expect(typeof result.toAscii).toBe('function')
     const asciiOut = await result.toAscii()
     expect(asciiOut).toBe('ASCII_OK')

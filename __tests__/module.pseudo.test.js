@@ -1,5 +1,5 @@
 // __tests__/modules.pseudo.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { inlinePseudoElements } from '../src/modules/pseudo.js'
 
 // Mock de utils y fonts con importActual para que Vitest Browser no rompa
@@ -711,5 +711,189 @@ describe('inlinePseudoElements', () => {
 
     el.remove()
     style.remove()
+  })
+})
+
+describe('quote keywords in pseudo content (fidelity: literal "open-quote" bug)', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('style[data-quote-test]').forEach((s) => s.remove())
+    document.body.innerHTML = ''
+  })
+
+  async function captureSvg(el) {
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const res = await snapdom(el, { cache: 'disabled' })
+    // Rendered markup only — the generated class CSS legitimately carries the raw
+    // `content: open-quote` declaration (it never paints; only the span text does).
+    return decodeURIComponent(res.url.split(',')[1]).replace(/<style[\s\S]*?<\/style>/g, '')
+  }
+
+  it('resolves open/close-quote from the computed quotes pairs', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-quote-test', '')
+    style.textContent = `
+      .zz-q { quotes: "«" "»"; }
+      .zz-q::before { content: open-quote; }
+      .zz-q::after { content: close-quote; }
+    `
+    document.head.appendChild(style)
+    const el = document.createElement('div')
+    el.className = 'zz-q'
+    el.textContent = 'cita'
+    document.body.appendChild(el)
+    const svg = await captureSvg(el)
+    expect(svg).toContain('«')
+    expect(svg).toContain('»')
+    expect(svg).not.toContain('open-quote')
+  })
+
+  it('falls back to typographic quotes when quotes computes auto, and renders nothing for no-*-quote', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-quote-test', '')
+    style.textContent = `
+      .zz-q2::before { content: open-quote; }
+      .zz-q2::after { content: no-close-quote; }
+    `
+    document.head.appendChild(style)
+    const el = document.createElement('div')
+    el.className = 'zz-q2'
+    el.textContent = 'hola'
+    document.body.appendChild(el)
+    const svg = await captureSvg(el)
+    expect(svg).toContain('“')
+    expect(svg).not.toContain('open-quote')
+    expect(svg).not.toContain('no-close-quote')
+  })
+})
+
+describe('scoped ::marker and ::first-line rules', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('style[data-mk-test]').forEach((s) => s.remove())
+    document.body.innerHTML = ''
+  })
+
+  async function captureSvg(el) {
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const res = await snapdom(el, { cache: 'disabled' })
+    return decodeURIComponent(res.url.split(',')[1])
+  }
+
+  it('authored ::marker color/content survives as a scoped rule', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-mk-test', '')
+    style.textContent = '.zz-list li::marker { color: rgb(200, 10, 10); content: "→ "; }'
+    document.head.appendChild(style)
+    const ul = document.createElement('ul')
+    ul.className = 'zz-list'
+    ul.innerHTML = '<li>uno</li><li>dos</li>'
+    document.body.appendChild(ul)
+    const svg = await captureSvg(ul)
+    expect(svg).toContain('::marker')
+    expect(svg).toContain('rgb(200, 10, 10)')
+    expect(svg).toContain('data-sd-p')
+  })
+
+  it('authored ::first-line styling survives as a scoped rule', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-mk-test', '')
+    style.textContent = '.zz-lede::first-line { font-weight: 700; color: rgb(10, 10, 200); }'
+    document.head.appendChild(style)
+    const p = document.createElement('p')
+    p.className = 'zz-lede'
+    p.style.width = '120px'
+    p.textContent = 'primera línea de un párrafo largo que envuelve en varias líneas seguro'
+    document.body.appendChild(p)
+    const svg = await captureSvg(p)
+    expect(svg).toContain('::first-line')
+    expect(svg).toContain('rgb(10, 10, 200)')
+  })
+
+  it('default markers emit no scoped rule (zero output cost)', async () => {
+    const ul = document.createElement('ul')
+    ul.innerHTML = '<li>plain</li>'
+    document.body.appendChild(ul)
+    const svg = await captureSvg(ul)
+    expect(svg).not.toContain('::marker')
+  })
+
+  // The selector gate feeds on raw `rule.selectorText`, which under CSS nesting is
+  // `& .feat::before` — a selector matches() answers FALSE to instead of throwing, so the
+  // try/catch fallback never fires and the pseudo is gated out of existence. Asserted on
+  // painted pixels: the content string survives inside the <style> payload either way.
+  it('CSS-nested pseudo rules still paint', async () => {
+    async function pinkPixels(host) {
+      const { snapdom } = await import('../src/api/snapdom.js')
+      const res = await snapdom(host, { cache: 'disabled', dpr: 1, scale: 1 })
+      const c = await res.toCanvas()
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+      let n = 0
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] > 180 && d[i + 1] < 80 && d[i + 2] < 110 && d[i + 3] > 40) n++
+      }
+      return n
+    }
+    const shapes = {
+      'flat (control)': '.zzp .feat::before { content:"✔✔✔"; color:rgb(225,29,72); font-size:20px }',
+      'nested descendant': '.zzp { color:#111; & .feat::before { content:"✔✔✔"; color:rgb(225,29,72); font-size:20px } }',
+      'nested inside @media': '@media (min-width:1px){ .zzp { & .feat::before { content:"✔✔✔"; color:rgb(225,29,72); font-size:20px } } }',
+    }
+    for (const [label, css] of Object.entries(shapes)) {
+      const style = document.createElement('style')
+      style.setAttribute('data-mk-test', '')
+      style.textContent = css
+      document.head.appendChild(style)
+      const host = document.createElement('div')
+      host.innerHTML = '<div class="zzp">plan <span class="feat">feature</span></div>'
+      document.body.appendChild(host)
+      const painted = await pinkPixels(host)
+      style.remove()
+      host.remove()
+      expect(painted, label).toBeGreaterThan(20)
+    }
+  })
+
+  // The scoped-rule emitter runs inside inlinePseudoElements, which the preflight can
+  // skip wholesale. A page whose ONLY author pseudo is a marker/first-line has to keep
+  // the pass alive — asserted on a private document so an unrelated ::before anywhere
+  // in the test page can't mask a regression.
+  it('preflight follows @import (component CSS often lives one sheet down)', async () => {
+    const { shouldProcessPseudos } = await import('../src/modules/pseudo.js')
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    const doc = frame.contentDocument
+    const blob = new Blob(['.feat::before{content:"✔";color:red}'], { type: 'text/css' })
+    const url = URL.createObjectURL(blob)
+    try {
+      doc.head.innerHTML = `<style>@import url("${url}"); .x{color:#111}</style>`
+      // Wait for the import to actually load, else the assertion is vacuous.
+      for (let i = 0; i < 40; i++) {
+        try {
+          if (doc.styleSheets[0].cssRules[0].styleSheet.cssRules.length) break
+        } catch { /* still loading */ }
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      expect(doc.styleSheets[0].cssRules[0].styleSheet.cssRules.length).toBeGreaterThan(0)
+      expect(shouldProcessPseudos(doc)).toBe(true)
+    } finally {
+      URL.revokeObjectURL(url)
+      frame.remove()
+    }
+  })
+
+  it('preflight keeps the pseudo pass for marker/first-line-only pages', async () => {
+    const { shouldProcessPseudos } = await import('../src/modules/pseudo.js')
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    const doc = frame.contentDocument
+    try {
+      doc.head.innerHTML = '<style>li::marker { color: rgb(200, 10, 10); }</style>'
+      expect(shouldProcessPseudos(doc)).toBe(true)
+      doc.head.innerHTML = '<style>.lede::first-line { font-weight: 700; }</style>'
+      expect(shouldProcessPseudos(doc)).toBe(true)
+      doc.head.innerHTML = '<style>.plain { color: red; }</style>'
+      expect(shouldProcessPseudos(doc)).toBe(false)
+    } finally {
+      frame.remove()
+    }
   })
 })

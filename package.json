@@ -1,7 +1,7 @@
 {
   "name": "@zumer/snapdom",
-  "version": "2.24.18",
-  "description": "Fast, modern alternative to html2canvas — captures HTML elements to images (PNG, JPG, SVG, WebP) with exceptional speed and accuracy.",
+  "version": "3.0.0-beta.1",
+  "description": "Browser capture engine for web interfaces. Reusable images and canvas, with plugins for HTML, context, PDF and recordings.",
   "type": "module",
   "main": "./dist/snapdom.js",
   "module": "./dist/snapdom.mjs",
@@ -14,15 +14,14 @@
     ".": {
       "types": "./types/snapdom.d.ts",
       "import": "./dist/snapdom.mjs",
-      "require": "./dist/snapdom.js",
       "default": "./dist/snapdom.mjs"
     },
-    "./preCache": {
-      "import": "./dist/preCache.mjs"
-    },
     "./plugins": {
-      "import": "./dist/plugins.mjs"
-    }
+      "types": "./types/snapdom.d.ts",
+      "import": "./dist/snapdom.mjs",
+      "default": "./dist/snapdom.mjs"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist/",
@@ -35,19 +34,25 @@
     "lint:fix": "eslint src __tests__ --ext .js --fix",
     "test:bundle": "npm run compile && node scripts/verify-legacy-bundle.mjs",
     "test:types": "tsc --noEmit",
-    "test": "npm run lint:fix && npm run test:types && npm run test:bundle && npx vitest run --browser.headless --reporter=verbose",
+    "test": "npm run lint && npm run test:types && npm run test:release-checks && npm run test:bundle && npx vitest run --browser.headless --reporter=verbose",
     "test:visual": "npx vitest run __tests__/visual.demos. --browser.headless --reporter=verbose",
     "test:firefox": "BROWSER=firefox npx vitest run --browser.headless --reporter=verbose",
     "test:webkit": "BROWSER=webkit npx vitest run --browser.headless --reporter=verbose",
-    "test:full": "npm run lint:fix && npm run test:types && npm run test:bundle && BROWSER=all npx vitest run --browser.headless --reporter=verbose",
+    "test:full": "npm run lint && npm run test:types && npm run test:release-checks && npm run test:bundle && BROWSER=all npx vitest run --browser.headless --reporter=dot",
+    "test:release-checks": "node --test scripts/release-checks.node.mjs",
     "report:cross": "node scripts/cross-report.mjs",
     "test:coverage": "npx vitest run --browser.headless --coverage",
     "test:benchmark": "npx vitest bench --browser.headless --watch=false",
+    "bench:realpage": "node scripts/realpage-bench.mjs",
+    "test:pack": "node scripts/check-pack.mjs",
     "site": "npm run compile && node scripts/serve-site.mjs",
     "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
-    "build": "npm run compile && npm pack",
-    "release:push": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags"
+    "prepack": "npm run compile",
+    "build": "npm pack",
+    "release": "REQUIRE_VISUAL=1 npm run test:full && npm run test:pack && npm run build && echo \"\\n→ Review CHANGELOG.md, then: npm run release:push\"",
+    "release:push": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags",
+    "publish:beta": "npm publish --tag beta"
   },
   "repository": {
     "type": "git",
@@ -98,8 +103,9 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.36.0",
     "globals": "^16.4.0",
-    "playwright": "^1.52.0",
-    "typescript": "^7.0.2"
+    "playwright": "1.55.1",
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
   },
   "overrides": {
     "vite": "^6"

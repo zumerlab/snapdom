@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Capture Stages — a plugin decides how far the pipeline runs</title>
+  <meta name="description" content="A capture freezes a clone and can continue through rendering. Compare the clone and render stages declared by plugins, and see which exports each stage produces."/>
+  <link rel="canonical" href="https://snapdom.dev/labs/capture-stages/"/>
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <style>
+    .lab-stages { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-stages .sample { width: min(520px, 100%); background: #fff; border: 1px solid var(--border-soft); padding: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .lab-stages .sample article { border: 1px solid var(--hairline); padding: 8px; font-size: 12px; }
+    .lab-stages .sample h4 { margin: 0 0 4px; font-size: 12px; }
+    .lab-stages .sample p { margin: 0 0 6px; color: var(--text-muted); }
+    .lab-stages .sample button { font: inherit; font-size: 11px; padding: 2px 8px; }
+    .lab-stages .run { margin: 18px 0; }
+    .lab-stages .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .lab-stages .card { border: 1px solid var(--border-soft); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .lab-stages .card h3 { margin: 0; font-size: 15px; font-family: var(--font-mono); }
+    .lab-stages .card code.decl { display: block; background: var(--code-bg); color: var(--code-text); padding: 8px 10px; font-size: 12px; overflow-x: auto; }
+    .lab-stages .ms { font-variant-numeric: tabular-nums; font-size: 28px; line-height: 1; }
+    .lab-stages .ms small { font-size: 13px; color: var(--text-muted); }
+    .lab-stages .bar { height: 10px; background: var(--accent-soft); }
+    .lab-stages .bar i { display: block; height: 100%; background: var(--accent); }
+    .lab-stages .out { border-top: 1px dashed var(--hairline); padding-top: 10px; font-size: 12px; }
+    .lab-stages .out img { max-width: 100%; border: 1px solid var(--hairline); }
+    .lab-stages pre.outline { margin: 0; max-height: 150px; overflow: auto; font-size: 11px; background: var(--surface-hover); padding: 8px; }
+    .lab-stages .err { color: var(--rose); background: var(--rose-soft); padding: 8px; font-size: 11.5px; }
+    .lab-stages .note { color: var(--text-muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <script defer src="../../site.js"></script>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html" aria-current="page">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
+<main class="page">
+  <p class="crumbs"><a href="../../">SnapDOM</a> / <a href="../../labs.html">Labs</a> / Capture Stages</p>
+
+  <h1>Capture stages</h1>
+
+  <p>A capture is a chain: a <b>clone</b> freezes the live DOM at one instant, and a
+  <b>render</b> turns that clone into pixels. Not every consumer needs the whole chain, and
+  the plugin is the one that knows. So it declares it:</p>
+
+  <pre><code>// Clone only, no image
+{ name: 'my-plugin', needs: 'clone' }
+
+// Complete capture (the default)
+{ name: 'my-plugin' }</code></pre>
+
+  <p class="muted">v3 removed a third, shallower stage — <code>needs: 'dom'</code> — which ran the
+  plugin against the live page and took no clone at all. Declaring that removed stage now throws.</p>
+
+  <p>The stage of a capture is the <b>deepest</b> stage its plugins declare, so one undeclared
+  plugin keeps everything. A capture with no plugins behaves exactly as it always did.</p>
+
+  <div class="lab-stages">
+    <div class="sample" id="sample"></div>
+    <p class="run">
+      <button id="go" class="btn">Run both stages</button>
+      <span class="note" id="status"></span>
+    </p>
+    <div class="grid" id="cards"></div>
+    <p class="note" id="verdict" style="margin-top:16px"></p>
+  </div>
+
+  <h2>What the numbers say</h2>
+  <p>The <b>clone</b> stage skips render-stage asset embedding and serialization. The saving depends on the page and resources. Compare the timings above; neither stage promises a fixed fraction of a full capture.</p>
+
+  <h2>Unavailable exports</h2>
+  <p>Ask a shallow capture for pixels and it throws, naming the plugin that lowered the stage.
+  Re-capturing on demand would hand back an image of a <i>different</i> instant, and the caller
+  would have no way to tell.</p>
+
+<script type="module">
+import { snapdom } from 'https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs'
+
+// ── the element under capture ────────────────────────────────────────────────────────
+const sample = document.getElementById('sample')
+sample.innerHTML = Array.from({ length: 36 }, (_, i) => `
+  <article>
+    <h4>Item ${i + 1}</h4>
+    <p>Short description for row ${i + 1}.</p>
+    <button>Open ${i + 1}</button>
+  </article>`).join('')
+
+// ── two plugins, same knob, different depth ──────────────────────────────────────────
+// 'clone': stamps the frozen tree. No pixels asked for, so no render runs.
+const stampPlugin = () => {
+  let html = ''
+  return {
+    name: 'stamp',
+    needs: 'clone',
+    afterClone(ctx) {
+      const tag = document.createElement('b')
+      tag.textContent = ' [stamped]'
+      ctx.clone.querySelector('h4')?.appendChild(tag)
+      html = ctx.clone.querySelector('article')?.outerHTML || ''
+    },
+    defineExports: () => ({ stamped: async () => html }),
+  }
+}
+
+// no declaration: the whole pipeline, the historical behaviour
+const plainPlugin = () => ({ name: 'plain' })
+
+const REPS = 7
+const median = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)]
+
+async function time(makePlugins) {
+  const runs = []
+  let last
+  for (let i = 0; i < REPS; i++) {
+    const t = performance.now()
+    last = await snapdom(sample, { plugins: makePlugins(), cache: 'disabled', burst: false })
+    runs.push(performance.now() - t)
+  }
+  return { ms: median(runs), result: last }
+}
+
+const cards = document.getElementById('cards')
+const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild }
+
+document.getElementById('go').addEventListener('click', async () => {
+  const status = document.getElementById('status')
+  status.textContent = `capturing ${sample.querySelectorAll('*').length + 1} nodes, ${REPS} runs each…`
+  cards.innerHTML = ''
+
+  const specs = [
+    { stage: 'clone', decl: "needs: 'clone'", make: () => [stampPlugin()] },
+    { stage: 'render', decl: '(no declaration)', make: () => [plainPlugin()] },
+  ]
+
+  const done = []
+  for (const spec of specs) done.push({ ...spec, ...(await time(spec.make)) })
+  const worst = Math.max(...done.map((d) => d.ms))
+
+  for (const d of done) {
+    const card = el(`
+      <div class="card">
+        <h3>${d.stage}</h3>
+        <code class="decl">${d.decl}</code>
+        <div class="ms">${d.ms.toFixed(1)}<small> ms</small></div>
+        <div class="bar"><i style="width:${(d.ms / worst * 100).toFixed(1)}%"></i></div>
+        <div class="out"></div>
+      </div>`)
+    const out = card.querySelector('.out')
+
+    // what this stage DID produce
+    if (d.stage === 'clone') {
+      const pre = document.createElement('pre')
+      pre.className = 'outline'
+      pre.textContent = await d.result.toStamped()
+      out.appendChild(pre)
+    }
+
+    // and the same door on every card: ask it for the image
+    try {
+      const img = await d.result.toPng()
+      img.style.maxWidth = '100%'
+      out.appendChild(img)
+    } catch (e) {
+      out.appendChild(el(`<div class="err"><b>result.toPng()</b><br>${String(e.message)}</div>`))
+    }
+
+    cards.appendChild(card)
+  }
+
+  const [clone, render] = done
+  status.textContent = `${sample.querySelectorAll('*').length + 1} nodes, median of ${REPS} runs`
+  document.getElementById('verdict').innerHTML =
+    `Stopping at <b>clone</b> skipped ${Math.max(0, 100 - clone.ms / render.ms * 100).toFixed(0)}% of the capture. ` +
+    'These timings compare the clone stage with a full capture of this element. ' +
+    'Use the clone stage when your plugin only needs structured data; image exports require render.'
+})
+</script>
+</main>
+</body>
+</html>

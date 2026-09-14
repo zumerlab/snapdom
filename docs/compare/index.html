@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Best HTML-to-Image JavaScript Library (2026): Compared</title>
-  <meta name="description" content="Compare HTML-to-image JavaScript libraries by rendering approach, browser support, maintenance, output formats and API." />
+  <title>HTML-to-Image JavaScript Libraries (2026) — Compared</title>
+  <meta name="description" content="2026 comparison of HTML-to-image JS libraries — SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot: feature matrix + how to choose." />
   <meta name="keywords" content="best html to image library, html to image javascript library, html2canvas alternative, html-to-image vs html2canvas, dom-to-image alternative, modern-screenshot" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/" />
@@ -13,8 +13,8 @@
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
 
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Best HTML-to-Image JavaScript Library (2026) · Compared" />
-  <meta property="og:description" content="A code-level comparison of the main HTML-to-image libraries: feature matrix, approach trade-offs, and how to pick the right one." />
+  <meta property="og:title" content="HTML-to-Image JavaScript Libraries (2026) — Compared" />
+  <meta property="og:description" content="A comparison of the main HTML-to-image libraries: feature matrix, approach trade-offs, and how to pick the right one." />
   <meta property="og:url" content="https://snapdom.dev/compare/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -28,10 +28,10 @@
   {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "name": "Best HTML-to-Image JavaScript Library (2026)",
+    "name": "HTML-to-Image JavaScript Libraries (2026)",
     "url": "https://snapdom.dev/compare/",
-    "description": "A code-level comparison of HTML-to-image JavaScript libraries — SnapDOM, html2canvas, html-to-image, dom-to-image and modern-screenshot — with a feature matrix and decision guide.",
-    "dateModified": "2026-08-22",
+    "description": "An honest, code-level comparison of HTML-to-image JavaScript libraries — SnapDOM, html2canvas, html-to-image, dom-to-image and modern-screenshot — with a feature matrix and decision guide.",
+    "dateModified": "2026-06-29",
     "isPartOf": { "@id": "https://snapdom.dev/#website" }
   }
   </script>
@@ -57,61 +57,66 @@
 </head>
 <body>
   <script defer src="../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/" aria-current="page">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/" aria-current="page">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/" aria-current="page">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/" aria-current="page">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
 
-  <section class="hero">
-    <div class="hero-badge">Library Comparisons</div>
-    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Compare hub github">
-      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
-      <span>zumerlab/snapdom</span>
-      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
-    </a>
-    <h1><span class="accent">HTML-to-image</span> libraries compared</h1>
-    <p class="lead">Compare html2canvas, html-to-image, dom-to-image, modern-screenshot and SnapDOM by rendering approach, supported DOM features, maintenance and execution model.</p>
+  <section class="hero section-hero">
+    <div class="section-hero-copy">
+      <div class="hero-badge">Library Comparisons</div>
+      <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Compare hub github">
+        <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+        <span>zumerlab/snapdom</span>
+        <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
+      </a>
+      <h1><span class="accent">HTML-to-Image</span> JavaScript Libraries</h1>
+      <p class="lead">Compare the libraries that turn a rendered DOM element into an image: html2canvas, html-to-image, dom-to-image, modern-screenshot and SnapDOM. Review the rendering approaches, output contracts and examples before testing your own content.</p>
+    </div>
+    <img class="section-mascot" src="../assets/mascots/mr-snapdom-compare.webp" width="1254" height="1254" decoding="async" alt="Mr. SnapDOM holding a balance scale">
   </section>
 
   <main class="page">
     <section class="prose">
-      <p class="muted"><strong>Last updated:</strong> August 2026 · maintained by the SnapDOM team.</p>
+      <p class="muted"><strong>Last updated:</strong> September 2026 · maintained by the SnapDOM team.</p>
 
-      <h2>Three layers you can use separately or together</h2>
-      <p>These tools do not all occupy the same layer. A DOM capture library can run inside a page controlled by browser automation, so the server/client distinction is not an either-or choice:</p>
+      <h2>Three ways to turn HTML into an image</h2>
+      <p>These tools capture rendered HTML, but they run in different environments. Choose the environment first, then compare output and performance:</p>
       <ul>
-        <li><strong>DOM capture libraries</strong> (SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot) execute inside a real browser page. That can be the user's existing page, with no server round trip, or a page opened from Node.</li>
-        <li><strong>Browser automation</strong> (Puppeteer, Playwright) launches or connects to a controlled browser and owns navigation, authentication and page state. Use its native screenshot for direct pixels, or inject SnapDOM for SVG, plugins and reusable exports.</li>
-        <li><strong>Hosted APIs</strong> (HCTI, Urlbox, and similar) let you send HTML and get a rendered image back. Zero infra, real Chromium fidelity, but a paid per-render cost and a network hop.</li>
+        <li><strong>Client-side libraries</strong> (SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot) run in the user's browser. They suit download and share features without sending the DOM to a screenshot server. Fonts and images may still require network requests.</li>
+        <li><strong>Server-side browser automation</strong> (Puppeteer, Playwright) runs a controlled browser in your infrastructure. It suits automated navigation, testing and rendering jobs.</li>
+        <li><strong>Hosted APIs</strong> (HCTI, Urlbox, and similar) accept HTML or a URL and return an image. The provider manages the browser; pricing and limits depend on the service.</li>
       </ul>
-      <p>The matrix compares DOM capture libraries and includes Playwright and Puppeteer as a browser-automation reference. Their guides show how the automation and capture layers compose.</p>
+      <p>The rest of this page focuses on the <strong>client-side libraries</strong>, because that's where most projects start and where the differences are subtle.</p>
+
+      <p><a href="./live/" class="btn btn-primary" data-umami-event="Compare hub live lab">Run the benchmark yourself →</a> Real-world scenes, eight libraries, measured in your own browser — plus pixel checks for specific capability fixtures.</p>
 
       <h2>Feature matrix</h2>
       <table class="cmp-table">
         <thead>
           <tr>
-            <th>Library</th><th>Approach</th><th>Shadow DOM</th><th>Web fonts</th><th>Pseudo-elements</th><th>Speed (large DOM)</th><th>Maintained</th><th>No browser worker</th>
+            <th>Library</th><th>Approach</th><th>Shadow DOM</th><th>Web fonts</th><th>Pseudo-elements</th><th>Performance</th><th>Release status</th><th>No server</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td class="feature">SnapDOM</td><td>foreignObject</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Fast</td><td class="yes">Active</td><td class="yes">Yes</td>
+            <td class="feature">SnapDOM</td><td>foreignObject</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Benchmark</td><td class="yes">See releases</td><td class="yes">Yes</td>
           </tr>
           <tr>
-            <td class="feature">html2canvas</td><td>JS re-paint</td><td class="no">No</td><td class="partial">Partial</td><td class="partial">Partial</td><td class="no">Slow</td><td class="no">1.4.1 (2022)</td><td class="yes">Yes</td>
+            <td class="feature">html2canvas</td><td>JS re-paint</td><td class="no">Passes tested fixture</td><td class="partial">Partial</td><td class="partial">Passes tested fixture</td><td class="no">Benchmark</td><td class="no">See releases</td><td class="yes">Yes</td>
           </tr>
           <tr>
-            <td class="feature">html-to-image</td><td>foreignObject</td><td class="partial">Partial</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Fast</td><td class="yes">Active</td><td class="yes">Yes</td>
+            <td class="feature">html-to-image</td><td>foreignObject</td><td class="partial">Partial</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Benchmark</td><td class="yes">See releases</td><td class="yes">Yes</td>
           </tr>
           <tr>
-            <td class="feature">modern-screenshot</td><td>foreignObject</td><td class="partial">Partial</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Fast</td><td class="yes">Active</td><td class="yes">Yes</td>
+            <td class="feature">modern-screenshot</td><td>foreignObject</td><td class="partial">Partial</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Benchmark</td><td class="yes">See releases</td><td class="yes">Yes</td>
           </tr>
           <tr>
-            <td class="feature">dom-to-image</td><td>foreignObject</td><td class="no">No</td><td class="partial">Partial</td><td class="partial">Partial</td><td class="partial">Medium</td><td class="no">Unmaintained</td><td class="yes">Yes</td>
+            <td class="feature">dom-to-image</td><td>foreignObject</td><td class="no">No</td><td class="partial">Partial</td><td class="partial">Passes tested fixture</td><td class="partial">Benchmark</td><td class="no">See releases</td><td class="yes">Yes</td>
           </tr>
           <tr>
-            <td class="feature">Puppeteer / Playwright</td><td>Browser control</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">Browser start</td><td class="yes">Active</td><td class="no">No — browser process</td>
+            <td class="feature">Puppeteer / Playwright</td><td>Browser automation</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">Benchmark</td><td class="yes">See releases</td><td class="no">Server</td>
           </tr>
         </tbody>
       </table>
-      <p class="muted">"Partial" means it works for common cases but has documented gaps. The matrix is a summary. Read the head-to-head deep dives below for the specifics that matter to your codebase.</p>
+      <p class="muted">Support varies by fixture and rendering mode; test your own UI. The <a href="./live/">live benchmark</a> reports results for its specific pixel fixtures and loaded versions.</p>
     </section>
 
     <h2 class="prose" style="max-width:760px;margin:0 auto;padding:0 24px;">Head-to-head deep dives</h2>
@@ -122,69 +127,69 @@
         <p>The classic DOM-to-canvas library vs the modern foreignObject approach. Pseudo-elements, fonts, plugins and speed.</p>
       </a>
       <a class="hub-card" href="./html-to-image/" data-umami-event="Compare card html-to-image">
-        <span class="tag">Maintained fork</span>
+        <span class="tag">Community fork</span>
         <h3>SnapDOM vs html-to-image</h3>
         <p>The popular dom-to-image fork compared head-to-head with SnapDOM on fidelity, fonts and Shadow DOM.</p>
       </a>
       <a class="hub-card" href="./dom-to-image/" data-umami-event="Compare card dom-to-image">
         <span class="tag">Legacy</span>
         <h3>SnapDOM vs dom-to-image</h3>
-        <p>An old favourite that hasn't shipped in years. See what you gain by switching to a maintained, plugin-based engine.</p>
+        <p>Compare output types, capture options and plugins before migrating an existing integration.</p>
       </a>
       <a class="hub-card" href="./modern-screenshot/" data-umami-event="Compare card modern-screenshot">
         <span class="tag">Modern peer</span>
         <h3>SnapDOM vs modern-screenshot</h3>
-        <p>Same foreignObject approach, TypeScript-first. Where SnapDOM's plugins and broader fidelity net make the difference.</p>
+        <p>Same foreignObject approach, TypeScript-first. Compare the shared image formats and optional SnapDOM plugin exports.</p>
       </a>
-      <a class="hub-card" href="./puppeteer/"><span class="tag">Integration</span><h3>SnapDOM with Puppeteer</h3><p>Let Puppeteer control the browser, then choose native pixels or inject SnapDOM for SVG, plugins and reusable exports.</p></a>
-      <a class="hub-card" href="./playwright/"><span class="tag">Integration</span><h3>SnapDOM with Playwright</h3><p>Keep Playwright's navigation and test lifecycle while running SnapDOM inside the selected browser page.</p></a>
+      <a class="hub-card" href="./puppeteer/"><span class="tag">Architecture</span><h3>SnapDOM vs Puppeteer</h3><p>Existing-browser element export compared with server-side Chromium automation.</p></a>
+      <a class="hub-card" href="./playwright/"><span class="tag">Architecture</span><h3>SnapDOM vs Playwright</h3><p>Client-side DOM capture compared with cross-browser automation and testing.</p></a>
     </div>
 
     <section class="prose">
       <h2>The libraries, reviewed</h2>
 
       <h3>SnapDOM</h3>
-      <p><strong>For DOM capture with broad CSS coverage.</strong> SnapDOM clones the DOM and lets the browser render it inside an SVG <code>&lt;foreignObject&gt;</code>. It handles pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and embedded web fonts. It has no runtime dependencies, supports plugins and exports SVG, PNG, JPG, WebP, Canvas or Blob. It does not navigate or launch a browser and cannot bypass cross-origin access from the current page context. Pair it with Puppeteer or Playwright when a server must own the browser lifecycle.</p>
+      <p><strong>Browser capture with extensible outputs.</strong> SnapDOM clones styled DOM and renders it inside an SVG <code>&lt;foreignObject&gt;</code>. It supports pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and accessible web fonts. Core exports include SVG, PNG, JPG, WebP, Canvas and Blob; official plugins add HTML, structured context and maps, PDF images, GIF and video. Browser security still blocks inaccessible resources and tainted canvas pixels.</p>
 
       <h3>html2canvas</h3>
-      <p><strong>A JavaScript CSS renderer with a large installed base.</strong> <a href="https://github.com/niklasvh/html2canvas" target="_blank" rel="noopener">html2canvas</a> reads the DOM and implements supported CSS painting itself. That gives it a different compatibility profile from <code>foreignObject</code>-based libraries. Its latest stable release is 1.4.1 from January 2022; the project README still describes it as experimental and lists unsupported CSS as an inherent limitation.</p>
+      <p><strong>Canvas rendering from the DOM.</strong> <a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> implements a CSS painter in JavaScript by default. Check its supported properties, captured output and repository when assessing it for your page.</p>
 
       <h3>html-to-image</h3>
-      <p><strong>A maintained fork of dom-to-image.</strong> <a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> uses the same <code>foreignObject</code> technique and has a compact API. SnapDOM adds open Shadow DOM capture, a plugin lifecycle and more built-in export paths.</p>
+      <p><strong>A dom-to-image fork.</strong> <a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> uses SVG <code>foreignObject</code> and provides image data URLs, Canvas and Blob exports. Its font options and return types differ from SnapDOM's; compare the migration notes and your target components.</p>
 
       <h3>modern-screenshot</h3>
-      <p><strong>The closest architectural cousin.</strong> <a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener">modern-screenshot</a> is a newer, actively maintained, TypeScript-first foreignObject library, fast and clean. It overlaps heavily with SnapDOM in approach; in practice the choice comes down to SnapDOM's plugin pipeline, broader output formats and fidelity edge-case coverage.</p>
+      <p><strong>A TypeScript capture library.</strong> <a href="https://github.com/qq15725/modern-screenshot" target="_blank" rel="noopener">modern-screenshot</a> uses SVG <code>foreignObject</code> and shares SnapDOM's core image, Canvas and Blob formats. SnapDOM's plugin lifecycle adds other outputs and transformations; use real captures to assess browser-specific differences.</p>
 
       <h3>dom-to-image</h3>
-      <p><strong>Avoid for new projects.</strong> <a href="https://github.com/tsayen/dom-to-image" target="_blank" rel="noopener">dom-to-image</a> is the original foreignObject library and the ancestor of html-to-image, but it's effectively unmaintained and struggles with modern flexbox/grid layouts. If you're on it today, html-to-image or SnapDOM are direct, low-friction upgrades.</p>
+      <p><strong>The original API behind several forks.</strong> <a href="https://github.com/tsayen/dom-to-image" target="_blank" rel="noopener">dom-to-image</a> captures a node through SVG <code>foreignObject</code>. If you migrate, account for return types, font handling and inclusion predicates rather than assuming a drop-in replacement.</p>
 
       <h3>Server-side &amp; hosted options</h3>
-      <p>When rendering cannot depend on the user's browser, use <strong>Puppeteer or Playwright</strong> to run a pinned browser build with controlled viewport, fonts, locale and device scale, or use a hosted API. Take a native screenshot for one bitmap. Inject SnapDOM into that page when the server also needs SVG, plugin processing, several formats from one capture or the same export path as the client app. Reproducibility comes from fixing the environment; different browser engines are not expected to produce byte-identical files.</p>
+      <p>Use browser automation or a hosted service for captures that must run independently of the user's browser, navigation workflows or scheduled rendering. A controlled browser version helps make output repeatable; it does not make different engines byte-identical.</p>
 
-      <h2>Choose by execution model</h2>
+      <h2>Which should you use?</h2>
       <ul>
-        <li><strong>Need open Shadow DOM, lifecycle hooks or plugin-defined exports?</strong> Choose SnapDOM.</li>
-        <li><strong>Already on html2canvas with font / Shadow DOM bugs</strong> → migrate to SnapDOM (familiar <code>toPng/toJpg/toBlob</code> API; usually a one-line swap).</li>
-        <li><strong>Need a small client-side dependency?</strong> SnapDOM is about 50 KB gzip with no runtime dependencies; plugins are separate imports.</li>
-        <li><strong>Still on dom-to-image</strong> → upgrade; it's unmaintained.</li>
-        <li><strong>Need server-generated output?</strong> Use Puppeteer / Playwright or a hosted browser service; inject SnapDOM when its SVG, plugin or multi-export pipeline is useful.</li>
+        <li><strong>Browser-side exports with custom outputs</strong> → evaluate SnapDOM and its optional plugins.</li>
+        <li><strong>Existing capture bugs</strong> → compare the affected component before migrating, then adapt return types and options.</li>
+        <li><strong>Bundle size matters</strong> → inspect the build you import. SnapDOM has zero runtime dependencies and separate plugin imports.</li>
+        <li><strong>Existing dom-to-image integration</strong> → review the migration table and test captured output.</li>
+        <li><strong>Controlled server rendering</strong> → evaluate Puppeteer, Playwright or a hosted service.</li>
       </ul>
 
       <h2>FAQ</h2>
-      <h3>Which HTML-to-image library should I use?</h3>
-      <p>Use SnapDOM when a real browser page contains the DOM and you need open Shadow DOM, web fonts, pseudo-elements or plugin-defined formats. For a user-triggered export, run it in that user's page. For server-generated output, let Puppeteer or Playwright control a pinned browser and either take a native screenshot or inject SnapDOM into the loaded page.</p>
+      <h3>What is the best HTML-to-image library in 2026?</h3>
+      <p>Choose by execution environment, output type and the content you capture. SnapDOM supports browser-side capture with optional plugin exports. Browser automation suits server jobs and controlled test environments. Compare representative output and timing before choosing.</p>
       <h3>Is there a maintained html2canvas alternative?</h3>
-      <p>Yes. SnapDOM, html-to-image and modern-screenshot are all actively maintained and use the faster foreignObject approach instead of html2canvas's JavaScript re-paint. SnapDOM additionally supports Shadow DOM and a plugin system.</p>
+      <p>SnapDOM, html-to-image and modern-screenshot provide alternatives based on SVG foreignObject. Check their release histories and test the layout or asset that is failing in your current integration.</p>
       <h3>Why does my capture miss web fonts or Shadow DOM?</h3>
-      <p>That's usually html2canvas or dom-to-image: they don't reliably embed @font-face or traverse Shadow roots. Libraries that render via foreignObject (SnapDOM, html-to-image, modern-screenshot) let the browser paint the real result, so fonts and shadow content are captured.</p>
+      <p>Check font readiness and resource access, then verify how the capture library handles shadow roots. SnapDOM embeds used web fonts by default in v3 and walks open roots. Closed roots and inaccessible font files remain limitations.</p>
       <h3>Can I convert HTML to an image without a server?</h3>
-      <p>Yes. Run a DOM capture library in the user's existing browser and no screenshot server is required. If the backend must generate the artifact, it needs a controlled browser or hosted browser API; SnapDOM can be injected into that page rather than replaced.</p>
+      <p>Yes. Client-side capture can create images without a screenshot server. Fonts and images may still be fetched. Server automation is useful when capture must run independently of a user session.</p>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Test SnapDOM on a real element</h2>
-        <p>Open the demo or install the package and compare the result on your own DOM.</p>
+        <h2>Try SnapDOM on your page</h2>
+        <p>Capture a rendered element as PNG, SVG or Canvas. Add other exports through plugins.</p>
         <a href="../showcase/" class="btn btn-primary" data-umami-event="Compare hub cta home">Open the demo</a>
         <a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Compare hub cta github">View on GitHub</a>
       </div>

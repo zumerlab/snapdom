@@ -31,310 +31,305 @@
     <img alt="License" src="https://img.shields.io/github/license/zumerlab/snapdom?style=flat-square">
   </a>
 </p>
+
 <p align="center"><a href="README.md">English</a> | 简体中文</p>
 
 # SnapDOM
 
-**SnapDOM** 是新一代的 **DOM 截图引擎**，也是 **html2canvas**、**dom-to-image** 和 **html-to-image** 的快速、现代替代方案。
-它能把任意 DOM 子树连同浏览器实际渲染出的样式、字体、图片和伪元素一起打包，生成不依赖原页面的结果，再导出为 SVG、PNG、JPG、WebP、Canvas 或 Blob；还可以通过插件导出为**任意自定义格式**。整个引擎速度快、模块化、易扩展，而且零依赖。
+SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM 状态连同样式、字体和图片保存为可复用的结果。
 
-> 📖 **[文档、指南与在线演示 → snapdom.dev](https://snapdom.dev)**
+核心引擎可导出图片和 Canvas；插件可导出自包含的 HTML、页面上下文、供视觉智能体使用的元素映射、PDF 和录制内容。捕获结果也可用于 WebGL 纹理、视觉回归测试和界面过渡。整个过程在页面内运行，使用标准 Web API，核心引擎零依赖。
 
-## 功能特性
+[文档与演示](https://snapdom.dev/) · [技术功能](FEATURES.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
 
-完整捕获 DOM，并嵌入样式、伪元素和字体；可导出为 SVG、PNG、JPG、WebP、`canvas` 或 Blob。速度快、零依赖，完全基于标准 Web API。
+本仓库介绍的是 **v3**。下方迁移指南以 2.24.16（最后一个 v2 版本）为比较基准。
 
-👉 **完整的技术功能清单见 [FEATURES_CN.md](FEATURES_CN.md)。**
+## 可以用它做什么
 
-## 官网与在线演示
+| 用途 | 输出 | 提供方 |
+| --- | --- | --- |
+| 分享卡片、图表、发票或仪表盘 | SVG、PNG、JPG、WebP、Canvas 或 Blob | 核心引擎 |
+| 将捕获结果用于纹理、覆盖层或过渡效果 | Canvas 与捕获几何信息 | 核心引擎 |
+| 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | `html-export` 插件 |
+| 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | `context-export` / `agent-map` 插件 |
+| 下载文档或录制变化中的内容 | 基于图片的 PDF、动画 GIF 或浏览器编码的视频 | `pdf-image` / `gif-export` / `video-export` 插件 |
 
-[https://snapdom.dev](https://snapdom.dev)
-
+图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
 
 ## 快速开始
-
-**一行代码将任意 DOM 元素导出为 PNG：**
 
 ```js
 import { snapdom } from '@zumer/snapdom';
 
-const img = await snapdom.toPng(document.querySelector('#card'));
-document.body.appendChild(img);
+const card = document.querySelector('#card');
+const image = await snapdom.toPng(card);
+document.body.appendChild(image);
 ```
 
-**可复用捕获**（一次克隆，多次导出）：
+需要多种输出时，捕获一次即可：
 
 ```js
-const result = await snapdom(document.querySelector('#card'));
-await result.toPng();      // → HTMLImageElement
-await result.toSvg();      // → SVG 图片
-await result.download({ format: 'jpg', filename: 'card.jpg' });
+const result = await snapdom(card);
+
+const image = await result.toPng();
+const canvas = await result.toCanvas();
+const blob = await result.toBlob({ format: 'png' });
+await result.download({ format: 'jpg', filename: 'card' });
 ```
 
----
-
-## 目录
-
-- [快速开始](#快速开始)
-- [功能特性](#功能特性)
-- [官网与在线演示](#官网与在线演示)
-- [安装](#安装)
-- [构建产物](#构建产物)
-- [基本用法](#基本用法)
-- [文档](#文档) — 完整的 API、选项、插件和缓存参考见 [snapdom.dev/docs](https://snapdom.dev/docs/)
-- [限制](#限制)
-- [性能基准测试](#性能基准测试)
-- [开发](#开发)
-- [贡献者](#贡献者)
-- [赞助者](#赞助者)
-- [支持我们](#支持我们)
-- [许可证](#许可证)
+即使源元素随后发生变化，结果对象仍保留这次捕获。再次调用 `snapdom(card)` 才会捕获新状态。
 
 ## 安装
 
-### NPM / Yarn（稳定版）
+安装核心，并按需安装官方插件；两者的主版本号必须一致：
 
-```bash
-npm i @zumer/snapdom
-yarn add @zumer/snapdom
+```sh
+npm i @zumer/snapdom @zumer/snapdom-plugins
 ```
 
-### NPM / Yarn（开发版）
-
-`@dev` 与 `@latest` 是独立标签，可能指向更旧的版本。选择开发版前请先检查：
-
-```bash
-npm view @zumer/snapdom dist-tags
-```
-
-仅当列出的版本正是你要测试的版本时，才安装 `@dev`：
-
-```bash
-npm i @zumer/snapdom@dev
-yarn add @zumer/snapdom@dev
-```
-
-`@dev` 不代表 v3 beta。v3 发布前请使用本地源码；beta 发布后，请安装公告中的明确版本或标签。
-
-### CDN（稳定版）
+也可以在浏览器中加载：
 
 ```html
-<!-- 压缩版 -->
 <script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
-
-<!-- 压缩版 ES Module -->
-<script type="module">
-  import { snapdom } from "https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs";
+<script>
+  snapdom.toPng(document.querySelector('#card')).then(image => {
+    document.body.appendChild(image);
+  });
 </script>
 ```
 
-### CDN（开发版）
+以 ES Module 形式从 CDN 加载：
 
-```html
-<!-- 压缩版（开发版） -->
-<script src="https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.js"></script>
-
-<!-- 压缩版 ES Module（开发版） -->
-<script type="module">
-  import { snapdom } from "https://unpkg.com/@zumer/snapdom@dev/dist/snapdom.mjs";
-</script>
-```
-
-
-## 构建产物
-
-| 变体 | 文件 | 使用场景 |
-|------|------|----------|
-| **ESM**（支持 Tree Shaking） | `dist/snapdom.mjs` | 打包工具（Vite、webpack）、`import` |
-| **IIFE**（全局变量） | `dist/snapdom.js` | `<script>` 标签、传统 `require` |
-
-**打包工具（npm）：**
 ```js
-import { snapdom } from '@zumer/snapdom';  // → dist/snapdom.mjs
+import { snapdom } from 'https://esm.sh/@zumer/snapdom';
+import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins/html-export';
 ```
 
-**`<script>` 标签（CDN）：**
-```html
-<script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
-<script> snapdom.toPng(document.body).then(img => document.body.appendChild(img)); </script>
+`https://unpkg.com/@zumer/snapdom/dist/snapdom.mjs` 提供同一份模块。生产环境应固定依赖版本。
+
+如需用本仓库的本地构建运行文档站点：
+
+```sh
+npm install
+npm run compile
+npm run site
 ```
 
-**子路径导入**（只使用部分功能时，打包体积更小）：
-```js
-import { preCache } from '@zumer/snapdom/preCache';
-```
+本地站点使用本地构建产物，官网演示则加载已发布的包。
 
-**官方插件**位于独立的包中：
-```bash
-npm install @zumer/snapdom-plugins
-```
-```js
-import { filter } from '@zumer/snapdom-plugins/filter';
-```
+### 构建产物
 
+| 文件 | 用途 |
+| --- | --- |
+| `dist/snapdom.mjs` | 用于导入和打包工具的 ES Module |
+| `dist/snapdom.js` | 通过 script 标签加载，提供 `window.snapdom` |
+| `types/snapdom.d.ts` | TypeScript 类型声明 |
+
+没有 CommonJS 构建产物。`@zumer/snapdom/plugins` 与包的主入口共用同一份运行时和插件注册表。
 
 ## 基本用法
 
-| 模式 | 适用场景 |
-|------|----------|
-| **可复用调用** `snapdom(el)` | 克隆一次，多次导出（如 PNG、JPG 和下载）。 |
-| **快捷方法** `snapdom.toPng(el)` | 只导出一次，代码更简洁。 |
+### 选择输出格式
 
-### 可复用捕获
+| 结果对象的方法 | 返回 |
+| --- | --- |
+| `toPng()`、`toJpg()`、`toWebp()` | `HTMLImageElement` |
+| `toSvg()` | 以 SVG 为数据源的 `HTMLImageElement` |
+| `toCanvas()` | `HTMLCanvasElement` |
+| `toBlob()` | 若捕获或导出时未显式指定格式，则返回 SVG `Blob` |
+| `toRaw()` / `url` | 捕获结果的 SVG Data URL |
+| `download()` | 下载所选格式 |
+| `to(name, options?)` | 按名称调用核心或插件导出器 |
 
-捕获一次，多次导出（无需重复克隆）：
+`snapdom.toPng(element, options)` 等快捷方法在一次调用中完成捕获和导出。结果对象还提供 `toJpeg()`，作为 `toJpg()` 的别名。`toImg()` 仍然可用；导出 SVG 图片时建议使用 `toSvg()`。
 
-```js
-const el = document.querySelector('#target');
-const result = await snapdom(el);
-
-const img = await result.toPng();
-document.body.appendChild(img);
-await result.download({ format: 'jpg', filename: 'my-capture.jpg' });
-```
-
-### 一次性快捷方法
-
-只需要一种格式时，可直接导出：
+### 设置尺寸与内容
 
 ```js
-const png = await snapdom.toPng(el);
-const blob = await snapdom.toBlob(el);
-document.body.appendChild(png);
+const result = await snapdom(card, {
+  width: 800,
+  dpr: 1,
+  backgroundColor: '#ffffff',
+  exclude: '.capture-ignore',
+  excludeMode: 'remove'
+});
 ```
 
-## 文档
+`width` 和 `height` 指定输出尺寸；只设置一个时保持宽高比。只有两者都未设置时才应用 `scale`，最终像素尺寸还会乘以 `dpr`。
 
-完整参考文档位于 **[snapdom.dev/docs](https://snapdom.dev/docs/)**，会随版本同步更新，也支持站内搜索：
+| 常用选项 | 默认值 | 用途 |
+| --- | --- | --- |
+| `scale` / `dpr` | `1` / 设备像素比 | 输出分辨率 |
+| `width` / `height` | 未设置 | 输出尺寸 |
+| `embedFonts` | `'auto'` | 嵌入捕获内容实际使用的网页字体 |
+| `backgroundColor` | 透明；JPG/WebP 为白色 | 输出背景 |
+| `exclude` | 无 | 选择器或判断函数；`true` 表示排除 |
+| `excludeMode` | `'hide'` | 保留不可见的占位空间，或设为 `'remove'` |
+| `filter` | 无 | 判断函数；`true` 保留节点，`false` 过滤节点 |
+| `filterMode` | `'hide'` | 独立控制被 `filter` 过滤节点的布局方式 |
+| `clip` | 未设置 | 捕获视口或页面坐标下的矩形区域 |
+| `captureSelection` | `false` | 包含用户的文字选区 |
+| `canvas` | 未设置 | 复用现有 Canvas |
+| `invalidate` | `false` | 在编程修改 CSSOM 等变化后刷新捕获 |
 
-- **[API 参考](https://snapdom.dev/docs/api/)** — `snapdom()` 返回的可复用对象、快捷方法，以及各导出方法的专用选项。
-- **[选项](https://snapdom.dev/docs/options/)** — 逐项介绍所有捕获选项（`scale`、`dpr`、`embedFonts`、`useProxy`、`exclude`/`filter`、`compress`、`outerTransforms`、`outerShadows`、`cache`……），并附有示例。
-- **[插件](https://snapdom.dev/docs/plugins/)** — 如何构建、注册和发布自定义插件及导出格式。社区插件见[插件页面](https://snapdom.dev/plugins.html)。
-- **[缓存与 preCache](https://snapdom.dev/docs/cache/)** — 控制多次捕获之间的缓存，并通过 `preCache` 提前加载所需资源。
+[完整选项](https://snapdom.dev/docs/options/)还包括阴影、变换、字体、CORS、回退方案和布局校正。
 
-### API 速览
+### 导出 HTML 或结构化上下文
 
-`snapdom(el, options?)` 返回一个可复用对象（`toPng`、`toSvg`、`toCanvas`、`toBlob`、`toJpg`、`toWebp`、`download`、`url`）。单次导出可使用快捷方法：
+官方插件单独发布为 `@zumer/snapdom-plugins`，主版本号必须与核心一致；插件声明了对 v3 核心的 peer 依赖。插件源码位于本仓库的 `packages/plugins/`。
 
-| 方法 | 说明 |
-| ------------------------------ | --------------------------------- |
-| `snapdom.toSvg(el, options?)`  | 返回包含 SVG 的 `HTMLImageElement` |
-| `snapdom.toCanvas(el, options?)` | 返回 `HTMLCanvasElement`        |
-| `snapdom.toBlob(el, options?)` | 返回包含 SVG 或位图数据的 `Blob`  |
-| `snapdom.toPng(el, options?)`  | 返回 PNG 图片                     |
-| `snapdom.toJpg(el, options?)`  | 返回 JPG 图片                     |
-| `snapdom.toWebp(el, options?)` | 返回 WebP 图片                    |
-| `snapdom.download(el, options?)` | 触发下载                         |
+```js
+import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
 
-### 选项速览
+const result = await snapdom(card, {
+  plugins: [htmlExport(), contextExport({ format: 'json' })]
+});
 
-所有选项均为可选，可传入 `snapdom(el, options)` 或任意快捷方法。
+const html = await result.toHtml();
+const context = await result.toContext();
+```
 
-| 选项 | 类型 | 默认值 | 说明 |
-| ---- | ---- | ------ | ---- |
-| `scale` | `number` | `1` | 输出缩放倍数 |
-| `dpr` | `number` | `devicePixelRatio` | 栅格化输出的像素密度 |
-| `width` / `height` | `number` | `null` | 目标输出尺寸（只设置一个时保持宽高比） |
-| `backgroundColor` | `string` | `null`（JPEG/WebP 为 `#ffffff`） | 背景填充色 |
-| `quality` | `number` | `0.92` | JPEG/WebP 质量（0–1） |
-| `format` | `'png' \| 'jpeg' \| 'webp' \| 'svg'` | `'png'` | `download()` 使用的格式 |
-| `type` | `string` | `'svg'` | `toBlob()` 的 Blob 类型（`'png'`、`'jpeg'`…） |
-| `filename` | `string` | `'snapDOM'` | 下载文件名 |
-| `embedFonts` | `boolean` | `false` | 内联 `@font-face`，让文字以真实字体渲染 |
-| `iconFonts` | `string \| RegExp \| array` | `[]` | 图标字体的字体族（始终内嵌） |
-| `localFonts` | `array` | `[]` | 显式指定字体：`{ family, src, weight?, style? }` |
-| `excludeFonts` | `object` | — | 按字体族 / 域名 / 子集跳过字体 |
-| `exclude` | `string[]` | `[]` | 从捕获中排除的 CSS 选择器 |
-| `filter` | `(el) => boolean` | `null` | 保留判断函数（返回 `false` 则丢弃节点） |
-| `excludeMode` / `filterMode` | `'hide' \| 'remove'` | `'hide'` | 被排除节点的处理方式 |
-| `clip` | `'viewport' \| {x, y, width, height}` | `null` | 只捕获指定区域，视口外内容会被裁剪 |
-| `compress` | `boolean` | `true` | 将内联图片降采样到其可见分辨率 |
-| `useProxy` | `string` | `''` | 跨源图片使用的 CORS 代理前缀 |
-| `fallbackURL` | `string \| fn` | — | 加载失败的 `<img>` 的兜底图片 |
-| `cache` | `'soft' \| 'auto' \| 'full' \| 'disabled'` | `'soft'` | 多次捕获之间的缓存策略 |
-| `outerTransforms` | `boolean` | `true` | 在输出中保留根元素的平移/旋转 |
-| `outerShadows` | `boolean` | `false` | 扩展边界以包含根元素的阴影/模糊/描边 |
-| `fast` | `boolean` | `true` | 跳过空闲等待，加快捕获速度 |
-| `reconcile` | `boolean` | `false` | 对照真实 DOM 测量克隆结果，把尺寸出现偏差的盒模型钉定为真实大小，可修复少见的文字重新换行/布局漂移问题，代价是捕获耗时大约翻倍 — 如果 snapdom 检测到某次捕获可能受益于此选项，会通过 `console.warn` 提示一次 |
-| `burst` | `boolean` | `false` | 通过限定范围的 `MutationObserver` 对该元素的重复捕获做记忆化 — 内容未变化的重复捕获会完全跳过处理流程。未开启时，如果同一元素在 2 秒内被捕获 3 次以上，snapdom 会提示一次 |
-| `invalidate` | `boolean` | `false` | 配合 `burst: true` 使用，为自动追踪无法感知的变化（canvas 绘制、以编程方式修改 CSSOM）强制触发一次全新捕获 |
-| `plugins` | `array` | — | 单次捕获插件（按名称覆盖全局插件） |
+同一套插件系统也支持覆盖层、内容遮蔽和自定义导出器。同名的局部插件优先于全局插件。参见[官方插件参考](packages/plugins/README.md)和[插件规范](PLUGIN_SPEC.md)。
 
-📖 **[完整 API 和全部选项（附示例）→ snapdom.dev/docs](https://snapdom.dev/docs/)**
+### 捕获 HTML 字符串
+
+```js
+const result = await snapdom.fromString('<article>Hello</article>');
+const image = await result.toPng();
+```
+
+`fromString()` 在屏幕外挂载 HTML，并在捕获后移除。这段字符串会像你自己编写的页面标记一样被解析和激活：`<img onerror>` 之类的内联事件处理器会在调用方的源（origin）中执行，挂载被移除后也可能继续执行。不受信任的 HTML 请先清理，例如使用 DOMPurify。
+
+### 用于 WebGL 纹理
+
+```js
+const canvas = document.createElement('canvas');
+const texture = new THREE.CanvasTexture(canvas);
+texture.colorSpace = THREE.SRGBColorSpace;
+
+async function refresh(element) {
+  await snapdom.toCanvas(element, { canvas, scale: 1, dpr: 1 });
+  texture.needsUpdate = true;
+}
+```
+
+`result.meta` 包含捕获几何信息，可用于将导出的图片覆盖到原界面上。[实验示例](https://snapdom.dev/labs.html)展示了纹理、镜像和过渡效果。
+
+## v3 有哪些新变化
+
+- 符合条件且未变化的捕获会复用第一次的结果。可安全处理的局部变化只重建受影响的子树，其他变化使用完整捕获流程。
+- 使用到的网页字体会自动嵌入；纯系统字体的捕获会跳过这一步。
+- 样式处理减少了重复读取，每次捕获的状态也相互隔离，以支持并发捕获。
+- Safari 图片解码和绘制保留了针对该浏览器的处理。
+- `snapdom.preCapture()` 可根据用户意图提前准备捕获。当捕获在控件的按下/点击事件中开始时，它会学习这个控件；之后悬停或获得焦点时，就会提前准备同一次捕获。
+
+```js
+snapdom.preCapture();
+button.onclick = () => snapdom.toPng(card);
+```
+
+图片压缩和资源缓存仍会自动处理，但光栅化与图片编码依然需要时间。参见[性能测量](BENCHMARKS.md)和[缓存指南](https://snapdom.dev/docs/cache/)。
+
+SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 Canvas API 绘制同一份捕获克隆的 **html-in-canvas**。使用 `engine: 'html-in-canvas'` 选择第二个引擎。
+
+第二个引擎仍处于实验阶段：需要兼容的浏览器开启 Canvas 绘制标志，并使用 `SNAPDOM_CANVAS_ENGINE=1` 编译构建。默认构建只包含 SVG。不支持的捕获会回退到 SVG。成功的原生捕获生成位图，因此其 URL 和 `toRaw()` 返回 PNG，而非序列化的 SVG。详情见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
+## 从 v2 迁移
+
+主要调用方式仍是 `snapdom(element, options)`。本指南以 **v2.24.16** 为迁移基准。升级前请检查以下变化：
+
+| v2 | v3 | 需要调整的地方 |
+| --- | --- | --- |
+| 网页字体需要手动开启嵌入 | `embedFonts: 'auto'` | 通常无需调整；仅在需要省略字体时使用 `false` |
+| 位图的 width/height 可能再乘以 `scale` | width/height 优先于 scale | 直接传最终尺寸，如用 `width: 400` 替代 `width: 200, scale: 2` |
+| 使用 `burst` 手动开启重复捕获记忆化 | 符合条件的捕获自动记忆化；`burst` 不再记录在文档中，也不再受支持 | 删除 `burst`（引擎仍会读取它供内部使用，请勿依赖），并在 `sheet.insertRule()` 等无法自动观察的变化后，用 `invalidate: true` 重新捕获一次 |
+| `preCache` 用于准备资源 | 已移除；`preCapture()` 学习捕获意图 | 删除 `preCache`；`preCapture()` 不是直接改名后的替代方法 |
+| `fast` 选择优化路径 | 已移除 | 删除该选项 |
+| `filter` / `filterMode` 可与 `exclude` / `excludeMode` 同时使用 | 两种控制及其独立模式仍受支持；`exclude` 还支持判断函数 | 保留原有规则和模式；需要时再使用新增判断函数形式 |
+| `cache: 'auto'` 或 `'full'` | 两者均映射为 `'soft'` | 通常可以省略；`'disabled'` / `false` 用于调试 |
+| `compress` 控制内嵌图片降采样 | 图片优化自动进行；`compress` 不再记录在文档中，也不再受支持 | 删除 `compress`；引擎仍会读取它供内部使用，请勿依赖 |
+| `resolvePicturePlaceholders` / `pictureResolver` 配置懒加载图片预处理 | 在克隆节点上解析响应式和懒加载图片；这些选项不再记录在文档中，也不再受支持 | 删除这些选项，自定义加载和超时策略应在应用中、捕获前完成；引擎仍会读取 `resolvePicturePlaceholders` 供内部使用，请勿依赖 |
+| 部分可见输入值会被遮蔽 | 核心只遮蔽密码 | 其他字段需要使用 `redactInputs()` |
+| `afterExport` 返回值成为下一个钩子的参数，但不改变调用者收到的结果 | 返回值被忽略；钩子收到同一份导出参数 | 不再通过返回值串联钩子；用 `defineExports` 生成不同输出 |
+| TypeScript 导出 `PluginExportFacade` | 该类型名称已移除；`ctx.exports` 仍提供核心导出器 | 在 `defineExports` 中使用类型推导，或使用 `NonNullable<CaptureContext['exports']>` |
+
+### 同时使用 filter 和 exclude
+
+与 v2 一样，`filter` 和 `exclude` 是独立的控制项。`filter(node)` 返回 true 表示保留节点，返回 false 表示过滤掉节点；`filterMode` 决定被过滤节点如何影响布局。`exclude` 用选择器或判断函数指定额外排除的节点；其判断函数返回 true 表示排除。`excludeMode` 决定这些排除如何影响布局。一次捕获中可以同时使用两个控制项，并为它们设置不同模式：
+
+```js
+// v2 和 v3 均支持：隐藏私有字段，移除工具栏。
+await snapdom(card, {
+  filter: node => !node.matches('[data-private]'),
+  filterMode: 'hide',
+  exclude: ['.toolbar'],
+  excludeMode: 'remove'
+});
+```
+
+`'hide'` 保留不可见的占位空间；`'remove'` 删除节点并允许剩余内容重新排版。两者都会排除节点内容。v3 还允许 `exclude` 混合选择器和判断函数，例如 `exclude: ['.toolbar', node => node.dataset.export === 'omit']`，任意规则匹配即可排除节点。这是可选的扩展，不会替代 `filter`，也不会合并两个模式。单独提供 CSS 效果的 `filter` 插件仍然可用。
+
+两个模式都默认为 `'hide'`。对每个节点，先检查 `data-capture="exclude"`，再检查 `exclude`，最后检查 `filter`。首个排除决定所用模式，并停止对该节点继续检查：即使 `filter` 也会以不同模式过滤该节点，只要先匹配 `exclude`，就使用 `excludeMode`。`filter` 保留 v2 的真值规则：任何假值返回都会过滤节点。
+
+### 读取应用动态状态的回调
+
+当 `filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，每次新的捕获都会重新执行所需流程，让适用的回调读取当前应用状态，不复用旧捕获或先前回调的样式、替代图片决策。仅回调闭包状态改变时，无需使用 `invalidate`。这种即时性有代价：`filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，该捕获会关闭记忆化和差异化重捕获，因此带判断函数的轮询循环每一轮都要付出一次完整捕获的开销。规则能用选择器表达时，请传选择器，以保留复用：
+
+```js
+let privateMode = false;
+const options = {
+  exclude: node => privateMode && node.matches('[data-private]'),
+  excludeMode: 'remove'
+};
+const before = await snapdom(card, options);
+privateMode = true;
+const after = await snapdom(card, options); // 使用当前策略
+```
+
+`before` 仍保留原来的捕获状态；再次导出它不会应用新策略。请使用 `after` 这样的新捕获。节点排除和样式属性判断函数应保持同步并返回布尔值。直接修改 CSSOM 等无法自动观察的变化，仍需要 `invalidate: true`。
+
+会影响捕获结果的插件暂停自动记忆化，除非声明 `pure: true`。只有确定性钩子才应这样声明；时间戳和读取外部状态的回调需要再次运行。参见 [v3 插件契约](PLUGIN_SPEC.md)。
 
 ## 限制
 
-* 外部图片需要允许跨源访问；如果被跨源拦截，可使用 `useProxy` 选项。
-* Safari 不支持以 WebP 导出时，会回退为 PNG（已在 Safari 26.5 验证：`canvas.toDataURL('image/webp')` 返回 PNG）。`download()` 仍使用 `.webp` 文件名，因此保存下来的文件实际是 PNG 数据。
-* SnapDOM 对 `@font-face` CSS 规则的支持较完善；通过 JavaScript `FontFace()` 注册的字体**不会**被自动嵌入：请在 `localFonts` 选项中显式列出（`{ family, src }`），或参阅 [`#43`](https://github.com/zumerlab/snapdom/issues/43) 中的解决方案。
-* **Safari**：启用 `embedFonts`，或待捕获元素包含背景图/蒙版图时，受 [WebKit #219770](https://bugs.webkit.org/show_bug.cgi?id=219770)（字体解码时机）影响，捕获速度会变慢。SnapDOM 会等待该元素实际使用的字体就绪，并校验首次 canvas 绘制是否成功，无需额外配置。
-* **自定义滚动条样式**（`::-webkit-scrollbar`）：仅当元素**尚未滚动**时保留。元素滚动后，SnapDOM 会捕获当前视口中的内容，但不会包含滚动条。
+- SnapDOM 需要浏览器 DOM。服务端 Node.js 进程需要浏览器环境才能运行它。
+- 跨源图片、字体和样式表必须可读取，或通过适当的代理访问。仅设置 `crossorigin` 不会获得权限，服务器也必须允许访问。跨源 iframe 使用占位框。
+- SVG 输出通过 `<foreignObject>` 包含 HTML，适合在浏览器中展示；其他 SVG 查看器和文档工具的支持程度各不相同。
+- 输出受浏览器渲染和 Canvas 尺寸限制影响。Safari 无法编码 WebP 时可能回退为 PNG。
+- Canvas、视频和其他持续变化的内容会重新捕获。JavaScript 对 CSSOM 的修改无法被自动观察，修改后请使用 `invalidate: true`。
+- 核心会捕获可见输入值。语义插件会在文本/映射输出中遮蔽敏感字段值，但如需同时隐藏附带图片中的这些像素，仍需使用 `redactInputs` 或 `exclude`。
 
+详细行为见[技术功能与浏览器处理](FEATURES.md)。
 
 ## 性能基准测试
 
-**测试环境：**在 Chromium 中运行仓库内的 Vitest 基准测试。实际结果可能受硬件影响。
-表中数值为**平均捕获耗时（毫秒）**，越低越好。
+[测量记录](BENCHMARKS.md)分别介绍首次捕获、重复捕获和图片密集场景。[在线对比](https://snapdom.dev/compare/live/)会在你的浏览器中运行，并标明所加载的包版本。
 
-### 简单元素
+比较时应使用相同场景、输出格式、scale 和 DPR，同时检查图像和耗时。
 
-| 场景                 | SnapDOM 当前版 | SnapDOM v1.9.9 | html2canvas | html-to-image |
-| ------------------------ | --------------- | -------------- | ----------- | ------------- |
-| 小尺寸（200×100）          | **0.5 ms**      | 0.8 ms         | 67.7 ms     | 3.1 ms        |
-| 模态框（400×300）          | **0.5 ms**      | 0.8 ms         | 75.5 ms     | 3.6 ms        |
-| 页面视图（1200×800）     | **0.5 ms**      | 0.8 ms         | 114.2 ms    | 3.3 ms        |
-| 大型滚动区域（2000×1500） | **0.5 ms**      | 0.8 ms         | 186.3 ms    | 3.2 ms        |
-| 超大尺寸（4000×2000）   | **0.5 ms**      | 0.9 ms         | 425.9 ms    | 3.3 ms        |
+## 文档
 
-
-### 复杂元素
-
-| 场景                 | SnapDOM 当前版 | SnapDOM v1.9.9 | html2canvas | html-to-image |
-| ------------------------ | --------------- | -------------- | ----------- | ------------- |
-| 小尺寸（200×100）          | **1.6 ms**      | 3.3 ms         | 68.0 ms     | 14.3 ms       |
-| 模态框（400×300）          | **2.9 ms**      | 6.8 ms         | 87.5 ms     | 34.8 ms       |
-| 页面视图（1200×800）     | **17.5 ms**     | 50.2 ms        | 178.0 ms    | 429.0 ms      |
-| 大型滚动区域（2000×1500） | **54.0 ms**     | 201.8 ms       | 735.2 ms    | 984.2 ms      |
-| 超大尺寸（4000×2000）   | **171.4 ms**    | 453.7 ms       | 1,800.4 ms  | 2,611.9 ms    |
-
-
-### 运行基准测试
-
-```sh
-git clone https://github.com/zumerlab/snapdom.git
-cd snapdom
-npm install
-npm run test:benchmark
-```
-
+- [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
+- [框架指南](https://snapdom.dev/guides/)与[使用示例](https://snapdom.dev/how-to/)
+- [官方插件](packages/plugins/README.md)、[插件规范](PLUGIN_SPEC.md)与[插件贡献指南](CONTRIBUTING_PLUGINS.md)
+- [架构](ARCHITECTURE.md)与[技术功能](FEATURES.md)
 
 ## 开发
 
-**源码结构：**
-- `src/api/` — 公开 API（`snapdom`、`preCache`）
-- `src/core/` — 捕获流程、克隆、预处理与插件
-- `src/modules/` — 图片、字体、伪元素、背景与 SVG
-- `src/exporters/` — `toPng`、`toSvg`、`toBlob` 等导出方法
-- `dist/` — 构建产物（`snapdom.js`、`snapdom.mjs`、`preCache.mjs`、`plugins.mjs`）
+在本仓库中运行：
 
-**构建：**
 ```sh
-git clone https://github.com/zumerlab/snapdom.git
-cd snapdom
-git checkout dev
 npm install
+npx playwright install
 npm run compile
+npm run lint
+npm run test:types
+npm run test:bundle
+BROWSER=all npx vitest run __tests__ --browser.headless
+npm run test:pack
 ```
 
-**测试：**
-```sh
-npx playwright install   # 浏览器测试需要
-npm test
-npm run test:benchmark
-```
-
-详细指南请参阅 [CONTRIBUTING](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING.md)。
-
+`npm run site` 使用本地构建产物提供文档站点。`npm test` 检查 lint，但不会修改文件；如需自动修复，请运行 `npm run lint:fix`。实现说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 贡献者
 
@@ -379,7 +374,7 @@ npm run test:benchmark
 
 ## 支持我们
 
-如果 SnapDOM 帮你节省了时间，欢迎在 GitHub 上点一个 ⭐。这能让更多开发者发现它，也是我们唯一的请求。
+如果 SnapDOM 帮你节省了时间，欢迎在 GitHub 上点一个星标，让更多开发者发现它。
 
 用 SnapDOM 构建了项目？欢迎把这个徽章添加到你的 README：
 
@@ -391,10 +386,10 @@ npm run test:benchmark
 
 ### 使用 SnapDOM 的项目
 
-SnapDOM 已用于 290 多个公开仓库的生产环境（见 [GitHub 依赖关系图](https://github.com/zumerlab/snapdom/network/dependents)）。以下列出部分有代表性的项目，每个项目都已通过其自身的 `package.json` 核实：
+以下项目正在使用 SnapDOM：
 
 - [LobeHub](https://github.com/lobehub/lobehub) — AI 智能体平台
-- [Trilium Notes](https://github.com/TriliumNext/Trilium) — 层级式个人知识库
+- [Hugging Face Chat UI](https://github.com/huggingface/chat-ui) — HuggingChat 界面，使用 SnapDOM 截取作品预览
 - [Sealos](https://github.com/labring/sealos) — AI 原生云操作系统
 - [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — 低代码页面编辑器
 - [Playroom](https://github.com/seek-oss/playroom) — SEEK 推出的 JSX 设计工具
@@ -402,9 +397,11 @@ SnapDOM 已用于 290 多个公开仓库的生产环境（见 [GitHub 依赖关�
 - [Rabby Wallet](https://github.com/RabbyHub/Rabby) — 面向 EVM 链的浏览器钱包
 - [uMap](https://github.com/umap-project/umap) — OpenStreetMap 地图制作工具
 - [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — MetaBrainz 推出的音乐收听记录服务
+- [Mind Elixir](https://github.com/SSShooter/mind-elixir-core) — 思维导图核心库，推荐使用 SnapDOM 导出图片
+- [Kong UI Components](https://github.com/Kong/public-ui-components) — Kong 仪表盘渲染器使用 SnapDOM 导出 PDF
 - [SnapDIFF](https://zumerlab.com/snapdiff/) — 浏览器内的视觉回归测试工具 *（由 Zumerlab 开发）*
 
-完整案例见 **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**。如果你的项目也在使用 SnapDOM，欢迎[提交 PR](https://github.com/zumerlab/snapdom/pulls) 添加到列表中 — 仅收录真实、可验证的项目。
+完整案例见 **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**。如果你的项目也在使用 SnapDOM，欢迎[提交 PR](https://github.com/zumerlab/snapdom/pulls)添加到列表中，仅收录真实、可验证的项目。
 
 ## 许可证
 

@@ -1,5 +1,6 @@
 // __tests__/utils.transforms.helpers.test.js – transforms.helpers.js coverage
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import * as snapdomStyles from '../src/modules/styles.js'
 import {
   parseBoxShadow,
   parseTextShadow,
@@ -98,7 +99,9 @@ describe('parseFilterBlur', () => {
     const cs = getComputedStyle(div)
     const res = parseFilterBlur(cs)
     // Also guards against double-counting when the engine mirrors filter into webkitFilter.
-    expect(res.top).toBe(5)
+    // blur(R) is a standard deviation; the ink reaches ~2R (measured on Chromium and
+    // Firefox), so the bleed is 2R, not R. See parseFilterBlur.
+    expect(res.top).toBe(10)
   })
 
   it('sums multiple blur() in the chain (combined spread)', () => {
@@ -106,7 +109,7 @@ describe('parseFilterBlur', () => {
     div.style.filter = 'blur(2px) blur(3px)'
     document.body.appendChild(div)
     const res = parseFilterBlur(getComputedStyle(div))
-    expect(res).toEqual({ top: 5, right: 5, bottom: 5, left: 5 })
+    expect(res).toEqual({ top: 10, right: 10, bottom: 10, left: 10 })
   })
 })
 
@@ -226,8 +229,8 @@ describe('readIndividualTransforms', () => {
   })
 
   it('reads a uniform rotate/scale through the Typed OM path', () => {
-    // This Chromium returns generic CSSStyleValue objects, so the reader coerces via String/Number:
-    // uniform scale and rotate resolve correctly (two-axis scale is not representable this way).
+    // Generic CSSStyleValue objects must keep their complete serialization; multi-axis and
+    // zero scale are pinned separately in utils.transforms.individual.test.js.
     const div = document.createElement('div')
     div.style.rotate = '45deg'
     div.style.scale = '2'
@@ -268,7 +271,7 @@ describe('readTotalTransformMatrix', () => {
 describe('parseFilterBlur – webkit fallback', () => {
   it('reads -webkit-filter when the standard filter is none (mock cs)', () => {
     const res = parseFilterBlur({ filter: 'none', webkitFilter: 'blur(4px)' })
-    expect(res).toEqual({ top: 4, right: 4, bottom: 4, left: 4 })
+    expect(res).toEqual({ top: 8, right: 8, bottom: 8, left: 8 })
   })
 })
 
@@ -407,5 +410,34 @@ describe('normalizeRootTransforms', () => {
     expect(res.a).toBeGreaterThan(0)
     // the clone's transform is rewritten to a pure 2D matrix with no translation
     expect(clone.style.transform.startsWith('matrix(')).toBe(true)
+  })
+})
+
+describe('fallback measure host ownership', () => {
+  // Relative/calc transforms still need a probe inside #snapdom-measure-slot; ordinary
+  // computed matrices now compose directly without any measurement host or layout flush.
+  // The host is snapdom's own, but it was the ONE injected node in the capture path missing
+  // the ownership marker, so styles.js classified both childList records as EXTERNAL: every
+  // capture of a transformed root bumped the style epoch (dropping the author-stylesheet
+  // scan memo) and re-stamped the whole document, invalidating every cached snapshot.
+  it('marks the measure host as snapdom-owned', () => {
+    readTotalTransformMatrix({ translate: 'calc(50% + 1px)', width: 100 })
+    const host = document.getElementById('snapdom-measure-slot')
+    expect(host).not.toBeNull()
+    expect(host.hasAttribute('data-snapdom-internal')).toBe(true)
+  })
+
+  it('does not bump the style epoch when measuring a transform', async () => {
+    // Wire the observer and drain anything already pending.
+    snapdomStyles.flushStyleInvalidations()
+    await new Promise(r => setTimeout(r, 0))
+    snapdomStyles.flushStyleInvalidations()
+    const before = snapdomStyles.getStyleEpoch()
+
+    readTotalTransformMatrix({ translate: 'calc(50% + 1px)', width: 100 })
+    await new Promise(r => setTimeout(r, 0))
+    snapdomStyles.flushStyleInvalidations()
+
+    expect(snapdomStyles.getStyleEpoch()).toBe(before)
   })
 })

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM Documentation: API, Options, Plugins & Cache</title>
-  <meta name="description" content="Official SnapDOM documentation: full API reference, every capture option, the plugin system, and cache control. Capture any DOM element to SVG, PNG, JPG, WebP, Canvas or Blob." />
+  <title>SnapDOM Documentation — API, Options, Plugins & Cache</title>
+  <meta name="description" content="SnapDOM v3 reference: capture browser UI once, export images, and use plugins for HTML, structured context, element maps and recordings." />
   <meta name="keywords" content="snapdom documentation, snapdom api, snapdom options, snapdom plugins, snapdom cache, dom to image, html to image" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/docs/" />
@@ -14,12 +14,12 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content="SnapDOM Documentation" />
-  <meta property="og:description" content="Full API reference, every capture option, the plugin system, and cache control for SnapDOM." />
+  <meta property="og:description" content="Capture browser UI once. Export images, inspect capture geometry, or add HTML and structured context through plugins." />
   <meta property="og:url" content="https://snapdom.dev/docs/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="SnapDOM Documentation" />
-  <meta name="twitter:description" content="API reference, options, plugins and cache control for the fast html2canvas alternative." />
+  <meta name="twitter:description" content="SnapDOM v3: reusable captures, image exports, geometry, plugins and cache behavior." />
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg" />
 
   <link rel="icon" type="image/png" href="../assets/favicon/favicon-96x96.png" sizes="96x96">
@@ -62,36 +62,39 @@
 </head>
 <body>
   <script defer src="../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/" aria-current="page">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/" aria-current="page">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/" aria-current="page">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/" aria-current="page">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
 
-  <section class="hero">
-    <div class="hero-badge">Documentation</div>
-    <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Docs hub github">
-      <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
-      <span>zumerlab/snapdom</span>
-      <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
-    </a>
-    <h1>SnapDOM <span class="accent">Documentation</span></h1>
-    <p class="lead">Install SnapDOM, capture an element and choose an output format. This reference covers the API, capture options, plugins and cache control.</p>
-    <div class="hero-actions">
-      <a href="#quick-start" class="btn btn-primary" data-umami-event="Docs hub quickstart">Quick start</a>
-      <a href="api/" class="btn btn-ghost" data-umami-event="Docs hub api">API reference</a>
+  <section class="hero section-hero">
+    <div class="section-hero-copy">
+      <div class="hero-badge">Documentation</div>
+      <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Docs hub github">
+        <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+        <span>zumerlab/snapdom</span>
+        <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
+      </a>
+      <h1>SnapDOM <span class="accent">Documentation</span></h1>
+      <p class="lead">Capture browser UI once, then choose image exports or plugin outputs such as HTML and structured context. This reference covers SnapDOM v3.</p>
+      <div class="hero-actions">
+        <a href="#quick-start" class="btn btn-primary" data-umami-event="Docs hub quickstart">Quick start</a>
+        <a href="api/" class="btn btn-ghost" data-umami-event="Docs hub api">API reference</a>
+      </div>
     </div>
+    <img class="section-mascot" src="../assets/mascots/mr-snapdom-docs.webp" width="1254" height="1254" decoding="async" alt="Mr. SnapDOM holding a reference book">
   </section>
 
   <main class="page">
     <div class="tldr">
-      <div class="tldr-label">What SnapDOM does</div>
-      <p><strong>SnapDOM</strong> captures a DOM subtree as a self-contained SVG, then exports it to PNG, JPG, WebP, Canvas, Blob, or a format supplied by a plugin. It runs in the browser and has no runtime dependencies.</p>
+      <div class="tldr-label">What is SnapDOM</div>
+      <p><strong>SnapDOM is a browser capture engine for web interfaces.</strong> It captures a DOM subtree with its styles and assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. <strong>Plugins</strong> add HTML, text or JSON context, annotated element maps and image-based PDFs from that state, or record new captures as GIF or video.</p>
     </div>
 
     <section class="prose">
       <h2 id="sections">Documentation sections</h2>
       <div class="related-grid">
-        <a class="related-card" href="api/" data-umami-event="Docs hub card api">API reference: methods &amp; exporters <span class="arrow">→</span></a>
-        <a class="related-card" href="options/" data-umami-event="Docs hub card options">Options: every capture option <span class="arrow">→</span></a>
-        <a class="related-card" href="plugins/" data-umami-event="Docs hub card plugins">Plugins: extend the pipeline <span class="arrow">→</span></a>
-        <a class="related-card" href="cache/" data-umami-event="Docs hub card cache">Cache & preCache: performance <span class="arrow">→</span></a>
+        <a class="related-card" href="api/" data-umami-event="Docs hub card api">API reference — methods & exporters <span class="arrow">→</span></a>
+        <a class="related-card" href="options/" data-umami-event="Docs hub card options">Options — every capture option <span class="arrow">→</span></a>
+        <a class="related-card" href="plugins/" data-umami-event="Docs hub card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
+        <a class="related-card" href="cache/" data-umami-event="Docs hub card cache">Cache & preCapture — performance <span class="arrow">→</span></a>
       </div>
     </section>
 
@@ -113,18 +116,12 @@ await result.download({ format: 'jpg', filename: 'card.jpg' });</pre>
     <section class="prose">
       <h2 id="installation">Installation</h2>
 
-      <h3>NPM / Yarn (stable)</h3>
+      <h3>NPM / Yarn</h3>
       <pre class="code-block">npm i @zumer/snapdom
 yarn add @zumer/snapdom</pre>
 
-      <h3>NPM / Yarn (dev builds)</h3>
-      <p>The <code>@dev</code> tag is independent of <code>@latest</code> and can point to an older build. Check the versions before installing a development build:</p>
-      <pre class="code-block">npm view @zumer/snapdom dist-tags</pre>
-      <p>Install <code>@dev</code> only if its listed version is the one you intend to test. This tag does not identify the v3 beta; use the local v3 checkout before publication, then its explicit published version or announced tag.</p>
-      <pre class="code-block">npm i @zumer/snapdom@dev
-yarn add @zumer/snapdom@dev</pre>
 
-      <h3>CDN (stable)</h3>
+      <h3>CDN</h3>
       <pre class="code-block">&lt;!-- Minified build --&gt;
 &lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;
 
@@ -140,32 +137,30 @@ yarn add @zumer/snapdom@dev</pre>
         </thead>
         <tbody>
           <tr><td class="feature">ESM (tree-shakeable)</td><td class="num">dist/snapdom.mjs</td><td>Bundlers (Vite, webpack), <code>import</code></td></tr>
-          <tr><td class="feature">IIFE (global)</td><td class="num">dist/snapdom.js</td><td>Script tag, legacy <code>require</code></td></tr>
+          <tr><td class="feature">IIFE (global)</td><td class="num">dist/snapdom.js</td><td>Browser script tag; exposes <code>window.snapdom</code>. No CommonJS build.</td></tr>
         </tbody>
       </table>
-      <p><strong>Subpath imports</strong> (lighter bundle if you only need one):</p>
-      <pre class="code-block">import { preCache } from '@zumer/snapdom/preCache';</pre>
-      <p><strong>Official plugins</strong> ship in their own package, <code>@zumer/snapdom-plugins</code>, importable from the root or per plugin:</p>
-      <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';</pre>
+      <p><strong>Plugin registry import.</strong> The subpath shares the core runtime and registry:</p>
+      <pre class="code-block">import { registerPlugins } from '@zumer/snapdom/plugins';</pre>
     </section>
 
     <section class="prose">
       <h2 id="capture-flow">Capture flow</h2>
-      <p>SnapDOM transforms your DOM element through these stages:</p>
+      <p>A capture freezes the subtree; exports then read that captured state. The work is split into these steps:</p>
       <table class="cmp-table">
         <thead>
           <tr><th>Stage</th><th>What happens</th></tr>
         </thead>
         <tbody>
-          <tr><td class="feature">Clone</td><td>Deep clone with styles, <a href="../how-to/capture-shadow-dom/">open Shadow DOM</a> and <a href="../how-to/capture-iframe/">same-origin iframe</a> content. Exclude or filter nodes when needed.</td></tr>
+          <tr><td class="feature">Clone</td><td>Deep clone with styles, Shadow DOM, iframes. Leave nodes out with <code>exclude</code>.</td></tr>
           <tr><td class="feature">Styles &amp; Pseudo</td><td>Inline <code>::before</code>/<code>::after</code> as elements, resolve <code>counter()</code>/<code>counters()</code>.</td></tr>
           <tr><td class="feature">Images &amp; Backgrounds</td><td>Fetch and inline external images/backgrounds as data URLs.</td></tr>
-          <tr><td class="feature">Fonts</td><td>Embed <code>@font-face</code> (optional) and icon fonts.</td></tr>
+          <tr><td class="feature">Fonts</td><td>Embed the webfonts the capture uses by default. Render icon-font glyphs through the icon path.</td></tr>
           <tr><td class="feature">SVG</td><td>Wrap clone in <code>&lt;foreignObject&gt;</code>, serialize to <code>data:image/svg+xml</code>.</td></tr>
-          <tr><td class="feature">Export</td><td>Convert SVG to PNG/JPG/WebP/Blob or trigger download.</td></tr>
+          <tr><td class="feature">Export</td><td>Return the SVG, rasterize to PNG/JPG/WebP/canvas, create a blob, or run a plugin export.</td></tr>
         </tbody>
       </table>
-      <p class="muted">Plugin hooks fire in order: <code>beforeSnap → beforeClone → afterClone → beforeRender → afterRender → beforeExport → afterExport</code>. See the <a href="plugins/">plugins guide</a>.</p>
+      <p class="muted">Plugins can use the clone without rendering by declaring <code>needs: 'clone'</code>. Image exports require <code>'render'</code>, the default. Hooks and custom outputs are covered in the <a href="plugins/">plugins guide</a>.</p>
     </section>
 
     <section class="prose">
@@ -175,12 +170,11 @@ yarn add @zumer/snapdom@dev</pre>
           <tr><th>Pattern</th><th>When to use</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">snapdom(el)</td><td>Reusable: one clone → many exports (PNG + JPG + download).</td></tr>
-          <tr><td class="num">snapdom.toPng(el)</td><td>Shortcut: single export, less code.</td></tr>
+          <tr><td class="num">snapdom(el)</td><td>Reusable — one clone → many exports (PNG + JPG + download).</td></tr>
+          <tr><td class="num">snapdom.toPng(el)</td><td>Shortcut — single export, less code.</td></tr>
         </tbody>
       </table>
       <p>See the <a href="api/">full API reference</a> for every method and the <a href="options/">options reference</a> for everything you can pass.</p>
-      <p>Running the capture from automation or a backend job? Use SnapDOM inside the page controlled by <a href="../compare/playwright/">Playwright</a> or <a href="../compare/puppeteer/">Puppeteer</a>. The <a href="../blog/dom-capture-boundaries/">DOM capture boundaries guide</a> covers workers, SSR and cross-origin frames.</p>
     </section>
 
     <section class="related">
@@ -190,15 +184,13 @@ yarn add @zumer/snapdom@dev</pre>
         <a class="related-card" href="../guides/react/">SnapDOM in React <span class="arrow">→</span></a>
         <a class="related-card" href="../how-to/screenshot-a-div/">How to screenshot a div <span class="arrow">→</span></a>
         <a class="related-card" href="../plugins.html">Browse community plugins <span class="arrow">→</span></a>
-        <a class="related-card" href="../how-to/capture-full-page/">Capture a full page <span class="arrow">→</span></a>
-        <a class="related-card" href="../blog/dom-capture-boundaries/">DOM capture boundaries <span class="arrow">→</span></a>
       </div>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Run your first capture</h2>
-        <p>Open the demo or install the package and use the quick-start example above.</p>
+        <h2>Ready to capture?</h2>
+        <p>Try the browser demo, then use the API reference to choose your output.</p>
         <a href="../showcase/" class="btn btn-primary" data-umami-event="Docs hub cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs hub cta npm">Install from npm</a>
       </div>

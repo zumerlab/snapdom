@@ -1,10 +1,20 @@
+// "current" is this checkout; the published npm `latest` runs alongside as the baseline.
+// That arm is UNPINNED on purpose: the question is always what this checkout buys over
+// what users install today, so it follows the tag instead of a version bumped by hand
+// (the fixed 1.9.9 / 2.16.0 / 2.24.12 arms were dropped on 2026-09-04). burst: false pins
+// both arms to the cold pipeline: the memo would otherwise serve the repeated iterations
+// and measure the hit instead (session.static / session.mutating measure that on purpose);
+// v2 only bursts when the flag is true, and once v3 is `latest` the flag keeps it cold too.
 import { bench, describe, afterEach } from 'vitest'
-import { domToDataUrl } from 'https://unpkg.com/modern-screenshot'
+import { domToDataUrl } from 'https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/+esm'
 import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
 //import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js';
-import { snapdom as sd } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@1.9.9/dist/snapdom.mjs'
-import { snapdom as sd216 } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.16.0/dist/snapdom.mjs'
+import { snapdom as published } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
+
+// The published build carries no version export; the report needs the number.
+const PUBLISHED = await fetch('https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/package.json')
+  .then((r) => r.json()).then((p) => p.version).catch(() => 'unknown version')
 
 let html2canvasLoaded = false
 
@@ -51,62 +61,6 @@ for (const size of sizes) {
       document.body.appendChild(container)
     }
 
-    /*   async function setupContainer() {
-        if (container && document.body.contains(container)) return;
-
-        container = document.createElement('div');
-        container.style.width = `${size.width}px`;
-        container.style.height = `${size.height}px`;
-        container.style.padding = '20px';
-        container.style.overflow = 'auto';
-        container.style.background = 'white';
-        container.style.border = '2px solid black';
-        container.style.fontFamily = 'Arial, sans-serif';
-        container.style.color = '#333';
-        container.style.position = 'relative';
-
-        const grid = document.createElement('div');
-        grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(120px, 1fr))';
-        grid.style.gap = '10px';
-
-        for (let i = 0; i < Math.floor((size.width * size.height) / 20000); i++) {
-          const card = document.createElement('div');
-          card.style.padding = '10px';
-          card.style.borderRadius = '8px';
-          card.style.background = i % 2 === 0 ? '#f0f0f0' : '#e0eaff';
-          card.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
-          card.style.display = 'flex';
-          card.style.flexDirection = 'column';
-          card.style.alignItems = 'center';
-
-          const title = document.createElement('h3');
-          title.textContent = `Card ${i + 1}`;
-          title.style.margin = '0 0 10px 0';
-          title.style.fontSize = '14px';
-
-          const icon = document.createElement('div');
-          icon.style.width = '30px';
-          icon.style.height = '30px';
-          icon.style.borderRadius = '50%';
-          icon.style.background = i % 2 === 0 ? 'red' : 'blue';
-          icon.style.marginBottom = '10px';
-
-          const text = document.createElement('p');
-          text.textContent = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
-          text.style.fontSize = '12px';
-          text.style.textAlign = 'center';
-
-          card.appendChild(icon);
-          card.appendChild(title);
-          card.appendChild(text);
-          grid.appendChild(card);
-        }
-
-        container.appendChild(grid);
-        document.body.appendChild(container);
-      }
-       */
     afterEach(() => {
       if (container) {
         container.remove()
@@ -116,34 +70,16 @@ for (const size of sizes) {
 
     bench('snapDOM current version', async () => {
       await setupContainer()
-      await snapdom.toRaw(container)
+      await snapdom.toRaw(container, { burst: false })
     })
 
-    bench('snapDOM 2.16.0', async () => {
+    bench(`snapDOM ${PUBLISHED} (npm latest)`, async () => {
       await setupContainer()
-      await sd216.toRaw(container)
+      await published.toRaw(container, { burst: false })
     })
 
-     bench('snapDOM V1.9.9', async () => {
-      await setupContainer()
-      await sd.toRaw(container)
-    })
-
-    bench('html2canvas capture', async () => {
-      await setupContainer()
-      const canvas = await window.html2canvas(container, { logging: false, scale: 1 })
-      await canvas.toDataURL()
-    })
-
-    bench('modern-screenshot capture', async () => {
-      await setupContainer()
-      await domToDataUrl(container)
-    })
-
-    bench('html-to-image capture', async () => {
-      await setupContainer()
-      await htmlToImage.toSvg(container)
-    })
+    // toRaw ends at the SVG string: this is the pipeline without the raster stage. A raster
+    // regression is invisible here and shows in category.benchmark.js, which ends at a PNG.
   })
 }
 
@@ -191,24 +127,26 @@ describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
 
   afterEach(() => { if (container) { container.remove(); container = null } })
 
-  bench('snapDOM toPng (compress OFF)', async () => {
+  bench('snapDOM current toPng (compress OFF)', async () => {
     await setupContainer()
-    await snapdom.toPng(container, { scale: 2, dpr: 1, compress: false })
+    await snapdom.toPng(container, { scale: 2, dpr: 1, compress: false, burst: false })
   })
 
-  bench('snapDOM toPng (compress ON)', async () => {
+  bench('snapDOM current toPng (compress ON)', async () => {
     await setupContainer()
-    await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true })
+    await snapdom.toPng(container, { scale: 2, dpr: 1, compress: true, burst: false })
   })
 
-  bench('snapDOM 2.16.0 toPng (compress OFF)', async () => {
+  bench(`snapDOM ${PUBLISHED} toPng (compress OFF)`, async () => {
     await setupContainer()
-    await sd216.toPng(container, { scale: 2, dpr: 1, compress: false })
+    // Same scale/dpr as every other arm in this describe: without them v2 rasterized ~4x
+    // fewer pixels in a comparison labeled "scale 2" and its number was not comparable.
+    await published.toPng(container, { scale: 2, dpr: 1, compress: false, burst: false })
   })
 
-  bench('snapDOM 2.16.0 toPng (compress ON)', async () => {
+  bench(`snapDOM ${PUBLISHED} toPng (compress ON)`, async () => {
     await setupContainer()
-    await sd216.toPng(container, { scale: 2, dpr: 1, compress: true })
+    await published.toPng(container, { scale: 2, dpr: 1, compress: true, burst: false })
   })
 
   bench('html2canvas', async () => {

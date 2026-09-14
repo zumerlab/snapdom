@@ -14,10 +14,6 @@ function snapshotRefs() {
     baseStyle: cache.baseStyle,
     computedStyle: cache.computedStyle,
     measureHints: cache.measureHints,
-    font: cache.font,
-    session_styleMap: cache.session.styleMap,
-    session_styleCache: cache.session.styleCache,
-    session_nodeMap: cache.session.nodeMap,
   }
 }
 
@@ -29,18 +25,16 @@ function seedSomeData() {
   cache.baseStyle.set('bs', 5)
   cache.computedStyle.set({}, { c: 6 })
   cache.measureHints.set({}, { cssLen: 1, w0: 2, csh: 3, csw: 4 })
-  cache.font.add('Inter__400')
-  cache.session.styleMap.set('x', 'y')
-  cache.session.styleCache.set({}, { sc: 1 })
-  cache.session.nodeMap.set({}, document.createElement('div'))
 }
 
 describe('normalizeCachePolicy', () => {
   it('maps booleans and known strings, defaults to "soft"', () => {
     expect(normalizeCachePolicy(true)).toBe('soft')
     expect(normalizeCachePolicy(false)).toBe('disabled')
-    expect(normalizeCachePolicy('auto')).toBe('auto')
-    expect(normalizeCachePolicy('full')).toBe('full')
+    // Legacy strings collapse to the structural default — per-capture sessions plus
+    // auto-burst/differential recapture superseded the old per-policy sharing.
+    expect(normalizeCachePolicy('auto')).toBe('soft')
+    expect(normalizeCachePolicy('full')).toBe('soft')
     expect(normalizeCachePolicy('soft')).toBe('soft')
     expect(normalizeCachePolicy('disabled')).toBe('disabled')
     // unknown → soft (default)
@@ -60,48 +54,32 @@ describe('applyCachePolicy', () => {
     cache.baseStyle = new Map()
     cache.computedStyle = new WeakMap()
     cache.measureHints = new WeakMap()
-    cache.font = new Set()
-    cache.session.styleMap = new Map()
-    cache.session.styleCache = new WeakMap()
-    cache.session.nodeMap = new Map()
   })
 
-  it('auto: resets only session.styleMap and session.nodeMap', () => {
+  it('any non-disabled policy: persistent caches kept', () => {
     seedSomeData()
     const before = snapshotRefs()
 
-    applyCachePolicy('auto')
+    applyCachePolicy('auto') // legacy string — same structural behavior
 
     const after = snapshotRefs()
-    // Reemplaza solo estos dos
-    expect(after.session_styleMap).not.toBe(before.session_styleMap)
-    expect(after.session_nodeMap).not.toBe(before.session_nodeMap)
-    // Mantiene styleCache y resto
-    expect(after.session_styleCache).toBe(before.session_styleCache)
     expect(after.image).toBe(before.image)
     expect(after.background).toBe(before.background)
     expect(after.resource).toBe(before.resource)
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
 
-    // Nuevos maps están vacíos
-    expect(cache.session.styleMap.size).toBe(0)
-    expect(cache.session.nodeMap.size).toBe(0)
+    // The new maps are empty
   })
 
-  it('soft: resets toda la sesión (styleMap, nodeMap, styleCache) y deja globales', () => {
+  it('soft: leaves the global caches intact (the session is no longer global)', () => {
     seedSomeData()
     const before = snapshotRefs()
 
     applyCachePolicy('soft')
 
     const after = snapshotRefs()
-    // Reemplaza los tres de sesión
-    expect(after.session_styleMap).not.toBe(before.session_styleMap)
-    expect(after.session_nodeMap).not.toBe(before.session_nodeMap)
-    expect(after.session_styleCache).not.toBe(before.session_styleCache)
 
     // Globales se mantienen (misma identidad)
     expect(after.image).toBe(before.image)
@@ -110,38 +88,29 @@ describe('applyCachePolicy', () => {
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
 
-    // Sesión está vacía
-    expect(cache.session.styleMap.size).toBe(0)
-    expect(cache.session.nodeMap.size).toBe(0)
+    // The session is empty
   })
 
-  it('full: no limpia nada (mantiene identidades y contenidos)', () => {
+  it("legacy 'full': persistent caches kept, session bucket still fresh per capture", () => {
     seedSomeData()
     const before = snapshotRefs()
 
     applyCachePolicy('full')
 
     const after = snapshotRefs()
-    // Todo igual
+    // Persistent caches survive…
     expect(after.image).toBe(before.image)
     expect(after.background).toBe(before.background)
     expect(after.resource).toBe(before.resource)
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
-    expect(after.session_styleMap).toBe(before.session_styleMap)
-    expect(after.session_styleCache).toBe(before.session_styleCache)
-    expect(after.session_nodeMap).toBe(before.session_nodeMap)
-
-    // Y siguen con datos
-    expect(cache.image.size).toBeGreaterThan(0)
-    expect(cache.session.styleMap.size).toBeGreaterThan(0)
+    // Sessions are per-capture by construction now (createCaptureSession) — there is
+    // no shared session bucket left to assert on.
   })
 
-  it('disabled: reinstancia TODO (global + sesión) y deja todo vacío', () => {
+  it('disabled: re-instantiates EVERYTHING (global + session) and leaves it empty', () => {
     seedSomeData()
     const before = snapshotRefs()
 
@@ -156,39 +125,28 @@ describe('applyCachePolicy', () => {
     expect(after.baseStyle).not.toBe(before.baseStyle)
     expect(after.computedStyle).not.toBe(before.computedStyle)
     expect(after.measureHints).not.toBe(before.measureHints)
-    expect(after.font).not.toBe(before.font)
-    expect(after.session_styleMap).not.toBe(before.session_styleMap)
-    expect(after.session_styleCache).not.toBe(before.session_styleCache)
-    expect(after.session_nodeMap).not.toBe(before.session_nodeMap)
 
-    // Vacíos
+    // Empty
     expect(cache.image.size).toBe(0)
     expect(cache.background.size).toBe(0)
     expect(cache.resource.size).toBe(0)
     expect(cache.defaultStyle.size).toBe(0)
     expect(cache.baseStyle.size).toBe(0)
-    expect(cache.font.size).toBe(0)
-    expect(cache.session.styleMap.size).toBe(0)
-    expect(cache.session.nodeMap.size).toBe(0)
   })
 
   it('default (input desconocido): cae en soft', () => {
     seedSomeData()
     const before = snapshotRefs()
 
-    // Política inexistente provoca rama default → soft
+    // An unknown policy takes the default branch: soft
     applyCachePolicy('unknown-policy')
 
     const after = snapshotRefs()
-    // Reemplaza los de sesión
-    expect(after.session_styleMap).not.toBe(before.session_styleMap)
-    expect(after.session_nodeMap).not.toBe(before.session_nodeMap)
-    expect(after.session_styleCache).not.toBe(before.session_styleCache)
+    // Replaces the session ones
     // Mantiene globales
     expect(after.image).toBe(before.image)
     expect(after.baseStyle).toBe(before.baseStyle)
     expect(after.defaultStyle).toBe(before.defaultStyle)
     expect(after.computedStyle).toBe(before.computedStyle)
-    expect(after.font).toBe(before.font)
   })
 })

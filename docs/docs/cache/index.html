@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM Cache Control &amp; preCache(): Performance Tuning</title>
-  <meta name="description" content="Control SnapDOM's internal caches between captures (disabled, soft, auto, full) and preload external resources with preCache() to avoid first-capture stalls." />
-  <meta name="keywords" content="snapdom cache, snapdom precache, snapdom performance, snapdom cache option" />
+  <title>SnapDOM Cache &amp; preCapture — Performance</title>
+  <meta name="description" content="Understand SnapDOM's persistent resource/style caches, automatic repeat memoization, invalidation and snapdom.preCapture()." />
+  <meta name="keywords" content="snapdom cache, snapdom precapture, snapdom performance, snapdom cache option" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/docs/cache/" />
 
@@ -13,13 +13,13 @@
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
 
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="SnapDOM Cache &amp; preCache" />
-  <meta property="og:description" content="Control SnapDOM's internal caches between captures and preload external resources with preCache() to avoid first-capture stalls." />
+  <meta property="og:title" content="SnapDOM Cache &amp; preCapture" />
+  <meta property="og:description" content="Persistent resource/style caches, automatic repeat memoization, invalidation and snapdom.preCapture()." />
   <meta property="og:url" content="https://snapdom.dev/docs/cache/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="SnapDOM Cache &amp; preCache" />
-  <meta name="twitter:description" content="Control SnapDOM's internal caches between captures and preload external resources with preCache()." />
+  <meta name="twitter:title" content="SnapDOM Cache &amp; preCapture" />
+  <meta name="twitter:description" content="Persistent resource/style caches, automatic repeat memoization, invalidation and snapdom.preCapture()." />
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg" />
 
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
@@ -31,8 +31,8 @@
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    "headline": "SnapDOM Cache Control & preCache",
-    "description": "Control SnapDOM's internal caches between captures (disabled, soft, auto, full) and preload external resources with preCache() to avoid first-capture stalls.",
+    "headline": "SnapDOM Cache & preCapture",
+    "description": "Understand SnapDOM's persistent resource/style caches, automatic repeat memoization, invalidation and snapdom.preCapture().",
     "url": "https://snapdom.dev/docs/cache/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "author": { "@type": "Organization", "name": "Zumerlab" },
@@ -63,7 +63,7 @@
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Documentation</div>
@@ -72,74 +72,79 @@
       <span>zumerlab/snapdom</span>
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
-    <h1>SnapDOM <span class="accent">Cache</span> Control</h1>
-    <p class="lead">Tune SnapDOM's internal caches between captures and preload external resources with <code>preCache()</code> to avoid first-capture stalls.</p>
+    <h1>SnapDOM <span class="accent">Cache</span> Behavior</h1>
+    <p class="lead">Reuse captured results, assets and styles across calls. <code>snapdom.preCapture()</code> can prepare an eligible capture when a user focuses or approaches its control.</p>
     <div class="hero-actions">
       <a href="#cache" class="btn btn-primary" data-umami-event="Docs cache hero cache">Cache control</a>
-      <a href="#precache" class="btn btn-ghost" data-umami-event="Docs cache hero precache">preCache()</a>
+      <a href="#precapture" class="btn btn-ghost" data-umami-event="Docs cache hero precapture">preCapture()</a>
     </div>
   </section>
 
   <main class="page">
     <div class="tldr">
-      <div class="tldr-label">TL;DR</div>
-      <p>SnapDOM keeps internal caches for images, backgrounds, resources, styles and fonts so repeated captures stay fast. The <code>cache</code> option (<code>"disabled"</code>, <code>"soft"</code>, <code>"auto"</code>, <code>"full"</code>) controls how much is cleared between captures, and <code>preCache()</code> warms those caches ahead of time so the first capture doesn't stall.</p>
+      <div class="tldr-label">Three kinds of reuse</div>
+      <p>A result supports multiple exports of the same captured state. A later <code>snapdom(el)</code> call may reuse an unchanged capture. Resource and style caches also reduce work when a fresh capture is needed; the <code>cache</code> option controls those caches.</p>
     </div>
 
     <section class="prose">
       <h2 id="cache">Cache control</h2>
-      <p>SnapDOM maintains internal caches for images, backgrounds, resources, styles, and fonts. You can control how they are cleared between captures using the <code>cache</code> option:</p>
+      <p>Leave <code>cache</code> at its default for normal use. The other modes support debugging or older callers:</p>
       <table class="cmp-table">
         <thead>
           <tr><th>Mode</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">"disabled"</td><td>No cache.</td></tr>
-          <tr><td class="num">"soft"</td><td>Clears session caches (<code>styleMap</code>, <code>nodeMap</code>, <code>styleCache</code>) <em>(default)</em>.</td></tr>
-          <tr><td class="num">"auto"</td><td>Minimal cleanup: only clears transient maps.</td></tr>
-          <tr><td class="num">"full"</td><td>Keeps all caches (nothing is cleared, maximum performance).</td></tr>
+          <tr><td class="num">"soft"</td><td>Content-keyed persistent resource/style caches are enabled <em>(default)</em>.</td></tr>
+          <tr><td class="num">"disabled" / false</td><td>Clears and bypasses those persistent caches. A debug and testing escape, not a tuning option.</td></tr>
+          <tr><td class="num">"auto" / "full"</td><td>Accepted for v2 compatibility and silently mapped to <code>"soft"</code>.</td></tr>
         </tbody>
       </table>
 
-      <p><strong>Examples:</strong></p>
-      <pre class="code-block">// Use minimal but fast cache
-await snapdom.toPng(el, { cache: 'auto' });
+      <p>The policy is consulted when the capture pipeline actually runs. It does not disable automatic repeat memoization; a memo hit performs no resource/style-cache work at all.</p>
 
-// Keep everything in memory between captures
-await snapdom.toPng(el, { cache: 'full' });
-
-// Force a full cleanup on every capture
+      <p><strong>Example:</strong></p>
+      <pre class="code-block">// Clear and bypass persistent resource/style caches (debugging)
 await snapdom.toPng(el, { cache: 'disabled' });</pre>
+      <p>Eligible unchanged captures reuse the saved result. Observable changes invalidate it; supported local changes rebuild the affected subtree, while other changes trigger a full capture. Canvas, video and other frame-driven content capture fresh. After a CSSOM edit such as <code>sheet.insertRule()</code> or <code>rule.style.color = 'red'</code>, pass <code>invalidate: true</code> because those edits have no mutation event. It clears style snapshots and takes a fresh capture, which may become the next reusable result.</p>
+      <p><strong>Callbacks that read application state:</strong> function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> and <code>fallbackURL</code> suspend capture memoization. Each new capture reevaluates applicable callbacks, including their style or fallback decisions; changing a closure does not require <code>invalidate</code>.</p>
+      <pre class="code-block">let privateMode = false;
+const options = {
+  exclude: node =&gt; privateMode &amp;&amp; node.matches('[data-private]'),
+  excludeMode: 'remove'
+};
+const before = await snapdom(el, options);
+privateMode = true;
+const after = await snapdom(el, options); // current policy, no invalidate needed</pre>
+      <p>Exporting <code>before</code> again still exports the earlier content. Use the new result <code>after</code> when policy changes. Callbacks run where applicable during capture; do not depend on an exact number of invocations.</p>
+      <p class="muted"><strong>V2 migration:</strong> remove the public <code>burst</code> switch. Eligible repeat memoization is automatic in v3. Resource-cache settings and image exports remain separate from this reuse policy; <code>cache: 'disabled'</code> is not a replacement for <code>burst: false</code>.</p>
     </section>
 
     <section class="prose">
-      <h2 id="precache">preCache()</h2>
-      <p><code>preCache()</code> is an optional helper that preloads external resources to avoid first-capture stalls. It is especially helpful for big or complex trees, where fetching images, backgrounds and fonts on the very first capture would otherwise cause a noticeable pause.</p>
-      <pre class="code-block">import { preCache } from '@zumer/snapdom';
+      <h2 id="precapture">preCapture()</h2>
+      <p>Call <code>snapdom.preCapture()</code> once during setup. When an eligible capture starts in a press or click handler, SnapDOM remembers that control, target and a shallow copy of the call's options. Later pointer-enter, focus or press events on that control can prepare the same capture before the handler needs it. Normal invalidation still applies. The first intent event on an unknown control also warms the visible viewport once.</p>
+      <pre class="code-block">import { snapdom } from '@zumer/snapdom';
 
-await preCache({
-  root: document.body,
-  embedFonts: true,
-  localFonts: [{ family: 'Inter', src: '/fonts/Inter.woff2', weight: 400 }],
-  useProxy: 'https://proxy.corsfix.com/?'
-});</pre>
-      <p class="muted"><code>preCache()</code> is also available as a lighter subpath import: <code>import { preCache } from '@zumer/snapdom/preCache'</code>.</p>
+snapdom.preCapture();
+
+// The first click teaches the association; later intent can prepare the capture.
+button.onclick = () => snapdom.toPng(hero, { scale: 2 });</pre>
+      <p class="muted"><code>preCapture()</code> takes no arguments and reacts to intent events, with no polling. Programmatic callers can capture early themselves. The old <code>preCache()</code> API was removed in v3.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../options/" data-umami-event="Docs cache card options">Options: every capture option <span class="arrow">→</span></a>
-        <a class="related-card" href="../api/" data-umami-event="Docs cache card api">API reference: methods &amp; exporters <span class="arrow">→</span></a>
-        <a class="related-card" href="../plugins/" data-umami-event="Docs cache card plugins">Plugins: extend the pipeline <span class="arrow">→</span></a>
+        <a class="related-card" href="../options/" data-umami-event="Docs cache card options">Options — every capture option <span class="arrow">→</span></a>
+        <a class="related-card" href="../api/" data-umami-event="Docs cache card api">API reference — methods &amp; exporters <span class="arrow">→</span></a>
+        <a class="related-card" href="../plugins/" data-umami-event="Docs cache card plugins">Plugins — extend the pipeline <span class="arrow">→</span></a>
         <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs cache card h2c">SnapDOM vs html2canvas <span class="arrow">→</span></a>
       </div>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Test cache behaviour</h2>
-        <p>Drop SnapDOM into your project and capture your first element in one line.</p>
+        <h2>Ready to capture?</h2>
+        <p>Try the browser demo, then use the API reference to choose your output.</p>
         <a href="../../showcase/" class="btn btn-primary" data-umami-event="Docs cache cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs cache cta npm">Install from npm</a>
       </div>

@@ -1,7 +1,7 @@
 // __tests__/module.iconFonts.test.js
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-let mod // se setea en beforeEach para resetear estado del módulo
+let mod // set in beforeEach so the module state resets
 
 beforeEach(async () => {
   vi.restoreAllMocks()
@@ -9,63 +9,59 @@ beforeEach(async () => {
   mod = await import('../src/modules/iconFonts.js') // ESM dynamic import
 })
 
-describe('extendIconFonts', () => {
+describe('compileIconFontMatchers (per-capture matchers)', () => {
   it('acepta string y lo convierte a RegExp (case-insensitive)', () => {
-    const { extendIconFonts, isIconFont } = mod
-    // string -> RegExp
-    extendIconFonts('acme-brand')
-    expect(isIconFont('ACME-BRAND pack')).toBe(true)
-    // control: no matchea algo que no contenga el patrón y tampoco cae en la heurística
-    expect(isIconFont('qwerty')).toBe(false)
+    const { compileIconFontMatchers, isIconFont } = mod
+    const m = compileIconFontMatchers('acme-brand')
+    expect(isIconFont('ACME-BRAND pack', m)).toBe(true)
+    // control: something without the pattern must not match, nor fall into the heuristic
+    expect(isIconFont('qwerty', m)).toBe(false)
   })
 
-  it('acepta RegExp y lo agrega a la lista de usuarios', () => {
-    const { extendIconFonts, isIconFont } = mod
-    extendIconFonts(/brandx/i)
-    expect(isIconFont('This is BrAnDx kit')).toBe(true)
-    expect(isIconFont('no-match-here')).toBe(false)
+  it('acepta RegExp', () => {
+    const { compileIconFontMatchers, isIconFont } = mod
+    const m = compileIconFontMatchers(/brandx/i)
+    expect(isIconFont('This is BrAnDx kit', m)).toBe(true)
+    expect(isIconFont('no-match-here', m)).toBe(false)
   })
 
   it('acepta arrays mezclando strings y RegExp', () => {
-    const { extendIconFonts, isIconFont } = mod
-    extendIconFonts(['foo-lib', /bar-pkg/i])
-    expect(isIconFont('FOO-LIB icons')).toBe(true)
-    expect(isIconFont('BAR-PKG family')).toBe(true)
-    expect(isIconFont('none')).toBe(false)
+    const { compileIconFontMatchers, isIconFont } = mod
+    const m = compileIconFontMatchers(['foo-lib', /bar-pkg/i])
+    expect(isIconFont('FOO-LIB icons', m)).toBe(true)
+    expect(isIconFont('BAR-PKG family', m)).toBe(true)
+    expect(isIconFont('none', m)).toBe(false)
   })
 
-  it('dedupes repeated entries instead of growing the list unboundedly (speed punch-list)', () => {
-    const { extendIconFonts, isIconFont } = mod
-    extendIconFonts(['dup-brand', /dup-brand-rx/i])
-    // A non-matching string forces a full scan of every registered pattern
-    // (no early return), so the RegExp.prototype.test call count is a direct
-    // proxy for the candidate list's size.
-    const spy1 = vi.spyOn(RegExp.prototype, 'test')
-    isIconFont('nothing-matches-here')
-    const callsAfterFirstRegistration = spy1.mock.calls.length
-    spy1.mockRestore()
-
-    // Simulates snapdom.js re-calling extendIconFonts with the same option on
-    // every capture (e.g. an animation loop reusing the same iconFonts
-    // array/object). Without dedup this would push 98 more duplicate entries.
-    for (let i = 0; i < 49; i++) extendIconFonts(['dup-brand', /dup-brand-rx/i])
-
-    const spy2 = vi.spyOn(RegExp.prototype, 'test')
-    isIconFont('nothing-matches-here')
-    const callsAfterRepeatedRegistration = spy2.mock.calls.length
-    spy2.mockRestore()
-
-    expect(callsAfterRepeatedRegistration).toBe(callsAfterFirstRegistration)
+  it('sin matchers, solo aplican los defaults: nada se filtra entre capturas', () => {
+    const { compileIconFontMatchers, isIconFont } = mod
+    const withOption = compileIconFontMatchers('leaky-brand')
+    expect(isIconFont('LEAKY-BRAND set', withOption)).toBe(true)
+    // A later capture that never passed the option gets its own (empty) list.
+    expect(isIconFont('LEAKY-BRAND set', compileIconFontMatchers(undefined))).toBe(false)
+    expect(isIconFont('LEAKY-BRAND set')).toBe(false)
   })
 
-  it('ignora valores inválidos y hace console.warn', () => {
-    const { extendIconFonts, isIconFont } = mod
+  it('dos capturas concurrentes no se pisan los matchers', () => {
+    const { compileIconFontMatchers, isIconFont } = mod
+    // The module-level list this replaced was overwritten at every capture start, so a
+    // second capture starting mid-flight made the first one read ITS list from that point
+    // on. Compiled lists are values: interleaving cannot mix them.
+    const a = compileIconFontMatchers('capture-a-brand')
+    const b = compileIconFontMatchers('capture-b-brand')
+    expect(isIconFont('CAPTURE-A-BRAND', a)).toBe(true)
+    expect(isIconFont('CAPTURE-A-BRAND', b)).toBe(false)
+    expect(isIconFont('CAPTURE-B-BRAND', b)).toBe(true)
+    expect(isIconFont('CAPTURE-B-BRAND', a)).toBe(false)
+  })
+
+  it('ignores invalid values and warns on the console', () => {
+    const { compileIconFontMatchers, isIconFont } = mod
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    extendIconFonts(123)           // inválido
-    extendIconFonts({ nope: true }) // inválido
-    expect(warn).toHaveBeenCalled() // cubre rama del console.warn
-    // No debe haber agregado nada que haga matchear "qwerty"
-    expect(isIconFont('qwerty')).toBe(false)
+    const m = compileIconFontMatchers([123, { nope: true }])
+    expect(warn).toHaveBeenCalled()
+    expect(m).toEqual([])
+    expect(isIconFont('qwerty', m)).toBe(false)
     warn.mockRestore()
   })
 })
@@ -80,7 +76,6 @@ describe('isIconFont (defaults)', () => {
 describe('ligatureIconToImage source pairing (#6)', () => {
   it('reads styles from the nodeMap-mapped source, not the positional index', async () => {
     const { ligatureIconToImage } = mod
-    const { cache } = await import('../src/core/cache.js')
 
     // Source: two material icons with distinct font-sizes.
     const source = document.createElement('div')
@@ -99,9 +94,7 @@ describe('ligatureIconToImage source pairing (#6)', () => {
     clone.appendChild(c2)
     document.body.appendChild(clone)
 
-    cache.session.nodeMap = new Map([[c2, s2]])
-
-    await ligatureIconToImage(clone, source)
+    await ligatureIconToImage(clone, source, new Map([[c2, s2]]))
 
     const img = c2.querySelector('img')
     expect(img).toBeTruthy()
@@ -117,7 +110,6 @@ describe('ligatureIconToImage source pairing (#6)', () => {
   // ("home") unconverted — the raster showed literal text (or tofu) instead of the icon glyph.
   it('converts the ligature when the icon itself is the root (not just a descendant)', async () => {
     const { ligatureIconToImage } = mod
-    const { cache } = await import('../src/core/cache.js')
 
     const source = document.createElement('span')
     source.className = 'material-icons'
@@ -129,9 +121,7 @@ describe('ligatureIconToImage source pairing (#6)', () => {
     const clone = source.cloneNode(true)
     document.body.appendChild(clone)
 
-    cache.session.nodeMap = new Map([[clone, source]])
-
-    const replaced = await ligatureIconToImage(clone, source)
+    const replaced = await ligatureIconToImage(clone, source, new Map([[clone, source]]))
 
     expect(replaced).toBe(1)
     const img = clone.querySelector('img')

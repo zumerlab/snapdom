@@ -39,6 +39,10 @@ bower_components
 build/Release
 
 # Dependency directories
+# Both spellings: `node_modules/` matches a DIRECTORY only, so a worktree that
+# symlinks its dependencies (node_modules -> ../snapdom/node_modules) slips past
+# it and gets swept into a commit by `git add -A`.
+node_modules
 node_modules/
 jspm_packages/
 
@@ -135,12 +139,13 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+
 drafts/
 
 # demos/ is committed so contributors can run the visual suite and reproduce issues.
-# Held back: the docs-site copy, the Drift-branded assets (third-party logos) and the two
-# demos built entirely around them, and the labs* scratch pages (not in the d*.html glob
-# the visual suite runs, so nothing tests them).
+# Held back: the stale docs-site copy, third-party branded assets (Drift logos and
+# market icons), the two demos built entirely around them, and the labs* scratch pages
+# (outside the d*.html glob, so never tested).
 demos/docs/
 demos/assets/pnl-drift-logo-up.webp
 demos/assets/drift-market-icon.svg
@@ -151,19 +156,28 @@ demos/assets/text-light.svg
 demos/d17-trading-card-ticker.html
 demos/d171-trading-card-ticker-v2.html
 demos/labs*.html
-demos/assets/favicon/
 
 __tests__/__screenshots__
 __snapshots__
+/output/
+
+# Unreleased Pro website previews stay local until their publication is decided.
+/docs/pro/
 
 .vscode/
-.claude/
+.claude/*
+!.claude/CLAUDE.md
 .cursor/
 bench/
 AGENTS.md
 .snapeye/
 packages/agent
 .playwright-cli
+.bench-liquidgl/
 
-# snapdom Pro product pages — generated/authored in snapdom-pro, not published yet
-docs/pro/
+# Development notes and release runbooks stay local; the tracked docs are the ones README links.
+NEXT_NOTES.md
+EXPERIMENTAL_NOTES.md
+RELEASE_REVIEW.md
+RELEASE_CHECKLIST.md
+CHINESE_TRANSLATION_GUIDE.md

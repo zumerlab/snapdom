@@ -25,7 +25,9 @@ describe('toCanvas — #394 Safari compositing wait', () => {
     vi.mocked(browser.isSafari).mockReturnValue(false)
     const appendSpy = vi.spyOn(HTMLBodyElement.prototype, 'appendChild')
     await toCanvas(ONE_BY_ONE_PNG, { scale: 1, dpr: 1 })
-    const appendedImgs = appendSpy.mock.calls.filter(c => c[0] instanceof HTMLImageElement)
+    // Realm-safe: the decode <img> belongs to the throwaway decode frame's document, so the
+    // main realm's HTMLImageElement is not in its prototype chain.
+    const appendedImgs = appendSpy.mock.calls.filter(c => c[0]?.tagName === 'IMG')
     expect(appendedImgs.length).toBe(0)
   })
 
@@ -36,7 +38,7 @@ describe('toCanvas — #394 Safari compositing wait', () => {
     const canvas = await toCanvas(ONE_BY_ONE_PNG, { scale: 1, dpr: 1 })
     const imgCountAfter = document.querySelectorAll('img').length
 
-    const appendedImgs = appendSpy.mock.calls.filter(c => c[0] instanceof HTMLImageElement)
+    const appendedImgs = appendSpy.mock.calls.filter(c => c[0]?.tagName === 'IMG')
     expect(appendedImgs.length).toBe(1)
     // The appended img has offscreen positioning so it doesn't flash
     const appended = appendedImgs[0][0]

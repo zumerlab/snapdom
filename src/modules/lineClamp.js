@@ -1,4 +1,14 @@
-// src/core/lineClamp.js
+/**
+ * Text truncation, baked into the live text before the clone is taken.
+ *
+ * Firefox and Safari ignore `-webkit-line-clamp` and `text-overflow: ellipsis` inside a
+ * foreignObject, so the ellipsis is resolved here on the real node, against its real layout,
+ * and undone right after cloning. This is the one place the pipeline writes into the LIVE
+ * tree: every write goes through textNodeWriter so node identity survives (#485), and undo
+ * leaves alone any text the page changed meanwhile. capture.js runs it before prepareClone,
+ * diff.js on a dirty subtree before the splice. Pinned by __tests__/module.lineClamp.test.js.
+ * @module lineClamp
+ */
 
 /**
  * Bake text truncation for the element AND all descendants that CSS would
@@ -16,6 +26,7 @@
 export function lineClampTree(el, clipRect) {
   if (!el) return () => {}
   const undos = []
+  // 200px of slack around the clip window, the same margin capture.js gives the font walk.
   const M = 200
   function walk(node) {
     if (clipRect) {
@@ -74,17 +85,17 @@ export function lineClamp(el, cs) {
   const lineH = perLine > 0 ? perLine : usedLineHeightPx(cs)
   const targetH = Math.round(lineH * lines + pad)
 
-  // Si ya entra completo en N líneas, no hacemos nada (igual que el clamp nativo)
+  // Already fits in N lines: do nothing, same as the native clamp
   if (el.scrollHeight <= targetH + 0.5) {
     return () => {}
   }
 
-  // ==== Binary search sobre el largo del prefijo que entra con ellipsis ====
+  // ==== Binary search over the prefix length that fits with an ellipsis ====
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    text.write(original.slice(0, mid) + '…')
-    // Forzamos layout leyendo scrollHeight
+    text.write(original.slice(0, safeCut(original, mid)) + '…')
+    // Reading scrollHeight forces layout.
     if (el.scrollHeight <= targetH + 0.5) {
       best = mid; lo = mid + 1
     } else {
@@ -92,13 +103,12 @@ export function lineClamp(el, cs) {
     }
   }
 
-  // Aplica el mejor corte (si nada entra, queda solo '…')
-  text.write((best >= 0 ? original.slice(0, best) : '') + '…')
+  // Apply the best cut (when nothing fits, only the ellipsis is left)
+  const written = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
+  text.write(written)
 
-  // Devuelve undo() para restaurar el DOM original tras clonar
-  return () => {
-    text.restore()
-  }
+  // Return undo() so the original DOM is restored after cloning
+  return undoText(el, written, text)
 }
 
 /**
@@ -122,7 +132,7 @@ export function textEllipsis(el, cs) {
 
   if (!isPlainTextContainer(el)) return () => {}
 
-  // Ya entra completo → el clamp nativo tampoco haría nada.
+  // It already fits, so the native clamp would do nothing either.
   if (el.scrollWidth <= el.clientWidth + 0.5) return () => {}
 
   // Mutates the live element's text nodes in place (never textContent, #485).
@@ -132,7 +142,7 @@ export function textEllipsis(el, cs) {
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    text.write(original.slice(0, mid) + '…')
+    text.write(original.slice(0, safeCut(original, mid)) + '…')
     if (el.scrollWidth <= el.clientWidth + 0.5) {
       best = mid; lo = mid + 1
     } else {
@@ -140,10 +150,24 @@ export function textEllipsis(el, cs) {
     }
   }
 
-  text.write((best >= 0 ? original.slice(0, best) : '') + '…')
+  const written = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
+  text.write(written)
 
+  return undoText(el, written, text)
+}
+
+/* ---------------- helpers ---------------- */
+
+/** Restore the pre-clamp text — unless the page changed it while the capture was running.
+ *  This is the one place the pipeline writes to the LIVE tree: the ellipsis is baked into
+ *  the real node, the clone is taken, and the text is put back. `prepareClone` is awaited
+ *  in between, which is long enough for the caller's own code to write new text into the
+ *  same node. A blind `el.textContent = original` then reverted that write — the capture
+ *  being stale would have been forgivable, silently undoing the application's update was
+ *  not. If what we wrote is no longer there, the node has a new owner: leave it. */
+function undoText(el, written, text) {
   return () => {
-    text.restore()
+    if (el.textContent === written) text.restore()
   }
 }
 
@@ -182,8 +206,18 @@ function textNodeWriter(el) {
   }
 }
 
-/* ---------------- helpers: idénticos a tu snippet ---------------- */
+/** A cut index that never lands between the two halves of a surrogate pair. Slicing an
+ *  emoji in half leaves a lone surrogate, and the serialized SVG then fails
+ *  encodeURIComponent — rejecting the WHOLE capture with "URIError: URI malformed",
+ *  not just mangling one glyph. Must be applied to the emitted slice too, not only the
+ *  probes: the last probe is not necessarily the one that wins. */
+function safeCut(text, n) {
+  if (n <= 0 || n >= text.length) return n
+  const c = text.charCodeAt(n - 1)
+  return c >= 0xd800 && c <= 0xdbff ? n - 1 : n
+}
 
+/** `-webkit-line-clamp` or `line-clamp` as a positive integer, 0 when neither is set. */
 function getClamp(cs) {
   let v = cs.getPropertyValue('-webkit-line-clamp') || cs.getPropertyValue('line-clamp')
   v = (v || '').trim()
@@ -191,6 +225,8 @@ function getClamp(cs) {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
+/** Line height from CSS alone, the fallback when the one-glyph probe measured nothing: px as
+ *  is, unitless and % against font-size, `normal` as 1.2 times it. */
 function usedLineHeightPx(cs) {
   const lh = (cs.lineHeight || '').trim()
   const fs = parseFloat(cs.fontSize) || 16
@@ -201,11 +237,12 @@ function usedLineHeightPx(cs) {
   return Math.round(fs * 1.2)
 }
 
+/** Vertical padding in px; scrollHeight includes it, the line count must not. */
 function vpad(cs) {
   return (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
 }
 
-/** Plain text container: sin hijos element, sólo nodos de texto/espacios. */
+/** Plain text container: no element children, only text nodes and whitespace. */
 function isPlainTextContainer(el) {
   if (el.childElementCount > 0) return false
   return Array.from(el.childNodes).some(n => n.nodeType === Node.TEXT_NODE)

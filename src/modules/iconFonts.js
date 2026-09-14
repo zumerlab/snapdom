@@ -1,9 +1,17 @@
-// iconFonts.js
-import { cache } from '../core/cache.js'
+/**
+ * Icon fonts: which families count as one, and Material ligatures drawn to <img>.
+ *
+ * Icon glyphs are never embedded. fonts.js skips any family `isIconFont` recognizes, and the
+ * pseudo pass draws a single-glyph `content` from one to an image. This module owns the
+ * recognition and the Material case: a ligature like "home" has no font inside the svg, so it
+ * would render as the word. `ligatureIconToImage` paints it on a canvas in the live document,
+ * where the font is loaded, and puts the bitmap in the clone (#275).
+ * @module iconFonts
+ */
 
-// ---------------------------------------------------------------------------
-// Detection / configuration (kept as-is + extensible)
-// ---------------------------------------------------------------------------
+import { markInternalNode } from '../utils/ownership.js'
+
+/** Families treated as icon fonts with no configuration. `iconFonts` adds to this list. */
 export const defaultIconFonts = [
   // /uicons/i,
   /font\s*awesome/i,
@@ -18,7 +26,8 @@ export const defaultIconFonts = [
   /lucide/i
 ]
 
-// Static, non-variable fallbacks (safe to override from the host app)
+/** Static Material Icons faces, one per style, for drawing a filled Symbols icon on canvas.
+ *  A host page overrides any of them through `window.__SNAPDOM_ICON_FONTS__`. */
 export const ICON_FONT_URLS = Object.assign({
   materialIconsFilled:  'https://fonts.gstatic.com/s/materialicons/v48/flUhRq6tzZclQEJ-Vdg-IuiaDsNcIhQ8tQ.woff2',
   materialIconsOutlined:'https://fonts.gstatic.com/s/materialiconsoutlined/v110/gok-H7zzDkdnRel8-DQ6KAXJ69wP1tGnf4ZGhUcel5euIg.woff2',
@@ -26,35 +35,52 @@ export const ICON_FONT_URLS = Object.assign({
   materialIconsSharp:   'https://fonts.gstatic.com/s/materialiconssharp/v110/oPWQ_lt5nv4pWNJpghLP75WiFR4kLh3kvmvRImcycg.woff2'
 }, (typeof window !== 'undefined' && window.__SNAPDOM_ICON_FONTS__) || {})
 
-let userIconFonts = []
-const userIconFontKeys = new Set()
-
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
 }
 
-// Callers (e.g. snapdom.js) re-invoke this on every capture with the same
-// `iconFonts` option, so dedup against the module-level list instead of
-// growing it unboundedly across repeated captures (animations, session()).
-export function extendIconFonts(fonts) {
-  const list = Array.isArray(fonts) ? fonts : [fonts]
+/**
+ * Compile the `iconFonts` option into matchers, ONCE per capture, in createContext.
+ *
+ * This used to be a module-level `sessionIconFonts` array that every capture overwrote at
+ * its start. Two concurrent captures with different lists interleaved through the await
+ * points and each read the other's matchers, which is the exact bug class v3 removed
+ * everywhere else: per-capture state does not live at module scope, it lives on the
+ * context and is passed explicitly.
+ *
+ * @param {string|RegExp|Array<string|RegExp>} [fonts]
+ * @returns {RegExp[]}
+ */
+export function compileIconFontMatchers(fonts) {
+  const list = Array.isArray(fonts) ? fonts : (fonts ? [fonts] : [])
+  const out = []
   for (const f of list) {
-    let rx
-    if (f instanceof RegExp) rx = f
-    else if (typeof f === 'string') rx = new RegExp(escapeRegExp(f), 'i')
-    else { console.warn('[snapdom] Ignored invalid iconFont value:', f); continue }
-    const key = `${rx.source}/${rx.flags}`
-    if (userIconFontKeys.has(key)) continue
-    userIconFontKeys.add(key)
-    userIconFonts.push(rx)
+    if (f instanceof RegExp) out.push(f)
+    else if (typeof f === 'string') out.push(new RegExp(escapeRegExp(f), 'i'))
+    else console.warn('[snapdom] Ignored invalid iconFont value:', f)
   }
+  return out
 }
 
-export function isIconFont(input) {
+/**
+ * Whether a family name or font URL belongs to an icon font.
+ *
+ * The defaults and the capture's own matchers go first, then a loose word test (icon, glyph,
+ * symbols) that also catches self-hosted icon sets nobody listed. Callers skip embedding and
+ * subsetting for anything that answers true.
+ * @param {*} input - family name or URL to test
+ * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
+ * @returns {boolean}
+ */
+export function isIconFont(input, matchers) {
   const text = typeof input === 'string' ? input : ''
-  const candidates = [...defaultIconFonts, ...userIconFonts]
-  for (const rx of candidates) {
-    if (rx instanceof RegExp && rx.test(text)) return true
+  for (const rx of defaultIconFonts) {
+    if (rx.test(text)) return true
+  }
+  if (matchers) {
+    for (const rx of matchers) {
+      if (rx instanceof RegExp && rx.test(text)) return true
+    }
   }
   if (/icon/i.test(text) || /glyph/i.test(text) || /symbols/i.test(text) || /feather/i.test(text) || /fontawesome/i.test(text)) return true
   return false
@@ -71,35 +97,40 @@ export function isIconFont(input) {
  * one is an icon font; the per-face family check downstream still drops the icon ones.
  * URLs without `family` params keep the path heuristic.
  * @param {string} href
+ * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
  * @returns {boolean}
  */
-export function isIconFontStylesheet(href) {
+export function isIconFontStylesheet(href, matchers) {
   if (typeof href !== 'string' || !href) return false
   let url
   try {
     url = new URL(href, typeof location !== 'undefined' ? location.href : undefined)
   } catch {
-    return isIconFont(href)
+    return isIconFont(href, matchers)
   }
   // css?family=A|B (legacy API) and css2?family=A&family=B; ":wght@..." axes are not a name
   const names = url.searchParams.getAll('family')
     .flatMap((v) => v.split('|'))
     .map((v) => v.split(':')[0].trim())
     .filter(Boolean)
-  if (names.length) return names.every((name) => isIconFont(name))
-  return isIconFont(href)
+  if (names.length) return names.every((name) => isIconFont(name, matchers))
+  return isIconFont(href, matchers)
 }
 
-// ---------------------------------------------------------------------------
-// Material Symbols (ligatures) helpers
-// ---------------------------------------------------------------------------
+/**
+ * Whether a family is Material Icons or Material Symbols, the two ligature-based sets.
+ * @param {string} [family='']
+ * @returns {boolean}
+ */
 export function isMaterialFamily(family = '') {
   const s = String(family).toLowerCase()
   return /\bmaterial\s*icons\b/.test(s) || /\bmaterial\s*symbols\b/.test(s)
 }
 
+/** alias -> true once loaded, false once a load failed. A failure is never retried. */
 const loadedCanvasFamilies = new Map()
 
+/** `'FILL' 1, 'wght' 400` -> `{ FILL: 1, WGHT: 400 }`. Axis tags are upper-cased. */
 function parseAxes(variation = '') {
   const out = Object.create(null)
   const v = String(variation || '')
@@ -109,19 +140,17 @@ function parseAxes(variation = '') {
 }
 
 /**
- * Strategy:
- * - If family is Material *Icons* (legacy, non-variable) → keep it (already stable).
- * - If family is Material *Symbols* (variable):
- *     * Detect style: outlined / rounded / sharp
- *     * Detect FILL axis (0/1)
- *     * For FILL=1 → pick a static filled family when we have a good match:
- *         - outlined → materialIconsFilled
- *         - rounded  → materialIconsRound
- *         - sharp    → materialIconsSharp
- *     * For FILL=0 → stay on the original Symbols family (no override).
+ * Pick the family the canvas will draw a Material ligature with.
  *
- * This avoids forcing "Icons" when Symbols are present, and only swaps when we
- * can guarantee the desired "filled" appearance on canvas.
+ * Material Icons (legacy, not variable) and any non-Material family are kept as they are.
+ * Material Symbols is variable, and a canvas font string has no font-variation-settings, so a
+ * Symbols icon with FILL=1 would draw hollow. For that case a static filled face is loaded
+ * under a snapdom alias, matched to the style class (outlined, rounded, sharp). With FILL=0,
+ * or no static face for that style, the original Symbols family stays.
+ * @param {string} cssFamily
+ * @param {string} className - the element's class list, where Material puts the style
+ * @param {Record<string, number>} axes - from parseAxes
+ * @returns {Promise<{familyForMeasure: string, familyForCanvas: string}>}
  */
 async function ensureLigatureCanvasFont(cssFamily, className, axes) {
   const fam = String(cssFamily || '')
@@ -168,19 +197,34 @@ async function ensureLigatureCanvasFont(cssFamily, className, axes) {
   if (!loadedCanvasFamilies.has(pick.alias)) {
     try {
       const ff = new FontFace(pick.alias, `url(${pick.url})`, { style: 'normal', weight: '400' })
-      document.fonts.add(ff)
+      // Load BEFORE registering, and memoize the failure. Adding first meant a rejected load
+      // left a dead FontFace in document.fonts, and `has()` was only set on success — so a
+      // font that could not load was re-created and re-added once per icon per capture, and
+      // the document's font set grew for the page's lifetime with faces nothing can use.
       await ff.load()
+      document.fonts.add(ff)
       loadedCanvasFamilies.set(pick.alias, true)
     } catch {
-      // If loading fails, stay on Symbols
+      // If loading fails, stay on Symbols — and remember, so the next capture does not retry.
+      loadedCanvasFamilies.set(pick.alias, false)
       return { familyForMeasure: fam, familyForCanvas: fam }
     }
+  }
+  if (loadedCanvasFamilies.get(pick.alias) === false) {
+    return { familyForMeasure: fam, familyForCanvas: fam }
   }
 
   const quoted = `"${pick.alias}"`
   return { familyForMeasure: quoted, familyForCanvas: quoted }
 }
 
+/**
+ * Wait until the family can be used at this size, before measuring or drawing it.
+ * A failed load is swallowed: the draw goes ahead with whatever the engine substitutes.
+ * @param {string} [family='Material Icons']
+ * @param {number} [px=24]
+ * @returns {Promise<void>}
+ */
 export async function ensureMaterialFontsReady(family = 'Material Icons', px = 24) {
   try {
     await Promise.all([
@@ -190,6 +234,8 @@ export async function ensureMaterialFontsReady(family = 'Material Icons', px = 2
   } catch { /* noop */ }
 }
 
+/** The colour the glyph is painted with: `-webkit-text-fill-color` when set and opaque, else
+ *  `color`, the same precedence text gets. Falls back to black. */
 function resolvePaintColor(cs) {
   let fill = cs.getPropertyValue('-webkit-text-fill-color')?.trim() || ''
   const isTransparent = /^transparent$/i.test(fill) || /rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/i.test(fill)
@@ -198,6 +244,21 @@ function resolvePaintColor(cs) {
   return c && c !== 'inherit' ? c : '#000'
 }
 
+/**
+ * Draw one ligature on a canvas at devicePixelRatio and return it as a data URL.
+ *
+ * The glyph is measured with a hidden span in the same family the canvas draws with, so the
+ * box the <img> gets is the box the glyph needs. Width and height come back in CSS px.
+ * @param {string} ligatureText - e.g. "home"
+ * @param {object} [opts]
+ * @param {string} [opts.family='Material Icons']
+ * @param {string} [opts.weight='normal']
+ * @param {number} [opts.fontSize=32]
+ * @param {string} [opts.color='#000']
+ * @param {string} [opts.variation=''] - font-variation-settings, read for the FILL axis
+ * @param {string} [opts.className=''] - where Material Symbols puts the style (outlined, rounded, sharp)
+ * @returns {Promise<{dataUrl: string, width: number, height: number}>}
+ */
 export async function materialIconToImage(
   ligatureText,
   {
@@ -220,7 +281,7 @@ export async function materialIconToImage(
 
   // Measure with same family used on canvas
   const span = document.createElement('span')
-  span.setAttribute('data-snapdom-internal', '')
+  markInternalNode(span)
   span.textContent = ligatureText
   span.style.position = 'absolute'
   span.style.visibility = 'hidden'
@@ -262,10 +323,18 @@ export async function materialIconToImage(
 }
 
 /**
- * Replace Material ligature nodes in the CLONE by <img>.
- * Reads styles from SOURCE for accurate size/color/variation/class.
+ * Replace every Material ligature in the clone with an <img> of the drawn glyph.
+ *
+ * Size, colour, weight and axes are read from the SOURCE node, paired through nodeMap; the
+ * clone's own computed style is only a fallback. The root itself is a candidate too, since
+ * `querySelectorAll` never matches the node it is called on. Failures skip the node and the
+ * text stays. Pinned by __tests__/module.iconFonts.test.js.
+ * @param {Element} cloneRoot
+ * @param {Element} sourceRoot
+ * @param {Map<Node, Node>} [nodeMap] - clone -> source, built by deepClone
+ * @returns {Promise<number>} how many nodes were replaced
  */
-export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = cache.session.nodeMap) {
+export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = new Map()) {
   if ((cloneRoot?.nodeType !== 1)) return 0
 
   const selector = '.material-icons, [class*="material-symbols"]'

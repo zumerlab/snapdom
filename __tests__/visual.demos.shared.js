@@ -22,9 +22,14 @@
 //
 // The static review report is written to __snapshots__/visual/report.html.
 
-import { describe, it, beforeEach, afterAll, inject, vi } from 'vitest'
+import { describe, it, beforeEach, afterEach, afterAll, inject, vi } from 'vitest'
 import { defineDemoSuite } from '@zumer/snapdiff/vitest/suite'
 import { networkGuard, networkStatus, pageNeedsNetwork } from './helpers/network-gate.js'
+import { skippedVisualDemos, assertVisualBaselineMode } from '../scripts/visual-policy.mjs'
+
+// Vite also reads .env files: process.env alone cannot see every way this flag arrives.
+const UPDATE_BASELINES = ['1', 'true', 'yes'].includes(String(import.meta.env.VITE_UPDATE_VISUAL || '').toLowerCase())
+assertVisualBaselineMode(inject('requireVisual', false), UPDATE_BASELINES)
 
 // import.meta.glob is a Vite primitive, evaluated at module load, returns
 // a map of URL → loader. We only use the keys.
@@ -209,12 +214,21 @@ const urlByName = new Map()
 const overrides = {
   // The snapVisual demo toggles a `body.mutated` class with new bg gradients
   // and pseudo content: large legitimate visual diff, not a snapdom bug.
-  'demo': { skip: true },
   // Continuous WebGL blend/wipe transition re-triggered on every DOM-to-texture
   // update (~70-110ms cross-fade), never at rest, so no fixed wait lands on a
   // stable frame. Diff is always a moving wipe boundary, not a snapdom bug.
-  'd-plugin-webgl-seamless-dom': { skip: true },
-  'd-plugin-webgl-time-tunnel': { skip: true },
+  ...Object.fromEntries([...skippedVisualDemos].map(name => [name, { skip: true }])),
+  // The features imported from @frostin/snapdom (element-mirror) in one shot: a rendered text
+  // selection, a child's ring kept by outerShadows:'subtree', the native controls no engine
+  // paints in a foreignObject, and background-clip:text. The selection is paint state that no
+  // page load restores, so it is re-made here: a capture is taken from the live document, and
+  // focus and selection are lost when the harness navigates.
+  'd-element-mirror-import': {
+    snapdomOptions: {
+      dpr: 1, scale: 1, embedFonts: true, captureSelection: true, outerShadows: 'subtree',
+    },
+    setup: async (win) => { try { win.__selectDemo?.() } catch { /* best-effort */ } },
+  },
   // Root translate/rotate stripped + viewBox recomputed from the remaining scale (fix 3241481).
   'd-root-transform': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, outerTransforms: false } },
   // Bbox must expand for box-shadow / outline / blur bleed instead of clipping them.
@@ -243,8 +257,7 @@ const overrides = {
   'd10-multi-background-text': {
     setup: async (win) => { await until(win, () => win.document.querySelector('body > img')) },
   },
-  // Awaits preCache(document), pure network, during which the page sits perfectly still,
-  // then captures each .test-node and appends the results into #output. Wait for the count
+  // Captures each .test-node in turn and appends the results into #output. Wait for the count
   // the demo intends to produce rather than for the page to merely look quiet.
   'd12-backgrounds-test': {
     setup: async (win) => {
@@ -318,6 +331,14 @@ export function defineDemoShard (shardIndex, shardCount) {
   // so the reading has to come from the moment the demo is about to load.
   beforeEach(guard)
 
+  // `retry: 1` above reports a demo that failed once and passed on the retry as plain green,
+  // which is also what an intermittent capture bug looks like. Name each one in the run log so
+  // a flaky capture stays visible instead of being absorbed by the gate's second chance.
+  afterEach((ctx) => {
+    const result = ctx.task.result
+    if (result.state === 'pass' && result.retryCount > 0) console.log(`[visual] ${ctx.task.name} passed on retry`)
+  })
+
   // Say which mode the run ended up in. A serialised or skipped demo is not the same
   // coverage as a green one, and a run that quietly downgraded itself should say so.
   afterAll(async () => {
@@ -338,9 +359,9 @@ export function defineDemoShard (shardIndex, shardCount) {
     })
   )
 
-  // demos/ is committed, but a few are held back (third-party branded assets) and a
-  // sparse checkout can leave the folder empty. An empty glob → defineDemoSuite registers
-  // zero test cases → vitest errors with "No test found in suite". Skip the shard instead.
+  // demos/ is committed, but a checkout can still lack it (a sparse checkout, or a
+  // fork that stripped it). An empty glob → defineDemoSuite registers zero test cases →
+  // vitest errors with "No test found in suite". Skip this shard when there are no demos.
   if (Object.keys(demos).length === 0) {
     describe.skip('visual demos (no demos/ folder found)', () => {
       it('skipped', () => {})
@@ -352,11 +373,11 @@ export function defineDemoShard (shardIndex, shardCount) {
     // browser (vitest browser mode) where `process` doesn't exist, so UPDATE_VISUAL never reaches
     // it. Vite DOES expose VITE_-prefixed vars to import.meta.env in the browser, so re-record
     // baselines with: `VITE_UPDATE_VISUAL=1 npm test` (or =true).
-    updateBaselines: ['1', 'true', 'yes'].includes(String(import.meta.env.VITE_UPDATE_VISUAL || '').toLowerCase()),
+    updateBaselines: UPDATE_BASELINES,
 
     baseDir: '__snapshots__/visual',
     threshold: 0.1,
-    failureRatio: 0.005, // tolerate 0.1% drift from font-hinting jitter
+    failureRatio: 0.005, // tolerate 0.5% drift from font-hinting jitter
     defaultTarget: '#target',
     defaultWait: 200,
     snapdomUrl: '/dist/snapdom.mjs',

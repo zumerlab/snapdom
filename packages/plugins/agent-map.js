@@ -29,8 +29,11 @@
  * @param {string}  [options.interactiveSelector]  CSS selector (default below).
  * @param {string}  [options.semanticSelector]  CSS selector (default below).
  * @param {Object}  [options.labelStyle={}]  Override badge styles.
+ * @param {'clone'|'render'} [options.needs='render']  How far the capture runs.
+ *   'clone' skips rendering entirely — requires image: false, and result.url throws.
  * @returns {Object} SnapDOM plugin
  */
+import { getPrivacyPolicy } from './privacy-policy.js';
 
 const DEFAULT_INTERACTIVE =
   'a[href], button, input, select, textarea, ' +
@@ -54,83 +57,112 @@ export function agentMap(options = {}) {
     labelStyle = {},
   } = options;
 
+  // `needs` names how far the capture has to run. Default 'render': dropping the image is
+  // the caller's call. The two rejections below are cases core cannot catch — without
+  // them the caller gets an EMPTY map, or a late error, instead of the reason.
+  const needs = options.needs ?? 'render';
+  // The map is read in afterClone: with no clone there is no map, only a plausible-looking
+  // empty one.
+  if (needs !== 'clone' && needs !== 'render') {
+    throw new Error(`[snapdom] agent-map cannot run at stage '${needs}': it supports clone, render`);
+  }
+  // A capture with no render can never carry an image, and asking for both is a
+  // contradiction the caller should hear now, not at export time.
+  if (needs === 'clone' && image !== false) {
+    throw new Error("[snapdom] agent-map: needs: 'clone' produces no image — pass image: false, or needs: 'render'");
+  }
+
   return {
     name: 'agent-map',
+    needs,
 
     afterClone(ctx) {
       const meta = extractMap(
         ctx.element,
         interactiveSelector,
         semantic ? semanticSelector : null,
-        fields
+        fields,
+        // The capture's ONE exclusion policy (src/core/context.js). Absent only when a
+        // caller drives the hook with a hand-built context.
+        typeof ctx.shouldExclude === 'function' ? ctx.shouldExclude : NEVER,
+        ctx.outerTransforms,
+        getPrivacyPolicy(ctx)
       );
-      // snapdom's export ctx is a fresh spread of ctx.options, so we stash on
-      // both for the agentMap() call below to find it.
+      meta.labelStyle = { ...labelStyle };
       ctx.__agentMapMeta = meta;
-      if (ctx.options) ctx.options.__agentMapMeta = meta;
-
-      if (image === 'annotated') {
-        addAnnotations(ctx.clone, meta.map, labelStyle);
-      }
     },
 
-    defineExports() {
+    defineExports(capture) {
       return {
         agentMap: async (ctx, opts = {}) => {
           const meta = ctx.__agentMapMeta;
           const wantImage = opts.image !== undefined ? opts.image : image;
-
-          if (!meta || !meta.map.length) {
-            const out = { dimensions: { width: 0, height: 0 }, map: [] };
-            if (wantImage) out.image = ctx.export.url;
-            return out;
-          }
+          if (!meta) throw new Error('[snapdom] agent-map: this capture carries no frozen map.');
 
           const format = opts.imageFormat || imageFormat;
-          const quality = opts.imageQuality || imageQuality;
-          const maxWidth = opts.maxImageWidth || maxImageWidth;
-
-          // Scale dimensions — whether we rasterize or not, bboxes get resized
-          // to the target output size so callers can overlay them on the image.
-          let w, h, dataURL;
-          if (wantImage) {
-            const img = new Image();
-            img.src = ctx.export.url;
-            await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-            const ratio = img.naturalWidth > maxWidth ? maxWidth / img.naturalWidth : 1;
-            w = Math.round(img.naturalWidth * ratio);
-            h = Math.round(img.naturalHeight * ratio);
-            const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            const mime =
-              format === 'jpg' || format === 'jpeg' ? 'image/jpeg'
-              : format === 'webp' ? 'image/webp'
-              : 'image/png';
-            dataURL = canvas.toDataURL(mime, quality);
-          } else {
-            const sourceW = meta.dimensions.width || 1;
-            const ratio = sourceW > maxWidth ? maxWidth / sourceW : 1;
-            w = Math.round(sourceW * ratio);
-            h = Math.round(meta.dimensions.height * ratio);
-          }
-
-          const sx = w / (meta.dimensions.width || 1);
-          const sy = h / (meta.dimensions.height || 1);
+          const quality = opts.imageQuality ?? imageQuality;
+          const maxWidth = opts.maxImageWidth ?? maxImageWidth;
+          const geometry = ctx.meta;
+          const sourceW = geometry?.vbW || meta.dimensions.width || 1;
+          const sourceH = geometry?.vbH || meta.dimensions.height || 1;
+          const hasW = Number.isFinite(opts.width), hasH = Number.isFinite(opts.height);
+          let w = hasW ? opts.width : hasH ? opts.height * sourceW / sourceH : sourceW * (opts.scale ?? 1);
+          let h = hasH ? opts.height : hasW ? opts.width * sourceH / sourceW : sourceH * (opts.scale ?? 1);
+          w *= opts.dpr ?? 1;
+          h *= opts.dpr ?? 1;
+          const ratio = w > maxWidth ? maxWidth / w : 1;
+          w = Math.max(1, Math.round(w * ratio));
+          h = Math.max(1, Math.round(h * ratio));
+          const sx = w / sourceW, sy = h / sourceH;
+          const dx = (geometry?.contentX || 0) - (geometry?.clip?.x || 0);
+          const dy = (geometry?.contentY || 0) - (geometry?.clip?.y || 0);
+          const frame = geometry ? meta.frame : { x: 0, y: 0, sx: 1, sy: 1 };
 
           const scaledMap = meta.map.map(e => {
             const scaled = { ...e, b: [
-              Math.round(e.b[0] * sx),
-              Math.round(e.b[1] * sy),
-              Math.round(e.b[2] * sx),
-              Math.round(e.b[3] * sy),
+              Math.round((e.b[0] * frame.sx + frame.x + dx) * sx),
+              Math.round((e.b[1] * frame.sy + frame.y + dy) * sy),
+              Math.round(e.b[2] * frame.sx * sx),
+              Math.round(e.b[3] * frame.sy * sy),
             ] };
+            if (e.s) scaled.s = { ...e.s };
+            if (e.a) scaled.a = { ...e.a };
             return scaled;
           });
 
           const out = { dimensions: { width: w, height: h }, map: scaledMap };
-          if (wantImage) out.image = dataURL;
+          if (wantImage) {
+            // Core owns Safari drawing and restoration of compressed originals. Decode at
+            // the original aspect ratio first; Firefox letterboxes an SVG decoded with a
+            // different width/height ratio. Only the finished bitmap is stretched below.
+            const density = Math.max(sx, sy);
+            const opaque = format === 'jpg' || format === 'jpeg' || format === 'webp';
+            const backgroundColor = opaque && (opts.backgroundColor == null || opts.backgroundColor === 'transparent')
+              ? '#ffffff' : opts.backgroundColor;
+            const source = await capture.exports.canvas({ width: sourceW * density, height: null,
+              scale: 1, dpr: 1, canvas: null, crop: null, backgroundColor });
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const draw = canvas.getContext('2d');
+            draw.drawImage(source, 0, 0, w, h);
+            if (wantImage === 'annotated' && scaledMap.some(e => !e.isSemanticOnly)) {
+              // Badges belong to this export, not the frozen base image: raw/annotated
+              // overrides and later exports must never inherit another call's overlay.
+              const layer = document.createElement('div');
+              layer.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+              layer.style.cssText = `width:${w}px;height:${h}px;`;
+              addAnnotations(layer, scaledMap, meta.labelStyle);
+              const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(layer)}</foreignObject></svg>`;
+              const overlay = new Image();
+              overlay.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+              await overlay.decode();
+              draw.drawImage(overlay, 0, 0);
+            }
+            const mime = format === 'jpg' || format === 'jpeg' ? 'image/jpeg'
+              : format === 'webp' ? 'image/webp' : 'image/png';
+            out.image = canvas.toDataURL(mime, quality);
+          }
           return out;
         },
       };
@@ -140,13 +172,15 @@ export function agentMap(options = {}) {
 
 /* ── Role derivation ────────────────────────────── */
 
-function deriveRole(el) {
-  const explicit = el.getAttribute('role');
+function deriveRole(el, attribute, policy) {
+  const explicit = attribute(el, 'role');
   if (explicit) return explicit;
   const tag = el.tagName.toLowerCase();
-  const type = (el.type || '').toLowerCase();
+  // Preserve native reflection (unknown input types resolve to text). Only an explicit
+  // type-attribute rule changes what can be inferred from that reflected property.
+  const type = (policy?.redactsAttribute(el, 'type') ? '' : el.type || '').toLowerCase();
   if (tag === 'button') return 'button';
-  if (tag === 'a' && el.hasAttribute('href')) return 'link';
+  if (tag === 'a' && attribute(el, 'href') !== null) return 'link';
   if (tag === 'input') {
     if (type === 'checkbox') return 'checkbox';
     if (type === 'radio') return 'radio';
@@ -173,36 +207,36 @@ function deriveRole(el) {
 
 /* ── Accessible name ────────────────────────────── */
 
-function accessibleName(el) {
-  const ariaLabel = el.getAttribute('aria-label');
+function accessibleName(el, textOf, attribute, policy) {
+  const ariaLabel = attribute(el, 'aria-label');
   if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
 
-  const labelledBy = el.getAttribute('aria-labelledby');
+  const labelledBy = attribute(el, 'aria-labelledby');
   if (labelledBy) {
     const root = el.getRootNode();
     const getById = (id) =>
       root && typeof root.getElementById === 'function'
         ? root.getElementById(id) : document.getElementById(id);
     const parts = labelledBy.trim().split(/\s+/)
-      .map(id => { const r = getById(id); return r ? (r.textContent || '').trim() : ''; })
+      .map(id => { const r = getById(id); return r ? textOf(r).trim() : ''; })
       .filter(Boolean);
     if (parts.length) return parts.join(' ');
   }
 
-  if (el.tagName === 'IMG' || (el.tagName === 'INPUT' && (el.type || '').toLowerCase() === 'image')) {
-    const alt = el.getAttribute('alt');
+  if (el.tagName === 'IMG' || (el.tagName === 'INPUT' && !policy?.redactsAttribute(el, 'type') && (el.type || '').toLowerCase() === 'image')) {
+    const alt = attribute(el, 'alt');
     if (alt && alt.trim()) return alt.trim();
   }
 
-  const title = el.getAttribute('title');
+  const title = attribute(el, 'title');
   if (title && title.trim()) return title.trim();
 
   if (el.labels && el.labels[0]) {
-    const t = (el.labels[0].textContent || '').trim();
+    const t = textOf(el.labels[0]).trim();
     if (t) return t;
   }
 
-  const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+  const text = textOf(el).replace(/\s+/g, ' ').trim();
   if (text) return text.length > 60 ? text.slice(0, 59) + '…' : text;
   return '';
 }
@@ -215,45 +249,81 @@ function accessibleName(el) {
  * aria-pressed are included for BOTH values (true and false) because
  * "pressed: false" on a toggle is meaningful information.
  */
-function deriveState(el, role, rect) {
+
+/* Sensitive-input guard (self-contained: this package publishes standalone).
+ * Secrets are EXCLUDED, never truncated — a truncated password is still a leak. */
+const SENSITIVE_AC = new Set(['current-password', 'new-password', 'one-time-code']);
+function isSensitiveInput(el) {
+  if (!el || el.tagName !== 'INPUT') return false;
+  const type = (el.getAttribute('type') || 'text').toLowerCase();
+  if (type === 'password' || type === 'email' || type === 'tel') return true;
+  const ac = (el.getAttribute('autocomplete') || '').toLowerCase();
+  if (!ac) return false;
+  for (const token of ac.split(/\s+/)) {
+    if (SENSITIVE_AC.has(token) || token.startsWith('cc-')) return true;
+  }
+  return false;
+}
+function maskedValue(value) {
+  return '\u2022'.repeat(Math.min(String(value ?? '').length, 12));
+}
+
+function deriveState(el, role, rect, attribute, policy, textOf, blocked) {
   const s = {};
+  const redacts = policy ? name => policy.redactsAttribute(el, name) : NEVER;
 
   try {
-    if (el.matches(':checked')) s.checked = true;
-    else if (role === 'checkbox' || role === 'radio') {
+    if (!redacts('checked') && el.matches(':checked')) s.checked = true;
+    else if (!redacts('checked') && (role === 'checkbox' || role === 'radio')) {
       // include checked:false for form groups where an agent needs to
       // know "unchecked" is a valid state distinct from "not a checkbox".
       s.checked = false;
     }
-    if (el.matches(':disabled')) s.disabled = true;
+    if (!redacts('disabled') && el.matches(':disabled')) s.disabled = true;
     if (el.matches(':focus')) s.focus = true;
   } catch { /* exotic nodes */ }
 
-  const expanded = el.getAttribute('aria-expanded');
+  const expanded = attribute(el, 'aria-expanded');
   if (expanded === 'true') s.expanded = true;
   else if (expanded === 'false') s.expanded = false;
 
-  const pressed = el.getAttribute('aria-pressed');
+  const pressed = attribute(el, 'aria-pressed');
   if (pressed === 'true') s.pressed = true;
   else if (pressed === 'false') s.pressed = false;
 
-  const selected = el.getAttribute('aria-selected');
+  const selected = attribute(el, 'aria-selected');
   if (selected === 'true') s.selected = true;
   else if (selected === 'false' && (role === 'tab' || role === 'option')) s.selected = false;
 
   if (el.tagName === 'INPUT') {
     const type = (el.type || 'text').toLowerCase();
     if (type !== 'checkbox' && type !== 'radio' && type !== 'submit' && type !== 'button' && type !== 'reset' && el.value) {
-      s.value = el.value;
+      // Sensitive inputs (password/email/tel/cc-*): value NEVER emitted, in any field.
+      // Remaining inputs: masked by default — the agent learns "field has content"
+      // without the output carrying user data.
+      if (!isSensitiveInput(el)) {
+        if (!policy?.isField(el)) s.value = maskedValue(el.value);
+        s.hasValue = true;
+      }
     }
   } else if (el.tagName === 'TEXTAREA') {
-    if (el.value) s.value = el.value;
+    if (el.value) {
+      if (!policy?.isField(el)) s.value = maskedValue(el.value);
+      s.hasValue = true;
+    }
   } else if (el.tagName === 'SELECT') {
-    s.value = el.value;
     const opt = el.options && el.options[el.selectedIndex];
-    if (opt) s.selectedText = opt.text || '';
+    if (!opt || !blocked(opt)) {
+      // HTMLOptionElement.text collapses ASCII whitespace, preserving nonbreaking spaces.
+      if (opt) s.selectedText = policy ? textOf(opt).replace(/[\t\n\f\r ]+/g, ' ').replace(/^ | $/g, '') : opt.text || '';
+      if (!redacts('value') && !(opt && policy?.redactsAttribute(opt, 'value'))) {
+        // Without an explicit value attribute, select.value derives from the option's
+        // text too, so use the same permitted text as selectedText under a privacy policy.
+        s.value = policy && opt && !opt.hasAttribute('value') ? s.selectedText : el.value;
+      }
+    }
   } else if (el.tagName === 'DETAILS') {
-    s.open = !!el.open;
+    if (!redacts('open')) s.open = !!el.open;
   }
 
   // Covered — element visually occluded by something else at its center.
@@ -276,21 +346,73 @@ function deriveState(el, role, rect) {
 
 /* ── Map extraction ─────────────────────────────── */
 
-function extractMap(element, interactiveSelector, semanticSelector, fields) {
+const NEVER = () => false;
+const sourceAttribute = (el, name) => el.getAttribute(name);
+
+/** What actually paints under `el`, mirroring deepClone: a <slot> renders its assigned
+ *  elements, and an open shadow root renders in place of the host's light children —
+ *  except unassigned ones, which core clones after the shadow fragment. */
+function renderedChildren(el) {
+  if (el.localName === 'slot') {
+    const assigned = el.assignedElements?.({ flatten: true }) || [];
+    return assigned.length ? assigned : el.children;
+  }
+  const sr = el.shadowRoot;
+  if (!sr) return el.children;
+  const slotted = new Set();
+  for (const s of sr.querySelectorAll('slot')) for (const n of s.assignedElements()) slotted.add(n);
+  return [...sr.children, ...Array.from(el.children).filter((c) => !slotted.has(c))];
+}
+
+function extractMap(element, interactiveSelector, semanticSelector, fields, shouldExclude, outerTransforms, policy) {
   const rootRect = element.getBoundingClientRect();
   const map = [];
   let i = 0;
   const tracked = new Set();
+  const attribute = policy ? policy.attribute : sourceAttribute;
+  const excluded = policy ? el => shouldExclude(el) || policy.isBlocked(el) : shouldExclude;
+  const blocked = (el) => {
+    for (let ancestor = el; ancestor; ancestor = ancestor.parentElement || ancestor.getRootNode()?.host) {
+      if (excluded(ancestor)) return true;
+    }
+    return false;
+  };
 
-  for (const el of element.querySelectorAll(interactiveSelector)) {
-    const entry = buildEntry(el, rootRect, i, fields, 'interactive');
+  // Names/full text must obey the same redaction boundary as the entry walk. Plain
+  // textContent resurrects excluded descendants, and textarea defaults bypass masked
+  // state. Referenced labels may also live under an excluded ancestor outside this root.
+  const textOf = (el) => {
+    if (blocked(el)) return '';
+    const read = (node) => {
+      if (node.nodeType === 3) return node.nodeValue || '';
+      if (node.nodeType !== 1 || node.tagName === 'TEXTAREA' || excluded(node)) return '';
+      return Array.from(node.childNodes, read).join('');
+    };
+    return read(el);
+  };
+
+  // querySelectorAll never matches the root and never crosses a shadow boundary, so a
+  // capture root that IS a button, and every shadow-DOM control, were missing from the
+  // map while both render in the image. Walk what core clones instead, and prune excluded
+  // subtrees so a redacted node cannot come back as an actionable badge.
+  const els = [];
+  const visit = (el) => {
+    if (excluded(el)) return;
+    els.push(el);
+    for (const c of renderedChildren(el)) visit(c);
+  };
+  visit(element);
+
+  for (const el of els) {
+    if (!el.matches(interactiveSelector)) continue;
+    const entry = buildEntry(el, rootRect, i, fields, 'interactive', textOf, attribute, policy, blocked);
     if (entry) { map.push(entry); tracked.add(el); i++; }
   }
 
   if (semanticSelector) {
-    for (const el of element.querySelectorAll(semanticSelector)) {
-      if (tracked.has(el)) continue;
-      const entry = buildEntry(el, rootRect, i, fields, 'semantic');
+    for (const el of els) {
+      if (tracked.has(el) || !el.matches(semanticSelector)) continue;
+      const entry = buildEntry(el, rootRect, i, fields, 'semantic', textOf, attribute, policy, blocked);
       if (entry) { map.push(entry); i++; }
     }
   }
@@ -298,11 +420,48 @@ function extractMap(element, interactiveSelector, semanticSelector, fields) {
   return {
     map,
     dimensions: { width: rootRect.width, height: rootRect.height },
+    frame: captureFrame(element, rootRect, outerTransforms),
   };
 }
 
-function buildEntry(el, rootRect, i, fields, kind) {
+// gBCR starts at the transformed bounding box; render meta starts at the root's
+// pre-transform origin. Freeze that offset with the map, including individual transforms.
+// Ancestor rotation/perspective and stripping a root rotation cannot be reconstructed from
+// axis-aligned source rectangles; those cases still need a capture-space geometry API.
+function captureFrame(element, rect, outerTransforms = true) {
+  const css = getComputedStyle(element);
+  const w = element.offsetWidth || parseFloat(css.width) || rect.width;
+  const h = element.offsetHeight || parseFloat(css.height) || rect.height;
+  // Core keeps scale/skew but anchors the clone at 0 0 when outer transforms are stripped.
+  const [ox, oy] = outerTransforms !== false ? css.transformOrigin.split(/\s+/).map(parseFloat) : [0, 0];
+  const scale = css.scale && css.scale !== 'none' ? css.scale.split(/\s+/).map(Number) : [1];
+  const rotation = css.rotate && css.rotate !== 'none' ? css.rotate.split(/\s+/) : ['0deg'];
+  const angleText = rotation.pop();
+  const angle = parseFloat(angleText) * (angleText.endsWith('turn') ? 360
+    : angleText.endsWith('grad') ? 0.9 : angleText.endsWith('rad') ? 180 / Math.PI : 1);
+  const axis = rotation.length === 3 ? rotation.map(Number)
+    : rotation.length ? ['x', 'y', 'z'].map(name => Number(name === rotation[0])) : [0, 0, 1];
+  // Firefox marks rotateAxisAngle as 3D even around z, so keep the ordinary 2D path.
+  const rotationMatrix = !axis[0] && !axis[1] ? new DOMMatrix().rotate(Math.sign(axis[2]) * angle)
+    : new DOMMatrix().rotateAxisAngle(...axis, angle);
+  const matrix = rotationMatrix.scale(scale[0], scale[1] ?? scale[0], scale[2] ?? 1)
+    .multiply(new DOMMatrix(css.transform === 'none' ? undefined : css.transform));
+  if (!matrix.is2D) return { x: 0, y: 0, sx: 1, sy: 1 };
+  const corners = [[0, 0], [w, 0], [0, h], [w, h]].map(([x, y]) => ({
+    x: (x - ox) * matrix.a + (y - oy) * matrix.c + ox,
+    y: (x - ox) * matrix.b + (y - oy) * matrix.d + oy,
+  }));
+  const x = Math.min(...corners.map(p => p.x)), y = Math.min(...corners.map(p => p.y));
+  return { x, y,
+    sx: rect.width ? (Math.max(...corners.map(p => p.x)) - x) / rect.width : 1,
+    sy: rect.height ? (Math.max(...corners.map(p => p.y)) - y) / rect.height : 1 };
+}
+
+function buildEntry(el, rootRect, i, fields, kind, textOf, attribute, policy, blocked) {
   const rect = el.getBoundingClientRect();
+  // The annotation pass filters on this flag — without it, semantic:true put badges
+  // on headings/paragraphs (the filter was a no-op because nothing ever set it).
+  // Kept in the output so consumers can distinguish actables from context entries.
   const b = [
     Math.round(rect.left - rootRect.left),
     Math.round(rect.top - rootRect.top),
@@ -311,22 +470,23 @@ function buildEntry(el, rootRect, i, fields, kind) {
   ];
   if (b[2] <= 0 && b[3] <= 0) return null;
 
-  const role = deriveRole(el);
-  const n = accessibleName(el);
+  const role = deriveRole(el, attribute, policy);
+  const n = accessibleName(el, textOf, attribute, policy);
 
   const entry = { i, n, r: role, b };
+  if (kind === 'semantic') entry.isSemanticOnly = true;
 
   if (kind === 'interactive') {
-    const s = deriveState(el, role, rect);
+    const s = deriveState(el, role, rect, attribute, policy, textOf, blocked);
     if (s) entry.s = s;
   }
 
   if (fields === 'full') {
-    const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    const t = textOf(el).replace(/\s+/g, ' ').trim();
     if (t && t !== n) entry.t = t.length > 160 ? t.slice(0, 159) + '…' : t;
     const a = {};
     for (const name of ['href', 'type', 'name', 'placeholder', 'alt', 'title', 'role', 'aria-label']) {
-      const v = el.getAttribute(name);
+      const v = attribute(el, name);
       if (v && v !== 'false') a[name] = v;
     }
     if (Object.keys(a).length) entry.a = a;

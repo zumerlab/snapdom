@@ -99,7 +99,8 @@
 .site-shell-stars { padding-left: 10px; border-left: 1px solid rgba(15,30,77,0.18); }
 .site-shell-stars::first-letter { color: #F5A623; }
 .site-shell-mobile { display: none; }
-.site-shell + .hero > .github-badge { display: none; }
+.site-shell + .hero > .github-badge,
+.section-hero-copy > .github-badge { display: none; }
 
 /* Content-page heroes keep their own content, but share the home page hierarchy. */
 body > .site-shell + .hero {
@@ -141,13 +142,55 @@ body > .site-shell + .hero .hero-badge {
 }
 .site-shell ~ * .btn { border-radius: 0; }
 
+/* Approved role illustrations use opaque white eyes and a white artboard.
+   Keep normal compositing: multiply would tint the eyes with the page color. */
+.mascot-art,
+.section-mascot {
+  display: block;
+  height: auto;
+  object-fit: contain;
+  background: #FFFFFF;
+  mix-blend-mode: normal;
+}
+body > .site-shell + .hero.section-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  align-items: center;
+  gap: clamp(32px, 5vw, 80px);
+  padding-top: 52px;
+}
+.section-hero-copy { min-width: 0; }
+.section-hero-copy > :last-child { margin-bottom: 0; }
+.section-mascot {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1;
+  justify-self: end;
+  border: 1px solid rgba(15,30,77,0.12);
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+  body > .site-shell + .hero.section-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding-top: 36px;
+  }
+  .section-hero > .section-mascot {
+    width: 180px;
+    justify-self: start;
+    padding: 8px;
+  }
+}
+
 /* Keyboard focus is part of the capture-instrument language: visible and exact. */
 :where(a, button, input, select, textarea):focus-visible {
   outline: 3px solid var(--accent, var(--sd-accent, #2D5BFF));
   outline-offset: 3px;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .site-shell-links { display: none; }
   .site-shell-mobile { display: flex; overflow-x: auto; border-top: 1px solid rgba(15,30,77,0.14); scrollbar-width: none; }
   .site-shell-mobile::-webkit-scrollbar { display: none; }

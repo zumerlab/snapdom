@@ -1,3 +1,15 @@
+/**
+ * The generated CSS a clone carries: tag defaults, per-element style keys, the base reset.
+ *
+ * A computed-style snapshot is diffed against the tag's defaults (`getDefaultStyleForTag`)
+ * into a style key (`getStyleKey`); equal keys share one class (`generateCSSClasses`), and the
+ * defaults themselves become one factored reset rule (`generateDedupedBaseCSS`). The width
+ * rules are the delicate part. A frozen used width re-wraps text when the raster falls back
+ * to a wider font, so content-sized boxes get a min-width floor instead (`softensWidth`,
+ * `softenNeedsAutoWidth`, and the epsilon inside getStyleKey).
+ * @module utils/css
+ */
+
 // -----------------------------------------------------------------------------
 // Central single-source-of-truth sets
 // -----------------------------------------------------------------------------
@@ -18,30 +30,22 @@ export const NO_DEFAULTS_TAGS = new Set([
 ])
 
 import { cache } from '../core/cache'
-
-const commonTags = [
-  'div', 'span', 'p', 'a', 'img', 'ul', 'li', 'button', 'input', 'select', 'textarea', 'label', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'td', 'th'
-]
+import { ALWAYS_PROPS } from '../modules/styleScan'
+import { isInternalNode, markInternalNode } from './ownership.js'
 
 // -----------------------------------------------------------------------------
-// 1) precacheCommonTags → salta NO_CAPTURE y NO_DEFAULTS (no calienta basura)
+// getDefaultStyleForTag -> single gate on NO_DEFAULTS_TAGS + a marked sandbox
 // -----------------------------------------------------------------------------
-export function precacheCommonTags() {
-  for (let tag of commonTags) {
-    const t = String(tag).toLowerCase()
-    if (NO_CAPTURE_TAGS.has(t)) continue
-    if (NO_DEFAULTS_TAGS.has(t)) continue // evita precache de SVG/body/etc.
-    getDefaultStyleForTag(t)
-  }
-}
-
-// -----------------------------------------------------------------------------
-// 2) getDefaultStyleForTag → gate único por NO_DEFAULTS_TAGS + sandbox marcado
-// -----------------------------------------------------------------------------
-/*
- * Retrieves default CSS property values from a temporary element.
+/**
+ * A tag's default styles, memoized in cache.defaultStyle.
+ *
+ * Read from a fresh element with `all: initial` inside a hidden sandbox div, so the map holds
+ * the INITIAL values, not the UA sheet's. That is the point: the base reset re-states them
+ * inside the foreignObject, where the UA sheet would otherwise add its own margins and
+ * paddings, and getStyleKey keeps only what differs from them. NO_DEFAULTS_TAGS get `{}`,
+ * which means no reset and no class.
  * @param {string} tagName
- * @returns {Object}
+ * @returns {Record<string, string>}
  */
 export function getDefaultStyleForTag(tagName) {
   tagName = String(tagName).toLowerCase()
@@ -56,9 +60,13 @@ export function getDefaultStyleForTag(tagName) {
     return cache.defaultStyle.get(tagName)
   }
 
-  let sandbox = document.getElementById('snapdom-sandbox')
+  // Duplicate ids are invalid but possible, and this public legacy id belongs to author DOM
+  // unless private provenance says otherwise. Search every match so an author node appearing
+  // first never gets reused as our measurement host.
+  let sandbox = [...document.querySelectorAll('#snapdom-sandbox')].find(isInternalNode)
   if (!sandbox) {
     sandbox = document.createElement('div')
+    markInternalNode(sandbox)
     sandbox.id = 'snapdom-sandbox'
     sandbox.setAttribute('data-snapdom-sandbox', 'true')
     sandbox.setAttribute('aria-hidden', 'true')
@@ -78,10 +86,18 @@ export function getDefaultStyleForTag(tagName) {
   const styles = getComputedStyle(el)
   const defaults = {}
   for (let prop of styles) {
-    // ⬇️ Nuevo: filtramos ruido que no pinta y props dependientes de layout
+    // Filter out noise that never paints, plus layout-dependent props
     if (shouldIgnoreProp(prop)) continue
     const value = styles.getPropertyValue(prop)
     defaults[prop] = value
+  }
+  // The snapshot reads every ALWAYS_PROPS entry by name, but Chromium's enumeration lists
+  // none of counter-set / counter-reset / counter-increment / content-visibility / white-space
+  // (shorthands and newer properties), so their defaults were missing here and every class
+  // rule carried `counter-set:none;content-visibility:visible;white-space:normal;…` as a
+  // "non-default" value. Read the ones the enumeration skipped from the same probe.
+  for (const prop of ALWAYS_PROPS) {
+    if (!(prop in defaults) && !shouldIgnoreProp(prop)) defaults[prop] = styles.getPropertyValue(prop)
   }
 
   sandbox.removeChild(el)
@@ -149,7 +165,7 @@ export function shouldIgnoreProp(prop /*, tag */) {
 }
 
 // -----------------------------------------------------------------------------
-// 3) getStyleKey → si NO_DEFAULTS_TAGS: "", así no hay clase auto
+// 3) getStyleKey -> "" for NO_DEFAULTS_TAGS, so no auto class is generated
 // -----------------------------------------------------------------------------
 // Tags that size to text content; grid/flex blockify them, so a frozen used width wraps the
 // text when the raster falls back to a wider font (e.g. the "Timestamp demo").
@@ -165,6 +181,78 @@ const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed
 const HARD_WIDTH_PROPS = new Set(['width', 'max-width', 'inline-size', 'max-inline-size'])
 // Min-width longhands: kept verbatim when authored (or set to 0 by #406 on flex/grid items).
 const MIN_WIDTH_PROPS = new Set(['min-width', 'min-inline-size'])
+
+/**
+ * Logical box properties and the physical property they duplicate. Computed-style enumeration
+ * lists both forms of every box property, so the generated CSS re-states most of a box a second
+ * time — about 14 of the 47 declarations of a typical class, parsed again by every rasterization.
+ *
+ * Imported from @frostin/snapdom (element-mirror).
+ */
+const LOGICAL_TO_PHYSICAL = new Map(Object.entries({
+  'block-size': 'height',
+  'inline-size': 'width',
+  'min-block-size': 'min-height',
+  'min-inline-size': 'min-width',
+  'max-block-size': 'max-height',
+  'max-inline-size': 'max-width',
+  'margin-block-start': 'margin-top',
+  'margin-block-end': 'margin-bottom',
+  'margin-inline-start': 'margin-left',
+  'margin-inline-end': 'margin-right',
+  'padding-block-start': 'padding-top',
+  'padding-block-end': 'padding-bottom',
+  'padding-inline-start': 'padding-left',
+  'padding-inline-end': 'padding-right',
+  'inset-block-start': 'top',
+  'inset-block-end': 'bottom',
+  'inset-inline-start': 'left',
+  'inset-inline-end': 'right',
+  'border-block-start-width': 'border-top-width',
+  'border-block-start-style': 'border-top-style',
+  'border-block-start-color': 'border-top-color',
+  'border-block-end-width': 'border-bottom-width',
+  'border-block-end-style': 'border-bottom-style',
+  'border-block-end-color': 'border-bottom-color',
+  'border-inline-start-width': 'border-left-width',
+  'border-inline-start-style': 'border-left-style',
+  'border-inline-start-color': 'border-left-color',
+  'border-inline-end-width': 'border-right-width',
+  'border-inline-end-style': 'border-right-style',
+  'border-inline-end-color': 'border-right-color',
+  'border-start-start-radius': 'border-top-left-radius',
+  'border-start-end-radius': 'border-top-right-radius',
+  'border-end-start-radius': 'border-bottom-left-radius',
+  'border-end-end-radius': 'border-bottom-right-radius',
+  'overflow-block': 'overflow-y',
+  'overflow-inline': 'overflow-x',
+  'overscroll-behavior-block': 'overscroll-behavior-y',
+  'overscroll-behavior-inline': 'overscroll-behavior-x',
+  'contain-intrinsic-block-size': 'contain-intrinsic-height',
+  'contain-intrinsic-inline-size': 'contain-intrinsic-width',
+}))
+
+/**
+ * Whether `prop` says nothing in this style map that its physical counterpart does not already
+ * say. Dropped only on a byte-identical value: the engine genuinely resolves the two forms
+ * differently in places (`min-width` resolves `auto` to `0px` where `min-inline-size` reports
+ * `auto`), and there the logical declaration is load-bearing. The mapping is writing-mode
+ * dependent, so nothing is dropped outside horizontal-tb LTR.
+ *
+ * @param {string} prop
+ * @param {Record<string, string>} styles the map the declaration comes from
+ * @returns {boolean}
+ */
+export function isRedundantLogicalProp(prop, styles) {
+  const physical = LOGICAL_TO_PHYSICAL.get(prop)
+  if (physical === undefined) return false
+  if (styles[physical] !== styles[prop]) return false
+  const writingMode = styles['writing-mode']
+  if (writingMode && writingMode !== 'horizontal-tb') return false
+  const direction = styles['direction']
+  if (direction && direction !== 'ltr') return false
+  return true
+}
 // Slack added to a frozen width to clear the computed-style serialization error (≤0.0005px on
 // a 1/1000-rounded length). Deliberately tiny: it is paid once per box and the shrink-to-fit
 // parent holding a row of them is only paid once in total (#491).
@@ -176,6 +264,7 @@ const WIDTH_EPSILON = 0.001
  * per-node content/flex bookkeeping for the vast majority of nodes that aren't affected.
  * @param {string} tagName
  * @param {string} display computed display (lowercase)
+ * @returns {boolean}
  */
 export function softensWidth(tagName, display) {
   return !REPLACED_TAGS.has(tagName) &&
@@ -203,6 +292,7 @@ const SHRINK_TO_FIT_DISPLAYS = new Set([
  * @param {string} tagName
  * @param {Record<string,string>} snapshot computed-style snapshot
  * @param {boolean} isFlexItem whether the element is a flex/grid item
+ * @returns {boolean}
  */
 export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
   const display = (snapshot.display || '').toLowerCase()
@@ -217,13 +307,17 @@ export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
 }
 
 /**
- * Builds a style key from a snapshot; returns "" for tags in NO_DEFAULTS_TAGS.
+ * Build an element's style key: the sorted `prop:value` pairs that differ from the tag's
+ * defaults, joined by `;`. Equal keys share one generated class. "" for NO_DEFAULTS_TAGS.
+ * The width softening and the epsilon are pinned by __tests__/snapdom.widthSoftening.test.js
+ * and __tests__/snapdom.issue491.test.js.
  * @param {Record<string,string>} snapshot
  * @param {string} tagName
  * @param {boolean} [sizedByContent=true] whether the element is sized by its own content
  *   (text / child elements). Empty boxes sized by a CSS class keep their width verbatim.
  * @param {boolean} [isFlexItem=false] whether the element is a flex/grid item — those must keep
  *   their natural ability to shrink (#406), so we never give them a synthesized min-width floor.
+ * @returns {string}
  */
 export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem = false) {
   tagName = String(tagName || '').toLowerCase()
@@ -253,6 +347,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   let keptMinWidth = false
   for (const prop in snapshot) {
     if (shouldIgnoreProp(prop)) continue
+    if (isRedundantLogicalProp(prop, snapshot)) continue
     const value = snapshot[prop]
     if (soften) {
       if (HARD_WIDTH_PROPS.has(prop)) continue // never freeze a content/algorithm width
@@ -324,15 +419,19 @@ export function collectUsedTagNames(root) {
 }
 
 // -----------------------------------------------------------------------------
-// 5) generateDedupedBaseCSS → salta keys vacías (sin reglas basura)
+// 5) generateDedupedBaseCSS -> skips empty keys, so no junk rules are emitted
 // -----------------------------------------------------------------------------
 /**
- * Generates deduplicated base CSS for the given tag names.
- *
- * @param {string[]} usedTagNames - Array of tag names
- * @returns {string} CSS string
+ * Emit the base reset for the used tags: one shared rule with what every tag's defaults have
+ * in common, then one rule per group of tags whose leftovers are identical.
+ * Pinned by __tests__/utils.css.baseResetFactoring.test.js (the factoring) and
+ * __tests__/utils.css.base-reset-eviction.test.js (tags evicted from the memo still get one).
+ * @param {string[]} usedTagNames
+ * @param {Set<string>|null} [universe] - the property set author CSS can touch (styleScan);
+ *   when given, the reset stays inside it
+ * @returns {string} CSS
  */
-export function generateDedupedBaseCSS(usedTagNames) {
+export function generateDedupedBaseCSS(usedTagNames, universe = null) {
   const groups = new Map()
 
   for (let tagName of usedTagNames) {
@@ -347,24 +446,55 @@ export function generateDedupedBaseCSS(usedTagNames) {
     const styles = getDefaultStyleForTag(tagName)
     if (!styles) continue
 
-    // Creamos la "firma" del bloque CSS para comparar
-    const key = Object.entries(styles)
-      .map(([k, v]) => `${k}:${v};`)
-      .sort()
-      .join('')
+    // Pruned snapshots diff only the universe props, so the reset must not stamp anything
+    // outside it: a reset-only prop (resolved defaults like -webkit-text-fill-color) would
+    // override the class value with no diff entry able to win it back. Outside the universe
+    // the UA default applies inside the foreignObject anyway — restating it buys nothing.
+    const entries = universe
+      ? Object.entries(styles).filter(([k]) => universe.has(k))
+      : Object.entries(styles)
+    // The same logical-alias trim the class snapshots get: a default that restates its
+    // physical twin is as redundant here as it is there.
+    const kept = entries.filter(([k]) => !isRedundantLogicalProp(k, styles))
+    // Build the CSS block "signature" used for comparison
+    const declarations = kept.map(([k, v]) => `${k}:${v};`).sort()
+    const key = declarations.join('')
 
-    if (!key) continue // <- evita reglas vacías (NO_DEFAULTS_TAGS produce {})
+    if (!key) continue // avoids empty rules (NO_DEFAULTS_TAGS yields {})
 
     // Agrupamos por firma
     if (!groups.has(key)) {
-      groups.set(key, [])
+      groups.set(key, { tagList: [], declarations })
     }
-    groups.get(key).push(tagName)
+    groups.get(key).tagList.push(tagName)
   }
 
-  // Ahora generamos el CSS optimizado
+  // Factor out what every group declares identically. Tag defaults are ~300 properties each
+  // and overwhelmingly the same across tags, so emitting each group in full made this the
+  // largest CSS in the SVG (32.8kb for 24 tags), re-parsed by every rasterization. The shared
+  // rule lists every tag and each group restates only what differs; group rules come second,
+  // so same-specificity source order still gives them the final word, exactly as before.
+  // Imported from @frostin/snapdom (element-mirror).
+  const parsedGroups = [...groups.values()]
+  let shared = null
+  for (const { declarations } of parsedGroups) {
+    const own = new Set(declarations)
+    if (!shared) { shared = own; continue }
+    for (const declaration of shared) if (!own.has(declaration)) shared.delete(declaration)
+  }
+  shared ??= new Set()
+
   let css = ''
-  for (let [styleBlock, tagList] of groups.entries()) {
+  if (shared.size && parsedGroups.length > 1) {
+    const allTags = parsedGroups.flatMap((group) => group.tagList)
+    css += `${allTags.join(',')} { ${[...shared].join('')} }\n`
+  }
+  for (const { tagList, declarations } of parsedGroups) {
+    const own = parsedGroups.length > 1
+      ? declarations.filter((declaration) => !shared.has(declaration))
+      : declarations
+    if (!own.length) continue
+    const styleBlock = own.join('')
     css += `${tagList.join(',')} { ${styleBlock} }\n`
   }
 
@@ -372,12 +502,13 @@ export function generateDedupedBaseCSS(usedTagNames) {
 }
 
 // -----------------------------------------------------------------------------
-// 4) generateCSSClasses → ignora keys vacías (defensivo)
+// 4) generateCSSClasses -> ignores empty keys (defensive)
 // -----------------------------------------------------------------------------
 /**
- * Generates CSS classes from a style map.
- *
- * @returns {Map} Map of style keys to class names
+ * Name the distinct style keys `c1`, `c2`, … in sorted order, so the same keys always get the
+ * same names.
+ * @param {Map<Element, string>} styleMap - element -> style key
+ * @returns {Map<string, string>} style key -> class name
  */
 export function generateCSSClasses(styleMap) {
   const keys = Array.from(new Set(styleMap.values()))
@@ -419,6 +550,9 @@ function getWindowForElement(el) {
 /**
  * Gets the computed style for an element or pseudo-element, with caching.
  *
+ * The memo is cache.computedStyle, a WeakMap of element -> Map of pseudo -> declaration. What
+ * it holds is the live CSSStyleDeclaration, so a value read later reflects the element's
+ * state at that moment, not at the first call. Non-elements bypass the memo.
  * @param {Element} el - The element
  * @param {string|null} [pseudo=null] - The pseudo-element
  * @returns {CSSStyleDeclaration} The computed style
@@ -506,14 +640,23 @@ export function parseContent(content) {
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left']
 
 /**
+ * Read a computed style into a plain map. With `universe` (the property set the page's
+ * author CSS can touch, from styleScan — the same pruning the element snapshot uses) only
+ * those properties are read: a property no author rule mentions sits at its UA default,
+ * which getStyleKey drops anyway. This is the pseudo-element path, and a `::before` on
+ * every leaf of the deep-tree scene read all ~400 properties per pseudo — 788k
+ * getPropertyValue calls for 1,936 pseudos, 435 ms against 125 without the rule. Null
+ * (unreliable scan, shadow content) keeps the full enumeration.
  * @export
  * @param {CSSStyleDeclaration} style
+ * @param {Set<string>|null} [universe]
  * @return {Record<string,string>}
  */
-export function snapshotComputedStyle(style) {
+export function snapshotComputedStyle(style, universe = null) {
   const snap = {}
-  for (let prop of style) {
-    snap[prop] = style.getPropertyValue(prop)
+  for (const prop of universe || style) {
+    const v = style.getPropertyValue(prop)
+    if (v) snap[prop] = v
   }
   // #390: drop border props on sides that don't paint (style:none/hidden or width:0).
   // Serializing "0px none rgb(0,0,0)" in the foreignObject triggers faint borders on
@@ -532,9 +675,10 @@ export function snapshotComputedStyle(style) {
 }
 
 /**
- * @export
+ * Split a multi-layer `background-image` on its top-level commas, so a gradient's own commas
+ * stay inside their layer.
  * @param {string} bg
- * @return {string[]}
+ * @returns {string[]}
  */
 export function splitBackgroundImage(bg) {
   const parts = []

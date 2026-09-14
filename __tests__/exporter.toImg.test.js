@@ -68,6 +68,9 @@ describe('toImg', () => {
   it('uses rasterize path on Safari when wantsScale', async () => {
     vi.mocked(isSafari).mockReturnValue(true)
     const img = await toImg(DATA_PNG, { scale: 2 })
-    expect(img).toBeDefined()
+    // The plain path returns the input URL verbatim; the rasterize fallback re-encodes
+    // through a canvas, so a NEW data URL is what proves the Safari branch actually ran.
+    expect(img.src).not.toBe(DATA_PNG)
+    expect(img.src).toMatch(/^data:image\/png/)
   })
 })

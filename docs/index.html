@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SnapDOM: Fast, High-Fidelity DOM Capture</title>
-  <meta name="description" content="Capture any DOM element as SVG, PNG, JPG or WebP with fonts, pseudo-elements and open Shadow DOM included. Fast, dependency-free and extensible.">
+  <title>SnapDOM: Browser Capture Engine</title>
+  <meta name="description" content="Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.">
   <meta name="keywords" content="snapdom, DOM capture, html2canvas alternative, HTML to image, SVG export, JavaScript screenshot">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
@@ -12,13 +12,13 @@
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SnapDOM — fast, high-fidelity DOM capture">
-  <meta property="og:description" content="Turn live browser UI into SVG, PNG, JPG or WebP. Zero dependencies, high fidelity and an extensible plugin system.">
+  <meta property="og:title" content="SnapDOM — browser capture engine">
+  <meta property="og:description" content="Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.">
   <meta property="og:url" content="https://snapdom.dev/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="SnapDOM — fast, high-fidelity DOM capture">
-  <meta name="twitter:description" content="Capture live DOM as SVG, PNG, JPG or WebP with the browser details intact.">
+  <meta name="twitter:title" content="SnapDOM — browser capture engine">
+  <meta name="twitter:description" content="Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
   <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
@@ -34,10 +34,9 @@
     "alternateName": "@zumer/snapdom",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
-    "description": "Capture any DOM element as SVG, PNG, JPG or WebP with fonts, pseudo-elements and open Shadow DOM included.",
+    "description": "Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.",
     "url": "https://snapdom.dev/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
-    "softwareVersion": "2.24.15",
     "codeRepository": "https://github.com/zumerlab/snapdom",
     "license": "https://spdx.org/licenses/MIT.html",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
@@ -118,7 +117,7 @@
     .stage-bracket.tr { top: 14px; right: 14px; border-top: 3px solid var(--blue); border-right: 3px solid var(--blue); }
     .stage-bracket.bl { bottom: 14px; left: 14px; border-bottom: 3px solid var(--blue); border-left: 3px solid var(--blue); }
     .stage-bracket.br { right: 14px; bottom: 14px; border-right: 3px solid var(--blue); border-bottom: 3px solid var(--blue); }
-    .stage-mascot { position: absolute; left: 50%; bottom: 24px; width: auto; height: 76%; transform: translateX(-50%); filter: drop-shadow(0 16px 18px rgba(15,30,77,.16)); }
+    .stage-mascot { position: absolute; left: 50%; bottom: 24px; width: min(76%, 300px); height: auto; transform: translateX(-50%); }
     .stage-annot { position: absolute; color: var(--muted); font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
     .stage-annot.vert { writing-mode: vertical-rl; }
     #hero-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: #fff; opacity: 0; }
@@ -188,8 +187,8 @@
     .resource small { color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
     .resource strong { font-size: 24px; line-height: 1.15; }
     .showcase-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
-    .showcase-visual { position: relative; min-height: 360px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: var(--soft); }
-    .showcase-visual img { width: 230px; max-width: 55%; position: relative; filter: drop-shadow(0 18px 24px rgba(15,30,77,.18)); }
+    .showcase-visual { position: relative; min-height: 360px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+    .showcase-visual img { width: 300px; max-width: 80%; position: relative; }
     .showcase-copy h2 { margin: 0; font-size: clamp(38px, 5vw, 62px); line-height: 1; letter-spacing: -.045em; }
     .showcase-copy p { margin: 22px 0 28px; color: var(--muted); font-size: 18px; line-height: 1.65; }
     .final-cta { padding: 90px 0; text-align: center; }
@@ -197,14 +196,16 @@
     .final-cta .actions { justify-content: center; }
     footer { padding: 30px 0 44px; border-top: 1px solid var(--line); color: var(--muted); }
     .footer-row { display: flex; justify-content: space-between; gap: 24px; }
-    .footer-links { display: flex; gap: 18px; }
-    @media (max-width: 1080px) {
+    .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+    @media (max-width: 1180px) {
       .nav-links > a:not(.github-badge) { display: none; }
       .mobile-nav { display: flex; overflow-x: auto; border-top: 1px solid var(--line); scrollbar-width: none; }
       .mobile-nav::-webkit-scrollbar { display: none; }
       .mobile-nav .wrap { display: flex; }
       .mobile-nav a { flex: 1 0 auto; padding: 11px 14px; color: var(--muted); text-align: center; text-decoration: none; font-size: 12px; font-weight: 700; }
       .mobile-nav a:hover { color: var(--blue); }
+    }
+    @media (max-width: 1080px) {
       .hero { padding-top: 64px; }
       .hero-grid, .section-heading, .pro-panel, .showcase-callout { grid-template-columns: 1fr; }
       .demo-shell { max-width: 620px; }
@@ -257,9 +258,11 @@
         <a href="./compare/">Compare</a>
         <a href="./showcase/">Showcase</a>
         <a href="./made-with/">Made with</a>
+        <a href="./ecosystem/">Ecosystem</a>
         <a href="./plugins.html">Plugins</a>
         <a href="./labs.html">Labs</a>
         <a href="./blog/">Blog</a>
+        <a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a>
         <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" aria-label="SnapDOM on GitHub, current star count">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" style="height:1em;width:auto"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4-68.9 15-83.4-29.8-83.4-29.8-11.1-28.4-27.5-36-27.5-36-22.6-15.4 1.6-15.1 1.6-15.1 24.9 2 38.6 25.5 38.6 25.5 22.2 38 58.2 27.1 72.6 20.6 2.3-16 8.8-27.1 16-33.4-55-6.2-112.8-27.5-112.8-123.1 0-27.1 9.8-49.4 25.5-66.7-2.6-6.2-11.1-31.4 2.3-65.7 20.9-6.5 69 25.5 69 25.5 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-32 69-25.5 13.4 34.3 4.9 59.5 2.3 65.7 16 17.3 25.5 39.6 25.5 66.7 0 95.8-57.9 116.6-113.1 122.8 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8z"/></svg>
           <span>GitHub</span>
@@ -267,16 +270,16 @@
         </a>
       </nav>
     </div>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./plugins.html">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div></nav>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./ecosystem/">Ecosystem</a><a href="./plugins.html">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a></div></nav>
   </header>
 
   <main>
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <p class="eyebrow">Open source · zero dependencies · browser native</p>
-          <h1 aria-label="Capture DOM elements as images, videos, text, ASCII, JSON, PDF or anything."><span aria-hidden="true">Capture DOM elements as <span class="hero-format" id="hero-format">images.</span></span></h1>
-          <p class="lead">SnapDOM captures any element as SVG, PNG, JPG, WebP. Plugins add GIF, video, standalone HTML and custom formats.</p>
+          <p class="eyebrow">Browser capture engine · zero dependencies</p>
+          <h1 aria-label="Capture web interfaces as images, HTML, context, canvas, PDF, GIF or video."><span aria-hidden="true">Capture your UI as <span class="hero-format" id="hero-format">images.</span></span></h1>
+          <p class="lead">Export images and canvas from a reusable capture. Plugins add self-contained HTML, context for agents, PDFs and recordings.</p>
           <div class="actions">
             <a class="btn btn-primary" href="./docs/">Get started</a>
             <a class="btn btn-secondary" href="./showcase/">Explore live demos</a>
@@ -287,7 +290,7 @@
             <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
           </div>
           <div class="proof" aria-label="Project stats">
-            <span><strong id="version-count">v2.24.15</strong> current version</span>
+            <span><strong id="version-count">v2.24.15</strong> on npm</span>
             <span><strong id="download-count">1m+</strong> downloads/month</span>
             <span><strong>MIT</strong> licensed</span>
           </div>
@@ -302,7 +305,7 @@
             <span class="stage-cross" style="left:33.33%;top:33.33%">+</span>
             <span class="stage-cross" style="left:66.66%;top:66.66%">+</span>
             <div class="stage-bracket tl"></div><div class="stage-bracket tr"></div><div class="stage-bracket bl"></div><div class="stage-bracket br"></div>
-            <img class="stage-mascot" src="./assets/mrsnapdom-pose.png" alt="Mr. SnapDOM, ready to be captured">
+            <img class="stage-mascot mascot-art" src="./assets/mascots/mr-snapdom-guides.webp" alt="Mr. SnapDOM guiding the way with a map" width="1254" height="1254" decoding="async">
             <span class="stage-annot" style="top:20px;left:52px">Subject: Mr. SnapDOM</span>
             <span class="stage-annot" style="bottom:20px;right:52px">AF · locked</span>
             <span class="stage-annot vert" style="top:50%;right:20px;transform:translateY(-50%)">Live DOM: not a screenshot</span>
@@ -322,7 +325,7 @@
         <span>Used in production by</span>
         <div class="logo-list">
           <a href="https://github.com/lobehub/lobehub" target="_blank" rel="noopener" aria-label="LobeHub repository"><img src="./assets/made-with/lobehub.png" alt="LobeHub" title="LobeHub"></a>
-          <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener" aria-label="TriliumNext repository"><img src="./assets/made-with/TriliumNext.png" alt="TriliumNext" title="TriliumNext"></a>
+          <a href="https://github.com/huggingface/chat-ui" target="_blank" rel="noopener" aria-label="Hugging Face Chat UI repository"><img src="./assets/made-with/huggingface.png" alt="Hugging Face" title="Hugging Face Chat UI"></a>
           <a href="https://github.com/Tencent/tmagic-editor" target="_blank" rel="noopener" aria-label="Tencent TMagic Editor repository"><img src="./assets/made-with/Tencent.png" alt="Tencent" title="Tencent TMagic Editor"></a>
           <a href="https://github.com/seek-oss/playroom" target="_blank" rel="noopener" aria-label="SEEK Playroom repository"><img src="./assets/made-with/seek-oss.png" alt="SEEK" title="SEEK Playroom"></a>
           <a href="https://github.com/antvis/GPT-Vis" target="_blank" rel="noopener" aria-label="AntV GPT-Vis repository"><img src="./assets/made-with/antvis.png" alt="AntV" title="AntV GPT-Vis"></a>
@@ -335,16 +338,16 @@
     <section class="section">
       <div class="wrap">
         <div class="section-heading">
-          <h2>What SnapDOM captures.</h2>
-          <p>SnapDOM starts from the element the browser rendered. It preserves the parts that usually make DOM capture difficult without rebuilding the page in a second rendering engine.</p>
+          <h2>What SnapDOM gives you.</h2>
+          <p>Start with a rendered web interface. SnapDOM captures its structure, styles and resources so you can use that state in different outputs.</p>
         </div>
         <div class="feature-grid">
-          <article class="feature"><h3>High fidelity</h3><p>Web fonts, pseudo-elements, SVG references, backgrounds and open shadow roots travel with the capture.</p></article>
-          <article class="feature"><h3>Fast by design</h3><p>A linear capture pipeline, bounded caches and lazy exporters keep repeated captures responsive.</p></article>
-          <article class="feature"><h3>Simple API</h3><p>Capture once, then export to PNG, SVG, canvas, blob, JPG or WebP from the same result.</p></article>
-          <article class="feature"><h3>Zero dependencies</h3><p>Ship one focused browser library without pulling a second DOM or rendering stack into your app.</p></article>
-          <article class="feature"><h3>Plugin-ready</h3><p>Add formats and capture behavior without making the core library larger for everyone.</p></article>
-          <article class="feature"><h3>Open source</h3><p>The core remains MIT licensed, inspectable and usable in personal and commercial projects.</p></article>
+          <article class="feature"><h3>Rendered detail</h3><p>Capture web fonts, pseudo-elements, SVG, backgrounds, open Shadow DOM and the current state of form controls.</p></article>
+          <article class="feature"><h3>Fast repeated captures</h3><p>V3 reuses resources and unchanged captures. Exports run when you request them, and changed elements are captured again.</p></article>
+          <article class="feature"><h3>One capture, several exports</h3><p>Get PNG, JPG, WebP, SVG, canvas or a Blob from the same result. Use canvas output as a WebGL texture.</p></article>
+          <article class="feature"><h3>HTML and agent context</h3><p>Plugins export self-contained HTML, text or JSON outlines, and screenshots with maps of interactive elements.</p></article>
+          <article class="feature"><h3>GIF and video</h3><p>Recording plugins capture a live element frame by frame. Use them for animations, interaction demos and short clips.</p></article>
+          <article class="feature"><h3>MIT, zero dependencies</h3><p>Use the core in personal or commercial projects. Load the plugins you need, or add your own through the public API.</p></article>
         </div>
       </div>
     </section>
@@ -353,13 +356,13 @@
       <div class="wrap">
         <div class="section-heading">
           <h2>Where it is useful.</h2>
-          <p>Use the DOM as the design surface, then capture the result for downloads, generated assets, automation or tests.</p>
+          <p>Build the interface in HTML and CSS, then use its captured appearance and structure in the rest of your application.</p>
         </div>
         <div class="use-grid">
           <a class="use-card" href="./how-to/export-dashboard-as-image/"><span>Product</span><h3>Dashboards</h3><p>Export charts, KPI cards, legends and surrounding interface as one image.</p></a>
-          <a class="use-card" href="./how-to/export-react-component-as-image/"><span>Frontend</span><h3>Components</h3><p>Turn a rendered React component or web UI into a downloadable asset.</p></a>
-          <a class="use-card" href="./how-to/generate-social-card-from-html/"><span>Content</span><h3>Social cards</h3><p>Design in HTML and CSS, then generate shareable images in the browser.</p></a>
-          <a class="use-card" href="./how-to/visual-regression-screenshot/"><span>Testing</span><h3>Visual baselines</h3><p>Produce deterministic component captures for visual regression workflows.</p></a>
+          <a class="use-card" href="./labs/webgl-live-mirror/"><span>Graphics</span><h3>Canvas textures</h3><p>Use a captured interface as a texture in WebGL. Recapture when the source changes.</p></a>
+          <a class="use-card" href="./docs/plugins/"><span>Agents</span><h3>Page context</h3><p>Give an agent text, roles and bounds, with an optional annotated image of the same capture.</p></a>
+          <a class="use-card" href="./how-to/visual-regression-screenshot/"><span>Testing</span><h3>Visual baselines</h3><p>Capture components for visual comparison. Control fonts, animation and application state in your test.</p></a>
         </div>
       </div>
     </section>
@@ -368,17 +371,17 @@
       <div class="wrap">
         <div class="section-heading">
           <h2>SnapDOM Pro</h2>
-          <p>Paid plugins for production workflows built on top of SnapDOM.</p>
+          <p>Paid plugins for PDF and vector export, currently in preview.</p>
         </div>
         <div class="pro-panel">
           <div class="pro-copy">
-            <span class="label">Professional plugins · coming soon</span>
-            <h3>Production-ready plugins.</h3>
-            <p>SnapDOM Pro will add focused, production-ready capabilities without changing the free core. Plugin sales fund ongoing SnapDOM maintenance and help keep the library current, independent and open source.</p>
+            <span class="label">Plugin previews</span>
+            <h3>Searchable PDFs and editable vectors.</h3>
+            <p>Browse sample exports and current limits. Pro is separate from the core and the existing official plugins, which remain MIT licensed.</p>
           </div>
           <div class="pro-meta">
-            <div><strong>Built on the public plugin API</strong><p>Local-first, explicit and integrated with the same capture lifecycle as SnapDOM.</p></div>
-            <a class="btn" href="./plugins.html">Explore plugins</a>
+            <div><strong>See the output</strong><p>Compare PDF text layers and inspect vector SVG samples.</p></div>
+            <a class="btn" href="./pro/">Explore SnapDOM Pro</a>
           </div>
         </div>
       </div>
@@ -403,7 +406,7 @@
 
     <section class="section">
       <div class="wrap showcase-callout">
-        <div class="showcase-visual"><img src="./assets/mrsnapdom-run.png" alt="Mr. SnapDOM running toward the live demos"></div>
+        <div class="showcase-visual"><img class="mascot-art" src="./assets/mascots/mr-snapdom-showcase.webp" alt="Mr. SnapDOM presenting an image frame" width="1254" height="1254" loading="lazy" decoding="async"></div>
         <div class="showcase-copy">
           <p class="eyebrow">21 live demos</p>
           <h2>Run the complete demo suite.</h2>
@@ -426,12 +429,18 @@
 
   <footer>
     <div class="wrap footer-row">
-      <span>MIT © <a href="https://github.com/zumerlab">Zumerlab</a></span>
-      <div class="footer-links"><a href="./docs/">Docs</a><a href="./showcase/">Showcase</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a></div>
+      <span>MIT © <a href="https://zumerlab.com/">Zumerlab</a></span>
+      <div class="footer-links"><a href="./docs/">Docs</a><a href="./showcase/">Showcase</a><a href="./ecosystem/">Ecosystem</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a><a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)">X</a></div>
     </div>
   </footer>
 
   <script>
+    // Preserve links to demos that used to live on the home page.
+    const showcaseAnchors = ['demo-index', 'benchmark', 'basic', 'transition', 'opts-demo', 'orbit', 'html-export-demo', 'gif-export-demo', 'video-export-demo', 'video', 'fonts-demo', 'shadow', 'canvas', 'export', 'pseudo', 'clip', 'blend', 'iframe', 'forms', 'mask', 'cors', 'fullbody']
+    if (showcaseAnchors.includes(location.hash.slice(1))) {
+      location.replace('./showcase/' + location.hash)
+    }
+
     if (location.hostname === 'snapdom.dev') {
       const umami = document.createElement('script')
       umami.defer = true
@@ -459,7 +468,7 @@
 
     const heroFormat = document.getElementById('hero-format')
     if (heroFormat && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const formats = ['images.', 'videos.', 'text.', 'ASCII.', 'JSON.', 'PDF.', 'anything.']
+      const formats = ['images.', 'HTML.', 'context.', 'canvas.', 'PDF.', 'GIF.', 'video.']
       let formatIndex = 0
       setInterval(() => {
         formatIndex = (formatIndex + 1) % formats.length

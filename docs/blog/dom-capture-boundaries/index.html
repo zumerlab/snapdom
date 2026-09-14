@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"DOM capture boundaries and integration patterns","description":"Run SnapDOM from Node with Playwright or Puppeteer, handle cross-origin iframe boundaries, and separate browser automation from DOM capture.","url":"https://snapdom.dev/blog/dom-capture-boundaries/","datePublished":"2026-08-22","dateModified":"2026-08-22","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"DOM capture boundaries and integration patterns","description":"Run SnapDOM from Node with Playwright or Puppeteer, handle cross-origin iframe boundaries, and separate browser automation from DOM capture.","url":"https://snapdom.dev/blog/dom-capture-boundaries/","datePublished":"2026-08-22","dateModified":"2026-09-05","author":{"@type":"Organization","name":"Zumerlab"}}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"DOM Capture Boundaries","item":"https://snapdom.dev/blog/dom-capture-boundaries/"}]}</script>
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
@@ -25,7 +25,7 @@
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
 
   <section class="hero"><div class="hero-badge">SnapDOM Blog</div><h1>DOM capture boundaries and integration patterns</h1><p class="lead">SnapDOM needs a readable DOM and leaves navigation to browser tooling. Browser control connects it to Node, cross-origin documents and automated application flows.</p></section>
   <main class="page">
@@ -59,9 +59,11 @@ npx playwright install chromium</pre>
       <pre class="code-block">import { chromium } from 'playwright'
 import { writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 
 const require = createRequire(import.meta.url)
-const snapdomBundlePath = require.resolve('@zumer/snapdom')
+const snapdomPackagePath = require.resolve('@zumer/snapdom/package.json')
+const snapdomBundlePath = join(dirname(snapdomPackagePath), 'dist', 'snapdom.js')
 
 const browser = await chromium.launch()
 
@@ -104,7 +106,7 @@ try {
 } finally {
   await browser.close()
 }</pre>
-      <p>The package's <code>require</code> export resolves to the IIFE that exposes <code>window.snapdom</code>. Resolving the installed package is robust across hoisted and standalone installs, keeps CI output reproducible and also works offline. In Playwright, CSP bypass belongs to the browser context; Puppeteer uses <code>page.setBypassCSP(true)</code> before navigation.</p>
+      <p>The installed package includes an IIFE at <code>dist/snapdom.js</code> that exposes <code>window.snapdom</code>. Resolve <code>package.json</code> first to locate that bundle; the package entry point can resolve to an ES module. Resolving the installed package is robust across hoisted and standalone installs, keeps CI output reproducible and also works offline. In Playwright, CSP bypass belongs to the browser context; Puppeteer uses <code>page.setBypassCSP(true)</code> before navigation.</p>
       <p><code>CaptureResult</code>, <code>Blob</code>, <code>Canvas</code> and <code>HTMLImageElement</code> instances stay in the browser process. Strings cross the <code>page.evaluate()</code> boundary cleanly, so produce every required format from the reusable capture and return data URLs or encoded text.</p>
       <p><code>page.screenshot()</code> is the direct tool for a single pixel-based screenshot of a page. Keeping SnapDOM inside the browser is useful when the application also exports client-side, when you need SVG, when a plugin edits the captured DOM, or when one frozen capture must feed several formats.</p>
     </section>
@@ -143,7 +145,7 @@ const framePng = await frame.evaluate(async () => {
       <pre class="code-block">await page.goto(appURL, { waitUntil: 'domcontentloaded' })
 await page.getByRole('button', { name: 'Generate report' }).click()
 await page.locator('#report[data-export-ready="true"]').waitFor()
-await page.addScriptTag({ content: snapdomBundle })
+await page.addScriptTag({ path: snapdomBundlePath })
 
 const captureURL = await page.evaluate(async () => {
   await document.fonts.ready

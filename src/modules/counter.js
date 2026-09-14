@@ -1,4 +1,4 @@
-import { isDocument } from '../utils/dom.js'
+import { isDocument } from '../utils/helpers.js'
 
 /**
  * Lightweight CSS counter resolver for SnapDOM.
@@ -7,10 +7,14 @@ import { isDocument } from '../utils/dom.js'
  * - Carries state across siblings in document order
  * - Simple OL/UL indexing (start, li[value]); reversed not handled intentionally
  *
- * @module counters
+ * @module counter
  */
 
-/** Detects if a content string uses counter()/counters(). */
+/**
+ * Whether a `content` value calls counter() or counters(). The cheap gate before any walk.
+ * @param {string} input
+ * @returns {boolean}
+ */
 export function hasCounters(input) {
   return /\bcounter\s*\(|\bcounters\s*\(/.test(input || '')
 }
@@ -41,8 +45,8 @@ function roman(n, upper = true) {
 }
 
 /**
- * Format a numeric counter value according to CSS counter-style keyword.
- * NOTE: Keeps your original clamp to 0 in decimal variants.
+ * Format a counter value in a CSS counter-style keyword. Negative values keep their sign
+ * (`-05` under decimal-leading-zero); alpha and roman clamp to 1, unknown styles print digits.
  * @param {number} value
  * @param {string} style
  * @returns {string}
@@ -54,12 +58,40 @@ function formatCounter(value, style) {
       const abs = Math.abs(value)
       return (value < 0 ? '-' : '') + (abs < 10 ? '0' : '') + String(abs)
     }
-    case 'lower-alpha': return alpha(value, false)
-    case 'upper-alpha': return alpha(value, true)
+    // `lower-latin`/`upper-latin` are exact aliases of the -alpha forms (CSS Counter Styles
+    // §6.1). Falling through to the decimal default rendered digits where the page shows
+    // letters — an `a. b. c.` list captured as `1. 2. 3.`.
+    case 'lower-alpha': case 'lower-latin': return alpha(value, false)
+    case 'upper-alpha': case 'upper-latin': return alpha(value, true)
     case 'lower-roman': return roman(value, false)
     case 'upper-roman': return roman(value, true)
     default: return String(value)
   }
+}
+
+/**
+ * Tokenizes a counter-reset / -set / -increment declaration into [name, value] pairs.
+ * The grammar is `[<counter-name> <integer>?]+` — WHITESPACE-separated. Splitting on commas
+ * (which are not part of it) collapsed `counter-reset: chapter 0 section 0` into a single
+ * part and silently dropped every counter after the first. Counter names are custom-idents
+ * and cannot start with a digit, so a numeric token is unambiguously the preceding name's
+ * value. Commas are tolerated as separators rather than parsed, costing nothing.
+ * @param {string} decl
+ * @param {number} dflt - value when a name carries no integer (0 for reset/set, 1 for increment)
+ * @returns {Array<[string, number]>}
+ */
+export function counterPairs(decl, dflt) {
+  const toks = (decl || '').trim().split(/[\s,]+/).filter(Boolean)
+  const out = []
+  for (let i = 0; i < toks.length; i++) {
+    const name = toks[i]
+    if (name === 'none') continue
+    const next = toks[i + 1]
+    const hasVal = next !== undefined && Number.isFinite(Number(next))
+    out.push([name, hasVal ? Number(next) : dflt])
+    if (hasVal) i++
+  }
+  return out
 }
 
 /**
@@ -73,6 +105,8 @@ function formatCounter(value, style) {
  * - counter-increment on element: add to top, creating top=0 if needed
  * - list-item: sets 'list-item' value for LI in OL/UL (supports start, li[value])
  *
+ * Built once per capture, lazily (pseudo.js lazyCounterContext), so a page with no counter
+ * in any pseudo never pays the walk. Pinned by __tests__/module.counter.test.js.
  * @param {Document|Element} root
  * @returns {{ get(node: Element, name: string): number, getStack(node: Element, name: string): number[] }}
  */
@@ -81,12 +115,9 @@ export function buildCounterContext(root) {
   const rootEl = isDocument(root) ? root.documentElement : root
 
   const isLi = (el) => el && el.tagName === 'LI'
-  const countPrevLi = (li) => {
-    let c = 0, p = li?.parentElement
-    if (!p) return 0
-    for (const sib of p.children) { if (sib === li) break; if (sib.tagName === 'LI') c++ }
-    return c
-  }
+  // The walk is already in document order. Carry each list's ordinal instead of counting
+  // all previous siblings for every LI (quadratic), and continue from explicit li[value].
+  const listOrdinals = new WeakMap()
   const cloneMap = (m) => {
     const out = new Map()
     for (const [k, arr] of m) out.set(k, arr.slice())
@@ -96,17 +127,14 @@ export function buildCounterContext(root) {
   // Apply resets/increments/list-item given base map and the *parent* map (to decide push vs replace)
   const applyTo = (baseMap, parentMap, el) => {
     const map = cloneMap(baseMap)
+    let cs
+    try { cs = getComputedStyle(el) } catch { cs = el.style }
 
     // counter-reset
     let reset
-    try { reset = el.style?.counterReset || getComputedStyle(el).counterReset } catch {}
+    try { reset = cs?.counterReset } catch {}
     if (reset && reset !== 'none') {
-      for (const part of reset.split(',')) {
-        const toks = part.trim().split(/\s+/)
-        const name = toks[0]
-        const val = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 0
-        if (!name) continue
-
+      for (const [name, val] of counterPairs(reset, 0)) {
         const parentStack = parentMap.get(name)
         if (parentStack && parentStack.length) {
           const s = parentStack.slice() // nest on parent's stack
@@ -120,13 +148,9 @@ export function buildCounterContext(root) {
 
     // counter-set (sets top value without creating a new scope)
     let set
-    try { set = el.style?.counterSet || getComputedStyle(el).counterSet } catch {}
+    try { set = cs?.counterSet } catch {}
     if (set && set !== 'none') {
-      for (const part of set.split(',')) {
-        const toks = part.trim().split(/\s+/)
-        const name = toks[0]
-        const val = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 0
-        if (!name) continue
+      for (const [name, val] of counterPairs(set, 0)) {
         const stack = map.get(name) || []
         if (stack.length === 0) stack.push(0)
         stack[stack.length - 1] = val
@@ -136,13 +160,9 @@ export function buildCounterContext(root) {
 
     // counter-increment
     let inc
-    try { inc = el.style?.counterIncrement || getComputedStyle(el).counterIncrement } catch {}
+    try { inc = cs?.counterIncrement } catch {}
     if (inc && inc !== 'none') {
-      for (const part of inc.split(',')) {
-        const toks = part.trim().split(/\s+/)
-        const name = toks[0]
-        const by = Number.isFinite(Number(toks[1])) ? Number(toks[1]) : 1
-        if (!name) continue
+      for (const [name, by] of counterPairs(inc, 1)) {
         const stack = map.get(name) || []
         if (stack.length === 0) stack.push(0)
         stack[stack.length - 1] += by
@@ -152,19 +172,14 @@ export function buildCounterContext(root) {
 
     // list-item for LI in OL/UL (start, li[value])
     try {
-      const cs = getComputedStyle(el)
-      if (cs.display === 'list-item' && isLi(el)) {
+      if (cs?.display === 'list-item' && isLi(el)) {
         const p = el.parentElement
-        let idx = 1
-        if (p && p.tagName === 'OL') {
-          const startAttr = p.getAttribute('start')
-          const start = Number.isFinite(Number(startAttr)) ? Number(startAttr) : 1
-          const prev = countPrevLi(el)
-          const ownAttr = el.getAttribute('value')
-          idx = Number.isFinite(Number(ownAttr)) ? Number(ownAttr) : (start + prev)
-        } else {
-          idx = 1 + countPrevLi(el)
-        }
+        const previous = p && listOrdinals.get(p)
+        const start = p?.tagName === 'OL' ? parseInt(p.getAttribute('start'), 10) : NaN
+        let idx = previous === undefined ? (Number.isFinite(start) ? start : 1) : previous + 1
+        const own = p?.tagName === 'OL' ? parseInt(el.getAttribute('value'), 10) : NaN
+        if (Number.isFinite(own)) idx = own
+        if (p) listOrdinals.set(p, idx)
         const s = map.get('list-item') || []
         if (s.length === 0) s.push(0)
         s[s.length - 1] = idx
@@ -245,6 +260,7 @@ export function buildCounterContext(root) {
  * @param {string} raw
  * @param {Element} node
  * @param {{get(node: Element, name: string): number, getStack(node: Element, name: string): number[]}} ctx
+ * @returns {string} `raw` with the calls expanded; `'- '` when the context throws
  */
 export function resolveCountersInContent(raw, node, ctx) {
   if (!raw || raw === 'none') return raw

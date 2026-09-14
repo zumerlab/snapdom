@@ -23,7 +23,6 @@ function clearCaches() {
   cache.image?.clear?.()
   cache.background?.clear?.()
   cache.resource?.clear?.()
-  cache.font?.clear?.()
 }
 
 let OrigImage
@@ -302,7 +301,7 @@ describe('snapFetch (svg path)', () => {
     f.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      // devolvemos un PNG mínimo como blob
+      // return a minimal PNG as a blob
       blob: async () => new Blob([new Uint8Array([137,80,78,71,13,10,26,10])], { type: 'image/png' }),
       text: async () => '<svg/>',
       headers: new Headers({ 'content-type': 'image/png' }),

@@ -6,8 +6,19 @@
     "lib": ["ES2020", "DOM"],
     "strict": true,
     "noEmit": true,
-    "skipLibCheck": true,
-    "types": []
+    // Deliberately FALSE. With it on, this test typechecked the .d.ts files against each other
+    // but skipped checking them as libraries — which is the mode every consumer is in — so
+    // `declare module "@zumer/snapdom/plugins"` blocks that are invalid augmentations passed
+    // here and failed with TS2665 the moment anyone installed the package. What the repo
+    // checks and what a consumer checks are now the same thing.
+    "skipLibCheck": false,
+    "types": [],
+    // The plugin declarations import the plugin type from the core package by NAME, the way a
+    // consumer resolves it. In this repo that name would resolve to whatever npm installed in
+    // node_modules (the last published release), so pin it to the declarations under test.
+    "paths": {
+      "@zumer/snapdom": ["./types/snapdom.d.ts"]
+    }
   },
-  "include": ["types/**/*.ts"]
+  "include": ["types/**/*.ts", "packages/plugins/*.d.ts"]
 }

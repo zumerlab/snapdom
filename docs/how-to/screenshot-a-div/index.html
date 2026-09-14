@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How to Screenshot a Div in JavaScript: SnapDOM</title>
+  <title>How to Screenshot a Div in JavaScript — SnapDOM</title>
   <meta name="description" content="Take a screenshot of any HTML element with one line of JavaScript using SnapDOM. Working example, download recipe and FAQs." />
   <meta name="keywords" content="screenshot a div, javascript screenshot, html to image, capture html element, screenshot html javascript" />
   <meta name="robots" content="index, follow" />
@@ -33,7 +33,7 @@
     "url": "https://snapdom.dev/how-to/screenshot-a-div/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-08-22",
+    "dateModified": "2026-05-11",
     "author": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab" },
     "publisher": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
     "mainEntityOfPage": "https://snapdom.dev/how-to/screenshot-a-div/",
@@ -49,42 +49,26 @@
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "Why not use the browser's built-in screenshot API?",
+        "name": "What is the easiest way to screenshot a div in JavaScript?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Ordinary JavaScript inside a page has no built-in element-screenshot API. getDisplayMedia captures a tab or screen with user permission, not an arbitrary element. Browser automation exposes page and element screenshots and can also inject SnapDOM."
+          "text": "Install @zumer/snapdom and call snapdom.toPng(element). It returns an HTMLImageElement you can append, download, or convert to a Blob — all in one line of code."
         }
       },
       {
         "@type": "Question",
-        "name": "Does this work with web fonts?",
+        "name": "Can JavaScript take a screenshot of a webpage?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. Pass embedFonts: true and SnapDOM inlines the matching @font-face declarations so the image uses the rendered fonts."
+          "text": "JavaScript cannot natively screenshot the entire viewport, but it can serialise any DOM element into an image using a library like SnapDOM, html2canvas, or html-to-image. SnapDOM clones the element, inlines its styles and renders it through SVG foreignObject."
         }
       },
       {
         "@type": "Question",
-        "name": "Can I screenshot something inside an iframe?",
+        "name": "Does it work cross-browser?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Readable same-origin iframes are supported from the parent page. Cross-origin and origin-opaque sandboxed frames are not readable from that context. For an authorized target, browser automation can enter the frame or open its URL and inject SnapDOM there."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What about Shadow DOM?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "SnapDOM walks open Shadow DOM trees during capture, so Web Components render correctly."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How big is the library?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Around 50 KB minified and gzipped, with zero runtime dependencies."
+          "text": "Yes. SnapDOM works in all modern Chromium, Firefox and Safari browsers. It uses standard Web APIs (SVG foreignObject, Canvas) with no polyfills required."
         }
       }
     ]
@@ -105,7 +89,7 @@
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
-      { "@type": "ListItem", "position": 2, "name": "How-To", "item": "https://snapdom.dev/how-to/" },
+      { "@type": "ListItem", "position": 2, "name": "How-to", "item": "https://snapdom.dev/how-to/" },
       { "@type": "ListItem", "position": 3, "name": "Screenshot a Div", "item": "https://snapdom.dev/how-to/screenshot-a-div/" }
     ]
   }
@@ -113,7 +97,7 @@
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/" aria-current="page">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">How-To Recipe</div>
@@ -123,17 +107,17 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>How to <span class="accent">screenshot a div</span> in JavaScript</h1>
-    <p class="lead">Select an element, call <code>snapdom.toPng</code> and use the returned <code>HTMLImageElement</code>.</p>
+    <p class="lead">Select the rendered element, call <code>snapdom.toPng</code>, and use the returned image in a preview or download.</p>
   </section>
 
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p><code>const img = await snapdom.toPng(document.querySelector('#my-div'));</code>. That's the entire recipe. The promise resolves to an <code>HTMLImageElement</code> you can append, download or upload.</p>
+      <p><code>const img = await snapdom.toPng(document.querySelector('#my-div'));</code> — that's the entire recipe. The promise resolves to an <code>HTMLImageElement</code> you can append, download or upload.</p>
     </div>
 
     <section class="prose">
-      <h2 id="install">Step 1: Install SnapDOM</h2>
+      <h2 id="install">Step 1 — Install SnapDOM</h2>
       <pre class="code-block">npm install @zumer/snapdom</pre>
       <p>If you don't use a bundler, you can also use the CDN build:</p>
       <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> type=<span class="str">"module"</span><span class="op">&gt;</span>
@@ -142,14 +126,14 @@
     </section>
 
     <section class="prose">
-      <h2 id="pick">Step 2: Pick the div you want to screenshot</h2>
+      <h2 id="pick">Step 2 — Pick the div you want to screenshot</h2>
       <p>Anything that's part of the live document tree works. Most people use <code>document.querySelector</code>:</p>
       <pre class="code-block"><span class="kw">const</span> el = document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>);</pre>
       <p class="muted">The element doesn't need to be visible inside the viewport, but it does need to be attached to the document (not <code>display: none</code>).</p>
     </section>
 
     <section class="prose">
-      <h2 id="capture">Step 3: Capture it</h2>
+      <h2 id="capture">Step 3 — Capture it</h2>
       <p>One line:</p>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
@@ -158,7 +142,7 @@
     </section>
 
     <section class="prose">
-      <h2 id="use">Step 4: Do something with the image</h2>
+      <h2 id="use">Step 4 — Do something with the image</h2>
 
       <h4>Append it to the page</h4>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el);
@@ -169,7 +153,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
 
       <h4>Get a Blob to upload to a server</h4>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(el, { type: <span class="str">'png'</span> });
+      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(el, { format: <span class="str">'png'</span> });
 
 <span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
 form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'screenshot.png'</span>);
@@ -202,7 +186,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
     <section class="prose">
       <h2 id="live-demo">Or try it right here</h2>
-      <p>The example above, running on this page: same div, same <code>snapdom.toPng</code> call:</p>
+      <p>The example above, running on this page — same div, same <code>snapdom.toPng</code> call:</p>
       <div class="demo-box">
         <div class="demo-stage">
           <div id="demo-card" style="padding:24px;background:#6366f1;color:#fff;border-radius:12px;max-width:320px;">
@@ -221,12 +205,12 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
     <section class="prose">
       <h2 id="options">Useful options</h2>
       <ul>
-        <li><code>dpr: 2</code> sets pixel density (auto-detects <code>window.devicePixelRatio</code> for retina; override here when you need a fixed value).</li>
-        <li><code>scale: 2</code> multiplies the captured size (zoom). Different from <code>dpr</code>: <code>scale</code> makes the output bigger, <code>dpr</code> makes it sharper at the same logical size.</li>
-        <li><code>backgroundColor: '#fff'</code> fills transparent areas with a colour.</li>
-        <li><code>embedFonts: true</code> inlines <code>@font-face</code> declarations so custom fonts render correctly.</li>
-        <li><code>exclude: ['.skip']</code> skips any element matching the selector.</li>
-        <li><code>useProxy: 'https://your-proxy.example.com/'</code> fetches cross-origin images through a CORS proxy.</li>
+        <li><code>dpr: 2</code> — pixel density (auto-detects <code>window.devicePixelRatio</code> for retina; override here when you need a fixed value).</li>
+        <li><code>scale: 2</code> — multiply the captured size (zoom). Different from <code>dpr</code>: <code>scale</code> makes the output bigger, <code>dpr</code> makes it sharper at the same logical size.</li>
+        <li><code>backgroundColor: '#fff'</code> — fill transparent areas with a colour.</li>
+        <li><code>embedFonts: 'auto'</code> — the v3 default embeds used web fonts.</li>
+        <li><code>exclude: ['.skip']</code> — skip any element matching the selector.</li>
+        <li><code>useProxy: 'https://your-proxy.example.com/'</code> — fetch cross-origin images through a CORS proxy.</li>
       </ul>
     </section>
 
@@ -235,17 +219,17 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Why not use the browser's built-in screenshot API?</summary>
-        <p>Ordinary JavaScript running inside a page has no built-in element-screenshot API. The Screen Capture API (<code>getDisplayMedia</code>) captures a tab or screen with user permission, not an arbitrary DOM element. Browser automation hosts do expose page and element screenshots; they can also inject SnapDOM when the output needs SVG, plugins or reusable exports.</p>
+        <p>There isn't one. The closest thing is the Screen Capture API (<code>getDisplayMedia</code>) which captures the whole tab or screen and requires user permission — it cannot target a specific DOM element. SnapDOM is the workaround.</p>
       </details>
 
       <details>
         <summary>Does this work with web fonts?</summary>
-        <p>Yes, but you have to opt in. Pass <code>{ embedFonts: true }</code> and SnapDOM will inline the matching <code>@font-face</code> declarations so the captured image renders with your real fonts.</p>
+        <p>Yes. SnapDOM v3 embeds used web fonts by default with <code>embedFonts: 'auto'</code>, provided their files are accessible.</p>
       </details>
 
       <details>
         <summary>Can I screenshot something inside an iframe?</summary>
-        <p>Readable same-origin iframes are supported from the parent page. A sandboxed frame without <code>allow-same-origin</code> may still be opaque. A cross-origin parent cannot read the frame document, but an authorized Playwright or Puppeteer job can enter that frame context or open its URL separately and inject SnapDOM there. See the <a href="../capture-iframe/">iframe guide</a>.</p>
+        <p>Same-origin iframes are supported out of the box. Cross-origin iframes are not — the browser blocks access to their content.</p>
       </details>
 
       <details>
@@ -255,7 +239,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>How big is the library?</summary>
-        <p>Around 50 KB minified and gzipped, with zero runtime dependencies.</p>
+        <p>SnapDOM has zero runtime dependencies. Check the distributed build you import for its current bundle size; official plugins are separate imports.</p>
       </details>
     </section>
 
@@ -266,9 +250,6 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
         <a class="related-card" href="../../guides/react/">SnapDOM in React <span class="arrow">→</span></a>
         <a class="related-card" href="../../guides/vue/">SnapDOM in Vue <span class="arrow">→</span></a>
         <a class="related-card" href="../../compare/html2canvas/">SnapDOM vs html2canvas <span class="arrow">→</span></a>
-        <a class="related-card" href="../capture-full-page/">Capture beyond the viewport <span class="arrow">→</span></a>
-        <a class="related-card" href="../capture-shadow-dom/">Capture open Shadow DOM <span class="arrow">→</span></a>
-        <a class="related-card" href="../capture-iframe/">Capture iframe content <span class="arrow">→</span></a>
       </div>
     </section>
 
@@ -277,7 +258,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
         <h2>Try the live demo</h2>
         <p>See SnapDOM running in your browser before installing it.</p>
         <a href="../../showcase/" class="btn btn-primary" data-umami-event="Howto div cta home">Open the demo</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Howto div cta npm">Install from npm</a>
+        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Howto div cta npm">Installation</a>
       </div>
     </section>
   </main>

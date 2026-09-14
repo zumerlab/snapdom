@@ -43,7 +43,6 @@ function usedCodepoints(text = 'A') {
 describe('#478 — a single custom @font-face must survive any weight/stretch request', () => {
   beforeEach(() => {
     cache.resource?.clear?.()
-    cache.font?.clear?.()
   })
   afterEach(() => {
     document.querySelectorAll('style[data-test-478]').forEach((el) => el.remove())

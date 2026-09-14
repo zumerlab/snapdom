@@ -12,7 +12,7 @@ vi.mock('../src/modules/snapFetch.js', () => ({
 }))
 
 import { embedCustomFonts } from '../src/modules/fonts.js'
-import { isIconFont, isIconFontStylesheet } from '../src/modules/iconFonts.js'
+import { isIconFont, isIconFontStylesheet, compileIconFontMatchers } from '../src/modules/iconFonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
 
@@ -61,6 +61,13 @@ describe('isIconFontStylesheet (#493)', () => {
     expect(isIconFontStylesheet('https://cdn.example.com/icons/style.css')).toBe(true)
     expect(isIconFontStylesheet('https://cdn.example.com/fonts/text.css')).toBe(false)
     expect(isIconFontStylesheet('')).toBe(false)
+  })
+
+  it('honours the per-capture iconFonts matchers for each family', () => {
+    const matchers = compileIconFontMatchers(['Roboto'])
+    const url = 'https://fonts.googleapis.com/css?family=Roboto|Material+Icons'
+    expect(isIconFontStylesheet(url)).toBe(false)
+    expect(isIconFontStylesheet(url, matchers)).toBe(true)
   })
 })
 

@@ -1,49 +1,22 @@
 /**
- * Helper utilities for DOM cloning operations
+ * The parts of a clone that cloneNode cannot produce on its own.
+ *
+ * Shadow DOM: a root's CSS is flattened into a host-scoped <style> with specificity 0
+ * (`rewriteShadowCSS`, `injectScopedStyle`), and slotted subtrees are marked so a parent scope
+ * cannot pierce a child's (#488). <img>: the responsive choice is frozen into `src`
+ * (`freezeImgSrcset`). Same-origin <iframe>: rendered to a bitmap at its content box
+ * (`rasterizeIframe`). Range, checkbox and radio inputs, which Firefox does not paint inside
+ * a foreignObject: rebuilt as inline SVG. And blob: URLs, resolved to data: before the page
+ * can revoke them (`resolveBlobUrlsInTree`).
  * @module utils/clone.helpers
  */
 
-import { idle, debugWarn, getStyle } from './index.js'
+import { debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
-import { inlineAllStyles } from '../modules/styles.js'
-import { findRealUrlForPicture, pickSrcsetCandidate } from '../modules/pictureResolver.js'
-
-/**
- * Schedule work across idle slices without relying on IdleDeadline constructor.
- * Falls back to setTimeout on browsers without requestIdleCallback.
- * @param {Node[]} childList
- * @param {(child: Node, done: () => void) => void} callback
- * @param {boolean} fast
- * @returns {Promise<(Node|null)[]>}
- */
-export function idleCallback(childList, callback, fast) {
-  if (fast) {
-    // Fast mode ran every child through deal()/idle() anyway (synchronously), paying an extra
-    // promise + two closures per node — tens of thousands of allocations on large trees.
-    // Call straight through; Promise.all keeps the same concurrency and ordering.
-    return Promise.all(childList.map((child) => new Promise((resolve) => callback(child, resolve))))
-  }
-  return Promise.all(childList.map((child) => {
-    return new Promise((resolve) => {
-      function deal() {
-        idle((deadline) => {
-          // Safari iOS doesn't expose IdleDeadline constructor; duck-type it instead
-          const hasIdleBudget = deadline && typeof deadline.timeRemaining === 'function'
-            ? deadline.timeRemaining() > 0
-            : true // setTimeout path or unknown object
-
-          if (hasIdleBudget) {
-            callback(child, resolve)
-          } else {
-            deal()
-          }
-        }, { fast })
-      }
-      deal()
-    })
-  }))
-}
+import { inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
+import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
+import { markInternalNode } from './ownership.js'
 
 /** Add the current scope's slotted exclusion at the rightmost compound. */
 function addNotSlottedRightmost(sel, scopeId) {
@@ -54,9 +27,22 @@ function addNotSlottedRightmost(sel, scopeId) {
   return `${sel}:not(${marker})`
 }
 
+// A trailing pseudo-element (double-colon, or the four legacy single-colon ones).
+const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|:(?:before|after|first-letter|first-line)$/
+// The pseudo pass inlines these as spans from the live element's computed style; a native
+// copy in the scoped CSS would paint them twice.
+const SPAN_PSEUDO_RE = /^::?(?:before|after|first-letter)$/
+
 /**
  * Wrap a selector list with :where(scope ...), lowering specificity to 0.
  * Optionally excludes slotted elements on the rightmost selector.
+ *
+ * A pseudo-element stays OUTSIDE the wrapper: `:where(… .k::after)` is not a valid selector
+ * and neither is `.k::after:not(…)`, so every scoped pseudo rule used to be dropped by the
+ * parser — a `li::marker` declared inside a shadow root never coloured its marker. ::marker,
+ * ::first-line, ::placeholder and the rest render natively in the foreignObject from the
+ * scoped rule; ::before/::after/::first-letter are the pseudo pass's (span), so their rule is
+ * replaced by a never-matching selector.
  */
 function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scopeId) {
   return selectorList
@@ -64,48 +50,58 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scope
     .map(s => s.trim())
     .filter(Boolean)
     .map(s => {
-      // Si ya fue reescrito como :where(...), no lo toques
-      if (s.startsWith(':where(')) return s
+      // Already rewritten by THIS rewriter (it carries the scope attr): leave it alone.
+      // An author's own :where() DOES need scoping; without this it leaked into the light DOM.
+      if (s.startsWith(':where(') && s.includes('data-sd')) return s
 
-      // No toques @rules aquí (esto se hace en el caller)
+      // Do not touch @rules here (the caller handles those)
       if (s.startsWith('@')) return s
 
-      const body = excludeSlotted ? addNotSlottedRightmost(s, scopeId) : s
-      // Especificidad 0 para todo el selector:
-      return `:where(${scopeSelector} ${body})`
+      const m = s.match(TRAILING_PSEUDO_RE)
+      if (m && SPAN_PSEUDO_RE.test(m[0])) return ':not(*)'
+      const base = m ? s.slice(0, m.index).trim() : s
+      const body = excludeSlotted ? addNotSlottedRightmost(base, scopeId) : base
+      // Zero specificity for the whole selector:
+      return `:where(${scopeSelector} ${body})${m ? m[0] : ''}`
     })
     .join(', ')
 }
 
 /**
- * Rewrite Shadow DOM selectors to a flat, host-scoped form with specificity 0.
- * - :host(.foo)           => :where([data-sd="sN"]:is(.foo))
- * - :host                 => :where([data-sd="sN"])
- * - ::slotted(X)          => :where([data-sd="sN"] X)              (no excluye sloteados)
- * - (resto, p.ej. .button)=> :where([data-sd="sN"] .button:not([data-sd-slotted~="sN"]))
- * - :host-context(Y)      => :where(:where(Y) [data-sd="sN"])      (aprox)
+ * Rewrite a shadow root's CSS to a flat, host-scoped form with specificity 0.
+ * - :host(.foo)        => :where([data-sd="sN"]:is(.foo))
+ * - :host              => :where([data-sd="sN"])
+ * - :host-context(Y)   => :where(:where(Y) [data-sd="sN"])     (an approximation)
+ * - ::slotted(X)       => :where([data-sd="sN"] X)              (slotted nodes not excluded)
+ * - anything else      => :where([data-sd="sN"] .x:not([data-sd-slotted~="sN"]))
+ * @param {string} cssText
+ * @param {string} scopeSelector - e.g. [data-sd="s3"]
+ * @param {string} scopeId - e.g. s3
+ * @returns {string}
  */
 export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   if (!cssText) return ''
 
-  // 1) :host(.foo) y :host
+  // 1) :host-context(Y) before :host: `\b` sits between the `t` and the `-`, so the bare
+  //    :host pass used to eat its head and leave `-context(Y)`, a selector the parser drops.
+  cssText = cssText.replace(/:host-context\(([^)]+)\)/g, (_, sel) => {
+    return `:where(:where(${sel.trim()}) ${scopeSelector})`
+  })
+
+  // 2) :host(.foo) and :host. `[^)]+` stops at the first `)` of `:host(:not(:first-child))`,
+  //    and the leftover one closes the `:is(` it opened, so the output stays balanced.
   cssText = cssText.replace(/:host\(([^)]+)\)/g, (_, sel) => {
     return `:where(${scopeSelector}:is(${sel.trim()}))`
   })
   cssText = cssText.replace(/:host\b/g, `:where(${scopeSelector})`)
 
-  // 2) :host-context(Y)
-  cssText = cssText.replace(/:host-context\(([^)]+)\)/g, (_, sel) => {
-    return `:where(:where(${sel.trim()}) ${scopeSelector})`
-  })
-
-  // 3) ::slotted(X) → descendiente dentro del scope, sin excluir sloteados
+  // 3) ::slotted(X) -> a descendant inside the scope, without excluding slotted nodes
   cssText = cssText.replace(/::slotted\(([^)]+)\)/g, (_, sel) => {
     return `:where(${scopeSelector} ${sel.trim()})`
   })
 
-  // 4) Por cada bloque de selectores "suelto", envolver con :where(scope …)
-  //    y excluir solo los sloteados de ESTE scope en el rightmost.
+  // 4) For every "loose" selector block, wrap it in :where(scope …) and exclude only the
+  //    slotted nodes of THIS scope on the rightmost compound.
   cssText = cssText.replace(/(^|})(\s*)([^@}{]+){/g, (_, brace, ws, selectorList) => {
     const wrapped = wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true, scopeId)
     return `${brace}${ws}${wrapped}{`
@@ -125,21 +121,60 @@ export function nextShadowScopeId(sessionCache) {
 }
 
 /**
- * Extract CSS text from a ShadowRoot: inline <style> plus adoptedStyleSheets (if readable).
+ * Resolve @media at capture time: the serialized SVG is its own tiny viewport, so a
+ * passed-through condition re-evaluates against the IMAGE size, not the page. Matching
+ * blocks inline unwrapped (recursively), non-matching blocks drop — the capture freezes
+ * the media state the user was seeing. @supports keeps its wrapper (its condition is
+ * viewport-independent); @container/@keyframes/@font-face/etc. pass through verbatim
+ * (@container evaluates against ancestor containers, which the foreignObject preserves —
+ * it must be matched by TYPE, since it shares conditionText with @supports).
+ * @param {CSSRuleList} rules
+ * @returns {string}
+ */
+export function resolveMediaQueries(rules) {
+  let out = ''
+  for (const rule of rules) {
+    if (rule.media && rule.cssRules) { // CSSMediaRule
+      let matches = false
+      try { matches = window.matchMedia(rule.conditionText || rule.media.mediaText).matches } catch { }
+      if (matches) out += resolveMediaQueries(rule.cssRules)
+    } else if (rule.constructor?.name === 'CSSSupportsRule') {
+      // constructor.name instead of instanceof: a rule from an iframe document belongs to
+      // that window's CSSSupportsRule, so the parent realm's constructor never claims it.
+      out += `@supports ${rule.conditionText}{${resolveMediaQueries(rule.cssRules)}}`
+    } else if (rule.cssRules && rule.cssRules.length && /@media/i.test(rule.cssText)) {
+      // Any other rule that can NEST (a CSS-nesting style rule, @scope, @container): passing
+      // its cssText through verbatim would carry an inner @media into the SVG, where the
+      // condition re-evaluates against the image box instead of the page. Rebuild it so the
+      // inner rules go through this same resolution.
+      const head = rule.cssText.slice(0, rule.cssText.indexOf('{') + 1)
+      out += head + (rule.style ? rule.style.cssText : '') + resolveMediaQueries(rule.cssRules) + '}'
+    } else {
+      out += rule.cssText + '\n'
+    }
+  }
+  return out
+}
+
+/**
+ * Extract CSS text from a ShadowRoot: inline <style> plus adoptedStyleSheets (if readable),
+ * with @media resolved against the live viewport (see resolveMediaQueries).
  * @param {ShadowRoot} sr
  * @returns {string}
  */
 export function extractShadowCSS(sr) {
   let css = ''
   try {
-    sr.querySelectorAll('style').forEach(s => { css += (s.textContent || '') + '\n' })
+    sr.querySelectorAll('style').forEach(s => {
+      let rules = null
+      try { rules = s.sheet && s.sheet.cssRules } catch { /* unreadable */ }
+      css += (rules ? resolveMediaQueries(rules) : (s.textContent || '')) + '\n'
+    })
     // adoptedStyleSheets (may throw cross-origin; guard)
     const sheets = sr.adoptedStyleSheets || []
     for (const sh of sheets) {
       try {
-        if (sh && sh.cssRules) {
-          for (const rule of sh.cssRules) css += rule.cssText + '\n'
-        }
+        if (sh && sh.cssRules) css += resolveMediaQueries(sh.cssRules)
       } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
@@ -171,10 +206,12 @@ export function injectScopedStyle(hostClone, cssText, scopeId) {
  * default). Inside a <picture>, resolve the winning source explicitly via the same
  * media-query matching logic pictureResolver already uses instead of trusting an
  * unresolved currentSrc.
+ * The write-once rule below is pinned by __tests__/modules.images.dataUrlPassthrough.test.js.
  * @param {HTMLImageElement} original - Image in the live DOM.
  * @param {HTMLImageElement} cloned - Just-created cloned <img>.
+ * @param {{resolvePicturePlaceholders?: boolean}} [options]
  */
-export function freezeImgSrcset(original, cloned) {
+export function freezeImgSrcset(original, cloned, options = {}) {
   try {
     // Element-level `content: url(...)` replaces the <img>'s rendered image and out-ranks
     // src/srcset in the browser's own resolution. The style snapshot neutralizes non-data
@@ -186,15 +223,30 @@ export function freezeImgSrcset(original, cloned) {
       if (m) contentUrl = m[1]
     }
     const picture = original.closest?.('picture')
-    const chosen = contentUrl ||
-      (picture ? findRealUrlForPicture(original, picture) : original.currentSrc) ||
-      original.src ||
+    // A data: src without responsive candidates needs no resolution, and the
+    // currentSrc/src GETTERS would re-serialize its megabytes. With srcset, though,
+    // that attribute is only the fallback: freeze the image the browser selected.
+    const rawSrc = original.getAttribute('src') || ''
+    const srcset = original.getAttribute('srcset') || ''
+    let chosen = contentUrl ||
+      (picture ? findRealUrlForPicture(original, picture)
+        : !srcset.trim() && rawSrc.startsWith('data:') ? rawSrc : original.currentSrc) ||
       // Chromium/Firefox leave currentSrc empty until the selected candidate has loaded,
-      // so a srcset-only img would reach inlineImages source-less (srcset gets stripped
-      // there). Pick a candidate explicitly, like the <picture> branch does.
-      pickSrcsetCandidate(original.getAttribute('srcset'), original) || ''
+      // so resolve candidates before falling back to src, even when src is present.
+      pickSrcsetCandidate(srcset, original) || original.src || ''
+    // Lazy-load placeholders (tiny data:/blob src with the real URL parked in data-src…):
+    // resolve on the CLONE. The old live-DOM resolver swapped the user's element and
+    // undid it afterwards — visible flicker and an undo dance for something inlineImages
+    // fetches from the clone just as well.
+    if ((!chosen || isPlaceholderSrc(chosen)) && options.resolvePicturePlaceholders !== false) {
+      const lazy = findLazySrcAttr(original)
+      if (lazy) chosen = lazy
+    }
     if (!chosen) return
-    cloned.setAttribute('src', chosen)
+    // Setting src is not free: every assignment re-parses the URL and starts a load, and on a
+    // data: URL that is a base64 decode of the whole payload — 26 MB of gallery sources cost
+    // ~40 ms here for a value cloneNode had already copied. Write only what differs.
+    if (cloned.getAttribute('src') !== chosen) cloned.setAttribute('src', chosen)
     cloned.removeAttribute('srcset')
     cloned.removeAttribute('sizes')
     // Hint deterministic decode/load for capture
@@ -318,19 +370,12 @@ function measureContentBox(el) {
 }
 
 /**
- * Get the unscaled dimensions of an element (pre-transform layout dimensions).
- * This function returns dimensions that do NOT include ancestor CSS transforms,
- * avoiding the double-scale bug where getBoundingClientRect() returns already-scaled
- * dimensions that then get scaled again by inherited transforms.
- *
- * Priority fallback chain:
- * 1. offsetWidth/offsetHeight (pre-transform layout dimensions)
- * 2. getComputedStyle() width/height
- * 3. getAttribute() width/height
- * 4. Intrinsic dimensions (naturalWidth/naturalHeight for images)
- *
- * @param {Element} el - The element to measure
- * @returns {{width: number, height: number}} Unscaled dimensions in pixels
+ * Layout size before any ancestor transform: offsetWidth/Height first, then computed
+ * width/height, then the width/height attributes, then naturalWidth/Height for images.
+ * getBoundingClientRect returns the transformed box, and a replacement sized from it was
+ * scaled a second time by the inherited transform (#321).
+ * @param {Element} el
+ * @returns {{width: number, height: number}} CSS px
  */
 export function getUnscaledDimensions(el) {
   let width = 0
@@ -420,23 +465,48 @@ export function pinIframeViewport(doc, w, h) {
     }
   } catch { }
 
-  // #449: flags the doc as viewport-pinned so captureDOM skips its full-page (scrollHeight) expansion
-  try { doc.documentElement.setAttribute('data-sd-pinned', '') } catch { }
-
+  // Owned, so the frame document's invalidation observer (styles.js, wired per document)
+  // ignores the style's arrival and removal: as an unmarked <head> mutation it bumped the
+  // shared environment epoch twice per capture, which is an unconditional dirtyAll on the
+  // OUTER element's burst memo. The viewport flag itself travels as the nested capture's
+  // `__pinned` option (rasterizeIframe), not as an attribute on this <html>: a record on
+  // <html> is the all-stamp, and it invalidated every snapshot in every document.
+  // Pinned by __tests__/core.burst.nestedIframe.test.js.
   const style = doc.createElement('style')
   style.setAttribute('data-sd-iframe-pin', '')
+  markInternalNode(style)
   style.textContent = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
     `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
   (doc.head || doc.documentElement).appendChild(style)
+  // The pin is deliberately invisible to the global style epoch, but it still changes used
+  // values inside this document (notably percentages). Clear only this frame's snapshots so
+  // a fresh nested capture cannot reuse geometry from the previous iframe size.
+  invalidateSnapshotsUnder(doc.documentElement)
+
+  // Pinning sets overflow:hidden on html/body, which resets the scroll offset — so a frame
+  // the user had scrolled was captured from the top of its document instead of from what
+  // they were looking at. Put the recorded offset back on whichever box now scrolls; the
+  // nested capture's existing scrolled-root handling takes it from there.
+  if (sx || sy) {
+    try {
+      if (doc.body) { doc.body.scrollLeft = sx; doc.body.scrollTop = sy }
+      if (doc.documentElement) {
+        if (!doc.documentElement.scrollLeft) doc.documentElement.scrollLeft = sx
+        if (!doc.documentElement.scrollTop) doc.documentElement.scrollTop = sy
+      }
+    } catch { }
+  }
 
   return () => {
     try { style.remove() } catch { }
-    try { doc.documentElement.removeAttribute('data-sd-pinned') } catch { }
     try {
       if (win && typeof win.scrollTo === 'function') win.scrollTo(sx, sy)
       if (doc.body) { doc.body.scrollLeft = bsl; doc.body.scrollTop = bst }
       if (doc.documentElement) { doc.documentElement.scrollLeft = hsl; doc.documentElement.scrollTop = hst }
     } catch { }
+    // Do not leave snapshots computed under the temporary viewport pin available to a later
+    // direct capture of this document.
+    invalidateSnapshotsUnder(doc.documentElement)
   }
 }
 
@@ -445,6 +515,7 @@ export function pinIframeViewport(doc, w, h) {
  * - Capture iframe.contentDocument.documentElement
  * - Force a bitmap (toPng) sized to the iframe viewport (not the content height)
  * - Wrap with a styled container that mimics the <iframe> box (borders, radius, etc.)
+ * Pinned by __tests__/utils.clone.iframe.test.js.
  *
  * @param {HTMLIFrameElement} iframe
  * @param {object} sessionCache
@@ -457,44 +528,29 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   const { contentWidth, contentHeight, rect } = measureContentBox(iframe)
 
-  // Prefer options.snap (set by main()); fallback to window.snapdom (IIFE build)
-  let snap = options?.snap
-  if (!snap && typeof window !== 'undefined' && window.snapdom) {
-    snap = window.snapdom
-  }
+  // main() threads the capture entrypoints on the context (context.snap) — no global
+  // window.snapdom dependency anymore. Direct captureDOM/deepClone callers must pass it.
+  const snap = options?.snap
   if (!snap || typeof snap.toPng !== 'function') {
-    throw new Error(
-      '[snapdom] iframe capture requires snapdom.toPng. Use snapdom(el) or pass options.snap. ' +
-      'With ESM, assign window.snapdom = snapdom after import if using iframes.'
-    )
+    throw new Error('[snapdom] iframe capture requires the snapdom entrypoints on options.snap — capture through snapdom(el) (set automatically) or pass options.snap.')
   }
 
   // Avoid double scaling; parent capture decides final scale. Drop clip: a visible iframe
   // is captured whole (offscreen ones were already culled), and 'viewport' would re-resolve
   // against the iframe's own window.
-  const nested = { ...options, scale: 1, clip: null }
+  // `__pinned`: the svg engine captures this documentElement at the pinned viewport, not
+  // at scrollHeight (#449); the flag lives here and not on the frame's <html>, see the pin.
+  const nested = { ...options, scale: 1, clip: null, __pinned: true }
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
-  // The nested capture below runs its own captureDOM → applyCachePolicy, which REASSIGNS
-  // cache.session.{nodeMap,styleMap,styleCache} to fresh instances. Sibling iframes rasterize
-  // concurrently, so these save/restore pairs can interleave and the global session may point
-  // at an orphaned nested map afterwards — that's why every post-clone pass of a capture
-  // (inlineBackgroundImages, backdrop-filter, compress, icon fonts, layout reconcile) receives
-  // the capture's own nodeMap reference instead of trusting the global. The snapshot/restore
-  // here is kept as best-effort hygiene so the global usually ends up back at the parent's
-  // session, but nothing may rely on it mid-capture.
-  const parentNodeMap = cache.session.nodeMap
-  const parentStyleMap = cache.session.styleMap
-  const parentStyleCache = cache.session.styleCache
+  // Every capture owns its session from its first synchronous tick (createCaptureSession),
+  // so the nested capture can't disturb this one's maps — no save/restore needed.
   let imgEl
   try {
     imgEl = await snap.toPng(doc.documentElement, nested)
   } finally {
     unpin()
-    cache.session.nodeMap = parentNodeMap
-    cache.session.styleMap = parentStyleMap
-    cache.session.styleCache = parentStyleCache
   }
 
   // Build <img> (bitmap) sized to content box
@@ -516,6 +572,120 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 }
 
 // ========== Checkbox/Radio replacement (Firefox fix) ==========
+
+/**
+ * The control's accent, as a colour SVG can take. `accent-color` computes to the keyword
+ * `auto` when the author never set one — a truthy string, so falling through a `||` chain
+ * handed SVG an invalid paint and the control rendered black. The UA's own auto accent is
+ * not readable from CSS, so a blue in the range every desktop UA ships stands in for it.
+ * @param {CSSStyleDeclaration | undefined} cs computed style of the control
+ * @returns {string}
+ */
+function resolveAccentColor(cs) {
+  try {
+    const accent = cs && cs.accentColor
+    if (accent && accent !== 'auto' && accent !== 'none') return accent
+    const color = cs && cs.color
+    if (color) return color
+  } catch { /* detached or cross-realm */ }
+  return '#0a6ed1'
+}
+
+/**
+ * Creates a visual replacement for range inputs using inline SVG: a track, the
+ * filled run up to the value, and a thumb, in the control's accent colour.
+ * Firefox does not render native form controls inside SVG foreignObject: a cloned slider
+ * painted none of its accent (verified on v3 as 0 accent-coloured pixels).
+ *
+ * Imported from @frostin/snapdom (element-mirror).
+ * @param {HTMLInputElement} node - Source input
+ * @returns {{ el: HTMLDivElement, applyVisual: () => void }}
+ */
+export function createRangeReplacement(node) {
+  const { width: unscaledW, height: unscaledH } = getUnscaledDimensions(node)
+  const rect = node.getBoundingClientRect()
+  let cs
+  try { cs = window.getComputedStyle(node) } catch { }
+  const parsedW = cs ? parseFloat(cs.width) : NaN
+  const parsedH = cs ? parseFloat(cs.height) : NaN
+  const w = Number.isFinite(parsedW) && parsedW > 0
+    ? parsedW
+    : (unscaledW || rect.width || 128)
+  const h = Number.isFinite(parsedH) && parsedH > 0
+    ? parsedH
+    : (unscaledH || rect.height || 16)
+
+  // Where the value sits between min and max, from the live properties: a
+  // dragged slider updates node.value and nothing in the DOM at all.
+  const min = Number.parseFloat(node.min) || 0
+  const max = Number.isFinite(Number.parseFloat(node.max)) ? Number.parseFloat(node.max) : 100
+  const value = Number.parseFloat(node.value)
+  const span = max - min
+  const fraction = span > 0 && Number.isFinite(value)
+    ? Math.min(1, Math.max(0, (value - min) / span))
+    : 0.5
+
+  // #311: preserve original vertical-align so the replacement doesn't shift inline layout
+  let vAlign = 'middle'
+  try { if (cs && cs.verticalAlign) vAlign = cs.verticalAlign } catch { }
+
+  const box = document.createElement('div')
+  box.setAttribute('data-snapdom-input-replacement', 'range')
+  box.style.cssText = `display:inline-block;width:${w}px;height:${h}px;vertical-align:${vAlign};flex-shrink:0;line-height:0;`
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('width', String(w))
+  svg.setAttribute('height', String(h))
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`)
+  // The thumb is thumb-sized however small the author made the control's box
+  // (a styled slider is often a 4px-tall input), overflowing it the way the
+  // native one does.
+  svg.style.overflow = 'visible'
+  box.appendChild(svg)
+
+  function applyVisual() {
+    const accent = resolveAccentColor(cs)
+    const disabled = !!node.disabled
+    const trackH = Math.max(2, Math.min(4, h))
+    const trackY = (h - trackH) / 2
+    const thumbD = Math.max(10, Math.min(14, Math.max(h, 10)))
+    const r = thumbD / 2
+    // The thumb's centre travels between the track's rounded ends, as the
+    // native one keeps the thumb inside the control at either extreme.
+    const cx = r + fraction * Math.max(0, w - thumbD)
+
+    svg.innerHTML = ''
+    const part = (x, width, fill, opacity) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      el.setAttribute('x', String(x))
+      el.setAttribute('y', String(trackY))
+      el.setAttribute('width', String(Math.max(0, width)))
+      el.setAttribute('height', String(trackH))
+      el.setAttribute('rx', String(trackH / 2))
+      el.setAttribute('fill', fill)
+      if (opacity) el.setAttribute('fill-opacity', opacity)
+      svg.appendChild(el)
+    }
+    // Unfilled track first, in a translucent grey that reads on light and
+    // dark alike, then the filled run laid over its left side.
+    part(0, w, '#808080', '0.4')
+    part(0, cx, accent)
+    const thumb = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    thumb.setAttribute('cx', String(cx))
+    thumb.setAttribute('cy', String(h / 2))
+    thumb.setAttribute('r', String(r))
+    thumb.setAttribute('fill', accent)
+    svg.appendChild(thumb)
+    if (disabled) svg.setAttribute('opacity', '0.5')
+
+    // Force dimensions (inlineAllStyles may copy width:0 from native input)
+    box.style.setProperty('width', `${w}px`, 'important')
+    box.style.setProperty('height', `${h}px`, 'important')
+    box.style.setProperty('min-width', `${w}px`, 'important')
+    box.style.setProperty('min-height', `${h}px`, 'important')
+  }
+  applyVisual()
+  return { el: box, applyVisual }
+}
 
 /**
  * Creates a visual replacement for checkbox/radio inputs using inline SVG.
@@ -556,10 +726,7 @@ export function createCheckboxRadioReplacement(node) {
   box.appendChild(svg)
 
   function applyVisual() {
-    let color = '#0a6ed1'
-    try {
-      if (cs) color = cs.accentColor || cs.color || color
-    } catch { }
+    const color = resolveAccentColor(cs)
     const stroke = 2
     const pad = stroke / 2
     const inner = s - stroke
@@ -627,61 +794,48 @@ export function createCheckboxRadioReplacement(node) {
 
 // ========== Blob URL Helpers ==========
 
+/** blob: URL -> data URL, or the read still in flight. 80 entries, FIFO. */
 var _blobToDataUrlCache = new EvictingMap(80)
 
 /**
- * Read a blob: URL and return its data URL, with memoization + shared cache.
- * - Usa snapFetch(as:'dataURL') para convertir directo.
- * - Dedupea inflight guardando la promesa en el Map.
- * - Escribe también en cache.resource para reuso cross-módulo.
+ * Read a blob: URL as a data URL, once per URL.
+ * Two memos: cache.resource, shared with the other modules, and a local map that also holds
+ * the in-flight promise so concurrent callers share one read. A failed read is dropped from
+ * the local map so the next call can retry.
  * @param {string} blobUrl
  * @returns {Promise<string>} data URL
  */
 export async function blobUrlToDataUrl(blobUrl) {
-  // 1) Hit en cache global compartido
+  // 1) shared cache
   if (cache.resource?.has(blobUrl)) return cache.resource.get(blobUrl)
 
-  // 2) Hit en memo local (puede ser promesa o string resuelto)
+  // 2) local memo (a promise or the resolved string)
   if (_blobToDataUrlCache.has(blobUrl)) return _blobToDataUrlCache.get(blobUrl)
 
-  // 3) Crear promesa inflight y guardarla para dedupe
+  // 3) start the read and park the promise for dedupe
   const p = (async () => {
     const r = await snapFetch(blobUrl, { as: 'dataURL', silent: true })
     if (!r.ok || typeof r.data !== 'string') {
       throw new Error(`[snapDOM] Failed to read blob URL: ${blobUrl}`)
     }
-    cache.resource?.set(blobUrl, r.data)   // cache compartido
+    cache.resource?.set(blobUrl, r.data)   // shared cache
     return r.data
   })()
 
   _blobToDataUrlCache.set(blobUrl, p)
   try {
     const data = await p
-    // Opcional: reemplazar promesa por string ya resuelto (menos retenciones)
+    // Swap the promise for the resolved string: less to retain
     _blobToDataUrlCache.set(blobUrl, data)
     return data
   } catch (e) {
-    // Si falla, limpiamos para permitir reintentos futuros
+    // Drop the failure so a later call can retry
     _blobToDataUrlCache.delete(blobUrl)
     throw e
   }
 }
 
 var BLOB_URL_RE = /\bblob:[^)"'\s]+/g
-
-async function replaceBlobUrlsInCssText(cssText) {
-  if (!cssText || cssText.indexOf('blob:') === -1) return cssText
-  const uniques = Array.from(new Set(cssText.match(BLOB_URL_RE) || []))
-  if (uniques.length === 0) return cssText
-  let out = cssText
-  for (const u of uniques) {
-    try {
-      const d = await blobUrlToDataUrl(u)
-      out = out.split(u).join(d)
-    } catch { }
-  }
-  return out
-}
 
 function isBlobUrl(u) {
   return typeof u === 'string' && u.startsWith('blob:')
@@ -720,9 +874,46 @@ function selfAndDescendants(root, selector) {
   return nodes
 }
 
+/**
+ * Replace every blob: URL in the clone with a data URL: <img> src and srcset, SVG <image>
+ * href, inline styles, <style> text and <video> poster. Runs inside prepareClone, ahead of
+ * the asset passes: a blob URL dies the moment the page revokes it, and a caller that revokes
+ * right after calling snapdom would beat the later passes to it. A URL that fails to read is
+ * logged under `debug` and left as it is.
+ * @param {Element} root - the clone
+ * @param {object|null} [sessionCache] - read for `options.debug`
+ * @returns {Promise<void>}
+ */
 export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
   const ctx = sessionCache
+  // Plan UNIQUE resources before awaiting: the previous per-node await serialized every
+  // independent fetch + FileReader, including multiple URLs in one CSS value. Four readers
+  // overlap that latency without decoding an unbounded gallery at once. Shared in-flight
+  // dedupe remains blobUrlToDataUrl's job, including callers outside this traversal.
+  const urls = new Set()
+  const writes = []
+  const resolved = new Map()
+  const queueAttribute = (node, name, url, after) => {
+    urls.add(url)
+    writes.push(() => {
+      if (!resolved.has(url)) return
+      node.setAttribute(name, resolved.get(url))
+      after?.()
+    })
+  }
+  const queueCSS = (css, apply) => {
+    if (!css || !css.includes('blob:')) return
+    const matches = css.match(BLOB_URL_RE) || []
+    if (!matches.length) return
+    for (const url of matches) urls.add(url)
+    writes.push(() => {
+      // Replace complete tokens, not split/join prefixes: blob:x and blob:x-long can
+      // coexist and must never rewrite part of each other's URLs.
+      const out = css.replace(BLOB_URL_RE, url => resolved.get(url) || url)
+      if (out !== css) apply(out)
+    })
+  }
 
   const imgs = selfAndDescendants(root, 'img')
   for (const img of imgs) {
@@ -730,24 +921,23 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       const srcAttr = img.getAttribute('src')
       const effective = srcAttr || img.currentSrc || ''
       if (isBlobUrl(effective)) {
-        const data = await blobUrlToDataUrl(effective)
-        img.setAttribute('src', data)
+        queueAttribute(img, 'src', effective)
       }
       const srcset = img.getAttribute('srcset')
       if (srcset && srcset.includes('blob:')) {
         const parts = parseSrcset(srcset)
-        let changed = false
         for (const p of parts) {
-          if (isBlobUrl(p.url)) {
-            try {
-              p.url = await blobUrlToDataUrl(p.url)
-              changed = true
-            } catch (e) {
-              debugWarn(ctx, 'blobUrlToDataUrl for srcset item failed', e)
-            }
-          }
+          if (isBlobUrl(p.url)) urls.add(p.url)
         }
-        if (changed) img.setAttribute('srcset', stringifySrcset(parts))
+        writes.push(() => {
+          let changed = false
+          for (const p of parts) {
+            if (!resolved.has(p.url)) continue
+            p.url = resolved.get(p.url)
+            changed = true
+          }
+          if (changed) img.setAttribute('srcset', stringifySrcset(parts))
+        })
       }
     } catch (e) {
       debugWarn(ctx, 'resolveBlobUrls for img failed', e)
@@ -760,9 +950,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       const XLINK_NS = 'http://www.w3.org/1999/xlink'
       const href = node.getAttribute('href') || node.getAttributeNS?.(XLINK_NS, 'href')
       if (isBlobUrl(href)) {
-        const d = await blobUrlToDataUrl(href)
-        node.setAttribute('href', d)
-        node.removeAttributeNS?.(XLINK_NS, 'href')
+        queueAttribute(node, 'href', href, () => node.removeAttributeNS?.(XLINK_NS, 'href'))
       }
     } catch (e) {
       debugWarn(ctx, 'resolveBlobUrls for SVG image href failed', e)
@@ -773,22 +961,17 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   for (const el of styled) {
     try {
       const styleText = el.getAttribute('style')
-      if (styleText && styleText.includes('blob:')) {
-        const replaced = await replaceBlobUrlsInCssText(styleText)
-        el.setAttribute('style', replaced)
-      }
+      queueCSS(styleText, replaced => el.setAttribute('style', replaced))
     } catch (e) {
       debugWarn(ctx, 'replaceBlobUrls in inline style failed', e)
     }
   }
 
-  const styleTags = root.querySelectorAll ? root.querySelectorAll('style') : []
+  const styleTags = selfAndDescendants(root, 'style')
   for (const s of styleTags) {
     try {
       const css = s.textContent || ''
-      if (css.includes('blob:')) {
-        s.textContent = await replaceBlobUrlsInCssText(css)
-      }
+      queueCSS(css, replaced => { s.textContent = replaced })
     } catch (e) {
       debugWarn(ctx, 'replaceBlobUrls in style tag failed', e)
     }
@@ -801,11 +984,25 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       try {
         const u = n.getAttribute(attr)
         if (isBlobUrl(u)) {
-          n.setAttribute(attr, await blobUrlToDataUrl(u))
+          queueAttribute(n, attr, u)
         }
       } catch (e) {
         debugWarn(ctx, `resolveBlobUrls for ${attr} failed`, e)
       }
     }
+  }
+  if (!urls.size) return
+  const pending = [...urls]
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
+    while (next < pending.length) {
+      const url = pending[next++]
+      try { resolved.set(url, await blobUrlToDataUrl(url)) } catch (e) {
+        debugWarn(ctx, 'blobUrlToDataUrl failed; keeping original URL', e)
+      }
+    }
+  }))
+  for (const write of writes) {
+    try { write() } catch (e) { debugWarn(ctx, 'resolved blob URL write failed', e) }
   }
 }

@@ -235,7 +235,7 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
    // Nunca debe quedar blob:
    expect(outSrcset).not.toContain('blob:')
    expect(outSrc).not.toContain('blob:')
-   // Aceptamos ambos flujos: (a) srcset con data: o (b) src con data: y srcset vacío
+   // Both flows are accepted: (a) srcset with data:, or (b) src with data: and empty srcset
    expect(
      (outSrcset.includes('data:')) || (outSrc.startsWith('data:'))
    ).toBe(true)
@@ -390,7 +390,7 @@ const srcs1 = [...first.clone.querySelectorAll('img')]
   .map(n => n.getAttribute('src') || '')
 expect(srcs1.every(s => s.startsWith('blob:'))).toBe(true)
 
-// Segundo intento: éxito → convierte a data:
+// Second attempt succeeds, so it converts to data:
 vi.mocked(snapFetch).mockResolvedValueOnce({
   ok: true,
   data: 'data:text/plain;base64,AAA=',
@@ -418,7 +418,7 @@ it('moves xlink:href to href and removes namespaced attribute', async () => {
   const { clone } = await prepareClone(svg)
   const out = clone.querySelector('image')
   expect(out?.getAttribute('href') || '').toMatch(/^data:/)
-  // namespaced removido (si removeAttributeNS está disponible en el ambiente)
+  // namespaced attribute removed (when removeAttributeNS exists in this environment)
   if (out?.getAttributeNS) {
     expect(out.getAttributeNS(XLINK, 'href')).toBeNull()
   }
@@ -462,7 +462,7 @@ it('does not set transparent border when element already has border', async () =
   csMock.mockRestore()
 })
 
-// 7) stripTranslate devuelve ''/none → transform queda vacío
+// 7) stripTranslate returns ''/none, so transform ends up empty
 it('root transform becomes empty string when stripTranslate returns falsy', async () => {
   const el = document.createElement('div')
 
@@ -536,7 +536,7 @@ describe('srcset freezing (DPR-pinned)', () => {
     img.setAttribute('srcset', 'blob:aa 1x, https://x/y.png 2x, blob:bb 3x')
     wrap.appendChild(img)
 
-    // currentSrc/src vacíos: la selección debe salir del srcset (no queda img sin fuente)
+    // currentSrc/src empty: the pick must come from the srcset, so no img is left source-less
     Object.defineProperty(img, 'currentSrc', { configurable: true, get: () => '' })
     Object.defineProperty(img, 'src', { configurable: true, get: () => '' })
 
@@ -567,7 +567,7 @@ describe('srcset freezing (DPR-pinned)', () => {
     const { clone } = await prepareClone(wrap)
     const out = clone.querySelector('img')
 
-    // Falló la conversión: el src elegido queda como estaba (blob:) y sin srcset
+    // Conversion failed: the chosen src stays as it was (blob:) and gets no srcset
     expect(out?.hasAttribute('srcset')).toBe(false)
     expect(out?.getAttribute('src')).toBe('blob:fail')
   })

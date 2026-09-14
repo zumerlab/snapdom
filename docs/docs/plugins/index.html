@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapDOM Plugins: Build &amp; Register Plugins (Lifecycle, Hooks, Custom Exports)</title>
+  <title>SnapDOM Plugins — Build &amp; Register Plugins (Lifecycle, Hooks, Custom Exports)</title>
   <meta name="description" content="Build SnapDOM plugins: lifecycle hooks (beforeClone, afterClone, beforeRender, afterExport...), the context object, registering plugins, and adding custom export formats." />
   <meta name="keywords" content="snapdom plugins, snapdom plugin api, snapdom lifecycle hooks, snapdom custom export, snapdom plugin tutorial" />
   <meta name="robots" content="index, follow" />
@@ -63,7 +63,7 @@
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
+  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/" aria-current="page">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div></nav></header>
 
   <section class="hero">
     <div class="hero-badge">Documentation</div>
@@ -73,7 +73,7 @@
       <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
     </a>
     <h1>SnapDOM <span class="accent">Plugins</span></h1>
-    <p class="lead">The developer guide to extending SnapDOM. Build a plugin, hook into any stage of the capture pipeline, read the shared context object, and add your own export formats, all without touching the core library.</p>
+    <p class="lead">Use plugins to turn a capture into HTML, structured context, element maps, PDFs or recordings. Write hooks when your application needs to change the captured content or add an output.</p>
     <div class="hero-actions">
       <a href="#build" class="btn btn-primary" data-umami-event="Docs plugins hero build">Build a plugin</a>
       <a href="../../plugins.html" class="btn btn-ghost" data-umami-event="Docs plugins hero browse">Browse plugins</a>
@@ -83,12 +83,12 @@
   <main class="page">
     <div class="tldr">
       <div class="tldr-label">What is a SnapDOM plugin</div>
-      <p>SnapDOM includes a lightweight <strong>plugin system</strong> that lets you extend or override behavior at any stage of the capture and export process, without touching the core library. A plugin is a plain object with a unique <code>name</code> and one or more lifecycle <strong>hooks</strong>. Hooks can be synchronous or <code>async</code>, and they all receive a shared <strong><code>context</code></strong> object. Looking for ready-made plugins to install? See the <a href="../../plugins.html">community plugin showcase</a>.</p>
+      <p>A plugin is a plain object with a unique <code>name</code> and lifecycle hooks. Capture hooks can change the cloned content; <code>defineExports</code> adds methods to the result. Hooks may be synchronous or <code>async</code>. The core already exports images, canvas and blobs; the <a href="../../plugins.html">plugin package</a> supplies the additional outputs below.</p>
     </div>
 
     <section class="prose">
       <h2 id="official">Official plugins</h2>
-      <p>Install the official plugin package:</p>
+      <p>Install the official plugin package; use the version that matches your core major version:</p>
       <pre class="code-block">npm install @zumer/snapdom-plugins</pre>
       <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';
 import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pre>
@@ -97,29 +97,61 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pr
           <tr><th>Plugin</th><th>Category</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">agent-map</td><td class="feature">Export</td><td>Set-of-Mark package for visual agents: <code>toAgentMap()</code> returns an annotated screenshot plus a numbered map of interactive elements with roles, names and bounding boxes.</td></tr>
-          <tr><td class="num">html-export</td><td class="feature">Export</td><td>Adds <code>toHtml()</code>: the capture as a self-contained, re-renderable HTML document instead of pixels.</td></tr>
-          <tr><td class="num">gif-export</td><td class="feature">Export</td><td>Adds <code>toGif()</code>: records the live element over time and encodes an animated GIF in the browser.</td></tr>
-          <tr><td class="num">video-export</td><td class="feature">Export</td><td>Adds <code>toMp4()</code>: records the element with MediaRecorder (MP4 where supported, WebM otherwise).</td></tr>
           <tr><td class="num">timestamp-overlay</td><td class="feature">Transform</td><td>Adds a configurable timestamp label on the captured clone. Supports multiple date formats and positions.</td></tr>
           <tr><td class="num">filter</td><td class="feature">Transform</td><td>Applies CSS filter effects to captures. Ships with presets: <code>grayscale</code>, <code>sepia</code>, <code>blur</code>, <code>vintage</code>, <code>dramatic</code>.</td></tr>
           <tr><td class="num">replace-text</td><td class="feature">Transform</td><td>Find-and-replace text in the captured clone. Supports strings and regex patterns.</td></tr>
           <tr><td class="num">color-tint</td><td class="feature">Transform</td><td>Tints the entire capture to a specified color using an overlay with <code>mix-blend-mode</code>.</td></tr>
-          <tr><td class="num">ascii-export</td><td class="feature">Export</td><td>Adds a <code>toAscii()</code> method that converts captures to ASCII art. Configurable width, charset, and luminance.</td></tr>
-          <tr><td class="num">pdf-image</td><td class="feature">Export</td><td>Exports the capture as a PNG embedded in a downloadable PDF. Supports portrait and landscape orientations.</td></tr>
-          <tr><td class="num">html-in-canvas</td><td class="feature">Export</td><td>Uses the experimental WICG <code>drawElement</code> API for direct DOM-to-canvas rendering where supported (Chrome with <code>chrome://flags/#canvas-draw-element</code>).</td></tr>
+          <tr><td class="num">redact-inputs</td><td class="feature">Transform</td><td>Masks input and textarea values, excludes private blocks and removes named attributes from captured images, HTML and structured outputs. <code>&lt;select&gt;</code> values are not masked; hide them with a <code>blocks</code> rule. <a href="#redaction">Redaction options and limits</a>.</td></tr>
+          <tr><td class="num">ascii-export</td><td class="feature">Export</td><td>Adds a <code>toAscii()</code> method that converts captures to ASCII art. Configurable width, charset, and luminance, per plugin or per <code>toAscii()</code> call.</td></tr>
+          <tr><td class="num">pdf-image</td><td class="feature">Export</td><td><code>toPdfImage()</code> embeds a JPEG in a downloadable, single-page A4 PDF. Supports portrait and landscape.</td></tr>
+          <tr><td class="num">html-export</td><td class="feature">Export</td><td><code>toHtml()</code> returns the captured markup, styles and fonts as a self-contained HTML document or fragment.</td></tr>
+          <tr><td class="num">gif-export</td><td class="feature">Export</td><td>Adds a <code>toGif()</code> method that records a sequence of captures into an animated GIF.</td></tr>
+          <tr><td class="num">video-export</td><td class="feature">Export</td><td><code>toMp4()</code> records live captures through <code>MediaRecorder</code>, using WebM when MP4 is unavailable.</td></tr>
+          <tr><td class="num">agent-map</td><td class="feature">Export</td><td><code>toAgentMap()</code> returns an element map with names, roles, state and bounding boxes, plus an optional raw or annotated image.</td></tr>
+          <tr><td class="num">context-export</td><td class="feature">Export</td><td><code>toContext()</code> returns the captured UI as a text outline or JSON tree.</td></tr>
         </tbody>
       </table>
-      <p>Community plugins are listed on the <a href="../../plugins.html">plugins showcase page</a>. To submit your plugin, open a PR adding one line to <code>community-plugins.md</code> (see <code>CONTRIBUTING_PLUGINS.md</code>).</p>
+      <p>HTML export preserves source markup, including event-handler attributes; treat it as untrusted when serving it. GIF and video exports start a new sequence of live captures when called. Community plugins and submission details are on the <a href="../../plugins.html">plugins page</a> and in <code>CONTRIBUTING_PLUGINS.md</code>.</p>
     </section>
 
     <section class="prose">
-      <h2 id="build">Build a plugin in 5 minutes</h2>
-      <p>SnapDOM's hook system gives you full control over every stage of the capture pipeline:</p>
+      <h2 id="redaction">Redact fields, blocks and attributes</h2>
+      <p>Core already masks passwords to match their visible bullets. Use <code>redactInputs()</code> to choose additional content to hide. The live page stays unchanged; selectors match source elements, including nodes in open shadow trees.</p>
+      <pre class="code-block">import { redactInputs, htmlExport, contextExport } from '@zumer/snapdom-plugins';
+
+const capture = await snapdom(element, {
+  plugins: [
+    redactInputs({
+      all: true,
+      blocks: ['.private-panel', '[data-private-block]'],
+      attributes: [
+        { selector: '[data-token]', names: ['data-token'] },
+        { selector: '.customer', names: ['title', 'aria-label'] }
+      ]
+    }),
+    htmlExport(),
+    contextExport({ format: 'json' })
+  ]
+});
+const image = await capture.toPng();
+const html = await capture.toHtml();
+const context = await capture.toContext();</pre>
+      <ul>
+        <li><strong>Fields:</strong> <code>types</code>, <code>autocomplete</code> and <code>selector</code> select inputs and textareas; <code>all: true</code> selects every input and textarea. The extra <code>selector</code> does not hide other element types. Defaults cover email, tel, <code>cc-*</code>, current-password, new-password and one-time-code. The mask uses same-length bullets; custom <code>mask(value, element)</code> can return another string. Different glyph widths can change wrapping.</li>
+        <li><strong>Blocks:</strong> <code>blocks</code> accepts one CSS selector or an array, and combines with <code>exclude</code>. The default <code>excludeMode: 'hide'</code> keeps invisible space; <code>'remove'</code> drops the subtree from the captured layout. Removing a blocked capture root throws; use <code>'hide'</code> for that capture.</li>
+        <li><strong>Attributes:</strong> each rule removes the exact names listed in <code>names</code>, including their projections in structured exports. Names are not wildcard patterns. A <code>value</code> rule on an input or textarea clears its displayed value and omits structured <code>state.value</code>.</li>
+      </ul>
+      <p>HTML uses the sanitized clone. <code>agentMap</code> and <code>contextExport</code> apply the same field, block and attribute rules to source-derived data, regardless of official plugin order. Removing an attribute does not erase copies already present in visible text, CSS <code>content</code> or bitmap pixels; use <code>blocks</code> for the subtree that paints that content. These rules do not search arbitrary text or images for sensitive information.</p>
+      <p>Custom masks and nonempty <code>selector</code>, <code>blocks</code> or <code>attributes</code> rules run on every capture instead of reusing an unchanged capture memo. Nonempty block or attribute rules add a final <code>beforeRender</code> pass, which makes the experimental <code>html-in-canvas</code> engine fall back to SVG. Field-only redaction does not add that pass. See the <a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/README.md#redact-inputs">complete plugin reference</a> for defaults and examples.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="build">Build a plugin</h2>
+      <p>Start with the template and keep only the hooks your plugin uses:</p>
       <ol>
-        <li><strong>Clone the template</strong>: <code>npx degit zumerlab/snapdom/packages/plugin-template my-plugin</code></li>
-        <li><strong>Write your hook logic</strong>: <code>export function myPlugin() {}</code></li>
-        <li><strong>Get listed</strong>: open a PR adding one line to <code>community-plugins.md</code></li>
+        <li><strong>Clone the template</strong> — <code>npx degit zumerlab/snapdom/packages/plugin-template my-plugin</code></li>
+        <li><strong>Write your hook logic</strong> — <code>export function myPlugin() {}</code></li>
+        <li><strong>Get listed</strong> — open a PR adding one line to <code>community-plugins.md</code></li>
       </ol>
       <p>See <code>PLUGIN_SPEC.md</code> for the full specification and <code>CONTRIBUTING_PLUGINS.md</code> for submission guidelines.</p>
     </section>
@@ -159,63 +191,61 @@ snapdom.plugins(
         <tbody>
           <tr><td class="num">beforeSnap</td><td class="feature">Start</td><td>Adjust options before any work.</td></tr>
           <tr><td class="num">beforeClone</td><td class="feature">Pre-clone</td><td>Before DOM clone (modify live DOM carefully).</td></tr>
+          <tr><td class="num">resolveNode</td><td class="feature">Per node</td><td>Replace or skip a node after the compiled exclusion policy.</td></tr>
           <tr><td class="num">afterClone</td><td class="feature">Post-clone</td><td>Modify cloned tree safely (e.g. inject overlay).</td></tr>
-          <tr><td class="num">beforeRender</td><td class="feature">Pre-serialize</td><td>Right before SVG → data URL.</td></tr>
-          <tr><td class="num">afterRender</td><td class="feature">Post-serialize</td><td>Inspect <code>context.svgString</code> / <code>context.dataURL</code>.</td></tr>
+          <tr><td class="num">beforeRender</td><td class="feature">Pre-render</td><td>Right before the selected render engine runs.</td></tr>
+          <tr><td class="num">afterRender</td><td class="feature">Post-render</td><td>Inspect <code>context.dataURL</code> / <code>context.meta</code>, and <code>svgString</code> on the SVG path.</td></tr>
+          <tr><td class="num">defineExports</td><td class="feature">Result setup</td><td>After capture, add custom exporters (e.g. <code>toPdf</code>).</td></tr>
           <tr><td class="num">beforeExport</td><td class="feature">Per export</td><td>Before each <code>toPng</code>, <code>toSvg</code>, etc.</td></tr>
-          <tr><td class="num">afterExport</td><td class="feature">Per export</td><td>Observe the produced result (it cannot replace it).</td></tr>
-          <tr><td class="num">afterSnap</td><td class="feature">Once</td><td>After first export; cleanup.</td></tr>
-          <tr><td class="num">defineExports</td><td class="feature">Setup</td><td>Add custom exporters (e.g. <code>toPdf</code>).</td></tr>
-          <tr><td class="num">resolveNode</td><td class="feature">Per node</td><td>Replace or skip individual nodes while the clone is built.</td></tr>
+          <tr><td class="num">afterExport</td><td class="feature">Per export</td><td>Observe the returned result.</td></tr>
+          <tr><td class="num">afterSnap</td><td class="feature">Once</td><td>After the first successful export; cleanup.</td></tr>
         </tbody>
       </table>
-      <p class="muted">Hook order: <code>beforeSnap → beforeClone → afterClone → beforeRender → afterRender → [per export: beforeExport → afterExport] → afterSnap</code> (once, after the first export). What <code>afterExport</code> returns becomes the payload for the next plugin's <code>afterExport</code>; it does not change the value the caller gets back. To produce a different output, add your own export with <code>defineExports</code>.</p>
+      <p class="muted">Order: <code>beforeSnap → beforeClone → resolveNode (per node) → afterClone → beforeRender → afterRender → defineExports → [beforeExport → exporter → afterExport] → afterSnap</code>. The bracketed segment repeats per export; <code>afterSnap</code> fires once after the first successful one. Export-hook return values are ignored. Change an export's options in <code>beforeExport</code>, or use <code>defineExports</code> to produce a custom result.</p>
+      <p><strong>V2.24.16 migration:</strong> an <code>afterExport</code> return used to become the next hook's payload; it never replaced the output returned to the caller. V3 ignores those returns and gives hooks the same export payload. Remove return-value chaining. The TypeScript name <code>PluginExportFacade</code> is also removed, but <code>ctx.exports</code> remains available inside <code>defineExports</code>. Infer its type there or use <code>NonNullable&lt;CaptureContext['exports']&gt;</code> after importing the <code>CaptureContext</code> type.</p>
     </section>
 
     <section class="prose">
       <h2 id="context">Context object</h2>
-      <p>There are two context shapes, and mixing them up is the most common plugin bug.</p>
+      <p>Capture hooks share one context containing normalized options and stage results. Export hooks receive a view for that export:</p>
       <ul>
-        <li><strong>Clone-phase hooks</strong> (<code>beforeSnap</code>, <code>beforeClone</code>, <code>afterClone</code>, <code>beforeRender</code>, <code>afterRender</code>) receive the capture state: <code>element</code>, <code>options</code>, <code>plugins</code>, then <code>clone</code>, <code>classCSS</code>, <code>styleCache</code>, <code>nodeMap</code> (from <code>afterClone</code>), <code>fontsCSS</code>, <code>baseCSS</code>, <code>scrollbarCSS</code> (from <code>beforeRender</code>) and <code>svgString</code>, <code>dataURL</code> (from <code>afterRender</code>). Capture options are <strong>not</strong> flattened here: read them from <code>context.options</code>.</li>
-        <li><strong>Export-phase hooks</strong> (<code>beforeExport</code>, <code>afterExport</code>, <code>defineExports</code>) receive a spread of the normalized options (<code>scale</code>, <code>dpr</code>, <code>width</code>, <code>height</code>, <code>quality</code>, <code>backgroundColor</code>, <code>embedFonts</code>, <code>clip</code>, <code>compress</code>, …) plus <code>element</code>, <code>meta</code> and <code>context.export = { type, options, requestedOptions, url }</code>, where <code>url</code> is the serialized SVG base. <code>defineExports</code> also gets <code>context.exports</code>, a silent facade over the core exporters. There is no <code>clone</code> here: it is already serialized.</li>
+        <li><strong>Input &amp; normalized options:</strong> <code>element</code>; the <code>options</code> self-reference; <code>needs</code>; <code>shouldExclude(element)</code>; and the public capture options such as <code>scale</code>, <code>dpr</code>, <code>width</code>, <code>height</code>, <code>format</code>, <code>backgroundColor</code>, <code>quality</code>, fonts, exclusion, clipping, selection, reconciliation, invalidation, caching, plugins, and engine. <code>format</code> is canonical; deprecated <code>type</code> stays synchronized with it, and changing either in <code>beforeSnap</code> is honored.</li>
+        <li><strong>Intermediate values</strong> (depending on stage): <code>clone</code>, <code>classCSS</code>, <code>styleCache</code>, <code>nodeMap</code>, <code>fontsCSS</code>, <code>baseCSS</code>, <code>svgString</code>, <code>dataURL</code>, and frozen <code>meta</code>. Large clone-stage fields are released after rendering.</li>
+        <li><strong>Result setup:</strong> <code>artifacts = { classCSS, fontsCSS, baseCSS, scrollbarCSS }</code> and <code>exports</code>, the hook-free core exporter facade available to <code>defineExports</code>.</li>
+        <li><strong>During export:</strong> <code>context.export = { type, options, requestedOptions, url, svgString }</code>. <code>type</code> is the exporter name; frozen <code>requestedOptions</code> preserves exactly what the caller supplied. <code>options</code> is the merged option bag passed to the exporter. <code>url</code> is the captured data URL: SVG normally, PNG after a successful native capture. <code>svgString()</code> lazily decodes an SVG capture and throws for a raster capture.</li>
       </ul>
-      <p><strong>Passing data from the clone phase to an export.</strong> Setting <code>context.__myData</code> in <code>afterClone</code> does <em>not</em> reach <code>defineExports</code>: they are different objects. Mirror it on <code>context.options</code>, which is what the export context is spread from:</p>
-      <pre class="code-block">afterClone(context) {
-  const data = collect(context.clone);
-  context.__myData = data;                                 // later clone-phase hooks
-  if (context.options) context.options.__myData = data;    // export hooks / defineExports
-},
-defineExports() {
-  return { mine: async (ctx) =&gt; ctx.__myData };
-}</pre>
-      <p class="muted">You may safely modify the context (e.g. override <code>backgroundColor</code> or <code>quality</code>), but do so early (<code>beforeSnap</code>, on <code>context.options</code>) for global effects, or in <code>beforeExport</code> for single-export changes.</p>
+      <p class="muted">Change capture options in <code>beforeSnap</code>. The exceptions are <code>plugins</code>, <code>needs</code>, <code>invalidate</code> and <code>cache</code>, which have already been resolved. In <code>beforeExport(ctx, payload)</code>, mutate <code>payload.options</code>; changing the context view does not steer that export.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="needs">Pipeline depth and memoization</h2>
+      <p>A per-capture plugin may declare <code>needs: "clone"</code> or <code>needs: "render"</code> (the default). SnapDOM runs to the deepest requested stage. A clone-only result can expose plugin outputs such as context or an element map, but reading <code>url</code> or calling an image exporter throws. It does not recapture on demand. Global plugins must use <code>"render"</code>.</p>
+      <p>Clone/render-affecting hooks suspend automatic repeat memoization unless the plugin declares <code>pure: true</code>. Purity restores unchanged-repeat memoization. Pure <code>beforeRender</code>/<code>afterRender</code> hooks may also use differential recapture, while hooks involved in clone construction still force a conservative full recapture after a change. A capture stopped at <code>needs: "clone"</code> is never memoized because it has no render artifact. Declare purity only for deterministic, idempotent hooks; export-only hooks and <code>defineExports</code> do not need it.</p>
+      <p class="muted"><code>context.shouldExclude(node)</code> covers both <code>exclude</code> and <code>filter</code>, following updates made in <code>beforeSnap</code>. Content selection checks <code>data-capture="exclude"</code>, then <code>exclude</code>, then <code>filter</code>; the first omission decides its independent <code>excludeMode</code> or <code>filterMode</code>. <code>resolveNode(node, context)</code> runs after those checks. Return a replacement <code>Node</code>, <code>null</code> to skip, or <code>undefined</code> to continue normal cloning.</p>
     </section>
 
     <section class="prose">
       <h2 id="custom-exports">Custom exports via plugins</h2>
-      <p>Plugins can add new exports using <code>defineExports(context)</code>. For each export key you return (e.g. <code>"pdf"</code>), SnapDOM exposes a helper named <code>toPdf()</code> on the capture result, plus <code>result.to('pdf')</code>. Bare <code>result.pdf()</code> is not generated.</p>
-      <p><strong>Register the plugin</strong> (global or per capture):</p>
+      <p>Plugins can add new exports using <code>defineExports(context)</code>. For each export key you return (e.g. <code>"pdf"</code>), SnapDOM automatically exposes a helper method named <code>toPdf()</code> on the capture result.</p>
+      <p><strong>Use several outputs from one capture:</strong></p>
       <pre class="code-block">import { snapdom } from '@zumer/snapdom';
 
-// global
-snapdom.plugins(pdfExportPlugin());
+import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
 
-// or per capture
-const out = await snapdom(element, { plugins: [pdfExportPlugin()] });</pre>
-      <p><strong>Call the custom export:</strong></p>
-      <pre class="code-block">const out = await snapdom(document.querySelector('#report'));
-
-// because the plugin returns { pdf: async (ctx, opts) =&gt; ... }
-const pdfBlob = await out.toPdf({
-  // exporter-specific options (width, height, quality, filename, etc.)
+const out = await snapdom(element, {
+  plugins: [htmlExport(), contextExport()]
 });</pre>
+      <p><strong>Call the custom export:</strong></p>
+      <pre class="code-block">const png = await out.toPng();
+const html = await out.toHtml();
+const context = await out.toContext({ format: 'json' });</pre>
     </section>
 
     <section class="prose">
       <h2 id="example">Example: overlay filter plugin</h2>
-      <p>Adds a translucent overlay or color filter <strong>only</strong> to the captured clone (not your live DOM). Useful for highlighting or dimming sections before export.</p>
+      <p>This example dims the captured HTML with a translucent overlay. It changes the clone while leaving the live page untouched.</p>
       <pre class="code-block">/**
- * Ultra-simple overlay filter for SnapDOM (HTML-only).
+ * Overlay filter for captured HTML.
  * Inserts a full-size &lt;div&gt; overlay on the cloned root.
  *
  * @param {{ color?: string; blur?: number }} [options]
@@ -238,7 +268,7 @@ export function overlayFilterPlugin(options = {}) {
       if (!(root instanceof HTMLElement)) return; // HTML-only
 
       // Ensure containing block so absolute overlay anchors to the root
-      if (getComputedStyle(root).position === 'static') {
+      if (getComputedStyle(context.element).position === 'static') {
         root.style.position = 'relative';
       }
 
@@ -269,7 +299,7 @@ const out = await snapdom(document.querySelector('#card'), {
 
 const png = await out.toPng();
 document.body.appendChild(png);</pre>
-      <p class="muted">The overlay is injected <strong>only in the cloned tree</strong>, never in your live DOM, ensuring perfect fidelity and zero flicker.</p>
+      <p class="muted">The source element supplies the live position value because the clone is detached. The overlay itself is added only to the clone.</p>
     </section>
 
     <section class="prose">
@@ -280,63 +310,72 @@ document.body.appendChild(png);</pre>
     /** Unique name used for de-duplication/overrides */
     name: 'my-plugin',
 
+    /** Optional pipeline depth; global plugins must remain at "render". */
+    needs: 'render',
+
+    /** Set true only for deterministic/idempotent clone or render hooks. */
+    pure: false,
+
     /** Early adjustments before any clone/style work. */
     async beforeSnap(context) {},
 
     /** Before subtree cloning (use sparingly if touching the live DOM). */
     async beforeClone(context) {},
 
+    /** Per source node, after context.shouldExclude(node) has been applied. */
+    async resolveNode(node, context) {},
+
     /** After subtree cloning (safe to modify the cloned tree). */
     async afterClone(context) {},
 
-    /** Right before serialization (SVG/dataURL). */
+    /** Right before the selected renderer runs. */
     async beforeRender(context) {},
 
-    /** After serialization; inspect context.svgString/context.dataURL if needed. */
+    /** After rendering; svgString exists only on the SVG path. */
     async afterRender(context) {},
+
+    /**
+     * Define custom exporters during result setup.
+     * Return a map { [key: string]: (ctx:any, opts:any) =&gt; Promise&lt;any&gt; }.
+     */
+    async defineExports(context) { return {}; },
 
     /** Before EACH export call (toPng/toSvg/toBlob/...). */
     async beforeExport(context, { format, options }) {},
 
     /**
-     * After EACH export call. Observation only: what you return becomes the payload for
-     * the next plugin, not the value the caller receives.
+     * After EACH export call.
+     * Observes { format, options, result }; return values are ignored.
      */
     async afterExport(context, { format, options, result }) {},
 
-    /**
-     * Define custom exporters (auto-added as helpers like out.toPdf()).
-     * Return a map { [key: string]: (ctx:any, opts:any) =&gt; Promise&lt;any&gt; }.
-     */
-    async defineExports(context) { return {}; },
-
-    /** Runs ONCE after the FIRST export finishes (cleanup). */
+    /** Runs ONCE after the FIRST successful export finishes (cleanup). */
     async afterSnap(context) {}
   };
 }</pre>
-      <p><strong>Quick recap:</strong></p>
+      <p><strong>Before using a plugin in production:</strong></p>
       <ul>
-        <li>Plugins can modify capture behavior (<code>beforeSnap</code>, <code>afterClone</code>, etc.).</li>
-        <li>You can inject visuals or transformations safely into the cloned tree.</li>
-        <li>New exporters defined in <code>defineExports()</code> automatically become helpers like <code>out.toPdf()</code>.</li>
-        <li>All hooks can be asynchronous, run in order, and share the same <code>context</code>.</li>
+        <li>Keep frozen data on the capture context, not a shared plugin closure.</li>
+        <li>Test repeated exports and concurrent captures using the same plugin instance.</li>
+        <li>Use the core <code>exports</code> facade from <code>defineExports</code> for raster work, so sizing, compressed originals and Safari handling stay consistent.</li>
+        <li>Test in Chromium, Firefox and Safari, including <code>scale: 2</code> and changes after the first capture.</li>
       </ul>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../api/" data-umami-event="Docs plugins card api">API reference: methods &amp; exporters <span class="arrow">→</span></a>
-        <a class="related-card" href="../options/" data-umami-event="Docs plugins card options">Options: every capture option <span class="arrow">→</span></a>
-        <a class="related-card" href="../cache/" data-umami-event="Docs plugins card cache">Cache &amp; preCache: performance <span class="arrow">→</span></a>
+        <a class="related-card" href="../api/" data-umami-event="Docs plugins card api">API reference — methods &amp; exporters <span class="arrow">→</span></a>
+        <a class="related-card" href="../options/" data-umami-event="Docs plugins card options">Options — every capture option <span class="arrow">→</span></a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs plugins card cache">Cache &amp; preCapture — performance <span class="arrow">→</span></a>
         <a class="related-card" href="../../plugins.html" data-umami-event="Docs plugins card showcase">Browse community plugins <span class="arrow">→</span></a>
       </div>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Start with the plugin template</h2>
-        <p>Start from the plugin template, add the hook you need and test it against a real capture.</p>
+        <h2>Ready to build?</h2>
+        <p>Use an existing plugin or start with the template and the hook reference.</p>
         <a href="../../plugins.html" class="btn btn-primary" data-umami-event="Docs plugins cta browse">Browse plugins</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs plugins cta npm">Install from npm</a>
       </div>

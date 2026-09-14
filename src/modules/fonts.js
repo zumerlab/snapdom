@@ -1,5 +1,17 @@
 /**
- * Utilities for handling and embedding web fonts and icon fonts.
+ * Web fonts: which @font-face rules a capture needs, emitted with their payloads inlined.
+ *
+ * Two halves. `collectFontUsage` walks the subtree once and records every family, weight,
+ * style and stretch it uses, plus every codepoint it shows. `embedCustomFonts` then scans the
+ * document's stylesheets (same-origin through CSSOM, cross-origin fetched, nested @import
+ * flattened), keeps the faces that match a used variant and meet a used codepoint, and emits
+ * them with every url() turned into a data: URL. Icon fonts are skipped throughout: their
+ * glyphs are drawn to images instead (iconFonts.js, and `iconToImage` below).
+ *
+ * Contracts a change must keep. A remote url() never reaches the emitted CSS, it is inert
+ * inside a foreignObject. A family the page uses never ends the scan with zero faces (#478).
+ * Descriptors the source did not declare are never invented (#479). The result is memoized
+ * per document, codepoint set and option bag, never across them.
  * @module fonts
  */
 
@@ -8,12 +20,16 @@ import { getStyle } from '../utils/css.js'
 import { cache } from '../core/cache'
 import { isIconFont, isIconFontStylesheet } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
+import { pseudoGatesFor, getStyleEnvEpoch, flushStyleInvalidations } from './styles.js'
 import { nextFrame } from '../utils/browser.js'
+import { markInternalNode } from '../utils/ownership.js'
 
 /**
- * Converts a unicode character from an icon font into a data URL image.
+ * Draw one icon-font glyph on a canvas at devicePixelRatio and return it as a data URL.
  *
- * @export
+ * The pseudo pass calls this for a single-character `content` in an icon font: icon fonts are
+ * never embedded, so inside the svg the glyph would have no font. The size comes from a
+ * hidden span measured in the same family the canvas draws with.
  * @param {string} unicodeChar - The unicode character to render
  * @param {string} fontFamily - The font family name
  * @param {string|number} fontWeight - The font weight
@@ -29,7 +45,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   try { await document.fonts.ready } catch {}
 
   const span = document.createElement('span')
-  span.setAttribute('data-snapdom-internal', '')
+  markInternalNode(span)
   span.textContent = unicodeChar
   span.style.position = 'absolute'
   span.style.visibility = 'hidden'
@@ -75,7 +91,8 @@ const GENERIC_FAMILIES = new Set([
   'emoji', 'math', 'fangsong', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded'
 ])
 
-/** Common libraries that include web fonts (for cross-origin stylesheet detection) */
+/** Path tokens of libraries that ship their own @font-face, so their cross-origin CSS is
+ *  fetched even when the URL names no font (KaTeX from a CDN, #344). */
 const FONT_LIBRARIES = ['katex', 'mathjax', 'mathml']
 
 /**
@@ -145,6 +162,8 @@ function normStretchPct(st) {
   return m ? Math.max(50, Math.min(200, parseFloat(m[1]))) : 100
 }
 
+/** A @font-face weight descriptor as a range: `'400 700'` -> `{ min: 400, max: 700 }`,
+ *  `'bold'` -> `{ min: 700, max: 700 }`. */
 function parseWeightSpec(spec) {
   const s = String(spec || '400').trim()
   const m = s.match(/^(\d{2,3})\s+(\d{2,3})$/)
@@ -156,6 +175,7 @@ function parseWeightSpec(spec) {
   return { min: v, max: v }
 }
 
+/** A @font-face style descriptor as its kind: normal, italic or oblique (any angle). */
 function parseStyleSpec(spec) {
   const t = String(spec || 'normal').trim().toLowerCase()
   if (t === 'italic') return { kind: 'italic' }
@@ -163,6 +183,7 @@ function parseStyleSpec(spec) {
   return { kind: 'normal' }
 }
 
+/** A @font-face stretch descriptor as a percentage range: `'75% 125%'` -> `{ min: 75, max: 125 }`. */
 function parseStretchSpec(spec) {
   const s = String(spec || '100%').trim()
   const mm = s.match(/(\d+(?:\.\d+)?)\s*%\s+(\d+(?:\.\d+)?)\s*%/)
@@ -176,16 +197,10 @@ function parseStretchSpec(spec) {
 }
 
 /**
- * Return true if a stylesheet URL is likely to contain @font-face rules.
- * Conservative allowlist for cross-origin fetches.
- * - Same-origin: always allowed (we read CSSOM, no fetch).
- * - Cross-origin: allow only well-known font hosts or URLs containing family hints.
- * @param {string} href
- * @param {Set<string>} requiredFamilies // plain names e.g. "Unbounded", "Mansalva"
- */
-/**
- * Extract base font name for URL matching (e.g. "Nunito Variable" -> "nunito", "Nunito Sans Variable" -> "nunito-sans").
- * Fixes #370: similar names like Nunito vs Nunito Sans must match distinct CDN paths.
+ * A family name as the token CDN paths use: "Nunito Variable" -> "nunito", "Nunito Sans
+ * Variable" -> "nunito-sans". Whole-name tokens keep Nunito and Nunito Sans apart (#370).
+ * @param {string} family
+ * @returns {string}
  */
 function baseFamilyToken(family) {
   if (!family || typeof family !== 'string') return ''
@@ -196,6 +211,18 @@ function baseFamilyToken(family) {
   return base.replace(/\s+/g, '-')
 }
 
+/**
+ * Whether a <link> stylesheet is worth fetching for @font-face rules.
+ *
+ * Same-origin sheets always are, they are read through CSSOM with no fetch. Cross-origin
+ * ones cost a network round trip, so only known font hosts, the domains the user allowed
+ * (`fontStylesheetDomains`, #309), URLs that mention fonts or a required family, and the
+ * libraries in FONT_LIBRARIES pass.
+ * @param {string} href
+ * @param {Set<string>} requiredFamilies - plain names, e.g. "Unbounded"
+ * @param {string[]} [allowedDomains=[]]
+ * @returns {boolean}
+ */
 function isLikelyFontStylesheet(href, requiredFamilies, allowedDomains = []) {
   if (!href) return false
   try {
@@ -232,9 +259,9 @@ function isLikelyFontStylesheet(href, requiredFamilies, allowedDomains = []) {
 }
 
 /**
- * Handy: build the set of plain family names from the required keys.
- * required key format: "family__weight__style__stretchPct"
+ * The plain family names inside the required keys ("family__weight__style__stretchPct").
  * @param {Set<string>} required
+ * @returns {Set<string>}
  */
 function familiesFromRequired(required) {
   const out = new Set()
@@ -270,12 +297,14 @@ const IMPORT_ANY_RE = /@import\s+(?:url\(\s*(['"]?)([^)"']+)\1\s*\)|(['"])([^"']
 const MAX_IMPORT_DEPTH = 4
 
 /**
- * Flattens @import recursively and rewrites relative urls at each level
- * using that sheet's base href. Uses snapFetch (with proxy) on purpose
- * to bypass CSSOM CORS blocks. Guards cycles and too-deep trees.
+ * Flatten every @import into the text, recursively, rewriting relative url()s against each
+ * sheet's own href on the way. Goes through snapFetch rather than CSSOM on purpose: a
+ * cross-origin import is blocked there but fetchable here (with the proxy). Cycles are
+ * skipped and depth stops at MAX_IMPORT_DEPTH; an import that cannot be fetched stays as is.
  * @param {string} cssText
  * @param {string} ownerHref
  * @param {string} useProxy
+ * @returns {Promise<string>}
  */
 async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
   if (!cssText) return cssText
@@ -295,9 +324,14 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
     let out = ''
     let last = 0
     let m
-    while ((m = IMPORT_ANY_RE.exec(text))) {
+    // Own regex per call. IMPORT_ANY_RE is module-level and /g, so its lastIndex is shared
+    // state — and this function RECURSES into each imported sheet. The nested call resumed
+    // scanning from the parent's lastIndex and then left its own behind, so imports after
+    // the first nested one were skipped and their @font-face rules never embedded.
+    const importRe = new RegExp(IMPORT_ANY_RE.source, 'g')
+    while ((m = importRe.exec(text))) {
       out += text.slice(last, m.index)
-      last = IMPORT_ANY_RE.lastIndex
+      last = importRe.lastIndex
 
       const rawUrl = (m[2] || m[4] || '').trim()
       const absUrl = normalizeUrl(rawUrl, baseHref)
@@ -338,12 +372,18 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
 const URL_RE = /url\((["']?)([^"')]+)\1\)/g
 const FACE_RE = /@font-face[^{}]*\{[^}]*\}/g
 
+/** One descriptor's value out of a raw @font-face block. The last declaration may have no
+ *  semicolon, so the closing brace ends it too (#475). */
 function getFontFaceDeclaration(block, property, fallback = '') {
   const match = block.match(new RegExp(`${property}\\s*:\\s*([^;}]+)[;}]`, 'i'))
   return (match?.[1] || fallback).trim()
 }
 
-/** @param {string} ur */
+/**
+ * `U+0000-00FF, U+4??` -> `[[0, 255], [0x400, 0x4FF]]`. A `?` wildcard spans its min and max.
+ * @param {string} ur
+ * @returns {Array<[number, number]>}
+ */
 function parseUnicodeRange(ur) {
   if (!ur) return []
   const ranges = []
@@ -372,7 +412,9 @@ function parseUnicodeRange(ur) {
   return ranges
 }
 
-/** @param {Set<number>} used @param {Array<[number,number]>} ranges */
+/** Whether any used codepoint falls inside the face's unicode-range. No ranges, or no known
+ *  codepoints, means keep it: filtering on what is unknown drops glyphs.
+ *  @param {Set<number>} used @param {Array<[number,number]>} ranges */
 function unicodeIntersects(used, ranges) {
   if (!ranges.length) return true
   if (!used || used.size === 0) return true // don't over-filter if unknown
@@ -382,7 +424,8 @@ function unicodeIntersects(used, ranges) {
   return false
 }
 
-/** @param {string} srcValue @param {string} baseHref */
+/** The absolute URLs in a `src:` value, data: ones left out.
+ *  @param {string} srcValue @param {string} baseHref @returns {string[]} */
 function extractSrcUrls(srcValue, baseHref) {
   const urls = []
   if (!srcValue) return urls
@@ -397,8 +440,17 @@ function extractSrcUrls(srcValue, baseHref) {
   return urls
 }
 
-/** @param {string} cssBlock @param {string} baseHref */
-async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
+/**
+ * Replace every url() in a @font-face block with its payload as a data: URL, from
+ * cache.resource or fetched. Icon font URLs are left alone. A fetch that fails leaves the
+ * url() in place and warns. Pinned by __tests__/module.fonts.evictedResource.test.js.
+ * @param {string} cssBlock
+ * @param {string} baseHref
+ * @param {string} [useProxy='']
+ * @param {RegExp[]} [iconMatchers]
+ * @returns {Promise<string>}
+ */
+async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '', iconMatchers) {
   let out = cssBlock
   for (const m of cssBlock.matchAll(URL_RE)) {
     const raw = extractURL(m[0])
@@ -407,23 +459,23 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
     if (!abs.startsWith('http') && !abs.startsWith('data:')) {
       try { abs = new URL(abs, baseHref || location.href).href } catch {}
     }
-    if (isIconFont(abs)) continue
+    if (isIconFont(abs, iconMatchers)) continue
 
+    // `cache.resource` is the ONLY proof the payload exists, here and at every other font
+    // src below. It is FIFO-capped, so a font fetched earlier can be gone; having merely
+    // SEEN the URL proves nothing. Miss => refetch, because the alternative is leaving the
+    // live url() in place, and a remote URL inside a foreignObject is inert: the font would
+    // silently fail to embed.
     if (cache.resource?.has(abs)) {
-      cache.font?.add(abs)
       out = out.replace(m[0], `url(${cache.resource.get(abs)})`)
       continue
     }
-    // Don't skip on `cache.font.has(abs)` alone: `cache.font` is an unbounded "seen" Set but
-    // `cache.resource` (the base64) is FIFO-capped. A seen font whose resource was evicted must
-    // be re-fetched here, not left as a live url() that silently fails to embed.
 
     try {
       const r = await snapFetch(abs, { as: 'dataURL', useProxy, silent: true })
       if (r.ok && typeof r.data === 'string') {
         const b64 = r.data
         cache.resource?.set(abs, b64)
-        cache.font?.add(abs)
         out = out.replace(m[0], `url(${b64})`)
       }
     } catch {
@@ -433,7 +485,8 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
   return out
 }
 
-// ---- simple exclude builder (families/domains/subsets) ----
+/** The script a unicode-range covers, for the `excludeFonts.subsets` knob: vietnamese,
+ *  cyrillic, greek, latin-ext or latin, most specific first. Null when none applies. */
 function subsetFromRanges(ranges) {
   if (!ranges.length) return null
   const hit = (a, b) => ranges.some(([x, y]) => !(y < a || x > b))
@@ -450,6 +503,8 @@ function subsetFromRanges(ranges) {
   return null
 }
 
+/** Compile `excludeFonts` ({ families, domains, subsets }) into one predicate over a face's
+ *  meta and parsed ranges. Plain names and hosts, no regex for the user. */
 function buildSimpleExcluder(ex = {}) {
   const famSet = new Set((ex.families || []).map(s => String(s).toLowerCase()))
   const domSet = new Set((ex.domains || []).map(s => String(s).toLowerCase()))
@@ -469,6 +524,9 @@ function buildSimpleExcluder(ex = {}) {
   }
 }
 
+/** Drop repeated @font-face blocks from the emitted CSS. Two blocks are the same face when
+ *  family, weight, style, stretch, unicode-range and the sorted src URLs all agree; the
+ *  first one stays. */
 function dedupeFontFaces(cssText) {
   if (!cssText) return cssText
 
@@ -523,22 +581,53 @@ function docCacheId(doc) {
   return id
 }
 
-// ---- cache key per capture signature (avoid cross-pollution between different targets) ----
-function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc) {
+/**
+ * The cache.resource key for an embed result. It covers every input that changes the
+ * emitted CSS: required variants, exclusions, localFonts, proxy, allowed domains, the
+ * document itself (same-origin frames share hrefs, so the Document instance is the id),
+ * the used codepoints, and the icon matchers. Leaving any of them out served one
+ * capture's CSS to another. Pinned by __tests__/module.fonts.iframe.test.js and the digest
+ * collision case in __tests__/regression.reviewP1.test.js.
+ */
+function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers, envEpoch) {
   const req = Array.from(required || []).sort().join('|')
+  // The emitted CSS is SUBSETTED by unicode-range against the codepoints the captured
+  // subtree actually uses, so two captures of the same families but different text are not
+  // interchangeable: an English panel warmed the cache and a Cyrillic one was then served
+  // its latin-only faces. Order-independent digest — Set iteration order is insertion order.
+  //
+  // Each codepoint is AVALANCHED before it joins the sum. Multiplying and adding is linear
+  // over the ring, so `sum(imul(c, K)) === imul(sum(c), K)`: the digest was a function of the
+  // SUM of the codepoints and nothing else, and any two sets summing alike collided —
+  // "ad" and "bc" (97+100 = 98+99) produced the same key, on a cache whose whole job is to
+  // tell glyph sets apart. The xor-shift/multiply rounds break that linearity; the outer sum
+  // stays, because the digest must not depend on iteration order.
+  let cp = 0, n = 0
+  for (const c of usedCodepoints || []) {
+    let h = Math.imul(c, 2654435761)
+    h ^= h >>> 15
+    h = Math.imul(h, 2246822507)
+    h ^= h >>> 13
+    cp = (cp + h) | 0
+    n++
+  }
   const ex = exclude ? JSON.stringify({
     families: (exclude.families || []).map(s => String(s).toLowerCase()).sort(),
     domains: (exclude.domains || []).map(s => String(s).toLowerCase()).sort(),
     subsets: (exclude.subsets || []).map(s => String(s).toLowerCase()).sort(),
   }) : ''
   const lf = (localFonts || [])
-    .map(f => `${(f.family || '').toLowerCase()}::${f.weight || 'normal'}::${f.style || 'normal'}::${f.src || ''}`)
+    .map(f => `${(f.family || '').toLowerCase()}::${f.weight || 'normal'}::${f.style || 'normal'}::${f.stretchPct ?? 100}::${f.src || ''}`)
     .sort()
     .join('|')
   const px = useProxy || ''
   const fd = (fontStylesheetDomains || []).map(s => String(s).toLowerCase()).sort().join('|')
   const dc = docCacheId(doc || document)
-  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}`
+  // iconFonts decides which families are SKIPPED, so it changes the emitted CSS. Leaving it
+  // out meant the first capture of a page decided for every later one: `iconFonts: 'Brand'`
+  // and a plain capture of the same subtree shared one entry, and whichever ran first won.
+  const ic = (iconMatchers || []).map(rx => String(rx)).sort().join('|')
+  return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}::cp=${cp}::n=${n}::ic=${ic}::env=${envEpoch}`
 }
 
 // ----------------------------------------------------------------------------
@@ -546,8 +635,10 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
 // ----------------------------------------------------------------------------
 
 /**
- * Recursively collect @font-face from a CSSStyleSheet, honoring baseHref for each subsheet.
- * Guards cycles and excessive import depth.
+ * Collect the wanted @font-face rules from one CSSStyleSheet through CSSOM, descending into
+ * its @import rules with each subsheet's own href as base. Cycles and depth past
+ * MAX_IMPORT_DEPTH are skipped. A sheet whose cssRules throw (cross-origin) is left to the
+ * <link> pass, which fetches it as text.
  * @param {CSSStyleSheet} sheet
  * @param {string} baseHref
  * @param {(css:string)=>Promise<void>|void} emitFace
@@ -555,12 +646,19 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
  * @param {Map} ctx.requiredIndex
  * @param {Set<number>} ctx.usedCodepoints
  * @param {(fam:string,styleSpec:string,weightSpec:string,stretchSpec:string)=>boolean} ctx.faceMatchesRequired
- * @param {(meta:any, ranges:any)=>boolean} ctx.simpleExcluder
+ * @param {Set<string>} ctx.coveredFamilies - families a strict match already satisfied (#478)
+ * @param {Array<object>} ctx.provisionalFaces - rejected faces of a used family, held raw (#478)
+ * @param {((meta:any, ranges:any)=>boolean)|null} ctx.simpleExcluder
  * @param {string} ctx.useProxy
+ * @param {RegExp[]} ctx.iconMatchers
  * @param {Set<string>} ctx.visitedSheets
  * @param {number} ctx.depth
  */
 async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
+  const view = ctx.doc?.defaultView || window
+  // Conditions are evaluated in the live document, before the face is emitted without
+  // its grouping wrapper into the SVG. Inactive faces must not win its font matching.
+  if (sheet.disabled || (sheet.media?.mediaText && !view.matchMedia(sheet.media.mediaText).matches)) return
   let rules
   try {
     rules = sheet.cssRules || []
@@ -592,10 +690,17 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       continue
     }
 
+    if (rule.cssRules?.length) {
+      if (rule.type === CSSRule.MEDIA_RULE && !view.matchMedia(rule.conditionText).matches) continue
+      if (rule.type === CSSRule.SUPPORTS_RULE && !view.CSS.supports(rule.conditionText)) continue
+      await collectFacesFromSheet(rule, baseHref, emitFace, ctx)
+      continue
+    }
+
     if (rule.type === CSSRule.FONT_FACE_RULE) {
       const famRaw = (rule.style.getPropertyValue('font-family') || '').trim()
       const family = pickPrimaryFamily(famRaw)
-      if (!family || isIconFont(family)) continue
+      if (!family || isIconFont(family, ctx.iconMatchers)) continue
 
       // An ABSENT descriptor is not the same as an explicit default on a variable font: with
       // no font-weight the browser leaves the wght axis free across the font's whole range,
@@ -647,31 +752,49 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       }
       ctx.coveredFamilies.add(family.toLowerCase())
 
+      // Always quote. An unquoted family is a sequence of CSS identifiers, and an identifier
+      // may not start with a digit — so "Press Start 2P", "Baloo 2" and "M PLUS 1p" emitted
+      // an INVALID @font-face that the parser dropped whole, and the font silently failed to
+      // embed while everything else looked fine.
+      const familyDecl = `"${String(family).replace(/^\s*["']|["']\s*$/g, '').replace(/(["\\])/g, '\\$1')}"`
       if (/url\(/i.test(srcRaw)) {
-        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy)
-        await emitFace(`@font-face{font-family:${family};src:${inlinedSrc};${descriptors}}`)
+        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy, ctx.iconMatchers)
+        await emitFace(`@font-face{font-family:${familyDecl};src:${inlinedSrc};${descriptors}}`)
       } else {
-        await emitFace(`@font-face{font-family:${family};src:${srcRaw};${descriptors}}`)
+        await emitFace(`@font-face{font-family:${familyDecl};src:${srcRaw};${descriptors}}`)
       }
     }
   }
 }
 
 /**
- * Embed only the @font-face rules that match required variants AND intersect used unicode ranges.
- * Smart by default + simple "exclude" knobs (no regex for end users).
+ * Build the @font-face CSS a capture needs, every payload inlined as a data: URL.
+ *
+ * Sources, in order: <link> stylesheets (same-origin read through CSSOM, cross-origin fetched
+ * when the URL looks like a font sheet, nested @import flattened), the rest of
+ * document.styleSheets through CSSOM, the faces the strict filter rejected for a family that
+ * ended with nothing (#478), FontFaces the page built in script and tagged with `_snapdomSrc`
+ * (a FontFace does not expose its source, so the host puts it there), and `localFonts`.
+ *
+ * A face is kept when its family is used, it matches a used variant (exact first, then a
+ * weight within 300, then a normal face for an italic request the family cannot serve),
+ * and its unicode-range meets a used codepoint. Only descriptors the source declared are
+ * emitted (#479), and the family is always quoted. The result is memoized in cache.resource
+ * under a key that covers every input, document included (#441).
+ * Pinned by __tests__/module.fonts.*.test.js.
  *
  * @typedef {{family:string, weightSpec:string, styleSpec:string, stretchSpec:string, unicodeRange:string, srcRaw:string, srcUrls:string[], href:string}} FontFaceMeta
  *
  * @param {Object} options
- * @param {Set<string>} options.required                     // keys: "family__weight__style__stretchPct"
- * @param {Set<number>} options.usedCodepoints               // codepoints used in the captured subtree
- * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.exclude] // simple exclude
+ * @param {Set<string>} options.required - keys "family__weight__style__stretchPct", from collectFontUsage
+ * @param {Set<number>} options.usedCodepoints - codepoints the captured subtree shows
+ * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.exclude] - the `excludeFonts` option
  * @param {Array<{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}>} [options.localFonts=[]]
  * @param {string}  [options.useProxy=""]
- * @param {string[]} [options.fontStylesheetDomains=[]]      // extra domains to fetch cross-origin CSS from (#309)
- * @param {Document} [options.doc=document]                  // document to scan for @font-face sources (the element's ownerDocument for iframe support, #441)
- * @returns {Promise<string>} inlined @font-face CSS
+ * @param {string[]} [options.fontStylesheetDomains=[]] - extra domains whose cross-origin CSS is fetched (#309)
+ * @param {RegExp[]} [options.iconMatchers=[]] - this capture's `iconFonts`, compiled (context.__iconMatchers)
+ * @param {Document} [options.doc=document] - the element's ownerDocument, so an iframe's own fonts are found (#441)
+ * @returns {Promise<string>} inlined @font-face CSS, '' when nothing is needed
  */
 export async function embedCustomFonts({
   required,
@@ -680,6 +803,7 @@ export async function embedCustomFonts({
   localFonts = [],
   useProxy = '',
   fontStylesheetDomains = [],
+  iconMatchers = [],
   doc = document,
 } = {}) {
   // ---------- Normalize inputs ----------
@@ -700,21 +824,19 @@ export async function embedCustomFonts({
   }
 
   /**
- * Decide if a given @font-face matches at least one of the required variants
- * for the specified family.
+ * Whether a @font-face serves at least one variant the page asked for in its family.
  *
- * - Prioriza match exacto (peso, estilo, stretch).
- * - Luego permite "near weight" manteniendo estilo/stretch.
- * - Y como fallback específico:
- *   Si SOLO hay @font-face `normal` para una familia,
- *   pero el DOM pide `italic`/`oblique`,
- *   acepta este face normal (si el peso/stretch son razonables),
- *   de modo que el motor pueda generar cursiva sintética.
+ * Three tiers. An exact match on weight (inside the face's range), style kind and stretch.
+ * Then a single-weight face within 300 of the request, same style and stretch. Then, when
+ * the page asks for italic or oblique and this family only declares a normal face, that
+ * normal face, so the engine can synthesize the slant instead of falling back to a system
+ * font.
  *
  * @param {string} fam
- * @param {string} styleSpec   font-style desde @font-face (p.ej. "normal" o "italic")
- * @param {string} weightSpec  font-weight desde @font-face (p.ej. "400" o "400 700")
- * @param {string} stretchSpec font-stretch desde @font-face (p.ej. "100%")
+ * @param {string} styleSpec   font-style from the @font-face, e.g. "normal" or "italic"
+ * @param {string} weightSpec  font-weight from the @font-face, e.g. "400" or "400 700"
+ * @param {string} stretchSpec font-stretch from the @font-face, e.g. "100%"
+ * @returns {boolean}
  */
 function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   const famKey = String(fam).toLowerCase()
@@ -735,7 +857,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   let exactMatched = false
 
-  // 1) Match exacto
+  // 1) Exact match
   for (const r of need) {
     const wOk = faceIsRange ? (r.w >= ws.min && r.w <= ws.max) : (r.w === faceSingleW)
     const sOk = styleOK(normStyle(r.s))
@@ -749,7 +871,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   if (exactMatched) return true
 
-  // 2) "Near weight" manteniendo estilo/stretch
+  // 2) Near weight, same style and stretch
   if (!faceIsRange) {
     for (const r of need) {
       const sOk = styleOK(normStyle(r.s))
@@ -759,8 +881,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     }
   }
 
-  // 3) Fallback: DOM pide italic/oblique pero solo hay @font-face normal
-  //    para ESTA familia: aceptamos el face normal si peso/stretch son razonables.
+  // 3) Fallback: the DOM asks for italic/oblique but THIS family only declares a normal
+  //    @font-face. Accept the normal face when weight/stretch are reasonable.
   if (!faceIsRange && ss.kind === 'normal') {
     const hasItalicRequest = need.some((r) => normStyle(r.s) !== 'normal')
     if (hasItalicRequest) {
@@ -785,7 +907,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   const simpleExcluder = buildSimpleExcluder(exclude)
 
-  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc)
+  // Font bytes remain cached by URL, but assembled face CSS depends on current rules and
+  // descriptors. Reuse the shared environment epoch, not a per-capture stylesheet census.
+  // Wire this document before draining so direct/iframe callers also see same-task edits.
+  getStyleEnvEpoch(doc)
+  flushStyleInvalidations()
+  const cacheKey = buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers, getStyleEnvEpoch(doc))
   if (cache.resource?.has(cacheKey)) {
     return cache.resource.get(cacheKey)
   }
@@ -800,13 +927,21 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     const cssText = styleTag.textContent || ''
     for (const m of cssText.matchAll(IMPORT_ANY_RE_LOCAL)) {
       const u = (m[2] || m[4] || '').trim()
-      if (!u || isIconFontStylesheet(u)) continue
+      if (!u || isIconFontStylesheet(u, iconMatchers)) continue
       const hasLink = !!doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)
       if (!hasLink) importUrls.push(u)
     }
   }
   // @import font URLs with no matching <link> are made reachable by injecting a temporary
   // <link>. These are tracked and removed below so the capture never mutates the user's DOM.
+  //
+  // The deadline is not optional. A <link> cannot be aborted and fires NEITHER load nor
+  // error while a request hangs, so a stylesheet that never answers — an offline CDN, a
+  // service worker holding the request, a captive portal — left this Promise.all pending
+  // forever: snapdom() never settled, and the temporary <link> the comment above promises
+  // to remove stayed in the user's <head> because the removal is after the await. Missing
+  // that font costs one fallback glyph run; waiting for it costs the whole capture. Same
+  // 3s budget snapFetch gives every other remote resource.
   const injectedLinks = []
   if (importUrls.length) {
     await Promise.all(importUrls.map((u) => new Promise((resolve) => {
@@ -814,9 +949,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       const link = doc.createElement('link')
       link.rel = 'stylesheet'
       link.href = u
+      markInternalNode(link)
       link.setAttribute('data-snapdom', 'injected-import')
-      link.onload = () => resolve(link)
-      link.onerror = () => resolve(null)
+      const timer = setTimeout(() => resolve(null), 3000)
+      const settle = (v) => { clearTimeout(timer); resolve(v) }
+      link.onload = () => settle(link)
+      link.onerror = () => settle(null)
       doc.head.appendChild(link)
       injectedLinks.push(link)
     })))
@@ -840,7 +978,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const link of linkNodes) {
     try {
       // Whole-URL skip: only for stylesheets that hold nothing but icon fonts (#493)
-      if (isIconFontStylesheet(link.href)) continue
+      if (isIconFontStylesheet(link.href, iconMatchers)) continue
 
       let cssText = ''
       let sameOrigin = false
@@ -875,7 +1013,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       for (const face of cssText.match(FACE_RE) || []) {
         const famRaw = getFontFaceDeclaration(face, 'font-family')
         const family = pickPrimaryFamily(famRaw)
-        if (!family || isIconFont(family)) continue
+        if (!family || isIconFont(family, iconMatchers)) continue
 
         const weightSpec = getFontFaceDeclaration(face, 'font-weight', '400')
         const styleSpec = getFontFaceDeclaration(face, 'font-style', 'normal')
@@ -898,7 +1036,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         coveredFamilies.add(family.toLowerCase())
 
         const newFace = /url\(/i.test(srcRaw)
-          ? await inlineUrlsInCssBlock(face, link.href, useProxy)
+          ? await inlineUrlsInCssBlock(face, link.href, useProxy, iconMatchers)
           : face
         facesOut += newFace
       }
@@ -911,6 +1049,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   // ---------- 2) CSSOM (inline/imported) ----------
   const ctx = {
+    doc,
     requiredIndex,
     usedCodepoints,
     faceMatchesRequired,
@@ -918,14 +1057,18 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     provisionalFaces,
     simpleExcluder: exclude ? buildSimpleExcluder(exclude) : null,
     useProxy,
+    iconMatchers,
     visitedSheets: new Set(),
     depth: 0
   }
 
-  for (const sheet of doc.styleSheets) {
+  // Constructed/adopted sheets do not appear in document.styleSheets, but their faces
+  // participate in the same font matching as ordinary sheets.
+  const sheets = new Set([...doc.styleSheets, ...(doc.adoptedStyleSheets || [])])
+  for (const sheet of sheets) {
     if (sheet.href && linkNodes.some(l => l.href === sheet.href)) continue
     try {
-      const rootHref = sheet.href || (location.origin + '/')
+      const rootHref = sheet.href || doc.baseURI || (location.origin + '/')
       if (rootHref) ctx.visitedSheets.add(rootHref)
       await collectFacesFromSheet(
         sheet,
@@ -946,16 +1089,18 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const p of provisionalFaces) {
     if (coveredFamilies.has(p.family)) continue
     finalCSS += /url\(/i.test(p.srcRaw)
-      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy)
+      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy, iconMatchers)
       : p.block
   }
 
   // ---------- 3) document.fonts with _snapdomSrc ----------
+  // Faces the page built in script. A FontFace does not expose its source, so the host tags
+  // it with `_snapdomSrc` (URL or data:); snapdom never sets that field itself.
   try {
     for (const f of doc.fonts || []) {
       if (!f || !f.family || f.status !== 'loaded' || !f._snapdomSrc) continue
       const fam = String(f.family).replace(/^['"]+|['"]+$/g, '')
-      if (isIconFont(fam)) continue
+      if (isIconFont(fam, iconMatchers)) continue
       if (!requiredIndex.has(fam.toLowerCase())) continue
 
       if (exclude?.families && exclude.families.some(n => String(n).toLowerCase() === fam.toLowerCase())) {
@@ -966,14 +1111,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!String(b64).startsWith('data:')) {
         if (cache.resource?.has(f._snapdomSrc)) {
           b64 = cache.resource.get(f._snapdomSrc)
-          cache.font?.add(f._snapdomSrc)
-        } else if (!cache.font?.has(f._snapdomSrc)) {
+        } else {
           try {
             const r = await snapFetch(f._snapdomSrc, { as: 'dataURL', useProxy, silent: true })
             if (r.ok && typeof r.data === 'string') {
               b64 = r.data
               cache.resource?.set(f._snapdomSrc, b64)
-              cache.font?.add(f._snapdomSrc)
             } else {
               continue
             }
@@ -991,7 +1134,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const font of localFonts) {
     if (!font || typeof font !== 'object') continue
     const family = String(font.family || '').replace(/^['"]+|['"]+$/g, '')
-    if (!family || isIconFont(family)) continue
+    if (!family || isIconFont(family, iconMatchers)) continue
     if (!requiredIndex.has(family.toLowerCase())) continue
     if (exclude?.families && exclude.families.some(n => String(n).toLowerCase() === family.toLowerCase())) continue
 
@@ -1004,14 +1147,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     if (!b64.startsWith('data:')) {
       if (cache.resource?.has(src)) {
         b64 = cache.resource.get(src)
-        cache.font?.add(src)
-      } else if (!cache.font?.has(src)) {
+      } else {
         try {
           const r = await snapFetch(src, { as: 'dataURL', useProxy, silent: true })
           if (r.ok && typeof r.data === 'string') {
             b64 = r.data
             cache.resource?.set(src, b64)
-            cache.font?.add(src)
           } else {
             continue
           }
@@ -1037,10 +1178,14 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 // ----------------------------------------------------------------------------
 
 /**
- * Collects font variants AND used codepoints in one subtree walk.
- * The two separate collectors each re-walked the tree with fresh getComputedStyle calls
- * (element + ::before + ::after per node); this fused version does a single walk on the
- * memoized getStyle cache, shared with the clone pass and across captures.
+ * Collect the font variants AND the codepoints a subtree uses, in one walk.
+ *
+ * The two used to be separate collectors, each re-walking the tree with fresh
+ * getComputedStyle calls (element, ::before and ::after per node). This one walks once on
+ * the memoized getStyle cache, shared with the clone pass and across captures. Every family
+ * in a fallback chain is registered, not only the first (#357), and pseudo content counts
+ * toward the codepoints. The Safari pre-step (snapdom.js) runs it and hands the result to
+ * the fonts phase, so a non-clip capture pays for it once.
  * @param {Element} root
  * @param {((el: Element) => boolean)|null} [keep] - Clip mode: skip elements outside the window
  * @returns {{required: Set<string>, usedCodepoints: Set<number>}}
@@ -1063,9 +1208,20 @@ export function collectFontUsage(root, keep) {
       required.add(`${family}__${normWeight(cs.fontWeight)}__${normStyle(cs.fontStyle)}__${normStretchPct(cs.fontStretch)}`)
     }
   }
+  // Same selector gate as inlinePseudoElements: skip the two pseudo style resolutions
+  // for nodes no collected ::before/::after selector matches (null gate → probe).
+  const gates = pseudoGatesFor(root)
+  const scope = root.getRootNode()
   const visitElement = (el) => {
     addFromStyle(getStyle(el))
+    // Document selectors cannot rule out pseudos in a component's own stylesheet.
+    const elementGates = el.getRootNode() === scope ? gates : pseudoGatesFor(el)
     for (const pseudo of ['::before', '::after']) {
+      const gate = pseudo === '::before' ? elementGates.before : elementGates.after
+      if (gate !== null) {
+        if (gate === '') continue
+        try { if (!el.matches(gate)) continue } catch { /* probe */ }
+      }
       const cs = getStyle(el, pseudo)
       const c = cs && cs.content
       if (!c || c === 'none' || c === 'normal') continue
@@ -1083,24 +1239,34 @@ export function collectFontUsage(root, keep) {
     }
   }
 
-  visitElement(root)
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null)
-  while (walker.nextNode()) {
-    const n = walker.currentNode
-    if (n.nodeType === Node.TEXT_NODE) {
-      if (keep && n.parentElement && !keep(n.parentElement)) continue
-      pushText(n.nodeValue || '')
-    } else {
-      if (keep && !keep(/** @type {Element} */ (n))) continue
-      visitElement(/** @type {Element} */ (n))
+  // TreeWalker stops at shadow boundaries, while deepClone includes their painted
+  // content. Walk each open root as well so font subsets and auto-embedding see it.
+  const trees = [root]
+  for (let i = 0; i < trees.length; i++) {
+    const tree = trees[i]
+    if (tree.nodeType === Node.ELEMENT_NODE) visitElement(tree)
+    if (tree.shadowRoot) trees.push(tree.shadowRoot)
+    const walker = (root.ownerDocument || document).createTreeWalker(tree, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null)
+    while (walker.nextNode()) {
+      const n = walker.currentNode
+      if (n.nodeType === Node.TEXT_NODE) {
+        if (keep && n.parentElement && !keep(n.parentElement)) continue
+        pushText(n.nodeValue || '')
+      } else {
+        if (keep && !keep(/** @type {Element} */ (n))) continue
+        visitElement(/** @type {Element} */ (n))
+        if (n.shadowRoot) trees.push(n.shadowRoot)
+      }
     }
   }
   return { required, usedCodepoints }
 }
 
 /**
- * Collects used font variants (family, weight, style, stretch) in subtree.
+ * The variant half of collectFontUsage. The pipeline calls the fused walk; this stays for
+ * callers that need one half.
  * @param {Element} root
+ * @param {((el: Element) => boolean)|null} [keep]
  * @returns {Set<string>} keys "family__weight__style__stretchPct"
  */
 export function collectUsedFontVariants(root, keep) {
@@ -1108,8 +1274,9 @@ export function collectUsedFontVariants(root, keep) {
 }
 
 /**
- * Collects used codepoints in subtree (including ::before/::after content).
+ * The codepoint half of collectFontUsage, ::before/::after content included.
  * @param {Element} root
+ * @param {((el: Element) => boolean)|null} [keep]
  * @returns {Set<number>}
  */
 export function collectUsedCodepoints(root, keep) {
@@ -1117,14 +1284,15 @@ export function collectUsedCodepoints(root, keep) {
 }
 
 /**
- * Ensures web fonts are fully resolved before capture, with a Safari-friendly warm-up.
- * - Awaits document.fonts.ready
- * - Forces layout/rasterization for each family by painting hidden spans
- * - Optionally retries a couple of times if Safari is still lazy
+ * Wait for the document's fonts, then lay out a hidden span per family so each face has
+ * been fetched and rasterized before the clone reads it.
  *
- * @param {Set<string>|string[]} families - Plain family names (e.g., "Mansalva", "Unbounded")
- * @param {number} [warmupRepetitions=2] - How many times to warm-up each family
- * @param {Document} [doc=document] - Document whose fonts to await and warm up (the element's ownerDocument for iframe support)
+ * Safari-only in practice: every caller gates it on isSafari(), and the pre-step in
+ * snapdom.js passes only the families the element uses, since waiting on system families
+ * cost about 30 ms per capture on WebKit for nothing. Each repetition waits two frames.
+ * @param {Set<string>|string[]} families - plain family names, e.g. "Unbounded"
+ * @param {number} [warmupRepetitions=2] - how many times to lay the spans out
+ * @param {Document} [doc=document] - the element's ownerDocument, for iframe content
  * @returns {Promise<void>}
  */
 export async function ensureFontsReady(families, warmupRepetitions = 2, doc = document) {
@@ -1135,7 +1303,7 @@ export async function ensureFontsReady(families, warmupRepetitions = 2, doc = do
 
   const warmupOnce = () => {
     const container = doc.createElement('div')
-    container.setAttribute('data-snapdom-internal', '')
+    markInternalNode(container)
     container.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;opacity:0!important;pointer-events:none!important;contain:layout size style;'
 
     for (const fam of fams) {

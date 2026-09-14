@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 
 // Firefox/WebKit canvases cannot encode WebP; snapdom falls back to PNG there.
@@ -37,33 +37,11 @@ describe('snapdom API (direct)', () => {
     document.body.removeChild(el)
   })
 
-  it('cubre rama Safari en toImg', async () => {
-    vi.resetModules()
-    vi.mock('../utils', async (importOriginal) => {
-      const actual = await importOriginal()
-      return { ...actual, isSafari: true }
-    })
-    const { snapdom } = await import('../src/api/snapdom.js')
-    const el = document.createElement('div')
-    el.style.width = '10px'
-    el.style.height = '10px'
-    document.body.appendChild(el)
-    // Forzar un SVG dataURL simple
-    const img = new Image()
-    img.width = 10
-    img.height = 10
-    img.decode = () => Promise.resolve()
-    const OrigImage = globalThis.Image
-    globalThis.Image = function() { return img }
-    try {
-      const res = await snapdom(el)
-      await res.toImg()
-    } finally {
-      globalThis.Image = OrigImage
-    }
-    document.body.removeChild(el)
-    vi.resetModules()
-  })
+  // The old 'cubre rama Safari en toImg' test mocked '../utils' — a specifier that resolves
+  // to <repo>/utils, which does not exist — so the factory never applied and the test ran the
+  // plain chromium path with zero assertions. Per CLAUDE.md, Playwright cannot verify the
+  // Safari branches anyway (that lives in the SnapEye harness), so it was removed rather
+  // than re-pointed: a correctly-wired mock would still only prove the mock.
 
   it('cubre rama de download SVG', async () => {
     const el = document.createElement('div')
@@ -77,13 +55,20 @@ describe('snapdom API (direct)', () => {
     URL.createObjectURL = () => 'blob:url'
     const origClick = a.click
     a.click = () => {}
+    // Patch the PROTOTYPE (download creates its own <a>) and RESTORE it: the old version
+    // left the stub in place for every later test in the worker, silently disabling clicks.
+    const origProtoClick = HTMLAnchorElement.prototype.click
     HTMLAnchorElement.prototype.click = () => {}
-    const { snapdom } = await import('../src/api/snapdom.js')
-    await snapdom.download(el, { format: 'svg', filename: 'testsvg' })
-    URL.createObjectURL = origCreate
-    a.click = origClick
-    document.body.removeChild(a)
-    document.body.removeChild(el)
+    try {
+      const { snapdom } = await import('../src/api/snapdom.js')
+      await snapdom.download(el, { format: 'svg', filename: 'testsvg' })
+    } finally {
+      HTMLAnchorElement.prototype.click = origProtoClick
+      URL.createObjectURL = origCreate
+      a.click = origClick
+      document.body.removeChild(a)
+      document.body.removeChild(el)
+    }
   })
 
   it('snapdom.toBlob supports type options ', async () => {
@@ -158,7 +143,7 @@ it('snapdom should support exclude option to filter out elements by CSS selector
   expect(decoded).toContain('This should remain')
 })
 
-it('snapdom should support filter option to exclude elements with custom logic', async () => {
+it('snapdom should support an exclude predicate with custom logic', async () => {
   const el = document.createElement('div')
   el.innerHTML = `
     <div class="level-1">Level 1
@@ -169,7 +154,7 @@ it('snapdom should support filter option to exclude elements with custom logic',
   `
   document.body.appendChild(el)
   const result = await snapdom(el, {
-    filter: (element) => !element.classList.contains('level-3')
+    exclude: (element) => element.classList.contains('level-3')
   })
 
     const svg = result.toRaw()
@@ -179,7 +164,7 @@ it('snapdom should support filter option to exclude elements with custom logic',
   expect(decoded).not.toContain('Level 3')
 })
 
-it('snapdom should support combining exclude and filter options', async () => {
+it('snapdom should support combining exclude selectors and predicates', async () => {
   const el = document.createElement('div')
   el.innerHTML = `
     <div class="exclude-by-selector">Exclude by selector</div>
@@ -189,8 +174,7 @@ it('snapdom should support combining exclude and filter options', async () => {
   document.body.appendChild(el)
 
   const result = await snapdom(el, {
-    exclude: ['.exclude-by-selector'],
-    filter: (element) => !element.classList.contains('exclude-by-filter')
+    exclude: ['.exclude-by-selector', (element) => element.classList.contains('exclude-by-filter')]
   })
 
    const svg = result.toRaw()

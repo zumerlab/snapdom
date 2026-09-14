@@ -54,3 +54,37 @@ describe('#425 invalid XML chars', () => {
     expect(svg).toMatch(/keep\ttab\nand newline/)
   })
 })
+
+describe('lone surrogates', () => {
+  // Worse than a control char: encodeURIComponent THROWS on an unpaired surrogate, so the
+  // whole capture rejects with "URI malformed" and the caller gets no image at all. The
+  // usual source is a page truncating user text mid-emoji (`title.slice(0, 60)`), which
+  // leaves a lone high surrogate the browser happily renders as a replacement glyph.
+  const LONE_HIGH = '\uD83D'  // first half of 😀
+  const LONE_LOW = '\uDE00'   // second half of 😀
+
+  let host
+  beforeEach(() => { host = document.createElement('div'); document.body.appendChild(host) })
+  afterEach(() => host.remove())
+
+  it('captures text containing a lone high surrogate instead of rejecting', async () => {
+    host.textContent = 'Hello ' + LONE_HIGH + ' world'
+    const canvas = await snapdom.toCanvas(host, { scale: 1, dpr: 1 })
+    expect(canvas).toBeInstanceOf(HTMLCanvasElement)
+  })
+
+  it('captures a lone low surrogate in an attribute value', async () => {
+    const input = document.createElement('input')
+    input.value = 'a' + LONE_LOW + 'b'
+    input.setAttribute('title', LONE_LOW)
+    host.appendChild(input)
+    const canvas = await snapdom.toCanvas(host, { scale: 1, dpr: 1 })
+    expect(canvas).toBeInstanceOf(HTMLCanvasElement)
+  })
+
+  it('keeps whole surrogate pairs intact', async () => {
+    host.textContent = 'ok 😀 done'
+    const raw = await snapdom.toRaw(host)
+    expect(decodeURIComponent(raw.split(',')[1] ?? '')).toContain('😀')
+  })
+})

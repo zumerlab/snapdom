@@ -8,7 +8,7 @@ describe('packages/plugins/index.js barrel export', () => {
     const mod = await import('../packages/plugins/index.js')
     const names = [
       'timestampOverlay', 'asciiExport', 'replaceText', 'filter', 'colorTint',
-      'pdfImage', 'agentMap', 'htmlExport', 'gifExport', 'videoExport', 'htmlInCanvas',
+      'pdfImage', 'agentMap', 'contextExport', 'htmlExport', 'gifExport', 'videoExport', 'redactInputs',
     ]
     for (const name of names) {
       expect(mod[name], `expected a "${name}" export`).toBeTypeOf('function')

@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { deepClone } from '../src/core/clone.js'
 import { createContext } from '../src/core/context.js'
-import { cache } from '../src/core/cache.js'
 
 let options = createContext()
 const sessionCache = {
-        styleMap: cache.session.styleMap,
-        styleCache: cache.session.styleCache,
-        nodeMap: cache.session.nodeMap
+        styleMap: new Map(),
+        styleCache: new WeakMap(),
+        nodeMap: new Map()
       }
 
 async function runClone(node) {
@@ -58,8 +57,12 @@ describe('deepClone', () => {
   it('deepClone handles data-capture="exclude"', async () => {
     const el = document.createElement('div')
     el.setAttribute('data-capture', 'exclude')
+    el.textContent = 'SECRETWORD'
     const clone = await runClone(el)
+    // not.toBeNull passed even for a completely broken exclusion returning a full clone.
+    // The hide-spacer contract is that the content must NOT survive into the clone.
     expect(clone).not.toBeNull()
+    expect(clone.textContent || '').not.toContain('SECRETWORD')
   })
 
   it('deepClone handles data-capture="placeholder"', async () => {
@@ -90,12 +93,14 @@ describe('deepClone', () => {
     const opt = document.createElement('option')
     opt.value = 'baz'
     select.appendChild(opt)
-    select.value = 'baz';
+    select.value = 'baz'
 
-    [input, textarea, select].forEach(async el => {
+    // forEach discards its async callbacks' promises, so the old form returned before any
+    // expect ran — a failing assertion surfaced only as an unhandled rejection.
+    for (const el of [input, textarea, select]) {
       const clone = await runClone(el)
       expect(clone.value).toBe(el.value)
-    })
+    }
   })
 
   it('deepClone handles shadow DOM', async () => {

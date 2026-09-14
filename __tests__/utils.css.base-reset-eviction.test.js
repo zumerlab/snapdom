@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
-import { cache } from '../src/core/cache.js'
+import { cache, EvictingMap } from '../src/core/cache.js'
 import { generateDedupedBaseCSS, getDefaultStyleForTag } from '../src/utils/css.js'
 
 /**
@@ -26,7 +26,7 @@ function svgCss(url) {
   return [...doc.querySelectorAll('style')].map((s) => s.textContent).join('\n')
 }
 
-// Comfortably more distinct tags than MAX_DEFAULT_STYLE (30). These must each carry *distinct*
+// Comfortably more distinct tags than the SHRUNKEN cap installed below. These must each carry *distinct*
 // UA styling: tags that compute identically (aside/section/nav/header/… are all plain blocks)
 // collide on the style-key memo, never call getDefaultStyleForTag, and so never occupy a slot.
 const MANY_TAGS = [
@@ -56,14 +56,21 @@ describe('generateDedupedBaseCSS — tags evicted from the defaultStyle cache', 
     document.body.appendChild(root)
 
     const distinct = new Set([...root.querySelectorAll('*')].map((e) => e.tagName.toLowerCase()))
-    expect(distinct.size).toBeGreaterThan(30)
 
-    // Start cold, as on a real page load: h3 is registered first and then evicted by the
-    // tags that follow it. A cache warmed by earlier tests would already hold h3 and hide it.
-    cache.defaultStyle.clear()
-
-    const css = svgCss((await snapdom(root)).url)
-    expect(resetTags(css)).toContain('h3')
+    // MAX_DEFAULT_STYLE was raised to 64 after the audit, so this fixture no longer overflows
+    // the production cache and the eviction path this test EXISTS to pin stopped executing —
+    // the test stayed green against the pre-fix code. Force eviction independently of the
+    // production cap with a small map; 'soft' policy leaves the swap alone during the capture.
+    const shrunken = new EvictingMap(8)
+    expect(distinct.size).toBeGreaterThan(8)
+    const original = cache.defaultStyle
+    cache.defaultStyle = shrunken
+    try {
+      const css = svgCss((await snapdom(root)).url)
+      expect(resetTags(css)).toContain('h3')
+    } finally {
+      cache.defaultStyle = original
+    }
   })
 
   it('covers every used tag that has defaults, not just the ones still cached', async () => {

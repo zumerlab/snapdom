@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Carga fresca del módulo para que __wired se reinicie en cada test que lo pida
+// Fresh module load so __wired resets for every test that asks for it
 async function loadInlineAllStylesFresh() {
   await vi.resetModules()
   const mod = await import('../src/modules/styles.js')
@@ -46,7 +46,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(MOStub.count).toBe(0)
   })
 
-  it('engancha invalidación una vez cuando cache !== "disabled"', async () => {
+  it('wires invalidation once when cache !== "disabled"', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 
     const s1 = document.createElement('div')
@@ -64,7 +64,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(session.styleMap.has(c2)).toBe(true)
   })
 
-  it('NO engancha invalidación cuando cache === "disabled"', async () => {
+  it('does NOT wire invalidation when cache === "disabled"', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
 
     const src = document.createElement('div')
@@ -105,7 +105,6 @@ describe('inlineAllStyles – branches y firmas', () => {
         image: cache.image,
         resource: cache.resource,
         background: cache.background,
-        font: cache.font,
       },
       options: { cache: 'auto' },
     }
@@ -114,16 +113,16 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(session.styleMap.has(clone)).toBe(true)
   })
 
-  it('firma #3: (source, clone, options) usando sólo options', async () => {
+  it('signature #3: (source, clone, options) using options only', async () => {
     const inlineAllStyles = await loadInlineAllStylesFresh()
-    const { cache } = await import('../src/core/cache.js')
 
     const src = document.createElement('strong')
     const clone = document.createElement('strong')
 
-    await inlineAllStyles(src, clone, { cache: 'soft' })
-
-    expect(cache.session.styleMap.has(clone)).toBe(true)
+    // Direct calls without a session get isolated throwaway maps (there is no session
+    // global) — the observable contract is simply that the call succeeds and styles the
+    // clone. Sync since the promise-churn cleanup (the function never awaited anything).
+    expect(inlineAllStyles(src, clone, { cache: 'soft' })).toBeUndefined()
   })
 
   it('#348: excludeStyleProps regex excludes matching props from snapshot', async () => {
@@ -217,6 +216,8 @@ describe('inlineAllStyles – branches y firmas', () => {
     expect(key).toBeDefined()
     // Tailwind * { border: 0 solid } must become border: none in output (#362)
     expect(key).toMatch(/\bborder:\s*none\b/)
+    // The logical per-side longhands survived the normalization and re-declared a
+    // zero-width solid border after it, since they come later in the enumeration.
   })
 
   it('content-visibility:hidden is carried verbatim into the snapshot (NEW-10)', async () => {
@@ -273,7 +274,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     const session = freshSession()
 
     // Should not throw even though getComputedStyle() on a detached node is unreliable
-    await expect(inlineAllStyles(src, clone, session, { cache: 'auto' })).resolves.not.toThrow()
+    expect(() => inlineAllStyles(src, clone, session, { cache: 'auto' })).not.toThrow()
     // styleMap entry is written (even if the key may be empty/incomplete for detached nodes)
     expect(session.styleMap.has(clone)).toBe(true)
   })
@@ -297,5 +298,45 @@ describe('inlineAllStyles – branches y firmas', () => {
     const session = freshSession()
     await inlineAllStyles(src, clone, session, { cache: 'auto' })
     expect(session.styleMap.has(clone)).toBe(true)
+  })
+
+  // :focus/:checked re-style an element without producing any mutation record, so the
+  // snapshot cache (keyed by the style epoch, which only external DOM mutations bump)
+  // kept serving pre-interaction styles across captures.
+  it('interaction state invalidates cached style snapshots', async () => {
+    const { snapdom } = await import('../src/api/snapdom.js')
+    const style = document.createElement('style')
+    style.textContent = '.zzf{background:rgb(255,255,255);width:150px;height:30px;border:1px solid #999}' +
+      '.zzf:focus{background:rgb(0,0,255)}'
+    document.head.appendChild(style)
+    const host = document.createElement('div')
+    host.innerHTML = '<input class="zzf">'
+    document.body.appendChild(host)
+    const input = host.querySelector('.zzf')
+
+    const blue = async () => {
+      const res = await snapdom(host, { dpr: 1, scale: 1 })
+      const c = await res.toCanvas()
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+      let n = 0
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] > 180 && d[i + 3] > 40) n++
+      }
+      return n
+    }
+
+    // warm the cache with captures taken BEFORE the interaction
+    await blue()
+    await blue()
+    input.focus()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(input.matches(':focus')).toBe(true) // precondition
+
+    try {
+      expect(await blue()).toBeGreaterThan(20)
+    } finally {
+      style.remove()
+      host.remove()
+    }
   })
 })
