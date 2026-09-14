@@ -2,28 +2,86 @@
 
 All notable changes to this project will be documented in this file. 
 
-#### Unreleased
+### [v3.0.0](https://github.com/zumerlab/snapdom/compare/v3.0.0-beta.1...v3.0.0)
 
-Release notes for `@zumer/snapdom` and `@zumer/snapdom-plugins` v3.x.x. Read the
-[migration guide](README.md#migrating-from-v2) before upgrading from **v2.x.x**.
+> 14 September 2026
+
+The first stable release of SnapDOM v3 brings automatic capture reuse, incremental
+recapture, automatic font embedding, and new capture APIs. Core and official plugins
+now share the v3 release line.
+
+If you're upgrading from v2, read the [migration guide](README.md#migrating-from-v2).
 The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) and
 [v2 documentation](https://snapdom.dev/v2/) remain available.
 
-- Reuse eligible unchanged captures automatically and recapture safe local mutations by
-  rebuilding affected subtrees. Per-capture sessions isolate concurrent work.
-- Embed used web fonts automatically, capture HTML strings with `fromString()`, and prepare
-  learned captures on hover or focus with `preCapture()`.
-- Align core and official plugins on v3.x.x for HTML, context, element maps, PDF,
-  image effects and GIF/video recording. The SVG engine remains the default; the native
-  html-in-canvas engine remains experimental and requires a custom build.
-- Carry over v2.x.x fixes for italic icon glyphs
-  ([#496](https://github.com/zumerlab/snapdom/pull/496)), non-generated pseudo-elements and
-  animation suppression ([#497](https://github.com/zumerlab/snapdom/pull/497)), and layout
-  alignment ([#498](https://github.com/zumerlab/snapdom/issues/498)).
-- Breaking changes include width/height taking precedence over scale, automatic font
-  embedding, removal of `preCache` and obsolete capture options, password-only core
-  redaction, and export hooks that observe results without chaining return values. See
-  the migration guide and beta notes below for the complete changes.
+#### Features and performance
+
+- Automatically reuse eligible unchanged captures and rebuild affected subtrees for safe local mutations.
+- Isolate concurrent captures with per-capture sessions.
+- Automatically embed the web fonts used by the captured content.
+- Capture HTML strings with `fromString()`.
+- Prepare learned captures on hover or focus with `preCapture()`.
+
+The SVG engine remains the default. The native html-in-canvas engine remains
+experimental and requires a custom build.
+
+#### Breaking changes
+
+- `width` and `height` now take precedence over `scale`.
+- Font embedding is enabled automatically.
+- `preCache` has been removed, and obsolete capture options are no longer supported.
+- Core redaction is limited to password fields.
+- `afterExport` hooks observe results without chaining their return values.
+
+See the [migration guide](README.md#migrating-from-v2) for the complete upgrade instructions.
+
+#### Layout and rendering fixes
+
+- Correct alignment in pseudo-element boxes, scroll containers, and images. [#498](https://github.com/zumerlab/snapdom/pull/498)
+- Fix transformed-element reconciliation and offscreen captures. [9b28ab4](https://github.com/zumerlab/snapdom/commit/9b28ab4d28b7ac56f324e2677ae47b3c22ba55ba), [460b75e](https://github.com/zumerlab/snapdom/commit/460b75ec0108436c874bf623d3d3c5f1adea134c)
+- Prevent fractional-width rounding from introducing unwanted line wrapping. [cffd222](https://github.com/zumerlab/snapdom/commit/cffd222a1c125bb3b57ea5a23e1d862efa31e381)
+- Preserve explicit wrapper heights and author-specified widths on blockified spans. [df94e3e](https://github.com/zumerlab/snapdom/commit/df94e3ee361679c83224c4e989529dfb761ec93e), [f3c75d3](https://github.com/zumerlab/snapdom/commit/f3c75d3afd64e3bda751c952295b97994d634dd9)
+- Match browser behavior for `visibility` and `content-visibility`. [21251f7](https://github.com/zumerlab/snapdom/commit/21251f70ea6153b73541fcf6eed20d766d283c0c)
+- Measure text truncation without replacing live text nodes. [418d18f](https://github.com/zumerlab/snapdom/commit/418d18fcbd3336d1ba1546797f398db893d62d5e)
+- Neutralize CSS `zoom` on the capture root. [14b2047](https://github.com/zumerlab/snapdom/commit/14b204701483d66ffa6dfa0866dcdb906fa9bcc8)
+- Preserve inherited fill colors in SVG `<use>` icons. [1b6cd96](https://github.com/zumerlab/snapdom/commit/1b6cd968d5ecce1bc125619eda6baf38bb18c105)
+
+#### Fonts and pseudo-elements
+
+- Preserve font styles for icon glyphs, including italic icons. [#496](https://github.com/zumerlab/snapdom/pull/496)
+- Skip non-generated pseudo-elements and carry over animation-suppression fixes from v2. [#497](https://github.com/zumerlab/snapdom/pull/497)
+- Retain custom `@font-face` rules when the requested weight or stretch is far from the declared value. [#478](https://github.com/zumerlab/snapdom/pull/478)
+- Keep other font families in a stylesheet when one family is identified as an icon font. [a154f18](https://github.com/zumerlab/snapdom/commit/a154f18a7acd24e511f2a8abdefab5a765b5ec51)
+- Emit only the `@font-face` descriptors declared in the source. [8d0345a](https://github.com/zumerlab/snapdom/commit/8d0345a4843dd255e293f67f45a5ad13ba0c6ed2)
+
+#### Canvas, Shadow DOM, and compatibility
+
+- Bound canvas frame waits, warn when a canvas is empty, and preserve the frame captured before `toDataURL()` for WebGL canvases. [de521b8](https://github.com/zumerlab/snapdom/commit/de521b819afad1586bfdb91677d8e6b0a6b2639d), [1c44d1d](https://github.com/zumerlab/snapdom/commit/1c44d1d468f8fb40a44a4fbaa7fad1fbeb9fad91)
+- Clone slotted light DOM only once and exclude light DOM that has not been assigned to a slot. [f4b1859](https://github.com/zumerlab/snapdom/commit/f4b18590445a2bb1eff980f0b27948dbdf637abb), [b75e88b](https://github.com/zumerlab/snapdom/commit/b75e88b27480f111ab19983b27d8e79ca1e559d8)
+- Support DOM type checks for elements from other windows and iframes. [84359e5](https://github.com/zumerlab/snapdom/commit/84359e557b369e1706e283119e53c4c163c3116a)
+- Fix global-variable leakage in the legacy bundle. [80fe19d](https://github.com/zumerlab/snapdom/commit/80fe19d5edc5a38fae9ca53291a2e8261c4575fe)
+- Correct iframe guidance that suggested enabling an option already enabled. [98de375](https://github.com/zumerlab/snapdom/commit/98de37594af6e3891173d091695bf021240482ff)
+
+#### Plugins and exports
+
+- Align official plugins with v3 for HTML, context, element maps, PDF, image effects, and GIF/video recording.
+- Expose capture geometry, exact export options, and canvas cropping to plugins. [7abb29a](https://github.com/zumerlab/snapdom/commit/7abb29a40ebb2b8159cc539dfb94254e675fac46)
+- Accept clone roots from other windows and iframes in the color-tint plugin. [ed8c31a](https://github.com/zumerlab/snapdom/commit/ed8c31ad114b1f425722f25e6e04924c56dad2fe)
+
+#### Documentation
+
+- Align package references, version tags, and the plugin showcase with the shipped releases. [fb616b6](https://github.com/zumerlab/snapdom/commit/fb616b6edbc84b81f9af9762a2db8ec775d57ebf), [533e7e7](https://github.com/zumerlab/snapdom/commit/533e7e72eecb8d3f1b8a7ae9388e34899d8a336b)
+- Document the plugin hook contract and correct the plugins subpath import. [9ed3632](https://github.com/zumerlab/snapdom/commit/9ed36329858349fddd7a4b1635733852c2cb439e), [c439ca1](https://github.com/zumerlab/snapdom/commit/c439ca1c88e10e238af37ef3baebd15964a727ae)
+- Correct server-side capture guidance and add guides covering DOM capture boundaries and integration patterns. [2fa74fa](https://github.com/zumerlab/snapdom/commit/2fa74fa90656398a632241afeaeeff323d05982c), [0118a27](https://github.com/zumerlab/snapdom/commit/0118a275803f8e20b67d6a40d0bf54513208dc66)
+- Rewrite `llms.txt` and `llms-full.txt` to match the source implementation. [de95504](https://github.com/zumerlab/snapdom/commit/de95504cce446431697387b843cce84a705ebb62)
+- Improve documentation layouts, technical guides, and search-engine crawl signals. [e134a69](https://github.com/zumerlab/snapdom/commit/e134a69f467ee2e929d2f3fe7f8172416d56f7b0), [0f876d6](https://github.com/zumerlab/snapdom/commit/0f876d60fef613220ddb10e2efa67778771dfa08)
+
+#### Testing and maintenance
+
+- Expose internal visual demos for testing, expand regression coverage, and split the visual suite into six shards. [5766151](https://github.com/zumerlab/snapdom/commit/5766151f8867eb2e64a6321a0af6f01fe25d65f0), [56b1e01](https://github.com/zumerlab/snapdom/commit/56b1e013e843e528b8256baacea12b22090e599a)
+- Improve network-dependent test scheduling and wait for iframe stylesheets, imported fonts, and image decoding before capture. [8ae2371](https://github.com/zumerlab/snapdom/commit/8ae237176e7cc4af32add41f54eb58811fd846ca), [1df2291](https://github.com/zumerlab/snapdom/commit/1df22912d2be17435e945567041f40a8a7f8e303), [b5161af](https://github.com/zumerlab/snapdom/commit/b5161afc51bbd7cc5e231815f277ffd7f1b40ecd)
+- Make regression tests independent of the capture engine and pin `devicePixelRatio` in DPR-dependent tests. [8fe0a08](https://github.com/zumerlab/snapdom/commit/8fe0a081f19f62a5f8274359f0a307b76ea476da), [fb7311a](https://github.com/zumerlab/snapdom/commit/fb7311ab34de7db28fb29abf352ee03d73a36d7a)
+- Stop pushing changelog changes automatically from `npm run build`. [d341737](https://github.com/zumerlab/snapdom/commit/d341737f9fd48f8b2440ea8153502c7dd37fac4d)
 
 #### [v3.0.0-beta.1](https://github.com/zumerlab/snapdom/compare/v3.0.0-beta.0...v3.0.0-beta.1)
 
