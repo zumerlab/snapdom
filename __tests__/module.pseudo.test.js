@@ -93,6 +93,35 @@ describe('inlinePseudoElements', () => {
     window.getComputedStyle.mockRestore()
   })
 
+  it('passes the pseudo-element font style to icon rasterization', async () => {
+    const el = document.createElement('div')
+    const clone = document.createElement('div')
+    const styleTag = document.createElement('style')
+    styleTag.textContent = `.pseudo-font-style-target::before {
+      content: "\\e001";
+      font-family: "Font Awesome";
+      font-size: 32px;
+      font-weight: 700;
+      font-style: italic;
+      color: rgb(18, 52, 86);
+    }`
+    document.head.appendChild(styleTag)
+    el.className = 'pseudo-font-style-target'
+    document.body.appendChild(el)
+    fonts.iconToImage.mockResolvedValue({ dataUrl: 'data:image/png;base64,icon', width: 32, height: 32 })
+    const pseudoStyle = getComputedStyle(el, '::before')
+
+    try {
+      await inlinePseudoElements(el, clone, sessionCache, {})
+      expect(fonts.iconToImage).toHaveBeenCalledWith(
+        '\ue001', pseudoStyle.fontFamily, 700, 32, pseudoStyle.color, 'italic'
+      )
+    } finally {
+      el.remove()
+      styleTag.remove()
+    }
+  })
+
   it('handles ::before with url content', async () => {
     const el = document.createElement('div')
     const clone = document.createElement('div')
@@ -223,6 +252,88 @@ describe('inlinePseudoElements', () => {
     })
     await inlinePseudoElements(el, clone, sessionCache, {})
     window.getComputedStyle.mockRestore()
+  })
+
+  it('does not add suppression markers to hosts without pseudo rules', async () => {
+    const style = document.createElement('style')
+    style.textContent = '.pseudo-sentinel::before { content: "x"; }'
+    document.head.appendChild(style)
+    const source = document.createElement('div')
+    const clone = source.cloneNode(true)
+
+    try {
+      await inlinePseudoElements(source, clone, { styleMap: new Map(), styleCache: new WeakMap() }, {})
+
+      expect(clone.hasAttribute('data-snapdom-has-before')).toBe(false)
+      expect(clone.hasAttribute('data-snapdom-has-after')).toBe(false)
+    } finally {
+      style.remove()
+    }
+  })
+
+  it('does not materialize and suppresses non-generated before and after pseudo-elements', async () => {
+    const cases = [
+      ['content-none', '::before'],
+      ['content-normal', '::before'],
+      ['display-none', '::after'],
+    ]
+    const host = document.createElement('div')
+    const style = document.createElement('style')
+    style.textContent = `
+      .content-none::before {
+        content: none;
+        display: block;
+        width: 20px;
+        height: 20px;
+        background-color: red;
+      }
+      .content-normal::before {
+        content: normal;
+        display: block;
+        width: 20px;
+        height: 20px;
+        background-color: red;
+      }
+      .display-none::after {
+        content: "visible text";
+        display: none;
+      }
+    `
+    document.head.appendChild(style)
+    document.body.appendChild(host)
+
+    try {
+      const materialized = {}
+      const suppressed = {}
+      for (const [className, pseudo] of cases) {
+        const source = document.createElement('div')
+        source.className = className
+        host.appendChild(source)
+        const clone = source.cloneNode(true)
+        const localSessionCache = { styleMap: new Map(), styleCache: new WeakMap() }
+
+        await inlinePseudoElements(source, clone, localSessionCache, {})
+
+        materialized[className] = Boolean(clone.querySelector(`[data-snapdom-pseudo="${pseudo}"]`))
+        const marker = pseudo === '::before'
+          ? 'data-snapdom-has-before'
+          : 'data-snapdom-has-after'
+        suppressed[className] = clone.hasAttribute(marker)
+      }
+      expect(materialized).toEqual({
+        'content-none': false,
+        'content-normal': false,
+        'display-none': false,
+      })
+      expect(suppressed).toEqual({
+        'content-none': true,
+        'content-normal': true,
+        'display-none': true,
+      })
+    } finally {
+      host.remove()
+      style.remove()
+    }
   })
 
   it('handles ::first-letter with no textNode', async () => {

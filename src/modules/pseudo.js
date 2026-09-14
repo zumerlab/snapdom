@@ -692,16 +692,30 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
     try {
       const style = getStyle(source, pseudo)
       if (!style) continue
-      // Skip visually empty pseudo-elements early
+      // Skip default, visually empty pseudo styles before adding suppression markers.
       const isEmptyPseudo =
         style.content === 'none' &&
         style.backgroundImage === 'none' &&
-        style.backgroundColor === 'transparent' &&
+        (style.backgroundColor === 'transparent' || style.backgroundColor === 'rgba(0, 0, 0, 0)') &&
         !hasPaintedBorder(style) &&
         (!style.transform || style.transform === 'none') &&
         style.display === 'inline'
 
       if (isEmptyPseudo) continue
+
+      // ::before and ::after do not generate a box when content is none/normal,
+      // and no pseudo-element generates a box when display is none. Paint and
+      // layout styles cannot make those non-generated boxes visible.
+      const nonGenerated = style.display === 'none' ||
+        (pseudo !== '::first-letter' && (style.content === 'none' || style.content === 'normal'))
+      if (nonGenerated) {
+        // A cloned stylesheet can restart a pseudo animation from a visible
+        // keyframe, so suppress the native pseudo even though no replacement
+        // node is needed for the currently captured frame.
+        if (pseudo === '::before') clone.dataset.snapdomHasBefore = '1'
+        if (pseudo === '::after') clone.dataset.snapdomHasAfter = '1'
+        continue
+      }
 
       if (pseudo === '::first-letter') {
         const normal = getStyle(source)
@@ -771,6 +785,7 @@ const { text: cleanContent, incs } =
       const fontFamily = style.fontFamily
       const fontSize = parseInt(style.fontSize) || 32
       const fontWeight = parseInt(style.fontWeight) || false
+      const fontStyle = style.fontStyle || 'normal'
       const color = style.color || '#000'
       const transform = style.transform
 
@@ -872,7 +887,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // ---- Content handling (icon-font glyphs / url() / text) ----
       if (isIconFont2 && cleanContent && cleanContent.length === 1) {
         const { dataUrl, width: w, height: h } =
-          await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color)
+          await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color, fontStyle)
         const imgEl = document.createElement('img')
         imgEl.src = dataUrl
         imgEl.style = `height:${fontSize}px;width:${(w / h) * fontSize}px;object-fit:contain;`
