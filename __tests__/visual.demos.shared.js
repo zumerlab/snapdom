@@ -218,6 +218,16 @@ const overrides = {
   // update (~70-110ms cross-fade), never at rest, so no fixed wait lands on a
   // stable frame. Diff is always a moving wipe boundary, not a snapdom bug.
   ...Object.fromEntries([...skippedVisualDemos].map(name => [name, { skip: true }])),
+  // Require imported fonts before capturing or recording this baseline.
+  'd25-font-import-multi-weight-2': {
+    setup: async (_win, doc) => {
+      const faces = await Promise.all([
+        doc.fonts.load('22px Roboto', 'Roboto 400 (usada)'),
+        doc.fonts.load('700 24px Roboto', 'Roboto 700 (usada)'),
+      ])
+      if (faces.some(loaded => !loaded.length)) throw new Error('d25 requires the imported Roboto 400 and 700 faces')
+    },
+  },
   // The features imported from @frostin/snapdom (element-mirror) in one shot: a rendered text
   // selection, a child's ring kept by outerShadows:'subtree', the native controls no engine
   // paints in a foreignObject, and background-clip:text. The selection is paint state that no

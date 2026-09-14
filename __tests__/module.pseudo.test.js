@@ -859,19 +859,16 @@ describe('scoped ::marker and ::first-line rules', () => {
   it('preflight follows @import (component CSS often lives one sheet down)', async () => {
     const { shouldProcessPseudos } = await import('../src/modules/pseudo.js')
     const frame = document.createElement('iframe')
-    document.body.appendChild(frame)
-    const doc = frame.contentDocument
     const blob = new Blob(['.feat::before{content:"✔";color:red}'], { type: 'text/css' })
     const url = URL.createObjectURL(blob)
     try {
-      doc.head.innerHTML = `<style>@import url("${url}"); .x{color:#111}</style>`
-      // Wait for the import to actually load, else the assertion is vacuous.
-      for (let i = 0; i < 40; i++) {
-        try {
-          if (doc.styleSheets[0].cssRules[0].styleSheet.cssRules.length) break
-        } catch { /* still loading */ }
-        await new Promise((r) => setTimeout(r, 25))
-      }
+      // Read the final document only after its imported stylesheet has loaded.
+      await new Promise((resolve) => {
+        frame.onload = resolve
+        frame.srcdoc = `<!doctype html><html><head><style>@import url("${url}"); .x{color:#111}</style></head><body></body></html>`
+        document.body.appendChild(frame)
+      })
+      const doc = frame.contentDocument
       expect(doc.styleSheets[0].cssRules[0].styleSheet.cssRules.length).toBeGreaterThan(0)
       expect(shouldProcessPseudos(doc)).toBe(true)
     } finally {
