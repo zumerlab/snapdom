@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="392" height="394.7344" viewBox="0 0 392 394.7344" text-rendering="geometricPrecision">
+  <!-- snapdom-vector svg-flat: 14 approximation(s) — nothing here is silent.
+    · [n_0] a drop shadow with -14px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] a drop shadow with 1px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] the box-shadow on this node (2 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability.
+    · one of those filters carries a feFlood, and a flood has been measured landing two different ways: the exact box-shadow chain (FIGMA_FINDINGS §4) arrived as a flat rectangle of the shadow colour — Figma kept the flood and lost the feComposite that cuts it down to the silhouette — while the inner-shadow chain of the six-shape probe arrived with nothing painted at all. Which of the two a given chain gets is not predictable from here, and the rectangle is the worse one: it covers the design instead of leaving it plain.
+    · [n_2] a drop shadow with -7px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_2] the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · no font binary travels with this SVG, so no line carries textLength and every line's width is the viewer's to decide. Pinning a substituted family to the advances the page's font measured does not degrade gracefully — it squeezes the glyphs into the measured width (verified by pasting into Figma), so the measurement is stated by position only.
+    · [n_15] a text block that occupies 5 positioned pieces is emitted as 5 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:"never" keeps one <text> per block.
+    · [n_18] a text block that occupies 2 positioned pieces is emitted as 2 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:"never" keeps one <text> per block.
+    · [n_25] per-side border weights on a rounded box: the sides are emitted as square-mitered quads clipped to the border radius, so the corner arcs thin out where the miter is cut away.
+    · [n_26] a text block that occupies 2 positioned pieces is emitted as 2 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:"never" keeps one <text> per block.
+    · [n_31] a drop shadow with -5px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_31] the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+  -->
+  <title>#fx-clone &gt; div:nth-child(1)</title>
+  <desc>@zumer/snapdom-vector 0.0.1 · svd/1.0 · http://localhost:62070/demo/figma.html 2026-08-08T17:48:55.154Z</desc>
+  <defs>
+    <filter id="fx1" filterUnits="userSpaceOnUse" x="-122" y="-122" width="636" height="638.7344" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="14" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="20" result="db0"/>
+      <feOffset dx="0" dy="18" result="do0"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.3" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dm1"/>
+      <feGaussianBlur in="dm1" stdDeviation="0" result="db1"/>
+      <feOffset dx="0" dy="0" result="do1"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.03" result="dc1"/>
+      <feComposite in="dc1" in2="do1" operator="in" result="ds1"/>
+      <feMerge>
+        <feMergeNode in="ds1"/>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fx2" filterUnits="userSpaceOnUse" x="-62" y="-62" width="168" height="168" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="7" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="10" result="db0"/>
+      <feOffset dx="0" dy="9" result="do0"/>
+      <feFlood flood-color="#4f46e5" flood-opacity="0.75" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMerge>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="cp3" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="44" height="44" rx="13" ry="13"/>
+    </clipPath>
+    <linearGradient id="lg4" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1" y2="0" gradientTransform="matrix(44 44 -44 44 0 0)">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#db2777"/>
+    </linearGradient>
+    <clipPath id="cp5" clipPathUnits="userSpaceOnUse">
+      <path d="M0 0 H336 A10 10 0 0 1 346 10 V49 A10 10 0 0 1 336 59 H0 V0 Z"/>
+    </clipPath>
+    <filter id="fx6" filterUnits="userSpaceOnUse" x="-44" y="-44" width="185.6563" height="127.5938" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="5" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="7" result="db0"/>
+      <feOffset dx="0" dy="6" result="do0"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.6" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMerge>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="cp7" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="97.6563" height="39.5938" rx="10" ry="10"/>
+    </clipPath>
+    <linearGradient id="lg8" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1" y2="0" gradientTransform="matrix(0 39.5938 -39.5938 0 48.8281 0)">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <g id="n_0">
+    <g filter="url(#fx1)">
+      <rect x="0" y="0" width="392" height="394.7344" rx="18" ry="18" fill="#ffffff"/>
+      <rect x="0.5" y="0.5" width="391" height="393.7344" rx="17.5" ry="17.5" fill="none" stroke="#0f172a" stroke-opacity="0.07" stroke-width="1"/>
+    </g>
+    <g id="n_1" transform="translate(23 23)">
+      <g id="n_2" transform="translate(0 2.1875)">
+        <g filter="url(#fx2)">
+          <g clip-path="url(#cp3)">
+            <rect x="0" y="0" width="44" height="44" fill="url(#lg4)"/>
+          </g>
+        </g>
+        <g id="n_3" transform="translate(10 10)">
+          <g transform="matrix(24 0 0 24 0 0)">
+            <svg x="0" y="0" width="1" height="1" overflow="hidden" viewBox="0 0 24 24" preserveAspectRatio="none">
+              <image x="0" y="0" width="24" height="24" preserveAspectRatio="none" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABYElEQVR4AcyUsUoDQRRFHTWYzlJtLEQrwdIPEAtrERvBThtBLGz8AgsLsRJr04m/IFj6A1aBQEgRQpoUCQQSJufBLDwSZuZtIJBwz743uzP3ziZDVlcW/Fm+AO99Fc6tLz7PG/xi/k3IJjWrUgGYnuB4DN4516NmVSoAtxqI+nKxYA5g9w8Y7oCoIxcLpgDMNzB7hkKNoslVUwAmH1CFQv9Fk6vZAHa/i8k1aB1w/zFwT63oh7rPBjD5CxxonTF4CbxRo0c2GcDOTlksx5IS1Z9zrht7mgxg0Sek5Hl4CVFFA9j9Pqu2IaUau2+mJkQDWFhn4TrI6RFu6bWGDG4gqWiArCJkDEOB8RFoPYX7+t5MnwyYmn2oxm3MX9U42pYJ2FMuV6pPtmUCtoKTHMuf0GeLKYATtYaT/NByLC/ozTIF4CZ/diPqO999i2qWKQDTAVTgzuwcJpoCwty5ysIDJgAAAP//tu9dBQAAAAZJREFUAwBMWU8xIvLKJAAAAABJRU5ErkJggg==" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABYElEQVR4AcyUsUoDQRRFHTWYzlJtLEQrwdIPEAtrERvBThtBLGz8AgsLsRJr04m/IFj6A1aBQEgRQpoUCQQSJufBLDwSZuZtIJBwz743uzP3ziZDVlcW/Fm+AO99Fc6tLz7PG/xi/k3IJjWrUgGYnuB4DN4516NmVSoAtxqI+nKxYA5g9w8Y7oCoIxcLpgDMNzB7hkKNoslVUwAmH1CFQv9Fk6vZAHa/i8k1aB1w/zFwT63oh7rPBjD5CxxonTF4CbxRo0c2GcDOTlksx5IS1Z9zrht7mgxg0Sek5Hl4CVFFA9j9Pqu2IaUau2+mJkQDWFhn4TrI6RFu6bWGDG4gqWiArCJkDEOB8RFoPYX7+t5MnwyYmn2oxm3MX9U42pYJ2FMuV6pPtmUCtoKTHMuf0GeLKYATtYaT/NByLC/ozTIF4CZ/diPqO999i2qWKQDTAVTgzuwcJpoCwty5ysIDJgAAAP//tu9dBQAAAAZJREFUAwBMWU8xIvLKJAAAAABJRU5ErkJggg=="/>
+            </svg>
+          </g>
+        </g>
+      </g>
+      <g id="n_4" transform="translate(56 0)">
+        <g id="n_5">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="750" letter-spacing="1.155" fill="#7c3aed" x="0" y="12"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="750" letter-spacing="1.155" fill="#db2777">V3.2 · </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="750" letter-spacing="1.155" fill="#7c3aed">MOTOR VECTORIAL</tspan></text>
+        </g>
+        <g id="n_6" transform="translate(0 18.7969)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="18.5" font-weight="700" letter-spacing="-0.37" fill="#0f172a" x="0" y="21">Capturado del clon</text>
+        </g>
+      </g>
+      <g id="n_7" transform="translate(253.0938 14.5625)">
+        <rect x="0" y="0" width="92.9063" height="22.5" rx="11.25" ry="11.25" fill="#ecfdf5"/>
+        <rect x="0.5" y="0.5" width="91.9063" height="21.5" rx="10.75" ry="10.75" fill="none" stroke="#a7f3d0" stroke-width="1"/>
+        <g id="n_9">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="750" letter-spacing="0.945" fill="#047857" x="25.7188" y="15">ESTABLE</text>
+        </g>
+        <g id="n_8" transform="translate(10 6.75)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="9" font-weight="750" letter-spacing="0.945" fill="#10b981" x="0" y="8">●</text>
+        </g>
+      </g>
+    </g>
+    <g id="n_10" transform="translate(23 87.3906)">
+      <g id="n_11" transform="translate(26 0)">
+        <g id="n_12" transform="translate(210.8906 3)">
+          <rect x="0" y="0" width="67.7969" height="16" rx="4" ry="4" fill="#f1f5f9"/>
+        </g>
+        <g id="n_13" transform="translate(0 23.5938)">
+          <rect x="0" y="0" width="53.3594" height="16" rx="4" ry="4" fill="#f1f5f9"/>
+        </g>
+        <g id="n_15">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569" x="0" y="15"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569">El </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="650" fill="#0f172a">v3.2</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569"> del encabezado sale de un </tspan></text><text xml:space="preserve" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, monospace" font-size="12" fill="#4338ca" x="215.8906" y="15">::before</text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569" x="278.6875" y="15"> con</text><text xml:space="preserve" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, monospace" font-size="12" fill="#4338ca" x="5" y="35.5938">attr()</text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569" x="53.3594" y="35.5938">.</text>
+        </g>
+        <g id="n_14" transform="translate(-15.4687 3)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12" font-weight="750" fill="#4f46e5" style="font-variant:tabular-nums" x="0" y="12">1 ·</text>
+        </g>
+      </g>
+      <g id="n_16" transform="translate(26 47.1875)">
+        <g id="n_18">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569" x="0" y="15"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569">Estos números son </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="650" fill="#0f172a">::marker</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569">, no texto escrito a</tspan></text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569" x="0" y="35.1406">mano.</text>
+        </g>
+        <g id="n_17" transform="translate(-15.4687 3)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12" font-weight="750" fill="#4f46e5" style="font-variant:tabular-nums" x="0" y="12">2 ·</text>
+        </g>
+      </g>
+      <g id="n_19" transform="translate(26 93.4688)">
+        <g id="n_21">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569" x="0" y="15"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569">La pastilla verde vive en un </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="650" fill="#0f172a">shadow root abierto</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569">.</tspan></text>
+        </g>
+        <g id="n_20" transform="translate(-15.4687 3)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12" font-weight="750" fill="#4f46e5" style="font-variant:tabular-nums" x="0" y="12">3 ·</text>
+        </g>
+      </g>
+      <g id="n_22" transform="translate(26 119.6094)">
+        <g id="n_24">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569" x="0" y="15"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569">El rayo es una </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="650" fill="#0f172a">ligadura</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#475569"> de fuente de iconos.</tspan></text>
+        </g>
+        <g id="n_23" transform="translate(-15.4687 3)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12" font-weight="750" fill="#4f46e5" style="font-variant:tabular-nums" x="0" y="12">4 ·</text>
+        </g>
+      </g>
+    </g>
+    <g id="n_25" transform="translate(23 242.1406)">
+      <path d="M0 0 H336 A10 10 0 0 1 346 10 V49 A10 10 0 0 1 336 59 H0 V0 Z" fill="#fffbeb"/>
+      <g clip-path="url(#cp5)">
+        <path d="M0 59 L0 0 L3 0 L3 59 Z" fill="#f59e0b" data-side="left"/>
+      </g>
+      <g id="n_26">
+        <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#78350f" x="16" y="24"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="700" fill="#f59e0b">«</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#78350f">La pertenencia al árbol viene resuelta; sólo son</tspan></text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#78350f" x="16" y="43.5"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#78350f">nuestras la geometría y la pintura.</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="700" fill="#f59e0b">»</tspan></text>
+      </g>
+    </g>
+    <g id="n_27" transform="translate(23 317.1406)">
+      <path d="M0 0 L346 0 L346 1 L0 1 Z" fill="#e2e8f0" data-side="top"/>
+      <g id="n_28" transform="translate(0 25.5938)">
+        <g id="n_30">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#64748b" x="15.5" y="13">Cuatro cajas que sólo existen en el clon</text>
+        </g>
+        <g id="n_29" transform="translate(0 2)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="9" fill="#10b981" x="0" y="10">●</text>
+        </g>
+      </g>
+      <g id="n_31" transform="translate(248.3438 15)">
+        <g filter="url(#fx6)">
+          <g clip-path="url(#cp7)">
+            <rect x="0" y="0" width="97.6562" height="39.5938" fill="url(#lg8)"/>
+          </g>
+        </g>
+        <g id="n_33">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13.5" font-weight="650" fill="#ffffff" x="39" y="24">Copiar</text>
+        </g>
+        <g id="n_32" transform="translate(15 11.2969)">
+          <g transform="matrix(17 0 0 17 0 0)">
+            <svg x="0" y="0" width="1" height="1" overflow="hidden" viewBox="0 0 17 17" preserveAspectRatio="none">
+              <image x="0" y="0" width="17" height="17" preserveAspectRatio="none" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAYAAAA7bUf6AAAA9UlEQVR4AeySrQoCQRSFdw0iiKCgQRQEEaNZsBhNisVnsJp8CZPFh9CiTTBoEUxmo1b/QATBsn5X3HXYmQ0LRpfzzcC5c8/Mzm7E+sFjDHEcZwQnuBq44E3VvbUQFhRZ0IUURA0k8JqsazC/pYXg5kA0s2077ofCAERlGQQvhGQ5+kTMsHghNCahAqGlhoRudhv+Ie5NfGfTnew/5Raf/emHWh9EOxkELYSf60BhCEe4GTjjjVk3Z37LH2Kzc4yK7FZgzitkaUxDBjr4ntSQO24JHgHIq/WoaVJD2lRXsAlgjb8ETV4IR1xAHaoB1PC3WoJlWS8AAAD//0PGvCEAAAAGSURBVAMAX5ZuI4WLh4MAAAAASUVORK5CYII=" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAYAAAA7bUf6AAAA9UlEQVR4AeySrQoCQRSFdw0iiKCgQRQEEaNZsBhNisVnsJp8CZPFh9CiTTBoEUxmo1b/QATBsn5X3HXYmQ0LRpfzzcC5c8/Mzm7E+sFjDHEcZwQnuBq44E3VvbUQFhRZ0IUURA0k8JqsazC/pYXg5kA0s2077ofCAERlGQQvhGQ5+kTMsHghNCahAqGlhoRudhv+Ie5NfGfTnew/5Raf/emHWh9EOxkELYSf60BhCEe4GTjjjVk3Z37LH2Kzc4yK7FZgzitkaUxDBjr4ntSQO24JHgHIq/WoaVJD2lRXsAlgjb8ETV4IR1xAHaoB1PC3WoJlWS8AAAD//0PGvCEAAAAGSURBVAMAX5ZuI4WLh4MAAAAASUVORK5CYII="/>
+            </svg>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

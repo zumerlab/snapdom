@@ -161,9 +161,6 @@ __tests__/__screenshots__
 __snapshots__
 /output/
 
-# Unreleased Pro website previews stay local until their publication is decided.
-/docs/pro/
-
 .vscode/
 .claude/*
 !.claude/CLAUDE.md

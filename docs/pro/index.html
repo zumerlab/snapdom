@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SnapDOM Pro — paid plugins for the capture engine</title>
+<meta name="description" content="Paid plugins for SnapDOM: searchable PDF and editable vector output. Each purchase helps fund the free and open-source capture engine.">
+<style>
+  :root {
+    --ink:   #0b1020;
+    --dim:   #5b6478;
+    --rule:  #e4e7ee;
+    --wash:  #f6f7fb;
+    --accent:#2e4bf0;
+    --sel:   rgba(46, 75, 240, .22);
+    --dead:  #94a3b8;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  ::selection { background: var(--sel); color: var(--ink); }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: linear-gradient(180deg, #f7f9fd 0, #fff 460px);
+         color: var(--ink); font-family: var(--sans); font-size: 17px; line-height: 1.6; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--accent); }
+
+  header { padding: 34px 0 0; }
+  header .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  header a.back { color: var(--dim); text-decoration: none; font-size: 14px; }
+  header a.back:hover { color: var(--ink); }
+  h1 { font-size: clamp(36px, 6.4vw, 66px); line-height: 1; letter-spacing: -.035em;
+       font-weight: 800; margin: 26px 0 0; max-width: 17ch; }
+  .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--dim); max-width: 58ch; margin: 20px 0 0; }
+
+  /* ——— the shelf: one card per plugin, and the shelf is the page ——— */
+  .shelf { display: grid; gap: 18px; margin: 46px 0 0; }
+  .item { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: start;
+          border: 1px solid var(--rule); border-radius: 16px; padding: 28px 30px;
+          background: #fff; text-decoration: none; color: inherit;
+          transition: border-color .15s, transform .15s, box-shadow .15s; }
+  a.item:hover { border-color: var(--accent); transform: translateY(-2px);
+                 box-shadow: 0 10px 30px rgba(11,16,32,.07); }
+  a.item:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .item h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; font-weight: 800; }
+  .item .claim { margin: 6px 0 0; font-size: 18px; color: var(--ink); }
+  .item .what { margin: 12px 0 0; color: var(--dim); font-size: 15.5px; max-width: 58ch; }
+  .item .tags { margin: 16px 0 0; display: flex; flex-wrap: wrap; gap: 7px; }
+  .item .tags span { font-family: var(--mono); font-size: 11px; letter-spacing: .04em;
+                     color: var(--dim); background: var(--wash); border: 1px solid var(--rule);
+                     border-radius: 999px; padding: 4px 10px; }
+  .item .buy { text-align: right; white-space: nowrap; }
+  .item .from { font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+                text-transform: uppercase; color: var(--dim); }
+  .item .amount { font-size: 34px; font-weight: 800; letter-spacing: -.04em; margin-top: 2px; }
+  .item .tier { color: var(--dim); font-size: 13px; margin-top: 2px; }
+  .item .go { display: inline-block; margin-top: 14px; font-weight: 650; color: var(--accent); }
+
+  /* Not for sale yet: same shelf, visibly not a purchase. */
+  .item.soon { background: var(--wash); border-style: dashed; }
+  .item.soon h2, .item.soon .claim { color: var(--dead); }
+  .item.soon .badge { font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+                      text-transform: uppercase; color: var(--dead); }
+
+  .note { margin: 44px 0 0; padding: 20px 24px; border-radius: 14px; background: var(--wash);
+          border-left: 3px solid var(--accent); }
+  .note p { margin: 0; color: #26304a; max-width: 78ch; }
+  .note p + p { margin-top: 10px; }
+  .note b { font-weight: 650; color: var(--ink); }
+
+  footer { margin: 70px 0 0; border-top: 1px solid var(--rule); padding: 24px 0 60px;
+           color: var(--dim); font-size: 14px; display: flex; justify-content: space-between;
+           gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--dim); }
+
+  @media (max-width: 720px) {
+    .item { grid-template-columns: 1fr; gap: 18px; }
+    .item .buy { text-align: left; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="bar">
+    <span class="eyebrow">SnapDOM Pro</span>
+    <nav><a class="back" href="https://snapdom.dev">← SnapDOM</a></nav>
+  </div>
+  <h1>Paid plugins for SnapDOM.</h1>
+  <p class="lede">Searchable PDF, editable vector output and other focused tools built for
+  production use. Buy a plugin once, receive twelve months of updates, and keep using your
+  version after that.</p>
+</header>
+
+<div class="shelf">
+
+  <a class="item" href="pdf/">
+    <div>
+      <h2>snapdom-pdf</h2>
+      <p class="claim">Export a faithful capture with selectable, searchable text.</p>
+      <p class="what">The visible page comes from SnapDOM's capture. A real PDF text layer adds
+      selection, search, copy and working links without re-laying out the content. Paginate onto
+      A4 with headers, footers and page numbers.</p>
+      <div class="tags">
+        <span>selectable text</span><span>multilingual text</span><span>pagination</span>
+        <span>links</span><span>alpha</span>
+      </div>
+    </div>
+    <div class="buy">
+      <div class="from">from</div>
+      <div class="amount">$39</div>
+      <div class="tier">$99 business</div>
+      <span class="go">See it work →</span>
+    </div>
+  </a>
+
+  <a class="item" href="vector/">
+    <div>
+      <h2>snapdom-vector</h2>
+      <p class="claim">Export DOM captures as editable vector documents.</p>
+      <p class="what">Create shapes, editable text and real layers for print, plotters,
+      Illustrator, Penpot and Figma. Every capture includes a fidelity report explaining what
+      is exact, what was approximated and why.</p>
+      <div class="tags">
+        <span>flat SVG</span><span>Figma plugin</span><span>vector PDF</span>
+        <span>measured fidelity</span><span>no server</span>
+      </div>
+    </div>
+    <div class="buy">
+      <div class="from">from</div>
+      <div class="amount">$39</div>
+      <div class="tier">$99 business</div>
+      <span class="go">See it work →</span>
+    </div>
+  </a>
+
+</div>
+
+<div class="note">
+  <p><b>Everything here is one payment.</b> No subscription, no seat counting, no activation and
+  nothing phoning home. You get the build, the documentation and access to a private repository
+  for releases and issues. Twelve months of updates; after that you keep shipping what you have.</p>
+  <p><b>I want SnapDOM to remain maintained, current and free.</b> That work takes time, and Pro
+  plugin sales help pay for it. In return, buyers get focused tools built to the same quality
+  standard as the open-source engine.</p>
+</div>
+
+<footer>
+  <span>© Zumerlab · <a href="https://snapdom.dev">snapdom.dev</a></span>
+  <span><a href="https://github.com/zumerlab/snapdom">snapdom on GitHub</a></span>
+</footer>
+
+</div>
+</body>
+</html>

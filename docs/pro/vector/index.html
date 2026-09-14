@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>snapdom-vector — the capture, as geometry</title>
+<meta name="description" content="Export any element to a vector document: real shapes, real text, real layers, and a written record of everything that had to be approximated. Flat SVG, Figma, PDF.">
+<style>
+  /* This page is built out of the same parts as the pdf one next door — same
+     tokens, same shelf, same price block — because they are one product line and
+     a visitor who has seen one should recognise the other. What changes is the
+     signature: there, the proof was selecting text; here it is zooming. */
+  :root {
+    --ink:   #0b1020;
+    --dim:   #5b6478;
+    --rule:  #e4e7ee;
+    --wash:  #f6f7fb;
+    --accent:#2e4bf0;
+    --sel:   rgba(46, 75, 240, .22);
+    /* Amber is "look here", grey is what is dead — the raster panel wears it. */
+    --mark:  #f0910a;
+    --dead:  #94a3b8;
+    --good:  #0d8a5f;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  ::selection { background: var(--sel); color: var(--ink); }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: linear-gradient(180deg,#f7f9fd 0,#fff 520px); color: var(--ink);
+         font-family: var(--sans); font-size: 17px; line-height: 1.6; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--accent); }
+
+  header { padding: 34px 0 0; }
+  header .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  header nav { display: flex; gap: 12px; flex-wrap: wrap; }
+  header a { color: var(--dim); text-decoration: none; font-size: 14px; white-space: nowrap; }
+  header a:hover { color: var(--ink); }
+
+  h1 { font-size: clamp(38px, 7vw, 76px); line-height: .98; letter-spacing: -.035em;
+       font-weight: 800; margin: 26px 0 0; max-width: 16ch; }
+  h1 em { font-style: normal; }
+  .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--dim); max-width: 56ch; margin: 20px 0 0; }
+
+  /* ——— the signature: one capture, two exports, one zoom ——— */
+  .proof { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 38px 0 0; }
+  .panel { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; background: var(--wash);
+           margin: 0; }
+  .panel > figcaption { display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--rule); background: #fff;
+    font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--dim); }
+  .panel .verdict { font-weight: 600; }
+  .panel.flat .verdict { color: var(--dead); }
+  .panel.live { border-color: rgba(46,75,240,.4); background: #eef1fe;
+                box-shadow: 0 0 0 4px rgba(46,75,240,.07); }
+  .panel.live > figcaption { border-bottom-color: rgba(46,75,240,.25); }
+  .panel.live .verdict { color: var(--accent); }
+
+  /* The stage is a fixed window and the artwork is scaled inside it, so both
+     panels show the SAME region of the SAME picture at the same magnification.
+     Anything else would be a comparison of two crops. */
+  .stage { position: relative; margin: 18px; height: 380px; background: #fff;
+           border-radius: 8px; overflow: hidden; cursor: grab; touch-action: pan-y;
+           display: flex; align-items: center; justify-content: center;
+           box-shadow: 0 1px 3px rgba(11,16,32,.1), 0 8px 24px rgba(11,16,32,.07); }
+  .stage.dragging { cursor: grabbing; }
+  /* Height-fitted rather than stretched: the transform origin has to be a point on
+     the ARTWORK, and with `object-fit` it would be a point on the box instead —
+     which is how the two panels would end up looking at different places. */
+  .stage img { height: 100%; width: auto; max-width: none; display: block;
+               user-select: none; -webkit-user-drag: none; }
+  /* No `image-rendering` override on the raster: a viewer smooths when it
+     enlarges, and showing nearest-neighbour blocks instead would be arguing with
+     a straw man. What you see is what your own image viewer would do. */
+
+  .zoom { display: flex; align-items: center; gap: 14px; margin: 18px 0 0; flex-wrap: wrap; }
+  .zoom label { font-family: var(--mono); font-size: 12px; letter-spacing: .06em;
+                text-transform: uppercase; color: var(--dim); }
+  .zoom input[type=range] { flex: 1 1 220px; accent-color: var(--accent); min-width: 160px; }
+  .zoom .steps { display: flex; gap: 6px; }
+  .zoom .steps button { font-family: var(--mono); font-size: 12px; padding: 5px 10px;
+    border-radius: 999px; border: 1px solid var(--rule); background: #fff; color: var(--dim);
+    cursor: pointer; }
+  .zoom .steps button[aria-pressed=true] { border-color: var(--accent); color: var(--accent);
+    background: #eef1fe; }
+  .zoom .steps button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .zoom output { font-family: var(--mono); font-size: 13px; color: var(--ink); font-weight: 650;
+                 min-width: 4ch; }
+
+  .try { margin: 16px 0 0; font-size: 15px; color: #3d3121; display: inline-flex;
+         align-items: center; gap: 10px; background: #fff8ec; border: 1px solid #f6dcae;
+         border-radius: 999px; padding: 9px 16px 9px 13px; }
+  .try b { color: var(--ink); font-weight: 650; }
+  .cursor { display: inline-block; width: 20px; height: 20px; flex: none; color: var(--mark); }
+
+  section { padding: 76px 0 0; }
+  h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -.025em; font-weight: 800; margin: 14px 0 0; }
+  .sub { color: var(--dim); margin: 10px 0 0; max-width: 64ch; }
+
+  /* ——— samples ——— */
+  .files { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+           gap: 14px; margin: 28px 0 0; }
+  .file { display: flex; flex-direction: column; text-decoration: none; color: inherit;
+          border: 1px solid var(--rule); border-radius: 11px; padding: 16px 17px;
+          transition: border-color .15s, transform .15s; overflow: hidden; }
+  .file:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .file:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  /* The thumbnail is the sample itself, rendered from the very file the link
+     downloads — so the picture cannot drift from the thing it advertises. */
+  .file .thumb { height: 150px; margin: -16px -17px 14px; border-bottom: 1px solid var(--rule);
+                 background: var(--wash); overflow: hidden; }
+  .file .thumb img { width: 100%; height: 100%; object-fit: cover;
+                     object-position: top center; display: block; }
+  .file .name { font-weight: 650; display: flex; align-items: center; gap: 7px; }
+  .file .name svg { flex: none; color: var(--accent); }
+  .file .what { display: block; color: var(--dim); font-size: 14px; margin-top: 5px; }
+  .file .meta { display: block; font-family: var(--mono); font-size: 11px; color: var(--dim);
+                margin-top: auto; padding-top: 10px; letter-spacing: .03em; }
+
+  /* ——— spec list ——— */
+  .spec { margin: 26px 0 0; border-top: 1px solid var(--rule); }
+  .spec > div { display: grid; grid-template-columns: 190px 1fr; gap: 22px;
+                padding: 17px 0; border-bottom: 1px solid var(--rule); }
+  .spec dt { font-family: var(--mono); font-size: 12px; letter-spacing: .05em;
+             text-transform: uppercase; color: var(--accent); padding-top: 3px; }
+  .spec dd { margin: 0; color: #26304a; }
+  .spec dd b { font-weight: 650; color: var(--ink); }
+  .spec.opts > div { grid-template-columns: 160px 1fr; }
+  .spec dd code, .lede code, .sub code, p code { font-family: var(--mono); font-size: 12.5px;
+    background: #eef1f8; padding: 1px 5px; border-radius: 4px; }
+
+/* ——— code ——— */
+  .code { margin: 26px 0 0; padding: 20px 22px; border-radius: 12px; background: #0f1729;
+          color: #e2e8f0; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
+          line-height: 1.7; }
+  .code code { font: inherit; }
+  .code .k { color: #93b4ff; }
+  .code .s { color: #8ee6b0; }
+  .code .n { color: #f5c377; }
+  .code .c { color: #7b88a1; }
+
+  /* ——— destinations ——— */
+  .dest { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;
+          margin: 28px 0 0; }
+  .dest > div { border: 1px solid var(--rule); border-radius: 12px; padding: 20px 21px; }
+  .dest h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .dest .call { font-family: var(--mono); font-size: 12.5px; color: var(--accent); margin: 6px 0 0;
+                overflow-wrap: anywhere; }
+  .dest p { margin: 10px 0 0; font-size: 15px; color: #26304a; }
+  .dest .cost { margin: 12px 0 0; font-size: 14px; color: var(--dim); }
+
+  /* ——— price ——— */
+  .price { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 30px 0 0; }
+  .tier { border: 1px solid var(--rule); border-radius: 14px; padding: 26px; display: flex;
+          flex-direction: column; }
+  .tier.pick { border-color: var(--ink); }
+  .tier .who { font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
+               text-transform: uppercase; color: var(--dim); }
+  .tier .amount { font-size: 46px; font-weight: 800; letter-spacing: -.04em; margin: 10px 0 0; }
+  .tier .amount small { font-size: 17px; font-weight: 600; color: var(--dim);
+                        letter-spacing: 0; margin-left: 3px; }
+  .tier .for { margin: 6px 0 18px; color: var(--dim); font-size: 15px; }
+  .tier ul { list-style: none; margin: 0 0 22px; padding: 0; font-size: 15px; }
+  .tier li { padding: 5px 0 5px 22px; position: relative; color: #26304a; }
+  .tier li::before { content: ""; position: absolute; left: 4px; top: 13px; width: 7px;
+                     height: 7px; border-radius: 50%; background: var(--accent); }
+  .buy { margin-top: auto; display: block; text-align: center; text-decoration: none;
+         padding: 13px 18px; border-radius: 10px; font-weight: 650; font-size: 16px;
+         background: var(--wash); color: var(--ink); border: 1px solid var(--rule); }
+  .tier.pick .buy { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .buy:hover { filter: brightness(.97); }
+  .buy:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .fineprint { color: var(--dim); font-size: 14px; margin: 18px 0 0; }
+
+  .who-made { margin: 26px 0 0; padding: 18px 22px; border-radius: 12px; background: var(--wash);
+              border-left: 3px solid var(--accent); }
+  .who-made p { margin: 0; font-size: 15.5px; color: #26304a; max-width: 76ch; }
+  .who-made b { color: var(--ink); font-weight: 650; }
+
+  /* ——— faq ——— */
+  .faq { margin: 24px 0 0; }
+  .faq > div { padding: 20px 0; border-bottom: 1px solid var(--rule); display: grid;
+               grid-template-columns: 320px 1fr; gap: 24px; }
+  .faq h3 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+  .faq p { margin: 0; color: #26304a; font-size: 16px; }
+  .faq p + p { margin-top: 10px; }
+
+  footer { margin: 84px 0 0; border-top: 1px solid var(--rule); padding: 26px 0 60px;
+           color: var(--dim); font-size: 14px; display: flex; justify-content: space-between;
+           gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--dim); }
+
+  @media (max-width: 820px) {
+    .proof, .price { grid-template-columns: 1fr; }
+    .spec > div, .faq > div { grid-template-columns: 1fr; gap: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="bar">
+    <span class="eyebrow">SnapDOM Pro · Vector</span>
+    <nav><a href="docs.html">Documentation</a><a href="https://snapdom.dev">← SnapDOM</a></nav>
+  </div>
+
+  <h1>Export DOM captures<br><em>as editable vectors.</em></h1>
+
+  <p class="lede">Turn an element into shapes, editable text and usable layers for SVG, Figma
+  and vector PDF. Geometry and text positions are measured from the layout already resolved by
+  the browser.</p>
+
+  <!-- Both panels come out of ONE snapdom() call. The left one is `toPng()`, the
+       right one `toVectorSvg()`. Neither is a mock-up and neither was retouched;
+       `demo/_make-vector-samples.mjs` in snapdom-pro produces them. -->
+  <div class="proof">
+    <figure class="panel flat">
+      <figcaption><span>The same capture, as pixels</span><span class="verdict">396 × 478</span></figcaption>
+      <div class="stage" id="stage-raster"><img src="assets/hero.png" alt="A product card, captured as a raster image." draggable="false"></div>
+    </figure>
+
+    <figure class="panel live">
+      <figcaption><span>The same capture, as geometry</span><span class="verdict">editable vector</span></figcaption>
+      <div class="stage" id="stage-vector"><img src="assets/hero.svg" alt="The same product card, captured as vector geometry." draggable="false"></div>
+    </figure>
+  </div>
+
+  <div class="zoom">
+    <label for="z">Zoom</label>
+    <input type="range" id="z" min="100" max="1200" step="10" value="100"
+           aria-describedby="zhint">
+    <output id="zout" for="z">100%</output>
+    <span class="steps">
+      <button type="button" data-z="100" aria-pressed="true">1×</button>
+      <button type="button" data-z="200" aria-pressed="false">2×</button>
+      <button type="button" data-z="400" aria-pressed="false">4×</button>
+      <button type="button" data-z="1200" aria-pressed="false">12×</button>
+    </span>
+  </div>
+
+  <p class="try" id="zhint">
+    <svg class="cursor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3M8 11h6M11 8v6"/></svg>
+    <span><b>Zoom in, then drag either panel.</b> The raster loses detail; the vector keeps its
+    geometry and text.</span>
+  </p>
+</header>
+
+<section>
+  <span class="eyebrow">Sample files</span>
+  <h2>Inspect the actual output</h2>
+  <p class="sub">Every file below came directly from the engine. Open one in Illustrator,
+  Inkscape, a browser or a text editor. The text and shapes remain editable, and the file includes
+  a comment listing every approximation.</p>
+
+  <div class="files">
+    <a class="file" href="samples/card.svg" download>
+      <span class="thumb"><img src="samples/card.thumb.png" alt="The product card sample." loading="lazy"></span>
+      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Product card</span>
+      <span class="what">Linear, radial and conic gradients, elliptic radii, two shadows, a struck-through price.</span>
+      <span class="meta">26 KB · 18 nodes · 9 text</span>
+    </a>
+    <a class="file" href="samples/typography.svg" download>
+      <span class="thumb"><img src="samples/typography.thumb.png" alt="The typography sample." loading="lazy"></span>
+      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Hostile typography</span>
+      <span class="what">Justified text, hyphenation, a wavy underline, small caps, superscripts, RTL, emoji.</span>
+      <span class="meta">18 KB · 11 nodes · 24 text</span>
+    </a>
+    <a class="file" href="samples/controls.svg" download>
+      <span class="thumb"><img src="samples/controls.thumb.png" alt="The form controls sample." loading="lazy"></span>
+      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Form controls</span>
+      <span class="what">Checkbox, radio, range, progress and a select chevron: pixels that no CSS property describes.</span>
+      <span class="meta">16 KB · 46 nodes · 18 text</span>
+    </a>
+    <a class="file" href="samples/table.svg" download>
+      <span class="thumb"><img src="samples/table.thumb.png" alt="The collapsed table sample." loading="lazy"></span>
+      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Collapsed table</span>
+      <span class="what">A border-collapse grid, resolved the way the browser resolved it and painted as its own layer.</span>
+      <span class="meta">34 KB · 106 nodes · 45 text</span>
+    </a>
+    <a class="file" href="samples/icons.svg" download>
+      <span class="thumb"><img src="samples/icons.thumb.png" alt="The inline SVG icons sample." loading="lazy"></span>
+      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Inline SVG</span>
+      <span class="what">Four icons deep, three of them declaring the same element ids. Nothing collides.</span>
+      <span class="meta">26 KB · 19 nodes · 11 text</span>
+    </a>
+    <a class="file" href="samples/clone.svg" download>
+      <span class="thumb"><img src="samples/clone.thumb.png" alt="The generated-content sample." loading="lazy"></span>
+      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>What is not in the DOM</span>
+      <span class="what">A <code>::before</code> with <code>attr()</code>, <code>::marker</code> numbers, an open shadow root and an icon-font ligature.</span>
+      <span class="meta">21 KB · 34 nodes · 22 text</span>
+    </a>
+  </div>
+
+  <p class="sub" style="margin-top:22px">You can also inspect the intermediate document and Figma
+  payload generated for the Product card sample:
+  <a href="samples/card.svd.json" download>card.svd.json</a> ·
+  <a href="samples/card.figma.json" download>card.figma.json</a>.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Fidelity</span>
+  <h2>See what changes in each format</h2>
+  <p class="sub">Browsers, SVG, Figma and PDF do not support the same effects. The plugin tells
+  you when it had to adapt, rasterize or omit something, and identifies the affected layer. You
+  can review those changes before handing the file to a designer or a client.</p>
+
+  <dl class="spec">
+    <div><dt>Exact</dt><dd>The destination can reproduce the layer as editable vector content.</dd></div>
+    <div><dt>Adapted</dt><dd>The layer remains vector, but an effect was translated to the closest
+      available equivalent.</dd></div>
+    <div><dt>Rasterized or omitted</dt><dd>The effect has no usable vector equivalent. The report
+      names the layer and explains what happened.</dd></div>
+  </dl>
+  <p class="sub">The clearest case is <code>backdrop-filter</code>: frosted glass is a blur of
+  whatever sits behind the panel, and SVG has no way to express that, so the panel arrives as a
+  flat colour. The report names the layer, and the <a href="docs.html#limits">limits</a> list
+  it.</p>
+  <p class="sub"><a href="docs.html#diagnostics">Read about fidelity reports →</a></p>
+</section>
+
+<section>
+  <span class="eyebrow">How it works</span>
+  <h2>Built from the browser's resolved layout</h2>
+  <p class="sub">Grid, flexbox, sticky positioning and container queries are already resolved on
+  screen. The plugin measures that result instead of trying to implement another CSS layout
+  engine.</p>
+
+  <dl class="spec">
+    <div><dt>Editable output</dt><dd>Text remains text. Gradients, borders, radii, shadows,
+      transforms, images and DOM hierarchy become vector paint and usable layers.</dd></div>
+    <div><dt>Browser layout</dt><dd>Boxes, text lines and baselines are measured from the rendered
+      page, including grid, flexbox, pseudo-elements and open shadow DOM.</dd></div>
+    <div><dt>Private by design</dt><dd>The plugin runs in the browser, including authenticated and
+      staging pages. Captures are not uploaded to a server.</dd></div>
+    <div><dt>Tested output</dt><dd><b>729 checks over 19 fixtures.</b> Fixtures are emitted,
+      rendered and compared against screenshots of the live elements.</dd></div>
+  </dl>
+</section>
+
+<section>
+  <span class="eyebrow">The whole API</span>
+  <h2>Add vector exports to a SnapDOM capture</h2>
+  <p class="sub">Register the plugin on a capture to add <code>toVector()</code> and
+  <code>toVectorSvg()</code> alongside <code>toPng()</code> and <code>toCanvas()</code>. The
+  outputs share one resolved capture of the page.</p>
+
+  <pre class="code"><code><span class="k">import</span> { snapdom } <span class="k">from</span> <span class="s">'@zumer/snapdom'</span>
+<span class="k">import</span> { vector, svdToFigma } <span class="k">from</span> <span class="s">'@zumer/snapdom-vector'</span>
+
+<span class="k">const</span> shot = <span class="k">await</span> snapdom(document.querySelector(<span class="s">'#plan-card'</span>), {
+  plugins: [vector()]
+})
+
+<span class="k">const</span> svg = <span class="k">await</span> shot.toVectorSvg()   <span class="c">// flat SVG, no foreignObject, text is text</span>
+<span class="k">const</span> doc = <span class="k">await</span> shot.toVector()      <span class="c">// the SVD document</span>
+<span class="k">const</span> fig = svdToFigma(doc)             <span class="c">// payload for the Figma plugin</span></code></pre>
+  <p class="sub"><a href="docs.html">See the full API and options →</a></p>
+</section>
+
+<section>
+  <span class="eyebrow">Where it goes</span>
+  <h2>SVG, Figma and vector PDF from one capture</h2>
+  <p class="sub">The capture produces a versioned vector document. Separate backends translate
+  that document for each destination, so SVG, Figma and PDF do not require another walk of the
+  page.</p>
+
+  <div class="dest">
+    <div>
+      <h3>Flat SVG</h3>
+      <p class="call">shot.toVectorSvg()</p>
+      <p>Standalone SVG with editable text and native shapes. Open it in Illustrator, Inkscape,
+      Penpot, a browser, a printer or a plotter.</p>
+    </div>
+    <div>
+      <h3>Figma, via the plugin</h3>
+      <p class="call">svdToFigma(doc)</p>
+      <p>Create frames, editable text, gradients, shadows, borders and images through the Figma
+      Plugin API. Preflight reports missing fonts and approximations before creating layers.</p>
+    </div>
+    <div>
+      <h3>Figma, via paste</h3>
+      <p class="call">shot.toVectorFigmaClipboard()</p>
+      <p>Copy the capture and paste it into Figma without installing the plugin. This route uses
+      Figma's undocumented clipboard format, so the plugin remains the stable option.</p>
+    </div>
+    <div>
+      <h3>PDF</h3>
+      <p class="call">svdToPdf(doc)</p>
+      <p>Export geometry and real text to a resolution-independent PDF. For pixel fidelity plus
+      selectable text, use <a href="../pdf/">snapdom-pdf</a>.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Licence</span>
+  <h2>Choose a licence</h2>
+  <p class="sub">One payment. Twelve months of updates. When they run out you keep using the
+  version you have, forever. You just stop receiving new ones. No activation, no seat counting,
+  no phoning home.</p>
+
+  <div class="price">
+    <div class="tier">
+      <span class="who">Individual</span>
+      <div class="amount">$39<small>USD</small></div>
+      <p class="for">One person, your own projects.</p>
+      <ul>
+        <li>Unlimited projects</li>
+        <li>Engine, SVG and PDF backends</li>
+        <li>The Figma plugin</li>
+        <li>Minified and readable builds</li>
+        <li>Private repo: releases and issues</li>
+        <li>12 months of updates</li>
+        <li>Keep using it after that</li>
+      </ul>
+      <a class="buy" href="#" data-checkout="individual">Buy Individual</a>
+    </div>
+
+    <div class="tier pick">
+      <span class="who">Business</span>
+      <div class="amount">$99<small>USD</small></div>
+      <p class="for">Companies, and work you deliver to clients.</p>
+      <ul>
+        <li>Unlimited developers</li>
+        <li>Ship it inside what you build</li>
+        <li>Engine, SVG and PDF backends</li>
+        <li>The Figma plugin</li>
+        <li>Minified and readable builds</li>
+        <li>Private repo: releases and issues</li>
+        <li>12 months of updates</li>
+        <li>Keep using it after that</li>
+      </ul>
+      <a class="buy" href="#" data-checkout="business">Buy Business</a>
+    </div>
+  </div>
+
+  <div class="who-made">
+    <p><b>I maintain SnapDOM and want it to remain current and free.</b> Pro plugin sales help pay
+    for that work. In return, you get a focused tool built to the same quality standard as the
+    open-source engine, with support from the person who made it at
+    <a href="https://zumerlab.com">Zumerlab</a>.</p>
+  </div>
+
+  <p class="fineprint">Distributing it inside a product you sell to many customers?
+  <a href="mailto:hello@zumerlab.com">Write to us</a>. That one we should talk about.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Before you ask</span>
+  <h2>Questions</h2>
+
+  <div class="faq">
+    <div>
+      <h3>Is this a tracer? Does it vectorise the pixels?</h3>
+      <p>No. Nothing is traced and nothing is recognised. Every box, line and baseline is read
+      from the live layout, and every fill is parsed from the CSS that produced it. A tracer
+      cannot tell you the second stop of a gradient; this hands you its colour and position.</p>
+    </div>
+    <div>
+      <h3>Will my page come into Figma perfect?</h3>
+      <p>No, and any tool that says otherwise is one you will stop trusting on the third capture.
+      Some things have no Figma equivalent at all: a colour-matrix filter, OpenType feature
+      settings, per-range baseline shift. The difference here is that you get the list, per node,
+      before you paste.</p>
+    </div>
+    <div>
+      <h3>Do I need the Figma plugin?</h3>
+      <p>Only for Figma. The flat SVG opens in Illustrator, Inkscape, Penpot and any browser, and
+      it is the reason this is not a Figma product with a lock-in problem. The plugin is included,
+      loads from a manifest, and declares no network access whatsoever.</p>
+    </div>
+    <div>
+      <h3>Does anything leave the machine?</h3>
+      <p>No. The engine runs in your page and the Figma plugin's manifest declares
+      <code>networkAccess: none</code>, so it could not make a request if it wanted to. For a lot
+      of teams that is not a preference, it is the only option that is legal.</p>
+    </div>
+    <div>
+      <h3>Which browsers?</h3>
+      <p>Chromium today. Everything is measured there and the pixel baselines were recorded
+      there. We have not run it against Firefox or WebKit, so we are not claiming them.</p>
+    </div>
+    <div>
+      <h3>What if it does not work for my page?</h3>
+      <p>Send us the page. A case that breaks it is worth more to us than the licence, and the
+      samples above are there so you can check the output on pages like yours first.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>© Zumerlab · <a href="https://snapdom.dev">snapdom.dev</a></span>
+  <span>snapdom-vector is a paid plugin. <a href="https://github.com/zumerlab/snapdom">SnapDOM itself stays free.</a></span>
+</footer>
+
+</div>
+
+<script>
+/**
+ * The zoom. Both panels are the same picture at the same magnification over the
+ * same focal point — anything less and the comparison would be between two crops
+ * rather than between two formats.
+ *
+ * The focal point is kept in the artwork's own 0..1 space and applied as
+ * `transform-origin`, so the point under the cursor stays under the cursor as the
+ * scale changes. Dragging moves that point; there is no scroll position anywhere,
+ * which is what keeps the two panels in step with one number instead of four.
+ */
+(() => {
+  const stages = [...document.querySelectorAll('.stage')]
+  const range = document.getElementById('z')
+  const out = document.getElementById('zout')
+  const steps = [...document.querySelectorAll('.steps button')]
+  // Not the centre of the card, which is a white gap: the point the zoom starts
+  // from is the row with the title, the stars and the price, because that is where
+  // the difference between the two panels is legible rather than merely present.
+  const HOME = { x: 0.44, y: 0.62 }
+  let zoom = 1, fx = HOME.x, fy = HOME.y
+
+  function paint () {
+    for (const s of stages) {
+      // At 1x there is nothing to pan, so the panel must not swallow a scroll gesture.
+      s.style.touchAction = zoom > 1 ? 'none' : 'pan-y'
+      const img = s.firstElementChild
+      img.style.transformOrigin = (fx * 100) + '% ' + (fy * 100) + '%'
+      img.style.transform = 'scale(' + zoom + ')'
+    }
+    out.textContent = Math.round(zoom * 100) + '%'
+    for (const b of steps) b.setAttribute('aria-pressed', String(Number(b.dataset.z) === Math.round(zoom * 100)))
+  }
+
+  function setZoom (percent, focus) {
+    zoom = Math.max(1, percent / 100)
+    if (focus) { fx = focus.x; fy = focus.y }
+    // At 1× there is nothing to pan to, and leaving a stale focus makes the next
+    // zoom jump to wherever the last drag ended.
+    if (zoom === 1) { fx = HOME.x; fy = HOME.y }
+    range.value = String(Math.round(zoom * 100))
+    paint()
+  }
+
+  range.addEventListener('input', () => setZoom(Number(range.value)))
+  for (const b of steps) b.addEventListener('click', () => setZoom(Number(b.dataset.z)))
+
+  for (const s of stages) {
+    let dragging = false, lastX = 0, lastY = 0
+
+    s.addEventListener('pointerdown', (e) => {
+      if (zoom === 1) return
+      dragging = true; lastX = e.clientX; lastY = e.clientY
+      s.classList.add('dragging'); s.setPointerCapture(e.pointerId)
+    })
+    s.addEventListener('pointermove', (e) => {
+      if (!dragging) return
+      const r = s.getBoundingClientRect()
+      // One pixel of drag moves the artwork one pixel, so the focal point moves by
+      // that pixel over the ENLARGED width — which is where the (zoom - 1) comes
+      // from and why the gearing feels right at 12× and at 2×.
+      fx = clamp(fx - (e.clientX - lastX) / (r.width * (zoom - 1)))
+      fy = clamp(fy - (e.clientY - lastY) / (r.height * (zoom - 1)))
+      lastX = e.clientX; lastY = e.clientY
+      paint()
+    })
+    const stop = (e) => {
+      if (!dragging) return
+      dragging = false; s.classList.remove('dragging')
+      if (s.hasPointerCapture && s.hasPointerCapture(e.pointerId)) s.releasePointerCapture(e.pointerId)
+    }
+    s.addEventListener('pointerup', stop)
+    s.addEventListener('pointercancel', stop)
+
+    // Double-click zooms to the point you pointed at, which is what everyone tries
+    // first and is also the only way to reach a corner without dragging.
+    s.addEventListener('dblclick', (e) => {
+      const r = s.getBoundingClientRect()
+      const at = { x: clamp((e.clientX - r.left) / r.width), y: clamp((e.clientY - r.top) / r.height) }
+      setZoom(zoom >= 4 ? 100 : zoom >= 2 ? 400 : 200, zoom >= 4 ? null : at)
+    })
+  }
+
+  const clamp = (n) => Math.min(1, Math.max(0, isFinite(n) ? n : 0.5))
+  paint()
+})()
+</script>
+</body>
+</html>

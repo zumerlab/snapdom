@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SnapDOM PDF — pre-release reference</title>
+<meta name="description" content="Complete pre-release API reference for the SnapDOM PDF plugin: installation, options, warnings, accessibility contract and limits.">
+<style>
+  :root { --ink:#121827; --dim:#5b6478; --rule:#dfe3eb; --wash:#f5f7fb; --accent:#2e4bf0;
+    --mark:#e88a13; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; color:var(--ink); background:#fff; font:15.5px/1.65 var(--sans); }
+  a { color:var(--accent); }
+  .layout { width:min(1220px,calc(100% - 40px)); margin:auto; display:grid;
+    grid-template-columns:230px minmax(0,760px); gap:72px; align-items:start; }
+  nav { position:sticky; top:0; max-height:100vh; overflow:auto; padding:34px 0 44px; }
+  nav .home { display:block; color:var(--ink); font:700 12px var(--mono); letter-spacing:.08em;
+    text-decoration:none; text-transform:uppercase; }
+  nav .version { display:block; margin-top:9px; color:var(--mark); font:700 11px var(--mono); }
+  nav ul { list-style:none; margin:22px 0 0; padding:0; }
+  nav li { margin:2px 0; }
+  nav li.gap { margin-top:14px; }
+  nav a { display:block; padding:3px 0 3px 11px; border-left:2px solid transparent;
+    color:var(--dim); text-decoration:none; font-size:13px; }
+  nav a:hover { color:var(--ink); border-color:var(--accent); }
+  main { min-width:0; padding:74px 0 90px; }
+  h1 { margin:0; font-size:clamp(38px,6vw,64px); line-height:1; letter-spacing:-.045em; }
+  h2 { margin:66px 0 10px; padding-top:8px; font-size:27px; line-height:1.2; letter-spacing:-.025em; }
+  h3 { margin:32px 0 8px; font-size:18px; }
+  p { margin:10px 0; }
+  .lede { max-width:670px; margin:20px 0 0; color:var(--dim); font-size:19px; line-height:1.55; }
+  code { font-family:var(--mono); font-size:.88em; background:var(--wash); border:1px solid #e9ecf2;
+    padding:1px 5px; border-radius:5px; }
+  pre { margin:18px 0; padding:18px 20px; overflow:auto; border-radius:11px; background:#0f1729;
+    color:#e9eefc; font:13px/1.65 var(--mono); }
+  pre code { padding:0; border:0; background:none; color:inherit; font-size:inherit; }
+  table { width:100%; margin:18px 0 24px; border-collapse:collapse; font-size:14px; }
+  th { color:var(--dim); font:700 11px var(--mono); letter-spacing:.06em; text-align:left;
+    text-transform:uppercase; }
+  th,td { padding:10px 12px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  td:first-child { width:145px; font:600 13px var(--mono); }
+  td:nth-child(2) { width:105px; color:var(--dim); font:12px var(--mono); }
+  .note { margin:20px 0; padding:14px 17px; border-left:3px solid var(--accent); border-radius:8px;
+    background:var(--wash); }
+  .warn { border-left-color:var(--mark); background:#fff8ec; }
+  .note p:first-child { margin-top:0; } .note p:last-child { margin-bottom:0; }
+  .plain { padding-left:20px; } .plain li { margin:7px 0; }
+  .channels { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:20px 0; }
+  .channel { padding:15px; border:1px solid var(--rule); border-radius:10px; }
+  .channel b { display:block; margin-bottom:5px; }
+  footer { margin-top:70px; padding-top:20px; border-top:1px solid var(--rule); color:var(--dim); }
+  @media (max-width:900px) {
+    .layout { display:block; width:min(760px,calc(100% - 32px)); }
+    nav { position:static; max-height:none; padding-bottom:0; }
+    nav ul { display:flex; flex-wrap:wrap; gap:2px 9px; }
+    nav a { padding-left:0; border:0; }
+    main { padding-top:42px; }
+  }
+  @media (max-width:640px) { .channels { grid-template-columns:1fr; } th:nth-child(2),td:nth-child(2) { display:none; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Reference sections">
+  <a class="home" href="./">← SnapDOM PDF</a>
+  <span class="version">1.0.0 · PRE-RELEASE</span>
+  <ul>
+    <li><a href="#install">Installation</a></li>
+    <li><a href="#register">Registering</a></li>
+    <li><a href="#moments">Two option moments</a></li>
+    <li class="gap"><a href="#page">Page and pagination</a></li>
+    <li><a href="#raster">Raster</a></li>
+    <li><a href="#text">Text and links</a></li>
+    <li><a href="#fonts">Fonts and vector text</a></li>
+    <li><a href="#accessibility">Navigation and tagging</a></li>
+    <li><a href="#forms">Fillable forms</a></li>
+    <li><a href="#furniture">Header, footer, numbers</a></li>
+    <li><a href="#matter">Cover, contents, back</a></li>
+    <li><a href="#identity">Metadata and identity</a></li>
+    <li><a href="#encrypt">Encryption</a></li>
+    <li><a href="#output">Output</a></li>
+    <li class="gap"><a href="#report">Progress and report</a></li>
+    <li><a href="#warnings">Errors and warnings</a></li>
+    <li><a href="#limits">Known limits</a></li>
+    <li><a href="#browsers">Browser status</a></li>
+  </ul>
+</nav>
+
+<main>
+  <h1>SnapDOM PDF</h1>
+  <p class="lede">The complete pre-release reference for the SnapDOM plugin that adds
+  <code>toPdf()</code> to a capture. The versioned <code>REFERENCE.md</code> shipped beside the
+  module is canonical for a purchased build.</p>
+
+  <div class="note warn"><p><b>Not on sale or npm yet.</b> Package imports and checkout remain disabled
+  until the release licence and compatibility gates are complete. The ZIP recipes below describe the
+  current pre-release delivery.</p></div>
+
+  <h2 id="install">Installation</h2>
+  <div class="channels">
+    <div class="channel"><b>ZIP + bundler</b>Install SnapDOM, copy the plugin module into the app and
+      import it by relative path. The bundler resolves its peer import.</div>
+    <div class="channel"><b>ZIP + browser</b>Serve both ESM files and provide an import map for
+      <code>@zumer/snapdom</code>.</div>
+    <div class="channel"><b>Registry package</b>Intended later, but not an available installation
+      channel during pre-release.</div>
+  </div>
+
+  <h3>Bundler</h3>
+  <pre><code>import { snapdom } from '@zumer/snapdom'
+import pdf from './vendor/snapdom-pdf.mjs'</code></pre>
+
+  <h3>Browser without a bundler</h3>
+  <pre><code>&lt;script type="importmap"&gt;
+{
+  "imports": {
+    "@zumer/snapdom": "/vendor/snapdom.mjs"
+  }
+}
+&lt;/script&gt;
+&lt;script type="module"&gt;
+  import { snapdom } from '@zumer/snapdom'
+  import pdf from '/vendor/snapdom-pdf.mjs'
+&lt;/script&gt;</code></pre>
+  <p>Serve <code>.mjs</code> with a JavaScript MIME type. A global/IIFE SnapDOM script cannot satisfy
+  the plugin's ESM peer import. Requires <code>@zumer/snapdom &gt;=3.0.0 &lt;4</code>.</p>
+  <div class="note"><p><b>SnapDOM 3 is the floor.</b> The exporter reads v3's immutable capture
+  metadata, requested export options and pre-decode canvas crops, which 2.x does not expose. The
+  fixture suite runs against the published 3.0.0.</p></div>
+
+  <h2 id="register">Registering</h2>
+  <p>The module exports the same <code>pdf</code> factory as default and named export. It does not
+  export a standalone <code>toPdf(element)</code> helper.</p>
+  <pre><code>import { snapdom } from '@zumer/snapdom'
+import pdf, { pdf as namedPdf } from './snapdom-pdf.mjs'
+
+snapdom.plugins(pdf())                         // every later capture
+const local = await snapdom(el, { plugins: [pdf()] }) // this capture
+
+const shot = await snapdom(document.querySelector('#report'), { scale: 2, dpr: 1 })
+const blob = await shot.toPdf({ page: 'a4' })
+const same = await shot.to('pdf', { page: 'a4' })</code></pre>
+  <p>Both exports return <code>Promise&lt;Blob&gt;</code> with type <code>application/pdf</code>.
+  TypeScript declarations add <code>toPdf(options?: PdfExportOptions)</code> to SnapDOM's
+  <code>CaptureResult</code>.</p>
+
+  <h2 id="moments">Two option moments</h2>
+  <p>The PDF model is derived lazily from SnapDOM's final serialized clone on first export, not
+  from the original live DOM. Five options control that model and must be fixed on
+  <code>pdf()</code> before capture:</p>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>formValues</td><td>true</td><td>Include visible values of text controls and the selected option. Passwords become bullets.</td></tr>
+    <tr><td>shadow</td><td>true</td><td>Walk open shadow roots as the flattened tree.</td></tr>
+    <tr><td>breakAvoid</td><td>true</td><td>Measure atomic blocks for pagination.</td></tr>
+    <tr><td>outline</td><td>true</td><td>Headings become bookmarks. Use a selector string or <code>false</code>.</td></tr>
+    <tr><td>forms</td><td>true</td><td>Measure form controls — kind, name, value, options, geometry, painted style — so the export can write fillable fields. <code>false</code> skips the measurement.</td></tr>
+  </tbody></table>
+  <p>Every export option may also be a factory default. A value in <code>toPdf()</code> wins. A
+  capture-time option passed there warns and is ignored. A custom <code>outline</code> selector is
+  evaluated against the final flattened artifact, including matching open-shadow and slotted headings.</p>
+
+  <h2 id="page">Page and pagination</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>page</td><td>'fit'</td><td><code>fit</code>; A3–A6; B4/B5; letter, legal, tabloid, executive; or <code>[width,height]</code> in points.</td></tr>
+    <tr><td>orientation</td><td>'portrait'</td><td><code>portrait</code> or <code>landscape</code>; irrelevant to <code>fit</code>.</td></tr>
+    <tr><td>margin</td><td>24</td><td>Points on all sides; irrelevant to <code>fit</code>.</td></tr>
+    <tr><td>repeatHeaders</td><td>true</td><td>Repeat a continuing table's <code>&lt;thead&gt;</code> pixels and selectable text.</td></tr>
+  </tbody></table>
+  <p>Breaks are pulled off table rows, list items, definitions, figures, blockquotes, replaced
+  content, short leaf blocks and <code>break-inside:avoid</code> content. Declared page breaks are
+  honoured unless they only create an empty page. A block taller than a page still has to split.</p>
+  <p>Only <code>&lt;thead&gt;</code> repeats. Its repeated copy has no repeated link annotations, and a
+  header taller than half a page is refused with a warning.</p>
+
+  <h2 id="raster">Raster</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>image</td><td>true</td><td>Draw the visible SnapDOM raster. <code>false</code> makes an image-free PDF; Element headers, footers and watermarks are omitted.</td></tr>
+    <tr><td>codec</td><td>'auto'</td><td>Compare JPEG and lossless Flate per image and keep the
+    smaller; or pin <code>jpeg</code>/<code>flate</code>.</td></tr>
+    <tr><td>quality</td><td>capture / .92</td><td>Quality of the JPEG candidate only, taken from the
+    capture when the export does not set one. It reaches nothing when Flate wins, and on ordinary page
+    artwork Flate wins until roughly <code>0.5</code>: on a 35-page report <code>0.92</code>,
+    <code>0.8</code> and <code>0.6</code> all produce a byte-identical 11.3&nbsp;MB, <code>0.4</code>
+    gives 10.8&nbsp;MB and <code>0.2</code> gives 10.1&nbsp;MB. An export whose lowered quality changed
+    nothing says so in the console.</td></tr>
+    <tr><td>scale / dpr</td><td>on the capture</td><td>Neither moves a point of geometry — a PDF has no
+    device to match, so the page box and the text layer are identical whatever they are. They multiply
+    the page image's pixels, and they multiply <em>together</em>: on a 35-page report
+    <code>scale:1, dpr:2</code> and <code>scale:2, dpr:1</code> both give 11.3&nbsp;MB, against
+    5.1&nbsp;MB at 1×1 and 24.4&nbsp;MB at 2×2. <code>dpr</code> defaults to the exporting machine's
+    <code>devicePixelRatio</code>, so pin it if you want the same bytes from a laptop and from CI.</td></tr>
+    <tr><td>backgroundColor</td><td>capture / null</td><td>Flatten this PDF export onto a colour instead of carrying alpha.</td></tr>
+  </tbody></table>
+  <p>Capture resolution belongs to <code>snapdom(el,{ scale, dpr, width, height })</code>. Page
+  regions are rasterized lazily and cached on the capture for later exports. A codec, quality or
+  flattening change may still require a new encode; <code>codec:'auto'</code> compares two candidates.</p>
+  <p>When <code>CompressionStream</code> is unavailable, auto uses JPEG and a pinned Flate request
+  warns before falling back. A transparent raster uses a soft mask; flattening usually makes the file
+  smaller.</p>
+
+  <h3>The colour space is earned, not configured</h3>
+  <p>Before a region is compressed it is inspected once, and the Flate candidate is written in the
+  narrowest PDF colour space that reproduces those pixels <em>exactly</em>: <code>/DeviceGray</code>
+  when every pixel has <code>r == g == b</code>, an <code>/Indexed</code> palette when the region drew
+  256 colours or fewer, and <code>/DeviceRGB</code> otherwise. The first two are one byte per pixel
+  instead of three.</p>
+  <p>Page artwork is overwhelmingly one of the first two — measured across this project's fixtures, 22
+  of 29 page regions are grey in every pixel and 23 of 29 fit in a palette — so the effect on real
+  documents is large: a 30-page report drops from 12.4&nbsp;MB to 8.7&nbsp;MB, a page of prose by 37%,
+  a typography page by 43%. Regions that genuinely need <code>/DeviceRGB</code> are unchanged, and
+  nothing is approximated to earn the narrowing: the stream inflates back to the original pixels, which
+  the fixture suite asserts by decoding it and comparing pixel for pixel.</p>
+  <div class="note"><p>The narrowing also widens the gap Flate already had over DCT. On every fixture
+  in this project Flate now wins by between 1.7× and 3.6×, which is why <code>quality</code> so often
+  reaches nothing. It is not made to win everywhere — a photographic region is neither grey nor 256
+  colours, so it narrows to nothing and JPEG can still be the smaller answer. That is exactly why
+  <code>auto</code> still runs the comparison.</p></div>
+
+  <h2 id="text">Text and links</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>text</td><td>true</td><td>Emit invisible selectable/searchable text.</td></tr>
+    <tr><td>links</td><td>true</td><td>Emit external URI and in-document annotations.</td></tr>
+    <tr><td>debugText</td><td>false</td><td>Paint the layer red and leave content streams readable.</td></tr>
+  </tbody></table>
+  <p>Runs are measured from SnapDOM's final serialized clone, one word at a time. Visible form values,
+  open shadow roots, text transforms and logical bidi text are included. Real removals/replacements from
+  <code>exclude</code>, <code>filter</code>, <code>resolveNode</code>, <code>afterClone</code>,
+  <code>clip</code>, or a geometry-preserving <code>afterRender</code> replacement of the final
+  serialized tree/URL stay aligned. A replacement that changes viewBox, root paint/layout attributes
+  or intrinsic aspect/geometry incompatibly fails instead of producing a misaligned layer. Uniform
+  width/height scaling that preserves aspect is allowed. Layout-hidden and transparent text is excluded.</p>
+  <p>Same-document fragments become PDF destinations. External annotations accept only
+  <code>http:</code>, <code>https:</code>, <code>mailto:</code> and <code>tel:</code>. Missing fragment
+  targets, malformed URLs and other schemes produce no annotation and a warning.</p>
+  <div class="note warn"><p><b>Visual occlusion is not redaction.</b> Remove or replace confidential
+  nodes/text. Do not rely on an overlay rectangle, blur or arbitrary overlap: those can hide pixels
+  while leaving semantic text in the serialized document. Ambiguous clipping, masking and filter
+  geometry is omitted fail-safe, so selection may be lost rather than uncertain content exposed. A
+  purely visual <code>afterRender</code> change does not prove semantics changed; an incompatible change
+  to viewBox, root paint/layout or intrinsic aspect fails instead of guessing coordinates.</p></div>
+  <p>Where no font is embedded, base-14 fonts encode WinAnsi and other scripts use an invisible Type0
+  font with a <code>/ToUnicode</code> map, so extraction works for every script whether or not a glyph
+  travels. What the file can <em>paint</em> is the next section.</p>
+
+  <h2 id="fonts">Fonts and vector text</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>embedFonts</td><td>true</td><td>Embed the capture's <code>@font-face</code> binaries and point the text at them. <code>'full'</code> embeds unsubsetted; <code>false</code> embeds nothing.</td></tr>
+    <tr><td>vectorText</td><td>false</td><td>Paint eligible runs as real vector glyphs instead of leaving them invisible over the raster.</td></tr>
+  </tbody></table>
+
+  <h3>Embedded fonts</h3>
+  <p>The capture has to CARRY its fonts for the export to embed them: pass <code>embedFonts: true</code>
+  to <code>snapdom(…)</code> — the engine option that inlines <code>@font-face</code> — and the PDF side
+  reads those rules, fetches each face the text actually painted with, and embeds a <b>subset</b> of it:
+  only the glyphs the document drew, renumbered into a dense space. On a Latin page a ~320&nbsp;kB face
+  travels as a few kB. A face travels once however many styles and pages use it, and the saving is
+  declared per face.</p>
+  <p>The subset renders pixel-identical to the whole font, which the suite asserts by rendering both
+  through pdf.js. It is fail-safe: a TrueType face it cannot subset falls back to a whole embed with an
+  explicit <code>CIDToGIDMap</code>, never a corrupt glyph. CFF/OpenType (<code>OTTO</code>) faces are
+  always embedded whole, so <code>'full'</code> only differs for TrueType.</p>
+  <p>Per run, an embedded face is used only when its own cmap covers every character of that run; a run
+  it cannot carry falls back to the unembedded layer and is counted. System fonts have no bytes a page
+  can hand over and travel by name as before. WOFF unpacks; WOFF2, TrueType collections and faces whose
+  <code>OS/2 fsType</code> forbids embedding are refused with their reason rather than embedded anyway.
+  Text extraction is byte-for-byte identical with and without embedding, because extraction runs off
+  <code>/ToUnicode</code> either way.</p>
+
+  <h3>Vector text</h3>
+  <p>By default the visible text is the raster — pixel-exact, but pixels. With
+  <code>vectorText: true</code> the exporter paints eligible runs as real vector glyphs from the
+  embedded fonts, so the type is crisp at any zoom and the file is a fraction of the size. That is a
+  different fidelity model from the pixel-exact capture, and it is opt-in for exactly that reason.</p>
+  <p>A run is painted only where no shaping stands between code points and glyphs: left-to-right, in a
+  covering embedded face, with a resolved colour. RTL, complex scripts, uncovered characters and
+  unresolved colours are not painted — one CID per code point would place their glyphs wrong — so those
+  runs stay on the raster, and in an image-free export they are invisible and reported.</p>
+  <ul class="plain">
+    <li><code>image:false, vectorText:true</code> — a small, fully vector text PDF. Only text and vector
+    furniture travel; borders, checkboxes, background images and any unpaintable run are absent.
+    Measured, the mega fixture is ~22&nbsp;kB this way against ~420&nbsp;kB with the raster.</li>
+    <li><code>image:true, vectorText:true</code> — the raster plus crisp glyphs painted over it. Larger,
+    but sharp under magnification.</li>
+  </ul>
+  <p>Interior glyph positions follow the embedded font's own advances scaled to the run's measured width
+  (<code>Tz</code>), not the browser's kerned positions, so a heavily kerned pair can drift sub-pixel
+  from the raster. Extraction is unchanged.</p>
+
+  <h2 id="accessibility">Navigation and tagging</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>outline</td><td>true</td><td>Capture-time bookmarks from headings; see the lifecycle table.</td></tr>
+    <tr><td>tagged</td><td>true</td><td>Structure headings, paragraphs, lists, tables, sections and figures.</td></tr>
+    <tr><td>lang</td><td>DOM / null</td><td>PDF document language, for example <code>en</code> or <code>es-MX</code>.</td></tr>
+  </tbody></table>
+  <h3>The PDF/UA-1 claim is earned, never configured</h3>
+  <p>There is no option that asserts conformance. The exporter computes eligibility per export and
+  writes the claim only when all of it holds: every text-showing operation on an embedded face,
+  <code>tagged</code> structure present, a document language, a <code>meta.title</code> to display,
+  and no painted image without alternative text. When it does, the XMP carries
+  <code>pdfuaid:part 1</code> and the report says so (<code>report.pdfua === true</code>).</p>
+  <p>When the fonts are clean but a blocker remains, the export does not claim: it <em>names</em> the
+  blockers, so the fix is a line of configuration or markup rather than a guess.</p>
+  <div class="note warn"><p><b>Two blockers to know in advance.</b> Fillable fields block the claim,
+  because their editor-facing <code>/DA</code> types in unembedded Helvetica, so a UA-claiming export
+  pairs with <code>fields: false</code>. A painted <code>&lt;img&gt;</code> or <code>role="img"</code>
+  element with no accessible name blocks it too: give it <code>alt</code>, <code>aria-label</code> or
+  <code>title</code>, or <code>alt=""</code> when it is decorative. Links are tagged as
+  <code>/Link</code> structure elements carrying <code>/OBJR</code> references.</p></div>
+
+  <h2 id="forms">Fillable form fields</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>fields</td><td>true</td><td>Emit measured controls as real AcroForm fields — fillable, tabbable, extractable. <code>false</code> keeps their values in the invisible text layer instead.</td></tr>
+  </tbody></table>
+  <p>A captured form should still <em>be</em> a form. Text inputs, textareas, checkboxes, radio groups
+  and selects become widget annotations carrying their DOM name, value, options and checked state.
+  <code>readonly</code>/<code>disabled</code> map to the read-only flag; <code>required</code> and
+  <code>maxlength</code> travel; and the accessible label — <code>aria-label</code>,
+  <code>&lt;label for&gt;</code>, placeholder, title, in that order — becomes the field's tooltip, which
+  is what a screen reader speaks. Radios group by their HTML <code>name</code>; duplicate non-radio
+  names are uniquified and reported.</p>
+  <p>The page image yields each fielded control's area to its widget. A field <b>holding a value</b>
+  paints it as real text, laid out from the control's own measured runs, so a textarea's wrap and an
+  input's alignment are the page's rather than a guess. An <b>empty</b> field wears the control's own
+  crop of the capture — border, corner radius and placeholder, pixel-exact. That split is dictated by
+  macOS Preview, which redraws a text field's value over any appearance carrying an image; text
+  appearances render once everywhere.</p>
+  <p>A value that lives in a field leaves the invisible text layer, so extraction returns it once, not
+  twice.</p>
+  <div class="note warn"><p><b>What deliberately does not happen.</b> A <b>password</b> field is written
+  empty with the password flag set — a field value is plain text in the file — and the raster keeps its
+  painted bullets. <b>Buttons, sliders, colour wells and file pickers</b> stay pixels: a control that
+  only means something to a running page is not a field. <b>No JavaScript actions and no submit URLs</b>
+  are ever written.</p></div>
+  <p>A rotated or clip-cut control is reported and left as invisible text; a control crossing a page
+  break is clamped to one page and reported. With <code>image:false</code> the appearance is
+  synthesized — background, border and a base-14 value line — and a value outside WinAnsi sets
+  <code>/NeedAppearances</code> so the viewer draws it.</p>
+
+  <h2 id="furniture">Header, footer and page numbers</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>header</td><td>null</td><td>String/function, <code>{left,center,right,size,font,color,rule,gap}</code>, or Element.</td></tr>
+    <tr><td>footer</td><td>null</td><td>The same along the bottom.</td></tr>
+    <tr><td>pageNumbers</td><td>false</td><td><code>true</code> or <code>{format,align,size,font,color}</code>.</td></tr>
+  </tbody></table>
+  <p>Text segments may be <code>(page,pages)=&gt;value</code>. Text furniture uses crisp Base-14 PDF
+  text. An Element's capturable content and styles are captured instead, but its text is not selectable
+  and the measurement sandbox does not execute scripts.
+  These features reserve page room and do nothing on <code>page:'fit'</code>. Text bands default to
+  size 9, sans, a rule and a 10-point gap; page numbers default to centred <code>page / pages</code>.
+  <code>colour</code> is accepted as a compatibility alias for <code>color</code>. With
+  <code>image:false</code>, Element bands are omitted with a warning; text bands and page numbers remain.</p>
+
+  <h2 id="matter">Cover, contents, back and watermark</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>cover</td><td>null</td><td>Element captured as the first page, fitted without cropping and given a text layer.</td></tr>
+    <tr><td>toc</td><td>null</td><td><code>true</code>, title string or <code>{title,levels,size,font,indent,dots,label,color,leaderColor}</code>.</td></tr>
+    <tr><td>back</td><td>null</td><td>Element captured as the last page with its own text layer.</td></tr>
+    <tr><td>watermark</td><td>null</td><td>String, Element, <code>{text,opacity,angle,size,font,color}</code> or <code>{element,opacity,angle,fit}</code>.</td></tr>
+  </tbody></table>
+  <p>Cover, contents and back require paginated paper. Front matter sits outside body numbering. The
+  contents links to body destinations; coordinate <code>toc.label</code> with a custom
+  <code>pageNumbers.format</code>. A watermark draws over every page and also works on
+  <code>page:'fit'</code>. Contents default to three outline depths. Text watermarks default to 12%
+  opacity and 45°; Element watermarks use 12%, 0° and <code>fit:.6</code>. Prefer
+  <code>color</code>/<code>leaderColor</code>; British-spelling aliases remain accepted. With
+  <code>image:false</code>, Element watermarks are omitted; cover/back pages keep their measured
+  semantics without a visible raster.</p>
+
+  <h2 id="identity">Metadata, identity and page labels</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>meta</td><td>null</td><td><code>{title, author, subject, keywords, creator, created, modified}</code> — <code>/Info</code> plus a mirrored XMP packet.</td></tr>
+  </tbody></table>
+  <p><code>title</code> also sets <code>/ViewerPreferences &lt;&lt; /DisplayDocTitle true &gt;&gt;</code>,
+  so viewers show the document's name rather than its filename. <code>keywords</code> may be a string or
+  an array. <code>/Producer</code> is always <code>snapdom-pdf</code> and is not an option.</p>
+  <div class="note"><p><b>Dates are never invented.</b> <code>created</code>/<code>modified</code> accept
+  a <code>Date</code> or an ISO-8601 string and are written only when you pass one — an invented "now"
+  would break byte-determinism, so pass <code>new Date()</code> yourself when you mean it. For the same
+  reason the trailer <code>/ID</code> is derived from the file's own content: identical exports share an
+  ID, different documents differ, and no clock or random source is involved.</p></div>
+  <p>Paginated documents with front matter get <code>/PageLabels</code> — cover and contents in lowercase
+  roman, body decimal from 1 — so the viewer's page field agrees with the printed folio and with the
+  generated contents.</p>
+
+  <h2 id="encrypt">Encryption</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>encrypt</td><td>null</td><td><code>{userPassword, ownerPassword, permissions}</code> — encrypt the file with AES-256 (standard security handler, revision 6).</td></tr>
+  </tbody></table>
+  <p>The exported file <em>is</em> the delivery: it gets downloaded, attached and forwarded.
+  <code>encrypt</code> is what makes it unreadable once it has left, and it is the only protection
+  here that is not advisory.</p>
+  <pre><code>await shot.toPdf({
+  page: 'a4',
+  encrypt: { userPassword: 'ada-1815', ownerPassword: 'owner-key' },
+})</code></pre>
+  <div class="note warn"><p><b><code>userPassword</code> is required and must be non-empty</b>, and an
+  export that omits it throws rather than producing a file. A PDF whose user password is <code>''</code>
+  is genuinely encrypted — the bytes are unreadable to a text editor — and every viewer in the world
+  still opens it without asking. That is the exact shape of a document somebody believes is protected
+  and is not.</p></div>
+  <p><code>ownerPassword</code> defaults to the user password; it exists to lift the permission flags
+  for whoever holds it.</p>
+
+  <h3>AES-256 and nothing older</h3>
+  <p>RC4 and revisions 2–4 are not offered at any setting. A 40-bit key falls in seconds, 128-bit RC4
+  is not far behind, and both need MD5 — which the platform does not provide, so shipping them would
+  mean hand-writing a cipher to deliver a weaker product. Everything used here comes from the browser's
+  own <code>crypto.subtle</code>, so the plugin carries no cipher code and no dependency. Encryption
+  therefore needs a <b>secure context</b>: https, or localhost. A 14&nbsp;MB document encrypts in about
+  34&nbsp;ms.</p>
+  <table><thead><tr><th>Written</th><th></th><th>Per</th></tr></thead><tbody>
+    <tr><td>/V 5 /R 6</td><td>AESV3</td><td>ISO 32000-2 §7.6.4, 256-bit key.</td></tr>
+    <tr><td>header</td><td>%PDF-1.7</td><td>The file structure is 1.7; the catalog declares <code>/ADBE /ExtensionLevel 3</code>, the shape readers learned before ISO 32000-2 existed.</td></tr>
+    <tr><td>scope</td><td>everything</td><td>Every stream and every string, <code>/Metadata</code> included. Strings inside content streams ride the stream.</td></tr>
+  </tbody></table>
+
+  <h3>Permissions are a request, not a protection</h3>
+  <p><code>permissions</code> accepts <code>print</code>, <code>modify</code>, <code>copy</code>,
+  <code>annotate</code>, <code>fillForms</code>, <code>assemble</code> and <code>printHighRes</code>;
+  each defaults to <code>true</code>, and setting one to <code>false</code> clears its <code>/P</code>
+  bit. Understand what that buys: a flag is something a viewer <em>may</em> honour and any other tool
+  can ignore. The password protects the document; the flags only express intent to software that has
+  already been given the key. The export says so in the report whenever any of them is set.</p>
+  <p>Extraction for accessibility is deliberately not exposed. PDF 2.0 deprecates that bit — a
+  conforming reader must always allow it — and PDF/UA requires an encrypted file to keep permitting it,
+  so an exporter whose selling point is an extractable text layer has no business offering to switch it
+  off. A UA-claiming export and an encrypted one are compatible for exactly that reason.</p>
+
+  <h3>Encrypted exports are not deterministic</h3>
+  <p>The file key, the salts and every IV are random, drawn from <code>crypto.getRandomValues</code> for
+  each export. Encrypting the same document twice with the same password gives two different files that
+  open to the same content, so two encrypted files never reveal that their contents match. Unencrypted
+  exports stay byte-deterministic.</p>
+
+  <h2 id="output">Output</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>deflate</td><td>true</td><td>Compress PDF content streams.</td></tr>
+    <tr><td>download</td><td>false</td><td>Filename, or <code>true</code> for <code>snapdom.pdf</code>. The Blob is still returned.</td></tr>
+  </tbody></table>
+  <p>Use <code>deflate</code>, not SnapDOM's <code>compress</code>; use <code>download</code>, not its
+  <code>filename</code>. PDF-side <code>scale</code>, legacy <code>background</code>, <code>mode</code>
+  and <code>vector</code> are rejected with a warning.</p>
+
+  <h2 id="report">Progress, cancellation and the report</h2>
+  <table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>onProgress</td><td>null</td><td><code>({phase, done, total})</code> per step: <code>measure</code>, <code>page</code> with counts, <code>matter</code>, <code>assemble</code>.</td></tr>
+    <tr><td>signal</td><td>null</td><td>An <code>AbortSignal</code>. Aborting rejects with <code>AbortError</code> between pages — no Blob, no download, no report.</td></tr>
+    <tr><td>onReport</td><td>null</td><td>Receives the structured diagnostics report once the Blob is finished.</td></tr>
+  </tbody></table>
+  <p>A forty-page report rasterizes forty regions through an image codec; that is seconds, and seconds
+  behind a mute button is how users learn to distrust a feature. <code>total</code> is the body page
+  count once pagination has run and <code>null</code> before anything knows it, which a progress bar
+  should read as indeterminate.</p>
+  <pre><code>const report = await new Promise(async (resolve) =&gt; {
+  await shot.toPdf({
+    page: 'a4',
+    onProgress: ({ phase, done, total }) =&gt; ui.tick(phase, done, total),
+    signal: controller.signal,
+    onReport: resolve,
+  })
+})
+
+if (report.counts['link-unresolved']) throw new Error('a link lost its destination')</code></pre>
+  <p>The report is <code>{warnings, counts, pages, bytes, fields, annotations, fontsEmbedded, pdfua,
+  vectorText}</code>, where each warning is <code>{code, message}</code> and <code>counts</code> tallies
+  by code. The codes are a stable contract — <code>text-clipped</code>, <code>link-unresolved</code>,
+  <code>field-skipped</code>, <code>layout-split</code>, <code>ua-withheld</code>, … — so a CI step can
+  gate on "no annotations lost" without parsing prose. Identical exports produce identical reports. The
+  console keeps warning regardless, so nothing changes for callers who ignore all of this.</p>
+
+  <h2 id="warnings">Errors and warnings</h2>
+  <p>Register before capture. A capture made without the plugin has no <code>toPdf()</code> helper
+  and no generic PDF exporter. An available export rejects an incompatible SnapDOM contract, invalid
+  or empty capture geometry, an incompatible final-artifact viewBox/root paint-layout/intrinsic aspect,
+  invalid orientation/margins/custom page geometry and invalid active image codec/quality. Untyped
+  JavaScript with an unknown paper-name string warns and falls back to A4. Fidelity trade-offs use
+  <code>console.warn</code> under <code>[snapdom-pdf]</code>.</p>
+  <ul class="plain">
+    <li>Atomic blocks split or declared breaks not honoured.</li>
+    <li>Text/links clipped, invisible, off-page or under unsupported 3D geometry.</li>
+    <li>Missing internal destinations or an invalid custom-outline selector.</li>
+    <li>Missing document language on tagged output.</li>
+    <li>A repeated table header too tall, or a contents request with no headings.</li>
+    <li>Base-14 furniture unable to paint a script.</li>
+    <li>Invalid/translucent flattening colours or unavailable Flate compression.</li>
+    <li>Malformed links or URI schemes outside the safe allowlist.</li>
+  </ul>
+  <p>Every one of these is also available as a structured diagnostic with a stable code — see
+  <a href="#report">the report</a> — so a build can gate on them instead of reading the console.</p>
+
+  <h2 id="limits">Known limits</h2>
+  <ul class="plain">
+    <li>Visible text is raster by default; high zoom exposes the capture resolution. <code>vectorText</code>
+    paints eligible runs as real glyphs, but RTL and complex scripts are never among them.</li>
+    <li>Textarea wrapping is greedy. Date-like controls contribute ISO rather than locale-painted values.</li>
+    <li>Closed shadow roots are unreachable; upright vertical glyphs need a vertical font path.</li>
+    <li>Ambiguous clipping, masking and filter geometry is omitted fail-safe; visible text can lose selection.</li>
+    <li>Native select insets were measured on Chromium and vary by engine.</li>
+    <li>Rotated links use an axis-aligned rectangle.</li>
+    <li>Captured header/footer Elements have no text layer; repeated table headers have no repeated links.</li>
+    <li><code>image:false</code> omits Element headers, footers and watermarks; image-free cover/back pages keep semantics only.</li>
+    <li><code>encrypt</code> needs a secure context (https or localhost), because it runs on
+    <code>crypto.subtle</code>. Permission flags are advisory whatever the cipher.</li>
+  </ul>
+
+  <h2 id="browsers">Browser status</h2>
+  <p>The artifact is an ES2022 ESM module. The complete PDF fixture suite runs in Chromium. A second
+  release gate imports and executes both sold bundles in Chromium, Firefox and WebKit, covering
+  registration, core-export coexistence, PDF creation, generic export, tagging, image-free output and
+  safe links. A missing engine fails rather than skipping.</p>
+  <p>This is not a claim that the complete complex-layout matrix runs in all three engines. Engine-
+  sensitive limits remain listed above, and only Chromium receives the full fixture suite.</p>
+  <p>Everything runs in the browser and the PDF Blob is not uploaded by this plugin. SnapDOM may still
+  fetch page resources or use an application-configured proxy.</p>
+
+  <footer>Something wrong or missing? <a href="mailto:hello@zumerlab.com">Tell us</a>. Keep the
+  packaged <code>REFERENCE.md</code> with the module so behaviour and documentation stay versioned together.</footer>
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,572 @@
+{
+  "generatedAt": "2026-08-08T17:48:55.297Z",
+  "hero": {
+    "file": "card",
+    "svgBytes": 26523,
+    "pngBytes": 117283,
+    "report": {
+      "nodes": 18,
+      "domElements": 19,
+      "cloneElements": 19,
+      "nodeRatio": 0.9473684210526315,
+      "drift": {
+        "pairs": 19,
+        "skipped": 0,
+        "median": 0,
+        "p95": 0,
+        "max": 0,
+        "worst": []
+      },
+      "coverage": {
+        "pseudo": 0,
+        "shadow": 0,
+        "iconFont": 0,
+        "artifact": 0,
+        "synthetic": 0
+      },
+      "vector": 18,
+      "raster": 0,
+      "textBlocks": 8,
+      "fonts": [
+        {
+          "id": "ts_0",
+          "family": "-apple-system",
+          "weight": 700,
+          "italic": false
+        },
+        {
+          "id": "ts_1",
+          "family": "-apple-system",
+          "weight": 700,
+          "italic": false
+        },
+        {
+          "id": "ts_2",
+          "family": "-apple-system",
+          "weight": 700,
+          "italic": false
+        },
+        {
+          "id": "ts_3",
+          "family": "-apple-system",
+          "weight": 400,
+          "italic": false
+        },
+        {
+          "id": "ts_4",
+          "family": "-apple-system",
+          "weight": 400,
+          "italic": false
+        },
+        {
+          "id": "ts_5",
+          "family": "-apple-system",
+          "weight": 400,
+          "italic": false
+        },
+        {
+          "id": "ts_6",
+          "family": "-apple-system",
+          "weight": 700,
+          "italic": false
+        },
+        {
+          "id": "ts_7",
+          "family": "-apple-system",
+          "weight": 400,
+          "italic": false
+        },
+        {
+          "id": "ts_8",
+          "family": "-apple-system",
+          "weight": 700,
+          "italic": false
+        },
+        {
+          "id": "ts_9",
+          "family": "-apple-system",
+          "weight": 650,
+          "italic": false
+        }
+      ],
+      "grades": {
+        "E": 9,
+        "A": 9,
+        "C": 0,
+        "R": 0,
+        "RH": 0,
+        "O": 0
+      },
+      "assets": 0,
+      "textStyles": 10,
+      "diagnostics": 22,
+      "promotions": 0,
+      "durationMs": 16.399999856948853
+    },
+    "grades": {
+      "E": 9,
+      "A": 9
+    },
+    "diagnostics": [
+      {
+        "code": "collect.box",
+        "severity": "info",
+        "node": "n_3",
+        "message": "gradient: transparent-neighbour-rgb:1"
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_5",
+        "message": "a single visual line has no baseline difference to measure — pitch falls back to the used line-height and is not a measurement"
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_5",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_8",
+        "message": "a single visual line has no baseline difference to measure — pitch falls back to the used line-height and is not a measurement"
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_8",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_9",
+        "message": "a single visual line has no baseline difference to measure — pitch falls back to the used line-height and is not a measurement"
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_9",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_10",
+        "message": "a single visual line has no baseline difference to measure — pitch falls back to the used line-height and is not a measurement"
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_10",
+        "message": "emoji present — a colour glyph does not advance like the font measured here, so the line box does not expand the same way"
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_10",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_11",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_14",
+        "message": "a single visual line has no baseline difference to measure — pitch falls back to the used line-height and is not a measurement"
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_14",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_15",
+        "message": "a single visual line has no baseline difference to measure — pitch falls back to the used line-height and is not a measurement"
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_15",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "collect.text",
+        "severity": "info",
+        "node": "n_17",
+        "message": "a single visual line has no baseline difference to measure — pitch falls back to the used line-height and is not a measurement"
+      },
+      {
+        "code": "collect.text-family-system",
+        "severity": "warn",
+        "node": "n_17",
+        "message": "the family that painted this text (-apple-system) is a system keyword, and a system keyword is not a font name: it is this machine's word for its own UI face — San Francisco, which this machine reports as macOS — and no font picker anywhere can be asked for it by name. There is nothing to resolve and nothing to emit: the export carries the stack as the page wrote it and the destination substitutes. MEASURED pasting into Figma, that substitution alone makes a line 6.1% wider, and everything anchored to the end of a line moves with it. The only real fix is embedding the binary, which v0 does not do."
+      },
+      {
+        "code": "text.tracking-may-be-ignored",
+        "severity": "warn",
+        "node": "n_5",
+        "message": "this text is tracked and the target may well drop it — Figma does, verified by pasting: letter-spacing 0.88px over the 5 character(s) of line 0 is 4.4px of advance that a target ignoring tracking never adds: the line measures 43.3px here, its glyphs alone advance 38.9px, so it arrives −4.4px narrower (−10.2%). The line is «NUEVO». Its family does not travel either: \"-apple-system\" is a system keyword and not a font name — no picker can be handed it, so the destination substitutes. Measured on this machine, these same characters are 38.9px in the page's own stack and 39.1px in the sans-serif it falls back to — +0.5% of glyph advance. Which face the destination picks is its own business — pasting this engine's SVG into Figma, it picked Inter and the line came out 6.1% wider, measured once and on one line — but that is the order of the error, and on this line it puts the two together at about 39.1px against the 43.3px the page paints: −4.2px, −9.7%. Nothing is lost from THIS document — the tracking is in `styles.text` and on the emitted text — and nothing this engine can emit makes a target honour it: four ways of forcing it were tried against Figma and all four are written up as dead ends."
+      },
+      {
+        "code": "text.tracking-may-be-ignored",
+        "severity": "warn",
+        "node": "n_8",
+        "message": "this text is tracked and the target may well drop it — Figma does, verified by pasting: letter-spacing 1.32px over the 12 character(s) of line 0 is 15.8px of advance that a target ignoring tracking never adds: the line measures 99.2px here, its glyphs alone advance 83.3px, so it arrives −15.8px narrower (−16.0%). The line is «SERIE AURORA». Its family does not travel either: \"-apple-system\" is a system keyword and not a font name — no picker can be handed it, so the destination substitutes. Measured on this machine, these same characters are 83.3px in the page's own stack and 84.3px in the sans-serif it falls back to — +1.2% of glyph advance. Which face the destination picks is its own business — pasting this engine's SVG into Figma, it picked Inter and the line came out 6.1% wider, measured once and on one line — but that is the order of the error, and on this line it puts the two together at about 84.4px against the 99.2px the page paints: −14.8px, −14.9%. Nothing is lost from THIS document — the tracking is in `styles.text` and on the emitted text — and nothing this engine can emit makes a target honour it: four ways of forcing it were tried against Figma and all four are written up as dead ends."
+      },
+      {
+        "code": "text.tracking-may-be-ignored",
+        "severity": "warn",
+        "node": "n_9",
+        "message": "this text is tracked and the target may well drop it — Figma does, verified by pasting: letter-spacing -0.42px over the 15 character(s) of line 0 is 6.3px of advance that a target ignoring tracking never adds: the line measures 163.2px here, its glyphs alone advance 169.5px, so it arrives +6.3px wider (+3.9%). The line is «Lámpara Halo 40». Its family does not travel either: \"-apple-system\" is a system keyword and not a font name — no picker can be handed it, so the destination substitutes. Measured on this machine, these same characters are 169.5px in the page's own stack and 168.1px in the sans-serif it falls back to — −0.9% of glyph advance. Which face the destination picks is its own business — pasting this engine's SVG into Figma, it picked Inter and the line came out 6.1% wider, measured once and on one line — but that is the order of the error, and on this line it puts the two together at about 168.1px against the 163.2px the page paints: +4.8px, +3.0%. Nothing is lost from THIS document — the tracking is in `styles.text` and on the emitted text — and nothing this engine can emit makes a target honour it: four ways of forcing it were tried against Figma and all four are written up as dead ends."
+      },
+      {
+        "code": "text.tracking-may-be-ignored",
+        "severity": "warn",
+        "node": "n_10",
+        "message": "this text is tracked and the target may well drop it — Figma does, verified by pasting: letter-spacing 0.75px over the 23 character(s) of line 0 is 17.3px of advance that a target ignoring tracking never adds: the line measures 178.9px here, its glyphs alone advance 161.6px, so it arrives −17.3px narrower (−9.6%). The line is «★★★★★ 4,2 · 218 reseñas». Its family does not travel either: \"-apple-system\" is a system keyword and not a font name — no picker can be handed it, so the destination substitutes. Measured on this machine, these same characters are 161.6px in the page's own stack and 162.6px in the sans-serif it falls back to — +0.6% of glyph advance. Which face the destination picks is its own business — pasting this engine's SVG into Figma, it picked Inter and the line came out 6.1% wider, measured once and on one line — but that is the order of the error, and on this line it puts the two together at about 162.6px against the 178.9px the page paints: −16.3px, −9.1%. Nothing is lost from THIS document — the tracking is in `styles.text` and on the emitted text — and nothing this engine can emit makes a target honour it: four ways of forcing it were tried against Figma and all four are written up as dead ends."
+      },
+      {
+        "code": "text.tracking-may-be-ignored",
+        "severity": "warn",
+        "node": "n_15",
+        "message": "this text is tracked and the target may well drop it — Figma does, verified by pasting: letter-spacing -0.72px over the 5 character(s) of line 0 is 3.6px of advance that a target ignoring tracking never adds: the line measures 56.5px here, its glyphs alone advance 60.1px, so it arrives +3.6px wider (+6.4%). The line is «149 €». Its family does not travel either: \"-apple-system\" is a system keyword and not a font name — no picker can be handed it, so the destination substitutes. Measured on this machine, these same characters are 60.0px in the page's own stack and 64.6px in the sans-serif it falls back to — +7.5% of glyph advance. Which face the destination picks is its own business — pasting this engine's SVG into Figma, it picked Inter and the line came out 6.1% wider, measured once and on one line — but that is the order of the error, and on this line it puts the two together at about 64.6px against the 56.5px the page paints: +8.1px, +14.4%. Nothing is lost from THIS document — the tracking is in `styles.text` and on the emitted text — and nothing this engine can emit makes a target honour it: four ways of forcing it were tried against Figma and all four are written up as dead ends."
+      },
+      {
+        "code": "emit.svg.shadow-spread-morphology",
+        "grade": "A",
+        "severity": "info",
+        "node": "n_1",
+        "message": "a drop shadow with -8px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel."
+      },
+      {
+        "code": "emit.svg.filter-not-imported",
+        "grade": "E",
+        "severity": "info",
+        "node": "n_1",
+        "message": "the box-shadow on this node (2 outer, 0 inner) is emitted as feGaussianBlur + feOffset + feFlood + feComposite + feMorphology + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there."
+      },
+      {
+        "code": "emit.svg.filter-not-imported",
+        "grade": "E",
+        "severity": "info",
+        "message": "a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability."
+      },
+      {
+        "code": "emit.svg.filter-not-imported",
+        "grade": "E",
+        "severity": "info",
+        "message": "one of those filters carries a feFlood, and a flood has been measured landing two different ways: the exact box-shadow chain (FIGMA_FINDINGS §4) arrived as a flat rectangle of the shadow colour — Figma kept the flood and lost the feComposite that cuts it down to the silhouette — while the inner-shadow chain of the six-shape probe arrived with nothing painted at all. Which of the two a given chain gets is not predictable from here, and the rectangle is the worse one: it covers the design instead of leaving it plain."
+      },
+      {
+        "code": "emit.svg.text-length-viewer-width",
+        "grade": "A",
+        "severity": "info",
+        "message": "no font binary travels with this SVG, so no line carries textLength and every line's width is the viewer's to decide. Pinning a substituted family to the advances the page's font measured does not degrade gracefully — it squeezes the glyphs into the measured width (verified by pasting into Figma), so the measurement is stated by position only."
+      },
+      {
+        "code": "emit.svg.text-per-line",
+        "grade": "A",
+        "severity": "info",
+        "node": "n_11",
+        "message": "a text block that occupies 2 positioned pieces is emitted as 2 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:\"never\" keeps one <text> per block."
+      },
+      {
+        "code": "emit.svg.shadow-spread-morphology",
+        "grade": "A",
+        "severity": "info",
+        "node": "n_16",
+        "message": "a drop shadow with -4px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel."
+      },
+      {
+        "code": "emit.svg.filter-not-imported",
+        "grade": "E",
+        "severity": "info",
+        "node": "n_16",
+        "message": "the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there."
+      },
+      {
+        "code": "emit.svg.shadow-spread-morphology",
+        "grade": "A",
+        "severity": "info",
+        "node": "n_6",
+        "message": "a drop shadow with -6px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel."
+      },
+      {
+        "code": "emit.svg.filter-not-imported",
+        "grade": "E",
+        "severity": "info",
+        "node": "n_6",
+        "message": "the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there."
+      },
+      {
+        "code": "emit.svg.conic-fan",
+        "grade": "A",
+        "severity": "info",
+        "node": "n_6",
+        "message": "conic-gradient has no SVG paint server; it is composed as 128 flat wedges (the sweep is quantized to 2.8 degrees, the colour within each wedge is its mid-angle sample)."
+      },
+      {
+        "code": "emit.svg.conic-apex",
+        "grade": "A",
+        "severity": "info",
+        "node": "n_6",
+        "message": "the 128 wedges cannot cover the point they meet at, so a 7px disc of the sweep's mean colour caps the apex; within that disc the angular ramp is flat."
+      }
+    ],
+    "banner": "<!-- snapdom-vector svg-flat: 12 approximation(s) — nothing here is silent.\n    · [n_1] a drop shadow with -8px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.\n    · [n_1] the box-shadow on this node (2 outer, 0 inner) is emitted as feGaussianBlur + feOffset + feFlood + feComposite + feMorphology + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.\n    · a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability.\n    · one of those filters carries a feFlood, and a flood has been measured landing two different ways: the exact box-shadow chain (FIGMA_FINDINGS §4) arrived as a flat rectangle of the shadow colour — Figma kept the flood and lost the feComposite that cuts it down to the silhouette — while the inner-shadow chain of the six-shape probe arrived with nothing painted at all. Which of the two a given chain gets is not predictable from here, and the rectangle is the worse one: it covers the design instead of leaving it plain.\n    · no font binary travels with this SVG, so no line carries textLength and every line's width is the viewer's to decide. Pinning a substituted family to the advances the page's font measured does not degrade gracefully — it squeezes the glyphs into the measured width (verified by pasting into Figma), so the measurement is stated by position only.\n    · [n_11] a text block that occupies 2 positioned pieces is emitted as 2 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:\"never\" keeps one <text> per block.\n    · [n_16] a drop shadow with -4px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.\n    · [n_16] the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.\n    · [n_6] a drop shadow with -6px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.\n    · [n_6] the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.\n    · [n_6] conic-gradient has no SVG paint server; it is composed as 128 flat wedges (the sweep is quantized to 2.8 degrees, the colour within each wedge is its mid-angle sample).\n    · [n_6] the 128 wedges cannot cover the point they meet at, so a 7px disc of the sweep's mean colour caps the apex; within that disc the angular ramp is flat.\n  -->"
+  },
+  "samples": [
+    {
+      "file": "card",
+      "what": "Linear, radial and conic gradients, elliptic radii, two shadows, a struck-through price.",
+      "bytes": 26523,
+      "texts": 9,
+      "images": 0,
+      "nodes": 18,
+      "domElements": 19,
+      "nodeRatio": 0.9473684210526315,
+      "drift": {
+        "pairs": 19,
+        "skipped": 0,
+        "median": 0,
+        "p95": 0,
+        "max": 0,
+        "worst": []
+      },
+      "grades": {
+        "E": 9,
+        "A": 9
+      },
+      "codes": {
+        "collect.box": 1,
+        "collect.text": 8,
+        "collect.text-family-system": 8,
+        "text.tracking-may-be-ignored": 5,
+        "emit.svg.shadow-spread-morphology": 3,
+        "emit.svg.filter-not-imported": 5,
+        "emit.svg.text-length-viewer-width": 1,
+        "emit.svg.text-per-line": 1,
+        "emit.svg.conic-fan": 1,
+        "emit.svg.conic-apex": 1
+      },
+      "ms": 33
+    },
+    {
+      "file": "typography",
+      "what": "Nine typographic traps: justified text, hyphenation, a wavy underline, small caps, RTL, emoji.",
+      "bytes": 18111,
+      "texts": 24,
+      "images": 0,
+      "nodes": 11,
+      "domElements": 18,
+      "nodeRatio": 0.6111111111111112,
+      "drift": {
+        "pairs": 18,
+        "skipped": 0,
+        "median": 0,
+        "p95": 0,
+        "max": 0,
+        "worst": []
+      },
+      "grades": {
+        "A": 10,
+        "E": 1
+      },
+      "codes": {
+        "collect.box": 1,
+        "collect.text": 14,
+        "collect.text-family-system": 8,
+        "collect.text-stroke": 1,
+        "collect.text-small-caps": 1,
+        "collect.text-hyphen": 1,
+        "capture.root-paint-restored": 1,
+        "text.tracking-may-be-ignored": 5,
+        "emit.svg.shadow-spread-morphology": 2,
+        "emit.svg.filter-not-imported": 3,
+        "emit.svg.background-clip-text": 1,
+        "emit.svg.text-length-viewer-width": 1,
+        "emit.svg.text-gradient-fill-ref": 1,
+        "emit.svg.text-decoration-wavy-path": 1,
+        "emit.svg.text-hyphen-painted": 1,
+        "emit.svg.text-per-line": 4,
+        "emit.svg.text-baseline-shift-split": 1,
+        "emit.svg.stroke-per-side-miter": 1
+      },
+      "ms": 25
+    },
+    {
+      "file": "controls",
+      "what": "Native form controls — the pixels no CSS property describes — rebuilt as geometry.",
+      "bytes": 16025,
+      "texts": 18,
+      "images": 0,
+      "nodes": 46,
+      "domElements": 41,
+      "nodeRatio": 1.1219512195121952,
+      "drift": {
+        "pairs": 38,
+        "skipped": 3,
+        "median": 0,
+        "p95": 0,
+        "max": 0,
+        "worst": []
+      },
+      "grades": {
+        "A": 25,
+        "E": 10,
+        "O": 11
+      },
+      "codes": {
+        "B4.form-control": 11,
+        "B4.anonymous-block": 6,
+        "collect.text": 16,
+        "collect.text-family-system": 17,
+        "collect.box.form-control": 11,
+        "compose.outline": 1,
+        "capture.root-paint-restored": 1,
+        "text.tracking-may-be-ignored": 7,
+        "emit.svg.shadow-spread-morphology": 2,
+        "emit.svg.filter-not-imported": 3,
+        "emit.svg.text-length-viewer-width": 1,
+        "emit.svg.text-per-line": 1,
+        "emit.svg.control-reconstructed": 9
+      },
+      "ms": 16
+    },
+    {
+      "file": "table",
+      "what": "A border-collapse table: the resolved grid, painted as its own layer.",
+      "bytes": 35142,
+      "texts": 45,
+      "images": 0,
+      "nodes": 106,
+      "domElements": 69,
+      "nodeRatio": 1.536231884057971,
+      "drift": {
+        "pairs": 69,
+        "skipped": 0,
+        "median": 0,
+        "p95": 0,
+        "max": 0,
+        "worst": []
+      },
+      "grades": {
+        "A": 45,
+        "E": 57,
+        "O": 4
+      },
+      "codes": {
+        "collect.text": 43,
+        "collect.text-family-system": 44,
+        "collect.box": 4,
+        "capture.root-paint-restored": 1,
+        "text.tracking-may-be-ignored": 8,
+        "emit.svg.shadow-spread-morphology": 2,
+        "emit.svg.filter-not-imported": 9,
+        "emit.svg.text-length-viewer-width": 1,
+        "emit.svg.text-per-line": 1,
+        "emit.svg.clip-inset-unknown": 1
+      },
+      "ms": 20
+    },
+    {
+      "file": "icons",
+      "what": "Inline SVG, four icons deep, three of them declaring the same element ids.",
+      "bytes": 26270,
+      "texts": 11,
+      "images": 0,
+      "nodes": 19,
+      "domElements": 54,
+      "nodeRatio": 0.35185185185185186,
+      "drift": {
+        "pairs": 32,
+        "skipped": 22,
+        "median": 0,
+        "p95": 0.005584716796875,
+        "max": 0.005615234375,
+        "worst": [
+          {
+            "delta": 0.005615234375,
+            "tag": "use",
+            "id": "",
+            "cls": "",
+            "clone": "9.65×17.68 @ -99743.36,143.82",
+            "live": "9.64×17.68 @ 707.64,241.01"
+          },
+          {
+            "delta": 0.005584716796875,
+            "tag": "use",
+            "id": "",
+            "cls": "",
+            "clone": "9.65×17.68 @ -99951.36,143.82",
+            "live": "9.64×17.68 @ 499.64,241.01"
+          }
+        ]
+      },
+      "grades": {
+        "A": 12,
+        "E": 7
+      },
+      "codes": {
+        "B4.clone-defs-container": 1,
+        "B4.inline-svg": 3,
+        "B4.anonymous-block": 2,
+        "collect.text": 7,
+        "collect.text-family-system": 7,
+        "collect.image": 4,
+        "capture.root-paint-restored": 1,
+        "text.tracking-may-be-ignored": 3,
+        "emit.svg.shadow-spread-morphology": 2,
+        "emit.svg.filter-not-imported": 3,
+        "emit.svg.text-length-viewer-width": 1,
+        "emit.svg.text-per-line": 1
+      },
+      "ms": 12
+    },
+    {
+      "file": "clone",
+      "what": "A ::before with attr(), ::marker numbers, an open shadow root and an icon-font ligature.",
+      "bytes": 21274,
+      "texts": 22,
+      "images": 2,
+      "nodes": 34,
+      "domElements": 23,
+      "nodeRatio": 1.4782608695652173,
+      "drift": {
+        "pairs": 24,
+        "skipped": 0,
+        "median": 0,
+        "p95": 0,
+        "max": 0,
+        "worst": []
+      },
+      "grades": {
+        "A": 24,
+        "E": 10
+      },
+      "codes": {
+        "B4.anonymous-block": 3,
+        "B4.list-marker-synthesized": 4,
+        "collect.text": 14,
+        "collect.text-family-system": 16,
+        "capture.root-paint-restored": 1,
+        "text.tracking-may-be-ignored": 4,
+        "emit.svg.shadow-spread-morphology": 4,
+        "emit.svg.filter-not-imported": 5,
+        "emit.svg.text-length-viewer-width": 1,
+        "emit.svg.text-per-line": 3,
+        "emit.svg.stroke-per-side-miter": 1
+      },
+      "ms": 49
+    }
+  ]
+}

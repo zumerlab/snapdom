@@ -406,16 +406,6 @@ HTML uses the sanitized clone. `agentMap` and `contextExport` share the field, b
 
 Custom masks and nonempty `selector`, `blocks` or `attributes` rules disable unchanged-capture memoization, so they run on every capture. Nonempty block or attribute rules add a final `beforeRender` pass; the experimental `engine: 'html-in-canvas'` then falls back to SVG. Field-only redaction does not add that pass. Full plugin options: https://github.com/zumerlab/snapdom/blob/main/packages/plugins/README.md#redact-inputs.
 
-### SnapDOM Pro previews
-
-SnapDOM Pro contains paid plugin previews for searchable PDF export and editable vector SVG export. These are separate from the MIT core and `@zumer/snapdom-plugins`; neither is included in the official plugin exports listed above. The preview pages document sample output and current limits. The current previews target SnapDOM v3.x.x; consult each product's documentation for supported versions and release status.
-
-- Pro overview: https://snapdom.dev/pro/
-- PDF preview and samples: https://snapdom.dev/pro/pdf/
-- PDF documentation: https://snapdom.dev/pro/pdf/docs.html
-- Vector preview and samples: https://snapdom.dev/pro/vector/
-- Vector documentation: https://snapdom.dev/pro/vector/docs.html
-
 ### HTML and structured context
 
 ```js

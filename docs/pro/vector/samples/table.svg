@@ -1,0 +1,425 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="500" height="400.7969" viewBox="0 0 500 400.7969" text-rendering="geometricPrecision">
+  <!-- snapdom-vector svg-flat: 14 approximation(s) — nothing here is silent.
+    · [n_0] a drop shadow with -18px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] a drop shadow with 1px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] the box-shadow on this node (2 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability.
+    · one of those filters carries a feFlood, and a flood has been measured landing two different ways: the exact box-shadow chain (FIGMA_FINDINGS §4) arrived as a flat rectangle of the shadow colour — Figma kept the flood and lost the feComposite that cuts it down to the silhouette — while the inner-shadow chain of the six-shape probe arrived with nothing painted at all. Which of the two a given chain gets is not predictable from here, and the rectangle is the worse one: it covers the design instead of leaving it plain.
+    · no font binary travels with this SVG, so no line carries textLength and every line's width is the viewer's to decide. Pinning a substituted family to the advances the page's font measured does not degrade gracefully — it squeezes the glyphs into the measured width (verified by pasting into Figma), so the measurement is stated by position only.
+    · [n_2] a text block that occupies 2 positioned pieces is emitted as 2 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:"never" keeps one <text> per block.
+    · [n_3] the overflow clip is declared on the padding box, but the node carries no padding inset; it is applied to the border box (the radii are the inner ones).
+    · [n_6] the box-shadow on this node (0 outer, 1 inner) is emitted as feOffset + feGaussianBlur + feComposite + feFlood + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive; an inner shadow has no primitive in either mode. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability.
+    · [n_8] the box-shadow on this node (0 outer, 1 inner) is emitted as feOffset + feGaussianBlur + feComposite + feFlood + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · [n_10] the box-shadow on this node (0 outer, 1 inner) is emitted as feOffset + feGaussianBlur + feComposite + feFlood + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · [n_12] the box-shadow on this node (0 outer, 1 inner) is emitted as feOffset + feGaussianBlur + feComposite + feFlood + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · [n_14] the box-shadow on this node (0 outer, 1 inner) is emitted as feOffset + feGaussianBlur + feComposite + feFlood + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+  -->
+  <title>#fx-table &gt; div:nth-child(1)</title>
+  <desc>@zumer/snapdom-vector 0.0.1 · svd/1.0 · http://localhost:62070/demo/challenges.html 2026-08-08T17:48:54.669Z</desc>
+  <defs>
+    <filter id="fx1" filterUnits="userSpaceOnUse" x="-147" y="-147" width="794" height="694.7969" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="18" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="23" result="db0"/>
+      <feOffset dx="0" dy="22" result="do0"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.32" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dm1"/>
+      <feGaussianBlur in="dm1" stdDeviation="0" result="db1"/>
+      <feOffset dx="0" dy="0" result="do1"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.06" result="dc1"/>
+      <feComposite in="dc1" in2="do1" operator="in" result="ds1"/>
+      <feMerge>
+        <feMergeNode in="ds1"/>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="cp2" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="456" height="268" rx="12" ry="12"/>
+    </clipPath>
+    <filter id="fx3" filterUnits="userSpaceOnUse" x="-3" y="-3" width="89.1875" height="40.7969" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0" dy="-1" result="io0"/>
+      <feGaussianBlur in="io0" stdDeviation="0" result="ib0"/>
+      <feComposite in="SourceAlpha" in2="ib0" operator="out" result="ir0"/>
+      <feFlood flood-color="#cbd5e1" flood-opacity="1" result="ic0"/>
+      <feComposite in="ic0" in2="ir0" operator="in" result="is0"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="is0"/>
+      </feMerge>
+    </filter>
+    <filter id="fx4" filterUnits="userSpaceOnUse" x="-3" y="-3" width="104.9688" height="40.7969" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0" dy="-1" result="io0"/>
+      <feGaussianBlur in="io0" stdDeviation="0" result="ib0"/>
+      <feComposite in="SourceAlpha" in2="ib0" operator="out" result="ir0"/>
+      <feFlood flood-color="#cbd5e1" flood-opacity="1" result="ic0"/>
+      <feComposite in="ic0" in2="ir0" operator="in" result="is0"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="is0"/>
+      </feMerge>
+    </filter>
+    <filter id="fx5" filterUnits="userSpaceOnUse" x="-3" y="-3" width="99.2656" height="40.7969" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0" dy="-1" result="io0"/>
+      <feGaussianBlur in="io0" stdDeviation="0" result="ib0"/>
+      <feComposite in="SourceAlpha" in2="ib0" operator="out" result="ir0"/>
+      <feFlood flood-color="#cbd5e1" flood-opacity="1" result="ic0"/>
+      <feComposite in="ic0" in2="ir0" operator="in" result="is0"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="is0"/>
+      </feMerge>
+    </filter>
+    <filter id="fx6" filterUnits="userSpaceOnUse" x="-3" y="-3" width="91.3125" height="40.7969" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0" dy="-1" result="io0"/>
+      <feGaussianBlur in="io0" stdDeviation="0" result="ib0"/>
+      <feComposite in="SourceAlpha" in2="ib0" operator="out" result="ir0"/>
+      <feFlood flood-color="#cbd5e1" flood-opacity="1" result="ic0"/>
+      <feComposite in="ic0" in2="ir0" operator="in" result="is0"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="is0"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g id="n_0">
+    <g filter="url(#fx1)">
+      <rect x="0" y="0" width="500" height="400.7969" rx="20" ry="20" fill="#ffffff"/>
+    </g>
+    <g id="n_1" transform="translate(22 22)">
+      <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="18" font-weight="700" letter-spacing="-0.36" fill="#0f172a" x="0" y="20">Cierre por trimestre</text>
+    </g>
+    <g id="n_2" transform="translate(22 54.7969)">
+      <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b" x="0" y="14">Cabecera y pie pegajosos dentro de un contenedor con scroll, sobre una</text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b" x="0" y="34"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b">tabla con </tspan><tspan font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="10.75" fill="#64748b">border-collapse: collapse</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b">.</tspan></text>
+    </g>
+    <g id="n_3" transform="translate(22 110.7969)">
+      <rect x="0.5" y="0.5" width="455" height="267" rx="12.5" ry="12.5" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+      <g clip-path="url(#cp2)">
+        <g id="n_4" transform="translate(1 1)">
+          <g id="n_5">
+            <g id="n_6">
+              <g filter="url(#fx3)">
+                <rect x="0" y="0" width="83.1875" height="34.7969" fill="#f8fafc"/>
+              </g>
+              <g id="n_7">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.735" fill="#64748b" x="12" y="21">REGIÓN</text>
+              </g>
+            </g>
+            <g id="n_8" transform="translate(83.1875 0)">
+              <g filter="url(#fx4)">
+                <rect x="0" y="0" width="98.9688" height="34.7969" fill="#f8fafc"/>
+              </g>
+              <g id="n_9">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.735" fill="#64748b" x="12" y="21">CANAL</text>
+              </g>
+            </g>
+            <g id="n_10" transform="translate(182.1563 0)">
+              <g filter="url(#fx5)">
+                <rect x="0" y="0" width="93.2656" height="34.7969" fill="#f8fafc"/>
+              </g>
+              <g id="n_11">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.735" fill="#64748b" style="font-variant:lining-nums tabular-nums" x="12" y="21">Q3</text>
+              </g>
+            </g>
+            <g id="n_12" transform="translate(275.4219 0)">
+              <g filter="url(#fx5)">
+                <rect x="0" y="0" width="93.2656" height="34.7969" fill="#f8fafc"/>
+              </g>
+              <g id="n_13">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.735" fill="#64748b" style="font-variant:lining-nums tabular-nums" x="12" y="21">Q4</text>
+              </g>
+            </g>
+            <g id="n_14" transform="translate(368.6875 0)">
+              <g filter="url(#fx6)">
+                <rect x="0" y="0" width="85.3125" height="34.7969" fill="#f8fafc"/>
+              </g>
+              <g id="n_15">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.735" fill="#64748b" style="font-variant:lining-nums tabular-nums" x="12" y="21">Δ</text>
+              </g>
+            </g>
+          </g>
+          <g id="n_16" transform="translate(0 34.7969)">
+            <g id="n_17">
+              <rect x="0" y="0" width="454" height="36.5" fill="#eef2ff"/>
+              <path d="M454 36.5 L0 36.5 L0 35.5 L454 35.5 Z" fill="#eef2f7" data-side="bottom"/>
+              <g id="n_18">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="650" letter-spacing="0.25" fill="#334155" x="12" y="22">Europa</text>
+              </g>
+            </g>
+            <g id="n_19" transform="translate(0 36.5)">
+              <g id="n_20">
+                <path d="M83.1875 0 L83.1875 113.3906 L82.1875 112.3906 L82.1875 0 Z" fill="#eef2f7" data-side="right"/>
+                <path d="M83.1875 113.3906 L0 113.3906 L0 112.3906 L82.1875 112.3906 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_21">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="650" fill="#334155" x="12" y="22.5">Iberia</text>
+                </g>
+              </g>
+              <g id="n_22" transform="translate(83.1875 0)">
+                <path d="M98.9688 37.7969 L0 37.7969 L0 36.7969 L98.9688 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_23">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" x="12.5" y="22.8906">Directo</text>
+                </g>
+              </g>
+              <g id="n_24" transform="translate(182.1563 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_25">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">412.800</text>
+                </g>
+              </g>
+              <g id="n_26" transform="translate(275.4219 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_27">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">468.150</text>
+                </g>
+              </g>
+              <g id="n_28" transform="translate(368.6875 0)">
+                <path d="M85.3125 37.7969 L0 37.7969 L0 36.7969 L85.3125 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_29" transform="translate(14.0313 8.5)">
+                  <rect x="0" y="0" width="59.2813" height="20.7969" rx="10.3984" ry="10.3984" fill="#ecfdf5"/>
+                  <g id="n_30">
+                    <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#047857" style="font-variant:lining-nums tabular-nums" x="8" y="14">+13,4%</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="n_31" transform="translate(0 74.2969)">
+              <g id="n_32" transform="translate(83.1875 0)">
+                <rect x="0" y="0" width="98.9688" height="37.7969" fill="#fbfdff"/>
+                <path d="M98.9688 37.7969 L0 37.7969 L0 36.7969 L98.9688 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_33">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" x="12.5" y="22.8906">Distribución</text>
+                </g>
+              </g>
+              <g id="n_34" transform="translate(182.1563 0)">
+                <rect x="0" y="0" width="93.2656" height="37.7969" fill="#fbfdff"/>
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_35">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">198.420</text>
+                </g>
+              </g>
+              <g id="n_36" transform="translate(275.4219 0)">
+                <rect x="0" y="0" width="93.2656" height="37.7969" fill="#fbfdff"/>
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_37">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">181.905</text>
+                </g>
+              </g>
+              <g id="n_38" transform="translate(368.6875 0)">
+                <rect x="0" y="0" width="85.3125" height="37.7969" fill="#fbfdff"/>
+                <path d="M85.3125 37.7969 L0 37.7969 L0 36.7969 L85.3125 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_39" transform="translate(21.1719 8.5)">
+                  <rect x="0" y="0" width="52.1406" height="20.7969" rx="10.3984" ry="10.3984" fill="#fff1f2"/>
+                  <g id="n_40">
+                    <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#be123c" style="font-variant:lining-nums tabular-nums" x="8" y="14">−8,3%</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="n_41" transform="translate(0 112.0938)">
+              <g id="n_42" transform="translate(83.1875 0)">
+                <path d="M98.9688 37.7969 L0 37.7969 L0 36.7969 L98.9688 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_43">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" x="12.5" y="22.8906">Marketplace</text>
+                </g>
+              </g>
+              <g id="n_44" transform="translate(182.1563 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_45">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="38.4063" y="22.8906">96.310</text>
+                </g>
+              </g>
+              <g id="n_46" transform="translate(275.4219 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_47">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">121.640</text>
+                </g>
+              </g>
+              <g id="n_48" transform="translate(368.6875 0)">
+                <path d="M85.3125 37.7969 L0 37.7969 L0 36.7969 L85.3125 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_49" transform="translate(14.0313 8.5)">
+                  <rect x="0" y="0" width="59.2813" height="20.7969" rx="10.3984" ry="10.3984" fill="#ecfdf5"/>
+                  <g id="n_50">
+                    <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#047857" style="font-variant:lining-nums tabular-nums" x="8" y="14">+26,3%</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="n_51" transform="translate(0 149.8906)">
+              <g id="n_52">
+                <rect x="0" y="0" width="83.1875" height="75.5938" fill="#fbfdff"/>
+                <path d="M83.1875 0 L83.1875 75.5938 L82.1875 74.5938 L82.1875 0 Z" fill="#eef2f7" data-side="right"/>
+                <path d="M83.1875 75.5938 L0 75.5938 L0 74.5938 L82.1875 74.5938 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_53">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="650" fill="#334155" x="12" y="22.5">DACH</text>
+                </g>
+              </g>
+              <g id="n_54" transform="translate(83.1875 0)">
+                <rect x="0" y="0" width="98.9688" height="37.7969" fill="#fbfdff"/>
+                <path d="M98.9688 37.7969 L0 37.7969 L0 36.7969 L98.9688 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_55">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" x="12.5" y="22.8906">Directo</text>
+                </g>
+              </g>
+              <g id="n_56" transform="translate(182.1563 0)">
+                <rect x="0" y="0" width="93.2656" height="37.7969" fill="#fbfdff"/>
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_57">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">330.900</text>
+                </g>
+              </g>
+              <g id="n_58" transform="translate(275.4219 0)">
+                <rect x="0" y="0" width="93.2656" height="37.7969" fill="#fbfdff"/>
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_59">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">352.470</text>
+                </g>
+              </g>
+              <g id="n_60" transform="translate(368.6875 0)">
+                <rect x="0" y="0" width="85.3125" height="37.7969" fill="#fbfdff"/>
+                <path d="M85.3125 37.7969 L0 37.7969 L0 36.7969 L85.3125 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_61" transform="translate(21.1719 8.5)">
+                  <rect x="0" y="0" width="52.1406" height="20.7969" rx="10.3984" ry="10.3984" fill="#ecfdf5"/>
+                  <g id="n_62">
+                    <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#047857" style="font-variant:lining-nums tabular-nums" x="8" y="14">+6,5%</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="n_63" transform="translate(0 187.6875)">
+              <g id="n_64" transform="translate(83.1875 0)">
+                <path d="M98.9688 37.7969 L0 37.7969 L0 36.7969 L98.9688 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_65">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" x="12.5" y="22.8906">Distribución</text>
+                </g>
+              </g>
+              <g id="n_66" transform="translate(182.1563 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_67">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">142.070</text>
+                </g>
+              </g>
+              <g id="n_68" transform="translate(275.4219 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_69">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">139.980</text>
+                </g>
+              </g>
+              <g id="n_70" transform="translate(368.6875 0)">
+                <path d="M85.3125 37.7969 L0 37.7969 L0 36.7969 L85.3125 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_71" transform="translate(21.1719 8.5)">
+                  <rect x="0" y="0" width="52.1406" height="20.7969" rx="10.3984" ry="10.3984" fill="#fff1f2"/>
+                  <g id="n_72">
+                    <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#be123c" style="font-variant:lining-nums tabular-nums" x="8" y="14">−1,5%</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="n_73" transform="translate(0 225.4844)">
+              <rect x="0" y="0" width="454" height="37" fill="#eef2ff"/>
+              <path d="M454 37 L0 37 L0 36 L454 36 Z" fill="#eef2f7" data-side="bottom"/>
+              <g id="n_74">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="650" letter-spacing="0.25" fill="#334155" x="12" y="22.5">América</text>
+              </g>
+            </g>
+            <g id="n_75" transform="translate(0 262.4844)">
+              <g id="n_76">
+                <path d="M83.1875 0 L83.1875 77.5938 L82.1875 76.5938 L82.1875 0 Z" fill="#eef2f7" data-side="right"/>
+                <path d="M83.1875 77.5938 L0 77.5938 L0 76.5938 L82.1875 76.5938 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_77">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="650" fill="#334155" x="12" y="22.5">Cono Sur</text>
+                </g>
+              </g>
+              <g id="n_78" transform="translate(83.1875 0)">
+                <path d="M98.9688 37.7969 L0 37.7969 L0 36.7969 L98.9688 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_79">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" x="12.5" y="22.8906">Directo</text>
+                </g>
+              </g>
+              <g id="n_80" transform="translate(182.1563 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_81">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">208.640</text>
+                </g>
+              </g>
+              <g id="n_82" transform="translate(275.4219 0)">
+                <path d="M93.2656 37.7969 L0 37.7969 L0 36.7969 L93.2656 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_83">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="30.5625" y="22.8906">263.310</text>
+                </g>
+              </g>
+              <g id="n_84" transform="translate(368.6875 0)">
+                <path d="M85.3125 37.7969 L0 37.7969 L0 36.7969 L85.3125 36.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_85" transform="translate(14.0313 8.5)">
+                  <rect x="0" y="0" width="59.2813" height="20.7969" rx="10.3984" ry="10.3984" fill="#ecfdf5"/>
+                  <g id="n_86">
+                    <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#047857" style="font-variant:lining-nums tabular-nums" x="8" y="14">+26,2%</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="n_87" transform="translate(0 300.2813)">
+              <g id="n_88" transform="translate(83.1875 0)">
+                <rect x="0" y="0" width="98.9688" height="39.7969" fill="#fbfdff"/>
+                <path d="M98.9688 39.7969 L0 39.7969 L0 38.7969 L98.9688 38.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_89">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" x="12.5" y="22.8906">Marketplace</text>
+                </g>
+              </g>
+              <g id="n_90" transform="translate(182.1563 0)">
+                <rect x="0" y="0" width="93.2656" height="39.7969" fill="#fbfdff"/>
+                <path d="M93.2656 39.7969 L0 39.7969 L0 38.7969 L93.2656 38.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_91">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="38.4063" y="22.8906">77.520</text>
+                </g>
+              </g>
+              <g id="n_92" transform="translate(275.4219 0)">
+                <rect x="0" y="0" width="93.2656" height="39.7969" fill="#fbfdff"/>
+                <path d="M93.2656 39.7969 L0 39.7969 L0 38.7969 L93.2656 38.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_93">
+                  <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#334155" style="font-variant:lining-nums tabular-nums" x="38.4063" y="22.8906">92.180</text>
+                </g>
+              </g>
+              <g id="n_94" transform="translate(368.6875 0)">
+                <rect x="0" y="0" width="85.3125" height="39.7969" fill="#fbfdff"/>
+                <path d="M85.3125 39.7969 L0 39.7969 L0 38.7969 L85.3125 38.7969 Z" fill="#eef2f7" data-side="bottom"/>
+                <g id="n_95" transform="translate(14.0313 8.5)">
+                  <rect x="0" y="0" width="59.2813" height="20.7969" rx="10.3984" ry="10.3984" fill="#ecfdf5"/>
+                  <g id="n_96">
+                    <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#047857" style="font-variant:lining-nums tabular-nums" x="8" y="14">+18,9%</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+          </g>
+          <g id="n_97" transform="translate(0 374.875)">
+            <g id="n_98" transform="translate(0 -151.375)">
+              <rect x="0" y="0" width="182.1563" height="42.5" fill="#ffffff"/>
+              <g id="n_99">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#0f172a" x="12" y="26.5">Total consolidado</text>
+              </g>
+            </g>
+            <g id="n_100" transform="translate(182.1563 -151.375)">
+              <rect x="0" y="0" width="93.2656" height="42.5" fill="#ffffff"/>
+              <g id="n_101">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#0f172a" style="font-variant:lining-nums tabular-nums" x="14.1563" y="26.5">1.466.660</text>
+              </g>
+            </g>
+            <g id="n_102" transform="translate(275.4219 -151.375)">
+              <rect x="0" y="0" width="93.2656" height="42.5" fill="#ffffff"/>
+              <g id="n_103">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#0f172a" style="font-variant:lining-nums tabular-nums" x="14.1563" y="26.5">1.619.635</text>
+              </g>
+            </g>
+            <g id="n_104" transform="translate(368.6875 -151.375)">
+              <rect x="0" y="0" width="85.3125" height="42.5" fill="#ffffff"/>
+              <g id="n_105">
+                <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#0f172a" style="font-variant:lining-nums tabular-nums" x="22.6563" y="26.5">+10,4%</text>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

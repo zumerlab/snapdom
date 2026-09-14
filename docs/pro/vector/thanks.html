@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>You're in · SnapDOM Vector</title>
+<style>
+  :root {
+    --ink:   #0b1020;
+    --dim:   #5b6478;
+    --rule:  #e4e7ee;
+    --wash:  #f6f7fb;
+    --accent:#2e4bf0;
+    --sel:   rgba(46, 75, 240, .22);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  ::selection { background: var(--sel); color: var(--ink); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: linear-gradient(180deg, #f7f9fd 0, #fff 420px);
+         color: var(--ink); font-family: var(--sans); font-size: 17px; line-height: 1.6; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 28px; }
+
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--accent); }
+  header { padding: 54px 0 0; }
+  h1 { font-size: clamp(32px, 5.4vw, 46px); line-height: 1.05; letter-spacing: -.03em;
+       font-weight: 800; margin: 18px 0 0; }
+  .lede { color: var(--dim); margin: 14px 0 0; }
+
+  /* Numbered because they ARE a sequence: GitHub has to be connected before the
+     invitation exists, and the invitation accepted before the release is visible. */
+  ol.steps { list-style: none; counter-reset: s; margin: 40px 0 0; padding: 0; }
+  ol.steps li { counter-increment: s; position: relative; padding: 0 0 0 52px;
+                margin-bottom: 26px; }
+  ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 1px;
+    width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+    font-family: var(--mono); font-size: 14px; font-weight: 600;
+    display: grid; place-items: center; }
+  ol.steps h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
+  ol.steps p { margin: 5px 0 0; color: #26304a; font-size: 16px; }
+  ol.steps a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: 14px; background: var(--wash);
+         border: 1px solid var(--rule); border-radius: 5px; padding: 1px 6px; }
+
+  .warn { margin: 8px 0 0; padding: 12px 16px; border-radius: 10px; background: #fff8ec;
+          border: 1px solid #f6dcae; color: #3d3121; font-size: 15px; }
+  .warn b { color: var(--ink); font-weight: 650; }
+
+  .after { margin: 42px 0 0; padding: 22px 24px; border-radius: 14px; background: var(--wash);
+           border-left: 3px solid var(--accent); }
+  .after p { margin: 0; color: #26304a; font-size: 16px; }
+  .after p + p { margin-top: 10px; }
+  .after b { color: var(--ink); font-weight: 650; }
+  .after a { color: var(--accent); }
+
+  .ref { margin: 30px 0 0; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .ref span { user-select: all; }
+  .ref:empty { display: none; }
+
+  footer { margin: 60px 0 0; border-top: 1px solid var(--rule); padding: 22px 0 60px;
+           color: var(--dim); font-size: 14px; }
+  footer a { color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">SnapDOM Vector</span>
+  <h1>You're in.</h1>
+  <p class="lede">Polar is emailing your receipt. Three steps get the plugin into your
+  hands, and the first one needs a click.</p>
+</header>
+
+<ol class="steps">
+  <li>
+    <h2>Connect your GitHub account</h2>
+    <p>Your receipt links to your Polar customer portal. Open it and connect GitHub next
+    to your SnapDOM Vector subscription. That is how Polar knows who to invite, so nothing
+    arrives until it is done.</p>
+  </li>
+
+  <li>
+    <h2>Accept the invitation to <code>snapdom-pro/vector</code></h2>
+    <p>GitHub emails it to the address on your account, and it also waits at
+    <a href="https://github.com/snapdom-pro/vector/invitations">github.com/snapdom-pro/vector/invitations</a>.
+    Releases and issues live in that repository.</p>
+    <div class="warn"><b>This one expires.</b> GitHub invitations time out after seven days,
+    and they land in spam more often than they should. If yours never arrived or ran out,
+    reconnect GitHub from the portal, or write to us and we will send it again.</div>
+  </li>
+
+  <li>
+    <h2>Download the release</h2>
+    <p>The repository's <a href="https://github.com/snapdom-pro/vector/releases">Releases</a>
+    page has the ZIP: the minified build, the readable one, the TypeScript declarations,
+    the separate PDF backend, the Figma plugin and the licence. Watch the repository's
+    releases to hear about new versions.</p>
+  </li>
+</ol>
+
+<div class="after">
+  <p><b>Your subscription renews every year until you cancel it</b> from the same portal.
+  While it is active you get new releases, the repository and support. The versions you
+  already downloaded stay yours to use after it ends.</p>
+  <p>Anything at all: <a href="mailto:hello@zumerlab.com">hello@zumerlab.com</a>. A real
+  person reads it, and it is the same person who wrote the plugin. A page that breaks the
+  capture is the most useful thing you can send.</p>
+</div>
+
+<p class="ref" id="ref"></p>
+
+<footer>
+  <a href="./">← SnapDOM Vector</a> · © Zumerlab
+</footer>
+
+</div>
+
+<script>
+  // Polar hands the checkout id back on the success URL
+  // (`thanks.html?checkout_id={CHECKOUT_ID}`). It is worth nothing to the buyer on
+  // its own, but quoting it in an email saves a round trip, so it is shown as a
+  // reference rather than as a receipt number.
+  const id = new URLSearchParams(location.search).get('checkout_id')
+  if (id) {
+    const span = document.createElement('span')
+    span.textContent = id
+    document.getElementById('ref').append('Reference for support: ', span)
+  }
+</script>
+</body>
+</html>

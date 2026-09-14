@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="452" height="332.625" viewBox="0 0 452 332.625" text-rendering="geometricPrecision">
+  <!-- snapdom-vector svg-flat: 7 approximation(s) — nothing here is silent.
+    · [n_0] a drop shadow with -18px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] a drop shadow with 1px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] the box-shadow on this node (2 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability.
+    · one of those filters carries a feFlood, and a flood has been measured landing two different ways: the exact box-shadow chain (FIGMA_FINDINGS §4) arrived as a flat rectangle of the shadow colour — Figma kept the flood and lost the feComposite that cuts it down to the silhouette — while the inner-shadow chain of the six-shape probe arrived with nothing painted at all. Which of the two a given chain gets is not predictable from here, and the rectangle is the worse one: it covers the design instead of leaving it plain.
+    · no font binary travels with this SVG, so no line carries textLength and every line's width is the viewer's to decide. Pinning a substituted family to the advances the page's font measured does not degrade gracefully — it squeezes the glyphs into the measured width (verified by pasting into Figma), so the measurement is stated by position only.
+    · [n_18] a text block that occupies 5 positioned pieces is emitted as 5 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:"never" keeps one <text> per block.
+  -->
+  <title>#fx-svg &gt; div:nth-child(1)</title>
+  <desc>@zumer/snapdom-vector 0.0.1 · svd/1.0 · http://localhost:62070/demo/challenges.html 2026-08-08T17:48:54.798Z</desc>
+  <defs>
+    <filter id="fx1" filterUnits="userSpaceOnUse" x="-147" y="-147" width="746" height="626.625" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="18" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="23" result="db0"/>
+      <feOffset dx="0" dy="22" result="do0"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.32" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dm1"/>
+      <feGaussianBlur in="dm1" stdDeviation="0" result="db1"/>
+      <feOffset dx="0" dy="0" result="do1"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.06" result="dc1"/>
+      <feComposite in="dc1" in2="do1" operator="in" result="ds1"/>
+      <feMerge>
+        <feMergeNode in="ds1"/>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g id="n_0">
+    <g filter="url(#fx1)">
+      <rect x="0" y="0" width="452" height="332.625" rx="20" ry="20" fill="#ffffff"/>
+    </g>
+    <g id="n_1" transform="translate(24 24)">
+      <path d="M404 75 L0 75 L0 74 L404 74 Z" fill="#e2e8f0" data-side="bottom"/>
+      <g id="n_2">
+        <svg width="56" height="56" viewBox="0 0 56 56" role="img" aria-label="Marca Vólt" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: block; color: rgb(15, 23, 42);" class="c9" color="rgb(15, 23, 42)" xmlns="http://www.w3.org/2000/svg">
+                    <defs style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;">
+                      <linearGradient id="a_svg__cx-grad" x1="0" y1="0" x2="1" y2="1" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;">
+                        <stop offset="0" stop-color="rgb(99, 102, 241)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                        <stop offset=".55" stop-color="rgb(168, 85, 247)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                        <stop offset="1" stop-color="rgb(236, 72, 153)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                      </linearGradient>
+                      <clipPath id="a_svg__cx-clip" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);" class="c16">
+                        <path d="M28 2 L52 15 V41 L28 54 L4 41 V15 Z" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                      </clipPath>
+                      <path id="a_svg__cx-bolt" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                    </defs>
+                    <g clip-path="url(#a_svg__cx-clip)" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);">
+                      <rect width="56" height="56" fill="url(#a_svg__cx-grad)" style="fill: url(#a_svg__cx-grad); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                      <circle cx="12" cy="8" r="20" fill="rgb(255, 255, 255)" opacity="0.22" style="fill: rgb(255, 255, 255); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 0.22; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                    </g>
+                    <use href="#a_svg__cx-bolt" fill="rgb(255, 255, 255)" style="fill: rgb(255, 255, 255); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                  </svg>
+      </g>
+      <g id="n_3" transform="translate(70 1.7969)">
+        <g id="n_4">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="19" font-weight="700" letter-spacing="-0.475" fill="#0f172a" x="0" y="22">Vólt Design System</text>
+        </g>
+        <g id="n_5" transform="translate(0 32.3906)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b" x="0" y="14"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b">Marca con </tspan><tspan font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="10.75" fill="#64748b">clipPath</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b">, gradiente propio y un </tspan><tspan font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="10.75" fill="#64748b">&lt;use&gt;</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b">.</tspan></text>
+        </g>
+      </g>
+    </g>
+    <g id="n_6" transform="translate(24 117)">
+      <g id="n_7">
+        <rect x="0" y="0" width="196" height="70.7969" rx="14" ry="14" fill="#f8fafc"/>
+        <rect x="0.5" y="0.5" width="195" height="69.7969" rx="13.5" ry="13.5" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+        <g id="n_8" transform="translate(14 20.3906)">
+          <svg width="30" height="30" viewBox="0 0 56 56" role="img" aria-label="Icono rayo, instancia A" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: block; color: rgb(15, 23, 42);" class="c8" color="rgb(15, 23, 42)" xmlns="http://www.w3.org/2000/svg">
+                        <defs style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;">
+                          <linearGradient id="a_svg_1__cx-grad" x1="0" y1="1" x2="1" y2="0" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;">
+                            <stop offset="0" stop-color="rgb(16, 185, 129)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/><stop offset="1" stop-color="rgb(14, 165, 233)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                          </linearGradient>
+                          <clipPath id="a_svg_1__cx-clip" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);" class="c16"><circle cx="28" cy="28" r="26" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/></clipPath>
+                          <path id="a_svg_1__cx-bolt" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                        <linearGradient id="a_svg_1__cx-grad_1" x1="0" y1="0" x2="1" y2="1" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;" color="rgb(15, 23, 42)">
+                          <stop offset="0" stop-color="rgb(99, 102, 241)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                          <stop offset=".55" stop-color="rgb(168, 85, 247)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                          <stop offset="1" stop-color="rgb(236, 72, 153)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                        </linearGradient><clipPath id="a_svg_1__cx-clip_1" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);" class="c16" color="rgb(15, 23, 42)">
+                          <path d="M28 2 L52 15 V41 L28 54 L4 41 V15 Z" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                        </clipPath><path id="a_svg_1__cx-bolt_1" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;" color="rgb(15, 23, 42)"/></defs>
+                        <rect width="56" height="56" fill="url(#a_svg_1__cx-grad_1)" clip-path="url(#a_svg_1__cx-clip_1)" style="fill: url(#a_svg_1__cx-grad_1); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                        <use href="#a_svg_1__cx-bolt_1" fill="rgb(255, 255, 255)" style="fill: rgb(255, 255, 255); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                      </svg>
+        </g>
+        <g id="n_9" transform="translate(55 13)">
+          <g id="n_11">
+            <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#64748b" x="0" y="38.7969">define #cx-grad verde</text>
+          </g>
+          <g id="n_10">
+            <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="-0.13" fill="#0f172a" x="0" y="15">Instancia A</text>
+          </g>
+        </g>
+      </g>
+      <g id="n_12" transform="translate(208 0)">
+        <rect x="0" y="0" width="196" height="70.7969" rx="14" ry="14" fill="#f8fafc"/>
+        <rect x="0.5" y="0.5" width="195" height="69.7969" rx="13.5" ry="13.5" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+        <g id="n_13" transform="translate(14 20.3906)">
+          <svg width="30" height="30" viewBox="0 0 56 56" role="img" aria-label="Icono rayo, instancia B" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: block; color: rgb(15, 23, 42);" class="c8" color="rgb(15, 23, 42)" xmlns="http://www.w3.org/2000/svg">
+                        <defs style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;">
+                          <linearGradient id="a_svg_2__cx-grad" x1="0" y1="1" x2="1" y2="0" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;">
+                            <stop offset="0" stop-color="rgb(245, 158, 11)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/><stop offset="1" stop-color="rgb(239, 68, 68)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                          </linearGradient>
+                          <clipPath id="a_svg_2__cx-clip" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);" class="c16"><circle cx="28" cy="28" r="26" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/></clipPath>
+                          <path id="a_svg_2__cx-bolt" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                        <linearGradient id="a_svg_2__cx-grad_1" x1="0" y1="0" x2="1" y2="1" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;" color="rgb(15, 23, 42)">
+                          <stop offset="0" stop-color="rgb(99, 102, 241)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                          <stop offset=".55" stop-color="rgb(168, 85, 247)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                          <stop offset="1" stop-color="rgb(236, 72, 153)" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;"/>
+                        </linearGradient><clipPath id="a_svg_2__cx-clip_1" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);" class="c16" color="rgb(15, 23, 42)">
+                          <path d="M28 2 L52 15 V41 L28 54 L4 41 V15 Z" style="fill: rgb(0, 0, 0); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                        </clipPath><path id="a_svg_2__cx-bolt_1" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z" style="mask-position: 0% 0%; mask-size: auto; mask-repeat: repeat; mask-mode: match-source; mask-composite: add; mask-origin: border-box; mask-clip: border-box;" color="rgb(15, 23, 42)"/></defs>
+                        <rect width="56" height="56" fill="url(#a_svg_2__cx-grad_1)" clip-path="url(#a_svg_2__cx-clip_1)" style="fill: url(#a_svg_2__cx-grad_1); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                        <use href="#a_svg_2__cx-bolt_1" fill="rgb(255, 255, 255)" style="fill: rgb(255, 255, 255); stroke: none; stroke-width: 1px; stroke-dasharray: none; stroke-dashoffset: 0px; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 4; opacity: 1; fill-opacity: 1; stroke-opacity: 1; fill-rule: nonzero; clip-rule: nonzero; marker: none; visibility: visible; display: inline; color: rgb(15, 23, 42);"/>
+                      </svg>
+        </g>
+        <g id="n_14" transform="translate(55 13)">
+          <g id="n_16">
+            <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#64748b" x="0" y="38.7969">define #cx-grad ámbar</text>
+          </g>
+          <g id="n_15">
+            <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="-0.13" fill="#0f172a" x="0" y="15">Instancia B</text>
+          </g>
+        </g>
+      </g>
+    </g>
+    <g id="n_17" transform="translate(24 203.7969)">
+      <rect x="0" y="0" width="404" height="104.8281" rx="9" ry="9" fill="#fffbeb"/>
+      <g id="n_18">
+        <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309" x="11" y="22"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309">Las dos instancias declaran </tspan><tspan font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="9.89" fill="#b45309">#cx-grad</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309">, </tspan><tspan font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="9.89" fill="#b45309">#cx-clip</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309"> y </tspan><tspan font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="9.89" fill="#b45309">#cx-bolt</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309"> con los</tspan></text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309" x="11" y="39.8281">mismos nombres y contenidos distintos. En el navegador gana el</text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309" x="11" y="57.0781"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309">primero, así que </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#b45309">A y B se ven iguales</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309">: si al pegar se ven de dos</tspan></text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309" x="11" y="74.3281">colores, el namespacing cambió la referencia; si desaparece un rayo,</text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11.5" fill="#b45309" x="11" y="91.5781">la perdió.</text>
+      </g>
+    </g>
+  </g>
+</svg>

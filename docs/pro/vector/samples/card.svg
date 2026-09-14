@@ -1,0 +1,284 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="396" height="477.375" viewBox="0 0 396 477.375" text-rendering="geometricPrecision">
+  <!-- snapdom-vector svg-flat: 12 approximation(s) — nothing here is silent.
+    · [n_1] a drop shadow with -8px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_1] the box-shadow on this node (2 outer, 0 inner) is emitted as feGaussianBlur + feOffset + feFlood + feComposite + feMorphology + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability.
+    · one of those filters carries a feFlood, and a flood has been measured landing two different ways: the exact box-shadow chain (FIGMA_FINDINGS §4) arrived as a flat rectangle of the shadow colour — Figma kept the flood and lost the feComposite that cuts it down to the silhouette — while the inner-shadow chain of the six-shape probe arrived with nothing painted at all. Which of the two a given chain gets is not predictable from here, and the rectangle is the worse one: it covers the design instead of leaving it plain.
+    · no font binary travels with this SVG, so no line carries textLength and every line's width is the viewer's to decide. Pinning a substituted family to the advances the page's font measured does not degrade gracefully — it squeezes the glyphs into the measured width (verified by pasting into Figma), so the measurement is stated by position only.
+    · [n_11] a text block that occupies 2 positioned pieces is emitted as 2 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:"never" keeps one <text> per block.
+    · [n_16] a drop shadow with -4px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_16] the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · [n_6] a drop shadow with -6px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_6] the box-shadow on this node (1 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · [n_6] conic-gradient has no SVG paint server; it is composed as 128 flat wedges (the sweep is quantized to 2.8 degrees, the colour within each wedge is its mid-angle sample).
+    · [n_6] the 128 wedges cannot cover the point they meet at, so a 7px disc of the sweep's mean colour caps the apex; within that disc the angular ramp is flat.
+  -->
+  <title>#fx-card</title>
+  <desc>@zumer/snapdom-vector 0.0.1 · svd/1.0 · http://localhost:62070/demo/vector.html 2026-08-08T17:48:54.233Z</desc>
+  <defs>
+    <filter id="fx1" filterUnits="userSpaceOnUse" x="-80" y="-80" width="500" height="581.375" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="db0"/>
+      <feOffset dx="0" dy="1" result="do0"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.06" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMorphology in="SourceAlpha" operator="erode" radius="8" result="dm1"/>
+      <feGaussianBlur in="dm1" stdDeviation="14" result="db1"/>
+      <feOffset dx="0" dy="12" result="do1"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.28" result="dc1"/>
+      <feComposite in="dc1" in2="do1" operator="in" result="ds1"/>
+      <feMerge>
+        <feMergeNode in="ds1"/>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fx2" filterUnits="userSpaceOnUse" x="-41" y="-41" width="160" height="120.9219" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="4" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="7" result="db0"/>
+      <feOffset dx="0" dy="6" result="do0"/>
+      <feFlood flood-color="#4f46e5" flood-opacity="0.6" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMerge>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="cp3" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="78" height="38.9219" rx="10" ry="10"/>
+    </clipPath>
+    <linearGradient id="lg4" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1" y2="0" gradientTransform="matrix(58.461 58.461 -58.4609 58.461 9.7695 -9.7695)">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <clipPath id="cp5" clipPathUnits="userSpaceOnUse">
+      <path d="M17 0 H321 A17 17 0 0 1 338 17 V152 H0 V17 A17 17 0 0 1 17 0 Z"/>
+    </clipPath>
+    <linearGradient id="lg6" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1" y2="0" gradientTransform="matrix(245 245 -245 245 46.5 -46.5)">
+      <stop offset="0" stop-color="#4338ca"/>
+      <stop offset="0.45" stop-color="#6d28d9"/>
+      <stop offset="1" stop-color="#db2777"/>
+    </linearGradient>
+    <radialGradient id="rg7" gradientUnits="userSpaceOnUse" cx="0.5" cy="0.5" r="0.5" gradientTransform="matrix(392.08 0 0 231.04 54.08 -76)">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.2"/>
+      <stop offset="0.7" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="fx8" filterUnits="userSpaceOnUse" x="-58" y="-58" width="212" height="212" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="6" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="10" result="db0"/>
+      <feOffset dx="0" dy="8" result="do0"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.45" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMerge>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="cp9" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="96" height="96" rx="48" ry="48"/>
+    </clipPath>
+    <clipPath id="cp10" clipPathUnits="userSpaceOnUse">
+      <rect x="10" y="10" width="76" height="76"/>
+    </clipPath>
+  </defs>
+  <g id="n_0">
+    <rect x="0" y="0" width="396" height="477.375" rx="16" ry="16" fill="#eef2f7"/>
+    <g id="n_1" transform="translate(28 28)">
+      <g filter="url(#fx1)">
+        <rect x="0" y="0" width="340" height="421.375" rx="18" ry="18" fill="#ffffff"/>
+        <rect x="0.5" y="0.5" width="339" height="420.375" rx="17.5" ry="17.5" fill="none" stroke="#0f172a" stroke-opacity="0.07" stroke-width="1"/>
+      </g>
+      <g id="n_7" transform="translate(1 153)">
+        <g id="n_8" transform="translate(20 46)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.32" fill="#7c3aed" x="0" y="13">SERIE AURORA</text>
+        </g>
+        <g id="n_9" transform="translate(20 66.0469)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="-0.42" fill="#0f172a" x="0" y="20">Lámpara Halo 40</text>
+        </g>
+        <g id="n_10" transform="translate(20 103.7344)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="12.5" letter-spacing="0.75" fill="#94a3b8" x="0" y="14"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="12.5" letter-spacing="0.75" fill="#f59e0b">★★★★</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="12.5" letter-spacing="0.75" fill="#94a3b8">★</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="12.5" letter-spacing="0.75" fill="#f59e0b"> </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="12.5" letter-spacing="0.75" fill="#94a3b8">4,2 · 218 reseñas</tspan></text>
+        </g>
+        <g id="n_11" transform="translate(20 135.6094)">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="13.5" fill="#475569" x="0" y="15">Difusor de vidrio soplado a mano, regulador táctil</text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="13.5" fill="#475569" x="0" y="35.9219"><tspan font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="13.5" fill="#475569">de </tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#0f172a">cuatro pasos</tspan><tspan font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="13.5" fill="#475569"> y base de fresno macizo.</tspan></text>
+        </g>
+        <g id="n_12" transform="translate(20 193.4531)">
+          <path d="M0 0 L298 0 L298 1 L0 1 Z" fill="#eef2f7" data-side="top"/>
+          <g id="n_13" transform="translate(0 15.8594)">
+            <g id="n_14" transform="translate(0 13)">
+              <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="13" fill="#94a3b8" text-decoration="line-through" style="text-decoration-color:#94a3b8" x="0" y="14">189 €</text>
+            </g>
+            <g id="n_15" transform="translate(39.5313 0)">
+              <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="-0.72" fill="#0f172a" x="0" y="27">149 €</text>
+            </g>
+          </g>
+          <g id="n_16" transform="translate(220 15)">
+            <g filter="url(#fx2)">
+              <g clip-path="url(#cp3)">
+                <rect x="0" y="0" width="78" height="38.9219" fill="url(#lg4)"/>
+              </g>
+            </g>
+            <g id="n_17">
+              <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="13.5" font-weight="650" fill="#ffffff" x="18" y="24">Añadir</text>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="n_2" transform="translate(1 1)">
+        <g clip-path="url(#cp5)">
+          <rect x="0" y="0" width="338" height="152" fill="url(#lg6)"/>
+        </g>
+        <g id="n_3">
+          <g clip-path="url(#cp5)">
+            <rect x="0" y="0" width="338" height="152" fill="url(#rg7)"/>
+          </g>
+        </g>
+        <g id="n_6" transform="translate(30 90)">
+          <g filter="url(#fx8)">
+            <g clip-path="url(#cp9)">
+              <g clip-path="url(#cp10)">
+                <g transform="matrix(107.4802 0 0 107.4802 -5.7401 -5.7401)">
+                  <path d="M0.5 0.5 L-0.5 2.2321 A2 2 0 0 1 -0.5955 2.1733 Z" fill="#f59d0c"/>
+                  <path d="M0.5 0.5 L-0.5838 2.1809 A2 2 0 0 1 -0.6763 2.1175 Z" fill="#f59b0d"/>
+                  <path d="M0.5 0.5 L-0.665 2.1257 A2 2 0 0 1 -0.7542 2.0579 Z" fill="#f5990e"/>
+                  <path d="M0.5 0.5 L-0.7433 2.0666 A2 2 0 0 1 -0.8292 1.9944 Z" fill="#f59710"/>
+                  <path d="M0.5 0.5 L-0.8187 2.0037 A2 2 0 0 1 -0.9009 1.9274 Z" fill="#f49511"/>
+                  <path d="M0.5 0.5 L-0.8909 1.9372 A2 2 0 0 1 -0.9692 1.857 Z" fill="#f49212"/>
+                  <path d="M0.5 0.5 L-0.9597 1.8672 A2 2 0 0 1 -1.0341 1.7832 Z" fill="#f49014"/>
+                  <path d="M0.5 0.5 L-1.0251 1.7939 A2 2 0 0 1 -1.0952 1.7064 Z" fill="#f48e15"/>
+                  <path d="M0.5 0.5 L-1.0867 1.7175 A2 2 0 0 1 -1.1524 1.6267 Z" fill="#f48c16"/>
+                  <path d="M0.5 0.5 L-1.1445 1.6382 A2 2 0 0 1 -1.2057 1.5443 Z" fill="#f48a18"/>
+                  <path d="M0.5 0.5 L-1.1984 1.5561 A2 2 0 0 1 -1.2549 1.4593 Z" fill="#f48819"/>
+                  <path d="M0.5 0.5 L-1.2482 1.4715 A2 2 0 0 1 -1.2999 1.372 Z" fill="#f3861a"/>
+                  <path d="M0.5 0.5 L-1.2937 1.3846 A2 2 0 0 1 -1.3405 1.2827 Z" fill="#f3841c"/>
+                  <path d="M0.5 0.5 L-1.335 1.2955 A2 2 0 0 1 -1.3767 1.1914 Z" fill="#f3821d"/>
+                  <path d="M0.5 0.5 L-1.3718 1.2045 A2 2 0 0 1 -1.4084 1.0985 Z" fill="#f37f1e"/>
+                  <path d="M0.5 0.5 L-1.4041 1.1118 A2 2 0 0 1 -1.4354 1.0041 Z" fill="#f37d20"/>
+                  <path d="M0.5 0.5 L-1.4319 1.0176 A2 2 0 0 1 -1.4578 0.9086 Z" fill="#f37b21"/>
+                  <path d="M0.5 0.5 L-1.4549 0.9222 A2 2 0 0 1 -1.4755 0.812 Z" fill="#f37922"/>
+                  <path d="M0.5 0.5 L-1.4733 0.8258 A2 2 0 0 1 -1.4884 0.7147 Z" fill="#f27724"/>
+                  <path d="M0.5 0.5 L-1.4869 0.7286 A2 2 0 0 1 -1.4966 0.6169 Z" fill="#f27525"/>
+                  <path d="M0.5 0.5 L-1.4957 0.6308 A2 2 0 0 1 -1.4999 0.5188 Z" fill="#f27326"/>
+                  <path d="M0.5 0.5 L-1.4997 0.5327 A2 2 0 0 1 -1.4984 0.4206 Z" fill="#f27128"/>
+                  <path d="M0.5 0.5 L-1.4989 0.4346 A2 2 0 0 1 -1.4921 0.3226 Z" fill="#f26f29"/>
+                  <path d="M0.5 0.5 L-1.4933 0.3366 A2 2 0 0 1 -1.481 0.2251 Z" fill="#f26c2a"/>
+                  <path d="M0.5 0.5 L-1.4829 0.2389 A2 2 0 0 1 -1.4651 0.1282 Z" fill="#f26a2c"/>
+                  <path d="M0.5 0.5 L-1.4677 0.142 A2 2 0 0 1 -1.4445 0.0323 Z" fill="#f1682d"/>
+                  <path d="M0.5 0.5 L-1.4478 0.0458 A2 2 0 0 1 -1.4192 -0.0626 Z" fill="#f1662e"/>
+                  <path d="M0.5 0.5 L-1.4231 -0.0492 A2 2 0 0 1 -1.3893 -0.1561 Z" fill="#f16430"/>
+                  <path d="M0.5 0.5 L-1.3939 -0.1429 A2 2 0 0 1 -1.3549 -0.248 Z" fill="#f16231"/>
+                  <path d="M0.5 0.5 L-1.36 -0.235 A2 2 0 0 1 -1.3159 -0.3381 Z" fill="#f16032"/>
+                  <path d="M0.5 0.5 L-1.3217 -0.3254 A2 2 0 0 1 -1.2726 -0.4262 Z" fill="#f15e34"/>
+                  <path d="M0.5 0.5 L-1.279 -0.4138 A2 2 0 0 1 -1.225 -0.5121 Z" fill="#f15c35"/>
+                  <path d="M0.5 0.5 L-1.2321 -0.5 A2 2 0 0 1 -1.1733 -0.5955 Z" fill="#f05936"/>
+                  <path d="M0.5 0.5 L-1.1809 -0.5838 A2 2 0 0 1 -1.1175 -0.6763 Z" fill="#f05738"/>
+                  <path d="M0.5 0.5 L-1.1257 -0.665 A2 2 0 0 1 -1.0579 -0.7542 Z" fill="#f05539"/>
+                  <path d="M0.5 0.5 L-1.0666 -0.7433 A2 2 0 0 1 -0.9944 -0.8292 Z" fill="#f0533a"/>
+                  <path d="M0.5 0.5 L-1.0037 -0.8187 A2 2 0 0 1 -0.9274 -0.9009 Z" fill="#f0513c"/>
+                  <path d="M0.5 0.5 L-0.9372 -0.8909 A2 2 0 0 1 -0.857 -0.9692 Z" fill="#f04f3d"/>
+                  <path d="M0.5 0.5 L-0.8672 -0.9597 A2 2 0 0 1 -0.7832 -1.0341 Z" fill="#f04d3e"/>
+                  <path d="M0.5 0.5 L-0.7939 -1.0251 A2 2 0 0 1 -0.7064 -1.0952 Z" fill="#ef4b40"/>
+                  <path d="M0.5 0.5 L-0.7175 -1.0867 A2 2 0 0 1 -0.6267 -1.1524 Z" fill="#ef4941"/>
+                  <path d="M0.5 0.5 L-0.6382 -1.1445 A2 2 0 0 1 -0.5443 -1.2057 Z" fill="#ef4642"/>
+                  <path d="M0.5 0.5 L-0.5561 -1.1984 A2 2 0 0 1 -0.4593 -1.2549 Z" fill="#ef4444"/>
+                  <path d="M0.5 0.5 L-0.4715 -1.2482 A2 2 0 0 1 -0.372 -1.2999 Z" fill="#ed4447"/>
+                  <path d="M0.5 0.5 L-0.3846 -1.2937 A2 2 0 0 1 -0.2827 -1.3405 Z" fill="#eb454c"/>
+                  <path d="M0.5 0.5 L-0.2955 -1.335 A2 2 0 0 1 -0.1914 -1.3767 Z" fill="#e84650"/>
+                  <path d="M0.5 0.5 L-0.2045 -1.3718 A2 2 0 0 1 -0.0985 -1.4084 Z" fill="#e64654"/>
+                  <path d="M0.5 0.5 L-0.1118 -1.4041 A2 2 0 0 1 -0.0041 -1.4354 Z" fill="#e44758"/>
+                  <path d="M0.5 0.5 L-0.0176 -1.4319 A2 2 0 0 1 0.0914 -1.4578 Z" fill="#e1475c"/>
+                  <path d="M0.5 0.5 L0.0778 -1.4549 A2 2 0 0 1 0.188 -1.4755 Z" fill="#df4861"/>
+                  <path d="M0.5 0.5 L0.1742 -1.4733 A2 2 0 0 1 0.2853 -1.4884 Z" fill="#dd4865"/>
+                  <path d="M0.5 0.5 L0.2714 -1.4869 A2 2 0 0 1 0.3831 -1.4966 Z" fill="#da4969"/>
+                  <path d="M0.5 0.5 L0.3692 -1.4957 A2 2 0 0 1 0.4812 -1.4999 Z" fill="#d84a6d"/>
+                  <path d="M0.5 0.5 L0.4673 -1.4997 A2 2 0 0 1 0.5794 -1.4984 Z" fill="#d64a71"/>
+                  <path d="M0.5 0.5 L0.5654 -1.4989 A2 2 0 0 1 0.6774 -1.4921 Z" fill="#d34b75"/>
+                  <path d="M0.5 0.5 L0.6634 -1.4933 A2 2 0 0 1 0.7749 -1.481 Z" fill="#d14b7a"/>
+                  <path d="M0.5 0.5 L0.7611 -1.4829 A2 2 0 0 1 0.8718 -1.4651 Z" fill="#cf4c7e"/>
+                  <path d="M0.5 0.5 L0.858 -1.4677 A2 2 0 0 1 0.9677 -1.4445 Z" fill="#cc4c82"/>
+                  <path d="M0.5 0.5 L0.9542 -1.4478 A2 2 0 0 1 1.0626 -1.4192 Z" fill="#ca4d86"/>
+                  <path d="M0.5 0.5 L1.0492 -1.4231 A2 2 0 0 1 1.1561 -1.3893 Z" fill="#c84d8a"/>
+                  <path d="M0.5 0.5 L1.1429 -1.3939 A2 2 0 0 1 1.248 -1.3549 Z" fill="#c54e8e"/>
+                  <path d="M0.5 0.5 L1.235 -1.36 A2 2 0 0 1 1.3381 -1.3159 Z" fill="#c34f93"/>
+                  <path d="M0.5 0.5 L1.3254 -1.3217 A2 2 0 0 1 1.4262 -1.2726 Z" fill="#c14f97"/>
+                  <path d="M0.5 0.5 L1.4138 -1.279 A2 2 0 0 1 1.5121 -1.225 Z" fill="#be509b"/>
+                  <path d="M0.5 0.5 L1.5 -1.2321 A2 2 0 0 1 1.5955 -1.1733 Z" fill="#bc509f"/>
+                  <path d="M0.5 0.5 L1.5838 -1.1809 A2 2 0 0 1 1.6763 -1.1175 Z" fill="#b951a3"/>
+                  <path d="M0.5 0.5 L1.665 -1.1257 A2 2 0 0 1 1.7542 -1.0579 Z" fill="#b751a7"/>
+                  <path d="M0.5 0.5 L1.7433 -1.0666 A2 2 0 0 1 1.8292 -0.9944 Z" fill="#b552ac"/>
+                  <path d="M0.5 0.5 L1.8187 -1.0037 A2 2 0 0 1 1.9009 -0.9274 Z" fill="#b253b0"/>
+                  <path d="M0.5 0.5 L1.8909 -0.9372 A2 2 0 0 1 1.9692 -0.857 Z" fill="#b053b4"/>
+                  <path d="M0.5 0.5 L1.9597 -0.8672 A2 2 0 0 1 2.0341 -0.7832 Z" fill="#ae54b8"/>
+                  <path d="M0.5 0.5 L2.0251 -0.7939 A2 2 0 0 1 2.0952 -0.7064 Z" fill="#ab54bc"/>
+                  <path d="M0.5 0.5 L2.0867 -0.7175 A2 2 0 0 1 2.1524 -0.6267 Z" fill="#a955c0"/>
+                  <path d="M0.5 0.5 L2.1445 -0.6382 A2 2 0 0 1 2.2057 -0.5443 Z" fill="#a755c5"/>
+                  <path d="M0.5 0.5 L2.1984 -0.5561 A2 2 0 0 1 2.2549 -0.4593 Z" fill="#a456c9"/>
+                  <path d="M0.5 0.5 L2.2482 -0.4715 A2 2 0 0 1 2.2999 -0.372 Z" fill="#a256cd"/>
+                  <path d="M0.5 0.5 L2.2937 -0.3846 A2 2 0 0 1 2.3405 -0.2827 Z" fill="#a057d1"/>
+                  <path d="M0.5 0.5 L2.335 -0.2955 A2 2 0 0 1 2.3767 -0.1914 Z" fill="#9d58d5"/>
+                  <path d="M0.5 0.5 L2.3718 -0.2045 A2 2 0 0 1 2.4084 -0.0985 Z" fill="#9b58d9"/>
+                  <path d="M0.5 0.5 L2.4041 -0.1118 A2 2 0 0 1 2.4354 -0.0041 Z" fill="#9959de"/>
+                  <path d="M0.5 0.5 L2.4319 -0.0176 A2 2 0 0 1 2.4578 0.0914 Z" fill="#9659e2"/>
+                  <path d="M0.5 0.5 L2.4549 0.0778 A2 2 0 0 1 2.4755 0.188 Z" fill="#945ae6"/>
+                  <path d="M0.5 0.5 L2.4733 0.1742 A2 2 0 0 1 2.4884 0.2853 Z" fill="#925aea"/>
+                  <path d="M0.5 0.5 L2.4869 0.2714 A2 2 0 0 1 2.4966 0.3831 Z" fill="#8f5bee"/>
+                  <path d="M0.5 0.5 L2.4957 0.3692 A2 2 0 0 1 2.4999 0.4812 Z" fill="#8d5cf3"/>
+                  <path d="M0.5 0.5 L2.4997 0.4673 A2 2 0 0 1 2.4984 0.5794 Z" fill="#8b5cf5"/>
+                  <path d="M0.5 0.5 L2.4989 0.5654 A2 2 0 0 1 2.4921 0.6774 Z" fill="#8e5ef0"/>
+                  <path d="M0.5 0.5 L2.4933 0.6634 A2 2 0 0 1 2.481 0.7749 Z" fill="#905fea"/>
+                  <path d="M0.5 0.5 L2.4829 0.7611 A2 2 0 0 1 2.4651 0.8718 Z" fill="#9361e5"/>
+                  <path d="M0.5 0.5 L2.4677 0.858 A2 2 0 0 1 2.4445 0.9677 Z" fill="#9562df"/>
+                  <path d="M0.5 0.5 L2.4478 0.9542 A2 2 0 0 1 2.4192 1.0626 Z" fill="#9864da"/>
+                  <path d="M0.5 0.5 L2.4231 1.0492 A2 2 0 0 1 2.3893 1.1561 Z" fill="#9a66d4"/>
+                  <path d="M0.5 0.5 L2.3939 1.1429 A2 2 0 0 1 2.3549 1.248 Z" fill="#9d67cf"/>
+                  <path d="M0.5 0.5 L2.36 1.235 A2 2 0 0 1 2.3159 1.3381 Z" fill="#9f69c9"/>
+                  <path d="M0.5 0.5 L2.3217 1.3254 A2 2 0 0 1 2.2726 1.4262 Z" fill="#a26ac4"/>
+                  <path d="M0.5 0.5 L2.279 1.4138 A2 2 0 0 1 2.225 1.5121 Z" fill="#a46cbe"/>
+                  <path d="M0.5 0.5 L2.2321 1.5 A2 2 0 0 1 2.1733 1.5955 Z" fill="#a76db8"/>
+                  <path d="M0.5 0.5 L2.1809 1.5838 A2 2 0 0 1 2.1175 1.6763 Z" fill="#a96fb3"/>
+                  <path d="M0.5 0.5 L2.1257 1.665 A2 2 0 0 1 2.0579 1.7542 Z" fill="#ac70ad"/>
+                  <path d="M0.5 0.5 L2.0666 1.7433 A2 2 0 0 1 1.9944 1.8292 Z" fill="#ae72a8"/>
+                  <path d="M0.5 0.5 L2.0037 1.8187 A2 2 0 0 1 1.9274 1.9009 Z" fill="#b173a2"/>
+                  <path d="M0.5 0.5 L1.9372 1.8909 A2 2 0 0 1 1.857 1.9692 Z" fill="#b3759d"/>
+                  <path d="M0.5 0.5 L1.8672 1.9597 A2 2 0 0 1 1.7832 2.0341 Z" fill="#b67797"/>
+                  <path d="M0.5 0.5 L1.7939 2.0251 A2 2 0 0 1 1.7064 2.0952 Z" fill="#b87892"/>
+                  <path d="M0.5 0.5 L1.7175 2.0867 A2 2 0 0 1 1.6267 2.1524 Z" fill="#bb7a8c"/>
+                  <path d="M0.5 0.5 L1.6382 2.1445 A2 2 0 0 1 1.5443 2.2057 Z" fill="#bd7b87"/>
+                  <path d="M0.5 0.5 L1.5561 2.1984 A2 2 0 0 1 1.4593 2.2549 Z" fill="#c07d81"/>
+                  <path d="M0.5 0.5 L1.4715 2.2482 A2 2 0 0 1 1.372 2.2999 Z" fill="#c27e7c"/>
+                  <path d="M0.5 0.5 L1.3846 2.2937 A2 2 0 0 1 1.2827 2.3405 Z" fill="#c58076"/>
+                  <path d="M0.5 0.5 L1.2955 2.335 A2 2 0 0 1 1.1914 2.3767 Z" fill="#c78171"/>
+                  <path d="M0.5 0.5 L1.2045 2.3718 A2 2 0 0 1 1.0985 2.4084 Z" fill="#ca836b"/>
+                  <path d="M0.5 0.5 L1.1118 2.4041 A2 2 0 0 1 1.0041 2.4354 Z" fill="#cc8466"/>
+                  <path d="M0.5 0.5 L1.0176 2.4319 A2 2 0 0 1 0.9086 2.4578 Z" fill="#ce8660"/>
+                  <path d="M0.5 0.5 L0.9222 2.4549 A2 2 0 0 1 0.812 2.4755 Z" fill="#d1885b"/>
+                  <path d="M0.5 0.5 L0.8258 2.4733 A2 2 0 0 1 0.7147 2.4884 Z" fill="#d38955"/>
+                  <path d="M0.5 0.5 L0.7286 2.4869 A2 2 0 0 1 0.6169 2.4966 Z" fill="#d68b50"/>
+                  <path d="M0.5 0.5 L0.6308 2.4957 A2 2 0 0 1 0.5188 2.4999 Z" fill="#d88c4a"/>
+                  <path d="M0.5 0.5 L0.5327 2.4997 A2 2 0 0 1 0.4206 2.4984 Z" fill="#db8e45"/>
+                  <path d="M0.5 0.5 L0.4346 2.4989 A2 2 0 0 1 0.3226 2.4921 Z" fill="#dd8f3f"/>
+                  <path d="M0.5 0.5 L0.3366 2.4933 A2 2 0 0 1 0.2251 2.481 Z" fill="#e0913a"/>
+                  <path d="M0.5 0.5 L0.2389 2.4829 A2 2 0 0 1 0.1282 2.4651 Z" fill="#e29234"/>
+                  <path d="M0.5 0.5 L0.142 2.4677 A2 2 0 0 1 0.0323 2.4445 Z" fill="#e5942f"/>
+                  <path d="M0.5 0.5 L0.0458 2.4478 A2 2 0 0 1 -0.0626 2.4192 Z" fill="#e79529"/>
+                  <path d="M0.5 0.5 L-0.0492 2.4231 A2 2 0 0 1 -0.1561 2.3893 Z" fill="#ea9724"/>
+                  <path d="M0.5 0.5 L-0.1429 2.3939 A2 2 0 0 1 -0.248 2.3549 Z" fill="#ec991e"/>
+                  <path d="M0.5 0.5 L-0.235 2.36 A2 2 0 0 1 -0.3381 2.3159 Z" fill="#ef9a19"/>
+                  <path d="M0.5 0.5 L-0.3254 2.3217 A2 2 0 0 1 -0.4262 2.2726 Z" fill="#f19c13"/>
+                  <path d="M0.5 0.5 L-0.4138 2.279 A2 2 0 0 1 -0.5121 2.225 Z" fill="#f49d0e"/>
+                  <circle cx="0.5" cy="0.5" r="0.0326" fill="#d06a6c"/>
+                </g>
+              </g>
+            </g>
+            <rect x="5" y="5" width="86" height="86" rx="43" ry="43" fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="10"/>
+          </g>
+        </g>
+        <g id="n_4" transform="translate(260.6719 14)">
+          <rect x="0" y="0" width="63.3281" height="27.0469" rx="13.5234" ry="13.5234" fill="#ffffff" fill-opacity="0.94"/>
+          <g id="n_5">
+            <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="0.88" fill="#4c1d95" x="10" y="18">NUEVO</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

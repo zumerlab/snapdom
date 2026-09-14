@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="452" height="556.7344" viewBox="0 0 452 556.7344" text-rendering="geometricPrecision">
+  <!-- snapdom-vector svg-flat: 16 approximation(s) — nothing here is silent.
+    · [n_0] a drop shadow with -18px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] a drop shadow with 1px spread is emitted with feMorphology; the spread corners are approximated by a rectangular kernel.
+    · [n_0] the box-shadow on this node (2 outer, 0 inner) is emitted as feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge + feMergeNode, of which only the feGaussianBlur maps onto an effect an importer of Figma's class has, so the whole <filter> is dropped there.
+    · a filter this document emits will not be executed by the destination it is written for. Figma maps feDropShadow and feGaussianBlur onto effects of its own and ignores any filter it cannot map — measured by pasting (2026-08-06, FIGMA_FINDINGS §7): a lone feColorMatrix, with nothing composite around it, arrived WITH ITS NODE and with no colour change at all. That covers the colour functions of filter/backdrop-filter (saturate, brightness, contrast, grayscale, sepia, hue-rotate, invert), which compose into one feColorMatrix, and inner shadows, which have no primitive at all. What gets ignored is the <filter> ELEMENT and not the primitive, so anything else in the same chain — a blur beside a colour matrix — goes with it. What is lost is the EFFECT and not the node: it arrives whole — every fill, stroke, glyph and child of it — and lands unfiltered. That is the opposite of the <pattern> failure, where the node itself never arrives. In a browser this filter renders exactly what CSS specifies. exactShadows:false — the default — emits the outer shadows as feDropShadow primitives, which do arrive. rasterFilters:true rasterizes exactly the nodes whose filter does not survive — and only those — to a PNG <image>, the one degraded form the paste probe proves Figma draws, at the cost of the subtree's editability.
+    · one of those filters carries a feFlood, and a flood has been measured landing two different ways: the exact box-shadow chain (FIGMA_FINDINGS §4) arrived as a flat rectangle of the shadow colour — Figma kept the flood and lost the feComposite that cuts it down to the silhouette — while the inner-shadow chain of the six-shape probe arrived with nothing painted at all. Which of the two a given chain gets is not predictable from here, and the rectangle is the worse one: it covers the design instead of leaving it plain.
+    · no font binary travels with this SVG, so no line carries textLength and every line's width is the viewer's to decide. Pinning a substituted family to the advances the page's font measured does not degrade gracefully — it squeezes the glyphs into the measured width (verified by pasting into Figma), so the measurement is stated by position only.
+    · [n_2] a text block that occupies 2 positioned pieces is emitted as 2 <text> elements, one per piece at its own measured baseline. An importer that ignores the x/y of an interior tspan (Figma) reflows a single <text> with its own leading and stacks the lines on top of each other. The glyphs land where they were measured; what is lost is the block — each line arrives as its own text layer, editable on its own. textPerLine:"never" keeps one <text> per block.
+    · [n_12] the select widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_16] the checkbox widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_19] the checkbox widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_22] the checkbox widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_27] the radio widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_30] the radio widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_33] the radio widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_37] the range widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+    · [n_39] the progress widget is drawn from primitives at Chromium's measured proportions — it is a reconstruction from the element's type, state and accent-color, not a capture of the widget the platform paints, and another engine or theme draws it differently.
+  -->
+  <title>#fx-form &gt; div:nth-child(1)</title>
+  <desc>@zumer/snapdom-vector 0.0.1 · svd/1.0 · http://localhost:62070/demo/challenges.html 2026-08-08T17:48:54.540Z</desc>
+  <defs>
+    <filter id="fx1" filterUnits="userSpaceOnUse" x="-147" y="-147" width="746" height="850.7344" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="18" result="dm0"/>
+      <feGaussianBlur in="dm0" stdDeviation="23" result="db0"/>
+      <feOffset dx="0" dy="22" result="do0"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.32" result="dc0"/>
+      <feComposite in="dc0" in2="do0" operator="in" result="ds0"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dm1"/>
+      <feGaussianBlur in="dm1" stdDeviation="0" result="db1"/>
+      <feOffset dx="0" dy="0" result="do1"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.06" result="dc1"/>
+      <feComposite in="dc1" in2="do1" operator="in" result="ds1"/>
+      <feMerge>
+        <feMergeNode in="ds1"/>
+        <feMergeNode in="ds0"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g id="n_0">
+    <g filter="url(#fx1)">
+      <rect x="0" y="0" width="452" height="556.7344" rx="20" ry="20" fill="#ffffff"/>
+    </g>
+    <g id="n_1" transform="translate(24 24)">
+      <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="18" font-weight="700" letter-spacing="-0.36" fill="#0f172a" x="0" y="20">Nueva exportación</text>
+    </g>
+    <g id="n_2" transform="translate(24 56.7969)">
+      <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b" x="0" y="14">Controles nativos: lo que el navegador dibuja por su cuenta y ningún</text><text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12.5" fill="#64748b" x="0" y="34">CSS declara.</text>
+    </g>
+    <g id="n_3" transform="translate(24 114.7969)">
+      <g id="n_4">
+        <g id="n_5">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11" letter-spacing="0.77" fill="#64748b" x="0" y="13">NOMBRE</text>
+        </g>
+        <g id="n_6" transform="translate(0 23.5938)">
+          <rect x="0" y="0" width="196" height="41.5938" rx="10" ry="10" fill="#ffffff"/>
+          <rect x="0.5" y="0.5" width="195" height="40.5938" rx="9.5" ry="9.5" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+        </g>
+      </g>
+      <g id="n_7" transform="translate(208 0)">
+        <g id="n_8">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11" letter-spacing="0.77" fill="#64748b" x="0" y="13">AVISO A</text>
+        </g>
+        <g id="n_9" transform="translate(0 23.5938)">
+          <rect x="0" y="0" width="196" height="41.5938" rx="10" ry="10" fill="#ffffff"/>
+          <rect x="0.5" y="0.5" width="195" height="40.5938" rx="9.5" ry="9.5" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+        </g>
+      </g>
+    </g>
+    <g id="n_10" transform="translate(24 193.9844)">
+      <g id="n_11">
+        <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11" letter-spacing="0.77" fill="#64748b" x="0" y="13">FORMATO</text>
+      </g>
+      <g id="n_12" transform="translate(0 23.5938)">
+        <rect x="0" y="0" width="404" height="38" rx="10" ry="10" fill="#ffffff"/>
+        <rect x="0.5" y="0.5" width="403" height="37" rx="9.5" ry="9.5" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+        <g data-control="select">
+          <path d="M391 17 L395 21 L399 17" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </g>
+    </g>
+    <g id="n_13" transform="translate(24 269.5781)">
+      <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11" letter-spacing="0.77" fill="#64748b" x="0" y="13">CAPAS A INCLUIR</text>
+    </g>
+    <g id="n_14" transform="translate(24 293.1719)">
+      <g id="n_15">
+        <g id="n_17">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#0f172a" x="23" y="15">Texto</text>
+        </g>
+        <g id="n_16" transform="translate(0 2.3906)">
+          <g data-control="checkbox">
+            <rect x="0" y="0" width="16" height="16" rx="2" ry="2" fill="#4f46e5"/>
+            <path d="M3.52 9.6 L6.4 12 L12 4.16" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </g>
+      </g>
+      <g id="n_18" transform="translate(71.8906 0)">
+        <g id="n_20">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#0f172a" x="23" y="15">Vectores</text>
+        </g>
+        <g id="n_19" transform="translate(0 2.3906)">
+          <g data-control="checkbox">
+            <rect x="0" y="0" width="16" height="16" rx="2" ry="2" fill="#4f46e5"/>
+            <path d="M3.52 9.6 L6.4 12 L12 4.16" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </g>
+      </g>
+      <g id="n_21" transform="translate(164.5469 0)">
+        <g id="n_23">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#0f172a" x="23" y="15">Guías</text>
+        </g>
+        <g id="n_22" transform="translate(0 2.3906)">
+          <g data-control="checkbox">
+            <rect x="0.5" y="0.5" width="15" height="15" rx="1.5" ry="1.5" fill="#ffffff" stroke="#767676" stroke-width="1"/>
+          </g>
+        </g>
+      </g>
+    </g>
+    <g id="n_24" transform="translate(24 329.9688)">
+      <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11" letter-spacing="0.77" fill="#64748b" x="0" y="13">ESCALA</text>
+    </g>
+    <g id="n_25" transform="translate(24 353.5625)">
+      <g id="n_26">
+        <g id="n_28">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#0f172a" x="23" y="15">1×</text>
+        </g>
+        <g id="n_27" transform="translate(0 2.3906)">
+          <g data-control="radio">
+            <circle cx="8" cy="8" r="8" fill="#4f46e5"/>
+            <circle cx="8" cy="8" r="7" fill="#ffffff"/>
+            <circle cx="8" cy="8" r="4.64" fill="#4f46e5"/>
+          </g>
+        </g>
+      </g>
+      <g id="n_29" transform="translate(53.0781 0)">
+        <g id="n_31">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#0f172a" x="23" y="15">2×</text>
+        </g>
+        <g id="n_30" transform="translate(0 2.3906)">
+          <g data-control="radio">
+            <circle cx="8" cy="8" r="7.5" fill="#ffffff" stroke="#767676" stroke-width="1"/>
+          </g>
+        </g>
+      </g>
+      <g id="n_32" transform="translate(107.9688 0)">
+        <g id="n_34">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13" fill="#0f172a" x="23" y="15">3×</text>
+        </g>
+        <g id="n_33" transform="translate(0 2.3906)">
+          <g data-control="radio">
+            <circle cx="8" cy="8" r="7.5" fill="#ffffff" stroke="#767676" stroke-width="1"/>
+          </g>
+        </g>
+      </g>
+    </g>
+    <g id="n_35" transform="translate(24 390.3594)">
+      <g id="n_36">
+        <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="11" letter-spacing="0.77" fill="#64748b" x="0" y="13">CALIDAD · 62</text>
+      </g>
+      <g id="n_37" transform="translate(0 25.5938)">
+        <rect x="0" y="0" width="404" height="16" fill="#ffffff"/>
+        <g data-control="range">
+          <rect x="0" y="5" width="404" height="6" rx="3" ry="3" fill="#efefef"/>
+          <rect x="0" y="5" width="248.68" height="6" rx="3" ry="3" fill="#4f46e5"/>
+          <circle cx="248.68" cy="8" r="7.5" fill="#4f46e5"/>
+        </g>
+      </g>
+    </g>
+    <g id="n_38" transform="translate(24 451.9531)">
+      <g id="n_39" transform="translate(0 4.5938)">
+        <g data-control="progress">
+          <rect x="0" y="0" width="306.2188" height="10" rx="5" ry="5" fill="#efefef"/>
+          <path d="M5 0 H208.2288 V10 H5 A5 5 0 0 1 0 5 V5 A5 5 0 0 1 5 0 Z" fill="#059669"/>
+        </g>
+      </g>
+      <g id="n_40" transform="translate(316.2188 0)">
+        <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="12" fill="#64748b" style="font-variant:tabular-nums" x="0" y="14">68% preparado</text>
+      </g>
+    </g>
+    <g id="n_41" transform="translate(24 489.1406)">
+      <g id="n_42">
+        <rect x="0" y="0" width="95.125" height="43.5938" rx="10" ry="10" fill="#4f46e5"/>
+        <rect x="-4" y="-4" width="103.125" height="51.5938" rx="14" ry="14" fill="none" stroke="#818cf8" stroke-width="2"/>
+        <g id="n_43">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13.5" font-weight="650" fill="#ffffff" x="19" y="26">Exportar</text>
+        </g>
+      </g>
+      <g id="n_44" transform="translate(105.125 0)">
+        <rect x="0" y="0" width="96.7344" height="43.5938" rx="10" ry="10" fill="#ffffff"/>
+        <rect x="0.5" y="0.5" width="95.7344" height="42.5938" rx="9.5" ry="9.5" fill="none" stroke="#c7d2fe" stroke-width="1"/>
+        <g id="n_45">
+          <text xml:space="preserve" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, sans-serif" font-size="13.5" font-weight="650" fill="#4338ca" x="19" y="26">Cancelar</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
