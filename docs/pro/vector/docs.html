@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>snapdom-vector documentation</title>
-<meta name="description" content="Every option of snapdom-vector, the document it produces, what each fidelity grade means, what reaches the file and what does not, and how to read a diagnostic.">
+<meta name="description" content="The SnapDOM Vector reference: toVector() for a standalone SVG, toFigma() for a paste into Figma, the exclude option, what reaches the output and the limits.">
 <style>
   :root {
     --ink:#0b1020; --dim:#5b6478; --rule:#e4e7ee; --wash:#f6f7fb;
@@ -60,8 +60,6 @@
        text-transform: uppercase; color: var(--dim); font-weight: 600; }
   td.opt { font-family: var(--mono); font-size: 13.5px; white-space: nowrap; color: var(--accent); }
   td.def { font-family: var(--mono); font-size: 13px; color: var(--dim); white-space: nowrap; }
-  td.grade { font-family: var(--mono); font-size: 14px; font-weight: 700; width: 1%;
-             white-space: nowrap; }
 
   .note { margin: 20px 0 0; padding: 14px 18px; border-radius: 10px; background: var(--wash);
           border-left: 3px solid var(--accent); max-width: 72ch; }
@@ -85,484 +83,144 @@
 <div class="shell">
 
 <nav class="toc">
-  <a class="home" href="../">← SnapDOM Pro</a>
+  <a class="home" href="./">← SnapDOM Vector</a>
   <ul>
     <li><a href="#start">Getting started</a></li>
     <li><a href="#api">Registering</a></li>
-    <li><a href="#options">Options</a></li>
-    <li><a href="#exports">The exports</a></li>
-    <li class="gap"><a href="#document">The document</a></li>
-    <li><a href="#grades">Fidelity grades</a></li>
+    <li><a href="#exclude">exclude</a></li>
+    <li class="gap"><a href="#tovector">toVector()</a></li>
+    <li><a href="#tofigma">toFigma()</a></li>
     <li><a href="#diagnostics">Diagnostics</a></li>
-    <li><a href="#text">Text</a></li>
-    <li class="gap"><a href="#svg">The SVG backend</a></li>
-    <li><a href="#figma">Figma: the plugin</a></li>
-    <li><a href="#paste">Figma: paste</a></li>
-    <li><a href="#pdf">PDF</a></li>
-    <li class="gap"><a href="#reaches">What reaches the document</a></li>
-    <li><a href="#recipes">Recipes</a></li>
+    <li class="gap"><a href="#reaches">What reaches the output</a></li>
     <li><a href="#limits">Limits</a></li>
   </ul>
 </nav>
 
 <main>
   <h1>snapdom-vector</h1>
-  <p class="lede">A snapdom plugin. Register it on a capture and that capture gains
-  <code>toVector()</code>, <code>toVectorSvg()</code> and
-  <code>toVectorFigmaClipboard()</code>. This page is the whole reference.</p>
+  <p class="lede">A SnapDOM plugin. Register it on a capture and that capture gains
+  <code>toVector()</code>, a standalone SVG, and <code>toFigma()</code>, a copy you paste into
+  Figma. This page is the whole reference.</p>
 
   <h2 id="start">Getting started</h2>
-  <p>Serve <code>snapdom-vector.mjs</code> from wherever you keep static assets and import it.
-  It is one file with no dependencies of its own. snapdom itself is a <b>peer dependency</b>: it
-  is not bundled in, so your page keeps one engine instead of two. Version 3 or later, because the
-  engine walks the clone that snapdom's render hooks hand over and there is no second way to get
-  one.</p>
-  <p>What the download contains: <code>snapdom-vector.mjs</code>,
-  <code>snapdom-vector.dev.mjs</code> (the same code unminified),
-  <code>snapdom-vector-pdf.mjs</code> for the <a href="#pdf">PDF backend</a>, and
-  <code>figma-plugin/</code>.</p>
+  <p>The download has <code>snapdom-vector.mjs</code>, <code>snapdom-vector.dev.mjs</code> (the
+  same code unminified, for reading and debugging), their TypeScript declarations, the licence and
+  a checksummed manifest. The module has no dependencies of its own. SnapDOM is a <b>peer
+  dependency</b>: it is not bundled in, so your page keeps one engine instead of two. It needs
+  SnapDOM 3, because the plugin walks the clone that SnapDOM's render hooks hand over.</p>
   <pre><code><span class="k">import</span> { snapdom } <span class="k">from</span> <span class="s">'@zumer/snapdom'</span>
-<span class="k">import</span> { vector } <span class="k">from</span> <span class="s">'./snapdom-vector.mjs'</span>
+<span class="k">import</span> vector <span class="k">from</span> <span class="s">'./vendor/snapdom-vector.mjs'</span>
 
 <span class="k">const</span> shot = <span class="k">await</span> snapdom(document.querySelector(<span class="s">'#plan-card'</span>), {
   plugins: [vector()]
 })
 
-<span class="k">const</span> svg = <span class="k">await</span> shot.toVectorSvg()
-document.body.insertAdjacentHTML(<span class="s">'beforeend'</span>, svg)</code></pre>
+<span class="k">const</span> svg = <span class="k">await</span> shot.toVector()   <span class="c">// a standalone SVG string</span>
+<span class="k">await</span> shot.toFigma()                <span class="c">// on the clipboard: paste it into Figma</span></code></pre>
   <p>Nothing runs on a server and nothing is uploaded. Everything happens in the page you are
   already looking at, which is the point: the component worth capturing is usually behind a
   login.</p>
-  <div class="note"><p>Use <code>snapdom-vector.dev.mjs</code> while you are debugging. It is the
-  same code unminified, so a stack trace points at something readable.</p></div>
 
   <h2 id="api">Registering</h2>
   <p>Register it <b>per capture</b>. Registering it globally costs you something, so here are
   both forms and the reason to prefer the first:</p>
   <pre><code><span class="c">// this capture only, and the one to use</span>
-<span class="k">await</span> snapdom(el, { plugins: [vector(options?)] })
+<span class="k">await</span> snapdom(el, { plugins: [vector()] })
 
 <span class="c">// every capture in the page</span>
-snapdom.plugins(vector(options?))</code></pre>
-  <p>A plugin with render hooks suspends snapdom's <b>burst</b> optimisation on the captures it
+snapdom.plugins(vector())</code></pre>
+  <p>A plugin with render hooks suspends SnapDOM's <b>burst</b> optimisation on the captures it
   runs on, because burst answers with a memoized URL without re-entering the capture pipeline,
   and then there is no clone for this engine to read. Registered per capture, that cost lands on
   the captures that asked for it. Registered globally, it lands on all of them, including the
   <code>toPng()</code> in your hot path.</p>
-  <p>Then, on the capture:</p>
-  <pre><code>shot.toVector(options?)               → <span class="k">Promise</span>&lt;SVDDocument&gt;
-shot.toVectorSvg(options?)            → <span class="k">Promise</span>&lt;string&gt;
-shot.toVectorFigmaClipboard(options?) → <span class="k">Promise</span>&lt;{html, plain, clipboardItem()}&gt;</code></pre>
-  <p>Options given to <code>vector(…)</code> are defaults for every export; the same names passed
-  to an export call win for that call.</p>
-  <p>Both throw if the captured element has no layout box (an element with
-  <code>display: none</code> has nothing to measure), and both throw if the capture carries no
-  clone, which happens when <code>burst: true</code> was forced on the
-  <code>snapdom()</code> call. Leave <code>burst</code> unset.</p>
+  <p>Both methods throw if the captured element has no layout box (an element with
+  <code>display: none</code> has nothing to measure), and if the capture carries no clone, which
+  happens when <code>burst: true</code> was forced on the <code>snapdom()</code> call. Leave
+  <code>burst</code> unset. The captured element must still be connected, with its styles
+  available, when you export.</p>
   <div class="note"><p><b>Everything about the capture stays on the <code>snapdom()</code>
-  call.</b> <code>scale</code>, <code>dpr</code>, <code>backgroundColor</code>,
-  <code>outerTransforms</code> and the rest are read before the first hook runs, so this plugin
-  could not override them if it wanted to. There is no second set of names for them here.</p></div>
+  call.</b> <code>scale</code>, <code>dpr</code>, <code>backgroundColor</code> and the rest are
+  read before the plugin runs, so there is no second set of names for them here.</p></div>
 
-  <h2 id="options">Options</h2>
+  <h2 id="exclude">exclude</h2>
   <table>
     <thead><tr><th>Option</th><th>Default</th><th></th></tr></thead>
     <tbody>
-      <tr><td class="opt">mode</td><td class="def">'design'</td>
-        <td>What to do with a node that paints something the destination cannot describe
-        <b>and</b> has text inside it. <code>'design'</code> keeps the text editable and lets the
-        effect go, saying so. <code>'replica'</code> draws the node and pays with the text. The
-        decision is made per node, not per document.</td></tr>
       <tr><td class="opt">exclude</td><td class="def">none</td>
-        <td>A selector, a predicate, or an array of either. Matching elements and their subtrees
-        are skipped.</td></tr>
-      <tr><td class="opt">rasterFilters</td><td class="def">false</td>
-        <td>Rasterize, to a PNG, <b>only</b> the nodes whose filter an importer of Figma's class
-        cannot execute: the colour functions of <code>filter</code> and
-        <code>backdrop-filter</code> (<code>saturate</code>, <code>brightness</code>,
-        <code>contrast</code>, <code>grayscale</code>, <code>sepia</code>,
-        <code>hue-rotate</code>, <code>invert</code>), and inner shadows. Those nodes and no
-        others. Off by default because it is a real loss: the subtree stops being editable
-        everywhere, not only where it was going. Only <code>toVectorSvg()</code> consumes the
-        result; the Figma and PDF backends emit the vector paint and say so.</td></tr>
-      <tr><td class="opt">debugPaint</td><td class="def">false</td>
-        <td>Tint every node by stacking-context depth and give it a <code>&lt;title&gt;</code>
-        naming its id, grade and paint order. The fastest way to see why a layer is where it
-        is.</td></tr>
-      <tr><td class="opt">silent</td><td class="def">false</td>
-        <td>Do not print the grouped diagnostics to the console. They are still in
-        <code>doc.diagnostics</code>.</td></tr>
-      <tr><td class="opt">maxNodes</td><td class="def">20000</td>
-        <td>Ceiling on emitted nodes. Reaching it stops the walk and reports it.</td></tr>
-      <tr><td class="opt">maxDepth</td><td class="def">256</td><td>Ceiling on tree depth.</td></tr>
-      <tr><td class="opt">maxDiagnosticsPerCode</td><td class="def">100</td>
-        <td>How many entries one code may contribute before it is summarised. A page with 4 000
-        identical warnings should not produce a 40 MB document.</td></tr>
-      <tr><td class="opt">fetchTimeout</td><td class="def">8000</td>
-        <td>Milliseconds, per asset.</td></tr>
-      <tr><td class="opt">maxAssetBytes</td><td class="def">8 MB</td>
-        <td>Size past which an asset is <b>reported</b>. It is still embedded, because the document is
-        self-contained by design, but you are told which one is heavy.</td></tr>
+        <td>A CSS selector, a predicate <code>(element) =&gt; boolean</code>, or an array of either.
+        Matching elements and their subtrees are left out of the vector output, text and layer
+        names included.</td></tr>
     </tbody>
   </table>
+  <p>It is the only option. Give it to <code>vector({ exclude })</code> as the default for every
+  export from that capture, or to a single <code>toVector()</code> or <code>toFigma()</code>
+  call, where it wins for that call.</p>
+  <pre><code><span class="k">const</span> shot = <span class="k">await</span> snapdom(el, { plugins: [vector({ exclude: <span class="s">'.no-print'</span> })] })
+<span class="k">const</span> svg = <span class="k">await</span> shot.toVector({ exclude: [<span class="s">'.no-print'</span>, (node) =&gt; node.dataset.private === <span class="s">'true'</span>] })</code></pre>
+  <p>SnapDOM's own <code>exclude</code> on the <code>snapdom()</code> call also applies: anything it
+  leaves out of the capture never reaches the vector output.</p>
 
-  <h3>On <code>toVectorSvg()</code> only</h3>
-  <table>
-    <thead><tr><th>Option</th><th>Default</th><th></th></tr></thead>
-    <tbody>
-      <tr><td class="opt">target</td><td class="def">'universal'</td>
-        <td>Who the file is <b>for</b>. Not a preference: the destinations disagree on things one
-        file cannot satisfy at once. See below.</td></tr>
-      <tr><td class="opt">exactShadows</td><td class="def">by target</td>
-        <td><code>true</code> on <code>'universal'</code>: the exact filter chain, correct in a
-        browser. <code>false</code> on <code>'figma'</code>: <code>feDropShadow</code>, which
-        Figma can actually run, at the cost of folding <code>spread</code> into the blur.</td></tr>
-      <tr><td class="opt">textGradientMask</td><td class="def">by target</td>
-        <td>How gradient-filled text is written. <code>false</code> (universal) keeps it a real
-        text layer with <code>fill="url(#…)"</code>. <code>true</code> (figma) paints the gradient
-        through a <code>&lt;mask&gt;</code> of the text, which arrives coloured in Figma and stops
-        being a text layer there.</td></tr>
-      <tr><td class="opt">textPerLine</td><td class="def">'auto'</td>
-        <td><code>'auto'</code> splits a block into one element per visual line only when it
-        occupies more than one; <code>'always'</code> splits every block;
-        <code>'never'</code> emits the SVG-native shape, one element per block, which stacks the
-        lines on top of each other in Figma.</td></tr>
-    </tbody>
-  </table>
-  <p><code>target: 'figma'</code> is for the paste-an-SVG route. If the Figma plugin or the
-  clipboard channel is available to you, neither of those trades is one you have to make: both
-  carry the colours <b>and</b> the editable text.</p>
-
-  <h2 id="exports">The exports</h2>
-
-  <h3><code>shot.toVector()</code> → the document</h3>
-  <p>The SVD document: every node, its geometry, its paint, its grade, plus
-  <code>report</code> and <code>diagnostics</code>. Validated against the schema before it is
-  returned; an invalid document <b>throws</b> rather than shipping.</p>
-
-  <h3><code>shot.toVectorSvg()</code> → markup</h3>
-  <p>A standalone SVG string. <code>toVector()</code> and then the SVG backend, in one call. If you
-  already hold a document, use <code>svdToSvg(doc)</code> instead and do not walk the page
-  twice.</p>
-
-  <h3><code>shot.toVectorFigmaClipboard()</code> → the paste envelope</h3>
-  <p>Figma's own clipboard payload. A <b>parallel</b> backend off the same clone, not a consumer
-  of the document. See <a href="#paste">below</a>, and read it before you put it behind a
-  button.</p>
-
-  <h3>Module functions</h3>
-  <pre><code><span class="k">import</span> { svdToSvg, svdToFigma } <span class="k">from</span> <span class="s">'./snapdom-vector.mjs'</span>
-<span class="k">import</span> { svdToPdf } <span class="k">from</span> <span class="s">'./snapdom-vector-pdf.mjs'</span>
-
-svdToSvg(doc, options?)   <span class="c">// → {svg, diagnostics}, also usable as the string</span>
-svdToFigma(doc)           <span class="c">// → the payload the Figma plugin consumes</span>
-<span class="k">await</span> svdToPdf(doc, options?)  <span class="c">// → Uint8Array</span></code></pre>
-  <p>All of them are <b>pure</b> and need no DOM: given a document they run in Node, which is how
-  the test suite fuzzes them. That is the point of having a document in the middle at all.</p>
-
-  <h2 id="document">The document</h2>
-  <p>SVD: one versioned JSON document, one strict validator, and a backend per destination that
-  is a pure function of it.</p>
-  <pre><code>{
-  schema: <span class="s">'svd/1.0'</span>,
-  generator: { name, version, engine },
-  capture:  { url, selector, capturedAt, viewport, root, drift, conventions },
-  assets:   { a_1: { kind: <span class="s">'bitmap'</span>|<span class="s">'vector'</span>|<span class="s">'font'</span>, mime, w, h, data } },
-  styles:   { text: { ts_0: { family, stack, size, weight, italic, … } } },
-  root:     <span class="s">'n_0'</span>,
-  nodes:    { n_0: { … } },
-  diagnostics: [ … ],
-  report:   { nodes, domElements, nodeRatio, drift, grades, coverage, … }
-}</code></pre>
-
-  <h3>A node</h3>
-  <pre><code>{
-  type: <span class="s">'frame'</span>,            <span class="c">// frame | group | shape | text | image | vector</span>
-  name: <span class="s">'#plan-card'</span>,      <span class="c">// from tag, id, class or text; readable in a layer list</span>
-  frame: { x, y, w, h },   <span class="c">// relative to the emitted PARENT</span>
-  abs:   { x, y, w, h },   <span class="c">// relative to the capture root</span>
-  paint: { z, stackingContext },
-  transform: null,         <span class="c">// { m: [a,b,c,d,e,f], decomposed: {…} }</span>
-  opacity: 1, blend: <span class="s">'normal'</span>,
-  clip: null, mask: null, radii: [ … ],
-  fills: [], strokes: [], effects: [],
-  text: null,              <span class="c">// only on type: 'text'</span>
-  control: null,           <span class="c">// only on a native form widget</span>
-  fidelity: { grade: <span class="s">'E'</span>, notes: [] },
-  source: { tag, path, css: {} },
-  children: [ … ]
-}</code></pre>
-
-  <h3>Invariants worth knowing</h3>
+  <h2 id="tovector">toVector()</h2>
+  <pre><code>shot.toVector(options?) → <span class="k">Promise</span>&lt;string&gt;</code></pre>
+  <p>A standalone SVG string. <b>No <code>foreignObject</code>, anywhere.</b> An SVG with a
+  <code>foreignObject</code> in it is an HTML document wearing an SVG hat, and every vector tool
+  opens it empty. Here a rectangle is a <code>&lt;rect&gt;</code> and a line of text is a
+  <code>&lt;text&gt;</code>. The file opens in Illustrator, Inkscape, Penpot, Figma and any
+  browser.</p>
   <ul class="plain">
-    <li><b>Units are CSS px, unrounded.</b> Rounding is the emitter's business. Angles in degrees,
-      clockwise. Y grows downwards.</li>
-    <li><b>Both coordinate systems are emitted.</b> <code>frame</code> is relative to the emitted
-      parent, <code>abs</code> to the capture root. <code>abs</code> survives any re-parenting and
-      is what the test suite checks against the live DOM.</li>
-    <li><b>The hierarchy is DOM containment; paint order is <code>paint.z</code></b>, an integer
-      computed from CSS 2.1 Appendix E. The backend sorts. A node is promoted out of its parent
-      only when the order cannot be expressed by reordering siblings <b>and</b> the difference is
-      geometrically observable. Every promotion is a <code>B4.promoted</code> diagnostic with
-      <code>from</code>, <code>to</code> and a reason.</li>
-    <li><b>Colours are <code>[r, g, b, a]</code> floats 0..1 sRGB</b>, with the original CSS kept
-      alongside as <code>srcCss</code>. Out-of-gamut colours are mapped by reducing chroma, never
-      by clipping channels.</li>
-    <li><b><code>blur</code> is the CSS radius.</b> SVG's sigma is half of it; that conversion is
-      the emitter's, stated once.</li>
-    <li><b>Nothing is relative and nothing is external.</b> Assets are embedded or referenced by a
-      local id.</li>
-    <li><b>A document whose diagnostics do not explain its degradations is a bug</b>, and the
-      validator rejects it.</li>
-  </ul>
-
-  <h3><code>report</code></h3>
-  <p>Measured on every capture, never promised in advance:</p>
-  <table>
-    <tbody>
-      <tr><td class="opt">nodes / domElements / nodeRatio</td>
-        <td>How much the pruning bought. A card is usually below 1.0: fewer nodes than
-        elements.</td></tr>
-      <tr><td class="opt">drift</td>
-        <td><code>{pairs, median, p95, max, worst}</code>: the mounted clone's boxes against the
-        live boxes they came from, in px. Every coordinate in the document is measured on that
-        clone, so this is the error bar on all of it. Past 1px it is also a diagnostic.</td></tr>
-      <tr><td class="opt">grades</td><td>The fidelity histogram: how many nodes at each grade.</td></tr>
-      <tr><td class="opt">coverage</td>
-        <td><code>{pseudo, shadow, iconFont, artifact, synthetic}</code>: nodes that a walk of
-        the live DOM could not have produced at all.</td></tr>
-      <tr><td class="opt">vector / raster / textBlocks / assets / textStyles</td>
-        <td>What the document is made of.</td></tr>
-      <tr><td class="opt">durationMs</td>
-        <td>The mount, the walk, the collectors and the asset fetches. snapdom's own capture is
-        the caller's to time, because the caller is the one who made it.</td></tr>
-    </tbody>
-  </table>
-
-  <h2 id="grades">Fidelity grades</h2>
-  <p>Every node carries one. Worst wins: a node with an approximated shadow and an exact fill is
-  an <code>A</code>. Any grade other than <code>E</code> must be named by a diagnostic, and the
-  validator enforces it.</p>
-  <table>
-    <thead><tr><th>Grade</th><th></th></tr></thead>
-    <tbody>
-      <tr><td class="grade" style="color:var(--good)">E</td>
-        <td><b>Exact.</b> The destination can hold what the browser painted, unchanged.</td></tr>
-      <tr><td class="grade" style="color:var(--mark)">A</td>
-        <td><b>Approximated.</b> A parameter was resampled or substituted: a conic gradient
-        composed as wedges, a shadow spread folded into a blur, a colour-stop hint resampled to
-        16 stops.</td></tr>
-      <tr><td class="grade" style="color:var(--mark)">C</td>
-        <td><b>Composed.</b> One CSS thing became several primitives: four border sides, an
-        outline as a sibling, a decoration as its own path.</td></tr>
-      <tr><td class="grade">R</td>
-        <td><b>Rasterized.</b> Pixels, because there was no other honest answer:
-        <code>&lt;canvas&gt;</code>, <code>&lt;video&gt;</code>, a filter chain nobody can
-        execute.</td></tr>
-      <tr><td class="grade">RH</td>
-        <td><b>Raster hybrid.</b> The background is pixels and the text stays vector on top of it.
-        The rule is that text does not go down with the effect if it can be avoided.</td></tr>
-      <tr><td class="grade">O</td>
-        <td><b>Omitted.</b> Nothing was drawn, and the reason is recorded. The most common one is
-        the content a native form control paints for itself.</td></tr>
-    </tbody>
-  </table>
-
-  <h2 id="diagnostics">Diagnostics</h2>
-  <p>Every approximation produces an entry in <code>doc.diagnostics</code> <b>and</b> a grade on
-  the node it happened to. This half of the engine took as long to write as the drawing did, and
-  it is the half you cannot replace: a capture that quietly lost a shadow looks fine until someone
-  opens the file six weeks later.</p>
-  <pre><code>{
-  code: <span class="s">'emit.svg.conic-fan'</span>,   <span class="c">// stable, greppable</span>
-  grade: <span class="s">'A'</span>,                    <span class="c">// what it cost the node</span>
-  severity: <span class="s">'warn'</span>,              <span class="c">// info | warn | error</span>
-  node: <span class="s">'n_7'</span>,                   <span class="c">// which one, when it belongs to one</span>
-  message: <span class="s">'conic-gradient has no SVG paint server; it is composed as …'</span>
-}</code></pre>
-  <p>They are also printed to the console under <code>[snapdom-vector]</code>, <b>grouped by
-  code</b> with a count and up to three distinct messages. Four hundred identical
-  warnings come out as one line and a count. <code>silent: true</code> turns the printing off
-  and nothing else.</p>
-  <table>
-    <thead><tr><th>Prefix</th><th>Where it came from</th></tr></thead>
-    <tbody>
-      <tr><td class="opt">capture.</td><td>The clone and the mount: drift, restored root paint,
-        CSS that could not be recovered.</td></tr>
-      <tr><td class="opt">B4.</td><td>The paint tree: promotions, anonymous blocks, synthesized
-        list markers, geometry taken from layout, form controls.</td></tr>
-      <tr><td class="opt">collect.</td><td>The collectors, reading one element: a box, a text
-        block, an image. What CSS said that could not be carried across.</td></tr>
-      <tr><td class="opt">compose.</td><td>Cases where the contract says several primitives should
-        be composed and this version emits one.</td></tr>
-      <tr><td class="opt">emit.svg.</td><td>The SVG backend. What <b>this file format</b> could
-        not hold, and what the destination it is written for will not run.</td></tr>
-      <tr><td class="opt">figma.</td><td>The translation to the Figma payload. Kept apart from the
-        engine's own list so the two never double-count.</td></tr>
-      <tr><td class="opt">h2d.</td><td>The clipboard channel.</td></tr>
-      <tr><td class="opt">text.</td><td>Typography that a destination is known to drop:
-        tracking, features, small caps.</td></tr>
-      <tr><td class="opt">raster.</td><td>What <code>rasterFilters</code> baked, and what it could
-        not.</td></tr>
-    </tbody>
-  </table>
-  <div class="note"><p>A diagnostic that says something was lost <b>there</b> rather than
-  <b>here</b> keeps grade <code>E</code>. <code>emit.svg.filter-not-imported</code> is the common
-  one: the file is exactly right in a browser and Figma will run only part of it. The node was not
-  degraded; you were warned.</p></div>
-
-  <h2 id="text">Text</h2>
-  <p>One rule holds up the whole text path: <b>the browser breaks the lines and the destination
-  only draws them.</b> No editor agrees with a browser about line breaking, vertical metrics or
-  what <code>line-height</code> means, and asking one to re-wrap a paragraph produces bugs that
-  look like the capture is wrong.</p>
-  <p>So a text node carries what was <b>measured</b>:</p>
-  <ul class="plain">
-    <li><code>characters</code>, with visual lines joined by U+2028, never <code>\n</code>, which
-      would make a paragraph and trigger paragraph spacing in Figma.</li>
-    <li><code>lines[]</code>: for each visual line its character range, its <code>x</code>, its
-      painted width, its <b>measured baseline</b>, ascent and descent. Lines are grouped by
-      baseline, never by <code>top</code>: a larger span shares a baseline but not a top.</li>
-    <li><code>pitch</code>: the measured distance between consecutive baselines. Never the CSS
-      <code>line-height</code>, which is a minimum and not an outcome.</li>
-    <li><code>runs[]</code>: character ranges carrying a style id, a link, and <code>dy</code>,
-      the measured offset of a raised or lowered run. Drop <code>dy</code> and H₂O renders as
-      H2O.</li>
-    <li><code>line.frags</code>, when something that is not a character (an inline image, a float)
-      splits a line into separate painted stretches, and <code>line.spans</code>, the painted
-      extent of each style stretch. It is the only place a backend can learn where the run carrying
-      a wavy underline starts and stops.</li>
-    <li><code>line.hyphen</code>: the glyph the browser painted at a hyphenation break, which the
-      document does not contain. It is deliberately not in <code>characters</code>, because every
-      offset indexes that string. Its advance is already inside the measured width.</li>
-    <li><code>sourceText</code>: the pre-<code>text-transform</code> original, the same length as
-      <code>characters</code> and indexed identically.</li>
-  </ul>
-  <p>A text style is registered once in <code>doc.styles.text</code> and referenced by id, so a
-  document with 200 paragraphs in three styles carries three.</p>
-
-  <h2 id="svg">The SVG backend</h2>
-  <p><b>No <code>foreignObject</code>, anywhere.</b> An SVG with a <code>foreignObject</code> in
-  it is an HTML document wearing an SVG hat, and every vector tool opens it empty. Here a
-  rectangle is a <code>&lt;rect&gt;</code> and a line of text is a
-  <code>&lt;text&gt;</code>.</p>
-  <ul class="plain">
-    <li><b>One <code>&lt;text&gt;</code> per positioned piece</b>, meaning per visual line and per
-      fragment within a line, each at its own measured baseline, whenever the block occupies more
-      than one. A block that fits on one line stays a single element, which is the more editable
-      object. See <code>textPerLine</code>.</li>
-    <li><b>The <code>&lt;text&gt;</code> carries the typography of its dominant run</b>, and the
-      <code>&lt;tspan&gt;</code>s carry only what differs, with explicit resets. Figma builds its
-      text node from the outer element and does not look inside for the real values.</li>
-    <li><b><code>textLength</code> is emitted only when a font binary travels with the file.</b>
-      Pinning a line to a width measured with your font, in a viewer that substituted a different
-      one, does not degrade gracefully: it squeezes the glyphs. Without a binary the width is the
-      viewer's, and <code>emit.svg.text-length-viewer-width</code> says so.</li>
-    <li><b><code>-webkit-text-stroke</code> is a real stroke</b>, and
-      <code>background-clip: text</code> becomes the text's own fill rather than a glyph
-      mask.</li>
-    <li><b>A <code>&lt;pattern&gt;</code> is emitted only when a layer genuinely tiles.</b> Figma
-      does not resolve a pattern reference and the node does not degrade; it disappears.</li>
-    <li><b>Native form controls are reconstructed</b> at Chromium's measured proportions from the
-      semantics the collector recorded (kind, state, accent colour), and every one says so
-      (<code>emit.svg.control-reconstructed</code>). A reconstruction is not a capture. The Figma
-      and PDF backends do not draw them.</li>
+    <li><b>The browser breaks the lines and the SVG only draws them.</b> A block that occupies more
+      than one line becomes one <code>&lt;text&gt;</code> per visual line, each at its measured
+      baseline, so no editor re-wraps your paragraph differently.</li>
+    <li><b>Gradients, borders, radii, shadows, transforms, clips and images</b> become native SVG
+      paint. <code>-webkit-text-stroke</code> is a real stroke, and
+      <code>background-clip: text</code> becomes the text's own fill.</li>
+    <li><b><code>textLength</code> is written only when a font binary travels with the file.</b>
+      Pinning a line to a width measured with your font, in a viewer that substituted another one,
+      squeezes the glyphs.</li>
+    <li><b>Native form controls are reconstructed</b> at Chromium's measured proportions from their
+      kind, state and accent colour, and each one is declared as a reconstruction.</li>
   </ul>
   <p>The file is <b>self-describing</b>: the approximations are written into an XML comment under
   the <code>&lt;svg&gt;</code> tag, so a file that travels without its report cannot exist.</p>
 
-  <h2 id="figma">Figma: the plugin</h2>
-  <p>The included plugin turns a document into real layers through the Plugin API: frames,
-  editable text, gradients, radii, shadows, per-side borders, images. It is deliberately dumb:
-  <code>svdToFigma(doc)</code> does the translating where it can be tested in Node, and the plugin
-  builds what it is handed.</p>
-  <h3>Loading it</h3>
-  <ol class="plain">
-    <li>Figma → <b>Plugins → Development → Import plugin from manifest…</b></li>
-    <li>Pick <code>manifest.json</code> from the plugin folder.</li>
-    <li>Run it from <b>Plugins → Development → SnapDOM Vector</b>.</li>
-  </ol>
-  <h3>Using it</h3>
-  <ol class="plain">
-    <li>Drop a <code>.svd</code> file on the window, or paste its JSON into the box. What that
-      file contains is <b><code>svdToFigma(doc)</code></b>, not the raw document. The plugin
-      never sees an SVD, so that there is exactly one place where SVD becomes Figma vocabulary
-      and it is testable in Node.</li>
-    <li>Read the <b>preflight</b>. It is blocking on purpose: before a single node exists you see
-      every font that is missing or will be substituted, with the number of text blocks and
-      characters riding on it, plus the layer count, and every degradation the engine declared,
-      grouped by code.</li>
-    <li>Decide what to do with each font: accept the substitution, map it to something installed,
-      or use the pre-baked outlines or bitmap if the document carries them.</li>
-    <li><b>Create layers.</b> The result is selected and zoomed to, and the final screen lists
-      what was approximated during the build.</li>
-  </ol>
-  <p><b>Nothing leaves the machine.</b> The manifest declares
-  <code>networkAccess: {allowedDomains: ["none"]}</code>, so the plugin cannot make a request even
-  if it wanted to.</p>
-  <p>It validates the payload version and <b>rejects without repairing</b>. A document written by
-  a different version of the engine is a hard stop naming both versions. Repairing it would ship
-  the bug instead of reporting it.</p>
-  <div class="note"><p><b>Why some options are greyed out.</b> Outlining and rasterizing happen in
-  the <b>browser</b>, where the real font is loaded: the Plugin API has no <code>outlineText()</code>
-  and the sandbox cannot rasterize, so the plugin can only use an outline or bitmap the capture
-  already contains. When it does not carry one, the option is disabled and says why.</p></div>
-  <div class="note warn"><p><b>Do not upload a captured font binary to your Figma account.</b>
-  Captured binaries are subsetted to the glyphs the page used. Uploading one would name it "Inter"
-  while carrying a fraction of Inter, and every other file in your account would get silent tofu.
-  The preflight shows the correct internal name and the original URL instead.</p></div>
-
-  <h2 id="paste">Figma: the paste channel</h2>
-  <p><code>toVectorFigmaClipboard()</code> writes Figma's own clipboard payload, so ⌘V works with
-  nothing installed. It is a <b>different kind of export</b> from the other two and you should read
-  this before putting it behind a button.</p>
+  <h2 id="tofigma">toFigma()</h2>
+  <pre><code>shot.toFigma(options?) → <span class="k">Promise</span>&lt;void&gt;</code></pre>
+  <p>Puts the capture on the clipboard in Figma's own paste format. Paste into a Figma file and you
+  get frames, editable text, gradients, shadows, borders and images, with nothing installed. It
+  resolves once the clipboard holds the copy.</p>
+  <pre><code>button.addEventListener(<span class="s">'click'</span>, <span class="k">async</span> () =&gt; {
+  <span class="k">await</span> shot.toFigma()
+  toast(<span class="s">'Copied. Paste it into Figma.'</span>)
+})</code></pre>
   <ul class="plain">
-    <li>The format is <b>theirs</b>: proprietary, undocumented, reverse-engineered, and already at
-      version 2. Figma can change it in any release, with no negotiation and no error. The only
-      symptom is a paste that does nothing.</li>
-    <li>What it buys is what the SVG importer cannot do at all: <code>letter-spacing</code>
-      survives. We measured it: a 376.8px line of text arrives at 449px through the SVG route, +50px
-      of that from ignored tracking.</li>
-    <li>Nodes whose paint the channel cannot spell are drawn by the SVD backend and carried as an
-      image, unless they have text inside them, in which case <code>mode</code> decides.
-      <code>vectorFallback: false</code> turns the drawing off, and still reports what it would
-      have drawn.</li>
-    <li>Effects that read what is <b>underneath</b> a node (<code>mix-blend-mode</code>,
-      <code>backdrop-filter</code>) arrive unblended. Figma's own extension loses them too.</li>
+    <li><b>Call it from a user action, on https or localhost.</b> It uses the async clipboard API,
+      and browsers only let a page the user is interacting with write to the clipboard. Outside a
+      secure context it rejects with a message that says so.</li>
+    <li><b><code>letter-spacing</code> survives</b>, which Figma's SVG importer cannot do: measured,
+      a 376.8px line of text arrives at 449px through the SVG route, 50px of that from ignored
+      tracking.</li>
+    <li><b>Nodes whose paint the paste format cannot spell</b> are drawn as vector artwork and
+      carried as an image, unless they hold text, which stays editable.</li>
+    <li><b>Effects that read what is underneath a node</b> (<code>mix-blend-mode</code>,
+      <code>backdrop-filter</code>) arrive unblended.</li>
   </ul>
-  <p><code>toVectorSvg()</code> is not going anywhere, and it is the one that opens in tools nobody
-  owns.</p>
+  <div class="note warn"><p><b>The format is Figma's, and it is undocumented.</b> Figma can change
+  it in any release, with no error; the only symptom is a paste that does nothing. If that
+  happens, <code>toVector()</code> and Figma's SVG import keep working while we update.</p></div>
 
-  <h2 id="pdf">PDF</h2>
-  <pre><code><span class="k">import</span> { svdToPdf } <span class="k">from</span> <span class="s">'./snapdom-vector-pdf.mjs'</span>
+  <h2 id="diagnostics">Diagnostics</h2>
+  <p>Every approximation (a conic gradient drawn as wedges, a shadow spread folded into a blur, a
+  filter a destination cannot run) is printed to the console under <code>[snapdom-vector]</code>,
+  <b>grouped by code</b> with a count and up to three distinct messages, so four hundred identical
+  warnings come out as one line and a count. The codes are stable and greppable, and
+  <code>toVector()</code> also writes the list into the SVG.</p>
+  <p>A diagnostic that says something will be lost <b>in the destination</b> (the SVG is exactly
+  right in a browser, and Figma runs only part of it) is a warning about where the file is going,
+  not a degradation of the file.</p>
 
-<span class="k">const</span> bytes = <span class="k">await</span> svdToPdf(doc, { compress: <span class="k">true</span> })</code></pre>
-  <p>It is a separate file because a capture that never asks for a PDF should not
-  carry one: the main module does not import it, so nothing about PDF reaches your
-  bundle unless you write that import.</p>
-  <p>A vector PDF from the same document: geometry and real text, not a picture of a page. A box
-  is a path, a gradient is a shading, and a line of text is a <code>Tj</code> at its measured
-  baseline.</p>
-  <p><b>This is not snapdom-pdf running underneath.</b> Neither plugin imports the other. What
-  they have in common is one internal module, the byte-level writer that counts objects, builds
-  the xref table and deflates streams, and each build inlines its own copy of it. Everything above
-  that is separate: snapdom-pdf lays an invisible text layer over a raster, this walks the SVD and
-  draws it, and buying one gives you no part of the other. Both builds fail if the bundle so much
-  as names the other product.</p>
-  <p>It has the smallest primitive set of the three backends. PDF has no blur, so every blurred
-  shadow is <code>shadowLayers</code> concentric copies, and it has no colour matrix at all. There
-  are no font binaries in an SVD, so the glyphs come from the base-14 fonts and the diagnostics
-  name every substitution. It paginates nothing on its own; <code>pages</code> takes finished page
-  geometry from a caller that owns the pagination.</p>
-  <p>The diagnostics ride on the returned array <b>and</b> are written into the file as an
-  uncompressed object off the catalog, so <code>strings out.pdf</code> finds them. An
-  approximation that only reaches a stream nobody opens is a silent degradation.</p>
-  <div class="note"><p><a href="../pdf/">snapdom-pdf</a> is pixel-exact and zooms like a
-  photograph. This one has no resolution and re-draws the page, which means it can substitute a
-  font on you. Pick by which failure you can live with.</p></div>
-
-  <h2 id="reaches">What reaches the document, and what does not</h2>
-  <p>The engine walks the clone snapdom already resolved, which is why membership in the tree is
+  <h2 id="reaches">What reaches the output, and what does not</h2>
+  <p>The engine walks the clone SnapDOM already resolved, which is why membership in the tree is
   not an argument here. In:</p>
   <ul class="plain">
     <li><b>Pseudo-elements</b> (<code>::before</code>, <code>::after</code>,
@@ -572,103 +230,50 @@ svdToFigma(doc)           <span class="c">// → the payload the Figma plugin co
     <li><b>Icon fonts</b> resolved by ligature, and inline <code>&lt;svg&gt;</code> carried as
       vector with its element ids namespaced per instance.</li>
     <li><b>Images</b> from <code>currentSrc</code>, so <code>srcset</code> resolves to what was
-      actually shown, with <code>object-fit</code> and <code>object-position</code> expressed as
-      a crop plus a matrix. An SVG source is inlined as vector, not rasterized.</li>
+      actually shown, with <code>object-fit</code> and <code>object-position</code> applied. An SVG
+      source is inlined as vector, not rasterized.</li>
     <li><b>Scroll offsets</b>, applied, and overflow clipping as a real clip.</li>
-    <li><b>Native form controls</b>, described as controls: kind, state, accent, track and thumb
-      colours.</li>
     <li><b><code>&lt;canvas&gt;</code> and <code>&lt;video&gt;</code></b>, as bitmaps. A tainted
       canvas is omitted with a reason rather than throwing.</li>
     <li><b>In-flight animations</b>, at the values of the frame that was captured.</li>
   </ul>
   <p>Out:</p>
   <ul class="plain">
-    <li>Anything <code>exclude</code> named, and anything snapdom itself excludes.</li>
+    <li>Anything <code>exclude</code> named, and anything SnapDOM itself excludes.</li>
     <li><code>display: none</code>, <code>visibility: hidden</code>, and content clipped away by
       an overflow ancestor.</li>
     <li><b>The value inside a native control.</b> The text in an <code>&lt;input&gt;</code>, the
       chosen <code>&lt;option&gt;</code> of a <code>&lt;select&gt;</code> and a placeholder are
-      painted by the browser itself and no CSS property describes them; they are graded
-      <code>O</code> and named. The widget's frame, border and background are drawn.</li>
-    <li><b>Cross-origin iframes.</b> The frame is a placeholder with its URL in the metadata.</li>
+      painted by the browser itself and no CSS property describes them. The widget's frame, border
+      and background are drawn.</li>
+    <li><b>Cross-origin iframes.</b> The frame becomes a placeholder.</li>
     <li><b>Closed shadow roots</b>, which are unreadable by anyone.</li>
   </ul>
-
-  <h2 id="recipes">Recipes</h2>
-
-  <h3>A capture, and its report, before you use it</h3>
-  <pre><code><span class="k">const</span> shot = <span class="k">await</span> snapdom(el, { plugins: [vector({ silent: <span class="k">true</span> })] })
-<span class="k">const</span> doc = <span class="k">await</span> shot.toVector()
-
-<span class="k">if</span> (doc.report.drift.median &gt; <span class="n">1</span>) warnTheUser(doc.report.drift)
-<span class="k">const</span> lossy = doc.diagnostics.filter(d =&gt; d.grade &amp;&amp; d.grade !== <span class="s">'E'</span>)
-console.table(lossy.map(d =&gt; ({ code: d.code, node: d.node, why: d.message })))</code></pre>
-
-  <h3>One capture, every format</h3>
-  <pre><code><span class="k">const</span> shot = <span class="k">await</span> snapdom(el, { plugins: [vector()] })
-
-<span class="k">const</span> doc = <span class="k">await</span> shot.toVector()
-<span class="k">const</span> svg = svdToSvg(doc).svg          <span class="c">// not toVectorSvg(), which walks the page again</span>
-<span class="k">const</span> fig = svdToFigma(doc)
-<span class="k">const</span> pdf = <span class="k">await</span> svdToPdf(doc)
-<span class="k">const</span> png = <span class="k">await</span> shot.toPng()</code></pre>
-
-  <h3>Hand a <code>.svd</code> to the Figma plugin</h3>
-  <pre><code><span class="k">const</span> doc = <span class="k">await</span> shot.toVector()
-<span class="k">const</span> blob = <span class="k">new</span> Blob([JSON.stringify(svdToFigma(doc))], { type: <span class="s">'application/json'</span> })
-<span class="k">const</span> a = Object.assign(document.createElement(<span class="s">'a'</span>), {
-  href: URL.createObjectURL(blob), download: <span class="s">'capture.svd'</span>
-})
-a.click()</code></pre>
-
-  <h3>See why a layer is where it is</h3>
-  <pre><code><span class="k">const</span> svg = <span class="k">await</span> shot.toVectorSvg({ debugPaint: <span class="k">true</span> })</code></pre>
-  <p>Every node is tinted by stacking-context depth and titled with its id, its grade and its
-  paint order. Hovering tells you which node you are looking at, which is the question you
-  actually have.</p>
-
-  <h3>Buy the effect and pay with the text</h3>
-  <pre><code><span class="k">await</span> snapdom(el, { plugins: [vector({ mode: <span class="s">'replica'</span> })] })</code></pre>
 
   <h2 id="limits">Limits</h2>
   <p>Written down because you will meet them, and meeting them here is better than meeting them in
   front of a client.</p>
   <ul class="plain">
     <li><b>Chromium.</b> Everything is measured there and the pixel baselines were recorded there.
-      Other engines are not tested, and claiming them would be the same silence this engine is
-      built against.</li>
-    <li><b>No font binary travels.</b> The document names the family and the face; it does not
-      embed the file. Subsetted binaries are the only ones a capture has, and shipping those into
-      someone's font list poisons it. So a viewer without your font substitutes one, and
-      <code>textLength</code> is withheld rather than squeezing glyphs into a width they were
-      never going to produce.</li>
+      Other engines are not tested, and we do not claim them.</li>
+    <li><b>No font binary travels.</b> The output names the family and the face; it does not embed
+      the file. So a viewer without your font substitutes one.</li>
     <li><b>A system font keyword is not a font name.</b> Text painted by
       <code>-apple-system</code> or <code>system-ui</code> cannot tell any destination which face
       to load.</li>
     <li><b>Auto Layout is not inferred.</b> Everything lands positioned. A frame you can move is
       not a frame that reflows, and guessing wrong at the layout is worse than not guessing.</li>
-    <li><b>Masks are not applied by the current Figma plugin</b>: the masked node is built as an
-      ordinary layer, and the plugin says so.</li>
-    <li><b>The value inside a native form control is not captured</b> (see above). The widget
-      is.</li>
     <li><b><code>backdrop-filter</code> does not survive.</b> Frosted glass is a blur of whatever
-      happens to sit behind the panel, and neither SVG nor Figma has a way to say that about an
-      arbitrary backdrop. The panel arrives as a flat colour, the node is graded and named, and
-      <code>rasterFilters</code> does not rescue this one: it bakes the node's own filter, not the
-      backdrop it was reading.</li>
-    <li><b>A conic gradient becomes 128 flat wedges</b> plus a small disc capping the apex the
-      wedges cannot cover. SVG has no conic paint server.</li>
+      sits behind the panel, and neither SVG nor Figma can say that about an arbitrary backdrop.
+      The panel arrives as a flat colour, and the diagnostics name it.</li>
+    <li><b>A conic gradient becomes 128 flat wedges</b> plus a small disc capping the apex. SVG has
+      no conic paint server.</li>
     <li><b>Shadow <code>spread</code> is approximate.</b> <code>feMorphology</code>'s kernel is
-      rectangular, so the spread corners are; with <code>target: 'figma'</code> the spread is
-      folded into the blur, loudly.</li>
-    <li><b>3D transforms are flattened</b> to their 2D projection, with a diagnostic. Nothing
-      projective survives.</li>
-    <li><b>Figma's SVG importer drops <code>letter-spacing</code>, ignores font stacks and does
-      not resolve pattern fills.</b> None of that is fixable from this side; all of it is
-      measured, declared, and avoided entirely by the plugin and the clipboard routes.</li>
+      rectangular, so the spread corners are.</li>
+    <li><b>3D transforms are flattened</b> to their 2D projection, with a diagnostic.</li>
     <li><b>Figma has no colour-matrix effect</b>, so <code>filter: saturate(…)</code> and its
-      relatives have no equivalent there at all. They are named, with the CSS verbatim, rather
-      than dropped quietly. Or baked, if you ask for <code>rasterFilters</code>.</li>
+      relatives have no equivalent there. They are named, with the CSS verbatim, rather than
+      dropped quietly.</li>
     <li><b>The capture is one subtree, one viewport, one moment.</b> No page-wide capture, no
       responsive variants, no component variants inferred from a static picture.</li>
   </ul>

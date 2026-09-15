@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>snapdom-vector: the capture, as geometry</title>
-<meta name="description" content="Export any element to a vector document: real shapes, real text, real layers, and a written record of everything that had to be approximated. Flat SVG, Figma, PDF.">
+<meta name="description" content="Export any element to a vector document: real shapes, real text, real layers, and a written record of everything that had to be approximated. Flat SVG and Figma.">
 <style>
   /* This page is built out of the same parts as the pdf one next door (same
      tokens, same shelf, same price block) because they are one product line and
@@ -213,12 +213,11 @@
 
   <h1>Export DOM captures<br><em>as editable vectors.</em></h1>
 
-  <p class="lede">Turn an element into shapes, editable text and usable layers for SVG, Figma
-  and vector PDF. Geometry and text positions are measured from the layout already resolved by
-  the browser.</p>
+  <p class="lede">Turn an element into shapes, editable text and usable layers for SVG and Figma.
+  Geometry and text positions are measured from the layout already resolved by the browser.</p>
 
   <!-- Both panels come out of ONE snapdom() call. The left one is `toPng()`, the
-       right one `toVectorSvg()`. Neither is a mock-up and neither was retouched;
+       right one `toVector()`. Neither is a mock-up and neither was retouched;
        `demo/_make-vector-samples.mjs` in snapdom-pro produces them. -->
   <div class="proof">
     <figure class="panel flat">
@@ -299,17 +298,12 @@
       <span class="meta">21 KB · 34 nodes · 22 text</span>
     </a>
   </div>
-
-  <p class="sub" style="margin-top:22px">You can also inspect the intermediate document and Figma
-  payload generated for the Product card sample:
-  <a href="samples/card.svd.json" download>card.svd.json</a> ·
-  <a href="samples/card.figma.json" download>card.figma.json</a>.</p>
 </section>
 
 <section>
   <span class="eyebrow">Fidelity</span>
   <h2>See what changes in each format</h2>
-  <p class="sub">Browsers, SVG, Figma and PDF do not support the same effects. The plugin tells
+  <p class="sub">Browsers, SVG and Figma do not support the same effects. The plugin tells
   you when it had to adapt, rasterize or omit something, and identifies the affected layer. You
   can review those changes before handing the file to a designer or a client.</p>
 
@@ -348,55 +342,42 @@
 
 <section>
   <span class="eyebrow">The whole API</span>
-  <h2>Add vector exports to a SnapDOM capture</h2>
-  <p class="sub">Register the plugin on a capture to add <code>toVector()</code> and
-  <code>toVectorSvg()</code> alongside <code>toPng()</code> and <code>toCanvas()</code>. The
-  outputs share one resolved capture of the page.</p>
+  <h2>Two methods on a SnapDOM capture</h2>
+  <p class="sub">Register the plugin on a capture and it gains <code>toVector()</code> and
+  <code>toFigma()</code>, alongside <code>toPng()</code> and <code>toCanvas()</code>. The only
+  option is <code>exclude</code>.</p>
 
   <pre class="code"><code><span class="k">import</span> { snapdom } <span class="k">from</span> <span class="s">'@zumer/snapdom'</span>
-<span class="k">import</span> { vector, svdToFigma } <span class="k">from</span> <span class="s">'@zumer/snapdom-vector'</span>
+<span class="k">import</span> vector <span class="k">from</span> <span class="s">'./vendor/snapdom-vector.mjs'</span>
 
 <span class="k">const</span> shot = <span class="k">await</span> snapdom(document.querySelector(<span class="s">'#plan-card'</span>), {
   plugins: [vector()]
 })
 
-<span class="k">const</span> svg = <span class="k">await</span> shot.toVectorSvg()   <span class="c">// flat SVG, no foreignObject, text is text</span>
-<span class="k">const</span> doc = <span class="k">await</span> shot.toVector()      <span class="c">// the SVD document</span>
-<span class="k">const</span> fig = svdToFigma(doc)             <span class="c">// payload for the Figma plugin</span></code></pre>
-  <p class="sub"><a href="docs.html">See the full API and options →</a></p>
+<span class="k">const</span> svg = <span class="k">await</span> shot.toVector()   <span class="c">// standalone SVG, no foreignObject, text is text</span>
+<span class="k">await</span> shot.toFigma()                <span class="c">// on the clipboard: paste it into Figma</span></code></pre>
+  <p class="sub"><a href="docs.html">Read the reference →</a></p>
 </section>
 
 <section>
   <span class="eyebrow">Where it goes</span>
-  <h2>SVG, Figma and vector PDF from one capture</h2>
-  <p class="sub">The capture produces a versioned vector document. Separate backends translate
-  that document for each destination, so SVG, Figma and PDF do not require another walk of the
-  page.</p>
+  <h2>An SVG file, or a paste into Figma</h2>
+  <p class="sub">Both come from the same capture of the page, and neither needs a server or an
+  install.</p>
 
   <div class="dest">
     <div>
       <h3>Flat SVG</h3>
-      <p class="call">shot.toVectorSvg()</p>
+      <p class="call">shot.toVector()</p>
       <p>Standalone SVG with editable text and native shapes. Open it in Illustrator, Inkscape,
-      Penpot, a browser, a printer or a plotter.</p>
+      Penpot, Figma, a browser, a printer or a plotter.</p>
     </div>
     <div>
-      <h3>Figma, via the plugin</h3>
-      <p class="call">svdToFigma(doc)</p>
-      <p>Create frames, editable text, gradients, shadows, borders and images through the Figma
-      Plugin API. Preflight reports missing fonts and approximations before creating layers.</p>
-    </div>
-    <div>
-      <h3>Figma, via paste</h3>
-      <p class="call">shot.toVectorFigmaClipboard()</p>
-      <p>Copy the capture and paste it into Figma without installing the plugin. This route uses
-      Figma's undocumented clipboard format, so the plugin remains the stable option.</p>
-    </div>
-    <div>
-      <h3>PDF</h3>
-      <p class="call">svdToPdf(doc)</p>
-      <p>Export geometry and real text to a resolution-independent PDF. For pixel fidelity plus
-      selectable text, use <a href="../pdf/">snapdom-pdf</a>.</p>
+      <h3>Figma</h3>
+      <p class="call">shot.toFigma()</p>
+      <p>Copies the capture in Figma's own paste format. Paste it into a Figma file and you get
+      frames, editable text, gradients, shadows and images, with nothing installed. The format is
+      undocumented, so if a Figma release breaks it, the SVG route keeps working while we update.</p>
     </div>
   </div>
 </section>
@@ -415,8 +396,7 @@
       <p class="for">One person, your own projects.</p>
       <ul>
         <li>Unlimited projects</li>
-        <li>Engine, SVG and PDF backends</li>
-        <li>The Figma plugin</li>
+        <li>SVG export and paste into Figma</li>
         <li>Minified and readable builds</li>
         <li>Private repo: releases and issues</li>
         <li>Every release while subscribed</li>
@@ -432,8 +412,7 @@
       <ul>
         <li>Unlimited developers</li>
         <li>Ship it inside what you build</li>
-        <li>Engine, SVG and PDF backends</li>
-        <li>The Figma plugin</li>
+        <li>SVG export and paste into Figma</li>
         <li>Minified and readable builds</li>
         <li>Private repo: releases and issues</li>
         <li>Every release while subscribed</li>
@@ -472,16 +451,15 @@
       before you paste.</p>
     </div>
     <div>
-      <h3>Do I need the Figma plugin?</h3>
-      <p>Only for Figma. The flat SVG opens in Illustrator, Inkscape, Penpot and any browser, and
-      it is the reason this is not a Figma product with a lock-in problem. The plugin is included,
-      loads from a manifest, and declares no network access whatsoever.</p>
+      <h3>Do I need a Figma plugin?</h3>
+      <p>No. <code>toFigma()</code> copies the capture and you paste it into Figma. The flat SVG
+      opens in Illustrator, Inkscape, Penpot and any browser too, which is why this is not a Figma
+      product with a lock-in problem.</p>
     </div>
     <div>
       <h3>Does anything leave the machine?</h3>
-      <p>No. The engine runs in your page and the Figma plugin's manifest declares
-      <code>networkAccess: none</code>, so it could not make a request if it wanted to. For a lot
-      of teams that is a legal requirement.</p>
+      <p>No. The engine runs in your page, and the copy for Figma goes through your own clipboard.
+      For a lot of teams that is a legal requirement.</p>
     </div>
     <div>
       <h3>Which browsers?</h3>
