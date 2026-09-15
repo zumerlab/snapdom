@@ -193,6 +193,7 @@
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+<link rel="stylesheet" href="../../launch-offer.css">
 </head>
 <body>
 
@@ -209,6 +210,12 @@
   <p class="lede">The visible page is SnapDOM's own capture. A real PDF text layer adds
   selection, search, copy and working links without asking another renderer to rebuild your
   layout.</p>
+
+  <aside class="launch-note" aria-label="Launch offer">
+    <strong>50% off your first year.</strong>
+    <p>First 30 purchases across PDF and Vector. Ends <time datetime="2026-09-29">September 29, 2026</time>, or when the offer sells out.</p>
+    <a href="#pricing" class="launch-link">See launch pricing →</a>
+  </aside>
 
   <!-- Both panels are real PDFs, rendered here by pdf.js. Same element, same
        exporter; the left one was written with `text: false`, which is the file every
@@ -487,17 +494,21 @@ snapdom.plugins(pdf())
   <p class="sub"><a href="docs.html"><b>Read the complete option, warning and limits reference →</b></a></p>
 </section>
 
-<section>
+<section id="pricing">
   <span class="eyebrow">Licence</span>
   <h2>An annual subscription</h2>
   <p class="sub">Individual and Business are the two plans. While a subscription is active you get
   every release, the private repository and support. When it ends you keep using the versions you
   have, in anything the plan allowed.</p>
 
+  <p class="launch-terms">Launch offer: 50% off the first year for the first 30 purchases across PDF and Vector, until September 29, 2026, whichever comes first. Up to two purchases per customer. Use code <code>LAUNCH50</code> at checkout.</p>
+
   <div class="price">
     <div class="tier">
       <span class="who">Individual</span>
-      <div class="amount">$39<small>USD / year</small></div>
+      <p class="launch-original"><s>$39</s> <span>50% off</span></p>
+      <div class="amount">$19.50<small>USD / first year</small></div>
+      <p class="launch-renewal">Then $39/year. Renews annually until cancelled.</p>
       <p class="for">One person, your own projects.</p>
       <ul>
         <li>Unlimited projects</li>
@@ -506,12 +517,14 @@ snapdom.plugins(pdf())
         <li>Private repository: releases and issues</li>
         <li>Keep the versions you have when it ends</li>
       </ul>
-      <a class="buy" href="https://buy.polar.sh/polar_cl_JqCwLmVRZxfLwWqOQEudWpWMsgziQohmmQrcr0ORcf3">Buy Individual</a>
+      <a class="buy" href="https://buy.polar.sh/polar_cl_JqCwLmVRZxfLwWqOQEudWpWMsgziQohmmQrcr0ORcf3?discount_code=LAUNCH50">Buy Individual</a>
     </div>
 
     <div class="tier pick">
       <span class="who">Business</span>
-      <div class="amount">$99<small>USD / year</small></div>
+      <p class="launch-original"><s>$99</s> <span>50% off</span></p>
+      <div class="amount">$49.50<small>USD / first year</small></div>
+      <p class="launch-renewal">Then $99/year. Renews annually until cancelled.</p>
       <p class="for">Companies, and work you deliver to clients.</p>
       <ul>
         <li>Unlimited developers</li>
@@ -521,7 +534,7 @@ snapdom.plugins(pdf())
         <li>Private repository: releases and issues</li>
         <li>Keep the versions you have when it ends</li>
       </ul>
-      <a class="buy" href="https://buy.polar.sh/polar_cl_VzhyG1d82GIgqlbAo48VyXxwQw9arwz1xTREV2p6tlg">Buy Business</a>
+      <a class="buy" href="https://buy.polar.sh/polar_cl_VzhyG1d82GIgqlbAo48VyXxwQw9arwz1xTREV2p6tlg?discount_code=LAUNCH50">Buy Business</a>
     </div>
   </div>
 

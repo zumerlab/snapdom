@@ -82,6 +82,7 @@
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+<link rel="stylesheet" href="../launch-offer.css">
 </head>
 <body>
 <div class="wrap">
@@ -89,7 +90,7 @@
 <header>
   <div class="bar">
     <span class="eyebrow">SnapDOM Pro</span>
-    <nav><a class="back" href="https://snapdom.dev">← SnapDOM</a></nav>
+    <nav><a class="back" href="../">← SnapDOM</a></nav>
   </div>
   <h1>PDF and vector export for SnapDOM.</h1>
   <p class="lede">Turn a SnapDOM capture into a searchable PDF or an editable vector file. Each plugin is
@@ -97,7 +98,13 @@
   yours when it ends.</p>
 </header>
 
-<div class="shelf">
+<aside class="launch-note" id="launch-offer" aria-label="Launch offer">
+  <strong>50% off your first year.</strong>
+  <p>Limited to the first 30 purchases across PDF and Vector. Ends <time datetime="2026-09-29">September 29, 2026</time>, or when the offer sells out. Up to two purchases per customer. Use code <code>LAUNCH50</code> at checkout.</p>
+  <a class="launch-link" href="#pro-plugins">Choose PDF or Vector →</a>
+</aside>
+
+<div class="shelf" id="pro-plugins">
 
   <a class="item" href="pdf/">
     <div>
@@ -112,9 +119,11 @@
       </div>
     </div>
     <div class="buy">
-      <div class="from">from</div>
-      <div class="amount">$39</div>
-      <div class="tier">per year · $99 business</div>
+      <div class="from">Individual · first year</div>
+      <p class="launch-original"><s>$39</s> <span>50% off</span></p>
+      <div class="amount">$19.50</div>
+      <div class="tier">Business: $49.50 first year</div>
+      <p class="launch-renewal">Then $39 / $99 per year</p>
       <span class="go">See it work →</span>
     </div>
   </a>
@@ -131,9 +140,11 @@
       </div>
     </div>
     <div class="buy">
-      <div class="from">from</div>
-      <div class="amount">$39</div>
-      <div class="tier">per year · $99 business</div>
+      <div class="from">Individual · first year</div>
+      <p class="launch-original"><s>$39</s> <span>50% off</span></p>
+      <div class="amount">$19.50</div>
+      <div class="tier">Business: $49.50 first year</div>
+      <p class="launch-renewal">Then $39 / $99 per year</p>
       <span class="go">See it work →</span>
     </div>
   </a>
@@ -141,6 +152,9 @@
 </div>
 
 <div class="note">
+  <p><b>Launch pricing covers the first year of each plugin.</b> Individual renews at US$39/year;
+  Business renews at US$99/year, until cancelled. The 30-purchase limit is shared across both
+  plugins and plans. All prices are in USD.</p>
   <p><b>Every plugin is an annual subscription.</b> No seat counting, no activation and nothing
   phoning home. You get the build, the documentation and access to a private repository for
   releases and issues. Cancel whenever you like, and you keep shipping the versions you already have.</p>

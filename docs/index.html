@@ -174,13 +174,13 @@
     .pro-panel { display: grid; grid-template-columns: 1.2fr .8fr; border: 1px solid rgba(255,255,255,.22); }
     .pro-copy { padding: 42px; }
     .pro-copy .label { color: #9eb3ff; font-size: 12px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
-    .pro-copy h3 { max-width: 620px; margin: 20px 0 14px; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; }
+    .pro-copy h2 { max-width: 620px; margin: 20px 0 14px; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; }
     .pro-copy p { max-width: 660px; margin: 0; color: #b9c5e4; font-size: 17px; line-height: 1.65; }
     .pro-meta { padding: 42px; display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid rgba(255,255,255,.22); }
     .pro-meta strong { display: block; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
     .pro-meta p { margin: 12px 0 28px; color: #b9c5e4; line-height: 1.55; }
-    .pro-meta .btn { color: var(--white); border-color: rgba(255,255,255,.55); }
-    .pro-meta .btn:hover { border-color: var(--white); }
+    .pro .btn { color: var(--white); border-color: rgba(255,255,255,.55); }
+    .pro .btn:hover { border-color: var(--white); }
     .resource-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     .resource { min-height: 190px; display: flex; flex-direction: column; justify-content: space-between; padding: 26px; border: 1px solid var(--line); background: var(--white); text-decoration: none; }
     .resource:hover { color: var(--blue); border-color: var(--blue); }
@@ -245,9 +245,23 @@
       .showcase-visual { min-height: 280px; }
       .footer-row { flex-direction: column; }
     }
+    @media (max-width: 600px) {
+      .pro-copy, .pro-meta { padding: 26px; }
+    }
   </style>
+  <link rel="stylesheet" href="./launch-offer.css">
 </head>
 <body>
+  <aside class="launch-strip" aria-label="SnapDOM Pro launch offer">
+    <div class="launch-strip-inner">
+      <div>
+        <span class="launch-strip-label">SnapDOM Pro · PDF &amp; Vector</span>
+        <strong>50% off your first year.</strong>
+        <p>Limited to the first 30 purchases. Ends <time datetime="2026-09-29">September 29, 2026</time>, or when the offer sells out.</p>
+      </div>
+      <a href="./pro/" data-umami-event="Home launch offer">Explore Pro →</a>
+    </div>
+  </aside>
   <header class="site-header">
     <div class="wrap nav">
       <a class="brand" href="./" aria-label="SnapDOM home"><span class="brand-mark"></span><span>SnapDOM</span></a>
@@ -260,6 +274,7 @@
         <a href="./made-with/">Made with</a>
         <a href="./ecosystem/">Ecosystem</a>
         <a href="./plugins.html">Plugins</a>
+        <a href="./pro/">Pro</a>
         <a href="./labs.html">Labs</a>
         <a href="./blog/">Blog</a>
         <a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a>
@@ -270,7 +285,7 @@
         </a>
       </nav>
     </div>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./ecosystem/">Ecosystem</a><a href="./plugins.html">Plugins</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a></div></nav>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./ecosystem/">Ecosystem</a><a href="./plugins.html">Plugins</a><a href="./pro/">Pro</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a></div></nav>
   </header>
 
   <main>
@@ -331,6 +346,28 @@
           <a href="https://github.com/antvis/GPT-Vis" target="_blank" rel="noopener" aria-label="AntV GPT-Vis repository"><img src="./assets/made-with/antvis.png" alt="AntV" title="AntV GPT-Vis"></a>
           <a href="https://github.com/metabrainz/listenbrainz-server" target="_blank" rel="noopener" aria-label="MetaBrainz ListenBrainz repository"><img src="./assets/made-with/metabrainz.png" alt="MetaBrainz" title="MetaBrainz ListenBrainz"></a>
           <a class="logo-more" href="./made-with/">View more projects →</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section pro" aria-labelledby="pro-title">
+      <div class="wrap pro-panel">
+        <div class="pro-copy">
+          <span class="label">SnapDOM Pro</span>
+          <h2 id="pro-title">Searchable PDFs.<br>Editable vectors.</h2>
+          <p>Add a text layer and pagination to your PDFs, or export editable shapes and text to SVG and Figma. Explore the samples from both plugins.</p>
+          <div class="actions">
+            <a class="btn btn-secondary" href="./pro/pdf/">Explore PDF →</a>
+            <a class="btn btn-secondary" href="./pro/vector/">Explore Vector →</a>
+          </div>
+        </div>
+        <div class="pro-meta">
+          <div>
+            <strong>Launch offer · 50% off</strong>
+            <p>Individual <b>$19.50</b> · Business <b>$49.50</b><br>First year, per plugin. Then $39 / $99 a year.</p>
+            <p>First 30 purchases across PDF and Vector.<br>Ends September 29, 2026, or when sold out.</p>
+          </div>
+          <a class="btn btn-secondary" href="./pro/">See plans and launch offer →</a>
         </div>
       </div>
     </section>
