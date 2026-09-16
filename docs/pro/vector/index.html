@@ -201,6 +201,24 @@
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 <link rel="stylesheet" href="../../launch-offer.css">
+<script>
+  if (location.hostname === 'snapdom.dev') {
+    const umami = document.createElement('script')
+    umami.defer = true
+    umami.src = 'https://cloud.umami.is/script.js'
+    umami.dataset.websiteId = '7ec718e8-f0c5-4abb-8f4f-144f57f61937'
+    document.head.appendChild(umami)
+
+    const analytics = document.createElement('script')
+    analytics.async = true
+    analytics.src = 'https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1'
+    document.head.appendChild(analytics)
+    window.dataLayer = window.dataLayer || []
+    function gtag(){ dataLayer.push(arguments) }
+    gtag('js', new Date())
+    gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' })
+  }
+</script>
 </head>
 <body>
 
