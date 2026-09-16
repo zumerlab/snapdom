@@ -11,7 +11,8 @@
  * Correctness: a property outside the universe can't differ from the tag's UA default,
  * so the defaults-diff downstream would have dropped it anyway. Escape hatches:
  * - Any unreadable (cross-origin) stylesheet → null (callers fall back to full reads).
- * - Shadow-root content is snapshotted with full reads (its sheets aren't scanned).
+ * - Shadow-root sheets are not part of this scan: styles.js unions them per capture through
+ *   scanSheetProps, and shadow content without a capture session keeps full reads.
  * - Element inline-style props are unioned in per node at snapshot time.
  * - Web Animations API keyframe props are unioned in (CSS animations come from rules).
  * @module styleScan
@@ -202,6 +203,39 @@ function scanSheet(sheet, universe, pseudoSels, state) {
   return scanRules(rules, universe, pseudoSels, state)
 }
 
+/**
+ * Add the properties WAAPI keyframes animate to `universe`. Programmatic animations live in no
+ * stylesheet, and `document.getAnimations()` misses the ones inside shadow roots on all three
+ * engines, so styles.js also passes each root's own list.
+ * @param {Animation[]} animations
+ * @param {Set<string>} universe
+ */
+export function addAnimationProps(animations, universe) {
+  for (const anim of animations) {
+    const frames = anim.effect?.getKeyframes?.() || []
+    for (const frame of frames) {
+      for (const key of Object.keys(frame)) {
+        if (key === 'offset' || key === 'easing' || key === 'composite' || key === 'computedOffset') continue
+        universe.add(key.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase()))
+      }
+    }
+  }
+}
+
+/**
+ * Collect the properties one stylesheet can set, for the shadow-root sheets scanAuthorStyles
+ * never sees. styles.js memoizes it per sheet and unions the result per capture.
+ * Pinned by __tests__/module.styles.shadowUniverse.test.js.
+ * @param {CSSStyleSheet} sheet
+ * @returns {Set<string>|null} null when the sheet is unreadable or blows the rule budget
+ */
+export function scanSheetProps(sheet) {
+  const props = new Set()
+  const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
+  const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set() }
+  return scanSheet(sheet, props, pseudoSels, state) ? props : null
+}
+
 /** Splits `sel` on `sep` outside parentheses, brackets and quotes. */
 function splitTopLevel(sel, sep) {
   const out = []
@@ -324,17 +358,7 @@ export function scanAuthorStyles(doc) {
       }
     }
     // Programmatic (WAAPI) animations don't live in stylesheets — union their keyframe props.
-    if (typeof doc.getAnimations === 'function') {
-      for (const anim of doc.getAnimations()) {
-        const frames = anim.effect?.getKeyframes?.() || []
-        for (const frame of frames) {
-          for (const key of Object.keys(frame)) {
-            if (key === 'offset' || key === 'easing' || key === 'composite' || key === 'computedOffset') continue
-            universe.add(key.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase()))
-          }
-        }
-      }
-    }
+    if (typeof doc.getAnimations === 'function') addAnimationProps(doc.getAnimations(), universe)
     // shareGate: null = a splitting selector the engine cannot match against (share off),
     // else the indexed list styleShareSafe filters by subtree presence and queries with.
     const shareSels = Array.from(state.shareUnsafeSels)

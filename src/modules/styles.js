@@ -16,10 +16,10 @@
  * @module styles
  */
 
-import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, snapshotComputedStyle } from '../utils/index.js'
+import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, isShadowRoot, snapshotComputedStyle } from '../utils/index.js'
 import { isFirefox } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
-import { scanAuthorStyles } from './styleScan.js'
+import { scanAuthorStyles, scanSheetProps, addAnimationProps } from './styleScan.js'
 import { isInternalNode } from '../utils/ownership.js'
 
 /** element -> { env, stamp, snapshot, embedFonts, excludeStyleProps }. Cross-capture; a hit
@@ -668,17 +668,70 @@ export function importantPropsFor(el) {
 }
 
 /**
- * The properties the page's CSS can move off their UA default (styleScan.js), or null for
- * shadow-root content and an unreadable scan, which both mean full reads. The base reset and
- * diff.js read it too, so everything prunes with the same set the snapshots use.
+ * The properties the page's CSS can move off their UA default (styleScan.js), or null for an
+ * unreadable scan, which means full reads. The base reset and diff.js read it too, so
+ * everything prunes with the same set the snapshots use. Shadow-root content gets the
+ * capture's own union (shadowUniverseOf) when the caller passes its session, and full reads
+ * without one.
  * @param {Element} el
+ * @param {object} [session] - the capture's sessionCache
  * @returns {Set<string>|null}
  */
-export function universeFor(el) {
+export function universeFor(el, session) {
   const doc = el.ownerDocument || document
-  // Shadow-root content: its own sheets aren't scanned — keep full reads there.
-  if (el.getRootNode && el.getRootNode() !== doc) return null
-  return scanFor(doc).universe
+  const root = el.getRootNode ? el.getRootNode() : doc
+  if (root === doc) return scanFor(doc).universe
+  return session && isShadowRoot(root) ? shadowUniverseOf(el, root, doc, session) : null
+}
+
+/** Per sheet and style epoch: what one shadow-root sheet can set, null when unreadable.
+ *  Component libraries adopt one sheet per component type: the #503 table's 281 roots share
+ *  34 sheets. */
+const sheetPropsCache = new WeakMap()
+
+/**
+ * The universe for shadow-root content: the document's, plus the sheets and WAAPI keyframes
+ * of every root a node's style can come from. That is its own root, the roots above it
+ * (::part rules and inheritance), its shadow root when it is a host (:host) and the root of
+ * each slot it is assigned through (::slotted). A root joins together with every root above
+ * it, so the order the clone walk reads nodes in does not matter; the set only grows, and a
+ * larger set only costs reads. It lives on the session, one capture. An unreadable sheet
+ * sends the rest of the capture's shadow content back to full reads.
+ * Measured on the #503 ArcGIS table (2178 nodes, 281 roots): first capture 590-614 to 472 ms,
+ * second 488 to 345 ms, raster identical; 150 nested roots of shadowTreeScenario, cold, 100-120
+ * to 57 ms. Captures served from the snapshot cache do not change.
+ * Pinned by __tests__/module.styles.shadowUniverse.test.js.
+ * @param {Element} el
+ * @param {ShadowRoot} root - el's own root
+ * @param {Document} doc
+ * @param {object} session
+ * @returns {Set<string>|null}
+ */
+function shadowUniverseOf(el, root, doc, session) {
+  let st = session.__shadowUniverse
+  if (st === null) return null
+  if (!st) {
+    const base = scanFor(doc).universe
+    if (!base) return (session.__shadowUniverse = null)
+    st = session.__shadowUniverse = { universe: new Set(base), roots: new Set() }
+  }
+  const join = (r) => {
+    for (; isShadowRoot(r) && !st.roots.has(r); r = r.host.getRootNode()) {
+      st.roots.add(r)
+      for (const sheet of [...r.styleSheets, ...(r.adoptedStyleSheets || [])]) {
+        let rec = sheetPropsCache.get(sheet)
+        if (!rec || rec.epoch !== __epoch) sheetPropsCache.set(sheet, rec = { epoch: __epoch, props: scanSheetProps(sheet) })
+        if (!rec.props) return false
+        for (const p of rec.props) st.universe.add(p)
+      }
+      addAnimationProps(r.getAnimations(), st.universe)
+    }
+    return true
+  }
+  let ok = join(root) && (!el.shadowRoot || join(el.shadowRoot))
+  for (let slot = el.assignedSlot; ok && slot; slot = slot.assignedSlot) ok = join(slot.getRootNode())
+  if (!ok) return (session.__shadowUniverse = null)
+  return st.universe
 }
 
 /** The property set a pseudo-element's snapshot reads (styleScan's pseudoUniverse); null
@@ -1093,9 +1146,9 @@ function snapshotIsCurrent(rec, el) {
  *    once per capture in captureDOM → options.__styleShare.
  *  - element: never for form controls (UA styles their state without author CSS), never for
  *    the focused element (UA :focus-visible ring), never for shadow-root content (its sheets
- *    are outside the scan — universeFor already forces full reads there), and never for a
- *    shadow host or a slotted node, which that unscanned sheet styles through :host() and
- *    ::slotted(). Pinned by __tests__/regression.shadowHostStructural.test.js.
+ *    are outside the document scan the share gate comes from), and never for a shadow host
+ *    or a slotted node, which that unscanned sheet styles through :host() and ::slotted().
+ *    Pinned by __tests__/regression.shadowHostStructural.test.js.
  *
  * The share map lives on the SESSION — one capture — so no cross-capture staleness is
  * possible; the per-element snapshotCache (cross-capture, stamp-guarded) sits in front
@@ -1287,9 +1340,10 @@ export function pseudoSnapshotFor(source, pseudo, style, session, options) {
  * @param {CSSStyleDeclaration|null} [preStyle] - getComputedStyle(el), when the caller has it
  * @param {object} [options]
  * @param {{st: object, id: number}|null} [shareInfo] - the identity to share under, or null
+ * @param {object|null} [session] - the capture's sessionCache, for shadow content's universe
  * @returns {Record<string, string>}
  */
-function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
+function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, session = null) {
   const rec = snapshotCache.get(el)
   // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
   // (skipped props), which no invalidation signal tracks. Capturing the same element twice
@@ -1331,7 +1385,7 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null) {
       Object.defineProperty(snap, '__bgClipTextFix', { value: shared.snap.__bgClipTextFix, enumerable: false })
     }
   } else {
-    snap = snapshotComputedStyleFull(style, options, el, universeFor(el))
+    snap = snapshotComputedStyleFull(style, options, el, universeFor(el, session))
     if (shareInfo) {
       // Stored by REFERENCE, with the riders it already carries: the copy that used to be
       // made here, plus a re-read list and a base signature per identity, cost 27 ms of a
@@ -1559,7 +1613,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
       !source.shadowRoot && !source.assignedSlot
     if (eligible) shareInfo = { st, id }
   }
-  const snap = getSnapshot(source, pre, ctx.options, shareInfo)
+  const snap = getSnapshot(source, pre, ctx.options, shareInfo, session)
   // Inline author declarations were normalized above from getComputedStyle too.
   // Override their zero margin (including logical shorthands) with the retained auto.
   if (source.getAttribute?.('style')) {
