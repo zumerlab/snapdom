@@ -246,6 +246,31 @@ describe('collectScrollbarCSS (#334)', () => {
     expect(out).not.toContain('.other')
   })
 
+  it('extracts meter, progress and slider part rules (#502)', () => {
+    // A document of its own: the memo is per document and keyed on rule COUNTS, and once an
+    // engine drops the other vendor's two rules this sheet has as many as the one above.
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    const doc = frame.contentDocument
+    const style = doc.createElement('style')
+    style.textContent = `
+      meter::-webkit-meter-optimum-value { color: red; }
+      progress::-webkit-progress-value { color: red; }
+      input::-webkit-slider-thumb { color: red; }
+      meter::-moz-meter-bar { color: red; }
+      progress::-moz-progress-bar { color: red; }
+    `
+    doc.head.appendChild(style)
+    const out = collectScrollbarCSS(doc)
+    frame.remove()
+
+    // Each engine keeps only the vendor prefixes it parses; the other rules never reach CSSOM.
+    const moz = navigator.userAgent.includes('Firefox')
+    for (const part of moz ? ['::-moz-meter-bar', '::-moz-progress-bar'] : ['::-webkit-meter-optimum-value', '::-webkit-progress-value', '::-webkit-slider-thumb']) {
+      expect(out).toContain(part)
+    }
+  })
+
   it('returns empty string for null document', () => {
     expect(collectScrollbarCSS(null)).toBe('')
   })

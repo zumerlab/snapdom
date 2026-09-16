@@ -843,12 +843,17 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   return pinned
 }
 
-/** Match ::-webkit-scrollbar and related pseudos (#334) */
-const SCROLLBAR_PSEUDO = /::-webkit-scrollbar(-[a-z]+)?\b/i
+/**
+ * UA part pseudos the clone can only style through the author rules: scrollbars (#334), meter
+ * and progress (#502), and the slider Chromium clones natively. Chromium and WebKit answer
+ * getComputedStyle for these parts with the host element's own style; Firefox does read its
+ * `::-moz-*` parts, but the rules are the one path all three share. No `::-moz-range-*`:
+ * Firefox always paints the range replacement from clone.js.
+ */
+const PART_PSEUDO = /::-(?:webkit-(?:scrollbar|meter|progress|slider)|moz-(?:meter|progress))/i
 
 /**
- * Recursively collect CSS rules that contain ::-webkit-scrollbar selectors.
- * Fixes #334: custom scrollbar styles now apply in capture.
+ * Recursively collect the CSS rules whose selectors name a part pseudo.
  * @param {CSSRuleList} rules
  * @param {Set<string>} seen - dedupe by cssText
  * @returns {string}
@@ -870,7 +875,7 @@ function collectScrollbarRulesFromRules(rules, seen = new Set()) {
       }
       if (rule.type === CSSRule.STYLE_RULE) {
         const sel = rule.selectorText || ''
-        if (SCROLLBAR_PSEUDO.test(sel)) {
+        if (PART_PSEUDO.test(sel)) {
           const text = rule.cssText
           if (text && !seen.has(text)) {
             seen.add(text)
@@ -902,9 +907,12 @@ function scrollbarFingerprint(doc) {
 }
 
 /**
- * Extract ::-webkit-scrollbar rules from the document's stylesheets, so custom scrollbar
- * styling appears in the capture (#334). Memoized per document on the fingerprint above.
- * Pinned by __tests__/utils.capture.helpers.test.js.
+ * Extract the part-pseudo rules (`PART_PSEUDO`) from the document's stylesheets, so a styled
+ * scrollbar (#334), meter or progress (#502) paints in the capture instead of the UA default.
+ * The name, and the public `scrollbarCSS` artifact it fills, predate the meter and progress
+ * parts. Memoized per document on the fingerprint above.
+ * Pinned by __tests__/utils.capture.helpers.test.js and, against the live element,
+ * __tests__/visual.fidelity.livedom.test.js.
  * @param {Document} doc
  * @returns {string}
  */
