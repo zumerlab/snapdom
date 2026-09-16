@@ -24,7 +24,7 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
-import { universeFor, inlineAllStyles } from '../modules/styles.js'
+import { universeFor, inlineAllStyles, getStyleEpoch } from '../modules/styles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { sanitizeCloneForXHTML } from '../utils/capture.helpers.js'
@@ -84,10 +84,14 @@ function subtreeUsesBackdropFilter(root, universe) {
 
 /** Selector/counter semantics that let a mutation inside one subtree change rendering
  *  OUTSIDE it (sibling combinators, :has(), CSS counters) — the subtree-diff premise breaks.
- *  Memoized per property-universe identity (a new Set per style epoch). */
+ *  Memoized per document and style epoch, the scope the rules were read at. Not per universe
+ *  Set: scanFor keeps the Set across epochs when the props match, and an adopted `:has()`
+ *  rule adds no prop. */
 const relationalCache = new WeakMap()
-function stylesLeakAcrossSubtrees(doc, universe) {
-  if (relationalCache.has(universe)) return relationalCache.get(universe)
+function stylesLeakAcrossSubtrees(doc) {
+  const epoch = getStyleEpoch()
+  const memo = relationalCache.get(doc)
+  if (memo && memo.epoch === epoch) return memo.leaky
   let leaky = false
   const state = { budget: 20000 }
   const scanRules = (rules) => {
@@ -119,7 +123,7 @@ function stylesLeakAcrossSubtrees(doc, universe) {
       }
     }
   } catch { leaky = true }
-  relationalCache.set(universe, leaky)
+  relationalCache.set(doc, { epoch, leaky })
   return leaky
 }
 
@@ -246,7 +250,7 @@ async function diffCapture(element, state, context) {
   const doc = element.ownerDocument || document
   const universe = universeFor(element)
   if (!universe) return null // unreadable (cross-origin) CSS: can't rule out leaky selectors
-  if (stylesLeakAcrossSubtrees(doc, universe)) return null
+  if (stylesLeakAcrossSubtrees(doc)) return null
 
   // Outermost dirty roots only; every root must still be a live descendant of the capture.
   const roots = []

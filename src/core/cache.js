@@ -45,7 +45,7 @@ class EvictingMap extends Map {
  *  - background ... background-image data URLs by URL (utils/image.js)
  *  - resource ..... blob: URL contents (clone.helpers resolveBlobUrl; fonts.js reads it)
  *  - defaultStyle . per-tag UA defaults from the sandbox (utils/css.js)
- *  - baseStyle .... the base reset CSS per tag set (capture.helpers)
+ *  - baseStyle .... the base reset CSS per tag set, with the universe it was pruned by (capture.helpers)
  *  - compress ..... downsampled images (compress.js), see below
  *  - computedStyle  getStyle's memo, one CSSStyleDeclaration per element (utils/css.js)
  *  - measureHints . the clone-in-document measurement (engines/svg.js), see below

@@ -951,14 +951,17 @@ export function collectScrollbarCSS(doc) {
 export function assembleCaptureCSS(state, fontsCSS) {
   const usedTags = collectUsedTagNames(state.clone).sort()
   const tagKey = usedTags.join(',')
+  // The reset is pruned by the universe, so a memo keyed on the tags alone served a reset
+  // built before CSS naming `appearance` arrived, and the control painted native (#502).
+  const universe = universeFor(state.element)
+  const memo = cache.baseStyle.get(tagKey)
   let baseCSS
-  if (cache.baseStyle.has(tagKey)) {
-    baseCSS = cache.baseStyle.get(tagKey)
+  if (memo && memo.universe === universe) {
+    baseCSS = memo.css
   } else {
-    baseCSS = generateDedupedBaseCSS(usedTags, universeFor(state.element))
-    cache.baseStyle.set(tagKey, baseCSS)
+    baseCSS = generateDedupedBaseCSS(usedTags, universe)
+    cache.baseStyle.set(tagKey, { universe, css: baseCSS })
   }
-  // #334: inject ::-webkit-scrollbar rules so custom scrollbar styles apply in capture
   const scrollbarCSS = collectScrollbarCSS(state.element?.ownerDocument || document)
   state.fontsCSS = fontsCSS
   state.baseCSS = baseCSS

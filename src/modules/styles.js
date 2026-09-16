@@ -599,7 +599,17 @@ const universeCache = new WeakMap()
 function scanFor(doc) {
   let rec = universeCache.get(doc)
   if (!rec || rec.epoch !== __epoch) {
+    const prev = rec && rec.universe
     rec = { epoch: __epoch, ...scanAuthorStyles(doc) }
+    // A re-scan that finds the same props keeps the previous Set: its identity keys the base
+    // reset memo (assembleCaptureCSS) and any DOM mutation bumps the epoch, so a new Set per
+    // scan would rebuild the reset (0.12-0.65 ms) on every capture of a live page.
+    const next = rec.universe
+    if (prev && next && prev.size === next.size) {
+      let same = true
+      for (const p of next) if (!prev.has(p)) { same = false; break }
+      if (same) rec.universe = prev
+    }
     universeCache.set(doc, rec)
   }
   return rec

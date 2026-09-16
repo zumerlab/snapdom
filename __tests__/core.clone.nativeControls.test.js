@@ -146,6 +146,26 @@ describe('the raster carries the control', () => {
     expect(accentHits(canvas, [255, 0, 102])).toBeGreaterThan(100)
   })
 
+  // Chromium clones the slider natively, so an author-styled thumb lives only in the
+  // ::-webkit-slider-* rules the capture carries over (#502's mechanism). Measured before the
+  // rules were collected: 0 thumb pixels. Firefox and WebKit paint the replacement above.
+  it.skipIf(isFirefox() || isSafari())('paints an author-styled slider thumb', async () => {
+    // In <head>, outside the capture: a <style> inside the subtree is cloned with it and would
+    // pass this test on its own.
+    const style = document.createElement('style')
+    style.textContent = `
+      .ns-r{appearance:none;-webkit-appearance:none;display:block;width:180px;height:20px;margin:0;background:rgb(59,130,246)}
+      .ns-r::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border:0;background:rgb(255,0,102)}`
+    document.head.appendChild(style)
+    try {
+      mount('<input class="ns-r" type="range" min="0" max="100" value="50">')
+      const canvas = await snapdom.toCanvas(mounted, { dpr: 1, embedFonts: false })
+      expect(accentHits(canvas, [255, 0, 102])).toBeGreaterThan(200)
+    } finally {
+      style.remove()
+    }
+  })
+
   it('paints the colour well on every engine', async () => {
     mount('<input type="color" value="#ff0066">')
     const canvas = await snapdom.toCanvas(mounted, { dpr: 1, embedFonts: false })
