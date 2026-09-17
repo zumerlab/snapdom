@@ -157,7 +157,8 @@ options through the second argument's `options` object.
     svgString,       // () => string; lazily decodes SVG, throws for a raster engine capture
   },
   artifacts: {       // Captured render CSS, available without parsing the URL
-    classCSS, fontsCSS, baseCSS, scrollbarCSS
+    classCSS, fontsCSS, baseCSS,
+    scrollbarCSS,    // author rules for UA parts the clone cannot read: scrollbars, meter, progress, slider
   },
   exports,           // defineExports only: core exporters (png, canvas, blob, …)
                      // without their hooks, so a custom format can build on them

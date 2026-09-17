@@ -34,7 +34,7 @@ SnapDOM 在浏览器内捕获渲染后的界面状态。核心引擎提供可复
 - 根元素变换包括独立的 `translate`、`rotate` 和 `scale`，计算边界时会考虑变换原点。根元素的位移会被规范化；`outerTransforms: false` 还会移除旋转，但保留 `scale` 和 `skew`。
 - `outerShadows: false` 移除根元素的阴影、轮廓和 `drop-shadow()`，但保留模糊。`true` 包含根元素效果；`'subtree'` 还包含后代元素的阴影。显式裁剪边界不会扩展。
 - 背景、蒙版、边框图片、裁剪路径和混合模式保留捕获时的样式。
-- 捕获路径支持时会包含自定义滚动条样式；已滚动的内容会被捕获，但不包含自定义滚动条。
+- 捕获路径支持时会包含自定义滚动条样式，以及 `<meter>`、`<progress>` 和滑块部件（`::-webkit-*` / `::-moz-*` 规则）的样式；已滚动的内容会被捕获，但不包含自定义滚动条。
 
 `reconcile: true` 对照源元素测量带样式的克隆，校正有偏差的盒模型。它可以修复文字换行或布局差异，但需要额外的测量流程。`excludeStyleProps` 根据 RegExp 或判断函数省略指定属性。
 
@@ -90,6 +90,7 @@ SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可�
 - 渲染：`backgroundColor`、`quality`、`outerTransforms`、`outerShadows` 和 `reconcile` 控制输出。
 - 资源：字体选项、`useProxy`、`fallbackURL` 和 `placeholders` 控制嵌入及回退方案。
 - 复用：`canvas` 接受现有渲染目标，`invalidate` 在无法自动观察的变化后刷新捕获。
+- 响应性：`fast: false` 让耗时较长的捕获约每帧暂停一次，页面在捕获期间仍可绘制并响应输入，总耗时基本不变。
 
 ## 插件系统
 

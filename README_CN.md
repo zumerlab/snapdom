@@ -171,6 +171,7 @@ const result = await snapdom(card, {
 | `captureSelection` | `false` | 包含用户的文字选区 |
 | `canvas` | 未设置 | 复用现有 Canvas |
 | `invalidate` | `false` | 在编程修改 CSSOM 等变化后刷新捕获 |
+| `fast` | `true` | 设为 `false` 时，长时间捕获期间页面仍可响应 |
 
 [完整选项](https://snapdom.dev/docs/options/)还包括阴影、变换、字体、CORS、回退方案和布局校正。
 
@@ -244,7 +245,7 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 | 位图的 width/height 可能再乘以 `scale` | width/height 优先于 scale | 直接传最终尺寸，如用 `width: 400` 替代 `width: 200, scale: 2` |
 | 使用 `burst` 手动开启重复捕获记忆化 | 符合条件的捕获自动记忆化；`burst` 不再记录在文档中，也不再受支持 | 删除 `burst`（引擎仍会读取它供内部使用，请勿依赖），并在 `sheet.insertRule()` 等无法自动观察的变化后，用 `invalidate: true` 重新捕获一次 |
 | `preCache` 用于准备资源 | 已移除；`preCapture()` 学习捕获意图 | 删除 `preCache`；`preCapture()` 不是直接改名后的替代方法 |
-| `fast` 选择优化路径 | 已移除 | 删除该选项 |
+| `fast: false` 通过空闲回调进行克隆 | `fast: false` 约每帧让出一次主线程，总耗时基本不变 | 保留 `fast: false` |
 | `filter` / `filterMode` 可与 `exclude` / `excludeMode` 同时使用 | 两种控制及其独立模式仍受支持；`exclude` 还支持判断函数 | 保留原有规则和模式；需要时再使用新增判断函数形式 |
 | `cache: 'auto'` 或 `'full'` | 两者均映射为 `'soft'` | 通常可以省略；`'disabled'` / `false` 用于调试 |
 | `compress` 控制内嵌图片降采样 | 图片优化自动进行；`compress` 不再记录在文档中，也不再受支持 | 删除 `compress`；引擎仍会读取它供内部使用，请勿依赖 |

@@ -352,6 +352,7 @@ export interface CaptureContext extends Omit<SnapdomOptions, "exclude" | "filter
     classCSS: string;
     fontsCSS: string;
     baseCSS: string;
+    /** Author rules for UA parts the clone cannot read: scrollbars, meter, progress, slider. */
     scrollbarCSS: string;
   } | null;
 

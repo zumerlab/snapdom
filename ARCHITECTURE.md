@@ -68,6 +68,7 @@ exceptions below are implemented in `src/core/burst.js` and the related modules:
 | CSS transitions/animations and WAAPI | `getAnimations()` across light/open-shadow scopes; running targetable light-DOM effects rebuild per frame through diff, ambiguous effects force full capture | burst.js + styles.js `invalidateSnapshotsUnder` |
 | Selection capture | bypasses memoization because selection/range state is not a DOM mutation | snapdom.js `main` |
 | Canvas pixel draws | bypass memoization because pixels are invisible to DOM observers | snapdom.js `main` → burst.js `isAutoBurstSafe` |
+| Changes while a `fast: false` capture pauses | the torn-frame judgement runs again when the clone stage ends, and a torn clone is redone in one task; captures without burst watchers (frame-driven trees, function-valued policies, selection, impure plugins) keep what they read | capture.js `captureDOM` + burst.js `__tornSinceStart` |
 | CSSOM rule edits (`sheet.insertRule`, `rule.style.x = …`) | not automatically observed; use `invalidate: true` to clear style caches as well as the result memo. This also refreshes the set of captured properties when a rule introduces one that was not previously used | snapdom.js `main` → styles.js `invalidateStyleCaches` |
 | Plugins with render hooks | impure hooks suspend automatic memoization; pure hooks may memoize, while diff bails whenever it would skip a required lifecycle hook | plugins.js `hasImpureRenderPlugins` + diff.js |
 | Function-valued capture policies | `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` bypass memoization even when their function identity is unchanged; applicable style/fallback decisions are reevaluated on each new capture | snapdom.js `main` + styles.js |
@@ -87,6 +88,8 @@ styles. Those measurements describe the tested workloads, not every page or brow
 Other constraints to preserve when changing the pipeline:
 
 - SVG-as-image decoding runs on the main thread; compression downsampling can use a worker.
+- `fast: false` pauses with a `MessageChannel` task. `scheduler.yield()` resumes ahead of rendering: on a large shadow-DOM table the page went 83-117 ms between frames with it, against 17-33 ms with a message.
+- Shadow-root content prunes its style reads with the sheets of the roots that can style it. `document.getAnimations()` misses animations inside shadow roots in all three engines, so each root's own list is added.
 - Large foreignObject SVGs served through blob URLs can taint Chromium canvases and break raster exports.
 - System-font metrics can drift in SVG-as-image. Removing reconciliation warnings or relaxing
   inline-block/flex width guards previously reintroduced text wrapping regressions.

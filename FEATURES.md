@@ -34,7 +34,7 @@ Non-rendered nodes such as scripts and templates are skipped. The clone's root m
 - Root transforms include individual `translate`, `rotate` and `scale`, with origin-aware bounds. Root translation is normalized; `outerTransforms: false` also removes rotation while preserving `scale` and `skew`.
 - `outerShadows: false` removes root shadows, outlines and `drop-shadow()` while keeping blur. `true` includes root effects; `'subtree'` also includes descendant shadow ink. Explicit clip edges never expand.
 - Backgrounds, masks, border images, clip paths and blend modes preserve their captured styles.
-- Custom scrollbar styles are included where the capture path supports them; scrolled content is captured without the custom scrollbar.
+- Custom scrollbar styles and styled `<meter>`, `<progress>` and range parts (`::-webkit-*` / `::-moz-*` rules) are included where the capture path supports them; scrolled content is captured without the custom scrollbar.
 
 `reconcile: true` measures the styled clone against the source and corrects diverging boxes. It can fix text wrapping or layout differences, at the cost of another measurement pass. `excludeStyleProps` omits properties selected by a RegExp or predicate.
 
@@ -90,6 +90,7 @@ Every public option is documented in the [options reference](https://snapdom.dev
 - Rendering: `backgroundColor`, `quality`, `outerTransforms`, `outerShadows` and `reconcile` control the output.
 - Resources: font options, `useProxy`, `fallbackURL` and `placeholders` control embedding and fallbacks.
 - Reuse: `canvas` accepts an existing render target, and `invalidate` refreshes after unobservable changes.
+- Responsiveness: `fast: false` pauses a long capture about every frame, so the page keeps painting and taking input at nearly the same total time.
 
 ## Plugin system
 
