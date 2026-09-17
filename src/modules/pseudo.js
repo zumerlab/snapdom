@@ -637,6 +637,8 @@ function canSkipPseudoWalk(source, sessionCache) {
  */
 export async function inlinePseudoElements(source, clone, sessionCache, options, isDescendant = false) {
   if ((source?.nodeType !== 1) || (clone?.nodeType !== 1)) return
+  // fast: false | 'auto' (#503): this walk probes every shadow-root node, 65 ms on that table.
+  if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   // #447: a textarea's value is its *child text content*, so wrapping characters in a
   // <span> (as the ::first-letter path does) drops them from the rendered value.
   // Browsers don't render pseudo-elements on textarea anyway.

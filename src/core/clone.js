@@ -258,6 +258,8 @@ function makeClipHusk(node, sessionCache, options) {
  */
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error('Invalid node')
+  // fast: false | 'auto' (#503). At entry, before any work, so paused nodes resume in order.
+  if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   const clonedAssignedNodes = new Set()
   let pendingSelectedOptions = null
   let pendingTextAreaValue = null

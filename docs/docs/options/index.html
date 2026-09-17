@@ -114,6 +114,7 @@
           <tr><td class="num">outerTransforms</td><td class="num">boolean</td><td class="num">true</td><td>Keep the root's rotation and scale/skew. <code>false</code> removes rotation while preserving scale/skew; root translation is normalized.</td></tr>
           <tr><td class="num">outerShadows</td><td class="num">boolean | "subtree"</td><td class="num">false</td><td>Strip or bound root effects; <code>"subtree"</code> also bounds descendant shadow ink. Blur bleed is included unless <code>clip</code> fixes the edges.</td></tr>
           <tr><td class="num">reconcile</td><td class="num">boolean</td><td class="num">false</td><td>Measure and pin clone boxes that diverge from the live DOM.</td></tr>
+          <tr><td class="num">fast</td><td class="num">boolean | 'auto'</td><td class="num">true</td><td>Whether a long capture may pause so the page keeps painting and taking input. <code>'auto'</code> is experimental.</td></tr>
           <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>Force one fresh capture that is not served from the existing memo and clear style snapshots after unobservable application changes. A stable fresh result may become the new memo.</td></tr>
           <tr><td class="num">captureSelection</td><td class="num">boolean</td><td class="num">false</td><td>Render the live text or field selection.</td></tr>
           <tr><td class="num">canvas</td><td class="num">HTMLCanvasElement</td><td class="num">null</td><td>Reuse an existing raster target.</td></tr>
@@ -272,7 +273,8 @@ await snapdom.toPng(document.body, { exclude: isHidden });</pre>
       <h2 id="v2-options">Other v2 option changes</h2>
       <p>Compared with v2.x.x, the following settings no longer belong to the public v3 options. The underlying capture capabilities remain:</p>
       <ul>
-        <li><code>fast</code> and <code>burst</code>: remove these switches. Optimizations and eligible repeat memoization are automatic. Use <code>invalidate: true</code> for one fresh capture after an otherwise unobservable change.</li>
+        <li><code>burst</code>: remove this switch. Eligible repeat memoization is automatic. Use <code>invalidate: true</code> for one fresh capture after an otherwise unobservable change.</li>
+        <li><code>fast: false</code> still keeps the page responsive, now by pausing about every frame instead of through idle callbacks. See <a href="#fast">fast</a>.</li>
         <li><code>compress</code>: remove the switch. Embedded bitmap optimization is automatic, with no public opt-out for embedding the original resources verbatim.</li>
         <li><code>resolvePicturePlaceholders</code> and <code>pictureResolver</code>: remove these settings. The clone resolves responsive images and common lazy-loading attributes. There is no replacement core tuning object; handle custom loading, concurrency or timeout requirements in the application before capture.</li>
       </ul>
@@ -305,6 +307,15 @@ await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
       <p>With the SVG engine, captured HTML lays out inside <code>&lt;foreignObject&gt;</code>. Inline text and table cells can wrap differently when font metrics or layout constraints differ from the live page.</p>
       <p><code>reconcile: true</code> measures the styled clone offscreen against the live subtree and pins boxes that diverge. It adds a layout pass and can roughly double capture time. Use it when you see wrapping differences; SnapDOM also emits a one-time suggestion for captures that may benefit.</p>
       <pre class="code-block">await snapdom.toPng(el, { reconcile: true });</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="fast">fast</h2>
+      <p>A capture reads the computed style of every node in one pass. On a large tree, such as a data table built from web components, that pass can hold the main thread for hundreds of milliseconds: the page stops painting and responding until it ends.</p>
+      <p><code>fast: false</code> lets the capture give the page a turn about every frame, so scrolling, typing and animations continue while it runs. <code>true</code>, the default, captures in one task. The pauses add little to the total time.</p>
+      <p><code>fast: 'auto'</code> is experimental and may change: it pauses only once a capture runs past 40 ms, so short captures never pause.</p>
+      <p>If the captured element changes while a capture is paused, SnapDOM clones it again in one task, so the image shows a state the page really had. That check uses the watchers behind repeat-capture memoization, so a capture that is never memoized (frame-driven trees, function-valued callbacks, <code>captureSelection</code>) keeps what it read.</p>
+      <pre class="code-block">await snapdom.toPng(table, { fast: false });</pre>
     </section>
 
     <section class="prose">

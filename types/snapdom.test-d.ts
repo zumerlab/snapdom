@@ -103,11 +103,18 @@ async function staticNamespaceHelpers() {
 }
 
 async function invalidateOption() {
-  // burst/compress/fast are engine behavior in v3, not public options — only the
-  // invalidate escape hatch remains typed.
+  // burst/compress are engine behavior in v3, not public options: only the invalidate
+  // escape hatch remains typed.
   const options: SnapdomOptions = { invalidate: true }
   const result: CaptureResult = await snapdom(el, options)
   void result
+}
+
+function fastOption() {
+  const modes: SnapdomOptions[] = [{ fast: true }, { fast: false }, { fast: 'auto' }]
+  // @ts-expect-error fast takes a boolean or 'auto'.
+  const unknown: SnapdomOptions = { fast: 'idle' }
+  void modes; void unknown
 }
 
 function disabledCacheAlias() {
@@ -122,8 +129,6 @@ function removedV2Options() {
   const burst: SnapdomOptions = { burst: true }
   // @ts-expect-error compress is engine behavior in v3, not an option.
   const compress: SnapdomOptions = { compress: false }
-  // @ts-expect-error fast was removed in v3.
-  const fast: SnapdomOptions = { fast: true }
   // @ts-expect-error preCache was removed in v3 (snapdom.preCapture() is the only prefetch).
   const preCache: SnapdomOptions = { preCache: {} }
   // @ts-expect-error resolvePicturePlaceholders was removed in v3.
@@ -134,7 +139,7 @@ function removedV2Options() {
   const full: SnapdomOptions = { cache: 'full' }
   // @ts-expect-error A keep predicate must be a function (the array form belongs to exclude).
   const stringFilter: SnapdomOptions = { filter: '.private' }
-  void burst; void compress; void fast; void preCache; void picture; void auto; void full; void stringFilter
+  void burst; void compress; void preCache; void picture; void auto; void full; void stringFilter
 }
 
 // Pins that survive the index signature: the declared member types, checked with Equal.

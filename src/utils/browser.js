@@ -1,5 +1,6 @@
 /**
- * Engine detection by user agent, plus the one frame wait the canvas readback needs.
+ * Engine detection by user agent, the one frame wait the canvas readback needs, and the time
+ * slicing behind `fast: false | 'auto'`.
  *
  * Every caller keys a workaround on the rendering ENGINE, not the browser brand: svg-as-image
  * paint timing, native form controls, the download path. So `isSafari` answers true for any
@@ -30,6 +31,54 @@ export function nextFrame(timeout = 1000) {
     try { requestAnimationFrame(done) } catch { done(); return }
     setTimeout(done, timeout)
   })
+}
+
+/** One slice of a yielding capture: about a frame, so input and paint get a turn per frame. */
+const SLICE_MS = 16
+/** How long the experimental `fast: 'auto'` runs before its first pause: an ordinary capture
+ *  ends inside it. Not the default because a capture burst does not watch cannot be redone
+ *  when the page changes during a pause. */
+const AUTO_GRACE_MS = 40
+
+/**
+ * Create the time slicer for `fast: false` and `fast: 'auto'` (#503).
+ *
+ * The clone reads every node's computed style in one walk. On the #503 ArcGIS table that walk
+ * was a single 480 ms task, so the page could neither paint nor take input until it ended. The
+ * walks ask `due()` at node boundaries and `await pause()` once a slice is spent, which hands
+ * the event loop one task. `false` slices from the start; `'auto'` first runs AUTO_GRACE_MS.
+ * v2's `fast: false` sent every node through requestIdleCallback and cost that table 45% cold
+ * and 4x warm. Pausing only when a slice is spent (the clone and pseudo walks plus the phase
+ * boundaries) kept the first capture at 455-469 ms against 476, with no task over 50 ms and
+ * the page painting every 17-33 ms, raster identical.
+ * Pinned by __tests__/core.capture.fast.test.js.
+ * @param {boolean|'auto'} fast
+ * @returns {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} null for `fast: true`
+ */
+export function createSlicer(fast) {
+  if (fast !== false && fast !== 'auto') return null
+  let until = performance.now() + (fast === 'auto' ? AUTO_GRACE_MS : SLICE_MS)
+  let wait = null
+  const slicer = {
+    yielded: false,
+    due: () => performance.now() >= until,
+    // One shared wait: every walk that finds the slice spent resumes in the order it paused.
+    pause: () => wait || (wait = new Promise((resolve) => {
+      const resume = () => {
+        wait = null
+        slicer.yielded = true
+        until = performance.now() + SLICE_MS
+        resolve()
+      }
+      // A message is a plain task: rendering takes its turn in between. scheduler.yield()
+      // resumes AHEAD of rendering, and on the #503 table the page went 83-117 ms between
+      // frames with it against 17-33 ms with a message. A nested setTimeout clamps to 4 ms.
+      const channel = new MessageChannel()
+      channel.port1.onmessage = resume
+      channel.port2.postMessage(0)
+    })),
+  }
+  return slicer
 }
 
 /**

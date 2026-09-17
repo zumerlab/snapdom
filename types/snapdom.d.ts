@@ -153,6 +153,16 @@ export interface SnapdomOptions {
   reconcile?: boolean;
 
   /**
+   * Whether a long capture may yield to the page. `true` (default) clones in one task, the
+   * fastest total. `false` hands the event loop a turn about every frame, so the page keeps
+   * painting and taking input while it captures. `'auto'` (experimental, may change) does the
+   * same only once a capture runs past 40 ms. When the captured element changes while a capture yields, the clone is
+   * redone in one task; a capture that is never memoized (frame-driven trees, function-valued
+   * callbacks, captureSelection) keeps what it read.
+   */
+  fast?: boolean | "auto";
+
+  /**
    * Forces one fresh capture that is not served from the existing memo, and clears style
    * snapshots after application changes for which the browser exposes no signal, notably
    * programmatic CSSOM edits

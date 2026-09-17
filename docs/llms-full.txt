@@ -224,6 +224,7 @@ Export methods accept relevant overrides, such as size, background and quality. 
 | `placeholders: boolean` | `true` | Use placeholders for missing resources |
 | `canvas: HTMLCanvasElement` | unset | Reuse a raster output target |
 | `reconcile: boolean` | `false` | Measure the styled clone and pin boxes that differ from the live layout; adds a layout pass |
+| `fast: true, false or 'auto'` | `true` | `false` pauses a long capture about every frame so the page keeps painting and taking input; `'auto'` (experimental) pauses only past 40 ms |
 | `cache` | `'soft'` | Persistent resource/style cache policy; disabled/false clears and bypasses it; legacy auto/full normalize to soft |
 | `invalidate: boolean` | `false` | Force one fresh capture and clear style snapshots after otherwise unobservable changes |
 | `plugins: PluginUse[]` | unset | Per-capture plugin definitions; override globals by name |
@@ -335,7 +336,7 @@ button.addEventListener('click', async () => {
 
 An eligible capture started in the same event task as a press, click or Enter/Space activation teaches `preCapture()` which target and top-level options belong to that control. Later pointer-enter, focus or press intent can prefetch it. The options are shallow-copied. An initial unknown pointer/focus intent can warm the viewport once; it cannot yet know an unseen control's target. There are no arguments, declarations or background polling.
 
-`preCache` was removed in v3. There is no `fast` option.
+`preCache` was removed in v3.
 
 ## Plugins
 
@@ -536,7 +537,8 @@ V3 additionally allows mixed exclusion rules such as `exclude: ['.toolbar', node
 Other changes from v2.x.x:
 
 - Remove `preCache()`, its subpath and the browser `preCache` global. Normal capture reuse and optional no-argument `preCapture()` replace the preparation workflow; this is not a direct rename.
-- Remove public `fast` and `burst` switches. Internal optimizations and eligible capture memoization are automatic. `invalidate: true` takes a fresh capture after unobservable changes; `cache: 'disabled'` controls persistent resource/style caches, not memoization.
+- Remove the public `burst` switch. Eligible capture memoization is automatic. `invalidate: true` takes a fresh capture after unobservable changes; `cache: 'disabled'` controls persistent resource/style caches, not memoization.
+- `fast: false` still keeps the page responsive during a long capture, now by pausing about every frame instead of through idle callbacks. `fast: 'auto'` is experimental and pauses only once a capture runs past 40 ms. A capture whose element changes while paused is cloned again in one task when it is memoizable.
 - Remove public `compress`. Embedded bitmap optimization remains automatic; no public switch disables it to preserve original embedded resources verbatim.
 - Remove public `resolvePicturePlaceholders` and `pictureResolver` settings. Responsive/lazy images are still resolved on the clone. There is no replacement core tuning object; handle custom loading, concurrency and timeout requirements in the application before capture.
 - `embedFonts` defaults to `'auto'`. Width or height wins over scale across exporters; pass the final desired dimension instead of relying on multiplication by scale.

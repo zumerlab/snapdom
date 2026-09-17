@@ -37,6 +37,9 @@
  *                            judge: the pipeline never types, scrolls or moves focus inside
  *                            the captured subtree, so any of these is external by
  *                            construction and the frame is torn
+ *  - yielding captures ..... fast: false | 'auto' read the page across several tasks; the
+ *                            two judgements above run again when the clone stage ends
+ *                            (context.__tornSinceStart), and a torn clone is redone in one task
  *  - shadow DOM ............ one observer per open root, plus the composed:false listeners
  *                            and the <img> tracker (querySelectorAll does not cross
  *                            the boundary either), rescanned per capture so a root attached
@@ -945,6 +948,13 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
             pendingRetained = { ...art, srcToClone }
           }
         }
+        // A yielding capture (fast: false | 'auto') asks this when its clone stage ends: the
+        // judgement the finally below makes, over what has landed so far.
+        context.__tornSinceStart = () => {
+          for (const o of state.observers) for (const rec of o.takeRecords()) state.pending.push(rec)
+          flushStyleInvalidations()
+          return state.torn || hasTornMutation(state.pending) || getOutsideMutationCount(element) !== outsideMutations
+        }
         result = await runCapture()
       }
       // COMMIT, and only now: clearing the dirty flags before awaiting the capture marked
@@ -995,6 +1005,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       return result
     } finally {
       context.__retain = undefined
+      context.__tornSinceStart = undefined
       for (const o of state.observers) for (const rec of o.takeRecords()) state.pending.push(rec)
       // Drain self-undoing preparation now, so it cannot appear as fresh outside work on the
       // next call. A real outside mutation during the capture still tears this frame.

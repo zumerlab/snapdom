@@ -171,6 +171,7 @@ const result = await snapdom(card, {
 | `captureSelection` | `false` | Include the user's text selection |
 | `canvas` | Unset | Reuse an existing canvas |
 | `invalidate` | `false` | Refresh after changes such as programmatic CSSOM edits |
+| `fast` | `true` | `false` keeps the page responsive during long captures |
 
 [All options](https://snapdom.dev/docs/options/) include shadows, transforms, fonts, CORS, fallbacks and layout reconciliation.
 
@@ -244,7 +245,7 @@ The main capture pattern remains `snapdom(element, options)`. This guide compare
 | Raster width/height could be multiplied by `scale` | Width/height win over scale | Pass the final size: `width: 400` instead of `width: 200, scale: 2` |
 | `burst` opted into repeat memoization | Eligible captures memoize automatically; `burst` is no longer documented or supported | Remove `burst` (the engine still reads it for internal use, do not rely on it) and use `invalidate: true` for one fresh capture after unobservable changes such as `sheet.insertRule()` |
 | `preCache` prepared resources | Removed; `preCapture()` learns capture intent | Remove `preCache`; `preCapture()` is not a drop-in rename |
-| `fast` selected an optimization path | Removed | Delete the option |
+| `fast: false` cloned through idle callbacks | `fast: false` pauses about every frame, at nearly the same total time | Keep `fast: false` |
 | `filter` / `filterMode` and `exclude` / `excludeMode` could be used together | Both controls and their independent modes remain supported; `exclude` also accepts predicates | Keep existing rules and modes; use the additional predicate form only when useful |
 | `cache: 'auto'` or `'full'` | Both map to `'soft'` | Usually omit it; `'disabled'` / `false` is for debugging |
 | `compress` controlled embedded image downsampling | Image optimization is automatic; `compress` is no longer documented or supported | Remove `compress`; the engine still reads it for internal use, do not rely on it |

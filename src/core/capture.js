@@ -13,6 +13,7 @@ import { inlineBackgroundImages } from '../modules/background.js'
 import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
 import { isSafari } from '../utils/index.js'
+import { createSlicer } from '../utils/browser.js'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { cache } from '../core/cache.js'
 import { createCaptureSession } from './session.js'
@@ -138,37 +139,50 @@ export async function captureDOM(element, options) {
     }
   }
 
-  const undoClamp = lineClampTree(state.element, preClipRect)
-  try {
-    // Keep this capture's own clone→source map — every later pass must use this
-    // reference (sessions are per-capture; there is no shared session global).
-    ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
+  // fast: false | 'auto' (#503): lets the clone walks yield to the page (createSlicer).
+  let slicer = createSlicer(options.fast)
+  for (;;) {
+    options.__slicer = slicer
+    const undoClamp = lineClampTree(state.element, preClipRect)
+    try {
+      // Keep this capture's own clone→source map — every later pass must use this
+      // reference (sessions are per-capture; there is no shared session global).
+      ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
 
-    if (reconcileRisk > 0 && !options.reconcile) {
-      sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
-      if (!cache.warnedReconcile) {
-        cache.warnedReconcile = true
-        console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+      if (reconcileRisk > 0 && !options.reconcile) {
+        sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
+        if (!cache.warnedReconcile) {
+          cache.warnedReconcile = true
+          console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+        }
       }
-    }
 
-    if (!outerTransforms && clone) {
-      rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
+      if (!outerTransforms && clone) {
+        rootTransform2D = normalizeRootTransforms(state.element, clone) // {a,b,c,d} or null
+      }
+      if (!outerShadows && clone) {
+        stripRootShadows(state.element, clone, state.options)
+      }
+      // #426: zero margins that collapse through the root edge so the clone's
+      // content sits flush like the captured border box (no clipping / no offset).
+      if (clone) {
+        neutralizeRootMarginCollapse(state.element, clone, nodeMap)
+        // #483: the raster is sized in the root's pre-zoom coordinate space, so an inline
+        // `zoom` carried over by cloneNode() would shrink the content and leave blank bands.
+        neutralizeRootZoom(state.element, clone)
+      }
+    } finally {
+      undoClamp()
     }
-    if (!outerShadows && clone) {
-      stripRootShadows(state.element, clone, state.options)
-    }
-    // #426: zero margins that collapse through the root edge so the clone's
-    // content sits flush like the captured border box (no clipping / no offset).
-    if (clone) {
-      neutralizeRootMarginCollapse(state.element, clone, nodeMap)
-      // #483: the raster is sized in the root's pre-zoom coordinate space, so an inline
-      // `zoom` carried over by cloneNode() would shrink the content and leave blank bands.
-      neutralizeRootZoom(state.element, clone)
-    }
-  } finally {
-    undoClamp()
+    // A yielding clone read the page across several tasks. Burst watches the element for
+    // every change a frame can show (burst.js, mid-capture edits and events), and when one
+    // landed the clone may mix two states: run the stage again, in one task. Without burst
+    // there is no watcher, and the yielding clone stands.
+    if (!slicer?.yielded || !options.__tornSinceStart?.()) break
+    slicer = null
+    options.__session = createCaptureSession(options.cache)
   }
+  options.__slicer = null
 
   // AFTERCLONE
   state.clone = clone
@@ -183,6 +197,7 @@ export async function captureDOM(element, options) {
   // below 'render' (src/api/snapdom.js), so there is no memo to feed.
   if (!stageReaches(stage, 'render')) return null
 
+  if (slicer?.due()) await slicer.pause()
   sanitizeCloneForXHTML(state.clone)
   // Either omission policy can remove children and collapse their former layout slots.
   if (state.options?.excludeMode === 'remove' ||
@@ -311,6 +326,7 @@ export async function captureDOM(element, options) {
     if (canvas) return canvas
   }
 
+  if (slicer?.due()) await slicer.pause()
   const renderedClone = state.clone
   numberCompressedAssets(renderedClone, options.__compressedAssets)
   const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS })

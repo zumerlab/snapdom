@@ -52,7 +52,10 @@ export async function prepareClone(element, options = {}) {
     styleMap: session.styleMap,
     styleCache: session.styleCache,
     nodeMap: session.nodeMap,
-    options
+    options,
+    // On the session, not read from options: diff.js clones through a context whose
+    // __slicer belongs to an earlier capture.
+    slicer: options.__slicer || null
   }
 
   let clipWindow = null
@@ -242,6 +245,7 @@ export async function prepareClone(element, options = {}) {
   // source mutated the user's DOM (a hidden <svg> was inserted as firstChild and never
   // removed) and shifted :first-child/nth-child matches while deepClone read computed
   // styles. The clone is detached; external refs are still resolved from the live document.
+  if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   try {
     inlineExternalDefsAndSymbols(clone, undefined, element)
   } catch (e) {
@@ -279,6 +283,7 @@ export async function prepareClone(element, options = {}) {
     debugWarn(sessionCache, 'Failed to extract shadow CSS from style[data-sd]', e)
   }
 
+  if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   const keyToClass = generateCSSClasses(sessionCache.styleMap)
   classCSS = Array.from(keyToClass.entries())
     .map(([key, className]) => `.${className}{${key}}`)

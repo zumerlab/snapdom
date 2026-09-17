@@ -53,6 +53,7 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
  * @param {boolean|'subtree'} [options.outerShadows=false]
  * @param {boolean} [options.reconcile=false] - measure the clone in-document and pin diverging boxes
  * @param {boolean} [options.burst] - force the memo on or off; unset memoizes from the first capture (burst.js)
+ * @param {boolean|'auto'} [options.fast=true] - true clones in one task; false yields to the page every frame; 'auto', experimental, yields only once a capture runs past 40 ms (utils/browser.js createSlicer)
  * @param {'html-in-canvas'} [options.engine] - experimental: the canvas-place-element engine (engines/htmlInCanvas.js)
  * @param {boolean} [options.invalidate=false] - one fresh capture plus style-cache invalidation for changes with no browser signal (notably CSSOM edits)
  * @param {"viewport"|{x:number,y:number,width:number,height:number}|null} [options.clip] - Capture only a region: 'viewport' (what the user currently sees) or a page-coordinate rect. Offscreen subtrees are pruned before styling/inlining, so this is faster than a full capture.
@@ -186,6 +187,10 @@ export function createContext(options = {}) {
     // src/core/burst.js). true/false remain INTERNAL-ONLY escapes (tests/benchmarks need
     // deterministic full-pipeline runs), not public API.
     burst: options.burst,
+
+    // Time slicing (#503): false and 'auto' let a long clone yield so the page keeps painting
+    // and taking input; anything else is the default single-task clone.
+    fast: options.fast === false || options.fast === 'auto' ? options.fast : true,
 
     // EXPERIMENTAL: 'html-in-canvas' opts into the WICG canvas-place-element engine when the browser
     // supports it (see src/engines/htmlInCanvas.js); anything else uses the svg pipeline.
