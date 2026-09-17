@@ -1,14 +1,9 @@
-// NOTE: burst:false pins these benches to the cold pipeline — the memo would
-// otherwise memoize the repeated iterations and measure the cache hit instead.
-import { bench, describe, afterEach } from 'vitest'
+import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index'
 
-// Realistic polling: content changes on some ticks and not others (e.g. a metric updates
-// every ~4th poll). burst:true only re-runs the pipeline on dirty ticks.
-//
-// Kept in its own file (not alongside the unchanged-element scenario) so this run doesn't
-// inherit warm module-level caches/JIT state from the other scenario — vitest's browser
-// mode isolates each test file in its own page, giving each scenario a controlled baseline.
+// Warm polling: one metric changes every fourth tick. Both arms end at a raw SVG URL,
+// and each arm mounts and primes its own element outside timing. Mutation values never
+// repeat, so every dirty tick changes the metric, including between benchmark iterations.
 const REPEATS = 20
 
 function buildDashboard() {
@@ -20,7 +15,7 @@ function buildDashboard() {
       ${Array.from({ length: 6 }, (_, i) => `
         <div style="padding:10px;border-radius:8px;background:${i % 2 ? '#eef' : '#efe'}">
           <div style="font-size:12px;color:#666">Metric ${i + 1}</div>
-          <div style="font-size:20px;font-weight:bold">${(i + 1) * 137}</div>
+          <div class="metric-value" style="font-size:20px;font-weight:bold">${(i + 1) * 137}</div>
         </div>`).join('')}
     </div>
   `
@@ -28,28 +23,28 @@ function buildDashboard() {
   return el
 }
 
-describe('Benchmark memo on vs off (20x, 1-in-4 ticks mutate)', () => {
+describe('Warm polling: memo on vs off (20x, 1-in-4 ticks mutate, raw SVG)', () => {
   let el
+  let metric
+  let tick
 
-  afterEach(() => {
-    if (el) { el.remove(); el = null }
-  })
-
-  bench('snapdom(el, { burst: false }) called 20x (memo off)', async () => {
-    el = buildDashboard()
-    const metric = el.querySelector('div > div:last-child')
-    for (let i = 0; i < REPEATS; i++) {
-      if (i % 4 === 0) metric.textContent = String(1000 + i)
-      await snapdom.toRaw(el, { burst: false })
-    }
-  })
-
-  bench('snapdom(el, { burst: true }) called 20x (1-in-4 dirty)', async () => {
-    el = buildDashboard()
-    const metric = el.querySelector('div > div:last-child')
-    for (let i = 0; i < REPEATS; i++) {
-      if (i % 4 === 0) metric.textContent = String(1000 + i)
-      await snapdom(el, { burst: true })
-    }
-  })
+  for (const burst of [false, true]) {
+    bench(`snapdom.toRaw, burst:${burst}, ${REPEATS} warm captures`, async () => {
+      for (let i = 0; i < REPEATS; i++, tick++) {
+        if (tick % 4 === 0) metric.textContent = String(1000 + tick)
+        await snapdom.toRaw(el, { burst })
+      }
+    }, {
+      async setup() {
+        el = buildDashboard()
+        metric = el.querySelector('.metric-value')
+        tick = 0
+        await snapdom.toRaw(el, { burst })
+      },
+      teardown() {
+        el.remove()
+        el = null
+      },
+    })
+  }
 })

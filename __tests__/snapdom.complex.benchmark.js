@@ -1,21 +1,8 @@
-// "current" is this checkout; the published npm `latest` runs alongside as the baseline.
-// That arm is UNPINNED on purpose: the question is always what this checkout buys over
-// what users install today, so it follows the tag instead of a version bumped by hand
-// (the fixed 1.9.9 / 2.16.0 / 2.24.12 arms were dropped on 2026-09-04). burst: false pins
-// both arms to the cold pipeline: the memo would otherwise serve the repeated iterations
-// and measure the hit instead (session.static / session.mutating measure that on purpose);
-// v2 only bursts when the flag is true, and once v3 is `latest` the flag keeps it cold too.
-//
-// Scenes are built in each bench's `setup` and removed in `teardown`, and the arm order
-// alternates per size. The reasons, and the measurement that exposed them, are in the header
-// of snapdom.benchmark.js.
+// Exploratory local microbenchmarks. Use `npm run test:benchmark` for regression
+// checks against published stable: that runner isolates the two compiled builds.
+// Fixtures mount outside timing; burst:false measures the pipeline without memo hits.
 import { bench, describe } from 'vitest'
-import { snapdom as published } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
-
-// The published build carries no version export; the report needs the number.
-const PUBLISHED = await fetch('https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/package.json')
-  .then((r) => r.json()).then((p) => p.version).catch(() => 'unknown version')
 
 const sizes = [
   { width: 200, height: 100, label: 'Small element (200x100)' },
@@ -82,7 +69,7 @@ function buildComplex(size) {
   return container
 }
 
-for (const [index, size] of sizes.entries()) {
+for (const size of sizes) {
   describe(`Benchmark complex node at ${size.label}`, () => {
     let container = null
     const hooks = {
@@ -98,11 +85,8 @@ for (const [index, size] of sizes.entries()) {
 
     // toRaw ends at the SVG string: this is the pipeline without the raster stage. A raster
     // regression is invisible here and shows in category.benchmark.js, which ends at a PNG.
-    const arms = [
-      ['snapDOM current version', () => snapdom.toRaw(container, { burst: false })],
-      [`snapDOM ${PUBLISHED} (npm latest)`, () => published.toRaw(container, { burst: false })],
-    ]
-    if (index % 2) arms.reverse()
-    for (const [name, run] of arms) bench(name, run, { ...OPTS, ...hooks })
+    bench('snapDOM current source', async () => {
+      await snapdom.toRaw(container, { burst: false })
+    }, { ...OPTS, ...hooks })
   })
 }

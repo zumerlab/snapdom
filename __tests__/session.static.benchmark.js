@@ -1,15 +1,8 @@
-// NOTE: burst:false pins these benches to the cold pipeline — the memo would
-// otherwise memoize the repeated iterations and measure the cache hit instead.
-import { bench, describe, afterEach } from 'vitest'
+import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index'
 
-// Simulates dashboard polling: same element captured repeatedly, unchanged. `burst: true`
-// memoizes the result while the subtree is untouched, so a "capture" is just a
-// MutationObserver.takeRecords() check instead of a full pipeline run.
-//
-// Kept in its own file (not alongside the 1-in-4-mutate scenario) so this run doesn't
-// inherit warm module-level caches/JIT state from the other scenario — vitest's browser
-// mode isolates each test file in its own page, giving each scenario a controlled baseline.
+// Warm dashboard polling, ending at a raw SVG URL in both arms. Each arm mounts and
+// primes its own element outside timing. The isolated stable runner covers first capture.
 const REPEATS = 20
 
 function buildDashboard() {
@@ -29,24 +22,21 @@ function buildDashboard() {
   return el
 }
 
-describe(`Benchmark memo on vs off (${REPEATS}x, unchanged element)`, () => {
+describe(`Warm polling: memo on vs off (${REPEATS}x, unchanged element, raw SVG)`, () => {
   let el
 
-  afterEach(() => {
-    if (el) { el.remove(); el = null }
-  })
-
-  bench('snapdom(el, { burst: false }) called 20x (memo off)', async () => {
-    el = buildDashboard()
-    for (let i = 0; i < REPEATS; i++) {
-      await snapdom.toRaw(el, { burst: false })
-    }
-  })
-
-  bench('snapdom(el, { burst: true }) called 20x (memoized)', async () => {
-    el = buildDashboard()
-    for (let i = 0; i < REPEATS; i++) {
-      await snapdom(el, { burst: true })
-    }
-  })
+  for (const burst of [false, true]) {
+    bench(`snapdom.toRaw, burst:${burst}, ${REPEATS} warm captures`, async () => {
+      for (let i = 0; i < REPEATS; i++) await snapdom.toRaw(el, { burst })
+    }, {
+      async setup() {
+        el = buildDashboard()
+        await snapdom.toRaw(el, { burst })
+      },
+      teardown() {
+        el.remove()
+        el = null
+      },
+    })
+  }
 })

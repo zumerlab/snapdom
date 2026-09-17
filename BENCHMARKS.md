@@ -1,8 +1,109 @@
 # SnapDOM performance measurements
 
-These are recorded measurements from v3 development. They are examples of specific workloads, not a speed guarantee for every page or browser.
+The historical tables below are recorded measurements from v3 development. They are examples of specific workloads, not a speed guarantee or evidence that the current checkout has no regressions.
 
-For current measurements, run the [live comparison](https://snapdom.dev/compare/live/) or the commands below. The public lab loads the published package and reports its version; `npm run site` uses this checkout.
+## Regression check against the published stable release
+
+```sh
+npm run test:benchmark
+# Other engines, sequentially (Playwright WebKit is not Safari):
+npm run test:benchmark -- --browser all
+# Investigate an inconclusive workload with more independent rounds:
+npm run test:benchmark -- --scenes shadow --modes recapture --rounds 24
+# A predeclared confirmation of specific inconclusive cells:
+npm run test:benchmark -- --cases card:fresh,table:recapture --rounds 32
+```
+
+`npm run release` also runs this gate in Chromium after correctness and packaging checks.
+Other engines are explicit runs with `--browser`; a Chromium result says nothing about their
+performance.
+
+Every run resolves `@zumer/snapdom@latest` from the npm registry, requires a stable version,
+downloads that exact tarball and verifies its SHA-512 integrity. It fails if the registry or
+artifact is unavailable; it never silently substitutes a stale baseline. The candidate is a
+fresh **compiled build of the working tree**, including uncommitted changes. A report records
+the commit, dirty files, both bundle hashes, exact stable version, fixture hash and browser/OS.
+The fixture, harness, runner and statistical code are archived with their hashes.
+It does not change the package version, commit, push or publish anything.
+
+The two versions run sequentially in **separate browser contexts**, with a fresh context for
+each workload/arm/round. They never share a page, globals or library caches. AB/BA order is
+balanced across 16 paired rounds by default. Fixture construction, fonts, image readiness and
+layout settlement are outside the stopwatch. Assets are local HTTP fixtures; no CDN or remote
+website is involved in the measured work.
+Document stylesheets and font faces stay installed while fresh elements are replaced.
+Shadow-root styles are recreated with their components. Replacing the app's stylesheets on
+every sample would measure cache invalidation as well as a new element, a different workload.
+
+The workload matrix includes a complex card, a 250-row table, utility CSS with about 10,000
+rules, 150 nested shadow roots, 40 HTTP images, embedded webfonts, deep flex/grid trees and a
+dashboard. Each non-polling scene measures first capture, fresh elements and recaptures:
+
+| Mode | What is measured |
+| --- | --- |
+| `first` | One first capture in a new context, default memo policy and no warmup. Page assets are already loaded; this is not cold network latency. |
+| `fresh` | New element per capture with the default memo policy; warm library/resource caches after two untimed warmups. |
+| `recapture` | Same element with changing content; `burst:false` forces the pipeline rather than a memo hit. |
+| `poll-static` | Eight captures of an unchanged dashboard, with automatic memoization. |
+| `poll-mutating` | Eight captures; dashboard value and painted witnesses change every fourth tick. |
+
+All arms end at the same PNG data URL: `snapdom()` → `result.toCanvas()` →
+`canvas.toDataURL('image/png')`. Raw samples preserve capture, raster, encode and total latency.
+Polling totals sum eight capture/export latencies, excluding the gaps between ticks. It is a
+capture-cost benchmark, not a UI responsiveness or complete application-load benchmark.
+The default matrix uses `fast:true`. Canvas/video/iframe workloads, clipping, high DPR,
+`toBlob()`/`toPng()` helper overhead and `fast:false` responsiveness are not covered by this
+performance gate; their correctness tests remain separate.
+
+Each timed output checks dimensions and painted witnesses, including a witness inside the
+mutated dashboard card. Untimed captures are compared with native browser screenshots and
+with the stable output; PNGs are saved for inspection. New incorrect pixels cannot cancel
+out an improvement elsewhere. A bad fixture or fidelity regression withholds the timing
+verdict; faster blank or stale output is not a win. Pixel tolerance is 20 per channel; over
+5% native/capture mismatch invalidates the fixture, and over 0.1 percentage points of newly
+incorrect pixels requires review. These are detection thresholds, not a complete visual
+correctness proof; the visual regression suite is still required.
+
+The statistical unit is a **paired round**, not individual correlated calls inside one page.
+The runner compares medians within each round, then reports median paired ratios and ms
+differences with exact binomial-rank confidence intervals. Bonferroni correction provides
+familywise 95% coverage per browser across the capture/total comparisons and both intervals.
+It keeps all samples, including outliers. The default 16 rounds intentionally gives
+conservative intervals; extra calls within a round cannot replace more independent rounds.
+The decision concerns typical latency (paired medians), not a p95 or worst-case guarantee;
+individual timings remain in the JSON for investigating stalls.
+
+- `regression`: the lower confidence bounds exceed **both 5% and 1 ms**.
+- `no-regression-detected`: the upper bounds rule out a slowdown above those thresholds.
+  This is not a claim of zero slowdown or permission to accept a known regression.
+- `inconclusive`: intervals cross the threshold, there are fewer than 12 rounds, or the
+  AB/BA order effect exceeds both 5% and 1 ms without a supported regression. An order
+  effect blocks a passing verdict but cannot hide a slowdown supported by both lower
+  bounds; the report preserves that diagnostic. Exit code **2**, not success.
+- Fidelity failures, detected regressions and runner errors exit **1**. A complete run with
+  no detected regression exits **0**.
+
+Reports, all raw samples, pinned artifacts and PNG evidence go to a timestamped directory
+under `output/benchmark-stable/`. Keep its `report.json` when comparing runs. Run on an idle
+machine with no concurrent tests/benchmarks. A lock prevents two copies of this runner from
+overlapping, but cannot prevent unrelated CPU load. Do not keep rerunning until a favorable
+number appears: preserve inconclusive/failing runs and investigate their cause.
+
+The measuring instrument has controls. Both use **stable on both sides** and cannot certify
+the checkout. A/A should not invent a slowdown; the slow control adds 30 ms to each candidate
+capture and must detect it. Controls exit 0 only when their expectation passes; otherwise
+they exit 1. An inconclusive A/A means the requested precision was not achieved, not that
+identical code regressed. The report retains the statistical verdict separately:
+
+```sh
+npm run test:benchmark -- --control aa --scenes card --modes recapture
+npm run test:benchmark -- --control slow --scenes card --modes recapture
+```
+
+The [live comparison](https://snapdom.dev/compare/live/) and
+`npm run test:benchmark:legacy` remain exploratory competitor comparisons. They are not the
+stable regression gate. The public lab loads the published package; `npm run site` uses the
+checkout. Legacy tests explicitly label cases that include scene mounting in their timing.
 
 ## Method
 
@@ -102,6 +203,7 @@ npm install
 npx playwright install
 npm run compile
 npm run test:benchmark
+npm run test:benchmark:legacy
 npx vitest run __tests__/category.capabilities.test.js --browser.headless --reporter=verbose
 ```
 

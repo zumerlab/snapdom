@@ -17,11 +17,11 @@
 // ONE OUTPUT STAGE FOR EVERYONE: every arm ends at a PNG data URL. The first version of
 // this file had snapdom at toRaw (SVG url, no raster/encode) against the competitors' full
 // PNG, and the 8.2Mpx encode this table produces is ~130ms — the "snapdom wins cold" read
-// that came out of it was an artifact of the missing stage, not a result. The A/B/C ratios
-// are stage-independent; the cross-library rows are only citable at equal stages.
+// that came out of it was an artifact of the missing stage, not a result. Ratios depend on
+// the output stage; these rows all include rasterization and PNG encoding.
 //
 // Run:  npx vitest bench __tests__/category.cold.benchmark.js --browser.headless --watch=false
-import { bench, describe, afterEach } from 'vitest'
+import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index'
 import { loadLibs, bigTableHTML, toDataUrl } from './category.libs.js'
 
@@ -44,23 +44,25 @@ function freshElement() {
   return el
 }
 
-afterEach(() => { el?.remove(); el = null })
+// Vitest bench does not run its afterEach hooks. Task teardown also prevents the
+// steady arm from inheriting the last element mounted by the preceding cold arm.
+const cleanup = () => { el?.remove(); el = null }
+const freshOpts = { warmupIterations: 1, iterations: 6, time: 0, teardown: cleanup }
 
-describe('Cold vs steady per element: big table (500 rows)', () => {
-  bench('A · snapDOM, FRESH element each capture (per-element cold)', async () => {
+describe('Fresh mount + capture vs steady capture: big table (500 rows)', () => {
+  bench('A · snapDOM, mount + capture a FRESH element', async () => {
     await toDataUrl(await snapdom.toCanvas(freshElement(), { dpr: 1, burst: false }))
-  }, { warmupIterations: 1, iterations: 6, time: 0 })
+  }, freshOpts)
 
   bench('B · snapDOM, SAME element recaptured (steady state)', async () => {
-    if (!el || !document.body.contains(el)) freshElement()
     await toDataUrl(await snapdom.toCanvas(el, { dpr: 1, burst: false }))
-  }, { warmupIterations: 2, iterations: 6, time: 0 })
+  }, { ...freshOpts, warmupIterations: 2, setup: freshElement })
 
-  bench('modern-screenshot, fresh element each capture', async () => {
+  bench('modern-screenshot, mount + capture a fresh element', async () => {
     await LIBS['modern-screenshot 4.7.0'](freshElement())
-  }, { warmupIterations: 1, iterations: 4, time: 0 })
+  }, { ...freshOpts, iterations: 4 })
 
-  bench('domlens, fresh element each capture', async () => {
+  bench('domlens, mount + capture a fresh element', async () => {
     await LIBS['domlens.js 0.1.0'](freshElement())
-  }, { warmupIterations: 1, iterations: 4, time: 0 })
+  }, { ...freshOpts, iterations: 4 })
 })

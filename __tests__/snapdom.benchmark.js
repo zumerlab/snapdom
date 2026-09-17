@@ -1,30 +1,11 @@
-// "current" is this checkout; the published npm `latest` runs alongside as the baseline.
-// That arm is UNPINNED on purpose: the question is always what this checkout buys over
-// what users install today, so it follows the tag instead of a version bumped by hand
-// (the fixed 1.9.9 / 2.16.0 / 2.24.12 arms were dropped on 2026-09-04). burst: false pins
-// both arms to the cold pipeline: the memo would otherwise serve the repeated iterations
-// and measure the hit instead (session.static / session.mutating measure that on purpose);
-// v2 only bursts when the flag is true, and once v3 is `latest` the flag keeps it cold too.
-//
-// Scenes are built in each bench's `setup` and removed in `teardown`. They used to be built
-// inside the first timed iteration of whichever arm ran first, from an `afterEach` that never
-// runs in bench mode (verified: vitest calls setup/teardown per task for warmup and run, and
-// no afterEach at all), so every container also stayed in the document for the rest of the
-// file. That put the DOM work and first layout on "current", which always ran first: 2026-09-17
-// it read as 3.0.0 being 1.07x faster on the very large complex node, while bundles of the two
-// sources, alternated and built outside the timing, measured 0.987-1.009 on every node size.
-// The arm order also alternates per describe. What is left is drift between consecutive tasks:
-// in one run two arms can differ 3-6% either way with a 1-2% rme. A regression is a difference
-// that keeps its direction across sizes, orders and runs.
+// Exploratory local microbenchmarks. Use `npm run test:benchmark` for regression
+// checks against the exact published stable build in isolated browser contexts.
+// Loading two SnapDOM versions in this page is unsafe: their document state collides.
+// Fixtures mount outside timing; burst:false measures the pipeline without memo hits.
 import { bench, describe } from 'vitest'
 import { domToDataUrl } from 'https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/+esm'
 import * as htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm'
-import { snapdom as published } from 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/dist/snapdom.mjs'
 import { snapdom } from '../src/index'
-
-// The published build carries no version export; the report needs the number.
-const PUBLISHED = await fetch('https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/package.json')
-  .then((r) => r.json()).then((p) => p.version).catch(() => 'unknown version')
 
 let html2canvasLoaded = false
 
@@ -53,7 +34,7 @@ const sizes = [
   { width: 4000, height: 2000, label: 'Very large element (4000x2000)' },
 ]
 
-for (const [index, size] of sizes.entries()) {
+for (const size of sizes) {
   describe(`Benchmark simple node at ${size.label}`, () => {
     let container = null
     const hooks = {
@@ -78,18 +59,16 @@ for (const [index, size] of sizes.entries()) {
 
     // toRaw ends at the SVG string: this is the pipeline without the raster stage. A raster
     // regression is invisible here and shows in category.benchmark.js, which ends at a PNG.
-    const arms = [
-      ['snapDOM current version', () => snapdom.toRaw(container, { burst: false })],
-      [`snapDOM ${PUBLISHED} (npm latest)`, () => published.toRaw(container, { burst: false })],
-    ]
-    if (index % 2) arms.reverse()
-    for (const [name, run] of arms) bench(name, run, { ...OPTS, ...hooks })
+    bench('snapDOM current source', async () => {
+      await snapdom.toRaw(container, { burst: false })
+    }, { ...OPTS, ...hooks })
   })
 }
 
 // ── Image-heavy scenario (rasterized PNG) ───────────────────────────────────
 // Captures with large raster images shown small — the case where snapdom's `compress` pays off.
-// Rasterizing (toPng) is where the win lands: smaller embedded images decode/composite faster.
+// Rasterizing is where the win lands: smaller embedded images decode/composite faster.
+// Every arm ends at a PNG URL; image-element decoding for display is not timed.
 // Compares snapDOM (compress off vs on) against the other libraries on the same scene.
 function bigPhoto(w, h, seed) {
   const c = document.createElement('canvas')
@@ -133,18 +112,20 @@ const gallery = {
     galleryContainer?.remove()
     galleryContainer = null
   },
-  // Each toPng is 150-470 ms, so a longer window than the node sizes above.
+  // Raster exports need a longer window than the raw SVG node sizes above.
   time: 3000,
   warmupTime: 1000,
 }
 
-describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
-  bench('snapDOM current toPng (compress OFF)', async () => {
-    await snapdom.toPng(galleryContainer, { scale: 2, dpr: 1, compress: false, burst: false })
+describe('Benchmark image gallery (PNG URL, scale 2)', () => {
+  bench('snapDOM current (compress OFF)', async () => {
+    const canvas = await snapdom.toCanvas(galleryContainer, { scale: 2, dpr: 1, compress: false, burst: false })
+    canvas.toDataURL('image/png')
   }, gallery)
 
-  bench('snapDOM current toPng (compress ON)', async () => {
-    await snapdom.toPng(galleryContainer, { scale: 2, dpr: 1, compress: true, burst: false })
+  bench('snapDOM current (compress ON)', async () => {
+    const canvas = await snapdom.toCanvas(galleryContainer, { scale: 2, dpr: 1, compress: true, burst: false })
+    canvas.toDataURL('image/png')
   }, gallery)
 
   bench('html2canvas', async () => {
@@ -160,20 +141,3 @@ describe('Benchmark image gallery (rasterized PNG, scale 2)', () => {
     await htmlToImage.toPng(galleryContainer, { pixelRatio: 2 })
   }, gallery)
 })
-
-// The version comparison runs once with each version first. Compressing arms swing 10-15%
-// with their position: on 2026-09-17 published, a bundle of this checkout and src measured
-// 145 / 183 / 174 ms in that order and 173 / 170 / 169 ms in reverse, and priming every instance
-// before timing did not remove it. Read the two describes together; a real change moves both.
-for (const first of ['current', 'published']) {
-  describe(`Benchmark image gallery vs ${PUBLISHED}, ${first} first (compress ON)`, () => {
-    // Same scale/dpr as every other arm: without them v2 rasterized ~4x fewer pixels in a
-    // comparison labeled "scale 2" and its number was not comparable.
-    const arms = [
-      ['snapDOM current toPng (compress ON)', () => snapdom.toPng(galleryContainer, { scale: 2, dpr: 1, compress: true, burst: false })],
-      [`snapDOM ${PUBLISHED} toPng (compress ON)`, () => published.toPng(galleryContainer, { scale: 2, dpr: 1, compress: true, burst: false })],
-    ]
-    if (first === 'published') arms.reverse()
-    for (const [name, run] of arms) bench(name, run, gallery)
-  })
-}

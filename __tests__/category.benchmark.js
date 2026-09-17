@@ -18,7 +18,7 @@
 // Run:  npx vitest bench __tests__/category.benchmark.js --browser.headless --watch=false
 //       BROWSER=all npx vitest bench __tests__/category.benchmark.js --browser.headless --watch=false
 
-import { bench, describe, afterEach } from 'vitest'
+import { bench, describe } from 'vitest'
 import { loadLibs, SCENARIOS as scenarios } from './category.libs.js'
 
 const LIBS = await loadLibs()
@@ -40,18 +40,17 @@ for (const scenario of scenarios) {
       document.body.appendChild(container)
     }
 
-    afterEach(() => {
-      if (container) {
-        container.remove()
-        container = null
-      }
-    })
-
     for (const [name, capture] of Object.entries(LIBS)) {
       bench(name, async () => {
-        await setupContainer()
         await capture(container)
-      }, scenario.opts)
+      }, {
+        ...scenario.opts,
+        setup: setupContainer,
+        teardown() {
+          container.remove()
+          container = null
+        },
+      })
     }
   })
 }

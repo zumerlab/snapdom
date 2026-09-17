@@ -9,28 +9,29 @@
 // real work; a fully static loop would flatter the memo).
 //
 // Run:  npx vitest bench __tests__/category.polling.benchmark.js --browser.headless --watch=false
-import { bench, describe, afterEach } from 'vitest'
+import { bench, describe } from 'vitest'
 import { snapdom } from '../src/index'
 import { loadLibs, dashboardScenario, toDataUrl } from './category.libs.js'
 
 const LIBS = await loadLibs()
 
 const TICKS = 20
-let scene = null
-afterEach(() => { scene?.cleanup(); scene = null })
-
 async function loop(capture) {
-  scene = dashboardScenario()
-  const values = scene.root.querySelectorAll('.metric-v')
-  for (let t = 0; t < TICKS; t++) {
-    if (t % 4 === 3) values[t % values.length].textContent = String(1000 + t)
-    await capture(scene.root)
+  const scene = dashboardScenario()
+  try {
+    const values = scene.root.querySelectorAll('.metric-v')
+    for (let t = 0; t < TICKS; t++) {
+      if (t % 4 === 3) values[t % values.length].textContent = String(1000 + t)
+      await capture(scene.root)
+    }
+  } finally {
+    scene.cleanup()
   }
 }
 
 const OPTS = { warmupIterations: 1, iterations: 6, time: 0 }
 
-describe(`Polling: ${TICKS} captures of a live dashboard (memoization allowed, labeled)`, () => {
+describe(`Polling session: mount + ${TICKS} captures + cleanup (memoization allowed)`, () => {
   bench('snapDOM defaults (memo + diff, from the first capture)', async () => {
     await loop(async (el) => toDataUrl(await snapdom.toCanvas(el, { scale: 1, dpr: 1 })))
   }, OPTS)

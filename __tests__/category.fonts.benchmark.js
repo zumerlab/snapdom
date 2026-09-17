@@ -59,15 +59,12 @@ describe('Webfonts: article with Inter 400/700 + mono code spans (configured pro
 })
 
 describe('Icon-font path: 20 pseudo-element glyphs through the iconFonts matcher (snapdom-only)', () => {
-  // PSEUDO-ELEMENTS are the real trigger: the matcher rasterizes ::before/::after glyph
-  // content to images (verified: 20 <img> in the payload), while plain text spans in a
-  // matched family stay text. ~0.5ms per glyph on a warm page — the serialized per-glyph
-  // live-DOM measure the audit flagged. Lazy setup inside the bench body: with a
-  // describe-level beforeAll here, vitest bench collected zero samples (NaN).
+  // Pseudo-elements trigger the matcher; plain text spans stay text. Vitest bench
+  // skips describe-level beforeAll, so the task's setup mounts outside timing.
   let iconRoot = null
-  function ensureIconRoot() {
-    if (iconRoot && document.body.contains(iconRoot)) return iconRoot
-    const st = document.createElement('style')
+  let st = null
+  const iconOpts = { warmupIterations: 1, iterations: 3, time: 0, setup() {
+    st = document.createElement('style')
     st.setAttribute('data-bench-icons', '')
     st.textContent = Array.from({ length: 20 }, (_, i) =>
       `.bi-${i}::before{content:'${'ABCDEFGH'[i % 8]}';font-family:'BenchMono',monospace;font-size:20px;color:#333}`
@@ -77,14 +74,18 @@ describe('Icon-font path: 20 pseudo-element glyphs through the iconFonts matcher
     iconRoot.style.cssText = 'width:400px;padding:8px;background:#fff'
     iconRoot.innerHTML = Array.from({ length: 20 }, (_, i) => `<span class="bi-${i}"></span>`).join('')
     document.body.appendChild(iconRoot)
-    return iconRoot
-  }
+  }, teardown() {
+    iconRoot.remove()
+    st.remove()
+    iconRoot = null
+    st = null
+  } }
 
   bench('with iconFonts matcher (each pseudo glyph rasterized to an image)', async () => {
-    await snapdom.toRaw(ensureIconRoot(), { embedFonts: true, burst: false, iconFonts: [/BenchMono/] })
-  }, { warmupIterations: 1, iterations: 3, time: 0 })
+    await snapdom.toRaw(iconRoot, { embedFonts: true, burst: false, iconFonts: [/BenchMono/] })
+  }, iconOpts)
 
   bench('without matcher (glyphs stay text + embedded font)', async () => {
-    await snapdom.toRaw(ensureIconRoot(), { embedFonts: true, burst: false })
-  }, { warmupIterations: 1, iterations: 3, time: 0 })
+    await snapdom.toRaw(iconRoot, { embedFonts: true, burst: false })
+  }, iconOpts)
 })

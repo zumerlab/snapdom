@@ -109,6 +109,98 @@ async function smoke() {
   const mixedRaw = decodeURIComponent((await mixed.toRaw()).split(',').slice(1).join(','))
   check(['Before', 'inside', 'after'].every(text => mixedRaw.includes(text)), 'mixed fragment text retained')
 
+  // Deliberately exhaust one slice in a native clone, then observe the actual message task.
+  // This is a deterministic correctness check, not a performance measurement. A timer on a
+  // large tree would depend on machine speed and timer/message ordering. Compare exported
+  // pixels as well as SVG bytes so a Safari rasterization failure cannot pass unnoticed.
+  const slicedRoot = mount(
+    '<div class="first" style="width:40px;height:40px;background:red"></div>' +
+    '<div style="height:40px;overflow:hidden"></div>' +
+    '<div class="last" style="width:40px;height:40px;background:red"></div>',
+    'width:320px;background:white;color:black;font:16px Arial',
+  )
+  try {
+    const fresh = { ...options, burst: false, cache: 'disabled' }
+    const original = slicedRoot.outerHTML
+    const captureWithPause = async (fast, mutate) => {
+      const first = slicedRoot.children[0]
+      const spacer = slicedRoot.children[1]
+      const firstClone = first.cloneNode.bind(first)
+      const spacerClone = spacer.cloneNode.bind(spacer)
+      const NativeChannel = window.MessageChannel
+      const channels = []
+      let armed = false, ran = false, ranByAfterClone = false, watched = false, firstClones = 0
+      first.cloneNode = deep => { firstClones++; return firstClone(deep) }
+      spacer.cloneNode = deep => {
+        const clone = spacerClone(deep)
+        if (!armed) {
+          armed = true
+          const end = performance.now() + 45
+          while (performance.now() < end) { /* exhaust the clone's slice once */ }
+        }
+        return clone
+      }
+      window.MessageChannel = function () {
+        const channel = new NativeChannel()
+        channels.push(channel)
+        channel.port1.addEventListener('message', () => {
+          if (!armed || ran) return
+          mutate?.()
+          ran = true
+        })
+        return channel
+      }
+      const probe = {
+        name: 'safari-slice-probe', pure: true,
+        beforeClone(ctx) { watched = typeof ctx.__tornSinceStart === 'function' },
+        afterClone() { ranByAfterClone = ran },
+      }
+      try {
+        // Only the mutation capture uses the normal watcher; parity captures bypass memos.
+        const capture = await snapdom(slicedRoot, { ...fresh, burst: mutate ? undefined : false, fast, plugins: [probe] })
+        return { capture, ranByAfterClone, firstClones, watched }
+      } finally {
+        delete first.cloneNode
+        delete spacer.cloneNode
+        window.MessageChannel = NativeChannel
+        for (const channel of channels) { channel.port1.close(); channel.port2.close() }
+      }
+    }
+    const captures = []
+    for (const fast of [true, false]) {
+      const observed = await captureWithPause(fast)
+      captures.push(observed.capture)
+      check(observed.ranByAfterClone === !fast && observed.firstClones === 1,
+        `fast:${fast} clone ${fast ? 'stays in one task' : 'yields to the page'}`)
+    }
+    check(captures[0].toRaw() === captures[1].toRaw(), 'fast:false unchanged SVG matches fast:true')
+    const fullCanvas = await captures[0].toCanvas()
+    const slicedCanvas = await captures[1].toCanvas()
+    const fullPixels = fullCanvas.getContext('2d').getImageData(0, 0, fullCanvas.width, fullCanvas.height).data
+    const slicedPixels = slicedCanvas.getContext('2d').getImageData(0, 0, slicedCanvas.width, slicedCanvas.height).data
+    let differentChannels = 0
+    for (let i = 0; i < fullPixels.length; i++) if (fullPixels[i] !== slicedPixels[i]) differentChannels++
+    check(fullCanvas.width === slicedCanvas.width && fullCanvas.height === slicedCanvas.height &&
+      differentChannels === 0 && slicedRoot.outerHTML === original,
+    'fast:false unchanged pixels match fast:true and source is untouched', { differentChannels, width: slicedCanvas.width, height: slicedCanvas.height })
+
+    const observed = await captureWithPause(false, () => {
+      slicedRoot.style.width = '280px'
+      slicedRoot.querySelector('.first').style.height = '60px'
+      for (const node of slicedRoot.querySelectorAll('.first, .last')) node.style.background = 'blue'
+    })
+    const mutated = observed.capture
+    check(observed.watched && observed.ranByAfterClone && observed.firstClones === 2,
+      'fast:false layout mutation in a pause triggers a fresh clone', { firstClones: observed.firstClones })
+    const reference = await snapdom(slicedRoot, { ...fresh, fast: true })
+    check(mutated.toRaw() === reference.toRaw(), 'fast:false layout mutation matches a fresh final-state SVG')
+    const mutatedCanvas = await mutated.toCanvas()
+    const pixel = (x, y) => Array.from(mutatedCanvas.getContext('2d').getImageData(x, y, 1, 1).data)
+    check(mutatedCanvas.width === 280 && mutatedCanvas.height === 140 &&
+      JSON.stringify(pixel(20, 20)) === '[0,0,255,255]' && JSON.stringify(pixel(20, 120)) === '[0,0,255,255]',
+    'fast:false layout mutation paints consistent final dimensions and colors', { width: mutatedCanvas.width, height: mutatedCanvas.height })
+  } finally { slicedRoot.remove() }
+
   // Migration regressions: these must hold on the shipped bundle in real Safari as well
   // as WebKit in the browser suite. Only closure state changes between repeat captures.
   const migrationRoot = mount('<p>PUBLIC_CALLBACK_SAFARI</p><p class="private-callback">PRIVATE_CALLBACK_SAFARI</p>',
