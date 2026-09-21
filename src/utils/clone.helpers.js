@@ -15,6 +15,7 @@ import { debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
 import { inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
+import { splitTopLevel } from '../modules/styleScan.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 import { markInternalNode } from './ownership.js'
 
@@ -45,8 +46,10 @@ const SPAN_PSEUDO_RE = /^::?(?:before|after|first-letter)$/
  * replaced by a never-matching selector.
  */
 function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scopeId) {
-  return selectorList
-    .split(',')
+  // #503: commas inside :is/:not (or attribute strings) belong to one selector.
+  // Splitting them can drop a closing ')' with an inlined pseudo-element and make
+  // the browser consume every following rule, including all generated style classes.
+  return splitTopLevel(selectorList, ',')
     .map(s => s.trim())
     .filter(Boolean)
     .map(s => {

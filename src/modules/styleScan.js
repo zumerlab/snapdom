@@ -237,12 +237,14 @@ export function scanSheetProps(sheet) {
 }
 
 /** Splits `sel` on `sep` outside parentheses, brackets and quotes. */
-function splitTopLevel(sel, sep) {
+export function splitTopLevel(sel, sep) {
+  if (!sel.includes(sep)) return [sel]
   const out = []
   let depth = 0, quote = null, start = 0
   for (let i = 0; i < sel.length; i++) {
     const c = sel[i]
-    if (quote) { if (c === quote && sel[i - 1] !== '\\') quote = null; continue }
+    if (c === '\\') { i++; continue }
+    if (quote) { if (c === quote) quote = null; continue }
     if (c === '"' || c === '\'') quote = c
     else if (c === '(' || c === '[') depth++
     else if (c === ')' || c === ']') depth--

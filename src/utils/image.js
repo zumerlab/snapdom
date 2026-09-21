@@ -18,6 +18,9 @@ import { snapFetch } from '../modules/snapFetch'
  * @returns {Promise<string>} the inlined layer, the original entry, or "none"
  */
 export async function inlineSingleBackgroundEntry(entry, options = {}) {
+  // Already embedded: preserve CSSOM's quoted SVG/percent escapes verbatim. Extracting
+  // and URI-encoding them can turn CSS backslashes into invalid SVG XML (#503).
+  if (/^\s*url\(\s*['"]?data:/i.test(entry)) return entry
   // Quick checks for non-URL values
   const isGradient = /^((repeating-)?(linear|radial|conic)-gradient)\(/i.test(entry)
   if (isGradient || entry.trim() === 'none') {
