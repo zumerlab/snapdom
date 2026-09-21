@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.1.0](https://github.com/zumerlab/snapdom/compare/v3.0.0...v3.1.0)
+
+> 21 September 2026
+
+- feat(capture): bring back fast: false as a time-sliced capture [`7b7d218`](https://github.com/zumerlab/snapdom/commit/7b7d218e9aeec29e8f613c5f896f38cd65e36165)
+- feat(capture): meter, progress and slider part rules into the capture [`8a32f08`](https://github.com/zumerlab/snapdom/commit/8a32f081a24a904e25c9fa9983b80b4f24a4c4aa)
+- perf(styles): prune shadow-root style reads with a per-capture universe [`9f3ef77`](https://github.com/zumerlab/snapdom/commit/9f3ef77310830944a24500476a29f2317ec3d302)
+- fix: restore ArcGIS table captures. Ref #503 [`ac8cae6`](https://github.com/zumerlab/snapdom/commit/ac8cae66ece4a8390d5f95c5ff53a7b74a7a8b2c)
+
 ### [v3.0.0](https://github.com/zumerlab/snapdom/compare/v3.0.0-beta.1...v3.0.0)
 
 > 14 September 2026
