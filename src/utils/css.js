@@ -79,7 +79,9 @@ export function getDefaultStyleForTag(tagName) {
     document.body.appendChild(sandbox)
   }
 
-  const el = document.createElement(tagName)
+  // Custom elements can override .style and run page code in their constructors (#505).
+  // An unstyled span has the same initial CSS, including unicode-bidi (a div does not).
+  const el = document.createElement(tagName.includes('-') ? 'span' : tagName)
   el.style.all = 'initial'
   sandbox.appendChild(el)
 

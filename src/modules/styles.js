@@ -1086,7 +1086,7 @@ function usedWidthDiffersFromAvailable(el, cs) {
 
 const __snapshotSig = new WeakMap()
 /** The snapshot's key into snapshotKeyCache, memoized per snapshot object. */
-function styleSignature(snap) {
+function styleSignature(snap, tag) {
   let sig = __snapshotSig.get(snap)
   if (sig) return sig
   // Built in INSERTION order, not sorted. This string is only ever a key into
@@ -1111,7 +1111,8 @@ function styleSignature(snap) {
   // were authored in a different order now miss each other in the key cache — one extra
   // getStyleKey call, never a wrong key. `__needsBgInline` is non-enumerable, so for...in
   // sees exactly what Object.entries saw.
-  const parts = []
+  // The diff depends on the tag's defaults even when snapshots are equal (#505).
+  const parts = [tag]
   for (const k in snap) parts.push(k, snap[k])
   sig = parts.join('\u0001')
   __snapshotSig.set(snap, sig)
@@ -1281,7 +1282,7 @@ function shareLists(rec, el) {
   if (rec.h && !('height' in stored)) rrList.push('height')
   if (rec.b && !('block-size' in stored)) rrList.push('block-size')
   const rrSet = new Set(rrList)
-  const staticParts = []
+  const staticParts = [el.tagName.toLowerCase()]
   for (const k in stored) { if (!rrSet.has(k)) staticParts.push(k, stored[k]) }
   rec.rr = rrList
   rec.sig = staticParts.join('\u0001') + '\u0002' + rrList.join('\u0001')
@@ -1652,7 +1653,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // getStyleKey only softens width for inline-sized / table / inline boxes, and only there does
   // its output depend on content/flex-item-ness. For every other node (the vast majority — divs,
   // headings, paragraphs…) skip that bookkeeping entirely so the hot path stays untouched.
-  let sig = styleSignature(snap)
+  let sig = styleSignature(snap, tag)
   let sizedByContent = true
   if (softensWidth(tag, (snap.display || '').toLowerCase())) {
     sizedByContent = hasRenderedContent(source)
@@ -1664,9 +1665,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
         hasSpecifiedWidth(source, pre, flexItem)) {
       sizedByContent = false
     }
-    // Fold tag/content/flex into the cache key so soften-eligible elements with identical styles
+    // Fold content/flex into the cache key so soften-eligible elements with identical styles
     // but different shape don't collide on the shared snapshotKeyCache.
-    sig = `${sig}|${tag}${sizedByContent ? '|c' : ''}${flexItem ? '|f' : ''}`
+    sig = `${sig}${sizedByContent ? '|c' : ''}${flexItem ? '|f' : ''}`
     // This is the exact condition getStyleKey uses to actually drop the width (the #429/#433/
     // #434 family): tally it so capture.js can suggest `reconcile: true` when it's never used —
     // cheap, since softensWidth/sizedByContent are already computed for this node regardless.

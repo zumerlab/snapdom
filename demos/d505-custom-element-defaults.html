@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Issue #505 · Custom element style defaults</title>
+  <style>
+    body { margin: 32px; background: #edf1f5; color: #142336; font: 16px/1.5 Arial, sans-serif; }
+    main { max-width: 1120px; margin: auto; }
+    h1 { font-size: 26px; line-height: 36px; margin: 0 0 8px; }
+    p { max-width: 850px; }
+    button { font: inherit; padding: 8px 18px; cursor: pointer; }
+    .comparison { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+    h2 { font-size: 16px; margin: 16px 0; }
+    #target { box-sizing: border-box; width: 520px; background: #fff; padding: 24px; }
+    #target header { margin-bottom: 20px; font-size: 20px; font-weight: bold; }
+    #target .screen { height: 140px; display: grid; place-items: center; background: #173e62; color: #fff; font-size: 26px; }
+    sd-attributed-string { display: block; margin-top: 18px; color: #173e62; font-size: 20px; font-weight: bold; }
+    sd-button-view-model { display: inline-block; margin: 16px 8px 0 0; padding: 8px 16px; background: #d9e9f5; border-radius: 20px; color: #142336; }
+    #target footer { margin-top: 20px; border-top: 1px solid #d9e9f5; padding-top: 16px; font-size: 14px; }
+    #out canvas { display: block; max-width: 100%; }
+    #status { min-height: 28px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Issue #505: custom elements with a Symbol style</h1>
+    <p>These components reproduce YouTube's <code>style</code> getter collision. The capture must preserve the title, buttons and colors without creating extra components to measure their default CSS.</p>
+    <button id="capture">Capture example</button>
+    <p id="status" role="status">Ready to capture.</p>
+    <div class="comparison">
+      <section>
+        <h2>Live DOM</h2>
+        <div id="target">
+          <header>Tab preview · local reproduction</header>
+          <div class="screen">▶ &nbsp; Example video</div>
+          <sd-attributed-string>Custom elements should keep their content</sd-attributed-string>
+          <sd-button-view-model>Subscribe</sd-button-view-model>
+          <sd-button-view-model>Share</sd-button-view-model>
+          <sd-button-view-model>Save</sd-button-view-model>
+          <footer>Both custom element types return a Symbol from their style getter.</footer>
+        </div>
+      </section>
+      <section>
+        <h2>SnapDOM canvas</h2>
+        <div id="out"></div>
+      </section>
+    </div>
+  </main>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    for (const tag of ['sd-attributed-string', 'sd-button-view-model']) {
+      customElements.define(tag, class extends HTMLElement {
+        get style() { return Symbol.for('issue505') }
+      })
+    }
+
+    document.querySelector('#capture').addEventListener('click', async () => {
+      const out = document.querySelector('#out')
+      const status = document.querySelector('#status')
+      out.replaceChildren()
+      status.textContent = 'Capturing…'
+      const start = performance.now()
+      try {
+        const canvas = await snapdom.toCanvas(document.querySelector('#target'), {
+          scale: 1, dpr: 1, embedFonts: false, burst: false, cache: 'disabled'
+        })
+        out.appendChild(canvas)
+        status.textContent = `Captured ${canvas.width} × ${canvas.height} in ${Math.round(performance.now() - start)} ms.`
+      } catch (error) {
+        status.textContent = `${error.name}: ${error.message}`
+      }
+    })
+  </script>
+</body>
+</html>
