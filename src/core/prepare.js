@@ -333,6 +333,24 @@ export async function prepareClone(element, options = {}) {
     if (sessionCache.clip && originalNode === element) continue
     wrapScrolledClone(cloneNode, originalNode)
   }
+  // #505: html/body overflow can apply to the viewport, not their own (possibly
+  // zero-height) box. Inside foreignObject they lose that special treatment.
+  // Freeze the used value; retain body clipping when html owns the overflow or
+  // containment disables propagation (CSS Overflow 3, viewport propagation).
+  const doc = element.ownerDocument
+  if ((element === doc.body || element === doc.documentElement) && doc.documentElement.localName === 'html') {
+    const htmlStyle = sessionCache.styleCache.get(doc.documentElement) || getStyle(doc.documentElement)
+    if (element === doc.documentElement) clone.style.overflow = 'visible'
+    const bodyClone = element === doc.body ? clone : clone.querySelector('body')
+    if (bodyClone && htmlStyle.overflowX === 'visible' && htmlStyle.overflowY === 'visible' &&
+        htmlStyle.contain === 'none' && !htmlStyle.containerType?.includes('size') &&
+        htmlStyle.contentVisibility !== 'auto' && htmlStyle.contentVisibility !== 'hidden') {
+      const bodyStyle = sessionCache.styleCache.get(doc.body) || getStyle(doc.body)
+      if (bodyStyle.contain === 'none' && !bodyStyle.containerType?.includes('size') &&
+          bodyStyle.contentVisibility !== 'auto' && bodyStyle.contentVisibility !== 'hidden' &&
+          bodyStyle.display !== 'none') bodyClone.style.overflow = 'visible'
+    }
+  }
   // The root clone is the foreignObject's content now, so whatever placed it in the page
   // (margin, inset offsets, float) is zeroed and its transform keeps scale/skew only. The
   // inlined computed values already hold the current animation frame; animation:none keeps
