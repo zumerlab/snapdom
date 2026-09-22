@@ -10,23 +10,23 @@
   </url>
   <url>
     <loc>https://snapdom.dev/pro/</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/pro/pdf/</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/pro/pdf/docs.html</loc>
-    <lastmod>2026-09-14</lastmod>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/pro/vector/</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/pro/vector/docs.html</loc>
-    <lastmod>2026-09-14</lastmod>
+    <lastmod>2026-09-22</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/labs.html</loc>
@@ -141,5 +141,17 @@
   <url>
     <loc>https://snapdom.dev/ecosystem/</loc>
     <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/showcase/</loc>
+    <lastmod>2026-09-14</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/compare/live/</loc>
+    <lastmod>2026-09-14</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/labs/capture-stages/</loc>
+    <lastmod>2026-09-14</lastmod>
   </url>
 </urlset>
