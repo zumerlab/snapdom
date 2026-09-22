@@ -8,7 +8,7 @@
  * engines. The size limits and the banded draw are per engine, see the notes on each.
  * @module exporters/toCanvas
  */
-import { isSafari } from '../utils/browser'
+import { isSafari, isFirefox } from '../utils/browser'
 import { sessionWarn } from '../utils/debug.js'
 import { isHTMLEl, isTag } from '../utils/helpers.js'
 import { markInternalNode } from '../utils/ownership.js'
@@ -669,6 +669,21 @@ export async function toCanvas(url, options) {
   }
 
   try {
+    // #506: Chromium resolves SVG decode before embedded fonts finish loading. Give its
+    // font-loading task a turn before drawing; a microtask still paints missing glyphs.
+    // A message avoids nested/background timer clamps. Font-free and canvas exports stay
+    // on the immediate path, and WebKit keeps its own verified-paint ladder below.
+    if (!srcCanvas && !isSafari() && !isFirefox() && isSvgDataURL(src) && /(?:%40|@)font-face/i.test(src)) {
+      await new Promise(resolve => {
+        const channel = new MessageChannel()
+        channel.port1.onmessage = () => {
+          channel.port1.close()
+          channel.port2.close()
+          resolve()
+        }
+        channel.port2.postMessage(0)
+      })
+    }
     const probe = isSafari() && !srcCanvas ? inkProbe() : null
     let inkBefore = false
     if (probe) {

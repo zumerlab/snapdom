@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Issue #506 · Embedded fonts on the first capture</title>
+  <style>
+    body { margin: 32px; background: #edf1f5; color: #142336; font: 16px/1.5 Arial, sans-serif; }
+    main { max-width: 1120px; margin: auto; }
+    h1 { font-size: 26px; line-height: 36px; margin: 0 0 8px; }
+    p { max-width: 850px; }
+    button { font: inherit; padding: 8px 18px; cursor: pointer; margin-right: 8px; }
+    button:disabled { cursor: default; }
+    .comparison { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+    h2 { font-size: 16px; margin: 16px 0; }
+    #t { font-size: 24px; padding: 16px; width: 600px; background: #fff; color: #000; }
+    #out img { display: block; max-width: 100%; }
+    #status { min-height: 28px; }
+  </style>
+  <script>window.MathJax = { startup: { typeset: false } };</script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Issue #506: embedded fonts on the first capture</h1>
+    <p>The first PNG must show every letter and digit, including the fraction. Reload to repeat with a fresh capture; this example does not run a warm-up capture.</p>
+    <button id="capture" disabled>Capture first PNG</button>
+    <button id="reload">Reload for fresh capture</button>
+    <p id="status" role="status">Loading MathJax and fonts…</p>
+    <div class="comparison">
+      <section>
+        <h2>Live MathJax formula</h2>
+        <div id="t">\( \text{Flächeninhalt} = \dfrac{1}{2} \cdot \text{Höhe} \)</div>
+      </section>
+      <section>
+        <h2>First SnapDOM PNG</h2>
+        <div id="out"></div>
+      </section>
+    </div>
+  </main>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    const button = document.querySelector('#capture')
+    const status = document.querySelector('#status')
+    document.querySelector('#reload').addEventListener('click', () => location.reload())
+    try {
+      await MathJax.startup.promise
+      await MathJax.typesetPromise()
+      await document.fonts.ready
+      button.disabled = false
+      status.textContent = 'Fonts ready. No capture has run yet.'
+    } catch (error) {
+      status.textContent = `Could not load the example: ${error.message}`
+    }
+    button.addEventListener('click', async () => {
+      button.disabled = true
+      status.textContent = 'Capturing…'
+      try {
+        const img = await (await snapdom(document.querySelector('#t'), { embedFonts: true })).toPng()
+        img.alt = 'Captured formula: Flächeninhalt equals one half times Höhe'
+        document.querySelector('#out').appendChild(img)
+        status.textContent = `First capture complete: ${img.naturalWidth} × ${img.naturalHeight}. Reload to repeat.`
+      } catch (error) {
+        status.textContent = `${error.name}: ${error.message}. Reload to repeat.`
+      }
+    })
+  </script>
+</body>
+</html>
