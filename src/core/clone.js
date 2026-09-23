@@ -113,6 +113,9 @@ function makeHideSpacer(node) {
   return spacer
 }
 
+/** display:none elements deepClone still clones whole (#507): see the skip in deepClone. */
+const HIDDEN_CLONED_TAGS = new Set(['style', 'option', 'optgroup'])
+
 /** Extra px around the clip rect kept alive so partially-bleeding effects (shadows, blur,
  *  overhanging glyphs) of near-edge elements still paint into the window. */
 const CLIP_CULL_MARGIN = 200
@@ -359,6 +362,29 @@ export async function deepClone(node, sessionCache, options) {
     } catch (err) {
       console.warn('Error in filter function:', err)
     }
+  }
+  // #507: nothing under a display:none element can paint, yet every descendant was cloned,
+  // styled and had its images fetched. Clip mode never pruned it either (0x0 box). A menu of
+  // 800 hidden items under 40 visible cards: 40.4 -> 5.8 ms (clip 'viewport' 47.4 -> 8.0),
+  // SVG 233 -> 20 KB, 0 px diff; the reporter measured YouTube 10.6 -> 2.1 s in a background
+  // tab. The emptied shell keeps the tag in place for :nth-child and sibling rules of the
+  // <style> clones kept inside it, which travel into the SVG (prepare.js). Exempt: <style> itself, display:none in every UA sheet;
+  // <option>, whose hidden selected placeholder is the label its <select> paints; and SVG,
+  // where a shell keeping an id would stop svgDefs from copying the def a <use> points at.
+  // Like the clip husk, not in nodeMap. Pinned by `__tests__/core.clone.hiddenSubtree.test.js`.
+  if (node !== options.element && !HIDDEN_CLONED_TAGS.has(node.localName) && !isSVGEl(node) &&
+      getStyle(node).display === 'none') {
+    const shell = node.cloneNode(false)
+    if (node.tagName === 'IMG') {
+      shell.removeAttribute('src')
+      shell.removeAttribute('srcset')
+    }
+    shell.style.setProperty('display', 'none', 'important')
+    for (const style of node.querySelectorAll('style')) {
+      const kept = await deepClone(style, sessionCache, options)
+      if (kept) shell.appendChild(kept)
+    }
+    return shell
   }
   // Clip mode: prune subtrees painting entirely outside the window (before any plugin
   // hooks or tag handlers — no per-node work is spent on culled content).
