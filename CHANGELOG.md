@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.1.1](https://github.com/zumerlab/snapdom/compare/v3.1.0...v3.1.1)
+
+> 24 September 2026
+
+- fix: paint embedded fonts on first capture (#506) [`f207b37`](https://github.com/zumerlab/snapdom/commit/f207b3740e532ae75fbe4dd0e6c4d8f9e948a5c9)
+- fix: isolate custom element style defaults [`0e7cbf0`](https://github.com/zumerlab/snapdom/commit/0e7cbf007efc48bdbfbfc89bb2b70372f622fba7)
+- fix: preserve document overflow in captures. Ref #505 [`a736115`](https://github.com/zumerlab/snapdom/commit/a73611584e9571f9bb7989d34e2f82f7dc57a354)
+- perf: skip display:none subtrees when cloning. Ref #507 [`f4af040`](https://github.com/zumerlab/snapdom/commit/f4af0405964949ad606ef4fc12e653075c386e96)
+- fix: complete sitemap and add canonical URLs for Pro pages [`5b02330`](https://github.com/zumerlab/snapdom/commit/5b02330fdc6a6591752e7078dceda5ec9dc26559)
+
 #### [v3.1.0](https://github.com/zumerlab/snapdom/compare/v3.0.0...v3.1.0)
 
 > 21 September 2026
