@@ -1,6 +1,6 @@
 {
     "$schema": "https://fundingjson.org/schema/v1.1.0.json",
-    "version": "v1.0.0",
+    "version": "v1.0.1",
     "entity": {
         "type": "individual",
         "role": "owner",
@@ -46,14 +46,14 @@
             {
                 "guid": "github-sponsors",
                 "type": "payment-provider",
-                "address": "https://github.com/sponsors/zumerlab",
-                "description": "One-time or recurring payments via GitHub Sponsors."
+                "address": "https://github.com/sponsors/tinchox5",
+                "description": "One-time or monthly contributions to snapDOM via GitHub Sponsors (tinchox5)."
             },
             {
                 "guid": "bank",
                 "type": "bank",
                 "address": "",
-                "description": "Direct bank transfer (US account). Please email for wire details."
+                "description": "Direct bank transfer (US account). Contact hello@snapdom.dev for wire details."
             }
         ],
         "plans": [
@@ -80,8 +80,8 @@
             {
                 "guid": "goodwill",
                 "status": "active",
-                "name": "Goodwill plan",
-                "description": "Any amount to support ongoing snapDOM development.",
+                "name": "Goodwill contribution (any amount)",
+                "description": "Choose your contribution amount to support ongoing snapDOM development. Contributions through either channel support the same funding goals. For direct US bank transfers, contact hello@snapdom.dev for wire details.",
                 "amount": 0,
                 "currency": "USD",
                 "frequency": "one-time",
