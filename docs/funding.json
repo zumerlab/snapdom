@@ -1,0 +1,92 @@
+{
+    "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+    "version": "v1.0.0",
+    "entity": {
+        "type": "individual",
+        "role": "owner",
+        "name": "Juan Martín Muda",
+        "email": "hello@snapdom.dev",
+        "phone": "",
+        "description": "Independent developer and creator of the Zumerlab open-source ecosystem (snapDOM, Orbit CSS, Zumly). I have been building and maintaining open-source JavaScript libraries since 2014, focused on front-end infrastructure: DOM capture, radial layout systems and zoom-based navigation. snapDOM, the flagship project, has become a widely adopted, actively maintained alternative to html2canvas for turning live DOM into images.",
+        "webpageUrl": {
+            "url": "https://snapdom.dev",
+            "wellKnown": ""
+        }
+    },
+    "projects": [
+        {
+            "guid": "snapdom",
+            "name": "snapDOM",
+            "description": "snapDOM captures the live DOM as scalable SVG and raster images (PNG, JPG, WebP, canvas) with high fidelity and speed — preserving styles, pseudo-elements, shadow DOM, web fonts and backgrounds — entirely client-side, with zero server dependencies.\n\nIt is the actively maintained alternative to html2canvas, a project that is no longer maintained yet still sees millions of weekly downloads. snapDOM (7,600+ GitHub stars, published on npm as @zumer/snapdom, MIT) is used in production across thousands of projects for exports, previews, visual testing and, increasingly, as a rendering layer for AI agents.\n\nFunding goes entirely to the MIT core: ongoing maintenance and issue triage, cross-browser correctness and performance work, a public compatibility test suite, security work (first-class redaction of sensitive data in captures), documentation, and migration tooling for the html2canvas user base.",
+            "webpageUrl": {
+                "url": "https://snapdom.dev",
+                "wellKnown": ""
+            },
+            "repositoryUrl": {
+                "url": "https://github.com/zumerlab/snapdom",
+                "wellKnown": "https://github.com/zumerlab/snapdom/blob/main/.well-known/funding-manifest-urls"
+            },
+            "licenses": ["spdx:MIT"],
+            "tags": [
+                "javascript",
+                "developer-tools",
+                "front-end",
+                "web",
+                "dom",
+                "images",
+                "svg",
+                "screenshots",
+                "testing",
+                "browser"
+            ]
+        }
+    ],
+    "funding": {
+        "channels": [
+            {
+                "guid": "github-sponsors",
+                "type": "payment-provider",
+                "address": "https://github.com/sponsors/zumerlab",
+                "description": "One-time or recurring payments via GitHub Sponsors."
+            },
+            {
+                "guid": "bank",
+                "type": "bank",
+                "address": "",
+                "description": "Direct bank transfer (US account). Please email for wire details."
+            }
+        ],
+        "plans": [
+            {
+                "guid": "core-maintenance",
+                "status": "active",
+                "name": "Dedicated core maintenance and development",
+                "description": "Funds one year of dedicated work on the MIT core of snapDOM: maintenance and issue triage, cross-browser correctness, performance, security (sensitive-data redaction in captures), public test infrastructure, documentation and html2canvas migration support.",
+                "amount": 50000,
+                "currency": "USD",
+                "frequency": "yearly",
+                "channels": ["github-sponsors", "bank"]
+            },
+            {
+                "guid": "infra",
+                "status": "active",
+                "name": "Infrastructure and CI",
+                "description": "Hosting for snapdom.dev and docs, plus benchmark and cross-browser CI infrastructure.",
+                "amount": 2400,
+                "currency": "USD",
+                "frequency": "yearly",
+                "channels": ["github-sponsors", "bank"]
+            },
+            {
+                "guid": "goodwill",
+                "status": "active",
+                "name": "Goodwill plan",
+                "description": "Any amount to support ongoing snapDOM development.",
+                "amount": 0,
+                "currency": "USD",
+                "frequency": "one-time",
+                "channels": ["github-sponsors", "bank"]
+            }
+        ]
+    }
+}
