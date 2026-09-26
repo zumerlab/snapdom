@@ -191,7 +191,7 @@ const png = await result.toPng();</pre>
 
     <section class="prose">
       <h2 id="exporter-options">Exporter-specific options</h2>
-      <p>Export options override the values captured with the result. <code>width</code> or <code>height</code> takes precedence over <code>scale</code>; <code>dpr</code> multiplies raster pixels. <code>toCanvas({ crop: { x, y, width, height } })</code> crops in capture viewBox coordinates. To exclude content before capture work runs, use the <a href="../options/#all-options">capture <code>clip</code> option</a>.</p>
+      <p>Export options override the values captured with the result. <code>width</code> or <code>height</code> takes precedence over <code>scale</code>; <code>dpr</code> multiplies raster pixels. <code>toCanvas({ crop: { x, y, width, height } })</code> rasterizes one rectangle of the capture, in <code>result.meta</code> coordinates, so a page past the canvas limit can be exported in pieces at full resolution (<a href="../../how-to/capture-full-page/#long-pages">example</a>). To exclude content before capture work runs, use the <a href="../options/#all-options">capture <code>clip</code> option</a>.</p>
 
       <h3 id="download">download()</h3>
       <table class="cmp-table">

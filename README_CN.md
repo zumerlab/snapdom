@@ -175,6 +175,27 @@ const result = await snapdom(card, {
 
 [完整选项](https://snapdom.dev/docs/options/)还包括阴影、变换、字体、CORS、回退方案和布局校正。
 
+### 分段导出超长页面
+
+Canvas 的高度上限在 Safari 中是 16,384px，在 Chrome 和 Firefox 中是 32,767px。超过上限时，单张图片会被整体缩小。如需保持完整分辨率，先捕获一次，再用 `crop` 分段导出：
+
+```js
+const capture = await snapdom(article);
+const { contentX, contentY, w0, h0 } = capture.meta;
+const pieceHeight = 4000; // CSS px
+
+for (let y = 0; y < h0; y += pieceHeight) {
+  const canvas = await capture.toCanvas({
+    scale: 2,
+    dpr: 1,
+    crop: { x: contentX, y: contentY + y, width: w0, height: Math.min(pieceHeight, h0 - y) }
+  });
+  // 保存或上传这一段，然后继续
+}
+```
+
+`crop` 是一个矩形，不是开关。它使用 `capture.meta` 的坐标，每次调用返回一个 canvas。捕获只执行一次，重复的只是栅格化。请让 `pieceHeight × scale × dpr` 保持在上限以内，并显式设置 `dpr`，因为它默认等于设备像素比。[分块原理](https://snapdom.dev/blog/huge-page-mosaic/)。
+
 ### 导出 HTML 或结构化上下文
 
 官方插件单独发布为 `@zumer/snapdom-plugins`，主版本号必须与核心一致；插件声明了对 v3 核心的 peer 依赖。插件源码位于本仓库的 `packages/plugins/`。
@@ -297,7 +318,7 @@ const after = await snapdom(card, options); // 使用当前策略
 - SnapDOM 需要浏览器 DOM。服务端 Node.js 进程需要浏览器环境才能运行它。
 - 跨源图片、字体和样式表必须可读取，或通过适当的代理访问。仅设置 `crossorigin` 不会获得权限，服务器也必须允许访问。跨源 iframe 使用占位框。
 - SVG 输出通过 `<foreignObject>` 包含 HTML，适合在浏览器中展示；其他 SVG 查看器和文档工具的支持程度各不相同。
-- 输出受浏览器渲染和 Canvas 尺寸限制影响。Safari 无法编码 WebP 时可能回退为 PNG。
+- 输出受浏览器渲染和 Canvas 尺寸限制影响；超长页面见[分段导出超长页面](#分段导出超长页面)。Safari 无法编码 WebP 时可能回退为 PNG。
 - Canvas、视频和其他持续变化的内容会重新捕获。JavaScript 对 CSSOM 的修改无法被自动观察，修改后请使用 `invalidate: true`。
 - 核心会捕获可见输入值。语义插件会在文本/映射输出中遮蔽敏感字段值，但如需同时隐藏附带图片中的这些像素，仍需使用 `redactInputs` 或 `exclude`。
 
