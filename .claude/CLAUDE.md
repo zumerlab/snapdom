@@ -108,18 +108,11 @@ Each of these was a real regression or a real win, with the measurement and the 
 
 ### Safari / WebKit
 
-WebKit quirks are handled at their point of impact, each commented where it lives: the paint probe and the second probe after the draw in `waitForImgPaint` / the draw in `toCanvas.js` (WebKit #219770 / #394); the per-capture pre-step in `src/api/snapdom.js` (fonts ready, canvas stores poked); the vector path for a sized `toImg` in `src/exporters/toImg.js`. All were verified in real Safari, and **Playwright's WebKit does not reproduce them**: a green `test:webkit` proves nothing about these paths. Re-verify per the SnapEye section below before touching any of them.
+WebKit quirks are handled at their point of impact, each commented where it lives: the paint probe and the second probe after the draw in `waitForImgPaint` / the draw in `toCanvas.js` (WebKit #219770 / #394); the per-capture pre-step in `src/api/snapdom.js` (fonts ready, canvas stores poked); the vector path for a sized `toImg` in `src/exporters/toImg.js`. All were verified in real Safari, and **Playwright's WebKit does not reproduce them**: a green `test:webkit` proves nothing about these paths. Re-verify in real Safari (the `safari-verification` skill) before touching any of them.
 
 ### Build outputs
 
 Two files, `dist/snapdom.mjs` (ESM) and `dist/snapdom.js` (script-tag IIFE), and `types/snapdom.d.ts`. `esbuild.config.mjs` explains every choice inline; `npm run test:pack` fails on a missing OR an extra file in the tarball. The constraints, not preferences: there is **no CommonJS build**, by decision (2026-09-02; v2's `require()` pointed at the IIFE and returned `{}`, so nothing that worked is lost, and a `require` condition must not come back); the `/plugins` subpath is **not a separate file**, because `package.json` maps it to the same `snapdom.mjs` so the subpath and the root are one module instance (separate entrypoints gave each its own registry, and re-export stubs were four files for nothing); the removed `/preCache` subpath must stay unexported; `buildLegacy` keeps `format: 'iife'` and has no `globalName` (without the format 442 minified bindings leaked as globals; with the name the empty export object overwrote `window.snapdom`); the subpath's `types` condition points at the root declarations, because `declare module` augmentations were TS2665 in every consumer. `compile` empties `dist/` first, since `files: ["dist/"]` ships whatever sits there. Nothing is code-split.
-
-## Code style (eslint.config.cjs)
-
-- Single quotes, no semicolons, max 1 consecutive empty line, final newline required.
-- Unused vars/args prefixed `_` are allowed.
-- Lint scope is `src/**/*.js` and `__tests__/**/*.js` only.
-- Browser globals + `WebKitCSSMatrix` are pre-declared.
 
 ## Comments
 
@@ -141,32 +134,7 @@ Standard JSDoc, no tooling, no custom tags.
 - Benchmarks: files matching `*.benchmark.js` are excluded from the normal test run; use `npm run test:benchmark` or `npx vitest bench`.
 - Visual diffs live under `__snapshots__/visual*/`; `npm run report:cross` builds a cross-engine comparison page.
 - **`demos/` is COMMITTED** (2026-09-01; 84 files — held back: the stale docs-site copy, Drift-branded assets, d17/d171 which are built around them, and the `labs*.html` scratch pages, all still gitignored). A checkout without it (sparse, or a worktree from before the commit) makes the visual suite silently skip itself (`visual.demos.test.js` globs `/demos/d*.html`, gets nothing, and registers a `describe.skip`) — a green `npm test` there proves NOTHING about pixels. If you must bring demos in by hand, **copy, do not symlink**: vite resolves through the link into the other repo's `node_modules`, several demos then capture at a wrong size, and you get ~11 fabricated "regressions". `npm run test:visual` runs just that file. `REQUIRE_VISUAL=1` turns both silences into a hard failure at globalSetup (`scripts/require-visual.mjs`): no demos, or no baselines at all — the case where the first run RECORDS them and passes, proving only that the build agrees with itself. `npm run release` sets it; ordinary runs and forks are unaffected. There is no CI on this repo (the `ci.yml` workflow was removed on 2026-08-30): verification is local, and a push to the remote is the last step, not the gate. Nothing but your own machine runs `npm test`, `test:pack` or the visual suite, so `npm run release` — which verifies before `release:push` pushes — is the release signal.
-- **The cross-library comparison harness lives in `docs/compare/live/harness.js`**, not in
-  `__tests__/`. It holds the competitor adapters (pinned CDN versions), the fixture-free
-  scenes and the pixel capability oracle, and it is imported by BOTH `__tests__/category.libs.js`
-  (every `category.*.benchmark.js` + the matrix test) and the live lab page at
-  `docs/compare/live/`, which is the same comparison run in a visitor's browser. It sits under
-  `docs/` because the published site can only serve what is inside `docs/` — so **a checkout
-  without `docs/` breaks the category suite**, same trap class as `demos/`. One copy is the
-  point: a live demo that drifts from the measured table is how a project starts contradicting
-  its own README. The deep-tree scene carries a `::before` stripe on every leaf on purpose:
-  without it the scene measured html2canvas's repainter on bare boxes, the one input it handles
-  best.
-  Four fairness rules the harness exists to enforce, each of which was violated at some point
-  and measured wrong because of it: (1) **one output stage** — every arm ends at a PNG data
-  URL, never snapdom's `toRaw` against someone else's raster; (2) **same pixels** — `scale: 1`
-  AND `dpr: 1`, because snapdom defaults `dpr` to `devicePixelRatio` and headless chromium's
-  DPR of 1 hides it; (3) **correctly-shaped options** — domlens takes `{ output: { scale } }`
-  and silently ignores a flat `scale`, and it takes `viewport: { scrollX: 0, scrollY: 0 }`
-  because its default viewport reads the window's scroll and the region it cuts is offset by
-  exactly that much (lab page scrolled 300px: the table capture starts at row #9; 1000px:
-  row #29; 0.00% against a live screenshot with the option, at any scroll — measured
-  2026-09-02 after the user saw "domlens never looks right" on the lab and suspected the
-  host page; the host CSS was innocent, disabling it only moved the element to scroll 0);
-  (4) **the memo pinned off** (`burst: false`) except in
-  the polling scene, where it is the point and the label says so. Scenes carry no `class`
-  attributes (the host page would style them) and must fit inside the 16384px canvas limit,
-  past which each library clamps to a different scale and rule (1) quietly ends.
+- **The cross-library comparison harness lives in `docs/compare/live/harness.js`**, shared by `__tests__/category.libs.js` and the live lab page, so **a checkout without `docs/` breaks the category suite** (same trap class as `demos/`). Its fairness rules and scenes: the `compare-harness` skill.
 - Baselines are recorded on first run, so a v3-only run only proves v3 agrees with itself. To measure v3 against `main`, generate baselines in the main checkout (identical harness file), copy `__snapshots__/visual` over, and run here. Status as of 2026-08-10: **71/71 demos pixel-identical to main on chromium.** Two deliberate divergences since: `d14-cors-test` moved ~2% on all three engines with the `<img>` box fix in `clone.js` (its baselines were re-recorded), and the Firefox baseline of `d-plugin-animation-lab` was re-recorded when its range sliders started rendering the styled track and thumb like Chromium and the live page (a fidelity gain that rode along with the defaults fix in `css.js`).
 - Coverage config in `vitest.config.js` scopes to `src/**/*.js`. **It only runs on chromium** (the v8 provider is Chromium-only), so Safari-only code reads as uncovered even when exercised — that is a measurement blind spot, not debt. Code that is unreachable by construction is marked with `/* c8 ignore start/stop */` and a reason; `/* c8 ignore next N */` also works (the v8-to-istanbul vendored into `@vitest/coverage-v8` 3.2.7 parses it in `dist/provider.js`, `_parseIgnore`), and `src/core/prepare.js` uses it.
 - `docs/compare/live/lab.js` imports `@zumer/snapdom` from unpkg with NO version on purpose: that lane is the published-version arm of the comparison (the competitor adapters are pinned; snapdom's published arm is not). Never pin it.
@@ -183,24 +151,3 @@ Every one of these cost real time on this branch. They are not hypothetical.
 - **Scene size and system fonts change outcomes.** A reconcile regression is invisible on a small tree, and a scene that depends on a system font passes on two engines and fails on the third.
 - **Before theorising from a number, look at the artifact.** On a glyph-dense image, ordinary hinting differences touch ~25% of the pixels.
 - **Two captures mounted in ONE document share class names.** `regression.pseudo.afterPosition` collided `.c1` across hosts the moment a pseudo snapshot depended on unrelated author CSS; a snapshot key must depend only on what the node itself renders.
-
-## Real-Safari verification (SnapEye)
-
-Playwright's WebKit does not reproduce the quirks the Safari code exists for — a green `test:webkit` proves nothing about them. For anything touching `toCanvas`, `toImg`, the Safari pre-step, fonts, or workers:
-
-1. `npm run compile`, then `node bench/snapeye-dev.mjs`. **UNTRACKED**: `bench/` is gitignored, so the harness does not come with a fresh clone, and it needs the sibling `../snapeye` repo. It serves the local `dist/` — confirm that is the build you mean to test.
-2. Drive real Safari via `safaridriver --port 4444` + plain WebDriver calls over curl (Develop → Allow Remote Automation is already enabled on this machine).
-3. The harness writes every captured blob to `.snapeye/`. Complete captures are byte-identical, so any file-size outlier is a blank or corrupt frame. Last run (2026-09-02, Safari 26.5.1, SnapEye 0.3.0): 100/100 identical, the 50 base and the 50 compressed each one sha1, all valid PNG, first capture identical to the rest.
-
-Sanity-check the detector itself: a blank PNG at the same dimensions weighs ~0.4% of a real capture, so the size threshold genuinely discriminates. And check the FORMAT of what lands in `.snapeye/` — a run that quietly produced SVG instead of PNG is what exposed the `toBlob` format regression that the unit suite missed.
-
-## Audit defects — all six FIXED 2026-09-02
-
-Each fix is narrow because the trap that guarded the earlier "do not fix" decision is still real. The mechanism, the trap and the pin live next to the code:
-
-- First WebKit capture blank: the second probe after the draw, `toCanvas.js` (five earlier attempts verified before the draw and could not see it).
-- Scoped `::marker` / `::first-line` skipped on an unreliable scan: the null-probe in the scoped emitter, `pseudo.js`.
-- `styleFingerprint` ignored adopted stylesheets: `pseudo.js` (counts adopted sheets only, NOT a census of every document sheet, which is the forbidden thing above).
-- The differential path skipped the live-DOM prep: the `lineClampTree` + `forceContentVisibility` wrap in `diff.js`.
-- `<img>` freeze and floor written from the border box: the box-sizing subtraction in `deepClone`, `clone.js`.
-- Shadow-root `::before`/`::after` never painted: `__shadowPseudo` in `canSkipPseudoWalk`, `pseudo.js`, and the pseudo kept outside `:where()` in `wrapWithScope`, `clone.helpers.js`.
