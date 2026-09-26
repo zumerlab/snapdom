@@ -442,15 +442,19 @@ function extractSrcUrls(srcValue, baseHref) {
 
 /**
  * Replace every url() in a @font-face block with its payload as a data: URL, from
- * cache.resource or fetched. Icon font URLs are left alone. A fetch that fails leaves the
- * url() in place and warns. Pinned by __tests__/module.fonts.evictedResource.test.js.
+ * cache.resource or fetched. A fetch that fails leaves the url() in place and warns.
+ * Pinned by __tests__/module.fonts.evictedResource.test.js.
+ *
+ * Every caller has already dropped icon families by NAME. The URL used to be run through
+ * isIconFont as well, whose loose `/icon/` test matched `fonts.gstatic.com/s/delagothicone/`
+ * (goth-icon-e): the text font "Dela Gothic One" kept its remote url(), which is inert inside
+ * a foreignObject, and rendered in the fallback font (#508).
  * @param {string} cssBlock
  * @param {string} baseHref
  * @param {string} [useProxy='']
- * @param {RegExp[]} [iconMatchers]
  * @returns {Promise<string>}
  */
-async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '', iconMatchers) {
+async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
   let out = cssBlock
   for (const m of cssBlock.matchAll(URL_RE)) {
     const raw = extractURL(m[0])
@@ -459,7 +463,6 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '', iconMatch
     if (!abs.startsWith('http') && !abs.startsWith('data:')) {
       try { abs = new URL(abs, baseHref || location.href).href } catch {}
     }
-    if (isIconFont(abs, iconMatchers)) continue
 
     // `cache.resource` is the ONLY proof the payload exists, here and at every other font
     // src below. It is FIFO-capped, so a font fetched earlier can be gone; having merely
@@ -758,7 +761,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       // embed while everything else looked fine.
       const familyDecl = `"${String(family).replace(/^\s*["']|["']\s*$/g, '').replace(/(["\\])/g, '\\$1')}"`
       if (/url\(/i.test(srcRaw)) {
-        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy, ctx.iconMatchers)
+        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy)
         await emitFace(`@font-face{font-family:${familyDecl};src:${inlinedSrc};${descriptors}}`)
       } else {
         await emitFace(`@font-face{font-family:${familyDecl};src:${srcRaw};${descriptors}}`)
@@ -1036,7 +1039,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         coveredFamilies.add(family.toLowerCase())
 
         const newFace = /url\(/i.test(srcRaw)
-          ? await inlineUrlsInCssBlock(face, link.href, useProxy, iconMatchers)
+          ? await inlineUrlsInCssBlock(face, link.href, useProxy)
           : face
         facesOut += newFace
       }
@@ -1089,7 +1092,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const p of provisionalFaces) {
     if (coveredFamilies.has(p.family)) continue
     finalCSS += /url\(/i.test(p.srcRaw)
-      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy, iconMatchers)
+      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy)
       : p.block
   }
 

@@ -1419,8 +1419,11 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     }
   }
   stripHeightForWrappers(el, style, snap)
+  // Before the twin signature below: it keys this node's final values.
+  const clipped = freezeBorderBox(el, style, snap)
   if (dyn !== null) {
     if (restoredAutoMargin) dyn.push('\u0005', ...MARGIN_PROPS.map(prop => snap[prop]))
+    if (clipped) dyn.push('\u0006' + clipped)
     // Seed the signature memo AFTER the strip: it deletes at most height/block-size, and two
     // twins with different strip outcomes must not collide onto one key.
     __snapshotSig.set(snap, shared.sig + '\u0002' + dyn.join('\u0001') +
@@ -1636,6 +1639,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   }
 
   addScrollbarGutter(source, pre, snap)
+  if (clone.style?.length && snap['box-sizing'] === 'border-box' &&
+      pre.getPropertyValue('box-sizing') !== 'border-box') syncInlineBorderBox(source, clone, snap)
 
   const flexItem = isFlexOrGridItem(source)
 
@@ -1720,6 +1725,102 @@ export function addScrollbarGutter(source, pre, snap) {
   }
   if (vGutter > 0.5) { bump('width', vGutter); bump('inline-size', vGutter) }
   if (hGutter > 0.5) { bump('height', hGutter); bump('block-size', hGutter) }
+}
+
+const BORDER_WIDTHS = ['border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width']
+const BOX_SIZES = ['width', 'inline-size', 'height', 'block-size']
+
+/**
+ * Freeze the BORDER box of a content-box element whose borders the live page snapped to a
+ * fractional CSS width.
+ *
+ * Browsers snap border widths to whole device pixels, and getComputedStyle reports the
+ * snapped width: at devicePixelRatio 2.625 a `1px` border reads `0.761905px` and `3px` reads
+ * `2.666667px` (Chrome and WebKit, measured). The svg image lays out at 1x and snaps those
+ * again, to 1px and 2px, so a frozen content-box size moved every outer edge by the
+ * difference. In #508, fifty stacked `border: 1px` rows grew 24px on a phone and the last one
+ * fell out of its container. With box-sizing: border-box the outer edges stay where the live
+ * page has them; only the content box absorbs the sub-pixel difference. Integer borders, the
+ * whole of a 1x or 2x page with ordinary CSS, never enter.
+ *
+ * An identity twin copies an already converted snapshot and re-reads its own width/height
+ * (LAYOUT_ALWAYS_RE), so it converts exactly once. Min and max sizes are not re-read for
+ * twins and change meaning under border-box, so any value other than the neutral one leaves
+ * the element as it was.
+ *
+ * The content box ends up to a pixel smaller than the content it held live, and an `auto`
+ * scroller shows a scrollbar for that sliver (Chrome painted one under every #508 row). An
+ * axis the live box had nothing to scroll on is clipped as `hidden` instead, which paints
+ * the same without the bar. That depends on the node's content, not its identity, so the
+ * decision is returned for the twin signature.
+ * Pinned by __tests__/snapdom.issue508.test.js.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} style - the live computed style
+ * @param {Record<string, string>} snap
+ * @returns {string} the axes switched from auto to hidden ('x', 'y', 'xy'), or ''
+ */
+function freezeBorderBox(el, style, snap) {
+  // Runs on every node, so the gate is a string test on the snapshot: a resolved fractional
+  // width always carries a '.', an integer one never does.
+  if (!BORDER_WIDTHS.some((p) => snap[p]?.includes('.'))) return ''
+  // box-sizing and overflow are the two values this writes, so a twin's copy may already
+  // hold the converted ones: those come from the live style. Everything else in `snap` is
+  // this node's own read (re-read, or identical between twins by construction).
+  if (style.getPropertyValue('box-sizing') === 'border-box') return ''
+  if (snap.display === 'inline') return ''
+  for (const axis of ['width', 'height']) {
+    const min = snap[`min-${axis}`]
+    const max = snap[`max-${axis}`]
+    if ((min && min !== '0px' && min !== 'auto') || (max && max !== 'none')) return ''
+  }
+  const px = (p) => parseFloat(snap[p]) || 0
+  const extraX = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width')
+  const extraY = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width')
+  const vertical = (snap['writing-mode'] || 'horizontal-tb') !== 'horizontal-tb'
+  for (const prop of BOX_SIZES) {
+    const v = snap[prop]
+    if (!v || !v.endsWith('px')) continue
+    const x = prop === 'width' || (prop === 'inline-size' && !vertical) || (prop === 'block-size' && vertical)
+    const extra = x ? extraX : extraY
+    snap[prop] = `${Math.round((parseFloat(v) + extra) * 1000) / 1000}px`
+  }
+  snap['box-sizing'] = 'border-box'
+  let clipped = ''
+  if (style.getPropertyValue('overflow-x') === 'auto') {
+    const idle = el.scrollWidth <= el.clientWidth
+    snap['overflow-x'] = idle ? 'hidden' : 'auto'
+    if (idle) clipped += 'x'
+  }
+  if (style.getPropertyValue('overflow-y') === 'auto') {
+    const idle = el.scrollHeight <= el.clientHeight
+    snap['overflow-y'] = idle ? 'hidden' : 'auto'
+    if (idle) clipped += 'y'
+  }
+  return clipped
+}
+
+const INLINE_BORDER_BOX = ['box-sizing', ...BOX_SIZES, 'overflow-x', 'overflow-y']
+const INLINE_BORDER_BOX_RE = /(?:box-sizing|width|height|inline-size|block-size|overflow(?:-[xy])?)\s*:/i
+
+/**
+ * Carry freezeBorderBox's values onto the clone's inline declarations of the same props.
+ * The clone keeps the source's style attribute, and an inline `height:10px` outranks the
+ * class: under the class's border-box it shrank each #508 row by its borders instead.
+ * @param {Element} source
+ * @param {Element} clone
+ * @param {Record<string, string>} snap
+ */
+function syncInlineBorderBox(source, clone, snap) {
+  // One test on the SOURCE's attribute text, which the clone's inline style started as.
+  // Seven CSSOM reads per node were 4 ms of a 107 ms capture of 6,000 bordered, inline-styled
+  // nodes that declared no size, and the clone's own attribute is worse (8 ms): its style was
+  // already written through CSSOM, so every read re-serializes it.
+  if (!INLINE_BORDER_BOX_RE.test(source.getAttribute('style'))) return
+  for (const p of INLINE_BORDER_BOX) {
+    if (clone.style.getPropertyValue(p) && snap[p]) {
+      clone.style.setProperty(p, snap[p], clone.style.getPropertyPriority(p))
+    }
+  }
 }
 
 /**

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Stacked rows with device-snapped borders, and a font URL containing "icon" (#508)</title>
+    <style>
+      /* The query string puts "icon" in the URL (goth-icon-e), like fonts.gstatic.com/s/delagothicone/ */
+      @font-face {
+        font-family: 'Gothic Test';
+        src: url('../__tests__/fixtures/fonts/inter-400.woff2?v=delagothicone') format('woff2');
+        font-weight: 400;
+      }
+      body { font-family: system-ui, sans-serif; padding: 20px; margin: 0; }
+      h1 { font-size: 18px; }
+      p { font-size: 14px; color: #555; max-width: 62ch; }
+      /* A phone at devicePixelRatio 2.625 snaps a 1px border to 2 device pixels, read back as
+         0.761905px. zoom on an ancestor OUTSIDE the capture gives the same value at DPR 1. */
+      .phone { zoom: 1.3125; }
+      #target {
+        display: flex;
+        gap: 5px;
+        padding: 5px;
+        width: fit-content;
+        background: gray;
+        font: 16px 'Gothic Test', monospace;
+      }
+      .container {
+        border: 1px solid black;
+        padding: 0 5px;
+        height: fit-content;
+        background: white;
+      }
+      .container > div {
+        border: 1px solid black;
+        margin: 5px 0;
+        text-align: center;
+        background: pink;
+      }
+      .scroll > div { overflow-x: auto; white-space: pre; }
+      .container > div:last-child { background: #f33; color: #fff; }
+      button.capture {
+        display: block; margin: 20px 0; padding: 8px 24px; border: 0;
+        border-radius: 8px; background: #0d0; cursor: pointer; font-size: 14px;
+      }
+      .out img { border: 1px dashed #d95350; }
+    </style>
+  </head>
+  <body>
+    <h1>Device-snapped borders (#508)</h1>
+    <p>
+      Thirty bordered rows per column. On a phone the live page snaps each border to
+      0.761905px and the capture used to snap it back to 1px, so every row grew and the red
+      last row slid out of its white container. The digits use a font whose URL contains
+      "icon", which used to be skipped as an icon font and render in the fallback.
+    </p>
+
+    <div class="phone">
+      <div id="target">
+        <div class="container" id="plain"></div>
+        <div class="container scroll" id="scroll"></div>
+      </div>
+    </div>
+
+    <button class="capture" id="btn">Capture</button>
+    <div class="out" id="out"></div>
+
+    <script>
+      for (const id of ['plain', 'scroll']) {
+        const col = document.getElementById(id)
+        for (let i = 1; i <= 30; i++) {
+          const row = document.createElement('div')
+          row.textContent = String(i)
+          col.appendChild(row)
+        }
+      }
+    </script>
+    <script type="module">
+      import { snapdom } from '../dist/snapdom.mjs'
+      document.getElementById('btn').addEventListener('click', async () => {
+        const img = await (await snapdom(document.getElementById('target'), { embedFonts: true })).toPng()
+        document.getElementById('out').replaceChildren(img)
+      })
+    </script>
+  </body>
+</html>
