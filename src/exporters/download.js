@@ -5,6 +5,7 @@
  */
 import { toBlob } from './toBlob.js'
 import { toCanvas } from './toCanvas.js'
+import { toLargePng } from './toLargePng.js'
 import { isIOS } from '../utils/browser.js'
 
 /**
@@ -57,8 +58,9 @@ export async function download(url, options) {
   nextOptions.dpr = 1
   const foundIOS = isIOS()
 
-  if (normalizedFormat === 'svg') {
-    const blob = await toBlob(url, { ...nextOptions, type: 'svg' })
+  const large = normalizedFormat === 'png' && toLargePng(url, nextOptions)
+  if (normalizedFormat === 'svg' || large) {
+    const blob = large ? await large : await toBlob(url, { ...nextOptions, type: 'svg' })
     if (foundIOS && await shareFile(blob, filename)) return
     const objectURL = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -66,7 +68,8 @@ export async function download(url, options) {
     a.download = filename
     document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(objectURL)
+    // Let the browser consume the download before releasing its backing Blob.
+    setTimeout(() => URL.revokeObjectURL(objectURL), 1000)
     a.remove()
     return
   }

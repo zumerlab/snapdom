@@ -40,7 +40,7 @@ SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM �
 
 核心引擎可导出图片和 Canvas；插件可导出自包含的 HTML、页面上下文、供视觉智能体使用的元素映射、PDF 和录制内容。捕获结果也可用于 WebGL 纹理、视觉回归测试和界面过渡。整个过程在页面内运行，使用标准 Web API，核心引擎零依赖。
 
-[文档与演示](https://snapdom.dev/) · [技术功能](FEATURES.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
+[文档与演示](https://snapdom.dev/) · [技术功能](FEATURES_CN.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
 
 本仓库介绍的是 **v3.x.x**。下方迁移指南以 **v2.x.x** 为比较基准。[v2 源码](https://github.com/zumerlab/snapdom/tree/v2)和 [v2 文档](https://snapdom.dev/v2/)仍可访问。
 
@@ -175,9 +175,24 @@ const result = await snapdom(card, {
 
 [完整选项](https://snapdom.dev/docs/options/)还包括阴影、变换、字体、CORS、回退方案和布局校正。
 
+### 导出超长页面
+
+使用默认的 SVG 引擎时，PNG 文件导出会自动处理超出浏览器 Canvas 限制的捕获。捕获一次，即可下载一个完整分辨率的文件，或获取它的 Blob：
+
+```js
+const capture = await snapdom(article);
+await capture.download({ format: 'png', scale: 2 });
+// 或自行上传、保存文件：
+const blob = await capture.toBlob({ format: 'png', scale: 2, dpr: 1 });
+```
+
+SnapDOM 将保存的捕获结果分块渲染，再编码为一个 PNG 文件。它保留请求的尺寸，包括阴影和留白，无需为整张图片分配一个 Canvas。`download()` 始终使用 DPR 1；`toBlob()` 使用捕获时的 DPR，除非导出时另行指定。未超出限制的导出仍使用浏览器原生编码器。
+
+此功能需要 `CompressionStream`；不支持它的旧浏览器仍会缩小输出并发出警告。超大文件的编码仍需要时间和内存，打开这些文件的应用也有自己的图片限制。
+
 ### 分段导出超长页面
 
-Canvas 的高度上限在 Safari 中是 16,384px，在 Chrome 和 Firefox 中是 32,767px。超过上限时，单张图片会被整体缩小。如需保持完整分辨率，先捕获一次，再用 `crop` 分段导出：
+`toCanvas()`、`toPng()` 和 JPEG/WebP 导出仍使用单个 Canvas，超出 SnapDOM 的尺寸保护阈值时会整体缩小（Safari 每边 16,384px，Chrome/Firefox 每边 32,767px，另有总像素面积限制）。需要分别获取多个 Canvas 时，可以使用 `crop`：
 
 ```js
 const capture = await snapdom(article);
@@ -318,11 +333,11 @@ const after = await snapdom(card, options); // 使用当前策略
 - SnapDOM 需要浏览器 DOM。服务端 Node.js 进程需要浏览器环境才能运行它。
 - 跨源图片、字体和样式表必须可读取，或通过适当的代理访问。仅设置 `crossorigin` 不会获得权限，服务器也必须允许访问。跨源 iframe 使用占位框。
 - SVG 输出通过 `<foreignObject>` 包含 HTML，适合在浏览器中展示；其他 SVG 查看器和文档工具的支持程度各不相同。
-- 输出受浏览器渲染和 Canvas 尺寸限制影响；超长页面见[分段导出超长页面](#分段导出超长页面)。Safari 无法编码 WebP 时可能回退为 PNG。
+- 输出受浏览器渲染和图片尺寸限制影响；超长 PNG 文件的导出方式见[导出超长页面](#导出超长页面)。Safari 无法编码 WebP 时可能回退为 PNG。
 - Canvas、视频和其他持续变化的内容会重新捕获。JavaScript 对 CSSOM 的修改无法被自动观察，修改后请使用 `invalidate: true`。
 - 核心会捕获可见输入值。语义插件会在文本/映射输出中遮蔽敏感字段值，但如需同时隐藏附带图片中的这些像素，仍需使用 `redactInputs` 或 `exclude`。
 
-详细行为见[技术功能与浏览器处理](FEATURES.md)。
+详细行为见[技术功能与浏览器处理](FEATURES_CN.md)。
 
 ## 性能基准测试
 
@@ -336,7 +351,7 @@ const after = await snapdom(card, options); // 使用当前策略
 - [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
 - [框架指南](https://snapdom.dev/guides/)与[使用示例](https://snapdom.dev/how-to/)
 - [官方插件](packages/plugins/README.md)、[插件规范](PLUGIN_SPEC.md)与[插件贡献指南](CONTRIBUTING_PLUGINS.md)
-- [架构](ARCHITECTURE.md)与[技术功能](FEATURES.md)
+- [架构](ARCHITECTURE.md)与[技术功能](FEATURES_CN.md)
 
 ## 开发
 

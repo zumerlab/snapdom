@@ -47,6 +47,34 @@ flag enabled, a build compiled with `SNAPDOM_CANVAS_ENGINE=1`, and the capture o
 `engine: 'html-in-canvas'`. The default build includes SVG only. To test both engines against
 the local development version, run `SNAPDOM_CANVAS_ENGINE=1 npm run site`.
 
+## PNG files beyond canvas limits
+
+`toBlob({ format: 'png' })` and `download({ format: 'png' })` automatically use
+`src/exporters/toLargePng.js` when the SVG's intrinsic dimensions or requested output
+exceed the decode/canvas guards. The ordinary path still uses the native canvas encoder.
+There is no new public option or size-dependent return type; downloads still force DPR 1.
+
+The exporter windows the frozen SVG viewport without changing its layout or percentage
+geometry, rasterizes bounded tiles, and passes complete RGBA row bands to
+`src/modules/png.js`. That encoder applies PNG row filters and feeds a single zlib stream
+through `CompressionStream`, writing RGBA8/sRGB PNG chunks with CRCs. Its reader drains
+concurrently with writes to avoid backpressure deadlock. Export sizing applies once,
+including fractional draw dimensions, bleed, width/height overrides and DPR.
+
+The full-width row band targets 16 MiB, with horizontal tiles for wide captures. Canvases
+are released after readback and their decode iframe is retired after any concurrent draws
+finish. This bounds working pixel buffers, not total memory: the frozen SVG and compressed
+PNG file remain resident, and browser allocation/reclamation is implementation-dependent.
+WebKit shadow windows render at natural scale before canvas resampling, preserving the
+existing shadow workaround.
+
+PNG encoding is lossless relative to the supplied RGBA pixels. Separate SVG raster windows
+can differ slightly from a single native draw in gradient quantization; the cross-engine
+tests check exact geometry, opaque seam markers and alpha, plus bounded RGB differences.
+`toPng()` still returns a canvas-sized image: loading and decoding a larger PNG is a separate
+browser limit. `toCanvas()`, JPEG/WebP, native-canvas captures and browsers without
+`CompressionStream` retain their existing paths and clamp diagnostics.
+
 ## The invalidation matrix (burst/diff correctness)
 
 Reusing a capture depends on tracking changes to the rendered frame. The mechanisms and

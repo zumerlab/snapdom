@@ -557,7 +557,9 @@ export interface CaptureResult {
    *  `meta` viewBox coordinates, so a long capture can be rasterized page by page. */
   toCanvas(options?: CanvasExportOptions): Promise<HTMLCanvasElement>;
 
-  /** Returns a Blob of the chosen type (svg/png/jpeg/webp). Defaults to SVG on the default
+  /** Returns a Blob of the chosen type (svg/png/jpeg/webp). PNG files from SVG captures
+   *  automatically preserve oversized output resolution when CompressionStream is available.
+   *  Defaults to SVG on the default
    *  engine and PNG after a successful html-in-canvas capture. An explicit SVG request on
    *  that raster path rejects because there is no SVG source. */
   toBlob(options?: BlobOptions & Partial<SnapdomOptions>): Promise<Blob>;
@@ -569,7 +571,8 @@ export interface CaptureResult {
   toJpg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
   toWebp(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
 
-  /** Trigger a client-side download of the snapshot using current/default settings. */
+  /** Download the snapshot at DPR 1. PNG files from SVG captures automatically preserve
+   *  oversized output resolution when CompressionStream is available. */
   download(options?: DownloadOptions & Partial<SnapdomOptions>): Promise<void>;
 
   /**

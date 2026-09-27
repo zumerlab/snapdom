@@ -46,8 +46,6 @@ Responsive images use the selected source rather than a fallback `src`. Common l
 
 Inlined raster images are downsampled to the resolution the capture needs, preserving the source codec when possible. The smaller image is used only if it saves bytes. Larger exports can restore the captured original; they do not reread a later version of the live image.
 
-Canvas dimensions are bounded by the browser's safe limits. Oversized exports may be downscaled with a warning.
-
 ## Fonts & icon fonts
 
 `embedFonts: 'auto'` embeds web fonts used by the captured subtree. The font pass matches families, weights, styles, stretch and used Unicode ranges; system-font captures skip embedding. `true` and `false` explicitly enable or omit web-font embedding.
@@ -80,6 +78,16 @@ A capture result can be exported several times without cloning the live element 
 Static shortcuts include `snapdom.toPng(element)`, `snapdom.toCanvas(element)` and `snapdom.download(element)`. `toImg()` is retained for compatibility; use `toSvg()` for an SVG image. JPEG and WebP default to a white background. On iOS, downloads can use the Web Share API.
 
 SVG captures contain HTML inside `<foreignObject>`; non-browser SVG viewers may not render them. `result.meta` exposes frozen capture geometry for overlays and image placement. `result.warnings` reports capture diagnostics.
+
+### Oversized PNG files
+
+With the default SVG engine, `toBlob({ format: 'png' })` and `download({ format: 'png' })` automatically preserve the requested resolution when the capture or output exceeds the browser's decode/canvas size guards. No new option is needed, and return types stay the same.
+
+SnapDOM renders the frozen SVG in bounded windows and encodes them into one PNG file, without allocating a full-image canvas or recapturing the live DOM. Output sizing preserves width/height overrides, scale, DPR, shadows and padding. Downloads still use DPR 1. Ordinary-sized exports use the native encoder.
+
+This requires `CompressionStream`; browsers without it retain the existing downscale and warning. Incremental PNG encoding can take longer than native encoding for the same pixel count. The compressed file remains in memory, and image viewers have their own size limits.
+
+`toCanvas()`, `toPng()`, JPEG/WebP exports and successful `html-in-canvas` captures retain their existing canvas-based paths and size limits. Use `toCanvas({ crop })` when separate canvases are needed. See [long-page exports](README.md#export-a-long-page) for examples.
 
 ## Options
 

@@ -78,4 +78,37 @@ describe('toCanvas — decode host', () => {
     }
     expect(frame.isConnected).toBe(true) // the budget was only crossed by the pair itself
   })
+
+  it('retires a tiled decode host after drawing, including its concurrent ordinary export', async () => {
+    const options = { scale: 1, dpr: 1 }
+    const single = await toCanvas(bulkySvg(64), { ...options, __releaseDecodeFrame: true })
+    expect([...single.getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([255, 0, 0, 255])
+    expect(decodeFrames()).toHaveLength(0)
+
+    await toCanvas(bulkySvg(64), options)
+    const shared = decodeFrames()[0]
+    const blue = bulkySvg(3 * 1024 * 1024).replace(encodeURIComponent('rgb(255,0,0)'), encodeURIComponent('rgb(0,0,255)'))
+    // Start both before awaiting either: retiring the small image must leave the larger
+    // in-flight decode's document alive through its final draw.
+    const both = await Promise.all([
+      toCanvas(bulkySvg(64), { ...options, __releaseDecodeFrame: true }),
+      toCanvas(blue, options),
+    ])
+    expect([...both[0].getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([255, 0, 0, 255])
+    expect([...both[1].getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([0, 0, 255, 255])
+    expect(shared.isConnected).toBe(false)
+    expect(decodeFrames()).toHaveLength(0)
+  })
+
+  it('retires failed decodes without leaving the next export guarded or unreadable', async () => {
+    const options = { scale: 1, dpr: 1, __releaseDecodeFrame: true }
+    const malformed = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"><broken></svg>')
+    await expect(toCanvas(malformed, options)).rejects.toThrow()
+    expect(decodeFrames()).toHaveLength(0)
+
+    const canvas = await toCanvas(bulkySvg(64), options)
+    expect([...canvas.getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([255, 0, 0, 255])
+    // A leaked in-flight guard would allow drawing but prevent this retirement forever.
+    expect(decodeFrames()).toHaveLength(0)
+  })
 })

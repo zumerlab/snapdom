@@ -14,8 +14,8 @@ import { isHTMLEl, isTag } from '../utils/helpers.js'
 import { markInternalNode } from '../utils/ownership.js'
 
 // #425: browsers cap how large an image they will decode and how large a canvas they
-// will back. Chrome/Firefox reject > 16384px on a side and a total decoded-image area
-// (~268M px). An oversized capture (large element × scale × dpr — and dpr silently
+// will back. The side and area guards below protect both allocations.
+// An oversized capture (large element × scale × dpr — and dpr silently
 // doubles on Retina) throws an opaque async "EncodingError: The source image cannot be
 // decoded" deep in img.decode(). We clamp instead so the capture still succeeds (slightly
 // downscaled) and warn, naming the knobs to adjust.
@@ -29,8 +29,8 @@ import { markInternalNode } from '../utils/ownership.js'
 // 32767, so it shares the higher bound; the AREA cap is unchanged and still catches the cases
 // that actually exceed what a browser will allocate.
 // Pinned by __tests__/exporters.rasterLimit.test.js (skipped on webkit, which does cap at 16384).
-const MAX_RASTER_SIDE = isSafari() ? 16384 : 32767
-const MAX_RASTER_AREA = 16384 * 16384
+export const MAX_RASTER_SIDE = isSafari() ? 16384 : 32767
+export const MAX_RASTER_AREA = 16384 * 16384
 
 /**
  * Downscale SVG text whose intrinsic width/height exceed the decode limits.
@@ -54,9 +54,7 @@ function clampSvgTextRasterSize(svg, session) {
     const nh = Math.max(1, Math.floor(h * f))
     sessionWarn(session, 'raster-clamp', `capture ${Math.round(w)}x${Math.round(h)}px exceeds decode limits; downscaled to ${nw}x${nh}px`)
     console.warn(
-      `[snapDOM] Capture ${Math.round(w)}×${Math.round(h)}px exceeds the browser image-decode ` +
-      `limit (${MAX_RASTER_SIDE}px/side); downscaling to ${nw}×${nh}px. Lower \`scale\` or set ` +
-      '`width`/`height` to control output size.'
+      `[snapdom] Decode limit: ${Math.round(w)}×${Math.round(h)} → ${nw}×${nh}. Use ${typeof CompressionStream === 'function' ? 'PNG Blob, ' : ''}SVG or crop.`
     )
     return svg.replace(tag, tag
       .replace(/(\bwidth=")[\d.]+/i, `$1${nw}`)
@@ -74,7 +72,7 @@ function clampSvgTextRasterSize(svg, session) {
  * @param {{x:number,y:number,width:number,height:number}} crop - in viewBox units
  * @returns {string}
  */
-function cropSvgText(svg, crop) {
+export function cropSvgText(svg, crop) {
   const nums = ['x', 'y', 'width', 'height'].map(k => Number(crop?.[k]))
   if (!nums.every(Number.isFinite) || nums[2] <= 0 || nums[3] <= 0) {
     throw new RangeError('[snapdom] canvas crop requires finite x/y and positive width/height')
@@ -126,7 +124,7 @@ export function decodeSvgFromDataURL(u) {
 }
 /** Decode only the leading chunk of an SVG data URL — enough to read the <svg ...> header
  *  without paying a full decodeURIComponent on a multi-MB payload. */
-function peekSvgHeader(u) {
+export function peekSvgHeader(u) {
   const i = u.indexOf(',')
   if (i < 0) return ''
   // Trim a trailing incomplete %-escape so decodeURIComponent can't throw on the cut.
@@ -425,6 +423,7 @@ const DECODE_FRAME_BUDGET_BYTES = 24 * 1024 * 1024
 let _decodeFrame = null
 let _decodeFrameBytes = 0
 let _decodeInFlight = 0
+let _retireDecodeFrame = false
 
 /** An <img> to decode `src` with, owned by the throwaway frame when there is one. */
 function acquireDecodeImage(src) {
@@ -466,11 +465,19 @@ function acquireDecodeImage(src) {
   return img
 }
 
-/** Release the in-flight guard taken by acquireDecodeImage. */
-function releaseDecodeImage(img) {
+/** Release the guard; tiled file exports retire their decoded resources after drawing.
+ *  A concurrent draw keeps the shared document alive until its own release. */
+function releaseDecodeImage(img, retire = false) {
   if (!img || !img.__snapdomDecodeFrame) return
   img.__snapdomDecodeFrame = false
   _decodeInFlight = Math.max(0, _decodeInFlight - 1)
+  if (retire) _retireDecodeFrame = true
+  if (_retireDecodeFrame && _decodeInFlight === 0) {
+    _decodeFrame?.remove()
+    _decodeFrame = null
+    _decodeFrameBytes = 0
+    _retireDecodeFrame = false
+  }
 }
 
 /** Start the decode of `src` on `image`. */
@@ -663,7 +670,7 @@ export async function toCanvas(url, options) {
     try {
       await startDecode(img, src)
     } catch (retryErr) {
-      releaseDecodeImage(img)
+      releaseDecodeImage(img, options.__releaseDecodeFrame)
       throw retryErr
     }
   }
@@ -747,8 +754,7 @@ export async function toCanvas(url, options) {
     if (over > 1) {
       sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds canvas limits; downscaled`)
       console.warn(
-        `[snapDOM] Output ${Math.round(devW)}×${Math.round(devH)}px exceeds the browser canvas ` +
-        `limit (${MAX_RASTER_SIDE}px/side); downscaling. Lower \`scale\`/\`dpr\` or set \`width\`/\`height\`.`
+        `[snapdom] Canvas limit: reducing ${Math.round(devW)}×${Math.round(devH)}. Use ${typeof CompressionStream === 'function' ? 'PNG Blob, ' : ''}SVG or crop.`
       )
       outW /= over
       outH /= over
@@ -830,6 +836,6 @@ export async function toCanvas(url, options) {
     }
     return canvas
   } finally {
-    releaseDecodeImage(img)
+    releaseDecodeImage(img, options.__releaseDecodeFrame)
   }
 }

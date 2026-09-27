@@ -175,9 +175,24 @@ const result = await snapdom(card, {
 
 [All options](https://snapdom.dev/docs/options/) include shadows, transforms, fonts, CORS, fallbacks and layout reconciliation.
 
+### Export a long page
+
+With the default SVG engine, PNG file exports automatically handle captures beyond the browser's canvas limits. Capture once, then download one full-resolution file or get its Blob:
+
+```js
+const capture = await snapdom(article);
+await capture.download({ format: 'png', scale: 2 });
+// Or upload/store the file yourself:
+const blob = await capture.toBlob({ format: 'png', scale: 2, dpr: 1 });
+```
+
+SnapDOM renders the frozen capture in windows and encodes them into one PNG. It preserves the requested dimensions, including shadows and padding, without allocating a canvas for the whole image. `download()` always uses DPR 1; `toBlob()` uses the capture's DPR unless you override it. Ordinary-sized exports use the native encoder.
+
+This requires `CompressionStream`; older browsers keep the existing downscale and warning. Very large files still take time and memory to encode, and the application opening them has its own image limits.
+
 ### Export a long page in pieces
 
-A canvas cannot be taller than 16,384px in Safari or 32,767px in Chrome and Firefox. Past that, a single image is scaled down to fit. To keep full resolution, capture once and export it in pieces with `crop`:
+`toCanvas()`, `toPng()` and JPEG/WebP exports still use a single canvas and scale down past SnapDOM's size guards (16,384px per side in Safari, 32,767px in Chrome/Firefox, plus an area limit). When you need separate canvases, use `crop`:
 
 ```js
 const capture = await snapdom(article);
@@ -318,7 +333,7 @@ Capture-affecting plugins suspend memoization unless they declare `pure: true`. 
 - SnapDOM needs a browser DOM. A server-side Node.js process needs a browser environment to run it.
 - Cross-origin images, fonts and stylesheets need readable resources or an appropriate proxy. `crossorigin` does not grant access unless the server also allows it. Cross-origin iframes use placeholders.
 - SVG output includes HTML inside `<foreignObject>`. It is suitable for browsers; support varies in other SVG viewers and document tools.
-- Output depends on browser rendering and canvas limits; for tall pages see [Export a long page in pieces](#export-a-long-page-in-pieces). Safari may fall back to PNG when WebP encoding is unavailable.
+- Output depends on browser rendering and image limits; for tall PNG files see [Export a long page](#export-a-long-page). Safari may fall back to PNG when WebP encoding is unavailable.
 - Canvas, video and other changing surfaces are captured fresh. JavaScript CSSOM edits are not observable automatically; use `invalidate: true` after them.
 - Core captures visible input values. Semantic plugins redact sensitive field values in their text/map output, but their attached image needs `redactInputs` or `exclude` if you want those pixels hidden too.
 

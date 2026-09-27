@@ -2,7 +2,7 @@
 
 SnapDOM 在浏览器内捕获渲染后的界面状态。核心引擎提供可复用的图片和 Canvas 导出；插件提供 HTML、结构化上下文、元素映射、PDF 和录制功能。
 
-本文是 v3 的技术功能参考。安装与示例见 [README](README.md) 和 [API 文档](https://snapdom.dev/docs/)。[English](FEATURES.md)。
+本文是 v3 的技术功能参考。安装与示例见 [README](README_CN.md) 和 [API 文档](https://snapdom.dev/docs/)。[English](FEATURES.md)。
 
 ## 捕获与克隆
 
@@ -46,8 +46,6 @@ SnapDOM 在浏览器内捕获渲染后的界面状态。核心引擎提供可复
 
 内联的位图会降采样到捕获所需的分辨率，并尽可能保留原编码格式。只有体积确实更小时才使用缩小后的图片。导出更大尺寸时，可恢复捕获时保存的原图，不会读取实时页面上后来更换的图片。
 
-Canvas 尺寸受浏览器安全限制约束。过大的输出可能被缩小，并发出警告。
-
 ## 字体与图标字体
 
 `embedFonts: 'auto'` 嵌入捕获子树实际使用的网页字体。字体处理会匹配字体族、字重、样式、拉伸比例和使用到的 Unicode 范围；纯系统字体的捕获会跳过嵌入。`true` 和 `false` 分别显式开启或关闭网页字体嵌入。
@@ -80,6 +78,16 @@ Canvas 尺寸受浏览器安全限制约束。过大的输出可能被缩小，�
 静态快捷方法包括 `snapdom.toPng(element)`、`snapdom.toCanvas(element)` 和 `snapdom.download(element)`。`toImg()` 为兼容性而保留，SVG 图片请使用 `toSvg()`。JPEG 和 WebP 默认使用白色背景。iOS 上下载可使用 Web Share API。
 
 SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可能无法渲染。`result.meta` 提供冻结的捕获几何信息，用于覆盖层和图片定位。`result.warnings` 提供捕获诊断信息。
+
+### 超大尺寸 PNG 文件
+
+使用默认 SVG 引擎时，如果捕获或输出尺寸超出浏览器的图像解码或 Canvas 安全尺寸限制，`toBlob({ format: 'png' })` 和 `download({ format: 'png' })` 会自动保留请求的分辨率。无需新增选项，返回类型也保持不变。
+
+SnapDOM 将冻结的 SVG 按尺寸受限的区域分块渲染，并编码为一个 PNG 文件，无需创建覆盖整张图片的 Canvas，也无需重新捕获实时 DOM。输出尺寸计算仍遵循显式 `width`/`height`、`scale` 和 DPR 设置，并保留阴影和内边距。下载仍使用 DPR 1。普通尺寸的导出使用原生编码器。
+
+此功能需要 `CompressionStream`；不支持它的浏览器仍会按原有方式缩小输出并发出警告。在像素数量相同时，增量 PNG 编码可能比原生编码耗时更长。压缩后的文件仍会保留在内存中，图片查看器也有各自的尺寸限制。
+
+`toCanvas()`、`toPng()`、JPEG/WebP 导出以及成功的 `html-in-canvas` 捕获仍使用原有的 Canvas 处理路径，并受其尺寸限制。如需分别生成多个 Canvas，请使用 `toCanvas({ crop })`。示例见[导出超长页面](README_CN.md#导出超长页面)。
 
 ## 选项
 
