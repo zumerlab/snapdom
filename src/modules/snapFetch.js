@@ -355,7 +355,7 @@ export async function snapFetch(url, options = {}) {
           const short = `${resp.status} ${resp.statusText || ''}`.trim()
           snapLogger.warnOnce(
             `http:${resp.status}:${as}:${originForLog(url)}`,
-            `HTTP error ${short} while fetching ${as} ${url}`
+            `HTTP ${short} fetching ${as}: ${url}`
           )
         }
         notifyError(options, result)
@@ -401,10 +401,10 @@ export async function snapFetch(url, options = {}) {
       if (!silent) {
         const k = `${reason}:${as}:${originForLog(url)}`
         const tips = reason === 'timeout'
-          ? `Timeout after ${timeout}ms. Consider increasing timeout or using a proxy for ${url}`
+          ? `Timeout (${timeout}ms): ${url}. Increase timeout or use a proxy`
           : reason === 'abort'
-            ? `Request aborted while fetching ${as} ${url}`
-            : `Network/CORS issue while fetching ${as} ${url}. A proxy may be required`
+            ? `Aborted fetching ${as}: ${url}`
+            : `Network/CORS fetching ${as}: ${url}. Try useProxy`
         snapLogger.errorOnce(k, tips)
       }
 

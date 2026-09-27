@@ -64,8 +64,8 @@ export async function toImg(url, options) {
       img.style.height = `${cssH}px`
       return img
     } catch (e) {
-      sessionWarn(options.__session, 'safari-png-fallback', 'safari vector toImg failed, falling back to PNG raster', e)
-      debugWarn(options, 'safari vector toImg failed, falling back to PNG', e)
+      sessionWarn(options.__session, 'safari-png-fallback', 'Safari vector toImg failed; using PNG', e)
+      debugWarn(options, 'Safari vector toImg failed; using PNG', e)
       return rasterize(url, { ...options, format: 'png', quality: 1, meta })
     }
   }
@@ -135,7 +135,7 @@ export async function toImg(url, options) {
         // exporter or a caller does — painted nothing.
         await img.decode()
       } catch (e) {
-        debugWarn(options, 'SVG width/height patch in toImg failed', e)
+        debugWarn(options, 'toImg SVG sizing failed', e)
         // Hand back something drawable: the original url already decoded once.
         if (img.src !== url) {
           img.src = url

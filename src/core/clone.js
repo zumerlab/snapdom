@@ -291,7 +291,7 @@ export async function deepClone(node, sessionCache, options) {
     // foreignObject found in the captured DOM would become doubly nested → silently
     // skipped by browsers. Detect via closest() on the source DOM and skip.
     if (tag === 'foreignobject' && node.parentElement?.closest?.('foreignObject')) {
-      debugWarn(sessionCache, 'Nested <foreignObject> skipped (SVG spec limitation — not rendered by browsers)')
+      debugWarn(sessionCache, 'Nested <foreignObject> unsupported; skipped')
       return null
     }
     // A <picture>'s <source> out-ranks its <img>'s own src, so it survives into the export
@@ -333,7 +333,7 @@ export async function deepClone(node, sessionCache, options) {
           }
         }
       } catch (err) {
-        console.warn(`Invalid selector in exclude option: ${selector}`, err)
+        console.warn(`Invalid exclude selector: ${selector}`, err)
       }
     }
   }
@@ -480,7 +480,7 @@ export async function deepClone(node, sessionCache, options) {
         if (w) clone.dataset.snapdomWidth = String(w)
         if (h) clone.dataset.snapdomHeight = String(h)
       } catch (e) {
-        debugWarn(sessionCache, 'getUnscaledDimensions for IMG failed', e)
+        debugWarn(sessionCache, 'IMG measurement failed', e)
       }
 
       // When the author used % or auto, or the effective width/height resolve to 0,
@@ -828,8 +828,7 @@ async function cloneIframe(node, sessionCache, options) {
   // never suggest enabling an option that is already on.
   if (!sameOrigin) {
     console.warn(
-      '[snapdom] cross-origin <iframe> skipped (its document cannot be read). Captured as a ' +
-      'placeholder that keeps the frame\'s box; pass { placeholders: false } for an invisible spacer.',
+      '[snapdom] Unreadable cross-origin <iframe>; keeping its box. Use { placeholders: false } to hide it.',
       node
     )
   }
@@ -965,14 +964,14 @@ async function cloneCanvas(node, sessionCache, options) {
       }
     }
   } catch (e) {
-    debugWarn(sessionCache, 'Canvas toDataURL failed, using empty/fallback', e)
+    debugWarn(sessionCache, 'Canvas toDataURL failed; using fallback', e)
   }
 
   // #486: a capture fired before the canvas has drawn anything (an animation still loading, a
   // chart rendered on the next frame) serializes a perfectly valid, perfectly empty PNG — the
   // capture "silently fails". Say so under debug, where it costs nothing in normal runs.
   if (options && options.debug && url && isBlankCanvas(node)) {
-    debugWarn(sessionCache, 'canvas is empty at capture time — capture it after its first frame is drawn', node)
+    debugWarn(sessionCache, 'Empty canvas; capture after its first frame', node)
   }
 
   const img = document.createElement('img')
@@ -1028,7 +1027,7 @@ async function cloneVideo(node, sessionCache, options) {
         if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
       }
     } catch (e) {
-      debugWarn(sessionCache, 'Video frame capture failed, using poster fallback', e)
+      debugWarn(sessionCache, 'Video capture failed; using poster', e)
     }
   }
 
@@ -1117,7 +1116,7 @@ async function cloneObjectEmbed(node, sessionCache, options) {
       if (out) return out
     } catch { /* fall through */ }
   }
-  if (url) console.warn(`[snapdom] <${node.localName}> content could not be captured (${type || 'unknown type'}): rendering its fallback children`)
+  if (url) console.warn(`[snapdom] <${node.localName}> capture failed (${type || 'unknown type'}); using fallback children`)
   return undefined // generic clone: fallback children render, matching the no-plugin browser behavior
 }
 

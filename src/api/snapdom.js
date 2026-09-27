@@ -456,7 +456,7 @@ async function buildResult(url, context) {
     // v3 sizing rule: width/height are the absolute output size and win; scale applies
     // only when neither is set; dpr multiplies device pixels.
     if (next.scale !== 1 && (Number.isFinite(next.width) || Number.isFinite(next.height))) {
-      debugWarn(next, 'width/height define the output size — scale is ignored when either is set')
+      debugWarn(next, 'scale ignored: width/height sets output size')
     }
     return next
   }

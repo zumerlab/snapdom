@@ -947,7 +947,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           const newBgParts = await Promise.all(bgSplits.map((entry) => inlineSingleBackgroundEntry(entry, options)))
           pseudoEl.style.backgroundImage = newBgParts.join(', ')
         } catch (e) {
-          console.warn(`[snapdom] Failed to inline background-image for ${pseudo}`, e)
+          console.warn(`[snapdom] ${pseudo} background-image inline failed`, e)
         }
       }
       if (hasBgColor) pseudoEl.style.backgroundColor = bgColor
@@ -969,7 +969,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
             if (style[prop]) pseudoEl.style[prop] = style[prop]
           }
         } catch (e) {
-          console.warn(`[snapdom] Failed to inline mask-image for ${pseudo}`, e)
+          console.warn(`[snapdom] ${pseudo} mask-image inline failed`, e)
         }
       }
 

@@ -85,7 +85,7 @@ export function createContext(options = {}) {
   for (const e of excludeRaw) {
     if (typeof e === 'string') excludeSelectors.push(e)
     else if (typeof e === 'function') excludePredicates.push(e)
-    else if (e != null) console.warn('[snapdom] Ignored invalid exclude entry (expected selector string or predicate):', e)
+    else if (e != null) console.warn('[snapdom] Invalid exclude entry; expected selector or predicate:', e)
   }
   const excludeMode = options.excludeMode ?? 'hide'
 

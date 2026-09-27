@@ -280,7 +280,7 @@ export async function prepareClone(element, options = {}) {
       s.remove() // Do not leave <style> inside the visual clone
     }
   } catch (e) {
-    debugWarn(sessionCache, 'Failed to extract shadow CSS from style[data-sd]', e)
+    debugWarn(sessionCache, 'Shadow CSS extraction failed', e)
   }
 
   if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()

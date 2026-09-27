@@ -54,7 +54,7 @@ describe('#486 canvas capture', () => {
     host.appendChild(canvas)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     await snapdom.toRaw(canvas, { debug: true })
-    const said = warn.mock.calls.some((args) => String(args[1] || '').includes('canvas is empty at capture time'))
+    const said = warn.mock.calls.some((args) => String(args[1] || '').includes('Empty canvas; capture after its first frame'))
     expect(said).toBe(true)
   })
 
@@ -65,7 +65,7 @@ describe('#486 canvas capture', () => {
     host.appendChild(canvas)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     await snapdom.toRaw(canvas, { debug: true })
-    const said = warn.mock.calls.some((args) => String(args[1] || '').includes('canvas is empty at capture time'))
+    const said = warn.mock.calls.some((args) => String(args[1] || '').includes('Empty canvas; capture after its first frame'))
     expect(said).toBe(false)
   })
 

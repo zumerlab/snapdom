@@ -198,7 +198,7 @@ export async function tryCanvasEngine(state, context) {
     try {
       probe = ctx2d.getImageData(0, 0, Math.min(64, outW), Math.min(64, outH)).data
     } catch {
-      debugWarn(context, `engine:'html-in-canvas': ${drawApi} painted but the canvas is tainted (pre-origin-trial build?) — falling back to the svg engine`)
+      debugWarn(context, `html-in-canvas: ${drawApi} tainted the canvas; using svg`)
       return null
     }
     // Blank probe: a mount that skipped the paint pass draws nothing — don't hand the
@@ -221,7 +221,7 @@ export async function tryCanvasEngine(state, context) {
     out.style.width = `${Math.round(width * scale)}px`
     out.style.height = `${Math.round(height * scale)}px`
   } catch (error) {
-    debugWarn(context, "engine:'html-in-canvas': native paint failed — falling back to the svg engine", error)
+    debugWarn(context, 'html-in-canvas: native paint failed; using svg', error)
     return null
   } finally {
     // Removing the mount takes the clone with it. That is fine on the success path, and on

@@ -153,7 +153,7 @@ export async function captureDOM(element, options) {
         sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
         if (!cache.warnedReconcile) {
           cache.warnedReconcile = true
-          console.warn('[snapdom] Text in inline/table-cell elements kept its natural width and may re-wrap under font-fallback rasterization. Pass { reconcile: true } for pixel-exact layout (roughly doubles capture time).')
+          console.warn('[snapdom] Inline/table text may re-wrap with fallback fonts. Use { reconcile: true } to check layout (~2x capture time).')
         }
       }
 
