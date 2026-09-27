@@ -1702,6 +1702,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
  * turn steals width from the rows). Add the measured gutters back so the frozen box matches
  * the live one. Border-box values already include the scrollbars; overlay scrollbars
  * (macOS default) measure 0 and change nothing.
+ * Pinned by __tests__/snapdom.issue498.test.js and __tests__/snapdom.issue508.test.js.
  * @param {Element} source
  * @param {CSSStyleDeclaration} pre
  * @param {Record<string,string>} snap
@@ -1723,8 +1724,12 @@ export function addScrollbarGutter(source, pre, snap) {
     const n = parseFloat(v)
     if (Number.isFinite(n)) snap[prop] = `${Math.round((n + gutter) * 1000) / 1000}px`
   }
-  if (vGutter > 0.5) { bump('width', vGutter); bump('inline-size', vGutter) }
-  if (hGutter > 0.5) { bump('height', hGutter); bump('block-size', hGutter) }
+  // offset* and client* are integers, each rounded by under a pixel, so with no scrollbar the
+  // difference still reaches 1.5: at devicePixelRatio 2.75 (borders 0.727px) a 47.636px row
+  // measured 48 - 46 - 1.4545 = 0.545 and every #508 row grew by it. No classic scrollbar is
+  // narrower than 2px.
+  if (vGutter >= 2) { bump('width', vGutter); bump('inline-size', vGutter) }
+  if (hGutter >= 2) { bump('height', hGutter); bump('block-size', hGutter) }
 }
 
 const BORDER_WIDTHS = ['border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width']

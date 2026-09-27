@@ -16,9 +16,9 @@ const ROWS = 40
 const mounted = []
 afterEach(() => { for (const el of mounted.splice(0)) el.remove() })
 
-function scene(rowStyle, rowInner = '') {
+function scene(rowStyle, rowInner = '', zoomBy = '1.3125') {
   const zoom = document.createElement('div')
-  zoom.style.zoom = '1.3125'
+  zoom.style.zoom = zoomBy
   const root = document.createElement('div')
   root.style.cssText = 'width:120px;background:#fff;display:flow-root'
   for (let i = 0; i < ROWS; i++) {
@@ -56,6 +56,20 @@ describe('#508 borders snapped to a fractional width', () => {
     // border the svg paints, its background is 118 × ~9.5 px.
     expect(n).toBeGreaterThan(118 * 7)
     // And it is the bottom row of the image, not somewhere above a blank strip.
+    const { data } = canvas.getContext('2d').getImageData(0, canvas.height - 3, canvas.width, 1)
+    expect(red(data[4 * 60], data[4 * 60 + 1], data[4 * 60 + 2])).toBe(true)
+  })
+
+  // The reporter's phone, devicePixelRatio 2.75: borders read 0.727273px, so each row of
+  // `overflow-x: auto` measured offsetHeight 48 (47.636) against clientHeight 46 (46.182).
+  // Those two are rounded integers, and 48 - 46 - 1.4545 = 0.545 passed for a classic
+  // scrollbar: every row grew 0.545px and 50 of them overflowed their container by 27px.
+  // Rows of 4.18px round the same way (5.63 -> 6, 4.18 -> 4) and are shorter than the drift.
+  it('does not read integer rounding of an auto scroller as a scrollbar gutter', async () => {
+    const root = scene('height:4.18px;overflow-x:auto;border:1px solid #00f', '', '1.375')
+    const row = root.firstChild
+    expect(row.offsetHeight - row.clientHeight - 2 * parseFloat(getComputedStyle(row).borderTopWidth)).toBeGreaterThan(0.5)
+    const { canvas } = await count(root, red)
     const { data } = canvas.getContext('2d').getImageData(0, canvas.height - 3, canvas.width, 1)
     expect(red(data[4 * 60], data[4 * 60 + 1], data[4 * 60 + 2])).toBe(true)
   })
