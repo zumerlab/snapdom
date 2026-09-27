@@ -7,8 +7,16 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync, rmSync, openSync, closeSync } from 'node:fs'
 import { resolve, join, extname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { styleText } from 'node:util'
 import { cpus, platform, release, loadavg } from 'node:os'
 import { compareRounds } from './benchmark-statistics.mjs'
+
+// Console only: styleText drops the codes when stdout is not a TTY or NO_COLOR is set, and
+// report.md / report.json never pass through it.
+const TONE = { regression: 'red', failed: 'red', 'invalid-fixture': 'red', 'review-required': 'yellow', inconclusive: 'yellow', 'no-regression-detected': 'green', passed: 'green' }
+const tone = word => TONE[word] ? styleText(TONE[word], word) : word
+const change = ratio => ratio === null ? styleText('yellow', 'unresolved')
+  : styleText(ratio > 1.05 ? 'red' : ratio < 0.95 ? 'green' : 'dim', ((ratio - 1) * 100).toFixed(1) + '%')
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const options = { rounds: 16, samples: 3, browser: 'chromium', scenes: 'card,table,css,shadow,images,fonts,deep,dashboard', modes: 'first,fresh,recapture,poll-static,poll-mutating' }
@@ -112,9 +120,9 @@ try {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   const origin = `http://127.0.0.1:${server.address().port}`
   const save = () => writeFileSync(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n')
-  console.log(`npm stable ${stable.version} (${report.stable.bundleSha256.slice(0, 12)}) vs ${options.control ? `CONTROL ${options.control}` : 'compiled checkout'} (${report.candidate.bundleSha256.slice(0, 12)})`)
-  console.log(`${cases.length} cases, ${options.rounds} paired rounds, ${options.samples} samples; ${output}`)
-  if (options.rounds < 12) console.log('Diagnostic run: fewer than 12 independent rounds cannot pass the regression gate.')
+  console.log(styleText('bold', `npm stable ${stable.version} (${report.stable.bundleSha256.slice(0, 12)}) vs ${options.control ? `CONTROL ${options.control}` : 'compiled checkout'} (${report.candidate.bundleSha256.slice(0, 12)})`))
+  console.log(styleText('dim', `${cases.length} cases, ${options.rounds} paired rounds, ${options.samples} samples; ${output}`))
+  if (options.rounds < 12) console.log(styleText('yellow', 'Diagnostic run: fewer than 12 independent rounds cannot pass the regression gate.'))
   for (const engine of engines) {
     browser = await ({ chromium, firefox, webkit })[engine].launch()
     const newPage = async arm => {
@@ -159,7 +167,7 @@ try {
       row.fidelity = sf.dimensionMismatch || cf.dimensionMismatch || sd.dimensionMismatch || sd.fraction > 0.001 || Math.max(sf.fraction, cf.fraction) > 0.05
         ? 'invalid-fixture' : row.captureDifference.newlyWrongFraction > 0.001 || cf.fraction > sf.fraction + 0.001 ? 'review-required' : 'passed'
       if (row.fidelity !== 'passed') {
-        console.log(`${name}: ${row.fidelity}; timings withheld, inspect saved PNGs`)
+        console.log(`${styleText('cyan', name)}: ${tone(row.fidelity)}; timings withheld, inspect saved PNGs`)
         save()
         continue
       }
@@ -196,7 +204,7 @@ try {
       }
       // Two metrics, each with ratio + absolute-difference confidence intervals.
       row.comparison = ['captureMs', 'totalMs'].map(metric => compareRounds(row.pairs, metric, cases.length * 4))
-      console.log(`${name}: ` + row.comparison.map(stat => `${stat.metric} ${stat.stableMs.toFixed(1)} -> ${stat.candidateMs.toFixed(1)}ms (${stat.ratio === null ? 'unresolved' : ((stat.ratio - 1) * 100).toFixed(1) + '%'}) ${stat.verdict}`).join('; ') + `; fidelity ${row.fidelity}`)
+      console.log(`${styleText('cyan', name)}: ` + row.comparison.map(stat => `${stat.metric} ${stat.stableMs.toFixed(1)} -> ${stat.candidateMs.toFixed(1)}ms (${change(stat.ratio)}) ${tone(stat.verdict)}`).join('; ') + `; fidelity ${tone(row.fidelity)}`)
       save()
     }
     await browser.close(); browser = null
@@ -212,12 +220,12 @@ try {
     report.controlPassed = report.verdict === 'no-regression-detected'
     process.exitCode = report.controlPassed ? 0 : 1
   } else process.exitCode = report.verdict === 'no-regression-detected' ? 0 : report.verdict === 'inconclusive' ? 2 : 1
-  console.log(`Result: ${report.verdict}${options.control ? `; ${options.control} control ${report.controlPassed ? 'passed' : 'FAILED'}` : ''}`)
+  console.log(styleText('bold', `Result: ${tone(report.verdict)}${options.control ? `; ${options.control} control ${report.controlPassed ? tone('passed') : styleText('red', 'FAILED')}` : ''}`))
 } catch (error) {
   report.verdict = 'error'
   report.error = error.stack || String(error)
   process.exitCode = 1
-  console.error(report.error)
+  console.error(styleText('red', report.error, { stream: process.stderr }))
 } finally {
   await browser?.close()
   if (server) await new Promise(resolve => server.close(resolve))
