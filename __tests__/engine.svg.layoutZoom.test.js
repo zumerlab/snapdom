@@ -1,6 +1,6 @@
-// #508: on Chromium the svg engine lays the clone out at the live devicePixelRatio (`zoom` on
-// the foreignObject's container, scale(1/zoom) on a <g> around it), so line boxes and borders
-// round on the same device-pixel grid as the page. What that must NOT change is where
+// #508: on Chromium and Firefox the svg engine lays the clone out at the live devicePixelRatio
+// (`zoom` on the foreignObject's container, scale(1/zoom) on a <g> around it), so line boxes
+// and borders round on the same device-pixel grid as the page. What that must NOT change is where
 // content lands: viewBox, output size and every offset stay in CSS pixels.
 //
 // The runner's devicePixelRatio is 1, so it is stubbed here. Pixel parity between the two
@@ -9,9 +9,9 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { isSafari, isFirefox } from '../src/utils/browser.js'
+import { isSafari } from '../src/utils/browser.js'
 
-const BLINK = !isSafari() && !isFirefox()
+const ZOOMS = !isSafari()
 const mounted = []
 const own = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio')
 function stubDPR(v) { Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => v }) }
@@ -46,12 +46,12 @@ async function redBox(el, opts = {}) {
 }
 
 describe('svg engine layout zoom (#508)', () => {
-  it('wraps the foreignObject in scale(1/dpr) and zooms its container, Chromium only', async () => {
+  it('wraps the foreignObject in scale(1/dpr) and zooms its container, not on WebKit', async () => {
     const el = mount('<div style="width:50px;height:30px;background:#f00"></div>')
     stubDPR(2.625)
     const svg = decode((await snapdom(el, { dpr: 1, cache: 'disabled', burst: false })).url)
     expect(svg).toMatch(/viewBox="0 0 50 30"/)
-    if (BLINK) {
+    if (ZOOMS) {
       expect(svg).toMatch(/<g transform="scale\(0\.38095\d*\)"><foreignObject[^>]* width="131\.25" height="78\.75"/)
       expect(svg).toMatch(/zoom: 2\.625 !important/)
     } else {

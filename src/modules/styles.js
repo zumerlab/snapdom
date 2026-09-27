@@ -1741,9 +1741,9 @@ const BOX_SIZES = ['width', 'inline-size', 'height', 'block-size']
  * difference. In #508, fifty stacked `border: 1px` rows grew 24px on a phone and the last one
  * fell out of its container. With box-sizing: border-box the outer edges stay where the live
  * page has them; only the content box absorbs the sub-pixel difference. Integer borders, the
- * whole of a 1x or 2x page with ordinary CSS, never enter. On Chromium the svg engine also
- * lays out at the live devicePixelRatio (`layoutZoom`, engines/svg.js), which snaps these
- * exactly as the page did; this pass is what keeps WebKit and Firefox right.
+ * whole of a 1x or 2x page with ordinary CSS, never enter. On Chromium and Firefox the svg
+ * engine also lays out at the live devicePixelRatio (`layoutZoom`, engines/svg.js), which
+ * snaps these exactly as the page did; this pass is what keeps WebKit right.
  *
  * An identity twin copies an already converted snapshot and re-reads its own width/height
  * (LAYOUT_ALWAYS_RE), so it converts exactly once. Min and max sizes are not re-read for

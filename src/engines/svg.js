@@ -17,7 +17,7 @@
  * @module engines/svg
  */
 
-import { isSafari, isFirefox, getStyle } from '../utils/index.js'
+import { isSafari, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 import { runHook } from '../core/plugins.js'
 import { isInternalNode, markInternalNode } from '../utils/ownership.js'
@@ -502,10 +502,13 @@ export async function composeAndSerialize(state, ex) {
   // 8.24% -> 6.51% at DPR 2.625, 8.15 -> 6.66 at 2, 8.52 -> 6.10 at 1.5, the few that moved
   // the other way by under 3% (subpixel text placement); the #508 page itself 10.9% -> 2.3%.
   // It costs the layout at the larger font size: 37.5 -> 39 ms on a 3,000-cell table at DPR
-  // 2.625, nothing at 1. Chromium only: WebKit does not round line boxes by DPR, and Firefox
-  // could not be verified. Pinned by __tests__/engine.svg.layoutZoom.test.js.
+  // 2.625, nothing at 1. Firefox rounds line boxes the same way: real Firefox 156 at
+  // devPixelsPerPx 2.625 cut the last of fifty `<br>` lines in three #508 columns at 1x, and
+  // kept all of them zoomed. Not WebKit, which does not round line boxes by DPR. The support
+  // check is for Firefox before 126, where `zoom` does not exist and the scale(1/zoom) group
+  // alone would shrink the capture. Pinned by __tests__/engine.svg.layoutZoom.test.js.
   const view = elDoc.defaultView || window
-  const layoutZoom = !isSafari() && !isFirefox() ? (view.devicePixelRatio || 1) : 1
+  const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? (view.devicePixelRatio || 1) : 1
   const fo = document.createElementNS(svgNS, 'foreignObject')
   fo.setAttribute('x', String(Math.min(0, offX) * layoutZoom))
   fo.setAttribute('y', String(Math.min(0, offY) * layoutZoom))
