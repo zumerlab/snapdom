@@ -660,9 +660,12 @@ export async function toCanvas(url, options) {
     if (!img.__snapdomDecodeFrame) throw e
     // Gecko replaces a freshly inserted iframe's initial about:blank document asynchronously,
     // aborting loads started against it. By the time the abort surfaces the settled document
-    // is in place, so one retry lands.
-    releaseDecodeImage(img)
+    // is in place, so one retry lands. Acquire before releasing: a release that reached zero
+    // in flight after a concurrent tiled export asked to retire removed that settled frame,
+    // and the retry landed in a fresh one whose about:blank swap aborted it again.
+    const failed = img
     img = acquireDecodeImage(src)
+    releaseDecodeImage(failed)
     // This second acquire is OUTSIDE the try/finally below, so a retry that also rejects
     // used to propagate with the guard still held. _decodeInFlight then never returned to
     // zero, the `_decodeInFlight === 0` condition that recycles the shared decode frame
