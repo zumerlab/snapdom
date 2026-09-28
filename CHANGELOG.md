@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.2.0](https://github.com/zumerlab/snapdom/compare/v3.1.1...v3.2.0)
+
+> 28 September 2026
+
+- feat: export PNG files beyond the canvas limit [`6e6b5eb`](https://github.com/zumerlab/snapdom/commit/6e6b5ebb64b8a4185653af2ba5ead42aff7fbf4b)
+- fix: lay out captures on the device-pixel grid in Firefox too [`#508`](https://github.com/zumerlab/snapdom/pull/508)
+- fix: lay out captures on the live device-pixel grid in Chromium [`#508`](https://github.com/zumerlab/snapdom/pull/508)
+- fix: keep stacked rows aligned on fractional-DPR screens (#508) [`1327c55`](https://github.com/zumerlab/snapdom/commit/1327c55eb60cb16b541e96fc399c81a5d5e6038e)
+- fix: adjust scrollbar gutter calculations for fractional border widths (#508) [`67acb0c`](https://github.com/zumerlab/snapdom/commit/67acb0c3997d91957da3d49fbd4d51980e49018c)
+- fix: keep the settled decode frame when retrying in Firefox [`ab48bce`](https://github.com/zumerlab/snapdom/commit/ab48bce371df7e30b04b25da6e174d8fb0f765b8)
+- update crop option [`19a7e55`](https://github.com/zumerlab/snapdom/commit/19a7e55b660cac9a83da0f16f6663dde6be618bc)
+- chore: shorten console messages [`5bc3511`](https://github.com/zumerlab/snapdom/commit/5bc3511ac891256c75c9cd8e2ec4611c68cea128)
+- chore: color the benchmark verdicts in the terminal [`8d93e24`](https://github.com/zumerlab/snapdom/commit/8d93e24da9f986123a5dbd7adc7ca4be665c3192)
+- test: compare encoded PNGs with the canvas readback [`7a19be9`](https://github.com/zumerlab/snapdom/commit/7a19be9c5b166e74656e4b5a54f5141cd2cb1b49)
+
+
 #### [v3.1.1](https://github.com/zumerlab/snapdom/compare/v3.1.0...v3.1.1)
 
 > 24 September 2026
