@@ -85,7 +85,9 @@ describe('incremental PNG encoder', () => {
     expect(result.pixels).toEqual(pixels)
   })
 
-  it('decodes in the browser with the same colors and alpha as native canvas PNG', async () => {
+  // Asserted against the canvas readback, not against native toBlob: Firefox's own encoder
+  // unpremultiplies differently and its PNG decodes 2 levels above getImageData on alpha 128.
+  it('decodes in the browser to the same colors and alpha as the canvas readback', async () => {
     const width = 16, height = 8
     const pixels = new Uint8ClampedArray(width * height * 4)
     for (let i = 0; i < pixels.length; i += 4) {
@@ -94,11 +96,10 @@ describe('incremental PNG encoder', () => {
     const source = document.createElement('canvas')
     source.width = width
     source.height = height
-    source.getContext('2d').putImageData(new ImageData(pixels, width, height), 0, 0)
-    const native = await new Promise(resolve => source.toBlob(resolve, 'image/png'))
-    const encoded = await encodePng(width, height, [pixels])
-    const rendered = []
-    for (const blob of [native, encoded]) {
+    const sourceCtx = source.getContext('2d')
+    sourceCtx.putImageData(new ImageData(pixels, width, height), 0, 0)
+    const rendered = [sourceCtx.getImageData(0, 0, width, height).data]
+    for (const blob of [await encodePng(width, height, [pixels])]) {
       const url = URL.createObjectURL(blob)
       try {
         const img = new Image()

@@ -231,10 +231,12 @@ describe('oversized PNG file exports', () => {
     for (let i = 0; i < buffers[0].length; i++) {
       const difference = Math.abs(buffers[0][i] - buffers[1][i])
       maximumDifference = Math.max(maximumDifference, difference)
-      encoderDifference = Math.max(encoderDifference, Math.abs(buffers[2][i] - buffers[1][i]))
+      encoderDifference = Math.max(encoderDifference, Math.abs(buffers[2][i] - referencePixels[i]))
       if (i % 4 === 3) alphaDifference = Math.max(alphaDifference, difference)
     }
-    // The same native canvas encoded through readback is exact. Separate SVG windows
+    // The readback encoded by us decodes back to itself exactly. Not compared with native
+    // toBlob: Firefox's encoder decodes up to 2 levels off its own readback on translucent
+    // pixels, where ours does not. Separate SVG windows
     // change native gradient quantization: measured max RGB delta 2 in Chromium, 4 in
     // WebKit. Geometry, alpha and opaque boundary markers must still remain exact.
     expect(encoderDifference).toBe(0)
