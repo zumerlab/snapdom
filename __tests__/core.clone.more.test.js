@@ -794,7 +794,7 @@ describe('deepClone – Tier 2 fixes', () => {
   })
 
   // ── #315 ──────────────────────────────────────────────────────────────────
-  it('#315 — input with placeholder injects ::placeholder style rule into clone', async () => {
+  it('#315 — input with placeholder emits a ::placeholder rule for the clone', async () => {
     const styleEl = document.createElement('style')
     // Give our test input a distinctly non-transparent placeholder color
     styleEl.textContent = '#sd-ph-input::placeholder { color: rgb(80, 80, 80); }'
@@ -806,13 +806,16 @@ describe('deepClone – Tier 2 fixes', () => {
     // No value → satisfies the !node.value guard
     document.body.appendChild(input)
 
+    const phColor = getComputedStyle(input, '::placeholder').color
     const clone = await deepClone(input, session, {})
 
     document.head.removeChild(styleEl)
 
-    const injectedStyle = clone.querySelector('style')
-    expect(injectedStyle).toBeTruthy()
-    expect(injectedStyle.textContent).toContain('::placeholder')
+    // #512: <input> is a void element, so the rule must not be a child of the clone
+    expect(clone.childNodes.length).toBe(0)
+    const phClass = [...clone.classList].find(c => c.startsWith('snapdom-ph-'))
+    expect(phClass).toBeTruthy()
+    expect(session.__pseudoCSS).toContain(`.${phClass}::placeholder{color:${phColor}!important`)
   })
 })
 

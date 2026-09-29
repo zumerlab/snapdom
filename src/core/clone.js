@@ -607,7 +607,9 @@ export async function deepClone(node, sessionCache, options) {
     }
   }
 
-  // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text
+  // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text.
+  // #512: the rule rides on the scoped pseudo CSS; a <style> child of the void <input>
+  // left Safari's serialized SVG unclosed and was dropped by HTML serialization.
   if ((isTag(node, 'input') || isTag(node, 'textarea')) && !node.value && node.placeholder) {
     try {
       const phStyle = window.getComputedStyle(node, '::placeholder')
@@ -615,9 +617,8 @@ export async function deepClone(node, sessionCache, options) {
       if (phColor && phColor !== 'rgba(0, 0, 0, 0)') {
         const uid = 'snapdom-ph-' + (Math.random() * 1e6 | 0)
         clone.classList.add(uid)
-        const styleEl = document.createElement('style')
-        styleEl.textContent = `.${uid}::placeholder{color:${phColor}!important;opacity:${phStyle.opacity || '1'}!important;-webkit-text-fill-color:${phColor}!important;}`
-        clone.prepend(styleEl)
+        sessionCache.__pseudoCSS = (sessionCache.__pseudoCSS || '') +
+          `.${uid}::placeholder{color:${phColor}!important;opacity:${phStyle.opacity || '1'}!important;-webkit-text-fill-color:${phColor}!important;}`
       }
     } catch { /* non-blocking */ }
   }
