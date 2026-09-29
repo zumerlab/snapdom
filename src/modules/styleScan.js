@@ -370,6 +370,11 @@ export function scanAuthorStyles(doc) {
     const pseudoUniverse = new Set(PSEUDO_BOX_PROPS)
     for (const p of INHERITED_PROPS) if (universe.has(p)) pseudoUniverse.add(p)
     for (const p of state.pseudoProps) pseudoUniverse.add(p)
+    // The origins read as used px against the pseudo's own box (`7px 7px`), never as their
+    // UA default, so a transformed pseudo needs its origin read though no rule names it.
+    // Without it the pseudo took the base `0px 0px` and scaled toward its corner (#509).
+    if (state.pseudoProps.has('transform') || state.pseudoProps.has('rotate') || state.pseudoProps.has('scale')) pseudoUniverse.add('transform-origin')
+    if (state.pseudoProps.has('perspective')) pseudoUniverse.add('perspective-origin')
     return { universe, pseudoUniverse, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
   } catch {
     return unreliable
