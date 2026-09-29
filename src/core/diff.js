@@ -299,6 +299,8 @@ async function diffCapture(element, state, context) {
     // Newly-appearing scoped ::marker/::first-line rules can't be spliced into the
     // retained prefix CSS byte-faithfully → full pipeline.
     if (sessionCache.__pseudoCSS) return null
+    // The first placeholder input needs PLACEHOLDER_RULE, absent from the retained prefix.
+    if (sessionCache.__usesPlaceholder && !R.classPrefixCSS?.includes('[data-sd-ph]')) return null
     await resolveBlobUrlsInTree(sub, sessionCache)
     sanitizeCloneForXHTML(sub)
     try { await ligatureIconToImage(sub, src, delta) } catch { /* parity with full: non-blocking */ }

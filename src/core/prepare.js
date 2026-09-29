@@ -26,6 +26,12 @@ import { nextFrame } from '../utils/browser.js'
  *  sits inside one of these waits for it instead of forcing the same styles twice. */
 const visibilityWarmups = new Set()
 
+/** #315/#512: paints ::placeholder from --sd-ph/--sd-ph-o, which deepClone sets on the input
+ *  clone. Emitted only when a placeholder was cloned: its -webkit-text-fill-color, mounted in a
+ *  page, joins the document's property universe and changes every later pseudo's snapshot key
+ *  (__tests__/regression.pseudo.afterPosition.test.js). */
+const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important;opacity:var(--sd-ph-o)!important;-webkit-text-fill-color:var(--sd-ph)!important}'
+
 /**
  * Clone an element for capture and return the clone with everything the render step needs.
  *
@@ -290,13 +296,10 @@ export async function prepareClone(element, options = {}) {
     .join('')
 
   // #359: suppress native ::before/::after on elements where we inlined them (avoids double render from cloned <style>)
-  // #315/#512: static ::placeholder rule. Color/opacity ride on the clone as --sd-ph/--sd-ph-o
-  // so a recapture does not append to __pseudoCSS (that would bail the diff path).
   const PSEUDO_SUPPRESS = '[data-snapdom-has-after]::after,[data-snapdom-has-before]::before{content:none!important;display:none!important}'
-    + '[data-sd-ph]::placeholder{color:var(--sd-ph)!important;opacity:var(--sd-ph-o)!important;-webkit-text-fill-color:var(--sd-ph)!important}'
   // prepend shadow CSS so variables/rules are available for everything; scoped
   // ::marker/::first-line rules (emitScopedPseudoRule) ride along with it
-  const classPrefixCSS = shadowScopedCSS + PSEUDO_SUPPRESS + (sessionCache.__pseudoCSS || '')
+  const classPrefixCSS = shadowScopedCSS + PSEUDO_SUPPRESS + (sessionCache.__usesPlaceholder ? PLACEHOLDER_RULE : '') + (sessionCache.__pseudoCSS || '')
   classCSS = classPrefixCSS + classCSS
 
   for (const [node, key] of sessionCache.styleMap.entries()) {

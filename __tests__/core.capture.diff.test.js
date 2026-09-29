@@ -280,6 +280,22 @@ describe('differential recapture', () => {
     await snapdom(el)
     expect(__diffStats.served).toBe(served0 + 1)
   })
+
+  // The placeholder rule is emitted only when a placeholder was cloned, so a frame captured
+  // without one retains a prefix that lacks it. The first placeholder input to appear must
+  // take the full pipeline, or it paints in the input's own color.
+  it('rebuilds in full when the first placeholder input appears (#512)', async () => {
+    const el = buildGrid(4)
+    const input = document.createElement('input')
+    el.querySelector('p').appendChild(input)
+    await engageBurst(el)
+    input.placeholder = 'Search'
+    await new Promise((r) => setTimeout(r, 0))
+    const served0 = __diffStats.served
+    const res = await snapdom(el)
+    expect(__diffStats.served).toBe(served0)
+    expect(decodeURIComponent(res.url)).toContain('[data-sd-ph]::placeholder{')
+  })
 })
 
 describe('differential recapture runs the live-DOM prep on the dirty subtree', () => {
