@@ -129,6 +129,17 @@ describe('sanitizeCloneForXHTML: attributes', () => {
     sanitizeCloneForXHTML(root, { stripFrameworkDirectives: false })
     expect(child.getAttribute('x-show')).toBe('1')
   })
+
+  it('removes xmlns attributes set through setAttribute (#511)', () => {
+    const root = document.createElement('div')
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg ')
+    svg.setAttribute('viewBox', '0 0 16 16')
+    root.appendChild(svg)
+    sanitizeCloneForXHTML(root)
+    expect(svg.hasAttribute('xmlns')).toBe(false)
+    expect(svg.getAttribute('viewBox')).toBe('0 0 16 16')
+  })
 })
 
 describe('sanitizeCloneForXHTML', () => {
