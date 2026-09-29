@@ -384,6 +384,10 @@ const XMLNS_ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
 /** True when an attribute name can't survive XHTML serialization (or is a framework directive). */
 function isInvalidXHTMLAttr(name, stripFrameworkDirectives) {
   if (name.startsWith('*')) return true
+  // `xmlns` set through setAttribute is a plain attribute beside the element's real
+  // namespace, which XMLSerializer writes too. Any other value, even with a trailing
+  // space, leaves two xmlns attributes on one tag and the SVG fails to decode (#511).
+  if (name === 'xmlns') return true
   // "@": never valid in XML attribute names
   if (name.includes('@')) return true
   // ":" requires a declared namespace (xml:, xlink:)
@@ -427,13 +431,13 @@ const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/
 
 /**
  * One pass over the finished clone before serialization (was three separate walks):
- * - drops attribute names invalid in XHTML ("@", unknown ":" prefixes, framework directives)
+ * - drops attribute names invalid in XHTML ("@", unknown ":" prefixes, `xmlns`, framework directives)
  * - strips XML-1.0-invalid chars from attribute values and text (#425 — values re-applied
  *   after cloning, e.g. `input.setAttribute('value', …)` with ExtJS's U+0003 delimiters)
  * - removes HTML comments (invalid XML like "--")
  * Runs after the afterClone plugin hooks (plugins may add attributes), in both the full
- * and diff serialization paths. Pinned by __tests__/core.capture.rootAttrSanitize.test.js
- * and __tests__/utils.capture.helpers.test.js.
+ * and diff serialization paths. Pinned by __tests__/core.capture.rootAttrSanitize.test.js,
+ * __tests__/utils.capture.helpers.test.js and __tests__/snapdom.xmlnsAttribute.test.js.
  * @param {Element} root
  * @param {{stripFrameworkDirectives?: boolean}} [opts] - directives are stripped by default
  */
