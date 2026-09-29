@@ -4,7 +4,7 @@ import { htmlExport } from '../packages/plugins/html-export.js'
 
 // #512: a <style> child of a void <input> is dropped by HTML serialization and left Safari's
 // SVG unclosed. Color now rides as --sd-ph/--sd-ph-o on the clone; a static prefix rule paints
-// [data-sd-ph]::placeholder. Playwright's WebKit is not Safari — `decodes the capture` passes
+// [data-sd-ph]::placeholder. Playwright's WebKit is not Safari: `decodes the capture` passes
 // on main too and does not reproduce #512. The structural assertions (no children on the
 // input) are what pin the void-element fix.
 
