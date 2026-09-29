@@ -290,7 +290,10 @@ export async function prepareClone(element, options = {}) {
     .join('')
 
   // #359: suppress native ::before/::after on elements where we inlined them (avoids double render from cloned <style>)
+  // #315/#512: static ::placeholder rule. Color/opacity ride on the clone as --sd-ph/--sd-ph-o
+  // so a recapture does not append to __pseudoCSS (that would bail the diff path).
   const PSEUDO_SUPPRESS = '[data-snapdom-has-after]::after,[data-snapdom-has-before]::before{content:none!important;display:none!important}'
+    + '[data-sd-ph]::placeholder{color:var(--sd-ph)!important;opacity:var(--sd-ph-o)!important;-webkit-text-fill-color:var(--sd-ph)!important}'
   // prepend shadow CSS so variables/rules are available for everything; scoped
   // ::marker/::first-line rules (emitScopedPseudoRule) ride along with it
   const classPrefixCSS = shadowScopedCSS + PSEUDO_SUPPRESS + (sessionCache.__pseudoCSS || '')

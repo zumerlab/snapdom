@@ -794,7 +794,7 @@ describe('deepClone – Tier 2 fixes', () => {
   })
 
   // ── #315 ──────────────────────────────────────────────────────────────────
-  it('#315 — input with placeholder injects ::placeholder style rule into clone', async () => {
+  it('#315 — input with placeholder carries color as custom properties on the clone', async () => {
     const styleEl = document.createElement('style')
     // Give our test input a distinctly non-transparent placeholder color
     styleEl.textContent = '#sd-ph-input::placeholder { color: rgb(80, 80, 80); }'
@@ -806,13 +806,18 @@ describe('deepClone – Tier 2 fixes', () => {
     // No value → satisfies the !node.value guard
     document.body.appendChild(input)
 
+    const phColor = getComputedStyle(input, '::placeholder').color
     const clone = await deepClone(input, session, {})
 
     document.head.removeChild(styleEl)
 
-    const injectedStyle = clone.querySelector('style')
-    expect(injectedStyle).toBeTruthy()
-    expect(injectedStyle.textContent).toContain('::placeholder')
+    // #512: <input> is a void element, so the rule must not be a child of the clone
+    expect(clone.childNodes.length).toBe(0)
+    expect(clone.hasAttribute('data-sd-ph')).toBe(true)
+    expect(clone.style.getPropertyValue('--sd-ph')).toBe(phColor)
+    expect(clone.style.getPropertyValue('--sd-ph-o')).toBeTruthy()
+    // A per-node rule on __pseudoCSS would bail the diff path on recapture.
+    expect(session.__pseudoCSS).toBeFalsy()
   })
 })
 
