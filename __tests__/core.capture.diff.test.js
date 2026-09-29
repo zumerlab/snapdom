@@ -252,6 +252,34 @@ describe('differential recapture', () => {
       el.remove()
     }
   })
+
+  // #512: a per-node ::placeholder rule on __pseudoCSS made every recapture of a subtree
+  // that contains an empty placeholder input bail to the full pipeline (diff.js:301).
+  // Color now rides as custom properties on the clone; the prefix rule is static.
+  it('serves a mutation in a subtree that contains a placeholder input (#512)', async () => {
+    const el = document.createElement('div')
+    el.style.cssText = 'width:400px;padding:20px;background:white;font-family:Arial;color:#333'
+    const wrap = document.createElement('div')
+    const card = document.createElement('div')
+    card.style.cssText = 'padding:10px;background:#f0f0f0'
+    const title = document.createElement('p')
+    title.textContent = 'Value: 0'
+    title.style.cssText = 'font-size:12px;margin:0'
+    const input = document.createElement('input')
+    input.placeholder = 'Search'
+    card.append(title, input)
+    wrap.appendChild(card)
+    el.appendChild(wrap)
+    document.body.appendChild(el)
+
+    await engageBurst(el)
+    card.setAttribute('data-n', '1')
+    title.textContent = 'Value: 1'
+    await new Promise((r) => setTimeout(r, 0))
+    const served0 = __diffStats.served
+    await snapdom(el)
+    expect(__diffStats.served).toBe(served0 + 1)
+  })
 })
 
 describe('differential recapture runs the live-DOM prep on the dirty subtree', () => {

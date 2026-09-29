@@ -2,10 +2,13 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 import { htmlExport } from '../packages/plugins/html-export.js'
 
-// #512: the ::placeholder color rule was prepended as a <style> child of the cloned
-// <input>. <input> is a void element: Safari serialized it as an input that is never
-// closed, so the SVG was malformed and the whole capture failed to decode, and HTML
-// serialization (html-export's outerHTML) dropped the rule, losing the placeholder color.
+// #512: a <style> child of a void <input> is dropped by HTML serialization and left Safari's
+// SVG unclosed. Color now rides as --sd-ph/--sd-ph-o on the clone; a static prefix rule paints
+// [data-sd-ph]::placeholder. Playwright's WebKit is not Safari — `decodes the capture` passes
+// on main too and does not reproduce #512. The structural assertions (no children on the
+// input) are what pin the void-element fix.
+
+const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important;opacity:var(--sd-ph-o)!important;-webkit-text-fill-color:var(--sd-ph)!important}'
 
 function decodeSvg(result) {
   const raw = result.toRaw()
@@ -28,35 +31,32 @@ function mount() {
   target.innerHTML = '<input placeholder="Search"><div>after</div>'
   document.body.appendChild(target)
   nodes.push(style, target)
-  // WebKit reports the element's own color for ::placeholder; assert what the engine reads.
-  const color = getComputedStyle(target.querySelector('input'), '::placeholder').color
-  return { target, rule: (cls) => `.${cls}::placeholder{color:${color}!important` }
+  return target
 }
 
 describe('empty input with a styled placeholder (#512)', () => {
   it('decodes the capture', async () => {
-    const { target } = mount()
+    const target = mount()
     const img = await (await snapdom(target, { embedFonts: false })).toImg()
     await img.decode()
     expect(img.naturalWidth).toBeGreaterThan(0)
   })
 
   it('keeps the placeholder rule in the capture CSS, not inside the input', async () => {
-    const { target, rule } = mount()
+    const target = mount()
     const svg = decodeSvg(await snapdom(target, { embedFonts: false }))
     const input = new DOMParser().parseFromString(svg, 'image/svg+xml').querySelector('input')
     expect(input.childNodes.length).toBe(0)
-    const phClass = [...input.classList].find(c => c.startsWith('snapdom-ph-'))
-    expect(phClass).toBeTruthy()
-    expect(svg).toContain(rule(phClass))
+    expect(input.hasAttribute('data-sd-ph')).toBe(true)
+    expect(input.getAttribute('style') || '').toContain('--sd-ph')
+    expect(svg).toContain(PLACEHOLDER_RULE)
   })
 
   it('keeps the placeholder color in the html-export output', async () => {
-    const { target, rule } = mount()
+    const target = mount()
     const result = await snapdom(target, { embedFonts: false, plugins: [htmlExport()] })
     const html = await result.toHtml()
-    const phClass = html.match(/class="[^"]*(snapdom-ph-\d+)/)?.[1]
-    expect(phClass).toBeTruthy()
-    expect(html).toContain(rule(phClass))
+    expect(html).toContain(PLACEHOLDER_RULE)
+    expect(html).toMatch(/data-sd-ph/)
   })
 })
