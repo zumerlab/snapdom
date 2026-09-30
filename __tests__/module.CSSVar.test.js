@@ -23,6 +23,15 @@ describe('isInSvgTemplate', () => {
     expect(isInSvgTemplate(rect)).toBe(true)
     expect(isInSvgTemplate(svg)).toBe(false)
   })
+
+  it('is false for a paint server inside <defs>, true inside <symbol> (#515, #408)', () => {
+    const ns = 'http://www.w3.org/2000/svg'
+    const svg = document.createElementNS(ns, 'svg')
+    svg.innerHTML = '<defs><linearGradient><stop/></linearGradient><symbol><rect/></symbol></defs>'
+    host.appendChild(svg)
+    expect(isInSvgTemplate(svg.querySelector('stop'))).toBe(false)
+    expect(isInSvgTemplate(svg.querySelector('rect'))).toBe(true)
+  })
 })
 
 describe('resolveCSSVars', () => {

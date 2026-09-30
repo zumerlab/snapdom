@@ -669,7 +669,7 @@ export async function deepClone(node, sessionCache, options) {
   // #365: SVG painting elements — CSS rules override presentation attributes but aren't captured
   // via the class-based mechanism (NO_DEFAULTS_TAGS returns '' key). Copy key SVG presentation
   // properties from computed style as inline styles to ensure CSS-driven fills/strokes survive.
-  // #408: skip descendants of <symbol>/<defs>/etc. — their var() must resolve at the <use> site,
+  // #408: skip <use> templates (<symbol>, shapes in <defs>): their var() must resolve at the <use> site,
   // not be materialized to the (dead) template's fallback computed value.
   if (isSVGEl(node) && !isInSvgTemplate(node)) {
     const SVG_PAINT_PROPS = [
@@ -686,6 +686,11 @@ export async function deepClone(node, sessionCache, options) {
       for (const prop of SVG_PAINT_PROPS) {
         const val = cs.getPropertyValue(prop)
         if (val) clone.style.setProperty(prop, val)
+      }
+      // #515: a stop's color set by a stylesheet rule reaches the clone only here.
+      if (node.localName === 'stop') {
+        clone.style.setProperty('stop-color', cs.getPropertyValue('stop-color'))
+        clone.style.setProperty('stop-opacity', cs.getPropertyValue('stop-opacity'))
       }
     } catch { }
   }

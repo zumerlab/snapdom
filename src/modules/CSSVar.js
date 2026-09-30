@@ -4,22 +4,24 @@
  * A custom property resolves where the element lives. Inside the foreignObject the cascade
  * above the capture root is gone, so a `var(--x)` left in an inline style would take its
  * fallback, or nothing. `resolveCSSVars` writes the computed value onto the clone instead.
- * The one place that must NOT happen is an SVG template (`<symbol>`, `<defs>`, `<pattern>`,
- * ...): its content renders through `<use>` / `url(#...)`, where the consumer's custom
- * properties cascade in, so freezing the value there freezes the fallback (#408).
+ * The one place that must NOT happen is an SVG template (`<symbol>`, or a shape in `<defs>`):
+ * its content renders through `<use>`, where the consumer's custom properties cascade in,
+ * so freezing the value there freezes the fallback (#408). Paint servers and the other
+ * `url(#...)` targets are not templates: they inherit from their own position (#515).
  * @module CSSVar
  */
 
 import { getStyleEpoch } from './styles.js'
 
-/** SVG container elements that act as templates: their descendants are rendered
- *  virtually via <use> / url(#...). CSS custom properties on the use site cascade
- *  into the rendered shadow tree, so any var() inside these containers must be
- *  preserved (NOT materialized at clone time) — otherwise we'd freeze the var()
- *  to whatever it resolves to in the dead template context (usually the fallback). */
-const SVG_TEMPLATE_TAGS = new Set([
-  'symbol', 'defs', 'pattern', 'marker',
-  'linearGradient', 'radialGradient', 'filter'
+/** SVG containers whose content `<use>` instantiates: the use site's custom properties
+ *  cascade into that shadow tree, so a var() inside must survive the clone unresolved. */
+const SVG_TEMPLATE_TAGS = new Set(['symbol', 'defs'])
+/** url(#...) targets that paint where they sit in the document. A url() reference reaches
+ *  the element itself, not a copy, so its content inherits from its own ancestors and the
+ *  computed value IS the painted one. #515: a stop-color var() inside <defs> painted black
+ *  because the gradient counted as a template. #459: the same for mask/clipPath. */
+const SVG_IN_PLACE_TAGS = new Set([
+  'mask', 'clipPath', 'linearGradient', 'radialGradient', 'pattern', 'marker', 'filter'
 ])
 /** Per-element memo, scoped to the style epoch so DOM restructuring invalidates it.
  *  Each ancestor resolves once per epoch — the old uncached walk was O(depth) per node
@@ -43,12 +45,8 @@ function tplLookup(el) {
   if (hit !== undefined) return hit
   let result
   if (el.namespaceURI === 'http://www.w3.org/2000/svg') {
-    // #459: mask/clipPath paint their content in place, exactly once, at their own
-    // document position — unlike <use>, there's no per-consumer shadow tree to
-    // re-scope var() against, so this IS the one true rendering context. Treating
-    // them as templates skipped inlineAllStyles entirely, dropping font-family/etc.
-    // for anything inside (e.g. a <text> used as a mask cutout).
-    if (el.localName === 'mask' || el.localName === 'clipPath') result = false
+    // The nearest container decides: a gradient inside <defs> paints in place.
+    if (SVG_IN_PLACE_TAGS.has(el.localName)) result = false
     else if (SVG_TEMPLATE_TAGS.has(el.localName)) result = true
   }
   if (result === undefined) {
