@@ -18,6 +18,7 @@ import { inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
 import { splitTopLevel } from '../modules/styleScan.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 import { markInternalNode } from './ownership.js'
+import { isFirefox } from './browser.js'
 
 /** Add the current scope's slotted exclusion at the rightmost compound. */
 function addNotSlottedRightmost(sel, scopeId) {
@@ -1010,5 +1011,67 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   }))
   for (const write of writes) {
     try { write() } catch (e) { debugWarn(ctx, 'resolved blob URL write failed', e) }
+  }
+}
+
+// ========== Font inflation (Firefox for Android) ==========
+
+/** The computed properties that decide a word's advance, copied onto the probe. */
+const INFLATION_FONT_PROPS = ['font-family', 'font-size', 'font-style', 'font-weight', 'font-stretch', 'font-variant', 'font-feature-settings', 'font-variation-settings', 'font-kerning', 'letter-spacing', 'text-transform']
+
+/**
+ * Write the font size Firefox's font inflation paints onto the clone of every element with
+ * text of its own.
+ *
+ * #516: Firefox for Android inflates text on a page laid out wider than the screen (no meta
+ * viewport), and getComputedStyle still reports the authored size. The clone froze the boxes
+ * at their inflated size and the text at the authored one: on the issue's form demo the
+ * labels came out at 16px beside checkboxes sized for 30px text. The foreignObject never
+ * inflates, so the painted size is measured: the first word's live width against the same
+ * word in a probe under a zero-width box, which turns inflation off for everything inside
+ * it. Inert unless the layout viewport is wider than the screen, the only state where
+ * Firefox inflates. Pinned by __tests__/snapdom.issue516.test.js.
+ * @param {Map<Node, Node>} nodeMap - clone -> source, from deepClone
+ * @param {Document} [doc]
+ */
+export function freezeInflatedFontSizes(nodeMap, doc = document) {
+  const view = doc.defaultView || window
+  if (!isFirefox() || !doc.body ||
+    !(view.visualViewport?.scale < 1 || view.screen.width < doc.documentElement.clientWidth)) return
+  // Owned, so mounting it does not bump the style epoch the snapshot memo is keyed on.
+  const probe = markInternalNode(doc.createElement('div'))
+  probe.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;visibility:hidden'
+  const jobs = []
+  for (const [clone, src] of nodeMap) {
+    if (clone.nodeType !== 1 || src.nodeType !== 1) continue
+    let text = src.firstChild
+    while (text && !(text.nodeType === 3 && /\S/.test(text.data))) text = text.nextSibling
+    if (!text) continue
+    const word = /\S+/.exec(text.data)
+    const range = doc.createRange()
+    range.setStart(text, word.index)
+    range.setEnd(text, word.index + word[0].length)
+    const rects = range.getClientRects()
+    if (rects.length !== 1) continue
+    // An ancestor transform scales the live width and not the probe's.
+    const box = src.getBoundingClientRect()
+    const scale = src.offsetWidth && box.width ? box.width / src.offsetWidth : 1
+    const cs = view.getComputedStyle(src)
+    const span = doc.createElement('span')
+    span.style.whiteSpace = 'pre'
+    for (const p of INFLATION_FONT_PROPS) span.style.setProperty(p, cs.getPropertyValue(p))
+    span.textContent = word[0]
+    probe.appendChild(span)
+    jobs.push({ clone, span, live: rects[0].width / scale, size: parseFloat(cs.fontSize), spacing: (parseFloat(cs.letterSpacing) || 0) * word[0].length })
+  }
+  if (!jobs.length) return
+  doc.body.appendChild(probe)
+  try {
+    for (const { clone, span, live, size, spacing } of jobs) {
+      const ratio = (live - spacing) / (span.getBoundingClientRect().width - spacing)
+      if (ratio > 1.005 && Number.isFinite(ratio)) clone.style.setProperty('font-size', `${size * ratio}px`)
+    }
+  } finally {
+    probe.remove()
   }
 }

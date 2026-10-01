@@ -16,7 +16,7 @@ import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { flushStyleInvalidations, invalidateHoverChanges } from '../modules/styles.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
-import { resolveBlobUrlsInTree, resolveMediaQueries } from '../utils/clone.helpers.js'
+import { resolveBlobUrlsInTree, resolveMediaQueries, freezeInflatedFontSizes } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 import { prepareSelectionContext } from '../modules/selection.js'
 import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
@@ -246,6 +246,7 @@ export async function prepareClone(element, options = {}) {
     undoContentVisibility()
     undoStabilizeLayout()
   }
+  freezeInflatedFontSizes(sessionCache.nodeMap, element.ownerDocument || document)
 
   // Inline external <defs>/<symbol> into the CLONE, not the live source. Operating on the
   // source mutated the user's DOM (a hidden <svg> was inserted as firstChild and never
