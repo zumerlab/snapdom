@@ -642,7 +642,7 @@ export function createRangeReplacement(node) {
   // The thumb is thumb-sized however small the author made the control's box
   // (a styled slider is often a 4px-tall input), overflowing it the way the
   // native one does.
-  svg.style.overflow = 'visible'
+  svg.style.cssText = `width:${w}px;height:${h}px;overflow:visible` // #516, as in the checkbox below
   box.appendChild(svg)
 
   function applyVisual() {
@@ -726,6 +726,9 @@ export function createCheckboxRadioReplacement(node) {
   svg.setAttribute('width', String(s))
   svg.setAttribute('height', String(s))
   svg.setAttribute('viewBox', `0 0 ${s} ${s}`)
+  // #516: sized by its attributes alone, Firefox painted it at twice the box under the
+  // engine's layoutZoom (DPR 2: a 14px checkbox drew 28px over its label); CSS lengths zoom once.
+  svg.style.cssText = `width:${s}px;height:${s}px`
   box.appendChild(svg)
 
   function applyVisual() {
