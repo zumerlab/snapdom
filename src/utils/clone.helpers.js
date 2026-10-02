@@ -1018,19 +1018,27 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
 
 /** The computed properties that decide a word's advance, copied onto the probe. */
 const INFLATION_FONT_PROPS = ['font-family', 'font-size', 'font-style', 'font-weight', 'font-stretch', 'font-variant', 'font-feature-settings', 'font-variation-settings', 'font-kerning', 'letter-spacing', 'text-transform']
+/** Inputs that paint their value as text. A password paints bullets instead. */
+const VALUE_FIELDS = new Set(['text', 'search', 'email', 'url', 'tel', 'number', 'submit', 'reset', 'button'])
+/** A field word to measure between character centers: two or more characters, none of them
+ *  half a surrogate pair. */
+const FIELD_WORD = /[^\s\uD800-\uDFFF]{2,}/
 
 /**
- * Write the font size Firefox's font inflation paints onto the clone of every element with
- * text of its own.
+ * Write the font size and line height Firefox's font inflation paints onto the clone of every
+ * element with text of its own, and of every text field with a value.
  *
  * #516: Firefox for Android inflates text on a page laid out wider than the screen (no meta
- * viewport), and getComputedStyle still reports the authored size. The clone froze the boxes
- * at their inflated size and the text at the authored one: on the issue's form demo the
- * labels came out at 16px beside checkboxes sized for 30px text. The foreignObject never
- * inflates, so the painted size is measured: the first word's live width against the same
- * word in a probe under a zero-width box, which turns inflation off for everything inside
- * it. Inert unless the layout viewport is wider than the screen, the only state where
- * Firefox inflates. Pinned by __tests__/snapdom.issue516.test.js.
+ * viewport), and getComputedStyle still reports the authored font-size and line-height. The
+ * clone froze the boxes at their inflated size and the text at the authored one: on the
+ * issue's form demo the labels came out at 16px beside checkboxes sized for 30px text, and a
+ * paragraph with `line-height: 1.5` would stack 29px glyphs 24px apart. The foreignObject
+ * never inflates, so the painted size is measured: a word's width live (for a field, the
+ * distance between the centers of its first and last characters), against the same word in a
+ * probe under a zero-width box, which turns inflation off for everything inside it. Inert unless the layout viewport is
+ * wider than the screen, the only state where Firefox inflates. A field without a value, a
+ * <select> and a field off screen keep the authored size: nothing reads their text without
+ * changing it. Pinned by __tests__/snapdom.issue516.test.js.
  * @param {Map<Node, Node>} nodeMap - clone -> source, from deepClone
  * @param {Document} [doc]
  */
@@ -1044,34 +1052,104 @@ export function freezeInflatedFontSizes(nodeMap, doc = document) {
   const jobs = []
   for (const [clone, src] of nodeMap) {
     if (clone.nodeType !== 1 || src.nodeType !== 1) continue
-    let text = src.firstChild
-    while (text && !(text.nodeType === 3 && /\S/.test(text.data))) text = text.nextSibling
-    if (!text) continue
-    const word = /\S+/.exec(text.data)
-    const range = doc.createRange()
-    range.setStart(text, word.index)
-    range.setEnd(text, word.index + word[0].length)
-    const rects = range.getClientRects()
-    if (rects.length !== 1) continue
-    // An ancestor transform scales the live width and not the probe's.
+    const cs = view.getComputedStyle(src)
+    const found = src.localName === 'textarea' || (src.localName === 'input' && VALUE_FIELDS.has(src.type))
+      ? fieldWord(src, cs, doc)
+      : textWord(src)
+    if (!found) continue
+    // An ancestor transform scales the live distance and not the probe's.
     const box = src.getBoundingClientRect()
     const scale = src.offsetWidth && box.width ? box.width / src.offsetWidth : 1
-    const cs = view.getComputedStyle(src)
     const span = doc.createElement('span')
     span.style.whiteSpace = 'pre'
     for (const p of INFLATION_FONT_PROPS) span.style.setProperty(p, cs.getPropertyValue(p))
-    span.textContent = word[0]
+    span.textContent = found.word
     probe.appendChild(span)
-    jobs.push({ clone, span, live: rects[0].width / scale, size: parseFloat(cs.fontSize), spacing: (parseFloat(cs.letterSpacing) || 0) * word[0].length })
+    jobs.push({ clone, cs, span, live: found.distance / scale, centers: found.centers })
   }
   if (!jobs.length) return
   doc.body.appendChild(probe)
   try {
-    for (const { clone, span, live, size, spacing } of jobs) {
-      const ratio = (live - spacing) / (span.getBoundingClientRect().width - spacing)
-      if (ratio > 1.005 && Number.isFinite(ratio)) clone.style.setProperty('font-size', `${size * ratio}px`)
+    for (const { clone, cs, span, live, centers } of jobs) {
+      const text = span.firstChild
+      // letter-spacing is not inflated: it follows every character, the last one included.
+      const spacing = (parseFloat(cs.letterSpacing) || 0) * (centers ? text.length - 1 : text.length)
+      const ref = centers
+        ? Math.abs(centerOf(text, text.length - 1) - centerOf(text, 0))
+        : span.getBoundingClientRect().width
+      const ratio = (live - spacing) / (ref - spacing)
+      if (!(ratio > 1.005 && Number.isFinite(ratio))) continue
+      clone.style.setProperty('font-size', `${parseFloat(cs.fontSize) * ratio}px`)
+      if (cs.lineHeight !== 'normal') clone.style.setProperty('line-height', `${parseFloat(cs.lineHeight) * ratio}px`)
     }
   } finally {
     probe.remove()
   }
+}
+
+/** Horizontal center of character `i` of a text node, in page pixels. */
+function centerOf(text, i) {
+  const range = text.ownerDocument.createRange()
+  range.setStart(text, i)
+  range.setEnd(text, i + 1)
+  const r = range.getBoundingClientRect()
+  return r.left + r.width / 2
+}
+
+/**
+ * The first word of `el`'s own text and its live width.
+ * @param {Element} el
+ * @returns {{word: string, distance: number, centers: boolean}|null}
+ */
+function textWord(el) {
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType !== 3) continue
+    const m = /\S+/.exec(n.data)
+    if (!m) continue
+    const range = el.ownerDocument.createRange()
+    range.setStart(n, m.index)
+    range.setEnd(n, m.index + m[0].length)
+    const rects = range.getClientRects()
+    // A word broken across lines (overflow-wrap) has no single width to compare.
+    return rects.length === 1 ? { word: m[0], distance: rects[0].width, centers: false } : null
+  }
+  return null
+}
+
+/**
+ * The same for the first line of a field's value, read through caret hit-testing: Firefox
+ * paints the value in content no Range reaches. The caret passes offset i + 1 at the center of
+ * character i. Null when the field is scrolled or not hit-testable where it sits.
+ * @param {HTMLInputElement|HTMLTextAreaElement} el
+ * @param {CSSStyleDeclaration} cs
+ * @param {Document} doc
+ * @returns {{word: string, distance: number, centers: boolean}|null}
+ */
+function fieldWord(el, cs, doc) {
+  const m = FIELD_WORD.exec(el.value.split('\n')[0])
+  if (!m || el.scrollLeft || el.scrollTop || !doc.caretPositionFromPoint) return null
+  const r = el.getBoundingClientRect()
+  const y = el.localName === 'textarea'
+    ? r.top + (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.paddingTop) || 0) + 3
+    : r.top + r.height / 2
+  const at = (x) => {
+    const p = doc.caretPositionFromPoint(x, y)
+    return p && p.offsetNode === el ? p.offset : -1
+  }
+  // Coarse steps find a bracket (the offset only grows along the line), halving narrows it.
+  const step = r.width / 16
+  const edge = (k) => {
+    let hi = r.left
+    while (hi <= r.right && at(hi) < k) hi += step
+    if (hi > r.right) return NaN
+    let lo = hi - step
+    for (let i = 0; i < 16; i++) {
+      const mid = (lo + hi) / 2
+      if (at(mid) >= k) hi = mid
+      else lo = mid
+    }
+    return hi
+  }
+  const distance = Math.abs(edge(m.index + m[0].length) - edge(m.index + 1))
+  return Number.isFinite(distance) ? { word: m[0], distance, centers: true } : null
 }

@@ -509,6 +509,8 @@ export async function composeAndSerialize(state, ex) {
   // alone would shrink the capture. Pinned by __tests__/engine.svg.layoutZoom.test.js.
   const view = elDoc.defaultView || window
   const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? (view.devicePixelRatio || 1) : 1
+  // toCanvas rasterizes Firefox exports smaller than this grid at it first (#516).
+  options.__layoutZoom = layoutZoom
   const fo = document.createElementNS(svgNS, 'foreignObject')
   fo.setAttribute('x', String(Math.min(0, offX) * layoutZoom))
   fo.setAttribute('y', String(Math.min(0, offY) * layoutZoom))

@@ -781,6 +781,21 @@ export async function toCanvas(url, options) {
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('[snapdom] toCanvas: the target canvas has no 2d context')
 
+    // #516: an export smaller than the device-pixel grid the svg engine laid out on (a
+    // download is always dpr 1, the grid is the live devicePixelRatio) puts every border
+    // snapped to whole device pixels below one output pixel. Firefox snaps each edge of such
+    // a border on its own and drops some: at devicePixelRatio 2.727 the 1px boxes of the
+    // issue's demo lost their left and right sides at 1x. Rasterizing at the grid and
+    // resampling keeps every edge, the way a screenshot of the page scaled down would.
+    // Chromium antialiases those borders and needs nothing.
+    let fine = null
+    const grid = options.__layoutZoom || 1
+    if (!srcCanvas && grid > 1 && isFirefox()) {
+      const f = grid * refW / (outW * dpr)
+      const fw = Math.round(outW * dpr * f), fh = Math.round(outH * dpr * f)
+      if (f > 1.01 && fw <= MAX_RASTER_SIDE && fh <= MAX_RASTER_SIDE && fw * fh <= MAX_RASTER_AREA) fine = { w: fw, h: fh }
+    }
+
     const paint = () => {
       if (dpr !== 1) ctx.scale(dpr, dpr)
 
@@ -805,7 +820,16 @@ export async function toCanvas(url, options) {
         // dpr scale is folded into the destination size instead of the transform.
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        drawBanded(ctx, img, outW * dpr, outH * dpr, src)
+        if (fine) {
+          const tmp = document.createElement('canvas')
+          tmp.width = fine.w
+          tmp.height = fine.h
+          drawBanded(tmp.getContext('2d'), img, fine.w, fine.h, src)
+          ctx.imageSmoothingQuality = 'high'
+          ctx.drawImage(tmp, 0, 0, outW * dpr, outH * dpr)
+        } else {
+          drawBanded(ctx, img, outW * dpr, outH * dpr, src)
+        }
         ctx.restore()
       }
     }

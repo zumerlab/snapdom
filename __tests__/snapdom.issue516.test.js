@@ -5,12 +5,16 @@
 //    the box: a 14px checkbox drew 28px over its label at DPR 2. The runner's DPR is 1, so it is
 //    stubbed. An indeterminate checkbox takes the replacement on every engine.
 // 2. Font inflation: Firefox paints text larger than getComputedStyle reports when the layout
-//    viewport is wider than the screen. No runner reaches that state, so the test fakes the one
-//    reading that lies (the computed font-size) and checks the measured size reaches the clone.
+//    viewport is wider than the screen. No runner reaches that state, so the tests fake the
+//    readings that lie (the computed font-size and line-height) and check the measured size
+//    reaches the clone.
 // 3. An inline-block frozen at the width of its own text wrapped in the capture when the capture
 //    laid the text out a hair wider (Firefox at DPR 2.727, by under 1/60px), and every box below
 //    it slid out of its frozen parent. The runner has no such drift, so the clone is mounted
 //    with a little extra letter-spacing, which widens the text the same way.
+// 4. A download is dpr 1 while the svg engine lays out on the live device-pixel grid, so a
+//    border snapped to whole device pixels lands under one output pixel and Firefox dropped
+//    some edges. `zoom` on an ancestor gives the runner the same snapped borders (#508).
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
@@ -66,23 +70,39 @@ describe('#516 Firefox for Android', () => {
     expect(h).toBeLessThanOrEqual(17)
   })
 
-  it.runIf(isFirefox())('writes the painted size of inflated text onto the clone', () => {
-    const src = mount('<p style="font:30px serif;margin:0">Checkbox A</p>')
-    const clone = src.cloneNode(true)
-    clone.removeAttribute('style')
+  /** Report `src` the way Firefox reports inflated text: at the authored size, not the painted one. */
+  function reportAuthored(src, fontSize, lineHeight = 'normal') {
     Object.defineProperty(window, 'visualViewport', { configurable: true, get: () => ({ scale: 0.42 }) })
-    // What Firefox reports for inflated text: the authored size, not the painted one.
+    const lie = { 'font-size': fontSize, 'line-height': lineHeight }
     window.getComputedStyle = (node, pseudo) => {
       const cs = ownGCS.call(window, node, pseudo)
       if (node !== src) return cs
       return new Proxy(cs, {
-        get: (t, k) => k === 'fontSize' ? '16px'
-          : k === 'getPropertyValue' ? (p) => p === 'font-size' ? '16px' : t.getPropertyValue(p)
+        get: (t, k) => k === 'fontSize' ? fontSize : k === 'lineHeight' ? lineHeight
+          : k === 'getPropertyValue' ? (p) => lie[p] ?? t.getPropertyValue(p)
           : (typeof t[k] === 'function' ? t[k].bind(t) : t[k])
       })
     }
+  }
+
+  it.runIf(isFirefox())('writes the painted size of inflated text onto the clone', () => {
+    const src = mount('<p style="font:30px/45px serif;margin:0">Checkbox A</p>')
+    const clone = src.cloneNode(true)
+    clone.removeAttribute('style')
+    reportAuthored(src, '16px', '24px')
     freezeInflatedFontSizes(new Map([[clone, src]]))
     expect(parseFloat(clone.style.fontSize)).toBeCloseTo(30, 0)
+    // The line height is reported authored too, and painted inflated by the same ratio.
+    expect(parseFloat(clone.style.lineHeight)).toBeCloseTo(45, 0)
+  })
+
+  it.runIf(isFirefox())('reads the painted size of a field value through the caret', () => {
+    const src = mount('<input value="Hello input" style="position:fixed;left:0;top:0;font:26px sans-serif;width:300px">')
+    const clone = src.cloneNode(true)
+    clone.removeAttribute('style')
+    reportAuthored(src, '13px')
+    freezeInflatedFontSizes(new Map([[clone, src]]))
+    expect(parseFloat(clone.style.fontSize)).toBeCloseTo(26, 0)
   })
 
   it('writes nothing when the page is not inflated', () => {
@@ -169,5 +189,30 @@ describe('#516 a box on one line live stays on one line in the capture', () => {
     const el = mount('<div style="padding:60px;background:#fff;font:16px serif"><div style="transform:rotate(90deg)"><div class="t" style="display:inline-block;width:40px">aa bb cc dd</div></div></div>')
     const shadow = await mountDrifted(el, 0)
     expect(pinned(shadow.querySelector('.t'))).toBe(false)
+  })
+})
+
+describe('#516 a dpr 1 export of a capture laid out on a finer grid', () => {
+  it('keeps every edge of every bordered box', async () => {
+    const zoom = document.createElement('div')
+    zoom.style.zoom = '1.3125'
+    zoom.innerHTML = '<div style="display:inline-block;padding:4px 7px;background:#fff">' +
+      [31, 44, 27].map(w => `<div style="display:inline-block;width:${w}px;height:20px;border:1px solid #000;margin:3.3px"></div>`).join('') + '</div>'
+    document.body.appendChild(zoom)
+    mounted.push(zoom)
+    Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => 2.625 })
+    const canvas = await (await snapdom(zoom.firstElementChild, { cache: 'disabled', burst: false })).toCanvas({ dpr: 1 })
+    const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+    // A column belongs to a vertical edge when most of the band the boxes share has ink in it.
+    let edges = 0
+    let inEdge = false
+    for (let x = 0; x < width; x++) {
+      let ink = 0
+      for (let y = 0; y < height; y++) if (data[4 * (y * width + x)] < 200) ink++
+      const edge = ink >= 14
+      if (edge && !inEdge) edges++
+      inEdge = edge
+    }
+    expect(edges).toBe(6)
   })
 })
