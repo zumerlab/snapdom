@@ -848,12 +848,16 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // text (e.g. ' Pro', ' (sale!)') can push the host past its wrap point
       // in the rasterized PNG even when the live DOM shows a single line.
       // Pin white-space:nowrap on the host AND on the pseudo span itself when
-      // live is one line — the span carries an explicit `white-space: normal`
-      // from its style snapshot, which would otherwise break inheritance.
-      // Gate: skip single-char (icon) and url()/image-set() pseudos — wrap impossible there.
+      // live is one line.
+      // Gate: skip single-char (icon) and url()/image-set() pseudos: wrap impossible there.
+      // #516: and any pseudo outside the host's line. Only an inline one in flow shares it; a
+      // positioned, floated or block one lays out its own lines, and pinning it put a 50px
+      // tooltip that wraps live onto a single line.
       const isImageContent = cleanContent.startsWith('url(') || /^-?(?:webkit-)?image-set\(/i.test(cleanContent)
+      const onHostLine = style.display === 'inline' && style.cssFloat === 'none' &&
+        style.position !== 'absolute' && style.position !== 'fixed'
       let pinNowrap = false
-      if (hasExplicitContent && !isIconFont2 && cleanContent.length > 1 && !isImageContent) {
+      if (hasExplicitContent && !isIconFont2 && cleanContent.length > 1 && !isImageContent && onHostLine) {
         const hostStyle = getStyle(source)
         const fs = parseFloat(hostStyle.fontSize) || 16
         let lh = parseFloat(hostStyle.lineHeight)
@@ -883,7 +887,16 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         const mw = snapshot['min-width']
         if (!mw || mw === 'auto' || mw === '0px') snapshot['min-width'] = '0px'
       }
-      const key = getStyleKey(snapshot, 'span', hasExplicitContent, pseudoIsFlexItem)
+      // #516: a pseudo off the host's line whose text wraps live wraps inside its own width.
+      // Softening that width handed the box to shrink-to-fit and unwrapped it (a 50px tooltip
+      // came out on one line), and under a host freezeOneLine pinned it inherited nowrap too.
+      let sizedByContent = hasExplicitContent
+      if (sizedByContent && !onHostLine &&
+        parseFloat(style.height) >= 1.5 * (parseFloat(style.lineHeight) || (parseFloat(style.fontSize) || 16) * 1.2)) {
+        sizedByContent = false
+        pseudoEl.style.whiteSpace = style.whiteSpace
+      }
+      const key = getStyleKey(snapshot, 'span', sizedByContent, pseudoIsFlexItem)
       sessionCache.styleMap.set(pseudoEl, key)
 
       // ---- Content handling (icon-font glyphs / url() / text) ----

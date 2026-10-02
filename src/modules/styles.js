@@ -1643,6 +1643,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
       pre.getPropertyValue('box-sizing') !== 'border-box') syncInlineBorderBox(source, clone, snap)
 
   const flexItem = isFlexOrGridItem(source)
+  freezeOneLine(source, clone, snap, flexItem, session)
 
   // #406: foreignObject may resolve min-width:auto differently than normal DOM
   // for flex/grid items. Explicitly set min-width:0 on flex/grid items that have
@@ -1845,6 +1846,120 @@ function hasBox(cs) {
   if ((parseFloat(cs.paddingBottom) || 0) > 0) return true
   const ob = cs.overflowBlock || cs.overflowY || 'visible'
   return ob !== 'visible'
+}
+
+/** The longhand that stops wrapping without touching white-space collapsing, where supported. */
+const ONE_LINE_PROP = typeof CSS !== 'undefined' && CSS.supports?.('text-wrap-mode', 'nowrap') ? 'text-wrap-mode' : 'white-space'
+
+/**
+ * Keep a shrink-to-fit box on one line in the clone when its text is on one line live.
+ *
+ * #516: such a box is frozen at the width of its own text, so a capture that lays the text out
+ * a hair wider wraps it. Firefox at devicePixelRatio 2.727 did, by under 1/60px: "aa bb" broke
+ * inside its inline-block, the box's baseline dropped a line and every box below it slid out of
+ * its frozen parent. Widening the frozen box instead accumulates across a row inside a
+ * shrink-to-fit parent (#491); a 1/60px nudge wrapped rows of two. With no soft wrap live,
+ * `nowrap` is faithful and the drift can only overflow sub-pixel, the #474 trade. Descendants
+ * inherit it, so a box under one already pinned is not measured again. Pinned by
+ * __tests__/snapdom.issue516.test.js.
+ * @param {Element} source
+ * @param {Element} clone
+ * @param {Record<string,string>} snap
+ * @param {boolean} flexItem
+ * @param {object} session - the capture's sessionCache
+ */
+function freezeOneLine(source, clone, snap, flexItem, session) {
+  const display = snap.display || ''
+  if (!flexItem && !display.startsWith('inline-') && (snap.float || 'none') === 'none' &&
+    snap.position !== 'absolute' && snap.position !== 'fixed') return
+  const mode = snap['text-wrap-mode'] || snap['white-space'] || ''
+  if (mode === 'nowrap' || mode === 'pre' || (ONE_LINE_PROP === 'white-space' && mode !== 'normal')) return
+  if ((snap['writing-mode'] || 'horizontal-tb') !== 'horizontal-tb' || !clone.style) return
+  const pinned = session.__oneLine ||= new WeakSet()
+  for (let a = source.parentElement; a; a = a.parentElement) if (pinned.has(a)) return
+  if (!textOnOneLine(source, snap, session)) return
+  pinned.add(source)
+  clone.style.setProperty(ONE_LINE_PROP, 'nowrap')
+}
+
+/**
+ * Whether every text run under `el` sits on one line box. False on whatever it cannot vouch
+ * for: a <br>, a textarea, a shadow root, more than 64 runs, no text, or a content box taller
+ * than two runs, which holds something the runs do not show (a second line of images, an
+ * authored height).
+ * @param {Element} el
+ * @param {Record<string,string>} snap
+ * @param {object} session - the capture's sessionCache
+ * @returns {boolean}
+ */
+function textOnOneLine(el, snap, session) {
+  const content = el.clientHeight - (parseFloat(snap['padding-top']) || 0) - (parseFloat(snap['padding-bottom']) || 0)
+  // Three lines' worth of its own font already rules out one line: skips the walk under a
+  // branch of a deep tree, which would read 64 runs to learn as much.
+  if (content > 3 * (parseFloat(snap['font-size']) || 16)) return false
+  // Letters, digits and plain punctuation hold no break opportunity: nothing to pin, nothing
+  // to read. Most single-word labels and every number end here.
+  if (snap['word-break'] === 'normal' && snap['overflow-wrap'] === 'normal' &&
+    /^[\w\u00C0-\u024F.,:;!?'"()%]*$/.test(el.textContent.trim())) return false
+  const doc = el.ownerDocument || document
+  const walker = doc.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
+  const range = doc.createRange()
+  let first = null
+  let tall = 0
+  let runs = 0
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.nodeType === 1) {
+      if (n.shadowRoot || n.localName === 'br' || n.localName === 'textarea') return false
+      continue
+    }
+    if (!/\S/.test(n.data)) continue
+    if (++runs > 64) return false
+    range.selectNodeContents(n)
+    for (const r of range.getClientRects()) {
+      if (!r.height) continue
+      first ||= r
+      // Runs on one line (mixed sizes, sub/sup) overlap by more than half; stacked lines do not.
+      if (Math.min(first.bottom, r.bottom) - Math.max(first.top, r.top) < Math.min(first.height, r.height) / 2) return false
+      tall = Math.max(tall, r.height)
+    }
+  }
+  if (!first) return false
+  const axes = axesOf(el, session.__axes ||= new WeakMap())
+  if (!axes) return false
+  // Runs are measured in page pixels, the content box in layout pixels.
+  const scale = axes === SCALED && el.offsetHeight ? el.getBoundingClientRect().height / el.offsetHeight : 1
+  return content * scale <= 2 * tall
+}
+
+/** axesOf results: rotated or skewed somewhere up the chain, untouched, scaled or zoomed. */
+const SKEWED = 0
+const PLAIN = 1
+const SCALED = 2
+
+/**
+ * How `el` and its ancestors transform it, memoized per capture since siblings share every
+ * ancestor (the uncached walk was 4.2 of 64 ms on the deep-tree scene). Under a rotation, lines
+ * stacked in layout can overlap on the page's vertical axis and pass for one.
+ * @param {Element} el
+ * @param {WeakMap<Element, number>} memo
+ * @returns {number} SKEWED, PLAIN or SCALED
+ */
+function axesOf(el, memo) {
+  let v = memo.get(el)
+  if (v !== undefined) return v
+  const cs = getStyle(el)
+  const t = cs.transform
+  const m = t && t !== 'none' ? t.slice(t.indexOf('(') + 1, -1).split(',').map(parseFloat) : null
+  // matrix(a, b, c, d, e, f) / matrix3d: b and c (m12, m21) are the rotation and skew terms.
+  if ((cs.rotate && cs.rotate !== 'none') || (m && (t.startsWith('matrix3d') ? m[1] || m[4] : m[1] || m[2]))) v = SKEWED
+  else {
+    const parent = el.parentElement || el.getRootNode?.().host
+    v = parent ? axesOf(parent, memo) : PLAIN
+    if (v === PLAIN && ((cs.scale && cs.scale !== 'none') || (cs.zoom && cs.zoom !== '1') ||
+      (m && (t.startsWith('matrix3d') ? m[0] !== 1 || m[5] !== 1 : m[0] !== 1 || m[3] !== 1)))) v = SCALED
+  }
+  memo.set(el, v)
+  return v
 }
 
 /**

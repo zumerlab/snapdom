@@ -1,4 +1,4 @@
-// #516, two Firefox-for-Android defects on one form demo.
+// #516, Firefox-for-Android defects from the issue's two demos.
 //
 // 1. The checkbox/radio/range replacements sized their inline <svg> by attributes alone, and
 //    under the engine's layoutZoom (zoom = devicePixelRatio) Firefox painted that svg at twice
@@ -7,11 +7,16 @@
 // 2. Font inflation: Firefox paints text larger than getComputedStyle reports when the layout
 //    viewport is wider than the screen. No runner reaches that state, so the test fakes the one
 //    reading that lies (the computed font-size) and checks the measured size reaches the clone.
+// 3. An inline-block frozen at the width of its own text wrapped in the capture when the capture
+//    laid the text out a hair wider (Firefox at DPR 2.727, by under 1/60px), and every box below
+//    it slid out of its frozen parent. The runner has no such drift, so the clone is mounted
+//    with a little extra letter-spacing, which widens the text the same way.
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { isFirefox } from '../src/utils/browser.js'
 import { freezeInflatedFontSizes } from '../src/utils/clone.helpers.js'
+import { prepareClone } from '../src/core/prepare.js'
 
 const mounted = []
 const ownDPR = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio')
@@ -85,5 +90,84 @@ describe('#516 Firefox for Android', () => {
     const clone = src.cloneNode(true)
     freezeInflatedFontSizes(new Map([[clone, src]]))
     expect(clone.getAttribute('style')).toBe(src.getAttribute('style'))
+  })
+})
+
+/**
+ * The clone of `root`, mounted in a shadow root (cloned class names would otherwise pick up
+ * this file's rules) with its text widened by `drift` per letter.
+ */
+async function mountDrifted(root, drift = 0.4) {
+  const { clone, classCSS } = await prepareClone(root, { embedFonts: false })
+  const host = document.createElement('div')
+  host.style.cssText = `position:absolute;left:-99999px;top:0;width:${root.getBoundingClientRect().width}px`
+  document.body.appendChild(host)
+  mounted.push(host)
+  const shadow = host.attachShadow({ mode: 'open' })
+  const style = document.createElement('style')
+  style.textContent = classCSS + `*{letter-spacing:${drift}px}`
+  shadow.append(style, clone)
+  return shadow
+}
+const pinned = (el) => el.style.textWrapMode === 'nowrap' || el.style.whiteSpace === 'nowrap'
+const lines = (el) => {
+  const tops = new Set()
+  for (const n of el.childNodes) {
+    if (n.nodeType !== 3 || !n.data.trim()) continue
+    const r = document.createRange()
+    r.selectNodeContents(n)
+    for (const rect of r.getClientRects()) tops.add(Math.round(rect.top))
+  }
+  return tops.size
+}
+
+describe('#516 a box on one line live stays on one line in the capture', () => {
+  const SCENE = '<div style="width:300px;padding:5px;background:#fff;font:16px serif">' +
+    '<div class="o" style="border:1px solid #000;margin:16px">' +
+    '<div class="t" style="display:inline-block;border:1px solid #000;padding:0 3.2px;margin:3px">aa bb</div>' +
+    '<div class="b" style="border:1px solid #000;padding:0 3.2px;margin:3px">aa bb</div></div></div>'
+
+  it('keeps the issue scene in place when the capture lays the text out wider', async () => {
+    const el = mount(SCENE)
+    const shadow = await mountDrifted(el)
+    expect(pinned(shadow.querySelector('.t'))).toBe(true)
+    expect(lines(shadow.querySelector('.t'))).toBe(1)
+    const top = (root) => root.querySelector('.b').getBoundingClientRect().top - root.querySelector('.o').getBoundingClientRect().top
+    expect(top(shadow)).toBeCloseTo(top(el), 1)
+  })
+
+  it('keeps a row of one-line boxes in a shrink-to-fit parent on one line', async () => {
+    const el = mount('<div style="display:inline-block;font:15px sans-serif;background:#fff">' +
+      ['Create', 'Upload many', 'Delete all'].map(t => `<div class="k" style="display:inline-block;padding:2px 6px;border:1px solid #333">${t}</div>`).join(' ') + '</div>')
+    const shadow = await mountDrifted(el)
+    const tops = new Set([...shadow.querySelectorAll('.k')].map(k => Math.round(k.getBoundingClientRect().top)))
+    expect(tops.size).toBe(1)
+  })
+
+  it('leaves a box that wraps live free to wrap', async () => {
+    const el = mount('<div style="background:#fff;font:16px serif"><div class="t" style="display:inline-block;width:40px">aa bb cc dd</div></div>')
+    expect(lines(el.querySelector('.t'))).toBeGreaterThan(1)
+    const shadow = await mountDrifted(el, 0)
+    expect(pinned(shadow.querySelector('.t'))).toBe(false)
+    expect(lines(shadow.querySelector('.t'))).toBe(lines(el.querySelector('.t')))
+  })
+
+  it('leaves a wrapped ::after of a one-line box wrapped', async () => {
+    const style = document.createElement('style')
+    style.textContent = '.i516tip{position:relative}.i516tip::after{content:"one two three four five six";position:absolute;left:0;top:100%;width:50px}'
+    document.head.appendChild(style)
+    mounted.push(style)
+    const el = mount('<div style="background:#fff;font:16px serif;padding-bottom:120px"><div class="t i516tip" style="display:inline-block">aa bb</div></div>')
+    const shadow = await mountDrifted(el, 0)
+    const pseudo = shadow.querySelector('[data-snapdom-pseudo="::after"]')
+    expect(pseudo).not.toBeNull()
+    expect(lines(pseudo)).toBeGreaterThan(1)
+  })
+
+  it('does not trust line geometry under a rotated ancestor', async () => {
+    // Rotated 90deg, the two lines sit side by side and overlap on the page's vertical axis.
+    const el = mount('<div style="padding:60px;background:#fff;font:16px serif"><div style="transform:rotate(90deg)"><div class="t" style="display:inline-block;width:40px">aa bb cc dd</div></div></div>')
+    const shadow = await mountDrifted(el, 0)
+    expect(pinned(shadow.querySelector('.t'))).toBe(false)
   })
 })
