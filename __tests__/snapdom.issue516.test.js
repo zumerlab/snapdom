@@ -235,7 +235,9 @@ describe('#516 a dpr 1 export of a capture laid out on a finer grid', () => {
     try {
       canvas = await res.toCanvas({ dpr: 1 })
     } finally {
-      Object.defineProperty(proto, 'imageSmoothingQuality', ownQuality)
+      // Firefox has no imageSmoothingQuality to restore.
+      if (ownQuality) Object.defineProperty(proto, 'imageSmoothingQuality', ownQuality)
+      else delete proto.imageSmoothingQuality
       if (ownUA) Object.defineProperty(navigator, 'userAgent', ownUA)
       else delete navigator.userAgent
     }
