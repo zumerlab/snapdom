@@ -34,29 +34,36 @@ const networkGate = createNetworkGate({ workers: browsers.length })
 // every gate to its probe-everything path. The test page lives on localhost, so a second
 // host is enough — the same machine on 127.0.0.1. Tests call
 // `commands.serveCrossOriginCss(cssText)` and get a URL for a <link>.
-const crossOriginCss = (() => {
-  const sheets = new Map()
+// `commands.serveCrossOriginJpeg(repoPath)` serves a repo image from the same host with no
+// CORS headers: it paints in an <img>, and snapdom's fetch of it fails.
+const crossOrigin = (() => {
+  const files = new Map()
   let server = null
   let port = 0
   async function start() {
     const { createServer } = await import('node:http')
     server = createServer((req, res) => {
-      const css = sheets.get(req.url)
-      if (css === undefined) { res.writeHead(404); res.end(); return }
-      res.writeHead(200, { 'content-type': 'text/css', 'cache-control': 'no-store' })
-      res.end(css)
+      const file = files.get(req.url)
+      if (!file) { res.writeHead(404); res.end(); return }
+      res.writeHead(200, { 'content-type': file.type, 'cache-control': 'no-store' })
+      res.end(file.body)
     })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
     server.unref() // must not keep the run alive after the last test
     port = server.address().port
   }
+  async function serve(ext, type, body) {
+    if (!server) await start()
+    const path = `/${files.size}.${ext}`
+    files.set(path, { type, body })
+    return `http://127.0.0.1:${port}${path}`
+  }
   return {
     commands: {
-      async serveCrossOriginCss(_ctx, css) {
-        if (!server) await start()
-        const path = `/${sheets.size}.css`
-        sheets.set(path, String(css))
-        return `http://127.0.0.1:${port}${path}`
+      serveCrossOriginCss: (_ctx, css) => serve('css', 'text/css', String(css)),
+      async serveCrossOriginJpeg(_ctx, file) {
+        const { readFile } = await import('node:fs/promises')
+        return serve('jpg', 'image/jpeg', await readFile(new URL(file, import.meta.url)))
       },
     },
   }
@@ -100,7 +107,7 @@ export default defineConfig({
       provider: 'playwright',
       screenshotFailures: false,
       instances: browsers.map((browser) => ({ browser })),
-      commands: { ...visualCommands, ...networkGate.commands, ...crossOriginCss.commands },
+      commands: { ...visualCommands, ...networkGate.commands, ...crossOrigin.commands },
     },
     coverage: {
       provider: 'v8',

@@ -23,6 +23,7 @@
 // The static review report is written to __snapshots__/visual/report.html.
 
 import { describe, it, beforeEach, afterEach, afterAll, inject, vi } from 'vitest'
+import { commands } from '@vitest/browser/context'
 import { defineDemoSuite } from '@zumer/snapdiff/vitest/suite'
 import { networkGuard, networkStatus, pageNeedsNetwork } from './helpers/network-gate.js'
 import { skippedVisualDemos, assertVisualBaselineMode } from '../scripts/visual-policy.mjs'
@@ -226,6 +227,20 @@ const overrides = {
         doc.fonts.load('700 24px Roboto', 'Roboto 700 (usada)'),
       ])
       if (faces.some(loaded => !loaded.length)) throw new Error('d25 requires the imported Roboto 400 and 700 faces')
+    },
+  },
+  // A cross-origin image whose host sends no CORS headers: it paints live, snapdom cannot fetch
+  // it, and the capture holds a placeholder of its live size. The demo used to point at Stack
+  // Overflow's logo, so the baseline moved with that host: the July baseline holds the logo's
+  // 95px box, and once the host answered 503 the live box was the 18px alt text and the demo
+  // failed on every engine. The image now comes from the test server. `load`, not decode():
+  // in a full BROWSER=all run Firefox's decode() settled while the same-origin image from the
+  // demo's HTML was still the one shown, and the capture inlined that one.
+  'd15-cors-fonts-test': {
+    setup: async (_win, doc) => {
+      const img = doc.querySelector('#target img')
+      const src = await commands.serveCrossOriginJpeg('demos/assets/wolf.jpg')
+      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = src })
     },
   },
   // The features imported from @frostin/snapdom (element-mirror) in one shot: a rendered text
