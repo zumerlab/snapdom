@@ -15,6 +15,10 @@
 // 4. A download is dpr 1 while the svg engine lays out on the live device-pixel grid, so a
 //    border snapped to whole device pixels lands under one output pixel and Firefox dropped
 //    some edges. `zoom` on an ancestor gives the runner the same snapped borders (#508).
+// 5. That export goes through a raster at the grid, and a canvas that shrinks it in one
+//    bilinear draw without mipmaps (mobile Firefox, the issue's 100-box demo) skips rows and
+//    columns of it. Chromium's 'low' smoothing is that resampler, so the test pins the
+//    quality at 'low' and reports Firefox for the export.
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
@@ -214,5 +218,51 @@ describe('#516 a dpr 1 export of a capture laid out on a finer grid', () => {
       inEdge = edge
     }
     expect(edges).toBe(6)
+  })
+
+  it('keeps every edge when the canvas cannot shrink with mipmaps', async () => {
+    const box = '<div style="border:1px solid #000;margin:16px"><div style="display:inline-block;border:1px solid #000;padding:0 3.2px;margin:3px">aa bb</div>' +
+      '<div style="border:1px solid #000;padding:0 3.2px;margin:3px">aa bb</div></div>'
+    const el = mount(`<div style="width:198px;padding:5px;background:#fff;font:16px serif">${box.repeat(24)}</div>`)
+    Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => 2.7272727 })
+    const res = await snapdom(el, { cache: 'disabled', burst: false })
+    const proto = CanvasRenderingContext2D.prototype
+    const ownQuality = Object.getOwnPropertyDescriptor(proto, 'imageSmoothingQuality')
+    const ownUA = Object.getOwnPropertyDescriptor(navigator, 'userAgent')
+    Object.defineProperty(proto, 'imageSmoothingQuality', { configurable: true, get: () => 'low', set() {} })
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => 'Mozilla/5.0 (Android 14; Mobile; rv:143.0) Gecko/143.0 Firefox/143.0' })
+    let canvas
+    try {
+      canvas = await res.toCanvas({ dpr: 1 })
+    } finally {
+      Object.defineProperty(proto, 'imageSmoothingQuality', ownQuality)
+      if (ownUA) Object.defineProperty(navigator, 'userAgent', ownUA)
+      else delete navigator.userAgent
+    }
+    const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+    const ink = (x, y) => data[4 * (y * width + x)] < 200
+    // The capture lays out on the 2.727 grid and drifts from the live boxes down the page, so
+    // horizontal edges are counted as runs down a column right of the text: 4 per box.
+    let runs = 0, last = 0
+    for (let y = 0, prev = false; y < height; y++) {
+      const on = ink(width - 30, y)
+      if (on && !prev) runs++
+      if (on) last = y
+      prev = on
+    }
+    expect(runs).toBe(24 * 4)
+    // Vertical edges are checked at the middle row of each box, its live row scaled by the
+    // drift measured at the last box's bottom edge.
+    const origin = el.getBoundingClientRect()
+    const stretch = (last + 1) / (el.lastElementChild.getBoundingClientRect().bottom - origin.top)
+    let lost = 0
+    for (const b of el.querySelectorAll('div div')) {
+      const r = b.getBoundingClientRect()
+      const my = Math.floor(((r.top + r.bottom) / 2 - origin.top) * stretch)
+      for (const x of [Math.floor(r.left - origin.left), Math.floor(r.right - origin.left) - 1]) {
+        if (![-1, 0, 1].some(k => ink(x + k, my))) lost++
+      }
+    }
+    expect(lost).toBe(0)
   })
 })

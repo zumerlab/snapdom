@@ -821,10 +821,24 @@ export async function toCanvas(url, options) {
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         if (fine) {
-          const tmp = document.createElement('canvas')
+          let tmp = document.createElement('canvas')
           tmp.width = fine.w
           tmp.height = fine.h
           drawBanded(tmp.getContext('2d'), img, fine.w, fine.h, src)
+          // #516: a canvas that resamples bilinearly without mipmaps reads 2x2 source pixels
+          // per output pixel, so past 2x it skips whole rows and columns of the grid raster
+          // and the 1-2px borders on them vanish, the same edges on every export. The issue's
+          // second demo (100 bordered boxes, DPR 2.727), drawn in Chromium with smoothing 'low',
+          // lost 15404 of 98341 edge samples in one draw and 81 halved first; the issue's mobile
+          // Firefox screenshot drops sides in that pattern. Halving until the last draw is under
+          // 2x reads every pixel.
+          while (tmp.width > outW * dpr * 2) {
+            const half = document.createElement('canvas')
+            half.width = Math.ceil(tmp.width / 2)
+            half.height = Math.ceil(tmp.height / 2)
+            half.getContext('2d').drawImage(tmp, 0, 0, half.width, half.height)
+            tmp = half
+          }
           ctx.imageSmoothingQuality = 'high'
           ctx.drawImage(tmp, 0, 0, outW * dpr, outH * dpr)
         } else {
