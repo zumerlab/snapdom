@@ -54,7 +54,7 @@ function clampSvgTextRasterSize(svg, session) {
     const nh = Math.max(1, Math.floor(h * f))
     sessionWarn(session, 'raster-clamp', `capture ${Math.round(w)}x${Math.round(h)}px exceeds decode limits; downscaled to ${nw}x${nh}px`)
     console.warn(
-      `[snapdom] Decode limit: ${Math.round(w)}×${Math.round(h)} → ${nw}×${nh}. Use ${typeof CompressionStream === 'function' ? 'PNG Blob, ' : ''}SVG or crop.`
+      `[SnapDOM] ${Math.round(w)}×${Math.round(h)}px is too large for the browser to draw; scaled down to ${nw}×${nh}px. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
     )
     return svg.replace(tag, tag
       .replace(/(\bwidth=")[\d.]+/i, `$1${nw}`)
@@ -75,15 +75,15 @@ function clampSvgTextRasterSize(svg, session) {
 export function cropSvgText(svg, crop) {
   const nums = ['x', 'y', 'width', 'height'].map(k => Number(crop?.[k]))
   if (!nums.every(Number.isFinite) || nums[2] <= 0 || nums[3] <= 0) {
-    throw new RangeError('[snapdom] canvas crop requires finite x/y and positive width/height')
+    throw new RangeError('[SnapDOM] crop needs finite x/y and a positive width/height.')
   }
   const head = svg.match(/<svg\b[^>]*>/i)
-  if (!head) throw new Error('[snapdom] cannot crop a non-SVG capture')
+  if (!head) throw new Error('[SnapDOM] Only SVG captures can be cropped.')
   const tag = head[0]
   const vb = (tag.match(/\bviewBox="([^"]+)"/i) || [])[1]
   const parts = String(vb || '').trim().split(/[\s,]+/).map(Number)
   if (parts.length !== 4 || !parts.every(Number.isFinite) || parts[2] <= 0 || parts[3] <= 0) {
-    throw new Error('[snapdom] cannot crop an SVG without a finite viewBox')
+    throw new Error('[SnapDOM] Can\'t crop: the SVG has no valid viewBox.')
   }
   const [vx, vy, vw, vh] = parts
   const left = Math.max(vx, nums[0])
@@ -91,7 +91,7 @@ export function cropSvgText(svg, crop) {
   const right = Math.min(vx + vw, nums[0] + nums[2])
   const bottom = Math.min(vy + vh, nums[1] + nums[3])
   if (!(right > left) || !(bottom > top)) {
-    throw new RangeError('[snapdom] canvas crop does not intersect the SVG viewBox')
+    throw new RangeError('[SnapDOM] The crop area does not intersect the capture.')
   }
   // The header's width/height may already be a scaled output size: keep that density so a
   // page slice rasterizes at the same resolution as the whole capture would.
@@ -618,7 +618,7 @@ export async function toCanvas(url, options) {
   // other source would rasterize whole, handing a document exporter a full bitmap where it
   // asked for one page: fail as loudly as a malformed window instead of degrading silently.
   if (crop && !isSvgDataURL(url)) {
-    throw new RangeError('[snapdom] canvas crop requires an SVG capture payload')
+    throw new RangeError('[SnapDOM] Only SVG captures can be cropped.')
   }
   if (isSvgDataURL(url)) {
     const head = (peekSvgHeader(url).match(/<svg\b[^>]*>/i) || [])[0] || ''
@@ -757,7 +757,7 @@ export async function toCanvas(url, options) {
     if (over > 1) {
       sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds canvas limits; downscaled`)
       console.warn(
-        `[snapdom] Canvas limit: reducing ${Math.round(devW)}×${Math.round(devH)}. Use ${typeof CompressionStream === 'function' ? 'PNG Blob, ' : ''}SVG or crop.`
+        `[SnapDOM] ${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
       )
       outW /= over
       outH /= over
@@ -779,7 +779,7 @@ export async function toCanvas(url, options) {
     canvas.style.height = `${outH}px`
 
     const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('[snapdom] toCanvas: the target canvas has no 2d context')
+    if (!ctx) throw new Error('[SnapDOM] The canvas you passed has no 2D context (is it already used for WebGL?).')
 
     // #516: an export smaller than the device-pixel grid the svg engine laid out on (a
     // download is always dpr 1, the grid is the live devicePixelRatio) puts every border

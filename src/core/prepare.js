@@ -77,7 +77,7 @@ export async function prepareClone(element, options = {}) {
     try {
       sessionCache.selection = prepareSelectionContext(element)
     } catch (e) {
-      debugWarn(sessionCache, 'prepareSelectionContext failed', e)
+      debugWarn(sessionCache, 'Couldn\'t read the text selection.', e)
     }
   }
 
@@ -240,7 +240,7 @@ export async function prepareClone(element, options = {}) {
   try {
     clone = await deepClone(element, sessionCache, options)
   } catch (e) {
-    console.warn('deepClone failed:', e)
+    console.warn('[SnapDOM] Capture failed while copying the element.', e)
     throw e
   } finally {
     undoContentVisibility()
@@ -256,12 +256,12 @@ export async function prepareClone(element, options = {}) {
   try {
     inlineExternalDefsAndSymbols(clone, undefined, element)
   } catch (e) {
-    console.warn('inlineExternal defs or symbol failed:', e)
+    console.warn('[SnapDOM] Couldn\'t copy external SVG icons; some may be missing.', e)
   }
   try {
     await inlinePseudoElements(element, clone, sessionCache, options)
   } catch (e) {
-    console.warn('inlinePseudoElements failed:', e)
+    console.warn('[SnapDOM] Couldn\'t copy ::before/::after content; some decorations may be missing.', e)
   }
   await resolveBlobUrlsInTree(clone, sessionCache)
 
@@ -287,7 +287,7 @@ export async function prepareClone(element, options = {}) {
       s.remove() // Do not leave <style> inside the visual clone
     }
   } catch (e) {
-    debugWarn(sessionCache, 'Shadow CSS extraction failed', e)
+    debugWarn(sessionCache, 'Couldn\'t copy shadow DOM styles.', e)
   }
 
   if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
@@ -315,7 +315,7 @@ export async function prepareClone(element, options = {}) {
   try {
     liftTopLayerClones(element, clone, sessionCache.nodeMap)
   } catch (e) {
-    debugWarn(sessionCache, 'top-layer lift failed', e)
+    debugWarn(sessionCache, 'Couldn\'t bring an open dialog or popover into the capture.', e)
   }
 
   // Re-anchor fixed/sticky clones to their painted position — in clip mode (the window is
@@ -329,7 +329,7 @@ export async function prepareClone(element, options = {}) {
       const edge = sessionCache.clip && clipWindow ? { x: clipWindow.x, y: clipWindow.y } : { x: 0, y: 0 }
       freezeViewportPositioned(element, clone, sessionCache.nodeMap, sessionCache.styleCache, edge)
     } catch (e) {
-      debugWarn(sessionCache, 'freezeViewportPositioned failed', e)
+      debugWarn(sessionCache, 'Couldn\'t keep fixed-position elements in place.', e)
     }
   }
 

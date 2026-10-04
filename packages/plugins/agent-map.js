@@ -64,12 +64,12 @@ export function agentMap(options = {}) {
   // The map is read in afterClone: with no clone there is no map, only a plausible-looking
   // empty one.
   if (needs !== 'clone' && needs !== 'render') {
-    throw new Error(`[snapdom] agent-map cannot run at stage '${needs}': it supports clone, render`);
+    throw new Error(`[SnapDOM] agent-map cannot run at stage '${needs}': it supports clone, render`);
   }
   // A capture with no render can never carry an image, and asking for both is a
   // contradiction the caller should hear now, not at export time.
   if (needs === 'clone' && image !== false) {
-    throw new Error("[snapdom] agent-map: needs: 'clone' produces no image — pass image: false, or needs: 'render'");
+    throw new Error("[SnapDOM] agent-map: needs: 'clone' makes no image; pass image: false, or use needs: 'render'.");
   }
 
   return {
@@ -97,7 +97,7 @@ export function agentMap(options = {}) {
         agentMap: async (ctx, opts = {}) => {
           const meta = ctx.__agentMapMeta;
           const wantImage = opts.image !== undefined ? opts.image : image;
-          if (!meta) throw new Error('[snapdom] agent-map: this capture carries no frozen map.');
+          if (!meta) throw new Error('[SnapDOM] agent-map: this capture has no map to export.');
 
           const format = opts.imageFormat || imageFormat;
           const quality = opts.imageQuality ?? imageQuality;

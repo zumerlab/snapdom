@@ -317,7 +317,7 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
 
   async function resolveOnce(text, baseHref, depth = 0) {
     if (depth > MAX_IMPORT_DEPTH) {
-      console.warn(`[snapDOM] @import depth exceeded (${MAX_IMPORT_DEPTH}) at ${baseHref}`)
+      console.warn(`[SnapDOM] Too many nested @import rules in ${baseHref}; stopped at ${MAX_IMPORT_DEPTH} levels.`)
       return text
     }
 
@@ -337,7 +337,7 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
       const absUrl = normalizeUrl(rawUrl, baseHref)
 
       if (visited.has(absUrl)) {
-        console.warn(`[snapDOM] Skipping circular @import: ${absUrl}`)
+        console.warn(`[SnapDOM] Skipped an @import that loops back: ${absUrl}`)
         continue
       }
       visited.add(absUrl)
@@ -482,7 +482,7 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
         out = out.replace(m[0], `url(${b64})`)
       }
     } catch {
-      console.warn('[snapDOM] Failed to fetch font resource:', abs)
+      console.warn('[SnapDOM] Couldn\'t load font file:', abs)
     }
   }
   return out
@@ -679,11 +679,11 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       const childHref = rule.href ? normalizeUrl(rule.href, baseHref) : baseHref
 
       if (ctx.depth >= MAX_IMPORT_DEPTH) {
-        console.warn(`[snapDOM] CSSOM import depth exceeded (${MAX_IMPORT_DEPTH}) at ${childHref}`)
+        console.warn(`[SnapDOM] Too many nested @import rules in ${childHref}; stopped at ${MAX_IMPORT_DEPTH} levels.`)
         continue
       }
       if (childHref && ctx.visitedSheets.has(childHref)) {
-        console.warn(`[snapDOM] Skipping circular CSSOM import: ${childHref}`)
+        console.warn(`[SnapDOM] Skipped an @import that loops back: ${childHref}`)
         continue
       }
       if (childHref) ctx.visitedSheets.add(childHref)
@@ -1046,7 +1046,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
       if (facesOut.trim()) finalCSS += facesOut
     } catch {
-      console.warn('[snapDOM] Failed to process stylesheet:', link.href)
+      console.warn('[SnapDOM] Couldn\'t read stylesheet:', link.href)
     }
   }
 
@@ -1124,7 +1124,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
               continue
             }
           } catch {
-            console.warn('[snapDOM] Failed to fetch dynamic font src:', f._snapdomSrc)
+            console.warn('[SnapDOM] Couldn\'t load font file:', f._snapdomSrc)
             continue
           }
         }
@@ -1160,7 +1160,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
             continue
           }
         } catch {
-          console.warn('[snapDOM] Failed to fetch localFonts src:', src)
+          console.warn('[SnapDOM] Couldn\'t load font file from localFonts:', src)
           continue
         }
       }

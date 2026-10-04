@@ -29,7 +29,7 @@ function chunk(type, data = new Uint8Array(0)) {
  */
 export async function encodePng(width, height, rows) {
   if (![width, height].every(n => Number.isInteger(n) && n > 0 && n <= 0x7fffffff)) {
-    throw new RangeError('[snapdom] PNG dimensions must be integers from 1 to 2147483647')
+    throw new RangeError('[SnapDOM] PNG dimensions must be integers from 1 to 2147483647')
   }
   const header = new Uint8Array(13)
   const view = new DataView(header.buffer)
@@ -62,10 +62,10 @@ export async function encodePng(width, height, rows) {
   try {
     for await (const data of rows) {
       if (!(data instanceof Uint8Array || data instanceof Uint8ClampedArray) || !data.length || data.length % stride) {
-        throw new RangeError('[snapdom] PNG input must contain complete RGBA rows')
+        throw new RangeError('[SnapDOM] PNG input must contain complete RGBA rows')
       }
       const count = data.length / stride
-      if (written + count > height) throw new RangeError('[snapdom] PNG input exceeds the declared height')
+      if (written + count > height) throw new RangeError('[SnapDOM] PNG input exceeds the declared height')
       for (let first = 0; first < count; first += batchRows) {
         const end = Math.min(count, first + batchRows)
         const filtered = new Uint8Array((end - first) * (stride + 1))
@@ -92,7 +92,7 @@ export async function encodePng(width, height, rows) {
       previous = previous.slice()
       written += count
     }
-    if (written !== height) throw new RangeError('[snapdom] PNG input does not match the declared height')
+    if (written !== height) throw new RangeError('[SnapDOM] PNG input does not match the declared height')
     await writer.close()
     await drained
     if (readError) throw readError

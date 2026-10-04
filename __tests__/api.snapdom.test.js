@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 
 // Firefox/WebKit canvases cannot encode WebP; snapdom falls back to PNG there.
@@ -141,6 +141,20 @@ it('snapdom should support exclude option to filter out elements by CSS selector
   expect(decoded).not.toContain('Private data')
   expect(decoded).toContain('Title')
   expect(decoded).toContain('This should remain')
+})
+
+it('warns about an invalid exclude selector once, not once per node', async () => {
+  const el = document.createElement('div')
+  el.innerHTML = '<p>a</p>'.repeat(30)
+  document.body.appendChild(el)
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  try {
+    await snapdom(el, { exclude: ['::bad('], cache: 'disabled', burst: false })
+    expect(warn.mock.calls.filter(([msg]) => String(msg).includes('::bad('))).toHaveLength(1)
+  } finally {
+    warn.mockRestore()
+    el.remove()
+  }
 })
 
 it('snapdom should support an exclude predicate with custom logic', async () => {

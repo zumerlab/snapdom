@@ -26,7 +26,7 @@ export function filter(options = {}) {
   } = options;
 
   // An unknown preset must not turn the plugin off when a filter string was also given.
-  if (preset && !presets[preset]) console.warn(`[snapdom] filter: unknown preset ${JSON.stringify(preset)}`);
+  if (preset && !presets[preset]) console.warn(`[SnapDOM] filter: unknown preset ${JSON.stringify(preset)}`);
   const cssFilter = presets[preset] || filterValue;
 
   return {

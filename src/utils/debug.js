@@ -14,9 +14,9 @@ export function debugWarn(ctx, msg, err) {
   const opts = ctx && typeof ctx === 'object' && (ctx.options || ctx)
   if (opts && opts.debug) {
     if (err !== undefined) {
-      console.warn('[snapdom]', msg, err)
+      console.warn('[SnapDOM]', msg, err)
     } else {
-      console.warn('[snapdom]', msg)
+      console.warn('[SnapDOM]', msg)
     }
   }
 }

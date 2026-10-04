@@ -39,15 +39,15 @@ export function gifExport(options = {}) {
       return {
         gif: async (ctx, opts = {}) => {
           const el = ctx.element;
-          if (!el) throw new Error('[snapdom] gif-export: no source element on context');
+          if (!el) throw new Error('[SnapDOM] gif-export: there is no element to record.');
 
           const recording = frameOptions(ctx, opts, { fps, duration, frames: frameOpt, scale, background }, 'gif-export');
           const { fps: _fps, count: _count, background: _bg } = recording;
           const colors = exportOption(ctx, opts, 'maxColors', maxColors);
-          if (!Number.isFinite(colors)) throw new RangeError('[snapdom] gif-export: maxColors must be finite');
+          if (!Number.isFinite(colors)) throw new RangeError('[SnapDOM] gif-export: maxColors must be finite');
           const _max = Math.min(256, Math.max(2, Math.floor(colors)));
           const _repeat = exportOption(ctx, opts, 'repeat', repeat);
-          if (!Number.isInteger(_repeat) || _repeat < -1 || _repeat > 65535) throw new RangeError('[snapdom] gif-export: repeat must be an integer from -1 to 65535');
+          if (!Number.isInteger(_repeat) || _repeat < -1 || _repeat > 65535) throw new RangeError('[SnapDOM] gif-export: repeat must be an integer from -1 to 65535');
           const delayCs = Math.max(2, Math.round(100 / _fps)); // GIF delay unit is 1/100 s
 
           let W = 0, H = 0;

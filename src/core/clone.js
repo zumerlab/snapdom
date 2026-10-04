@@ -260,7 +260,7 @@ function makeClipHusk(node, sessionCache, options) {
  * @returns {Promise<Node|null>}
  */
 export async function deepClone(node, sessionCache, options) {
-  if (!node) throw new Error('Invalid node')
+  if (!node) throw new Error('[SnapDOM] The element cannot be null or undefined.')
   // fast: false | 'auto' (#503). At entry, before any work, so paused nodes resume in order.
   if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   const clonedAssignedNodes = new Set()
@@ -291,7 +291,7 @@ export async function deepClone(node, sessionCache, options) {
     // foreignObject found in the captured DOM would become doubly nested → silently
     // skipped by browsers. Detect via closest() on the source DOM and skip.
     if (tag === 'foreignobject' && node.parentElement?.closest?.('foreignObject')) {
-      debugWarn(sessionCache, 'Nested <foreignObject> unsupported; skipped')
+      debugWarn(sessionCache, 'Skipped a nested <foreignObject>; it can\'t be captured.')
       return null
     }
     // A <picture>'s <source> out-ranks its <img>'s own src, so it survives into the export
@@ -332,8 +332,8 @@ export async function deepClone(node, sessionCache, options) {
             return null
           }
         }
-      } catch (err) {
-        console.warn(`Invalid exclude selector: ${selector}`, err)
+      } catch {
+        console.warn(`[SnapDOM] Invalid exclude selector "${selector}"; ignored.`)
       }
     }
   }
@@ -347,7 +347,7 @@ export async function deepClone(node, sessionCache, options) {
           return makeHideSpacer(node)
         }
       } catch (err) {
-        console.warn('Error in exclude predicate:', err)
+        console.warn('[SnapDOM] Your exclude function threw; the element was kept.', err)
       }
     }
   }
@@ -360,7 +360,7 @@ export async function deepClone(node, sessionCache, options) {
         if (options.filterMode === 'remove') return null
       }
     } catch (err) {
-      console.warn('Error in filter function:', err)
+      console.warn('[SnapDOM] Your filter function threw; the element was kept.', err)
     }
   }
   // #507: nothing under a display:none element can paint, yet every descendant was cloned,
@@ -398,7 +398,7 @@ export async function deepClone(node, sessionCache, options) {
     for (const hook of options.__resolveNodeHooks) {
       let out
       try { out = await hook(node, options) } catch (e) {
-        debugWarn(sessionCache, 'resolveNode plugin hook failed', e)
+        debugWarn(sessionCache, 'A plugin\'s resolveNode hook threw; ignored it.', e)
       }
       if (out === null) return null
       if (out?.nodeType) {
@@ -480,7 +480,7 @@ export async function deepClone(node, sessionCache, options) {
         if (w) clone.dataset.snapdomWidth = String(w)
         if (h) clone.dataset.snapdomHeight = String(h)
       } catch (e) {
-        debugWarn(sessionCache, 'IMG measurement failed', e)
+        debugWarn(sessionCache, 'Couldn\'t measure an image; kept its own size.', e)
       }
 
       // When the author used % or auto, or the effective width/height resolve to 0,
@@ -519,12 +519,12 @@ export async function deepClone(node, sessionCache, options) {
           if (h > 0) clone.style.minHeight = `${h}px`
         }
       } catch (e) {
-        debugWarn(sessionCache, 'IMG dimension freeze failed', e)
+        debugWarn(sessionCache, 'Couldn\'t fix the size of an image.', e)
       }
 
     }
   } catch (err) {
-    console.error('[Snapdom] Failed to clone node:', node, err)
+    console.error('[SnapDOM] Couldn\'t copy this element:', node, err)
     throw err
   }
   let applyInputVisual = null
@@ -663,7 +663,7 @@ export async function deepClone(node, sessionCache, options) {
     try {
       inlineTextFieldSelection(node, clone)
     } catch (e) {
-      debugWarn(sessionCache, 'inlineTextFieldSelection failed', e)
+      debugWarn(sessionCache, 'Couldn\'t copy the selection of a text field.', e)
     }
   }
   // #365: SVG painting elements — CSS rules override presentation attributes but aren't captured
@@ -818,7 +818,7 @@ export async function deepClone(node, sessionCache, options) {
 async function cloneIframe(node, sessionCache, options) {
   let sameOrigin = false
   try { sameOrigin = !!(node.contentDocument || node.contentWindow?.document) } catch (e) {
-    debugWarn(sessionCache, 'iframe same-origin probe failed', e)
+    debugWarn(sessionCache, 'Couldn\'t tell if an iframe is same-origin; treated it as cross-origin.', e)
   }
 
   if (sameOrigin) {
@@ -826,7 +826,7 @@ async function cloneIframe(node, sessionCache, options) {
       const wrapper = await rasterizeIframe(node, sessionCache, options)
       return wrapper
     } catch (err) {
-      console.warn('[SnapDOM] iframe rasterization failed, fallback:', err)
+      console.warn('[SnapDOM] Couldn\'t capture an iframe, so it was left out.', err)
       // fall through
     }
   }
@@ -835,10 +835,9 @@ async function cloneIframe(node, sessionCache, options) {
   // so what lands in the capture is the striped placeholder below; only mention the opt-out,
   // never suggest enabling an option that is already on.
   if (!sameOrigin) {
-    console.warn(
-      '[snapdom] Unreadable cross-origin <iframe>; keeping its box. Use { placeholders: false } to hide it.',
-      node
-    )
+    console.warn(options.placeholders
+      ? '[SnapDOM] Can\'t capture a cross-origin iframe; showing a placeholder. Set placeholders: false to hide it.'
+      : '[SnapDOM] Can\'t capture a cross-origin iframe; left it out.', node)
   }
 
   // Placeholder or spacer, both sized to the frame's box.
@@ -972,7 +971,7 @@ async function cloneCanvas(node, sessionCache, options) {
       }
     }
   } catch (e) {
-    debugWarn(sessionCache, 'Canvas toDataURL failed; using fallback', e)
+    debugWarn(sessionCache, 'Couldn\'t read the pixels of a canvas; used its fallback content.', e)
   }
 
   // #486: a capture fired before the canvas has drawn anything (an animation still loading, a
@@ -984,7 +983,7 @@ async function cloneCanvas(node, sessionCache, options) {
 
   const img = document.createElement('img')
   try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
-    debugWarn(sessionCache, 'img decoding/loading hints failed', e)
+    debugWarn(sessionCache, 'Couldn\'t set image loading hints.', e)
   }
   if (url) img.src = url
 
@@ -1035,7 +1034,7 @@ async function cloneVideo(node, sessionCache, options) {
         if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
       }
     } catch (e) {
-      debugWarn(sessionCache, 'Video capture failed; using poster', e)
+      debugWarn(sessionCache, 'Couldn\'t capture a video frame; used its poster.', e)
     }
   }
 
@@ -1124,7 +1123,7 @@ async function cloneObjectEmbed(node, sessionCache, options) {
       if (out) return out
     } catch { /* fall through */ }
   }
-  if (url) console.warn(`[snapdom] <${node.localName}> capture failed (${type || 'unknown type'}); using fallback children`)
+  if (url) console.warn(`[SnapDOM] Couldn't capture <${node.localName}>${type ? ` (${type})` : ''}; showing its fallback content.`)
   return undefined // generic clone: fallback children render, matching the no-plugin browser behavior
 }
 

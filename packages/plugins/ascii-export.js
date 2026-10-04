@@ -26,12 +26,12 @@ export function asciiExport(options = {}) {
           // Capture width is a pixel size, not a character count. v3 merges it into opts.
           const width = Object.hasOwn(ctx.export.requestedOptions, 'width') || opts.width !== ctx.width
             ? opts.width : charWidth;
-          if (!Number.isFinite(width) || width < 1) throw new RangeError('[snapdom] ascii-export: width must be a positive number');
+          if (!Number.isFinite(width) || width < 1) throw new RangeError('[SnapDOM] ascii-export: width must be a positive number');
           const cols = Math.floor(width);
           const chars = opts.charset || charset;
           const inv = opts.invert ?? invert;
 
-          if (!chars.length) throw new RangeError('[snapdom] ascii-export: charset must not be empty');
+          if (!chars.length) throw new RangeError('[SnapDOM] ascii-export: charset must not be empty');
           // Keep core's decoded-image/Safari path and captured originals without firing hooks again.
           const source = await exports.canvas({
             ...opts, width: ctx.width, height: ctx.height, scale: 1, dpr: 1, canvas: null,

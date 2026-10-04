@@ -23,7 +23,7 @@ export async function toBlob(url, options) {
     // An engine:'html-in-canvas' capture is raster from birth: base64-decoding its PNG and
     // labeling the bytes image/svg+xml would hand back a corrupt file. Fail with the reason.
     if (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) {
-      throw new Error("[snapdom] toBlob: engine:'html-in-canvas' produces a raster capture; ask for png/jpeg/webp")
+      throw new Error('[SnapDOM] html-in-canvas makes a raster capture, not an SVG; ask for png, jpeg or webp.')
     }
     const svgText = decodeURIComponent(url.split(',')[1])
     return new Blob([svgText], { type: 'image/svg+xml' })

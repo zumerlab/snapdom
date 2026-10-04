@@ -45,7 +45,7 @@ export function plugins(...defs) { registerPlugins(...defs); return snapdom }
  * @returns {Promise<object>} The capture result
  */
 async function fromString(html, options) {
-  if (typeof html !== 'string' || !html.trim()) throw new Error('[snapdom.fromString] html string required')
+  if (typeof html !== 'string' || !html.trim()) throw new Error('[SnapDOM] fromString() needs an HTML string.')
   const mount = document.createElement('div')
   // data-snapdom-internal: mounting/removing must not bump the style epoch.
   markInternalNode(mount)
@@ -104,7 +104,7 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
  *   - download(): Triggers file download
  */
 async function main(element, userOptions) {
-  if (!element) throw new Error('Element cannot be null or undefined')
+  if (!element) throw new Error('[SnapDOM] The element cannot be null or undefined.')
 
   // Normalize options into a capture context
   const context = createContext(userOptions)
@@ -176,7 +176,7 @@ async function main(element, userOptions) {
  * @returns {Promise<object>} Exporter functions.
  */
 snapdom.capture = async (el, context, _token) => {
-  if (_token !== INTERNAL_TOKEN) throw new Error('[snapdom.capture] is internal. Use snapdom(...) instead.')
+  if (_token !== INTERNAL_TOKEN) throw new Error('[SnapDOM] snapdom.capture() is internal; use snapdom(el).')
 
   // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
   // first draw is now handled at draw time by toCanvas's verified-draw ladder):
@@ -231,7 +231,7 @@ snapdom.capture = async (el, context, _token) => {
         const ctx = c.getContext('2d', { willReadFrequently: true })
         if (ctx) ctx.getImageData(0, 0, 1, 1)
       } catch (e) {
-        debugWarn(context, 'safari canvas poke failed', e)
+        debugWarn(context, 'Couldn\'t prepare canvases for Safari.', e)
       }
     }
   }
@@ -311,7 +311,7 @@ async function buildResult(url, context) {
     if (!rendered) throw absent('svgString')
     // An engine capture is raster from birth — decoding its PNG data URL as if it were
     // the serialized SVG would hand back base64 garbage with an svg label on it.
-    if (engineCanvas) throw new Error("[snapdom] svgString: engine:'html-in-canvas' produces a raster capture; there is no serialized SVG")
+    if (engineCanvas) throw new Error('[SnapDOM] html-in-canvas makes a raster capture; there is no SVG string.')
     const i = url.indexOf(',')
     return i >= 0 ? decodeURIComponent(url.slice(i + 1)) : ''
   }
@@ -456,7 +456,7 @@ async function buildResult(url, context) {
     // v3 sizing rule: width/height are the absolute output size and win; scale applies
     // only when neither is set; dpr multiplies device pixels.
     if (next.scale !== 1 && (Number.isFinite(next.width) || Number.isFinite(next.height))) {
-      debugWarn(next, 'scale ignored: width/height sets output size')
+      debugWarn(next, 'scale ignored: width/height already set the size.')
     }
     return next
   }
@@ -473,7 +473,7 @@ async function buildResult(url, context) {
     const requestedOptions = Object.freeze(opts && typeof opts === 'object' ? { ...opts } : {})
     const job = async () => {
       const work = exportsMap[type]
-      if (!work) throw new Error(`[snapdom] Unknown export type: ${type}`)
+      if (!work) throw new Error(`[SnapDOM] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, requestedOptions)
       const ctx = viewOf({ artifacts: context.__artifacts || null, export: exportFacade({ type, options: nextOpts, requestedOptions }) })
       // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),

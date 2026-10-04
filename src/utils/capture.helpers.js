@@ -234,9 +234,9 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
 export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return
   const cs = getComputedStyle(originalEl)
-  try { cloneRoot.style.boxShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows boxShadow', e) }
-  try { cloneRoot.style.textShadow = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows textShadow', e) }
-  try { cloneRoot.style.outline = 'none' } catch (e) { debugWarn(opts, 'stripRootShadows outline', e) }
+  try { cloneRoot.style.boxShadow = 'none' } catch (e) { debugWarn(opts, 'Couldn\'t remove the root box-shadow.', e) }
+  try { cloneRoot.style.textShadow = 'none' } catch (e) { debugWarn(opts, 'Couldn\'t remove the root text-shadow.', e) }
+  try { cloneRoot.style.outline = 'none' } catch (e) { debugWarn(opts, 'Couldn\'t remove the root outline.', e) }
   // Only drop-shadow() is an outer-shadow effect; blur() is part of the element's
   // own appearance and must survive (its bleed is always included in the bbox).
   const f = cs.filter || ''
@@ -246,7 +246,7 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
     .trim()
     .replace(/\s+/g, ' ')
   try { cloneRoot.style.filter = cleaned.length ? cleaned : 'none' } catch (e) {
-    debugWarn(opts, 'stripRootShadows filter', e)
+    debugWarn(opts, 'Couldn\'t remove the root drop-shadow filter.', e)
   }
 }
 
@@ -622,7 +622,7 @@ function willBeExcluded(el, options) {
   if (Array.isArray(options?.exclude)) {
     for (const sel of options.exclude) {
       try { if (el.matches(sel)) return options.excludeMode === 'remove' } catch (e) {
-        debugWarn(options, 'exclude selector match failed', e)
+        debugWarn(options, 'Invalid exclude selector; ignored.', e)
       }
     }
   }
@@ -630,13 +630,13 @@ function willBeExcluded(el, options) {
   if (Array.isArray(options?.excludePredicates)) {
     for (const pred of options.excludePredicates) {
       try { if (pred(el)) return options.excludeMode === 'remove' } catch (e) {
-        debugWarn(options, 'exclude predicate failed', e)
+        debugWarn(options, 'Your exclude function threw; ignored.', e)
       }
     }
   }
   if (typeof options?.filter === 'function' && options.filterMode === 'remove') {
     try { if (!options.filter(el)) return true } catch (e) {
-      debugWarn(options, 'filter function failed', e)
+      debugWarn(options, 'Your filter function threw; ignored.', e)
     }
   }
   return false

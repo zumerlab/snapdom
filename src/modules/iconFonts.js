@@ -57,7 +57,7 @@ export function compileIconFontMatchers(fonts) {
   for (const f of list) {
     if (f instanceof RegExp) out.push(f)
     else if (typeof f === 'string') out.push(new RegExp(escapeRegExp(f), 'i'))
-    else console.warn('[snapdom] Ignored invalid iconFont value:', f)
+    else console.warn('[SnapDOM] Ignored an iconFonts entry: use a string or a RegExp.', f)
   }
   return out
 }

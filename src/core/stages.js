@@ -58,7 +58,7 @@ export function resolveStage(context) {
     if (!inst || typeof inst !== 'object') continue
     const needs = inst.needs === undefined ? DEFAULT_STAGE : inst.needs
     if (!Object.prototype.hasOwnProperty.call(RANK, needs)) {
-      throw new Error(`[snapdom] plugin '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(needs)}, expected one of ${STAGES.join(', ')}`)
+      throw new Error(`[SnapDOM] Plugin '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(needs)}, expected one of ${STAGES.join(', ')}.`)
     }
     declared.push({ name: inst.name || '(unnamed)', needs })
     rank = Math.max(rank, RANK[needs])
@@ -98,10 +98,10 @@ export function assertNeeds(pluginName, value, supported = STAGES) {
   const fallback = supported[supported.length - 1]
   if (value === undefined || value === null) return fallback
   if (!Object.prototype.hasOwnProperty.call(RANK, value)) {
-    throw new Error(`[snapdom] ${pluginName}: needs must be one of ${STAGES.join(', ')}, got ${JSON.stringify(value)}`)
+    throw new Error(`[SnapDOM] ${pluginName}: needs must be one of ${STAGES.join(', ')}, got ${JSON.stringify(value)}.`)
   }
   if (!supported.includes(value)) {
-    throw new Error(`[snapdom] ${pluginName} cannot run at stage '${value}': it supports ${supported.join(', ')}`)
+    throw new Error(`[SnapDOM] ${pluginName} cannot run at stage '${value}'; it supports ${supported.join(', ')}.`)
   }
   return value
 }
@@ -116,8 +116,8 @@ export function assertNeeds(pluginName, value, supported = STAGES) {
 export function absentArtifactError(stage, loweredBy, what) {
   const who = loweredBy.length ? loweredBy.map((n) => `'${n}'`).join(', ') : 'the attached plugins'
   return new Error(
-    `[snapdom] no ${what}: this capture stopped at '${stage}' because ${who} declared needs: '${stage}' (result.needs says so too). ` +
-    'It is not re-captured on demand — that would be a different instant. ' +
+    `[SnapDOM] No ${what}: this capture stopped at '${stage}' because ${who} asked for needs: '${stage}'. ` +
+    'It is not re-captured, since that would be a different instant. ' +
     'Ask the plugin for needs: \'render\', or capture without it.'
   )
 }

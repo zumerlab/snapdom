@@ -64,7 +64,7 @@ export function registerPlugins(...defs) {
     const inst = normalizePlugin(d)
     if (!inst) continue
     if (inst.needs !== undefined && inst.needs !== DEFAULT_STAGE) {
-      throw new Error(`[snapdom] global plugin '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(inst.needs)}. A global plugin must run to '${DEFAULT_STAGE}': lowering it here would stop EVERY capture in the app short of pixels. Pass it per capture instead: snapdom(el, { plugins: [<plugin>] }).`)
+      throw new Error(`[SnapDOM] '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(inst.needs)}, so it can't be a global plugin (it would stop every capture before '${DEFAULT_STAGE}'). Pass it per capture: snapdom(el, { plugins: [...] }).`)
     }
     // 🔒 de-dup por name
     if (!__plugins.some(p => p && p.name && inst.name && p.name === inst.name)) {

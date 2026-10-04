@@ -47,13 +47,13 @@ export function videoExport(options = {}) {
       return {
         mp4: async (ctx, opts = {}) => {
           if (typeof MediaRecorder === 'undefined') {
-            throw new Error('[snapdom] video-export: MediaRecorder is not available in this environment');
+            throw new Error('[SnapDOM] video-export: MediaRecorder is not available in this environment');
           }
           if (typeof HTMLCanvasElement.prototype.captureStream !== 'function') {
-            throw new Error('[snapdom] video-export: canvas.captureStream is not available in this environment');
+            throw new Error('[SnapDOM] video-export: canvas.captureStream is not available in this environment');
           }
           const el = ctx.element;
-          if (!el) throw new Error('[snapdom] video-export: no source element on context');
+          if (!el) throw new Error('[SnapDOM] video-export: there is no element to record.');
 
           const recording = frameOptions(ctx, opts, { fps, duration, frames: frameOpt, scale, background }, 'video-export');
           const { fps: _fps, count: _count, background: _bg } = recording;
@@ -70,7 +70,7 @@ export function videoExport(options = {}) {
             typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(t)
           ) || '';
           if (mimeType && !mimeType.startsWith('video/mp4')) {
-            console.warn(`[snapdom] video-export: MP4 not supported by this browser's MediaRecorder; falling back to ${mimeType}`);
+            console.warn(`[SnapDOM] video-export: MP4 not supported by this browser's MediaRecorder; falling back to ${mimeType}`);
           }
 
           // 3) Request each painted frame where supported. MediaRecorder uses a real-time
@@ -91,20 +91,20 @@ export function videoExport(options = {}) {
           try {
             stream = stage.captureStream(0);
             let track = stream.getVideoTracks()[0];
-            if (!track) throw new Error('[snapdom] video-export: captureStream produced no video track');
+            if (!track) throw new Error('[SnapDOM] video-export: captureStream produced no video track');
             if (typeof track.requestFrame !== 'function') {
               // A zero-rate track without requestFrame never receives later paintings.
               for (const t of stream.getTracks()) t.stop();
               stream = stage.captureStream(_fps);
               track = stream.getVideoTracks()[0];
-              if (!track) throw new Error('[snapdom] video-export: captureStream produced no video track');
+              if (!track) throw new Error('[SnapDOM] video-export: captureStream produced no video track');
             }
             const pushFrame = () => track.requestFrame?.();
             rec = new MediaRecorder(stream, recOpts);
             rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
             const stopped = new Promise(resolve => { rec.onstop = resolve; });
             const failed = new Promise((_, reject) => {
-              rec.onerror = event => reject(event.error || new Error('[snapdom] video-export: MediaRecorder failed'));
+              rec.onerror = event => reject(event.error || new Error('[SnapDOM] video-export: MediaRecorder failed'));
             });
             // An error can arrive between awaited frame operations. Mark it handled now;
             // every wait below still observes the original rejection and exits the recorder.

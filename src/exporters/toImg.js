@@ -44,7 +44,7 @@ export async function toImg(url, options) {
       const head = (svg.match(/<svg\b[^>]*>/i) || [])[0] || ''
       const natW = parseFloat((head.match(/\bwidth="([\d.]+)/i) || [])[1])
       const natH = parseFloat((head.match(/\bheight="([\d.]+)/i) || [])[1])
-      if (!Number.isFinite(natW) || !Number.isFinite(natH)) throw new Error('svg without dimensions')
+      if (!Number.isFinite(natW) || !Number.isFinite(natH)) throw new Error('The SVG has no size.')
       const refW = Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : natW
       const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : natH
       let cssW, cssH
@@ -65,7 +65,7 @@ export async function toImg(url, options) {
       return img
     } catch (e) {
       sessionWarn(options.__session, 'safari-png-fallback', 'Safari vector toImg failed; using PNG', e)
-      debugWarn(options, 'Safari vector toImg failed; using PNG', e)
+      debugWarn(options, 'Safari couldn\'t show the SVG; used a PNG.', e)
       return rasterize(url, { ...options, format: 'png', quality: 1, meta })
     }
   }
@@ -135,7 +135,7 @@ export async function toImg(url, options) {
         // exporter or a caller does — painted nothing.
         await img.decode()
       } catch (e) {
-        debugWarn(options, 'toImg SVG sizing failed', e)
+        debugWarn(options, 'Couldn\'t size the SVG image.', e)
         // Hand back something drawable: the original url already decoded once.
         if (img.src !== url) {
           img.src = url

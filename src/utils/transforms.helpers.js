@@ -635,7 +635,7 @@ export function readTotalTransformMatrix(t) {
     tmp.style.setProperty('width', `${Number.isFinite(t.width) ? t.width : 0}px`, 'important')
     tmp.style.setProperty('height', `${Number.isFinite(t.height) ? t.height : 0}px`, 'important')
     tmp.style.setProperty('transform', transform, 'important')
-    if (!tmp.style.transform) throw new Error('Invalid transform composition')
+    if (!tmp.style.transform) throw new Error('[SnapDOM] Couldn\'t read the transform of an element.')
     host.appendChild(tmp)
     try { return matrixFromComputed(tmp) } finally { tmp.remove() }
   }

@@ -72,9 +72,8 @@ export function htmlExport(options = {}) {
           const frozenBody = ctx[BODY];
           if (typeof frozenBody !== 'string') {
             throw new Error(
-              '[snapdom] html-export: this capture produced no render. The plugin\'s afterRender ' +
-              'hook never ran, so there is no markup to export (a capture stopped at ' +
-              'needs:\'clone\' never reaches the render stage).'
+              '[SnapDOM] html-export: this capture produced no render, so there is no HTML ' +
+              'to export (it stopped at needs: \'clone\').'
             );
           }
           const a = ctx.artifacts;

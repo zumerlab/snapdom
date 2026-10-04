@@ -50,15 +50,15 @@ export function redactInputs(options = {}) {
   const blockInput = options.blocks ?? [];
   const blocks = typeof blockInput === 'string' ? [blockInput] : blockInput;
   if (!Array.isArray(blocks) || blocks.some(value => typeof value !== 'string' || !value.trim())) {
-    throw new TypeError('[snapdom] redact-inputs: blocks must be a selector or an array of non-empty selectors');
+    throw new TypeError('[SnapDOM] redact-inputs: blocks must be a selector or an array of non-empty selectors');
   }
   const blockSelectors = [...new Set(blocks.map(value => value.trim()))];
   const attributeInput = options.attributes ?? [];
-  if (!Array.isArray(attributeInput)) throw new TypeError('[snapdom] redact-inputs: attributes must be an array of rules');
+  if (!Array.isArray(attributeInput)) throw new TypeError('[SnapDOM] redact-inputs: attributes must be an array of rules');
   const attributes = attributeInput.map(rule => {
     if (!rule || typeof rule.selector !== 'string' || !rule.selector.trim() || !Array.isArray(rule.names) ||
         rule.names.some(name => typeof name !== 'string' || !/^[a-zA-Z_][\w:.-]*$/.test(name))) {
-      throw new TypeError('[snapdom] redact-inputs: attribute rules need a selector and exact attribute names');
+      throw new TypeError('[SnapDOM] redact-inputs: attribute rules need a selector and exact attribute names');
     }
     return { selector: rule.selector.trim(), names: [...new Set(rule.names)] };
   }).filter(rule => rule.names.length);
@@ -69,7 +69,7 @@ export function redactInputs(options = {}) {
     const probe = doc.createElement('div');
     for (const value of [...blockSelectors, ...attributes.map(rule => rule.selector)]) {
       try { probe.matches(value); }
-      catch { throw new TypeError(`[snapdom] redact-inputs: invalid privacy selector ${JSON.stringify(value)}`); }
+      catch { throw new TypeError(`[SnapDOM] redact-inputs: invalid privacy selector ${JSON.stringify(value)}`); }
     }
     validatedDocuments.add(doc);
   };
@@ -120,14 +120,14 @@ export function redactInputs(options = {}) {
         // createContext's compiled exclusion policy closes over this array. Extend it
         // in place so core and semantic exporters see the same policy before cloning.
         const exclude = ctx.exclude;
-        if (!Array.isArray(exclude)) throw new Error('[snapdom] redact-inputs requires normalized capture exclusions');
+        if (!Array.isArray(exclude)) throw new Error('[SnapDOM] redact-inputs needs a newer @zumer/snapdom.');
         for (const value of blockSelectors) if (!exclude.includes(value)) exclude.push(value);
         // Capturing a child of a private region must not escape that region's policy.
         if (policy.isBlocked(ctx.element) && !exclude.includes('*')) exclude.push('*');
         const previous = ctx.shouldExclude;
         ctx.shouldExclude = (el) => policy.isBlocked(el) || previous(el);
         if (ctx.excludeMode === 'remove' && policy.isBlocked(ctx.element)) {
-          throw new Error('[snapdom] redact-inputs: cannot remove the capture root; use excludeMode: "hide"');
+          throw new Error('[SnapDOM] redact-inputs: cannot remove the capture root; use excludeMode: "hide"');
         }
       }
     },

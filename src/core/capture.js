@@ -69,7 +69,7 @@ function collectResolveNodeHooks(options) {
  *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
  */
 export async function captureDOM(element, options) {
-  if (!element) throw new Error('Element cannot be null or undefined')
+  if (!element) throw new Error('[SnapDOM] The element cannot be null or undefined.')
   options.__session = createCaptureSession(options.cache)
   delete options.__compressedAssets
   delete options.__compressedSnapshot
@@ -153,7 +153,7 @@ export async function captureDOM(element, options) {
         sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
         if (!cache.warnedReconcile) {
           cache.warnedReconcile = true
-          console.warn('[snapdom] Inline/table text may re-wrap with fallback fonts. Use { reconcile: true } to check layout (~2x capture time).')
+          console.warn('[SnapDOM] Some text may wrap differently in the capture. Pass { reconcile: true } to fix it (about 2x slower).')
         }
       }
 
@@ -206,7 +206,7 @@ export async function captureDOM(element, options) {
       shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache, state.nodeMap)
     } catch (e) {
       sessionWarn(options.__session, 'shrink-failed', 'shrink pass failed', e)
-      console.warn('[snapdom] shrink pass failed:', e)
+      console.warn('[SnapDOM] Couldn\'t close the gaps left by removed elements.', e)
     }
   }
   try {
@@ -230,7 +230,7 @@ export async function captureDOM(element, options) {
       emulateBackdropFilters(state.element, state.clone, state.nodeMap)
     } catch (e) {
       sessionWarn(options.__session, 'backdrop-filter-failed', 'backdrop-filter emulation failed', e)
-      console.warn('[snapdom] backdrop-filter emulation failed:', e)
+      console.warn('[SnapDOM] Couldn\'t reproduce a backdrop-filter; captured without it.', e)
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {

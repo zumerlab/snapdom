@@ -528,7 +528,7 @@ export function pinIframeViewport(doc, w, h) {
  */
 export async function rasterizeIframe(iframe, sessionCache, options) {
   const doc = await getAccessibleIframeDocument(iframe, 3)
-  if (!doc) throw new Error('iframe document not accessible/ready')
+  if (!doc) throw new Error('The iframe document isn\'t ready.')
 
   const { contentWidth, contentHeight, rect } = measureContentBox(iframe)
 
@@ -536,7 +536,7 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   // window.snapdom dependency anymore. Direct captureDOM/deepClone callers must pass it.
   const snap = options?.snap
   if (!snap || typeof snap.toPng !== 'function') {
-    throw new Error('[snapdom] iframe capture requires the snapdom entrypoints on options.snap — capture through snapdom(el) (set automatically) or pass options.snap.')
+    throw new Error('Iframes are only captured through snapdom(el).')
   }
 
   // Avoid double scaling; parent capture decides final scale. Drop clip: a visible iframe
@@ -829,7 +829,7 @@ export async function blobUrlToDataUrl(blobUrl) {
   const p = (async () => {
     const r = await snapFetch(blobUrl, { as: 'dataURL', silent: true })
     if (!r.ok || typeof r.data !== 'string') {
-      throw new Error(`[snapDOM] Failed to read blob URL: ${blobUrl}`)
+      throw new Error(`Couldn't read ${blobUrl}`)
     }
     cache.resource?.set(blobUrl, r.data)   // shared cache
     return r.data
@@ -953,7 +953,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
         })
       }
     } catch (e) {
-      debugWarn(ctx, 'resolveBlobUrls for img failed', e)
+      debugWarn(ctx, 'Couldn\'t inline a blob: image.', e)
     }
   }
 
@@ -966,7 +966,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
         queueAttribute(node, 'href', href, () => node.removeAttributeNS?.(XLINK_NS, 'href'))
       }
     } catch (e) {
-      debugWarn(ctx, 'resolveBlobUrls for SVG image href failed', e)
+      debugWarn(ctx, 'Couldn\'t inline a blob: SVG image.', e)
     }
   }
 
@@ -976,7 +976,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       const styleText = el.getAttribute('style')
       queueCSS(styleText, replaced => el.setAttribute('style', replaced))
     } catch (e) {
-      debugWarn(ctx, 'replaceBlobUrls in inline style failed', e)
+      debugWarn(ctx, 'Couldn\'t inline blob: URLs in a style attribute.', e)
     }
   }
 
@@ -986,7 +986,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
       const css = s.textContent || ''
       queueCSS(css, replaced => { s.textContent = replaced })
     } catch (e) {
-      debugWarn(ctx, 'replaceBlobUrls in style tag failed', e)
+      debugWarn(ctx, 'Couldn\'t inline blob: URLs in a <style>.', e)
     }
   }
 
@@ -1000,7 +1000,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
           queueAttribute(n, attr, u)
         }
       } catch (e) {
-        debugWarn(ctx, `resolveBlobUrls for ${attr} failed`, e)
+        debugWarn(ctx, `Couldn't inline the blob: URL in ${attr}.`, e)
       }
     }
   }
@@ -1011,12 +1011,12 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
     while (next < pending.length) {
       const url = pending[next++]
       try { resolved.set(url, await blobUrlToDataUrl(url)) } catch (e) {
-        debugWarn(ctx, 'blobUrlToDataUrl failed; keeping original URL', e)
+        debugWarn(ctx, 'Couldn\'t read a blob: URL; kept it as is.', e)
       }
     }
   }))
   for (const write of writes) {
-    try { write() } catch (e) { debugWarn(ctx, 'resolved blob URL write failed', e) }
+    try { write() } catch (e) { debugWarn(ctx, 'Couldn\'t write an inlined blob: URL.', e) }
   }
 }
 

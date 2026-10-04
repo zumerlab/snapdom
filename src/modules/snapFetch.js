@@ -43,10 +43,10 @@ import { safeEncodeURI } from '../utils/helpers.js'
  * A console logger that says each thing once. A key is silenced for `ttlMs` after it fires,
  * and after `maxEntries` messages the logger goes quiet for the rest of the page: a gallery
  * of 200 broken images gets a handful of lines, not 200.
- * @param {string} [prefix='[snapDOM]']
+ * @param {string} [prefix='[SnapDOM]']
  * @param {{ttlMs?: number, maxEntries?: number}} [opts]
  */
-function createSnapLogger(prefix = '[snapDOM]', { ttlMs = 5 * 60_000, maxEntries = 12 } = {}) {
+function createSnapLogger(prefix = '[SnapDOM]', { ttlMs = 5 * 60_000, maxEntries = 12 } = {}) {
   const seen = new Map()
   let emitted = 0
 
@@ -68,7 +68,7 @@ function createSnapLogger(prefix = '[snapDOM]', { ttlMs = 5 * 60_000, maxEntries
   }
 }
 
-const snapLogger = createSnapLogger('[snapDOM]', { ttlMs: 3 * 60_000, maxEntries: 10 })
+const snapLogger = createSnapLogger('[SnapDOM]', { ttlMs: 3 * 60_000, maxEntries: 10 })
 
 // ---------------------------------------------------------------------------
 // Internal state
@@ -355,7 +355,7 @@ export async function snapFetch(url, options = {}) {
           const short = `${resp.status} ${resp.statusText || ''}`.trim()
           snapLogger.warnOnce(
             `http:${resp.status}:${as}:${originForLog(url)}`,
-            `HTTP ${short} fetching ${as}: ${url}`
+            `Couldn't load ${url} (HTTP ${short}).`
           )
         }
         notifyError(options, result)
@@ -401,10 +401,10 @@ export async function snapFetch(url, options = {}) {
       if (!silent) {
         const k = `${reason}:${as}:${originForLog(url)}`
         const tips = reason === 'timeout'
-          ? `Timeout (${timeout}ms): ${url}. Increase timeout or use a proxy`
+          ? `Timed out loading ${url} after ${timeout}ms. Raise the timeout option or set useProxy.`
           : reason === 'abort'
-            ? `Aborted fetching ${as}: ${url}`
-            : `Network/CORS fetching ${as}: ${url}. Try useProxy`
+            ? `Loading ${url} was cancelled.`
+            : `Couldn't load ${url} (network or CORS). Try the useProxy option.`
         snapLogger.errorOnce(k, tips)
       }
 

@@ -106,7 +106,7 @@ export function contextExport(options = {}) {
       return {
         context: async (ctx, opts = {}) => {
           const snap = ctx.__contextSnapshot
-          if (!snap) throw new Error('[snapdom] context-export: this capture carries no snapshot (it never ran beforeClone). It is not re-read on demand — that would be a different instant.')
+          if (!snap) throw new Error('[SnapDOM] context-export: this capture has no snapshot (the plugin did not run with it). It is not re-read later, since that would be a different instant.')
           // Core carries its image format in every normalized export bag. Only this
           // plugin's two formats override its factory default.
           const _format = opts.format === 'json' || opts.format === 'outline' ? opts.format : format

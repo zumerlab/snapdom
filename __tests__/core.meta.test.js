@@ -311,7 +311,7 @@ describe('toCanvas crop', () => {
     // A raster payload cannot be windowed by a viewBox rewrite: handing back the whole
     // bitmap where one page was asked for is a worse failure than not exporting.
     await expect(toCanvas(ONE_BY_ONE_PNG, { crop: { x: 0, y: 0, width: 1, height: 1 }, ...natural }))
-      .rejects.toThrow(/requires an SVG capture payload/)
+      .rejects.toThrow(/Only SVG captures can be cropped/)
     const plain = await toCanvas(ONE_BY_ONE_PNG, natural)
     expect(plain.width).toBe(1)
   })

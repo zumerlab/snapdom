@@ -19,18 +19,18 @@ describe('debugWarn', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const err = new Error('boom')
     debugWarn({ debug: true }, 'failed', err)
-    expect(warn).toHaveBeenCalledWith('[snapdom]', 'failed', err)
+    expect(warn).toHaveBeenCalledWith('[SnapDOM]', 'failed', err)
   })
 
   it('logs message without error when err is undefined', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     debugWarn({ debug: true }, 'just a message')
-    expect(warn).toHaveBeenCalledWith('[snapdom]', 'just a message')
+    expect(warn).toHaveBeenCalledWith('[SnapDOM]', 'just a message')
   })
 
   it('reads debug from ctx.options wrapper shape', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     debugWarn({ options: { debug: true } }, 'wrapped')
-    expect(warn).toHaveBeenCalledWith('[snapdom]', 'wrapped')
+    expect(warn).toHaveBeenCalledWith('[SnapDOM]', 'wrapped')
   })
 })

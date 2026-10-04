@@ -321,7 +321,7 @@ export async function composeAndSerialize(state, ex) {
         'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
       reconcileCloneLayout(state.element, state.clone, cssAll, state.nodeMap, w0, h0)
     } catch (e) {
-      console.warn('[snapdom] reconcile pass failed:', e)
+      console.warn('[SnapDOM] reconcile couldn\'t run; captured without it.', e)
     }
   }
 

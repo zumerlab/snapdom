@@ -50,12 +50,12 @@ export function frameOptions(ctx, opts, defaults, name) {
   const duration = exportOption(ctx, opts, 'duration', defaults.duration);
   const frames = exportOption(ctx, opts, 'frames', defaults.frames);
   const scale = exportOption(ctx, opts, 'scale', defaults.scale ?? ctx.scale ?? 1);
-  if (!Number.isFinite(fps) || fps <= 0) throw new RangeError(`[snapdom] ${name}: fps must be positive and finite`);
-  if (!Number.isFinite(scale) || scale <= 0) throw new RangeError(`[snapdom] ${name}: scale must be positive and finite`);
-  if (frames != null && (!Number.isInteger(frames) || frames < 1)) throw new RangeError(`[snapdom] ${name}: frames must be a positive integer`);
-  if (frames == null && (!Number.isFinite(duration) || duration <= 0)) throw new RangeError(`[snapdom] ${name}: duration must be positive and finite`);
+  if (!Number.isFinite(fps) || fps <= 0) throw new RangeError(`[SnapDOM] ${name}: fps must be positive and finite`);
+  if (!Number.isFinite(scale) || scale <= 0) throw new RangeError(`[SnapDOM] ${name}: scale must be positive and finite`);
+  if (frames != null && (!Number.isInteger(frames) || frames < 1)) throw new RangeError(`[SnapDOM] ${name}: frames must be a positive integer`);
+  if (frames == null && (!Number.isFinite(duration) || duration <= 0)) throw new RangeError(`[SnapDOM] ${name}: duration must be positive and finite`);
   const count = frames ?? Math.max(1, Math.round(duration / 1000 * fps));
-  if (!Number.isFinite(count)) throw new RangeError(`[snapdom] ${name}: frame count must be finite`);
+  if (!Number.isFinite(count)) throw new RangeError(`[SnapDOM] ${name}: frame count must be finite`);
 
   // Copy capture inputs, not released stage artifacts or export-session internals. In
   // particular createContext splits exclusion predicates out of exclude: put them back.

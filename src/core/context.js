@@ -83,9 +83,16 @@ export function createContext(options = {}) {
   const excludeSelectors = []
   const excludePredicates = []
   for (const e of excludeRaw) {
-    if (typeof e === 'string') excludeSelectors.push(e)
-    else if (typeof e === 'function') excludePredicates.push(e)
-    else if (e != null) console.warn('[snapdom] Invalid exclude entry; expected selector or predicate:', e)
+    if (typeof e === 'string') {
+      // Checked once here: the per-node match in clone.js warned for every node it visited.
+      try {
+        document.createDocumentFragment().querySelector(e)
+        excludeSelectors.push(e)
+      } catch {
+        console.warn(`[SnapDOM] Invalid exclude selector "${e}"; ignored.`)
+      }
+    } else if (typeof e === 'function') excludePredicates.push(e)
+    else if (e != null) console.warn('[SnapDOM] Ignored an exclude entry: use a CSS selector or a function.', e)
   }
   const excludeMode = options.excludeMode ?? 'hide'
 

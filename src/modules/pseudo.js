@@ -291,7 +291,7 @@ function lazyCounterContext(doc, sessionCache) {
   const ensure = () => {
     if (!built) {
       try { built = buildCounterContext(doc) } catch (e) {
-        debugWarn(sessionCache, 'buildCounterContext failed', e)
+        debugWarn(sessionCache, 'Couldn\'t compute CSS counters; list numbers may be off.', e)
         built = { get: () => 0, getStack: () => [] }
       }
     }
@@ -924,7 +924,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
               pseudoEl.appendChild(imgEl)
             }
           } catch (e) {
-            console.error(`[snapdom] Error in pseudo ${pseudo} for`, source, e)
+            console.warn(`[SnapDOM] Couldn't draw the ${pseudo} icon of`, source, e)
           }
         }
       } else if (!isIconFont2 && hasExplicitContent) {
@@ -960,7 +960,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           const newBgParts = await Promise.all(bgSplits.map((entry) => inlineSingleBackgroundEntry(entry, options)))
           pseudoEl.style.backgroundImage = newBgParts.join(', ')
         } catch (e) {
-          console.warn(`[snapdom] ${pseudo} background-image inline failed`, e)
+          console.warn(`[SnapDOM] Couldn't load the ${pseudo} background image.`, e)
         }
       }
       if (hasBgColor) pseudoEl.style.backgroundColor = bgColor
@@ -982,7 +982,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
             if (style[prop]) pseudoEl.style[prop] = style[prop]
           }
         } catch (e) {
-          console.warn(`[snapdom] ${pseudo} mask-image inline failed`, e)
+          console.warn(`[SnapDOM] Couldn't load the ${pseudo} mask image.`, e)
         }
       }
 
@@ -1016,7 +1016,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         clone.appendChild(pseudoEl)
       }
     } catch (e) {
-      console.warn(`[snapdom] Failed to capture ${pseudo} for`, source, e)
+      console.warn(`[SnapDOM] Couldn't copy the ${pseudo} of`, source, e)
     }
   }
 
