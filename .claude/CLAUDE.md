@@ -58,7 +58,7 @@ All scripts are npm-driven. Tests run in a real browser via Vitest + Playwright 
 
 - Build: `npm run compile` (esbuild → `dist/`) · `npm run build` = `npm pack` (a `prepack` hook compiles first)
 - Lint: `npm run lint` · auto-fix: `npm run lint:fix`
-- Tests: `npm test` (runs the check-only `lint`, `test:types`, `test:release-checks` (`node --test scripts/release-checks.node.mjs`), `test:bundle` (compile + the IIFE global-leak check), then `vitest run --browser.headless`)
+- Tests: `npm test` (runs the check-only `lint`, `test:types`, `test:release-checks` (`node --test scripts/release-checks.node.mjs`), `test:bundle` (compile + the IIFE global-leak check), then `node scripts/vitest.mjs run --browser.headless`: vitest, plus a second turn, one engine and one file at a time, for every test the network gate skipped. Nothing to configure; under `REQUIRE_VISUAL` a test still skipped after that fails the run)
 - Coverage: `npm run test:coverage`
 - Benchmarks: `npm run test:benchmark` · real page, three arms (liquidGL's NaughtyDOM, published v2, this checkout): `npm run compile && node scripts/bench-liquidgl.mjs` (clones liquidGL into the gitignored `.bench-liquidgl/` once; 2026-09-03: 11 / 53.3 / 53.1 ms)
 - Packaging contract: `npm run test:pack` — packs with no `dist/`, asserts every entrypoint is inside the tarball, installs it into throwaway consumer projects and typechecks with `skipLibCheck: false` under both `node16` and `bundler`, then resolves every entrypoint at runtime and counts the globals the browser bundle leaks. The browser suite cannot see any of this: it imports `src/`.

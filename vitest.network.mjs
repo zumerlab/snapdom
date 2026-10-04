@@ -118,6 +118,10 @@ export function createNetworkGate(options = {}) {
   // final word; the default scales.
   const workers = num(options.workers, 1)
   const fastKbps = num(options.fastKbps ?? process.env.NETWORK_GATE_FAST_KBPS, 120 * workers)
+  // A reading taken DURING the run already carries every worker's load, so scaling its
+  // threshold again counted them twice: under BROWSER=all a mid-run batch had to land in
+  // 239ms, which is a latency figure, and a link that delivers the batch in 20ms idle failed it.
+  const runFastKbps = num(options.fastKbps ?? process.env.NETWORK_GATE_FAST_KBPS, 120)
   const pageKB = num(options.pageKB, 300)
   const serialTimeoutMs = num(options.serialTimeoutMs, 30000)
   const minKbps = num(options.minKbps ?? process.env.NETWORK_GATE_MIN_KBPS, pageKB / (serialTimeoutMs / 1000))
@@ -137,6 +141,8 @@ export function createNetworkGate(options = {}) {
   let cached = null      // { mode, reading, kbps, at }
   let inflight = null    // dedupes the workers that ask at the same moment
   let warmed = false
+  let probes = 0         // the first one is the idle reading taken before any browser starts
+  let lastAsked = null   // what the previous mid-run reading asked for, awaiting confirmation
   let mode = forcedMode ?? 'parallel'  // ratchets towards 'skip', never back
 
   // --- the one-at-a-time lane ---------------------------------------------------------
@@ -220,7 +226,7 @@ export function createNetworkGate(options = {}) {
   }
 
   // --- the probe ----------------------------------------------------------------------
-  async function measure() {
+  async function measure(fast) {
     if (!warmed) {
       const cold = await timedFetch(warmup, warmupMs, false)
       if (!cold) return { mode: 'skip', kbps: 0, reading: `${new URL(warmup).hostname} unreachable in ${warmupMs}ms` }
@@ -238,7 +244,7 @@ export function createNetworkGate(options = {}) {
     // only that it is under it: measure what DID arrive and let the thresholds judge.
     const detail = `${arrived.length}/${results.length} files, ${Math.round(bytes / 1024)}KB in ${Math.round(elapsed)}ms (${kbps}KB/s)`
     if (arrived.length < results.length && kbps < minKbps) return { mode: 'skip', kbps, reading: detail }
-    if (kbps >= fastKbps && arrived.length === results.length) return { mode: 'parallel', kbps, reading: detail }
+    if (kbps >= fast && arrived.length === results.length) return { mode: 'parallel', kbps, reading: detail }
     if (kbps >= minKbps) return { mode: 'serial', kbps, reading: detail }
     return { mode: 'skip', kbps, reading: detail }
   }
@@ -257,8 +263,16 @@ export function createNetworkGate(options = {}) {
   }
 
   async function probe() {
-    const reading = await measure()
-    mode = strictest(mode, reading.mode)
+    const idle = probes++ === 0
+    const reading = await measure(idle ? fastKbps : runFastKbps)
+    // A mid-run reading times this process's event loop as much as the link: with eighteen
+    // workers on the machine (load average 15) the batch took 119-509ms against 20ms idle. One
+    // such spike ratcheted a run to serial for good, and the lane then refused 44 tests. A
+    // mid-run reading tightens the mode only when the next one asks for it too; a link the
+    // run really saturates stays slow and is confirmed one TTL later.
+    const asked = idle ? reading.mode : MODES[Math.min(MODES.indexOf(reading.mode), MODES.indexOf(lastAsked ?? 'parallel'))]
+    if (!idle) lastAsked = reading.mode
+    mode = strictest(mode, asked)
     cached = { ...reading, mode, at: Date.now() }
     return cached
   }

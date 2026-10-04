@@ -10,6 +10,10 @@
 //   skip      the payload cannot arrive in time even alone: those tests are skipped,
 //             with the reading attached, instead of timing out
 //
+// A skip is not the end of it: every skip note starts with SKIP_NOTE, and scripts/vitest.mjs
+// (what the npm scripts run) gives those tests a second turn, one at a time, once the rest of
+// the run is over. Under REQUIRE_VISUAL a test still skipped after that fails the run.
+//
 // Nothing here is specific to a suite. Two ways to use it:
 //
 //   import { beforeEach } from 'vitest'
@@ -26,7 +30,9 @@
 //   beforeEach(networkGuard((name) => name.startsWith('cdn:')))
 //
 import { commands } from '@vitest/browser/context'
-import { inject } from 'vitest'
+
+/** Prefix of every skip note this gate writes; scripts/vitest.mjs looks for it. */
+export const SKIP_NOTE = 'network gate: '
 
 // A run asks this once per test. The node side caches the reading, but a round trip per
 // test is still pointless traffic, so hold it here too and let node decide when to re-probe.
@@ -83,10 +89,7 @@ export function networkGuard(needsNetwork, { laneWaitMs = LANE_WAIT_MS } = {}) {
 
     // ctx.skip() throws a PendingError: the test is reported as skipped WITH this note,
     // rather than as a green pass that quietly covered nothing.
-    const unavailable = (reason) => {
-      if (inject('requireVisual', false)) throw new Error(`Release coverage incomplete: ${reason}`)
-      ctx.skip(reason)
-    }
+    const unavailable = (reason) => ctx.skip(SKIP_NOTE + reason)
     if (status.mode === 'skip') unavailable(`slow connection: ${status.reading}`)
 
     const lease = await commands.netGateEnter(laneWaitMs).catch(() => ({ granted: true, token: null }))

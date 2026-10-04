@@ -7,6 +7,8 @@ import requireVisual from './require-visual.mjs'
 import { distNeedsBuild } from './ensure-fresh-dist.mjs'
 import { assertVisualBaselineMode } from './visual-policy.mjs'
 import { loadEnv } from 'vite'
+import { createServer } from 'node:http'
+import { createNetworkGate } from '../vitest.network.mjs'
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'snapdom-release-'))
@@ -71,4 +73,23 @@ test('freshness checks both bundles, source, build config and package version', 
     assert.equal(distNeedsBuild(root), true, input)
     put(input, 10)
   }
+})
+
+test('network gate tightens on a confirmed mid-run slowdown, not on one slow reading', async t => {
+  // 100KB answered after `delay` ms: 400ms reads ~250KB/s, between the run threshold (120) and
+  // the idle one scaled for three workers (360); 1200ms reads ~83KB/s, below both.
+  let delay = 0
+  const body = Buffer.alloc(100 * 1024)
+  const server = createServer((req, res) => setTimeout(() => res.end(body), delay))
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  t.after(() => server.close())
+  const url = `http://127.0.0.1:${server.address().port}/`
+  const gate = createNetworkGate({ payload: [url], warmup: url, workers: 3, ttlMs: 1 })
+  const read = async (ms) => { delay = ms; await new Promise(r => setTimeout(r, 5)); return (await gate.status()).mode }
+
+  assert.equal(await read(0), 'parallel')     // the idle reading before any browser starts
+  assert.equal(await read(400), 'parallel')   // mid-run load is already in the reading
+  assert.equal(await read(1200), 'parallel')  // one slow reading: a CPU spike looks like this
+  assert.equal(await read(1200), 'serial')    // confirmed by the next one
+  assert.equal(await read(0), 'serial')       // and never relaxed inside the run
 })
