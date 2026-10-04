@@ -19,6 +19,9 @@
 //    bilinear draw without mipmaps (mobile Firefox, the issue's 100-box demo) skips rows and
 //    columns of it. Chromium's 'low' smoothing is that resampler, so the test pins the
 //    quality at 'low' and reports Firefox for the export.
+// 6. A checkbox or radio in a flex column or a grid is stretched across the track and painted
+//    centered in it; the replacement shrank to the glyph and sat at the start edge. The
+//    controls are made indeterminate so every engine takes the replacement.
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
@@ -72,6 +75,31 @@ describe('#516 Firefox for Android', () => {
     expect(w).toBeGreaterThan(10)
     expect(w).toBeLessThanOrEqual(17)
     expect(h).toBeLessThanOrEqual(17)
+  })
+
+  it('keeps a checkbox and a radio stretched by their container centered in their box', async () => {
+    const red = 'accent-color:#f00;margin:0'
+    const el = mount('<div style="width:200px;padding:4px;background:#fff">' +
+      `<div style="display:flex;flex-direction:column"><input type="checkbox" style="${red}"><input type="radio" style="${red}"></div>` +
+      `<div style="display:grid"><input type="checkbox" style="${red}"><input type="radio" style="${red}"></div></div>`)
+    const inputs = [...el.querySelectorAll('input')]
+    for (const input of inputs) input.indeterminate = true // the replacement on every engine
+    const canvas = await (await snapdom(el, { dpr: 1, scale: 1, cache: 'disabled', burst: false })).toCanvas()
+    const { data, width } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+    const origin = el.getBoundingClientRect()
+    // Chromium and Firefox stretch the controls across the column; WebKit keeps them 12px wide.
+    for (const input of inputs) {
+      const r = input.getBoundingClientRect()
+      let x0 = Infinity, x1 = -1
+      for (let y = Math.floor(r.top - origin.top); y < Math.ceil(r.bottom - origin.top); y++) {
+        for (let x = 0; x < width; x++) {
+          const i = 4 * (y * width + x)
+          if (data[i] > 200 && data[i + 1] < 90 && data[i + 2] < 90 && data[i + 3] > 200) { x0 = Math.min(x0, x); x1 = Math.max(x1, x) }
+        }
+      }
+      expect(x1 - x0 + 1).toBeLessThanOrEqual(r.height + 1)
+      expect(Math.abs((x0 + x1 + 1) / 2 - ((r.left + r.right) / 2 - origin.left))).toBeLessThan(1.5)
+    }
   })
 
   /** Report `src` the way Firefox reports inflated text: at the authored size, not the painted one. */

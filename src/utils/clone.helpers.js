@@ -715,6 +715,12 @@ export function createCheckboxRadioReplacement(node) {
 
   const size = Math.max(Math.min(w, h), 12)
   const s = size
+  // #516: a flex column or a grid stretches the control across its track, and the engine
+  // paints the glyph centered in that box; shrunk to the glyph, the box sat at the start
+  // edge (93px left of the live control in a 200px column). The svg fills the box, and the
+  // viewBox's default xMidYMid meet centers the glyph in it at scale 1.
+  const bw = Math.max(w, s)
+  const bh = Math.max(h, s)
 
   // #311: preserve original vertical-align so the replacement doesn't shift inline layout
   let vAlign = 'middle'
@@ -722,14 +728,14 @@ export function createCheckboxRadioReplacement(node) {
 
   const box = document.createElement('div')
   box.setAttribute('data-snapdom-input-replacement', node.type || 'checkbox')
-  box.style.cssText = `display:inline-block;width:${s}px;height:${s}px;vertical-align:${vAlign};flex-shrink:0;line-height:0;`
+  box.style.cssText = `display:inline-block;width:${bw}px;height:${bh}px;vertical-align:${vAlign};flex-shrink:0;line-height:0;`
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-  svg.setAttribute('width', String(s))
-  svg.setAttribute('height', String(s))
+  svg.setAttribute('width', String(bw))
+  svg.setAttribute('height', String(bh))
   svg.setAttribute('viewBox', `0 0 ${s} ${s}`)
   // #516: sized by its attributes alone, Firefox painted it at twice the box under the
   // engine's layoutZoom (DPR 2: a 14px checkbox drew 28px over its label); CSS lengths zoom once.
-  svg.style.cssText = `width:${s}px;height:${s}px`
+  svg.style.cssText = `width:${bw}px;height:${bh}px`
   box.appendChild(svg)
 
   function applyVisual() {
@@ -790,10 +796,10 @@ export function createCheckboxRadioReplacement(node) {
       }
     }
     // Force dimensions (inlineAllStyles may copy width:0 from native input)
-    box.style.setProperty('width', `${s}px`, 'important')
-    box.style.setProperty('height', `${s}px`, 'important')
-    box.style.setProperty('min-width', `${s}px`, 'important')
-    box.style.setProperty('min-height', `${s}px`, 'important')
+    box.style.setProperty('width', `${bw}px`, 'important')
+    box.style.setProperty('height', `${bh}px`, 'important')
+    box.style.setProperty('min-width', `${bw}px`, 'important')
+    box.style.setProperty('min-height', `${bh}px`, 'important')
   }
   applyVisual()
   return { el: box, applyVisual }
