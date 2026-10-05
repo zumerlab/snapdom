@@ -22,8 +22,8 @@ shapes; unsupported paint is diagnosed by the engine.
 
 The package is prepared locally and has not been published yet.
 Run `npm run test:vector` from the monorepo root. The migrated baselines are
-unchanged; the `challenges/fx-svg` SVG byte-count check also fails in the original
-checkout when tested against this core (30070 bytes versus 26225 ± 2623).
+unchanged. Inline SVG export omits inactive mask longhands from unmasked nodes,
+while retaining active masks and embedded stylesheet behavior.
 
 `src/public.js` defines the public `toVector()` and `toFigma()` contract.
 `src/index.js` and the emitters retain the internal engine used by the suites.

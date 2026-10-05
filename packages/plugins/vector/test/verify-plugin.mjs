@@ -126,6 +126,18 @@ try {
     URL.revokeObjectURL(img.src)
     test('an inline background-clip:text gradient paints its glyphs in toVector()', live > 0.01 && tinted(drawn) > live * 0.5, `live ${live.toFixed(4)} svg ${tinted(drawn).toFixed(4)}`)
     test('repeated exports leave no mounted clone or stylesheet', document.querySelectorAll('[data-snapdom-vector]').length === 0)
+    const { collectImage } = await import('/src/collect/image.js')
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    icon.setAttribute('width', '40'); icon.setAttribute('height', '40')
+    icon.innerHTML = '<rect width="40" height="40" fill="red" style="mask-position:10px 20px;mask-size:20px 30px;mask-repeat:no-repeat"/>'
+    holder.appendChild(icon)
+    const markup = async () => (await collectImage(icon, getComputedStyle(icon))).asset.markup
+    test('unmasked SVG omits inert mask longhands', !(await markup()).includes('mask-position'))
+    icon.firstElementChild.style.maskImage = 'linear-gradient(black, transparent)'
+    test('active SVG mask retains its positioning and size', (await markup()).includes('mask-position: 10px 20px') && (await markup()).includes('mask-size: 20px 30px'))
+    icon.firstElementChild.style.maskImage = 'none'
+    icon.insertAdjacentHTML('afterbegin', '<style>rect { mask-image:linear-gradient(black, transparent) }</style>')
+    test('embedded SVG stylesheet preserves mask longhands', (await markup()).includes('mask-position: 10px 20px'))
     holder.remove()
     style.remove()
     return checks

@@ -760,6 +760,7 @@ function bakeComputedStyle (live, clone, warnings) {
   }
 
   const hasText = !!live.querySelector('text, tspan, textPath')
+  const hasStylesheet = !!live.querySelector('style')
   let cssTransforms = 0
   for (let i = 0; i < liveNodes.length; i++) {
     const node = liveNodes[i]
@@ -771,6 +772,15 @@ function bakeComputedStyle (live, clone, warnings) {
       continue
     }
     const isRoot = i === 0
+    // Core freezes mask longhands even on unmasked SVG nodes. They cannot
+    // affect paint without a mask image; keep them when an embedded sheet
+    // could introduce one after the SVG leaves the document.
+    if (!hasStylesheet && style.maskImage === 'none') {
+      for (const prop of ['mask-position', 'mask-size', 'mask-repeat', 'mask-mode', 'mask-composite', 'mask-origin', 'mask-clip']) {
+        target.style.removeProperty(prop)
+      }
+      if (!target.getAttribute('style')) target.removeAttribute('style')
+    }
     const parentStyle = !isRoot && node.parentElement ? styleOf(node.parentElement) : null
     // Presentation attributes lose to both the inline `style` attribute and the
     // SVG's own <style> block — which is why the attribute is left in place:
