@@ -15,7 +15,7 @@ Install the plugins next to a core supported by their peer dependency:
 npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-Plugins 4.x in this checkout require a 3.x core. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed; this release has not been published to npm, so the `@latest` command above still installs the published plugins. Run `npm run compile` and `npm run site` from the monorepo root to try the local implementations. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
+Plugins 4.x in this checkout require a 3.x core. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed and available on npm in `@zumer/snapdom-plugins` 4.x. The `@latest` command above installs the published release. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
 
 ## Usage
 
@@ -409,7 +409,7 @@ The document retains source markup, including event-handler attributes; it is no
 
 Adds `toVector()` for standalone SVG with editable text and supported shapes, and
 `toFigma()` for Figma clipboard export. Its source and internal SVD format live in
-`vector/` under the MIT license. The updated package has not been published yet.
+`vector/` under the MIT license. Both exporters are available on npm in `@zumer/snapdom-plugins` 4.x.
 
 ```js
 import { vector } from '@zumer/snapdom-plugins/vector';

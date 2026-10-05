@@ -20,7 +20,7 @@ Register per capture to avoid applying
 the render hook to unrelated captures. SVG preserves editable text and supported
 shapes; unsupported paint is diagnosed by the engine.
 
-The package is prepared locally and has not been published yet.
+The plugin is available on npm in `@zumer/snapdom-plugins` 4.x.
 Run `npm run test:vector` from the monorepo root. The migrated baselines are
 unchanged. Inline SVG export omits inactive mask longhands from unmasked nodes,
 while retaining active masks and embedded stylesheet behavior.

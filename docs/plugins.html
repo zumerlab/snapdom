@@ -220,7 +220,7 @@
       <span class="pro-label">Open source</span>
       <h2 id="plugin-pro-title">PDF &amp; Vector plugins.</h2>
       <p>PDF adds selectable, searchable text and pagination. Vector exports editable shapes and text for SVG and Figma. Both plugins live in the SnapDOM monorepo under the MIT license.</p>
-      <p class="plugin-pro-terms">The updated plugin package is prepared locally; these exports are not published yet.</p>
+      <p class="plugin-pro-terms">PDF and Vector are available on npm in @zumer/snapdom-plugins 4.x and require SnapDOM 3.x.</p>
     </div>
     <div class="plugin-pro-links">
       <a href="./pro/pdf/" data-umami-event="Plugins PDF Pro">Explore PDF</a>
@@ -334,7 +334,7 @@
       <div class="plugin-card" data-category="export" data-plugin="pdf">
         <div class="card-top"><div class="plugin-icon">D</div><span class="category-tag">export</span></div>
         <h3>pdf</h3>
-        <p>Exports searchable, paginated PDFs with selectable text and links. The updated package is not published yet.</p>
+        <p>Exports searchable, paginated PDFs with selectable text and links. Available in @zumer/snapdom-plugins 4.x for SnapDOM 3.x.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><span class="expand-hint">details</span></div>
       </div>
@@ -342,7 +342,7 @@
       <div class="plugin-card" data-category="export" data-plugin="vector">
         <div class="card-top"><div class="plugin-icon">V</div><span class="category-tag">export</span></div>
         <h3>vector</h3>
-        <p>Exports editable SVG text and shapes, or copies a capture into Figma. The updated package is not published yet.</p>
+        <p>Exports editable SVG text and shapes, or copies a capture into Figma. Available in @zumer/snapdom-plugins 4.x for SnapDOM 3.x.</p>
         <div class="hooks"><span class="hook-badge">beforeRender</span><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><a href="./pro/vector/docs.html">Reference</a><span class="expand-hint">details</span></div>
       </div>
@@ -511,13 +511,13 @@
       },
       'pdf': {
         icon: 'D', category: 'export', hooks: ['beforeRender', 'defineExports'],
-        desc: 'Searchable, paginated PDF with selectable text, links and optional form fields. Prepared locally; not published yet.',
+        desc: 'Searchable, paginated PDF with selectable text, links and optional form fields. Available in @zumer/snapdom-plugins 4.x for SnapDOM 3.x.',
         options: [['page', 'string', "'fit'", 'Use fit for the element bounds, or a paper size such as a4.']],
         usage: `import { pdf } from '@zumer/snapdom-plugins/pdf';\n\nconst result = await snapdom(el, { plugins: [pdf()] });\nconst file = await result.toPdf({ page: 'a4' });`
       },
       'vector': {
         icon: 'V', category: 'export', hooks: ['beforeRender', 'defineExports'],
-        desc: 'Editable SVG or Figma clipboard export. Prepared locally; not published yet.',
+        desc: 'Editable SVG or Figma clipboard export. Available in @zumer/snapdom-plugins 4.x for SnapDOM 3.x.',
         options: [['exclude', 'string | function | array', 'undefined', 'Selectors or predicates for elements to leave out.']],
         usage: `import { vector } from '@zumer/snapdom-plugins/vector';\n\nconst result = await snapdom(el, { plugins: [vector()] });\nconst svg = await result.toVector();\nawait result.toFigma(); // HTTPS or localhost, from a user action`
       },

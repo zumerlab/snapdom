@@ -144,7 +144,7 @@ Redaction leaves the live page unchanged. `selector` selects inputs/textareas on
 
 Use SnapDOM when a web interface already exists in a real browser and you need images, reusable capture data or plugin exports. It handles browser features such as open Shadow DOM, pseudo-elements, CSS variables, transforms and webfonts, subject to resource access and browser rendering limits.
 
-It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. Core SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. PDF and Vector now have MIT source in packages/plugins; the updated plugin package is not published yet. Use a browser automation tool when the task requires navigation or rendering a remote URL.
+It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. Core SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. PDF and Vector now have MIT source in packages/plugins; both exporters are available on npm in @zumer/snapdom-plugins 4.x for SnapDOM 3.x. Use a browser automation tool when the task requires navigation or rendering a remote URL.
 
 ## Project links
 

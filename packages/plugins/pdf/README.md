@@ -1,6 +1,6 @@
 # PDF plugin
 
-MIT-licensed PDF export for SnapDOM, replacing the former PDF Pro and `pdf-image` implementations. This source is part of `@zumer/snapdom-plugins` 4.x and requires core 3.x. The 4.x release has not been published to npm yet.
+MIT-licensed PDF export for SnapDOM, replacing the former PDF Pro and `pdf-image` implementations. This source is part of `@zumer/snapdom-plugins` 4.x and requires core 3.x. The 4.x release is available on npm.
 
 ```js
 import { snapdom } from '@zumer/snapdom';

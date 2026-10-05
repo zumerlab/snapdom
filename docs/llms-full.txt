@@ -372,7 +372,7 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `gifExport()` | `toGif()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
 | `videoExport()` | `toMp4()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
 
-PDF and Vector are MIT source in packages/plugins. The updated package is prepared locally and has not been published yet. PDF returns a Blob; downloading is an explicit export option.
+PDF and Vector are MIT source in packages/plugins. PDF and Vector are available on npm in @zumer/snapdom-plugins 4.x and require SnapDOM 3.x. PDF returns a Blob; downloading is an explicit export option.
 
 ### Redaction across outputs
 
@@ -593,7 +593,7 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 
 ## PDF and Vector — MIT sources and live documentation
 
-Both exporters live inside the official plugin workspace: packages/plugins/pdf and packages/plugins/vector. Vector includes its internal SVD dependency in packages/plugins/vector/svd. The original Pro repositories are no longer required to use the integrated sources. @zumer/snapdom-plugins 4.0.0 is prepared locally and remains unpublished; do not assume a CDN has that version yet.
+Both exporters live inside the official plugin workspace: packages/plugins/pdf and packages/plugins/vector. Vector includes its internal SVD dependency in packages/plugins/vector/svd. The original Pro repositories are no longer required to use the integrated sources. @zumer/snapdom-plugins 4.0.0 is published on npm and available through npm-backed CDNs.
 
 PDF usage:
 ```js

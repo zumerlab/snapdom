@@ -2,7 +2,7 @@
 
 This document describes the internal migrated engine, SVD format and optional Figma consumer in `src/`, `svd/` and `figma-plugin/`. Historical examples below use the engine's internal API; they are not the public npm API.
 
-The public MIT-licensed plugin is `@zumer/snapdom-plugins/vector`: `vector({ exclude })` adds `toVector()` (SVG string) and `toFigma()` (clipboard write, returning `Promise<void>`). Only `exclude` is a public Vector option. See [usage](README.md), [public types](../vector.d.ts) and [the public adapter](src/public.js). Plugins 4.x require core 3.x and have not been published to npm yet.
+The public MIT-licensed plugin is `@zumer/snapdom-plugins/vector`: `vector({ exclude })` adds `toVector()` (SVG string) and `toFigma()` (clipboard write, returning `Promise<void>`). Only `exclude` is a public Vector option. See [usage](README.md), [public types](../vector.d.ts) and [the public adapter](src/public.js). Plugins 4.x are available on npm and require core 3.x.
 
 **And the reverse duty, which is what this paragraph is for: a contract that
 lies is worse than no contract.** When this file described a shape the code no
