@@ -152,9 +152,6 @@
       color: var(--sd-text);
       -webkit-font-smoothing: antialiased;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       padding: 0;
     }
     ::selection { background: rgba(45,91,255,0.18); }
@@ -275,15 +272,14 @@
     @media (min-width: 1081px) { nav.demo-menu::after { display: none; } }
     @media (max-width: 600px) { nav.demo-menu::after { grid-column: span 1; } }
 
-    section a { color: var(--sd-accent); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(45,91,255,0.35); transition: all 0.2s; }
-    section a:hover { border-bottom-color: var(--sd-accent); color: var(--sd-accent-hover); }
+    .pane-content section a { color: var(--sd-accent); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(45,91,255,0.35); transition: all 0.2s; }
+    .pane-content section a:hover { border-bottom-color: var(--sd-accent); color: var(--sd-accent-hover); }
 
     /* ═══ Demo sections ═══ */
-    main { width: 100%; max-width: 820px; padding: 0 24px; }
-    section { margin-bottom: 0; padding: 54px 0 44px; border: 0; border-top: 1px solid var(--sd-hairline); border-radius: 0; background: transparent; }
-    main > section:first-of-type, main section:first-child { border-top: 0; }
-    h1 { font-family: var(--font-display); color: var(--sd-text); font-size: clamp(1.75rem, 4vw, 2.5rem); margin-bottom: 0.75rem; letter-spacing: 0.3px; font-weight: 400; }
-    h2 { font-family: var(--font-display); font-size: 27px; color: var(--sd-text); margin-top: 0; margin-bottom: 1.1rem; font-weight: 400; letter-spacing: 0.3px; }
+    .pane-content section { margin-bottom: 0; padding: 54px 0 44px; border: 0; border-top: 1px solid var(--sd-hairline); border-radius: 0; background: transparent; }
+    .pane-content > section:first-of-type { border-top: 0; }
+    .pane-content h1 { font-family: var(--font-display); color: var(--sd-text); font-size: clamp(1.75rem, 4vw, 2.5rem); margin-bottom: 0.75rem; letter-spacing: 0.3px; font-weight: 400; }
+    .pane-content h2 { font-family: var(--font-display); font-size: 27px; color: var(--sd-text); margin-top: 0; margin-bottom: 1.1rem; font-weight: 400; letter-spacing: 0.3px; }
     .section-kicker {
       margin: 0 0 8px;
       color: var(--sd-annot);
@@ -296,7 +292,7 @@
     h3 { font-family: var(--font-body); font-weight: 700; }
 
     /* Buttons (demo controls) */
-    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close), button#capture, .run-benchmark-button {
+    .pane-content button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close), .pane-content button#capture, .run-benchmark-button {
       background: transparent;
       color: var(--sd-text) !important;
       border: 1.5px solid var(--sd-border);
@@ -312,7 +308,7 @@
       transition: background 0.15s, color 0.15s, border-color 0.15s;
       margin: 0 0.5em 0.5em 0;
     }
-    button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close):hover:not(:disabled), button#capture:hover, .run-benchmark-button:hover:not(:disabled) {
+    .pane-content button:not(.theme-toggle):not(.sd-btn):not(.shutter):not(.npm-copy):not(.star-close):hover:not(:disabled), .pane-content button#capture:hover, .run-benchmark-button:hover:not(:disabled) {
       background: var(--sd-border);
       color: #FFFFFF !important;
       transform: none;
@@ -438,7 +434,7 @@
     .site-footer a:hover { color: var(--sd-accent); }
     .site-footer .f-links { display: flex; gap: 20px; }
 
-    [id] { scroll-margin-top: 1rem; }
+    [id] { scroll-margin-top: 88px; }
     .hidden { display: none !important; }
 
     @media (max-width: 1080px) {
@@ -466,9 +462,8 @@
       .print img { width: 140px; }
       .star-card a { font-size: 13px; padding: 16px 22px 14px; letter-spacing: 1.4px; }
       .star-card .star-big { font-size: 34px; }
-      main { padding: 0 20px; }
-      section { padding: 40px 0 34px; }
-      h2 { font-size: 23px; }
+      .pane-content section { padding: 40px 0 34px; }
+      .pane-content h2 { font-size: 23px; }
       .menu-label { margin-top: 12px; }
       nav.demo-menu { grid-template-columns: repeat(2, 1fr); }
       .github-badge { font-size: 10.5px; padding: 6px 10px; }
@@ -613,47 +608,25 @@
     nav.demo-menu a .new-badge { position: absolute; top: 10px; right: 10px; padding: 2px 5px; font-size: 0.5rem; margin-left: 0; }
     nav.demo-menu a:hover .new-badge { color: #FFFFFF; border-color: rgba(255,255,255,0.6); }
   </style>
+  <link rel="stylesheet" href="../navigation.css"><link rel="stylesheet" href="../panes.css">
+  <script type="module" src="../panes.js"></script>
 </head>
 
 <body>
   <script defer src="../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/" aria-current="page">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/" aria-current="page">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
-  <div id="menu-container">
-      <div class="showcase-intro">
-        <h1 class="menu-label" id="demo-index">Showcase: 21 live capture and export demos</h1>
-        <img class="section-mascot" src="../assets/mascots/mr-snapdom-showcase.webp" alt="Mr. SnapDOM presenting an image frame" width="1254" height="1254" decoding="async">
-      </div>
-      <nav id="demo-menu" class="demo-menu">
-        <a href="#benchmark">Benchmark</a>
-        <a href="#basic">Basic</a>
-        <a href="#transition">Transition</a>
-        <a href="#opts-demo">Shadows</a>
-        <a href="#orbit">Orbit</a>
-        <a href="#html-export-demo">HTML <span class="new-badge">Plugin</span></a>
-        <a href="#gif-export-demo">GIF <span class="new-badge">Plugin</span></a>
-        <a href="#video-export-demo">Video <span class="new-badge">Plugin</span></a>
-        <a href="#video">Video frame <span class="new-badge">Core</span></a>
-        <a href="#fonts-demo">Fonts</a>
-        <a href="#shadow">Shadow DOM</a>
-        <a href="#canvas">Canvas</a>
-        <a href="#export">Export</a>
-        <a href="#pseudo">Pseudo</a>
-        <a href="#clip">Clip-Path</a>
-        <a href="#blend">Blend</a>
-        <a href="#iframe">Iframe</a>
-        <a href="#forms">Inputs</a>
-        <a href="#mask">Masking</a>
-        <a href="#cors">CORS</a>
-        <a href="#fullbody">Full Page</a>
-      </nav>
-    </div>
+  <!-- pane:start --><!-- hero {"badge": "Showcase", "title": "Showcase: 21 live capture and export demos", "lead": "Fidelity demos and every export format. Each one runs SnapDOM on the element beside it.", "links": [], "toc": [["benchmark", "Benchmark"], ["basic", "Basic"], ["transition", "Transition"], ["opts-demo", "Shadows"], ["orbit", "Orbit"], ["html-export-demo", "HTML Plugin"], ["gif-export-demo", "GIF Plugin"], ["video-export-demo", "Video Plugin"], ["video", "Video frame Core"], ["fonts-demo", "Fonts"], ["shadow", "Shadow DOM"], ["canvas", "Canvas"], ["export", "Export"], ["pseudo", "Pseudo"], ["clip", "Clip-Path"], ["blend", "Blend"], ["iframe", "Iframe"], ["forms", "Inputs"], ["mask", "Masking"], ["cors", "CORS"], ["fullbody", "Full Page"]]} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">12 official plugins</span></a><a class="site-nav-item sec-capture" href="../plugins.html#playground"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="./" aria-current="page">Live demos</a><div class="pane-toc"><a href="#benchmark">Benchmark</a><a href="#basic">Basic</a><a href="#transition">Transition</a><a href="#opts-demo">Shadows</a><a href="#orbit">Orbit</a><a href="#html-export-demo">HTML Plugin</a><a href="#gif-export-demo">GIF Plugin</a><a href="#video-export-demo">Video Plugin</a><a href="#video">Video frame Core</a><a href="#fonts-demo">Fonts</a><a href="#shadow">Shadow DOM</a><a href="#canvas">Canvas</a><a href="#export">Export</a><a href="#pseudo">Pseudo</a><a href="#clip">Clip-Path</a><a href="#blend">Blend</a><a href="#iframe">Iframe</a><a href="#forms">Inputs</a><a href="#mask">Masking</a><a href="#cors">CORS</a><a href="#fullbody">Full Page</a></div></div></div></nav></aside>
 
-  <main>
+<article class="pane-read sec-labs" data-title="Live demos">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Live demos</span></nav><span class="doc-meta">Showcase</span></div><h1>Showcase: 21 live capture and export demos</h1><p class="doc-lead">Fidelity demos and every export format. Each one runs SnapDOM on the element beside it.</p></header>
+<div class="pane-content"><!-- content -->
 
 
     <!-- Benchmark -->
     <section id="benchmark">
-      <h2>SnapDOM vs html2canvas</h2>
+      <h2 id="snapdom-vs-html2canvas">SnapDOM vs html2canvas</h2>
       <p style="text-align:center; max-width: 700px; margin: 0 auto 1rem; font-size: 1.05rem;">
         Capture the same element to canvas five times with each library and compare the average time in this browser.
       </p>
@@ -694,7 +667,7 @@
     </section>
     <!-- Basic -->
     <section id="basic">
-      <h2>Basic capture</h2>
+      <h2 id="basic-capture">Basic capture</h2>
       <div class="card" id="basic-box">
         <h3>Hello SnapDOM!</h3>
       </div>
@@ -705,7 +678,7 @@
 
     <!-- Transforms & Shadows (isolated target only) -->
     <section id="opts-demo">
-      <h2>Transforms &amp; shadows</h2>
+      <h2 id="transforms-amp-shadows">Transforms &amp; shadows</h2>
 
       <div style="max-width:440px; margin-inline:auto;">
         <div id="opts-target" style="
@@ -750,7 +723,7 @@
 </style>
     <!-- Transition -->
     <section id="transition">
-      <h2>Animated transition</h2>
+      <h2 id="animated-transition">Animated transition</h2>
       <div class="card transition-box" id="transition-box">
         <div class="dancers">🕺💃</div>
         <p style="margin: 0; font-weight: bold">I'm dancing and changing color!</p>
@@ -763,7 +736,7 @@
 
     <!-- Orbit -->
     <section id="orbit">
-      <h2>Orbit CSS toolkit - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
+      <h2 id="orbit-css-toolkit-go-to-repo">Orbit CSS toolkit - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
           data-umami-event="To orbit repo" target="_blank">Go to repo</a></h2>
       <div class="card black" id="orbit-box"
         style="height: 400px; overflow: hidden; background-color: black !important;">
@@ -853,7 +826,7 @@
     </style>
 
     <section id="html-export-demo">
-      <h2>HTML export <span class="new-badge">Plugin</span></h2>
+      <h2 id="html-export-plugin">HTML export <span class="new-badge">Plugin</span></h2>
       <p class="demo-explanation">The <code>html-export</code> plugin returns a self-contained HTML snapshot with styles, fonts and images inlined. The preview opens that document in a sandboxed <code>&lt;iframe&gt;</code>.</p>
       <div class="card xp-card" id="xp-html-src">
         <h3>Provisioning manifest</h3>
@@ -865,7 +838,7 @@
     </section>
 
     <section id="gif-export-demo">
-      <h2>GIF recording <span class="new-badge">Plugin</span></h2>
+      <h2 id="gif-recording-plugin">GIF recording <span class="new-badge">Plugin</span></h2>
       <p class="demo-explanation">The <code>gif-export</code> plugin records the live element frame by frame and returns an animated GIF. Recording starts when you call <code>toGif()</code>.</p>
       <div class="card xp-anim" id="xp-gif-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
@@ -875,7 +848,7 @@
     </section>
 
     <section id="video-export-demo">
-      <h2>Video recording <span class="new-badge">Plugin</span></h2>
+      <h2 id="video-recording-plugin">Video recording <span class="new-badge">Plugin</span></h2>
       <p class="demo-explanation">The <code>video-export</code> plugin records the live element using <code>MediaRecorder</code>. The browser selects a supported MP4 or WebM format; check <code>Blob.type</code> for the result.</p>
       <div class="card xp-anim" id="xp-vid-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
@@ -886,7 +859,7 @@
 
     <!-- Video Frame -->
     <section id="video">
-      <h2>Video frame <span class="new-badge">Core</span></h2>
+      <h2 id="video-frame-core">Video frame <span class="new-badge">Core</span></h2>
       <p class="demo-explanation">Capture the current frame of a <code>&lt;video&gt;</code> along with its surrounding interface. Press play, then capture a frame. This demo uses a CORS-enabled sample video.</p>
       <div class="card" id="video-box" style="text-align:center; padding:12px;">
         <video id="demo-video"
@@ -910,7 +883,7 @@
 
     <!-- Fonts -->
     <section id="fonts-demo">
-      <h2>Web fonts</h2>
+      <h2 id="web-fonts">Web fonts</h2>
       <div class="card" id="fonts-box">
         <h3 style="font-family: 'Mansalva', cursive; font-weight: 400">Unique Typography!</h3>
         <p style="font-family: sans-serif; font-size: 1.2em;">Web fonts with <code>embedFonts: true</code>.</p>
@@ -922,7 +895,7 @@
 
     <!-- Shadow DOM -->
     <section id="shadow">
-      <h2>Shadow DOM</h2>
+      <h2 id="shadow-dom">Shadow DOM</h2>
       <div class="card" id="shadow-host"></div>
       <button data-umami-event="Capture shadow"
         onclick="captureDemo('shadow-host', 'shadow-output', this)">Capture</button>
@@ -932,7 +905,7 @@
 
     <!-- Canvas -->
     <section id="canvas">
-      <h2>Canvas</h2>
+      <h2 id="canvas">Canvas</h2>
       <div class="card"><canvas id="myCanvas" width="160" height="160" style="border: 1px solid #000"></canvas></div>
       <button data-umami-event="Capture canvas"
         onclick="captureDemo('myCanvas', 'canvas-output', this)">Capture</button>
@@ -942,7 +915,7 @@
 
     <!-- Export -->
     <section id="export">
-      <h2>Export formats</h2>
+      <h2 id="export-formats">Export formats</h2>
       <div class="card" id="export-box">
         <div class="export-text"><strong>Export as</strong><br /><span class="export-format">PNG</span>, <span
             class="export-format">JPG</span> & <span class="export-format">WebP</span>.</div>
@@ -953,7 +926,7 @@
 
     <!-- Pseudo -->
     <section id="pseudo">
-      <h2>Pseudo-elements</h2>
+      <h2 id="pseudo-elements">Pseudo-elements</h2>
       <div class="card pseudo-box" id="pseudo-box">This element has pseudo-elements.</div>
       <button data-umami-event="Capture pseudo"
         onclick="captureDemo('pseudo-box', 'pseudo-output', this)">Capture</button>
@@ -963,7 +936,7 @@
 
     <!-- Clip-Path -->
     <section id="clip">
-      <h2>Clip-path</h2>
+      <h2 id="clip-path">Clip-path</h2>
       <div class="card clip-card" id="clip-box">This shape uses clip-path</div>
       <button data-umami-event="Capture clip path"
         onclick="captureDemo('clip-box', 'clip-output', this)">Capture</button>
@@ -973,7 +946,7 @@
 
     <!-- Blend -->
     <section id="blend">
-      <h2>Mix blend mode</h2>
+      <h2 id="mix-blend-mode">Mix blend mode</h2>
       <p class="demo-explanation">CSS <code>background-blend-mode: multiply</code>. A gradient image (sky + grass) blended with a blue overlay. SnapDOM captures the final rendered result.</p>
       <div class="card blend-card" id="blend-box">Gradient × blue overlay = tinted result</div>
       <button data-umami-event="Capture blend" onclick="captureDemo('blend-box', 'blend-output', this)">Capture</button>
@@ -983,7 +956,7 @@
 
     <!-- NEW: Iframe same-origin -->
     <section id="iframe">
-      <h2>Iframe (same-origin)</h2>
+      <h2 id="iframe-same-origin">Iframe (same-origin)</h2>
       <div class="card iframe-wrap">
         <iframe id="demo-iframe" title="Same-origin demo" loading="lazy" sandbox="allow-same-origin allow-scripts" srcdoc="<!DOCTYPE html>
 <html>
@@ -1014,7 +987,7 @@
 
     <!-- NEW: Inputs & Textarea -->
     <section id="forms">
-      <h2>Inputs &amp; textarea</h2>
+      <h2 id="inputs-amp-textarea">Inputs &amp; textarea</h2>
       <div class="card" id="forms-box">
         <form class="form-demo" onsubmit="return false;">
           <div class="form-row inline">
@@ -1063,7 +1036,7 @@
 
     <!-- NEW: Masking Effects -->
     <section id="mask">
-      <h2>Masking effects</h2>
+      <h2 id="masking-effects">Masking effects</h2>
 
       <!-- SVG defs for mask -->
       <svg width="0" height="0" style="position:absolute;">
@@ -1114,7 +1087,7 @@
     </section>
     <!-- CORS Proxy -->
    <section id="cors">
-      <h2>CORS proxy (useProxy)</h2>
+      <h2 id="cors-proxy-useproxy">CORS proxy (useProxy)</h2>
       <div class="proxy-card">
         <div id="proxy-hero" class="proxy-hero">
           <span style="font-weight:600;color:#567; padding: .4rem .6rem; background:#eef4ff; border-radius:8px;">
@@ -1142,7 +1115,7 @@
 
     <!-- Full Page -->
     <section id="fullbody">
-      <h2>Full-page capture</h2>
+      <h2 id="full-page-capture">Full-page capture</h2>
       <button data-umami-event="Capture full" onclick="captureDemo('body', 'fullbody-output', this)">Capture</button>
       <button data-umami-event="Download full" onclick="downloadDemo('body')">Download</button>
       <div class="output" id="fullbody-output"></div>
@@ -1151,25 +1124,21 @@
     <!-- Powered by SnapDOM -->
     <section id="powered-by">
       <p class="section-kicker">Ecosystem</p>
-      <h2>Tools built on SnapDOM</h2>
+      <h2 id="tools-built-on-snapdom">Tools built on SnapDOM</h2>
       <div class="card">
         <p>SnapEye gives coding agents visual evidence. SnapSurf navigates and verifies web pages. SnapDIFF runs visual regression tests against saved baselines.</p>
-        <p><a href="../ecosystem/" data-umami-event="Showcase ecosystem">Compare the tools and see how they work together →</a></p>
+        <p><a href="../ecosystem/" data-umami-event="Showcase ecosystem">Compare the tools and see how they work together</a></p>
       </div>
     </section>
 
-  </main>
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../docs/">Documentation</a><a href="../docs/#quick-start">Quick start</a><a href="../how-to/">How-to recipes</a><a href="../guides/">Guides</a><a href="../compare/">Compare</a></div><div><h2>Build</h2><a href="../capabilities/">Capabilities</a><a href="../plugins.html">Plugins</a><a href="../plugins.html#playground">Playground</a><a href="../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../showcase/">Showcase</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div><div><h2>Community</h2><a href="../ecosystem/">Ecosystem</a><a href="../made-with/">Made with</a><a href="../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
 
-  <footer class="site-footer">
-    <span>MIT © <a href="https://zumerlab.com/" target="_blank" rel="noopener">Zumerlab</a></span>
-    <span>Browser capture engine</span>
-    <span class="f-links">
-      <a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener" data-umami-event="Footer github">GitHub</a>
-      <a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)" data-umami-event="Footer x">X</a>
-      <a href="https://www.npmjs.com/package/@zumer/snapdom" target="_blank" rel="noopener" data-umami-event="Footer npm">npm</a>
-      <a href="../llms.txt" data-umami-event="Footer llms">llms.txt</a>
-    </span>
-  </footer>
+  
 
 
   <script>

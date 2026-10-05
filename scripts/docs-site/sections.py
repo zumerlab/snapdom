@@ -62,17 +62,29 @@ SECTIONS = [
                       ('blog/huge-page-mosaic/index.html','Tiled rasterization',None),
                       ('blog/painting-without-canvas/index.html','Painting without a canvas',None)])]},
  {'name':'Labs', 'menu':'Labs', 'filter':'Filter labs', 'groups':[
+   ('Overview','labs',[('labs.html','All labs',None)]),
    ('Live demos','labs',[('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
                          ('labs/capture-stages/index.html','Capture stages',None),('labs/target-range/index.html','Target range',None)]),
    ('WebGL','labs',[('labs/webgl-live-mirror/index.html','Live mirror',None),('labs/webgl-seamless-dom/index.html','Seamless DOM',None),
                     ('labs/webgl-shatter/index.html','Shattered capture',None)])]},
+
+ {'name':'Showcase', 'menu':'Showcase', 'filter':'Filter demos', 'groups':[
+   ('Showcase','labs',[('showcase/index.html','Live demos',D(badge='Showcase',
+     lead='Fidelity demos and every export format. Each one runs SnapDOM on the element beside it.'))])]},
+ {'name':'Community', 'menu':'Made with', 'filter':'Filter community', 'groups':[
+   ('Ecosystem','ecosystem',[('ecosystem/index.html','Plugins and tools','link')]),
+   ('Made with','context',[('made-with/index.html','Projects using SnapDOM',None)])]},
+ {'name':'Plugins', 'menu':'Plugins', 'filter':'Filter plugins', 'groups':[
+   ('Build','capture',[('capabilities/index.html','Capabilities','link')]),
+   ('Plugins','export',[('plugins.html','Plugins and playground',D(end='<!-- ── Plugin detail modal'))]),
+   ('Reference','export',[('docs/plugins/index.html','Plugin API','link')])]},
 ]
 
 START, END = '<!-- pane:start -->', '<!-- pane:end -->'
 TARGETS = {'shadow': SAMPLE_SHADOW, 'tricky': TRICKY}
 
 def strip_tags(s):
-    return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', s)).strip()
+    return html.unescape(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', s)).strip())
 
 def rel(frm, to):
     """Relative href from page `frm` to page `to` (both docs-relative file paths)."""
@@ -101,47 +113,65 @@ def heading_ids(body):
     body = re.sub(r'<h2(\s[^>]*)?>(.*?)</h2>', sub, body, flags=re.S)
     return body, heads
 
-def extract(src):
-    """Return (before, header, hero, content, after) of an old-style or already converted page."""
+def body_region(src, start, end_marker):
+    """(start, end, inner) of the page body after `start`: its <main>, or up to `end_marker`."""
+    if end_marker:
+        end = src.index(end_marker, start)
+        return start, end, src[start:end]
+    m = re.search(r'<main\b[^>]*>(.*?)</main>', src[start:], re.S)
+    return start + m.start(), start + m.end(), m.group(1)
+
+def extract(src, opts):
+    """Return (before, between, hero, content, after, toc) of an old-style or converted page."""
     if START in src:
         before, rest = src.split(START, 1)
         block, after = rest.split(END, 1)
-        hero = re.search(r'<!-- hero (.*?) -->', block, re.S).group(1)
+        hero = json.loads(re.search(r'<!-- hero (.*?) -->', block, re.S).group(1))
         content = block.split('<!-- content -->', 1)[1].split('<!-- /content -->', 1)[0]
-        return before, '', json.loads(hero), content, after
+        return before, '', hero, content, after, hero.get('toc')
     head_m = re.search(r'<header class="site-shell">.*?</header>', src, re.S)
-    hero_m = re.search(r'<section class="hero[^"]*"[^>]*>.*?</section>', src[head_m.end():], re.S)
-    if not hero_m:
-        # A page without a hero opens its main with breadcrumbs, the h1 and a first paragraph.
-        main_m = re.search(r'<main\b[^>]*>(.*?)</main>', src[head_m.end():], re.S)
-        body = re.sub(r'\s*<p class="crumbs">.*?</p>', '', main_m.group(1), count=1, flags=re.S)
-        h1 = re.search(r'<h1[^>]*>(.*?)</h1>\s*(<p>(.*?)</p>)?', body, re.S)
-        hero = {'badge': 'Labs Experiment', 'title': h1.group(1).strip(), 'lead': (h1.group(3) or '').strip(), 'links': []}
-        start, end = head_m.end() + main_m.start(), head_m.end() + main_m.end()
-        after = re.sub(r'<footer\b.*?</footer>', '', src[end:], flags=re.S)
-        return src[:head_m.start()], src[head_m.end():start], hero, body[:h1.start()] + body[h1.end():], after
-    hero_start = head_m.end() + hero_m.start()
-    hero_end = head_m.end() + hero_m.end()
-    main_m = re.search(r'<main\b[^>]*>(.*?)</main>', src[hero_end:], re.S)
-    hero_html = hero_m.group(0)
+    rest = src[head_m.end():]
+    hero_m = re.search(r'<section class="hero[^"]*"[^>]*>.*?</section>', rest, re.S)
+    menu_m = re.search(r'<div id="menu-container">.*?</nav>\s*</div>', rest, re.S)
+    toc = None
+    if hero_m:
+        hero_html = hero_m.group(0)
+        cut = (head_m.end() + hero_m.start(), head_m.end() + hero_m.end())
+    elif menu_m:
+        # Showcase: its intro holds the h1 and a menu of demo anchors, which becomes the toc.
+        hero_html = menu_m.group(0)
+        cut = (head_m.end() + menu_m.start(), head_m.end() + menu_m.end())
+        toc = [(h, strip_tags(t)) for h, t in re.findall(r'<a href="#([^"]+)">(.*?)</a>', hero_html, re.S)]
+    else:
+        hero_html = ''
+        cut = (head_m.end(), head_m.end())
     pick = lambda pat: (re.search(pat, hero_html, re.S) or [None, ''])[1]
     actions = re.findall(r'<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>', pick(r'<div class="hero-actions">(.*?)</div>'), re.S)
-    hero = {'badge': strip_tags(pick(r'<div class="hero-badge">(.*?)</div>')),
-            'title': pick(r'<h1[^>]*>(.*?)</h1>').strip(),
-            'lead': (pick(r'<p class="lead"[^>]*>(.*?)</p>') or pick(r'<p>(.*?)</p>')).strip(),
+    hero = {'badge': strip_tags(pick(r'<div class="hero-badge">(.*?)</div>')) or opts.get('badge', ''),
+            'title': opts.get('title_html') or pick(r'<h1[^>]*>(.*?)</h1>').strip(),
+            'lead': opts.get('lead') or (pick(r'<p class="lead"[^>]*>(.*?)</p>') or pick(r'<p>(.*?)</p>')).strip(),
             'links': [(h, strip_tags(t).replace('→', '').strip()) for h, t in actions]}
-    before = src[:head_m.start()]
-    between = src[head_m.end():hero_start] + src[hero_end:hero_end + main_m.start()]
-    after = src[hero_end + main_m.end():]
-    after = re.sub(r'<footer\b.*?</footer>', '', after, flags=re.S)
-    return before, between, hero, main_m.group(1), after
+    start, end, content = body_region(src, cut[1], opts.get('end'))
+    if not hero_html:
+        # A page without a hero opens its main with breadcrumbs, the h1 and a first paragraph.
+        content = re.sub(r'\s*<p class="crumbs">.*?</p>', '', content, count=1, flags=re.S)
+        h1 = re.search(r'<h1[^>]*>(.*?)</h1>\s*(<p>(.*?)</p>)?', content, re.S)
+        hero.update(title=h1.group(1).strip(), lead=(h1.group(3) or '').strip())
+        content = content[:h1.start()] + content[h1.end():]
+    if toc: hero['toc'] = toc
+    between = src[head_m.end():cut[0]] + src[cut[1]:start]
+    after = re.sub(r'<footer\b.*?</footer>', '', src[end:], flags=re.S)
+    return src[:head_m.start()], between, hero, content, after, toc
 
 def convert(section, gi, path, title, demo, flat):
     full = os.path.join(OUT, path)
     src = open(full).read()
-    before, between, hero, content, after = extract(src)
+    opts = demo or {}
+    before, between, hero, content, after, toc = extract(src, opts)
     root = '../' * path.count('/')
     content, heads = heading_ids(no_arrows(content))
+    heads = toc or heads
+    if not opts.get('demo'): demo = None
     label, sec, _ = section['groups'][gi]
 
     side = []
@@ -163,7 +193,7 @@ def convert(section, gi, path, title, demo, flat):
     if i < len(flat) - 1: pager += f'<a class="is-next" href="{rel(path, flat[i+1][0])}"><span>Next</span><strong>{E(flat[i+1][1])}</strong></a>'
     pager += '</nav>'
 
-    trail = [section['name']] + ([label] if label not in ('Overview', title) else []) + [title]
+    trail = [section['name']] + ([label] if label not in ('Overview', title, section['name']) else []) + [title]
     crumbs = '<span aria-hidden="true">/</span>'.join(f'<span>{E(t)}</span>' for t in trail)
     links = ''.join(f'<a href="{h}">{E(t)}</a>' for h, t in hero['links'])
     doc_header = (f'<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb">{crumbs}</nav>'
@@ -174,7 +204,7 @@ def convert(section, gi, path, title, demo, flat):
     attrs = f' data-title="{E(title)}"'
     if demo:
         for k, v in demo.items():
-            if k in ('target', 'label'): continue
+            if k in ('target', 'label', 'end', 'badge', 'lead', 'title_html'): continue
             attrs += f' data-{k}="{E(json.dumps(v) if isinstance(v, dict) else str(v))}"'
         attrs += f' data-demo-label="{E(demo.get("label", title))}"'
     demo_html = demo_panel(TARGETS.get(demo.get('target'))) if demo else ''
@@ -185,8 +215,10 @@ def convert(section, gi, path, title, demo, flat):
              f'<article class="pane-read sec-{sec}"{attrs}>\n{doc_header}\n<div class="pane-content"><!-- content -->{content}<!-- /content --></div>\n{pager}\n</article>\n</main>\n'
              f'{footer(root)}\n{END}')
     out = before + block + after
-    # The old header's star counter had its own fetch; site.js fills [data-star-count] now.
-    out = re.sub(r'\s*<script>(?:(?!</script>).)*?getElementById\(\'star-count\'\)(?:(?!</script>).)*</script>', '', out, flags=re.S)
+    # The old header's star counter had its own small fetch script; site.js fills
+    # [data-star-count] now. Only short scripts are removed, never page logic.
+    out = re.sub(r'\s*<script>((?:(?!</script>).)*)</script>',
+                 lambda m: '' if "getElementById('star-count')" in m.group(1) and len(m.group(1)) < 700 else m.group(0), out, flags=re.S)
     links_css = ''.join(f'<link rel="stylesheet" href="{root}{n}">' for n in ('navigation.css', 'panes.css') if f'{root}{n}"' not in out)
     out = out.replace('</head>', f'  {links_css}\n  <script type="module" src="{root}panes.js"></script>\n</head>', 1) if links_css else out
     open(full, 'w').write(out)
@@ -195,4 +227,5 @@ for section in SECTIONS:
     flat = [(p, t, d) for _, _, items in section['groups'] for p, t, d in items]
     for gi, (_, _, items) in enumerate(section['groups']):
         for p, t, d in items:
-            convert(section, gi, p, t, d, flat)
+            if d != 'link':
+                convert(section, gi, p, t, d, flat)
