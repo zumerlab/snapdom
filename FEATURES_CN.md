@@ -1,6 +1,6 @@
 # SnapDOM 功能特性
 
-SnapDOM 在浏览器内捕获渲染后的界面状态。核心引擎提供可复用的图片和 Canvas 导出；插件提供 HTML、结构化上下文、元素映射、PDF 和录制功能。
+SnapDOM 在浏览器内捕获渲染后的界面状态。核心引擎提供可复用的图片和 Canvas 导出；插件提供 HTML、结构化上下文、元素映射、PDF、可编辑矢量图和录制功能。
 
 本文是 v3 的技术功能参考。安装与示例见 [README](README_CN.md) 和 [API 文档](https://snapdom.dev/docs/)。[English](FEATURES.md)。
 
@@ -109,11 +109,14 @@ SnapDOM 将冻结的 SVG 按尺寸受限的区域分块渲染，并编码为一�
 | `html-export` | 包含嵌入样式和字体的捕获 HTML |
 | `context-export` | 文本大纲或 JSON 页面上下文 |
 | `agent-map` | 图片与元素映射，包含角色、名称、状态和边界框 |
-| `pdf` | 可搜索、可分页并包含可选择文本和链接的 PDF |
+| `pdf` | 可搜索、可分页的 PDF，支持可选择文本、链接、可选表单字段、页眉/页脚和加密 |
+| `vector` | 不含 `<foreignObject>` 的可编辑 SVG，以及 Figma 剪贴板导出 |
 | `gif-export` / `video-export` | 在一段时间内录制当前元素 |
 | `ascii-export` | 图像的文本表示 |
 | `filter` / `color-tint` / `timestamp-overlay` | 修改克隆的视觉效果 |
 | `replace-text` / `redact-inputs` | 替换文字和遮蔽表单值 |
+
+本仓库中的插件 4.x 要求核心 3.x。完整 PDF 和 Vector 导出器以 MIT 许可证开源，尚未发布到 npm。PDF 的 `toPdf()` 返回 `Blob`；Vector 的 `toVector()` 返回 SVG 字符串。`toFigma()` 需要 HTTPS 或 localhost 上的异步剪贴板 API，并由用户操作触发。Vector 要求源元素保持连接，受支持的形状和文本可编辑，但并非所有 CSS 绘制效果都能转换为原生矢量。PDF 的 tagged 输出不等同于通过 PDF/UA 合规认证。
 
 单次捕获插件可声明 `needs: 'clone'` 以跳过渲染。此时核心图片导出不可用，插件仍可返回自己的数据。捕获会运行到所有附加插件所请求的最深阶段。全局注册会拒绝只需 clone 的插件。
 

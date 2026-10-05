@@ -1,6 +1,6 @@
 # SnapDOM features
 
-SnapDOM captures rendered interface state in the browser. The core produces reusable image and canvas exports; plugins add HTML, structured context, element maps, PDF and recordings.
+SnapDOM captures rendered interface state in the browser. The core produces reusable image and canvas exports; plugins add HTML, structured context, element maps, PDF, editable vectors and recordings.
 
 This is the technical feature reference for v3. For setup and examples, see the [README](README.md) and [API documentation](https://snapdom.dev/docs/). [简体中文](FEATURES_CN.md).
 
@@ -109,11 +109,14 @@ Plugins can modify a clone, resolve a source node or define an exporter. They re
 | `html-export` | Captured HTML with embedded styles and fonts |
 | `context-export` | Text outline or JSON page context |
 | `agent-map` | Image and element map with roles, names, state and bounding boxes |
-| `pdf` | Searchable, paginated PDF with selectable text and links |
+| `pdf` | Searchable, paginated PDF with selectable text, links, optional form fields, headers/footers and encryption |
+| `vector` | Editable SVG without `<foreignObject>` and Figma clipboard export |
 | `gif-export` / `video-export` | Recordings of the live element over time |
 | `ascii-export` | Text representation of the image |
 | `filter` / `color-tint` / `timestamp-overlay` | Visual changes to the captured clone |
 | `replace-text` / `redact-inputs` | Text replacement and form-value masking |
+
+Plugins 4.x in this checkout require core 3.x. The full PDF and Vector exporters are MIT-licensed and have not been published to npm. PDF’s `toPdf()` returns a `Blob`; Vector’s `toVector()` returns an SVG string. `toFigma()` needs the async clipboard API on HTTPS or localhost and a user action. Vector requires a connected source element and preserves supported editable shapes and text; not every CSS paint effect becomes native vector artwork. Tagged PDF output alone does not guarantee PDF/UA conformance.
 
 A per-capture plugin can declare `needs: 'clone'` to skip rendering. Core image exports are then unavailable, while the plugin can still return its own data. The deepest stage requested by any attached plugin wins. Global registration rejects clone-only plugins.
 

@@ -38,7 +38,7 @@
 
 SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM 状态连同样式、字体和图片保存为可复用的结果。
 
-核心引擎可导出图片和 Canvas；插件可导出自包含的 HTML、页面上下文、供视觉智能体使用的元素映射、PDF 和录制内容。捕获结果也可用于 WebGL 纹理、视觉回归测试和界面过渡。整个过程在页面内运行，使用标准 Web API，核心引擎零依赖。
+核心引擎可导出图片和 Canvas；插件可导出自包含的 HTML、页面上下文、供视觉智能体使用的元素映射、PDF、可编辑矢量图和录制内容。捕获结果也可用于 WebGL 纹理、视觉回归测试和界面过渡。整个过程在页面内运行，使用标准 Web API，核心引擎零依赖。
 
 [文档与演示](https://snapdom.dev/) · [技术功能](FEATURES_CN.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
 
@@ -53,6 +53,7 @@ SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM �
 | 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | `html-export` 插件 |
 | 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | `context-export` / `agent-map` 插件 |
 | 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | `pdf` / `gif-export` / `video-export` 插件 |
+| 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | `vector` 插件 |
 
 图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
 
@@ -81,11 +82,13 @@ await result.download({ format: 'jpg', filename: 'card' });
 
 ## 安装
 
-安装核心，并按需安装官方插件；两者的主版本号必须一致：
+安装核心，并按需安装官方插件；请根据插件的 peer 依赖选择兼容的核心版本：
 
 ```sh
 npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
+
+本仓库的插件 4.x 要求核心 3.x。完整 PDF 和 Vector 导出器已在本仓库中以 MIT 许可证开源，但尚未发布到 npm；上面的 `@latest` 命令不会安装这两个新导出器。可运行 `npm run compile` 和 `npm run site`，使用本地构建体验演示。
 
 也可以在浏览器中加载：
 
@@ -213,7 +216,7 @@ for (let y = 0; y < h0; y += pieceHeight) {
 
 ### 导出 HTML 或结构化上下文
 
-官方插件单独发布为 `@zumer/snapdom-plugins`，主版本号必须与核心一致；插件声明了对 v3 核心的 peer 依赖。插件源码位于本仓库的 `packages/plugins/`。
+官方插件单独发布为 `@zumer/snapdom-plugins`。本仓库的插件 4.x 要求核心 3.x，并将完整的 PDF 和 Vector 导出器以 MIT 许可证开源；源码位于 `packages/plugins/`。
 
 ```js
 import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
@@ -227,6 +230,25 @@ const context = await result.toContext();
 ```
 
 同一套插件系统也支持覆盖层、内容遮蔽和自定义导出器。同名的局部插件优先于全局插件。参见[官方插件参考](packages/plugins/README.md)和[插件规范](PLUGIN_SPEC.md)。
+
+### 导出 PDF 和可编辑矢量图
+
+这些示例使用本仓库的插件 4.x。PDF 返回 `Blob`，支持可搜索、可选择的文本、链接、分页和可选的表单字段。Vector 返回不含 `<foreignObject>` 的 SVG 字符串，并保留受支持的形状和可编辑文本。
+
+```js
+import { snapdom } from '@zumer/snapdom';
+import { pdf } from '@zumer/snapdom-plugins/pdf';
+import { vector } from '@zumer/snapdom-plugins/vector';
+
+const documentCapture = await snapdom(element, { plugins: [pdf()] });
+const blob = await documentCapture.toPdf({ page: 'a4', margin: 36 });
+
+const artwork = await snapdom(element, { plugins: [vector()] });
+const svg = await artwork.toVector();
+copyButton.addEventListener('click', () => artwork.toFigma());
+```
+
+PDF 的捕获设置传给 `pdf()`，纸张、边距和下载设置传给 `toPdf()`。`toFigma()` 返回 `Promise<void>`，必须在 HTTPS 或 localhost 页面中由用户操作触发，并需要异步剪贴板 API。Vector 需要源元素保持连接；不支持的绘制效果会由引擎诊断。详见 [PDF 参考](packages/plugins/pdf/REFERENCE.md)和 [Vector 契约](packages/plugins/vector/CONTRACT.md)。
 
 ### 捕获 HTML 字符串
 
@@ -347,6 +369,7 @@ const after = await snapdom(card, options); // 使用当前策略
 
 ## 文档
 
+- [交互式 Playground](https://snapdom.dev/playground/)、[PDF 演示](https://snapdom.dev/pro/pdf/)与 [Vector 演示](https://snapdom.dev/pro/vector/)
 - [v2 文档归档](https://snapdom.dev/v2/)与 [v2 源码](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
 - [框架指南](https://snapdom.dev/guides/)与[使用示例](https://snapdom.dev/how-to/)

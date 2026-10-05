@@ -2,20 +2,20 @@
 
 Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a capture engine for
 web apps. Core exports images and canvases; this package adds HTML, structured context,
-element maps, PDF, ASCII, visual transforms and live GIF/video recording.
+element maps, PDF, editable vectors, ASCII, visual transforms and live GIF/video recording.
 
 Image, HTML and structured exports use captured state; GIF and video start a sequence of
 live captures when their export method is called.
 
 ## Install
 
-Install the plugins next to a matching core:
+Install the plugins next to a core supported by their peer dependency:
 
 ```bash
 npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-Plugins 4.x require a 3.x core. The 4.x release replaces pdf-image with the full PDF exporter. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
+Plugins 4.x in this checkout require a 3.x core. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed; this release has not been published to npm, so the `@latest` command above still installs the published plugins. Run `npm run compile` and `npm run site` from the monorepo root to try the local implementations. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
 
 ## Usage
 
@@ -229,7 +229,7 @@ console.log(art);
 ### `pdf`
 
 Adds `toPdf()`, returning a PDF Blob with the capture's appearance, selectable text,
-links and pagination. This is the full exporter formerly distributed as PDF Pro.
+links and pagination. This is the MIT-licensed full exporter formerly distributed as PDF Pro.
 It replaces `pdf-image`; there is no second image-only PDF implementation.
 
 ```js
@@ -243,7 +243,7 @@ await result.toPdf({ page: 'letter', download: 'report.pdf' });
 Configure capture-time measurement on `pdf({ forms, outline, breakAvoid, shadow,
 formValues })`. Configure paper size, orientation, margins, tagging, metadata,
 headers, footers, compression or encryption on `toPdf()`. Downloads are opt-in;
-ordinary exports return a Blob. See [the full PDF reference](pdf/REFERENCE.md).
+ordinary exports return a Blob. See [the PDF overview](pdf/README.md) and [full reference](pdf/REFERENCE.md).
 
 **Migration:** import `pdf` from `/pdf`, replace `pdfImage()` with `pdf()`, and
 replace `toPdfImage()` with `toPdf({ download: 'capture.pdf' })`. Put orientation
@@ -530,3 +530,7 @@ See [PLUGIN_SPEC.md](../../PLUGIN_SPEC.md) for the full hook specification and [
 ## License
 
 MIT
+
+## Live demos
+
+Run `npm run compile` and `npm run site` from the monorepo root, then open `/playground/`, `/pro/pdf/` or `/pro/vector/`. The demos generate actual files from editable DOM samples; the `/pro/` paths are retained for existing links and do not denote paid plugins.
