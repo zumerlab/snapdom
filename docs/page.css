@@ -43,6 +43,37 @@
   --font-mono: Arial, Helvetica, sans-serif;
   --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
   --font-hand: Arial, Helvetica, sans-serif;
+
+  /* Section colours: one hue per product area, used on its sidebar dot, active item,
+     demo panel ground, breadcrumb and page title, and nowhere else.
+     deep = text-safe on white · dot = markers · tint = demo panel ground */
+  --sec-start: oklch(.55 .19 25);
+  --sec-start-dot: oklch(.66 .2 25);
+  --sec-start-tint: oklch(.965 .022 25);
+  --sec-capture: #1D43D7;
+  --sec-capture-dot: #2D5BFF;
+  --sec-capture-tint: #EEF3FF;
+  --sec-options: oklch(.56 .15 55);
+  --sec-options-dot: oklch(.72 .17 60);
+  --sec-options-tint: oklch(.97 .025 70);
+  --sec-prepare: oklch(.52 .11 85);
+  --sec-prepare-dot: oklch(.8 .16 85);
+  --sec-prepare-tint: oklch(.975 .035 95);
+  --sec-context: oklch(.5 .13 155);
+  --sec-context-dot: oklch(.68 .16 155);
+  --sec-context-tint: oklch(.97 .025 155);
+  --sec-export: oklch(.5 .1 205);
+  --sec-export-dot: oklch(.7 .13 205);
+  --sec-export-tint: oklch(.97 .02 205);
+  --sec-record: oklch(.5 .2 300);
+  --sec-record-dot: oklch(.64 .2 300);
+  --sec-record-tint: oklch(.97 .022 300);
+  --sec-ecosystem: oklch(.52 .2 345);
+  --sec-ecosystem-dot: oklch(.66 .21 345);
+  --sec-ecosystem-tint: oklch(.97 .02 345);
+  --sec-labs: oklch(.5 .13 128);
+  --sec-labs-dot: oklch(.74 .18 128);
+  --sec-labs-tint: oklch(.975 .03 128);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

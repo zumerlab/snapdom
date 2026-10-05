@@ -139,8 +139,12 @@
   <url><loc>https://snapdom.dev/blog/huge-page-mosaic/</loc><lastmod>2026-09-05</lastmod></url>
   <url><loc>https://snapdom.dev/blog/painting-without-canvas/</loc><lastmod>2026-07-21</lastmod></url>
   <url>
+    <loc>https://snapdom.dev/capabilities/</loc>
+    <lastmod>2026-10-05</lastmod>
+  </url>
+  <url>
     <loc>https://snapdom.dev/ecosystem/</loc>
-    <lastmod>2026-09-05</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/showcase/</loc>

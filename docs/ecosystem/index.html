@@ -3,33 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SnapDOM Ecosystem — SnapEye, SnapSurf &amp; SnapDIFF</title>
-  <meta name="description" content="Compare SnapEye, SnapSurf and SnapDIFF: visual evidence for coding agents, browser navigation and verification, and visual regression testing. See how they work with SnapDOM.">
+  <title>SnapDOM Ecosystem — plugins, SnapEye, SnapSurf &amp; SnapDIFF</title>
+  <meta name="description" content="Plugins and tools built on SnapDOM: official and community plugins, PDF and Vector, SnapDIFF for visual regression testing, SnapEye for coding agents and SnapSurf for browser navigation. Try each one live.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://snapdom.dev/ecosystem/">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SnapDOM Ecosystem — SnapEye, SnapSurf &amp; SnapDIFF">
-  <meta property="og:description" content="Visual evidence, browser navigation and regression testing. What each tool does, where they overlap, and how to use them together.">
+  <meta property="og:title" content="SnapDOM Ecosystem — plugins, SnapEye, SnapSurf &amp; SnapDIFF">
+  <meta property="og:description" content="Extend a capture with plugins, or use the tools for agents and visual testing. What each one does and how they fit together.">
   <meta property="og:url" content="https://snapdom.dev/ecosystem/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" type="image/png" href="../assets/favicon/favicon-96x96.png" sizes="96x96">
-  <link rel="icon" type="image/svg+xml" href="../assets/favicon/favicon.svg">
-  <link rel="shortcut icon" href="../assets/favicon/favicon.ico">
-  <meta name="theme-color" content="#F7F9FC">
-  <link rel="stylesheet" href="../shared.css">
-  <link rel="stylesheet" href="../page.css">
-  <link rel="stylesheet" href="./ecosystem.css">
-  <script defer src="../site.js"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     "name": "SnapDOM Ecosystem",
     "url": "https://snapdom.dev/ecosystem/",
-    "description": "SnapEye, SnapSurf and SnapDIFF: tools for coding agents, browser navigation and visual regression testing built on SnapDOM.",
+    "description": "Plugins and tools built on SnapDOM: SnapEye, SnapSurf and SnapDIFF for coding agents, browser navigation and visual regression testing.",
     "isPartOf": { "@type": "WebSite", "name": "SnapDOM", "url": "https://snapdom.dev/" },
     "mainEntity": {
       "@type": "ItemList",
@@ -41,117 +33,65 @@
     }
   }
   </script>
+  <link rel="icon" type="image/png" href="../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F7F9FC">
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../page.css">
+  <link rel="stylesheet" href="../navigation.css">
+  <link rel="stylesheet" href="../panes.css">
+  <script defer src="../site.js"></script>
+  <script type="module" src="../panes.js"></script>
 </head>
 <body>
-  <a class="ecosystem-skip" href="#main">Skip to content</a>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/" aria-current="page">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/" aria-current="page">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
-
-  <section class="hero section-hero" aria-labelledby="page-title">
-    <div class="section-hero-copy">
-      <div class="hero-badge">Ecosystem</div>
-      <h1 id="page-title">Tools built on SnapDOM.</h1>
-      <p class="lead">SnapEye gives coding agents visual evidence. SnapSurf operates and verifies web pages. SnapDIFF checks a UI against saved baselines. Each covers a different part of the work.</p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="#compare">Compare the tools</a>
-        <a class="btn btn-ghost" href="#together">Use them together</a>
-      </div>
-    </div>
-    <img class="section-mascot" src="../assets/mascots/mr-snapdom-ecosystem.webp" width="1254" height="1254" decoding="async" alt="Mr. SnapDOM presenting a network of connections">
-  </section>
-
-  <main id="main" class="ecosystem-page">
-    <section class="ecosystem-foundation" aria-labelledby="foundation-title">
-      <div>
-        <div class="ecosystem-kicker">The capture engine</div>
-        <h2 id="foundation-title">SnapDOM</h2>
-      </div>
-      <div>
-        <p>SnapDOM captures a rendered interface as reusable images and canvas. Plugins add HTML, structured context, PDF and recordings. Use it directly to build an export feature; use the tools below when you need a workflow around that capture.</p>
-        <a href="../docs/">Read the SnapDOM docs →</a>
-      </div>
-    </section>
-
-    <section id="compare" class="ecosystem-section" aria-labelledby="compare-title">
-      <div class="ecosystem-heading">
-        <h2 id="compare-title">Choose by the job.</h2>
-        <p>Start with the result you need. You can use each tool on its own; installing the whole ecosystem is optional.</p>
-      </div>
-      <div class="ecosystem-table-wrap" role="region" aria-label="Tool comparison" tabindex="0">
-        <table class="ecosystem-table">
-          <caption>Three tools, three main workflows</caption>
-          <thead><tr><th scope="col">Tool</th><th scope="col">Use it to</th><th scope="col">What you get</th><th scope="col">Where it fits</th></tr></thead>
-          <tbody>
-            <tr><th scope="row"><a href="#snapeye">SnapEye</a></th><td>Capture, compare or record a UI while an agent edits it.</td><td>JSON results, images, changed regions and recordings.</td><td>A running app with the SnapEye client and a local server integration.</td></tr>
-            <tr><th scope="row"><a href="#snapsurf">SnapSurf</a></th><td>Navigate, find controls, act and verify the result.</td><td>Page summaries, typed changes and assertions.</td><td>An agent using MCP or CLI with a managed Chromium session.</td></tr>
-            <tr><th scope="row"><a href="#snapdiff">SnapDIFF</a></th><td>Run repeatable visual checks against saved baselines.</td><td>Pass/fail results, visual diffs and baseline review.</td><td>In-page testing or a Vitest browser suite in CI.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="ecosystem-table-hint">Scroll the table horizontally to read all columns.</p>
-      <p class="ecosystem-note">For a download or share button inside your app, start with <a href="../docs/">SnapDOM itself</a>.</p>
-    </section>
-
-    <section id="tools" class="ecosystem-section" aria-labelledby="tools-title">
-      <div class="ecosystem-heading">
-        <h2 id="tools-title">What each tool adds.</h2>
-        <p>The capture is a shared starting point. The interface, evidence and testing workflow differ.</p>
-      </div>
-      <article id="snapeye" class="ecosystem-product" aria-labelledby="snapeye-title">
-        <header><h3 id="snapeye-title">SnapEye</h3><p>Visual tools for coding agents.</p></header>
-        <div class="ecosystem-product-body">
-          <p>Give an agent a way to inspect the UI it is changing. SnapEye runs capture, diff and record operations, then returns a JSON result with artifacts the agent can inspect when needed.</p>
-          <ul>
-            <li>Capture an element before a change, then compare it afterward.</li>
-            <li>Locate changed regions and inspect the current and diff images.</li>
-            <li>Record a transition and review its frames, GIF or video.</li>
-          </ul>
-          <p>SnapEye does not navigate or click. A browser driver reaches interactive states; SnapEye measures their appearance. Its visual comparison uses SnapDIFF’s diff engine.</p>
-          <div class="ecosystem-product-links"><a href="https://github.com/zumerlab/snapeye">SnapEye setup and API →</a><a href="https://github.com/zumerlab/snapeye/blob/main/RECIPES.md">Task recipes →</a></div>
-        </div>
-      </article>
-      <article id="snapsurf" class="ecosystem-product" aria-labelledby="snapsurf-title">
-        <header><h3 id="snapsurf-title">SnapSurf</h3><p>Web navigation and verification for agents.</p></header>
-        <div class="ecosystem-product-body">
-          <p>Use SnapSurf when an agent needs to operate a page and check what happened. It provides a compact observation of the page, actionable element IDs and a typed diff after an interaction.</p>
-          <ul>
-            <li>Open a page, find a control, click or type, then verify.</li>
-            <li>Check changes to content, state, layout and clickability.</li>
-            <li>Assert expected changes and the absence of unwanted ones.</li>
-          </ul>
-          <p>A semantic diff answers whether the observed page changed. It does not replace a pixel comparison against a saved visual baseline. Screenshots help when the question is about appearance.</p>
-          <p class="ecosystem-note">SnapSurf is experimental. Its managed browser has its own cookies and storage, separate from your everyday browser.</p>
-          <div class="ecosystem-product-links"><a href="https://github.com/zumerlab/SnapSurf">SnapSurf setup and documentation →</a></div>
-        </div>
-      </article>
-      <article id="snapdiff" class="ecosystem-product" aria-labelledby="snapdiff-title">
-        <header><h3 id="snapdiff-title">SnapDIFF</h3><p>Visual regression testing in the browser.</p></header>
-        <div class="ecosystem-product-body">
-          <p>Use SnapDIFF to keep checking the same elements as your code changes. It captures with SnapDOM, compares against saved baselines and gives you a review interface for visual changes.</p>
-          <ul>
-            <li>Mark elements with <code>data-snap</code> for in-page checks.</li>
-            <li>Review split, slider and diff views; approve intended changes.</li>
-            <li>Use a Vitest browser suite with disk baselines to fail CI on visual drift.</li>
-          </ul>
-          <p>SnapEye and SnapDIFF both compare pixels. Choose SnapEye for an agent’s capture-and-inspect task; choose SnapDIFF for a maintained set of visual tests and baseline reviews.</p>
-          <div class="ecosystem-product-links"><a href="https://zumerlab.com/snapdiff/">Try the SnapDIFF demo →</a><a href="https://github.com/zumerlab/snapdiff">Setup and CI guide →</a></div>
-        </div>
-      </article>
-    </section>
-
-    <section id="together" class="ecosystem-section" aria-labelledby="together-title">
-      <div class="ecosystem-heading">
-        <h2 id="together-title">One settings panel,<br>three kinds of checks.</h2>
-        <p>Suppose an agent is changing a settings panel. Each tool can answer a different question during the work.</p>
-      </div>
-      <ol class="ecosystem-workflow">
-        <li><h3>1. Reach the state</h3><p><strong>SnapSurf</strong> opens the page and clicks Settings. Verify that the panel appeared and the controls are available.</p></li>
-        <li><h3>2. Inspect the edit</h3><p><strong>SnapEye</strong> captures the open panel before and after the code change. Compare its appearance or record the opening transition.</p></li>
-        <li><h3>3. Keep it checked</h3><p><strong>SnapDIFF</strong> adds the panel to a repeatable visual suite. Review the baseline and check future changes against it.</p></li>
-      </ol>
-      <p class="ecosystem-note">Your agent or test harness connects these steps. For an already-open panel, call SnapEye’s in-page API: its URL trigger reloads the page. Keep viewport, data and state consistent, and manage each tool’s baselines separately.</p>
-    </section>
-  </main>
-
-  <footer class="ecosystem-footer"><div class="ecosystem-footer-inner"><span>MIT © <a href="https://zumerlab.com/">Zumerlab</a></span><nav aria-label="Footer navigation"><a href="../docs/">Docs</a><a href="../plugins.html">Plugins</a><a href="../made-with/">Made with SnapDOM</a><a href="https://github.com/zumerlab/snapdom">GitHub</a></nav></div></footer>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">12 official plugins</span></a><a class="site-nav-item sec-capture" href="../plugins.html#playground"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter ecosystem" aria-label="Filter ecosystem"></label><nav class="pane-nav" aria-label="Ecosystem"><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="#overview">Plugins and tools</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Extend a capture</button><div class="pane-nav-items"><a href="#official-plugins">Official plugins</a><a href="#pdf">PDF</a><a href="#vector">Vector</a><a href="#community-plugins">Community plugins</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Tools</button><div class="pane-nav-items"><a href="#snapdiff">SnapDIFF</a><a href="#snapeye">SnapEye</a><a href="#snapsurf">SnapSurf</a></div></div></nav></aside>
+<div class="pane-demo"><section class="demo-panel sec-capture" aria-label="Live demo">
+<header class="demo-panel-head"><span class="demo-panel-title">Live demo</span><button type="button" class="demo-act is-primary" data-act="run">Run</button><button type="button" class="demo-act" data-act="baseline" hidden>Baseline</button><button type="button" class="demo-act" data-act="compare" hidden>Compare</button><button type="button" class="demo-act" data-act="reset">Reset</button></header>
+<div class="demo-panel-body"><p class="demo-label">Live element</p>
+<div class="sample-card"><div class="sample-card-kicker">Weekly report</div><div class="sample-card-title" data-title contenteditable spellcheck="false">Captures this week</div>
+<div class="sample-card-bars" aria-hidden="true"><i style="height:38%"></i><i style="height:52%"></i><i style="height:44%"></i><i style="height:70%"></i><i style="height:61%"></i><i style="height:84%"></i><i style="height:96%"></i></div>
+<div class="sample-card-total"><b>1,284</b><span>+12% vs last week</span></div>
+<label class="demo-input">Owner email<input value="ana@example.com"></label>
+<div class="sample-card-actions"><button type="button">Approve</button><a href="#" onclick="return false">View details</a></div></div>
+<p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
+<footer class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</footer></section></div>
+<article class="pane-read">
+<section class="pane-topic sec-ecosystem" id="overview" data-title="Plugins and tools">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Overview</span></nav><span class="doc-meta">Plugins · Tools</span></div><h1>Plugins and tools built on SnapDOM.</h1><p class="doc-lead">Extend a capture with official or community plugins. Export documents with PDF, reconstruct editable artwork with Vector, or use the tools for agents and visual testing.</p></header><div class="index-grid"><a class="sec-export" href="#official-plugins"><span class="sec-dot"></span><span class="index-grid-label">Official plugins</span><span class="index-grid-meta">Plugin</span></a><a class="sec-export" href="#pdf"><span class="sec-dot"></span><span class="index-grid-label">PDF</span><span class="index-grid-meta">Plugin</span></a><a class="sec-export" href="#vector"><span class="sec-dot"></span><span class="index-grid-label">Vector</span><span class="index-grid-meta">Plugin</span></a><a class="sec-export" href="#community-plugins"><span class="sec-dot"></span><span class="index-grid-label">Community plugins</span><span class="index-grid-meta">Plugin</span></a><a class="sec-ecosystem" href="#snapdiff"><span class="sec-dot"></span><span class="index-grid-label">SnapDIFF</span><span class="index-grid-meta">Tool</span></a><a class="sec-ecosystem" href="#snapeye"><span class="sec-dot"></span><span class="index-grid-label">SnapEye</span><span class="index-grid-meta">Tool</span></a><a class="sec-ecosystem" href="#snapsurf"><span class="sec-dot"></span><span class="index-grid-label">SnapSurf</span><span class="index-grid-meta">Experimental</span></a></div><h2>Choose by the job</h2><div class="compare-table"><table><thead><tr><th scope="col">Job</th><th scope="col">Use</th></tr></thead><tbody><tr><td>Export an element as an image or file</td><td><a href="../capabilities/">SnapDOM core + plugins</a></td></tr><tr><td>Check that nothing changed visually</td><td><a href="#snapdiff">SnapDIFF</a></td></tr><tr><td>Give a coding agent before/after evidence</td><td><a href="#snapeye">SnapEye</a></td></tr><tr><td>Let an agent reach a state and verify it</td><td><a href="#snapsurf">SnapSurf (experimental)</a></td></tr></tbody></table></div><h2>One settings panel, three kinds of checks</h2><ol class="pane-steps"><li><h3>1 · Reach the state</h3><p>SnapSurf opens the page and clicks Settings. Verify that the panel appeared and the controls are available.</p></li><li><h3>2 · Inspect the edit</h3><p>SnapEye captures the open panel before and after the code change. Compare its appearance or record the transition.</p></li><li><h3>3 · Keep it checked</h3><p>SnapDIFF adds the panel to a repeatable visual suite. Review the baseline and check future changes against it.</p></li></ol><p class="pane-para" style="margin-top:20px">Your agent or test harness connects these steps. For an already-open panel, call SnapEye’s in-page API: its URL trigger reloads the page. Keep viewport, data and state consistent, and manage each tool’s baselines separately.</p>
+</section>
+<section class="pane-topic sec-export" id="official-plugins" data-title="Official plugins" data-demo="capture" data-method="toPng" data-note="Core capture; plugin outputs need @zumer/snapdom-plugins.">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Extend a capture</span><span aria-hidden="true">/</span><span>Official plugins</span></nav><span class="doc-meta">@zumer/snapdom-plugins</span></div><h1>Official plugins</h1><p class="doc-lead">Prepare captured content with filters, timestamps, text replacement, private-field masking and tint. Add HTML snapshots, ASCII art, GIF, video, text or JSON context and annotated element maps. PDF belongs to this package too.</p></header><div class="provided-by"><span class="topic-sub">The optional plugin package.</span></div><a class="pane-button" href="../plugins.html#official">Browse all plugins</a>
+</section>
+<section class="pane-topic sec-export" id="pdf" data-title="PDF" data-demo="capture" data-method="toPng" data-note="Core capture; plugin outputs need @zumer/snapdom-plugins.">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Extend a capture</span><span aria-hidden="true">/</span><span>PDF</span></nav><span class="doc-meta">@zumer/snapdom-plugins</span></div><h1>PDF</h1><p class="doc-lead">Turn captured HTML into paginated documents with selectable text, links, bookmarks and optional form fields. This is the exporter previously offered as PDF Pro.</p></header><div class="provided-by"><span class="topic-sub">Document export · official plugin.</span></div><aside class="callout"><div class="callout-label">Status</div>The updated plugin package is prepared locally and has not been published yet.</aside><a class="pane-button" href="../pro/pdf/">Open the PDF page</a>
+</section>
+<section class="pane-topic sec-export" id="vector" data-title="Vector" data-demo="capture" data-method="toPng" data-note="Core capture; plugin outputs need @zumer/snapdom-plugins.">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Extend a capture</span><span aria-hidden="true">/</span><span>Vector</span></nav><span class="doc-meta">@zumer/snapdom-plugins</span></div><h1>Vector</h1><p class="doc-lead">Reconstruct text and supported shapes as editable SVG artwork or Figma content. Core SVG preserves HTML through foreignObject; Vector converts supported content into vector elements.</p></header><div class="provided-by"><span class="topic-sub">Editable artwork · vector plugin.</span></div><aside class="callout"><div class="callout-label">Status</div>Vector is not yet included in the official plugin package.</aside><a class="pane-button" href="../pro/vector/">Open the Vector page</a>
+</section>
+<section class="pane-topic sec-export" id="community-plugins" data-title="Community plugins" data-demo="capture" data-method="toPng" data-note="Core capture; plugin outputs need @zumer/snapdom-plugins.">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Extend a capture</span><span aria-hidden="true">/</span><span>Community plugins</span></nav><span class="doc-meta">@zumer/snapdom-plugins</span></div><h1>Community plugins</h1><p class="doc-lead">Build a plugin in your own repository and submit it to the directory. Community extensions are maintained by their authors, alongside the official package.</p></header><div class="provided-by"><span class="topic-sub">Share your own extension.</span></div><a class="pane-button" href="../plugins.html#community">Browse community plugins</a>
+</section>
+<section class="pane-topic sec-ecosystem" id="snapdiff" data-title="SnapDIFF" data-demo="diff">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Tools</span><span aria-hidden="true">/</span><span>SnapDIFF</span></nav><span class="doc-meta">Separate project</span></div><h1>SnapDIFF</h1><p class="doc-lead">Compare captures against baselines, inspect changed pixels and use the result in a browser test suite or CI.</p></header><div class="provided-by"><span class="topic-sub">Visual regression testing in the browser.</span></div><h2>Try it here</h2><p>Take a baseline of the card, change its title, then compare. Changed pixels turn red, the rest fades.</p><h2>What it does</h2><ul class="pane-list"><li>Mark elements with <code>data-snap</code> for in-page checks.</li><li>Review split, slider and diff views; approve intended changes.</li><li>Use a Vitest browser suite with disk baselines to fail CI on visual drift.</li></ul><p>SnapEye and SnapDIFF both compare pixels. Choose SnapEye for an agent’s capture-and-inspect task; choose SnapDIFF for a maintained set of visual tests and baseline reviews.</p><p class="pane-links"><a href="https://zumerlab.com/snapdiff/">Try the SnapDIFF demo</a><a href="https://github.com/zumerlab/snapdiff">Setup and CI guide</a></p>
+</section>
+<section class="pane-topic sec-ecosystem" id="snapeye" data-title="SnapEye" data-demo="pair">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Tools</span><span aria-hidden="true">/</span><span>SnapEye</span></nav><span class="doc-meta">Separate project</span></div><h1>SnapEye</h1><p class="doc-lead">Capture, compare and record a local app through a CLI or page API. Give a coding agent artifacts and change regions.</p></header><div class="provided-by"><span class="topic-sub">Visual tools for coding agents.</span></div><h2>Try it here</h2><p>Take a baseline, change the card, then compare to get the before/after pair an agent would receive.</p><h2>What it does</h2><ul class="pane-list"><li>Capture an element before a change, then compare it afterward.</li><li>Locate changed regions and inspect the current and diff images.</li><li>Record a transition and review its frames, GIF or video.</li></ul><p>SnapEye does not navigate or click. A browser driver reaches interactive states; SnapEye measures their appearance. Its visual comparison uses SnapDIFF’s diff engine.</p><p class="pane-links"><a href="https://github.com/zumerlab/snapeye">SnapEye setup and API</a><a href="https://github.com/zumerlab/snapeye/blob/main/RECIPES.md">Task recipes</a></p>
+</section>
+<section class="pane-topic sec-ecosystem" id="snapsurf" data-title="SnapSurf" data-demo="capture" data-method="toPng" data-transform="map" data-demo-label="SnapSurf · locate controls" data-note="Control map simulated on a core capture; SnapSurf itself acts in a real browser.">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Ecosystem</span><span aria-hidden="true">/</span><span>Tools</span><span aria-hidden="true">/</span><span>SnapSurf</span></nav><span class="doc-meta">Experimental</span></div><h1>SnapSurf</h1><p class="doc-lead">Navigate, locate controls, act and verify what changed. SnapSurf adds browser interaction around capture evidence.</p></header><div class="provided-by"><span class="topic-sub">Web navigation and verification for agents.</span><span class="tag tag-experimental">Experimental</span></div><h2>What it does</h2><ul class="pane-list"><li>Open a page, find a control, click or type, then verify.</li><li>Check changes to content, state, layout and clickability.</li><li>Assert expected changes and the absence of unwanted ones.</li></ul><p>A semantic diff answers whether the observed page changed. It does not replace a pixel comparison against a saved visual baseline. Its managed browser has its own cookies and storage, separate from your everyday browser.</p><p class="pane-links"><a href="https://github.com/zumerlab/SnapSurf">SnapSurf setup and documentation</a></p>
+</section>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../docs/">Documentation</a><a href="../docs/#quick-start">Quick start</a><a href="../how-to/">How-to recipes</a><a href="../guides/">Guides</a><a href="../compare/">Compare</a></div><div><h2>Build</h2><a href="../capabilities/">Capabilities</a><a href="../plugins.html">Plugins</a><a href="../plugins.html#playground">Playground</a><a href="../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../showcase/">Showcase</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div><div><h2>Community</h2><a href="../ecosystem/">Ecosystem</a><a href="../made-with/">Made with</a><a href="../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<script>
+document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', () => {
+  navigator.clipboard?.writeText(button.closest('.pane-code').querySelector('code').textContent)
+  button.textContent = 'copied'
+  setTimeout(() => { button.textContent = 'copy' }, 1400)
+}))
+</script>
 </body>
 </html>

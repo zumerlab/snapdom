@@ -1,0 +1,159 @@
+/* ═══════════════════════════════════════════════
+   navigation.css — Grouped site header and footer directory.
+   Thirteen destinations in four groups (Learn, Build, Explore, Community).
+   The header marks the group holding the current page; the footer
+   repeats the same groups as a full site directory.
+   Needs the --sec-* tokens from page.css. Behaviour lives in site.js.
+   ═══════════════════════════════════════════════ */
+
+/* One class per product area sets the colour trio its components read. */
+.sec-start { --c: var(--sec-start); --c-dot: var(--sec-start-dot); --c-tint: var(--sec-start-tint); }
+.sec-capture { --c: var(--sec-capture); --c-dot: var(--sec-capture-dot); --c-tint: var(--sec-capture-tint); }
+.sec-options { --c: var(--sec-options); --c-dot: var(--sec-options-dot); --c-tint: var(--sec-options-tint); }
+.sec-prepare { --c: var(--sec-prepare); --c-dot: var(--sec-prepare-dot); --c-tint: var(--sec-prepare-tint); }
+.sec-context { --c: var(--sec-context); --c-dot: var(--sec-context-dot); --c-tint: var(--sec-context-tint); }
+.sec-export { --c: var(--sec-export); --c-dot: var(--sec-export-dot); --c-tint: var(--sec-export-tint); }
+.sec-record { --c: var(--sec-record); --c-dot: var(--sec-record-dot); --c-tint: var(--sec-record-tint); }
+.sec-ecosystem { --c: var(--sec-ecosystem); --c-dot: var(--sec-ecosystem-dot); --c-tint: var(--sec-ecosystem-tint); }
+.sec-labs { --c: var(--sec-labs); --c-dot: var(--sec-labs-dot); --c-tint: var(--sec-labs-tint); }
+
+.sec-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--c-dot); }
+
+/* ── Header ── */
+.site-head {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  color: #0F1E4D;
+  background: rgba(247,249,252,0.94);
+  border-bottom: 1px solid rgba(15,30,77,0.14);
+  backdrop-filter: blur(12px);
+  font: 400 14px Arial, Helvetica, sans-serif;
+}
+.site-head-inner {
+  width: min(1180px, calc(100% - 48px));
+  min-height: 64px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.site-head .site-shell-brand { font-size: 22px; }
+.site-head .site-shell-mark { width: 36px; height: 44px; }
+.site-nav { display: flex; align-items: center; gap: 22px; }
+.site-nav-group { position: relative; }
+.site-nav-button {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: #59647D;
+  cursor: pointer;
+  font: 400 13px var(--font-code);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: color .15s;
+}
+.site-nav-button:hover { color: #0F1E4D; }
+.site-nav-group.is-current > .site-nav-button { color: #0F1E4D; font-weight: 700; box-shadow: inset 0 -2px 0 #2D5BFF; }
+.site-nav-group.is-open > .site-nav-button { color: #0F1E4D; }
+.site-nav-group.is-open:not(.is-current) > .site-nav-button { box-shadow: inset 0 -2px 0 rgba(15,30,77,0.3); }
+.site-nav-panel {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: -12px;
+  z-index: 60;
+  width: 340px;
+  padding: 8px;
+  background: #FFFFFF;
+  border: 1px solid rgba(15,30,77,0.14);
+  box-shadow: 0 24px 60px -24px rgba(15,30,77,0.45);
+}
+.site-nav-group.is-open > .site-nav-panel { display: block; }
+.site-nav-item {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 2px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  text-decoration: none;
+  transition: background .15s;
+}
+.site-nav-item-label { color: #0F1E4D; font: 500 13px var(--font-code); letter-spacing: .06em; text-transform: uppercase; transition: color .15s; }
+.site-nav-item-desc { grid-column: 2; color: #59647D; font: 400 13px/1.4 Arial, Helvetica, sans-serif; }
+.site-nav-item:hover, .site-nav-item[aria-current='page'] { background: var(--c-tint); }
+.site-nav-item:hover .site-nav-item-label, .site-nav-item[aria-current='page'] .site-nav-item-label { color: var(--c); }
+.site-menu-button {
+  display: none;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(15,30,77,0.3);
+  background: #FFFFFF;
+  color: #0F1E4D;
+  cursor: pointer;
+  font: 500 12px var(--font-code);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.site-head.is-menu-open .site-menu-button { border-color: #0F1E4D; background: #0F1E4D; color: #FFFFFF; }
+
+@media (max-width: 1080px) {
+  .site-head-inner { gap: 14px; }
+  .site-menu-button { display: inline-flex; align-items: center; }
+  .site-nav { display: none; }
+  .site-head.is-menu-open .site-nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+    max-height: calc(100vh - 64px);
+    overflow: auto;
+    padding: 16px max(24px, calc((100% - 1180px) / 2)) 24px;
+    background: #FFFFFF;
+    border-top: 1px solid rgba(15,30,77,0.14);
+    border-bottom: 1px solid rgba(15,30,77,0.14);
+  }
+  .site-head .site-nav-button {
+    min-height: 0;
+    padding: 8px 12px;
+    color: #59647D;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: .08em;
+    box-shadow: none !important;
+    cursor: default;
+    pointer-events: none;
+  }
+  .site-head .site-nav-panel { display: block; position: static; width: auto; padding: 0; border: 0; box-shadow: none; }
+}
+@media (max-width: 600px) {
+  .site-head-inner { width: calc(100% - 28px); min-height: 60px; }
+  .site-head .site-shell-brand { font-size: 21px; }
+  .site-head.is-menu-open .site-nav { grid-template-columns: 1fr; padding: 12px 14px 20px; }
+}
+
+/* ── Footer directory ── */
+.site-foot { border-top: 1px solid rgba(15,30,77,0.14); background: #F7F9FC; color: #0F1E4D; font: 400 14px/1.5 Arial, Helvetica, sans-serif; }
+.site-foot-directory {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 40px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 32px;
+}
+.site-foot h2 { margin: 0 0 12px; font: 700 14px/1.5 Arial, Helvetica, sans-serif; letter-spacing: 0; }
+.site-foot-directory a { display: flex; align-items: center; min-height: 34px; color: #59647D; text-decoration: none; transition: color .15s; }
+.site-foot-directory a:hover { color: #2D5BFF; }
+.site-foot-legal { border-top: 1px solid rgba(15,30,77,0.14); }
+.site-foot-legal p { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 20px 0 32px; color: #59647D; }
+.site-foot-legal a { color: inherit; }
+@media (max-width: 600px) {
+  .site-foot-directory, .site-foot-legal p { width: calc(100% - 28px); }
+}
