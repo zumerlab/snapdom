@@ -68,14 +68,27 @@ if (siteHead) {
   const dialog = document.createElement('dialog')
   dialog.className = 'site-search-dialog'
   dialog.setAttribute('aria-label', 'Search SnapDOM documentation')
-  dialog.innerHTML = '<form method="dialog"><label>Search docs<input type="search" placeholder="API, recipe or plugin" autocomplete="off"></label><button>Close</button></form><p role="status" aria-live="polite">Type to find a page.</p><div class="site-search-results"></div>'
+  dialog.innerHTML = '<form><label>Search documentation<input type="search" placeholder="API, capture option or plugin" autocomplete="off" spellcheck="false"></label><button type="button" aria-label="Close search">Close</button></form><p role="status" aria-live="polite">Find an API method, guide or plugin.</p><div class="site-search-results"></div><p class="site-search-shortcuts"><span><kbd>Enter</kbd> Open first result</span> <span><kbd>Esc</kbd> Close</span></p>'
   document.body.append(dialog)
   const input = dialog.querySelector('input'), results = dialog.querySelector('.site-search-results'), status = dialog.querySelector('[role=status]')
   let indexPromise
   const search = async () => {
     const query = input.value.trim().toLowerCase(), words = query.split(/\s+/)
     results.replaceChildren()
-    if (!query) { status.textContent = 'Type to find a page.'; return }
+    if (!query) {
+      status.textContent = 'Start with a section or search the documentation.'
+      for (const [title, path, description] of [
+        ['Quick start', 'docs/#quick-start', 'Capture an element and choose an output'],
+        ['API reference', 'docs/api/', 'Capture methods and exporters'],
+        ['Capture options', 'docs/options/', 'Fonts, images, clipping and output size'],
+        ['Plugin API', 'docs/plugins/', 'Hooks and custom exporters'],
+      ]) {
+        const link = document.createElement('a'); link.href = new URL(path, root); link.textContent = title
+        const detail = document.createElement('small'); detail.textContent = description; link.append(detail); results.append(link)
+      }
+      return
+    }
+    status.textContent = 'Searching documentation…'
     try {
       indexPromise ||= fetch(new URL('search-index.json', root)).then(r => { if (!r.ok) throw new Error(); return r.json() }).catch(e => { indexPromise = null; throw e })
       const pages = await indexPromise
@@ -86,11 +99,13 @@ if (siteHead) {
         const path = document.createElement('small'); path.textContent = page.path; link.append(path); results.append(link)
       }
       status.textContent = matches.length ? `${matches.length} results` : 'No matches. Try a format, framework or API name.'
-    } catch { status.textContent = 'Search could not load. Try again or browse the Learn menu.' }
+    } catch { if (query === input.value.trim().toLowerCase()) status.textContent = 'Search could not load. Try again or browse the Learn menu.' }
   }
-  const open = () => { if (!dialog.open) dialog.showModal(); input.focus() }
+  const open = () => { if (!dialog.open) dialog.showModal(); input.focus(); search() }
   searchButton.addEventListener('click', open)
   input.addEventListener('input', search)
+  dialog.querySelector('button').addEventListener('click', () => dialog.close())
+  dialog.querySelector('form').addEventListener('submit', event => { event.preventDefault(); results.querySelector('a')?.click() })
   dialog.addEventListener('close', () => searchButton.focus())
   dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close() } })
   document.addEventListener('keydown', event => {

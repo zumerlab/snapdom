@@ -195,15 +195,30 @@
 [hidden] { display:none !important; }
 .site-search-button { background:transparent; color:#0F1E4D; border:1px solid #c6d2e8; padding:8px 12px; font:13px Arial; cursor:pointer; }
 .site-search-button kbd { margin-left:12px; color:#586887; }
-.site-search-dialog { width:min(640px,calc(100% - 28px)); max-height:80vh; padding:24px; border:1px solid #b7c4df; color:#0F1E4D; background:#F7F9FC; }
-.site-search-dialog::backdrop { background:rgba(15,30,77,.45); }
-.site-search-dialog form { display:flex; gap:12px; align-items:end; }
-.site-search-dialog label { flex:1; display:grid; gap:10px; }
-.site-search-dialog input { width:100%; padding:12px; font:16px Arial; border:1px solid #b7c4df; }
-.site-search-dialog button { padding:12px; border:1px solid #b7c4df; background:white; color:#0F1E4D; cursor:pointer; }
-.site-search-results { display:grid; margin-top:20px; }
-.site-search-results a { padding:14px 0; border-bottom:1px solid #d6deef; text-decoration:underline; }
-.site-search-results small { display:block; color:#586887; font:12px Arial; margin-top:4px; }
+/* Keep the search surface anchored while its results change. */
+.site-search-dialog {
+  box-sizing:border-box; position:fixed; inset:min(12vh,96px) 0 auto;
+  width:min(680px,calc(100% - 32px)); height:min(560px,calc(100dvh - min(12vh,96px) - 24px));
+  max-width:none; max-height:none; margin:0 auto; padding:0; overflow:hidden;
+  border:1px solid #b7c4df; border-top:3px solid #2D5BFF;
+  color:#0F1E4D; background:#F7F9FC; font:15px/1.5 Arial,sans-serif;
+  text-align:left; box-shadow:0 24px 80px rgba(15,30,77,.24);
+}
+.site-search-dialog[open] { display:flex; flex-direction:column; }
+.site-search-dialog::backdrop { background:rgba(15,30,77,.48); backdrop-filter:blur(3px); }
+.site-search-dialog form { display:flex; flex:none; gap:12px; align-items:end; margin:0; padding:24px 24px 20px; border-bottom:1px solid #d6deef; }
+.site-search-dialog label { flex:1; min-width:0; display:grid; gap:12px; margin:0; color:#0F1E4D; font:600 14px/1.5 Arial,sans-serif; }
+.site-search-dialog input { box-sizing:border-box; width:100%; min-width:0; height:48px; margin:0; padding:12px 14px; background:white; color:#0F1E4D; font:16px/1.5 Arial,sans-serif; border:1px solid #b7c4df; border-radius:0; }
+.site-search-dialog input::placeholder { color:#586887; opacity:1; }
+.site-search-dialog button { flex:none; height:48px; margin:0; padding:0 14px; border:1px solid #b7c4df; border-radius:0; background:white; color:#0F1E4D; font:14px Arial,sans-serif; cursor:pointer; }
+.site-search-dialog :is(input,button,a):focus-visible { outline:2px solid #2D5BFF; outline-offset:3px; }
+.site-search-dialog [role="status"] { flex:none; margin:0; padding:16px 24px; color:#586887; font:13px/1.5 Arial,sans-serif; }
+.site-search-results { display:block; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; margin:0; padding:0 12px 12px; }
+.site-search-results a { display:block; margin:0; padding:14px 12px; border:0; border-bottom:1px solid #d6deef; color:#0F1E4D; font:600 15px/1.5 Arial,sans-serif; text-decoration:none; overflow-wrap:anywhere; }
+.site-search-results a:is(:hover,:focus-visible) { color:#1D43D7; background:#EEF3FF; }
+.site-search-shortcuts { display:flex; flex:none; justify-content:space-between; gap:12px; margin:0; padding:12px 24px; border-top:1px solid #d6deef; color:#586887; font:12px/1.5 Arial,sans-serif; }
+.site-search-shortcuts kbd { margin-right:6px; color:#0F1E4D; font:inherit; }
+.site-search-results small { display:block; color:#586887; font:12px/1.5 Arial,sans-serif; margin-top:4px; }
 .catalogue-controls { padding:20px 0; border-top:1px solid #d6deef; border-bottom:1px solid #d6deef; margin:24px 0; }
 .catalogue-controls label { display:grid; gap:8px; font-size:14px; }
 .catalogue-controls input { max-width:520px; width:100%; padding:12px; background:white; color:#0F1E4D; border:1px solid #b7c4df; font:16px Arial; }
@@ -218,4 +233,4 @@
 .sample-card td:last-child,.sample-card th:last-child { text-align:right; }
 .sample-card svg,.sample-card canvas { display:block; width:100%; height:auto; margin:20px 0; }
 .sample-card-title:focus-visible { outline:2px solid #2D5BFF; outline-offset:3px; }
-@media(max-width:600px) { .site-search-button { padding:8px; font-size:12px; }.site-search-button kbd { display:none; }.site-search-dialog { padding:16px; } }
+@media(max-width:600px) { .site-search-button { padding:8px; font-size:12px; }.site-search-button kbd { display:none; }.site-search-dialog { inset-block-start:16px; width:calc(100% - 24px); height:min(560px,calc(100dvh - 32px)); }.site-search-dialog form { padding:18px 16px 16px; gap:8px; }.site-search-dialog [role="status"] { padding:14px 16px; }.site-search-results { padding-inline:4px; }.site-search-shortcuts { display:none; } }
