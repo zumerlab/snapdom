@@ -109,7 +109,7 @@ Plugins can modify a clone, resolve a source node or define an exporter. They re
 | `html-export` | Captured HTML with embedded styles and fonts |
 | `context-export` | Text outline or JSON page context |
 | `agent-map` | Image and element map with roles, names, state and bounding boxes |
-| `pdf-image` | Downloadable PDF containing a JPEG capture |
+| `pdf` | Searchable, paginated PDF with selectable text and links |
 | `gif-export` / `video-export` | Recordings of the live element over time |
 | `ascii-export` | Text representation of the image |
 | `filter` / `color-tint` / `timestamp-overlay` | Visual changes to the captured clone |

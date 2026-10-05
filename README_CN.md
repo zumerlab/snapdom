@@ -52,7 +52,7 @@ SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM �
 | 将捕获结果用于纹理、覆盖层或过渡效果 | Canvas 与捕获几何信息 | 核心引擎 |
 | 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | `html-export` 插件 |
 | 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | `context-export` / `agent-map` 插件 |
-| 下载文档或录制变化中的内容 | 基于图片的 PDF、动画 GIF 或浏览器编码的视频 | `pdf-image` / `gif-export` / `video-export` 插件 |
+| 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | `pdf` / `gif-export` / `video-export` 插件 |
 
 图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
 

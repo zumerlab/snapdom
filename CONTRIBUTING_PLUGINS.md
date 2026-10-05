@@ -50,7 +50,7 @@ const img = await result.toPng();
 npm publish
 ```
 
-Then open a PR to list it in the [Plugin Directory](https://snapdom.dev/plugins).
+Then open a PR to list it in the [Plugin Directory](https://snapdom.dev/plugins.html#community).
 
 ## How plugins are distributed
 
@@ -139,7 +139,7 @@ workflows such as:
 
 - **Redact** blur or black-bar sensitive content by selector
 - **Watermark** text/image watermarks with positioning
-- **PDF Export** custom layouts or pagination beyond the official image-PDF export
+- **PDF Export** custom layouts or pagination beyond the official PDF plugin
 - **Annotations** arrows, circles, and callouts
 - **Dark Mode** force dark/light theme on captures
 - **Crop** region-selection tools around core's `clip` option

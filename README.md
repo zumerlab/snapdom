@@ -52,7 +52,7 @@ This checkout documents **v3.x.x**. The migration guide below compares it with *
 | Reuse a capture in a texture, overlay or transition | Canvas plus capture geometry | Core |
 | Save a page fragment for later display | HTML with captured styles and fonts | `html-export` plugin |
 | Give an agent or a log a view of page content | Text/JSON context, or an image with an element map | `context-export` / `agent-map` plugins |
-| Download a document or record changing content | Image-based PDF, animated GIF or browser-encoded video | `pdf-image` / `gif-export` / `video-export` plugins |
+| Download a document or record changing content | Searchable, paginated PDF, animated GIF or browser-encoded video | `pdf` / `gif-export` / `video-export` plugins |
 
 Image, HTML and context exports use the captured state. GIF and video plugins record the live element over time.
 

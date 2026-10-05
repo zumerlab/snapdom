@@ -15,7 +15,7 @@ Install the plugins next to a matching core:
 npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-Plugins 3.x require a 3.x core. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
+Plugins 4.x require a 3.x core. The 4.x release replaces pdf-image with the full PDF exporter. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
 
 ## Usage
 
@@ -169,7 +169,7 @@ Use `blocks` to hide the subtree that paints visible content. A `value` attribut
 an input or textarea clears its displayed value and omits its structured `state.value`.
 Existing default field masks still apply when you add block or attribute rules.
 
-HTML exports use the sanitized clone. `agent-map` and `context-export` apply the same
+HTML exports use the prepared clone with the selected redaction rules. `agent-map` and `context-export` apply the same
 block, attribute and field rules to their source-derived data, regardless of official
 plugin order. The rules do not search arbitrary text or images for sensitive content.
 
@@ -206,7 +206,7 @@ snapdom(el, { plugins: [colorTint({ color: 'royalblue', opacity: 0.4 })] });
 
 ### `ascii-export`
 
-Adds a `toAscii()` export method that converts captures to ASCII art.
+Adds a `toAscii()` export method that converts captures to ASCII art. Plain text remains the default. Use `toAscii({ format: 'html', contrast: 0.8 })` for a colored, compact HTML preview; contrast defaults to zero and does not change existing text exports.
 
 ```js
 import { asciiExport } from '@zumer/snapdom-plugins/ascii-export';
@@ -226,23 +226,33 @@ console.log(art);
 
 ---
 
-### `pdf-image`
+### `pdf`
 
-Adds `toPdfImage()`, which downloads a single-page A4 PDF containing a JPEG of the capture.
-Text is part of the image. The method returns a temporary object URL, revoked after five seconds.
+Adds `toPdf()`, returning a PDF Blob with the capture's appearance, selectable text,
+links and pagination. This is the full exporter formerly distributed as PDF Pro.
+It replaces `pdf-image`; there is no second image-only PDF implementation.
 
 ```js
-import { pdfImage } from '@zumer/snapdom-plugins/pdf-image';
+import { pdf } from '@zumer/snapdom-plugins/pdf';
 
-const result = await snapdom(el, { plugins: [pdfImage({ orientation: 'landscape' })] });
-await result.toPdfImage(); // triggers download
+const result = await snapdom(el, { plugins: [pdf()] });
+const blob = await result.toPdf({ page: 'a4', margin: 36 });
+await result.toPdf({ page: 'letter', download: 'report.pdf' });
 ```
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `orientation` | `string` | `'portrait'` | `'portrait'` \| `'landscape'` |
-| `quality` | `number` | `0.92` | JPEG quality (0–1) |
-| `filename` | `string` | `'capture.pdf'` | Download filename |
+Configure capture-time measurement on `pdf({ forms, outline, breakAvoid, shadow,
+formValues })`. Configure paper size, orientation, margins, tagging, metadata,
+headers, footers, compression or encryption on `toPdf()`. Downloads are opt-in;
+ordinary exports return a Blob. See [the full PDF reference](pdf/REFERENCE.md).
+
+**Migration:** import `pdf` from `/pdf`, replace `pdfImage()` with `pdf()`, and
+replace `toPdfImage()` with `toPdf({ download: 'capture.pdf' })`. Put orientation
+on the export. The old temporary object-URL return becomes a persistent Blob.
+The default page sizing and pagination differ: choose `page: 'a4'` explicitly.
+
+Tagged output alone is not a PDF/UA conformance guarantee. The exporter reports
+eligibility and blockers. Redact source text structurally; covering pixels does
+not remove text from a searchable document.
 
 ---
 
@@ -385,6 +395,8 @@ await result.toHtml({ download: 'snapshot.html' });
 |--------|------|---------|-------------|
 | `fullDocument` | `boolean` | `true` | Wrap output in `<!DOCTYPE html>…`; if `false`, return just `<style>` + the fragment |
 | `filename` | `string` | `'capture.html'` | Download filename when `opts.download` is `true` |
+| `title` | `string` | `'Captured interface'` | Escaped document title |
+| `lang` | `string` | `'en'` | Escaped document language |
 
 Per-call `opts` accepts `fullDocument`, `filename` and `download`. Set `download: true` to
 download, or pass a filename string. The method returns the HTML string either way.

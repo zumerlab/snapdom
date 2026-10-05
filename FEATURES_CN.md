@@ -109,7 +109,7 @@ SnapDOM 将冻结的 SVG 按尺寸受限的区域分块渲染，并编码为一�
 | `html-export` | 包含嵌入样式和字体的捕获 HTML |
 | `context-export` | 文本大纲或 JSON 页面上下文 |
 | `agent-map` | 图片与元素映射，包含角色、名称、状态和边界框 |
-| `pdf-image` | 包含 JPEG 捕获图像的可下载 PDF |
+| `pdf` | 可搜索、可分页并包含可选择文本和链接的 PDF |
 | `gif-export` / `video-export` | 在一段时间内录制当前元素 |
 | `ascii-export` | 图像的文本表示 |
 | `filter` / `color-tint` / `timestamp-overlay` | 修改克隆的视觉效果 |
