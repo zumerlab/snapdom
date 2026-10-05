@@ -54,30 +54,23 @@
     ]
   }
   </script>
+  <link rel="stylesheet" href="../navigation.css"><link rel="stylesheet" href="../panes.css">
+  <script type="module" src="../panes.js"></script>
 </head>
 <body>
   <script defer src="../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/" aria-current="page">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../docs/">Docs</a><a href="../guides/">Guides</a><a href="../how-to/">How-to</a><a href="../compare/" aria-current="page">Compare</a><a href="../showcase/">Showcase</a><a href="../made-with/">Made with</a><a href="../ecosystem/">Ecosystem</a><a href="../plugins.html">Plugins</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div></nav></header>
+  <!-- pane:start --><!-- hero {"badge": "Library Comparisons", "title": "<span class=\"accent\">HTML-to-Image</span> JavaScript Libraries", "lead": "Compare the libraries that turn a rendered DOM element into an image: html2canvas, html-to-image, dom-to-image, modern-screenshot and SnapDOM. Review the rendering approaches, output contracts and examples before testing your own content.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">12 official plugins</span></a><a class="site-nav-item sec-capture" href="../plugins.html#playground"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter comparisons" aria-label="Filter comparisons"></label><nav class="pane-nav" aria-label="Compare"><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="./" aria-current="page">HTML-to-image libraries</a><div class="pane-toc"><a href="#three-ways-to-turn-html-into-an-image">Three ways to turn HTML into an image</a><a href="#feature-matrix">Feature matrix</a><a href="#head-to-head-deep-dives">Head-to-head deep dives</a><a href="#the-libraries-reviewed">The libraries, reviewed</a><a href="#which-should-you-use">Which should you use?</a><a href="#faq">FAQ</a><a href="#try-snapdom-on-your-page">Try SnapDOM on your page</a></div><a href="live/">Live benchmark</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Head to head</button><div class="pane-nav-items"><a href="html2canvas/">vs html2canvas</a><a href="html-to-image/">vs html-to-image</a><a href="dom-to-image/">vs dom-to-image</a><a href="modern-screenshot/">vs modern-screenshot</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Architecture</button><div class="pane-nav-items"><a href="puppeteer/">vs Puppeteer</a><a href="playwright/">vs Playwright</a></div></div></nav></aside>
 
-  <section class="hero section-hero">
-    <div class="section-hero-copy">
-      <div class="hero-badge">Library Comparisons</div>
-      <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" data-umami-event="Compare hub github">
-        <svg class="fab fa-github" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
-        <span>zumerlab/snapdom</span>
-        <span class="github-stars"><svg class="fas fa-star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false" style="height:1em;width:auto;vertical-align:-0.125em"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg><span id="star-count">…</span></span>
-      </a>
-      <h1><span class="accent">HTML-to-Image</span> JavaScript Libraries</h1>
-      <p class="lead">Compare the libraries that turn a rendered DOM element into an image: html2canvas, html-to-image, dom-to-image, modern-screenshot and SnapDOM. Review the rendering approaches, output contracts and examples before testing your own content.</p>
-    </div>
-    <img class="section-mascot" src="../assets/mascots/mr-snapdom-compare.webp" width="1254" height="1254" decoding="async" alt="Mr. SnapDOM holding a balance scale">
-  </section>
-
-  <main class="page">
+<article class="pane-read sec-ecosystem" data-title="HTML-to-image libraries">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>HTML-to-image libraries</span></nav><span class="doc-meta">Library Comparisons</span></div><h1><span class="accent">HTML-to-Image</span> JavaScript Libraries</h1><p class="doc-lead">Compare the libraries that turn a rendered DOM element into an image: html2canvas, html-to-image, dom-to-image, modern-screenshot and SnapDOM. Review the rendering approaches, output contracts and examples before testing your own content.</p></header>
+<div class="pane-content"><!-- content -->
     <section class="prose">
       <p class="muted"><strong>Last updated:</strong> September 2026 · maintained by the SnapDOM team.</p>
 
-      <h2>Three ways to turn HTML into an image</h2>
+      <h2 id="three-ways-to-turn-html-into-an-image">Three ways to turn HTML into an image</h2>
       <p>These tools capture rendered HTML, but they run in different environments. Choose the environment first, then compare output and performance:</p>
       <ul>
         <li><strong>Client-side libraries</strong> (SnapDOM, html2canvas, html-to-image, dom-to-image, modern-screenshot) run in the user's browser. They suit download and share features without sending the DOM to a screenshot server. Fonts and images may still require network requests.</li>
@@ -86,9 +79,9 @@
       </ul>
       <p>The rest of this page focuses on the <strong>client-side libraries</strong>, because that's where most projects start and where the differences are subtle.</p>
 
-      <p><a href="./live/" class="btn btn-primary" data-umami-event="Compare hub live lab">Run the benchmark yourself →</a> Real-world scenes, eight libraries, measured in your own browser — plus pixel checks for specific capability fixtures.</p>
+      <p><a href="./live/" class="btn btn-primary" data-umami-event="Compare hub live lab">Run the benchmark yourself</a> Real-world scenes, eight libraries, measured in your own browser — plus pixel checks for specific capability fixtures.</p>
 
-      <h2>Feature matrix</h2>
+      <h2 id="feature-matrix">Feature matrix</h2>
       <table class="cmp-table">
         <thead>
           <tr>
@@ -119,7 +112,7 @@
       <p class="muted">Support varies by fixture and rendering mode; test your own UI. The <a href="./live/">live benchmark</a> reports results for its specific pixel fixtures and loaded versions.</p>
     </section>
 
-    <h2 class="prose" style="max-width:760px;margin:0 auto;padding:0 24px;">Head-to-head deep dives</h2>
+    <h2 id="head-to-head-deep-dives" class="prose" style="max-width:760px;margin:0 auto;padding:0 24px;">Head-to-head deep dives</h2>
     <div class="hub-grid">
       <a class="hub-card" href="./html2canvas/" data-umami-event="Compare card html2canvas">
         <span class="tag">Most popular</span>
@@ -146,7 +139,7 @@
     </div>
 
     <section class="prose">
-      <h2>The libraries, reviewed</h2>
+      <h2 id="the-libraries-reviewed">The libraries, reviewed</h2>
 
       <h3>SnapDOM</h3>
       <p><strong>Browser capture with extensible outputs.</strong> SnapDOM clones styled DOM and renders it inside an SVG <code>&lt;foreignObject&gt;</code>. It supports pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and accessible web fonts. Core exports include SVG, PNG, JPG, WebP, Canvas and Blob; official plugins add HTML, structured context and maps, PDF images, GIF and video. Browser security still blocks inaccessible resources and tainted canvas pixels.</p>
@@ -166,7 +159,7 @@
       <h3>Server-side &amp; hosted options</h3>
       <p>Use browser automation or a hosted service for captures that must run independently of the user's browser, navigation workflows or scheduled rendering. A controlled browser version helps make output repeatable; it does not make different engines byte-identical.</p>
 
-      <h2>Which should you use?</h2>
+      <h2 id="which-should-you-use">Which should you use?</h2>
       <ul>
         <li><strong>Browser-side exports with custom outputs</strong> → evaluate SnapDOM and its optional plugins.</li>
         <li><strong>Existing capture bugs</strong> → compare the affected component before migrating, then adapt return types and options.</li>
@@ -175,7 +168,7 @@
         <li><strong>Controlled server rendering</strong> → evaluate Puppeteer, Playwright or a hosted service.</li>
       </ul>
 
-      <h2>FAQ</h2>
+      <h2 id="faq">FAQ</h2>
       <h3>What is the best HTML-to-image library in 2026?</h3>
       <p>Choose by execution environment, output type and the content you capture. SnapDOM supports browser-side capture with optional plugin exports. Browser automation suits server jobs and controlled test environments. Compare representative output and timing before choosing.</p>
       <h3>Is there a maintained html2canvas alternative?</h3>
@@ -188,27 +181,18 @@
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2>Try SnapDOM on your page</h2>
+        <h2 id="try-snapdom-on-your-page">Try SnapDOM on your page</h2>
         <p>Capture a rendered element as PNG, SVG or Canvas. Add other exports through plugins.</p>
         <a href="../showcase/" class="btn btn-primary" data-umami-event="Compare hub cta home">Open the demo</a>
         <a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Compare hub cta github">View on GitHub</a>
       </div>
     </section>
-  </main>
-
-
-  <script>
-    (async function(){
-      try {
-        const res = await fetch('https://api.github.com/repos/zumerlab/snapdom');
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        document.getElementById('star-count').textContent = String(data?.stargazers_count ?? '');
-      } catch(e) {
-        document.getElementById('star-count').textContent = '';
-      }
-    })();
-  </script>
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a class="is-next" href="live/"><span>Next</span><strong>Live benchmark</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../docs/">Documentation</a><a href="../docs/#quick-start">Quick start</a><a href="../how-to/">How-to recipes</a><a href="../guides/">Guides</a><a href="../compare/">Compare</a></div><div><h2>Build</h2><a href="../capabilities/">Capabilities</a><a href="../plugins.html">Plugins</a><a href="../plugins.html#playground">Playground</a><a href="../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../showcase/">Showcase</a><a href="../labs.html">Labs</a><a href="../blog/">Blog</a></div><div><h2>Community</h2><a href="../ecosystem/">Ecosystem</a><a href="../made-with/">Made with</a><a href="../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
   <script defer src="/copy-code.js"></script>
 </body>
 </html>

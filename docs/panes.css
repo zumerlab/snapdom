@@ -273,3 +273,14 @@
 .pane-list { max-width: 68ch; margin: 0 0 16px; padding-left: 20px; font: 400 16px/1.7 Arial, Helvetica, sans-serif; }
 .pane-list li { margin-bottom: 6px; padding-left: 4px; }
 .pane-list li::marker { color: var(--c-dot); }
+
+/* ── Converted content pages (scripts/docs-site/sections.py) ── */
+.pane-toc { margin: 2px 0 6px 14px; padding-left: 10px; border-left: 1px solid rgba(15,30,77,0.14); }
+.pane-nav-items .pane-toc a { padding: 4px 10px; border-left: 0; color: #59647D; font: 400 12.5px/1.4 Arial, Helvetica, sans-serif; }
+.pane-nav-items .pane-toc a:hover { color: var(--c); }
+.doc-links { margin-top: 18px; }
+.pane-content > :first-child { margin-top: 0; }
+.pane-content .prose h2 { font-weight: 700; font-size: 26px; letter-spacing: -.025em; }
+.pane-content .cta-section { margin-top: 48px; }
+.pane-read pre code { padding: 0; background: none; color: inherit; font: inherit; }
+.pane-content pre:not([class]):not(.code-block pre):not(.pane-code pre) { margin: 0 0 16px; padding: 16px 20px; overflow-x: auto; background: #0F1E4D; color: #D9E2F7; font: 13.5px/1.7 var(--font-code); }

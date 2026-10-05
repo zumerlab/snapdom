@@ -82,26 +82,32 @@
       .mosaic-scroll { height: 360px; }
     }
   </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
+  <!-- pane:start --><!-- hero {"badge": "SnapDOM Blog", "title": "<span class=\"accent\">Tiled rasterization</span> for large DOM captures", "lead": "Since v2.24, SnapDOM can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../../plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">12 official plugins</span></a><a class="site-nav-item sec-capture" href="../../plugins.html#playground"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../../blog/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter posts" aria-label="Filter posts"></label><nav class="pane-nav" aria-label="Blog"><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">All posts</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Posts</button><div class="pane-nav-items"><a href="../snapdom-v3/">SnapDOM v3 is out</a><a href="../dom-capture-boundaries/">DOM capture boundaries</a><a href="./" aria-current="page">Tiled rasterization</a><div class="pane-toc"><a href="#the-screenshot-was-fine-the-bitmap-wasn-t">The screenshot was fine. The bitmap wasn&#x27;t.</a><a href="#cut-the-svg-not-the-canvas">Cut the SVG, not the canvas</a><a href="#try-the-mosaic">Try the mosaic</a><a href="#the-whole-implementation-is-a-loop">The whole implementation is a loop</a><a href="#the-geometry-is-half-the-feature">The geometry is half the feature</a><a href="#what-tiling-does-not-solve">What tiling does not solve</a><a href="#where-tile-windows-are-useful">Where tile windows are useful</a><a href="#capture-once-rasterize-in-pieces">Capture once. Rasterize in pieces.</a></div><a href="../painting-without-canvas/">Painting without a canvas</a></div></div></nav></aside>
 
-  <section class="hero"><div class="hero-badge">SnapDOM Blog</div><h1><span class="accent">Tiled rasterization</span> for large DOM captures</h1><p class="lead">Since v2.24, SnapDOM can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.</p></section>
-  <main class="page">
+<article class="pane-read sec-record" data-title="Tiled rasterization">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Blog</span><span aria-hidden="true">/</span><span>Posts</span><span aria-hidden="true">/</span><span>Tiled rasterization</span></nav><span class="doc-meta">SnapDOM Blog</span></div><h1><span class="accent">Tiled rasterization</span> for large DOM captures</h1><p class="doc-lead">Since v2.24, SnapDOM can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.</p></header>
+<div class="pane-content"><!-- content -->
     <p class="byline">Zumerlab · August 11, 2026</p>
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>A very tall DOM capture can serialize to SVG just fine and still fail when the browser tries to decode that SVG into one enormous bitmap. SnapDOM's new <code>toCanvas({ crop })</code> windows the SVG <em>before</em> image decode. Capture once, move that window across <code>result.meta</code>, and you can preserve the requested resolution while each tile fits the browser's raster limits—without ever allocating the full-page canvas. It solves the raster ceiling; it does not make cloning an enormous DOM free.</p></div>
 
     <section class="prose">
-      <h2>The screenshot was fine. The bitmap wasn't.</h2>
+      <h2 id="the-screenshot-was-fine-the-bitmap-wasn-t">The screenshot was fine. The bitmap wasn't.</h2>
       <p>There are two very different sizes hiding inside a “full-page screenshot.” The first is the serialized capture: an SVG containing a styled DOM clone inside <code>&lt;foreignObject&gt;</code>. The second is the bitmap a browser creates when that SVG is decoded for PNG, Canvas, JPEG or WebP.</p>
       <p>The SVG can describe a page tens of thousands of pixels tall. The bitmap is where browsers push back. Safari and every WebKit browser stop at 16,384 pixels on one side; Chrome and Firefox go to 32,767. Both share an area limit of about 268 million pixels (16,384 × 16,384), and the exact failure point still varies by machine. <code>dpr</code> counts toward the limit, and it defaults to <code>devicePixelRatio</code>, so on a Retina screen a <code>scale: 2</code> capture is really 4× wide and tall. Go past it and <code>img.decode()</code> may reject with the remarkably unhelpful <code>EncodingError: The source image cannot be decoded</code>, or the canvas allocation may fail later.</p>
       <p>SnapDOM already protects ordinary exports from that crash by downscaling oversized raster output. That is the right fallback when the caller asked for one image. It is the wrong trade when the pixels are the product: a deep-zoom viewer, a page renderer, a tiled upload or a print pipeline should not have to throw resolution away simply because one bitmap is the wrong container.</p>
     </section>
 
     <section class="prose">
-      <h2>Cut the SVG, not the canvas</h2>
+      <h2 id="cut-the-svg-not-the-canvas">Cut the SVG, not the canvas</h2>
       <p>The obvious mosaic algorithm is also the broken one: render one giant canvas, then use <code>drawImage()</code> to cut it into smaller canvases. By the time the slicing loop starts, the browser has already had to decode and allocate the giant bitmap. The failure happens before the workaround gets a turn.</p>
       <p><code>toCanvas({ crop })</code> moves the cut earlier. SnapDOM rewrites the serialized SVG's root <code>width</code>, <code>height</code> and <code>viewBox</code> to describe only the requested window, and <em>then</em> gives it to <code>Image.decode()</code>. The browser never sees a full-height raster source.</p>
       <div class="tile-pipeline" aria-label="Tiled rasterization pipeline">
@@ -115,7 +121,7 @@
     </section>
 
     <section class="prose">
-      <h2>Try the mosaic</h2>
+      <h2 id="try-the-mosaic">Try the mosaic</h2>
       <p>The report below is 640 × 2,400 CSS pixels. That is deliberately smaller than a browser limit so the demo stays polite, but it uses the same path as a 40,000-pixel document: one SVG capture, ten 320 × 480 crop windows, ten independent canvases. Scroll the source, then build the mosaic.</p>
       <div class="mosaic-demo">
         <div class="mosaic-scroll">
@@ -180,7 +186,7 @@
     </section>
 
     <section class="prose">
-      <h2>The whole implementation is a loop</h2>
+      <h2 id="the-whole-implementation-is-a-loop">The whole implementation is a loop</h2>
       <p><code>crop</code> uses SVG viewBox coordinates, so the reliable bounds come from the capture rather than from rereading the live element. This version hands each canvas to a callback immediately; a production exporter can encode, upload or write the tile before requesting the next one.</p>
       <pre class="code-block">async function tileCapture(capture, options, consume) {
   const {
@@ -225,7 +231,7 @@ await tileCapture(capture, {}, async ({ canvas, row, col }) => {
     </section>
 
     <section class="prose">
-      <h2>The geometry is half the feature</h2>
+      <h2 id="the-geometry-is-half-the-feature">The geometry is half the feature</h2>
       <p>A naïve tiler starts at <code>0, 0</code>. That only works while the serialized content also starts there. Root transforms, asymmetric shadows, outlines and clip windows can move the logical page inside the SVG viewBox. SnapDOM exposes the final, immutable geometry as <code>result.meta</code>, after those effects have been resolved.</p>
       <table class="cmp-table">
         <thead><tr><th>Geometry</th><th>What it measures</th><th>Use it for</th></tr></thead>
@@ -239,7 +245,7 @@ await tileCapture(capture, {}, async ({ canvas, row, col }) => {
     </section>
 
     <section class="prose">
-      <h2>What tiling does not solve</h2>
+      <h2 id="what-tiling-does-not-solve">What tiling does not solve</h2>
       <p>Tiling removes the full-bitmap allocation from the equation. It does not turn capture into a streaming DOM renderer. SnapDOM still has to clone the complete subtree, read its styles, inline assets and hold the serialized SVG. A 100,000-node document is still a 100,000-node capture.</p>
       <ul>
         <li>Virtualized or lazy sections must exist in the DOM before capture; no image library can serialize nodes the application has not rendered.</li>
@@ -253,7 +259,7 @@ await tileCapture(capture, {}, async ({ canvas, row, col }) => {
     </section>
 
     <section class="prose">
-      <h2>Where tile windows are useful</h2>
+      <h2 id="where-tile-windows-are-useful">Where tile windows are useful</h2>
       <p>We added crop and immutable geometry for document exporters, where a tall capture naturally becomes PDF pages. The same mechanism also fits map-style viewers, poster printing, zoomable archives and multipart uploads. They all need one stable source and a way to ask for one rectangle at a time.</p>
       <p>In <code>defineExports(ctx)</code>, plugin authors can retain <code>ctx.exports</code> and call its <code>canvas({ crop })</code> method from their custom exporter. This core-export facade reuses the canonical capture without recursively firing export hooks. That makes “mosaic” a small custom export instead of a second rendering engine—and keeps the extra work out of SnapDOM's capture hot path.</p>
     </section>
@@ -261,15 +267,20 @@ await tileCapture(capture, {}, async ({ canvas, row, col }) => {
     <section class="related">
       <div class="section-label">Keep reading</div>
       <div class="related-grid">
-        <a class="related-card" href="../../how-to/capture-full-page/">Capture a full page <span class="arrow">→</span></a>
-        <a class="related-card" href="../../docs/api/#exporter-options">Canvas crop API <span class="arrow">→</span></a>
-        <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Plugin export API <span class="arrow">→</span></a>
-        <a class="related-card" href="../painting-without-canvas/">Painting without canvas <span class="arrow">→</span></a>
+        <a class="related-card" href="../../how-to/capture-full-page/">Capture a full page</a>
+        <a class="related-card" href="../../docs/api/#exporter-options">Canvas crop API</a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Plugin export API</a>
+        <a class="related-card" href="../painting-without-canvas/">Painting without canvas</a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2>Capture once. Rasterize in pieces.</h2><p><code>toCanvas({ crop })</code> and immutable capture geometry are available since SnapDOM v2.24.</p><a href="../../docs/api/#exporter-options" class="btn btn-primary">Read the API</a><a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a></div></section>
-  </main>
+    <section class="cta-section"><div class="cta-card"><h2 id="capture-once-rasterize-in-pieces">Capture once. Rasterize in pieces.</h2><p><code>toCanvas({ crop })</code> and immutable capture geometry are available since SnapDOM v2.24.</p><a href="../../docs/api/#exporter-options" class="btn btn-primary">Read the API</a><a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a></div></section>
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../dom-capture-boundaries/"><span>Previous</span><strong>DOM capture boundaries</strong></a><a class="is-next" href="../painting-without-canvas/"><span>Next</span><strong>Painting without a canvas</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../guides/">Guides</a><a href="../../compare/">Compare</a></div><div><h2>Build</h2><a href="../../capabilities/">Capabilities</a><a href="../../plugins.html">Plugins</a><a href="../../plugins.html#playground">Playground</a><a href="../../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
 
   <script type="module">
     import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'

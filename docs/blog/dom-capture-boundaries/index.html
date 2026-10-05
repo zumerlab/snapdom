@@ -22,19 +22,25 @@
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
   </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
 </head>
 <body>
   <script defer src="../../site.js"></script>
-  <header class="site-shell"><div class="site-shell-main"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-shell-links" aria-label="Main navigation"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></nav><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div><nav class="site-shell-mobile" aria-label="Mobile navigation"><div class="site-shell-mobile-inner"><a href="../../docs/">Docs</a><a href="../../guides/">Guides</a><a href="../../how-to/">How-to</a><a href="../../compare/">Compare</a><a href="../../showcase/">Showcase</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/">Ecosystem</a><a href="../../plugins.html">Plugins</a><a href="../../labs.html">Labs</a><a href="../../blog/" aria-current="page">Blog</a></div></nav></header>
+  <!-- pane:start --><!-- hero {"badge": "SnapDOM Blog", "title": "DOM capture boundaries and integration patterns", "lead": "SnapDOM needs a readable DOM and leaves navigation to browser tooling. Browser control connects it to Node, cross-origin documents and automated application flows.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../../plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">12 official plugins</span></a><a class="site-nav-item sec-capture" href="../../plugins.html#playground"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../../blog/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter posts" aria-label="Filter posts"></label><nav class="pane-nav" aria-label="Blog"><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">All posts</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Posts</button><div class="pane-nav-items"><a href="../snapdom-v3/">SnapDOM v3 is out</a><a href="./" aria-current="page">DOM capture boundaries</a><div class="pane-toc"><a href="#run-the-capture-where-the-dom-lives">Run the capture where the DOM lives</a><a href="#give-node-a-real-browser">Give Node a real browser</a><a href="#capture-cross-origin-documents-from-their-own-context">Capture cross-origin documents from their own context</a><a href="#navigation-stays-with-the-browser-driver">Navigation stays with the browser driver</a><a href="#account-for-the-browser-service">Account for the browser service</a><a href="#put-snapdom-inside-the-page">Put SnapDOM inside the page</a></div><a href="../huge-page-mosaic/">Tiled rasterization</a><a href="../painting-without-canvas/">Painting without a canvas</a></div></div></nav></aside>
 
-  <section class="hero"><div class="hero-badge">SnapDOM Blog</div><h1>DOM capture boundaries and integration patterns</h1><p class="lead">SnapDOM needs a readable DOM and leaves navigation to browser tooling. Browser control connects it to Node, cross-origin documents and automated application flows.</p></section>
-  <main class="page">
+<article class="pane-read sec-record" data-title="DOM capture boundaries">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Blog</span><span aria-hidden="true">/</span><span>Posts</span><span aria-hidden="true">/</span><span>DOM capture boundaries</span></nav><span class="doc-meta">SnapDOM Blog</span></div><h1>DOM capture boundaries and integration patterns</h1><p class="doc-lead">SnapDOM needs a readable DOM and leaves navigation to browser tooling. Browser control connects it to Node, cross-origin documents and automated application flows.</p></header>
+<div class="pane-content"><!-- content -->
     <p class="byline">Zumerlab · August 22, 2026</p>
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>Let Playwright or Puppeteer create the browser state. Run SnapDOM inside that page, then return <code>result.url</code> or a raster data URL to Node. A same-origin iframe can be captured from its parent; a cross-origin document must be served from the same origin or captured from its own page or frame context. <code>useProxy</code> can fetch assets, but it cannot grant access to iframe DOM.</p></div>
 
     <section class="prose">
-      <h2>Run the capture where the DOM lives</h2>
+      <h2 id="run-the-capture-where-the-dom-lives">Run the capture where the DOM lives</h2>
       <p>SnapDOM starts from an <code>Element</code>. It reads layout, computed styles, fonts and image state, then asks the browser to paint the styled clone inside an SVG <code>&lt;foreignObject&gt;</code>. A Node process, server renderer or worker without a document cannot provide those browser APIs.</p>
       <p>The process that receives an HTTP request can still own the job. It launches a browser, prepares the page and saves the output. The call to <code>snapdom()</code> stays inside the page that owns the element.</p>
       <table class="cmp-table">
@@ -52,7 +58,7 @@
     </section>
 
     <section class="prose">
-      <h2>Give Node a real browser</h2>
+      <h2 id="give-node-a-real-browser">Give Node a real browser</h2>
       <p>This Playwright script loads the installed IIFE bundle, opens a report, waits for an application-owned ready signal and makes two files from one SnapDOM capture. Node manages the process and filesystem. The page creates the SVG and PNG.</p>
       <pre class="code-block">npm install @zumer/snapdom@latest playwright
 npx playwright install chromium</pre>
@@ -112,7 +118,7 @@ try {
     </section>
 
     <section class="prose">
-      <h2>Capture cross-origin documents from their own context</h2>
+      <h2 id="capture-cross-origin-documents-from-their-own-context">Capture cross-origin documents from their own context</h2>
       <p>When an iframe is same-origin, SnapDOM can read its document and place a PNG of the iframe's visible viewport into the parent capture. A sandboxed frame without <code>allow-same-origin</code> may still be inaccessible even when its URL looks local.</p>
       <p>For a cross-origin iframe, the parent page cannot read <code>iframe.contentDocument</code>. SnapDOM leaves a striped placeholder by default and emits a warning; <code>placeholders: false</code> keeps an invisible spacer with the same box size. That behavior follows the browser's same-origin policy.</p>
       <p>If you control the deployment, serve or reverse-proxy the document under the same origin. For an authorized third-party page, navigate a controlled browser directly to that URL, inject SnapDOM after navigation and capture <code>document.documentElement</code>. Playwright and Puppeteer can also run code in an individual cross-origin frame context:</p>
@@ -140,7 +146,7 @@ const framePng = await frame.evaluate(async () => {
     </section>
 
     <section class="prose">
-      <h2>Navigation stays with the browser driver</h2>
+      <h2 id="navigation-stays-with-the-browser-driver">Navigation stays with the browser driver</h2>
       <p>SnapDOM captures the state it receives. It does not open URLs, authenticate, click controls, wait for application data, manage test baselines or compare pixels. Playwright or Puppeteer owns those steps, then calls SnapDOM after the target state is stable.</p>
       <pre class="code-block">await page.goto(appURL, { waitUntil: 'domcontentloaded' })
 await page.getByRole('button', { name: 'Generate report' }).click()
@@ -157,7 +163,7 @@ const captureURL = await page.evaluate(async () => {
     </section>
 
     <section class="prose">
-      <h2>Account for the browser service</h2>
+      <h2 id="account-for-the-browser-service">Account for the browser service</h2>
       <p>A backend capture still pays for a browser process. Reuse a browser when jobs are frequent, isolate work in fresh contexts, cap concurrency and apply timeouts. A public endpoint that accepts arbitrary URLs also needs URL allowlists and network isolation so it cannot become a route into private services.</p>
       <p>Every full navigation replaces the page's JavaScript context, so inject the bundle after the final navigation. Wait for the application's own export-ready state and <code>document.fonts.ready</code>, call SnapDOM inside <code>page.evaluate()</code>, and return <code>result.url</code> or a raster image's <code>.src</code>. Keep DOM objects inside the browser process.</p>
     </section>
@@ -165,15 +171,20 @@ const captureURL = await page.evaluate(async () => {
     <section class="related">
       <div class="section-label">Keep reading</div>
       <div class="related-grid">
-        <a class="related-card" href="../../llms-full.txt">Complete LLM reference <span class="arrow">→</span></a>
-        <a class="related-card" href="../../how-to/capture-iframe/">Capture an iframe <span class="arrow">→</span></a>
-        <a class="related-card" href="../../compare/playwright/">SnapDOM and Playwright <span class="arrow">→</span></a>
-        <a class="related-card" href="../../compare/puppeteer/">SnapDOM and Puppeteer <span class="arrow">→</span></a>
+        <a class="related-card" href="../../llms-full.txt">Complete LLM reference</a>
+        <a class="related-card" href="../../how-to/capture-iframe/">Capture an iframe</a>
+        <a class="related-card" href="../../compare/playwright/">SnapDOM and Playwright</a>
+        <a class="related-card" href="../../compare/puppeteer/">SnapDOM and Puppeteer</a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2>Put SnapDOM inside the page</h2><p>The complete reference includes the server-side recipe, capture API and plugin hooks used in this integration.</p><a href="../../llms-full.txt" class="btn btn-primary">Open llms-full.txt</a><a href="../../docs/api/" class="btn btn-ghost">Read the API</a></div></section>
-  </main>
+    <section class="cta-section"><div class="cta-card"><h2 id="put-snapdom-inside-the-page">Put SnapDOM inside the page</h2><p>The complete reference includes the server-side recipe, capture API and plugin hooks used in this integration.</p><a href="../../llms-full.txt" class="btn btn-primary">Open llms-full.txt</a><a href="../../docs/api/" class="btn btn-ghost">Read the API</a></div></section>
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../snapdom-v3/"><span>Previous</span><strong>SnapDOM v3 is out</strong></a><a class="is-next" href="../huge-page-mosaic/"><span>Next</span><strong>Tiled rasterization</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../guides/">Guides</a><a href="../../compare/">Compare</a></div><div><h2>Build</h2><a href="../../capabilities/">Capabilities</a><a href="../../plugins.html">Plugins</a><a href="../../plugins.html#playground">Playground</a><a href="../../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
 
   <script defer src="/copy-code.js"></script>
 </body>
