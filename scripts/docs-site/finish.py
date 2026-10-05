@@ -29,7 +29,6 @@ def scope_css(css):
     return output
 
 for p in ROOT.rglob('*.html'):
-    if 'v2' in p.relative_to(ROOT).parts: continue
     s = p.read_text(); root = '../' * (len(p.relative_to(ROOT).parts)-1)
     if 'pro' in p.relative_to(ROOT).parts and 'product-content' not in s and 'plugin-page' not in s:
         s = re.sub(r'<style>(.*?)</style>', lambda m: '<style>' + scope_css(m[1]) + '</style>', s, flags=re.S)
@@ -56,7 +55,6 @@ for p in ROOT.rglob('*.html'):
 
 index=[]
 for p in ROOT.rglob('*.html'):
-    if 'v2' in p.relative_to(ROOT).parts: continue
     s=p.read_text()
     title=re.search(r'<title>(.*?)</title>',s,re.S)
     if not title: continue

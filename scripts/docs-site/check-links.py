@@ -1,4 +1,4 @@
-"""Check local HTML links and fragments, including the v2 archive."""
+"""Check local HTML links and fragments."""
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urljoin, urlsplit

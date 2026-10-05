@@ -42,7 +42,7 @@ Export images and canvas with the core. Use plugins for self-contained HTML, pag
 
 [Documentation and demos](https://snapdom.dev/) · [Technical features](FEATURES.md) · [Official plugins](packages/plugins/README.md) · [简体中文](README_CN.md)
 
-This checkout documents **v3.x.x**. The migration guide below compares it with **v2.x.x**. The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) and [v2 documentation](https://snapdom.dev/v2/) remain available.
+This checkout documents **v3.x.x**. The migration guide below compares it with **v2.x.x**. The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) remains available.
 
 ## What you can build
 
@@ -370,7 +370,7 @@ For a useful comparison, use the same scene, output format, scale and DPR. Compa
 ## Documentation
 
 - [Interactive Playground](https://snapdom.dev/playground/), [PDF demos](https://snapdom.dev/pro/pdf/) and [Vector demos](https://snapdom.dev/pro/vector/)
-- [Archived v2 documentation](https://snapdom.dev/v2/) and [v2 source](https://github.com/zumerlab/snapdom/tree/v2)
+- [v2 source](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/) and [options](https://snapdom.dev/docs/options/)
 - [Framework guides](https://snapdom.dev/guides/) and [how-to examples](https://snapdom.dev/how-to/)
 - [Official plugins](packages/plugins/README.md), [plugin specification](PLUGIN_SPEC.md) and [contributing plugins](CONTRIBUTING_PLUGINS.md)

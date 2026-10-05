@@ -17,7 +17,6 @@ changed.update(subprocess.check_output(['git','ls-files','--others','--exclude-s
 today=date.today().isoformat()
 entries={}
 for file in sorted(DOCS.rglob('*.html')):
-    if 'v2' in file.relative_to(DOCS).parts:continue # The archive owns docs/v2/sitemap.xml.
     source=file.read_text()
     robots=re.search(r'<meta\b[^>]*name=[\"\']robots[\"\'][^>]*content=[\"\']([^\"\']+)',source,re.I)
     if robots and 'noindex' in robots[1].lower():continue

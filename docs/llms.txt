@@ -6,7 +6,7 @@ SnapDOM (`@zumer/snapdom`) captures a DOM subtree, its styles and its assets int
 
 Two integrated engines render the same finished clone: `svg` (default) serializes it, while experimental `html-in-canvas` paints it through the browser's native API. The second engine still needs the browser feature flag or applicable origin trial (supported Chrome builds: `chrome://flags/#canvas-draw-element`) and a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`; the default build currently omits it. Unsupported captures fall back to SVG.
 
-This reference describes SnapDOM v3.x.x. See the [installation notes](https://github.com/zumerlab/snapdom#installation). Older projects can use the [archived v2 documentation](https://snapdom.dev/v2/) and [preserved v2 branch](https://github.com/zumerlab/snapdom/tree/v2).
+This reference describes SnapDOM v3.x.x. See the [installation notes](https://github.com/zumerlab/snapdom#installation). Older projects can use the [preserved v2 branch](https://github.com/zumerlab/snapdom/tree/v2).
 
 ## Quick start
 

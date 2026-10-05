@@ -135,7 +135,7 @@ button.addEventListener('click', () =&gt;
           <li>Core redaction masks password fields only. Use the <code>redactInputs()</code> plugin if your application needs other visible fields masked.</li>
           <li><code>afterExport</code> hooks observe the export result; their return values no longer become the next hook's payload. Use <code>defineExports</code> for custom output.</li>
         </ul>
-        <p><code>filter</code> and <code>exclude</code> remain supported together, each with its own hide/remove mode. Function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> and <code>fallbackURL</code> make each new capture run fresh so callbacks can read current application state. The <a href="../../v2/">v2 documentation</a> and <a href="https://github.com/zumerlab/snapdom/tree/v2">v2 branch</a> remain available for projects staying on that release.</p>
+        <p><code>filter</code> and <code>exclude</code> remain supported together, each with its own hide/remove mode. Function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> and <code>fallbackURL</code> make each new capture run fresh so callbacks can read current application state. The <a href="https://github.com/zumerlab/snapdom/tree/v2">v2 branch</a> remains available for projects staying on that release.</p>
         <pre class="code-block">npm install @zumer/snapdom@3
 
 # If your app uses the official plugins:

@@ -8,7 +8,7 @@ SnapDOM has two integrated render engines: `svg` (default) and experimental `htm
 
 Package: `@zumer/snapdom`. License: MIT. Source: https://github.com/zumerlab/snapdom. Documentation: https://snapdom.dev/docs/.
 
-This reference describes SnapDOM v3.x.x. Release details: https://github.com/zumerlab/snapdom#installation. Archived v2 documentation: https://snapdom.dev/v2/. Preserved v2 branch: https://github.com/zumerlab/snapdom/tree/v2.
+This reference describes SnapDOM v3.x.x. Release details: https://github.com/zumerlab/snapdom#installation. Preserved v2 branch: https://github.com/zumerlab/snapdom/tree/v2.
 
 ## Installation
 

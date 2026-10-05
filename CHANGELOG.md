@@ -85,8 +85,7 @@ recapture, automatic font embedding, and new capture APIs. Core and official plu
 now share the v3 release line.
 
 If you're upgrading from v2, read the [migration guide](README.md#migrating-from-v2).
-The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) and
-[v2 documentation](https://snapdom.dev/v2/) remain available.
+The [v2 source](https://github.com/zumerlab/snapdom/tree/v2) remains available.
 
 #### Features and performance
 

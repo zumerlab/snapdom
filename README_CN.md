@@ -42,7 +42,7 @@ SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM �
 
 [文档与演示](https://snapdom.dev/) · [技术功能](FEATURES_CN.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
 
-本仓库介绍的是 **v3.x.x**。下方迁移指南以 **v2.x.x** 为比较基准。[v2 源码](https://github.com/zumerlab/snapdom/tree/v2)和 [v2 文档](https://snapdom.dev/v2/)仍可访问。
+本仓库介绍的是 **v3.x.x**。下方迁移指南以 **v2.x.x** 为比较基准。[v2 源码](https://github.com/zumerlab/snapdom/tree/v2)仍可访问。
 
 ## 可以用它做什么
 
@@ -370,7 +370,7 @@ const after = await snapdom(card, options); // 使用当前策略
 ## 文档
 
 - [交互式 Playground](https://snapdom.dev/playground/)、[PDF 演示](https://snapdom.dev/pro/pdf/)与 [Vector 演示](https://snapdom.dev/pro/vector/)
-- [v2 文档归档](https://snapdom.dev/v2/)与 [v2 源码](https://github.com/zumerlab/snapdom/tree/v2)
+- [v2 源码](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
 - [框架指南](https://snapdom.dev/guides/)与[使用示例](https://snapdom.dev/how-to/)
 - [官方插件](packages/plugins/README.md)、[插件规范](PLUGIN_SPEC.md)与[插件贡献指南](CONTRIBUTING_PLUGINS.md)
