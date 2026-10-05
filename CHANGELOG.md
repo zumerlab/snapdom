@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.3.0](https://github.com/zumerlab/snapdom/compare/v3.2.0...v3.3.0)
+
+> 4 October 2026
+
+##### ✨ feat
+
+- feat: add editable vector export and enhance PDF capabilities [`019603a`](https://github.com/zumerlab/snapdom/commit/019603ad0c63fbcbf8000fff84afff0f3b5b1f30)
+- feat(docs): refresh navigation and live demos [`bbc59da`](https://github.com/zumerlab/snapdom/commit/bbc59da6894f6382dad8c395adb653d551d6b6e1)
+- feat(plugins): add open-source vector export [`299c561`](https://github.com/zumerlab/snapdom/commit/299c56168d03911eeb59022c6a7695edebf7bd79)
+- feat: improve plugin export contracts [`b828762`](https://github.com/zumerlab/snapdom/commit/b82876263fd2201d35a5023fe57c1bcecc4dd7be)
+- feat: replace pdf-image with full PDF export [`8acda94`](https://github.com/zumerlab/snapdom/commit/8acda94672c91bbd06cc70fb87dc574f1fc30346)
+
+##### 🛠 fix
+
+- fix: one [SnapDOM] prefix and plain-language console messages [`bbde42f`](https://github.com/zumerlab/snapdom/commit/bbde42f8dad31b523b64b2f6ca89adbb17b2245a)
+- fix: center checkbox and radio replacements in a stretched box [`#516`](https://github.com/zumerlab/snapdom/pull/516)
+- fix: halve Firefox grid rasters before the dpr 1 downscale [`#516`](https://github.com/zumerlab/snapdom/pull/516)
+- fix: rasterize Firefox exports below the layout grid at the grid (#516) [`817390e`](https://github.com/zumerlab/snapdom/commit/817390ea47e26b1e9708b1a7778eb136e0f94528)
+- fix: keep one-line boxes from wrapping in the capture (#516) [`575537e`](https://github.com/zumerlab/snapdom/commit/575537e936a6511c80a2735a7c4a4dbc0914d389)
+- fix: capture text at its inflated size in Firefox for Android (#516) [`5213172`](https://github.com/zumerlab/snapdom/commit/52131728799c705782788f8f967425a66f7bf16c)
+- fix: size form control replacement SVGs with CSS under layout zoom (#516) [`2d6d41d`](https://github.com/zumerlab/snapdom/commit/2d6d41dcd738813d3441e2b62ce4c1af9d3a1d3d)
+- fix: resolve var() in SVG gradient stops (#515) [`b13ed28`](https://github.com/zumerlab/snapdom/commit/b13ed287d0747fa8c94d86b2faa65f3a7724ea18)
+- fix: emit the placeholder rule only when a placeholder was cloned [`eb26e15`](https://github.com/zumerlab/snapdom/commit/eb26e1530ef39bdde695d52cfc5355b537898103)
+- fix: keep placeholder color CSS off void inputs (#512) [`#514`](https://github.com/zumerlab/snapdom/pull/514)
+- fix(capture): drop xmlns attributes set through setAttribute (#511) [`#513`](https://github.com/zumerlab/snapdom/pull/513)
+- fix: read transform-origin on transformed pseudo-elements (#509) [`39ff290`](https://github.com/zumerlab/snapdom/commit/39ff2908481811b37c629538bf7cf89869ba7753)
+
+##### 📦 other (chore/docs/refactor/…)
+
+- docs: update plugin capabilities [`9c0b8a3`](https://github.com/zumerlab/snapdom/commit/9c0b8a347b3a75f22a849f3c2d70c1fa1c235843)
+- docs: home page from the design handoff [`e88be16`](https://github.com/zumerlab/snapdom/commit/e88be16c658a41d7508c57d8a33fbcfcb376e4ed)
+- docs: Labs overview, Showcase, Made with and Plugins join the 3-pane template [`59046e9`](https://github.com/zumerlab/snapdom/commit/59046e9e2f6e91d6c5fe6c495c272c34aacfa25f)
+- docs: move Docs, How-to, Guides, Compare, Blog and Labs pages to the 3-pane template [`f0dbc79`](https://github.com/zumerlab/snapdom/commit/f0dbc79c30b877999af5a54c763f15fc54cf9bba)
+- docs: 3-pane Capabilities and Ecosystem pages from the design handoff [`d8b6688`](https://github.com/zumerlab/snapdom/commit/d8b6688dfa8c4c89e6ac260d1bcc95f355c076ca)
+- test: stop the network gate from skipping demos on a fast link, rerun what it skips [`96fc884`](https://github.com/zumerlab/snapdom/commit/96fc88411f80f49edfc48bcae66614a984f0617b)
+- test: serve the d15 image from a local second origin [`083cbd9`](https://github.com/zumerlab/snapdom/commit/083cbd9f05b53d11586dc26634f3940c00eafaf7)
+- test: restore imageSmoothingQuality only where the engine has it [`#516`](https://github.com/zumerlab/snapdom/pull/516)
+
+
 #### [v3.2.0](https://github.com/zumerlab/snapdom/compare/v3.1.1...v3.2.0)
 
 > 28 September 2026
