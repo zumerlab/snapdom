@@ -55,7 +55,8 @@
     "release:push": "git add CHANGELOG.md && git commit -m \"Bumped version\" && git push --follow-tags",
     "publish:beta": "npm publish --tag beta",
     "publish:dev": "node scripts/publish-dev.mjs",
-    "test:pdf": "node packages/plugins/pdf/test/verify.mjs && node packages/plugins/pdf/test/megacheck.mjs && node packages/plugins/pdf/test/encryptcheck.mjs"
+    "test:pdf": "node packages/plugins/pdf/test/verify.mjs && node packages/plugins/pdf/test/megacheck.mjs && node packages/plugins/pdf/test/encryptcheck.mjs",
+    "test:vector": "node packages/plugins/vector/test/verify-vector.mjs && node packages/plugins/vector/test/verify-h2d.mjs && node packages/plugins/vector/test/verify-plugin.mjs && node packages/plugins/vector/test/verify-mathml.mjs"
   },
   "repository": {
     "type": "git",

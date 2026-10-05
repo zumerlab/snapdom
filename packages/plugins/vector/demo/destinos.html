@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Destinos · el mismo elemento por los dos SVG</title>
+<script type="importmap">
+{
+  "imports": {
+    "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs",
+    "@zumer/snapdom-vector": "/src/index.js",
+    "@zumer/snapdom-vector/": "/src/",
+    "@zumer/svd": "/svd/index.js"
+  }
+}
+</script>
+<style>
+  :root {
+    --ink: #0f172a; --dim: #475569; --faint: #94a3b8; --line: #e2e8f0;
+    --accent: #7c3aed; --ok: #059669; --bad: #dc2626; --warn: #b45309;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f8fafc; color: var(--ink);
+         font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+         -webkit-font-smoothing: antialiased; }
+
+  header { max-width: 1360px; margin: 0 auto; padding: 36px 28px 0; }
+  h1 { margin: 0 0 6px; font-size: 26px; font-weight: 760; letter-spacing: -.025em; }
+  header p { margin: 0; max-width: 76ch; color: var(--dim); font-size: 14.5px; }
+  header b { color: var(--ink); font-weight: 650; }
+
+  .bar { max-width: 1360px; margin: 20px auto 0; padding: 0 28px;
+         display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field > span { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em;
+                  font-weight: 700; color: var(--faint); }
+  select { font: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line);
+           border-radius: 10px; background: #fff; color: var(--ink); min-width: 300px; }
+  .toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 14px;
+            color: var(--dim); cursor: pointer; user-select: none; padding-bottom: 9px; }
+  .toggle input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  #status { flex-basis: 100%; font-size: 13px; color: var(--faint); min-height: 1.4em; }
+
+  .grid { max-width: 1360px; margin: 22px auto 60px; padding: 0 28px;
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+
+  .panel { border: 1px solid var(--line); border-radius: 16px; background: #fff;
+           overflow: hidden; display: flex; flex-direction: column; }
+  .panel > h2 { margin: 0; padding: 14px 16px 10px; font-size: 14px; font-weight: 700;
+                letter-spacing: -.01em; display: flex; align-items: baseline; gap: 8px; }
+  .panel > h2 small { font-weight: 500; font-size: 11.5px; color: var(--faint);
+                      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .panel.ref > h2 { color: var(--dim); }
+
+  /* Escenario de altura fija: los tres se miran a la misma escala o no se comparan. */
+  .stage { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+           background: #fff; height: 430px; overflow: auto; padding: 14px;
+           display: flex; justify-content: center; align-items: flex-start; }
+  .stage > * { flex: 0 0 auto; transform-origin: top center; }
+
+  dl { margin: 0; padding: 12px 16px; display: grid; grid-template-columns: auto 1fr;
+       gap: 5px 12px; font-size: 12.5px; }
+  dt { color: var(--faint); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  dd.good { color: var(--ok); font-weight: 600; }
+  dd.bad { color: var(--bad); font-weight: 600; }
+
+  .acts { display: flex; gap: 8px; padding: 0 16px 12px; }
+  .acts button { font: inherit; font-size: 12.5px; font-weight: 620; padding: 8px 12px;
+                 border-radius: 9px; border: 0; cursor: pointer; color: #fff;
+                 background: var(--accent); transition: filter .15s, transform .06s; }
+  .acts button.ghost { background: #fff; color: var(--accent); border: 1px solid #ddd6fe; }
+  .acts button:hover { filter: brightness(1.07); }
+  .acts button:active { transform: translateY(1px); }
+  .acts button.done { background: var(--ok); color: #fff; border-color: var(--ok); }
+
+  .verdict { margin: 0; padding: 0 16px 14px; font-size: 12px; line-height: 1.45; color: var(--dim); }
+  .verdict b { color: var(--ink); font-weight: 650; }
+
+  #note { max-width: 1360px; margin: -40px auto 60px; padding: 0 28px; }
+  #note div { padding: 13px 15px; border-radius: 12px; background: #fffbeb; color: #92400e;
+              font-size: 13px; line-height: 1.5; display: none; }
+  #note div.on { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Destinos</h1>
+  <p>El mismo elemento emitido por los dos destinos del backend SVG. No es una preferencia
+  de estilo: <b>un archivo no puede servir a los dos</b>, y esta página es para ver el precio
+  de cada uno sin pegar nada en ningún lado.</p>
+  <p style="margin-top:8px"><b>Qué NO es esto.</b> Los tres paneles los pinta <i>este
+  navegador</i>. El de la derecha es «el archivo que se emite para Figma», <b>no lo que Figma
+  va a mostrar</b>: acá el interletraje se ve respetado porque quien dibuja es Chromium, y
+  está medido que Figma lo descarta siempre — por los dos canales y también con su extensión
+  oficial. Lo mismo con cualquier otra limitación suya. Para eso está
+  <code>FIGMA_FINDINGS.md</code>; esta página compara los dos archivos entre sí y te los deja
+  llevar con los botones.</p>
+</header>
+
+<div class="bar">
+  <label class="field"><span>Qué capturar</span>
+    <select id="pick"></select>
+  </label>
+  <label class="field"><span>Renderizar como</span>
+    <select id="renderer">
+      <option value="conforme">este navegador — un renderer conforme</option>
+      <option value="nomask">un renderer sin &lt;mask&gt;</option>
+    </select>
+  </label>
+  <div id="status">Cargando los fixtures…</div>
+</div>
+
+<div class="grid">
+  <section class="panel ref">
+    <h2>Vivo <small>la página</small></h2>
+    <div class="stage" id="s-live"></div>
+    <dl>
+      <dt>Qué es</dt><dd>el elemento real</dd>
+      <dt>Referencia</dt><dd>lo que hay que igualar</dd>
+    </dl>
+    <p class="verdict">La vara. Todo lo que se vea distinto a la izquierda o a la derecha
+    es algo que ese destino pierde.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Universal <small>target: 'universal'</small></h2>
+    <div class="stage" id="s-uni"></div>
+    <dl>
+      <dt>Peso</dt><dd id="m-uni-kb">—</dd>
+      <dt>Capas de texto</dt><dd id="m-uni-text">—</dd>
+      <dt>&lt;mask&gt;</dt><dd id="m-uni-mask">—</dd>
+      <dt>Diferencia</dt><dd id="m-uni-diff">—</dd>
+    </dl>
+    <div class="acts">
+      <button data-copy="uni">Copiar SVG</button>
+      <button data-save="uni" class="ghost">Descargar .svg</button>
+    </div>
+    <p class="verdict">El default. Texto editable y buscable, cero dependencia de
+    <code>&lt;mask&gt;</code>. <b>Figma no resuelve <code>fill="url(#…)"</code> sobre un
+    <code>&lt;text&gt;</code></b> y pinta esos bloques en negro.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Figma <small>target: 'figma'</small></h2>
+    <div class="stage" id="s-fig"></div>
+    <dl>
+      <dt>Peso</dt><dd id="m-fig-kb">—</dd>
+      <dt>Capas de texto</dt><dd id="m-fig-text">—</dd>
+      <dt>&lt;mask&gt;</dt><dd id="m-fig-mask">—</dd>
+      <dt>Diferencia</dt><dd id="m-fig-diff">—</dd>
+    </dl>
+    <div class="acts">
+      <button data-copy="fig">Copiar SVG</button>
+      <button data-save="fig" class="ghost">Descargar .svg</button>
+    </div>
+    <p class="verdict">Concesión al importador de SVG de Figma: el degradado sobre texto
+    llega, y ese bloque <b>deja de ser texto</b>. Para Figma conviene más el canal h2d,
+    que conserva las dos cosas.</p>
+  </section>
+</div>
+
+<div id="note"><div id="notebox"></div></div>
+
+<script type="module">
+const $ = (s) => document.querySelector(s)
+const status = $('#status')
+
+/** El markup tal cual sale del emisor, por destino. Lo que copian los botones. */
+const emitted = { uni: '', fig: '' }
+const LABEL = { uni: 'universal', fig: 'figma' }
+
+/**
+ * Los fixtures se leen de `challenges.html` en vez de duplicarlos: dos copias de una
+ * página de pruebas divergen, y la que diverge en silencio es la que miente.
+ */
+const doc = await fetch('/demo/challenges.html').then((r) => r.text())
+  .then((html) => new DOMParser().parseFromString(html, 'text/html'))
+
+const fixtures = [...doc.querySelectorAll('.fx')]
+const options = [...doc.querySelectorAll('#fx option')]
+const sel = $('#pick')
+for (const o of options) {
+  const opt = document.createElement('option')
+  opt.value = o.value
+  opt.textContent = o.textContent.trim()
+  sel.appendChild(opt)
+}
+
+// Los estilos de la página de fixtures, tal cual, en un <style> propio: sin ellos los
+// elementos llegan desnudos y lo que se compara no es lo que esa página pinta.
+const css = [...doc.querySelectorAll('style')].map((s) => s.textContent).join('\n')
+// Antes del <style> propio, no después: son reglas sobre etiquetas genéricas
+// (`body`, `h1`, `select`) y en empate de especificidad gana la última. Inyectadas al
+// final, la página de fixtures reescribía el layout de ESTA página.
+const styleTag = document.createElement('style')
+styleTag.textContent = css
+document.head.insertBefore(styleTag, document.head.querySelector('style'))
+
+const byId = new Map(fixtures.map((f) => [f.id, f]))
+
+/**
+ * Cuenta lo que decide el veredicto, PARSEANDO. Con expresiones regulares salían dos
+ * números falsos: `<mask` aparece dentro del comentario XML que el emisor escribe para
+ * describirse, y el `<text>` que vive DENTRO de una máscara no es una capa de texto —
+ * es la silueta que recorta el degradado, y es justo la que el destino Figma cambia por
+ * la capa editable que se quiere contar.
+ */
+const shapeOf = (svg) => {
+  const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml')
+  const root = parsed.documentElement
+  const inDefs = (n) => !!(n.closest && n.closest('defs, mask, clipPath, pattern'))
+  return {
+    kb: (svg.length / 1024).toFixed(1) + ' kB',
+    texts: [...root.querySelectorAll('text')].filter((n) => !inDefs(n)).length,
+    masks: root.querySelectorAll('mask').length,
+  }
+}
+
+/**
+ * Cómo se pinta lo emitido.
+ *
+ * Sólo dos, y ninguno pretende ser un destino: `conforme` es este navegador, y
+ * `nomask` le quita los `mask="url(#…)"` para ver qué queda cuando el renderer no
+ * implementa la propiedad — medido pegando el SVG con máscara en un editor genérico
+ * (mediamodifier, 2026-08-07): el titular con degradado sale como una barra de color
+ * sin texto. Simular a Figma entero se descartó: son demasiadas reglas y una
+ * simulación que se equivoque en una miente con la misma cara con la que acierta.
+ */
+const RENDERERS = {
+  conforme: (svg) => svg,
+  nomask: (svg) => svg.replace(/\s+mask="url\(#[^)]*\)"/g, ''),
+}
+
+/**
+ * Diferencia media por canal contra el raster del mismo elemento. Es indicativa y se
+ * dice: la medición dura, contra el elemento vivo pintado por el navegador y con
+ * tolerancias, es `npm run test:vector`. Acá sirve para ordenar los dos destinos entre
+ * sí, que es la pregunta que esta página contesta.
+ */
+async function meanDiff (svgMarkup, refCanvas) {
+  const img = new Image()
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgMarkup)
+  try { await img.decode() } catch { return null }
+  const c = document.createElement('canvas')
+  c.width = refCanvas.width; c.height = refCanvas.height
+  const ctx = c.getContext('2d', { willReadFrequently: true })
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height)
+  ctx.drawImage(img, 0, 0, c.width, c.height)
+  const a = ctx.getImageData(0, 0, c.width, c.height).data
+  const b = refCanvas.getContext('2d', { willReadFrequently: true })
+    .getImageData(0, 0, c.width, c.height).data
+  let sum = 0
+  for (let i = 0; i < a.length; i += 4) {
+    sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2])
+  }
+  return sum / (a.length / 4 * 3)
+}
+
+async function run () {
+  const id = sel.value
+  const source = byId.get(id)
+  if (!source) return
+  status.textContent = 'Vectorizando por los dos destinos…'
+
+  // El elemento vivo, montado acá para que sea el MISMO nodo que se captura.
+  const live = source.cloneNode(true)
+  live.classList.add('on')
+  live.style.margin = '0'
+  $('#s-live').replaceChildren(live)
+  const el = live.firstElementChild
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+  const [{ snapdom }, mod] = await Promise.all([
+    import('@zumer/snapdom'),
+    import('@zumer/snapdom-vector'),
+  ])
+  const result = await snapdom(el, { plugins: [mod.vector()] })
+  const svd = await result.toVector({ silent: true })
+  const emit = (opts) => {
+    const out = mod.svdToSvg(svd, opts)
+    return typeof out === 'string' ? out : String(out.svg ?? out)
+  }
+  let uni = emit({ textGradientMask: false, exactShadows: true })
+  let fig = emit({ textGradientMask: true, exactShadows: false })
+
+  const shapeUni = shapeOf(uni)
+  const shapeFig = shapeOf(fig)
+
+  // Lo que se COPIA es siempre el archivo que el emisor produce. La simulación de un
+  // renderer sin <mask> es una vista, no una salida: dejar que se copie sería entregar
+  // un archivo que este motor nunca emite, y esta página existe para lo contrario.
+  emitted.uni = uni
+  emitted.fig = fig
+
+  const mode = $('#renderer').value
+  const render = RENDERERS[mode] || RENDERERS.conforme
+  uni = render(uni)
+  fig = render(fig)
+
+  $('#s-uni').innerHTML = uni
+  $('#s-fig').innerHTML = fig
+  // Los tres escenarios a la MISMA escala, y la escala es la que hace entrar al más
+  // ancho: comparar dos renders a tamaños distintos no compara nada.
+  fitAll()
+
+  // La referencia contra la que se ordenan los dos: el raster de snapdom del mismo
+  // elemento, que es el navegador pintando el mismo clon.
+  let ref = null
+  try { ref = await result.toCanvas() } catch { ref = null }
+
+  const set = (k, s, diff) => {
+    $(`#m-${k}-kb`).textContent = s.kb
+    $(`#m-${k}-text`).textContent = s.texts + (s.texts ? ' editables' : ' — ninguna')
+    $(`#m-${k}-text`).className = s.texts ? 'good' : 'bad'
+    $(`#m-${k}-mask`).textContent = s.masks || 'ninguna'
+    $(`#m-${k}-mask`).className = s.masks && mode !== 'conforme' ? 'bad' : ''
+    $(`#m-${k}-diff`).textContent = diff === null ? '—' : diff.toFixed(2)
+  }
+  set('uni', shapeUni, ref ? await meanDiff(uni, ref) : null)
+  set('fig', shapeFig, ref ? await meanDiff(fig, ref) : null)
+
+  const box = $('#notebox')
+  if (mode === 'nomask') {
+    box.parentElement.querySelector('div').classList.add('on')
+    box.textContent = shapeFig.masks
+      ? `Este fixture usa ${shapeFig.masks} <mask> en el destino Figma y ninguna en el universal. ` +
+        'Eso es lo que se ve a la derecha: donde el destino Figma pone un rectángulo enmascarado ' +
+        'por los glifos, un renderer que no implementa <mask> pinta el rectángulo entero y el ' +
+        'texto no aparece. El universal no depende de eso.'
+      : 'Este fixture no usa <mask> en ninguno de los dos destinos, así que el interruptor no ' +
+        'cambia nada. Probá con «6 · Texto difícil», que tiene un degradado sobre texto.'
+  } else {
+    box.parentElement.querySelector('div').classList.remove('on')
+  }
+
+  status.textContent = `${id} · universal ${shapeUni.kb} con ${shapeUni.texts} capas de texto · ` +
+    `Figma ${shapeFig.kb} con ${shapeFig.texts}. La diferencia es indicativa; la medición ` +
+    'con tolerancias es `npm run test:vector`.'
+}
+
+/**
+ * Encoge los tres escenarios por igual hasta que el más ancho entra en su panel. Sin
+ * esto el contenido se recorta por la izquierda y lo que se ve no es lo que se emitió.
+ */
+function fitAll () {
+  const stages = ['#s-live', '#s-uni', '#s-fig'].map((s) => $(s))
+  let scale = 1
+  for (const stage of stages) {
+    const child = stage.firstElementChild
+    if (!child) continue
+    child.style.transform = 'none'
+    const avail = stage.clientWidth - 28
+    const w = child.getBoundingClientRect().width
+    if (w > 0) scale = Math.min(scale, avail / w)
+  }
+  scale = Math.max(0.2, Math.min(1, scale))
+  for (const stage of stages) {
+    const child = stage.firstElementChild
+    if (child) child.style.transform = `scale(${scale.toFixed(4)})`
+  }
+}
+addEventListener('resize', fitAll)
+
+for (const btn of document.querySelectorAll('.acts button')) {
+  btn.addEventListener('click', async () => {
+    const key = btn.dataset.copy || btn.dataset.save
+    const svg = emitted[key]
+    if (!svg) { status.textContent = 'Todavía no hay nada emitido para ese destino.'; return }
+    const name = `${sel.value}-${LABEL[key]}.svg`
+    if (btn.dataset.save) {
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+      const a = document.createElement('a')
+      a.href = url; a.download = name; a.click()
+      URL.revokeObjectURL(url)
+      status.textContent = `Descargado ${name} — ${(svg.length / 1024).toFixed(1)} kB, el archivo que emite el motor.`
+      return
+    }
+    // Texto plano y no un Blob `image/svg+xml`: el portapapeles de Chrome acarrea una
+    // lista corta de tipos MIME y ése no está en ella. Figma olfatea el texto.
+    try { await navigator.clipboard.writeText(svg) } catch (e) {
+      status.textContent = 'El portapapeles rechazó la escritura: ' + (e && e.message)
+      return
+    }
+    btn.classList.add('done')
+    const was = btn.textContent
+    btn.textContent = 'Copiado'
+    setTimeout(() => { btn.classList.remove('done'); btn.textContent = was }, 1600)
+    status.textContent = `Copiado el SVG ${LABEL[key]} de ${sel.value} — ${(svg.length / 1024).toFixed(1)} kB. ` +
+      ($('#renderer').value !== 'conforme'
+        ? 'Es el archivo REAL: el selector de renderer sólo cambia lo que se pinta acá.'
+        : 'Pegalo donde quieras y comprobá que es lo mismo que se ve.')
+  })
+}
+
+sel.addEventListener('change', run)
+$('#renderer').addEventListener('change', run)
+sel.value = 'fx-type'
+await run()
+</script>
+</body>
+</html>

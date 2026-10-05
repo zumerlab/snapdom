@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: vector</title>
+<!--
+  Maps `@zumer/snapdom` at `/snapdom-v3/`, and this comment is why.
+
+  The vector engine is a snapdom PLUGIN — `src/adapters/snapdom.js`
+  gets its clone from a render hook — and the clone it gets has to be v3's. A 2.x
+  build does run the hook and does hand over a clone, so this is not about the
+  plugin system: it is about what is IN the clone. Measured against 2.23.2 the
+  vector suite gives 683/693, and the ten failures are all fidelity — the shadow-DOM
+  fixture drifts 50px and reports an upgraded custom element, and an image fixture
+  loses 12KB of inlined asset.
+
+  So it captures through `/snapdom-v3/`. The other mount, `/snapdom-v2/`, is for
+  pages that go through a snapdom EXPORT rather than a render hook — it reads a
+  contract v3 does not publish, and `demo/capture-check.html` is the one page left
+  here that wants it since the PDF product moved to its own repository. The two
+  lines are two mounts (`test/serve.mjs`) precisely so no page has to choose
+  between them by accident. Everything else here is deliberately ordinary:
+  prose long enough to paginate, a link, an inline code span and a gradient box, so
+  the vector path has something of each kind to draw.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs",
+    "@zumer/snapdom-vector": "/src/index.js",
+    "@zumer/snapdom-vector/": "/src/",
+    "@zumer/svd": "/svd/index.js"
+  }
+}
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 600px; background: #fff; padding: 24px; color: #111;
+            font: 16px/1.6 Arial, Helvetica, sans-serif; }
+  p { margin: 0 0 12px; }
+  a { color: #b4530a; }
+  code { font: 13px/1 "SFMono-Regular", Menlo, monospace; background: #f1f0ee;
+         padding: 2px 5px; border-radius: 4px; }
+  #swatch { height: 60px; border-radius: 12px; margin: 16px 0;
+            background: linear-gradient(120deg, #4f46e5, #06b6d4 60%, #ec4899); }
+</style>
+</head>
+<body>
+<div id="target">
+  <div id="swatch"></div>
+  <p id="lead">Un párrafo con un <code>inline-code</code> y un
+    <a href="https://snapdom.dev/docs">enlace real</a> para que el emisor tenga
+    una anotación que colocar.</p>
+  <p data-probe="prose"></p>
+</div>
+<script type="module">
+  window.__words = Array.from({ length: 400 }, (_, i) => `W${String(i).padStart(3, '0')}`)
+  document.querySelector('[data-probe="prose"]').textContent = window.__words.join(' ')
+  window.__ready = true
+</script>
+</body>
+</html>

@@ -2344,7 +2344,7 @@ export default function pdf(defaults = {}) {
           for (const gone of ['mode', 'vector', 'scale', 'background', 'filename', 'compress']) {
             if (gone in opts) {
               report(`\`${gone}\` is not a PDF option — see the reference at ` +
-                'https://snapdom.dev/capabilities/pdf/. Ignored.')
+                'https://snapdom.dev/pro/pdf/docs.html. Ignored.')
             }
           }
 

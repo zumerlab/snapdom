@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Sonda del híbrido · qué sobrevive al canal h2d</title>
+<script type="importmap">
+{
+  "imports": {
+    "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs",
+    "@zumer/snapdom-vector": "/src/index.js",
+    "@zumer/snapdom-vector/": "/src/",
+    "@zumer/svd": "/svd/index.js"
+  }
+}
+</script>
+<style>
+  :root {
+    --ink: #0f172a; --dim: #475569; --faint: #94a3b8; --line: #e2e8f0;
+    --accent: #7c3aed; --ok: #059669; --bad: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f8fafc; color: var(--ink);
+         font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+         -webkit-font-smoothing: antialiased; }
+
+  header { max-width: 1120px; margin: 0 auto; padding: 40px 28px 0; }
+  h1 { margin: 0 0 6px; font-size: 27px; font-weight: 760; letter-spacing: -.025em; }
+  header p { margin: 0; max-width: 68ch; color: var(--dim); font-size: 14.5px; }
+  header p b { color: var(--ink); font-weight: 650; }
+
+  .bar { max-width: 1120px; margin: 22px auto 0; padding: 0 28px;
+         display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; font-size: 14.5px; font-weight: 650; padding: 12px 20px;
+           color: #fff; background: var(--accent); border: 0; border-radius: 11px;
+           cursor: pointer; transition: filter .15s, transform .06s; }
+  button:hover:not(:disabled) { filter: brightness(1.08); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .5; cursor: progress; }
+  button.done { background: var(--ok); }
+  .toggle { display: inline-flex; gap: 7px; align-items: center; font-size: 13.5px;
+            color: var(--dim); cursor: pointer; user-select: none; }
+  .toggle input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+  #status { font-size: 13.5px; color: var(--dim); min-height: 1.5em; flex-basis: 100%; }
+  #status.err { color: var(--bad); }
+
+  /* El sujeto de la captura. Es UN elemento para que los seis casos viajen en un
+     solo payload: la pregunta se contesta con un pegado, no con seis. */
+  #probe { max-width: 1120px; margin: 26px auto 60px; padding: 26px 28px 30px;
+           background: #fff; border: 1px solid var(--line); border-radius: 18px; }
+  #probe > h2 { margin: 0 0 3px; font-size: 17px; font-weight: 700; letter-spacing: -.015em; }
+  #probe > .sub { margin: 0 0 24px; font-size: 13px; color: var(--faint); }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+  .case { border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 14px;
+          background: #fff; }
+  .case > .hd { display: flex; gap: 9px; align-items: baseline; margin-bottom: 3px; }
+  .case .badge { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6px;
+                 background: #ede9fe; color: #5b21b6; font-size: 12px; font-weight: 750;
+                 text-align: center; letter-spacing: .02em; }
+  .case h3 { margin: 0; font-size: 14px; font-weight: 680; letter-spacing: -.01em; }
+  .case .css { margin: 0 0 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+               font-size: 11.5px; color: var(--faint); }
+
+  /* Escenario de tamaño fijo: si un caso llega vacío, el hueco se ve. */
+  .stage { height: 132px; display: grid; place-items: center; border-radius: 10px;
+           background: #f1f5f9; overflow: hidden; }
+
+  .case .look { margin: 11px 0 0; font-size: 12px; line-height: 1.45; color: var(--dim); }
+  .case .look b { color: var(--ink); font-weight: 650; }
+
+  .case.key { border-color: #c4b5fd; box-shadow: 0 0 0 3px #f5f3ff; }
+  .case.key .badge { background: var(--accent); color: #fff; }
+
+  /* ── especímenes ── */
+  .sp-conic { width: 104px; height: 104px; border-radius: 50%;
+              background: conic-gradient(from 20deg, #7c3aed, #06b6d4, #f59e0b, #7c3aed); }
+  .sp-fx { position: relative; width: 130px; height: 96px; }
+  .sp-fx i { position: absolute; width: 68px; height: 68px; border-radius: 18px; display: block; }
+  .sp-fx .a { left: 0; top: 12px; background: #f43f5e; filter: blur(1px) drop-shadow(0 8px 14px rgba(244,63,94,.55)); }
+  .sp-fx .b { right: 0; top: 12px; background: #22d3ee; mix-blend-mode: multiply; }
+  .sp-clip { width: 112px; height: 112px;
+             background: linear-gradient(135deg, #6366f1, #ec4899);
+             clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+  .sp-tf { width: 96px; height: 68px; border-radius: 12px;
+           background: linear-gradient(135deg, #0ea5e9, #14b8a6);
+           transform: rotate(-11deg) skewX(-13deg) scale(1.06); }
+
+  #readout { max-width: 1120px; margin: -34px auto 60px; padding: 0 28px; }
+  #readout dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0;
+                font-size: 13px; }
+  #readout dt { color: var(--faint); }
+  #readout dd { margin: 0; font-variant-numeric: tabular-nums; }
+  #readout .none { color: var(--faint); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sonda del híbrido</h1>
+  <p>Seis casos que el canal h2d <b>no</b> puede expresar con estilos computados. Copiá,
+  pegá una vez en Figma y leé el veredicto adentro: cada caso lleva su etiqueta como texto,
+  así que sobrevive aunque el dibujo no. El caso <b>A</b> es el que decide si el híbrido
+  se puede construir.</p>
+</header>
+
+<div class="bar">
+  <button id="copy">Copiar por el canal h2d</button>
+  <label class="toggle"><input type="checkbox" id="svgasset" checked>
+    <span><code>&lt;svg&gt;</code> en línea como asset</span></label>
+  <label class="toggle"><input type="checkbox" id="vecfallback" checked>
+    <span>pintura vectorial del SVD</span></label>
+  <div id="status">El <code>text/plain</code> va vacío a propósito: no se puede pegar en un editor de texto, sólo en Figma.</div>
+</div>
+
+<section id="probe">
+  <h2>Sonda del híbrido — seis casos</h2>
+  <p class="sub">snapdom-pro · canal h2d · cada tarjeta dice qué mirar en Figma</p>
+
+  <div class="grid">
+
+    <div class="case key">
+      <div class="hd"><span class="badge">A</span><h3>SVG como asset</h3></div>
+      <p class="css">&lt;img src="data:image/svg+xml,…"&gt;</p>
+      <div class="stage"><img id="sp-img" width="104" height="104" alt="Rayo en degradado"></div>
+      <p class="look"><b>El caso decisivo.</b> Entrá a la capa: si adentro hay
+      <b>paths</b>, Figma vectoriza los assets SVG y el híbrido se puede construir.
+      Si es una sola capa con relleno de imagen, rasterizó.</p>
+    </div>
+
+    <div class="case">
+      <div class="hd"><span class="badge">B</span><h3>SVG en línea</h3></div>
+      <p class="css">&lt;svg&gt;&lt;path&gt;…</p>
+      <div class="stage" id="sp-inline"></div>
+      <p class="look">La misma forma que A, escrita en el documento. Llegaba como
+      <b>frame vacío</b> — un <code>path</code> no tiene caja CSS que el canal pueda
+      describir. Arreglado con el mecanismo que A demostró: ahora se serializa a data URI
+      y viaja como asset. <b>Debería verse el rayo, y ser vectores.</b></p>
+    </div>
+
+    <div class="case">
+      <div class="hd"><span class="badge">C</span><h3>conic-gradient</h3></div>
+      <p class="css">background: conic-gradient(…)</p>
+      <div class="stage"><div class="sp-conic"></div></div>
+      <p class="look">Figma no tiene degradado cónico, y su extensión oficial también lo
+      pierde. Ahora lo <b>dibuja nuestro emisor SVD</b> y viaja como asset vectorial:
+      la rampa se desenrolla en 128 cuñas. <b>Debería verse la rueda.</b></p>
+    </div>
+
+    <div class="case">
+      <div class="hd"><span class="badge">D</span><h3>filter y blend</h3></div>
+      <p class="css">filter: blur + drop-shadow · mix-blend-mode</p>
+      <div class="stage"><div class="sp-fx"><i class="a"></i><i class="b"></i></div></div>
+      <p class="look">Dos destinos distintos a propósito. El rojo tiene <code>filter</code>:
+      lo redibuja el SVD, <b>debería llegar con su blur y su sombra</b>. El celeste tiene
+      <code>mix-blend-mode</code>, que depende de lo que hay <b>debajo</b>: un asset por nodo
+      no tiene fondo, así que no se puede dibujar y se declara. Llega plano.</p>
+    </div>
+
+    <div class="case">
+      <div class="hd"><span class="badge">E</span><h3>clip-path</h3></div>
+      <p class="css">clip-path: polygon(…)</p>
+      <div class="stage"><div class="sp-clip"></div></div>
+      <p class="look">Predicción: llega el <b>rectángulo entero</b> con su degradado,
+      sin recortar — el pentágono se pierde.</p>
+    </div>
+
+    <div class="case">
+      <div class="hd"><span class="badge">F</span><h3>transform</h3></div>
+      <p class="css">rotate · skewX · scale</p>
+      <div class="stage"><div class="sp-tf"></div></div>
+      <p class="look">Este no pasa por el híbrido: <code>transform</code> <b>sí</b> viaja
+      en el canal, con su matriz exacta. Queda mirar si llega bien inclinado — la sospecha
+      es que mandamos la caja ya rotada en vez de la de layout.</p>
+    </div>
+
+  </div>
+</section>
+
+<div id="readout">
+  <dl>
+    <dt>Capas</dt><dd id="m-nodes" class="none">—</dd>
+    <dt>Assets</dt><dd id="m-assets" class="none">—</dd>
+    <dt>Peso</dt><dd id="m-size" class="none">—</dd>
+  </dl>
+</div>
+
+<script type="module">
+/**
+ * La misma marca en los dos casos que se comparan: A la lleva como asset
+ * `image/svg+xml`, B la lleva escrita en el documento. Se generan del mismo string
+ * para que la diferencia entre las dos capas pegadas sea SÓLO el transporte.
+ */
+const MARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 104 104" width="104" height="104">
+  <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#06b6d4"/>
+  </linearGradient></defs>
+  <circle cx="52" cy="52" r="50" fill="url(#hg)"/>
+  <path d="M58 16 L30 58 h18 l-6 30 28-42 H52 z" fill="#fff"/>
+</svg>`
+
+document.querySelector('#sp-img').src =
+  'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(MARK)
+document.querySelector('#sp-inline').innerHTML = MARK.replace('id="hg"', 'id="hg2"')
+  .replace('url(#hg)', 'url(#hg2)')
+
+const $ = (s) => document.querySelector(s)
+const btn = $('#copy')
+const status = $('#status')
+
+btn.addEventListener('click', async () => {
+  btn.disabled = true
+  btn.classList.remove('done')
+  status.className = ''
+  status.textContent = 'Capturando…'
+  try {
+    const [{ snapdom }, mod] = await Promise.all([
+      import('@zumer/snapdom'),
+      import('@zumer/snapdom-vector'),
+    ])
+    const t0 = performance.now()
+    const result = await snapdom($('#probe'), { plugins: [mod.vector()] })
+    const h2d = await result.toVectorFigmaClipboard({
+      silent: true,
+      inlineSvgAsAsset: $('#svgasset').checked,
+      vectorFallback: $('#vecfallback').checked,
+    })
+
+    // El export NO escribe el portapapeles: devuelve el `ClipboardItem` y la
+    // escritura es del llamador. Y va por `write`, no `writeText`, porque el canal
+    // se dispara por el sobre en `text/html` y el `text/plain` viaja VACÍO a
+    // propósito — un `text/plain` con contenido haría que Figma pegue texto.
+    await navigator.clipboard.write([h2d.clipboardItem()])
+    const ms = Math.round(performance.now() - t0)
+
+    const doc = h2d.payload[0]
+    let nodes = 0
+    ;(function walk (n) { if (!n || n.nodeType !== 1) return; nodes++; for (const c of n.childNodes || []) walk(c) })(doc.root)
+    const types = Object.values(doc.assets).map((a) => a.blob.type)
+    const svgAssets = types.filter((t) => t === 'image/svg+xml').length
+
+    for (const id of ['#m-nodes', '#m-assets', '#m-size']) $(id).classList.remove('none')
+    $('#m-nodes').textContent = nodes + ' elementos'
+    const drawn = h2d.stats.vectorPaint || 0
+    $('#m-assets').textContent = types.length
+      ? `${types.length} · ${svgAssets} vectoriales` +
+        (drawn ? ` · ${drawn} redibujado(s) por el SVD (C, D-rojo, E)` : ' · sin pintura del SVD')
+      : 'ninguno — el caso A no viaja como asset'
+    $('#m-size').textContent = Math.round(h2d.bytes / 1024) + ' kB · ' + ms + ' ms'
+
+    btn.classList.add('done')
+    btn.textContent = 'Copiado — pegá en Figma con ⌘V'
+    status.textContent = svgAssets
+      ? 'Listo. En Figma entrá a las capas de A y B: si adentro hay paths, vectorizó las dos.'
+      : 'Listo, pero el caso A no salió como asset SVG. Avisame antes de sacar conclusiones.'
+  } catch (e) {
+    status.className = 'err'
+    status.textContent = 'Falló: ' + (e && e.message || e)
+  } finally {
+    btn.disabled = false
+  }
+})
+</script>
+</body>
+</html>

@@ -1,0 +1,911 @@
+<!--
+  SnapDOM Vector: Figma plugin, UI half.
+
+  All the DOM lives here: the sandbox in code.js has no document, no file
+  reader and no fetch, so reading the .svd and rendering the preflight are this
+  file's job. It talks to the sandbox over postMessage and holds no state the
+  sandbox needs.
+
+  The preflight is not a loading screen. It is the product: the user sees every
+  font that will be substituted, with the node and character counts that make
+  the substitution acceptable or not, and every degradation the engine
+  recorded — before a single layer exists in their file.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --bg-sunken: #f5f5f5;
+    --bg-raised: #ffffff;
+    --fg: #1e1e1e;
+    --fg-muted: #6b6b6b;
+    --fg-faint: #9b9b9b;
+    --border: #e5e5e5;
+    --border-strong: #d0d0d0;
+    --accent: #0d99ff;
+    --accent-fg: #ffffff;
+    --ok: #14ae5c;
+    --warn: #bf6a02;
+    --warn-bg: #fff4e5;
+    --error: #dc3412;
+    --error-bg: #ffefec;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #2c2c2c;
+      --bg-sunken: #262626;
+      --bg-raised: #383838;
+      --fg: #ededed;
+      --fg-muted: #a5a5a5;
+      --fg-faint: #7a7a7a;
+      --border: #444444;
+      --border-strong: #565656;
+      --accent: #0d99ff;
+      --accent-fg: #ffffff;
+      --ok: #36c07e;
+      --warn: #e5a13a;
+      --warn-bg: #3a2f1c;
+      --error: #ff8672;
+      --error-bg: #3b2320;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: Inter, "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { display: flex; flex-direction: column; height: 100%; }
+  .screen { display: none; flex-direction: column; min-height: 0; flex: 1; }
+  .screen[data-active] { display: flex; }
+
+  .body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px 16px 16px;
+  }
+  /* The input screen fills its height instead of scrolling: the paste box is
+     the transport that is verified to work everywhere, so it gets the room. */
+  .body.stretch { display: flex; flex-direction: column; overflow: hidden; }
+  .body.stretch > * { flex: none; }
+  .body.stretch textarea { flex: 1; }
+  .body.stretch #input-error:not(:empty) { margin-top: 10px; }
+
+  .footer {
+    flex: none;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .footer .spacer { flex: 1; }
+
+  h1 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0 0 2px;
+  }
+  h2 {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    margin: 18px 0 8px;
+  }
+  p { margin: 0 0 8px; color: var(--fg-muted); }
+
+  code, .mono {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 10px;
+  }
+
+  /* ——— controls ——— */
+
+  button {
+    font: inherit;
+    font-weight: 500;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-raised);
+    color: var(--fg);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+  }
+  button.ghost { border-color: transparent; background: transparent; color: var(--fg-muted); }
+  button.ghost:hover:not(:disabled) { color: var(--fg); background: var(--bg-sunken); }
+
+  select, input[type="text"] {
+    font: inherit;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    padding: 3px 6px;
+    max-width: 100%;
+  }
+  select:focus, input:focus, textarea:focus {
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+
+  textarea {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 10px;
+    width: 100%;
+    flex: 1;
+    min-height: 84px;
+    resize: none;
+    background: var(--bg-sunken);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+  }
+
+  /* ——— input screen ——— */
+
+  .dropzone {
+    flex: none;
+    border: 1px dashed var(--border-strong);
+    border-radius: 8px;
+    padding: 18px 16px;
+    text-align: center;
+    background: var(--bg-sunken);
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .dropzone.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-sunken)); }
+  .dropzone strong { display: block; font-weight: 600; margin-bottom: 2px; }
+  .dropzone span { color: var(--fg-muted); }
+  .dropzone button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font-weight: 500;
+    text-decoration: underline;
+  }
+
+  .or {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 8px;
+    color: var(--fg-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  /* ——— preflight ——— */
+
+  .capture {
+    background: var(--bg-sunken);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+  }
+  .capture .url {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+    color: var(--fg-muted);
+  }
+
+  .stats { display: flex; gap: 6px; margin: 10px 0 2px; }
+  .stat {
+    flex: 1;
+    background: var(--bg-sunken);
+    border-radius: 6px;
+    padding: 7px 9px;
+    min-width: 0;
+  }
+  .stat b { display: block; font-size: 15px; font-weight: 600; line-height: 1.2; }
+  .stat.flagged b { color: var(--warn); }
+  .stat span {
+    display: block;
+    color: var(--fg-muted);
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 10px;
+    margin-bottom: 6px;
+    background: var(--bg-raised);
+  }
+  .card.attention { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
+
+  .row { display: flex; align-items: baseline; gap: 6px; }
+  .row .grow { flex: 1; min-width: 0; }
+  .name { font-weight: 600; }
+  .meta { color: var(--fg-muted); font-size: 10px; }
+
+  .pill {
+    flex: none;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+  }
+  .pill.ok { color: var(--ok); }
+  .pill.warn { color: var(--warn); }
+  .pill.error { color: var(--error); }
+  .pill.info { color: var(--fg-muted); }
+
+  .resolution {
+    margin-top: 5px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    color: var(--fg-muted);
+  }
+  .resolution b { color: var(--fg); font-weight: 500; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
+  .actions label { color: var(--fg-muted); }
+  .mapper { display: none; gap: 6px; width: 100%; }
+  .mapper[data-open] { display: flex; }
+  .mapper input { flex: 1; min-width: 0; }
+  .mapper select { flex: 0 0 38%; }
+
+  /* Context, not an alarm: the pill already says the severity, so these read as
+     footnotes rather than competing with it for attention. */
+  .note {
+    margin-top: 7px;
+    padding-left: 7px;
+    border-left: 2px solid color-mix(in srgb, var(--warn) 55%, transparent);
+    color: var(--fg-muted);
+    font-size: 10px;
+  }
+  .note + .note { margin-top: 5px; }
+  .note a { color: var(--fg-muted); }
+
+  details.diag { border-bottom: 1px solid var(--border); }
+  details.diag:first-of-type { border-top: 1px solid var(--border); }
+  details.diag > summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 2px;
+    cursor: pointer;
+    list-style: none;
+  }
+  details.diag > summary::-webkit-details-marker { display: none; }
+  details.diag > summary::before {
+    content: "▸";
+    color: var(--fg-muted);
+    font-size: 9px;
+    width: 8px;
+  }
+  details.diag[open] > summary::before { content: "▾"; }
+  details.diag .count { margin-left: auto; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+  .samples { padding: 0 2px 8px 16px; margin: 0; list-style: none; }
+  .samples li { color: var(--fg-muted); padding: 2px 0; border-top: 1px solid var(--border); }
+  .samples li:first-child { border-top: none; }
+
+  .empty { color: var(--fg-muted); padding: 6px 2px; }
+
+  /* ——— progress / done / error ——— */
+
+  .center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 24px;
+    gap: 10px;
+  }
+  .track { height: 4px; background: var(--bg-sunken); border-radius: 999px; overflow: hidden; }
+  .track > .bar { height: 100%; width: 0; background: var(--accent); transition: width 0.15s ease-out; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--fg-muted);
+  }
+  .progress-label span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .progress-label span:last-child { flex: none; font-variant-numeric: tabular-nums; }
+
+  .banner {
+    border-radius: 6px;
+    padding: 9px 11px;
+    margin-bottom: 10px;
+  }
+  .banner.error { background: var(--error-bg); color: var(--error); }
+  .banner.warn { background: var(--warn-bg); color: var(--warn); }
+  .banner strong { display: block; margin-bottom: 2px; }
+  .banner ul { margin: 4px 0 0; padding-left: 16px; }
+  .banner li { margin: 2px 0; }
+</style>
+
+<div class="app">
+
+  <!-- ——— 1. input ——— -->
+  <section class="screen" id="screen-input" data-active>
+    <div class="body stretch">
+      <h1>Import a snapdom capture</h1>
+      <p>Drop the <b>Figma payload</b>: the output of <code>svdToFigma</code>, not the raw
+        <code>.svd.json</code>. Nothing leaves this machine; the plugin has no network access at all.</p>
+
+      <div class="dropzone" id="dropzone">
+        <strong>Drop a .figma.json payload here</strong>
+        <span>or <button type="button" id="pick">browse…</button></span>
+        <input type="file" id="file" accept=".svd,.json,application/json" hidden>
+      </div>
+
+      <div class="or">or paste</div>
+      <textarea id="paste" autofocus spellcheck="false"
+        placeholder="Paste the Figma payload JSON here. Pasting is the transport verified to work in both Figma desktop and Figma web."></textarea>
+
+      <div id="input-error"></div>
+    </div>
+    <div class="footer">
+      <span class="meta" id="input-hint">Waiting for a document</span>
+      <span class="spacer"></span>
+      <button type="button" class="primary" id="analyze" disabled>Check it</button>
+    </div>
+  </section>
+
+  <!-- ——— 2. preflight ——— -->
+  <section class="screen" id="screen-preflight">
+    <div class="body">
+      <h1>Preflight</h1>
+      <p>What this document will and will not reproduce, before anything is created.</p>
+
+      <div class="capture" id="capture"></div>
+
+      <div class="stats" id="stats"></div>
+
+      <h2>Fonts</h2>
+      <div id="fonts"></div>
+
+      <h2>Declared degradations</h2>
+      <div id="diagnostics"></div>
+    </div>
+    <div class="footer">
+      <button type="button" class="ghost" id="back">Back</button>
+      <span class="spacer"></span>
+      <button type="button" class="primary" id="build">Create layers</button>
+    </div>
+  </section>
+
+  <!-- ——— 3. progress ——— -->
+  <section class="screen" id="screen-progress">
+    <div class="center">
+      <h1>Creating layers</h1>
+      <div class="track"><div class="bar" id="fill"></div></div>
+      <div class="progress-label">
+        <span id="progress-name">Loading fonts…</span>
+        <span id="progress-count"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ——— 4. done ——— -->
+  <section class="screen" id="screen-done">
+    <div class="body">
+      <h1 id="done-title">Done</h1>
+      <p id="done-sub"></p>
+      <h2>What was approximated</h2>
+      <div id="warnings"></div>
+    </div>
+    <div class="footer">
+      <button type="button" class="ghost" id="again">Import another</button>
+      <span class="spacer"></span>
+      <button type="button" class="primary" id="close">Close</button>
+    </div>
+  </section>
+
+  <!-- ——— 5. error ——— -->
+  <section class="screen" id="screen-error">
+    <div class="body">
+      <h1>Rejected</h1>
+      <p>This document was not changed. The plugin refuses documents it cannot read exactly — it never guesses.</p>
+      <div class="banner error" id="error-body"></div>
+    </div>
+    <div class="footer">
+      <span class="spacer"></span>
+      <button type="button" class="primary" id="error-back">Back</button>
+    </div>
+  </section>
+
+</div>
+
+<datalist id="families"></datalist>
+
+<script>
+'use strict'
+
+// ——— DOM helpers. Everything is built with textContent: a selector, a font
+// name or a diagnostic reason is untrusted text from a captured page. ———
+
+const $ = (id) => document.getElementById(id)
+
+function el (tag, className, text) {
+  const node = document.createElement(tag)
+  if (className) node.className = className
+  if (text !== undefined && text !== null) node.textContent = String(text)
+  return node
+}
+
+function clear (node) {
+  while (node.firstChild) node.removeChild(node.firstChild)
+}
+
+function show (id) {
+  const screens = document.querySelectorAll('.screen')
+  for (let i = 0; i < screens.length; i++) screens[i].removeAttribute('data-active')
+  $(id).setAttribute('data-active', '')
+}
+
+function fmt (n) {
+  if (!isFinite(n)) return '—'
+  if (n < 1000) return String(n)
+  if (n < 100000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  return `${Math.round(n / 1000)}k`
+}
+
+const plural = (n, one, many) => `${fmt(n)} ${n === 1 ? one : many}`
+
+const post = (msg) => parent.postMessage({ pluginMessage: msg }, '*')
+
+// ——— state ———
+
+let payload = null       // the parsed document, kept so "Back" costs nothing
+let preflightData = null
+let decisions = {}       // fontKey -> {action, family, style}
+let pendingStyleSelect = null
+
+// ——— 1. input ———
+
+function setSource (text, label) {
+  const trimmed = String(text || '').trim()
+  const errorBox = $('input-error')
+  clear(errorBox)
+  if (!trimmed) {
+    payload = null
+    $('analyze').disabled = true
+    $('input-hint').textContent = 'Waiting for a document'
+    return
+  }
+  try {
+    payload = JSON.parse(trimmed)
+  } catch (err) {
+    payload = null
+    $('analyze').disabled = true
+    $('input-hint').textContent = 'Not valid JSON'
+    const banner = el('div', 'banner error')
+    banner.appendChild(el('strong', null, 'That is not valid JSON.'))
+    banner.appendChild(el('div', 'mono', String(err && err.message || err)))
+    errorBox.appendChild(banner)
+    return
+  }
+  $('analyze').disabled = false
+  const kb = Math.round(trimmed.length / 1024)
+  $('input-hint').textContent = `${label} · ${kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} kB`}`
+}
+
+function readFile (file) {
+  const reader = new FileReader()
+  $('input-hint').textContent = `Reading ${file.name}…`
+  reader.onload = () => {
+    $('paste').value = ''
+    setSource(reader.result, file.name)
+  }
+  reader.onerror = () => {
+    $('input-hint').textContent = `Could not read ${file.name}`
+  }
+  reader.readAsText(file)
+}
+
+$('pick').addEventListener('click', () => $('file').click())
+$('file').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) readFile(e.target.files[0])
+})
+$('paste').addEventListener('input', (e) => setSource(e.target.value, 'Pasted'))
+
+const dropzone = $('dropzone')
+for (const type of ['dragenter', 'dragover']) {
+  dropzone.addEventListener(type, (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dropzone.classList.add('over')
+  })
+}
+for (const type of ['dragleave', 'drop']) {
+  dropzone.addEventListener(type, (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dropzone.classList.remove('over')
+  })
+}
+dropzone.addEventListener('drop', (e) => {
+  const files = e.dataTransfer && e.dataTransfer.files
+  if (files && files[0]) readFile(files[0])
+})
+// The whole window swallows drops so a near-miss does not navigate the iframe
+// away to the raw JSON, which is unrecoverable without reopening the plugin.
+window.addEventListener('dragover', (e) => e.preventDefault())
+window.addEventListener('drop', (e) => e.preventDefault())
+
+$('analyze').addEventListener('click', () => {
+  if (!payload) return
+  $('analyze').disabled = true
+  $('input-hint').textContent = 'Checking…'
+  post({ type: 'analyze', payload })
+})
+
+// ——— 2. preflight ———
+
+function renderCapture (capture) {
+  const box = $('capture')
+  clear(box)
+  const url = capture.url || '(no page recorded)'
+  const selector = capture.selector || '(no selector recorded)'
+  box.appendChild(el('div', 'name mono', selector))
+  box.appendChild(el('span', 'url mono', url))
+  if (capture.capturedAt) {
+    let when = capture.capturedAt
+    const parsed = new Date(capture.capturedAt)
+    if (!isNaN(parsed.getTime())) when = parsed.toLocaleString()
+    box.appendChild(el('div', 'meta', `Captured ${when}`))
+  }
+}
+
+function renderStats (stats) {
+  const box = $('stats')
+  clear(box)
+  const degraded = stats.degraded || 0
+  const cells = [
+    [fmt(stats.total), 'layers', false],
+    [fmt(stats.text || 0), 'text', false],
+    [fmt(stats.images || 0), 'images', false],
+    [fmt(degraded), 'not exact', degraded > 0],
+  ]
+  for (const [value, label, flagged] of cells) {
+    const stat = el('div', flagged ? 'stat flagged' : 'stat')
+    stat.appendChild(el('b', null, value))
+    stat.appendChild(el('span', null, label))
+    box.appendChild(stat)
+  }
+}
+
+const FONT_PILL = {
+  exact: ['ok', 'exact'],
+  weight: ['warn', 'weight'],
+  family: ['warn', 'substituted'],
+  missing: ['error', 'missing'],
+}
+
+function renderFonts (fonts) {
+  const box = $('fonts')
+  clear(box)
+  if (!fonts.length) {
+    box.appendChild(el('div', 'empty', 'No text in this capture.'))
+    return
+  }
+
+  for (const font of fonts) {
+    const exact = font.status === 'exact'
+    const card = el('div', exact ? 'card' : 'card attention')
+
+    const head = el('div', 'row')
+    const title = el('div', 'grow')
+    title.appendChild(el('div', 'name', `${font.family} ${font.style}`))
+    title.appendChild(el('div', 'meta',
+      `${plural(font.nodes, 'block', 'blocks')} · ${plural(font.chars, 'character', 'characters')}`))
+    head.appendChild(title)
+    const [tone, label] = FONT_PILL[font.status] || FONT_PILL.missing
+    head.appendChild(el('span', `pill ${tone}`, label))
+    card.appendChild(head)
+
+    if (!exact) {
+      const res = el('div', 'resolution')
+      res.appendChild(document.createTextNode('Will use '))
+      res.appendChild(el('b', null, `${font.resolved.family} ${font.resolved.style}`))
+      if (font.detail) res.appendChild(document.createTextNode(` — ${font.detail}`))
+      card.appendChild(res)
+
+      const actions = el('div', 'actions')
+      const select = el('select')
+      const options = [
+        ['substitute', `Substitute with ${font.resolved.family} ${font.resolved.style}`],
+        ['map', 'Map to another font…'],
+      ]
+      if (font.canOutline) options.push(['outline', 'Use the pre-baked outlines'])
+      if (font.canRaster) options.push(['raster', 'Use the pre-baked bitmap'])
+      for (const [value, text] of options) {
+        const option = el('option', null, text)
+        option.value = value
+        select.appendChild(option)
+      }
+      actions.appendChild(el('label', null, 'Action'))
+      actions.appendChild(select)
+
+      const mapper = el('div', 'mapper')
+      const familyInput = el('input')
+      familyInput.type = 'text'
+      familyInput.setAttribute('list', 'families')
+      familyInput.placeholder = 'Family installed in Figma'
+      const styleSelect = el('select')
+      styleSelect.disabled = true
+      styleSelect.appendChild(el('option', null, 'Style'))
+      mapper.appendChild(familyInput)
+      mapper.appendChild(styleSelect)
+      actions.appendChild(mapper)
+      card.appendChild(actions)
+
+      select.addEventListener('change', () => {
+        const action = select.value
+        if (action === 'map') {
+          mapper.setAttribute('data-open', '')
+          decisions[font.key] = { action: 'map', family: familyInput.value, style: styleSelect.value }
+        } else {
+          mapper.removeAttribute('data-open')
+          decisions[font.key] = { action }
+        }
+        refreshBuildButton()
+      })
+      familyInput.addEventListener('change', () => {
+        styleSelect.disabled = true
+        clear(styleSelect)
+        styleSelect.appendChild(el('option', null, 'Loading…'))
+        pendingStyleSelect = { select: styleSelect, key: font.key, family: familyInput.value }
+        post({ type: 'styles-for', family: familyInput.value })
+        decisions[font.key] = { action: 'map', family: familyInput.value, style: '' }
+        refreshBuildButton()
+      })
+      styleSelect.addEventListener('change', () => {
+        decisions[font.key] = { action: 'map', family: familyInput.value, style: styleSelect.value }
+        refreshBuildButton()
+      })
+
+      // The honest part: say why an option is missing instead of hiding it.
+      const missing = []
+      if (!font.canOutline) missing.push('outlines')
+      if (!font.canRaster) missing.push('a bitmap')
+      if (missing.length) {
+        card.appendChild(el('div', 'note',
+          `No pre-baked ${missing.join(' or ')} in this file. Both are made in the browser, where the real ` +
+          'font is loaded — Figma cannot make either.'))
+      }
+      if (font.subset) {
+        const note = el('div', 'note',
+          'Subsetted to this page’s glyphs. Do not upload it to your Figma account — every other file ' +
+          'would get silent tofu.')
+        if (font.originalSrc) note.appendChild(el('div', 'mono', font.originalSrc))
+        card.appendChild(note)
+      }
+    }
+
+    box.appendChild(card)
+  }
+}
+
+function renderDiagnostics (groups) {
+  const box = $('diagnostics')
+  clear(box)
+  if (!groups.length) {
+    box.appendChild(el('div', 'empty', 'The engine declared no losses. Everything is exact.'))
+    return
+  }
+  for (const group of groups) {
+    const details = el('details', 'diag')
+    const summary = el('summary')
+    summary.appendChild(el('span', `pill ${group.severity === 'error' ? 'error' : group.severity === 'warn' ? 'warn' : 'info'}`, group.severity))
+    summary.appendChild(el('span', 'mono', group.code))
+    summary.appendChild(el('span', 'count', `×${group.count}`))
+    details.appendChild(summary)
+
+    const list = el('ul', 'samples')
+    for (const sample of group.samples) {
+      const item = el('li')
+      if (sample.node) item.appendChild(el('span', 'mono', `${sample.node} `))
+      if (sample.reason) item.appendChild(document.createTextNode(sample.reason))
+      if (sample.css) item.appendChild(el('div', 'mono', sample.css))
+      if (sample.action) item.appendChild(el('div', 'meta', sample.action))
+      if (!item.firstChild) item.appendChild(document.createTextNode('(no detail recorded)'))
+      list.appendChild(item)
+    }
+    if (group.count > group.samples.length) {
+      list.appendChild(el('li', 'meta', `…and ${group.count - group.samples.length} more`))
+    }
+    details.appendChild(list)
+    box.appendChild(details)
+  }
+}
+
+function refreshBuildButton () {
+  let blocked = false
+  for (const key of Object.keys(decisions)) {
+    const decision = decisions[key]
+    if (decision.action === 'map' && (!decision.family || !decision.style)) blocked = true
+  }
+  const button = $('build')
+  button.disabled = blocked
+  button.textContent = blocked
+    ? 'Pick a font to map to'
+    : `Create ${plural(preflightData ? preflightData.stats.total : 0, 'layer', 'layers')}`
+}
+
+function renderPreflight (data) {
+  preflightData = data
+  decisions = {}
+  renderCapture(data.capture || {})
+  renderStats(data.stats || {})
+  renderFonts(data.fonts || [])
+  renderDiagnostics(data.diagnostics || [])
+
+  const list = $('families')
+  clear(list)
+  for (const family of data.families || []) {
+    const option = el('option')
+    option.value = family
+    list.appendChild(option)
+  }
+
+  refreshBuildButton()
+  show('screen-preflight')
+}
+
+$('back').addEventListener('click', () => {
+  $('analyze').disabled = !payload
+  show('screen-input')
+})
+
+$('build').addEventListener('click', () => {
+  show('screen-progress')
+  $('fill').style.width = '0%'
+  $('progress-name').textContent = 'Loading fonts…'
+  $('progress-count').textContent = ''
+  post({ type: 'build', decisions })
+})
+
+// ——— 3/4/5. progress, done, error ———
+
+function renderDone (data) {
+  const warnings = data.warnings || []
+  const losses = warnings.reduce((n, w) => n + w.count, 0)
+  $('done-title').textContent = `${plural(data.created, 'layer', 'layers')} created`
+  $('done-sub').textContent = losses
+    ? `“${data.name}” is selected on the canvas. ${plural(losses, 'approximation', 'approximations')} — all of them listed below.`
+    : `“${data.name}” is selected on the canvas. Nothing was approximated.`
+
+  const box = $('warnings')
+  clear(box)
+  if (!warnings.length) {
+    box.appendChild(el('div', 'empty', 'Nothing. Every layer is an exact translation.'))
+    return
+  }
+  for (const warning of warnings) {
+    const details = el('details', 'diag')
+    const summary = el('summary')
+    summary.appendChild(el('span', 'mono', warning.code))
+    summary.appendChild(el('span', 'count', `×${warning.count}`))
+    details.appendChild(summary)
+    const list = el('ul', 'samples')
+    list.appendChild(el('li', null, warning.message))
+    if (warning.nodes && warning.nodes.length) {
+      list.appendChild(el('li', 'mono', warning.nodes.join(', ')))
+    }
+    details.appendChild(list)
+    box.appendChild(details)
+  }
+  show('screen-done')
+}
+
+function renderError (data) {
+  const box = $('error-body')
+  clear(box)
+  box.appendChild(el('strong', null, data.message || 'The document could not be read.'))
+  const errors = data.errors || []
+  if (errors.length) {
+    const list = el('ul')
+    for (const error of errors) list.appendChild(el('li', 'mono', error))
+    box.appendChild(list)
+  }
+  show('screen-error')
+}
+
+$('error-back').addEventListener('click', () => {
+  $('analyze').disabled = !payload
+  show('screen-input')
+})
+$('again').addEventListener('click', () => {
+  $('analyze').disabled = !payload
+  show('screen-input')
+})
+$('close').addEventListener('click', () => post({ type: 'close' }))
+
+window.addEventListener('message', (event) => {
+  const msg = event.data && event.data.pluginMessage
+  if (!msg || typeof msg.type !== 'string') return
+
+  if (msg.type === 'preflight') {
+    renderPreflight(msg)
+    return
+  }
+
+  if (msg.type === 'progress') {
+    const pct = msg.total > 0 ? Math.min(100, (msg.done / msg.total) * 100) : 0
+    $('fill').style.width = `${pct}%`
+    if (msg.label) $('progress-name').textContent = msg.label
+    $('progress-count').textContent = `${fmt(msg.done)} / ${fmt(msg.total)}`
+    return
+  }
+
+  if (msg.type === 'styles') {
+    if (!pendingStyleSelect || pendingStyleSelect.family !== msg.family) return
+    const select = pendingStyleSelect.select
+    const key = pendingStyleSelect.key
+    clear(select)
+    const styles = msg.styles || []
+    if (!styles.length) {
+      select.appendChild(el('option', null, 'Not installed'))
+      select.disabled = true
+      decisions[key] = { action: 'map', family: msg.family, style: '' }
+    } else {
+      for (const style of styles) {
+        const option = el('option', null, style)
+        option.value = style
+        select.appendChild(option)
+      }
+      select.disabled = false
+      decisions[key] = { action: 'map', family: msg.family, style: styles[0] }
+    }
+    pendingStyleSelect = null
+    refreshBuildButton()
+    return
+  }
+
+  if (msg.type === 'done') {
+    renderDone(msg)
+    return
+  }
+
+  if (msg.type === 'error') {
+    renderError(msg)
+  }
+})
+</script>

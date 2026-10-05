@@ -16,7 +16,8 @@
     "./html-export": "./html-export.js",
     "./gif-export": "./gif-export.js",
     "./video-export": "./video-export.js",
-    "./pdf": "./pdf.js"
+    "./pdf": "./pdf.js",
+    "./vector": "./vector.js"
   },
   "files": [
     "*.js",
@@ -26,7 +27,12 @@
     "pdf/src/",
     "pdf/REFERENCE.md",
     "pdf/LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "vector/src/",
+    "vector/svd/",
+    "vector/CONTRACT.md",
+    "vector/LICENSE",
+    "vector/README.md"
   ],
   "types": "./index.d.ts",
   "keywords": [

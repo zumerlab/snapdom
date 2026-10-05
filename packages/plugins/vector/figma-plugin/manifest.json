@@ -1,0 +1,13 @@
+{
+  "name": "SnapDOM Vector",
+  "id": "snapdom-pro-svd-import",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "reasoning": "The plugin only reads a document the user hands it. Nothing about the captured page ever leaves the machine."
+  }
+}

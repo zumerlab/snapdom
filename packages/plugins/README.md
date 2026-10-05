@@ -405,6 +405,24 @@ The document retains source markup, including event-handler attributes; it is no
 
 ---
 
+### `vector`
+
+Adds `toVector()` for standalone SVG with editable text and supported shapes, and
+`toFigma()` for Figma clipboard export. Its source and internal SVD format live in
+`vector/` under the MIT license. The updated package has not been published yet.
+
+```js
+import { vector } from '@zumer/snapdom-plugins/vector';
+const result = await snapdom(el, { plugins: [vector()] });
+const svg = await result.toVector({ exclude: '.private' });
+await result.toFigma(); // HTTPS or localhost, from a user action
+```
+
+Register per capture. Unsupported paint is diagnosed; the connected source and
+its styles must remain available during export. See [Vector](./vector/README.md).
+
+---
+
 ### `gif-export`
 
 Adds `toGif()`, which records the live element and returns an `image/gif` Blob. Its built-in

@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capturar → pegar en Figma</title>
+<script type="importmap">
+{
+  "imports": {
+    "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs",
+    "@zumer/snapdom-vector": "/src/index.js",
+    "@zumer/snapdom-vector/": "/src/",
+    "@zumer/svd": "/svd/index.js"
+  }
+}
+</script>
+<!-- Fuente de iconos por LIGADURA: el fixture «Clon» la usa a propósito, porque es
+     una de las cosas que snapdom resuelve en el clon (la ligadura sale como <img>)
+     y que el DOM vivo no nos daba. Si la red no está, la página lo dice en el panel
+     en vez de mostrar la palabra suelta sin explicación. -->
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=block">
+<style>
+  :root {
+    --ink: #0f172a; --dim: #64748b; --line: #e2e8f0;
+    --accent: #4f46e5; --ok: #059669; --warn: #b45309;
+    --paper: #fff; --bg: #f1f5f9;
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif;
+         background: var(--bg); color: var(--ink); margin: 0; padding: 32px;
+         display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* ——— el panel, deliberadamente fuera de todo lo capturable ——— */
+  aside { position: sticky; top: 32px; width: 320px; flex: none;
+          background: var(--paper); border-radius: 16px; padding: 24px;
+          box-shadow: 0 10px 30px rgba(15,23,42,.08); }
+  aside h1 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
+  aside p.sub { margin: 0 0 20px; font-size: 13.5px; color: var(--dim); }
+
+  label { display: block; font-size: 12px; text-transform: uppercase;
+          letter-spacing: .07em; color: var(--dim); margin-bottom: 6px; }
+  select { width: 100%; font: inherit; font-size: 14px; padding: 9px 10px;
+           border: 1px solid #cbd5e1; border-radius: 9px; background: #fff;
+           color: var(--ink); margin-bottom: 18px; }
+
+  #copy { width: 100%; padding: 14px 16px; font: inherit; font-size: 15px;
+          font-weight: 650; color: #fff; border: 0; border-radius: 11px;
+          cursor: pointer; background: var(--accent);
+          transition: background .15s, transform .06s; }
+  #copy:hover:not(:disabled) { background: #4338ca; }
+  #copy:active:not(:disabled) { transform: translateY(1px); }
+  #copy:disabled { opacity: .5; cursor: progress; }
+  #copy.done { background: var(--ok); }
+
+  #status { margin-top: 14px; font-size: 13.5px; min-height: 3em;
+            white-space: pre-wrap; color: var(--dim); }
+  #status.err { color: #b91c1c; }
+
+  #fontnote { margin-top: -12px; margin-bottom: 16px; font-size: 12px; color: var(--warn);
+              display: none; }
+  #fontnote.on { display: block; }
+
+  #metrics { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px;
+             font-size: 13px; display: none; }
+
+  /* La deriva del clon va PRIMERO y en prosa: es la garantía de que las cifras de
+     abajo describen lo que se ve, no un árbol paralelo. */
+  #drift { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 14px;
+           padding: 11px 12px; border-radius: 11px; font-size: 12.5px; line-height: 1.45;
+           background: #ecfdf5; color: #065f46; }
+  #drift b { font-size: 17px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap;
+             font-variant-numeric: tabular-nums; line-height: 1.25; }
+  #drift.warn { background: #fffbeb; color: #92400e; }
+  #drift.bad  { background: #fef2f2; color: #991b1b; }
+  #drift.none { background: #f8fafc; color: var(--warn); }
+  #drift strong { display: block; font-weight: 700; margin-bottom: 1px; }
+  #metrics dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin: 0; }
+  #metrics dt { color: var(--dim); }
+  #metrics dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+  #notes { margin-top: 14px; font-size: 12.5px; color: var(--warn); }
+  #notes ul { margin: 4px 0 0; padding-left: 16px; }
+
+  ol.steps { margin: 20px 0 0; padding-left: 20px; font-size: 13.5px; color: #475569; }
+  ol.steps li { margin-bottom: 8px; }
+  ol.steps b { color: var(--ink); font-weight: 650; }
+  kbd { font: inherit; font-size: 12px; background: #f1f5f9; border: 1px solid #cbd5e1;
+        border-bottom-width: 2px; border-radius: 5px; padding: 1px 5px; }
+
+  /* ——— lo capturable ——— */
+  main { flex: 1; min-width: 380px; display: flex; flex-direction: column; gap: 22px; }
+  .stage { background: var(--paper); border-radius: 16px; padding: 28px;
+           box-shadow: 0 10px 30px rgba(15,23,42,.08); }
+  .stage > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+                color: var(--dim); margin: 0 0 18px; font-weight: 650; }
+  .fx { display: none; }
+  .fx.on { display: block; }
+
+  /* fixture 1 — card */
+  .card { width: 340px; border-radius: 18px; overflow: hidden; background: #fff;
+          box-shadow: 0 18px 40px -12px rgba(15,23,42,.28), 0 0 0 1px rgba(15,23,42,.05); }
+  .card__head { height: 132px; position: relative;
+                background: linear-gradient(135deg, #4f46e5 0%, #9333ea 52%, #ec4899 100%); }
+  .card__head::after { content: ""; position: absolute; inset: 0;
+                       background: radial-gradient(circle at 74% 26%, rgba(255,255,255,.55), transparent 58%); }
+  .card__tag { position: absolute; top: 14px; right: 14px; z-index: 2;
+               background: #fff; color: #4338ca; font-size: 10.5px; font-weight: 750;
+               letter-spacing: .09em; padding: 5px 11px; border-radius: 999px; }
+  .card__body { padding: 20px 22px 22px; }
+  .card__kicker { font-size: 10.5px; font-weight: 750; letter-spacing: .11em;
+                  color: #6366f1; margin: 0 0 6px; }
+  .card__title { font-size: 21px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 10px; }
+  .card__meta { font-size: 13px; color: #64748b; margin: 0 0 14px; }
+  .card__meta .stars { color: #f59e0b; letter-spacing: 1px; }
+  .card__desc { font-size: 13.5px; color: #475569; margin: 0 0 18px;
+                padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .card__desc b { color: var(--ink); }
+  .card__foot { display: flex; align-items: center; gap: 12px; }
+  .card__was { font-size: 13px; color: #94a3b8; text-decoration: line-through; }
+  .card__now { font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+  .card__cta { margin-left: auto; border: 0; border-radius: 10px; padding: 11px 20px;
+               font: inherit; font-size: 14px; font-weight: 650; color: #fff; cursor: pointer;
+               background: linear-gradient(180deg, #4f46e5, #4338ca);
+               box-shadow: 0 6px 14px -4px rgba(79,70,229,.6); }
+
+  /* fixture 2 — texto */
+  .prose { max-width: 460px; font-family: Georgia, "Times New Roman", serif; }
+  .prose h3 { font-size: 27px; letter-spacing: -.02em; margin: 0 0 6px; line-height: 1.2; }
+  .prose .lede { font-style: italic; color: #64748b; font-size: 16px; margin: 0 0 18px; }
+  .prose p { font-size: 16px; line-height: 1.65; margin: 0 0 15px; }
+  .prose b { font-weight: 700; }
+  .prose a { color: #c2410c; }
+  .prose code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px;
+                background: #f8fafc; color: #be123c; padding: 1px 5px; border-radius: 4px; }
+  .prose blockquote { margin: 20px 0 0; padding: 4px 0 4px 18px;
+                      border-left: 3px solid #f59e0b; font-size: 17px; color: #334155; }
+
+  /* fixture 3 — ui */
+  .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  .pill { font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+          border: 1px solid; display: inline-flex; align-items: center; gap: 7px; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.ok   { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+  .pill.warn { color: #b45309; border-color: #fde68a; background: #fffbeb; }
+  .pill.bad  { color: #be123c; border-color: #fecdd3; background: #fff1f2; }
+  .pill.dash { color: #475569; border-color: #cbd5e1; border-style: dashed; background: #fff; }
+  .btns { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { font: inherit; font-size: 14px; font-weight: 650; padding: 11px 20px;
+         border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
+  .btn.solid { background: #4f46e5; color: #fff; box-shadow: 0 6px 14px -5px rgba(79,70,229,.7); }
+  .btn.ghost { background: #fff; color: #4338ca; border-color: #c7d2fe; }
+  .btn.danger { background: #dc2626; color: #fff; box-shadow: 0 6px 14px -5px rgba(220,38,38,.6); }
+  .btn.focus { background: #fff; color: #4338ca; border-color: #c7d2fe;
+               outline: 2px solid #818cf8; outline-offset: 3px; }
+
+  /* fixture 4 — lo que el clon regala y el DOM vivo no tenía:
+     `content` resuelto (incluido `attr()`), ::marker, un shadow root abierto
+     con su propio CSS, y un icono de fuente por ligadura. */
+  .clone { width: 392px; padding: 22px; border-radius: 18px; background: #fff;
+           border: 1px solid rgba(15,23,42,.07);
+           box-shadow: 0 18px 40px -14px rgba(15,23,42,.30), 0 0 0 1px rgba(15,23,42,.03); }
+  .cl-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .cl-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px;
+             border-radius: 13px; color: #fff; font-size: 24px;
+             background: linear-gradient(135deg, #4f46e5 0%, #db2777 100%);
+             box-shadow: 0 9px 20px -7px rgba(79,70,229,.75); }
+  .cl-kicker { margin: 0 0 2px; font-size: 10.5px; font-weight: 750; letter-spacing: .11em;
+               text-transform: uppercase; color: #7c3aed; }
+  .cl-kicker::before { content: "v" attr(data-ver) " · "; color: #db2777; }
+  .cl-title { margin: 0; font-size: 18.5px; font-weight: 700; letter-spacing: -.02em; }
+  /* El hueco lo abre el bloque de texto con `flex:1`, no un `margin-left:auto` en
+     la pastilla: los márgenes automáticos no sobreviven al clon. Con eso fuera,
+     lo que queda es real y medido: hoy el host de shadow se mide ~39px más ancho
+     en el clon que en vivo, y un span equivalente sin shadow en el mismo sitio
+     deriva 2px. Por eso el panel marca deriva en este fixture: es el número
+     haciendo su trabajo, no un adorno. */
+  .cl-headtext { flex: 1; min-width: 0; }
+  .cl-badge { display: inline-block; }
+
+  .cl-steps { margin: 0 0 15px; padding-left: 26px; font-size: 13px; line-height: 1.55;
+              color: #475569; }
+  .cl-steps li { margin-bottom: 6px; }
+  .cl-steps li::marker { content: counter(list-item) " ·"; color: #4f46e5; font-weight: 750;
+                         font-size: 12px; }
+  .cl-steps b { color: var(--ink); font-weight: 650; }
+  .cl-steps code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+                   background: #f1f5f9; color: #4338ca; padding: 1px 5px; border-radius: 4px; }
+
+  .cl-quote { margin: 0 0 16px; padding: 10px 13px; border-left: 3px solid #f59e0b;
+              border-radius: 0 10px 10px 0; background: #fffbeb; color: #78350f;
+              font-size: 13px; line-height: 1.5; quotes: "«" "»"; }
+  .cl-quote::before { content: open-quote; color: #f59e0b; font-weight: 700; }
+  .cl-quote::after { content: close-quote; color: #f59e0b; font-weight: 700; }
+
+  .cl-foot { display: flex; align-items: center; gap: 10px;
+             padding-top: 14px; border-top: 1px solid var(--line); }
+  .cl-tag { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: #64748b; }
+  /* Pseudo con `content` de TEXTO, no una caja vacía dimensionada: es la forma
+     que el producto tiene que traer entera desde el clon. */
+  .cl-tag::before { content: "●"; color: #10b981; font-size: 9px; }
+  .cl-cta { margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+            border: 0; border-radius: 10px; padding: 9px 15px; cursor: pointer;
+            font: inherit; font-size: 13.5px; font-weight: 650; color: #fff;
+            background: linear-gradient(180deg, #1e293b, #0f172a);
+            box-shadow: 0 6px 14px -5px rgba(15,23,42,.6); }
+  .cl-cta .icon { font-size: 17px; }
+
+  /* Las dos ligaduras del fixture. `.material-symbols-rounded` no es decorativo:
+     es el selector por el que snapdom reconoce la ligadura y la hornea a <img>. */
+  .material-symbols-rounded {
+    font-family: "Material Symbols Rounded"; font-weight: 400; font-style: normal;
+    line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap;
+    direction: ltr; -webkit-font-feature-settings: 'liga'; font-variation-settings: 'FILL' 1;
+  }
+</style>
+</head>
+<body>
+
+<aside>
+  <h1>Capturar → pegar en Figma</h1>
+  <p class="sub">Vectoriza el elemento y lo deja en el portapapeles. No hace falta instalar nada en Figma.</p>
+
+  <label for="fx">Qué capturar</label>
+  <select id="fx">
+    <option value="fx-clone">Clon — pseudos, ::marker, shadow DOM, icono</option>
+    <option value="fx-card">Card — gradientes, sombras, texto mixto</option>
+    <option value="fx-prose">Texto — serif, cursivas, links, cita</option>
+    <option value="fx-ui">UI — pastillas, botones, anillo de foco</option>
+  </select>
+  <p id="fontnote"></p>
+
+  <button id="copy">Copiar para Figma</button>
+  <div id="status"></div>
+
+  <div id="metrics">
+    <div id="drift"></div>
+    <dl>
+      <dt>Capas</dt><dd id="m-nodes">—</dd>
+      <dt>Bloques de texto</dt><dd id="m-text">—</dd>
+      <dt>Rasterizado</dt><dd id="m-raster">—</dd>
+      <dt>Peso</dt><dd id="m-size">—</dd>
+      <dt>Tiempo</dt><dd id="m-ms">—</dd>
+    </dl>
+    <div id="notes"></div>
+  </div>
+
+  <ol class="steps">
+    <li>Elegí qué capturar y dale a <b>Copiar para Figma</b>.</li>
+    <li>Andá a Figma y pegá con <kbd>⌘V</kbd>.</li>
+    <li>Doble clic sobre un título: <b>si podés editar el texto, el texto sobrevivió</b>. Eso es lo que hay que comprobar.</li>
+  </ol>
+</aside>
+
+<main>
+  <div class="stage">
+    <h2>Elemento vivo</h2>
+
+    <div class="fx on" id="fx-clone">
+      <div class="clone">
+        <header class="cl-head">
+          <span class="cl-icon material-symbols-rounded">bolt</span>
+          <div class="cl-headtext">
+            <p class="cl-kicker" data-ver="3.2">Motor vectorial</p>
+            <h3 class="cl-title">Capturado del clon</h3>
+          </div>
+          <sd-badge class="cl-badge">estable</sd-badge>
+        </header>
+
+        <ol class="cl-steps">
+          <li>El <b>v3.2</b> del encabezado sale de un <code>::before</code> con <code>attr()</code>.</li>
+          <li>Estos números son <b>::marker</b>, no texto escrito a mano.</li>
+          <li>La pastilla verde vive en un <b>shadow root abierto</b>.</li>
+          <li>El rayo es una <b>ligadura</b> de fuente de iconos.</li>
+        </ol>
+
+        <blockquote class="cl-quote">La pertenencia al árbol viene resuelta; sólo son
+          nuestras la geometría y la pintura.</blockquote>
+
+        <footer class="cl-foot">
+          <span class="cl-tag">Cuatro cajas que sólo existen en el clon</span>
+          <button class="cl-cta"><span class="icon material-symbols-rounded">content_copy</span>Copiar</button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="fx" id="fx-card">
+      <div class="card">
+        <div class="card__head"><span class="card__tag">NUEVO</span></div>
+        <div class="card__body">
+          <p class="card__kicker">SERIE AURORA</p>
+          <h3 class="card__title">Lámpara Halo 40</h3>
+          <p class="card__meta"><span class="stars">★★★★</span>☆ 4,2 · 218 reseñas</p>
+          <p class="card__desc">Difusor de vidrio soplado a mano, regulador táctil de <b>cuatro pasos</b> y base de fresno macizo.</p>
+          <div class="card__foot">
+            <span class="card__was">189 €</span>
+            <span class="card__now">149 €</span>
+            <button class="card__cta">Añadir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fx" id="fx-prose">
+      <div class="prose">
+        <h3>El texto no se rasteriza</h3>
+        <p class="lede">Por qué medir la línea sale más barato que medir el glifo</p>
+        <p>Cada bloque se recorre con un <code>TreeWalker</code> y sus rectángulos se agrupan <b>por línea base</b>, nunca por <code>top</code>: un <i>span</i> con un cuerpo mayor comparte la base con el resto de la línea pero no comparte el borde superior.</p>
+        <p>El paso vertical entre líneas se <b>mide</b> entre bases consecutivas. Leerlo de <code>line-height</code> falla en cuanto aparece un interlineado heredado o una fuente sustituida, y falla en silencio, que es lo grave. Ver las <a href="#">notas de medición</a>.</p>
+        <blockquote>Dejamos de exportar una captura y empezamos a exportar la página: el texto sigue siendo texto y las líneas siguen donde el navegador las puso.</blockquote>
+      </div>
+    </div>
+
+    <div class="fx" id="fx-ui">
+      <div>
+        <div class="pills">
+          <span class="pill ok">Publicado</span>
+          <span class="pill warn">En revisión</span>
+          <span class="pill bad">Bloqueado</span>
+          <span class="pill dash">Borrador</span>
+        </div>
+        <div class="btns">
+          <button class="btn solid">Guardar cambios</button>
+          <button class="btn ghost">Vista previa</button>
+          <button class="btn danger">Eliminar</button>
+          <button class="btn focus">Con foco</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+const $ = s => document.querySelector(s)
+const sel = $('#fx'), btn = $('#copy'), status = $('#status')
+const int = n => new Intl.NumberFormat('es').format(Math.round(n))
+
+/**
+ * Un componente con shadow root ABIERTO, con su propio CSS y un `<slot>`. Está
+ * en la demo porque es justo lo que el clon de snapdom aplana por nosotros:
+ * desde fuera, ni la pastilla ni su `::before` tienen caja que medir.
+ */
+class SdBadge extends HTMLElement {
+  connectedCallback () {
+    if (this.shadowRoot) return
+    this.attachShadow({ mode: 'open' }).innerHTML = `
+      <style>
+        :host { display: inline-block; }
+        .b { display: inline-flex; align-items: center; gap: 6px;
+             padding: 5px 11px 5px 9px; border-radius: 999px;
+             font: 750 10.5px/1 -apple-system, "Segoe UI", system-ui, sans-serif;
+             letter-spacing: .09em; text-transform: uppercase;
+             color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; }
+        .b::before { content: "●"; color: #10b981; font-size: 9px; }
+      </style>
+      <span class="b"><slot>sin estado</slot></span>`
+  }
+}
+customElements.define('sd-badge', SdBadge)
+
+/**
+ * El icono del fixture «Clon» es una ligadura de una webfont. Si no cargó, la
+ * caja muestra la palabra en vez del glifo: eso se avisa, no se disimula.
+ * @returns {Promise<boolean>}
+ */
+async function checkIconFont () {
+  const face = '400 24px "Material Symbols Rounded"'
+  try { await document.fonts.load(face, 'bolt') } catch { /* offline */ }
+  const ok = document.fonts.check(face)
+  const note = $('#fontnote')
+  note.classList.toggle('on', !ok)
+  note.textContent = ok ? '' :
+    'La fuente de iconos no cargó (¿sin red?): en el fixture «Clon» la ligadura se ve como palabra. ' +
+    'El resto de la captura no se ve afectado.'
+  return ok
+}
+
+sel.onchange = () => {
+  for (const el of document.querySelectorAll('.fx')) el.classList.toggle('on', el.id === sel.value)
+  $('#metrics').style.display = 'none'
+  status.textContent = ''
+  btn.textContent = 'Copiar para Figma'
+  btn.classList.remove('done')
+}
+
+/**
+ * The engine is a snapdom PLUGIN: `vector()` registers on the capture and
+ * publishes `result.toVector()`, which picks up the clone its `beforeRender`
+ * hook parked. There is no standalone entry point any more — and no `toSvg`
+ * either: that name belongs to snapdom's core export, and a plugin publishing
+ * it would silently replace `result.toSvg()` for every caller of the capture.
+ *
+ * `svdToSvg` is still a plain document→format function, so it is called by hand
+ * on the document instead of going through `result.toVectorSvg()`: this page
+ * needs the document anyway (the drift panel and the Figma payload both read
+ * it), and the export would re-walk the clone to hand back only markup.
+ * `svdToSvg` may answer a string or `{svg, diagnostics}`; both are accepted.
+ */
+async function vectorize (el) {
+  const [{ snapdom }, mod] = await Promise.all([
+    import('@zumer/snapdom'),
+    import('/src/index.js'),
+  ])
+  const t0 = performance.now()
+  const result = await snapdom(el, { plugins: [mod.vector()] })
+  const doc = await result.toVector()
+  let out = mod.svdToSvg(doc)
+  if (out && typeof out === 'object' && !Array.isArray(out)) out = out.svg ?? String(out)
+  return { doc, svg: String(out), ms: performance.now() - t0 }
+}
+
+/**
+ * La deriva del clon: cuánto se separa el árbol que el motor recorre del que la
+ * página pinta. El motor está migrando al clon y el nombre del campo aún se está
+ * asentando, así que se busca en los sitios plausibles del documento en vez de
+ * asumir uno. Si no está, se dice — un número de fidelidad sin garantía de que
+ * describa lo visible no vale nada.
+ *
+ * @param {object} doc documento SVD
+ * @returns {{px:number, kind:string, pairs:number|null, source:string}|null}
+ */
+function cloneDrift (doc) {
+  const rep = (doc && doc.report) || {}
+  const cap = (doc && doc.capture) || {}
+  const KIND = { max: 'máximo', p95: 'p95', median: 'mediana', p50: 'mediana' }
+  const where = [
+    ['report.clone', rep.clone], ['report.cloneDrift', rep.cloneDrift], ['report.drift', rep.drift],
+    ['capture.clone', cap.clone], ['capture.cloneDrift', cap.cloneDrift], ['capture.drift', cap.drift],
+  ]
+  for (const [source, raw] of where) {
+    if (raw == null) continue
+    if (typeof raw === 'number') {
+      if (Number.isFinite(raw)) return { px: raw, kind: 'medido', pairs: null, source }
+      continue
+    }
+    if (typeof raw !== 'object') continue
+    const d = (raw.drift && typeof raw.drift === 'object') ? raw.drift : raw
+    for (const key of ['max', 'p95', 'median', 'p50', 'px', 'delta']) {
+      if (!Number.isFinite(d[key])) continue
+      const pairs = [d.pairs, raw.pairs, d.compared, raw.compared, d.nodes, raw.nodes]
+        .find(v => Number.isFinite(v))
+      return { px: d[key], kind: KIND[key] || 'medido', pairs: pairs ?? null, source }
+    }
+  }
+  return null
+}
+
+/** El banner va arriba del todo: cualifica todas las cifras que vienen debajo. */
+function renderDrift (doc) {
+  const el = $('#drift')
+  const d = cloneDrift(doc)
+  if (!d) {
+    el.className = 'none'
+    el.innerHTML = '<b>?</b><span><strong>Deriva del clon: sin medir.</strong>' +
+      'Esta build del motor no la informa, así que las cifras de abajo describen el árbol ' +
+      'que medimos y nadie ha comprobado que sea el que ves.</span>'
+    return
+  }
+  const px = d.px
+  const exact = px <= 0.5
+  el.className = exact ? '' : px <= 2 ? 'warn' : 'bad'
+  el.innerHTML = `<b>${px.toFixed(2)} px</b><span><strong>` +
+    (exact ? 'Lo que medimos es lo que ves.'
+      : px <= 2 ? 'Lo que medimos se aparta un poco de lo que ves.'
+        : 'Lo que medimos NO es lo que ves.') +
+    `</strong>El clon que recorre el motor reproduce la página con ${px.toFixed(2)} px de desvío ` +
+    `${d.kind}${d.pairs ? ` en ${int(d.pairs)} nodos comparados` : ''}.` +
+    (exact ? '' : ' Revisá las cajas antes de fiarte de la captura.') + '</span>'
+}
+
+btn.onclick = async () => {
+  btn.disabled = true
+  btn.classList.remove('done')
+  btn.textContent = 'Vectorizando…'
+  status.className = ''
+  status.textContent = ''
+  try {
+    const el = $('#' + sel.value).firstElementChild
+    const { doc, svg, ms } = await vectorize(el)
+
+    // Plain text, not a Blob: Chrome's clipboard only carries a short allowlist
+    // of MIME types and `image/svg+xml` is not on it. Figma sniffs the text and
+    // imports it as SVG, which is the whole point of this path.
+    await navigator.clipboard.writeText(svg)
+
+    renderDrift(doc)
+    const r = doc.report || {}
+    $('#m-nodes').textContent = r.nodes ?? Object.keys(doc.nodes || {}).length
+    $('#m-text').textContent = r.textBlocks ?? '—'
+    $('#m-raster').textContent = r.raster ? `${r.raster} capas` : 'nada'
+    $('#m-size').textContent = (svg.length / 1024).toFixed(1) + ' kB'
+    $('#m-ms').textContent = ms.toFixed(0) + ' ms'
+
+    // Degradations are the product's differentiator — surfacing them is not
+    // optional decoration. Anything the engine had to approximate says so here.
+    const diags = (doc.diagnostics || []).filter(d => d.severity !== 'info')
+    $('#notes').innerHTML = diags.length
+      ? 'Se degradó:<ul>' + [...new Set(diags.map(d => d.message || d.code))]
+          .slice(0, 5).map(m => `<li>${m}</li>`).join('') + '</ul>'
+      : ''
+    $('#metrics').style.display = 'block'
+
+    btn.textContent = 'Copiado — pegá en Figma con ⌘V'
+    btn.classList.add('done')
+    status.textContent = 'Doble clic sobre el título en Figma: si lo podés editar, el texto sobrevivió.'
+  } catch (err) {
+    status.className = 'err'
+    status.textContent = (err && err.stack) || String(err)
+    btn.textContent = 'Copiar para Figma'
+  } finally {
+    btn.disabled = false
+  }
+}
+
+// Gancho para el arnés: elegir fixture y disparar sin depender de la UI.
+window.__figma = {
+  fixtures: [...sel.options].map(o => o.value),
+  select: (id) => { sel.value = id; sel.onchange() },
+  capture: () => btn.onclick(),
+  // Expuestos para que el arnés pueda comprobar la garantía, no sólo las cifras.
+  drift: cloneDrift,
+  showDrift: renderDrift,
+}
+
+await checkIconFont()
+window.__ready = true
+</script>
+</body>
+</html>

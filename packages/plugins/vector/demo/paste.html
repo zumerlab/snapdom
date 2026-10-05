@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copiar un SVG para pegar en Figma</title>
+<style>
+  :root { --ink:#0f172a; --dim:#64748b; --line:#e2e8f0; --accent:#4f46e5; --ok:#059669; }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0;
+         padding: 32px; background: #f1f5f9; color: var(--ink);
+         display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  aside { width: 340px; flex: none; background: #fff; border-radius: 16px; padding: 24px;
+          box-shadow: 0 10px 30px rgba(15,23,42,.08); position: sticky; top: 32px; }
+  h1 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
+  p.sub { margin: 0 0 18px; font-size: 13.5px; color: var(--dim); }
+  label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.07em;
+          color:var(--dim); margin-bottom:6px; }
+  select { width:100%; font:inherit; font-size:14px; padding:9px 10px; border:1px solid #cbd5e1;
+           border-radius:9px; background:#fff; color:var(--ink); margin-bottom:18px; }
+  button { width:100%; padding:14px 16px; font:inherit; font-size:15px; font-weight:650;
+           color:#fff; border:0; border-radius:11px; cursor:pointer; background:var(--accent); }
+  button:hover { background:#4338ca; }
+  button.done { background: var(--ok); }
+  #status { margin-top:12px; font-size:13.5px; color:var(--dim); min-height:2.5em; }
+  #status.err { color:#b91c1c; }
+  /* Qué se sabe roto ANTES de pegar. Va encima del botón a propósito: si algo se ve
+     mal en Figma y está escrito aquí, no es un hallazgo; lo que NO esté, sí lo es. */
+  #note { border:1px solid #fde68a; background:#fffbeb; color:#92400e; border-radius:11px;
+          padding:10px 12px; margin-bottom:14px; font-size:12.5px; line-height:1.5; display:none; }
+  #note.on { display:block; }
+  #note b { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.07em;
+            color:#b45309; margin-bottom:3px; }
+  dd.bad { color:#b91c1c; }
+  dl { display:grid; grid-template-columns:1fr auto; gap:5px 12px; margin:18px 0 0;
+       border-top:1px solid var(--line); padding-top:16px; font-size:13px; }
+  dt { color:var(--dim); } dd { margin:0; font-weight:600; font-variant-numeric:tabular-nums; }
+  main { flex:1; min-width:360px; background:#fff; border-radius:16px; padding:24px;
+         box-shadow:0 10px 30px rgba(15,23,42,.08); }
+  main h2 { font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--dim);
+            margin:0 0 16px; font-weight:650; }
+  #preview svg { max-width:100%; height:auto; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Copiar para Figma</h1>
+  <p class="sub">Copia desde <b>tu</b> navegador, así el SVG llega a tu portapapeles de verdad.
+    Los desafíos están ordenados de <b>peor a mejor</b>: el 1 es el que más tiene que enseñar.</p>
+
+  <label for="file">Qué copiar</label>
+  <select id="file">
+    <optgroup label="snapdom nativo (foreignObject)">
+      <option value="/out/vector/nativo-fx-type.svg">snapdom puro · Texto difícil ← pegar</option>
+      <option value="/out/vector/nativo-fx-img.svg">snapdom puro · Imágenes</option>
+    </optgroup>
+    <optgroup label="Desafíos — ordenados de peor a mejor">
+      <option value="/out/vector/ch-fx-type.svg">1 · Texto difícil — clip a texto, contorno, justificado, RTL</option>
+      <option value="/out/vector/ch-fx-glass.svg">2 · Glassmorphism — backdrop-filter, blend, sombra de color</option>
+      <option value="/out/vector/ch-fx-tf.svg">3 · Transforms y formas — rotate, skew, clip-path, mask</option>
+      <option value="/out/vector/ch-fx-svg.svg">4 · SVG inline — use, gradiente, clipPath, ids repetidos</option>
+      <option value="/out/vector/ch-fx-form.svg">5 · Formularios — inputs, checkbox, select, range, progress</option>
+      <option value="/out/vector/ch-fx-list.svg">6 · Listas — ::marker, @counter-style, contadores</option>
+      <option value="/out/vector/ch-fx-dark.svg">7 · Oscura — conic, color-mix, oklch, sombra de color</option>
+      <option value="/out/vector/ch-fx-table.svg">8 · Tabla — collapse, sticky, colspan, borde doble</option>
+      <option value="/out/vector/ch-fx-grid.svg">9 · Grid — areas, spans, absolute, sticky</option>
+      <option value="/out/vector/ch-fx-img.svg">10 · Imágenes — object-fit, srcset, avatar, background</option>
+    </optgroup>
+    <optgroup label="Sondas del emisor (ayer)">
+      <option value="/out/vector/_clone-dropshadow.svg">Clon — + feDropShadow simple</option>
+      <option value="/out/vector/_clone-nopattern.svg">Clon — por línea + sin &lt;pattern&gt;</option>
+      <option value="/out/vector/_clone-perline.svg">Clon — por línea (el botón desaparece)</option>
+      <option value="/out/vector/_clone.svg">Clon — como lo emitía el motor ayer</option>
+    </optgroup>
+    <optgroup label="Fixtures de referencia">
+      <option value="/out/vector/fx-card.svg">Card</option>
+      <option value="/out/vector/fx-ui.svg">UI</option>
+      <option value="/out/vector/fx-type.svg">Tipografía</option>
+      <option value="/out/vector/fx-z.svg">Orden de apilado</option>
+    </optgroup>
+  </select>
+
+  <div id="note"></div>
+
+  <button id="copy">Copiar al portapapeles</button>
+  <div id="status"></div>
+
+  <dl>
+    <dt>Peso</dt><dd id="m-size">—</dd>
+    <dt>Bloques de texto</dt><dd id="m-text">—</dd>
+    <dt>Imágenes</dt><dd id="m-img">—</dd>
+    <dt>foreignObject</dt><dd id="m-fo">—</dd>
+    <dt>&lt;pattern&gt; · feMorphology</dt><dd id="m-figma">—</dd>
+    <dt>XML estricto</dt><dd id="m-xml">—</dd>
+  </dl>
+</aside>
+
+<main>
+  <h2>Previsualización — así debería verse en Figma</h2>
+  <div id="preview"></div>
+</main>
+
+<script type="module">
+const $ = s => document.querySelector(s)
+const sel = $('#file'), btn = $('#copy'), status = $('#status')
+let current = ''
+
+/**
+ * Lo que se sabe roto en cada archivo, medido comparando el SVG renderizado contra el
+ * elemento vivo. Está aquí y no en un informe porque el momento útil para leerlo es el
+ * segundo antes de pegar.
+ * @type {Record<string, string>}
+ */
+const NOTES = {
+  'ch-fx-type': 'El título con background-clip:text sale como BARRA de degradado sin letras; ' +
+    '-webkit-text-stroke sale relleno en vez de hueco y las versalitas se pierden, ambos sin ' +
+    'diagnóstico; el subrayado ondulado sale recto; el párrafo justificado desborda la caja.',
+  'ch-fx-glass': 'El backdrop-filter conserva el blur y PIERDE el saturate(180%), sin diagnóstico: ' +
+    'el panel de vidrio sale lavado sobre la mancha cálida. Las sombras de color salen más ' +
+    'oscuras y grandes que en vivo.',
+  'ch-fx-tf': 'rotate y skewX se aplican al TEXTO pero no a la caja, que sale sin girar; el bloque ' +
+    'con transform-origin en la esquina aparece desplazado ~30px; clip-path:polygon() y ' +
+    'mask-image caen a rectángulo (polygon declarado, mask no).',
+  'ch-fx-svg': 'Los tres SVG inline desaparecen enteros (declarado: B4.inline-svg + ' +
+    'emit.svg.image-no-data). El texto y las cajas quedan exactos.',
+  'ch-fx-form': 'De 11 controles sólo el botón sobrevive: valores, placeholder, chevron del select, ' +
+    'checkbox, radio, range y progress se pierden; sólo 4 lo declaran (B4.form-control).',
+  'ch-fx-list': 'Los ::marker (§1, ◆, ▲) no salen — declarado. Los contadores ::before sí salen ' +
+    'pero RENUMERAN mal (2.1 se emite como 2.3) y eso no lo declara nadie.',
+  'ch-fx-dark': 'Fiel salvo el halo cónico, que sale más difuso (128 cuñas), y las sombras de color ' +
+    'del pill y del botón, bastante más marcadas que en vivo.',
+  'ch-fx-table': 'Fiel salvo el borde doble del pie, que sale como una barra oscura sólida en vez ' +
+    'de dos hilos, y algún número tabular corrido 2-3px.',
+  'ch-fx-grid': 'Casi exacto. Los separadores punteados salen sólidos (declarado) y los tiempos ' +
+    'alineados a la derecha se corren 2-3px.',
+  'ch-fx-img': 'El mejor: object-fit cover y contain, srcset, avatar recortado y background cover ' +
+    'salen bien. Sólo la sombra de la píldora "900w" sale más oscura.',
+}
+
+async function load () {
+  btn.classList.remove('done')
+  btn.textContent = 'Copiar al portapapeles'
+  status.className = ''
+  status.textContent = ''
+  const note = $('#note')
+  const key = sel.value.replace(/^.*\//, '').replace(/\.svg$/, '')
+  if (NOTES[key]) {
+    note.classList.add('on')
+    note.innerHTML = '<b>Qué se sabe roto</b>' + NOTES[key]
+  } else {
+    note.classList.remove('on')
+  }
+  try {
+    const res = await fetch(sel.value, { cache: 'no-store' })
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${sel.value}`)
+    current = await res.text()
+    $('#preview').innerHTML = current
+    // Un atributo repetido o una etiqueta sin cerrar y Figma no pega NADA — y el
+    // síntoma (no pasa nada al pegar) no se parece en nada a la causa. Se parsea
+    // primero porque el resto de las cifras se cuentan sobre el árbol, no sobre el
+    // texto: el propio SVG lleva un comentario que habla de `<text>` y de `<pattern>`.
+    const parsed = new DOMParser().parseFromString(current, 'application/xml')
+    const bad = parsed.querySelector('parsererror')
+    const count = (s) => bad ? '—' : parsed.querySelectorAll(s).length
+
+    $('#m-size').textContent = (current.length / 1024).toFixed(1) + ' kB'
+    $('#m-text').textContent = count('text')
+    $('#m-img').textContent = count('image')
+    const fo = !bad && parsed.querySelectorAll('foreignObject').length > 0
+    $('#m-fo').textContent = bad ? '—' : fo ? '⚠ SÍ' : '0'
+    $('#m-fo').classList.toggle('bad', fo)
+
+    // Las dos formas que Figma dropea sin decir nada: un <pattern> envolviendo la
+    // pintura, y una cadena feMorphology donde el importador espera una primitiva.
+    $('#m-figma').textContent = `${count('pattern')} · ${count('feMorphology')}`
+    $('#m-figma').classList.toggle('bad', !bad && parsed.querySelectorAll('feMorphology').length > 0)
+
+    $('#m-xml').textContent = bad ? '⚠ MALFORMADO' : 'válido'
+    $('#m-xml').classList.toggle('bad', !!bad)
+    if (bad) {
+      status.className = 'err'
+      status.textContent = 'Este SVG no parsea como XML, así que Figma no va a pegar nada: ' +
+        bad.textContent.replace(/\s+/g, ' ').slice(0, 200)
+    }
+  } catch (err) {
+    current = ''
+    status.className = 'err'
+    status.textContent = String(err.message || err)
+  }
+}
+
+// Plain text, not a Blob: Chrome's clipboard carries a short allowlist of MIME types
+// and `image/svg+xml` is not on it. Figma sniffs the text and imports it as SVG.
+btn.onclick = async () => {
+  if (!current) return
+  try {
+    await navigator.clipboard.writeText(current)
+    btn.classList.add('done')
+    btn.textContent = 'Copiado — pegá en Figma con ⌘V'
+    status.textContent = 'Doble clic sobre un título para comprobar que el texto quedó editable.'
+  } catch (err) {
+    status.className = 'err'
+    status.textContent = 'No se pudo escribir el portapapeles: ' + (err.message || err)
+  }
+}
+
+sel.onchange = load
+load()
+</script>
+</body>
+</html>

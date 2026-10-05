@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¿Figma convierte HTML pegado?</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs" } }
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 32px;
+         background: #f1f5f9; color: #0f172a; display: flex; gap: 28px; align-items: flex-start;
+         flex-wrap: wrap; }
+  aside { width: 340px; flex: none; background: #fff; border-radius: 16px; padding: 24px;
+          box-shadow: 0 10px 30px rgba(15,23,42,.08); position: sticky; top: 32px; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 18px; font-size: 13.5px; color: #64748b; }
+  .opt { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .opt b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .opt span { display: block; font-size: 12.5px; color: #64748b; line-height: 1.45; margin-bottom: 10px; }
+  button { width: 100%; padding: 11px 14px; font: inherit; font-size: 14px; font-weight: 650;
+           color: #fff; border: 0; border-radius: 9px; cursor: pointer; background: #4f46e5; }
+  button.done { background: #059669; }
+  #status { margin-top: 4px; font-size: 13px; color: #64748b; min-height: 2.5em; white-space: pre-wrap; }
+  #status.err { color: #b91c1c; }
+  .note { margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: #f8fafc;
+          font-size: 12.5px; color: #475569; line-height: 1.5; }
+  main { flex: 1; min-width: 340px; background: #fff; border-radius: 16px; padding: 26px;
+         box-shadow: 0 10px 30px rgba(15,23,42,.08); }
+  main h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: #64748b;
+            margin: 0 0 16px; font-weight: 650; }
+  .card { width: 360px; border-radius: 16px; padding: 22px; background: #fff;
+          box-shadow: 0 14px 34px -12px rgba(15,23,42,.3), 0 0 0 1px rgba(15,23,42,.05); }
+  .card .tag { display: inline-block; font-size: 11px; font-weight: 750; letter-spacing: .1em;
+               text-transform: uppercase; color: #4338ca; background: #eef2ff; padding: 5px 11px;
+               border-radius: 999px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 8px; font-size: 26px; font-weight: 800; letter-spacing: -1.2px; }
+  .card p { margin: 0 0 14px; font-size: 14px; color: #475569; }
+  .card .cta { width: auto; border-radius: 10px; padding: 11px 20px;
+               background: linear-gradient(135deg,#4f46e5,#db2777); }
+</style>
+</head>
+<body>
+<aside>
+  <h1>¿Figma convierte HTML pegado?</h1>
+  <p class="sub">Sin sobre propietario: sólo <code>text/html</code>, que es lo que cualquier
+  aplicación pone en el portapapeles al copiar contenido.</p>
+
+  <div class="opt">
+    <b>A · el clon de snapdom, tal cual</b>
+    <span>El HTML que snapdom produce, con su hoja de estilos: clases <code>.cN</code> y un
+    <code>&lt;style&gt;</code> delante.</span>
+    <button data-mode="clone">Copiar A</button>
+  </div>
+
+  <div class="opt">
+    <b>B · el mismo clon, con los estilos en línea</b>
+    <span>Cada elemento con su <code>style="…"</code> resuelto, sin hoja de estilos. Es lo mismo
+    que A pero sin depender de que el destino lea un <code>&lt;style&gt;</code>.</span>
+    <button data-mode="inline">Copiar B</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="note">Si alguna de las dos entra como capas, no hace falta ningún formato propietario:
+  snapdom ya produce lo que Figma necesita. Si las dos entran como texto plano o no entran, la
+  conversión hay que hacerla nosotros y el SVG es el camino.</div>
+</aside>
+
+<main>
+  <h2>Elemento vivo</h2>
+  <div id="target">
+    <div class="card">
+      <span class="tag">Prueba</span>
+      <h3>Pegar HTML directo</h3>
+      <p>Con degradado en el botón, sombra en la tarjeta y un titular con interletraje negativo
+      de −1,2px.</p>
+      <button class="cta">Acción</button>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { snapdom } from '@zumer/snapdom'
+
+const $ = s => document.querySelector(s)
+const status = $('#status')
+
+/**
+ * snapdom resuelve el estilo de cada nodo en una clase `.cN` y devuelve la hoja
+ * en `classCSS`. Para la variante B hay que deshacer esa deduplicación: leer el
+ * estilo computado del clon MONTADO (donde las clases ya aplican) y escribirlo
+ * en el atributo `style` de cada elemento.
+ */
+function inlineStyles (root) {
+  const PROPS = ['background-color','background-image','background-clip','border-radius',
+    'border','box-shadow','box-sizing','color','display','opacity','font-family','font-size',
+    'font-style','font-weight','letter-spacing','line-height','margin','padding','text-align',
+    'text-decoration','text-transform','transform','vertical-align','width','height',
+    'flex-direction','align-items','justify-content','gap','position','top','left','overflow']
+  for (const el of [root, ...root.querySelectorAll('*')]) {
+    const cs = getComputedStyle(el)
+    const decl = []
+    for (const p of PROPS) {
+      const v = cs.getPropertyValue(p)
+      if (v && v !== 'none' && v !== 'normal' && v !== 'auto' && v !== '0px') decl.push(`${p}:${v}`)
+    }
+    el.setAttribute('style', decl.join(';'))
+    el.removeAttribute('class')
+  }
+}
+
+async function build (mode) {
+  let retained = null
+  await snapdom(document.getElementById('target').firstElementChild, {
+    plugins: [{ name: 'grab', beforeRender (state) { retained = state } }],
+  })
+  if (!retained || !retained.clone) throw new Error('snapdom no entregó el clon')
+
+  const { clone, classCSS, fontsCSS } = retained
+  const copy = clone.cloneNode(true)
+
+  if (mode === 'clone') {
+    return `<style>${fontsCSS || ''}${classCSS || ''}</style>${copy.outerHTML}`
+  }
+  // Para inlinear hay que montarlo con su CSS: sin eso el estilo computado de una
+  // clase `.cN` no existe y saldría todo con los valores por defecto del navegador.
+  const style = document.createElement('style')
+  style.textContent = (fontsCSS || '') + (classCSS || '')
+  document.head.appendChild(style)
+  const host = document.createElement('div')
+  host.style.cssText = 'position:fixed;left:-99999px;top:0'
+  host.appendChild(copy)
+  document.body.appendChild(host)
+  try { inlineStyles(copy) } finally { host.remove(); style.remove() }
+  return copy.outerHTML
+}
+
+for (const btn of document.querySelectorAll('button[data-mode]')) {
+  btn.onclick = async () => {
+    status.className = ''
+    try {
+      const html = await build(btn.dataset.mode)
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([html], { type: 'text/plain' }),
+      })])
+      for (const b of document.querySelectorAll('button[data-mode]')) {
+        b.classList.remove('done'); b.textContent = 'Copiar ' + (b.dataset.mode === 'clone' ? 'A' : 'B')
+      }
+      btn.classList.add('done')
+      btn.textContent = 'Copiado — pegá en Figma'
+      status.textContent = `${(html.length / 1024).toFixed(1)} kB de HTML. Pegá con ⌘V y mirá si entra como capas.`
+    } catch (err) {
+      status.className = 'err'
+      status.textContent = String(err && err.stack || err)
+    }
+  }
+}
+</script>
+</body>
+</html>

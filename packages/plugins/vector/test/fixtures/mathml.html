@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>Native MathML vector regression fixtures</title>
+<script type="importmap">
+{"imports":{"@zumer/snapdom":"/snapdom-v3/dist/snapdom.mjs","@zumer/snapdom-vector":"/src/index.js","@zumer/svd":"/svd/index.js"}}
+</script>
+<style>
+  @font-face { font-family: MathFixture; src: url('/demo/fonts/Inter-400.ttf') format('truetype'); font-style: normal; font-weight: 400; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #dfe5eb; font: 20px Arial, sans-serif; }
+  .case { display: none; width: 720px; height: 260px; padding: 36px; background: white; color: #111; }
+  .case.active { display: block; }
+  math { font-family: 'STIX Two Math', math; font-size: 36px; }
+  p { margin: 24px 0; line-height: 2; }
+  #math-root, #transformed-math-root { width: 360px; height: 180px; background: white; padding: 16px; }
+</style>
+</head>
+<body>
+<div class="case" id="quadratic">
+  <math display="block"><mi>x</mi><mo>=</mo><mfrac data-rule="quadratic"><mrow><mo>−</mo><mi>b</mi><mo>±</mo><msqrt data-radical="quadratic"><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></math>
+</div>
+<div class="case" id="sum-scripts">
+  <math display="block"><munderover><mo data-token="sum">∑</mo><mrow><mi data-token="lower">i</mi><mo>=</mo><mn>1</mn></mrow><mi data-token="upper">n</mi></munderover><msup><mi data-token="base">x</mi><mn data-token="power">2</mn></msup><mo>=</mo><mi>S</mi></math>
+</div>
+<div class="case" id="matrix">
+  <math display="block"><mo data-stretch="left">(</mo><mtable data-token="table"><mtr><mtd><mn data-token="a">1</mn></mtd><mtd><mn data-token="b">2</mn></mtd></mtr><mtr><mtd><mn data-token="c">3</mn></mtd><mtd><mn data-token="d">4</mn></mtd></mtr></mtable><mo data-stretch="right">)</mo></math>
+</div>
+<div class="case" id="nested-root-fraction">
+  <math display="block"><mfrac data-rule="outer"><mfrac data-rule="inner"><mi>a</mi><mi>b</mi></mfrac><mrow><mn>1</mn><mo>+</mo><mfrac data-rule="bottom"><mi>c</mi><mi>d</mi></mfrac></mrow></mfrac><mo>=</mo><mroot data-radical="indexed"><mrow><mi>u</mi><mo>+</mo><mi>v</mi></mrow><mn data-token="root-index">5</mn></mroot></math>
+</div>
+<div class="case" id="inline">
+  <p>Before <math><mi data-token="inline-base">y</mi><mo>=</mo><mfrac data-rule="inline"><mn>7</mn><mn>9</mn></mfrac></math> after.</p>
+</div>
+<div class="case" id="hidden-semantics">
+  <math display="block"><semantics><mrow><mi data-token="visible-a">A</mi><mo>+</mo><mphantom style="font-size:12px"><mi>PHANTOM_SENTINEL</mi></mphantom><mi data-token="visible-b">B</mi><mi style="font-size:8px;visibility:hidden">HIDDEN_SENTINEL</mi><mi style="display:none">NONE_SENTINEL</mi><mi style="font-size:8px;opacity:0">ZERO_SENTINEL</mi></mrow><annotation encoding="application/x-tex">ANNOTATION_SENTINEL</annotation><annotation-xml encoding="application/xhtml+xml"><div xmlns="http://www.w3.org/1999/xhtml">XML_SENTINEL</div></annotation-xml></semantics></math>
+</div>
+<div class="case" id="font-style">
+  <math display="block" style="font-family:Georgia,serif;font-size:42px;color:rgb(25,112,64)"><mi data-token="green">q</mi><mo>+</mo><mtext data-token="styled" style="font-family:'Courier New',monospace;font-size:24px;font-style:italic;font-weight:700;color:rgb(156,36,102)">units</mtext></math>
+</div>
+<div class="case" id="unsupported">
+  <math display="block"><menclose notation="circle"><mi>z</mi></menclose><mo>+</mo><mn>8</mn></math>
+</div>
+<div class="case" id="webfont">
+  <math display="block"><mtext data-token="local-font" style="font-family:MathFixture;font-size:30px;font-weight:400;font-style:normal">Local font</mtext><mo>=</mo><mn>44</mn></math>
+</div>
+<div class="case" id="transformed">
+  <math display="block" style="font-size:28px;transform:translate(36px,10px) scale(1.15);transform-origin:left top;transition:transform 1s"><mi data-token="translated">p</mi><mo>=</mo><mfrac data-rule="transformed"><mn>8</mn><mn>6</mn></mfrac></math>
+</div>
+<div class="case" id="root-capture">
+  <math id="math-root" display="block"><mn>2</mn><mi>r</mi><mo>+</mo><mn>3</mn></math>
+</div>
+<div class="case" id="nested-mtext">
+  <math display="block"><mtext>A<span xmlns="http://www.w3.org/1999/xhtml" class="private-math" style="font-size:8px">PRIVATE_MTEXT_SENTINEL</span><span xmlns="http://www.w3.org/1999/xhtml" style="display:none">NESTED_NONE_SENTINEL</span><span xmlns="http://www.w3.org/1999/xhtml" style="font-size:8px;visibility:hidden">NESTED_HIDDEN_SENTINEL</span><span xmlns="http://www.w3.org/1999/xhtml" style="font-size:8px;opacity:0">NESTED_ZERO_SENTINEL</span>B</mtext><mo>+</mo><mi>t</mi></math>
+</div>
+<div class="case" id="clipped-accessibility">
+  <span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap"><math><mtext>GHOST_SENTINEL</mtext></math></span>
+  <math display="block"><mi>a</mi><mo>+</mo><mi>b</mi></math>
+</div>
+<div class="case" id="transformed-root-capture">
+  <math id="transformed-math-root" display="block" style="transform:translate(31px,13px)"><mi data-token="root-translated">k</mi><mo>=</mo><mfrac data-rule="root-transformed"><mn>5</mn><mn>6</mn></mfrac></math>
+</div>
+<div class="case" id="identifier-style">
+  <math display="block"><mi data-token="default-identifier">x</mi><mo>+</mo><mi data-token="normal-identifier" mathvariant="normal">y</mi><mo>+</mo><mi data-token="untransformed-identifier" style="text-transform:none">z</mi></math>
+</div>
+<div class="case" id="fixed-in-transformed-parent">
+  <div style="position:relative;width:560px;height:180px;transform:translate(18px,12px) scale(1.1);transform-origin:left top"><math style="position:fixed;left:90px;top:28px;font-size:28px"><mi data-token="fixed-token">w</mi><mo>=</mo><mfrac data-rule="fixed"><mn>3</mn><mn>4</mn></mfrac></math></div>
+</div>
+<script type="module">
+  window.mathmlCases = [
+    { id: 'quadratic', expected: 'x=−b±b2−4ac2a', minimumGeometry: 2 },
+    { id: 'sum-scripts', expected: '∑i=1nx2=S', above: [['upper', 'sum'], ['sum', 'lower'], ['power', 'base']] },
+    { id: 'matrix', expected: '(1234)', above: [['a', 'c'], ['b', 'd']], leftOf: [['a', 'b'], ['c', 'd']] },
+    { id: 'nested-root-fraction', expected: 'ab1+cd=u+v5', minimumGeometry: 4 },
+    { id: 'inline', expected: 'Beforey=79after.', minimumGeometry: 1 },
+    { id: 'hidden-semantics', expected: 'A+B', leftOf: [['visible-a', 'visible-b']], forbidden: ['PHANTOM_SENTINEL', 'HIDDEN_SENTINEL', 'NONE_SENTINEL', 'ZERO_SENTINEL', 'ANNOTATION_SENTINEL', 'XML_SENTINEL'] },
+    { id: 'font-style', expected: 'q+units', fontStyle: true },
+    { id: 'unsupported', expected: 'z+8', unsupported: true },
+    { id: 'webfont', expected: 'Localfont=44', webfont: true },
+    { id: 'transformed', expected: 'p=86', minimumGeometry: 1, positionTokens: ['translated'] },
+    { id: 'root-capture', target: '#math-root', expected: '2r+3' },
+    { id: 'nested-mtext', expected: 'AB+t', exclude: '.private-math', forbidden: ['PRIVATE_MTEXT_SENTINEL', 'NESTED_NONE_SENTINEL', 'NESTED_HIDDEN_SENTINEL', 'NESTED_ZERO_SENTINEL'] },
+    { id: 'clipped-accessibility', expected: 'a+b', forbidden: ['GHOST_SENTINEL'] },
+    { id: 'transformed-root-capture', target: '#transformed-math-root', expected: 'k=56', minimumGeometry: 1, positionTokens: ['root-translated'] },
+    { id: 'identifier-style', expected: 'x+y+z', glyphPolicy: true },
+    { id: 'fixed-in-transformed-parent', expected: 'w=34', minimumGeometry: 1, positionTokens: ['fixed-token'] },
+  ]
+  window.showMathmlCase = async id => {
+    const fixture = window.mathmlCases.find(item => item.id === id)
+    if (!fixture) throw new Error(`Unknown MathML case: ${id}`)
+    for (const element of document.querySelectorAll('.case')) element.classList.toggle('active', element.id === id)
+    await document.fonts.ready
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    return fixture.target || `#${fixture.id}`
+  }
+  await window.showMathmlCase('quadratic')
+  window.__ready = true
+</script>
+</body>
+</html>

@@ -1,0 +1,1204 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snapdom vector — DOM a SVD</title>
+<script type="importmap">
+{
+  "imports": {
+    "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs",
+    "@zumer/snapdom-vector": "/src/index.js",
+    "@zumer/snapdom-vector/": "/src/",
+    "@zumer/svd": "/svd/index.js"
+  }
+}
+</script>
+<style>
+  :root {
+    --ink: #0f172a; --dim: #64748b; --faint: #94a3b8; --line: #e2e8f0;
+    --paper: #fff; --bg: #eef1f5; --sunk: #f8fafc;
+    --accent: #4f46e5; --accent2: #06b6d4;
+    --err: #dc2626; --warn: #b45309; --info: #0369a1; --ok: #047857;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scrollbar-gutter: stable; }
+  body {
+    font: 15px/1.55 -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--ink); margin: 0; padding: 24px;
+    display: flex; gap: 24px; align-items: flex-start;
+  }
+  /* Scoped a `aside`: los fixtures traen sus propios encabezados y no deben heredar esto. */
+  aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .09em;
+             color: var(--faint); margin: 0 0 10px; font-weight: 700; }
+  code, kbd { font-family: var(--mono); font-size: .86em; }
+
+  /* ——————————————————————————————— panel ——————————————————————————————— */
+  aside {
+    position: sticky; top: 24px; width: 316px; flex: none; max-height: calc(100vh - 48px);
+    overflow: auto; overscroll-behavior: contain;
+    background: var(--paper); border-radius: 14px; padding: 18px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .09);
+  }
+  .brand { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; }
+  .brand b { font-size: 17px; letter-spacing: -.02em; }
+  .brand span { font-size: 11px; color: var(--faint); font-family: var(--mono); }
+  .lede { margin: 0 0 18px; font-size: 12.5px; color: var(--dim); }
+
+  .field { margin-bottom: 14px; }
+  .field > label { display: block; font-size: 11px; text-transform: uppercase;
+                   letter-spacing: .07em; color: var(--dim); margin-bottom: 5px; }
+  select {
+    width: 100%; font: inherit; font-size: 14px; padding: 7px 9px; color: var(--ink);
+    border: 1px solid #cbd5e1; border-radius: 8px; background: #fff;
+  }
+  .seg { display: flex; background: var(--sunk); border: 1px solid var(--line);
+         border-radius: 9px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; font: inherit; font-size: 12.5px; padding: 6px 4px; border: 0;
+                border-radius: 6px; background: transparent; color: var(--dim); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); font-weight: 600;
+                                     box-shadow: 0 1px 3px rgba(15,23,42,.14); }
+  .check { display: flex; align-items: center; gap: 9px; font-size: 13.5px;
+           padding: 7px 0; cursor: pointer; }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .check .hint { display: block; font-size: 11.5px; color: var(--faint); }
+
+  #go { width: 100%; margin-top: 6px; padding: 11px 16px; font: inherit; font-weight: 650;
+        color: #fff; border: 0; border-radius: 9px; cursor: pointer; letter-spacing: .01em;
+        background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+  #go:disabled { opacity: .55; cursor: progress; }
+  #status { margin-top: 9px; font-size: 12px; color: var(--dim); min-height: 1.4em;
+            white-space: pre-wrap; word-break: break-word; }
+
+  .sep { height: 1px; background: var(--line); margin: 18px 0 14px; }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .m { background: var(--sunk); border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; }
+  .m b { display: block; font-size: 18px; letter-spacing: -.025em; line-height: 1.25;
+         font-variant-numeric: tabular-nums; }
+  .m span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+            color: var(--faint); margin-top: 1px; }
+  .m.wide { grid-column: 1 / -1; }
+  .m em { font-style: normal; color: var(--faint); font-weight: 400; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+  .chip { font-size: 11.5px; padding: 3px 8px; border-radius: 999px; background: #eef2ff;
+          color: #3730a3; border: 1px solid #e0e7ff; }
+  .chip.mono { font-family: var(--mono); font-size: 10.5px; }
+  .schema { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+            padding: 4px 9px; border-radius: 999px; font-weight: 600; }
+  .schema.ok  { background: #ecfdf5; color: var(--ok); }
+  .schema.bad { background: #fef2f2; color: var(--err); }
+
+  .actions { display: grid; gap: 7px; }
+  .actions button { font: inherit; font-size: 13px; padding: 8px 10px; border-radius: 8px;
+                    border: 1px solid #cbd5e1; background: #fff; color: var(--ink);
+                    cursor: pointer; text-align: left; }
+  .actions button:disabled { opacity: .45; cursor: default; }
+  .actions button:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+  .actions .note { font-size: 11px; color: var(--faint); margin: 2px 0 0; }
+
+  /* ——————————————————————————————— main ——————————————————————————————— */
+  main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+  .card { background: var(--paper); border-radius: 14px; box-shadow: 0 10px 30px rgba(15,23,42,.09); }
+  .card > header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+                   padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .card > header h1 { font-size: 14px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+  .grow { flex: 1; }
+  .opacity { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dim); }
+  .opacity input[type=range] { width: 120px; accent-color: var(--accent); }
+  .opacity[data-off="1"] { opacity: .35; pointer-events: none; }
+
+  .stage-scroll { overflow: auto; padding: 22px; background:
+      linear-gradient(45deg, #e9edf2 25%, transparent 25%, transparent 75%, #e9edf2 75%) 0 0/16px 16px,
+      linear-gradient(45deg, #e9edf2 25%, transparent 25%, transparent 75%, #e9edf2 75%) 8px 8px/16px 16px,
+      #f4f6f9;
+      border-radius: 0 0 14px 14px; }
+  /* `safe center` centra mientras quepa y suelta el borde izquierdo cuando no:
+     con `center` a secas el desbordamiento se recorta por los dos lados y la
+     izquierda queda inalcanzable. */
+  .layers { display: flex; flex-wrap: wrap; gap: 20px; justify-content: safe center;
+            align-items: flex-start; isolation: isolate; --ov: 1; }
+  .layer { min-width: 0; }
+  .lhead { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--dim);
+           margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .lhead .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .layer-svg .dot { background: var(--accent2); }
+  .lbody { position: relative; }
+
+  /* Superponer exige la misma celda, y eso sólo lo da el grid. */
+  .layers:not([data-view="side"]) { display: grid; grid-template-columns: max-content;
+                                    justify-content: safe center; }
+  .layers:not([data-view="side"]) .layer { grid-row: 1; grid-column: 1; }
+  .layers:not([data-view="side"]) .layer-svg { opacity: var(--ov); pointer-events: none; }
+  .layers:not([data-view="side"]) .layer-svg .lhead { visibility: hidden; }
+  .layers[data-view="diff"] .layer-svg { mix-blend-mode: difference; opacity: 1; }
+  .layers[data-view="diff"] { background: #000; }
+  .layers[data-view="diff"] .lhead { color: #cbd5e1; }
+
+  .placeholder { display: grid; place-items: center; text-align: center; padding: 40px 28px;
+                 min-width: 300px; min-height: 220px; border: 1.5px dashed #cbd5e1;
+                 border-radius: 12px; color: var(--faint); font-size: 13px; background: #fff; }
+  #svgout svg { display: block; }
+  .hl-pin { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* ————————————————————————————— diagnósticos ————————————————————————————— */
+  .sevbar { display: flex; gap: 6px; }
+  .sevbar button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px;
+                   border: 1px solid var(--line); background: #fff; color: var(--dim); cursor: pointer; }
+  .sevbar button[aria-pressed="true"] { border-color: currentColor; font-weight: 600; }
+  .sevbar button[data-sev="error"][aria-pressed="true"] { color: var(--err); background: #fef2f2; }
+  .sevbar button[data-sev="warn"][aria-pressed="true"]  { color: var(--warn); background: #fffbeb; }
+  .sevbar button[data-sev="info"][aria-pressed="true"]  { color: var(--info); background: #f0f9ff; }
+  .sevbar button[data-sev="all"][aria-pressed="true"]   { color: var(--ink); background: var(--sunk); }
+
+  .diagbody { padding: 6px 16px 16px; }
+  .dgroup { border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; overflow: hidden; }
+  .dghead { display: flex; align-items: center; gap: 9px; padding: 8px 11px; background: var(--sunk);
+            border-bottom: 1px solid var(--line); }
+  .dghead code { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .dghead .count { margin-left: auto; font-size: 11px; color: var(--faint);
+                   font-variant-numeric: tabular-nums; }
+  .sev { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+         padding: 2px 7px; border-radius: 999px; }
+  .sev.error { background: #fee2e2; color: var(--err); }
+  .sev.warn  { background: #fef3c7; color: var(--warn); }
+  .sev.info  { background: #e0f2fe; color: var(--info); }
+  .drow { display: grid; grid-template-columns: 116px 1fr; gap: 12px; padding: 7px 11px;
+          border-top: 1px solid #f1f5f9; cursor: default; font-size: 13px; }
+  .dgroup .drow:first-of-type { border-top: 0; }
+  .drow:hover, .drow.pinned, .drow:focus-visible { background: #eef2ff; }
+  .drow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .drow .nid { font-family: var(--mono); font-size: 11.5px; color: var(--accent);
+               word-break: break-all; padding-top: 1px; }
+  .drow .nid.none { color: var(--faint); }
+  .drow .why { color: #334155; }
+  .drow .extra { margin-top: 3px; font-size: 11.5px; color: var(--faint); font-family: var(--mono);
+                 word-break: break-word; }
+  .empty { padding: 22px 16px; color: var(--faint); font-size: 13px; text-align: center; }
+
+  .errbox { margin: 12px 16px 16px; border: 1px solid #fecaca; background: #fff5f5;
+            border-radius: 10px; padding: 12px 14px; }
+  .errbox h3 { margin: 0 0 6px; font-size: 13px; color: var(--err); }
+  .errbox pre { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.5;
+                color: #7f1d1d; white-space: pre-wrap; word-break: break-word;
+                max-height: 260px; overflow: auto; }
+
+  details.raw { border-top: 1px solid var(--line); }
+  details.raw > summary { cursor: pointer; padding: 11px 16px; font-size: 12.5px; color: var(--dim);
+                          list-style: none; display: flex; align-items: center; gap: 8px; }
+  details.raw > summary::-webkit-details-marker { display: none; }
+  details.raw > summary::before { content: "▸"; color: var(--faint); }
+  details.raw[open] > summary::before { content: "▾"; }
+  details.raw pre { margin: 0; padding: 0 16px 16px; font-family: var(--mono); font-size: 11.5px;
+                    line-height: 1.5; max-height: 460px; overflow: auto; color: #334155; }
+
+  /* ═══════════════════════════════ fixtures ═══════════════════════════════ */
+  .fx { display: none; padding: 28px; border-radius: 16px; background: #fff; }
+  .fx.on { display: block; }
+
+  /* 1 · card de producto */
+  .fx-card { width: 396px; background: #eef2f7; }
+  .pcard { width: 340px; background: #fff; border-radius: 18px;
+           border: 1px solid rgba(15,23,42,.07);
+           box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 12px 28px -8px rgba(15,23,42,.28); }
+  /* Sin `overflow:hidden`: el aro cónico tiene que desbordar sobre el cuerpo. */
+  .pcard-media { position: relative; height: 152px; border-radius: 17px 17px 0 0;
+                 background: linear-gradient(135deg, #4338ca 0%, #6d28d9 45%, #db2777 100%); }
+  .pcard-orb { position: absolute; inset: 0; border-radius: inherit;
+               background: radial-gradient(58% 76% at 74% 26%, rgba(255,255,255,.72) 0%,
+                           rgba(255,255,255,.20) 42%, rgba(255,255,255,0) 70%); }
+  .pcard-ring { position: absolute; left: 30px; bottom: -34px; width: 96px; height: 96px;
+                border-radius: 50%; border: 10px solid rgba(255,255,255,.9);
+                background: conic-gradient(from 210deg, #f59e0b, #ef4444, #8b5cf6, #f59e0b);
+                box-shadow: 0 8px 20px -6px rgba(15,23,42,.45); }
+  .pcard-tag { position: absolute; top: 14px; right: 14px; z-index: 2; font-size: 11px;
+               font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #4c1d95;
+               background: rgba(255,255,255,.94); padding: 5px 10px; border-radius: 999px; }
+  .pcard-body { padding: 46px 20px 20px; }
+  .pcard-kicker { margin: 0 0 3px; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+                  text-transform: uppercase; color: #7c3aed; }
+  .pcard-title { margin: 0 0 7px; font-size: 21px; letter-spacing: -.02em; line-height: 1.2; }
+  .pcard-copy { margin: 0 0 16px; font-size: 13.5px; color: #475569; }
+  .pcard-copy b { color: #0f172a; }
+  .pcard-foot { display: flex; align-items: center; justify-content: space-between;
+                padding-top: 14px; border-top: 1px solid #eef2f7; }
+  .pcard-price { display: flex; align-items: baseline; gap: 7px; }
+  .pcard-price s { color: #94a3b8; font-size: 13px; }
+  .pcard-price strong { font-size: 24px; letter-spacing: -.03em; }
+  .pcard-cta { font: inherit; font-size: 13.5px; font-weight: 650; color: #fff; border: 0;
+               padding: 9px 18px; border-radius: 10px; cursor: pointer;
+               background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+               box-shadow: 0 6px 14px -4px rgba(79,70,229,.6); }
+  .pcard-stars { color: #f59e0b; font-size: 12.5px; letter-spacing: .06em; }
+  .pcard-stars span { color: #94a3b8; }
+
+  /* 2 · bloque tipográfico */
+  .fx-type { width: 480px; background: #fffdf8; }
+  .ty-kicker { margin: 0 0 8px; font: 700 11px/1 ui-sans-serif, system-ui; letter-spacing: .16em;
+               text-transform: uppercase; color: #b45309; }
+  .ty-h1 { margin: 0 0 6px; font: 700 36px/1.1 Georgia, "Times New Roman", serif;
+           letter-spacing: -.02em; color: #1c1917; }
+  .ty-sub { margin: 0 0 18px; font: 400 17px/1.5 Georgia, serif; color: #78716c; font-style: italic; }
+  .ty-meta { display: flex; gap: 10px; align-items: center; margin: 0 0 20px; padding-bottom: 16px;
+             border-bottom: 2px solid #f5e9d7; font-size: 12px; color: #a8a29e;
+             letter-spacing: .04em; text-transform: uppercase; }
+  .ty-meta b { color: #57534e; text-transform: none; letter-spacing: 0; font-size: 13px; }
+  .ty-body { margin: 0 0 14px; font: 400 16.5px/1.72 Georgia, serif; color: #292524; }
+  .ty-body a { color: #b45309; text-decoration: underline; text-underline-offset: 2px;
+               text-decoration-thickness: 1px; }
+  .ty-body b { font-weight: 700; }
+  .ty-body .sc { font-variant-caps: all-small-caps; letter-spacing: .06em; }
+  .ty-drop::first-letter { float: left; font-size: 52px; line-height: .84; padding: 4px 8px 0 0;
+                           font-weight: 700; color: #b45309; }
+  .ty-quote { margin: 22px 0; padding: 4px 0 4px 20px; border-left: 3px solid #f59e0b;
+              font: 500 19px/1.5 Georgia, serif; color: #44403c; }
+  .ty-quote footer { margin-top: 8px; font: 600 12px/1 ui-sans-serif, system-ui;
+                     letter-spacing: .1em; text-transform: uppercase; color: #a8a29e; }
+  .ty-code { font-family: var(--mono); font-size: 13.5px; background: #f5f5f4; color: #7c2d12;
+             padding: 2px 6px; border-radius: 5px; }
+  .ty-note { margin: 0; font: 400 13px/1.6 ui-sans-serif, system-ui; color: #a8a29e; }
+
+  /* 3 · badges y botones */
+  .fx-ui { width: 444px; background: #f8fafc; }
+  .ui-h { margin: 0 0 3px; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+  .ui-p { margin: 0 0 14px; font-size: 12.5px; color: #64748b; }
+  .ui-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+           padding: 4px 10px; border-radius: 999px; border: 1px solid transparent; }
+  .badge .pip { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.b-ok    { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+  .badge.b-warn  { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+  .badge.b-err   { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+  .badge.b-info  { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .badge.b-solid { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+                   box-shadow: 0 3px 8px -2px rgba(99,102,241,.7); }
+  .badge.b-ghost { background: transparent; color: #475569; border-color: #cbd5e1;
+                   border-style: dashed; }
+  .btn { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 16px; border-radius: 9px;
+         border: 1px solid transparent; cursor: pointer; }
+  .btn-primary { color: #fff; background: linear-gradient(180deg, #4f46e5, #4338ca);
+                 box-shadow: 0 1px 0 rgba(255,255,255,.24) inset, 0 6px 14px -5px rgba(67,56,202,.8); }
+  .btn-outline { color: #4338ca; background: #fff; border-color: #c7d2fe;
+                 box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+  .btn-ghost   { color: #475569; background: transparent; }
+  .btn-danger  { color: #fff; background: #dc2626; box-shadow: 0 6px 14px -5px rgba(220,38,38,.75); }
+  .btn-disabled{ color: #94a3b8; background: #f1f5f9; border-color: #e2e8f0; cursor: not-allowed; }
+  .btn-focus   { color: #4338ca; background: #fff; border-color: #c7d2fe;
+                 outline: 3px solid rgba(99,102,241,.35); outline-offset: 2px; }
+  .ui-seg { display: inline-flex; background: #eef2f7; border-radius: 10px; padding: 3px; gap: 3px;
+            border: 1px solid #e2e8f0; }
+  .ui-seg span { font-size: 12.5px; padding: 6px 14px; border-radius: 7px; color: #64748b; }
+  .ui-seg span.on { background: #fff; color: #0f172a; font-weight: 600;
+                    box-shadow: 0 1px 3px rgba(15,23,42,.16); }
+  .ui-note { margin: 0; font-size: 11.5px; color: #94a3b8; }
+
+  /* 4 · tabla */
+  .fx-table { width: 500px; background: #fff; }
+  .tb-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .tb-head h4 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+  .tb-head span { font-size: 12px; color: #94a3b8; }
+  .tb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .tb caption { caption-side: bottom; text-align: left; padding-top: 10px; font-size: 11.5px;
+                color: #94a3b8; }
+  .tb th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
+           color: #64748b; font-weight: 700; padding: 8px 10px; background: #f1f5f9;
+           border-bottom: 1px solid #e2e8f0; }
+  .tb th:first-child { border-radius: 8px 0 0 0; }
+  .tb th:last-child { border-radius: 0 8px 0 0; text-align: right; }
+  .tb td { padding: 9px 10px; border-bottom: 1px solid #eef2f7; }
+  .tb tbody tr:nth-child(even) { background: #fafbfc; }
+  .tb td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tb td.name { font-weight: 600; }
+  .tb td.name small { display: block; font-weight: 400; font-size: 11.5px; color: #94a3b8; }
+  .tb .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px;
+              border-radius: 999px; }
+  .tb .pill.up { background: #ecfdf5; color: #047857; }
+  .tb .pill.flat { background: #f1f5f9; color: #475569; }
+  .tb .pill.down { background: #fef2f2; color: #b91c1c; }
+  .tb tfoot td { font-weight: 700; border-top: 2px solid #e2e8f0; border-bottom: 0; }
+
+  /* 5 · z-index */
+  .fx-z { width: 424px; background: #f1f5f9; }
+  /* `isolation` a propósito: sin un contexto de apilado aquí, el hijo con
+     `z-index:-1` sube hasta el contexto raíz y se pinta detrás del fondo de la
+     página entera — invisible, que es justo lo contrario de lo que demuestra. */
+  .zwrap { position: relative; isolation: isolate; padding: 34px 26px;
+           background: #fff; border-radius: 14px; }
+  .zcard { position: relative; padding: 22px; border-radius: 14px; color: #fff;
+           background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+           box-shadow: 0 14px 30px -12px rgba(15,23,42,.6); }
+  .zcard h4 { margin: 0 0 6px; font-size: 15px; letter-spacing: -.01em; }
+  .zcard p { margin: 0; font-size: 12.5px; color: #cbd5e1; max-width: 250px; }
+  .zbehind { position: absolute; z-index: -1; left: -22px; top: -22px; right: 70px; bottom: -22px;
+             border-radius: 16px; background: repeating-linear-gradient(45deg, #fbbf24 0 10px, #f59e0b 10px 20px);
+             color: #78350f; font-size: 11px; font-weight: 700; padding: 6px 10px;
+             text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  .zbadge { position: absolute; right: 18px; top: -16px; z-index: 3; font-size: 11px; font-weight: 700;
+            padding: 6px 12px; border-radius: 999px; background: #22d3ee; color: #083344;
+            box-shadow: 0 6px 14px -5px rgba(8,51,68,.8); }
+  .zfloat { position: absolute; right: -18px; bottom: -26px; z-index: 2; width: 168px; padding: 12px 14px;
+            border-radius: 12px; background: #fff; color: #0f172a; font-size: 12px;
+            border: 1px solid #e2e8f0; box-shadow: 0 10px 24px -10px rgba(15,23,42,.5); }
+  .zfloat b { display: block; font-size: 12.5px; margin-bottom: 2px; }
+  .zctx { position: relative; opacity: .94; margin-top: 16px; padding: 12px 14px; border-radius: 11px;
+          background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
+  .zctx > b { font-size: 12px; letter-spacing: .02em; }
+  .zinner { position: absolute; z-index: 999; right: 10px; bottom: -12px; font-size: 11px;
+            font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #f43f5e; color: #fff; }
+  .zlegend { margin: 30px 0 0; font-size: 11.5px; color: #64748b; line-height: 1.7; }
+  .zlegend code { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; color: #334155; }
+
+  /* 6 · webfont embebida
+     La familia se llama "Inter Demo" a propósito: ese nombre no existe instalado
+     en ninguna máquina, así que si el SVG emitido se ve en Inter es porque los
+     bytes viajaron adentro — el diff del harness renderiza el SVG en una página
+     SIN estas reglas. Los TTF son los de demo/fonts (OFL). */
+  /* Rutas ABSOLUTAS a propósito: el embebido raster de snapdom resuelve un
+     url() relativo de una hoja inline contra la raíz del origen (pide
+     /fonts/…, 404), no contra la página. El colector vectorial resuelve bien
+     con cualquiera de las dos formas. */
+  @font-face { font-family: "Inter Demo"; src: url(/demo/fonts/Inter-400.ttf) format("truetype");
+               font-weight: 400; }
+  @font-face { font-family: "Inter Demo"; src: url(/demo/fonts/Inter-700.ttf) format("truetype");
+               font-weight: 700; }
+  .fx-font { width: 460px; background: #f8fafc;
+             font-family: "Inter Demo", ui-sans-serif, sans-serif; color: #0f172a; }
+  .wf-kicker { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .14em;
+               text-transform: uppercase; color: #0369a1; }
+  .wf-h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.15; font-weight: 700;
+           letter-spacing: -.02em; }
+  .wf-lede { margin: 0 0 14px; font-size: 15px; line-height: 1.55; color: #475569; }
+  .wf-just { margin: 0 0 16px; font-size: 14.5px; line-height: 1.6; text-align: justify; }
+  .wf-just b { font-weight: 700; }
+  .wf-meta { display: flex; gap: 14px; margin: 0; padding-top: 12px; font-size: 12px;
+             color: #64748b; border-top: 1px solid #e2e8f0; }
+  .wf-meta b { color: #0f172a; }
+  .wf-mid { font-weight: 500; }
+  .wf-track { letter-spacing: .12em; text-transform: uppercase; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<aside>
+  <p class="brand"><b>snapdom vector</b> <span>svd/1.0</span></p>
+  <p class="lede">DOM vivo → SVD → SVG plano. Sin <code>foreignObject</code>, sin ráster salvo
+  donde se declare.</p>
+
+  <div class="field">
+    <label for="fixture">Fixture</label>
+    <select id="fixture">
+      <option value="fx-card">1 · Card de producto (gradientes, sombra, radios)</option>
+      <option value="fx-type">2 · Bloque tipográfico (multi-línea, links)</option>
+      <option value="fx-ui">3 · Badges y botones (bordes, estados)</option>
+      <option value="fx-table">4 · Tabla</option>
+      <option value="fx-z">5 · z-index con solapes y z negativo</option>
+      <option value="fx-font">6 · Webfont — @font-face embebida en el SVG</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Modo</label>
+    <div class="seg" id="mode">
+      <button type="button" data-value="design" aria-pressed="true">design</button>
+      <button type="button" data-value="replica" aria-pressed="false">replica</button>
+    </div>
+  </div>
+
+  <label class="check">
+    <input type="checkbox" id="debugPaint">
+    <span>debugPaint
+      <span class="hint">tiñe cada nodo por profundidad de contexto de apilado</span></span>
+  </label>
+
+  <button id="go">Vectorizar</button>
+  <div id="status">Listo.</div>
+
+  <div class="sep"></div>
+
+  <h2>Métricas</h2>
+  <div class="metrics" id="metrics"></div>
+  <div class="chips" id="fonts"></div>
+  <div class="chips" id="schema"></div>
+
+  <div class="sep"></div>
+
+  <h2>Salidas</h2>
+  <div class="actions">
+    <button id="dl-svd" disabled>Descargar <code>.svd</code> (JSON)</button>
+    <button id="dl-svg" disabled>Descargar <code>.svg</code></button>
+    <button id="cp-figma" disabled>Copiar payload de Figma</button>
+    <p class="note">El payload lleva <code>assets</code>, <code>styles</code>, <code>capture</code> y
+    <code>report</code> del SVD: los <em>image fills</em> los referencian por id.</p>
+  </div>
+</aside>
+
+<main>
+  <section class="card">
+    <header>
+      <h1>Comparación</h1>
+      <div class="seg" id="view" style="width:280px">
+        <button type="button" data-value="side" aria-pressed="true">Lado a lado</button>
+        <button type="button" data-value="overlay" aria-pressed="false">Superpuesto</button>
+        <button type="button" data-value="diff" aria-pressed="false">Diferencia</button>
+      </div>
+      <div class="grow"></div>
+      <label class="opacity" id="opacityWrap" data-off="1">
+        Opacidad SVG <input type="range" id="opacity" min="0" max="100" value="50">
+        <b id="opacityVal" style="font-variant-numeric:tabular-nums">50%</b>
+      </label>
+    </header>
+
+    <div class="stage-scroll">
+      <div class="layers" data-view="side" id="layers">
+        <div class="layer layer-live">
+          <div class="lhead"><span class="dot"></span>Original vivo · DOM</div>
+          <div class="lbody" id="stage">
+
+            <!-- ═══ 1 · card de producto ═══ -->
+            <div class="fx fx-card on" id="fx-card">
+              <article class="pcard">
+                <div class="pcard-media">
+                  <div class="pcard-orb"></div>
+                  <span class="pcard-tag">Nuevo</span>
+                  <div class="pcard-ring"></div>
+                </div>
+                <div class="pcard-body">
+                  <p class="pcard-kicker">Serie Aurora</p>
+                  <h3 class="pcard-title">Lámpara Halo 40</h3>
+                  <p class="pcard-stars">★★★★<span>★</span> <span style="color:#94a3b8">4,2 · 218 reseñas</span></p>
+                  <p class="pcard-copy">Difusor de vidrio soplado a mano, regulador táctil de
+                  <b>cuatro pasos</b> y base de fresno macizo.</p>
+                  <div class="pcard-foot">
+                    <div class="pcard-price"><s>189 €</s><strong>149 €</strong></div>
+                    <button class="pcard-cta">Añadir</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <!-- ═══ 2 · bloque tipográfico ═══ -->
+            <div class="fx fx-type" id="fx-type">
+              <p class="ty-kicker">Ingeniería de render</p>
+              <h2 class="ty-h1">El texto no se rasteriza</h2>
+              <p class="ty-sub">Por qué medir la línea es más barato que medir el glifo</p>
+              <p class="ty-meta"><b>Ada Lovelace</b> · 4 de agosto · 9 min</p>
+              <p class="ty-body ty-drop">Cada bloque se recorre con un <code class="ty-code">TreeWalker</code>
+              de nodos de texto y sus rectángulos se agrupan <b>por línea base</b>, nunca por
+              <code class="ty-code">top</code>: un <i>span</i> con un cuerpo mayor comparte la base con el
+              resto de la línea pero no comparte el borde superior, y agrupar por arriba parte la línea en dos.</p>
+              <p class="ty-body">El paso vertical entre líneas se <b>mide</b> entre bases consecutivas.
+              Leerlo de <code class="ty-code">line-height</code> falla en cuanto aparece un
+              <span class="sc">interlineado</span> heredado, un <i>inline-block</i> o una fuente sustituida,
+              y falla en silencio, que es lo grave. Ver las
+              <a href="https://snapdom.dev/docs">notas de medición</a> y el
+              <a href="https://github.com/zumerlab/snapdom">repositorio</a>.</p>
+              <blockquote class="ty-quote">
+                Dejamos de exportar una captura y empezamos a exportar la página: el texto sigue
+                siendo texto y las líneas siguen donde el navegador las puso.
+                <footer>Notas de diseño · §5</footer>
+              </blockquote>
+              <p class="ty-note">Los saltos de línea se hornean con U+2028, nunca con
+              <code class="ty-code">\n</code>: un salto de párrafo activaría el
+              <i>paragraph spacing</i> del destino.</p>
+            </div>
+
+            <!-- ═══ 3 · badges y botones ═══ -->
+            <div class="fx fx-ui" id="fx-ui">
+              <h4 class="ui-h">Estados</h4>
+              <p class="ui-p">Bordes sólidos, punteados, anillos de foco y sombras de color.</p>
+              <div class="ui-row">
+                <span class="badge b-ok"><span class="pip"></span>Publicado</span>
+                <span class="badge b-warn"><span class="pip"></span>En revisión</span>
+                <span class="badge b-err"><span class="pip"></span>Bloqueado</span>
+                <span class="badge b-info"><span class="pip"></span>Programado</span>
+                <span class="badge b-solid">Pro</span>
+                <span class="badge b-ghost">Borrador</span>
+              </div>
+
+              <h4 class="ui-h">Acciones</h4>
+              <p class="ui-p">Cada botón es una caja con borde, radio y sombra propias.</p>
+              <div class="ui-row">
+                <button class="btn btn-primary">Guardar cambios</button>
+                <button class="btn btn-outline">Vista previa</button>
+                <button class="btn btn-ghost">Cancelar</button>
+              </div>
+              <div class="ui-row">
+                <button class="btn btn-danger">Eliminar</button>
+                <button class="btn btn-disabled">Sin permisos</button>
+                <button class="btn btn-focus">Con foco</button>
+              </div>
+
+              <h4 class="ui-h">Selector</h4>
+              <p class="ui-p">Fondo hundido, pastilla activa elevada.</p>
+              <div class="ui-row">
+                <span class="ui-seg"><span class="on">Diseño</span><span>Réplica</span><span>Auditoría</span></span>
+              </div>
+              <p class="ui-note">El anillo de foco es un <code>outline</code> con
+              <code>outline-offset</code>: hermano al final del z, no un borde.</p>
+            </div>
+
+            <!-- ═══ 4 · tabla ═══ -->
+            <div class="fx fx-table" id="fx-table">
+              <div class="tb-head">
+                <h4>Coste por motor</h4><span>captura en caliente · mediana de 40</span>
+              </div>
+              <table class="tb">
+                <caption>Cinco filas, cabecera con fondo propio y pie con borde superior doble.</caption>
+                <thead>
+                  <tr><th>Motor</th><th>Nodos</th><th>Frío</th><th>Caliente</th><th>Δ</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="name">Chromium 128<small>referencia</small></td>
+                      <td class="num">5 612</td><td class="num">42 ms</td><td class="num">16 ms</td>
+                      <td class="num"><span class="pill up">−62%</span></td></tr>
+                  <tr><td class="name">Chromium 120<small>sin OffscreenCanvas</small></td>
+                      <td class="num">5 612</td><td class="num">47 ms</td><td class="num">18 ms</td>
+                      <td class="num"><span class="pill up">−61%</span></td></tr>
+                  <tr><td class="name">WebKit 17.6<small>volteo de sombra corregido</small></td>
+                      <td class="num">5 610</td><td class="num">63 ms</td><td class="num">21 ms</td>
+                      <td class="num"><span class="pill up">−66%</span></td></tr>
+                  <tr><td class="name">Firefox 129<small>sin rarezas conocidas</small></td>
+                      <td class="num">5 612</td><td class="num">55 ms</td><td class="num">19 ms</td>
+                      <td class="num"><span class="pill flat">−65%</span></td></tr>
+                  <tr><td class="name">WebView incrustado<small>Android 13</small></td>
+                      <td class="num">5 604</td><td class="num">88 ms</td><td class="num">31 ms</td>
+                      <td class="num"><span class="pill down">−64%</span></td></tr>
+                </tbody>
+                <tfoot>
+                  <tr><td>Mediana</td><td class="num">5 612</td><td class="num">55 ms</td>
+                      <td class="num">19 ms</td><td class="num">—</td></tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- ═══ 5 · z-index ═══ -->
+            <div class="fx fx-z" id="fx-z">
+              <div class="zwrap">
+                <div class="zcard">
+                  <div class="zbehind">z-index: −1 · pinta detrás del fondo del padre</div>
+                  <span class="zbadge">z-index: 3</span>
+                  <h4>Orden de pintado</h4>
+                  <p>Este bloque no crea contexto de apilado, así que el hijo con z negativo
+                  se cuela por debajo de su propio fondo.</p>
+                  <div class="zctx">
+                    <b>opacity: .94 → contexto propio</b>
+                    <div class="zinner">z-index: 999 (atrapado)</div>
+                  </div>
+                  <div class="zfloat"><b>z-index: 2</b>Solapa la tarjeta y el bloque de abajo.</div>
+                </div>
+                <p class="zlegend">El <code>z-index: 999</code> queda atrapado dentro del contexto que crea
+                <code>opacity: .94</code>: en pantalla se pinta por debajo de la pastilla
+                <code>z-index: 3</code>, que es hermana del contexto y no compite con su hijo.</p>
+              </div>
+            </div>
+
+            <!-- ═══ 6 · webfont embebida ═══ -->
+            <div class="fx fx-font" id="fx-font">
+              <p class="wf-kicker">Fuente embebida</p>
+              <h2 class="wf-h1">La fuente viaja con el archivo</h2>
+              <p class="wf-lede">«Inter Demo» se sirve por <b>@font-face</b> y no existe instalada
+              en ninguna máquina: sin los bytes adentro del SVG, el visor sustituye la familia
+              y cada línea cambia de ancho.</p>
+              <p class="wf-just">El colector busca la regla que el navegador usó para pintar,
+              trae los bytes por HTTP con la caché del propio navegador y los deja en el
+              documento; el emisor escribe la <b>@font-face con un data URI</b> y fija cada
+              línea con textLength, así este párrafo justificado mide exactamente lo mismo en
+              una máquina que nunca vio esta fuente.</p>
+              <p class="wf-meta"><span>400</span> <b>700</b> <span class="wf-mid">500 sintetizado</span>
+              <span class="wf-track">interletraje .12em</span></p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="layer layer-svg">
+          <div class="lhead"><span class="dot"></span>SVG vectorial · emitido</div>
+          <div class="lbody" id="svgout">
+            <div class="placeholder">Sin capturar todavía<br>Pulsá <b>Vectorizar</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <header>
+      <h1>Diagnósticos</h1>
+      <div class="sevbar" id="sevbar">
+        <button type="button" data-sev="all" aria-pressed="true">Todos</button>
+        <button type="button" data-sev="error" aria-pressed="false">error</button>
+        <button type="button" data-sev="warn" aria-pressed="false">warn</button>
+        <button type="button" data-sev="info" aria-pressed="false">info</button>
+      </div>
+      <div class="grow"></div>
+      <span style="font-size:11.5px;color:var(--faint)">Pasá el ratón por una fila para resaltar
+      el nodo en el SVG · clic para fijarlo</span>
+    </header>
+    <div id="errslot"></div>
+    <div class="diagbody" id="diagnostics">
+      <div class="empty">Sin captura.</div>
+    </div>
+    <details class="raw" id="warnDetails" hidden>
+      <summary>Avisos de consola <b id="warnCount"></b></summary>
+      <pre id="warnRaw"></pre>
+    </details>
+    <details class="raw">
+      <summary>SVD crudo</summary>
+      <pre id="rawSvd">—</pre>
+    </details>
+  </section>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id)
+  const SVG_NS = 'http://www.w3.org/2000/svg'
+
+  const ui = {
+    fixture: $('fixture'), go: $('go'), status: $('status'), debugPaint: $('debugPaint'),
+    mode: $('mode'), view: $('view'), layers: $('layers'), stage: $('stage'), svgout: $('svgout'),
+    opacity: $('opacity'), opacityVal: $('opacityVal'), opacityWrap: $('opacityWrap'),
+    metrics: $('metrics'), fonts: $('fonts'), schema: $('schema'),
+    diagnostics: $('diagnostics'), sevbar: $('sevbar'), errslot: $('errslot'),
+    rawSvd: $('rawSvd'), warnDetails: $('warnDetails'), warnCount: $('warnCount'), warnRaw: $('warnRaw'),
+    dlSvd: $('dl-svd'), dlSvg: $('dl-svg'), cpFigma: $('cp-figma'),
+  }
+
+  let engine = null          // { snapdom, vector, svdToSvg, svdToFigma, validate }
+  let result = null          // { doc, svg, figma, ms, domElements, fixtureId }
+  let pinned = null
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+  // ——————————————————————————————— arranque ———————————————————————————————
+
+  /**
+   * Los módulos se cargan en caliente para que un fallo de carga (un paquete a
+   * medio escribir, un error de sintaxis) se vea en la página en vez de morir en
+   * la consola con el módulo entero sin evaluar.
+   *
+   * `snapdom` entró a la lista porque el motor es un PLUGIN suyo: ya no hay
+   * función que vectorice por su cuenta, se registra `vector()` en una captura y
+   * la captura publica `toVector()`. Si snapdom no carga, no hay motor — y eso
+   * tiene que decirlo la página, no la consola.
+   */
+  async function boot () {
+    try {
+      const [snapdomMod, vector, svgFlat, figmaJson, svd] = await Promise.all([
+        import('@zumer/snapdom'),
+        import('@zumer/snapdom-vector'),
+        import('@zumer/snapdom-vector/emit/svg-flat.js'),
+        import('@zumer/snapdom-vector/emit/figma-json.js'),
+        import('@zumer/svd'),
+      ])
+      engine = {
+        snapdom: snapdomMod.snapdom,
+        vector: vector.vector || vector.default,
+        svdToSvg: svgFlat.svdToSvg || svgFlat.default,
+        svdToFigma: figmaJson.svdToFigma || figmaJson.default,
+        validate: svd.validate,
+      }
+      const missing = Object.keys(engine).filter((k) => typeof engine[k] !== 'function')
+      if (missing.length) throw new Error(`el módulo no exporta: ${missing.join(', ')}`)
+      ui.status.textContent = 'Listo.'
+    } catch (err) {
+      ui.go.disabled = true
+      ui.status.textContent = 'No se pudo cargar el motor.'
+      showError(err, 'Fallo al importar el motor')
+    }
+  }
+
+  function showError (err, title) {
+    const e = err instanceof Error ? err : new Error(String(err))
+    ui.errslot.innerHTML =
+      `<div class="errbox"><h3>${esc(title)} — ${esc(e.name)}: ${esc(e.message)}</h3>` +
+      `<pre>${esc(e.stack || '(sin stack)')}</pre></div>`
+  }
+
+  // ——————————————————————————————— captura ———————————————————————————————
+
+  const activeFixture = () => $(ui.fixture.value)
+
+  function selectFixture (id) {
+    for (const fx of ui.stage.querySelectorAll('.fx')) fx.classList.toggle('on', fx.id === id)
+    reset(`Fixture ${id.replace('fx-', '')} listo para vectorizar.`)
+  }
+
+  function reset (message) {
+    result = null
+    pinned = null
+    ui.svgout.innerHTML = '<div class="placeholder">Sin capturar todavía<br>Pulsá <b>Vectorizar</b></div>'
+    ui.metrics.innerHTML = ''
+    ui.fonts.innerHTML = ''
+    ui.schema.innerHTML = ''
+    ui.diagnostics.innerHTML = '<div class="empty">Sin captura.</div>'
+    ui.errslot.innerHTML = ''
+    ui.rawSvd.textContent = '—'
+    ui.warnDetails.hidden = true
+    ui.dlSvd.disabled = ui.dlSvg.disabled = ui.cpFigma.disabled = true
+    ui.status.textContent = message
+  }
+
+  async function run () {
+    if (!engine) return
+    const el = activeFixture()
+    if (!el) return
+    ui.go.disabled = true
+    ui.status.textContent = 'Vectorizando…'
+    ui.errslot.innerHTML = ''
+
+    // El orquestador imprime cada aproximación con prefijo `[snapdom-vector]`;
+    // dejarlas sólo en la consola sería justo el silencio que el contrato prohíbe.
+    const warnings = []
+    const realWarn = console.warn
+    console.warn = (...args) => {
+      const msg = args.map((a) => (typeof a === 'string' ? a : String(a))).join(' ')
+      if (msg.startsWith('[snapdom')) warnings.push(msg)
+      realWarn(...args)
+    }
+
+    const options = {
+      mode: pressed(ui.mode),
+      debugPaint: ui.debugPaint.checked,
+    }
+
+    const t0 = performance.now()
+    try {
+      // Las dos mitades de la factura, cronometradas acá porque acá es donde
+      // ocurren. `report.timings.snapdomMs` desapareció con la API suelta: sólo
+      // era medible mientras el motor hacía él mismo la llamada a `snapdom()`.
+      // Ahora la hace esta página, y quien llama es quien puede medir.
+      const captured = await engine.snapdom(el, { plugins: [engine.vector(options)] })
+      const tCapture = performance.now()
+      const doc = await captured.toVector()
+      const tEngine = performance.now()
+      // `svdToSvg` devuelve `{svg, diagnostics}`: lo que el backend SVG no pudo
+      // representar no está en `doc.diagnostics` y sería silencio si no se lee.
+      // Se llama a mano en vez de `captured.toVectorSvg()` porque ese export los
+      // fusiona dentro del documento, y este panel los lista por separado.
+      const emitted = engine.svdToSvg(doc, { debugPaint: options.debugPaint })
+      const svg = typeof emitted === 'string' ? emitted : emitted.svg
+      const svgDiagnostics = (emitted && emitted.diagnostics) || []
+      const figma = engine.svdToFigma(doc)
+      const ms = performance.now() - t0
+      result = {
+        doc, svg, svgDiagnostics, figma, ms, warnings,
+        timings: { snapdomMs: tCapture - t0, engineMs: tEngine - tCapture },
+        fixtureId: el.id,
+        domElements: el.querySelectorAll('*').length + 1,
+        schema: engine.validate(doc),
+      }
+      render()
+      ui.status.textContent =
+        `${Object.keys(doc.nodes || {}).length} nodos en ${ms.toFixed(0)} ms · ` +
+        `${(svg.length / 1024).toFixed(1)} KB de SVG`
+    } catch (err) {
+      reset('Falló la vectorización.')
+      showError(err, 'toVector lanzó')
+      ui.diagnostics.innerHTML = '<div class="empty">La captura no llegó a producir un documento.</div>'
+      if (warnings.length) renderWarnings(warnings)
+    } finally {
+      console.warn = realWarn
+      ui.go.disabled = false
+    }
+  }
+
+  // ——————————————————————————————— render ———————————————————————————————
+
+  function render () {
+    const { doc, svg } = result
+    ui.svgout.innerHTML = svg
+    renderMetrics()
+    renderDiagnostics()
+    renderWarnings(result.warnings)
+    ui.rawSvd.textContent = stringifySvd(doc)
+    ui.dlSvd.disabled = ui.dlSvg.disabled = ui.cpFigma.disabled = false
+  }
+
+  /** El grado de fidelidad es la única fuente para vector-vs-ráster si el report no lo trae. */
+  function derived (doc) {
+    const nodes = Object.values(doc.nodes || {})
+    let raster = 0, text = 0
+    for (const n of nodes) {
+      const grade = n && n.fidelity ? n.fidelity.grade : 'E'
+      if (grade === 'R' || grade === 'RH') raster++
+      if (n && n.type === 'text') text++
+    }
+    return { total: nodes.length, raster, vector: nodes.length - raster, text }
+  }
+
+  function renderMetrics () {
+    const { doc, ms, domElements } = result
+    const rep = doc.report || {}
+    const d = derived(doc)
+    const nodes = num(rep.nodes, d.total)
+    const dom = num(rep.domElements, domElements)
+    const vector = num(rep.vector, d.vector)
+    const raster = num(rep.raster, d.raster)
+    const ratio = Number.isFinite(rep.nodeRatio) ? rep.nodeRatio : (dom ? nodes / dom : 0)
+    const diags = (doc.diagnostics || []).length
+
+    const tiles = [
+      ['Nodos emitidos', fmt(nodes)],
+      ['Elementos DOM', fmt(dom)],
+      ['Ratio nodo/DOM', ratio.toFixed(2)],
+      ['Bloques de texto', fmt(num(rep.textBlocks, d.text))],
+      ['Vector / ráster', `${fmt(vector)} <em>/</em> ${fmt(raster)}`, true],
+      ['Diagnósticos', fmt(diags)],
+      ['Promociones', fmt(num(rep.promotions, countPromotions(doc)))],
+      ['Tiempo', `${ms.toFixed(0)}<em> ms</em>`],
+      ['SVG', `${(result.svg.length / 1024).toFixed(1)}<em> KB</em>`],
+      // La factura, partida: el motor ya no camina el DOM vivo, así que el
+      // usuario paga una captura entera de snapdom además del recorrido. Un
+      // único «Tiempo» escondería cuál de las dos mitades creció. Los dos
+      // números los toma `run()` con el reloj de la página: el documento ya no
+      // los trae, porque el motor ya no es quien llama a `snapdom()`.
+      ['snapdom / motor', result.timings
+        ? `${result.timings.snapdomMs.toFixed(0)}<em> / </em>${result.timings.engineMs.toFixed(0)}<em> ms</em>`
+        : '<em>sin medir</em>', true],
+      // Lo que el clon compró. Cada uno es un nodo que recorrer el DOM vivo no
+      // podía producir; en cero para un fixture que no usa la función, no es un
+      // fallo — es que no hay nada que ganar ahí.
+      ['Pseudo / shadow / icono', rep.coverage
+        ? `${fmt(rep.coverage.pseudo)}<em> · </em>${fmt(rep.coverage.shadow)}<em> · </em>${fmt(rep.coverage.iconFont)}`
+        : '<em>sin medir</em>', true],
+      // La barra de error de todo lo de arriba: se mide sobre el clon.
+      ['Deriva del clon', rep.drift && rep.drift.pairs
+        ? `${rep.drift.max.toFixed(2)}<em> px máx</em>`
+        : '<em>sin comprobar</em>', true],
+    ]
+    ui.metrics.innerHTML = tiles
+      .map(([label, value]) => `<div class="m"><b>${value}</b><span>${label}</span></div>`)
+      .join('')
+
+    const fonts = fontList(doc)
+    ui.fonts.innerHTML = fonts.length
+      ? `<div class="chip" style="background:#f8fafc;color:var(--dim);border-color:var(--line)">` +
+        `${fonts.length} fuente${fonts.length === 1 ? '' : 's'}</div>` +
+        fonts.map((f) => `<div class="chip">${esc(f)}</div>`).join('')
+      : '<div class="chip" style="background:#f8fafc;color:var(--faint);border-color:var(--line)">Sin fuentes declaradas</div>'
+
+    const s = result.schema
+    ui.schema.innerHTML = s && s.ok
+      ? '<span class="schema ok">✓ schema válido</span>'
+      : `<span class="schema bad">✗ ${(s && s.errors ? s.errors.length : '?')} error(es) de schema</span>` +
+        `<div class="chip mono" style="background:#fef2f2;color:#7f1d1d;border-color:#fecaca">` +
+        `${esc((s && s.errors ? s.errors : []).slice(0, 4).join(' · ') || 'sin detalle')}</div>`
+  }
+
+  const num = (v, fallback) => (Number.isFinite(v) ? v : fallback)
+  const fmt = (n) => new Intl.NumberFormat('es').format(Math.round(n))
+
+  function countPromotions (doc) {
+    return (doc.diagnostics || []).filter((d) => d && typeof d.code === 'string' &&
+      d.code.includes('promoted')).length
+  }
+
+  /** `report.fonts` es lo normativo; el payload de Figma y `styles.text` son el respaldo. */
+  function fontList (doc) {
+    const out = new Set()
+    const push = (family, style) => {
+      const f = String(family || '').trim()
+      if (f) out.add(style ? `${f} ${style}` : f)
+    }
+    const rep = (doc.report && Array.isArray(doc.report.fonts)) ? doc.report.fonts : []
+    for (const f of rep) (typeof f === 'string') ? push(f) : push(f && f.family, f && f.style)
+    if (!out.size && result && result.figma && Array.isArray(result.figma.fonts)) {
+      for (const f of result.figma.fonts) push(f && f.family, f && f.style)
+    }
+    if (!out.size && doc.styles && doc.styles.text) {
+      for (const st of Object.values(doc.styles.text)) {
+        if (!st) continue
+        push(st.family || String(st.stack || '').split(',')[0].replace(/['"]/g, ''),
+          st.weight >= 600 ? 'Bold' : null)
+      }
+    }
+    return [...out].sort()
+  }
+
+  // —————————————————————————————— diagnósticos ——————————————————————————————
+
+  const SEV_ORDER = { error: 0, warn: 1, info: 2 }
+  const DIAG_SKIP = new Set(['code', 'severity', 'node', 'message', 'reason', 'note'])
+
+  function diagNodes (d) {
+    const ids = []
+    for (const key of ['node', 'from', 'to']) if (typeof d[key] === 'string') ids.push(d[key])
+    for (const key of ['nodes', 'overlaps']) {
+      if (Array.isArray(d[key])) for (const v of d[key]) if (typeof v === 'string') ids.push(v)
+    }
+    return [...new Set(ids)]
+  }
+
+  function fmtValue (v) {
+    if (Array.isArray(v)) return v.map(fmtValue).join(', ')
+    if (v && typeof v === 'object') return JSON.stringify(v)
+    const s = String(v)
+    return s.length > 200 ? `${s.slice(0, 200)}…` : s
+  }
+
+  function renderDiagnostics () {
+    const all = [...(result.doc.diagnostics || []), ...(result.svgDiagnostics || [])]
+      .filter((d) => d && typeof d === 'object')
+    const filter = pressed(ui.sevbar) || 'all'
+    const list = filter === 'all' ? all : all.filter((d) => (d.severity || 'info') === filter)
+
+    for (const b of ui.sevbar.querySelectorAll('button')) {
+      const sev = b.dataset.sev
+      const n = sev === 'all' ? all.length : all.filter((d) => (d.severity || 'info') === sev).length
+      b.textContent = `${sev === 'all' ? 'Todos' : sev} ${n}`
+    }
+
+    if (!all.length) {
+      ui.diagnostics.innerHTML =
+        '<div class="empty">Ningún diagnóstico: el documento dice haberlo representado todo exactamente.</div>'
+      return
+    }
+    if (!list.length) {
+      ui.diagnostics.innerHTML = `<div class="empty">Sin diagnósticos de severidad <b>${esc(filter)}</b>.</div>`
+      return
+    }
+
+    const groups = new Map()
+    for (const d of list) {
+      const code = typeof d.code === 'string' ? d.code : '(sin código)'
+      if (!groups.has(code)) groups.set(code, [])
+      groups.get(code).push(d)
+    }
+    const worst = (rows) => Math.min(...rows.map((d) => SEV_ORDER[d.severity] ?? 2))
+
+    const html = [...groups.entries()]
+      .sort((a, b) => worst(a[1]) - worst(b[1]) || b[1].length - a[1].length ||
+        (a[0] < b[0] ? -1 : 1))
+      .map(([code, rows]) => {
+        const sev = ['error', 'warn', 'info'][worst(rows)]
+        const body = rows.map((d) => {
+          const ids = diagNodes(d)
+          const main = d.reason || d.message || d.note || '(sin motivo declarado)'
+          const extra = Object.keys(d)
+            .filter((k) => !DIAG_SKIP.has(k) && d[k] !== undefined && d[k] !== null)
+            .map((k) => `${k}: ${fmtValue(d[k])}`)
+          const label = d.from && d.to ? `${d.from} → ${d.to}` : (ids[0] || '—')
+          return `<div class="drow" role="button" tabindex="0" data-nodes="${esc(ids.join(','))}">` +
+            `<div class="nid${ids.length ? '' : ' none'}">${esc(label)}</div>` +
+            `<div class="why">${esc(main)}` +
+            (extra.length ? `<div class="extra">${esc(extra.join(' · '))}</div>` : '') +
+            '</div></div>'
+        }).join('')
+        return `<div class="dgroup"><div class="dghead"><span class="sev ${sev}">${sev}</span>` +
+          `<code>${esc(code)}</code><span class="count">${rows.length}</span></div>${body}</div>`
+      }).join('')
+
+    ui.diagnostics.innerHTML = html
+  }
+
+  function renderWarnings (warnings) {
+    if (!warnings || !warnings.length) { ui.warnDetails.hidden = true; return }
+    ui.warnDetails.hidden = false
+    ui.warnCount.textContent = `(${warnings.length})`
+    ui.warnRaw.textContent = warnings.join('\n')
+  }
+
+  // ——————————————————————————— resaltado en el SVG ———————————————————————————
+
+  /** Espejo de `safeId()` del emisor: el id del `<g>` sale del id del nodo SVD. */
+  function svgElementId (nodeId) {
+    const s = String(nodeId == null ? '' : nodeId).replace(/[^\w.:-]/g, '_')
+    return /^[A-Za-z_]/.test(s) ? s : `n${s}`
+  }
+
+  function clearHighlight () {
+    for (const el of ui.svgout.querySelectorAll('[data-hl]')) el.remove()
+  }
+
+  /**
+   * El resaltado se dibuja en el espacio del `<svg>` raíz, no en el del nodo:
+   * `getCTM()` ya devuelve la matriz hasta ese viewport, así que la caja local
+   * del grupo se transporta entera sin recomponer nada.
+   */
+  function highlight (ids, pin) {
+    clearHighlight()
+    const svg = ui.svgout.querySelector('svg')
+    if (!svg || !ids.length) return
+    let first = null
+    for (const id of ids) {
+      const g = svg.querySelector(`#${CSS.escape(svgElementId(id))}`)
+      if (!g || typeof g.getBBox !== 'function') continue
+      let box, ctm
+      try { box = g.getBBox(); ctm = g.getCTM() } catch { continue }
+      if (!box || (!box.width && !box.height)) continue
+      const pad = 2
+      const rect = document.createElementNS(SVG_NS, 'rect')
+      rect.setAttribute('data-hl', id)
+      rect.setAttribute('x', box.x - pad)
+      rect.setAttribute('y', box.y - pad)
+      rect.setAttribute('width', box.width + pad * 2)
+      rect.setAttribute('height', box.height + pad * 2)
+      rect.setAttribute('rx', '3')
+      rect.setAttribute('fill', 'rgba(79,70,229,.14)')
+      rect.setAttribute('stroke', '#4f46e5')
+      rect.setAttribute('stroke-width', '1.5')
+      rect.setAttribute('pointer-events', 'none')
+      if (ctm) rect.setAttribute('transform', `matrix(${ctm.a} ${ctm.b} ${ctm.c} ${ctm.d} ${ctm.e} ${ctm.f})`)
+      if (pin) rect.setAttribute('class', 'hl-pin')
+      svg.appendChild(rect)
+      first = first || g
+    }
+    if (pin && first) first.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  }
+
+  const rowIds = (row) => (row.dataset.nodes ? row.dataset.nodes.split(',').filter(Boolean) : [])
+
+  function togglePin (row) {
+    const same = pinned === row
+    for (const r of ui.diagnostics.querySelectorAll('.drow.pinned')) r.classList.remove('pinned')
+    if (same) { pinned = null; clearHighlight(); return }
+    pinned = row
+    row.classList.add('pinned')
+    highlight(rowIds(row), true)
+  }
+
+  ui.diagnostics.addEventListener('mouseover', (e) => {
+    const row = e.target.closest('.drow')
+    if (!row || pinned) return
+    highlight(rowIds(row), false)
+  })
+  ui.diagnostics.addEventListener('mouseleave', () => { if (!pinned) clearHighlight() })
+  ui.diagnostics.addEventListener('click', (e) => {
+    const row = e.target.closest('.drow')
+    if (row) togglePin(row)
+  })
+  // Las filas son controles: sin esto, el panel sólo funciona con ratón.
+  ui.diagnostics.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    const row = e.target.closest('.drow')
+    if (!row) return
+    e.preventDefault()
+    togglePin(row)
+  })
+  ui.diagnostics.addEventListener('focusin', (e) => {
+    const row = e.target.closest('.drow')
+    if (row && !pinned) highlight(rowIds(row), false)
+  })
+
+  // ——————————————————————————————— salidas ———————————————————————————————
+
+  /** Los data URI de los assets hacen el JSON ilegible; en pantalla se acortan. */
+  function stringifySvd (doc) {
+    return JSON.stringify(doc, (key, value) =>
+      (typeof value === 'string' && value.length > 400
+        ? `${value.slice(0, 120)}… ⟨${(value.length / 1024).toFixed(1)} KB recortados⟩`
+        : value), 2)
+  }
+
+  function download (text, filename, mime) {
+    const url = URL.createObjectURL(new Blob([text], { type: mime }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  /**
+   * El payload del plugin es EXACTAMENTE lo que devuelve `svdToFigma(doc)`, sin
+   * sobres ni remiendos: los bytes de los assets, la cabecera de captura y el
+   * informe viajan en `figma.document`, y `figma.diagnostics` es sólo lo que
+   * pierde la traducción — mezclarle `doc.diagnostics` los contaba dos veces,
+   * porque el plugin ya lee `document.diagnostics` aparte.
+   */
+  function figmaEnvelope () {
+    return result.figma
+  }
+
+  ui.dlSvd.onclick = () => {
+    if (!result) return
+    download(JSON.stringify(result.doc, null, 2), `${result.fixtureId}.svd.json`, 'application/json')
+  }
+  ui.dlSvg.onclick = () => {
+    if (!result) return
+    download(result.svg, `${result.fixtureId}.svg`, 'image/svg+xml')
+  }
+  ui.cpFigma.onclick = async () => {
+    if (!result) return
+    const text = JSON.stringify(figmaEnvelope())
+    const kb = `${(text.length / 1024).toFixed(1)} KB`
+    try {
+      await navigator.clipboard.writeText(text)
+      ui.status.textContent = `Payload de Figma copiado (${kb}). Pegalo en el plugin.`
+    } catch (err) {
+      // El portapapeles falla sin gesto de usuario o sin contexto seguro; el
+      // payload no puede perderse por eso.
+      ui.rawSvd.textContent = text
+      showError(err, `No se pudo copiar (${kb}); el payload quedó en «SVD crudo»`)
+      ui.status.textContent = 'Portapapeles denegado — mirá el panel de diagnósticos.'
+    }
+  }
+
+  // ——————————————————————————————— controles ———————————————————————————————
+
+  function pressed (group) {
+    const b = group.querySelector('[aria-pressed="true"]')
+    return b ? (b.dataset.value || b.dataset.sev) : null
+  }
+
+  function wireSegment (group, onChange) {
+    group.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      for (const other of group.querySelectorAll('button')) {
+        other.setAttribute('aria-pressed', String(other === b))
+      }
+      onChange(b.dataset.value || b.dataset.sev)
+    })
+  }
+
+  wireSegment(ui.mode, () => { if (result) ui.status.textContent = 'Modo cambiado — volvé a vectorizar.' })
+  wireSegment(ui.view, (view) => {
+    ui.layers.dataset.view = view
+    ui.opacityWrap.dataset.off = view === 'side' || view === 'diff' ? '1' : '0'
+  })
+  wireSegment(ui.sevbar, () => { if (result) renderDiagnostics() })
+
+  ui.opacity.oninput = () => {
+    ui.layers.style.setProperty('--ov', String(ui.opacity.value / 100))
+    ui.opacityVal.textContent = `${ui.opacity.value}%`
+  }
+  ui.opacity.oninput()
+
+  ui.fixture.onchange = () => selectFixture(ui.fixture.value)
+
+  // `?fixture=fx-table` — el arnés abre un caso concreto y el enlace es compartible.
+  const wanted = new URLSearchParams(location.search).get('fixture')
+  if (wanted && $(wanted) && $(wanted).classList.contains('fx')) {
+    ui.fixture.value = wanted
+    selectFixture(wanted)
+  }
+
+  ui.debugPaint.onchange = () => {
+    if (!result) return
+    // Re-emitir es barato y no vuelve a tocar el DOM: el SVD ya está en memoria.
+    const emitted = engine.svdToSvg(result.doc, { debugPaint: ui.debugPaint.checked })
+    result.svg = typeof emitted === 'string' ? emitted : emitted.svg
+    result.svgDiagnostics = (emitted && emitted.diagnostics) || []
+    ui.svgout.innerHTML = result.svg
+    renderDiagnostics()
+    pinned = null
+  }
+  ui.go.onclick = run
+
+  // Ganchos para el arnés: `verify.mjs` necesita disparar y leer sin la UI.
+  window.__vector = {
+    run,
+    select: (id) => { ui.fixture.value = id; selectFixture(id) },
+    get result () { return result },
+  }
+
+  await boot()
+  window.__ready = true
+</script>
+</body>
+</html>

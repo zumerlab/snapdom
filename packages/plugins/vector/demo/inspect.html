@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ver qué hay en el portapapeles</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0;
+         padding: 32px; background: #f1f5f9; color: #0f172a; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 19px; margin: 0 0 6px; letter-spacing: -.01em; }
+  p.sub { margin: 0 0 20px; color: #64748b; font-size: 14px; }
+  #drop { border: 2px dashed #cbd5e1; border-radius: 14px; padding: 40px 24px; text-align: center;
+          background: #fff; cursor: text; transition: border-color .15s, background .15s; }
+  #drop:focus-within, #drop.hot { border-color: #4f46e5; background: #f8faff; }
+  #drop b { display: block; font-size: 17px; margin-bottom: 4px; }
+  #drop span { color: #64748b; font-size: 13.5px; }
+  #paste { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 22px 0 0;
+       font-size: 13.5px; background: #fff; border-radius: 12px; padding: 18px 20px; display: none; }
+  dl.on { display: grid; }
+  dt { color: #64748b; } dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  dd.bad { color: #b91c1c; } dd.good { color: #059669; }
+  .acts { margin: 16px 0 0; display: none; gap: 10px; }
+  .acts.on { display: flex; }
+  button { font: inherit; font-size: 14px; font-weight: 650; padding: 10px 18px; border: 0;
+           border-radius: 9px; background: #4f46e5; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #4338ca; border: 1px solid #c7d2fe; }
+  pre { margin: 18px 0 0; padding: 16px; background: #0f1729; color: #e2e8f0; border-radius: 12px;
+        font: 12px/1.6 ui-monospace, Menlo, monospace; overflow: auto; max-height: 340px;
+        white-space: pre-wrap; word-break: break-all; display: none; }
+  pre.on { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ver qué hay en el portapapeles</h1>
+  <p class="sub">La extensión de Figma escribe el contenido como <code>text/html</code> y deja el
+  <code>text/plain</code> vacío a propósito, así que un editor de texto pega la nada. Esta página lee
+  el <code>text/html</code>.</p>
+
+  <div id="drop" tabindex="0">
+    <b>Hacé clic acá y pegá con ⌘V</b>
+    <span>Nada se sube a ningún lado: se lee y se queda en esta pestaña.</span>
+    <textarea id="paste"></textarea>
+  </div>
+
+  <dl id="stats">
+    <dt>text/html</dt><dd id="s-html">—</dd>
+    <dt>text/plain</dt><dd id="s-plain">—</dd>
+    <dt>bloque figh2d</dt><dd id="s-h2d">—</dd>
+    <dt>bloque figmeta</dt><dd id="s-meta">—</dd>
+    <dt>metadata</dt><dd id="s-metaval">—</dd>
+    <dt>payload</dt><dd id="s-payload">—</dd>
+  </dl>
+
+  <div class="acts" id="acts">
+    <button id="save">Descargar el bloque decodificado</button>
+    <button id="saveraw" class="ghost">Descargar el HTML crudo</button>
+    <button id="toggle" class="ghost">Ver / ocultar</button>
+  </div>
+
+  <pre id="out"></pre>
+</div>
+
+<script type="module">
+const $ = s => document.querySelector(s)
+const drop = $('#drop'), area = $('#paste')
+let raw = '', decoded = ''
+
+drop.addEventListener('click', () => area.focus())
+drop.addEventListener('focusin', () => drop.classList.add('hot'))
+drop.addEventListener('focusout', () => drop.classList.remove('hot'))
+
+/**
+ * Lo que la extensión de Figma escribe: base64 entre marcadores, dentro de un ATRIBUTO.
+ *
+ * Y ahí está la trampa que esta página tenía: el marcador **no sobrevive como texto**.
+ * El portapapeles no acarrea los bytes que uno escribió — Chromium parsea el
+ * `text/html` y lo vuelve a serializar, así que el `<!--(figh2d)…-->` que iba dentro
+ * del valor del atributo llega escrito `&lt;!--(figh2d)…--&gt;`. Buscar la cadena
+ * literal en el HTML pegado da «no está» para TODOS los sobres, incluidos los que
+ * Figma importa sin chistar: medido con los diez fixtures de `demo/challenges.html`
+ * el 7-8-2026, diez de diez falsos negativos.
+ *
+ * Por eso se PARSEA. El valor del atributo se des-escapa solo al parsear, que es lo
+ * que hace cualquier consumidor de este canal —el importador de Figma incluido, o no
+ * podría leer los suyos—, y la búsqueda literal queda de respaldo por si algún día
+ * un portapapeles entrega los bytes crudos.
+ *
+ * @param {string} html el `text/html` pegado
+ * @param {string} attr el atributo que lleva el bloque (`data-h2d`, `data-metadata`)
+ * @param {string} open  marcador de apertura, ya des-escapado
+ * @param {string} close marcador de cierre
+ * @returns {string|null} el base64, o null si el sobre no está
+ */
+function extract (html, attr, open, close) {
+  const between = (s) => {
+    const i = s.indexOf(open)
+    if (i === -1) return null
+    const j = s.indexOf(close, i + open.length)
+    return j === -1 ? null : s.slice(i + open.length, j)
+  }
+  const literal = between(html)
+  if (literal) return literal
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    for (const el of doc.querySelectorAll(`[${attr}]`)) {
+      const hit = between(el.getAttribute(attr) || '')
+      if (hit) return hit
+    }
+  } catch { /* un HTML que no parsea es un portapapeles que no traía el sobre */ }
+  return null
+}
+
+function b64 (s) {
+  try { return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0))) }
+  catch { return null }
+}
+
+area.addEventListener('paste', (e) => {
+  const html = e.clipboardData.getData('text/html')
+  const plain = e.clipboardData.getData('text/plain')
+  raw = html
+  e.preventDefault()
+
+  $('#s-html').textContent = html ? `${(html.length / 1024).toFixed(1)} kB` : 'vacío'
+  $('#s-html').className = html ? 'good' : 'bad'
+  $('#s-plain').textContent = plain ? `${(plain.length / 1024).toFixed(1)} kB` : 'vacío (lo esperado)'
+
+  const h2d = extract(html, 'data-h2d', '<!--(figh2d)', '(/figh2d)-->')
+  const meta = extract(html, 'data-metadata', '<!--(figmeta)', '(/figmeta)-->')
+
+  $('#s-h2d').textContent = h2d ? `${(h2d.length / 1024).toFixed(1)} kB en base64` : 'no está'
+  $('#s-h2d').className = h2d ? 'good' : 'bad'
+  $('#s-meta').textContent = meta ? `${meta.length} caracteres` : 'no está'
+  const metaText = meta && b64(meta)
+  $('#s-metaval').textContent = metaText || '—'
+
+  decoded = (h2d && b64(h2d)) || ''
+
+  // Decodificar no es leer: un bloque puede volver de base64 y no ser JSON, o serlo y
+  // no tener la forma del canal. Esta línea es la única que dice si lo pegado es un
+  // documento h2d de verdad, y con qué versión — que es el campo que puede cambiar
+  // sin aviso y dejar un ⌘V que no hace nada.
+  const pay = $('#s-payload')
+  let doc = null
+  try { doc = JSON.parse(decoded) } catch { doc = null }
+  const d0 = Array.isArray(doc) ? doc[0] : doc
+  if (!d0 || typeof d0 !== 'object') {
+    pay.textContent = decoded ? 'decodifica, pero no es JSON del canal' : '—'
+    pay.className = decoded ? 'bad' : ''
+  } else {
+    let els = 0, txt = 0
+    ;(function count (n) {
+      if (!n || typeof n !== 'object') return
+      if (n.nodeType === 3) txt++; else els++
+      for (const c of n.childNodes || []) count(c)
+    })(d0.root)
+    pay.textContent = `version ${d0.version ?? '—'} · ${els} elemento(s) · ${txt} bloque(s) de texto` +
+      ` · ${Object.keys(d0.fonts || {}).length} fuente(s) · ${Object.keys(d0.assets || {}).length} asset(s)`
+    pay.className = d0.version === 2 ? 'good' : 'bad'
+  }
+
+  $('#stats').classList.add('on')
+  $('#acts').classList.add('on')
+  $('#out').textContent = decoded
+    ? decoded.slice(0, 4000) + (decoded.length > 4000 ? `\n\n… y ${decoded.length - 4000} caracteres más` : '')
+    : (html ? html.slice(0, 2000) : '(el portapapeles no traía text/html)')
+  $('#out').classList.add('on')
+})
+
+function download (name, text) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+$('#save').onclick = () => decoded && download('h2d-payload.json', decoded)
+$('#saveraw').onclick = () => raw && download('h2d-clipboard.html', raw)
+$('#toggle').onclick = () => $('#out').classList.toggle('on')
+</script>
+</body>
+</html>

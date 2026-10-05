@@ -1,0 +1,1566 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fixtures difíciles — dónde se rompe al pegar en Figma</title>
+<script type="importmap">
+{
+  "imports": {
+    "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs",
+    "@zumer/snapdom-vector": "/src/index.js",
+    "@zumer/snapdom-vector/": "/src/",
+    "@zumer/svd": "/svd/index.js"
+  }
+}
+</script>
+<!-- Esta página NO carga tipografías de red a propósito. `demo/figma.html` sí, y ahí
+     tiene sentido (un fixture usa una ligadura de icono). Aquí cada fixture ataca UN
+     desafío, y una familia que puede no llegar mete una segunda variable en cada
+     medición: si algo se rompe, que se sepa qué lo rompió. -->
+<style>
+  :root {
+    --ink: #0f172a; --dim: #64748b; --faint: #94a3b8; --line: #e2e8f0;
+    --accent: #4f46e5; --ok: #059669; --warn: #b45309; --err: #b91c1c; --info: #0369a1;
+    --paper: #fff; --bg: #f1f5f9; --sunk: #f8fafc;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif;
+         background: var(--bg); color: var(--ink); margin: 0; padding: 32px;
+         display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* ——— el panel, deliberadamente fuera de todo lo capturable ———
+     `body >` no es ceremonia: con `aside` a secas la regla también alcanzaba al
+     `<aside class="gr-side">` del fixture de grid y le metía `position: sticky` y
+     `padding: 24px`. Un sticky resuelve contra el scroll, y el clon se monta con otro,
+     así que el fixture medía 12px de deriva que no eran suyos sino de esta regla. */
+  body > aside { position: sticky; top: 32px; width: 360px; flex: none;
+                 background: var(--paper); border-radius: 16px; padding: 24px;
+                 box-shadow: 0 10px 30px rgba(15,23,42,.08); max-height: calc(100vh - 64px);
+                 overflow: auto; }
+  body > aside h1 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
+  body > aside p.sub { margin: 0 0 20px; font-size: 13.5px; color: var(--dim); }
+
+  body > aside label { display: block; font-size: 12px; text-transform: uppercase;
+                       letter-spacing: .07em; color: var(--dim); margin-bottom: 6px; }
+  select#fx { width: 100%; font: inherit; font-size: 14px; padding: 9px 10px;
+              border: 1px solid #cbd5e1; border-radius: 9px; background: #fff;
+              color: var(--ink); margin-bottom: 14px; }
+
+  /* Qué ejercita el fixture actual. Va ANTES del botón: la línea es la hipótesis,
+     y las cifras de abajo son lo que le pasó a esa hipótesis. */
+  #challenge { border: 1px solid #dbeafe; background: #eff6ff; color: #1e3a8a;
+               border-radius: 11px; padding: 11px 12px; margin-bottom: 16px;
+               font-size: 12.5px; line-height: 1.5; }
+  #challenge b { display: block; font-size: 12px; text-transform: uppercase;
+                 letter-spacing: .07em; color: #1d4ed8; margin-bottom: 3px; }
+  #challenge em { display: block; margin-top: 6px; font-style: normal; color: #92400e;
+                  background: #fffbeb; border-radius: 7px; padding: 6px 8px; }
+
+  #copy { width: 100%; padding: 14px 16px; font: inherit; font-size: 15px;
+          font-weight: 650; color: #fff; border: 0; border-radius: 11px;
+          cursor: pointer; background: var(--accent);
+          transition: background .15s, transform .06s; }
+  #copy:hover:not(:disabled) { background: #4338ca; }
+  #copy:active:not(:disabled) { transform: translateY(1px); }
+  #copy:disabled { opacity: .5; cursor: progress; }
+  #copy.done { background: var(--ok); }
+
+  /* El segundo canal. Es SECUNDARIO en el estilo a propósito: el SVG va a cualquier
+     destino y este sobre sólo lo abre Figma, así que el botón grande sigue siendo
+     el de arriba y éste se lee como lo que es, una vía extra. */
+  #copyh2d { width: 100%; margin-top: 9px; padding: 11px 16px; font: inherit;
+             font-size: 14px; font-weight: 650; color: #4338ca; background: #fff;
+             border: 1px solid #c7d2fe; border-radius: 11px; cursor: pointer;
+             transition: background .15s, transform .06s; }
+  #copyh2d:hover:not(:disabled) { background: #eef2ff; }
+  #copyh2d:active:not(:disabled) { transform: translateY(1px); }
+  #copyh2d:disabled { opacity: .5; cursor: progress; }
+  #copyh2d.done { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+  #dest { display: block; margin: 0 0 10px; font-size: 12px; color: var(--faint); }
+  #dest select { display: block; width: 100%; margin-top: 4px; font: inherit; font-size: 13px;
+                 padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px;
+                 background: #fff; color: var(--ink); }
+  #h2dnote { margin: 7px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--faint); }
+
+  #status { margin-top: 14px; font-size: 13.5px; min-height: 3em;
+            white-space: pre-wrap; color: var(--dim); }
+  #status.err { color: var(--err); }
+
+  /* Qué canal describen las cifras de abajo. Sin esto, dos botones que escriben en
+     el mismo panel producen un número sin dueño. */
+  #channel { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em;
+             font-weight: 700; margin-bottom: 10px; color: var(--accent); }
+  #channel.h2d { color: #7c3aed; }
+
+  #assetnote { margin: -4px 0 16px; font-size: 12px; color: var(--warn); display: none; }
+  #assetnote.on { display: block; }
+
+  #metrics { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px;
+             font-size: 13px; display: none; }
+
+  /* La deriva del clon va primero y en prosa: cualifica todas las cifras de abajo. */
+  #drift { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 14px;
+           padding: 11px 12px; border-radius: 11px; font-size: 12.5px; line-height: 1.45;
+           background: #ecfdf5; color: #065f46; }
+  #drift b { font-size: 17px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap;
+             font-variant-numeric: tabular-nums; line-height: 1.25; }
+  #drift.warn { background: #fffbeb; color: #92400e; }
+  #drift.bad  { background: #fef2f2; color: #991b1b; }
+  #drift.none { background: #f8fafc; color: var(--warn); }
+  #drift strong { display: block; font-weight: 700; margin-bottom: 1px; }
+
+  #metrics dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin: 0; }
+  #metrics dt { color: var(--dim); }
+  #metrics dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ——— tabla de diagnósticos, agrupada por código ——— */
+  #diagwrap { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+  #diaghead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+              margin-bottom: 10px; }
+  #diaghead h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+                 color: var(--dim); margin: 0 auto 0 0; font-weight: 650; }
+  .sev { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+         padding: 2px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+  .sev.error { background: #fee2e2; color: var(--err); }
+  .sev.warn  { background: #fef3c7; color: var(--warn); }
+  .sev.info  { background: #e0f2fe; color: var(--info); }
+  .dgroup { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 9px;
+            overflow: hidden; }
+  .dghead { display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+            background: var(--sunk); border-bottom: 1px solid var(--line); }
+  .dghead code { font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+                 color: var(--ink); word-break: break-all; }
+  .dghead .count { margin-left: auto; font-size: 11px; color: var(--faint);
+                   font-variant-numeric: tabular-nums; }
+  .drow { display: grid; grid-template-columns: 84px 1fr; gap: 10px; padding: 6px 10px;
+          border-top: 1px solid #f1f5f9; font-size: 12.5px; }
+  .dgroup .drow:first-of-type { border-top: 0; }
+  .drow .nid { font-family: var(--mono); font-size: 11px; color: var(--accent);
+               word-break: break-all; }
+  .drow .nid.none { color: var(--faint); }
+  .drow .why { color: #334155; }
+  .dmore { padding: 6px 10px; font-size: 11.5px; color: var(--faint);
+           border-top: 1px solid #f1f5f9; }
+  .empty { padding: 16px 10px; color: var(--faint); font-size: 12.5px; text-align: center;
+           border: 1px dashed var(--line); border-radius: 10px; }
+
+  ol.steps { margin: 20px 0 0; padding-left: 20px; font-size: 13.5px; color: #475569; }
+  ol.steps li { margin-bottom: 8px; }
+  ol.steps b { color: var(--ink); font-weight: 650; }
+  kbd { font: inherit; font-size: 12px; background: #f1f5f9; border: 1px solid #cbd5e1;
+        border-bottom-width: 2px; border-radius: 5px; padding: 1px 5px; }
+
+  /* ——— lo capturable ——— */
+  main { flex: 1; min-width: 420px; display: flex; flex-direction: column; gap: 22px; }
+  .stage { background: var(--paper); border-radius: 16px; padding: 28px;
+           box-shadow: 0 10px 30px rgba(15,23,42,.08); }
+  .stage > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+                color: var(--dim); margin: 0 0 18px; font-weight: 650; }
+  .fx { display: none; }
+  .fx.on { display: block; }
+  /* Sin ancestro: `.fx code` parecía lo natural y era una trampa medida. El clon se
+     monta fuera del `.fx`, así que la regla dejaba de aplicar allí, el `<code>` volvía a
+     la monoespaciada por defecto a 13px y el párrafo se rompía en otro sitio — 20px de
+     deriva del clon en tres fixtures, atribuidos al fixture en vez de a esta línea.
+     Una regla cuyo selector más a la izquierda esté por ENCIMA de lo capturado mide otra
+     página. Aquí eso convertía cada fixture en dos desafíos a la vez. */
+  code { font-family: var(--mono); font-size: .86em; }
+
+  /* ═════════════════ 1 · imágenes ═════════════════ */
+  .imgcard { width: 460px; border-radius: 20px; overflow: hidden; background: #fff;
+             box-shadow: 0 22px 46px -18px rgba(15,23,42,.35), 0 0 0 1px rgba(15,23,42,.06); }
+  .im-hero { position: relative; padding: 48px 22px 20px; color: #fff; min-height: 156px;
+             display: flex; flex-direction: column; justify-content: flex-end;
+             background-image: linear-gradient(200deg, rgba(15,23,42,.12), rgba(15,23,42,.82)),
+                               var(--tex, none);
+             background-size: cover, cover; background-position: center, 30% 70%; }
+  .im-hero h3 { margin: 0 0 4px; font-size: 20px; letter-spacing: -.02em; }
+  .im-hero p { margin: 0; font-size: 12.5px; color: rgba(255,255,255,.86); max-width: 34ch; }
+  .im-hero__tag { position: absolute; top: 14px; left: 22px; font-size: 10px; font-weight: 750;
+                  letter-spacing: .09em; text-transform: uppercase; padding: 4px 9px;
+                  border-radius: 999px; background: rgba(255,255,255,.22); color: #fff;
+                  border: 1px solid rgba(255,255,255,.34); }
+  .im-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: var(--line); }
+  .im-fig { margin: 0; background: #fff; }
+  .im-fig img { display: block; width: 100%; height: 132px;
+                object-fit: cover; object-position: 85% 18%; }
+  .im-fig--contain img { object-fit: contain; object-position: 12% 85%;
+                         background: repeating-linear-gradient(45deg, #f8fafc 0 8px, #eef2f7 8px 16px); }
+  .im-fig figcaption { padding: 8px 12px 10px; font-size: 11.5px; color: var(--dim); }
+  .im-fig figcaption b { color: var(--ink); }
+  .im-foot { display: flex; align-items: center; gap: 12px; padding: 16px 18px 18px; }
+  /* El recorte lo hace el contenedor, no la imagen: border-radius + overflow es el
+     patrón real de un avatar y el que obliga al motor a emitir un clip de verdad. */
+  .im-avatar { flex: none; width: 54px; height: 54px; border-radius: 50%; overflow: hidden;
+               box-shadow: 0 0 0 3px #fff, 0 0 0 4.5px #c7d2fe; position: relative; }
+  .im-avatar img { position: absolute; width: 132%; height: 132%; left: -16%; top: -12%;
+                   max-width: none; }
+  .im-who { min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
+  .im-who b { font-size: 14px; letter-spacing: -.01em; }
+  .im-who span { font-size: 11.5px; color: var(--dim); }
+  .im-srcset { margin-left: auto; width: 132px; height: 54px; border-radius: 10px;
+               object-fit: cover; box-shadow: 0 6px 14px -6px rgba(15,23,42,.5); }
+
+  /* ═════════════════ 2 · svg inline ═════════════════ */
+  .svgcard { width: 452px; padding: 24px; border-radius: 20px; background: #fff;
+             box-shadow: 0 22px 46px -18px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.06); }
+  .sv-lock { display: flex; align-items: center; gap: 14px; padding-bottom: 18px;
+             border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .sv-lock svg { display: block; flex: none; }
+  .sv-lock h3 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
+  .sv-lock p { margin: 2px 0 0; font-size: 12.5px; color: var(--dim); }
+  .sv-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sv-chip { display: flex; align-items: center; gap: 11px; padding: 12px 13px;
+             border-radius: 14px; border: 1px solid var(--line); background: var(--sunk); }
+  .sv-chip svg { display: block; flex: none; }
+  .sv-chip b { display: block; font-size: 13px; letter-spacing: -.01em; }
+  .sv-chip span { font-size: 11.5px; color: var(--dim); }
+  .sv-note { margin: 16px 0 0; font-size: 11.5px; color: var(--warn);
+             background: #fffbeb; border-radius: 9px; padding: 9px 11px; line-height: 1.5; }
+
+  /* ═════════════════ 3 · grid ═════════════════ */
+  .gridcard { width: 486px; padding: 20px; border-radius: 20px; background: #fff;
+              box-shadow: 0 22px 46px -18px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.06); }
+  .gr { position: relative; display: grid; gap: 12px;
+        grid-template-columns: 1fr 1fr 172px;
+        grid-template-areas: "hero hero side" "stat stat side" "foot foot foot"; }
+  .gr-hero { grid-area: hero; padding: 18px; border-radius: 15px; color: #fff;
+             background: linear-gradient(135deg, #4338ca, #7c3aed 55%, #db2777); }
+  .gr-hero h3 { margin: 0 0 4px; font-size: 17px; letter-spacing: -.02em; }
+  .gr-hero p { margin: 0; font-size: 12px; color: rgba(255,255,255,.82); }
+  .gr-stat { grid-area: stat; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .gr-kpi { padding: 12px 14px; border-radius: 13px; background: var(--sunk);
+            border: 1px solid var(--line); }
+  .gr-kpi b { display: block; font-size: 21px; letter-spacing: -.03em;
+              font-variant-numeric: tabular-nums; }
+  .gr-kpi span { font-size: 11px; color: var(--dim); }
+  .gr-side { grid-area: side; border: 1px solid var(--line); border-radius: 15px;
+             overflow: auto; max-height: 208px; background: #fff; }
+  /* El sticky necesita un contenedor que scrollee de verdad. Ese scroll es además lo
+     que snapdom aplica como translate en el clon: dos cosas medibles en una. */
+  .gr-side h4 { position: sticky; top: 0; margin: 0; padding: 9px 12px; font-size: 10.5px;
+                text-transform: uppercase; letter-spacing: .08em; color: var(--dim);
+                background: rgba(255,255,255,.94); backdrop-filter: blur(6px);
+                box-shadow: inset 0 -1px 0 var(--line); }
+  .gr-side ul { margin: 0; padding: 6px 12px 12px; list-style: none; font-size: 11.5px;
+                color: #475569; }
+  .gr-side li { padding: 6px 0; border-bottom: 1px dashed var(--line);
+                display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; }
+  .gr-side li:last-child { border-bottom: 0; }
+  .gr-side li i { font-style: normal; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .gr-foot { grid-area: foot; display: flex; align-items: center; gap: 10px;
+             padding: 12px 14px; border-radius: 13px; background: #eef2ff; color: #3730a3;
+             font-size: 12px; }
+  .gr-foot b { font-weight: 700; }
+  /* Absoluto SOBRE el grid: no ocupa celda y su orden de pintado no lo decide el grid. */
+  .gr-abs { position: absolute; top: -10px; right: 168px; z-index: 3;
+            padding: 6px 12px; border-radius: 999px; font-size: 10.5px; font-weight: 750;
+            letter-spacing: .08em; text-transform: uppercase; color: #fff;
+            background: linear-gradient(180deg, #f43f5e, #be123c);
+            box-shadow: 0 8px 18px -6px rgba(190,18,60,.8); transform: rotate(-4deg); }
+
+  /* ═════════════════ 4 · transforms y formas ═════════════════ */
+  .tfcard { width: 470px; padding: 26px 24px 24px; border-radius: 20px; background: #fff;
+            box-shadow: 0 22px 46px -18px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.06); }
+  .tf-row { display: flex; gap: 18px; align-items: center; justify-content: center;
+            height: 118px; margin-bottom: 22px; }
+  .tf-tile { width: 74px; height: 74px; border-radius: 16px; display: grid; place-items: center;
+             color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+             text-align: center; line-height: 1.25; }
+  .tf-rot   { background: linear-gradient(140deg, #6366f1, #4338ca); transform: rotate(-14deg);
+              box-shadow: 0 14px 26px -12px rgba(67,56,202,.9); }
+  .tf-scale { background: linear-gradient(140deg, #10b981, #047857); transform: scale(1.18);
+              box-shadow: 0 14px 26px -12px rgba(4,120,87,.9); }
+  .tf-skew  { background: linear-gradient(140deg, #f59e0b, #b45309); transform: skewX(-14deg);
+              box-shadow: 0 14px 26px -12px rgba(180,83,9,.9); }
+  /* Origen en la esquina inferior izquierda: si el motor asume el centro, esta pieza
+     aterriza en otro sitio y se ve sin medir nada. */
+  .tf-origin { background: linear-gradient(140deg, #ec4899, #9d174d); transform: rotate(18deg);
+               transform-origin: 0 100%; box-shadow: 0 14px 26px -12px rgba(157,23,77,.9); }
+  .tf-shapes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .tf-poly { height: 96px; display: grid; place-items: center; color: #fff; font-size: 11px;
+             font-weight: 700; background: linear-gradient(160deg, #0ea5e9, #1d4ed8);
+             clip-path: polygon(50% 0%, 100% 32%, 82% 100%, 18% 100%, 0% 32%); }
+  .tf-mask { height: 96px; display: grid; place-items: end center; padding-bottom: 10px;
+             color: #fff; font-size: 11px; font-weight: 700; border-radius: 14px;
+             background: linear-gradient(160deg, #a855f7, #6d28d9);
+             -webkit-mask-image: linear-gradient(200deg, #000 28%, rgba(0,0,0,.15) 92%);
+             mask-image: linear-gradient(200deg, #000 28%, rgba(0,0,0,.15) 92%); }
+  /* Cuatro esquinas con radios ELÍPTICOS distintos: rx ≠ ry en cada una. */
+  .tf-radii { height: 96px; display: grid; place-items: center; font-size: 11px;
+              font-weight: 700; color: #7c2d12; background: #fed7aa;
+              border: 2px solid #ea580c;
+              border-radius: 46px 10px 34px 8px / 16px 40px 12px 30px; }
+  .tf-cap { margin: 16px 0 0; font-size: 11.5px; color: var(--dim); text-align: center; }
+
+  /* ═════════════════ 5 · glassmorphism ═════════════════ */
+  .glass { position: relative; width: 470px; height: 320px; border-radius: 22px;
+           overflow: hidden; isolation: isolate;
+           background-image: var(--tex, linear-gradient(135deg, #312e81, #be185d));
+           background-size: cover; background-position: 50% 40%;
+           box-shadow: 0 26px 54px -20px rgba(15,23,42,.6); }
+  .gl-blob { position: absolute; width: 220px; height: 220px; border-radius: 50%;
+             filter: blur(26px); opacity: .72; }
+  .gl-blob.a { left: -50px; top: -60px; background: #22d3ee; mix-blend-mode: screen; }
+  .gl-blob.b { right: -60px; bottom: -70px; background: #f43f5e; mix-blend-mode: overlay; }
+  .gl-panel { position: absolute; left: 26px; right: 26px; bottom: 26px; padding: 18px 20px;
+              border-radius: 18px; color: #fff;
+              background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.36);
+              backdrop-filter: blur(14px) saturate(180%);
+              -webkit-backdrop-filter: blur(14px) saturate(180%);
+              box-shadow: 0 18px 40px -18px rgba(2,6,23,.85); }
+  .gl-panel h3 { margin: 0 0 5px; font-size: 18px; letter-spacing: -.02em; }
+  .gl-panel p { margin: 0; font-size: 12.5px; color: rgba(255,255,255,.84); }
+  .gl-badge { position: absolute; top: 22px; left: 26px; padding: 7px 13px; border-radius: 999px;
+              font-size: 10.5px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase;
+              color: #0f172a; background: #fbbf24;
+              filter: drop-shadow(0 10px 16px rgba(251,191,36,.72)); }
+  .gl-ring { position: absolute; top: 54px; right: 34px; width: 92px; height: 92px;
+             border-radius: 50%; border: 10px solid rgba(255,255,255,.55);
+             opacity: .55; mix-blend-mode: soft-light; }
+  .gl-price { position: absolute; top: 120px; left: 26px; font-size: 42px; font-weight: 800;
+              letter-spacing: -.045em; color: #fff; opacity: .92;
+              filter: drop-shadow(0 8px 20px rgba(236,72,153,.9)); }
+
+  /* ═════════════════ 6 · texto difícil ═════════════════ */
+  .typecard { width: 486px; padding: 26px 26px 24px; border-radius: 20px; background: #fff;
+              box-shadow: 0 22px 46px -18px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.06); }
+  .ty-grad { margin: 0 0 2px; font-size: 30px; font-weight: 800; letter-spacing: -.045em;
+             line-height: 1.1;
+             background-image: linear-gradient(96deg, #4f46e5 0%, #db2777 52%, #f59e0b 100%);
+             -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .ty-stroke { margin: 0 0 14px; font-size: 30px; font-weight: 800; letter-spacing: -.045em;
+               line-height: 1.1; color: #eef2ff; -webkit-text-stroke: 1.4px #4338ca; }
+  .ty-caps { margin: 0 0 14px; font-variant-caps: small-caps; letter-spacing: .06em;
+             font-size: 14px; color: var(--dim); }
+  .ty-just { margin: 0 0 12px; text-align: justify; font-size: 13.5px; line-height: 1.62;
+             color: #334155; hyphens: auto; }
+  .ty-just b { color: var(--ink); }
+  .ty-tight { margin: 0 0 14px; font-size: 22px; font-weight: 700; letter-spacing: -.055em; }
+  .ty-wavy { text-decoration: underline wavy #db2777;
+             text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  .ty-sci { margin: 0 0 14px; font-size: 15px; color: #334155; }
+  .ty-sci sup, .ty-sci sub { font-size: .68em; }
+  .ty-sci sup { color: #db2777; }
+  .ty-sci sub { color: #0891b2; }
+  .ty-rtl { margin: 0 0 14px; direction: rtl; text-align: right; font-size: 15px;
+            line-height: 1.9; color: #334155; padding: 10px 13px; border-radius: 12px;
+            background: var(--sunk); border-right: 3px solid #0ea5e9; }
+  .ty-emoji { margin: 0; font-size: 20px; letter-spacing: .06em; }
+  .ty-emoji span { font-size: 12px; letter-spacing: 0; color: var(--dim);
+                   vertical-align: middle; margin-left: 8px; }
+
+  /* ═════════════════ 7 · listas y contadores ═════════════════ */
+  @counter-style paso {
+    system: numeric;
+    symbols: "0" "1" "2" "3" "4" "5" "6" "7" "8" "9";
+    prefix: "§"; suffix: " · ";
+  }
+  @counter-style rombos { system: cyclic; symbols: "◆" "▲" "●"; suffix: "  "; }
+  .listcard { width: 452px; padding: 24px; border-radius: 20px; background: #fff;
+              box-shadow: 0 22px 46px -18px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.06); }
+  .li-title { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
+  .li-sub { margin: 0 0 18px; font-size: 12.5px; color: var(--dim); }
+  .li-outer { list-style: paso; margin: 0 0 18px; padding-left: 34px; font-size: 13.5px;
+              color: #334155; }
+  .li-outer > li { margin-bottom: 9px; }
+  .li-outer > li::marker { color: #4f46e5; font-weight: 750; font-size: 12px; }
+  .li-inner { list-style: rombos; margin: 7px 0 0; padding-left: 24px; font-size: 12.5px;
+              color: #475569; }
+  .li-inner > li::marker { color: #db2777; font-size: 11px; }
+  .li-inner > li { margin-bottom: 4px; }
+  /* Los contadores por ::before son el CONTRASTE del fixture: snapdom los materializa
+     en el clon y salen; el ::marker nativo de arriba no. La diferencia entre estos dos
+     bloques es exactamente lo que hoy se pierde. */
+  .li-doc { counter-reset: sec; border-top: 1px solid var(--line); padding-top: 16px; }
+  .li-doc h5 { counter-reset: sub; counter-increment: sec; margin: 0 0 6px; font-size: 13px;
+               color: var(--ink); }
+  .li-doc h5::before { content: counter(sec, upper-roman) ". "; color: #7c3aed; font-weight: 750; }
+  .li-doc p { counter-increment: sub; margin: 0 0 5px 16px; font-size: 12.5px; color: #475569; }
+  .li-doc p::before { content: counter(sec) "." counter(sub) "  "; color: var(--faint);
+                      font-family: var(--mono); font-size: 11px; }
+  .li-doc section { margin-bottom: 12px; }
+  .li-doc section:last-child { margin-bottom: 0; }
+
+  /* ═════════════════ 8 · formularios ═════════════════ */
+  .formcard { width: 452px; padding: 24px; border-radius: 20px; background: #fff;
+              box-shadow: 0 22px 46px -18px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.06); }
+  .fo-title { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
+  .fo-sub { margin: 0 0 18px; font-size: 12.5px; color: var(--dim); }
+  .formcard label { display: block; font-size: 11px; text-transform: uppercase;
+                    letter-spacing: .07em; color: var(--dim); margin-bottom: 6px; }
+  .fo-field { margin-bottom: 14px; }
+  .fo-input, .formcard select { width: 100%; font: inherit; font-size: 13.5px; padding: 9px 11px;
+              border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: var(--ink); }
+  .fo-input::placeholder { color: var(--faint); }
+  .fo-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .fo-choice { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 16px; }
+  .fo-choice label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px;
+                     text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0; }
+  .fo-choice input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+  .fo-range { width: 100%; accent-color: var(--accent); margin: 2px 0 4px; }
+  .fo-meter { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .fo-meter progress { flex: 1; height: 10px; border-radius: 999px; overflow: hidden;
+                       accent-color: #059669; }
+  .fo-meter progress::-webkit-progress-bar { background: #e2e8f0; border-radius: 999px; }
+  .fo-meter progress::-webkit-progress-value { background: linear-gradient(90deg, #10b981, #047857);
+                       border-radius: 999px; }
+  .fo-meter span { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .fo-actions { display: flex; gap: 10px; align-items: center; }
+  .fo-btn { font: inherit; font-size: 13.5px; font-weight: 650; padding: 10px 18px;
+            border-radius: 10px; border: 1px solid transparent; cursor: pointer;
+            background: var(--accent); color: #fff; }
+  .fo-btn.ghost { background: #fff; color: #4338ca; border-color: #c7d2fe; }
+  /* El anillo de foco se simula con una clase porque `:focus-visible` no sobrevive a
+     una captura sin foco. La regla real está justo debajo para que también valga tabulando. */
+  .fo-btn.is-focus, .fo-btn:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
+
+  /* ═════════════════ 9 · tabla ═════════════════ */
+  .tablecard { width: 500px; padding: 22px; border-radius: 20px; background: #fff;
+               box-shadow: 0 22px 46px -18px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.06); }
+  .tb-title { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
+  .tb-sub { margin: 0 0 16px; font-size: 12.5px; color: var(--dim); }
+  .tb-wrap { max-height: 268px; overflow: auto; border: 1px solid var(--line);
+             border-radius: 13px; }
+  .tb-wrap table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  /* Con `border-collapse: collapse` un `th` pegajoso pierde su borde al scrollear:
+     el borde pertenece a la tabla, no a la celda. Por eso va como box-shadow. */
+  .tb-wrap thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc;
+                      box-shadow: inset 0 -1px 0 #cbd5e1; padding: 9px 12px;
+                      font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em;
+                      color: var(--dim); text-align: left; }
+  .tb-wrap tbody td { padding: 8px 12px; border-bottom: 1px solid #eef2f7; color: #334155; }
+  .tb-wrap tbody tr:nth-child(odd) td { background: #fbfdff; }
+  .tb-wrap tbody tr:hover td { background: #eef2ff; }
+  .tb-num { text-align: right; font-variant-numeric: tabular-nums lining-nums; }
+  .tb-group td { background: #eef2ff !important; font-weight: 650; color: #3730a3;
+                 letter-spacing: .02em; }
+  .tb-rowspan { vertical-align: top; font-weight: 650; color: var(--ink);
+                border-right: 1px solid #eef2f7; }
+  /* El pie también es pegajoso, pero por abajo. Sin eso el borde doble vive fuera de la
+     zona visible y el fixture declararía un desafío que nadie puede mirar. */
+  .tb-wrap tfoot td { position: sticky; bottom: 0; z-index: 2; padding: 10px 12px;
+                      border-top: 5px double #64748b; font-weight: 700; background: #fff; }
+  .tb-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px;
+             font-weight: 700; }
+  .tb-chip.up { background: #ecfdf5; color: #047857; }
+  .tb-chip.down { background: #fff1f2; color: #be123c; }
+
+  /* ═════════════════ 10 · página oscura ═════════════════ */
+  .darkcard { position: relative; width: 470px; padding: 26px; border-radius: 22px;
+              overflow: hidden; color: #e2e8f0;
+              background: color-mix(in oklab, oklch(28% 0.07 275) 88%, #000);
+              border: 1px solid color-mix(in oklab, oklch(72% 0.16 300) 34%, transparent);
+              box-shadow: 0 28px 60px -24px oklch(52% 0.24 300 / .85),
+                          0 0 0 1px rgba(148,163,184,.06); }
+  .dk-halo { position: absolute; inset: -60% 30% auto -30%; height: 340px; border-radius: 50%;
+             filter: blur(46px); opacity: .5; pointer-events: none;
+             background: conic-gradient(from 210deg at 50% 50%,
+                         oklch(70% 0.21 300), oklch(74% 0.18 220), oklch(78% 0.17 165),
+                         oklch(72% 0.22 20), oklch(70% 0.21 300)); }
+  .dk-head { position: relative; display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .dk-mark { width: 42px; height: 42px; border-radius: 13px; flex: none; display: grid;
+             place-items: center; font-size: 18px; font-weight: 800; color: #0b1020;
+             background: conic-gradient(from 140deg, oklch(84% 0.17 92), oklch(72% 0.21 20),
+                         oklch(70% 0.2 300), oklch(84% 0.17 92));
+             box-shadow: 0 12px 26px -10px oklch(72% 0.21 20 / .9); }
+  .dk-head h3 { margin: 0; font-size: 18px; letter-spacing: -.025em; color: #f8fafc; }
+  .dk-head p { margin: 2px 0 0; font-size: 12px;
+               color: color-mix(in oklab, #e2e8f0 62%, transparent); }
+  .dk-grid { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+             margin-bottom: 18px; }
+  .dk-tile { padding: 14px 15px; border-radius: 15px;
+             background: color-mix(in oklab, oklch(36% 0.08 278) 70%, transparent);
+             border: 1px solid color-mix(in oklab, oklch(80% 0.12 290) 22%, transparent); }
+  .dk-tile b { display: block; font-size: 22px; letter-spacing: -.035em;
+               font-variant-numeric: tabular-nums; color: oklch(92% 0.06 100); }
+  .dk-tile span { font-size: 11px; color: color-mix(in oklab, #cbd5e1 66%, transparent); }
+  .dk-tile.hot b { color: oklch(78% 0.2 30); }
+  .dk-tile.cool b { color: oklch(84% 0.15 195); }
+  .dk-foot { position: relative; display: flex; align-items: center; gap: 12px; }
+  .dk-pill { font-size: 10.5px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase;
+             padding: 6px 12px; border-radius: 999px; color: #0b1020;
+             background: oklch(86% 0.16 160);
+             box-shadow: 0 10px 22px -8px oklch(80% 0.18 160 / .95); }
+  .dk-note { font-size: 11.5px; color: color-mix(in oklab, #cbd5e1 60%, transparent); }
+  .dk-cta { margin-left: auto; border: 0; cursor: pointer; font: inherit; font-size: 13px;
+            font-weight: 650; padding: 9px 17px; border-radius: 11px; color: #0b1020;
+            background: linear-gradient(180deg, oklch(90% 0.13 100), oklch(80% 0.16 75));
+            box-shadow: 0 12px 26px -10px oklch(84% 0.16 85 / .95); }
+</style>
+</head>
+<body>
+
+<aside>
+  <h1>Fixtures difíciles a propósito</h1>
+  <p class="sub">Cada uno ataca <b>un</b> desafío. Si al pegar en Figma algo se rompe, se sabe qué lo rompió.</p>
+
+  <label for="fx">Qué capturar</label>
+  <select id="fx">
+    <option value="fx-img">1 · Imágenes — object-fit, srcset, avatar, background</option>
+    <option value="fx-svg">2 · SVG inline — use, gradiente, clipPath, ids repetidos</option>
+    <option value="fx-grid">3 · Grid — areas, spans, absolute, sticky</option>
+    <option value="fx-tf">4 · Transforms y formas — skew, clip-path, mask, radios</option>
+    <option value="fx-glass">5 · Glassmorphism — backdrop-filter, blend, drop-shadow</option>
+    <option value="fx-type">6 · Texto difícil — sup/sub, RTL, stroke, clip a texto</option>
+    <option value="fx-list">7 · Listas — ::marker, counters, @counter-style</option>
+    <option value="fx-form">8 · Formularios — inputs, checkbox, select, range</option>
+    <option value="fx-table">9 · Tabla — collapse, sticky, colspan, borde doble</option>
+    <option value="fx-dark">10 · Oscura — conic, color-mix, oklch, sombra de color</option>
+  </select>
+
+  <div id="challenge"></div>
+  <p id="assetnote"></p>
+
+  <label id="dest">Destino del SVG
+    <select id="target">
+      <option value="universal">universal — cualquier editor</option>
+      <option value="figma">Figma — su importador de SVG</option>
+    </select>
+  </label>
+  <button id="copy">Copiar SVG</button>
+  <button id="copyh2d">Copiar por el canal h2d</button>
+  <p id="h2dnote">El botón de arriba copia un <b>SVG</b>, que abre cualquier programa. Éste copia el
+  sobre de portapapeles de la propia Figma: sólo lo entiende Figma, no se puede pegar en un editor de
+  texto porque el <code>text/plain</code> va vacío. Lo que gana sobre el SVG es el degradado
+  sobre texto <b>sin</b> perder la capa editable, y los frames. El <b>interletraje no</b>:
+  medido el 2026-08-07, Figma lo descarta al importar por los dos canales y también con la
+  extensión oficial.</p>
+  <div id="status"></div>
+
+  <div id="metrics">
+    <div id="channel"></div>
+    <div id="drift"></div>
+    <dl>
+      <dt>Capas</dt><dd id="m-nodes">—</dd>
+      <dt>Bloques de texto</dt><dd id="m-text">—</dd>
+      <dt>Imágenes / assets</dt><dd id="m-img">—</dd>
+      <dt>Rasterizado</dt><dd id="m-raster">—</dd>
+      <dt>Peso</dt><dd id="m-size">—</dd>
+      <dt>Tiempo</dt><dd id="m-ms">—</dd>
+    </dl>
+
+    <div id="diagwrap">
+      <div id="diaghead"><h2>Diagnósticos</h2></div>
+      <div id="diagnostics"></div>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li>Elegí un fixture y leé <b>qué desafío ejercita</b>.</li>
+    <li>Mirá la tabla de diagnósticos <b>antes</b> de pegar: lo que ya se sabe perdido está ahí.</li>
+    <li>Pegá en Figma con <kbd>⌘V</kbd> y comparalo con lo de la izquierda.</li>
+    <li>Lo que se rompa y <b>no</b> esté en la tabla es el hallazgo: eso se degradó en silencio.</li>
+  </ol>
+</aside>
+
+<main>
+  <div class="stage">
+    <h2>Elemento vivo</h2>
+
+    <!-- ══════════ 1 · imágenes ══════════ -->
+    <div class="fx on" id="fx-img">
+      <div class="imgcard">
+        <div class="im-hero" id="im-hero">
+          <span class="im-hero__tag">background-size: cover</span>
+          <h3>Costa de Alborán</h3>
+          <p>Fondo con <code>background-image</code> en <b>cover</b> y anclaje al 30% 70%,
+             bajo un degradado de legibilidad.</p>
+        </div>
+
+        <div class="im-grid">
+          <figure class="im-fig">
+            <img id="im-cover" alt="Atardecer sobre el mar, recortado">
+            <figcaption><b>cover</b> · object-position 85% 18%</figcaption>
+          </figure>
+          <figure class="im-fig im-fig--contain">
+            <img id="im-contain" alt="El mismo atardecer, encajado entero">
+            <figcaption><b>contain</b> · object-position 12% 85%</figcaption>
+          </figure>
+        </div>
+
+        <div class="im-foot">
+          <div class="im-avatar"><img id="im-avatar" alt="Retrato de Nadia Ferreira"></div>
+          <div class="im-who">
+            <b>Nadia Ferreira</b>
+            <span>Recorte por <code>border-radius</code> + <code>overflow</code></span>
+          </div>
+          <img id="im-srcset" class="im-srcset" sizes="132px"
+               alt="Banner elegido por el navegador entre los candidatos de srcset">
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 2 · svg inline ══════════
+         Los `id` están repetidos ENTRE instancias a propósito: `#cx-grad`, `#cx-clip`
+         y `#cx-bolt` existen tres veces en este documento. El navegador resuelve
+         `url(#cx-grad)` contra el PRIMERO que encuentra, así que en vivo se ve bien
+         aunque el documento sea ambiguo — que es justo el sitio donde un namespacing
+         a medias falla sin decir nada. -->
+    <div class="fx" id="fx-svg">
+      <div class="svgcard">
+        <div class="sv-lock">
+          <svg width="56" height="56" viewBox="0 0 56 56" role="img" aria-label="Marca Vólt">
+            <defs>
+              <linearGradient id="cx-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#6366f1"/>
+                <stop offset=".55" stop-color="#a855f7"/>
+                <stop offset="1" stop-color="#ec4899"/>
+              </linearGradient>
+              <clipPath id="cx-clip">
+                <path d="M28 2 L52 15 V41 L28 54 L4 41 V15 Z"/>
+              </clipPath>
+              <path id="cx-bolt" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z"/>
+            </defs>
+            <g clip-path="url(#cx-clip)">
+              <rect width="56" height="56" fill="url(#cx-grad)"/>
+              <circle cx="12" cy="8" r="20" fill="#fff" opacity=".22"/>
+            </g>
+            <use href="#cx-bolt" fill="#fff"/>
+          </svg>
+          <div>
+            <h3>Vólt Design System</h3>
+            <p>Marca con <code>clipPath</code>, gradiente propio y un <code>&lt;use&gt;</code>.</p>
+          </div>
+        </div>
+
+        <div class="sv-chips">
+          <div class="sv-chip">
+            <svg width="30" height="30" viewBox="0 0 56 56" role="img" aria-label="Icono rayo, instancia A">
+              <defs>
+                <linearGradient id="cx-grad" x1="0" y1="1" x2="1" y2="0">
+                  <stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#0ea5e9"/>
+                </linearGradient>
+                <clipPath id="cx-clip"><circle cx="28" cy="28" r="26"/></clipPath>
+                <path id="cx-bolt" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z"/>
+              </defs>
+              <rect width="56" height="56" fill="url(#cx-grad)" clip-path="url(#cx-clip)"/>
+              <use href="#cx-bolt" fill="#fff"/>
+            </svg>
+            <div><b>Instancia A</b><span>define #cx-grad verde</span></div>
+          </div>
+
+          <div class="sv-chip">
+            <svg width="30" height="30" viewBox="0 0 56 56" role="img" aria-label="Icono rayo, instancia B">
+              <defs>
+                <linearGradient id="cx-grad" x1="0" y1="1" x2="1" y2="0">
+                  <stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#ef4444"/>
+                </linearGradient>
+                <clipPath id="cx-clip"><circle cx="28" cy="28" r="26"/></clipPath>
+                <path id="cx-bolt" d="M30 12 L18 30 h8 l-4 15 14-20 h-9 z"/>
+              </defs>
+              <rect width="56" height="56" fill="url(#cx-grad)" clip-path="url(#cx-clip)"/>
+              <use href="#cx-bolt" fill="#fff"/>
+            </svg>
+            <div><b>Instancia B</b><span>define #cx-grad ámbar</span></div>
+          </div>
+        </div>
+
+        <p class="sv-note">Las dos instancias declaran <code>#cx-grad</code>, <code>#cx-clip</code>
+          y <code>#cx-bolt</code> con los mismos nombres y contenidos distintos. En el navegador
+          gana el primero, así que <b>A y B se ven iguales</b>: si al pegar se ven de dos colores,
+          el namespacing cambió la referencia; si desaparece un rayo, la perdió.</p>
+      </div>
+    </div>
+
+    <!-- ══════════ 3 · grid ══════════ -->
+    <div class="fx" id="fx-grid">
+      <div class="gridcard">
+        <div class="gr">
+          <span class="gr-abs">absolute</span>
+
+          <div class="gr-hero">
+            <h3>Panel de despliegue</h3>
+            <p>Área <code>hero</code>, dos columnas de tres. La franja roja está en
+               <code>position:absolute</code> y no ocupa celda.</p>
+          </div>
+
+          <div class="gr-stat">
+            <div class="gr-kpi"><b>1.284</b><span>compilaciones esta semana</span></div>
+            <div class="gr-kpi"><b>99,2%</b><span>verdes a la primera</span></div>
+          </div>
+
+          <aside class="gr-side">
+            <h4>Sticky · scroll</h4>
+            <ul>
+              <li>api-gateway <i>4,2 s</i></li>
+              <li>web-client <i>11,8 s</i></li>
+              <li>worker-jobs <i>6,1 s</i></li>
+              <li>edge-cache <i>2,4 s</i></li>
+              <li>reporting <i>18,9 s</i></li>
+              <li>search-index <i>9,3 s</i></li>
+              <li>mailer <i>1,7 s</i></li>
+              <li>billing <i>7,5 s</i></li>
+            </ul>
+          </aside>
+
+          <div class="gr-foot"><b>grid-template-areas</b> — la fila final abarca las tres columnas.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 4 · transforms y formas ══════════ -->
+    <div class="fx" id="fx-tf">
+      <div class="tfcard">
+        <div class="tf-row">
+          <div class="tf-tile tf-rot">rotate<br>−14°</div>
+          <div class="tf-tile tf-scale">scale<br>1,18</div>
+          <div class="tf-tile tf-skew">skewX<br>−14°</div>
+          <div class="tf-tile tf-origin">origin<br>0 100%</div>
+        </div>
+        <div class="tf-shapes">
+          <div class="tf-poly">clip-path<br>polygon()</div>
+          <div class="tf-mask">mask-image</div>
+          <div class="tf-radii">radios<br>elípticos</div>
+        </div>
+        <p class="tf-cap">Cuatro matrices, un recorte poligonal, una máscara de degradado
+          y cuatro esquinas con <code>rx ≠ ry</code> distintas.</p>
+      </div>
+    </div>
+
+    <!-- ══════════ 5 · glassmorphism ══════════ -->
+    <div class="fx" id="fx-glass">
+      <div class="glass" id="gl-root">
+        <div class="gl-blob a"></div>
+        <div class="gl-blob b"></div>
+        <div class="gl-ring"></div>
+        <span class="gl-badge">edición limitada</span>
+        <div class="gl-price">249 €</div>
+        <div class="gl-panel">
+          <h3>Auriculares Nimbus</h3>
+          <p>Panel con <code>backdrop-filter: blur(14px) saturate(180%)</code> sobre una
+             fotografía, dos manchas en <code>mix-blend-mode</code> y una sombra de color.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 6 · texto difícil ══════════ -->
+    <div class="fx" id="fx-type">
+      <div class="typecard">
+        <h3 class="ty-grad">Tipografía que no perdona</h3>
+        <p class="ty-stroke">Contorno sin relleno</p>
+        <p class="ty-caps">Nueve trampas tipográficas en una tarjeta</p>
+
+        <p class="ty-tight">Interletraje negativo, <span class="ty-wavy">subrayado ondulado</span></p>
+
+        <p class="ty-just">El texto justificado reparte el sobrante entre los espacios de cada
+          línea, así que <b>ninguna palabra empieza donde el navegador la dejaría</b> con un
+          alineado normal. Si el motor mide la línea y no los fragmentos, aquí se nota antes
+          que en ningún otro sitio, porque cada línea miente de una forma distinta.</p>
+
+        <p class="ty-sci">Fórmula: <b>E = mc<sup>2</sup></b> · disolución de H<sub>2</sub>O y
+          CO<sub>2</sub> a 25 °C<sup>†</sup> con un 3<sup>er</sup> reactivo.</p>
+
+        <p class="ty-rtl" dir="rtl" lang="ar">النص العربي يُكتب من اليمين إلى اليسار،
+          والأرقام ١٢٣٤ تحتفظ باتجاهها. هذه الفقرة تختبر الاتجاه المختلط.</p>
+
+        <p class="ty-emoji">🎯 🌋 👩🏽‍🚀 🇪🇸 🧑‍🚒<span>emoji con modificador, ZWJ y bandera</span></p>
+      </div>
+    </div>
+
+    <!-- ══════════ 7 · listas y contadores ══════════ -->
+    <div class="fx" id="fx-list">
+      <div class="listcard">
+        <h3 class="li-title">Protocolo de publicación</h3>
+        <p class="li-sub">Numeración por <code>@counter-style</code> propio, anidada, con
+          <code>::marker</code> estilizado.</p>
+
+        <ol class="li-outer">
+          <li>Congelar la rama y etiquetar el candidato.
+            <ol class="li-inner">
+              <li>Verificar que la suite vectorial pasa entera.</li>
+              <li>Comparar el peso del SVG contra la línea base.</li>
+            </ol>
+          </li>
+          <li>Publicar en el canal de pruebas durante 24 h.</li>
+          <li>Promover a estable y anunciar el cambio.
+            <ol class="li-inner">
+              <li>Actualizar las notas de versión.</li>
+              <li>Cerrar los tickets asociados.</li>
+            </ol>
+          </li>
+        </ol>
+
+        <div class="li-doc">
+          <section>
+            <h5>Alcance</h5>
+            <p>Se aplica a todo paquete que emita SVG.</p>
+            <p>Excluye los prototipos de la carpeta <code>lab</code>.</p>
+          </section>
+          <section>
+            <h5>Excepciones</h5>
+            <p>Una corrección de seguridad salta la espera de 24 h.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 8 · formularios ══════════ -->
+    <div class="fx" id="fx-form">
+      <div class="formcard">
+        <h3 class="fo-title">Nueva exportación</h3>
+        <p class="fo-sub">Controles nativos: lo que el navegador dibuja por su cuenta y
+          ningún CSS declara.</p>
+
+        <div class="fo-two">
+          <div class="fo-field">
+            <label for="fo-name">Nombre</label>
+            <input class="fo-input" id="fo-name" type="text" value="Campaña de otoño">
+          </div>
+          <div class="fo-field">
+            <label for="fo-mail">Aviso a</label>
+            <input class="fo-input" id="fo-mail" type="email" placeholder="tu@estudio.com">
+          </div>
+        </div>
+
+        <div class="fo-field">
+          <label for="fo-fmt">Formato</label>
+          <select id="fo-fmt">
+            <option>SVG con texto editable</option>
+            <option selected>SVG + PNG de respaldo</option>
+            <option>Sólo PNG a 2×</option>
+          </select>
+        </div>
+
+        <label>Capas a incluir</label>
+        <div class="fo-choice">
+          <label><input type="checkbox" checked> Texto</label>
+          <label><input type="checkbox" checked> Vectores</label>
+          <label><input type="checkbox"> Guías</label>
+        </div>
+
+        <label>Escala</label>
+        <div class="fo-choice">
+          <label><input type="radio" name="fo-scale" checked> 1×</label>
+          <label><input type="radio" name="fo-scale"> 2×</label>
+          <label><input type="radio" name="fo-scale"> 3×</label>
+        </div>
+
+        <div class="fo-field">
+          <label for="fo-q">Calidad · 62</label>
+          <input class="fo-range" id="fo-q" type="range" min="0" max="100" value="62">
+        </div>
+
+        <div class="fo-meter">
+          <progress id="fo-prog" value="68" max="100"></progress>
+          <span>68% preparado</span>
+        </div>
+
+        <div class="fo-actions">
+          <button class="fo-btn is-focus" type="button">Exportar</button>
+          <button class="fo-btn ghost" type="button">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 9 · tabla ══════════ -->
+    <div class="fx" id="fx-table">
+      <div class="tablecard">
+        <h3 class="tb-title">Cierre por trimestre</h3>
+        <p class="tb-sub">Cabecera y pie pegajosos dentro de un contenedor con scroll, sobre
+          una tabla con <code>border-collapse: collapse</code>.</p>
+
+        <div class="tb-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Región</th><th>Canal</th>
+                <th class="tb-num">Q3</th><th class="tb-num">Q4</th><th class="tb-num">Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="tb-group"><td colspan="5">Europa</td></tr>
+              <tr>
+                <td class="tb-rowspan" rowspan="3">Iberia</td>
+                <td>Directo</td><td class="tb-num">412.800</td><td class="tb-num">468.150</td>
+                <td class="tb-num"><span class="tb-chip up">+13,4%</span></td>
+              </tr>
+              <tr>
+                <td>Distribución</td><td class="tb-num">198.420</td><td class="tb-num">181.905</td>
+                <td class="tb-num"><span class="tb-chip down">−8,3%</span></td>
+              </tr>
+              <tr>
+                <td>Marketplace</td><td class="tb-num">96.310</td><td class="tb-num">121.640</td>
+                <td class="tb-num"><span class="tb-chip up">+26,3%</span></td>
+              </tr>
+              <tr>
+                <td class="tb-rowspan" rowspan="2">DACH</td>
+                <td>Directo</td><td class="tb-num">330.900</td><td class="tb-num">352.470</td>
+                <td class="tb-num"><span class="tb-chip up">+6,5%</span></td>
+              </tr>
+              <tr>
+                <td>Distribución</td><td class="tb-num">142.070</td><td class="tb-num">139.980</td>
+                <td class="tb-num"><span class="tb-chip down">−1,5%</span></td>
+              </tr>
+              <tr class="tb-group"><td colspan="5">América</td></tr>
+              <tr>
+                <td class="tb-rowspan" rowspan="2">Cono Sur</td>
+                <td>Directo</td><td class="tb-num">208.640</td><td class="tb-num">263.310</td>
+                <td class="tb-num"><span class="tb-chip up">+26,2%</span></td>
+              </tr>
+              <tr>
+                <td>Marketplace</td><td class="tb-num">77.520</td><td class="tb-num">92.180</td>
+                <td class="tb-num"><span class="tb-chip up">+18,9%</span></td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2">Total consolidado</td>
+                <td class="tb-num">1.466.660</td><td class="tb-num">1.619.635</td>
+                <td class="tb-num">+10,4%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 10 · página oscura ══════════ -->
+    <div class="fx" id="fx-dark">
+      <div class="darkcard">
+        <div class="dk-halo"></div>
+        <div class="dk-head">
+          <span class="dk-mark">N</span>
+          <div>
+            <h3>Nébula · plan Studio</h3>
+            <p>Colores en <code>oklch()</code>, mezclas con <code>color-mix()</code> y un halo cónico.</p>
+          </div>
+        </div>
+        <div class="dk-grid">
+          <div class="dk-tile"><b>34,7 k</b><span>renders al mes</span></div>
+          <div class="dk-tile hot"><b>128 ms</b><span>p95 de captura</span></div>
+          <div class="dk-tile cool"><b>4,1 GB</b><span>assets servidos</span></div>
+          <div class="dk-tile"><b>12</b><span>equipos activos</span></div>
+        </div>
+        <div class="dk-foot">
+          <span class="dk-pill">activo</span>
+          <span class="dk-note">Renueva el 3 de septiembre</span>
+          <button class="dk-cta" type="button">Ampliar plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+const $ = (s) => document.querySelector(s)
+const sel = $('#fx'), btn = $('#copy'), btnH2d = $('#copyh2d'), status = $('#status')
+const int = (n) => new Intl.NumberFormat('es').format(Math.round(n))
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+/**
+ * Qué ejercita cada fixture, y qué se sabe roto ANTES de pegar.
+ *
+ * `risk` no es pesimismo decorativo: es lo que ya está declarado en FIGMA_FINDINGS.md o
+ * en los diagnósticos del motor. Lo que se rompa y no esté aquí ni en la tabla es el
+ * hallazgo — eso se degradó en silencio, que es lo único que este producto no acepta.
+ *
+ * @type {Record<string, {what: string, risk?: string}>}
+ */
+const CHALLENGES = {
+  'fx-img': {
+    what: 'Imágenes de verdad: object-fit cover y contain con object-position descentrado, ' +
+      'un srcset donde currentSrc ≠ src, un avatar recortado por border-radius + overflow ' +
+      'y un background-image en cover.',
+    risk: 'Hasta hoy ningún fixture del proyecto tenía un <img>. El contrato manda leer ' +
+      'currentSrc y vectorizar el SVG en vez de rasterizarlo: aquí se comprueba o se cae.',
+  },
+  'fx-svg': {
+    what: 'SVG inline: un logo con path, use, gradiente propio y clipPath, más dos iconos ' +
+      'que declaran los MISMOS id (#cx-grad, #cx-clip, #cx-bolt) con contenidos distintos.',
+    risk: 'El navegador resuelve cada url(#id) contra el primero, así que en vivo A y B se ven ' +
+      'iguales. Un namespacing a medias los separa o pierde la referencia sin avisar.',
+  },
+  'fx-grid': {
+    what: 'display:grid con grid-template-areas, celdas que abarcan varias columnas, un ' +
+      'elemento position:absolute encima del grid y una cabecera sticky dentro de un scroll.',
+    risk: 'El árbol emitido es containment, no layout: el absoluto y el sticky son los dos ' +
+      'sitios donde el orden de pintado deja de coincidir con el orden del DOM.',
+  },
+  'fx-tf': {
+    what: 'rotate, scale, skewX, transform-origin en la esquina, clip-path: polygon(), ' +
+      'mask-image con degradado y cuatro esquinas con radios elípticos distintos.',
+    risk: 'transform-origin no centrado y los radios rx ≠ ry son los dos que se ven mal ' +
+      'colocados en vez de faltar: un error de origen desplaza la pieza entera.',
+  },
+  'fx-glass': {
+    what: 'backdrop-filter blur + saturate sobre una foto, dos capas en mix-blend-mode, ' +
+      'opacidades apiladas y un filter: drop-shadow de color.',
+    risk: 'snapdom precompone el backdrop-filter en el clon, así que llega como pintura ya ' +
+      'resuelta y deja de ser un efecto vivo. mix-blend-mode sí tiene equivalente en Figma.',
+  },
+  'fx-type': {
+    what: 'sup y sub, versalitas, justificado, un párrafo RTL en árabe, interletraje negativo, ' +
+      'subrayado ondulado con color y grosor propios, -webkit-text-stroke, emoji y ' +
+      'background-clip: text con degradado.',
+    risk: 'El justificado obliga a leer frags y no la línea entera; el clip a texto y el ' +
+      'contorno no tienen primitiva SVG directa. El dy de sup/sub es lo que separa H₂O de H2O.',
+  },
+  'fx-list': {
+    what: 'ol anidadas con ::marker estilizado, un @counter-style propio y contadores ' +
+      'counter-reset / counter-increment materializados por ::before.',
+    risk: 'Sabido: el ::marker nativo NO sale (B4.list-marker). El fixture existe para medir ' +
+      'cuánto se pierde y para contrastarlo con los ::before, que sí llegan desde el clon.',
+  },
+  'fx-form': {
+    what: 'Controles nativos: texto con valor y con placeholder, checkbox y radio marcados, ' +
+      'un select, un range, un progress y un botón con el anillo de :focus-visible simulado.',
+    risk: 'El navegador dibuja estos widgets por su cuenta y ningún CSS los declara: no hay ' +
+      'nada que leer con getComputedStyle. Es el hueco por diseño, no por descuido.',
+  },
+  'fx-table': {
+    what: 'border-collapse, cabecera sticky arriba y pie sticky abajo dentro de un scroll, ' +
+      'filas cebra, colspan y rowspan, números tabulares a la derecha y un pie con borde doble.',
+    risk: 'Con collapse el borde pertenece a la tabla y no a la celda, y el borde doble son ' +
+      'dos líneas de una sola declaración: ambos hay que reconstruirlos como trazos.',
+  },
+  'fx-dark': {
+    what: 'Tema oscuro con gradientes cónicos, color-mix(in oklab, …), colores en oklch() y ' +
+      'sombras de color sobre fondo oscuro.',
+    risk: 'El contrato manda mapear el gamut reduciendo croma, nunca recortando por canal: si ' +
+      'un oklch saturado llega apagado o virado, el fallo está ahí y no en el emisor.',
+  },
+}
+
+/** Pinta la línea del desafío del fixture actual. */
+function renderChallenge () {
+  const c = CHALLENGES[sel.value]
+  const box = $('#challenge')
+  if (!c) { box.innerHTML = '<b>Sin descripción</b>Este fixture no declara qué ejercita.'; return }
+  box.innerHTML = `<b>Qué ejercita</b>${esc(c.what)}` +
+    (c.risk ? `<em>${esc(c.risk)}</em>` : '')
+}
+
+// ——— assets, generados en la página ——————————————————————————
+//
+// Nada de red: cada imagen se fabrica aquí y viaja como data URI. Las dos rutas del
+// contrato quedan cubiertas a propósito — el PNG de canvas entra por el camino ráster
+// (bytes de bitmap) y los SVG por el de vectorizar sin rasterizar.
+
+/** @param {string} svg @returns {string} data URI listo para `src` o `url()` */
+function svgUri (svg) {
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace(/\s+/g, ' ').trim())
+}
+
+/**
+ * Una fotografía sintética en canvas → PNG. Determinista: las posiciones salen de
+ * aritmética sobre el índice, no de `Math.random()`, para que dos cargas produzcan
+ * exactamente los mismos bytes y el peso del SVG sea comparable entre corridas.
+ *
+ * La marca «NE» de la esquina superior derecha no es decoración: con `object-fit: cover`
+ * y `object-position` descentrado, es la única señal que dice qué trozo sobrevivió.
+ *
+ * @param {number} [w] @param {number} [h] @returns {string} data URI PNG
+ */
+function makePhoto (w = 720, h = 480) {
+  const c = document.createElement('canvas')
+  c.width = w; c.height = h
+  const g = c.getContext('2d')
+
+  const sky = g.createLinearGradient(0, 0, 0, h)
+  sky.addColorStop(0, '#12103a'); sky.addColorStop(.34, '#5b21b6')
+  sky.addColorStop(.58, '#db2777'); sky.addColorStop(.74, '#f97316')
+  sky.addColorStop(1, '#fcd34d')
+  g.fillStyle = sky; g.fillRect(0, 0, w, h)
+
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 97.3) % w
+    const y = (i * 53.7) % (h * .34)
+    g.globalAlpha = .18 + ((i * 37) % 55) / 100
+    g.fillStyle = '#fff'
+    g.beginPath(); g.arc(x, y, (i % 3) * .5 + .55, 0, Math.PI * 2); g.fill()
+  }
+  g.globalAlpha = 1
+
+  const sunY = h * .52
+  const halo = g.createRadialGradient(w * .3, sunY, 6, w * .3, sunY, 130)
+  halo.addColorStop(0, 'rgba(255,247,214,.95)'); halo.addColorStop(1, 'rgba(255,200,120,0)')
+  g.fillStyle = halo; g.fillRect(0, 0, w, h)
+  g.fillStyle = '#fffbeb'
+  g.beginPath(); g.arc(w * .3, sunY, 34, 0, Math.PI * 2); g.fill()
+
+  // Mar: reflejo del sol en bandas horizontales que se ensanchan hacia abajo.
+  const sea = g.createLinearGradient(0, h * .6, 0, h)
+  sea.addColorStop(0, '#7c2d12'); sea.addColorStop(1, '#1e1b4b')
+  g.fillStyle = sea; g.fillRect(0, h * .6, w, h * .4)
+  g.fillStyle = 'rgba(255,214,140,.55)'
+  for (let i = 0; i < 16; i++) {
+    const y = h * .61 + i * (h * .39 / 16)
+    const half = 12 + i * 4.5
+    g.fillRect(w * .3 - half, y, half * 2, 2 + i * .12)
+  }
+
+  // Tres siluetas de costa, de lejana a cercana.
+  const ridge = (base, amp, phase, color) => {
+    g.fillStyle = color
+    g.beginPath(); g.moveTo(0, h)
+    for (let x = 0; x <= w; x += 8) {
+      const y = base + Math.sin(x / 96 + phase) * amp + Math.sin(x / 31 + phase * 2) * (amp * .3)
+      g.lineTo(x, y)
+    }
+    g.lineTo(w, h); g.closePath(); g.fill()
+  }
+  ridge(h * .60, 22, 0.4, '#4c1d95')
+  ridge(h * .72, 18, 2.1, '#2e1065')
+  ridge(h * .86, 12, 4.7, '#170a3d')
+
+  // La marca de orientación, arriba a la derecha.
+  g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 3
+  g.beginPath(); g.arc(w * .88, h * .15, 22, 0, Math.PI * 2); g.stroke()
+  g.fillStyle = 'rgba(255,255,255,.95)'
+  g.font = '700 20px -apple-system, system-ui, sans-serif'
+  g.textAlign = 'center'; g.textBaseline = 'middle'
+  g.fillText('NE', w * .88, h * .15)
+  return c.toDataURL('image/png')
+}
+
+/**
+ * Un candidato de `srcset`, etiquetado con su propio ancho. La etiqueta es lo que
+ * permite ver a ojo cuál eligió el navegador — y por tanto que `currentSrc` no es `src`.
+ * @param {number} w @param {string} a @param {string} b @param {string} label
+ */
+function makeBanner (w, a, b, label) {
+  const h = Math.round(w * 0.41)
+  return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>
+    <rect width="${w}" height="${h}" fill="url(#b)"/>
+    <circle cx="${w * .82}" cy="${h * .26}" r="${h * .34}" fill="#fff" opacity=".18"/>
+    <circle cx="${w * .18}" cy="${h * .84}" r="${h * .4}" fill="#000" opacity=".14"/>
+    <text x="${w / 2}" y="${h / 2}" fill="#fff" text-anchor="middle" dominant-baseline="central"
+      font-family="-apple-system, system-ui, sans-serif" font-size="${h * .34}" font-weight="800"
+      letter-spacing="1">${label}</text>
+  </svg>`)
+}
+
+/** Retrato abstracto para el avatar. SVG a propósito: es el camino que NO debe rasterizar. */
+function makePortrait () {
+  return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+    <defs>
+      <linearGradient id="p" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fbbf24"/><stop offset=".55" stop-color="#f97316"/>
+        <stop offset="1" stop-color="#db2777"/></linearGradient>
+      <linearGradient id="s" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1e293b"/><stop offset="1" stop-color="#0f172a"/></linearGradient>
+    </defs>
+    <rect width="320" height="320" fill="url(#p)"/>
+    <circle cx="160" cy="128" r="62" fill="#fde68a"/>
+    <path d="M160 66c34 0 56 22 56 52 0 8-2 14-4 18-6-26-24-38-52-38-20 0-34 6-44 18-4-32 16-50 44-50z" fill="#7c2d12"/>
+    <path d="M52 320c0-58 48-96 108-96s108 38 108 96z" fill="url(#s)"/>
+    <path d="M118 236c14 16 30 24 42 24s28-8 42-24l-12-8c-10 12-20 18-30 18s-20-6-30-18z" fill="#fca5a5" opacity=".8"/>
+  </svg>`)
+}
+
+/** Textura de fondo para `background-size: cover` y para el fixture de cristal. */
+function makeTexture () {
+  return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+    <defs>
+      <linearGradient id="t" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#0ea5e9"/><stop offset=".45" stop-color="#4338ca"/>
+        <stop offset="1" stop-color="#be185d"/></linearGradient>
+      <radialGradient id="g1" cx=".22" cy=".2" r=".55">
+        <stop offset="0" stop-color="#22d3ee" stop-opacity=".9"/>
+        <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g2" cx=".82" cy=".78" r=".5">
+        <stop offset="0" stop-color="#fbbf24" stop-opacity=".85"/>
+        <stop offset="1" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="900" height="600" fill="url(#t)"/>
+    <rect width="900" height="600" fill="url(#g1)"/>
+    <rect width="900" height="600" fill="url(#g2)"/>
+    <g fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="2">
+      <path d="M-40 470 C 180 380 300 520 520 420 S 820 300 960 360"/>
+      <path d="M-40 530 C 200 440 320 580 540 480 S 840 360 960 420"/>
+      <path d="M-40 410 C 160 320 280 460 500 360 S 800 240 960 300"/>
+    </g>
+    <g fill="#fff" fill-opacity=".2">
+      <circle cx="700" cy="140" r="52"/><circle cx="150" cy="470" r="34"/>
+    </g>
+  </svg>`)
+}
+
+/**
+ * Rellena los assets de los fixtures y espera a que decodifiquen. Una imagen que no
+ * decodifica cambia lo que se captura, así que se dice en el panel en vez de dejar un
+ * hueco silencioso.
+ * @returns {Promise<string[]>} los fallos, vacío si todo cargó
+ */
+async function buildAssets () {
+  const photo = makePhoto()
+  const texture = makeTexture()
+  const failures = []
+
+  $('#im-cover').src = photo
+  $('#im-contain').src = photo
+  $('#im-avatar').src = makePortrait()
+
+  // `src` es un candidato que NO debe ganar: con `sizes="132px"` el navegador elige
+  // entre los descriptores de ancho, así que `currentSrc` acaba siendo otro archivo.
+  // Ese desacuerdo es exactamente lo que el contrato de collectImage pide leer bien.
+  const srcset = $('#im-srcset')
+  srcset.src = makeBanner(320, '#94a3b8', '#475569', 'src')
+  srcset.srcset = `${makeBanner(400, '#22c55e', '#0f766e', '400w')} 400w, ` +
+                  `${makeBanner(900, '#6366f1', '#be185d', '900w')} 900w`
+
+  $('#im-hero').style.setProperty('--tex', `url("${texture}")`)
+  $('#gl-root').style.setProperty('--tex', `url("${texture}")`)
+
+  await Promise.all([...document.images].map(async (img) => {
+    try { await img.decode() } catch (err) { failures.push(`${img.id || img.alt || 'img'}: ${err.message}`) }
+  }))
+  return failures
+}
+
+// ——— captura ————————————————————————————————————————————————
+
+sel.onchange = () => {
+  for (const el of document.querySelectorAll('.fx')) el.classList.toggle('on', el.id === sel.value)
+  renderChallenge()
+  $('#metrics').style.display = 'none'
+  status.textContent = ''
+  status.className = ''
+  btn.textContent = 'Copiar SVG'
+  btn.classList.remove('done')
+  btnH2d.textContent = 'Copiar por el canal h2d'
+  btnH2d.classList.remove('done')
+}
+
+/**
+ * Una captura. El motor es un PLUGIN de snapdom: `vector()` se registra en la
+ * captura y publica `result.toVector()`, que recoge el clon que el hook dejó.
+ * No hay función suelta — no existe manera de vectorizar sin capturar, que es
+ * justamente la garantía de que lo medido acá es el mismo clon que se pinta.
+ *
+ * `svdToSvg` se llama a mano en vez de usar `result.toVectorSvg()` a propósito:
+ * ese export fusiona los diagnósticos del EMISOR dentro de `doc.diagnostics`, y
+ * esta página los quiere APARTE — mezclarlos borraría de qué etapa vino cada
+ * aproximación, que es exactamente el silencio que la página existe para romper.
+ *
+ * `ms` mide ahora captura + recorrido. Antes medía sólo el recorrido porque la
+ * llamada a `snapdom()` vivía dentro del motor; ahora la hace esta página, así
+ * que el número que se muestra incluye lo que snapdom tarda en resolver el clon.
+ *
+ * @param {Element} el
+ * @returns {Promise<{doc: object, svg: string, ms: number, svgDiagnostics: object[]}>}
+ */
+async function vectorize (el, target) {
+  const [{ snapdom }, mod] = await Promise.all([
+    import('@zumer/snapdom'),
+    import('@zumer/snapdom-vector'),
+  ])
+  const t0 = performance.now()
+  const result = await snapdom(el, { plugins: [mod.vector()] })
+  const doc = await result.toVector()
+  // El destino no es una preferencia: los dos piden cosas incompatibles y un archivo
+  // no puede servir a los dos. El importador de SVG de Figma no resuelve
+  // `fill="url(#…)"` sobre un `<text>` y pinta el bloque en negro, así que ahí hace
+  // falta la máscara — a costa de que ese bloque deje de ser texto. En cualquier
+  // renderer conforme el universal es mejor y la máscara es la que se rompe.
+  const emitted = mod.svdToSvg(doc, {
+    textGradientMask: target === 'figma',
+    // Y lo mismo con las sombras: la cadena exacta mide mejor en todos lados y Figma
+    // no ejecuta `feMorphology`, así que para ese destino se vuelve a la primitiva única.
+    exactShadows: target !== 'figma',
+  })
+  const ms = performance.now() - t0
+  const svg = typeof emitted === 'string' ? emitted : String(emitted.svg ?? emitted)
+  return { doc, svg, ms, svgDiagnostics: (emitted && emitted.diagnostics) || [] }
+}
+
+/**
+ * La misma captura, por el OTRO canal: `toVectorFigmaClipboard()` no construye
+ * documento SVD ninguno — empaqueta los estilos computados del clon en el sobre de
+ * portapapeles que abre la propia Figma. Se llama al export en vez de armar el sobre
+ * a mano (que es lo que hace `demo/h2d.html`, la sonda) para que lo que se pega aquí
+ * sea exactamente lo que emite el motor, diagnósticos incluidos.
+ *
+ * @param {Element} el
+ * @returns {Promise<object & {ms: number}>}
+ */
+async function vectorizeH2d (el) {
+  const [{ snapdom }, mod] = await Promise.all([
+    import('@zumer/snapdom'),
+    import('@zumer/snapdom-vector'),
+  ])
+  const t0 = performance.now()
+  const result = await snapdom(el, { plugins: [mod.vector()] })
+  const h2d = await result.toVectorFigmaClipboard({ silent: true })
+  return { ...h2d, ms: performance.now() - t0 }
+}
+
+/**
+ * De qué canal son las cifras del panel. Dos botones escribiendo en la misma tabla
+ * sin esto es un número sin dueño, que es justo el silencio que esta página existe
+ * para romper.
+ *
+ * @param {'svg'|'h2d'} kind
+ */
+function setChannel (kind) {
+  const el = $('#channel')
+  el.className = kind === 'h2d' ? 'h2d' : ''
+  el.textContent = kind === 'h2d'
+    ? 'Canal h2d — sobre propietario de Figma'
+    : `Canal SVG — destino ${$('#target').value === 'figma' ? 'Figma' : 'universal'}`
+  $('#diaghead h2').textContent = kind === 'h2d' ? 'Diagnósticos · h2d' : 'Diagnósticos · SVG'
+}
+
+/**
+ * La deriva del clon: cuánto se separa el árbol que el motor recorre del que la página
+ * pinta. Se busca en los sitios plausibles porque el nombre del campo aún se asienta;
+ * si no está, se dice — un número de fidelidad sin garantía de que describa lo visible
+ * no vale nada.
+ *
+ * @param {object} doc documento SVD
+ * @returns {{px: number, kind: string, pairs: number|null, source: string}|null}
+ */
+function cloneDrift (doc) {
+  const rep = (doc && doc.report) || {}
+  const cap = (doc && doc.capture) || {}
+  const KIND = { max: 'máximo', p95: 'p95', median: 'mediana', p50: 'mediana' }
+  const where = [
+    ['report.drift', rep.drift], ['report.clone', rep.clone], ['report.cloneDrift', rep.cloneDrift],
+    ['capture.drift', cap.drift], ['capture.clone', cap.clone], ['capture.cloneDrift', cap.cloneDrift],
+  ]
+  for (const [source, raw] of where) {
+    if (raw == null) continue
+    if (typeof raw === 'number') {
+      if (Number.isFinite(raw)) return { px: raw, kind: 'medido', pairs: null, source }
+      continue
+    }
+    if (typeof raw !== 'object') continue
+    const d = (raw.drift && typeof raw.drift === 'object') ? raw.drift : raw
+    for (const key of ['max', 'p95', 'median', 'p50', 'px', 'delta']) {
+      if (!Number.isFinite(d[key])) continue
+      const pairs = [d.pairs, raw.pairs, d.compared, raw.compared, d.nodes, raw.nodes]
+        .find((v) => Number.isFinite(v))
+      return { px: d[key], kind: KIND[key] || 'medido', pairs: pairs ?? null, source }
+    }
+  }
+  return null
+}
+
+/** El banner va arriba del todo: cualifica todas las cifras que vienen debajo. */
+function renderDrift (doc) {
+  const el = $('#drift')
+  const d = cloneDrift(doc)
+  if (!d) {
+    el.className = 'none'
+    el.innerHTML = '<b>?</b><span><strong>Deriva del clon: sin medir.</strong>' +
+      'Esta build del motor no la informa, así que las cifras de abajo describen el árbol ' +
+      'que medimos y nadie ha comprobado que sea el que ves.</span>'
+    return
+  }
+  const px = d.px
+  const exact = px <= 0.5
+  el.className = exact ? '' : px <= 2 ? 'warn' : 'bad'
+  el.innerHTML = `<b>${px.toFixed(2)} px</b><span><strong>` +
+    (exact ? 'Lo que medimos es lo que ves.'
+      : px <= 2 ? 'Lo que medimos se aparta un poco de lo que ves.'
+        : 'Lo que medimos NO es lo que ves.') +
+    `</strong>El clon que recorre el motor reproduce la página con ${px.toFixed(2)} px de desvío ` +
+    `${d.kind}${d.pairs ? ` en ${int(d.pairs)} nodos comparados` : ''}.` +
+    (exact ? '' : ' Revisá las cajas antes de fiarte de la captura.') + '</span>'
+}
+
+// ——— diagnósticos, agrupados por código ——————————————————————
+
+const SEV_ORDER = { error: 0, warn: 1, info: 2 }
+const ROWS_PER_GROUP = 6
+
+/** Los ids de nodo que un diagnóstico nombra, mirando también las promociones. */
+function diagNodes (d) {
+  const ids = []
+  for (const key of ['node', 'from', 'to']) if (typeof d[key] === 'string') ids.push(d[key])
+  for (const key of ['nodes', 'overlaps']) {
+    if (Array.isArray(d[key])) for (const v of d[key]) if (typeof v === 'string') ids.push(v)
+  }
+  return [...new Set(ids)]
+}
+
+/**
+ * La tabla de diagnósticos, agrupada por `code` y ordenada por severidad. Se pinta con
+ * la captura y antes de pegar: si algo se degradó, se lee aquí primero.
+ *
+ * @param {object[]} all diagnósticos del documento MÁS los del emisor
+ */
+function renderDiagnostics (all) {
+  const list = all.filter((d) => d && typeof d === 'object')
+  const head = $('#diaghead')
+  const body = $('#diagnostics')
+
+  for (const chip of head.querySelectorAll('.sev')) chip.remove()
+  for (const sev of ['error', 'warn', 'info']) {
+    const n = list.filter((d) => (d.severity || 'info') === sev).length
+    if (!n) continue
+    const chip = document.createElement('span')
+    chip.className = `sev ${sev}`
+    chip.textContent = `${sev} ${n}`
+    head.appendChild(chip)
+  }
+
+  if (!list.length) {
+    body.innerHTML = '<div class="empty">Ninguno: el motor dice haberlo representado todo ' +
+      'exactamente. En un fixture de esta página eso es una afirmación fuerte — comprobala pegando.</div>'
+    return
+  }
+
+  const groups = new Map()
+  for (const d of list) {
+    const code = typeof d.code === 'string' ? d.code : '(sin código)'
+    if (!groups.has(code)) groups.set(code, [])
+    groups.get(code).push(d)
+  }
+  const worst = (rows) => Math.min(...rows.map((d) => SEV_ORDER[d.severity] ?? 2))
+
+  body.innerHTML = [...groups.entries()]
+    .sort((a, b) => worst(a[1]) - worst(b[1]) || b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1))
+    .map(([code, rows]) => {
+      const sev = ['error', 'warn', 'info'][worst(rows)]
+      const shown = rows.slice(0, ROWS_PER_GROUP).map((d) => {
+        const ids = diagNodes(d)
+        const label = d.from && d.to ? `${d.from} → ${d.to}` : (ids[0] || '—')
+        const why = d.message || d.reason || d.note || '(sin motivo declarado)'
+        return `<div class="drow"><div class="nid${ids.length ? '' : ' none'}">${esc(label)}</div>` +
+          `<div class="why">${esc(why)}</div></div>`
+      }).join('')
+      const rest = rows.length - Math.min(rows.length, ROWS_PER_GROUP)
+      return `<div class="dgroup"><div class="dghead"><span class="sev ${sev}">${sev}</span>` +
+        `<code>${esc(code)}</code><span class="count">${rows.length}</span></div>${shown}` +
+        (rest ? `<div class="dmore">+${rest} más con este código</div>` : '') + '</div>'
+    }).join('')
+}
+
+/** La última captura, para el arnés. @type {object|null} */
+let last = null
+
+btn.onclick = async () => {
+  btn.disabled = true
+  btn.classList.remove('done')
+  btn.textContent = 'Vectorizando…'
+  status.className = ''
+  status.textContent = ''
+  try {
+    const el = $('#' + sel.value).firstElementChild
+    const target = $('#target').value
+    const { doc, svg, ms, svgDiagnostics } = await vectorize(el, target)
+
+    // Texto plano, no un Blob: el portapapeles de Chrome sólo acarrea una lista corta
+    // de tipos MIME e `image/svg+xml` no está en ella. Figma olfatea el texto y lo
+    // importa como SVG, que es todo el camino corto.
+    await navigator.clipboard.writeText(svg)
+
+    setChannel('svg')
+    renderDrift(doc)
+    const r = doc.report || {}
+    $('#m-nodes').textContent = r.nodes ?? Object.keys(doc.nodes || {}).length
+    $('#m-text').textContent = r.textBlocks ?? '—'
+    const images = (svg.match(/<image\b/g) || []).length
+    $('#m-img').textContent = `${images} en el SVG · ${r.assets ?? 0} asset(s)`
+    $('#m-raster').textContent = r.raster ? `${r.raster} capa(s)` : 'nada'
+    $('#m-size').textContent = (svg.length / 1024).toFixed(1) + ' kB'
+    $('#m-ms').textContent = ms.toFixed(0) + ' ms'
+
+    const all = [...(doc.diagnostics || []), ...svgDiagnostics]
+    renderDiagnostics(all)
+    $('#metrics').style.display = 'block'
+
+    last = { fixture: sel.value, doc, svg, ms, svgDiagnostics, diagnostics: all }
+
+    btn.textContent = target === 'figma' ? 'Copiado — pegá en Figma con ⌘V' : 'Copiado — pegá en tu editor'
+    btn.classList.add('done')
+    const errors = all.filter((d) => d && d.severity === 'error').length
+    status.textContent = errors
+      ? `Antes de pegar: ${errors} diagnóstico(s) de severidad error en la tabla.`
+      : 'Pegá y comparalo con el elemento vivo. Lo que se rompa y no esté en la tabla es el hallazgo.'
+  } catch (err) {
+    status.className = 'err'
+    status.textContent = (err && err.stack) || String(err)
+    btn.textContent = 'Copiar SVG'
+  } finally {
+    btn.disabled = false
+  }
+}
+
+/** La última captura h2d, para el arnés. @type {object|null} */
+let lastH2d = null
+
+btnH2d.onclick = async () => {
+  btnH2d.disabled = true
+  btnH2d.classList.remove('done')
+  btnH2d.textContent = 'Empaquetando…'
+  status.className = ''
+  status.textContent = ''
+  try {
+    const el = $('#' + sel.value).firstElementChild
+    const h2d = await vectorizeH2d(el)
+
+    // `ClipboardItem` y no `writeText`: el canal se dispara por el sobre en
+    // `text/html`, y el `text/plain` va VACÍO a propósito — un `text/plain` con
+    // contenido es lo que cualquier destino prefiere, y Figma recibiría texto en
+    // vez de un documento. Por eso mismo esto no se puede comprobar pegando en un
+    // editor: para verlo sin Figma está `demo/inspect.html`.
+    await navigator.clipboard.write([h2d.clipboardItem()])
+
+    setChannel('h2d')
+    // La deriva se mide igual en los dos caminos y con el mismo límite; se le da la
+    // forma que `cloneDrift` sabe leer en vez de duplicar el lector.
+    renderDrift({ report: { drift: h2d.drift } })
+    const s = h2d.stats || {}
+    $('#m-nodes').textContent = s.nodes ?? '—'
+    $('#m-text').textContent = s.textNodes ?? '—'
+    $('#m-img').textContent = `${s.dataUriAttrs ?? 0} data URI · 0 asset(s)`
+    $('#m-raster').textContent = 'nada — este canal no rasteriza'
+    $('#m-size').textContent = `${(h2d.bytes / 1024).toFixed(1)} kB JSON · ` +
+      `${(h2d.html.length / 1024).toFixed(1)} kB en el sobre`
+    $('#m-ms').textContent = h2d.ms.toFixed(0) + ' ms'
+
+    renderDiagnostics(h2d.diagnostics || [])
+    $('#metrics').style.display = 'block'
+
+    lastH2d = { fixture: sel.value, ...h2d }
+
+    btnH2d.textContent = 'Copiado — pegá en Figma con ⌘V'
+    btnH2d.classList.add('done')
+    status.textContent = 'Sólo Figma abre esto. Si al pegar no aparece nada, el formato cambió: ' +
+      'es propietario y sin versionar. Para ver el sobre sin Figma, pegalo en demo/inspect.html.'
+  } catch (err) {
+    status.className = 'err'
+    status.textContent = (err && err.stack) || String(err)
+    btnH2d.textContent = 'Copiar por el canal h2d'
+  } finally {
+    btnH2d.disabled = false
+  }
+}
+
+// Gancho para el arnés: elegir fixture y disparar sin depender de la UI, igual que
+// `demo/figma.html`. `challenges` viaja entero para que un informe pueda decir qué
+// desafío falló, no sólo qué id.
+window.__challenges = {
+  fixtures: [...sel.options].map((o) => o.value),
+  select: (id) => { sel.value = id; sel.onchange() },
+  capture: () => btn.onclick(),
+  captureH2d: () => btnH2d.onclick(),
+  challenge: (id) => CHALLENGES[id] || null,
+  challenges: CHALLENGES,
+  last: () => last,
+  lastH2d: () => lastH2d,
+  drift: cloneDrift,
+  showDrift: renderDrift,
+  showDiagnostics: renderDiagnostics,
+}
+
+renderChallenge()
+const assetFailures = await buildAssets()
+if (assetFailures.length) {
+  const note = $('#assetnote')
+  note.classList.add('on')
+  note.textContent = 'No decodificó ' + assetFailures.length + ' imagen(es): ' +
+    assetFailures.join(' · ') + '. La captura de ese fixture no describe lo que debería.'
+}
+await document.fonts.ready
+window.__ready = true
+</script>
+</body>
+</html>

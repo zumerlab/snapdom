@@ -181,3 +181,4 @@ CHINESE_TRANSLATION_GUIDE.md
 
 # PDF verification artifacts
 packages/plugins/pdf/out/
+packages/plugins/vector/out/

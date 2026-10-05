@@ -1,0 +1,704 @@
+{
+  "_comment": "Measured values for test/verify-vector.mjs. Regenerate with `node test/verify-vector.mjs --update`. The diff thresholds are NOT invented: `diffLimit` is the measured `diffMean` with 40% + 0.6 of headroom, `diffBadLimit` the measured `diffBad` with 100% + 0.004, `diffTileLimit` the measured `diffTile` with 35% + 2, and `msLimit` is 2.5× the measured median (floor +5ms). Measured on the provenance machine over repeated quiet runs: diffMean, diffBad, diffTile, nodes, nodeRatio, grades and svgBytes are BIT-IDENTICAL run to run (sd = 0.000000 over 5 runs), so their headroom is not absorbing local noise — it is cross-machine font rasterisation, and nothing else. `ms` is the only metric that moves: sd ≤0.3ms quiet, and ×1.0–1.14 with the raster suite‘s own Chromium running alongside, which is why 2.5× is generous and the previous +30ms floor was not a threshold at all (it let a 7× regression on a 4ms fixture pass in silence). `diffTile` is the worst 32×32px tile and exists because `diffMean` is a whole-box average that divides local damage by the whole picture; neither one caught CONIC_WEDGES 128→12, `svgBytes` did. `codes` is the exact set of diagnostic codes the capture emitted: a code appearing or disappearing fails the suite until a human accepts it with --update, because a new code is a new degradation and a vanished one is a claim that something got better. `why` is the only field here a human writes; --update carries it over instead of overwriting it. See `_provenance` for where these numbers were taken — a threshold without provenance is noise a year from now.",
+  "_provenance": {
+    "generatedAt": "2026-08-13T14:01:15.137Z",
+    "os": "Darwin 25.5.0 arm64",
+    "cpu": "Apple M5 × 10",
+    "memoryGb": 24,
+    "node": "v25.8.1",
+    "chromium": "140.0.7339.186",
+    "viewport": "1440×1000 @1x",
+    "note": "Font rasterisation is platform-specific: the pixel-diff thresholds below travel across machines only as far as the font stack does. A CI box that fails only on diffMean has probably substituted a family, not regressed the engine."
+  },
+  "cases": {
+    "challenges/fx-dark": {
+      "nodes": 27,
+      "domElements": 26,
+      "nodeRatio": 1.0385,
+      "grades": {
+        "A": 20,
+        "E": 7
+      },
+      "diffMean": 2.638,
+      "diffBad": 0.04173,
+      "diffTile": 17.27,
+      "ms": 6,
+      "svgBytes": 41290,
+      "codes": [
+        "B4.anonymous-block",
+        "capture.root-paint-restored",
+        "collect.box",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.clip-inset-unknown",
+        "emit.svg.conic-apex",
+        "emit.svg.conic-fan",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 4.293,
+      "diffBadLimit": 0.08746,
+      "diffTileLimit": 25.31,
+      "msLimit": 15
+    },
+    "challenges/fx-form": {
+      "nodes": 46,
+      "domElements": 41,
+      "nodeRatio": 1.122,
+      "grades": {
+        "A": 25,
+        "E": 10,
+        "O": 11
+      },
+      "diffMean": 2.313,
+      "diffBad": 0.03809,
+      "diffTile": 23.55,
+      "ms": 8,
+      "svgBytes": 15952,
+      "codes": [
+        "B4.anonymous-block",
+        "B4.form-control",
+        "capture.root-paint-restored",
+        "collect.box.form-control",
+        "collect.text",
+        "collect.text-family-system",
+        "compose.outline",
+        "emit.svg.control-reconstructed",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 3.838,
+      "diffBadLimit": 0.08018,
+      "diffTileLimit": 33.79,
+      "msLimit": 20
+    },
+    "challenges/fx-glass": {
+      "nodes": 21,
+      "domElements": 11,
+      "nodeRatio": 1.9091,
+      "grades": {
+        "A": 11,
+        "E": 10
+      },
+      "diffMean": 5.248,
+      "diffBad": 0.08682,
+      "diffTile": 24.23,
+      "ms": 4,
+      "svgBytes": 18295,
+      "codes": [
+        "capture.root-paint-restored",
+        "collect.box",
+        "collect.box.filter-color-matrix",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.blend-backdrop-in-clip",
+        "emit.svg.clip-inset-unknown",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 7.947,
+      "diffBadLimit": 0.17764,
+      "diffTileLimit": 34.71,
+      "msLimit": 10,
+      "why": "Was 8.509 and the worst case in the suite, with emit.svg.blend-isolated-by-clip (severity C): the clip group isolated the blobs from .glass's own background and they composited against nothing. Since 2026-08-13 the node's own paint moves INSIDE the clip group when a descendant blends (emit.svg.blend-backdrop-in-clip), with the outer box-shadow cast by a shadow-only silhouette before the group: 8.509 -> 5.248, diffBad 0.222 -> 0.087. What remains is the backdrop-filter panel (snapdom's pre-composed copy carries the texture but not the blobs, an upstream limit) and glyph edges."
+    },
+    "challenges/fx-grid": {
+      "nodes": 62,
+      "domElements": 36,
+      "nodeRatio": 1.7222,
+      "grades": {
+        "A": 49,
+        "E": 13
+      },
+      "diffMean": 2.731,
+      "diffBad": 0.04917,
+      "diffTile": 12.57,
+      "ms": 10,
+      "svgBytes": 32852,
+      "codes": [
+        "B4.anonymous-block",
+        "B4.geometry-from-layout",
+        "capture.root-paint-restored",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.clip-inset-unknown",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-no-silhouette",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.stroke-dash-lost",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "emit.svg.text-unbboxed",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 4.423,
+      "diffBadLimit": 0.10234,
+      "diffTileLimit": 18.97,
+      "msLimit": 25
+    },
+    "challenges/fx-img": {
+      "nodes": 20,
+      "domElements": 25,
+      "nodeRatio": 0.8,
+      "grades": {
+        "A": 8,
+        "E": 12
+      },
+      "diffMean": 2.009,
+      "diffBad": 0.03192,
+      "diffTile": 12,
+      "ms": 8,
+      "svgBytes": 117673,
+      "codes": [
+        "capture.root-paint-restored",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.clip-inset-unknown",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-no-silhouette",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 3.413,
+      "diffBadLimit": 0.06784,
+      "diffTileLimit": 18.2,
+      "msLimit": 20
+    },
+    "challenges/fx-list": {
+      "nodes": 35,
+      "domElements": 24,
+      "nodeRatio": 1.4583,
+      "grades": {
+        "A": 29,
+        "E": 6
+      },
+      "diffMean": 3.139,
+      "diffBad": 0.04849,
+      "diffTile": 19.32,
+      "ms": 9,
+      "svgBytes": 13392,
+      "codes": [
+        "B4.anonymous-block",
+        "B4.counter-misnumbered",
+        "B4.list-marker-synthesized",
+        "capture.root-paint-restored",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 4.995,
+      "diffBadLimit": 0.10098,
+      "diffTileLimit": 28.08,
+      "msLimit": 23
+    },
+    "challenges/fx-svg": {
+      "nodes": 19,
+      "domElements": 54,
+      "nodeRatio": 0.3519,
+      "grades": {
+        "A": 12,
+        "E": 7
+      },
+      "diffMean": 1.464,
+      "diffBad": 0.03742,
+      "diffTile": 8.76,
+      "ms": 7,
+      "svgBytes": 26225,
+      "why": "2026-09-04: refreshed only serialized size against v3. Three inline SVG assets, node count, grades, text coverage and all pixel baselines remain unchanged; leaner captured SVG markup is not a fidelity loss. Keep the 10% size gate for conic-wedge regressions.",
+      "codes": [
+        "B4.anonymous-block",
+        "B4.clone-defs-container",
+        "B4.inline-svg",
+        "capture.root-paint-restored",
+        "collect.image",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 2.65,
+      "diffBadLimit": 0.07884,
+      "diffTileLimit": 13.83,
+      "msLimit": 18
+    },
+    "challenges/fx-table": {
+      "nodes": 106,
+      "domElements": 69,
+      "nodeRatio": 1.5362,
+      "grades": {
+        "A": 45,
+        "E": 57,
+        "O": 4
+      },
+      "diffMean": 1.417,
+      "diffBad": 0.02402,
+      "diffTile": 13.38,
+      "ms": 14,
+      "svgBytes": 35068,
+      "codes": [
+        "capture.root-paint-restored",
+        "collect.box",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.clip-inset-unknown",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 2.584,
+      "diffBadLimit": 0.05204,
+      "diffTileLimit": 20.06,
+      "msLimit": 35
+    },
+    "challenges/fx-tf": {
+      "nodes": 19,
+      "domElements": 18,
+      "nodeRatio": 1.0556,
+      "grades": {
+        "A": 14,
+        "E": 5
+      },
+      "diffMean": 1.67,
+      "diffBad": 0.025,
+      "diffTile": 11.79,
+      "ms": 4,
+      "svgBytes": 21441,
+      "codes": [
+        "B4.geometry-from-layout",
+        "capture.root-paint-restored",
+        "collect.box.mask-applied",
+        "collect.text",
+        "collect.text-family-system",
+        "collect.text-scale-normalized",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "emit.svg.text-unbboxed",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 2.938,
+      "diffBadLimit": 0.054,
+      "diffTileLimit": 17.92,
+      "msLimit": 10
+    },
+    "challenges/fx-type": {
+      "nodes": 11,
+      "domElements": 18,
+      "nodeRatio": 0.6111,
+      "grades": {
+        "A": 10,
+        "E": 1
+      },
+      "diffMean": 3.608,
+      "diffBad": 0.05899,
+      "diffTile": 31.22,
+      "ms": 5,
+      "svgBytes": 22230,
+      "codes": [
+        "capture.root-paint-restored",
+        "collect.box",
+        "collect.text",
+        "collect.text-family-system",
+        "collect.text-hyphen",
+        "collect.text-small-caps",
+        "collect.text-stroke",
+        "emit.svg.background-clip-text",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.stroke-per-side-miter",
+        "emit.svg.text-baseline-shift-split",
+        "emit.svg.text-decoration-wavy-path",
+        "emit.svg.text-gradient-fill-ref",
+        "emit.svg.text-hyphen-painted",
+        "emit.svg.text-justified-words",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 5.651,
+      "diffBadLimit": 0.12198,
+      "diffTileLimit": 44.15,
+      "msLimit": 13,
+      "why": "The justified paragraph (.ty-just) was the dominant error, fixed in two steps on 2026-08-13: textLength+spacing (6.25 -> 4.65) and then measured per-word anchors — each word a tspan at the x the browser painted (emit.svg.text-justified-words, exact) — for 4.65 -> 3.61. The tspans cost ~3.7k of svgBytes on this fixture, paid for a justification that no longer approximates. What remains is glyph-edge sub-pixel advance plus the fixture's deliberate traps (wavy underline, stroke-only text, background-clip text)."
+    },
+    "figma/fx-card": {
+      "nodes": 16,
+      "domElements": 14,
+      "nodeRatio": 1.1429,
+      "grades": {
+        "A": 10,
+        "E": 6
+      },
+      "diffMean": 1.46,
+      "diffBad": 0.02588,
+      "diffTile": 14.92,
+      "ms": 5,
+      "svgBytes": 11221,
+      "codes": [
+        "capture.root-paint-restored",
+        "collect.box",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.clip-inset-unknown",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 2.644,
+      "diffBadLimit": 0.05576,
+      "diffTileLimit": 22.14,
+      "msLimit": 13
+    },
+    "figma/fx-clone": {
+      "nodes": 34,
+      "domElements": 23,
+      "nodeRatio": 1.4783,
+      "grades": {
+        "A": 24,
+        "E": 10
+      },
+      "diffMean": 2.18,
+      "diffBad": 0.03886,
+      "diffTile": 12.44,
+      "ms": 11,
+      "svgBytes": 21208,
+      "codes": [
+        "B4.anonymous-block",
+        "B4.list-marker-synthesized",
+        "capture.root-paint-restored",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.stroke-per-side-miter",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 3.652,
+      "diffBadLimit": 0.08172,
+      "diffTileLimit": 18.79,
+      "msLimit": 28
+    },
+    "figma/fx-prose": {
+      "nodes": 12,
+      "domElements": 13,
+      "nodeRatio": 0.9231,
+      "grades": {
+        "E": 8,
+        "A": 4
+      },
+      "diffMean": 4.119,
+      "diffBad": 0.07805,
+      "diffTile": 20.29,
+      "ms": 4,
+      "svgBytes": 8472,
+      "codes": [
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.font-not-embedded",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-links-dropped",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 6.367,
+      "diffBadLimit": 0.1601,
+      "diffTileLimit": 29.39,
+      "msLimit": 10,
+      "why": "Same cause as vector/fx-type and the same two codes (font-not-embedded, text-links-dropped): a prose block with no large filled areas, so glyph-edge disagreement is the whole measurement."
+    },
+    "figma/fx-ui": {
+      "nodes": 23,
+      "domElements": 11,
+      "nodeRatio": 2.0909,
+      "grades": {
+        "E": 10,
+        "A": 13
+      },
+      "diffMean": 0.908,
+      "diffBad": 0.01948,
+      "diffTile": 4.67,
+      "ms": 5,
+      "svgBytes": 9461,
+      "codes": [
+        "B4.anonymous-block",
+        "collect.text",
+        "collect.text-family-system",
+        "compose.outline",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width"
+      ],
+      "diffLimit": 1.871,
+      "diffBadLimit": 0.04296,
+      "diffTileLimit": 8.3,
+      "msLimit": 13,
+      "why": "The LOWEST numbers in the suite (diffMean 0.908, worst tile 4.67). Kept here as the floor: it is what this engine looks like when nothing in the fixture is degraded, so a regression that lifts THIS case is worth more attention than the same delta on a text-heavy one."
+    },
+    "vector/fx-card": {
+      "nodes": 18,
+      "domElements": 19,
+      "nodeRatio": 0.9474,
+      "grades": {
+        "E": 9,
+        "A": 9
+      },
+      "diffMean": 1.616,
+      "diffBad": 0.02441,
+      "diffTile": 14.67,
+      "ms": 5,
+      "svgBytes": 26460,
+      "codes": [
+        "collect.box",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.conic-apex",
+        "emit.svg.conic-fan",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 2.862,
+      "diffBadLimit": 0.05282,
+      "diffTileLimit": 21.8,
+      "msLimit": 13,
+      "why": "Carries the conic gradient. Its numbers are NOT sensitive to conic quality — cutting CONIC_WEDGES 128->12 leaves diffMean at 1.57 (it goes DOWN) and the worst tile unchanged at 14.67, because the disc is ~3% of the box and the ambient error elsewhere is larger. `svgBytes` is the assertion that guards this fixture: 24436 -> 13094 under that break."
+    },
+    "vector/fx-font": {
+      "nodes": 10,
+      "domElements": 12,
+      "nodeRatio": 0.8333,
+      "grades": {
+        "E": 3,
+        "A": 7
+      },
+      "diffMean": 4.425,
+      "diffBad": 0.07054,
+      "diffTile": 19.83,
+      "ms": 25,
+      "svgBytes": 879512,
+      "codes": [
+        "assets.font-embedded",
+        "collect.text",
+        "collect.text-family-resolved",
+        "emit.svg.text-justified-words",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 6.795,
+      "diffBadLimit": 0.14508,
+      "diffTileLimit": 28.77,
+      "msLimit": 63,
+      "why": "The font-collector fixture (2026-08-13): \"Inter Demo\" exists only as @font-face — the name is installed nowhere — and the harness renders the emitted SVG on a page with NO stylesheets, so these numbers are only this good because collect/font.js put the TTF bytes in the document (svgBytes ~877k, two faces, assets.font-embedded). Started at 8.62; per-word anchors on the justified paragraph (line.words -> tspan x, emit.svg.text-justified-words) brought it to 4.43. What remains is glyph-edge sub-pixel disagreement, the all-text norm. If this case suddenly IMPROVES a lot, check that the render page did not gain the fonts by another route before believing it."
+    },
+    "vector/fx-table": {
+      "nodes": 94,
+      "domElements": 61,
+      "nodeRatio": 1.541,
+      "grades": {
+        "E": 46,
+        "A": 48
+      },
+      "diffMean": 1.828,
+      "diffBad": 0.02991,
+      "diffTile": 19.06,
+      "ms": 14,
+      "svgBytes": 22009,
+      "codes": [
+        "B4.anonymous-block",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.stroke-per-side-miter",
+        "emit.svg.text-length-viewer-width",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 3.159,
+      "diffBadLimit": 0.06382,
+      "diffTileLimit": 27.73,
+      "msLimit": 35
+    },
+    "vector/fx-type": {
+      "nodes": 20,
+      "domElements": 23,
+      "nodeRatio": 0.8696,
+      "grades": {
+        "E": 9,
+        "A": 11
+      },
+      "diffMean": 4.952,
+      "diffBad": 0.07778,
+      "diffTile": 18.48,
+      "ms": 6,
+      "svgBytes": 12115,
+      "codes": [
+        "B4.anonymous-block",
+        "collect.text",
+        "collect.text-family-system",
+        "collect.text-small-caps",
+        "emit.svg.font-not-embedded",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-links-dropped",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 7.533,
+      "diffBadLimit": 0.15956,
+      "diffTileLimit": 26.95,
+      "msLimit": 15,
+      "why": "Text-only fixture with no boxes to average the number down, and the diff is expected: verified by eye at 4x on the \"comparte la base con el resto de la linea\" line — live and emitted sit on the SAME baseline at the same x, and the whole glyph body lights up because a 15px serif is almost entirely edge; the disagreement is sub-pixel glyph advance, not misplacement. Georgia is an installed face no @font-face serves, so there are no bytes the collector could embed (emit.svg.font-not-embedded stays) and the SVG depends on the viewer resolving the same family — unlike vector/fx-font, whose face travels."
+    },
+    "vector/fx-ui": {
+      "nodes": 43,
+      "domElements": 34,
+      "nodeRatio": 1.2647,
+      "grades": {
+        "E": 16,
+        "A": 27
+      },
+      "diffMean": 2.694,
+      "diffBad": 0.04755,
+      "diffTile": 22.82,
+      "ms": 8,
+      "svgBytes": 22275,
+      "codes": [
+        "B4.anonymous-block",
+        "collect.text",
+        "collect.text-family-system",
+        "compose.outline",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 4.372,
+      "diffBadLimit": 0.0991,
+      "diffTileLimit": 32.81,
+      "msLimit": 20,
+      "why": "Elevated worst-tile rather than elevated mean: `compose.outline` and `emit.svg.shadow-spread-morphology` concentrate their error on badge and button borders, which is exactly what a per-tile maximum is built to surface."
+    },
+    "vector/fx-z": {
+      "nodes": 21,
+      "domElements": 16,
+      "nodeRatio": 1.3125,
+      "grades": {
+        "E": 11,
+        "A": 10
+      },
+      "diffMean": 3.485,
+      "diffBad": 0.05205,
+      "diffTile": 20.71,
+      "ms": 5,
+      "svgBytes": 18696,
+      "codes": [
+        "B4.anonymous-block",
+        "B4.promoted",
+        "collect.text",
+        "collect.text-family-system",
+        "emit.svg.filter-not-imported",
+        "emit.svg.shadow-spread-morphology",
+        "emit.svg.text-length-viewer-width",
+        "emit.svg.text-per-line",
+        "text.tracking-may-be-ignored"
+      ],
+      "diffLimit": 5.479,
+      "diffBadLimit": 0.1081,
+      "diffTileLimit": 29.96,
+      "msLimit": 13,
+      "why": "Text-dominated like fx-type, plus two approximations that show at edges: the repeating linear-gradient stripes (visible as faint diagonal banding in the .diff.png) and `emit.svg.shadow-spread-morphology`, which approximates a spread shadow and therefore disagrees around the card border."
+    }
+  },
+  "_acceptedRegressions": [
+    {
+      "date": "2026-08-05",
+      "decidedBy": "Martin (product call, not a measurement)",
+      "what": "Los diffMean de vector/fx-card 1.616→2.399, vector/fx-ui 2.713→2.912, vector/fx-z 3.483→4.740, figma/fx-card 1.489→1.543, figma/fx-ui 0.908→1.001 y figma/fx-clone 2.34→2.60 son PEORES que la baseline anterior y se aceptaron a propósito.",
+      "why": "Un box-shadow con spread pasó de la cadena exacta (feMorphology + feGaussianBlur + feOffset + feFlood + feComposite + feMerge) a un feDropShadow único. La cadena es más fiel en el navegador, pero Figma no la ejecuta entera: conserva el flood, pierde el feComposite que recorta el color a la silueta, y la sombra llega como una MANCHA NEGRA rectangular. Verificado pegando en Figma real, no deducido. El producto es capturar y pegar en Figma: un punto sobre 255 invisible en el navegador vale menos que una mancha negra en el destino.",
+      "escapeHatch": "svdToSvg(doc, { exactShadows: true }) devuelve la cadena exacta para quien priorice fidelidad de navegador sobre compatibilidad de importador.",
+      "doNotRevert": "Si estos números BAJAN en el futuro sin que nadie toque las sombras, es una mejora real y hay que rebaselinar. Si SUBEN, es una regresión de verdad."
+    },
+    {
+      "date": "2026-08-05",
+      "decidedBy": "pasada de reconciliación (medido, no criterio)",
+      "what": "En vector/fx-card, vector/fx-ui, vector/fx-table, vector/fx-type, vector/fx-z, figma/fx-card, figma/fx-clone, figma/fx-prose y figma/fx-ui aparecen dos códigos nuevos — collect.text-family-system y text.tracking-may-be-ignored — y con ellos el histograma de grados se mueve de E a A en cinco casos (fx-card 8A/10E→9A/9E, fx-ui 26A/17E→27A/16E, fx-z 8A/13E→10A/11E, figma/fx-card 9A/7E→10A/6E, figma/fx-clone 22A/12E→24A/10E).",
+      "why": "NO es el render: en los nueve casos diffMean, diffBad, diffTile y svgBytes son los mismos números que la baseline anterior (figma/fx-clone baja 2.60→2.58, que es mejora). Lo que cambió es lo que el motor DICE de sí mismo. Un bloque de texto cuya familia es un keyword del sistema, o que lleva letter-spacing que el destino va a ignorar, ya no puede llamarse exacto: pasa a A y lo declara. Un grado E que mentía vale menos que un grado A que avisa. La aritmética del aviso está verificada contra el DOM vivo: en fx-type, -1.21px × 41 clusters = 49.6px sobre los 376.11px que mide la línea, y la misma línea con letter-spacing:normal mide 425.72px — cierra al 0.01px.",
+      "doNotRevert": "Si estos dos códigos DESAPARECEN sin que nadie toque collect/text.js, el motor volvió a callarse una pérdida que sigue estando. Si aparece un tercer código, es una pérdida nueva y hay que mirarla."
+    },
+    {
+      "date": "2026-08-05",
+      "decidedBy": "pasada de reconciliación (medido)",
+      "what": "challenges/fx-form: diffMean 4.67→2.347, diffTile 56.28→23.55, diffBad 0.0576→0.0405, svgBytes 12231→16031, código nuevo emit.svg.control-reconstructed (9) y retirado emit.svg.node-paints-nothing.",
+      "why": "Es una MEJORA, no una regresión, y se rebaselina para que la mejora no se pueda perder en silencio. Los widgets nativos (checkbox, radio, select, range, progress) se reconstruyen desde node.control a las proporciones medidas del ráster de Chromium, así que siete nodos que no pintaban nada ahora pintan lo que el navegador pinta; los 3800 bytes son ese dibujo. Medido aparte con el arnés de dpr 2 y máx-canal: Δpx 6.081→2.767, peor tesela 109.4→38.6. Parte de la bajada del diffMean del suite (2.388 medido en captura contra 2.347 aquí) es un segundo arreglo: montar el clon ya no desmarca el radio VIVO, y la foto viva que el suite toma DESPUÉS de capturar vuelve a tener el radio marcado.",
+      "doNotRevert": "Lo que queda de Δpx en fx-form es casi todo TEXTO de control que nadie dibuja: el valor del input, el placeholder y la opción elegida del select. Si diffMean sube por encima de 2.4 sin que nadie toque los widgets, se rompió la reconstrucción."
+    },
+    {
+      "date": "2026-08-06",
+      "decidedBy": "pasada de verificación (medido, no criterio)",
+      "what": "challenges/fx-img: diffMean 2.214→2.216 (0.002 PEOR) y svgBytes 117612→115588. challenges/fx-glass: diffMean 8.975→8.974, diffBad 0.22366→0.22364, diffTile 31.25→31.24 y svgBytes 17825→13813. Los otros ocho fixtures de challenges no se movieron ni un dígito.",
+      "why": "Un background-image que apunta a un SVG ya no viaja dentro de un <image>: se pinta como markup inline (FIGMA_FINDINGS §6). El dibujo es el MISMO — medido contra la baseline anterior en el mismo equipo y la misma sesión, con un worktree en HEAD (pre-arreglo) que reproduce 2.214 y 8.975 exactos: los rásters emitidos antes/después difieren como máximo 7/255 en un canal y la diferencia está confinada a la banda del fondo (bbox y 0–164 en fx-img, la caja del header). Lo que cambió es QUIÉN lo pinta — el decodificador de imágenes de Chromium contra el pintor de SVG — y eso mueve el antialias medio punto sobre 255. En el navegador la diferencia es invisible; en Figma es la capa entera, porque un <image> con un SVG dentro no dibuja NADA. Los 2 KB y 4 KB menos son el markup pesando menos que su propio base64 (dos veces en fx-glass, que pinta la textura una vez más dentro de su copia para el backdrop-filter). Censo verificado: 0 href=\"data:image/svg en los diez ch-*.svg; antes 1 en fx-img y 2 en fx-glass.",
+      "doNotRevert": "El 0.002 de fx-img se acepta porque compra la capa en el destino, no porque sea ruido: estos números son bit-idénticos entre corridas. Si diffMean de fx-img sube por encima de 2.25, o si vuelve a aparecer un href=\"data:image/svg en cualquier fixture, no es esta decisión: es algo nuevo."
+    },
+    {
+      "date": "2026-08-06",
+      "what": "svgBytes baja entre 11% y 23% en fx-ui, fx-table, figma/fx-ui y challenges/fx-grid. Ninguna metrica de pixel cambio: el render es identico.",
+      "why": "En modo auto, el emisor partia en un <text> por pieza solo a partir de la SEGUNDA. Un bloque de una sola linea quedaba como <text><tspan x y estilo>...</tspan></text>, con la posicion y los atributos repetidos en dos niveles. Figma IGNORA el x/y de un tspan interior (FIGMA_FINDINGS.md), asi que esos bloques aterrizaban en el origen de su grupo en vez de en su linea base: medido pegando challenges.html#fx-img, 9 de sus 13 bloques eran de una linea y los 9 colapsaron. Ahora la posicion va siempre en el <text> y el tspan sobra.",
+      "doNotRevert": "Si estos bytes SUBEN sin que nadie toque el emisor de texto, es que un bloque volvio a dejar su posicion en el tspan. La comprobacion directa: parsear el SVG y exigir que todo <text> tenga x e y propios."
+    },
+    {
+      "date": "2026-08-06",
+      "decidedBy": "pasada de verificación (medido, no criterio)",
+      "what": "Se retira el código emit.svg.pattern-tiles de challenges/fx-grid y de vector/fx-ui: ya no queda un solo <pattern> en ninguno de los diecinueve casos. challenges/fx-grid: diffMean 2.966→2.965, diffBad 0.05525→0.05528, svgBytes 29654→28938 (211 elementos en el SVG). vector/fx-ui: diffMean 2.912→2.938 (0.026 PEOR), diffBad 0.05514→0.05577, diffTile sin moverse, svgBytes 17207→18190. Los otros diecisiete casos no se movieron ni un dígito.",
+      "why": "Una capa de fondo que tesela ya no se declara con <pattern>: se desenrolla en una copia por posición dentro del recorte de la caja (FIGMA_FINDINGS.md §3). Figma no resuelve fill=\"url(#pattern)\" y tira el nodo ENTERO, así que el <pattern> costaba existencia y no exactitud. En fx-grid las capas que llevaban el pattern eran fantasma — la chapa rotada mide su caja por el layout redondeado a enteros (B4.geometry-from-layout, ≤0,5px), y las tres copias sobrantes eran pelos de 0,2px del extremo equivocado del gradiente; TILE_SLIVER_PX=0,5 las descarta, la capa pinta UNA vez y por eso el documento pesa 716 bytes menos y el diff mejora una milésima. Medido con el mismo arnés poniendo TILE_SLIVER_PX=0: 217 elementos y 29688 bytes, esos seis elementos son las copias fantasma. En fx-ui la píldora \"Pro\" y su hermana SÍ teselan de verdad (1px de inset border-box→padding-box, 9 teselas cada una, un solo paint server compartido y translate por copia): los 983 bytes son esas 18 copias y los 0,026 de diffMean son sus juntas, que dentro de un <pattern> el navegador componía exactas. El diff se mide EN UN NAVEGADOR, donde el pattern era perfecto; lo que se compra con esas dos centésimas es que el nodo llegue a Figma en vez de desaparecer.",
+      "doNotRevert": "Si emit.svg.pattern-tiles REAPARECE en cualquier caso, el desenrollado dejó de aplicarse y ese nodo vuelve a ser invisible en Figma. Si svgBytes de fx-ui sube muy por encima de 18190 sin que nadie toque el fixture, es que cada tesela se llevó su propia <linearGradient> otra vez (medido: 72 kB de defs en el caso de 176 teselas). Si el de fx-grid sube a ~29,7 kB con 217 elementos, es que TILE_SLIVER_PX volvió a 0 y las copias fantasma están pintando."
+    },
+    {
+      "date": "2026-08-06",
+      "decidedBy": "pasada de verificación (medido, no criterio)",
+      "what": "Aparece el código emit.svg.filter-not-imported en challenges/fx-glass, challenges/fx-grid, challenges/fx-table y vector/fx-ui, y con él suben los svgBytes: fx-glass 13014→14533 (+11,7%), fx-table 31926→35344 (+10,7%), vector/fx-ui 18190→20306 (+11,6%), fx-grid dentro de su margen. Ni un solo número de píxel se movió en ningún fixture: diffMean, diffBad, diffTile, nodes, nodeRatio y el histograma de grados son idénticos. Los svgBytes del resto de los casos se rebaselinaron en la misma pasada porque venían de código ya cambiado y sólo pasaban por el margen del ±10%.",
+      "why": "El SVG no cambió: cambió lo que dice de sí mismo. Figma no EJECUTA filtros SVG — mapea feDropShadow y feGaussianBlur a efectos propios e ignora cualquier filtro que no pueda mapear (medido pegando, 2026-08-06: un feColorMatrix suelto llegó CON SU NODO y sin ningún cambio de color). Eso alcanza a la mitad de color de filter/backdrop-filter y a toda sombra interior, que no tiene primitiva y se queda en cadena. Antes no lo decía nadie: el saturate(1.8) de fx-glass bajaba el diff en el navegador y en Figma el panel seguía saliendo lavado en silencio. Los bytes son la declaración: una línea corta por nodo y el porqué UNA vez por documento (nodo null), porque cinco celdas con la misma sombra interior son cinco nodos y un solo hecho — decirlo cinco veces costaba 8,5 kB de un archivo de 40 kB.",
+      "doNotRevert": "Si emit.svg.filter-not-imported desaparece de un fixture que sigue emitiendo feColorMatrix o una cadena de sombra interior, no es que el motor mejoró: es que volvió a callarse. Y si los svgBytes bajan a los valores viejos con el código intacto, la declaración se perdió."
+    },
+    {
+      "date": "2026-08-06",
+      "decidedBy": "pasada de verificación (medido, no criterio)",
+      "what": "challenges/fx-type: aparece el código emit.svg.text-gradient-mask, svgBytes 15130→16337 (+1207 bytes, medidos por la pasada que hizo el cambio; contra el HEAD del repo, 15684→16337), diffMean 6.270→6.273 (0.003 PEOR) y diffBad 0.08211→0.08212 (1e-5 PEOR). diffTile 39.42, nodes, nodeRatio y el histograma de grados no se movieron, y los otros nueve fixtures de challenges no se movieron en ningún dígito.",
+      "why": "Un texto con degradado ya no se emite como <text fill=\"url(#…)\">: se emite como una <mask> con el MISMO markup del texto en blanco y un <rect> con el degradado pintado a través (FIGMA_FINDINGS §8). Figma no resuelve la referencia al paint server y el titular llega NEGRO; con la máscara llegan los colores de la página. Lo que se paga está en el destino, no en el dibujo: allá el bloque deja de ser capa de texto editable (en el archivo sigue siendo UN <text>, dentro de la máscara, y sigue siendo texto para cualquier renderer de SVG). El contenido no se toca — verificado carácter por carácter contra el textContent del elemento vivo en los ocho bloques de fx-type, incluido n_2 \"Tipografía que no perdona\", y sin un solo <tspan> por letra (esa tercera forma llega con los espacios colapsados). Los 1207 bytes son la máscara, el rect y el texto del diagnóstico.",
+      "escapeHatch": "svdToSvg(doc, { textGradientMask: false }) — reenviado desde svgFrom — devuelve el fill=\"url(#…)\" intacto: capa de texto editable en Figma, en negro.",
+      "doNotRevert": "Si emit.svg.text-gradient-mask desaparece de fx-type con el CSS intacto, el motor volvió al fill que llega negro. Si diffMean de fx-type sube por encima de 6.3, o si aparece un <tspan> por letra en un bloque con degradado, no es esta decisión: es algo nuevo."
+    },
+    {
+      "date": "2026-08-13",
+      "decidedBy": "Claude (arithmetic of a new fixture, not a fidelity change)",
+      "what": "_corpusDiffMean 2.659 (19 casos) -> 2.957 (20 casos) al entrar vector/fx-font con 8.62; los anclajes por palabra del mismo dia lo bajaron a 4.43 y el corpus quedo en 2.695.",
+      "why": "vector/fx-font entro al corpus: el fixture del font collector, todo texto a 14.5px con parrafo justificado, diffMean 8.62 — el mas alto de la suite y medido en una pagina de render SIN hojas de estilo, donde solo renderiza bien porque los bytes de la fuente viajan en el SVG. Los 19 casos previos quedaron bit-identicos (2.659); el promedio subio solo porque el conjunto crecio con un caso deliberadamente dificil.",
+      "escapeHatch": "Si el corpus sube de nuevo SIN que cambie el conjunto de casos, eso si es una regresion: mirar los diffMean por caso contra este registro."
+    }
+  ],
+  "_corpusDiffMean": 2.6951,
+  "_corpusDiffCases": 20
+}

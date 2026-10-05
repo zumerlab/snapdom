@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probar el canal h2d con nuestros datos</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom-v3/dist/snapdom.mjs" } }
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 32px;
+         background: #f1f5f9; color: #0f172a; display: flex; gap: 28px; align-items: flex-start;
+         flex-wrap: wrap; }
+  aside { width: 330px; flex: none; background: #fff; border-radius: 16px; padding: 24px;
+          box-shadow: 0 10px 30px rgba(15,23,42,.08); position: sticky; top: 32px; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 18px; font-size: 13.5px; color: #64748b; }
+  label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.07em;
+          color:#64748b; margin-bottom:6px; }
+  select { width:100%; font:inherit; font-size:14px; padding:9px 10px; border:1px solid #cbd5e1;
+           border-radius:9px; background:#fff; margin-bottom:16px; }
+  button { width:100%; padding:13px 16px; font:inherit; font-size:15px; font-weight:650; color:#fff;
+           border:0; border-radius:11px; cursor:pointer; background:#4f46e5; }
+  button.done { background:#059669; }
+  #status { margin-top:12px; font-size:13.5px; color:#64748b; min-height:3em; white-space:pre-wrap; }
+  #status.err { color:#b91c1c; }
+  dl { display:grid; grid-template-columns:1fr auto; gap:5px 12px; margin:16px 0 0; font-size:13px;
+       border-top:1px solid #e2e8f0; padding-top:14px; }
+  dt { color:#64748b; } dd { margin:0; font-weight:600; font-variant-numeric:tabular-nums; }
+  .warn { margin-top:14px; padding:10px 12px; border-radius:10px; background:#fffbeb;
+          border:1px solid #fde68a; color:#92400e; font-size:12.5px; line-height:1.5; }
+  main { flex:1; min-width:360px; background:#fff; border-radius:16px; padding:26px;
+         box-shadow:0 10px 30px rgba(15,23,42,.08); }
+  main h2 { font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:#64748b;
+            margin:0 0 16px; font-weight:650; }
+  .fx { display:none } .fx.on { display:block }
+  .card { width:380px; border-radius:16px; padding:22px; background:#fff;
+          box-shadow:0 14px 34px -12px rgba(15,23,42,.3), 0 0 0 1px rgba(15,23,42,.05); }
+  .card h3 { margin:0 0 6px; font-size:26px; font-weight:800; letter-spacing:-1.2px; color:#0f172a; }
+  .card p { margin:0 0 12px; font-size:14px; color:#475569; }
+  .card .tag { display:inline-block; font-size:11px; font-weight:750; letter-spacing:.1em;
+               text-transform:uppercase; color:#4338ca; background:#eef2ff; padding:5px 11px;
+               border-radius:999px; margin-bottom:12px; }
+  .card .cta { border:0; width:auto; border-radius:10px; padding:11px 20px; font-size:14px;
+               font-weight:650; color:#fff; background:linear-gradient(135deg,#4f46e5,#db2777); }
+  .type h3 { font-size:30px; letter-spacing:-1.35px; }
+  .type .lead { font-size:20px; letter-spacing:1.2px; color:#0f172a; }
+  .type .tight { font-size:22px; font-weight:700; letter-spacing:-1.21px; color:#0f172a; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Canal h2d, datos nuestros</h1>
+  <p class="sub">Empaqueta los estilos computados en el sobre que Figma abre al pegar. No usa nada
+  de su extensión: sólo el envoltorio.</p>
+
+  <label for="fx">Qué capturar</label>
+  <select id="fx">
+    <option value="fx-card">Tarjeta con degradado y sombra</option>
+    <option value="fx-type">Tipografía con tracking</option>
+  </select>
+
+  <button id="copy">Copiar como h2d</button>
+  <div id="status"></div>
+
+  <dl>
+    <dt>Nodos</dt><dd id="m-nodes">—</dd>
+    <dt>Bloques de texto</dt><dd id="m-text">—</dd>
+    <dt>Payload</dt><dd id="m-size">—</dd>
+  </dl>
+
+  <div class="warn">Si esto funciona, el tracking y las variables llegan como en su extensión. Si no,
+  esa puerta está cerrada y el SVG sigue siendo el camino.</div>
+</aside>
+
+<main>
+  <h2>Elemento vivo</h2>
+  <div class="fx on" id="fx-card">
+    <div class="card">
+      <span class="tag">Canal h2d</span>
+      <h3>Prueba de sobre</h3>
+      <p>Si esto llega a Figma con su tracking y su degradado, el canal acepta datos que no vienen
+      de su extensión.</p>
+      <button class="cta">Acción</button>
+    </div>
+  </div>
+  <div class="fx" id="fx-type">
+    <div class="card type">
+      <h3>Tipografía que no perdona</h3>
+      <p class="lead">Interletraje positivo de 1,2px</p>
+      <p class="tight">Interletraje negativo de −1,21px</p>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+const $ = s => document.querySelector(s)
+
+/**
+ * Las propiedades que su payload lleva por nodo. Salieron de decodificar una captura
+ * real de su extensión: son estilos computados en camelCase, con el valor CSS tal cual,
+ * y Figma los interpreta del otro lado. No se envía todo `getComputedStyle` — pesa
+ * megas y lo que no difiere del default no aporta nada.
+ */
+const PROPS = [
+  'backgroundColor', 'backgroundImage', 'backgroundClip',
+  'borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius',
+  'borderTopColor', 'borderTopStyle', 'borderTopWidth',
+  'borderRightColor', 'borderRightStyle', 'borderRightWidth',
+  'borderBottomColor', 'borderBottomStyle', 'borderBottomWidth',
+  'borderLeftColor', 'borderLeftStyle', 'borderLeftWidth',
+  'boxShadow', 'boxSizing', 'color', 'display', 'opacity',
+  'fontFamily', 'fontSize', 'fontStyle', 'fontWeight', 'letterSpacing', 'lineHeight',
+  'marginBottom', 'marginLeft', 'marginRight', 'marginTop',
+  'paddingBottom', 'paddingLeft', 'paddingRight', 'paddingTop',
+  'textAlign', 'textDecorationColor', 'textDecorationLine', 'textDecorationStyle',
+  'textTransform', 'transform', 'transformOrigin', 'verticalAlign', 'width',
+]
+
+let counter = 0
+const rectOf = (r) => ({ x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height })
+
+function walk (el) {
+  const cs = getComputedStyle(el)
+  const styles = {}
+  for (const p of PROPS) {
+    const v = cs[p]
+    if (v != null && v !== '' && v !== 'none' && v !== 'normal') styles[p] = v
+  }
+  const node = {
+    nodeType: 1,
+    id: 'h2d-node-' + (++counter),
+    tag: el.tagName,
+    attributes: {},
+    styles,
+    rect: rectOf(el.getBoundingClientRect()),
+    childNodes: [],
+    computedStyles: { transformOrigin: '50% 50%' },
+  }
+  for (const child of el.childNodes) {
+    if (child.nodeType === 3) {
+      const text = child.textContent
+      if (!text.trim()) continue
+      // Un nodo de texto lleva su propia caja: se mide con un Range, igual que en su payload.
+      const range = document.createRange()
+      range.selectNodeContents(child)
+      const rects = [...range.getClientRects()]
+      node.childNodes.push({
+        nodeType: 3,
+        id: 'h2d-node-' + (++counter),
+        text,
+        rect: rects.length ? rectOf(range.getBoundingClientRect()) : { x: 0, y: 0, width: 0, height: 0 },
+        lineCount: rects.length,
+      })
+    } else if (child.nodeType === 1) {
+      node.childNodes.push(walk(child))
+    }
+  }
+  return node
+}
+
+/** Las métricas por familia y tamaño usado, medidas con canvas como hace su payload. */
+function fontsOf (root) {
+  const ctx = document.createElement('canvas').getContext('2d')
+  const out = {}
+  for (const el of [root, ...root.querySelectorAll('*')]) {
+    const cs = getComputedStyle(el)
+    const fam = cs.fontFamily
+    if (!fam) continue
+    const key = fam.split(',')[0].replace(/["']/g, '').trim()
+    out[key] ||= { familyName: key, faces: [], usages: [] }
+    const usage = { fontWeight: cs.fontWeight, fontStyle: cs.fontStyle, fontStretch: cs.fontStretch, fontSize: cs.fontSize }
+    if (out[key].usages.some(u => u.fontSize === usage.fontSize && u.fontWeight === usage.fontWeight)) continue
+    ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${fam}`
+    const m = ctx.measureText('Hxg')
+    usage.metrics = {
+      fontBoundingBoxAscent: Math.round(m.fontBoundingBoxAscent),
+      fontBoundingBoxDescent: Math.round(m.fontBoundingBoxDescent),
+    }
+    out[key].usages.push(usage)
+  }
+  return out
+}
+
+const b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)))
+
+$('#fx').onchange = () => {
+  for (const el of document.querySelectorAll('.fx')) el.classList.toggle('on', el.id === $('#fx').value)
+  $('#status').textContent = ''
+  $('#copy').classList.remove('done')
+  $('#copy').textContent = 'Copiar como h2d'
+}
+
+$('#copy').onclick = async () => {
+  const btn = $('#copy'), status = $('#status')
+  status.className = ''
+  try {
+    counter = 0
+    const el = $('#' + $('#fx').value).firstElementChild
+    const root = walk(el)
+    const r = rectOf(el.getBoundingClientRect())
+    const doc = [{
+      documentTitle: document.title,
+      root,
+      documentRect: { x: 0, y: 0, width: Math.round(r.width), height: Math.round(r.height) },
+      viewportRect: { x: 0, y: 0, width: r.width, height: r.height },
+      devicePixelRatio: devicePixelRatio || 1,
+      version: 2,
+      assets: {},
+      fonts: fontsOf(el),
+    }]
+    const json = JSON.stringify(doc)
+    const meta = { dataType: 'h2d', source: 'snapdom-vector', capturedAtIso: new Date().toISOString() }
+    // El sobre exacto que Figma abre al pegar: dos <span>, base64 entre marcadores, text/html.
+    const html =
+      `<span data-metadata="<!--(figmeta)${b64(JSON.stringify(meta))}(/figmeta)-->"></span>` +
+      `<span data-h2d="<!--(figh2d)${b64(json)}(/figh2d)-->"></span>`
+
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([''], { type: 'text/plain' }),
+    })])
+
+    let n = 0, t = 0
+    ;(function count (x) { x.nodeType === 3 ? t++ : n++; (x.childNodes || []).forEach(count) })(root)
+    $('#m-nodes').textContent = n
+    $('#m-text').textContent = t
+    $('#m-size').textContent = (json.length / 1024).toFixed(1) + ' kB'
+    btn.classList.add('done')
+    btn.textContent = 'Copiado — pegá en Figma con ⌘V'
+    status.textContent = 'Si aparece: el canal acepta datos nuestros. Mirá el letter-spacing en el panel.'
+  } catch (err) {
+    status.className = 'err'
+    status.textContent = String(err && err.stack || err)
+  }
+}
+</script>
+</body>
+</html>

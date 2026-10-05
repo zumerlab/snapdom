@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>snapdom · capture check</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom-v2/dist/snapdom.mjs" } }
+</script>
+<style>
+  :root { --ink:#0f172a; --dim:#64748b; --line:#e2e8f0; --ok:#047857; --bad:#b91c1c; --accent:#4f46e5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f1f5f9; color: var(--ink);
+         font: 14px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .top { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 22px;
+         display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .top h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  .top p { margin: 0; color: var(--dim); font-size: 13px; max-width: 62ch; }
+  .top .sp { flex: 1; }
+  label.opt { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  select, button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 7px;
+                   border: 1px solid #cbd5e1; background: #fff; color: var(--ink); }
+  button { cursor: pointer; font-weight: 600; }
+  button.go { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+
+  .case { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+          margin: 18px 22px; overflow: hidden; }
+  .case > header { padding: 13px 16px; border-bottom: 1px solid var(--line);
+                   display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .case h2 { font-size: 14px; margin: 0; font-weight: 650; }
+  .case .why { color: var(--dim); font-size: 13px; flex: 1; min-width: 240px; }
+  .verdict { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600;
+             padding: 3px 9px; border-radius: 999px; background: #f1f5f9; color: var(--dim); }
+  .verdict.ok  { background: #ecfdf5; color: var(--ok); }
+  .verdict.bad { background: #fef2f2; color: var(--bad); }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; }
+  .col { padding: 16px; }
+  .col + .col { border-left: 1px solid var(--line); background: #fafcff; }
+  .col .tag { font-family: ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: .08em;
+              text-transform: uppercase; color: var(--dim); margin-bottom: 10px; }
+  .col img { max-width: 100%; display: block; border: 1px dashed #cbd5e1; border-radius: 6px; }
+  .numbers { margin: 12px 16px 16px; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+             color: var(--dim); }
+  .numbers b { color: var(--ink); }
+  .numbers .diff { color: var(--bad); }
+
+  /* ——— specimen styles, shared by the cases ——— */
+  .spec { width: 380px; background: #fff; padding: 14px; font-size: 15px; }
+  .spec .box { border: 1px solid #a5b4fc; background: #eef2ff; border-radius: 8px; padding: 10px; }
+  .spec h4 { margin: 0 0 4px; font-size: 14px; }
+  .spec p { margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h1>snapdom · capture check</h1>
+    <p>Does the raster paint what the browser paints? Each case counts the text lines the DOM
+    actually has, then counts bands of ink in snapdom's canvas. They should match. No PDF plugin
+    is loaded here — this is the engine on its own.</p>
+  </div>
+  <span class="sp"></span>
+  <label class="opt">scale
+    <select id="scale"><option>1</option><option selected>2</option><option>3</option></select>
+  </label>
+  <label class="opt"><input type="checkbox" id="shadows"> outerShadows</label>
+  <button class="go" id="run">Run all</button>
+</div>
+
+<div id="cases"></div>
+
+<script type="module">
+import { snapdom } from '@zumer/snapdom'
+
+/**
+ * Each case renders a specimen, captures it, and compares two counts that must agree:
+ * the number of text lines the FLATTENED DOM lays out, and the number of horizontal
+ * bands of ink in the capture. A duplicate, a dropped node or a shifted block all
+ * show up as a difference in that number.
+ */
+const CASES = [
+  {
+    id: 'slot-named',
+    title: 'Named slot',
+    why: 'Light DOM assigned to a named slot. The browser paints it once, at the slot.',
+    build(host) {
+      host.innerHTML = '<div class="spec"><div id="h"><span slot="s">SLOTTEDWORD</span></div></div>'
+      const h = host.querySelector('#h')
+      h.attachShadow({ mode: 'open' }).innerHTML =
+        '<div class="box" style="border:1px solid #a5b4fc;background:#eef2ff;border-radius:8px;padding:10px">' +
+        'shadow: <slot name="s"></slot></div>'
+    },
+  },
+  {
+    id: 'slot-default',
+    title: 'Default slot',
+    why: 'Same thing through an unnamed slot, to see whether the name is what matters.',
+    build(host) {
+      host.innerHTML = '<div class="spec"><div id="h">DEFAULTSLOTTED</div></div>'
+      const h = host.querySelector('#h')
+      h.attachShadow({ mode: 'open' }).innerHTML =
+        '<div style="border:1px solid #a5b4fc;background:#eef2ff;border-radius:8px;padding:10px">' +
+        'shadow: <slot></slot></div>'
+    },
+  },
+  {
+    id: 'slot-fallback',
+    title: 'Slot with nothing assigned',
+    why: 'Control: the slot shows its own fallback, and no light DOM is involved.',
+    build(host) {
+      host.innerHTML = '<div class="spec"><div id="h"></div></div>'
+      const h = host.querySelector('#h')
+      h.attachShadow({ mode: 'open' }).innerHTML =
+        '<div style="border:1px solid #a5b4fc;background:#eef2ff;border-radius:8px;padding:10px">' +
+        'shadow: <slot>FALLBACKTEXT</slot></div>'
+    },
+  },
+  {
+    id: 'shadow-only',
+    title: 'Shadow root, no slot',
+    why: 'Control: everything lives inside the root. This is the case that already works.',
+    build(host) {
+      host.innerHTML = '<div class="spec"><div id="h"></div></div>'
+      const h = host.querySelector('#h')
+      h.attachShadow({ mode: 'open' }).innerHTML =
+        '<div style="border:1px solid #a5b4fc;background:#eef2ff;border-radius:8px;padding:10px">' +
+        'INSIDEROOTONLY</div>'
+    },
+  },
+  {
+    id: 'slot-two',
+    title: 'Two slotted nodes',
+    why: 'If one duplicates, do two duplicate twice? Tells you whether it is per node.',
+    build(host) {
+      host.innerHTML = '<div class="spec"><div id="h">' +
+        '<span slot="a">FIRSTSLOTTED</span><span slot="b">SECONDSLOTTED</span></div></div>'
+      const h = host.querySelector('#h')
+      h.attachShadow({ mode: 'open' }).innerHTML =
+        '<div style="border:1px solid #a5b4fc;background:#eef2ff;border-radius:8px;padding:10px">' +
+        '<div>one: <slot name="a"></slot></div><div>two: <slot name="b"></slot></div></div>'
+    },
+  },
+  {
+    id: 'slot-nested',
+    title: 'Slot inside a nested root',
+    why: 'A component inside a component — the shape a real design system has.',
+    build(host) {
+      host.innerHTML = '<div class="spec"><div id="h"><span slot="s">NESTEDSLOTTED</span></div></div>'
+      const outer = host.querySelector('#h')
+      outer.attachShadow({ mode: 'open' }).innerHTML =
+        '<div style="border:1px solid #a5b4fc;background:#eef2ff;border-radius:8px;padding:10px">' +
+        '<div id="inner"><slot name="s"></slot></div></div>'
+      const inner = outer.shadowRoot.querySelector('#inner')
+      inner.attachShadow({ mode: 'open' }).innerHTML = 'inner root: <slot></slot>'
+    },
+  },
+  {
+    id: 'plain',
+    title: 'No shadow DOM at all',
+    why: 'The baseline. If this one disagrees, the measurement is wrong, not the engine.',
+    build(host) {
+      host.innerHTML = '<div class="spec"><p>PLAINLINEONE</p><p>PLAINLINETWO</p></div>'
+    },
+  },
+]
+
+/**
+ * Lines the browser actually lays out, counted across the FLATTENED tree so slotted
+ * text is counted where it is rendered — once — and shadow content is not missed.
+ */
+function domLines(root) {
+  const tops = new Set()
+  const visit = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (!/\S/.test(node.data)) return
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      for (const r of range.getClientRects()) {
+        if (r.width > 0 && r.height > 0) tops.add(Math.round(r.top))
+      }
+      return
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return
+    if (node.tagName === 'STYLE' || node.tagName === 'SCRIPT') return
+    if (node.tagName === 'SLOT') {
+      // Walk what is actually rendered here, not the slot element itself.
+      for (const n of node.assignedNodes({ flatten: true })) visit(n)
+      return
+    }
+    if (node.shadowRoot) { for (const n of node.shadowRoot.childNodes) visit(n); return }
+    for (const n of node.childNodes) visit(n)
+  }
+  visit(root)
+  return tops.size
+}
+
+/** Horizontal bands of ink in the capture. Alpha matters: a transparent pixel is not ink. */
+function inkBands(canvas) {
+  const { width: w, height: h } = canvas
+  const d = canvas.getContext('2d').getImageData(0, 0, w, h).data
+  let bands = 0, inBand = false
+  for (let y = 0; y < h; y++) {
+    let ink = false
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4
+      if (d[i + 3] > 128 && d[i] < 140 && d[i + 1] < 140 && d[i + 2] < 140) { ink = true; break }
+    }
+    if (ink && !inBand) bands++
+    inBand = ink
+  }
+  return bands
+}
+
+const wrap = document.getElementById('cases')
+wrap.innerHTML = CASES.map(c => `
+  <section class="case" id="case-${c.id}">
+    <header>
+      <h2>${c.title}</h2>
+      <span class="why">${c.why}</span>
+      <span class="verdict" id="v-${c.id}">not run</span>
+    </header>
+    <div class="cols">
+      <div class="col"><div class="tag">live dom</div><div id="live-${c.id}"></div></div>
+      <div class="col"><div class="tag">snapdom capture</div><div id="shot-${c.id}"></div></div>
+    </div>
+    <div class="numbers" id="n-${c.id}"></div>
+  </section>`).join('')
+
+async function run(c) {
+  const live = document.getElementById(`live-${c.id}`)
+  live.innerHTML = ''
+  c.build(live)
+  const specimen = live.querySelector('.spec')
+
+  const lines = domLines(specimen)
+  const rect = specimen.getBoundingClientRect()
+
+  const result = await snapdom(specimen, {
+    scale: Number(document.getElementById('scale').value),
+    dpr: 1,
+    outerShadows: document.getElementById('shadows').checked,
+    outerTransforms: true,
+  })
+  const canvas = await result.toCanvas()
+  const bands = inkBands(canvas)
+
+  const shot = document.getElementById(`shot-${c.id}`)
+  shot.innerHTML = ''
+  const img = new Image()
+  img.src = canvas.toDataURL('image/png')
+  img.style.width = rect.width + 'px'
+  shot.appendChild(img)
+
+  const v = document.getElementById(`v-${c.id}`)
+  const ok = bands === lines
+  v.textContent = ok ? 'matches' : `${bands > lines ? '+' : ''}${bands - lines} band(s)`
+  v.className = 'verdict ' + (ok ? 'ok' : 'bad')
+
+  document.getElementById(`n-${c.id}`).innerHTML =
+    `dom lines <b>${lines}</b> · ink bands in the capture <b class="${ok ? '' : 'diff'}">${bands}</b> · ` +
+    `element ${rect.width.toFixed(0)}×${rect.height.toFixed(1)} · ` +
+    `canvas ${canvas.width}×${canvas.height}`
+}
+
+document.getElementById('run').onclick = async () => {
+  const btn = document.getElementById('run')
+  btn.disabled = true
+  btn.textContent = 'Running…'
+  for (const c of CASES) await run(c)
+  btn.disabled = false
+  btn.textContent = 'Run all'
+}
+
+for (const c of CASES) c.build(document.getElementById(`live-${c.id}`))
+window.__ready = true
+</script>
+</body>
+</html>

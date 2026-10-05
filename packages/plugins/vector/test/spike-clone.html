@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>spike — ¿el clon montado mide igual que el DOM vivo?</title>
+<style>
+  body { font: 15px/1.6 system-ui, sans-serif; margin: 0; padding: 24px; background: #f1f5f9; }
+  #out { white-space: pre; font: 12px/1.5 ui-monospace, Menlo, monospace; }
+  /* The card under test — deliberately uses what v0 declared out of scope:
+     ::before/::after, a nested shadow host, border-box sizing, transforms. */
+  * { box-sizing: border-box; }
+  .card { width: 340px; border-radius: 18px; overflow: hidden; background: #fff;
+          box-shadow: 0 18px 40px -12px rgba(15,23,42,.28); font-family: system-ui, sans-serif; }
+  .card__head { height: 132px; position: relative;
+                background: linear-gradient(135deg, #4f46e5, #9333ea 52%, #ec4899); }
+  .card__head::after { content: "PSEUDO"; position: absolute; left: 14px; bottom: 12px;
+                       color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+  .card__body { padding: 20px 22px 22px; }
+  .card__kicker { font-size: 10.5px; font-weight: 750; letter-spacing: .11em;
+                  color: #6366f1; margin: 0 0 6px; }
+  .card__kicker::before { content: "▸ "; color: #ec4899; }
+  .card__title { font-size: 21px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 10px; }
+  .card__desc { font-size: 13.5px; color: #475569; margin: 0 0 18px; padding-bottom: 18px;
+                border-bottom: 1px solid #e2e8f0; }
+  .card__desc b { color: #0f172a; }
+  .card__foot { display: flex; align-items: center; gap: 12px; }
+  .card__cta { margin-left: auto; border: 0; border-radius: 10px; padding: 11px 20px;
+               font: inherit; font-size: 14px; font-weight: 650; color: #fff;
+               background: linear-gradient(180deg, #4f46e5, #4338ca); }
+  ul.list { margin: 0 0 16px; padding-left: 20px; font-size: 13px; color: #475569; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="card" id="target">
+    <div class="card__head"></div>
+    <div class="card__body">
+      <p class="card__kicker">SERIE AURORA</p>
+      <h3 class="card__title">Lámpara Halo 40</h3>
+      <ul class="list"><li>Difusor soplado a mano</li><li>Regulador de cuatro pasos</li></ul>
+      <p class="card__desc">Base de <b>fresno macizo</b> y acabado mate.</p>
+      <div class="card__foot"><span>149 €</span><button class="card__cta">Añadir</button></div>
+    </div>
+  </div>
+</div>
+<div id="out">midiendo…</div>
+
+<script type="module">
+import { snapdom } from '/snapdom-v3/dist/snapdom.mjs'
+
+const log = []
+const say = s => { log.push(s); document.querySelector('#out').textContent = log.join('\n') }
+
+const target = document.querySelector('#target')
+let retained = null
+
+// `__retain` is snapdom's internal hand-off: it fires at the end of a capture with
+// the resolved clone and the clone->source map. That map is the whole point — it is
+// what lets us check the clone's own layout against the live one it came from.
+await snapdom(target, {
+  dpr: 1,
+  outerTransforms: true,
+  retain: r => { retained = r },
+})
+
+if (!retained) { say('FALLO: __retain no disparó — la build no lo expone'); throw new Error('no retain') }
+say('retain ok: ' + Object.keys(retained).join(', '))
+
+const { clone, nodeMap, classPrefixCSS, fontsCSS } = retained
+say(`nodeMap: ${nodeMap ? nodeMap.size : 'ausente'} entradas · classPrefixCSS: ${(classPrefixCSS || '').length}B · fontsCSS: ${(fontsCSS || '').length}B`)
+
+// Mount offscreen in the LIGHT dom: @font-face inside a shadow root is ignored by
+// Chromium, and a clone laid out with the wrong fonts measures nothing useful.
+const style = document.createElement('style')
+style.textContent = (fontsCSS || '') + (classPrefixCSS || '')
+document.head.appendChild(style)
+
+const host = document.createElement('div')
+host.style.cssText = 'position:fixed;left:-99999px;top:0;contain:layout style;'
+host.appendChild(clone)
+document.body.appendChild(host)
+
+// Compare every clone node that has a live counterpart, in coordinates relative to
+// each side's own root, so the offscreen offset cancels out.
+const liveRoot = target.getBoundingClientRect()
+const cloneRoot = clone.getBoundingClientRect()
+const rel = (r, root) => ({ x: r.left - root.left, y: r.top - root.top, w: r.width, h: r.height })
+
+const deltas = []
+const worst = []
+let pairs = 0, unmapped = 0
+
+const walk = node => {
+  if (node.nodeType === 1) {
+    const src = nodeMap && nodeMap.get(node)
+    if (src && src.nodeType === 1 && src.isConnected) {
+      const a = rel(node.getBoundingClientRect(), cloneRoot)
+      const b = rel(src.getBoundingClientRect(), liveRoot)
+      const d = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.w - b.w), Math.abs(a.h - b.h))
+      deltas.push(d)
+      worst.push({ d, tag: node.tagName.toLowerCase(), cls: (node.className || '').toString().slice(0, 28), a, b })
+      pairs++
+    } else unmapped++
+  }
+  for (const c of node.childNodes) walk(c)
+}
+walk(clone)
+
+deltas.sort((x, y) => x - y)
+const q = p => deltas.length ? deltas[Math.min(deltas.length - 1, Math.floor(deltas.length * p))] : NaN
+say('')
+say(`pares comparados: ${pairs}   sin contrapartida viva: ${unmapped}  (pseudos, husks, wrappers)`)
+say(`delta  mediana ${q(.5).toFixed(2)}px   p95 ${q(.95).toFixed(2)}px   max ${q(1).toFixed(2)}px`)
+say(`<=0.5px: ${deltas.filter(d => d <= .5).length}/${deltas.length}   <=2px: ${deltas.filter(d => d <= 2).length}/${deltas.length}`)
+say('')
+say('peores 6:')
+for (const w of worst.sort((x, y) => y.d - x.d).slice(0, 6)) {
+  say(`  ${w.d.toFixed(2)}px  ${w.tag}.${w.cls}`)
+  say(`      clon  x${w.a.x.toFixed(1)} y${w.a.y.toFixed(1)} ${w.a.w.toFixed(1)}x${w.a.h.toFixed(1)}`)
+  say(`      vivo  x${w.b.x.toFixed(1)} y${w.b.y.toFixed(1)} ${w.b.w.toFixed(1)}x${w.b.h.toFixed(1)}`)
+}
+
+// The payoff question: do the pseudo-elements — which have no live counterpart at
+// all — exist as measurable boxes in the clone?
+const pseudos = clone.querySelectorAll('[data-snapdom-pseudo], [data-snapdom-pseudo-before], [data-snapdom-pseudo-after]')
+say('')
+say(`pseudo-elementos materializados en el clon: ${pseudos.length}`)
+for (const p of Array.from(pseudos).slice(0, 4)) {
+  const r = rel(p.getBoundingClientRect(), cloneRoot)
+  say(`  <${p.tagName.toLowerCase()}> "${(p.textContent || '').trim().slice(0, 14)}"  x${r.x.toFixed(1)} y${r.y.toFixed(1)} ${r.w.toFixed(1)}x${r.h.toFixed(1)}`)
+}
+const markers = clone.querySelectorAll('li')
+say(`items de lista en el clon: ${markers.length} (¿traen su ::marker?)`)
+
+window.__spike = { pairs, unmapped, median: q(.5), p95: q(.95), max: q(1), pseudos: pseudos.length }
+say('')
+say('LISTO')
+</script>
+</body>
+</html>
