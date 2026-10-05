@@ -8,6 +8,8 @@
 import type { SnapdomPlugin } from '@zumer/snapdom';
 
 export interface HtmlExportOptions {
+  title?: string;
+  lang?: string;
   /** Wrap in a full `<!DOCTYPE html>` document; false returns `<style>` + fragment. */
   fullDocument?: boolean;
   /** Download filename when `toHtml({ download: true })` is used. */
@@ -29,3 +31,9 @@ export interface ToHtmlOptions extends HtmlExportOptions {
 export declare function htmlExport(options?: HtmlExportOptions): SnapdomPlugin;
 
 export default htmlExport;
+
+declare module '@zumer/snapdom' {
+  interface CaptureResult {
+    toHtml(options?: ToHtmlOptions): Promise<string>;
+  }
+}

@@ -16,6 +16,10 @@ export function colorTint(options = {}) {
     opacity = 1,
   } = options;
 
+  if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
+    throw new RangeError('[SnapDOM] color-tint: opacity must be between 0 and 1');
+  }
+
   return {
     name: 'color-tint',
     pure: true,

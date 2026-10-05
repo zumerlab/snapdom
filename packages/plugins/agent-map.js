@@ -102,6 +102,8 @@ export function agentMap(options = {}) {
           const format = opts.imageFormat || imageFormat;
           const quality = opts.imageQuality ?? imageQuality;
           const maxWidth = opts.maxImageWidth ?? maxImageWidth;
+          if (!Number.isFinite(maxWidth) || maxWidth < 1) throw new RangeError('[SnapDOM] agent-map: maxImageWidth must be positive');
+          if (wantImage !== false && wantImage !== 'raw' && wantImage !== 'annotated') throw new TypeError('[SnapDOM] agent-map: image must be annotated, raw or false');
           const geometry = ctx.meta;
           const sourceW = geometry?.vbW || meta.dimensions.width || 1;
           const sourceH = geometry?.vbH || meta.dimensions.height || 1;

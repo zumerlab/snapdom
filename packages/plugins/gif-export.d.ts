@@ -27,3 +27,9 @@ export interface GifExportOptions {
 /** Adds `result.toGif()`: records a sequence of captures into an animated GIF. */
 export declare function gifExport(options?: GifExportOptions): SnapdomPlugin;
 export default gifExport;
+
+declare module '@zumer/snapdom' {
+  interface CaptureResult {
+    toGif(options?: GifExportOptions & { download?: boolean | string }): Promise<Blob>;
+  }
+}

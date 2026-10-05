@@ -26,3 +26,9 @@ export interface VideoExportOptions {
 /** Adds `result.toMp4()`: records through MediaRecorder, with WebM fallback when needed. */
 export declare function videoExport(options?: VideoExportOptions): SnapdomPlugin;
 export default videoExport;
+
+declare module '@zumer/snapdom' {
+  interface CaptureResult {
+    toMp4(options?: VideoExportOptions & { download?: boolean | string }): Promise<Blob>;
+  }
+}

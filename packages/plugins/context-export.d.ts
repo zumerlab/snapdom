@@ -23,3 +23,26 @@ export interface ContextExportOptions {
 export declare function contextExport(options?: ContextExportOptions): SnapdomPlugin;
 
 export default contextExport;
+
+export interface ContextNode {
+  tag: string;
+  id?: string;
+  class?: string;
+  box?: [number, number, number, number];
+  text?: string;
+  state?: Record<string, string | number | boolean>;
+  children?: ContextNode[];
+}
+export interface ContextResult {
+  root: ContextNode | null;
+  truncated: boolean;
+  nodes: number;
+}
+export type ToContextOptions = Pick<ContextExportOptions, 'format' | 'maxTextLength' | 'geometry'>;
+declare module '@zumer/snapdom' {
+  interface CaptureResult {
+    toContext(options: ToContextOptions & { format: 'json' }): Promise<ContextResult>;
+    toContext(options: ToContextOptions & { format: 'outline' }): Promise<string>;
+    toContext(options?: ToContextOptions): Promise<string | ContextResult>;
+  }
+}

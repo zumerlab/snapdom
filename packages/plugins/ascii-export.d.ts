@@ -14,7 +14,17 @@ export interface AsciiExportOptions {
   charset?: string;
   /** Invert the luminance mapping. */
   invert?: boolean;
+  /** Plain text (default) or colored HTML with preserved character spacing. */
+  format?: 'text' | 'html';
+  /** Non-negative luminance contrast boost. */
+  contrast?: number;
 }
 
 /** Adds `result.toAscii()`. */
 export declare function asciiExport(options?: AsciiExportOptions): SnapdomPlugin;
+
+declare module '@zumer/snapdom' {
+  interface CaptureResult {
+    toAscii(options?: AsciiExportOptions): Promise<string>;
+  }
+}
