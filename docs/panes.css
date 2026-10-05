@@ -30,6 +30,7 @@
 @media (max-width: 1080px) {
   .pane, .pane.no-demo { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .pane-side { position: static; grid-row: auto; }
+  .pane-toc { display: none; }
   .pane-demo, .pane-read { grid-column: 1; }
 }
 @media (max-width: 600px) {

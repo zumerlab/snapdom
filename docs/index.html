@@ -54,57 +54,30 @@
       --line: rgba(15, 30, 77, .14);
       --soft: #eef3ff;
       --max: 1180px;
+      --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body { margin: 0; color: var(--ink); background: var(--paper); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
     a { color: inherit; }
     .wrap { width: min(var(--max), calc(100% - 48px)); margin: 0 auto; }
-    .site-header { position: sticky; top: 0; z-index: 20; background: rgba(247, 249, 252, .94); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
-    .nav { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-    .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-size: 24px; }
-    .brand-mark {
-      width: 46px;
-      height: 54px;
-      flex: 0 0 auto;
-      background: url('./assets/mr-snapdom-wave.png') center / contain no-repeat;
-      mix-blend-mode: multiply;
-    }
-    .nav-links { display: flex; align-items: center; gap: 16px; }
-    .nav-links a { color: var(--muted); text-decoration: none; font-size: 13px; }
-    .nav-links a:hover { color: var(--blue); }
-    .nav-cta { padding: 10px 16px; border: 1px solid var(--ink); color: var(--ink) !important; font-weight: 700; }
-    .nav .github-badge { margin: 0; padding: 9px 12px; color: var(--ink); }
-    .nav .github-badge:hover { border-color: var(--blue); color: var(--blue); }
-    .mobile-nav { display: none; }
     .hero { padding: 96px 0 72px; border-bottom: 1px solid var(--line); }
     .hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); gap: 72px; align-items: center; }
     .hero-grid > * { min-width: 0; }
     .eyebrow { margin: 0 0 20px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-    h1 { max-width: 760px; margin: 0; font-size: clamp(52px, 7vw, 88px); line-height: .96; letter-spacing: -.055em; }
-    .hero-format { display: inline-block; min-width: 6.6ch; }
-    .hero-format.is-changing { animation: hero-format-in .36s ease-out both; }
-    @keyframes hero-format-in {
-      from { opacity: 0; transform: translateY(.14em); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .hero-format.is-changing { animation: none; }
-    }
+    h1 { max-width: 760px; margin: 0; font-size: clamp(40px, 4.8vw, 64px); line-height: 1.04; letter-spacing: -.045em; text-wrap: balance; }
     .lead { max-width: 670px; margin: 28px 0 0; color: var(--muted); font-size: 20px; line-height: 1.65; }
     .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border: 1px solid var(--ink); text-decoration: none; font-size: 15px; font-weight: 750; }
     .btn-primary { border-color: var(--blue); color: var(--white); background: var(--blue); }
     .btn-primary:hover { background: var(--blue-dark); }
     .btn-secondary:hover { color: var(--blue); border-color: var(--blue); }
-    .install-stack { width: 100%; max-width: 680px; margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
     .install { width: 100%; min-width: 0; display: flex; align-items: center; gap: 18px; padding: 13px 16px; color: #dce4ff; background: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
     .install span { min-width: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
     .install .copy { flex: 0 0 auto; }
-    .copy { border: 0; padding: 0; color: #9eb3ff; background: transparent; cursor: pointer; font: inherit; }
     .proof { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 14px; }
     .proof strong { color: var(--ink); }
-    .demo-shell { position: relative; padding: 18px; border: 1px solid var(--line); background: var(--white); box-shadow: 20px 20px 0 var(--soft); }
+    .copy { border: 0; padding: 0; color: #9eb3ff; background: transparent; cursor: pointer; font: inherit; }
     @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
     @keyframes print-in { from { opacity: 0; translate: 0 -20px; } to { opacity: 1; translate: 0 0; } }
     .stage { position: relative; height: 390px; overflow: hidden; border: 1px solid var(--line); background: linear-gradient(135deg, #f0f4ff, #fff 56%, #edf7ff); }
@@ -132,7 +105,6 @@
     .shutter-label { color: var(--muted); font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; }
     .hero-tray { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
     .hero-tray::-webkit-scrollbar { display: none; }
-    .hero-tray:empty::before { content: 'PRINTS LAND HERE — PRESS THE SHUTTER'; padding-top: 22px; color: var(--muted); opacity: .7; font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; }
     .print { width: 158px; min-width: 0; flex: 0 1 158px; display: flex; flex-direction: column; gap: 5px; padding: 6px 6px 7px; overflow: hidden; border: 1px solid var(--line); background: #fff; box-shadow: 0 12px 26px -16px rgba(15,30,77,.45); animation: print-in .5s cubic-bezier(.2,.9,.3,1) both; }
     .print img { display: block; width: 100% !important; max-width: 100%; min-width: 0; height: auto !important; object-fit: contain; }
     .print-cap { color: var(--muted); font: 8px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .5px; }
@@ -159,59 +131,41 @@
     .section-heading { display: grid; grid-template-columns: .75fr 1.25fr; gap: 48px; margin-bottom: 44px; }
     .section-heading h2 { margin: 0; font-size: clamp(36px, 5vw, 58px); line-height: 1; letter-spacing: -.045em; }
     .section-heading p { max-width: 620px; margin: 4px 0 0; color: var(--muted); font-size: 18px; line-height: 1.65; }
-    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
-    .feature { min-height: 230px; padding: 30px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.45); }
-    .feature h3 { margin: 0 0 12px; font-size: 22px; }
-    .feature p { margin: 0; color: var(--muted); line-height: 1.6; }
-    .use-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    .use-card { padding: 24px; border: 1px solid var(--line); background: var(--white); text-decoration: none; }
-    .use-card:hover { border-color: var(--blue); transform: translateY(-2px); }
-    .use-card span { color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-    .use-card h3 { margin: 24px 0 10px; font-size: 20px; }
-    .use-card p { margin: 0; color: var(--muted); line-height: 1.55; }
-    .pro { background: var(--ink); color: var(--white); }
-    .pro .section-heading p { color: #b9c5e4; }
-    .pro-panel { display: grid; grid-template-columns: 1.2fr .8fr; border: 1px solid rgba(255,255,255,.22); }
-    .pro-copy { padding: 42px; }
-    .pro-copy .label { color: #9eb3ff; font-size: 12px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
-    .pro-copy h2 { max-width: 620px; margin: 20px 0 14px; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; }
-    .pro-copy p { max-width: 660px; margin: 0; color: #b9c5e4; font-size: 17px; line-height: 1.65; }
-    .pro-meta { padding: 42px; display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid rgba(255,255,255,.22); }
-    .pro-meta strong { display: block; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
-    .pro-meta p { margin: 12px 0 28px; color: #b9c5e4; line-height: 1.55; }
-    .pro .btn { color: var(--white); border-color: rgba(255,255,255,.55); }
-    .pro .btn:hover { border-color: var(--white); }
-    .resource-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .resource { min-height: 190px; display: flex; flex-direction: column; justify-content: space-between; padding: 26px; border: 1px solid var(--line); background: var(--white); text-decoration: none; }
-    .resource:hover { color: var(--blue); border-color: var(--blue); }
-    .resource small { color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
-    .resource strong { font-size: 24px; line-height: 1.15; }
+    .section-white { background: var(--white); }
+    .install-line { width: 100%; max-width: 600px; margin-top: 28px; background: var(--ink); }
+    .install-tabs { display: flex; border-bottom: 1px solid rgba(217,226,247,.16); }
+    .install-tabs button { padding: 9px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: #b9c5e4; cursor: pointer; font: 700 12px Arial, Helvetica, sans-serif; }
+    .install-tabs button[aria-selected="true"] { border-bottom-color: #9eb3ff; color: var(--white); }
+    .install-line .install { margin: 0; }
+    .demo-panel .stage-row { min-height: 128px; }
+    .tray-empty { padding-top: 22px; color: var(--muted); opacity: .7; font: 9px var(--font-code); letter-spacing: 1.2px; text-transform: uppercase; }
+    .output-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .output-card { display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--white); border: 1px solid var(--line); transition: border-color .15s; }
+    .output-card:hover { border-color: var(--blue); }
+    .output-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .output-card h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
+    .output-card-formats { color: var(--muted); font: 400 12.5px/1.5 var(--font-code); }
+    .output-card p { flex: 1; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .output-card-links { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding-top: 4px; }
+    .output-card-links a { color: var(--blue); font-size: 14px; font-weight: 700; text-underline-offset: 4px; }
+    .output-card:hover .output-card-links a:first-child { text-decoration-thickness: 2px; }
+    .output-card-links a.is-sub { color: var(--muted); font-size: 13px; font-weight: 400; }
+    .index-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .showcase-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
     .showcase-visual { position: relative; min-height: 360px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: #fff; }
     .showcase-visual img { width: 300px; max-width: 80%; position: relative; }
     .showcase-copy h2 { margin: 0; font-size: clamp(38px, 5vw, 62px); line-height: 1; letter-spacing: -.045em; }
     .showcase-copy p { margin: 22px 0 28px; color: var(--muted); font-size: 18px; line-height: 1.65; }
-    .final-cta { padding: 90px 0; text-align: center; }
+    .final-cta { padding: 90px 0; text-align: center; color: var(--white); background: var(--ink); }
+    .btn-inverse { color: var(--white); border-color: rgba(255,255,255,.55); }
+    .btn-inverse:hover { border-color: var(--white); }
     .final-cta h2 { max-width: 780px; margin: 0 auto; font-size: clamp(42px, 6vw, 72px); line-height: 1; letter-spacing: -.05em; }
     .final-cta .actions { justify-content: center; }
-    footer { padding: 30px 0 44px; border-top: 1px solid var(--line); color: var(--muted); }
-    .footer-row { display: flex; justify-content: space-between; gap: 24px; }
-    .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
-    @media (max-width: 1180px) {
-      .nav-links > a:not(.github-badge) { display: none; }
-      .mobile-nav { display: flex; overflow-x: auto; border-top: 1px solid var(--line); scrollbar-width: none; }
-      .mobile-nav::-webkit-scrollbar { display: none; }
-      .mobile-nav .wrap { display: flex; }
-      .mobile-nav a { flex: 1 0 auto; padding: 11px 14px; color: var(--muted); text-align: center; text-decoration: none; font-size: 12px; font-weight: 700; }
-      .mobile-nav a:hover { color: var(--blue); }
-    }
     @media (max-width: 1080px) {
       .hero { padding-top: 64px; }
-      .hero-grid, .section-heading, .pro-panel, .showcase-callout { grid-template-columns: 1fr; }
-      .demo-shell { max-width: 620px; }
-      .feature-grid, .resource-grid { grid-template-columns: repeat(2, 1fr); }
-      .use-grid { grid-template-columns: repeat(2, 1fr); }
-      .pro-meta { border-top: 1px solid rgba(255,255,255,.22); border-left: 0; }
+      .hero-grid, .section-heading, .showcase-callout { grid-template-columns: 1fr; }
+      .hero .demo-panel { max-width: 620px; }
+      .output-grid, .index-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .hero-tray { gap: 8px; }
       .print { width: 104px; min-width: 80px; flex: 0 1 104px; gap: 4px; padding: 5px; }
       .print-cap, .print-plug { font-size: 7px; letter-spacing: .3px; }
@@ -220,13 +174,7 @@
     }
     @media (max-width: 600px) {
       .wrap { width: min(100% - 28px, var(--max)); }
-      .nav { min-height: 62px; }
-      .brand { font-size: 21px; }
-      .nav .github-badge { padding: 8px 10px; font-size: 10.5px; }
-      .nav .github-badge > svg, .nav .github-badge > span:first-of-type { display: none; }
-      .nav .github-stars { padding-left: 0; border-left: 0; }
       .hero { padding: 48px 0 54px; }
-      h1 { font-size: 49px; }
       .lead { font-size: 17px; }
       .stage { height: 310px; }
       .stage-annot.vert { display: none; }
@@ -239,60 +187,34 @@
       .logo-list a:nth-child(n+5):not(.logo-more) { display: none; }
       .logo-list .logo-more { margin-left: auto; }
       .section { padding: 64px 0; }
-      .feature-grid, .use-grid, .resource-grid { grid-template-columns: 1fr; }
-      .feature { min-height: 0; }
-      .pro-copy, .pro-meta { padding: 28px; }
       .showcase-visual { min-height: 280px; }
-      .footer-row { flex-direction: column; }
-    }
-    @media (max-width: 600px) {
-      .pro-copy, .pro-meta { padding: 26px; }
+      .output-grid, .index-grid-4 { grid-template-columns: minmax(0, 1fr); }
     }
   </style>
-  <link rel="stylesheet" href="./pro-plans.css">
+  <link rel="stylesheet" href="./navigation.css">
+  <link rel="stylesheet" href="./panes.css">
+  <script defer src="./site.js"></script>
 </head>
 <body>
-  <header class="site-header">
-    <div class="wrap nav">
-      <a class="brand" href="./" aria-label="SnapDOM home"><span class="brand-mark"></span><span>SnapDOM</span></a>
-      <nav class="nav-links" aria-label="Main navigation">
-        <a href="./docs/">Docs</a>
-        <a href="./guides/">Guides</a>
-        <a href="./how-to/">How-to</a>
-        <a href="./compare/">Compare</a>
-        <a href="./showcase/">Showcase</a>
-        <a href="./made-with/">Made with</a>
-        <a href="./ecosystem/">Ecosystem</a>
-        <a href="./plugins.html">Plugins</a>
-        <a href="./pro/">Pro</a>
-        <a href="./labs.html">Labs</a>
-        <a href="./blog/">Blog</a>
-        <a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a>
-        <a href="https://github.com/zumerlab/snapdom" class="github-badge" target="_blank" rel="noopener" aria-label="SnapDOM on GitHub, current star count">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" style="height:1em;width:auto"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4-68.9 15-83.4-29.8-83.4-29.8-11.1-28.4-27.5-36-27.5-36-22.6-15.4 1.6-15.1 1.6-15.1 24.9 2 38.6 25.5 38.6 25.5 22.2 38 58.2 27.1 72.6 20.6 2.3-16 8.8-27.1 16-33.4-55-6.2-112.8-27.5-112.8-123.1 0-27.1 9.8-49.4 25.5-66.7-2.6-6.2-11.1-31.4 2.3-65.7 20.9-6.5 69 25.5 69 25.5 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-32 69-25.5 13.4 34.3 4.9 59.5 2.3 65.7 16 17.3 25.5 39.6 25.5 66.7 0 95.8-57.9 116.6-113.1 122.8 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8z"/></svg>
-          <span>GitHub</span>
-          <span class="github-stars"><span aria-hidden="true">★</span><span id="star-count">7.9k+</span></span>
-        </a>
-      </nav>
-    </div>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><div class="wrap"><a href="./docs/">Docs</a><a href="./guides/">Guides</a><a href="./how-to/">How-to</a><a href="./compare/">Compare</a><a href="./showcase/">Showcase</a><a href="./made-with/">Made with</a><a href="./ecosystem/">Ecosystem</a><a href="./plugins.html">Plugins</a><a href="./pro/">Pro</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a></div></nav>
-  </header>
+  <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="./docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="./how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="./guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="./compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="./capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="./plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">12 official plugins</span></a><a class="site-nav-item sec-capture" href="./plugins.html#playground"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="./showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="./labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="./blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="./ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="./made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 
   <main>
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
           <p class="eyebrow">Browser capture engine · zero dependencies</p>
-          <h1 aria-label="Capture web interfaces as images, HTML, context, canvas, PDF, GIF or video."><span aria-hidden="true">Capture your UI as <span class="hero-format" id="hero-format">images.</span></span></h1>
-          <p class="lead">Export images and canvas from a reusable capture. Plugins add self-contained HTML, context for agents, PDFs and recordings.</p>
+          <h1>HTML to images, documents and context.</h1>
+          <p class="lead">SnapDOM captures rendered HTML in your browser. Save it as an image, or add a plugin for PDF, HTML, recordings or agent context.</p>
           <div class="actions">
             <a class="btn btn-primary" href="./docs/">Get started</a>
-            <a class="btn btn-secondary" href="./showcase/">Explore live demos</a>
-            <a class="btn btn-secondary" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
+            <a class="btn btn-secondary" href="#outputs">Choose your output</a>
           </div>
-          <div class="install-stack">
-            <div class="install"><span>npm i @zumer/snapdom@latest</span><button class="copy" type="button" data-copy="npm i @zumer/snapdom@latest">copy</button></div>
-            <div class="install"><span>&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;</span><button class="copy" type="button" data-copy='&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;'>copy</button></div>
+          <div class="install-line">
+            <div class="install-tabs" role="tablist" aria-label="Install with">
+              <button type="button" role="tab" aria-selected="true" data-install="npm i @zumer/snapdom@latest">npm</button>
+              <button type="button" role="tab" aria-selected="false" data-install='&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;'>CDN</button>
+            </div>
+            <div class="install"><span id="install-command">npm i @zumer/snapdom@latest</span><button class="copy" type="button" id="install-copy">copy</button></div>
           </div>
           <div class="proof" aria-label="Project stats">
             <span><strong>v3.x.x</strong> documentation</span>
@@ -301,7 +223,9 @@
           </div>
         </div>
 
-        <div class="demo-shell">
+        <section class="demo-panel sec-capture" aria-label="Live demo">
+          <header class="demo-panel-head"><span class="demo-panel-title">snapdom.toPng(stage)</span><button type="button" class="demo-act is-primary" id="hero-capture">Capture</button><button type="button" class="demo-act" id="hero-clear">Clear</button></header>
+          <div class="demo-panel-body">
           <div class="stage" id="hero-stage">
             <div class="stage-third v" style="left:33.33%"></div>
             <div class="stage-third v" style="left:66.66%"></div>
@@ -319,9 +243,11 @@
           </div>
           <div class="stage-row">
             <div class="shutter-wrap"><button class="shutter" id="hero-shutter" type="button" aria-label="Capture Mr. SnapDOM"><span></span></button><span class="shutter-label">CAPTURE</span></div>
-            <div class="hero-tray" id="hero-tray" aria-live="polite"></div>
+            <div class="hero-tray" id="hero-tray" aria-live="polite"><span class="tray-empty">Prints land here</span></div>
           </div>
-        </div>
+          </div>
+          <footer class="demo-panel-status" id="hero-status" role="status">Press the shutter. This stage is captured for real.</footer>
+        </section>
       </div>
     </section>
 
@@ -335,61 +261,65 @@
           <a href="https://github.com/seek-oss/playroom" target="_blank" rel="noopener" aria-label="SEEK Playroom repository"><img src="./assets/made-with/seek-oss.png" alt="SEEK" title="SEEK Playroom"></a>
           <a href="https://github.com/antvis/GPT-Vis" target="_blank" rel="noopener" aria-label="AntV GPT-Vis repository"><img src="./assets/made-with/antvis.png" alt="AntV" title="AntV GPT-Vis"></a>
           <a href="https://github.com/metabrainz/listenbrainz-server" target="_blank" rel="noopener" aria-label="MetaBrainz ListenBrainz repository"><img src="./assets/made-with/metabrainz.png" alt="MetaBrainz" title="MetaBrainz ListenBrainz"></a>
-          <a class="logo-more" href="./made-with/">View more projects →</a>
+          <a class="logo-more" href="./made-with/">View more projects</a>
         </div>
       </div>
     </section>
 
-    <section class="section pro" aria-labelledby="pro-title">
-      <div class="wrap pro-panel">
-        <div class="pro-copy">
-          <span class="label">SnapDOM Pro</span>
-          <h2 id="pro-title">Searchable PDFs.<br>Editable vectors.</h2>
-          <p>Add a text layer and pagination to your PDFs, or export editable shapes and text to SVG and Figma. Explore the samples from both plugins.</p>
-          <div class="actions">
-            <a class="btn btn-secondary" href="./pro/pdf/">Explore PDF →</a>
-            <a class="btn btn-secondary" href="./pro/vector/">Explore Vector →</a>
-          </div>
-        </div>
-        <div class="pro-meta">
-          <div>
-            <strong>Annual plans</strong>
-            <p>Individual <b>$39</b> · Business <b>$99</b><br>Per year, per plugin.</p>
-          </div>
-          <a class="btn btn-secondary" href="./pro/">See plans →</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
+    <section class="section" id="outputs">
       <div class="wrap">
         <div class="section-heading">
-          <h2>What SnapDOM gives you.</h2>
-          <p>Start with a rendered web interface. SnapDOM captures its structure, styles and resources so you can use that state in different outputs.</p>
+          <h2>One interface.<br>Several ways to use it.</h2>
+          <p>Start with the result you need. The tag tells you whether it ships with the core or needs a plugin.</p>
         </div>
-        <div class="feature-grid">
-          <article class="feature"><h3>Rendered detail</h3><p>Capture web fonts, pseudo-elements, SVG, backgrounds, open Shadow DOM and the current state of form controls.</p></article>
-          <article class="feature"><h3>Fast repeated captures</h3><p>V3 reuses resources and unchanged captures. Exports run when you request them, and changed elements are captured again.</p></article>
-          <article class="feature"><h3>One capture, several exports</h3><p>Get PNG, JPG, WebP, SVG, canvas or a Blob from the same result. Use canvas output as a WebGL texture.</p></article>
-          <article class="feature"><h3>HTML and agent context</h3><p>Plugins export self-contained HTML, text or JSON outlines, and screenshots with maps of interactive elements.</p></article>
-          <article class="feature"><h3>GIF and video</h3><p>Recording plugins capture a live element frame by frame. Use them for animations, interaction demos and short clips.</p></article>
-          <article class="feature"><h3>MIT, zero dependencies</h3><p>Use the core in personal or commercial projects. Load the plugins you need, or add your own through the public API.</p></article>
+        <div class="output-grid">
+          <article class="output-card sec-capture">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>Images &amp; canvas</h3><span class="tag tag-core">Core</span></div>
+            <span class="output-card-formats">PNG · JPEG · WebP · canvas · Blob</span>
+            <p>Save a chart, dashboard or component as an image. Use canvas output as a WebGL texture.</p>
+            <div class="output-card-links"><a href="./capabilities/#images-canvas">Start with images</a></div>
+          </article>
+          <article class="output-card sec-export">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>PDF documents</h3><span class="tag tag-plugin">Plugin</span></div>
+            <span class="output-card-formats">PDF with text, links &amp; pages</span>
+            <p>Turn an HTML report or invoice into a searchable document with page breaks and bookmarks.</p>
+            <div class="output-card-links"><a href="./pro/pdf/">Try PDF</a></div>
+          </article>
+          <article class="output-card sec-export">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>HTML snapshots</h3><span class="tag tag-plugin">Plugin</span></div>
+            <span class="output-card-formats">A self-contained HTML file</span>
+            <p>Save the rendered markup with its styles and resources. Reopen it without rebuilding your app.</p>
+            <div class="output-card-links"><a href="./capabilities/#html-snapshots">Try HTML</a></div>
+          </article>
+          <article class="output-card sec-record">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>GIF &amp; video</h3><span class="tag tag-plugin">Plugins</span></div>
+            <span class="output-card-formats">GIF · MP4 or WebM</span>
+            <p>Record the live element over time for short animations, demos and review clips.</p>
+            <div class="output-card-links"><a href="./capabilities/#gif-video">Try GIF</a><a class="is-sub" href="./showcase/#video-export-demo">Or record video</a></div>
+          </article>
+          <article class="output-card sec-context">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>Context for agents</h3><span class="tag tag-plugin">Plugins</span></div>
+            <span class="output-card-formats">Text · JSON · annotated image</span>
+            <p>Give an agent the captured text, form state and locations of interactive elements.</p>
+            <div class="output-card-links"><a href="./capabilities/#context-for-agents">Try an element map</a><a class="is-sub" href="./capabilities/#describe-a-captured-interface">Or get a text / JSON tree</a></div>
+          </article>
+          <article class="output-card sec-export">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>Vector artwork</h3><span class="tag tag-plugin">Plugin</span></div>
+            <span class="output-card-formats">SVG shapes · Figma</span>
+            <p>Turn captured text and supported shapes into editable SVG artwork or Figma content.</p>
+            <div class="output-card-links"><a href="./pro/vector/">Explore Vector</a></div>
+          </article>
         </div>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section section-white">
       <div class="wrap">
         <div class="section-heading">
-          <h2>Where it is useful.</h2>
-          <p>Build the interface in HTML and CSS, then use its captured appearance and structure in the rest of your application.</p>
+          <h2>How the pieces fit.</h2>
+          <p>SnapDOM captures the interface. Plugins prepare or export that capture. Separate tools compare results or operate a browser.</p>
         </div>
-        <div class="use-grid">
-          <a class="use-card" href="./how-to/export-dashboard-as-image/"><span>Product</span><h3>Dashboards</h3><p>Export charts, KPI cards, legends and surrounding interface as one image.</p></a>
-          <a class="use-card" href="./labs/webgl-live-mirror/"><span>Graphics</span><h3>Canvas textures</h3><p>Use a captured interface as a texture in WebGL. Recapture when the source changes.</p></a>
-          <a class="use-card" href="./docs/plugins/"><span>Agents</span><h3>Page context</h3><p>Give an agent text, roles and bounds, with an optional annotated image of the same capture.</p></a>
-          <a class="use-card" href="./how-to/visual-regression-screenshot/"><span>Testing</span><h3>Visual baselines</h3><p>Capture components for visual comparison. Control fonts, animation and application state in your test.</p></a>
-        </div>
+        <div class="pipeline"><div class="pipeline-box"><span class="pipeline-eyebrow"><span class="sec-dot" style="background:rgba(15,30,77,.3)"></span>Your source</span><strong>A rendered HTML interface</strong><p>An element, component, report or dashboard with its CSS and resources.</p></div><span class="pipeline-link" aria-hidden="true"><i></i><i></i></span><div class="pipeline-box is-engine sec-capture"><span class="pipeline-eyebrow"><span class="sec-dot"></span>SnapDOM core</span><strong>Capture its current state</strong><p>Styles, fonts, images, layout and control values.</p></div><span class="pipeline-link" aria-hidden="true"><i></i><i></i></span><div class="pipeline-box"><span class="pipeline-eyebrow">Choose your result</span><ul><li class="sec-capture"><span class="sec-dot"></span>Image / canvas<small>Core</small></li><li class="sec-export"><span class="sec-dot"></span>PDF document<small>Plugin</small></li><li class="sec-export"><span class="sec-dot"></span>HTML snapshot<small>Plugin</small></li><li class="sec-record"><span class="sec-dot"></span>GIF / video<small>Plugins</small></li><li class="sec-context"><span class="sec-dot"></span>Text / element map<small>Plugins</small></li></ul></div></div>
       </div>
     </section>
 
@@ -397,16 +327,9 @@
       <div class="wrap">
         <div class="section-heading">
           <h2>Documentation and guides.</h2>
-          <p>Start with the small API, then go deeper only where your capture needs it.</p>
+          <p>Each area has its own colour. The same colour marks it in the sidebar, on its live demo and in its page titles.</p>
         </div>
-        <div class="resource-grid">
-          <a class="resource" href="./docs/"><small>Documentation</small><strong>Install, capture and export</strong><span>Open docs →</span></a>
-          <a class="resource" href="./docs/api/"><small>API reference</small><strong>Methods and exporters</strong><span>Browse API →</span></a>
-          <a class="resource" href="./docs/options/"><small>Options</small><strong>Every capture setting</strong><span>See options →</span></a>
-          <a class="resource" href="./guides/"><small>Frameworks</small><strong>React, Vue, Svelte and more</strong><span>Read guides →</span></a>
-          <a class="resource" href="./how-to/"><small>Recipes</small><strong>Solutions for real workflows</strong><span>Browse how-to →</span></a>
-          <a class="resource" href="./compare/"><small>Comparisons</small><strong>Choose the right capture tool</strong><span>Compare →</span></a>
-        </div>
+        <div class="index-grid index-grid-4"><a class="sec-start" href="./docs/"><span class="sec-dot"></span><span class="index-grid-label">Getting started</span><span class="index-grid-meta">docs</span></a><a class="sec-capture" href="./docs/api/"><span class="sec-dot"></span><span class="index-grid-label">Capture API</span><span class="index-grid-meta">api</span></a><a class="sec-options" href="./docs/options/"><span class="sec-dot"></span><span class="index-grid-label">Options</span><span class="index-grid-meta">settings</span></a><a class="sec-prepare" href="./capabilities/#keep-private-content-out"><span class="sec-dot"></span><span class="index-grid-label">Preparation</span><span class="index-grid-meta">5 plugins</span></a><a class="sec-export" href="./capabilities/#pdf-documents"><span class="sec-dot"></span><span class="index-grid-label">Export</span><span class="index-grid-meta">plugins</span></a><a class="sec-record" href="./capabilities/#gif-video"><span class="sec-dot"></span><span class="index-grid-label">Recording</span><span class="index-grid-meta">2 plugins</span></a><a class="sec-context" href="./capabilities/#context-for-agents"><span class="sec-dot"></span><span class="index-grid-label">Agent context</span><span class="index-grid-meta">2 plugins</span></a><a class="sec-ecosystem" href="./plugins.html"><span class="sec-dot"></span><span class="index-grid-label">All plugins</span><span class="index-grid-meta">12</span></a><a class="sec-capture" href="./plugins.html#playground"><span class="sec-dot"></span><span class="index-grid-label">Playground</span><span class="index-grid-meta">live</span></a><a class="sec-labs" href="./showcase/"><span class="sec-dot"></span><span class="index-grid-label">Showcase</span><span class="index-grid-meta">21 demos</span></a><a class="sec-start" href="./how-to/"><span class="sec-dot"></span><span class="index-grid-label">How-to recipes</span><span class="index-grid-meta">17 recipes</span></a><a class="sec-ecosystem" href="./compare/"><span class="sec-dot"></span><span class="index-grid-label">Compare</span><span class="index-grid-meta">7 comparisons</span></a><a class="sec-options" href="./guides/"><span class="sec-dot"></span><span class="index-grid-label">Guides</span><span class="index-grid-meta">6 frameworks</span></a><a class="sec-labs" href="./labs.html"><span class="sec-dot"></span><span class="index-grid-label">Labs</span><span class="index-grid-meta">7 experiments</span></a><a class="sec-record" href="./blog/"><span class="sec-dot"></span><span class="index-grid-label">Blog</span><span class="index-grid-meta">4 posts</span></a><a class="sec-context" href="./made-with/"><span class="sec-dot"></span><span class="index-grid-label">Made with</span><span class="index-grid-meta">projects</span></a></div>
       </div>
     </section>
 
@@ -427,18 +350,13 @@
         <h2>Install SnapDOM and capture your first element.</h2>
         <div class="actions">
           <a class="btn btn-primary" href="./docs/">Get started</a>
-          <a class="btn btn-secondary" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
+          <a class="btn btn-inverse" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener">★ Star on GitHub</a>
         </div>
       </div>
     </section>
   </main>
 
-  <footer>
-    <div class="wrap footer-row">
-      <span>MIT © <a href="https://zumerlab.com/">Zumerlab</a></span>
-      <div class="footer-links"><a href="./docs/">Docs</a><a href="./v2/">v2 docs</a><a href="./showcase/">Showcase</a><a href="./ecosystem/">Ecosystem</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://github.com/sponsors/tinchox5" target="_blank" rel="noopener">Sponsors</a><a href="https://x.com/snapdomjs" target="_blank" rel="noopener" aria-label="SnapDOM on X (@snapdomjs)">X</a></div>
-    </div>
-  </footer>
+  <footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="./docs/">Documentation</a><a href="./docs/#quick-start">Quick start</a><a href="./how-to/">How-to recipes</a><a href="./guides/">Guides</a><a href="./compare/">Compare</a></div><div><h2>Build</h2><a href="./capabilities/">Capabilities</a><a href="./plugins.html">Plugins</a><a href="./plugins.html#playground">Playground</a><a href="./plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="./showcase/">Showcase</a><a href="./labs.html">Labs</a><a href="./blog/">Blog</a></div><div><h2>Community</h2><a href="./ecosystem/">Ecosystem</a><a href="./made-with/">Made with</a><a href="./plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
 
   <script>
     // Preserve links to demos that used to live on the home page.
@@ -464,38 +382,26 @@
       gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' })
     }
 
-    document.querySelectorAll('[data-copy]').forEach(button => {
-      button.addEventListener('click', async event => {
-        await navigator.clipboard.writeText(event.currentTarget.dataset.copy)
-        event.currentTarget.textContent = 'copied'
-        setTimeout(() => { event.currentTarget.textContent = 'copy' }, 1200)
+    // One install line, npm or CDN.
+    const installCommand = document.getElementById('install-command')
+    const installCopy = document.getElementById('install-copy')
+    document.querySelectorAll('[data-install]').forEach(tab => tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-install]').forEach(t => t.setAttribute('aria-selected', String(t === tab)))
+      installCommand.textContent = tab.dataset.install
+    }))
+    installCopy.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(installCommand.textContent)
+      installCopy.textContent = 'copied'
+      setTimeout(() => { installCopy.textContent = 'copy' }, 1200)
+    })
+
+    // site.js fills the star count; the download count is the home page's own.
+    fetch('https://api.npmjs.org/downloads/point/last-month/%40zumer%2Fsnapdom')
+      .then(response => response.json())
+      .then(npm => {
+        if (npm.downloads) document.getElementById('download-count').textContent = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(npm.downloads)
       })
-    })
-
-    const heroFormat = document.getElementById('hero-format')
-    if (heroFormat && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const formats = ['images.', 'HTML.', 'context.', 'canvas.', 'PDF.', 'GIF.', 'video.']
-      let formatIndex = 0
-      setInterval(() => {
-        formatIndex = (formatIndex + 1) % formats.length
-        heroFormat.classList.remove('is-changing')
-        heroFormat.textContent = formats[formatIndex]
-        void heroFormat.offsetWidth
-        heroFormat.classList.add('is-changing')
-      }, 1700)
-    }
-
-    Promise.allSettled([
-      fetch('https://api.github.com/repos/zumerlab/snapdom').then(response => response.json()),
-      fetch('https://api.npmjs.org/downloads/point/last-month/%40zumer%2Fsnapdom').then(response => response.json())
-    ]).then(([github, npm]) => {
-      if (github.status === 'fulfilled' && github.value.stargazers_count) {
-        document.getElementById('star-count').textContent = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(github.value.stargazers_count)
-      }
-      if (npm.status === 'fulfilled' && npm.value.downloads) {
-        document.getElementById('download-count').textContent = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(npm.value.downloads)
-      }
-    })
+      .catch(() => {})
   </script>
   <script type="importmap">
     { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs" } }
@@ -529,10 +435,12 @@
       if (captureBusy || document.querySelector('.star-overlay')) return
       captureBusy = true
       const button = document.getElementById('hero-shutter')
+      const capture = document.getElementById('hero-capture')
+      const status = document.getElementById('hero-status')
       const stage = document.getElementById('hero-stage')
       const tray = document.getElementById('hero-tray')
       const flash = document.getElementById('hero-flash')
-      button.disabled = true
+      button.disabled = capture.disabled = true
       try {
         flash.classList.remove('flashing')
         void flash.offsetWidth
@@ -559,7 +467,10 @@
         image.draggable = false
         const caption = document.createElement('div')
         caption.className = 'print-cap'
-        caption.textContent = `hero.png · ${Math.max(1, Math.round(performance.now() - started))} ms`
+        const ms = Math.max(1, Math.round(performance.now() - started))
+        caption.textContent = `hero.png · ${ms} ms`
+        status.textContent = `${label.replace('snapdom.', '')} · ${image.naturalWidth} × ${image.naturalHeight} px · ${ms} ms`
+        tray.querySelector('.tray-empty')?.remove()
         const pluginName = document.createElement('div')
         pluginName.className = 'print-plug'
         pluginName.textContent = label
@@ -573,20 +484,26 @@
           const overlay = document.createElement('div')
           overlay.className = 'star-overlay'
           overlay.innerHTML = '<div class="star-card"><a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span class="star-big">★</span>ENJOYING IT?<br>STAR THE REPO</a><button class="star-close" type="button" aria-label="Close">×</button></div>'
-          const close = () => { overlay.remove(); button.disabled = false }
+          const close = () => { overlay.remove(); button.disabled = capture.disabled = false }
           overlay.querySelector('.star-close').addEventListener('click', close)
           overlay.querySelector('a').addEventListener('click', close)
           tray.append(overlay)
         }
       } catch (error) {
-        console.warn(error)
+        status.textContent = 'Error: ' + (error?.message || error)
       } finally {
         captureBusy = false
-        button.disabled = !!document.querySelector('.star-overlay')
+        button.disabled = capture.disabled = !!document.querySelector('.star-overlay')
       }
     }
 
     document.getElementById('hero-shutter').addEventListener('click', captureHero)
+    document.getElementById('hero-capture').addEventListener('click', captureHero)
+    document.getElementById('hero-clear').addEventListener('click', () => {
+      const tray = document.getElementById('hero-tray')
+      tray.innerHTML = '<span class="tray-empty">Prints land here</span>'
+      document.getElementById('hero-status').textContent = 'Press the shutter. This stage is captured for real.'
+    })
   </script>
 </body>
 </html>
