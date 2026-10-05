@@ -1,5 +1,19 @@
 const starNodes = document.querySelectorAll('[data-star-count]')
 
+const stableDocumentation = document.getElementById('stable-documentation')
+if (stableDocumentation) {
+  fetch('https://registry.npmjs.org/@zumer%2Fsnapdom/latest')
+    .then(response => response.ok ? response.json() : Promise.reject())
+    .then(({ version }) => {
+      if (!/^\d+\.\d+\.\d+$/.test(version)) return
+      const label = document.createElement('strong')
+      label.textContent = `v${version}`
+      stableDocumentation.replaceChildren(label, ' documentation')
+      stableDocumentation.hidden = false
+    })
+    .catch(() => {})
+}
+
 if (starNodes.length) {
   const compact = value => new Intl.NumberFormat('en', {
     notation: 'compact',
